@@ -5,6 +5,8 @@ import { getMDXComponents } from "@/mdx-components";
 import type { Metadata } from "next";
 import { createRelativeLink } from "fumadocs-ui/mdx";
 import { LLMCopyButton, ViewOptions } from "@/components/page-actions";
+import { getPromptContent } from "@/lib/get-prompt-content";
+import { AIPromptBanner } from "@/components/ai-prompt-banner";
 import {
   DocsBody,
   DocsDescription,
@@ -22,16 +24,15 @@ interface PageParams {
   slug?: string[];
 }
 
-export default async function Page({
-  params,
-}: {
-  params: Promise<PageParams>;
-}) {
+export default async function Page({ params }: { params: Promise<PageParams> }) {
   const { slug } = await params;
   const page = source.getPage(slug);
   if (!page) notFound();
 
   const MDX = page.data.body;
+
+  const aiPromptSlug = (page.data as { aiPrompt?: string }).aiPrompt;
+  const promptContent = aiPromptSlug ? await getPromptContent(aiPromptSlug) : null;
 
   return (
     <>
@@ -58,6 +59,9 @@ export default async function Page({
           </div>
         </div>
         <DocsDescription>{page.data.description}</DocsDescription>
+        {promptContent && (
+          <AIPromptBanner fullPrompt={promptContent.fullPrompt} guideName={page.data.title} />
+        )}
         <DocsBody>
           <MDX
             components={getMDXComponents({
