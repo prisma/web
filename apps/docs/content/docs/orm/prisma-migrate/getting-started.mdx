@@ -1,7 +1,7 @@
 ---
 title: Getting started with Prisma Migrate
 description: Learn how to migrate your schema in a development environment using Prisma Migrate
-url: /docs/orm/prisma-migrate/getting-started
+url: /orm/prisma-migrate/getting-started
 metaTitle: Getting started with Prisma Migrate
 metaDescription: Learn how to migrate your schema in a development environment using Prisma Migrate.
 ---
@@ -31,7 +31,7 @@ model Post { // [!code ++]
 ```
 
 :::tip
-You can use [native type mapping attributes](/docs/orm/prisma-migrate/workflows/native-database-types) in your schema to decide which exact database type to create (for example, `String` can map to `varchar(100)` or `text`).
+You can use [native type mapping attributes](/orm/prisma-migrate/workflows/native-database-types) in your schema to decide which exact database type to create (for example, `String` can map to `varchar(100)` or `text`).
 :::
 
 ### Create an initial migration
@@ -114,7 +114,7 @@ migrations/
 
 ### Committing to versions control
 
-Your migration history can be [committed to version control](/docs/orm/prisma-migrate/understanding-prisma-migrate/migration-histories#committing-the-migration-history-to-source-control) and use to [deploy changes to test environments and production](/docs/orm/prisma-migrate/workflows/development-and-production#production-and-testing-environments).
+Your migration history can be [committed to version control](/orm/prisma-migrate/understanding-prisma-migrate/migration-histories#committing-the-migration-history-to-source-control) and use to [deploy changes to test environments and production](/orm/prisma-migrate/workflows/development-and-production#production-and-testing-environments).
 
 ## Adding to an existing project
 
@@ -150,18 +150,23 @@ npx prisma migrate diff \
 
 ### Work around features not supported by Prisma Schema Language
 
-To include [unsupported database features](/docs/orm/prisma-migrate/workflows/unsupported-database-features) that already exist in the database, you must replace or modify the initial migration SQL:
+To include [unsupported database features](/orm/prisma-migrate/workflows/unsupported-database-features) that already exist in the database, you must replace or modify the initial migration SQL:
 
 - Open the `migration.sql` file generated in the [Create a baseline migration](#create-a-baseline-migration) section.
 - Modify the generated SQL. For example:
 
-  - If the changes are minor, you can append additional custom SQL to the generated migration. The following example creates a partial index:
+  - If the changes are minor, you can append additional custom SQL to the generated migration. The following example creates a trigger function:
 
 ```sql title="migration.sql"
 /* Generated migration SQL */
 
-CREATE UNIQUE INDEX tests_success_constraint ON posts (subject, target) -- [!code ++]
-  WHERE success; -- [!code ++]
+CREATE OR REPLACE FUNCTION notify_on_insert() -- [!code ++]
+RETURNS TRIGGER AS $$ -- [!code ++]
+BEGIN -- [!code ++]
+  PERFORM pg_notify('new_record', NEW.id::text); -- [!code ++]
+  RETURN NEW; -- [!code ++]
+END; -- [!code ++]
+$$ LANGUAGE plpgsql; -- [!code ++]
 ```
 
   - If the changes are significant, it can be easier to replace the entire migration file with the result of a database dump:
@@ -197,5 +202,5 @@ Commit the following to source control:
 
 ## Going further
 
-- Refer to the [Deploying database changes with Prisma Migrate](/docs/orm/prisma-client/deployment/deploy-database-changes-with-prisma-migrate) guide for more on deploying migrations to production.
-- Refer to the [Production Troubleshooting](/docs/orm/prisma-migrate/workflows/patching-and-hotfixing#fixing-failed-migrations-with-migrate-diff-and-db-execute) guide to learn how to debug and resolve failed migrations in production using `prisma migrate diff`, `prisma db execute` and/ or `prisma migrate resolve`.
+- Refer to the [Deploying database changes with Prisma Migrate](/orm/prisma-client/deployment/deploy-database-changes-with-prisma-migrate) guide for more on deploying migrations to production.
+- Refer to the [Production Troubleshooting](/orm/prisma-migrate/workflows/patching-and-hotfixing#fixing-failed-migrations-with-migrate-diff-and-db-execute) guide to learn how to debug and resolve failed migrations in production using `prisma migrate diff`, `prisma db execute` and/ or `prisma migrate resolve`.

@@ -1,34 +1,38 @@
-'use client';
-import { useMemo, useState } from 'react';
+"use client";
+import { useMemo, useState } from "react";
 import {
   Check,
   ChevronDown,
   Copy,
   ExternalLinkIcon,
   MessageCircleIcon,
-} from 'lucide-react';
-import { useCopyButton } from 'fumadocs-ui/utils/use-copy-button';
-import { buttonVariants } from '@prisma-docs/ui/components/button';
-import { cn } from '@prisma-docs/ui/lib/cn';
+} from "lucide-react";
+import { useCopyButton } from "fumadocs-ui/utils/use-copy-button";
+import { buttonVariants } from "@prisma-docs/ui/components/button";
+import { cn } from "@prisma-docs/ui/lib/cn";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from 'fumadocs-ui/components/ui/popover';
-import { cva } from 'class-variance-authority';
+} from "fumadocs-ui/components/ui/popover";
+import { cva } from "class-variance-authority";
 
 const cache = new Map<string, string>();
 
 function toIndexMarkdownUrl(markdownUrl: string): string | null {
-  if (!markdownUrl.endsWith('.mdx')) return `${markdownUrl.replace(/\/$/, '')}/index.mdx`;
+  console.log(markdownUrl);
 
-  const withoutExtension = markdownUrl.slice(0, -'.mdx'.length);
-  if (withoutExtension.endsWith('/index')) return null;
+  // if (!markdownUrl.endsWith('.mdx')) return `${markdownUrl.replace(/\/$/, '')}/index.mdx`;
+
+  const withoutExtension = markdownUrl.slice(0, -".mdx".length);
+  if (withoutExtension.endsWith("/index")) return null;
 
   return `${withoutExtension}/index.mdx`;
 }
 
-async function fetchMarkdownWithFallback(markdownUrl: string): Promise<{ content: string; resolvedUrl: string }> {
+async function fetchMarkdownWithFallback(
+  markdownUrl: string,
+): Promise<{ content: string; resolvedUrl: string }> {
   const res = await fetch(markdownUrl);
   if (res.ok) {
     return { content: await res.text(), resolvedUrl: markdownUrl };
@@ -36,7 +40,9 @@ async function fetchMarkdownWithFallback(markdownUrl: string): Promise<{ content
 
   const fallbackUrl = toIndexMarkdownUrl(markdownUrl);
   if (!fallbackUrl) {
-    throw new Error(`Failed to fetch markdown from ${markdownUrl} (${res.status})`);
+    throw new Error(
+      `Failed to fetch markdown from ${markdownUrl} (${res.status})`,
+    );
   }
 
   const fallbackRes = await fetch(fallbackUrl);
@@ -57,10 +63,13 @@ export function LLMCopyButton({
 }: {
   markdownUrl: string;
 }) {
+  
   const [isLoading, setLoading] = useState(false);
   const [checked, onClick] = useCopyButton(async () => {
     const fallbackUrl = toIndexMarkdownUrl(markdownUrl);
-    const cached = cache.get(markdownUrl) ?? (fallbackUrl ? cache.get(fallbackUrl) : undefined);
+    const cached =
+      cache.get(markdownUrl) ??
+      (fallbackUrl ? cache.get(fallbackUrl) : undefined);
     if (cached) return navigator.clipboard.writeText(cached);
 
     setLoading(true);
@@ -68,11 +77,10 @@ export function LLMCopyButton({
     try {
       await navigator.clipboard.write([
         new ClipboardItem({
-          'text/plain': fetchMarkdownWithFallback(markdownUrl).then(({ content, resolvedUrl }) => {
+          "text/plain": fetch(markdownUrl).then(async (res) => {
+            const content = await res.text();
             cache.set(markdownUrl, content);
-            cache.set(resolvedUrl, content);
-
-            return new Blob([content], { type: 'text/plain' });
+            return content;
           }),
         }),
       ]);
@@ -86,9 +94,9 @@ export function LLMCopyButton({
       disabled={isLoading}
       className={cn(
         buttonVariants({
-          color: 'secondary',
-          size: 'sm',
-          className: 'gap-2 [&_svg]:size-3.5 [&_svg]:text-fd-muted-foreground',
+          color: "secondary",
+          size: "sm",
+          className: "gap-2 [&_svg]:size-3.5 [&_svg]:text-fd-muted-foreground",
         }),
       )}
       onClick={onClick}
@@ -100,17 +108,17 @@ export function LLMCopyButton({
 }
 
 const optionVariants = cva(
-  'text-sm p-2 rounded-lg inline-flex items-center gap-2 hover:text-fd-accent-foreground hover:bg-fd-accent [&_svg]:size-4',
+  "text-sm p-2 rounded-lg inline-flex items-center gap-2 hover:text-fd-accent-foreground hover:bg-fd-accent [&_svg]:size-4",
 );
 
 export function ViewOptions({
-  pageUrl,
+  markdownUrl,
   githubUrl,
 }: {
   /**
-   * The page URL path (e.g., /guides/getting-started)
+   * A URL to the raw Markdown/MDX content of page
    */
-  pageUrl: string;
+  markdownUrl: string;
 
   /**
    * Source file URL on GitHub
@@ -118,16 +126,15 @@ export function ViewOptions({
   githubUrl: string;
 }) {
   const items = useMemo(() => {
-    const markdownUrl = `/mdx${pageUrl}`;
     const fullMarkdownUrl =
-      typeof window !== 'undefined'
+      typeof window !== "undefined"
         ? new URL(markdownUrl, window.location.origin)
-        : 'loading';
+        : "loading";
     const q = `Read ${fullMarkdownUrl}, I want to ask questions about it.`;
 
     return [
       {
-        title: 'Open in GitHub',
+        title: "Open in GitHub",
         href: githubUrl,
         icon: (
           <svg fill="currentColor" role="img" viewBox="0 0 24 24">
@@ -137,9 +144,9 @@ export function ViewOptions({
         ),
       },
       {
-        title: 'Open in ChatGPT',
+        title: "Open in ChatGPT",
         href: `https://chatgpt.com/?${new URLSearchParams({
-          hints: 'search',
+          hints: "search",
           q,
         })}`,
         icon: (
@@ -155,7 +162,7 @@ export function ViewOptions({
         ),
       },
       {
-        title: 'Open in Claude',
+        title: "Open in Claude",
         href: `https://claude.ai/new?${new URLSearchParams({
           q,
         })}`,
@@ -172,23 +179,23 @@ export function ViewOptions({
         ),
       },
       {
-        title: 'Open in T3 Chat',
+        title: "Open in T3 Chat",
         href: `https://t3.chat/new?${new URLSearchParams({
           q,
         })}`,
         icon: <MessageCircleIcon />,
       },
     ];
-  }, [githubUrl, pageUrl]);
+  }, [githubUrl, markdownUrl]);
 
   return (
     <Popover>
       <PopoverTrigger
         className={cn(
           buttonVariants({
-            color: 'secondary',
-            size: 'sm',
-            className: 'gap-2',
+            color: "secondary",
+            size: "sm",
+            className: "gap-2",
           }),
         )}
       >

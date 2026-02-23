@@ -42,7 +42,7 @@ export const docsV6 = defineDocs({
     schema: frontmatterSchema.extend({
       image: z.string().optional(),
       badge: z.enum(['early-access', 'deprecated', 'preview']).optional(),
-      url: z.string(),
+      url: z.string().optional(),
       metaTitle: z.string().optional(),
       metaDescription: z.string().optional(),
     }),

@@ -80,10 +80,12 @@ export const { GET } = createMixedbreadSearchAPI({
   transform: (results, _query) => {
     return results.flatMap((item) => {
       const { url = '#', title = 'Untitled' } = item.generated_metadata ?? {};
+      
+      const formattedUrl = url.startsWith("/docs") ? url.slice(5) : url;
       const base = `${item.file_id}-${item.chunk_index}`;
-      const breadcrumbs = getBreadcrumbsFromUrl(url);
+      const breadcrumbs = getBreadcrumbsFromUrl(formattedUrl);
       const chunkResults: SortedResult[] = [
-        { id: `${base}-page`, type: 'page', content: title, url, breadcrumbs },
+        { id: `${base}-page`, type: 'page', content: title, url: formattedUrl, breadcrumbs },
       ];
       const heading =
         item.type === 'text' ? extractHeadingTitle(item.text) : '';
@@ -92,7 +94,7 @@ export const { GET } = createMixedbreadSearchAPI({
           id: `${base}-heading`,
           type: 'heading',
           content: heading,
-          url: `${url}#${slugger(heading)}`,
+          url: `${formattedUrl}#${slugger(heading)}`,
         });
       return chunkResults;
     });

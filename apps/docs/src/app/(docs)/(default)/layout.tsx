@@ -5,11 +5,7 @@ import type { LinkItemType } from 'fumadocs-ui/layouts/shared';
 import { DocsLayout } from '@/components/layout/notebook';
 import { LATEST_VERSION } from '@/lib/version';
 
-export default async function Layout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function Layout({ children, }: { children: React.ReactNode; }) {
   const { nav, ...base } = baseOptions();
 
   const navbarLinks: LinkItemType[] = [

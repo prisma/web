@@ -1,7 +1,7 @@
 ---
 title: Indexes
 description: How to configure index functionality and add full text indexes
-url: /docs/orm/prisma-schema/data-model/indexes
+url: /orm/prisma-schema/data-model/indexes
 metaDescription: How to configure index functionality and add full text indexes
 metaTitle: Indexes
 ---
@@ -494,6 +494,167 @@ model Post {
 }
 ```
 
+### Configuring partial indexes with `where`
+
+The `where` argument allows you to define [partial indexes](https://www.postgresql.org/docs/current/indexes-partial.html) (also known as filtered indexes). A partial index only includes rows that match a specified condition, which reduces the index size and improves both write performance and query performance for the indexed subset of data.
+
+The `where` argument is available on the `@unique`, `@@unique` and `@@index` attributes. It requires the `partialIndexes` Preview feature.
+
+:::note
+
+Partial indexes are supported on **PostgreSQL**, **SQLite**, **SQL Server**, and **CockroachDB**. They are **not** supported on MySQL.
+
+:::
+
+#### Enabling the `partialIndexes` Preview feature
+
+To use partial indexes, add the `partialIndexes` feature flag to the `generator` block of your `schema.prisma` file:
+
+```prisma title="schema.prisma" showLineNumbers
+generator client {
+  provider        = "prisma-client"
+  output          = "./generated"
+  previewFeatures = ["partialIndexes"]
+}
+```
+
+#### Raw SQL syntax with `raw()`
+
+You can define a partial index with a raw SQL predicate string using the `raw()` function. This approach supports any valid SQL `WHERE` expression that your database accepts:
+
+```prisma title="schema.prisma" showLineNumbers
+model User {
+  id        Int       @id
+  email     String
+  status    String
+  deletedAt DateTime?
+
+  @@unique([email], where: raw("status = 'active'"))
+  @@index([email], where: raw("\"deletedAt\" IS NULL"))
+}
+```
+
+This generates SQL like:
+
+**PostgreSQL:**
+
+```sql
+CREATE UNIQUE INDEX "User_email_key" ON "User" ("email") WHERE (status = 'active');
+CREATE INDEX "User_email_idx" ON "User" ("email") WHERE ("deletedAt" IS NULL);
+```
+
+**SQLite:**
+
+```sql
+CREATE UNIQUE INDEX "User_email_key" ON "User" ("email") WHERE status = 'active';
+CREATE INDEX "User_email_idx" ON "User" ("email") WHERE "deletedAt" IS NULL;
+```
+
+**SQL Server:**
+
+```sql
+CREATE UNIQUE NONCLUSTERED INDEX [User_email_key] ON [dbo].[User]([email]) WHERE ([status]='active');
+CREATE NONCLUSTERED INDEX [User_email_idx] ON [dbo].[User]([email]) WHERE ([deletedAt] IS NULL);
+```
+
+The `raw()` syntax can be used with any SQL expression your database supports, making it the most flexible option.
+
+#### Object literal syntax (type-safe alternative)
+
+You can also define partial indexes using an object literal syntax, which provides type-safety by validating field names and value types against your Prisma schema:
+
+```prisma title="schema.prisma" showLineNumbers
+model Post {
+  id        Int      @id
+  title     String
+  published Boolean
+
+  @@index([title], where: { published: true })
+  @@unique([title], where: { published: true })
+}
+```
+
+The object literal syntax supports the following value types:
+
+| Value type       | Example                                  | Notes                                                  |
+| ---------------- | ---------------------------------------- | ------------------------------------------------------ |
+| `Boolean`        | `{ active: true }`, `{ deleted: false }` | For `Boolean` fields                                   |
+| `String`         | `{ status: "active" }`                   | For `String`, `DateTime`, and `Enum` fields            |
+| `Number`         | `{ priority: 1 }`, `{ score: 1.5 }`      | For `Int`, `BigInt`, `Float`, and `Decimal` fields     |
+| `null`           | `{ deletedAt: null }`                    | Translates to `IS NULL`. Works with any nullable field |
+| `{ not: value }` | `{ deletedAt: { not: null } }`           | Negation. Translates to `IS NOT NULL` or `!= value`    |
+
+You can combine multiple conditions in a single object:
+
+```prisma title="schema.prisma" showLineNumbers
+model User {
+  id        Int       @id
+  email     String
+  active    Boolean
+  deletedAt DateTime?
+
+  @@unique([email], where: { active: true, deletedAt: null })
+}
+```
+
+:::note
+
+The object literal syntax validates field types. For example, you cannot use a `Boolean` value for a `String` field. For fields with types that are not supported by the object syntax (such as `Unsupported` or composite types), use `raw()` instead.
+
+:::
+
+#### Using `where` with other index arguments
+
+The `where` argument can be combined with other index arguments such as `name` and `map`:
+
+```prisma title="schema.prisma" showLineNumbers
+model User {
+  id     Int    @id
+  email  String
+  status String
+
+  @@unique([email], name: "email_active_unique", map: "idx_email_active", where: raw("status = 'active'"))
+}
+```
+
+#### Database-specific behavior
+
+| Database    | Migrations    | Introspection | Notes                                                                  |
+| ----------- | ------------- | ------------- | ---------------------------------------------------------------------- |
+| PostgreSQL  | Full support  | Full support  | Full predicate support                                                 |
+| SQLite      | Full support  | Full support  | Full predicate support                                                 |
+| SQL Server  | Full support  | Full support  | Filtered indexes via `CREATE INDEX`                                    |
+| CockroachDB | Create only   | Not supported | Cannot introspect predicate text; predicate modifications not detected |
+| MySQL       | Not supported | Not supported | Partial indexes are not supported by the database                      |
+
+:::warning
+
+**CockroachDB limitation**: CockroachDB supports creating partial indexes, but it cannot introspect the predicate text from existing indexes. This means that after initial creation, modifications to the `where` clause (adding, changing, or removing a predicate) will not be detected by Prisma Migrate. The differ skips predicate comparison for CockroachDB to prevent false-positive migrations.
+
+:::
+
+#### Introspection
+
+When you run `prisma db pull` on a database that contains partial indexes, Prisma ORM will:
+
+1. Automatically add `"partialIndexes"` to the `previewFeatures` list in your generator block
+2. Represent the partial index predicate using the `raw()` syntax with the database's normalized form of the SQL expression
+
+For example, a PostgreSQL partial unique index on a single field will be introspected as:
+
+```prisma title="schema.prisma" showLineNumbers
+model User {
+  id     Int    @id
+  email  String @unique(where: raw("(status = 'active'::text)"))
+  status String
+}
+```
+
+:::note
+
+The introspected `raw()` string reflects the database's normalized form of the SQL expression, which may differ from what you originally wrote. For example, PostgreSQL adds parentheses and explicit type casts (e.g., `'active'::text`), SQL Server wraps column names in brackets and adds parentheses (e.g., `([status]='active')`), while SQLite generally preserves the original expression as-is.
+
+:::
 
 ## Full text indexes (MySQL and MongoDB)
 

@@ -1,7 +1,7 @@
 ---
 title: Troubleshooting
 description: Troubleshoot common Prisma Accelerate errors and connection issues
-url: /docs/accelerate/more/troubleshoot
+url: /accelerate/more/troubleshoot
 metaTitle: 'Troubleshooting: Prisma Accelerate'
 metaDescription: Troubleshooting Prisma Accelerate.
 ---
@@ -10,51 +10,51 @@ When working with Accelerate, you may encounter errors often highlighted by spec
 
 ## `P6009` (`ResponseSizeLimitExceeded`)
 
-This error is triggered when the response size from a database query exceeds [the configured query response size limit](/docs/postgres/database/connection-pooling#response-size). We've implemented this restriction to safeguard your application performance, as retrieving data over 5MB can significantly slow down your application due to multiple network layers. Typically, transmitting more than 5MB of data is common when conducting ETL (Extract, Transform, Load) operations. However, for other scenarios such as transactional queries, real-time data fetching for user interfaces, bulk data updates, or aggregating large datasets for analytics outside of ETL contexts, it should generally be avoided. These use cases, while essential, can often be optimized to work within [the configured query response size limit](/docs/postgres/database/connection-pooling#response-size), ensuring smoother performance and a better user experience.
+This error is triggered when the response size from a database query exceeds [the configured query response size limit](/postgres/database/connection-pooling#response-size). We've implemented this restriction to safeguard your application performance, as retrieving data over 5MB can significantly slow down your application due to multiple network layers. Typically, transmitting more than 5MB of data is common when conducting ETL (Extract, Transform, Load) operations. However, for other scenarios such as transactional queries, real-time data fetching for user interfaces, bulk data updates, or aggregating large datasets for analytics outside of ETL contexts, it should generally be avoided. These use cases, while essential, can often be optimized to work within [the configured query response size limit](/postgres/database/connection-pooling#response-size), ensuring smoother performance and a better user experience.
 
-### Possible causes for [`P6009`](/docs/orm/reference/error-reference#p6009-responsesizelimitexceeded)
+### Possible causes for [`P6009`](/orm/reference/error-reference#p6009-responsesizelimitexceeded)
 
 #### Transmitting images/files in response
 
 This error may arise if images or files stored within your table are being fetched, resulting in a large response size. Storing assets directly in the database is generally discouraged because it significantly impacts database performance and scalability. In addition to performance, it makes database backups slow and significantly increases the cost of storing routine backups.
 
-**Suggested solution:** Configure the [query response size limit](/docs/postgres/database/connection-pooling#response-size) to be larger. If the limit is still exceeded, consider storing the image or file in a BLOB store like [Cloudflare R2](https://developers.cloudflare.com/r2/), [AWS S3](https://aws.amazon.com/pm/serv-s3/), or [Cloudinary](https://cloudinary.com/). These services allow you to store assets optimally and return a URL for access. Instead of storing the asset directly in the database, store the URL, which will substantially reduce the response size.
+**Suggested solution:** Configure the [query response size limit](/postgres/database/connection-pooling#response-size) to be larger. If the limit is still exceeded, consider storing the image or file in a BLOB store like [Cloudflare R2](https://developers.cloudflare.com/r2/), [AWS S3](https://aws.amazon.com/pm/serv-s3/), or [Cloudinary](https://cloudinary.com/). These services allow you to store assets optimally and return a URL for access. Instead of storing the asset directly in the database, store the URL, which will substantially reduce the response size.
 
 #### Over-fetching of data
 
-In certain cases, a large number of records or fields are unintentionally fetched, which results in exceeding [the configured query response size limit](/docs/postgres/database/connection-pooling#response-size). This could happen when the [`where`](/docs/orm/reference/prisma-client-reference#where) clause in the query is incorrect or entirely missing.
+In certain cases, a large number of records or fields are unintentionally fetched, which results in exceeding [the configured query response size limit](/postgres/database/connection-pooling#response-size). This could happen when the [`where`](/orm/reference/prisma-client-reference#where) clause in the query is incorrect or entirely missing.
 
-**Suggested solution:** Configure the [query response size limit](/docs/postgres/database/connection-pooling#response-size) to be larger. If the limit is still exceeded, double-check that the `where` clause is filtering data as expected. To prevent fetching too many records, consider using [pagination](/docs/v6/orm/prisma-client/queries/pagination). Additionally, use the [`select`](/docs/orm/reference/prisma-client-reference#select) clause to return only the necessary fields, reducing the response size.
+**Suggested solution:** Configure the [query response size limit](/postgres/database/connection-pooling#response-size) to be larger. If the limit is still exceeded, double-check that the `where` clause is filtering data as expected. To prevent fetching too many records, consider using [pagination](/v6/orm/prisma-client/queries/pagination). Additionally, use the [`select`](/orm/reference/prisma-client-reference#select) clause to return only the necessary fields, reducing the response size.
 
 #### Fetching a large volume of data
 
 In many data processing workflows, especially those involving ETL (Extract-Transform-Load) processes or scheduled CRON jobs, there's a need to extract large amounts of data from data sources (like databases, APIs, or file systems) for analysis, reporting, or further processing. If you are running an ETL/CRON workload that fetches a huge chunk of data for analytical processing then you might run into this limit.
 
-**Suggested solution:** Configure the [query response size limit](/docs/postgres/database/connection-pooling#response-size) to be larger. If the limit is exceeded, consider splitting your query into batches. This approach ensures that each batch fetches only a portion of the data, preventing you from exceeding the size limit for a single operation.
+**Suggested solution:** Configure the [query response size limit](/postgres/database/connection-pooling#response-size) to be larger. If the limit is exceeded, consider splitting your query into batches. This approach ensures that each batch fetches only a portion of the data, preventing you from exceeding the size limit for a single operation.
 
 ## `P6004` (`QueryTimeout`)
 
-This error occurs when a database query fails to return a response within [the configured query timeout limit](/docs/postgres/database/connection-pooling#query-timeout). The query timeout limit includes the duration of waiting for a connection from the pool, network latency to the database, and the execution time of the query itself. We enforce this limit to prevent unintentional long-running queries that can overload system resources.
+This error occurs when a database query fails to return a response within [the configured query timeout limit](/postgres/database/connection-pooling#query-timeout). The query timeout limit includes the duration of waiting for a connection from the pool, network latency to the database, and the execution time of the query itself. We enforce this limit to prevent unintentional long-running queries that can overload system resources.
 
-> The time for Accelerate's cross-region networking is excluded from [the configured query timeout limit](/docs/postgres/database/connection-pooling#query-timeout) limit.
+> The time for Accelerate's cross-region networking is excluded from [the configured query timeout limit](/postgres/database/connection-pooling#query-timeout) limit.
 
-### Possible causes for [`P6004`](/docs/orm/reference/error-reference#p6004-querytimeout)
+### Possible causes for [`P6004`](/orm/reference/error-reference#p6004-querytimeout)
 
 This error could be caused by numerous reasons. Some of the prominent ones are:
 
 #### High traffic and insufficient connections
 
-If the application is receiving very high traffic and there are not a sufficient number of connections available to the database, then the queries would need to wait for a connection to become available. This situation can lead to queries waiting longer than [the configured query timeout limit](/docs/postgres/database/connection-pooling#query-timeout) for a connection, ultimately triggering a timeout error if they do not get serviced within this duration.
+If the application is receiving very high traffic and there are not a sufficient number of connections available to the database, then the queries would need to wait for a connection to become available. This situation can lead to queries waiting longer than [the configured query timeout limit](/postgres/database/connection-pooling#query-timeout) for a connection, ultimately triggering a timeout error if they do not get serviced within this duration.
 
-**Suggested solution**: Review and possibly increase the `connection_limit` specified in the connection string parameter when setting up Accelerate in a platform environment ([reference](/docs/postgres/database/connection-pooling#connection-pool-size)). This limit should align with your database's maximum number of connections.
+**Suggested solution**: Review and possibly increase the `connection_limit` specified in the connection string parameter when setting up Accelerate in a platform environment ([reference](/postgres/database/connection-pooling#connection-pool-size)). This limit should align with your database's maximum number of connections.
 
 By default, the connection limit is set to 10 unless a different `connection_limit` is specified in your database connection string.
 
 #### Long-running queries
 
-Queries may be slow to respond, hitting [the configured query timeout limit](/docs/postgres/database/connection-pooling#query-timeout) even when connections are available. This could happen if a very large amount of data is being fetched in a single query or if appropriate indexes are missing from the table.
+Queries may be slow to respond, hitting [the configured query timeout limit](/postgres/database/connection-pooling#query-timeout) even when connections are available. This could happen if a very large amount of data is being fetched in a single query or if appropriate indexes are missing from the table.
 
-**Suggested solution**: Configure the [query timeout limit](/docs/postgres/database/connection-pooling#query-timeout) to be larger. If the limit is exceeded, identify the slow-running queries and fetch only the necessary data. Use the `select` clause to retrieve specific fields and avoid fetching unnecessary data. Additionally, consider adding appropriate indexes to improve query efficiency. You might also isolate long-running queries into separate environments to prevent them from affecting transactional queries.
+**Suggested solution**: Configure the [query timeout limit](/postgres/database/connection-pooling#query-timeout) to be larger. If the limit is exceeded, identify the slow-running queries and fetch only the necessary data. Use the `select` clause to retrieve specific fields and avoid fetching unnecessary data. Additionally, consider adding appropriate indexes to improve query efficiency. You might also isolate long-running queries into separate environments to prevent them from affecting transactional queries.
 
 #### Database resource contention
 
@@ -66,7 +66,7 @@ Users often rely on CPU and memory usage metrics to gauge database load, which c
 
 Moreover, it's crucial to periodically scrutinize and refine essential queries and verify that tables are properly indexed. This proactive approach minimizes the vulnerability of these queries to slowdowns caused by competing workloads.
 
-### Considerations for [`P6009`](/docs/orm/reference/error-reference#p6009-responsesizelimitexceeded) and [`P6004`](/docs/orm/reference/error-reference#p6004-querytimeout) errors
+### Considerations for [`P6009`](/orm/reference/error-reference#p6009-responsesizelimitexceeded) and [`P6004`](/orm/reference/error-reference#p6004-querytimeout) errors
 
 For runtimes that support Prisma ORM natively, you could consider creating two `PrismaClient` Instances. One with the Accelerate connection string (prefixed with `prisma://`) and the other one with the direct database connection string (prefixed with `postgres://`, `mysql://` etc). The main idea behind this approach is to bypass Accelerate for certain specific queries.
 
@@ -79,7 +79,7 @@ Additionally, direct connections could have a significant impact on your databas
 If your application's runtime environment supports Prisma ORM natively and you're considering this strategy to circumvent P6009 and P6004 errors, you might create two `PrismaClient` instances:
 
 1. An instance using the Accelerate connection string (prefixed with `prisma://`) for general operations.
-2. Another instance with the direct database connection string (e.g., prefixed with `postgres://`, `mysql://`, etc.) for specific operations anticipated to exceed [the configured query limit timeout](/docs/postgres/database/connection-pooling#query-timeout) or to result in responses larger than [the configured query response size limit](/docs/postgres/database/connection-pooling#response-size).
+2. Another instance with the direct database connection string (e.g., prefixed with `postgres://`, `mysql://`, etc.) for specific operations anticipated to exceed [the configured query limit timeout](/postgres/database/connection-pooling#query-timeout) or to result in responses larger than [the configured query response size limit](/postgres/database/connection-pooling#response-size).
 
 ```ts
 export const prisma = new PrismaClient({
@@ -93,19 +93,19 @@ export const prismaAccelerate = new PrismaClient({
 
 This setup allows you to strategically direct certain operations through the direct connection, mitigating the risk of encountering the aforementioned errors. However, this decision should be made with a comprehensive understanding of the potential consequences and an assessment of whether your database infrastructure can support this additional load without compromising overall performance and availability.
 
-> Also see [**why doesn’t Accelerate fall back to the direct connection string during a service disruption?**](/docs/accelerate/more/faq#why-doesnt-accelerate-fall-back-to-the-direct-connection-string-during-a-service-disruption)
+> Also see [**why doesn’t Accelerate fall back to the direct connection string during a service disruption?**](/accelerate/more/faq#why-doesnt-accelerate-fall-back-to-the-direct-connection-string-during-a-service-disruption)
 
 ## `P6008` (`ConnectionError|EngineStartError`)
 
 This error indicates that Prisma Accelerate cannot establish a connection to your database, potentially due to several reasons.
 
-### Possible causes for [`P6008`](/docs/orm/reference/error-reference#p6008-connectionerrorenginestarterror)
+### Possible causes for [`P6008`](/orm/reference/error-reference#p6008-connectionerrorenginestarterror)
 
 #### Database Not Publicly accessible
 
 If your database is within a VPC or access is limited to specific IP addresses, you might encounter this error if static IP is not enabled for Accelerate or if the static IPs are not permitted in your database firewall.
 
-**Suggested solution:** [Enable static IP for Accelerate](/docs/accelerate/static-ip) and configure your database firewall to allow access from the provided static IP addresses.
+**Suggested solution:** [Enable static IP for Accelerate](/accelerate/static-ip) and configure your database firewall to allow access from the provided static IP addresses.
 
 #### Unreachable Database Host/Port
 
@@ -129,7 +129,7 @@ If the database is taking too long to respond to the connection request, Prisma 
 
 This error occurs when Prisma Accelerate detects a high volume of requests that surpasses allowable thresholds. It acts as a protective measure to safeguard both Prisma Accelerate and your underlying database from excessive load.
 
-### Possible causes for [`P5011`](/docs/orm/reference/error-reference#p5011-too-many-requests)
+### Possible causes for [`P5011`](/orm/reference/error-reference#p5011-too-many-requests)
 
 #### Aggressive retry loops
 
@@ -147,7 +147,7 @@ Unpredicted traffic surges (for example, during product launches, flash sales, o
 **Suggested solution:**
 
 - Consider proactive scaling strategies for both Prisma Accelerate and your database.
-- Monitor traffic and resource usage. If you anticipate a surge, please contact [support](/docs/console/more/support) for capacity planning and potential configuration adjustments.
+- Monitor traffic and resource usage. If you anticipate a surge, please contact [support](/console/more/support) for capacity planning and potential configuration adjustments.
 
 #### Prolonged or planned high workloads
 

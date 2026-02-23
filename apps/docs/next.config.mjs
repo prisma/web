@@ -193,33 +193,37 @@ const securityHeaders = [
   },
 ];
 
+const allowedDevOrigins = (
+  process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0.1,192.168.1.48"
+)
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 /** @type {import('next').NextConfig} */
 const config = {
-  async rewrites() {
-    return [
-      {
-        source: "/docs/:path*.mdx",
-        destination: "/llms.mdx/:path*",
-      },
-    ];
-  },
+
   async redirects() {
     return [
       {
-        source: "/docs/llms.txt",
-        destination: "https://docs.prisma.io/llms.txt",
+        source: "/",
+        destination: "/docs",
         permanent: false,
-      },
-      {
-        source: "/docs/llms-full.txt",
-        destination: "https://docs.prisma.io/llms-full.txt",
-        permanent: false,
+        basePath: false,
       },
     ];
   },
-  assetPrefix: "/docs",
-  // Allow website (localhost:3001) to load assets when proxying docs
-  allowedDevOrigins: ["http://prisma.io"],
+  async rewrites() {
+    return [
+      {
+        source: '/:path*.mdx',
+        destination: '/llms.mdx/:path*',
+      },
+    ]
+  },
+  basePath: "/docs",
+  assetPrefix: "/docs-static",
+  allowedDevOrigins,
   reactStrictMode: true,
   images: { unoptimized: true },
   transpilePackages: ["@prisma-docs/eclipse"],

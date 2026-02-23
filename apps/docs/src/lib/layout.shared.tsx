@@ -29,40 +29,40 @@ type LinkItemTypeWithActivePaths = LinkItemType & {
 export const links: LinkItemTypeWithActivePaths[] = [
   {
     text: 'Getting Started',
-    url: '/docs',
+    url: '/',
     active: 'nested-url',
-    activePaths: ['/docs', '/docs/prisma-orm', '/docs/prisma-postgres'],
+    activePaths: ['/', '/prisma-orm', '/prisma-postgres'],
   },
   {
     text: 'ORM',
-    url: '/docs/orm',
+    url: '/orm',
     active: 'nested-url',
   },
   {
     text: 'Postgres',
-    url: '/docs/postgres',
+    url: '/postgres',
     active: 'nested-url',
   },
   {
     text: 'CLI',
-    url: '/docs/cli',
+    url: '/cli',
     active: 'nested-url',
   },
   {
     text: 'Guides',
-    url: '/docs/guides',
+    url: '/guides',
     active: 'nested-url',
   },
   {
     text: 'More',
     type: 'menu',
     items: [
-      { text: 'Management API', url: '/docs/management-api', active: 'nested-url' },
-      { text: 'Studio', url: '/docs/studio', active: 'nested-url' },
-      { text: 'AI', url: '/docs/ai', active: 'nested-url' },
-      { text: 'Optimize', url: '/docs/optimize', active: 'nested-url' },
-      { text: 'Accelerate', url: '/docs/accelerate', active: 'nested-url' },
-      { text: 'Console', url: '/docs/console', active: 'nested-url' },
+      { text: 'Management API', url: '/management-api', active: 'nested-url' },
+      { text: 'Studio', url: '/studio', active: 'nested-url' },
+      { text: 'AI', url: '/ai', active: 'nested-url' },
+      { text: 'Optimize', url: '/optimize', active: 'nested-url' },
+      { text: 'Accelerate', url: '/accelerate', active: 'nested-url' },
+      { text: 'Console', url: '/console', active: 'nested-url' },
     ],
   },
   {
@@ -83,7 +83,7 @@ export function baseOptions(): BaseLayoutProps {
         <>
           <Link href="https://www.prisma.io">{logo} </Link> /
           <Link
-            href="/docs"
+            href="/"
             className="group relative inline-block"
           >
             <span className="font-mono text-lg">docs</span>

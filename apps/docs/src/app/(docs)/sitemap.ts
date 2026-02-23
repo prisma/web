@@ -1,12 +1,12 @@
 import type { MetadataRoute } from "next";
 import { source, sourceV6 } from "@/lib/source";
-import { getBaseUrl } from "@/lib/urls";
+import { getBaseUrl, withDocsBasePath } from "@/lib/urls";
 
 export const revalidate = false;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = getBaseUrl();
-  const url = (path: string): string => new URL(path, baseUrl).toString();
+  const url = (path: string): string => new URL(withDocsBasePath(path), baseUrl).toString();
 
   // v7 pages (default)
   const items = source.getPages().map((page) => {
@@ -40,11 +40,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
     {
       url: url("/showcase"),
-      changeFrequency: "monthly",
-      priority: 0.8,
-    },
-    {
-      url: url("/docs"),
       changeFrequency: "monthly",
       priority: 0.8,
     },

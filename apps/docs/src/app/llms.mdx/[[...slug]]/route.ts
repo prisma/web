@@ -4,9 +4,19 @@ import { notFound } from "next/navigation";
 
 export const revalidate = false;
 
+function resolvePage(slug: string[] | undefined) {
+  const slugs = slug ?? [];
+
+  return (
+    source.getPage(slugs) ||
+    sourceV6.getPage(slugs) ||
+    (slugs[0] === "v6" ? sourceV6.getPage(slugs.slice(1)) : undefined)
+  );
+}
+
 export async function GET(_req: Request, { params }: RouteContext<"/llms.mdx/[[...slug]]">) {
   const { slug } = await params;
-  const page = source.getPage(slug) || sourceV6.getPage(slug);
+  const page = resolvePage(slug);
   if (!page) notFound();
 
   const content = await getLLMText(page);
@@ -22,7 +32,9 @@ export function generateStaticParams() {
   // Only pre-render leaf pages to avoid file/dir conflicts during static export.
   // A slug is considered non-leaf if it is a prefix of any other slug.
   const v7Params = source.generateParams();
-  const v6Params = sourceV6.generateParams();
+  const v6Params = sourceV6
+    .generateParams()
+    .map((p) => ({ ...p, slug: ["v6", ...(p.slug ?? [])] }));
 
   // Deduplicate identical slugs from v7 and v6
   const seen = new Set<string>();

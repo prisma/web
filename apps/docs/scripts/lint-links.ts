@@ -29,8 +29,8 @@ async function checkLinks() {
   const scanned = await scanURLs({
     preset: 'next',
     populate: {
-      'docs/(default)/[[...slug]]': v7Pages,
-      'docs/v6/[[...slug]]': v6Pages,
+      '(docs)/(default)/[[...slug]]': v7Pages,
+      '(docs)/v6/[[...slug]]': v6Pages,
     },
   });
 
