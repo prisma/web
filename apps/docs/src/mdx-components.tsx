@@ -1,5 +1,6 @@
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import { APIPage } from "@/components/api-page";
+import { Youtube } from "@/components/youtube";
 import { withDocsBasePath } from "@/lib/urls";
 
 import type { MDXComponents } from "mdx/types";
@@ -56,11 +57,9 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     Accordion,
     Accordions,
     APIPage,
+    Youtube,
     img: (props: any) => (
-      <ImageZoom
-        {...(props as any)}
-        src={withDocsBasePathForImageSrc((props as any).src)}
-      />
+      <ImageZoom {...(props as any)} src={withDocsBasePathForImageSrc((props as any).src)} />
     ),
     input: (props: any) => <Input {...props} />,
   };
