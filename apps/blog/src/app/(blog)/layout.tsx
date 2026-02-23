@@ -1,3 +1,4 @@
+import { Button } from "@prisma-docs/eclipse";
 import {
   Logo,
   NavigationMenu,
@@ -7,7 +8,9 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
   NavigationWrapper,
+  Socials,
 } from "@prisma-docs/ui/components/navigation-menu";
+import { StarCount } from "@prisma-docs/ui/components/star-count";
 export function baseOptions() {
   return {
     nav: {
@@ -65,7 +68,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <NavigationWrapper>
           <NavigationMenuList>
             <NavigationMenuItem>
-              <NavigationMenuLink className="shrink-0 w-full">
+              <NavigationMenuLink className="shrink-0 w-full p-0">
                 {Logo}
               </NavigationMenuLink>
             </NavigationMenuItem>
@@ -77,7 +80,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   </NavigationMenuLink>
                 </NavigationMenuItem>
               ) : link.sub ? (
-                <NavigationMenuItem key={`sub-${link.url}`}>
+                <NavigationMenuItem key={link.text}>
                   <NavigationMenuTrigger>{link.text}</NavigationMenuTrigger>
                   <NavigationMenuContent>
                     {link.sub.map((sublink: any) => (
@@ -91,11 +94,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             )}
           </NavigationMenuList>
           <NavigationMenuList>
+            <Socials />
+            <NavigationMenuItem className="ml-2 -mr-2">
+              <Button variant="default-stronger">Login</Button>
+            </NavigationMenuItem>
             <NavigationMenuItem>
-              <NavigationMenuTrigger>Item One</NavigationMenuTrigger>
-              <NavigationMenuContent>
-                <NavigationMenuLink>Link 2</NavigationMenuLink>
-              </NavigationMenuContent>
+              <Button variant="ppg">Get started</Button>
             </NavigationMenuItem>
           </NavigationMenuList>
         </NavigationWrapper>
