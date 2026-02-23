@@ -38,7 +38,7 @@ function NavigationMenu({
     <NavigationMenuPrimitive.Root
       data-slot="navigation-menu"
       className={cn(
-        "z-10 top-4 fixed group/navigation-menu flex max-w-full mx-auto w-full p-4 flex-1 items-center justify-center px-4",
+        "z-10 top-0 fixed group/navigation-menu flex max-w-full mx-auto w-full p-4 flex-1 items-center justify-center px-4",
         className,
       )}
       {...props}
