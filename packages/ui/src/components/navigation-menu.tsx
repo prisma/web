@@ -38,7 +38,7 @@ function NavigationMenu({
     <NavigationMenuPrimitive.Root
       data-slot="navigation-menu"
       className={cn(
-        "group/navigation-menu relative flex max-w-full mx-auto w-full p-4 flex-1 items-center justify-center",
+        "z-10 top-4 fixed group/navigation-menu flex max-w-full mx-auto w-full p-4 flex-1 items-center justify-center px-4",
         className,
       )}
       {...props}
@@ -58,7 +58,7 @@ function NavigationWrapper({
   return (
     <div
       className={cn(
-        "transition-navbar max-w-7xl z-10 top-4 fixed w-full mx-auto py-3 px-6 shadow-drop-high bg-background-neutral-weaker rounded-high flex justify-between align-center",
+        "transition-navbar max-w-7xl w-full mx-auto py-3 px-6 shadow-drop-high bg-background-neutral-weaker rounded-high flex justify-between align-center",
         className,
         scroll && "max-w-235",
       )}
@@ -205,7 +205,12 @@ function Socials() {
   const scroll = useScrollThreshold(64);
 
   return (
-    <div className={cn("flex gap-4 align-center", scroll && "hidden")}>
+    <div
+      className={cn(
+        "gap-4 align-center lg:flex! sm:flex md:hidden! hidden",
+        scroll && "md:hidden! lg:hidden!",
+      )}
+    >
       <NavigationMenuItem>
         <NavigationMenuLink
           href="https://pris.ly/github"

@@ -72,34 +72,44 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 {Logo}
               </NavigationMenuLink>
             </NavigationMenuItem>
-            {baseOptions().links.map((link: any) =>
-              link.url ? (
-                <NavigationMenuItem key={link.url}>
-                  <NavigationMenuLink href={link.url}>
-                    {link.text}
-                  </NavigationMenuLink>
-                </NavigationMenuItem>
-              ) : link.sub ? (
-                <NavigationMenuItem key={link.text}>
-                  <NavigationMenuTrigger>{link.text}</NavigationMenuTrigger>
-                  <NavigationMenuContent>
-                    {link.sub.map((sublink: any) => (
-                      <NavigationMenuLink key={sublink.url} href={sublink.url}>
-                        {sublink.text}
-                      </NavigationMenuLink>
-                    ))}
-                  </NavigationMenuContent>
-                </NavigationMenuItem>
-              ) : null,
-            )}
+            <div className="hidden md:contents">
+              {baseOptions().links.map((link: any) =>
+                link.url ? (
+                  <NavigationMenuItem key={link.url}>
+                    <NavigationMenuLink href={link.url}>
+                      {link.text}
+                    </NavigationMenuLink>
+                  </NavigationMenuItem>
+                ) : link.sub ? (
+                  <NavigationMenuItem key={link.text}>
+                    <NavigationMenuTrigger>{link.text}</NavigationMenuTrigger>
+                    <NavigationMenuContent>
+                      {link.sub.map((sublink: any) => (
+                        <NavigationMenuLink
+                          key={sublink.url}
+                          href={sublink.url}
+                        >
+                          {sublink.text}
+                        </NavigationMenuLink>
+                      ))}
+                    </NavigationMenuContent>
+                  </NavigationMenuItem>
+                ) : null,
+              )}
+            </div>
           </NavigationMenuList>
           <NavigationMenuList>
             <Socials />
-            <NavigationMenuItem className="ml-2 -mr-2">
+            <NavigationMenuItem className="ml-2 -mr-2 hidden sm:block">
               <Button variant="default-stronger">Login</Button>
             </NavigationMenuItem>
-            <NavigationMenuItem>
-              <Button variant="ppg">Get started</Button>
+            <NavigationMenuItem className="hidden sm:block">
+              <Button variant="ppg" className="whitespace-nowrap">
+                Get started
+              </Button>
+            </NavigationMenuItem>
+            <NavigationMenuItem className="flex md:hidden">
+              <i className="fa-regular fa-bars" />
             </NavigationMenuItem>
           </NavigationMenuList>
         </NavigationWrapper>
