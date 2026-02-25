@@ -12,10 +12,13 @@ export function baseOptions() {
             text: "Postgres",
             url: "/postgres",
             desc: "Managed Postgres for global workloads",
+            icon: "fa-regular fa-chart-pyramid",
           },
           {
             text: "ORM",
             url: "/orm",
+            desc: "Managed Postgres for global workloads",
+            icon: "fa-regular fa-database",
           },
         ],
       },
@@ -29,7 +32,6 @@ export function baseOptions() {
           {
             text: "MCP",
             url: "/mcp",
-            desc: "Managed Postgres for global workloads",
           },
           {
             text: "Tutorials",

@@ -6,6 +6,8 @@ import { cn } from "../lib/cn";
 import { ChevronDownIcon } from "lucide-react";
 import { useScrollThreshold } from "../hooks/use-scroll-threshold";
 import { StarCount } from "./star-count";
+import { useState } from "react";
+import { Action, Button } from "@prisma-docs/eclipse";
 
 const Logo = (
   <svg
@@ -42,7 +44,7 @@ function NavigationMenu({
       data-slot="navigation-menu"
       className={cn(
         "z-10 top-0 fixed group/navigation-menu flex max-w-full mx-auto w-full p-4 flex-1 items-center justify-center px-4",
-        mobileOpen && "p-0",
+        mobileOpen && "p-0 md:p-4! md-px-4!",
         className,
       )}
       {...props}
@@ -64,7 +66,7 @@ function NavigationWrapper({
     <div
       className={cn(
         "transition-navbar max-w-7xl w-full mx-auto py-3 px-6 shadow-drop-high bg-background-neutral-weaker rounded-high flex justify-between align-center",
-        mobileOpen && "py-7 px-10 rounded-none",
+        mobileOpen && "py-7 px-10 rounded-none md:py-3! md:px-6!",
         className,
         scroll && "max-w-235",
       )}
@@ -207,7 +209,13 @@ function NavigationMenuIndicator({
   );
 }
 
-function Socials() {
+function Socials({
+  className,
+  include,
+}: {
+  className?: string;
+  include?: Array<string> | "all" | undefined;
+}) {
   const scroll = useScrollThreshold(64);
 
   return (
@@ -215,6 +223,7 @@ function Socials() {
       className={cn(
         "gap-4 align-center lg:flex! sm:flex md:hidden! hidden",
         scroll && "md:hidden! lg:hidden!",
+        className,
       )}
     >
       <NavigationMenuItem>
@@ -226,40 +235,126 @@ function Socials() {
           <StarCount />
         </NavigationMenuLink>
       </NavigationMenuItem>
-      <NavigationMenuItem className="align-center flex">
-        <NavigationMenuLink className="p-0" href="https://pris.ly/discord">
-          <i className="fa-brands fa-discord"></i>
-        </NavigationMenuLink>
-      </NavigationMenuItem>
+      {(include === "all" || include?.includes("discord")) && (
+        <NavigationMenuItem className="align-center flex">
+          <NavigationMenuLink className="p-0" href="https://pris.ly/discord">
+            <i className="fa-brands fa-discord"></i>
+          </NavigationMenuLink>
+        </NavigationMenuItem>
+      )}
+      {(include === "all" || include?.includes("twitter")) && (
+        <NavigationMenuItem className="align-center flex">
+          <NavigationMenuLink className="p-0" href="https://pris.ly/x">
+            <i className="fa-brands fa-x-twitter"></i>
+          </NavigationMenuLink>
+        </NavigationMenuItem>
+      )}
+      {(include === "all" || include?.includes("youtube")) && (
+        <NavigationMenuItem className="align-center flex">
+          <NavigationMenuLink className="p-0" href="https://pris.ly/youtube">
+            <i className="fa-brands fa-youtube"></i>
+          </NavigationMenuLink>
+        </NavigationMenuItem>
+      )}
+      {(include === "all" || include?.includes("linkedin")) && (
+        <NavigationMenuItem className="align-center flex">
+          <NavigationMenuLink className="p-0" href="https://pris.ly/linkedin">
+            <i className="fa-brands fa-square-linkedin"></i>
+          </NavigationMenuLink>
+        </NavigationMenuItem>
+      )}
     </div>
+  );
+}
+
+function MenuNavigationItem({
+  link,
+}: {
+  link: { text: string; desc: string; icon: string; url: string };
+}) {
+  return (
+    <NavigationMenuLink
+      key={link.url}
+      href={link.url}
+      className="flex gap-2 items-center justify-start hover:bg-background-ppg-strong w-full rounded-square"
+    >
+      <Action color="ppg" size="nav">
+        <i className={link.icon} />
+      </Action>
+      <div className="flex flex-col gap-0">
+        <span className="text-md font-bold text-foreground-neutral">
+          {link.text}
+        </span>
+        <p className="text-xs text-foreground-neutral-weaker">{link.desc}</p>
+      </div>
+    </NavigationMenuLink>
+  );
+}
+
+// Add this new component before NavigationMobileMenu
+function MobileMenuItemWithSubmenu({ link }: { link: any }) {
+  const [isOpen, setOpen] = useState(false);
+
+  return (
+    <NavigationMenuItem key={link.text}>
+      <NavigationMenuTrigger
+        className={cn(
+          "px-6 py-4 h-auto! hover:bg-background-neutral-weak! w-full justify-start border-b border-stroke-neutral data-open:hover:bg-background-neutral-weak! data-open:bg-background-neutral-weak! data-popup-open:bg-background-neutral-weak! data-popup-open:hover:bg-background-neutral-weak!",
+          isOpen && "bg-background-neutral-weak!",
+        )}
+        onClick={() => setOpen(!isOpen)}
+      >
+        {link.text}
+      </NavigationMenuTrigger>
+      {isOpen && (
+        <NavigationMenuList className="flex-col items-start bg-background-neutral-weaker p-2 gap-0 border-b border-stroke-neutral">
+          {link.sub.map((sublink: any) => (
+            <MenuNavigationItem link={sublink} key={sublink.url} />
+          ))}
+        </NavigationMenuList>
+      )}
+    </NavigationMenuItem>
   );
 }
 
 function NavigationMobileMenu({ links }: any) {
   return (
-    <div className="fixed w-screen h-screen pt-22 top-0 left-0 -z-1 bg-background-default">
-      {links.map((link: any) =>
-        link.url ? (
-          <NavigationMenuItem key={link.url} className="px-6 py-4">
-            <NavigationMenuLink className="p-0" href={link.url}>
-              {link.text}
-            </NavigationMenuLink>
+    <div className="fixed px-0 md:hidden w-screen h-screen pt-22 top-0 left-0 -z-1 bg-background-default flex flex-col justify-between">
+      <div className="list">
+        {links.map((link: any) =>
+          link.url ? (
+            <NavigationMenuItem key={link.url}>
+              <NavigationMenuLink
+                className="px-6 py-4  h-auto! hover:bg-background-neutral-weak border-b border-stroke-neutral"
+                href={link.url}
+              >
+                {link.text}
+              </NavigationMenuLink>
+            </NavigationMenuItem>
+          ) : link.sub?.length ? (
+            <MobileMenuItemWithSubmenu key={link.text} link={link} />
+          ) : null,
+        )}
+      </div>
+      <div className="h-min-content mx-auto w-full fixed bottom-0 left-0 py-6 px-4 bg-background-default justify-center items-center gap-6 flex flex-col">
+        <Socials className="flex items-center justify-center" include="all" />
+        <div className="grid gap-2 grid-cols-2 w-full">
+          <NavigationMenuItem className="w-full">
+            <Button size="xl" variant="default-stronger" className="w-full">
+              Login
+            </Button>
           </NavigationMenuItem>
-        ) : link.sub ? (
-          <NavigationMenuItem key={link.text} className="px-6 py-4">
-            <NavigationMenuTrigger className="p-0">
-              {link.text}
-            </NavigationMenuTrigger>
-            <NavigationMenuContent>
-              {link.sub.map((sublink: any) => (
-                <NavigationMenuLink key={sublink.url} href={sublink.url}>
-                  {sublink.text}
-                </NavigationMenuLink>
-              ))}
-            </NavigationMenuContent>
+          <NavigationMenuItem className="w-full">
+            <Button
+              size="xl"
+              variant="ppg"
+              className="whitespace-nowrap w-full"
+            >
+              Get started
+            </Button>
           </NavigationMenuItem>
-        ) : null,
-      )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -277,5 +372,6 @@ export {
   navigationMenuTriggerStyle,
   NavigationMenuPositioner,
   NavigationMobileMenu,
+  MenuNavigationItem,
   Socials,
 };
