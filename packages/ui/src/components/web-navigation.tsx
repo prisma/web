@@ -13,7 +13,7 @@ import {
   NavigationMobileMenu,
   Socials,
 } from "./navigation-menu";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FontAwesomeScript } from "./fontawesome-web";
 import { cn } from "../lib/cn";
 
@@ -34,6 +34,11 @@ interface WebNavigationProps {
 
 export function WebNavigation({ links }: WebNavigationProps) {
   const [mobileView, setMobileView] = useState(false);
+
+  useEffect(() => {
+    if (mobileView) document.body.classList.add("overflow-hidden");
+    else document.body.classList.remove("overflow-hidden");
+  }, [mobileView]);
   return (
     <>
       <FontAwesomeScript />
