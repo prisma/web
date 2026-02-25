@@ -29,16 +29,20 @@ const Logo = (
 
 function NavigationMenu({
   align = "start",
+  mobileOpen,
   className,
   children,
   ...props
 }: NavigationMenuPrimitive.Root.Props &
-  Pick<NavigationMenuPrimitive.Positioner.Props, "align">) {
+  Pick<NavigationMenuPrimitive.Positioner.Props, "align"> & {
+    mobileOpen?: boolean;
+  }) {
   return (
     <NavigationMenuPrimitive.Root
       data-slot="navigation-menu"
       className={cn(
         "z-10 top-0 fixed group/navigation-menu flex max-w-full mx-auto w-full p-4 flex-1 items-center justify-center px-4",
+        mobileOpen && "p-0",
         className,
       )}
       {...props}
@@ -51,14 +55,16 @@ function NavigationMenu({
 
 function NavigationWrapper({
   className,
+  mobileOpen,
   ...props
-}: React.ComponentPropsWithRef<"div">) {
+}: React.ComponentPropsWithRef<"div"> & { mobileOpen?: boolean }) {
   const scroll = useScrollThreshold(64);
 
   return (
     <div
       className={cn(
         "transition-navbar max-w-7xl w-full mx-auto py-3 px-6 shadow-drop-high bg-background-neutral-weaker rounded-high flex justify-between align-center",
+        mobileOpen && "py-7 px-10 rounded-none",
         className,
         scroll && "max-w-235",
       )}
@@ -228,6 +234,36 @@ function Socials() {
     </div>
   );
 }
+
+function NavigationMobileMenu({ links }: any) {
+  return (
+    <div className="fixed w-screen h-screen pt-22 top-0 left-0 -z-1 bg-background-default">
+      {links.map((link: any) =>
+        link.url ? (
+          <NavigationMenuItem key={link.url} className="px-6 py-4">
+            <NavigationMenuLink className="p-0" href={link.url}>
+              {link.text}
+            </NavigationMenuLink>
+          </NavigationMenuItem>
+        ) : link.sub ? (
+          <NavigationMenuItem key={link.text} className="px-6 py-4">
+            <NavigationMenuTrigger className="p-0">
+              {link.text}
+            </NavigationMenuTrigger>
+            <NavigationMenuContent>
+              {link.sub.map((sublink: any) => (
+                <NavigationMenuLink key={sublink.url} href={sublink.url}>
+                  {sublink.text}
+                </NavigationMenuLink>
+              ))}
+            </NavigationMenuContent>
+          </NavigationMenuItem>
+        ) : null,
+      )}
+    </div>
+  );
+}
+
 export {
   Logo,
   NavigationMenu,
@@ -240,5 +276,6 @@ export {
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
   NavigationMenuPositioner,
+  NavigationMobileMenu,
   Socials,
 };

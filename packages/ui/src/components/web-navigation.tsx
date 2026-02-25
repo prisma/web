@@ -10,8 +10,10 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
   NavigationWrapper,
+  NavigationMobileMenu,
   Socials,
 } from "./navigation-menu";
+import { useState } from "react";
 
 interface Link {
   text: string;
@@ -29,9 +31,10 @@ interface WebNavigationProps {
 }
 
 export function WebNavigation({ links }: WebNavigationProps) {
+  const [mobileView, setMobileView] = useState(false);
   return (
-    <NavigationMenu>
-      <NavigationWrapper>
+    <NavigationMenu mobileOpen={mobileView}>
+      <NavigationWrapper mobileOpen={mobileView}>
         <NavigationMenuList>
           <NavigationMenuItem>
             <NavigationMenuLink className="shrink-0 w-full p-0">
@@ -71,9 +74,13 @@ export function WebNavigation({ links }: WebNavigationProps) {
               Get started
             </Button>
           </NavigationMenuItem>
-          <NavigationMenuItem className="flex md:hidden">
+          <NavigationMenuItem
+            className="flex md:hidden"
+            onClick={() => setMobileView(!mobileView)}
+          >
             <i className="fa-regular fa-bars" />
           </NavigationMenuItem>
+          {mobileView && <NavigationMobileMenu links={links} />}
         </NavigationMenuList>
       </NavigationWrapper>
     </NavigationMenu>
