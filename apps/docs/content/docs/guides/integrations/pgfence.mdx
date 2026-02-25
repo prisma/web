@@ -53,7 +53,7 @@ pgfence assigns a risk level to each statement based on the PostgreSQL lock it a
 |------------|---------|
 | **LOW** | Safe operations with minimal locking (e.g., `ADD COLUMN` with a constant default on PG 11+) |
 | **MEDIUM** | Operations that block writes but not reads (e.g., `CREATE INDEX` without `CONCURRENTLY`) |
-| **HIGH** | Operations that block both reads and writes (e.g., `ADD FOREIGN KEY` without `NOT VALID`) |
+| **HIGH** | Operations that block writes and competing DDL, but not plain reads (e.g., `ADD FOREIGN KEY` without `NOT VALID`) |
 | **CRITICAL** | Operations that take `ACCESS EXCLUSIVE` locks on large tables (e.g., `DROP TABLE`, `TRUNCATE`) |
 
 Here is an example of pgfence analyzing a migration that adds an index without `CONCURRENTLY`:
@@ -117,7 +117,9 @@ jobs:
         run: npm ci
 
       - name: Run pgfence analysis
-        run: npx --yes @flvmnt/pgfence@0.2.1 analyze --ci --max-risk medium prisma/migrations/**/migration.sql
+        run: |
+          shopt -s globstar
+          npx --yes @flvmnt/pgfence@0.2.1 analyze --ci --max-risk medium prisma/migrations/**/migration.sql
 ```
 
 This workflow only triggers when migration files change. If pgfence detects any statement with risk higher than `MEDIUM`, the check fails and blocks the pull request from merging.
@@ -132,7 +134,9 @@ If you have an existing deployment workflow, add pgfence as a step before `prism
 
 ```yaml title=".github/workflows/deploy.yml"
 - name: Run pgfence migration safety check
-  run: npx --yes @flvmnt/pgfence@0.2.1 analyze --ci --max-risk medium prisma/migrations/**/migration.sql
+  run: |
+    shopt -s globstar
+    npx --yes @flvmnt/pgfence@0.2.1 analyze --ci --max-risk medium prisma/migrations/**/migration.sql
 
 - name: Apply pending migrations
   run: npx prisma migrate deploy
