@@ -36,8 +36,10 @@ export function WebNavigation({ links }: WebNavigationProps) {
   const [mobileView, setMobileView] = useState(false);
 
   useEffect(() => {
-    if (mobileView) document.body.classList.add("overflow-hidden");
-    else document.body.classList.remove("overflow-hidden");
+    if (mobileView) {
+      document.body.classList.add("overflow-hidden");
+      document.body.classList.add("md:overflow-auto");
+    } else document.body.classList.remove("overflow-hidden");
   }, [mobileView]);
   return (
     <>

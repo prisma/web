@@ -66,7 +66,8 @@ function NavigationWrapper({
     <div
       className={cn(
         "transition-navbar max-w-7xl w-full mx-auto py-3 px-6 shadow-drop-high bg-background-neutral-weaker rounded-high flex justify-between align-center",
-        mobileOpen && "py-7 px-10 rounded-none md:py-3! md:px-6!",
+        mobileOpen &&
+          "py-7 px-10 rounded-none md:py-3! md:px-6! md:rounded-high",
         className,
         scroll && "max-w-235",
       )}
