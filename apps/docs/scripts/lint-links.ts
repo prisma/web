@@ -7,6 +7,7 @@ import {
 import type { InferPageType } from 'fumadocs-core/source';
 
 import { register } from 'node:module';
+register('./image-loader.js', import.meta.url);
 register('fumadocs-mdx/node/loader', import.meta.url);
 
 const { source, sourceV6 } = await import('@/lib/source');
