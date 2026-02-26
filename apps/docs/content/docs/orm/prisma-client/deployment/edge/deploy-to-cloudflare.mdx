@@ -1,7 +1,7 @@
 ---
 title: Deploy to Cloudflare Workers & Pages
 description: Learn the things you need to know in order to deploy an app that uses Prisma Client for talking to a database to a Cloudflare Worker or to Cloudflare Pages
-url: /docs/orm/prisma-client/deployment/edge/deploy-to-cloudflare
+url: /orm/prisma-client/deployment/edge/deploy-to-cloudflare
 metaTitle: Deploy to Cloudflare Workers & Pages
 metaDescription: Learn the things you need to know in order to deploy an app that uses Prisma Client for talking to a database to a Cloudflare Worker or to Cloudflare Pages.
 ---
@@ -39,53 +39,13 @@ This command:
 
 - Connects your CLI to your [Prisma Data Platform](https://console.prisma.io) account. If you're not logged in or don't have an account, your browser will open to guide you through creating a new account or signing into your existing one.
 - Creates a `prisma` directory containing a `schema.prisma` file for your database models.
-- Creates a `.env` file with your `DATABASE_URL` (e.g., for Prisma Postgres it should have something similar to `DATABASE_URL="prisma+postgres://accelerate.prisma-data.net/?api_key=eyJhbGciOiJIUzI..."`).
+- Creates a `.env` file with your `DATABASE_URL`.
 
-You'll need to install the Client extension required to use Prisma Postgres:
 
-```npm
-npm i @prisma/extension-accelerate
-```
-
-And extend `PrismaClient` with the extension in your application code:
-
-```typescript
-import { PrismaClient } from "./generated/client";
-import { withAccelerate } from "@prisma/extension-accelerate";
-
-export interface Env {
-  DATABASE_URL: string;
-}
-
-export default {
-  async fetch(request, env, ctx) {
-    const prisma = new PrismaClient({
-      datasourceUrl: env.DATABASE_URL,
-    }).$extends(withAccelerate());
-
-    const users = await prisma.user.findMany();
-    const result = JSON.stringify(users);
-    ctx.waitUntil(prisma.$disconnect());
-    return new Response(result);
-  },
-} satisfies ExportedHandler<Env>;
-```
-
-:::note
-Call `ctx.waitUntil(prisma.$disconnect())` before returning so the Worker releases the database connection when the response is done. Otherwise the Worker may not disconnect in time and can run out of memory.
-:::
-
-Then setup helper scripts to perform migrations and generate `PrismaClient` as [shown in this section](/docs/orm/prisma-client/deployment/edge/deploy-to-cloudflare#development).
-
-:::note
-
-You need to have the `dotenv-cli` package installed as Cloudflare Workers does not support `.env` files. You can do this by running the following command to install the package locally in your project: `npm install -D dotenv-cli`.
-
-:::
 
 ### Using an edge-compatible driver
 
-When deploying a Cloudflare Worker that uses Prisma ORM, you need to use an [edge-compatible driver](/docs/orm/prisma-client/deployment/edge/overview#edge-compatibility-of-database-drivers) and its respective [driver adapter](/docs/orm/core-concepts/supported-databases/database-drivers#driver-adapters) for Prisma ORM.
+When deploying a Cloudflare Worker that uses Prisma ORM, you need to use an [edge-compatible driver](/orm/prisma-client/deployment/edge/overview#edge-compatibility-of-database-drivers) and its respective [driver adapter](/orm/core-concepts/supported-databases/database-drivers#driver-adapters) for Prisma ORM.
 
 The edge-compatible drivers for Cloudflare Workers and Pages are:
 
@@ -93,15 +53,12 @@ The edge-compatible drivers for Cloudflare Workers and Pages are:
 - [PlanetScale Serverless](https://planetscale.com/docs/tutorials/planetscale-serverless-driver) uses HTTP to access the database
 - [`node-postgres`](https://node-postgres.com/) (`pg`) uses Cloudflare's `connect()` (TCP) to access the database
 - [`@libsql/client`](https://github.com/tursodatabase/libsql-client-ts) is used to access Turso databases via HTTP
-- [Cloudflare D1](/docs/orm/prisma-client/deployment/edge/deploy-to-cloudflare) is used to access D1 databases
+- [Cloudflare D1](/orm/prisma-client/deployment/edge/deploy-to-cloudflare) is used to access D1 databases
 
 There's [also work being done](https://github.com/sidorares/node-mysql2/pull/2289) on the `node-mysql2` driver which will enable access to traditional MySQL databases from Cloudflare Workers and Pages in the future as well.
 
-:::note
+If your application uses PostgreSQL, we recommend using [Prisma Postgres](/postgres). It is fully supported on edge runtimes and does not require a specialized edge-compatible driver. Review the [Prisma Postgres serverless driver limitations](/postgres/database/serverless-driver#limitations) to understand current constraints.
 
-If your application uses PostgreSQL, we recommend using [Prisma Postgres](/docs/postgres). It is fully supported on edge runtimes and does not require a specialized edge-compatible driver. For other databases, [Prisma Accelerate](/docs/accelerate) extends edge compatibility so you can connect to _any_ database from _any_ edge function provider.
-
-:::
 
 ### Setting your database connection URL as an environment variable
 
@@ -181,7 +138,7 @@ This command requires you to be authenticated, and will ask you to log in to you
 
 ### Size limits on free accounts
 
-Cloudflare has a [size limit of 3 MB for Workers on the free plan](https://developers.cloudflare.com/workers/platform/limits/). If your application bundle with Prisma ORM exceeds that size, we recommend upgrading to a paid Worker plan or using Prisma Accelerate to deploy your application.
+Cloudflare has a [size limit of 3 MB for Workers on the free plan](https://developers.cloudflare.com/workers/platform/limits/). If your application bundle with Prisma ORM exceeds that size, we recommend upgrading to a paid Worker plan.
 
 ### Deploying a Next.js app to Cloudflare Pages with `@cloudflare/next-on-pages`
 
@@ -227,7 +184,7 @@ model User {
 
 If you are using a traditional PostgreSQL database that's accessed via TCP and the `pg` driver, you need to:
 
-- use the `@prisma/adapter-pg` database adapter (learn more [here](/docs/orm/core-concepts/supported-databases/postgresql#using-driver-adapters))
+- use the `@prisma/adapter-pg` database adapter (learn more [here](/orm/core-concepts/supported-databases/postgresql#using-driver-adapters))
 - set `node_compat = true` in `wrangler.toml` (see the [Cloudflare docs](https://developers.cloudflare.com/workers/runtime-apis/nodejs/))
 
 #### 1. Configure Prisma schema & database connection
@@ -377,7 +334,7 @@ The command will output the URL where you can access the deployed Worker.
 
 If you are using a PlanetScale database, you need to:
 
-- use the `@prisma/adapter-planetscale` database adapter (learn more [here](/docs/orm/core-concepts/supported-databases/mysql#planetscale))
+- use the `@prisma/adapter-planetscale` database adapter (learn more [here](/orm/core-concepts/supported-databases/mysql#planetscale))
 - manually remove the conflicting `cache` field:
 
   ```ts
@@ -539,7 +496,7 @@ The command will output the URL where you can access the deployed Worker.
 
 If you are using a Neon database, you need to:
 
-- use the `@prisma/adapter-neon` database adapter (learn more [here](/docs/orm/core-concepts/supported-databases/postgresql#using-driver-adapters))
+- use the `@prisma/adapter-neon` database adapter (learn more [here](/orm/core-concepts/supported-databases/postgresql#using-driver-adapters))
 
 #### 1. Configure Prisma schema & database connection
 
@@ -673,5 +630,5 @@ The command will output the URL where you can access the deployed Worker.
 ### Cloudflare D1
 
 :::info[Using Cloudflare D1]
-For step-by-step instructions on using Prisma ORM with [Cloudflare D1](https://developers.cloudflare.com/d1/) (schema setup, migrations, and deploying your Worker), see the dedicated [Cloudflare D1 deployment guide](/docs/guides/deployment/cloudflare-d1).
+For step-by-step instructions on using Prisma ORM with [Cloudflare D1](https://developers.cloudflare.com/d1/) (schema setup, migrations, and deploying your Worker), see the dedicated [Cloudflare D1 deployment guide](/guides/deployment/cloudflare-d1).
 :::

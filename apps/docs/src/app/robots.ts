@@ -1,24 +1,26 @@
 import type { MetadataRoute } from 'next'
-import { getBaseUrl } from '@/lib/urls'
+import { getBaseUrl, withDocsBasePath } from '@/lib/urls'
 
 export default function robots(): MetadataRoute.Robots {
   const baseUrl = getBaseUrl()
+  const sitemap = new URL(withDocsBasePath('/sitemap.xml'), baseUrl).toString()
+  const disallow = [
+    '/api/',
+    '/_next/',
+    '/og/',
+    '/*?query=*',
+    '/*?page=*',
+    '/*&query=*',
+    '/*&page=*',
+  ].map(withDocsBasePath)
 
   return {
     rules: {
       userAgent: '*',
-      allow: '/',
-      disallow: [
-        '/api/',
-        '/_next/',
-        '/og/',
-        '/*?query=*',
-        '/*?page=*',
-        '/*&query=*',
-        '/*&page=*',
-      ],
+      allow: withDocsBasePath('/'),
+      disallow,
     },
-    sitemap: `${baseUrl}/sitemap.xml`,
+    sitemap,
     host: baseUrl,
   }
 }

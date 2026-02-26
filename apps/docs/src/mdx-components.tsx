@@ -1,5 +1,7 @@
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import { APIPage } from "@/components/api-page";
+import { Youtube } from "@/components/youtube";
+import { withDocsBasePath } from "@/lib/urls";
 
 import type { MDXComponents } from "mdx/types";
 import { ImageZoom } from "fumadocs-ui/components/image-zoom";
@@ -29,6 +31,13 @@ import {
   Input,
 } from "@prisma-docs/eclipse";
 
+function withDocsBasePathForImageSrc(src: unknown): unknown {
+  if (typeof src !== "string") return src;
+  if (!src.startsWith("/")) return src;
+  if (src.startsWith("/_next/")) return src;
+  return withDocsBasePath(src);
+}
+
 export function getMDXComponents(components?: MDXComponents): MDXComponents {
   const mdxComponents = {
     ...(icons as unknown as MDXComponents),
@@ -48,7 +57,10 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     Accordion,
     Accordions,
     APIPage,
-    img: (props: any) => <ImageZoom {...(props as any)} />,
+    Youtube,
+    img: (props: any) => (
+      <ImageZoom {...(props as any)} src={withDocsBasePathForImageSrc((props as any).src)} />
+    ),
     input: (props: any) => <Input {...props} />,
   };
 

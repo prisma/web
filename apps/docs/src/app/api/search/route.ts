@@ -2,24 +2,23 @@ import { createMixedbreadSearchAPI } from 'fumadocs-core/search/mixedbread';
 import Mixedbread from '@mixedbread/sdk';
 import { SortedResult } from 'fumadocs-core/search';
 
-/** Derive breadcrumbs from URL path segments (e.g. /console/concepts → ['Console']) */
+/** Derive breadcrumbs from URL path segments (e.g. /docs/console/concepts → ['Docs', 'Console']) */
 function getBreadcrumbsFromUrl(url: string): string[] {
   const path = url.replace(/#.*$/, '').trim().replace(/\/$/, '') || '/';
   const segments = path.split('/').filter(Boolean);
-  if (segments.length === 0) return ['Docs'];
+  if (segments.length === 0) return [];
   // Strip version prefix (e.g. v6)
   const normalized = segments[0] === 'v6' ? segments.slice(1) : segments;
-  if (normalized.length === 0) return ['Docs'];
+  if (normalized.length === 0) return [];
   // Ancestors only (exclude last = current page), or full path for section roots
   const breadcrumbSegments =
     normalized.length > 1 ? normalized.slice(0, -1) : normalized;
-  const formatted = breadcrumbSegments.map((s) =>
+  return breadcrumbSegments.map((s) =>
     s
       .split(/[-_]/)
       .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
       .join(' ')
   );
-  return ['Docs', ...formatted];
 }
 
 function slugger(value: string): string {
@@ -77,13 +76,16 @@ export const { GET } = createMixedbreadSearchAPI({
   client,
   storeIdentifier: 'web-search',
   topK: 20,
+  rerank: true,
   transform: (results, _query) => {
     return results.flatMap((item) => {
       const { url = '#', title = 'Untitled' } = item.generated_metadata ?? {};
+      
+      const formattedUrl = url.startsWith("/docs") ? url.slice(5) : url;
       const base = `${item.file_id}-${item.chunk_index}`;
-      const breadcrumbs = getBreadcrumbsFromUrl(url);
+      const breadcrumbs = getBreadcrumbsFromUrl(formattedUrl);
       const chunkResults: SortedResult[] = [
-        { id: `${base}-page`, type: 'page', content: title, url, breadcrumbs },
+        { id: `${base}-page`, type: 'page', content: title, url: formattedUrl, breadcrumbs },
       ];
       const heading =
         item.type === 'text' ? extractHeadingTitle(item.text) : '';
@@ -92,7 +94,7 @@ export const { GET } = createMixedbreadSearchAPI({
           id: `${base}-heading`,
           type: 'heading',
           content: heading,
-          url: `${url}#${slugger(heading)}`,
+          url: `${formattedUrl}#${slugger(heading)}`,
         });
       return chunkResults;
     });

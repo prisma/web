@@ -2,12 +2,12 @@
 title: Turborepo
 description: 'Learn step-by-step how to integrate Prisma ORM with Turborepo to build modular, scalable monorepo architectures efficiently'
 image: /img/guides/prisma-turborepo-setup.png
-url: /docs/guides/deployment/turborepo
+url: /guides/deployment/turborepo
 metaTitle: How to use Prisma ORM and Prisma Postgres with Turborepo
 metaDescription: 'Learn step-by-step how to integrate Prisma ORM with Turborepo to build modular, scalable monorepo architectures efficiently.'
 ---
 
-Prisma is a powerful ORM for managing databases, and [Turborepo](https://turbo.build/) simplifies monorepo workflows. By combining these tools, you can create a scalable, modular architecture for your projects.
+Prisma is a powerful ORM for managing databases, and [Turborepo](https://turborepo.dev/docs) simplifies monorepo workflows. By combining these tools, you can create a scalable, modular architecture for your projects.
 
 This guide will show you how to set up Prisma as a standalone package in a Turborepo monorepo, enabling efficient configuration, type sharing, and database management across multiple apps.
 
@@ -19,7 +19,8 @@ This guide will show you how to set up Prisma as a standalone package in a Turbo
 
 ### Prerequisites
 
-- [Node.js 20+](https://nodejs.org/)
+- [Node.js 20.19.0+](https://nodejs.org/)
+- [TypeScript 5.4.0+](https://www.typescriptlang.org/)
 
 ## 1. Set up your project
 
@@ -37,29 +38,24 @@ You'll be prompted to select your package manager, this guide will use `npm`:
 
 :::
 
-After the setup, choose a package manager for the project. Navigate to the project root directory and install Turborepo as a development dependency:
+After the setup, navigate to the project root directory:
 
-```npm
+```bash
 cd turborepo-prisma
-npm install turbo --save-dev
 ```
-
-For more information about installing Turborepo, refer to the [official Turborepo guide](https://turbo.build/repo/docs/getting-started/installation).
 
 ## 2. Add a new `database` package to the monorepo
 
 ### 2.1 Create the package and install Prisma
 
-Create a `database` package within the `packages` directory. Then, create a `package.json` file for the package by running:
+Create a `database` directory inside `packages` and navigate into it:
 
 ```bash
-cd packages/
-mkdir database
-cd database
-touch package.json
+mkdir -p packages/database
+cd packages/database
 ```
 
-Define the `package.json` file as follows:
+Then initialize it with a `package.json`:
 
 ```json title="packages/database/package.json"
 {
@@ -68,34 +64,35 @@ Define the `package.json` file as follows:
 }
 ```
 
-Next, install the required dependencies to use Prisma ORM. Use your preferred package manager:
+Then install the required Prisma ORM dependencies:
 
 ```npm
-npm install prisma @types/pg --save-dev
-npm install @prisma/client @prisma/adapter-pg dotenv pg
+npm install prisma --save-dev
+npm install @prisma/client @prisma/adapter-pg pg dotenv
 ```
 
 :::info
 
-If you are using a different database provider (MySQL, SQL Server, SQLite), install the corresponding driver adapter package instead of `@prisma/adapter-pg`. For more information, see [Database drivers](/docs/orm/core-concepts/supported-databases/database-drivers).
+If you are using a different database provider (MySQL, SQL Server, SQLite), install the corresponding driver adapter package instead of `@prisma/adapter-pg`. For more information, see [Database drivers](/orm/core-concepts/supported-databases/database-drivers).
 
 :::
 
 ### 2.2. Initialize Prisma and define models
 
-Inside the `database` directory, initialize prisma by running:
+Inside the `database` directory, initialize Prisma by running:
 
 ```npm
-npx prisma init --db --output ../generated/prisma
+npx prisma init --db
 ```
+
+You'll be prompted to authenticate in Prisma Console, choose a project name, and pick a region for your Prisma Postgres database.
 
 This will create several files inside `packages/database`:
 
 - A `prisma` directory with a `schema.prisma` file.
-- A `prisma.config.ts` file for configuring Prisma
+- A `prisma.config.ts` file for configuring Prisma.
 - A Prisma Postgres database.
-- A `.env` file containing the `DATABASE_URL` at the project root.
-- An `output` directory for the generated Prisma Client as `generated/prisma`.
+- A `.env` file containing the `DATABASE_URL` in the `packages/database` directory.
 
 In the `packages/database/prisma/schema.prisma` file, add the following models:
 
@@ -145,13 +142,13 @@ export default defineConfig({
 
 :::warning
 
-It is recommended to add `../generated/prisma` to the `.gitignore` file because it contains platform-specific binaries that can cause compatibility issues across different environments.
+It is recommended to add `packages/database/generated` to your root `.gitignore` because generated Prisma Client code is a build artifact that can be recreated with `db:generate`.
 
 :::
 
 #### The importance of generating Prisma types in a custom directory
 
-In the `schema.prisma` file, we specify a custom [`output`](/docs/orm/reference/prisma-schema-reference#fields-for-prisma-client-provider) path where Prisma will generate its types. This ensures Prisma's types are resolved correctly across different package managers.
+In the `schema.prisma` file, we specify a custom [`output`](/orm/reference/prisma-schema-reference#fields-for-prisma-client-provider) path where Prisma will generate its types. This ensures Prisma's types are resolved correctly across different package managers.
 
 :::info
 
@@ -167,17 +164,21 @@ Let's add some scripts to the `package.json` inside `packages/database`:
 {
   "name": "@repo/db",
   "version": "0.0.0",
+  "type": "module", // [!code ++]
   "scripts": {
     // [!code ++]
     "db:generate": "prisma generate", // [!code ++]
-    "db:migrate": "prisma migrate dev --skip-generate", // [!code ++]
+    "db:migrate": "prisma migrate dev", // [!code ++]
     "db:deploy": "prisma migrate deploy" // [!code ++]
   }, // [!code ++]
   "devDependencies": {
-    "prisma": "^6.6.0"
+    "prisma": "^7.0.0"
   },
   "dependencies": {
-    "@prisma/client": "^6.6.0"
+    "@prisma/client": "^7.0.0",
+    "@prisma/adapter-pg": "^7.0.0",
+    "pg": "^8.0.0",
+    "dotenv": "^16.0.0"
   }
 }
 ```
@@ -186,57 +187,57 @@ Let's also add these scripts to `turbo.json` in the root and ensure that `DATABA
 
 ```json title="turbo.json"
 {
-"$schema": "https://turbo.build/schema.json",
-"ui": "tui",
-"tasks": {
-  "build": {
-    "dependsOn": ["^build"],
-    "inputs": ["$TURBO_DEFAULT$", ".env*"],
-    "outputs": [".next/**", "!.next/cache/**"],
-    "env": ["DATABASE_URL"] // [!code ++]
-  },
-  "lint": {
-    "dependsOn": ["^lint"]
-  },
-  "check-types": {
-    "dependsOn": ["^check-types"]
-  },
-  "dev": {
-    "cache": false,
-    "persistent": true
-  },
-  "db:generate": { // [!code ++]
-    "cache": false // [!code ++]
-  }, // [!code ++]
-  "db:migrate": { // [!code ++]
-    "cache": false, // [!code ++]
-    "persistent": true // This is necessary to interact with the CLI and assign names to your database migrations. // [!code ++]
-  }, // [!code ++]
-  "db:deploy": { // [!code ++]
-    "cache": false // [!code ++]
-  } // [!code ++]
+  "$schema": "https://turborepo.dev/schema.json",
+  "ui": "tui",
+  "globalEnv": ["DATABASE_URL"], // [!code ++]
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "outputs": [".next/**", "!.next/cache/**"]
+    },
+    "lint": {
+      "dependsOn": ["^lint"]
+    },
+    "check-types": {
+      "dependsOn": ["^check-types"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "db:generate": { // [!code ++]
+      "cache": false // [!code ++]
+    }, // [!code ++]
+    "db:migrate": { // [!code ++]
+      "cache": false // [!code ++]
+    }, // [!code ++]
+    "db:deploy": { // [!code ++]
+      "cache": false // [!code ++]
+    } // [!code ++]
+  }
 }
 ```
 
-Migrate your `prisma.schema` and generate types
+Run your first migration and generate Prisma Client
 
-Navigate to the project root and run the following command to automatically migrate our database:
-
-```npm
-npx turbo db:migrate
-```
-
-Generate your `schema.prisma`
-
-To generate the types from Prisma schema, from the project root run:
+Navigate to the project root and run the following command to create and apply your first migration:
 
 ```npm
-npx turbo db:generate
+npx turbo run db:migrate -- --name init
 ```
+
+In Prisma 7, `migrate dev` no longer runs `prisma generate` automatically, so run generate explicitly:
+
+```npm
+npx turbo run db:generate
+```
+
+Use the same `npx turbo run db:generate` command after future schema changes.
 
 ### 2.4. Export the Prisma client and types
 
-Next, export the generated types and an instance of `PrismaClient` so it can used in your applications.
+Next, export the generated types and an instance of `PrismaClient` so it can be used in your applications.
 
 In the `packages/database` directory, create a `src` folder and add a `client.ts` file. This file will define an instance of `PrismaClient`:
 
@@ -248,7 +249,7 @@ const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
 });
 
-const globalForPrisma = global as unknown as { prisma: PrismaClient };
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
 export const prisma =
   globalForPrisma.prisma ||
@@ -266,11 +267,11 @@ export { prisma } from "./client"; // exports instance of prisma
 export * from "../generated/prisma/client"; // exports generated types from prisma
 ```
 
-Follow the [Just-in-Time packaging pattern](https://turbo.build/repo/docs/core-concepts/internal-packages#just-in-time-packages) and create an entrypoint to the package inside `packages/database/package.json`:
+Follow the [Just-in-Time packaging pattern](https://turborepo.dev/docs/core-concepts/internal-packages#just-in-time-packages) and create an entrypoint to the package inside `packages/database/package.json`:
 
 :::warning
 
-If you're not using a bundler, use the [Compiled Packages](https://turborepo.com/docs/core-concepts/internal-packages#compiled-packages) strategy instead.
+If you're not using a bundler, use the [Compiled Packages](https://turborepo.dev/docs/core-concepts/internal-packages#compiled-packages) strategy instead.
 
 :::
 
@@ -278,16 +279,20 @@ If you're not using a bundler, use the [Compiled Packages](https://turborepo.com
 {
   "name": "@repo/db",
   "version": "0.0.0",
+  "type": "module",
   "scripts": {
-    "db:generate": "npx prisma generate",
-    "db:migrate": "npx prisma migrate dev --skip-generate",
-    "db:deploy": "npx prisma migrate deploy"
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy"
   },
   "devDependencies": {
-    "prisma": "^6.6.0"
+    "prisma": "^7.0.0"
   },
   "dependencies": {
-    "@prisma/client": "^6.6.0"
+    "@prisma/client": "^7.0.0",
+    "@prisma/adapter-pg": "^7.0.0",
+    "pg": "^8.0.0",
+    "dotenv": "^16.0.0"
   },
   "exports": {
     // [!code ++]
@@ -302,7 +307,7 @@ By completing these steps, you'll make the Prisma types and `PrismaClient` insta
 
 The `turborepo-prisma` project should have an app called `web` at `apps/web`. Add the `database` dependency to `apps/web/package.json`:
 
-```json
+```json tab="npm"
 {
   // ...
   "dependencies": {
@@ -313,16 +318,31 @@ The `turborepo-prisma` project should have an app called `web` at `apps/web`. Ad
 }
 ```
 
-:::note
+```json tab="pnpm"
+{
+  // ...
+  "dependencies": {
+    "@repo/db": "workspace:*" // [!code ++]
+    // ...
+  }
+  // ...
+}
+```
 
-If you're using pnpm, use `"@repo/db": "workspace:*"` instead.
+```json tab="bun"
+{
+  // ...
+  "dependencies": {
+    "@repo/db": "workspace:*" // [!code ++]
+    // ...
+  }
+  // ...
+}
+```
 
-:::
-
-Run your package manager's install command inside the `apps/web` directory:
+Run your package manager's install command from the project root to link the workspace dependency:
 
 ```npm
-cd apps/web
 npm install
 ```
 
@@ -352,28 +372,28 @@ If you want to use a single `.env` file in the root directory across your apps a
 
 To implement this, update the `package.json` files for each package or app to ensure they load the required environment variables from the shared `.env` file. For detailed instructions, refer to the [`dotenvx` guide for Turborepo](https://dotenvx.com/docs/monorepos/turborepo).
 
-Keep in mind that Turborepo [recommends using separate `.env` files for each package](https://turbo.build/repo/docs/crafting-your-repository/using-environment-variables#use-env-files-in-packages) to promote modularity and avoid potential conflicts.
+Keep in mind that Turborepo [recommends using separate `.env` files for each package](https://turborepo.dev/docs/crafting-your-repository/using-environment-variables#use-env-files-in-packages) to promote modularity and avoid potential conflicts.
 
 :::
 
 ## 4. Configure task dependencies in Turborepo
 
-The `db:generate` and `db:deploy` scripts are not yet optimized for the monorepo setup but are essential for the `dev` and `build` tasks.
+The `db:generate` script is essential for `dev` and `build` tasks in a monorepo setup.
 
 If a new developer runs `turbo dev` on an application without first running `db:generate`, they will encounter errors.
 
-To prevent this, ensure that `db:generate` is always executed before running `dev` or `build`. Additionally, make sure both `db:deploy` and `db:generate` are executed before `db:build`. Here's how to configure this in your `turbo.json` file:
+To prevent this, ensure that `db:generate` is always executed before running `dev` or `build`. Keep `db:deploy` uncached for staging/production migration runs in CI. Here's how to configure this in your `turbo.json` file:
 
 ```json title="turbo.json"
 {
-  "$schema": "https://turbo.build/schema.json",
+  "$schema": "https://turborepo.dev/schema.json",
   "ui": "tui",
+  "globalEnv": ["DATABASE_URL"],
   "tasks": {
     "build": {
       "dependsOn": ["^build", "^db:generate"], // [!code highlight]
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**"],
-      "env": ["DATABASE_URL"] // [!code ++]
+      "outputs": [".next/**", "!.next/cache/**"]
     },
     "lint": {
       "dependsOn": ["^lint"]
@@ -390,8 +410,7 @@ To prevent this, ensure that `db:generate` is always executed before running `de
       "cache": false
     },
     "db:migrate": {
-      "cache": false,
-      "persistent": true
+      "cache": false
     },
     "db:deploy": {
       "cache": false
@@ -416,7 +435,7 @@ No user added yet
 
 :::note
 
-You can add users to your database by creating a seed script or manually by using [Prisma Studio](/docs/studio).
+You can add users to your database by creating a seed script or manually by using [Prisma Studio](/studio).
 
 To use Prisma Studio to add manually data via a GUI, navigate inside the `packages/database` directory and run `prisma studio` using your package manager:
 
@@ -438,6 +457,6 @@ Congratulations, you're done setting up Prisma for Turborepo!
 
 ### More Info
 
-- [Turborepo Docs](https://turbo.build/repo/docs)
+- [Turborepo Docs](https://turborepo.dev/docs)
 - [Next.js Docs](https://nextjs.org/docs)
-- [Prisma ORM Docs](/docs/orm)
+- [Prisma ORM Docs](/orm)

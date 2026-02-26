@@ -63,7 +63,7 @@ pnpm --filter docs start
 | `pnpm lint:links` | Validate internal and external links (docs) |
 | `pnpm lint:code` | Lint code blocks in MDX (docs) |
 | `pnpm lint:spellcheck` | Spell-check content (docs) |
-| `pnpm format` | Format code (`.md` / `.mdx` excluded — see note below) |
+| `pnpm check` | Run formatting and lint fixes across all workspaces |
 
 ## Content
 

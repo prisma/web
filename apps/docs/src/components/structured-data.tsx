@@ -1,4 +1,4 @@
-import { getBaseUrl } from '@/lib/urls';
+import { getBaseUrl, withDocsBasePath } from '@/lib/urls';
 import type { InferPageType } from 'fumadocs-core/source';
 import type { source, sourceV6 } from '@/lib/source';
 
@@ -15,7 +15,7 @@ export function TechArticleSchema({ page }: StructuredDataProps) {
     '@type': 'TechArticle',
     headline: (page.data as any).metaTitle ?? page.data.title,
     description: (page.data as any).metaDescription ?? page.data.description,
-    url: `${baseUrl}${page.url}`,
+    url: `${baseUrl}${withDocsBasePath(page.url)}`,
     dateModified: lastModified?.toISOString(),
     author: {
       '@type': 'Organization',
@@ -33,7 +33,7 @@ export function TechArticleSchema({ page }: StructuredDataProps) {
     },
     mainEntityOfPage: {
       '@type': 'WebPage',
-      '@id': `${baseUrl}${page.url}`,
+      '@id': `${baseUrl}${withDocsBasePath(page.url)}`,
     },
   };
 
@@ -65,7 +65,7 @@ export function BreadcrumbSchema({ page }: StructuredDataProps) {
       '@type': 'ListItem',
       position: index + 2,
       name: slug.charAt(0).toUpperCase() + slug.slice(1).replace(/-/g, ' '),
-      item: `${baseUrl}${currentPath}`,
+      item: `${baseUrl}${withDocsBasePath(currentPath)}`,
     });
   });
 

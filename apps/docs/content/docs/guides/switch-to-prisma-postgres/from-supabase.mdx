@@ -1,0 +1,131 @@
+---
+title: Supabase
+description: Learn how to migrate from Supabase to Prisma Postgres
+url: /guides/switch-to-prisma-postgres/from-supabase
+metaTitle: How to migrate from Supabase to Prisma Postgres
+metaDescription: Learn how to migrate from Supabase to Prisma Postgres.
+---
+
+This guide walks you through migrating data from Supabase to Prisma Postgres using `pg_dump` and `pg_restore`.
+
+## Prerequisites
+
+- A Supabase database connection URL
+- A [Prisma Data Platform](https://console.prisma.io) account
+- PostgreSQL CLI tools (`pg_dump`, `pg_restore`) version 17
+
+  If you don't have them installed, install PostgreSQL 17 client tools:
+
+  ```bash
+  # macOS
+  brew install libpq
+  brew link --force libpq
+
+  # Debian / Ubuntu
+  sudo apt-get install postgresql-client-17
+
+  # Windows (via installer)
+  # Download from https://www.postgresql.org/download/windows/
+  # Select "Command Line Tools" during installation
+  ```
+
+:::info[Make sure your PostgreSQL tools match the Prisma Postgres version]
+
+Prisma Postgres runs PostgreSQL 17. Run `pg_dump --version` or `pg_restore --version` to confirm.
+
+:::
+
+## 1. Create a new Prisma Postgres database
+
+1. Log in to [Prisma Data Platform](https://console.prisma.io/) and open the Console.
+1. In a [workspace](/console/concepts#workspace) of your choice, click **New project**.
+1. Name your project, then click **Get started** under **Prisma Postgres**.
+1. Select a region and click **Create project**.
+
+Once provisioned, get your direct connection string:
+
+1. Click the **API Keys** tab in your project's sidenav.
+1. Click **Create API key**, give it a name, and click **Create**.
+1. Copy the connection string starting with `postgres://` — you'll need this in step 3.
+
+## 2. Export data from Supabase
+
+Copy the **direct** connection string from your Supabase project. In the Supabase Dashboard, go to **Project Settings** → **Database** → **Connection string** → **URI** and select the **Direct** connection type (not the pooled Supavisor connection):
+
+```text
+postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres
+```
+
+Export the connection string as an environment variable. Use single quotes so that special characters in your password (like `!`, `$`, or `#`) are not interpreted by the shell:
+
+```bash
+export SUPABASE_DATABASE_URL='postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres'
+```
+
+Then run:
+
+```bash
+pg_dump \
+  -Fc \
+  -d "$SUPABASE_DATABASE_URL" \
+  -n public \
+  -f supabase_dump.bak
+```
+
+## 3. Import data into Prisma Postgres
+
+Export your [direct connection string](/postgres/database/direct-connections) from step 1 as an environment variable:
+
+```bash
+export PRISMA_POSTGRES_DATABASE_URL='postgres://...'
+```
+
+Then restore:
+
+```bash
+pg_restore \
+  --no-owner \
+  --no-acl \
+  -d "$PRISMA_POSTGRES_DATABASE_URL" \
+  supabase_dump.bak
+```
+
+The `--no-owner` and `--no-acl` flags skip Supabase-specific role assignments that don't exist in Prisma Postgres.
+
+:::note
+
+You can safely ignore the warning `schema "public" already exists`. The `public` schema is pre-created in every Prisma Postgres database, so the `CREATE SCHEMA public` command from the dump is redundant. Your data is still imported correctly.
+
+:::
+
+To validate the import, open [Prisma Studio](/studio) from the **Studio** tab in your project, or run:
+
+```npm
+npx prisma studio
+```
+
+## 4. Update your application
+
+### Already using Prisma ORM
+
+Update `DATABASE_URL` in your `.env` file:
+
+```text title=".env"
+DATABASE_URL="postgres://USER:PASSWORD@db.prisma.io:5432/?sslmode=require"
+```
+
+Then regenerate Prisma Client:
+
+```npm
+npx prisma generate
+```
+
+:::tip
+
+See the [Prisma ORM with Prisma Postgres quickstart](/prisma-orm/quickstart/prisma-postgres) for driver adapter configuration and best practices.
+
+:::
+
+### Not yet using Prisma ORM
+
+Follow [Add Prisma ORM to an existing project](/prisma-orm/add-to-existing-project/prisma-postgres) to introspect your database, generate a schema, and migrate your queries.

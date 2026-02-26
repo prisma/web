@@ -1,21 +1,32 @@
 import { source, sourceV6 } from "@/lib/source";
-import { getBaseUrl } from "@/lib/urls";
+import { getBaseUrl, withDocsBasePath } from "@/lib/urls";
 
 export const revalidate = false;
 
 export async function GET() {
   const baseUrl = getBaseUrl();
-  const allPages = [...source.getPages(), ...sourceV6.getPages()];
+  const latestPages = source
+    .getPages()
+    .sort((a, b) => a.data.title.localeCompare(b.data.title));
+  const v6Pages = sourceV6
+    .getPages()
+    .sort((a, b) => a.data.title.localeCompare(b.data.title));
 
-  const sortedPages = allPages.sort((a, b) =>
-    a.data.title.localeCompare(b.data.title)
-  );
-
-  const docsList = sortedPages
+  const latestDocsList = latestPages
     .map((page) => {
       const title = page.data.title;
       const description = page.data.description || "";
-      const path = `${baseUrl}${page.url}`;
+      const path = `${baseUrl}${withDocsBasePath(page.url)}`;
+
+      return `- [\`${title}\`](${path}): ${description}`;
+    })
+    .join("\n");
+
+  const v6DocsList = v6Pages
+    .map((page) => {
+      const title = page.data.title;
+      const description = page.data.description || "";
+      const path = `${baseUrl}${withDocsBasePath(page.url)}`;
 
       return `- [\`${title}\`](${path}): ${description}`;
     })
@@ -23,13 +34,17 @@ export async function GET() {
 
   const content = `# Prisma Documentation
 
-## Docs
+## Latest
 
-${docsList}
+${latestDocsList}
+
+## v6
+
+${v6DocsList}
 
 ## Options
 
-- [Full documentation with content](${baseUrl}/llms-full.txt)
+- [Full documentation with content](${baseUrl}${withDocsBasePath("/llms-full.txt")})
 `;
 
   return new Response(content, {

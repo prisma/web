@@ -1,7 +1,7 @@
 ---
 title: Seeding
 description: Learn how to seed your database using Prisma ORM's integrated seeding functionality and Prisma Client
-url: /docs/orm/prisma-migrate/workflows/seeding
+url: /orm/prisma-migrate/workflows/seeding
 metaTitle: Seeding
 metaDescription: Learn how to seed your database using Prisma ORM's integrated seeding functionality and Prisma Client
 ---
@@ -10,6 +10,12 @@ Seeding allows you to consistently re-create the same data in your database and 
 
 - Populate your database with data that is required for your application to start, such as a default language or currency.
 - Provide basic data for validating and using your application in a development environment. This is particularly useful if you are using Prisma Migrate, which sometimes requires resetting your development database.
+
+<Accordions>
+  <Accordion title="Watch video: Seeding your database">
+    <Youtube videoId="mulzjQ4pZaA" title="How to seed your database with Prisma ORM" />
+  </Accordion>
+</Accordions>
 
 ## How to seed your database in Prisma ORM
 
@@ -68,9 +74,20 @@ model Post {
 
 Create some new users and posts in your `prisma/seed.ts` file:
 
+:::info[Prisma ORM v7 requirement]
+In Prisma ORM v7, `PrismaClient` must be initialized with a driver adapter. The example below uses `@prisma/adapter-pg` with a PostgreSQL connection pool.
+:::
+
 ```js title="seed.ts"
+import "dotenv/config";
+import { Pool } from "pg";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../prisma/generated/client";
-const prisma = new PrismaClient();
+
+const connectionString = `${process.env.DATABASE_URL}`;
+const pool = new Pool({ connectionString });
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
 async function main() {
   const alice = await prisma.user.upsert({
     where: { email: "alice@prisma.io" },
@@ -114,18 +131,20 @@ async function main() {
 main()
   .then(async () => {
     await prisma.$disconnect();
+    await pool.end();
   })
   .catch(async (e) => {
     console.error(e);
     await prisma.$disconnect();
+    await pool.end();
     process.exit(1);
   });
 ```
 
-- Add `typescript`, `tsx` and `@types/node` development dependencies:
+- Add `typescript`, `tsx`, `@types/node`, `@prisma/adapter-pg`, `pg`, `@types/pg` and `dotenv` development dependencies:
 
 ```npm
-npm install -D typescript tsx @types/node
+npm install -D typescript tsx @types/node @prisma/adapter-pg pg @types/pg dotenv
 ```
 
 - Add the `seed` field to your `prisma.config.ts` file:
@@ -176,10 +195,12 @@ main()
   .then(rawSql)
   .then(async () => {
     await prisma.$disconnect();
+    await pool.end();
   })
   .catch(async (e) => {
     console.error(e);
     await prisma.$disconnect();
+    await pool.end();
     process.exit(1);
   });
 ```

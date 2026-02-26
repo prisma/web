@@ -194,7 +194,7 @@ async function loadGoogleFont(font: string, weight: number) {
   throw new Error("failed to load font data");
 }
 
-export async function GET(_req: Request, { params }: RouteContext<"/og/docs/[...slug]">) {
+export async function GET(_req: Request, { params }: RouteContext<"/og/[...slug]">) {
   const { slug } = await params;
   // Check v7 first, then v6
   const page = source.getPage(slug.slice(0, -1)) ?? sourceV6.getPage(slug.slice(0, -1));

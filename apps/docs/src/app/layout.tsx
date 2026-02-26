@@ -19,7 +19,10 @@ const barlow = Barlow({
 
 export const metadata: Metadata = {
   metadataBase: new URL(getBaseUrl()),
-  title: 'Prisma Documentation',
+  title: {
+    default: 'Prisma Documentation',
+    template: '%s | Prisma Documentation',
+  },
   description:
     'Documentation for Prisma ORM, Prisma Postgres, Prisma Accelerate, and the Prisma ecosystem. Build type-safe database applications with ease.',
 };

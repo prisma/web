@@ -1,7 +1,7 @@
 ---
 title: PlanetScale
 description: Guide to PlanetScale
-url: /docs/v6/orm/overview/databases/planetscale
+url: /v6/orm/overview/databases/planetscale
 metaTitle: PlanetScale MySQL
 metaDescription: Guide to PlanetScale MySQL
 ---
@@ -14,7 +14,7 @@ This document discusses the concepts behind using Prisma ORM and PlanetScale, ex
 
 PlanetScale uses the [Vitess](https://vitess.io/) database clustering system to provide a MySQL-compatible database platform. Features include:
 
-- **Enterprise scalability.** PlanetScale provides a highly available production database cluster that supports scaling across multiple database servers. This is particularly useful in a serverless context, as it avoids the problem of having to [manage connection limits](/docs/v6/orm/prisma-client/setup-and-configuration/databases-connections#serverless-environments-faas).
+- **Enterprise scalability.** PlanetScale provides a highly available production database cluster that supports scaling across multiple database servers. This is particularly useful in a serverless context, as it avoids the problem of having to [manage connection limits](/v6/orm/prisma-client/setup-and-configuration/databases-connections#serverless-environments-faas).
 - **Database branches.** PlanetScale allows you to create [branches of your database schema](https://planetscale.com/docs/concepts/branching), so that you can test changes on a development branch before applying them to your production database.
 - **Support for [non-blocking schema changes](https://planetscale.com/docs/concepts/nonblocking-schema-changes).** PlanetScale provides a workflow that allows users to update database schemas without locking the database or causing downtime.
 
@@ -22,20 +22,20 @@ PlanetScale uses the [Vitess](https://vitess.io/) database clustering system to 
 
 Many aspects of using Prisma ORM with PlanetScale are just like using Prisma ORM with any other relational database. You can still:
 
-- model your database with the [Prisma Schema Language](/docs/v6/orm/prisma-schema/overview)
-- use Prisma ORM's existing [`mysql` database connector](/docs/v6/orm/overview/databases/mysql) in your schema, along with the [connection string PlanetScale provides you](https://planetscale.com/docs/concepts/connection-strings)
-- use [Introspection](/docs/v6/orm/prisma-schema/introspection) for existing projects if you already have a database schema in PlanetScale
-- use [`db push`](/docs/v6/orm/prisma-migrate/workflows/prototyping-your-schema) to push changes in your schema to the database
-- use [Prisma Client](/docs/v6/orm/prisma-client/setup-and-configuration/introduction) in your application to talk to the database server at PlanetScale
+- model your database with the [Prisma Schema Language](/v6/orm/prisma-schema/overview)
+- use Prisma ORM's existing [`mysql` database connector](/v6/orm/overview/databases/mysql) in your schema, along with the [connection string PlanetScale provides you](https://planetscale.com/docs/concepts/connection-strings)
+- use [Introspection](/v6/orm/prisma-schema/introspection) for existing projects if you already have a database schema in PlanetScale
+- use [`db push`](/v6/orm/prisma-migrate/workflows/prototyping-your-schema) to push changes in your schema to the database
+- use [Prisma Client](/v6/orm/prisma-client/setup-and-configuration/introduction) in your application to talk to the database server at PlanetScale
 
 ## Differences to consider
 
 PlanetScale's branching model and design for scalability means that there are also a number of differences to consider. You should be aware of the following points when deciding to use PlanetScale with Prisma ORM:
 
 - **Branching and deploy requests.** PlanetScale provides two types of database branches: _development branches_, which allow you to test out schema changes, and _production branches_, which are protected from direct schema changes. Instead, changes must be first created on a development branch and then deployed to production using a deploy request. Production branches are highly available and include automated daily backups. To learn more, see [How to use branches and deploy requests](#how-to-use-branches-and-deploy-requests).
-- **Referential actions and integrity.** To support scaling across multiple database servers, PlanetScale [by default does not use foreign key constraints](https://planetscale.com/docs/learn/operating-without-foreign-key-constraints), which are normally used in relational databases to enforce relationships between data in different tables, and asks users to handle this manually in their applications. However, you can explicitly [enable them in the PlanetScale database settings](https://planetscale.com/docs/concepts/foreign-key-constraints). If you don't enable these explicitly, you can still maintain these relationships in your data and allow the use of [referential actions](/docs/v6/orm/prisma-schema/data-model/relations/referential-actions) by using Prisma ORM's ability to [emulate relations in Prisma Client](/docs/v6/orm/prisma-schema/data-model/relations/relation-mode#emulate-relations-in-prisma-orm-with-the-prisma-relation-mode) with the `prisma` relation mode. For more information, see [How to emulate relations in Prisma Client](#option-1-emulate-relations-in-prisma-client).
+- **Referential actions and integrity.** To support scaling across multiple database servers, PlanetScale [by default does not use foreign key constraints](https://planetscale.com/docs/learn/operating-without-foreign-key-constraints), which are normally used in relational databases to enforce relationships between data in different tables, and asks users to handle this manually in their applications. However, you can explicitly [enable them in the PlanetScale database settings](https://planetscale.com/docs/concepts/foreign-key-constraints). If you don't enable these explicitly, you can still maintain these relationships in your data and allow the use of [referential actions](/v6/orm/prisma-schema/data-model/relations/referential-actions) by using Prisma ORM's ability to [emulate relations in Prisma Client](/v6/orm/prisma-schema/data-model/relations/relation-mode#emulate-relations-in-prisma-orm-with-the-prisma-relation-mode) with the `prisma` relation mode. For more information, see [How to emulate relations in Prisma Client](#option-1-emulate-relations-in-prisma-client).
 - **Creating indexes on foreign keys.** When [emulating relations in Prisma ORM](#option-1-emulate-relations-in-prisma-client) (i.e. when _not_ using foreign key constraints on the database-level), you will need to create dedicated indexes on foreign keys. In a standard MySQL database, if a table has a column with a foreign key constraint, an index is automatically created on that column. When PlanetScale is configured to not use foreign key constraints, these indexes are [currently](https://github.com/prisma/prisma/issues/10611) not created when Prisma Client emulates relations, which can lead to issues with queries not being well optimized. To avoid this, you can create indexes in Prisma ORM. For more information, see [How to create indexes on foreign keys](#2-create-indexes-on-foreign-keys).
-- **Making schema changes with `db push`.** When you merge a development branch into your production branch, PlanetScale will automatically compare the two schemas and generate its own schema diff. This means that Prisma ORM's [`prisma migrate`](/docs/v6/orm/prisma-migrate/getting-started) workflow, which generates its own history of migration files, is not a natural fit when working with PlanetScale. These migration files may not reflect the actual schema changes run by PlanetScale when the branch is merged.
+- **Making schema changes with `db push`.** When you merge a development branch into your production branch, PlanetScale will automatically compare the two schemas and generate its own schema diff. This means that Prisma ORM's [`prisma migrate`](/v6/orm/prisma-migrate/getting-started) workflow, which generates its own history of migration files, is not a natural fit when working with PlanetScale. These migration files may not reflect the actual schema changes run by PlanetScale when the branch is merged.
 
   :::warning
 
@@ -49,11 +49,11 @@ PlanetScale's branching model and design for scalability means that there are al
 
 ## How to use branches and deploy requests
 
-When connecting to PlanetScale with Prisma ORM, you will need to use the correct connection string for your branch. The connection URL for a given database branch can be found from your PlanetScale account by going to the overview page for the branch and selecting the 'Connect' dropdown. In the 'Passwords' section, generate a new password and select 'Prisma' from the dropdown to get the Prisma format for the connection URL. See Prisma ORM's [Getting started guide](/docs/v6/prisma-orm/quickstart/planetscale) for more details of how to connect to a PlanetScale database.
+When connecting to PlanetScale with Prisma ORM, you will need to use the correct connection string for your branch. The connection URL for a given database branch can be found from your PlanetScale account by going to the overview page for the branch and selecting the 'Connect' dropdown. In the 'Passwords' section, generate a new password and select 'Prisma' from the dropdown to get the Prisma format for the connection URL. See Prisma ORM's [Getting started guide](/v6/prisma-orm/quickstart/planetscale) for more details of how to connect to a PlanetScale database.
 
 Every PlanetScale database is created with a branch called `main`, which is initially a development branch that you can use to test schema changes on. Once you are happy with the changes you make there, you can [promote it](https://planetscale.com/docs/concepts/branching#promote-a-branch-to-production) to become a production branch. Note that you can only push new changes to a development branch, so further changes will need to be created on a separate development branch and then later deployed to production using a [deploy request](https://planetscale.com/docs/concepts/branching#promote-a-branch-to-production).
 
-If you try to push to a production branch, you will get the [error message](/docs/v6/orm/reference/error-reference#p3022) `Direct execution of DDL (Data Definition Language) SQL statements is disabled on this database.`
+If you try to push to a production branch, you will get the [error message](/v6/orm/reference/error-reference#p3022) `Direct execution of DDL (Data Definition Language) SQL statements is disabled on this database.`
 
 ## How to use relations (and enable referential integrity) with PlanetScale
 
@@ -63,7 +63,7 @@ If you try to push to a production branch, you will get the [error message](/doc
 
 PlanetScale does not use foreign key constraints in its database schema by default. However, Prisma ORM relies on foreign key constraints in the underlying database to enforce referential integrity between models in your Prisma schema.
 
-In Prisma ORM versions 3.1.1 and later, you can [emulate relations in Prisma Client with the `prisma` relation mode](/docs/v6/orm/prisma-schema/data-model/relations/relation-mode#emulate-relations-in-prisma-orm-with-the-prisma-relation-mode), which avoids the need for foreign key constraints in the database.
+In Prisma ORM versions 3.1.1 and later, you can [emulate relations in Prisma Client with the `prisma` relation mode](/v6/orm/prisma-schema/data-model/relations/relation-mode#emulate-relations-in-prisma-orm-with-the-prisma-relation-mode), which avoids the need for foreign key constraints in the database.
 
 To enable emulation of relations in Prisma Client, set the `relationMode` field to `"prisma"` in the `datasource` block:
 
@@ -80,7 +80,7 @@ The ability to set the relation mode was introduced as part of the `referentialI
 
 :::
 
-If you use relations in your Prisma schema with the default `"foreignKeys"` option for the `relationMode` field, PlanetScale will error and Prisma ORM output the [P3021 error message](/docs/v6/orm/reference/error-reference#p3021) when it tries to create foreign keys. (In versions before 2.27.0 it will output a raw database error.)
+If you use relations in your Prisma schema with the default `"foreignKeys"` option for the `relationMode` field, PlanetScale will error and Prisma ORM output the [P3021 error message](/v6/orm/reference/error-reference#p3021) when it tries to create foreign keys. (In versions before 2.27.0 it will output a raw database error.)
 
 #### 2. Create indexes on foreign keys
 
@@ -105,7 +105,7 @@ model Comment {
 
 The `postId` field in the `Comment` model refers to the corresponding `id` field in the `Post` model. However this is not implemented as a foreign key in PlanetScale, so the column doesn't have an automatic index. This means that some queries may not be well optimized. For example, if you query for all comments with a certain post `id`, PlanetScale may have to do a full table lookup. This could be slow, and also expensive because PlanetScale's billing model charges for the number of rows read.
 
-To avoid this, you can define an index on the `postId` field using [Prisma ORM's `@@index` argument](/docs/v6/orm/reference/prisma-schema-reference#index):
+To avoid this, you can define an index on the `postId` field using [Prisma ORM's `@@index` argument](/v6/orm/reference/prisma-schema-reference#index):
 
 ```prisma title="schema.prisma" highlight=15;add
 model Post {
@@ -128,11 +128,11 @@ model Comment {
 
 You can then add this change to your schema [using `db push`](#how-to-make-schema-changes-with-db-push).
 
-In versions 4.7.0 and later, Prisma ORM warns you if you have a relation with no index on the relation scalar field. For more information, see [Index validation](/docs/v6/orm/prisma-schema/data-model/relations/relation-mode#index-validation).
+In versions 4.7.0 and later, Prisma ORM warns you if you have a relation with no index on the relation scalar field. For more information, see [Index validation](/v6/orm/prisma-schema/data-model/relations/relation-mode#index-validation).
 
 :::warning
 
-One issue to be aware of is that [implicit many-to-many relations](/docs/v6/orm/prisma-schema/data-model/relations/many-to-many-relations#implicit-many-to-many-relations) cannot have an index added in this way. If query speed or cost is an issue, you may instead want to use an [explicit many-to-many relation](/docs/v6/orm/prisma-schema/data-model/relations/many-to-many-relations#explicit-many-to-many-relations) in this case.
+One issue to be aware of is that [implicit many-to-many relations](/v6/orm/prisma-schema/data-model/relations/many-to-many-relations#implicit-many-to-many-relations) cannot have an index added in this way. If query speed or cost is an issue, you may instead want to use an [explicit many-to-many relation](/v6/orm/prisma-schema/data-model/relations/many-to-many-relations#explicit-many-to-many-relations) in this case.
 
 :::
 
@@ -170,7 +170,7 @@ Also, introspection will automatically create relation fields in your Prisma sch
 
 ## How to make schema changes with `db push`
 
-To use `db push` with PlanetScale, you will first need to [enable emulation of relations in Prisma Client](#option-1-emulate-relations-in-prisma-client). Pushing to your branch without referential emulation enabled will give the [error message](/docs/v6/orm/reference/error-reference#p3021) `Foreign keys cannot be created on this database.`
+To use `db push` with PlanetScale, you will first need to [enable emulation of relations in Prisma Client](#option-1-emulate-relations-in-prisma-client). Pushing to your branch without referential emulation enabled will give the [error message](/v6/orm/reference/error-reference#p3021) `Foreign keys cannot be created on this database.`
 
 As an example, let's say you decide to decide to add a new `excerpt` field to the blog post schema above. You will first need to [create a new development branch and connect to it](#how-to-use-branches-and-deploy-requests).
 
@@ -252,13 +252,13 @@ model User {
 }
 ```
 
-For a more detailed example, see the [Getting started guide for PlanetScale](/docs/v6/prisma-orm/add-to-existing-project/planetscale).
+For a more detailed example, see the [Getting started guide for PlanetScale](/v6/prisma-orm/add-to-existing-project/planetscale).
 
 ## How to define shard keys in your Prisma schema (Preview)
 
 [Sharding](https://planetscale.com/docs/vitess/sharding) is a popular technique to scale up when database load grows.
 
-As of [v6.10.0](https://github.com/prisma/prisma/releases/tag/6.10.0), Prisma ORM supports sharding on PlanetScale natively (as a [Preview](/docs/v6/orm/more/releases#preview) feature) via the [`@shardKey`](/docs/v6/orm/reference/prisma-schema-reference#shardkey) and [`@@shardKey`](/docs/v6/orm/reference/prisma-schema-reference#shardkey-1) attributes in the Prisma schema which you can apply to the fields in your models that should serve as shard keys in your database setup.
+As of [v6.10.0](https://github.com/prisma/prisma/releases/tag/6.10.0), Prisma ORM supports sharding on PlanetScale natively (as a [Preview](/v6/orm/more/releases#preview) feature) via the [`@shardKey`](/v6/orm/reference/prisma-schema-reference#shardkey) and [`@@shardKey`](/v6/orm/reference/prisma-schema-reference#shardkey-1) attributes in the Prisma schema which you can apply to the fields in your models that should serve as shard keys in your database setup.
 
 In order to use the shard key attributes, you need to specify the `shardKeys` Preview feature on your `generator`:
 
@@ -347,8 +347,8 @@ You can then use Prisma Client as you normally would with full type-safety. Pris
 
 The fastest way to start using PlanetScale with Prisma ORM is to refer to our Getting Started documentation:
 
-- [Start from scratch](/docs/v6/prisma-orm/quickstart/planetscale)
-- [Add to existing project](/docs/v6/prisma-orm/add-to-existing-project/planetscale)
+- [Start from scratch](/v6/prisma-orm/quickstart/planetscale)
+- [Add to existing project](/v6/prisma-orm/add-to-existing-project/planetscale)
 
 These tutorials will take you through the process of connecting to PlanetScale, pushing schema changes, and using Prisma Client.
 

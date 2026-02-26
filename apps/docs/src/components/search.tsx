@@ -14,6 +14,7 @@ import {
 import { SearchIcon, X } from 'lucide-react';
 import { ComponentProps, useEffect, useRef } from 'react';
 import posthog from 'posthog-js';
+import { withDocsBasePath } from '@/lib/urls';
 
 export function CustomSearchDialogIcon(
   props: ComponentProps<'svg'> & { isLoading: boolean },
@@ -32,7 +33,7 @@ export function CustomSearchDialogIcon(
 export default function CustomSearchDialog(props: SharedProps) {
   const { search, setSearch, query } = useDocsSearch({
     type: 'fetch',
-    api: '/api/search',
+    api: withDocsBasePath('/api/search'),
     delayMs: 500,
   });
 
