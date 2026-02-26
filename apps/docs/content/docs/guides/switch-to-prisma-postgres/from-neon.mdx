@@ -14,6 +14,21 @@ This guide walks you through migrating data from Neon to Prisma Postgres using `
 - A [Prisma Data Platform](https://console.prisma.io) account
 - PostgreSQL CLI tools (`pg_dump`, `pg_restore`) version 17
 
+  If you don't have them installed, install PostgreSQL 17 client tools:
+
+  ```bash
+  # macOS
+  brew install libpq
+  brew link --force libpq
+
+  # Debian / Ubuntu
+  sudo apt-get install postgresql-client-17
+
+  # Windows (via installer)
+  # Download from https://www.postgresql.org/download/windows/
+  # Select "Command Line Tools" during installation
+  ```
+
 :::info[Make sure your PostgreSQL tools match the Prisma Postgres version]
 
 Prisma Postgres runs PostgreSQL 17. Run `pg_dump --version` or `pg_restore --version` to confirm.
@@ -41,7 +56,13 @@ Copy a **non-pooled** connection string from Neon (disable **Connection pooling*
 postgresql://USER:PASSWORD@YOUR-NEON-HOST/DATABASE?sslmode=require
 ```
 
-Then run the following command, replacing `$NEON_DATABASE_URL` with your actual Neon database URL:
+Export the connection string as an environment variable. Use single quotes so that special characters in your password (like `!`, `$`, or `#`) are not interpreted by the shell:
+
+```bash
+export NEON_DATABASE_URL='postgresql://USER:PASSWORD@YOUR-NEON-HOST/DATABASE?sslmode=require'
+```
+
+Then run:
 
 ```bash
 pg_dump \
@@ -53,7 +74,13 @@ pg_dump \
 
 ## 3. Import data into Prisma Postgres
 
-To restore, replace `$PRISMA_POSTGRES_DATABASE_URL` with your [direct connection string](/postgres/database/direct-connections) from step 1:
+Export your [direct connection string](/postgres/database/direct-connections) from step 1 as an environment variable:
+
+```bash
+export PRISMA_POSTGRES_DATABASE_URL='postgres://...'
+```
+
+Then restore:
 
 ```bash
 pg_restore \
@@ -65,7 +92,13 @@ pg_restore \
 
 The `--no-owner` and `--no-acl` flags skip Neon-specific role assignments that don't exist in Prisma Postgres.
 
-To validate the import, open [Prisma Studio](/docs/studio) from the **Studio** tab in your project, or run:
+:::note
+
+You can safely ignore the warning `schema "public" already exists`. The `public` schema is pre-created in every Prisma Postgres database, so the `CREATE SCHEMA public` command from the dump is redundant. Your data is still imported correctly.
+
+:::
+
+To validate the import, open [Prisma Studio](/studio) from the **Studio** tab in your project, or run:
 
 ```npm
 npx prisma studio
