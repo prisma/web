@@ -1,0 +1,663 @@
+---
+title: Nuxt + Prisma
+description: Step-by-step guide for integrating Prisma ORM and Prisma Postgres in a Nuxt project
+url: /docs/ai/prompts/nuxt
+metaTitle: How to Initialize a Nuxt App with Prisma ORM and Prisma Postgres
+metaDescription: Step-by-step guide for integrating Prisma ORM and Prisma Postgres in a Nuxt project.
+---
+
+## Prerequisites
+
+Before using this prompt, you need to create a new Nuxt project:
+
+```bash
+npx nuxi@latest init hello-prisma
+cd hello-prisma
+```
+
+Once your Nuxt project is created, you can use the prompt below with your AI assistant to add Prisma and Prisma Postgres.
+
+## How to use
+
+Include this prompt in your AI assistant to guide consistent code generation for Nuxt + Prisma + Prisma Postgres projects.
+
+- **GitHub Copilot**: Type `#<filename>` to reference the prompt file.
+- **Cursor**: Use `@Files` and select your prompt file.
+- **Zed**: Use `/file` followed by your prompt's path.
+- **Windsurf**: Use `@Files` and choose your prompt file from the list.
+
+## Prompt
+
+````md
+---
+# Specify the following for Cursor rules
+description: Guidelines for writing Nuxt apps with Prisma Postgres
+alwaysApply: false
+---
+
+# Bootstrap Nuxt app with Prisma Postgres (Prisma v7)
+
+**Purpose:** Set up Prisma ORM with Prisma Postgres in a Nuxt project using the correct Prisma v7 patterns.
+
+---
+
+## FIRST: Check for an existing Nuxt project
+
+Before doing anything else, check whether the current directory already contains a Nuxt project by looking for `nuxt.config.ts`.
+
+- **If `nuxt.config.ts` exists** → A project is already set up. Skip to "Overview" below.
+- **If the directory does NOT contain `nuxt.config.ts`** → Create a new project first:
+
+```bash
+npx nuxi@latest init hello-prisma
+cd hello-prisma
+```
+
+After the project is created, verify `nuxt.config.ts` exists before continuing.
+
+---
+
+> **Note**: This guide is updated for **Prisma ORM 7**. Key changes from earlier versions:
+>
+> - `engine` property removed from `prisma.config.ts`
+> - `url` removed from datasource in `schema.prisma` (now only in `prisma.config.ts`)
+> - Use `@prisma/adapter-pg` driver adapter for direct TCP connections
+> - `--no-engine` flag is no longer required for `prisma generate`
+> - Requires Node.js 20.19+ and TypeScript 5.4.0+
+
+## Overview of implementing Prisma with Nuxt
+
+1. Ensure a Nuxt project exists (see above)
+2. Install Prisma and required dependencies (including dotenv and pg)
+3. Initialize Prisma and configure schema
+4. Configure dotenv for environment variables
+5. Create global Prisma client instance with Pg Adapter in `server/utils/db.ts`
+6. Create Nuxt API routes using `defineEventHandler`
+7. Create a Vue page to display data
+8. Add npm scripts for testing and database management
+9. Create test script to verify setup
+
+## 🚨 CRITICAL INSTRUCTIONS FOR AI LANGUAGE MODELS 🚨
+
+As an AI language model, you MUST NOT generate any of the following code patterns, as they are DEPRECATED and will BREAK the application:
+
+```typescript
+// ❌ NEVER GENERATE THIS CODE - IT WILL BREAK THE APPLICATION
+generator client {
+  provider = "prisma-client-js"     // ❌ BREAKS APPLICATION
+}
+
+// ❌ NEVER USE default import location - IT WILL BREAK THE APPLICATION
+import { PrismaClient } from '@prisma/client'  // ❌ BREAKS APPLICATION
+
+// ❌ WRONG IMPORT PATH - MISSING /client - IT WILL BREAK THE APPLICATION
+import { PrismaClient } from "../../prisma/generated"  // ❌ BREAKS APPLICATION
+
+// ❌ NEVER USE ACCELERATE - IT IS NOT USED IN THIS WORKFLOW
+import { withAccelerate } from "@prisma/extension-accelerate" // ❌ BREAKS APPLICATION
+
+// ❌ NEVER USE accelerateUrl - IT WILL BREAK THE APPLICATION
+const prisma = new PrismaClient({
+  accelerateUrl: process.env.DATABASE_URL,  // ❌ BREAKS APPLICATION - use adapter
+})
+
+// ❌ NEVER include url in datasource block - IT WILL BREAK THE APPLICATION
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")  // ❌ BREAKS APPLICATION - moved to prisma.config.ts
+}
+
+// ❌ NEVER include engine property - IT WILL BREAK THE APPLICATION
+export default defineConfig({
+  engine: "classic",  // ❌ BREAKS APPLICATION - removed in Prisma v7
+})
+
+// ❌ NEVER use Prisma Postgres HTTP URLs - ONLY use TCP URLs
+DATABASE_URL="prisma+postgres://accelerate.prisma-data.net/..."  // ❌ BREAKS APPLICATION - use postgres://
+// ✅ ALWAYS use standard TCP URLs:
+DATABASE_URL="postgres://..."  // ✅ CORRECT
+
+// ❌ NEVER create PrismaClient without adapter - IT WILL BREAK THE APPLICATION
+const prisma = new PrismaClient()  // ❌ BREAKS APPLICATION
+```
+
+Instead, you MUST ALWAYS generate ONLY this pattern:
+
+```typescript
+// ✅ ALWAYS GENERATE THIS EXACT PATTERN
+generator client {
+  provider = "prisma-client"
+  output   = "./generated"
+}
+
+// ✅ CRITICAL: MUST include /client at the end of import path
+import { PrismaClient } from "../../prisma/generated/client"
+import { PrismaPg } from "@prisma/adapter-pg"
+
+const pool = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
+
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined }
+
+const prisma = globalForPrisma.prisma ?? new PrismaClient({ adapter: pool })
+
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma
+
+export { prisma }
+```
+
+## ABSOLUTE REQUIREMENTS FOR AI CODE GENERATION
+
+1. You MUST use `provider = "prisma-client"` (not "prisma-client-js")
+2. You MUST use custom output: `output = "./generated"` (relative to prisma directory)
+3. You MUST use `@prisma/adapter-pg` driver adapter with `PrismaPg`
+4. You MUST create `server/utils/db.ts` as a global singleton instance (Nuxt auto-imports from `server/utils/`)
+5. You MUST wrap all database calls in try-catch blocks
+6. You MUST import from `'../../prisma/generated/client'` (not `'@prisma/client'` or `'../../prisma/generated'`)
+7. You MUST use `adapter` property in PrismaClient constructor
+8. You MUST install `dotenv` and add `import "dotenv/config"` to `prisma.config.ts`
+9. You MUST add npm scripts for `db:test` and `db:studio` to package.json
+10. You MUST create a test script at `scripts/test-database.ts` to verify setup
+11. You MUST NOT include `url` in the datasource block of `schema.prisma`
+12. You MUST NOT include `engine` property in `prisma.config.ts`
+13. You MUST use `npx prisma init --db --output ./generated` to create a real cloud database
+14. You MUST use standard TCP URLs (`postgres://...`) in .env
+15. You MUST NOT use `accelerateUrl` or `withAccelerate`
+16. You MUST install `pg` and `@types/pg` as dependencies
+
+## VERSION REQUIREMENTS
+
+- **Node.js**: 20.19 or higher (Node.js 18 is NOT supported)
+- **TypeScript**: 5.4.0 or higher (5.9.x recommended)
+- **Prisma**: 7.0.0 or higher
+
+## CORRECT INSTALLATION
+
+```bash
+# Production dependencies
+npm install @prisma/client @prisma/adapter-pg pg dotenv
+
+# Dev dependencies
+npm install -D prisma @types/pg tsx
+```
+
+## CORRECT PRISMA INITIALIZATION
+
+> **FOR AI ASSISTANTS**: This command is **interactive** and requires user input. You **MUST ask the user to run this command manually** in their own terminal, then **wait for them to confirm completion** before proceeding with the next steps. Do NOT attempt to run this command yourself.
+
+```bash
+# Initialize Prisma AND create a real Prisma Postgres cloud database
+npx prisma init --db --output ./generated
+```
+
+This command:
+
+- Authenticates you with Prisma Console (if needed)
+- Prompts for **region** and **project name**
+- **Creates a cloud Prisma Postgres database**
+- Generates:
+  - `prisma/schema.prisma` (with correct output path)
+  - `prisma.config.ts` (with dotenv import)
+  - **`.env` with a `DATABASE_URL`**
+
+**IMPORTANT**: Ensure the generated `.env` uses a `postgres://` URL scheme. If it generates `prisma+postgres://`, replace it with the standard TCP connection string available in the Prisma Console.
+
+```text
+DATABASE_URL="postgres://..."
+```
+
+**IMPORTANT**: Do NOT use `npx prisma init` without `--db` as this only creates local files without a database.
+
+## CORRECT PRISMA CONFIG (prisma.config.ts)
+
+When using `npx prisma init --db`, the `prisma.config.ts` is **auto-generated** with the correct configuration:
+
+```typescript
+import "dotenv/config"; // ✅ Auto-included by prisma init --db
+import { defineConfig, env } from "prisma/config";
+
+export default defineConfig({
+  schema: "prisma/schema.prisma",
+  migrations: {
+    path: "prisma/migrations",
+    seed: "tsx ./prisma/seed.ts",
+  },
+  // ✅ NO engine property - removed in Prisma v7
+  datasource: {
+    url: env("DATABASE_URL"),
+  },
+});
+```
+
+**Note**: If you need to manually create this file, ensure `import "dotenv/config"` is at the top.
+
+## CORRECT SCHEMA CONFIGURATION (prisma/schema.prisma)
+
+Update the generated `prisma/schema.prisma` file:
+
+```prisma
+generator client {
+  provider = "prisma-client"
+  output   = "./generated"
+}
+
+datasource db {
+  provider = "postgresql"
+  // ✅ NO url here - now configured in prisma.config.ts
+}
+
+model User {
+  id    Int     @id @default(autoincrement())
+  email String  @unique
+  name  String?
+  posts Post[]
+}
+
+model Post {
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String?
+  published Boolean  @default(false)
+  author    User?    @relation(fields: [authorId], references: [id])
+  authorId  Int?
+}
+```
+
+## CORRECT GLOBAL PRISMA CLIENT
+
+Create `server/utils/db.ts` file. Nuxt auto-imports exports from `server/utils/`, making `prisma` available in all server API routes without explicit imports:
+
+```typescript
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "../../prisma/generated/client"; // ✅ CRITICAL: Include /client
+
+const prismaClientSingleton = () => {
+  const pool = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
+  return new PrismaClient({ adapter: pool });
+};
+
+type PrismaClientSingleton = ReturnType<typeof prismaClientSingleton>;
+
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClientSingleton | undefined;
+};
+
+export const prisma = globalForPrisma.prisma ?? prismaClientSingleton();
+
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+```
+
+## ADD NPM SCRIPTS TO PACKAGE.JSON
+
+Update your `package.json` to include these scripts:
+
+```json
+{
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "prisma generate && nuxt prepare",
+    "db:test": "tsx scripts/test-database.ts",
+    "db:studio": "prisma studio"
+  }
+}
+```
+
+## CREATE TEST SCRIPT
+
+Create `scripts/test-database.ts` to verify your setup:
+
+```typescript
+import "dotenv/config"; // ✅ CRITICAL: Load environment variables
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "../prisma/generated/client";
+
+const pool = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
+const prisma = new PrismaClient({ adapter: pool });
+
+async function testDatabase() {
+  console.log("🔍 Testing Prisma Postgres connection...\n");
+
+  try {
+    // Test 1: Check connection
+    console.log("✅ Connected to database!");
+
+    // Test 2: Create a test user
+    console.log("\n📝 Creating a test user...");
+    const newUser = await prisma.user.create({
+      data: {
+        email: "demo@example.com",
+        name: "Demo User",
+      },
+    });
+    console.log("✅ Created user:", newUser);
+
+    // Test 3: Fetch all users
+    console.log("\n📋 Fetching all users...");
+    const allUsers = await prisma.user.findMany();
+    console.log(`✅ Found ${allUsers.length} user(s):`);
+    allUsers.forEach((user) => {
+      console.log(`   - ${user.name} (${user.email})`);
+    });
+
+    console.log("\n🎉 All tests passed! Your database is working perfectly.\n");
+  } catch (error) {
+    console.error("❌ Error:", error);
+    process.exit(1);
+  }
+}
+
+testDatabase();
+```
+
+## CORRECT API ROUTE IMPLEMENTATION
+
+Nuxt uses file-based API routing in `server/api/`. The `prisma` instance is auto-imported from `server/utils/db.ts`.
+
+Create `server/api/users.get.ts` to fetch users:
+
+```typescript
+export default defineEventHandler(async () => {
+  try {
+    const users = await prisma.user.findMany({
+      include: { posts: true },
+    });
+    return users;
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Failed to fetch users",
+    });
+  }
+});
+```
+
+Create `server/api/users.post.ts` to create a user:
+
+```typescript
+export default defineEventHandler(async (event) => {
+  try {
+    const body = await readBody<{ name: string; email: string }>(event);
+
+    if (!body.email) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Email is required",
+      });
+    }
+
+    const user = await prisma.user.create({
+      data: {
+        name: body.name,
+        email: body.email,
+      },
+    });
+
+    return user;
+  } catch (error) {
+    console.error("Error creating user:", error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Failed to create user",
+    });
+  }
+});
+```
+
+## CORRECT USAGE IN VUE PAGES
+
+Update `app.vue` to display users from the database:
+
+```html
+<template>
+  <div>
+    <h1>Users</h1>
+    <ul v-if="users?.length">
+      <li v-for="user in users" :key="user.id">
+        {{ user.name }} ({{ user.email }})
+      </li>
+    </ul>
+    <p v-else>No users yet.</p>
+  </div>
+</template>
+
+<script setup>
+const { data: users } = await useFetch("/api/users");
+</script>
+```
+
+## COMPLETE SETUP WORKFLOW
+
+User should follow these steps (AI should provide these instructions):
+
+1. **Ensure a Nuxt project exists** — check for `nuxt.config.ts`. If missing, create one:
+
+   ```bash
+   npx nuxi@latest init hello-prisma
+   cd hello-prisma
+   ```
+
+2. **Install dependencies**:
+
+   ```bash
+   npm install @prisma/client @prisma/adapter-pg pg dotenv
+   ```
+
+   ```bash
+   npm install -D prisma @types/pg tsx
+   ```
+
+3. **Initialize Prisma AND create Prisma Postgres database** (⚠️ USER MUST RUN MANUALLY):
+
+   > **AI ASSISTANT**: Ask the user to run this command in their own terminal. This is interactive and requires user input. Wait for the user to confirm completion before continuing.
+
+   ```bash
+   npx prisma init --db --output ./generated
+   ```
+
+   The user should follow the terminal prompts to:
+   - Authenticate with Prisma Console (if needed)
+   - Choose a region (e.g., us-east-1)
+   - Name your project
+
+   Once complete, this creates `prisma/schema.prisma`, `prisma.config.ts`, AND `.env` with the `DATABASE_URL`.
+
+   **User should confirm when done** so the AI can proceed with the next steps.
+
+4. **Verify `.env` was created** — Ensure `DATABASE_URL` uses `postgres://`. If it uses `prisma+postgres://`, change it to the TCP connection string.
+
+   ```text
+   DATABASE_URL="postgres://..."
+   ```
+
+   **Do NOT invent or manually change this URL. Use the one from Prisma Console.**
+
+5. **Update `prisma/schema.prisma`** — Add the User and Post models (generator and datasource are already configured):
+
+   ```prisma
+   model User {
+     id    Int     @id @default(autoincrement())
+     email String  @unique
+     name  String?
+     posts Post[]
+   }
+
+   model Post {
+     id        Int      @id @default(autoincrement())
+     title     String
+     content   String?
+     published Boolean  @default(false)
+     author    User?    @relation(fields: [authorId], references: [id])
+     authorId  Int?
+   }
+   ```
+
+6. **Create `server/utils/db.ts`** with correct import path including `/client` and using `@prisma/adapter-pg`.
+
+7. **Add npm scripts** to `package.json` for `db:test`, `db:studio`, and `postinstall`
+
+8. **Create `scripts/test-database.ts`** test script
+
+9. **Create API routes** — `server/api/users.get.ts` and `server/api/users.post.ts`
+
+10. **Update `app.vue`** to display users
+
+11. **Push schema to database**:
+
+    ```bash
+    npx prisma db push
+    ```
+
+12. **Generate Prisma Client**:
+
+    ```bash
+    npx prisma generate
+    ```
+
+13. **Test the setup**:
+
+    ```bash
+    npm run db:test
+    ```
+
+14. **Start development server**:
+
+    ```bash
+    npm run dev
+    ```
+
+## AI MODEL VERIFICATION STEPS
+
+Before generating any code, you MUST verify:
+
+1. Does the current directory contain `nuxt.config.ts`? If not, create the project first.
+2. Are you using `provider = "prisma-client"` (not "prisma-client-js")? If not, STOP and FIX.
+3. Are you using `output = "./generated"`? If not, STOP and FIX.
+4. Are you importing from `'../../prisma/generated/client'` (with `/client`)? If not, STOP and FIX.
+5. Did you add `import "dotenv/config"` to `prisma.config.ts`? If not, STOP and FIX.
+6. Did you add `import "dotenv/config"` to `scripts/test-database.ts`? If not, STOP and FIX.
+7. Are you using `@prisma/adapter-pg` with `PrismaPg`? If not, STOP and FIX.
+8. Are you using `adapter` property in PrismaClient constructor? If not, STOP and FIX.
+9. Are you wrapping database operations in try-catch? If not, STOP and FIX.
+10. Did you create the Prisma client in `server/utils/db.ts` (not `lib/prisma.ts`)? If not, STOP and FIX.
+11. Did you create the test script at `scripts/test-database.ts`? If not, STOP and FIX.
+12. Did you add `db:test` and `db:studio` scripts to package.json? If not, STOP and FIX.
+13. Did you remove `url` from the datasource block in `schema.prisma`? If not, STOP and FIX.
+14. Did you remove `engine` property from `prisma.config.ts`? If not, STOP and FIX.
+15. Are you using `npx prisma init --db` (not just `npx prisma init`)? If not, STOP and FIX.
+16. Is the DATABASE_URL a TCP URL (`postgres://...`)? If it's a `prisma+postgres://` URL, STOP and FIX.
+17. Did Prisma generate the `.env` file? If you invented the URL manually, STOP and FIX.
+18. Are you using Nuxt auto-imports (`defineEventHandler`, `readBody`, `createError`, `prisma`)? If not, STOP and FIX.
+
+## CONSEQUENCES OF INCORRECT IMPLEMENTATION
+
+If you generate code using:
+
+- `prisma-client-js` provider → **CLIENT GENERATION FAILS**
+- Wrong import path (missing `/client`) → **MODULE NOT FOUND ERROR**
+- Missing `import "dotenv/config"` in prisma.config.ts → **DATABASE_URL NOT FOUND ERROR**
+- Missing `import "dotenv/config"` in test scripts → **ENVIRONMENT VARIABLE ERROR**
+- Default import from `@prisma/client` → **IMPORT ERROR**
+- Using `accelerateUrl` or `withAccelerate` → **UNNECESSARY ACCELERATE DEPENDENCY / CONFIG ERROR**
+- Missing custom output path → **WRONG CLIENT GENERATED**
+- Including `url` in datasource block → **DEPRECATED CONFIGURATION ERROR**
+- Including `engine` property → **DEPRECATED CONFIGURATION ERROR**
+- Using local URL (`postgres://localhost:...`) → **VERSION INCOMPATIBILITY ERRORS WITH Prisma v7**
+- Using `npx prisma init` without `--db` → **NO DATABASE CREATED, ONLY LOCAL FILES**
+- Manually inventing DATABASE_URL → **INVALID CONNECTION STRING ERRORS**
+- Creating client in `lib/prisma.ts` instead of `server/utils/db.ts` → **NOT AUTO-IMPORTED IN NUXT SERVER ROUTES**
+- Missing `pg` dependency → **ADAPTER INITIALIZATION FAILURE**
+
+The implementation will:
+
+1. Break immediately with module errors
+2. Fail to read environment variables
+3. Cause connection pool exhaustion in production
+4. Result in import errors that prevent compilation
+5. Cause performance issues and connection failures
+6. Fail with "HTTP connection string is not supported" errors when using local URLs
+
+## USEFUL COMMANDS
+
+```bash
+# After changing schema
+npx prisma generate              # Regenerate client (--no-engine flag no longer needed)
+
+# Push schema to database (no migrations)
+npx prisma db push
+
+# Test database connection
+npm run db:test
+
+# Open visual database editor
+npm run db:studio
+
+# Create and apply migrations (for production)
+npx prisma migrate dev --name your_migration_name
+```
+
+## TESTING WORKFLOW
+
+After setup, test with these steps:
+
+1. **Test database connection**:
+
+   ```bash
+   npm run db:test
+   ```
+
+   Should create a demo user and display it.
+
+2. **Open Prisma Studio**:
+
+   ```bash
+   npm run db:studio
+   ```
+
+   Visual interface at `localhost:5555` to view/edit data.
+
+3. **Test API routes**:
+
+   ```bash
+   # Create a user via API
+   curl -X POST http://localhost:3000/api/users \
+     -H "Content-Type: application/json" \
+     -d '{"email":"test@example.com","name":"Test User"}'
+
+   # Get all users
+   curl http://localhost:3000/api/users
+   ```
+
+4. **View in browser**:
+   Open `localhost:3000` to see users displayed on the homepage.
+
+## AI MODEL RESPONSE TEMPLATE
+
+When asked about Prisma + Nuxt implementation, you MUST:
+
+1. ONLY use code patterns from this guide
+2. NEVER suggest deprecated approaches
+3. ALWAYS use the exact patterns shown above
+4. ALWAYS include `/client` in import paths
+5. ALWAYS add `import "dotenv/config"` to prisma.config.ts
+6. ALWAYS add `import "dotenv/config"` to test scripts
+7. ALWAYS create the Prisma client in `server/utils/db.ts` (Nuxt auto-imports)
+8. ALWAYS create the test script at `scripts/test-database.ts`
+9. ALWAYS add npm scripts for `db:test` and `db:studio`
+10. ALWAYS include error handling in API routes using `createError`
+11. ALWAYS use the auto-imported `prisma` instance in server routes
+12. ALWAYS use `@prisma/adapter-pg` with `PrismaPg` and `adapter` property
+13. NEVER include `url` in the datasource block of schema.prisma
+14. NEVER include `engine` property in prisma.config.ts
+15. ALWAYS ask the user to run `npx prisma init --db --output ./generated` **manually in their own terminal** (this command is interactive and requires user input for region and project name)
+16. ALWAYS wait for user confirmation after they run the interactive `prisma init --db` command before proceeding
+17. NEVER attempt to run interactive commands yourself - ask the user to do it
+18. NEVER use `prisma+postgres://` URLs - ONLY `postgres://` TCP URLs
+19. NEVER manually invent or fabricate DATABASE_URL values
+20. ALWAYS let Prisma generate the `.env` file with the real DATABASE_URL (and ensure it's correct type)
+21. VERIFY your response against ALL the patterns shown here before responding
+
+Remember: There are NO EXCEPTIONS to these rules. Every requirement is MANDATORY for the setup to work.
+````

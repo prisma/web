@@ -46,12 +46,28 @@ model User {
 
 ## Installation
 
-[Install the Prisma CLI](/orm/reference/prisma-cli-reference) and the Prisma Client library in your project:
+[Install the Prisma CLI](/orm/reference/prisma-cli-reference), the Prisma Client library, and the [driver adapter](/orm/core-concepts/supported-databases/database-drivers) for your database:
 
-```npm
+```npm tab="PostgreSQL"
 npm install prisma --save-dev
-npm install @prisma/client
+npm install @prisma/client @prisma/adapter-pg pg
 ```
+
+```npm tab="MySQL / MariaDB"
+npm install prisma --save-dev
+npm install @prisma/client @prisma/adapter-mariadb mariadb
+```
+
+```npm tab="SQLite"
+npm install prisma --save-dev
+npm install @prisma/client @prisma/adapter-better-sqlite3 better-sqlite3
+```
+
+:::note
+
+Prisma 7 requires a [driver adapter](/orm/core-concepts/supported-databases/database-drivers) to connect to your database. Make sure your `package.json` includes `"type": "module"` for ESM support. See the [upgrade guide](/guides/upgrade-prisma-orm/v7) for details.
+
+:::
 
 ## Generate the Client API
 
@@ -65,21 +81,63 @@ This will create a `generated` directory based on where you set the `output` to 
 
 ## Importing Prisma Client
 
-With the client generated, import the version for the given environment and create a new instance of it:
+With the client generated, import it along with your [driver adapter](/orm/core-concepts/supported-databases/database-drivers) and create a new instance:
 
-```ts tab="Node"
+```ts tab="PostgreSQL"
 import { PrismaClient } from "./path/to/generated/prisma";
+import { PrismaPg } from "@prisma/adapter-pg";
 
-export const prisma = new PrismaClient({});
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL!,
+});
+
+export const prisma = new PrismaClient({ adapter });
 ```
 
-```ts tab="Edge"
+```ts tab="MySQL / MariaDB"
+import { PrismaClient } from "./path/to/generated/prisma";
+import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+
+const adapter = new PrismaMariaDb({
+  host: "localhost",
+  user: "root",
+  database: "mydb",
+});
+
+export const prisma = new PrismaClient({ adapter });
+```
+
+```ts tab="SQLite"
+import { PrismaClient } from "./path/to/generated/prisma";
+import { PrismaBetterSQLite3 } from "@prisma/adapter-better-sqlite3";
+
+const adapter = new PrismaBetterSQLite3({
+  url: "file:./dev.db",
+});
+
+export const prisma = new PrismaClient({ adapter });
+```
+
+```ts tab="PostgreSQL (Edge)"
 import { PrismaClient } from "./path/to/generated/prisma/edge";
+import { PrismaPostgresAdapter } from "@prisma/adapter-ppg";
 
-export const prisma = new PrismaClient({});
+const adapter = new PrismaPostgresAdapter({
+  connectionString: process.env.DATABASE_URL!,
+});
+
+export const prisma = new PrismaClient({ adapter });
 ```
 
-Your application should generally only create **one instance** of `PrismaClient`. How to achieve this depends on whether you are using Prisma ORM in a [long-running application](/orm/prisma-client/setup-and-configuration/databases-connections#prismaclient-in-long-running-applications) or in a [serverless environment](/orm/prisma-client/setup-and-configuration/databases-connections#prismaclient-in-serverless-environments) .
+:::warning
+
+`PrismaClient` requires a driver adapter in Prisma 7. Calling `new PrismaClient()` without an `adapter` will result in an error.
+
+:::
+
+Find out what [driver adapter](/orm/core-concepts/supported-databases/database-drivers) is needed for your database.
+
+Your application should generally only create **one instance** of `PrismaClient`. How to achieve this depends on whether you are using Prisma ORM in a [long-running application](/orm/prisma-client/setup-and-configuration/databases-connections#prismaclient-in-long-running-applications) or in a [serverless environment](/orm/prisma-client/setup-and-configuration/databases-connections#prismaclient-in-serverless-environments).
 
 Creating multiple instances of `PrismaClient` will create multiple connection pools and can hit the connection limit for your database. Too many connections may start to **slow down your database** and eventually lead to errors such as:
 
@@ -87,35 +145,6 @@ Creating multiple instances of `PrismaClient` will create multiple connection po
 Error in connector: Error querying the database: db error: FATAL: sorry, too many clients already
    at PrismaClientFetcher.request
 ```
-
-## Driver Adapters
-
-Depending on the database being used, an adapter is needed in order for Prisma Client to be able send the appropriate SQL queries:
-
-```ts tab="Prisma Postgre"
-import { PrismaClient } from "./path/to/generated/prisma";
-import { PrismaPg } from '@prisma/adapter-pg'
-
-const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL!,
-})
-
-export const prisma = new PrismaClient({adapter});
-```
-
-
-```ts tab="Prisma Postgres Serverless"
-import { PrismaClient } from "./path/to/generated/prisma/edge";
-import { PrismaPostgresAdapter } from "@prisma/adapter-ppg";
-
-const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL!,
-})
-
-export const prisma = new PrismaClient({adapter});
-```
-
-Find out what [driver adapter](/orm/core-concepts/supported-databases/database-drivers) is needed for your database
 
 
 ## Use Prisma Client to send queries to your database
