@@ -1,0 +1,258 @@
+---
+title: Alchemy
+description: Provision and manage Prisma Postgres projects, databases, and connections with Alchemy.
+metaTitle: Manage Prisma Postgres with Alchemy
+metaDescription: Provision and manage Prisma Postgres projects, databases, and connections with Alchemy.
+url: /postgres/iac/alchemy
+tocDepth: 3
+toc: true
+---
+
+Use [Alchemy](https://alchemy.run) to manage Prisma Postgres resources directly in your infrastructure code.
+
+Alchemy provides Prisma Postgres resources for:
+
+- Projects
+- Databases
+- Connections
+- Workspace references
+
+## Conceptual model
+
+[Alchemy](https://alchemy.run/) is a TypeScript library that creates and manages infrastructure when you run it.
+
+Instead of a separate declarative config format, you write a normal TypeScript program (commonly `alchemy.run.ts`) and execute it.
+
+Alchemy resources follow lifecycle phases (`create`, `update`, `delete`) and manage provider APIs for you:
+
+- You compose resources in code (`Project`, `Database`, `Connection`).
+- Alchemy handles dependency ordering between those resources.
+- Resource defaults can include safety behavior, such as delete protection on projects and databases.
+- `await app.finalize()` cleans up orphaned resources that are no longer in your program.
+
+This makes it useful when you want infrastructure code that feels close to your application runtime and platform integrations.
+
+## When to use Alchemy
+
+Alchemy is a strong fit when:
+
+- You are already deploying with Alchemy and want Prisma Postgres in the same graph.
+- You want resource composition with first-class platform integrations (for example, Hyperdrive + Workers).
+- You prefer lifecycle-driven resource code with safe deletion defaults.
+
+## Typical workflow
+
+If you follow the Alchemy getting started flow, the common lifecycle is:
+
+Create a project scaffold (optional):
+
+```npm
+npx alchemy@latest create --template typescript
+```
+
+Configure provider profiles and credentials:
+
+```npm
+npm run alchemy configure
+```
+
+Authenticate (required for Cloudflare resources):
+
+```npm
+npm run alchemy login
+```
+
+Start local development with hot reload:
+
+```npm
+npm run alchemy dev
+```
+
+Deploy:
+
+```npm
+npm run alchemy deploy
+```
+
+Tear down:
+
+```npm
+npm run alchemy destroy
+```
+
+For Prisma Postgres-only resources, `configure`/`login` may not be necessary in every setup. They are typically needed when you also manage Cloudflare resources in the same app.
+
+## Prerequisites
+
+- An [Alchemy project](https://alchemy.run/)
+- A Prisma service token
+- `PRISMA_SERVICE_TOKEN` configured in your environment
+- `ALCHEMY_PASSWORD` configured when your resources contain secrets
+
+## Authentication
+
+Alchemy reads Prisma credentials from environment variables by default.
+
+```bash
+export PRISMA_SERVICE_TOKEN="prsc_your_token_here"
+export ALCHEMY_PASSWORD="choose-a-strong-password"
+```
+
+If you need multiple workspaces/accounts, you can override auth per resource with `serviceToken`.
+
+`ALCHEMY_PASSWORD` is used to encrypt/decrypt secret values in Alchemy state.
+
+## Minimal example
+
+```ts file=alchemy.run.ts
+import alchemy from "alchemy";
+import { Connection, Database, Project } from "alchemy/prisma-postgres";
+
+const app = await alchemy("prisma-postgres-example");
+
+const project = await Project("project");
+
+const database = await Database("database", {
+  project,
+  region: "us-east-1",
+});
+
+const connection = await Connection("connection", {
+  database,
+  name: "app-connection",
+});
+
+export const projectId = project.id;
+export const databaseId = database.id;
+export const host = connection.host;
+export const user = connection.user;
+export const connectionString = connection.connectionString;
+export const prismaConnectionString = connection.prismaConnectionString;
+
+await app.finalize();
+```
+
+## Complete example with Hyperdrive + Worker
+
+```ts file=alchemy.run.ts
+import alchemy from "alchemy";
+import { Hyperdrive, Worker } from "alchemy/cloudflare";
+import { Connection, Database, Project } from "alchemy/prisma-postgres";
+
+const app = await alchemy("prisma-postgres-example");
+
+const project = await Project("project");
+
+const database = await Database("database", {
+  project,
+  region: "us-east-1",
+});
+
+const connection = await Connection("connection", {
+  database,
+  name: "connection",
+});
+
+const db = await Hyperdrive("prisma-postgres", {
+  origin: connection.connectionString.unencrypted,
+});
+
+export const worker = await Worker("worker", {
+  entrypoint: "src/worker.ts",
+  bindings: {
+    HYPERDRIVE: db,
+  },
+  compatibilityFlags: ["nodejs_compat"],
+});
+
+await app.finalize();
+```
+
+```ts file=src/worker.ts
+import { Client } from "pg";
+import type { worker } from "../alchemy.run.ts";
+
+export default {
+  async fetch(_request: Request, env: typeof worker.Env): Promise<Response> {
+    const client = new Client({
+      connectionString: env.HYPERDRIVE.connectionString,
+    });
+
+    try {
+      await client.connect();
+      const result = await client.query("SELECT * FROM pg_tables");
+
+      return Response.json({
+        success: true,
+        result: result.rows,
+      });
+    } catch (error: any) {
+      return new Response(`Database error: ${error.message}`, { status: 500 });
+    }
+  },
+};
+```
+
+## Working with multiple workspaces
+
+Prisma service tokens are workspace-scoped. You can pass different tokens to different resources:
+
+```ts
+import alchemy from "alchemy";
+import { Project } from "alchemy/prisma-postgres";
+
+const app = await alchemy("prisma-workspaces");
+
+const workspaceAProject = await Project("workspace-a-project", {
+  serviceToken: alchemy.env.PRISMA_SERVICE_TOKEN_WORKSPACE_A,
+});
+
+const workspaceBProject = await Project("workspace-b-project", {
+  serviceToken: alchemy.env.PRISMA_SERVICE_TOKEN_WORKSPACE_B,
+});
+
+await app.finalize();
+```
+
+If you need to resolve a workspace by name or id, use `WorkspaceRef`:
+
+```ts
+import { WorkspaceRef } from "alchemy/prisma-postgres";
+
+const workspace = await WorkspaceRef("my-workspace");
+```
+
+## Deletion behavior
+
+`Project` and `Database` default to delete protection in Alchemy.
+
+- `Project`: `delete` defaults to `false`
+- `Database`: `delete` defaults to `false`
+
+For ephemeral environments, set `delete: true` explicitly:
+
+```ts
+const testDatabase = await Database("test-db", {
+  project,
+  region: "us-east-1",
+  delete: true,
+});
+```
+
+## Common troubleshooting
+
+### Missing token
+
+If resource creation fails with an auth error, confirm `PRISMA_SERVICE_TOKEN` is set for the process running Alchemy.
+
+### Wrong workspace
+
+Prisma service tokens are workspace-scoped. If resources appear in the wrong workspace, use per-resource `serviceToken` overrides.
+
+## References
+
+- [Alchemy](https://alchemy.run)
+- [Alchemy getting started](https://alchemy.run/getting-started)
+- [What is Alchemy?](https://alchemy.run/what-is-alchemy/)
+- [Alchemy package on npm](https://www.npmjs.com/package/alchemy)
+- [Prisma Postgres](https://www.prisma.io/postgres)

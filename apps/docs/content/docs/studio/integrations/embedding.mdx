@@ -59,7 +59,7 @@ Depending on your database type, you may need additional packages:
 # For SQLite support
 npm install better-sqlite3
 
-# For MySQL support  
+# For MySQL support
 npm install mysql2
 ```
 
@@ -81,7 +81,7 @@ Here's what a minimal implementation looks like for PostgreSQL:
 import { Studio } from "@prisma/studio-core/ui";
 import { createPostgresAdapter } from "@prisma/studio-core/data/postgres-core";
 import { createStudioBFFClient } from "@prisma/studio-core/data/bff";
-import "@prisma/studio-core/ui/index.css"
+import "@prisma/studio-core/ui/index.css";
 
 function App() {
   const adapter = useMemo(() => {
@@ -111,7 +111,7 @@ Here's what a minimal implementation looks like for SQLite:
 import { Studio } from "@prisma/studio-core/ui";
 import { createSQLiteAdapter } from "@prisma/studio-core/data/sqlite-core";
 import { createStudioBFFClient } from "@prisma/studio-core/data/bff";
-import "@prisma/studio-core/ui/index.css"
+import "@prisma/studio-core/ui/index.css";
 
 function App() {
   const adapter = useMemo(() => {
@@ -141,7 +141,7 @@ Here's what a minimal implementation looks like for MySQL:
 import { Studio } from "@prisma/studio-core/ui";
 import { createMySQLAdapter } from "@prisma/studio-core/data/mysql-core";
 import { createStudioBFFClient } from "@prisma/studio-core/data/bff";
-import "@prisma/studio-core/ui/index.css"
+import "@prisma/studio-core/ui/index.css";
 
 function App() {
   const adapter = useMemo(() => {
@@ -171,7 +171,7 @@ Here's what an implementation with custom headers/payload looks like (works for 
 import { Studio } from "@prisma/studio-core/ui";
 import { createPostgresAdapter } from "@prisma/studio-core/data/postgres-core";
 import { createStudioBFFClient } from "@prisma/studio-core/data/bff";
-import "@prisma/studio-core/ui/index.css"
+import "@prisma/studio-core/ui/index.css";
 
 function App() {
   const adapter = useMemo(() => {
@@ -182,8 +182,8 @@ function App() {
         "X-Custom-Header": "example-value", // Pass any custom headers
       },
       customPayload: {
-        customValue: "example-value" // Pass any custom data
-      }
+        customValue: "example-value", // Pass any custom data
+      },
     });
 
     // 2. Create a database adapter with the executor
@@ -259,6 +259,7 @@ With this setup, Studio inherits your custom colors, borders, and typography rul
 ### Concepts
 
 Here's an overview of the key concepts in your frontend:
+
 - **Executor**: The bridge between Studio and your backend, it's created using the `createStudioBFFClient` function
 - **Adapter**: Handles database-specific query formatting (PostgreSQL, SQLite, or MySQL)
 - **Custom headers**: Pass authentication tokens, user info, etc.
@@ -276,7 +277,7 @@ The PostgreSQL implementation uses `createPrismaPostgresHttpClient` from `@prism
 
 ### Minimal implementation
 
-Here's what a minimal implementation for the `/studio` endpoint looks like with [Hono](https://hono.dev/). This assumes that your connection URL is available via the `DATABASE_URL` env var: 
+Here's what a minimal implementation for the `/studio` endpoint looks like with [Hono](https://hono.dev/). This assumes that your connection URL is available via the `DATABASE_URL` env var:
 
 ```ts
 import { Hono } from "hono";
@@ -288,18 +289,18 @@ const app = new Hono().use("*", cors());
 app.post("/studio", async (c) => {
   // 1. Extract the query and custom data from the request
   const { query } = await c.req.json();
-  
+
   // 2. Read DB URL from env vars
   const url = process.env.DATABASE_URL;
-  
+
   // 3. Execute the query against Prisma Postgres
   const [error, results] = await createPrismaPostgresHttpClient({ url }).execute(query);
-  
+
   // 6. Return results or errors
   if (error) {
     return c.json([serializeError(error)]);
   }
-  
+
   return c.json([null, results]);
 });
 ```
@@ -320,26 +321,26 @@ app.post("/studio", async (c) => {
   try {
     // 1. Extract the query from the request
     const { query } = await c.req.json();
-    
+
     // 2. Read DB URL from env vars (should be a file path)
     const url = process.env.DATABASE_URL;
-    
+
     if (!url) {
       return c.json([serializeError(new Error("DATABASE_URL is missing"))], 500);
     }
-    
+
     // 3. Extract file path from URL and create database connection
     const dbPath = url.replace("file:", "");
     const database = new DatabaseSync(dbPath);
-    
+
     // 4. Execute the query against SQLite
     const [error, results] = await createNodeSQLiteExecutor(database).execute(query);
-    
+
     // 5. Return results or errors
     if (error) {
       return c.json([serializeError(error)]);
     }
-    
+
     return c.json([null, results]);
   } catch (err) {
     return c.json([serializeError(err)], 400);
@@ -363,25 +364,25 @@ app.post("/studio", async (c) => {
   try {
     // 1. Extract the query from the request
     const { query } = await c.req.json();
-    
+
     // 2. Read DB URL from env vars
     const url = process.env.DATABASE_URL;
-    
+
     if (!url) {
       return c.json([serializeError(new Error("DATABASE_URL is missing"))], 500);
     }
-    
+
     // 3. Create MySQL connection pool
     const pool = mysql.createPool(url);
-    
+
     // 4. Execute the query against MySQL
     const [error, results] = await createMySQL2Executor(pool).execute(query);
-    
+
     // 5. Return results or errors
     if (error) {
       return c.json([serializeError(error)]);
     }
-    
+
     return c.json([null, results]);
   } catch (err) {
     return c.json([serializeError(err)], 400);
@@ -404,28 +405,28 @@ const app = new Hono().use("*", cors());
 app.post("/studio", async (c) => {
   // 1. Extract the query and custom data from the request
   const { query, customPayload } = await c.req.json();
-  
+
   // 2. Access custom headers (great for auth!)
   const customHeader = c.req.header("X-Custom-Header");
   console.log("Received headers:", { customHeader });
-  
+
   // 3. Use custom payload data
   console.log("Received value:", customPayload.customValue);
-  
+
   // 4. Determine the URL (this is where you'd implement your auth logic)
   const url = determineUrlFromContext(customHeader, customPayload);
-  
+
   // 5. Execute the query using the appropriate database client
   // PostgreSQL:
   const [error, results] = await createPrismaPostgresHttpClient({ url }).execute(query);
   // SQLite: (requires additional setup with better-sqlite3)
   // MySQL: (requires additional setup with mysql2)
-  
+
   // 6. Return results or errors
   if (error) {
     return c.json([serializeError(error)]);
   }
-  
+
   return c.json([null, results]);
 });
 ```
@@ -443,26 +444,6 @@ Here's an overview of the execution flow in your embedded Prisma Studio version:
 
 ![Diagram showing the execution flow of embedded Prisma Studio: user, Studio UI, React app, backend API, and database.](/img/studio/embedded-flow.png)
 
-{/* <!--
-```mermaid
-sequenceDiagram
-    participant User
-    participant Studio
-    participant React app
-    participant Backend
-    participant Prisma Postgres
-    User->>Studio: Click on table
-    Studio->>React app: Generate SQL query
-    React app->>React app: Package query with headers/payload
-    React app->>Backend: Send POST /studio
-    Backend->>Backend: Extract API key from request
-    Backend->>Prisma Postgres: Execute query against database
-    Prisma Postgres- ->>Backend: Respond with results or errors
-    Backend- ->>Studio: Forward results or errors
-    Studio->>Studio: Display data or error message
-```
---> */}
-
 ## Adding user authentication
 
 When you want to authenticate the users of your app against Prisma Studio, you can do that by adding custom logic around your embedded Prisma Studio version.
@@ -474,7 +455,7 @@ const executor = createStudioBFFClient({
   url: "http://localhost:4242/studio",
   customHeaders: {
     "X-User-ID": currentUser.id,
-    "Authorization": `Bearer ${userToken}`,
+    Authorization: `Bearer ${userToken}`,
   },
 });
 ```
@@ -500,4 +481,3 @@ Embeddable Prisma Studio (Free) is licensed under Apache 2.0.
 
 This package includes anonymized telemetry to help us improve Prisma Studio.  
 Use implies consent. Learn more in our [Privacy Policy](https://www.prisma.io/privacy).
-
