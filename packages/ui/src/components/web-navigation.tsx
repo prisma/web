@@ -11,6 +11,7 @@ import {
   NavigationMenuTrigger,
   NavigationWrapper,
   NavigationMobileMenu,
+  MenuNavigationItem,
   Socials,
 } from "./navigation-menu";
 import { useEffect, useState } from "react";
@@ -21,6 +22,7 @@ interface Link {
   text: string;
   url?: string;
   desc?: string;
+  col?: number;
   sub?: Array<{
     text: string;
     url: string;
@@ -60,18 +62,20 @@ export function WebNavigation({ links }: WebNavigationProps) {
                       {link.text}
                     </NavigationMenuLink>
                   </NavigationMenuItem>
-                ) : link.sub ? (
+                ) : link?.sub?.length ? (
                   <NavigationMenuItem key={link.text}>
                     <NavigationMenuTrigger>{link.text}</NavigationMenuTrigger>
-                    <NavigationMenuContent>
-                      {link.sub.map((sublink) => (
-                        <NavigationMenuLink
-                          key={sublink.url}
-                          href={sublink.url}
-                        >
-                          {sublink.text}
-                        </NavigationMenuLink>
-                      ))}
+                    <NavigationMenuContent className="rounded-high! overflow-hidden!">
+                      <div
+                        className={cn(
+                          "list gap-1 flex flex-col",
+                          link?.col && `grid grid-cols-${link.col}`,
+                        )}
+                      >
+                        {link.sub.map((sub: any) => (
+                          <MenuNavigationItem key={link.text} link={sub} />
+                        ))}
+                      </div>
                     </NavigationMenuContent>
                   </NavigationMenuItem>
                 ) : null,
@@ -96,7 +100,12 @@ export function WebNavigation({ links }: WebNavigationProps) {
               className="flex md:hidden"
               onClick={() => setMobileView(!mobileView)}
             >
-              <i className="fa-regular fa-bars" />
+              <i
+                className={cn(
+                  "fa-regular",
+                  mobileView ? "fa-xmark" : "fa-bars",
+                )}
+              />
             </NavigationMenuItem>
             {mobileView && <NavigationMobileMenu links={links} />}
           </NavigationMenuList>
