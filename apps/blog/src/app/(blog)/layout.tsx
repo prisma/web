@@ -66,17 +66,17 @@ export function baseOptions() {
           {
             text: "Examples",
             url: "/",
-            icon: "",
+            icon: "fa-regular fa-grid-2",
           },
           {
             text: "Stack",
             url: "/stack",
-            icon: "fa-regular fa-globe",
+            icon: "fa-regular fa-layer-group",
           },
           {
             text: "Ecosystem",
             url: "/ecosystem",
-            icon: "",
+            icon: "fa-regular fa-globe",
           },
           {
             text: "Customer stories",
@@ -86,6 +86,7 @@ export function baseOptions() {
           {
             text: "Data guide",
             url: "/dataguide",
+            icon: "fa-regular fa-file-binary",
           },
         ],
       },

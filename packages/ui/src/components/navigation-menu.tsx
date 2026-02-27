@@ -280,7 +280,7 @@ function MenuNavigationItem({
       className="flex gap-2 items-center justify-start hover:bg-background-ppg-strong w-full rounded-square! overflow-hidden"
     >
       <Action color="ppg" size="nav">
-        <i className={link.icon} />
+        <i className={cn("text-background-ppg-reverse", link.icon)} />
       </Action>
       <div className="flex flex-col gap-0">
         <span className="text-md font-semibold text-foreground-neutral">
