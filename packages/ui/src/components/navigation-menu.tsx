@@ -321,7 +321,7 @@ function MobileMenuItemWithSubmenu({ link }: { link: any }) {
 function NavigationMobileMenu({ links }: any) {
   return (
     <div className="fixed px-0 md:hidden w-screen h-screen pt-22 top-0 left-0 -z-1 bg-background-default flex flex-col justify-between">
-      <div className="list">
+      <div className="list pb-[130px] overflow-scroll">
         {links.map((link: any) =>
           link.url ? (
             <NavigationMenuItem key={link.url}>
