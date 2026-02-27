@@ -2,15 +2,15 @@ import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../lib/cn";
 
-const buttonVariants = cva("border", {
+const buttonVariants = cva("", {
   variants: {
     variant: {
       ppg: "bg-background-ppg-reverse text-foreground-ppg-reverse hover:bg-background-ppg-reverse-strong",
       orm: "bg-background-orm-reverse text-foreground-orm-reverse hover:bg-background-orm-reverse-strong",
       default:
-        "bg-background-default border-stroke-neutral text-foreground-neutral",
+        "bg-background-default border border-stroke-neutral text-foreground-neutral",
       "default-stronger":
-        "bg-background-neutral border-stroke-neutral text-foreground-neutral hover:bg-background-neutral-strong",
+        "bg-background-neutral text-foreground-neutral hover:bg-background-neutral-strong",
       "default-weaker": "bg-background-neutral text-foreground-neutral-weaker",
       error:
         "bg-background-error-reverse text-foreground-error-reverse hover:bg-backΩground-error-reverse-strong focus-visible:ring-stroke-error",
