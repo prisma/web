@@ -108,7 +108,7 @@ function NavigationMenuItem({
 }
 
 const navigationMenuTriggerStyle = cva(
-  "bg-background hover:bg-background-ppg focus:bg-background-ppg data-open:hover:bg-background-ppg data-open:focus:bg-background-ppg data-open:bg-background-ppg/50 focus-visible:ring-ring/50 data-popup-open:bg-background-ppg/50 data-popup-open:hover:bg-background-ppg rounded-none px-2.5 py-1.5 text-base font-semibold transition-all focus-visible:ring-1 focus-visible:outline-1 disabled:opacity-50 group/navigation-menu-trigger inline-flex h-9 w-max items-center justify-center disabled:pointer-events-none outline-none",
+  "bg-background hover:bg-background-ppg focus:bg-background-ppg data-open:hover:bg-background-ppg data-open:focus:bg-background-ppg data-open:bg-background-ppg/50 focus-visible:ring-ring/50 data-popup-open:bg-background-ppg/50 data-popup-open:hover:bg-background-ppg rounded-square px-2.5 py-1.5 text-base font-semibold transition-all focus-visible:ring-1 focus-visible:outline-1 disabled:opacity-50 group/navigation-menu-trigger inline-flex h-9 w-max items-center justify-center disabled:pointer-events-none outline-none",
 );
 
 function NavigationMenuTrigger({
@@ -277,7 +277,7 @@ function MenuNavigationItem({
     <NavigationMenuLink
       key={link.url}
       href={link.url}
-      className="flex gap-2 items-center justify-start hover:bg-background-ppg-strong w-full rounded-square"
+      className="flex gap-2 items-center justify-start hover:bg-background-ppg-strong w-full rounded-square! overflow-hidden"
     >
       <Action color="ppg" size="nav">
         <i className={link.icon} />
