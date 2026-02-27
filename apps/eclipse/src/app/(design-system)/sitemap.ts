@@ -22,11 +22,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   });
 
   return [
-    {
-      url: url('/'),
-      changeFrequency: 'monthly',
-      priority: 1,
-    },
     ...items.filter((v) => v !== undefined),
   ];
 }

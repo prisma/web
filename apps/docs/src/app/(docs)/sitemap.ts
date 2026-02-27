@@ -33,16 +33,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   });
 
   return [
-    {
-      url: url("/"),
-      changeFrequency: "monthly",
-      priority: 1,
-    },
-    {
-      url: url("/showcase"),
-      changeFrequency: "monthly",
-      priority: 0.8,
-    },
     ...items.filter((v) => v !== undefined),
     ...v6Items.filter((v) => v !== undefined),
   ];
