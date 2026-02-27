@@ -1,0 +1,167 @@
+---
+title: Pulumi
+description: Provision and manage Prisma Postgres with Pulumi using the Prisma Terraform provider bridge.
+metaTitle: Manage Prisma Postgres with Pulumi
+metaDescription: Provision and manage Prisma Postgres with Pulumi using the Prisma Terraform provider bridge.
+url: /postgres/iac/pulumi
+tocDepth: 3
+toc: true
+---
+
+Use [Pulumi](https://www.pulumi.com/) with the Prisma Postgres Terraform provider through the Pulumi Terraform bridge.
+
+This is the currently supported path for managing Prisma Postgres from Pulumi.
+
+## Conceptual model
+
+Pulumi lets you define infrastructure with a general-purpose language, but still deploys declaratively:
+
+- You write resource code in TypeScript.
+- Pulumi builds a dependency graph and previews changes (`pulumi preview`/`pulumi up`).
+- Stack state tracks what exists, including secret outputs.
+
+In this guide, Pulumi consumes the Prisma Terraform provider through a generated SDK, so you get typed resources while reusing the same provider capabilities.
+
+## When to use Pulumi
+
+Pulumi is a strong fit when:
+
+- You want infrastructure and application code in the same language.
+- You prefer typed APIs and IDE support over HCL.
+- You already use Pulumi stacks for environment management.
+
+## Prerequisites
+
+- [Pulumi CLI](https://www.pulumi.com/docs/iac/download-install/)
+- A Pulumi TypeScript project (create one with `pulumi new typescript`)
+- A Prisma service token (see [Management API authentication docs](/management-api/authentication#service-tokens))
+
+## 1. Optional: use Bun for dependency installs
+
+If you want Pulumi to use Bun in this project, set this in `Pulumi.yaml`:
+
+```yaml file=Pulumi.yaml
+runtime:
+  name: nodejs
+  options:
+    packagemanager: bun
+```
+
+## 2. Add the Prisma Postgres provider package
+
+From your Pulumi project directory, run:
+
+```bash
+pulumi package add terraform-provider registry.terraform.io/prisma/prisma-postgres 0.2.0
+```
+
+This command:
+
+- Generates a local SDK in `sdks/prisma-postgres`
+- Adds `packages.prisma-postgres` metadata to `Pulumi.yaml`
+- Adds `@pulumi/prisma-postgres` to `package.json` as a local file dependency
+
+### Alternative: local provider binary
+
+If you are developing the provider locally, you can also add it from a local binary path:
+
+```bash
+pulumi package add terraform-provider /absolute/path/to/terraform-provider-prisma-postgres
+```
+
+For most users, the registry form in step 2 is the recommended approach.
+
+## 3. Configure authentication
+
+Use one of these methods:
+
+### Option A: environment variable
+
+```bash
+export PRISMA_SERVICE_TOKEN="prsc_your_token_here"
+```
+
+### Option B: Pulumi config secret
+
+```bash
+pulumi config set prisma-postgres:serviceToken "prsc_your_token_here" --secret
+```
+
+## 4. Define resources in `index.ts`
+
+```ts file=index.ts
+import * as pulumi from "@pulumi/pulumi";
+import * as prismaPostgres from "@pulumi/prisma-postgres";
+
+const project = new prismaPostgres.Project("project", {
+  name: "my-app",
+});
+
+const database = new prismaPostgres.Database("database", {
+  projectId: project.id,
+  name: "production",
+  region: "us-east-1",
+});
+
+const connection = new prismaPostgres.Connection("connection", {
+  databaseId: database.id,
+  name: "api-key",
+});
+
+const availableRegions = prismaPostgres.getRegionsOutput().regions.apply((regions) =>
+  regions.filter((r) => r.status === "available").map((r) => `${r.id} (${r.name})`)
+);
+
+export const projectId = project.id;
+export const databaseId = database.id;
+export const connectionString = pulumi.secret(connection.connectionString);
+export const directUrl = pulumi.secret(database.directUrl);
+export const regions = availableRegions;
+```
+
+## 5. Deploy
+
+```bash
+pulumi up
+```
+
+To read secret outputs:
+
+```bash
+pulumi stack output connectionString --show-secrets
+pulumi stack output directUrl --show-secrets
+```
+
+## 6. Clean up
+
+```bash
+pulumi destroy
+```
+
+## Production notes
+
+- Store Pulumi state in a managed backend (Pulumi Cloud, S3-compatible backend, etc.).
+- Keep service tokens in Pulumi secrets/config or your secret manager, never in source files.
+- The generated SDK is a local dependency (`file:sdks/prisma-postgres`), so keep it available in CI/CD.
+- Pin the Terraform provider version in `pulumi package add` for reproducible deployments.
+
+## Common troubleshooting
+
+### Package add failed
+
+Confirm you're running the command inside a Pulumi project directory containing `Pulumi.yaml`.
+
+### Missing credentials
+
+If provider auth fails, verify either `PRISMA_SERVICE_TOKEN` is set or `prisma-postgres:serviceToken` is configured for the current stack.
+
+### SDK not found in CI
+
+If CI cannot resolve `@pulumi/prisma-postgres`, make sure `sdks/prisma-postgres` exists in the workspace or rerun `pulumi package add` during CI setup.
+
+## References
+
+- [Pulumi package add](https://www.pulumi.com/docs/iac/cli/commands/pulumi_package_add/)
+- [Using any Terraform provider in Pulumi](https://www.pulumi.com/docs/iac/concepts/providers/any-terraform-provider/)
+- [Prisma Postgres provider on Terraform Registry](https://registry.terraform.io/providers/prisma/prisma-postgres/latest)
+- [Prisma Postgres Terraform provider source](https://github.com/prisma/terraform-provider-prisma-postgres)
