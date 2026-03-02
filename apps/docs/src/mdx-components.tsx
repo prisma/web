@@ -62,10 +62,12 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     APIPage,
     Youtube,
     img: (props: any) => (
-      <ImageZoom {...(props as any)} src={withDocsBasePathForImageSrc((props as any).src)} />
+      <ImageZoom
+        {...(props as any)}
+        src={withDocsBasePathForImageSrc((props as any).src)}
+      />
     ),
     input: (props: any) => <Input {...props} />,
-    ...mdxComponents,
     pre: ({ ref: _ref, ...props }) => (
       <CodeBlock {...props}>
         <Pre>{props.children}</Pre>

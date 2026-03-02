@@ -39,7 +39,9 @@ const ContentSecurityPolicy = `
     https://kit.fontawesome.com
     https://raw.githubusercontent.com
     https://hcaptcha.com
-    https://*.hcaptcha.com;
+    https://*.hcaptcha.com
+    https://ka-f.fontawesome.com
+    https://ka-p.fontawesome.com;
 
   style-src 'self' 'unsafe-inline'
     https://fonts.googleapis.com
@@ -51,8 +53,10 @@ const ContentSecurityPolicy = `
 
   font-src 'self' data:
     https://fonts.gstatic.com
-    https://vercel.live https://assets.vercel.com
-    https://ka-f.fontawesome.com;
+    https://vercel.live
+    https://assets.vercel.com
+    https://ka-f.fontawesome.com
+    https://ka-p.fontawesome.com;
 
   img-src 'self' data:
     https://cdn.sanity.io
@@ -77,6 +81,7 @@ const ContentSecurityPolicy = `
     https://vercel.live https://vercel.com data: blob:
     https://td.doubleclick.net
     https://raw.githubusercontent.com;
+
   connect-src 'self'
     https://api.github.com
     https://p2zxqf70.api.sanity.io
@@ -122,7 +127,10 @@ const ContentSecurityPolicy = `
     https://unpkg.com
     https://proxy.kapa.ai
     https://hcaptcha.com
-    https://*.hcaptcha.com;
+    https://*.hcaptcha.com
+    https://kit.fontawesome.com
+    https://ka-f.fontawesome.com
+    https://ka-p.fontawesome.com;
 
   media-src 'self'
     https://*.prisma.io
@@ -147,7 +155,6 @@ const ContentSecurityPolicy = `
     https://ppg-pricing-calculator.vercel.app
     https://hcaptcha.com
     https://*.hcaptcha.com;
-
 
   child-src 'self'
     https://www.youtube.com
@@ -202,7 +209,6 @@ const allowedDevOrigins = (
 
 /** @type {import('next').NextConfig} */
 const config = {
-
   async redirects() {
     return [
       {
@@ -216,10 +222,10 @@ const config = {
   async rewrites() {
     return [
       {
-        source: '/:path*.mdx',
-        destination: '/llms.mdx/:path*',
+        source: "/:path*.mdx",
+        destination: "/llms.mdx/:path*",
       },
-    ]
+    ];
   },
   basePath: "/docs",
   assetPrefix: "/docs-static",
@@ -241,41 +247,15 @@ const config = {
 };
 
 export default withSentryConfig(withMDX(config), {
-  // For all available options, see:
-  // https://www.npmjs.com/package/@sentry/webpack-plugin#options
-
   org: "prisma-ch",
-
   project: "javascript-nextjs",
-
   authToken: process.env.SENTRY_AUTH_TOKEN,
   tunnelRoute: "/monitoring",
-
-  // Only print logs for uploading source maps in CI\
   silent: !process.env.CI,
-
-  // For all available options, see:
-  // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
-
-  // Upload a larger set of source maps for prettier stack traces (increases build time)
   widenClientFileUpload: true,
-
-  // Uncomment to route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
-  // This can increase your server load as well as your hosting bill.
-  // Note: Check that the configured route will not match with your Next.js middleware, otherwise reporting of client-
-  // side errors will fail.
-  // tunnelRoute: "/monitoring",
-
   webpack: {
-    // Enables automatic instrumentation of Vercel Cron Monitors. (Does not yet work with App Router route handlers.)
-    // See the following for more information:
-    // https://docs.sentry.io/product/crons/
-    // https://vercel.com/docs/cron-jobs
     automaticVercelMonitors: true,
-
-    // Tree-shaking options for reducing bundle size
     treeshake: {
-      // Automatically tree-shake Sentry logger statements to reduce bundle size
       removeDebugLogging: true,
     },
   },

@@ -2,6 +2,7 @@ import { Provider } from "@/components/provider";
 import Script from "next/script";
 import "./global.css";
 import { Inter, Barlow } from "next/font/google";
+import { FontAwesomeScript as EclipseFA } from "@prisma-docs/eclipse";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -16,8 +17,13 @@ const barlow = Barlow({
 
 export default function Layout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${inter.variable} ${barlow.variable}`} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${inter.variable} ${barlow.variable}`}
+      suppressHydrationWarning
+    >
       <head>
+        <Script src={EclipseFA} crossOrigin="anonymous" async />
         <Script
           src="https://widget.kapa.ai/kapa-widget.bundle.js"
           data-website-id="1b51bb03-43cc-4ef4-95f1-93288a91b560"

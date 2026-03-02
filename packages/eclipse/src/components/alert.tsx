@@ -5,7 +5,7 @@ import { CircleAlert } from "lucide-react";
 import { cn } from "../lib/cn";
 
 const alertVariants = cva(
-  "relative w-full rounded-md border px-4 py-4 text-sm [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground [&>svg]:w-5 [&>svg]:h-5 [&>*:not(svg)]:pl-7 alert-admonition",
+  "relative w-full rounded-md border p-4 gap-3 text-sm [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground [&>svg]:w-5 [&>svg]:h-5 alert-admonition flex items-start",
   {
     variants: {
       variant: {
@@ -32,7 +32,11 @@ type AlertProps = React.HTMLAttributes<HTMLDivElement> &
 const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
   ({ className, variant, icon, children, ...props }, ref) => {
     const IconComponent =
-      icon !== undefined ? icon : <CircleAlert className="h-4 w-4" />;
+      icon !== undefined ? (
+        icon
+      ) : (
+        <i className="fa-duotone fa-solid fa-circle-exclamation mt-1"></i>
+      );
 
     return (
       <div
