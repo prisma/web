@@ -17,7 +17,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.BOT_TOKEN_DOCS_COMMIT }}
+          persist-credentials: false
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -42,13 +42,13 @@ jobs:
       - name: Check for changes
         id: changes
         run: |
-          if git diff --quiet apps/docs/content/docs/management-api/; then
+          if [[ -z "$(git status --porcelain --untracked-files=all -- apps/docs/content/docs/management-api/)" ]]; then
             echo "changed=false" >> $GITHUB_OUTPUT
             echo "No MDX changes detected"
           else
             echo "changed=true" >> $GITHUB_OUTPUT
             echo "MDX changes detected:"
-            git diff --stat apps/docs/content/docs/management-api/
+            git status --short -- apps/docs/content/docs/management-api/
           fi
 
       - name: Commit and push
@@ -58,7 +58,7 @@ jobs:
           git config user.name "Prismo"
           git add apps/docs/content/docs/management-api/
           git commit -m "chore(docs): sync management API documentation"
-          git push
+          git push "https://x-access-token:${{ secrets.BOT_TOKEN_DOCS_COMMIT }}@github.com/${{ github.repository }}.git" HEAD:${{ github.ref_name }}
 
       - name: Trigger Vercel deploy
         run: curl --fail -X POST "${{ secrets.VERCEL_DEPLOY_HOOK_URL }}"
