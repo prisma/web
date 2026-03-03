@@ -133,11 +133,6 @@ const footerItems = [
         //tag: "We're hiring"
       },
       {
-        _type: "footerLinkType",
-        title: "Security & Compliance",
-        url: "https://trust.prisma.io/",
-      },
-      {
         _type: "footerDropdownType",
         title: "Legal",
         links: [
@@ -156,6 +151,10 @@ const footerItems = [
           {
             title: "Event Code of Conduct",
             url: "/event-code-of-conduct",
+          },
+          {
+            title: "Security & Compliance",
+            url: "https://trust.prisma.io/",
           },
         ],
       },

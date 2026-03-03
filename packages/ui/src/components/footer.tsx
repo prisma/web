@@ -69,14 +69,14 @@ const Footer = ({
     <footer className="bg-background-default w-screen overflow-x-hidden overflow-y-visible max-w-full">
       <div
         className={clsx(
-          "px-2.5 pt-[72px] pb-6 md:px-6 md:pt-[46px] md:pb-[100px] max-w-[1288px] mx-auto",
+          "px-2.5 pt-[72px] pb-8 md:px-6 md:pt-[46px] md:pb-[100px] max-w-[1288px] mx-auto",
           darker && "bg-[#090A15]",
         )}
         style={style}
       >
         <div className="font-inter print:hidden relative">
           {/* Logo and Social Links Column */}
-          <div className="mb-12 flex-1 lg:mb-0 absolute w-full top-0 flex justify-between items-center lg:flex-col lg:items-start lg:absolute max-w-fit lg:h-72">
+          <div className="mb-8 flex-1 lg:mb-0 w-full top-0 flex justify-between items-center lg:flex-col lg:items-start lg:absolute lg:max-w-fit lg:h-72">
             <div className="flex flex-col justify-center">
               <div className="text-stroke-neutral-stronger [&>svg]:h-10!">
                 {Logo}
@@ -104,11 +104,11 @@ const Footer = ({
             </div>
           </div>
           {/* Main Grid Row */}
-          <div className="grid grid-cols-[repeat(4,auto)] gap-12 relative w-fit ml-auto">
+          <div className="grid grid-cols-[repeat(4,auto)] lg:gap-8 xl:gap-12 relative lg:w-fit ml-auto">
             {/* Footer Columns */}
             {footerData.footerItems.map((footerItem: any, idx: number) => (
               <div
-                className="mb-12 flex-1 lg:mb-0 lg:px-2 min-w-40"
+                className="flex-1 lg:mb-0 lg:px-2 min-w-40"
                 key={`footer-${idx}`}
               >
                 <span className="uppercase  font-mona-sans inline-block font-bold text-base text-foreground-neutral tracking-[0.1em] mt-0 mb-4 lg:mb-3">
@@ -156,11 +156,11 @@ const Footer = ({
               </div>
             ))}
           </div>
-          <div className="h-px w-full bg-stroke-neutral-weak my-4 hidden md:block md:my-6" />
+          <div className="h-px w-full bg-stroke-neutral-weak my-6" />
           {/* Compliance Footer */}
-          <div className="gap-6 md:items-center justify-between md:flex w-full">
+          <div className="gap-6 md:items-center justify-between flex w-full md:pb-0 pb-10.5">
             <PDPStatus className="justify-start" />
-            <div className="max-w-78 flex justify-between w-full items-center">
+            <div className="md:max-w-78 flex justify-between w-full items-center absolute md:relative bottom-0 left-0">
               <a
                 href="https://trust.prisma.io/"
                 target="__blank"
