@@ -141,11 +141,7 @@ const Footer = ({
                             >
                               <a
                                 href={dropLink.url}
-                              <a
-                                href={dropLink.url}
                                 target="_blank"
-                                className="text-left capitalize text-foreground-neutral-weak text-md font-semibold"
-                              >
                                 className="text-left capitalize text-foreground-neutral-weak text-md font-semibold"
                               >
                                 {dropLink.title}
