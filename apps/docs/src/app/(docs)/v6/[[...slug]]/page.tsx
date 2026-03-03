@@ -52,7 +52,7 @@ export default async function Page({
           <div className="flex flex-row gap-2 items-center">
             <LLMCopyButton markdownUrl={`${withDocsBasePath(page.url)}.mdx`} />
             <ViewOptions
-              markdownUrl={page.url}
+              markdownUrl={`${withDocsBasePath(page.url)}.mdx`}
               githubUrl={`https://github.com/prisma/docs/blob/main/apps/docs/content/docs.v6/${page.path}`}
             />
           </div>
