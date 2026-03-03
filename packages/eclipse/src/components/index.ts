@@ -6,6 +6,7 @@ export {
   ChartLegendContent,
   ChartStyle,
 } from "./chart";
+export type { ChartConfig } from "./chart";
 
 export { Accordion, Accordions } from "./accordion";
 
