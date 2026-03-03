@@ -8,7 +8,7 @@ metaDescription: Learn how to analyze Prisma migration SQL files with pgfence to
 
 ## Introduction
 
-[pgfence](https://pgfence.dev) is a PostgreSQL migration safety CLI that analyzes SQL migration files and reports lock modes, risk levels, and safe rewrite recipes. It uses PostgreSQL's actual parser ([libpg-query](https://github.com/pganalyze/libpg-query-node)) to understand exactly what each DDL statement does, what locks it acquires, and what it blocks.
+[pgfence](https://pgfence.com) is a PostgreSQL migration safety CLI that analyzes SQL migration files and reports lock modes, risk levels, and safe rewrite recipes. It uses PostgreSQL's actual parser ([libpg-query](https://github.com/pganalyze/libpg-query-node)) to understand exactly what each DDL statement does, what locks it acquires, and what it blocks.
 
 Prisma Migrate generates plain SQL files at `prisma/migrations/*/migration.sql`. pgfence can analyze those files directly, catching dangerous patterns before they reach production.
 
@@ -32,7 +32,7 @@ For each dangerous pattern, pgfence provides the exact safe alternative -- the e
 Add pgfence as a development dependency in your project:
 
 ```npm
-npm install -D @flvmnt/pgfence@0.2.1
+npm install -D @flvmnt/pgfence@0.2.3
 ```
 
 ## 2. Analyze your migrations locally
@@ -40,7 +40,7 @@ npm install -D @flvmnt/pgfence@0.2.1
 Run pgfence against your Prisma migration files:
 
 ```bash
-npx --yes @flvmnt/pgfence@0.2.1 analyze prisma/migrations/**/migration.sql
+npx --yes @flvmnt/pgfence@0.2.3 analyze prisma/migrations/**/migration.sql
 ```
 
 pgfence parses every SQL statement and reports the lock mode, risk level, and any safe rewrites available.
@@ -64,7 +64,7 @@ CREATE INDEX "User_email_idx" ON "User"("email");
 ```
 
 ```bash
-npx --yes @flvmnt/pgfence@0.2.1 analyze prisma/migrations/20240115_add_index/migration.sql
+npx --yes @flvmnt/pgfence@0.2.3 analyze prisma/migrations/20240115_add_index/migration.sql
 ```
 
 pgfence will flag this as a `MEDIUM` risk because `CREATE INDEX` takes a `SHARE` lock, which blocks all writes to the table for the duration of the index build. It will suggest using `CREATE INDEX CONCURRENTLY` instead.
@@ -78,13 +78,13 @@ Prisma Migrate does not generate `CONCURRENTLY` variants automatically. If pgfen
 pgfence supports JSON output, which is useful for integrating with other tools or scripts:
 
 ```bash
-npx --yes @flvmnt/pgfence@0.2.1 analyze --output json prisma/migrations/**/migration.sql
+npx --yes @flvmnt/pgfence@0.2.3 analyze --output json prisma/migrations/**/migration.sql
 ```
 
 You can also set a maximum risk threshold for CI pipelines. The command exits with code 1 if any statement exceeds the threshold:
 
 ```bash
-npx --yes @flvmnt/pgfence@0.2.1 analyze --ci --max-risk medium prisma/migrations/**/migration.sql
+npx --yes @flvmnt/pgfence@0.2.3 analyze --ci --max-risk medium prisma/migrations/**/migration.sql
 ```
 
 ## 4. Add pgfence to your CI pipeline
@@ -119,7 +119,7 @@ jobs:
       - name: Run pgfence analysis
         run: |
           shopt -s globstar
-          npx --yes @flvmnt/pgfence@0.2.1 analyze --ci --max-risk medium prisma/migrations/**/migration.sql
+          npx --yes @flvmnt/pgfence@0.2.3 analyze --ci --max-risk medium prisma/migrations/**/migration.sql
 ```
 
 This workflow only triggers when migration files change. If pgfence detects any statement with risk higher than `MEDIUM`, the check fails and blocks the pull request from merging.
@@ -136,7 +136,7 @@ If you have an existing deployment workflow, add pgfence as a step before `prism
 - name: Run pgfence migration safety check
   run: |
     shopt -s globstar
-    npx --yes @flvmnt/pgfence@0.2.1 analyze --ci --max-risk medium prisma/migrations/**/migration.sql
+    npx --yes @flvmnt/pgfence@0.2.3 analyze --ci --max-risk medium prisma/migrations/**/migration.sql
 
 - name: Apply pending migrations
   run: npx prisma migrate deploy
@@ -151,10 +151,10 @@ pgfence can adjust risk levels based on actual table sizes. A `CREATE INDEX` on 
 To use size-aware scoring without giving pgfence direct database access, export a stats snapshot from your database and pass it to pgfence:
 
 ```bash
-npx --yes @flvmnt/pgfence@0.2.1 analyze --stats-file pgfence-stats.json prisma/migrations/**/migration.sql
+npx --yes @flvmnt/pgfence@0.2.3 analyze --stats-file pgfence-stats.json prisma/migrations/**/migration.sql
 ```
 
-The stats file contains row counts and table sizes from `pg_stat_user_tables`. Run `npx --yes @flvmnt/pgfence@0.2.1 extract-stats --db-url <connection-string>` to generate this file, or see the [pgfence README](https://github.com/flvmnt/pgfence#db-size-aware-risk-scoring) for details.
+The stats file contains row counts and table sizes from `pg_stat_user_tables`. Run `npx --yes @flvmnt/pgfence@0.2.3 extract-stats --db-url <connection-string>` to generate this file, or see the [pgfence README](https://github.com/flvmnt/pgfence#db-size-aware-risk-scoring) for details.
 
 ## Next steps
 
