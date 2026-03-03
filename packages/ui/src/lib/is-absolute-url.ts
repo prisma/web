@@ -4,5 +4,5 @@ export const getRedirectableLink = (link: string, absoluteLinks: boolean) =>
   isAbsoluteUrl(link)
     ? link
     : absoluteLinks
-      ? `https://www.prisma.io/${link}`
+      ? `https://www.prisma.io/${link.replace(/^\/+/, "")}`
       : link;
