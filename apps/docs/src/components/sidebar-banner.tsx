@@ -82,13 +82,17 @@ export function SidebarBannerCarousel({ slides, interval = 5000 }: SidebarBanner
       >
         <div
           className={cn(
-            "relative flex items-center justify-center h-24 overflow-hidden",
+            "relative flex items-center justify-center aspect-video overflow-hidden",
             !slide.image && (slide.gradient === "ppg" ? "bg-gradient-ppg" : "bg-gradient-orm"),
           )}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           {slide.image ? (
-            <img src={`/docs${slide.image}`} alt="" className="absolute inset-0 size-full object-cover" />
+            <img
+              src={slide.image.startsWith("http") ? slide.image : `/docs${slide.image}`}
+              alt=""
+              className="absolute inset-0 size-full object-cover"
+            />
           ) : (
             <svg
               viewBox="0 0 28 37"
