@@ -1,3 +1,12 @@
+export {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
+  ChartStyle,
+} from "./chart";
+
 export { Accordion, Accordions } from "./accordion";
 
 export { Action, actionVariants } from "./action";
