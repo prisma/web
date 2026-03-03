@@ -158,7 +158,7 @@ const Footer = ({
           </div>
           <div className="h-px w-full bg-stroke-neutral-weak my-4 hidden md:block md:my-6" />
           {/* Compliance Footer */}
-          <div className="flex justify-between flex-col-reverse items-start gap-6 md:items-center md:grid md:grid-cols-3 w-full">
+          <div className="gap-6 md:items-center justify-between md:flex w-full">
             <PDPStatus className="justify-start" />
             <div className="max-w-78 flex justify-between w-full items-center">
               <a
@@ -194,7 +194,7 @@ const Footer = ({
                 {soc2}
               </a>
             </div>
-            <ThemeToggle mode="light-dark" className="ml-auto" />
+            <ThemeToggle mode="light-dark-system" className="w-fit" />
           </div>
         </div>
       </div>

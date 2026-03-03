@@ -35,18 +35,18 @@ const PDPStatus = ({ className }: { className?: string }) => {
   return (
     <a
       className={cn(
-        "flex items-center justify-center no-underline text-xs font-inter",
+        "flex items-start justify-center no-underline text-sm font-inter",
         indicatorClass,
         className,
       )}
       href="https://www.prisma-status.com/"
     >
-      <div className="w-3 h-3 rounded-full mr-2" />
+      <div className="w-3 h-3 rounded-full mr-1 mt-1" />
       <span>
-        <b className="text-foreground-neutral-weak">Platform Status:</b>
-        <span className="underline ml-2 font-family-mono">
+        <b className="text-foreground-neutral-weak mb-1">Platform Status:</b>
+        <p className="underline font-family-mono my-0 text-xs">
           {pdpStatus.status.description}
-        </span>
+        </p>
       </span>
     </a>
   );
