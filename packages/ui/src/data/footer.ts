@@ -194,4 +194,5 @@ const footerData = {
   socialIcons,
 };
 
+export { footerItems, socialIcons };
 export default footerData;

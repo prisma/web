@@ -1,11 +1,21 @@
-import { notFound } from 'next/navigation';
-import Link from 'next/link';
-import { InlineTOC } from 'fumadocs-ui/components/inline-toc';
-import { getMDXComponents } from '@/mdx-components';
-import { createRelativeLink } from 'fumadocs-ui/mdx';
-import { blog } from '@/lib/source';
-import Image from 'next/image';
-import { withBlogBasePathForImageSrc } from '@/lib/url';
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import { getMDXComponents } from "@/mdx-components";
+import { createRelativeLink } from "fumadocs-ui/mdx";
+import { blog } from "@/lib/source";
+import {
+  Action,
+  Avatar,
+  Badge,
+  Button,
+  cn,
+  InlineTOC,
+  Input,
+  Label,
+  Separator,
+} from "@prisma-docs/eclipse";
+import { socialIcons } from "@prisma-docs/ui/data/footer";
+
 export default async function Page(props: {
   params: Promise<{ slug: string }>;
 }) {
@@ -16,104 +26,151 @@ export default async function Page(props: {
   const MDX = page.data.body;
   const formatDate = (value: unknown) => {
     const date =
-      value instanceof Date ? value : new Date((value as string) ?? '');
-    if (Number.isNaN(date.getTime())) return '';
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+      value instanceof Date ? value : new Date((value as string) ?? "");
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   };
-  const getHeroImageSrc = () => {
-    const data = page.data as any;
-    const rel =
-      (data.heroImagePath as string | undefined) ??
-      (data.metaImagePath as string | undefined);
-    if (rel) {
-      if (rel.startsWith('/')) return rel;
-      const base = page.url.startsWith('/') ? page.url : `/${page.url}`;
-      const baseClean = base.endsWith('/') ? base.slice(0, -1) : base;
-      const relClean = rel.replace(/^\.\//, '').replace(/^\/+/, '');
-      return `${baseClean}/${relClean}`;
-    }
-    const absolute =
-      (data.heroImageUrl as string | undefined) ??
-      (data.metaImageUrl as string | undefined);
-    return absolute ?? null;
-  };
-  const heroSrc = getHeroImageSrc();
 
   return (
-    <>
-      {/* Hero image */}
-      {heroSrc ? (
-        <div className="w-full">
-          <div className="relative w-full aspect-video">
-            <Image
-              src={withBlogBasePathForImageSrc(heroSrc)}
-              alt={(page.data as any).heroImageAlt ?? page.data.title}
-              fill
-              priority
-              className="object-cover"
-              sizes="100vw"
+    <div className="w-full px-4 mx-auto md:grid md:grid-cols-[1fr_180px] mt-4 md:mt-22 gap-6 max-w-257">
+      <div className="post-contents w-full">
+        {/* Title + meta */}
+        <header className="w-full relative">
+          <Link
+            href="/blog"
+            className="text-fd-primary hover:underline text-sm absolute -top-8"
+          >
+            ← Back to Blog
+          </Link>
+          <h1 className="mt-3 mb-8 font-bold max-md:text-3xl md:text-5xl   stretch-display font-display text-foreground-neutral">
+            {page.data.title}
+          </h1>
+          <div className="text-sm text-fd-muted-foreground flex gap-2 items-center text-foreground-neutral mb-4">
+            {page.data.authors?.length > 1 ? (
+              page.data.authors.join(", ")
+            ) : page.data.authors.length === 1 ? (
+              <span className="mt-auto flex items-center gap-2 font-semibold text-sm">
+                {page.data?.authorSrc && (
+                  <Avatar
+                    format="image"
+                    src="/avatar.jpg"
+                    alt="Disabled user"
+                    size="lg"
+                    disabled
+                  />
+                )}
+                <span>{page.data.authors[0]}</span>
+              </span>
+            ) : null}
+            {page.data.date ? (
+              <>
+                <Separator orientation="vertical" className="h-4" />
+                <span className="text-foreground-neutral-weak">
+                  {formatDate(page.data.date)}
+                </span>
+              </>
+            ) : null}
+          </div>
+          <div className="filter-badge flex gap-2">
+            <Badge
+              color="neutral"
+              label="Release"
+              className="border border-stroke-neutral-strong bg-transparent text-foreground-neutral-weak"
+            />
+            <Badge
+              color="neutral"
+              label="Postgres"
+              className="border border-stroke-neutral-strong bg-transparent text-foreground-neutral-weak"
+            />
+            <Badge
+              color="neutral"
+              label="ORM"
+              className="border border-stroke-neutral-strong bg-transparent text-foreground-neutral-weak"
+            />
+            <Badge
+              color="neutral"
+              label="Customer Story"
+              className="border border-stroke-neutral-strong bg-transparent text-foreground-neutral-weak"
             />
           </div>
+        </header>
+
+        {/* Body */}
+        <article className="w-full flex flex-col pb-8 mt-12">
+          <div className="prose min-w-0 [&_figure]:w-full! [&_figure]:md:max-w-140! [&_figure]:lg:max-w-200!">
+            <MDX
+              components={getMDXComponents({
+                a: createRelativeLink(blog, page),
+              })}
+            />
+          </div>
+        </article>
+        <Separator className="my-12" />
+
+        {/* Share Container */}
+        <div className="w-fit mx-auto">
+          <h5 className="text-center mb-4 font-semibold text-background-default-reverse">
+            Share this article
+          </h5>
+          <div className="flex justify-start gap-2 md:max-w-[190px]">
+            {socialIcons.map((socialLink: any, idx: number) => (
+              <a
+                href={socialLink.url}
+                target="_blank"
+                rel="noopener"
+                key={idx}
+                aria-label={socialLink.title}
+                className={cn(
+                  "text-[1.375rem] transition-colors hover:[&>div]:bg-background-ppg-strong",
+                )}
+              >
+                <Action color="neutral" size="2xl">
+                  <i
+                    className={`fa-brands fa-${socialLink.icon} text-current text-foreground-neutral-weak transition-colors`}
+                  />
+                </Action>
+              </a>
+            ))}
+          </div>
         </div>
-      ) : null}
 
-      {/* Title + meta */}
-      <header className="w-full max-w-350 mx-auto px-4 md:px-8 py-10">
-        <Link href="/" className="text-fd-primary hover:underline text-sm">
-          ← Back to Blog
-        </Link>
-        <h1 className="mt-3 mb-3 text-3xl md:text-4xl font-bold">
-          {page.data.title}
-        </h1>
-        {page.data.description ? (
-          <p className="text-fd-muted-foreground mb-3">{page.data.description}</p>
-        ) : null}
-        <p className="text-sm text-fd-muted-foreground">
-          {page.data.authors?.length ? page.data.authors.join(', ') : null}
-          {page.data.date ? (
-            <>
-              {' • '}
-              <span>{formatDate(page.data.date)}</span>
-            </>
-          ) : null}
-        </p>
-      </header>
-
-      {/* Body */}
-      <article className="w-full max-w-350 mx-auto flex flex-col px-4 md:px-8 pb-12">
-        <div className="prose min-w-0">
-          <InlineTOC items={page.data.toc} />
-          <MDX
-            components={getMDXComponents({
-              a: createRelativeLink(blog, page)
-            })}
-          />
-        </div>
-      </article>
-
-      {/* Newsletter CTA */}
-      <div className="w-full max-w-350 mx-auto px-4 md:px-8 pb-16">
-        <div className="rounded-2xl border border-fd-primary/20 bg-fd-secondary p-6 md:p-8">
-          <h4 className="text-2xl font-semibold mb-2">
-            Don’t miss the next post!
-          </h4>
-          <p className="text-fd-muted mb-4">
-            Sign up for the Prisma Newsletter to stay up to date with the latest
-            releases and posts.
-          </p>
-          <Link
-            href="https://www.prisma.io/newsletter"
-            className="inline-flex items-center px-4 py-2 rounded-md bg-fd-primary text-white hover:opacity-90 transition"
-          >
-            Sign up
-          </Link>
+        {/* Newsletter CTA */}
+        <div className="w-full px-8 py-12 shadow-box-low newsletter-bg rounded-square border border-background-neutral flex max-sm:flex-col wrap items-start gap-4 sm:items-center justify-between my-12">
+          <h5 className="font-family-sans font-[650] text-white w-fit">
+            Subscribe to our newsletter
+          </h5>
+          <div className="input flex items-center gap-2 justify-center">
+            <Input
+              type="email"
+              id="newsletter"
+              size="2xl"
+              placeholder="email@example.com"
+              className="w-62"
+            />
+            <Button
+              size="xl"
+              variant="ppg"
+              type="submit"
+              className="whitespace-nowrap font-semibold"
+            >
+              Subscribe
+            </Button>
+          </div>
         </div>
       </div>
-    </>
+      <div className="max-md:hidden toc">
+        <div className="sticky top-24 [&_a[data-state=inactive]]:text-foreground-neutral-weak! [&_a[data-state=active]]:text-foreground-neutral!">
+          <span className="text-shadow-foreground-neutral-reverse font-semibold text-md mb-4 mt-0 block">
+            On this page
+          </span>
+          <InlineTOC items={page.data.toc} className="px-0" />
+        </div>
+      </div>
+    </div>
   );
 }
 
