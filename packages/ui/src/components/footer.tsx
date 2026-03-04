@@ -69,7 +69,7 @@ const Footer = ({
     <footer className="bg-background-default w-screen overflow-x-hidden overflow-y-visible max-w-full">
       <div
         className={clsx(
-          "px-2.5 pt-[72px] pb-8 md:px-6 md:pt-[46px] md:pb-[100px] max-w-[1288px] mx-auto",
+          "px-8 pt-[72px] pb-8 md:px-6 md:pt-[46px] md:pb-[100px] max-w-[1288px] mx-auto",
           darker && "bg-[#090A15]",
         )}
         style={style}
@@ -104,14 +104,14 @@ const Footer = ({
             </div>
           </div>
           {/* Main Grid Row */}
-          <div className="grid grid-cols-[repeat(4,auto)] lg:gap-8 xl:gap-12 relative lg:w-fit ml-auto">
+          <div className="grid max-sm:gap-8 max-sm:grid-cols-2 grid-cols-[repeat(4,auto)] lg:gap-8 xl:gap-12 relative lg:w-fit ml-auto">
             {/* Footer Columns */}
             {footerData.footerItems.map((footerItem: any, idx: number) => (
               <div
                 className="flex-1 lg:mb-0 lg:px-2 min-w-40"
                 key={`footer-${idx}`}
               >
-                <span className="uppercase  font-mona-sans inline-block font-bold text-base text-foreground-neutral tracking-[0.1em] mt-0 mb-4 lg:mb-3">
+                <span className="uppercase stretch-display font-mona-sans inline-block font-bold text-base text-foreground-neutral tracking-[0.1em] mt-0 mb-2.5 lg:mb-3">
                   {footerItem.title}
                 </span>
                 {footerItem.links.map((link: any, idx: number) =>
@@ -127,7 +127,7 @@ const Footer = ({
                   ) : (
                     <DropdownMenu key={idx}>
                       <DropdownMenuTrigger className="focus-visible:outline-none">
-                        <span className="text-foreground-neutral-weak text-lg flex cursor-pointer font-medium box-border no-underline leading-[1.39] px-2.5 -ml-2.5 py-1.5 transition-colors relative w-max items-center hover:bg-background-ppg-strong rounded-square transition-all">
+                        <span className="text-foreground-neutral-weak text-lg flex cursor-pointer font-medium box-border no-underline leading-[1.39] px-8 -ml-8 py-1.5 transition-colors relative w-max items-center hover:bg-background-ppg-strong rounded-square transition-all">
                           {link.title}
                           <i className="fa-regular fa-chevron-down text-foreground-neutral-weaker ml-2 text-base text-inherit" />
                         </span>
@@ -158,7 +158,7 @@ const Footer = ({
           </div>
           <div className="h-px w-full bg-stroke-neutral-weak my-6" />
           {/* Compliance Footer */}
-          <div className="gap-6 md:items-center justify-between flex w-full md:pb-0 pb-10.5">
+          <div className="gap-6 md:items-center justify-between flex w-full md:pb-0 pb-11">
             <PDPStatus className="justify-start" />
             <div className="md:max-w-78 flex justify-between w-full items-center absolute md:relative bottom-0 left-0">
               <a
