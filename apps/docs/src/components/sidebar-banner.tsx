@@ -63,33 +63,33 @@ export function SidebarBannerCarousel({ slides }: SidebarBannerCarouselProps) {
   return (
     <div
       className="relative"
-      style={{ paddingBottom: peekCount * 6 }}
+      style={{ paddingTop: peekCount * 6 }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
       <div
         className="relative transition-transform duration-300 ease-out"
-        style={{ transform: hovered ? "translateY(-8px)" : "translateY(0)" }}
+        style={{ transform: hovered ? "translateY(8px)" : "translateY(0)" }}
       >
-        {/* Ghost/peek cards behind */}
+        {/* Ghost/peek cards behind — stacked upward */}
         {visibleSlides
           .slice(1, 4)
           .reverse()
           .map((_, reversedIdx) => {
             const i = Math.min(peekCount, 3) - reversedIdx;
-            const offset = hovered ? i * 8 : i * 5;
+            const offset = hovered ? -(i * 8) : -(i * 5);
             const scale = 1 - i * 0.02;
             const opacity = Math.max(0.15, 0.6 - i * 0.15);
             return (
               <div
                 key={`peek-${i}`}
-                className="absolute inset-x-0 top-0 rounded-high border border-stroke-neutral bg-background-default shadow-drop-low"
+                className="absolute inset-x-0 bottom-0 rounded-high border border-stroke-neutral bg-background-default shadow-drop-low"
                 aria-hidden
                 style={{
                   height: "100%",
                   transform: `translateY(${offset}px) scale(${scale})`,
                   opacity,
-                  transformOrigin: "top center",
+                  transformOrigin: "bottom center",
                   transition: "transform 0.3s ease, opacity 0.3s ease",
                   zIndex: -i,
                 }}
