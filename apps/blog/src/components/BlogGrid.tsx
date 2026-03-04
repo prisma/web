@@ -1,12 +1,10 @@
-'use client';
+"use client";
 
-import { useMemo } from 'react';
-import Image from 'next/image';
-import Link from 'next/link';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Button } from '@prisma-docs/eclipse';
-import { withBlogBasePathForImageSrc } from '@/lib/url';
-
+import { useMemo } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Avatar, Badge, Button, Card } from "@prisma-docs/eclipse";
 
 type BlogCardItem = {
   url: string;
@@ -14,13 +12,15 @@ type BlogCardItem = {
   date: string; // ISO string
   description?: string | null;
   author?: string | null;
+  authorSrc?: string | null;
   imageSrc?: string | null;
   imageAlt?: string | null;
   seriesTitle?: string | null;
+  badge?: string | null;
 };
 
 function parsePage(value: string | null): number {
-  const n = parseInt(value ?? '1', 10);
+  const n = parseInt(value ?? "1", 10);
   return Number.isNaN(n) || n < 1 ? 1 : n;
 }
 
@@ -35,86 +35,96 @@ export function BlogGrid({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const rawPage = useMemo(
-    () => parsePage(searchParams.get('page')),
+    () => parsePage(searchParams.get("page")),
     [searchParams],
   );
   const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
   const currentPage = Math.min(rawPage, totalPages);
 
   const visibleItems = useMemo(
-    () =>
-      items.slice(
-        (currentPage - 1) * pageSize,
-        currentPage * pageSize,
-      ),
+    () => items.slice((currentPage - 1) * pageSize, currentPage * pageSize),
     [items, currentPage, pageSize],
   );
 
   const setPage = (newPage: number) => {
     const params = new URLSearchParams(searchParams.toString());
     if (newPage <= 1) {
-      params.delete('page');
+      params.delete("page");
     } else {
-      params.set('page', String(newPage));
+      params.set("page", String(newPage));
     }
     const query = params.toString();
     router.replace(query ? `${pathname}?${query}` : pathname);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const formatDate = (iso: string) => {
-    if (!iso) return '';
+    if (!iso) return "";
     const date = new Date(iso);
-    if (Number.isNaN(date.getTime())) return '';
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   };
 
   return (
     <>
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 mt-12 grid-cols-1">
         {visibleItems.map((post) => (
           <Link
             key={post.url}
             href={post.url}
-            className="group block rounded-2xl border border-fd-primary/20 hover:border-fd-primary/40 transition-colors shadow-md overflow-hidden bg-fd-secondary"
+            className="grid sm:grid-cols-[1fr_384px] overflow-hidden border-b pb-4 sm:pb-6 border-stroke-neutral"
           >
-            {post.imageSrc ? (
-              <div className="relative w-full aspect-video overflow-hidden">
-                <Image
-                  src={withBlogBasePathForImageSrc(post.imageSrc)}
-                  alt={post.imageAlt ?? post.title}
-                  fill
-                  sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
-                  className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-                  priority={false}
-                />
+            <div className="grid grid-rows-[1fr_auto]">
+              <div className="">
+                <div className="eyebrow flex gap-2 items-center">
+                  {post.badge && (
+                    <Badge color="success" label="Release" className="w-min" />
+                  )}
+                  {post.date && (
+                    <span className="text-xs text-foreground-neutral-weak">
+                      {formatDate(post.date)}
+                    </span>
+                  )}
+                </div>
+                {post.title && (
+                  <h2 className="text-2xl text-foreground-neutral font-[650] sm:font-bold font-mona-sans mt-4 mb-2">
+                    {post.title}
+                  </h2>
+                )}
+                {post.description && (
+                  <p className="text-sm text-foreground-neutral-weak">
+                    {post.description}
+                  </p>
+                )}
               </div>
-            ) : null}
-
-            <div className="p-6">
-              <h2 className="text-2xl font-semibold mb-2">{post.title}</h2>
-              <p className="text-sm text-fd-muted mb-2">
-                {formatDate(post.date)}
-                {post.author ? (
-                  <>
-                    {' • '}
-                    <span className="text-fd-foreground/80">{post.author}</span>
-                  </>
-                ) : null}
-              </p>
-              {post.description ? (
-                <p className="mb-5 text-fd-foreground/90">{post.description}</p>
-              ) : null}
-
-              {post.seriesTitle ? (
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-fd-primary/10 text-fd-primary">
-                  {post.seriesTitle}
-                </span>
-              ) : null}
+              {post.author && (
+                <div className="mt-auto hidden sm:flex items-center gap-2 font-semibold text-sm">
+                  {post?.authorSrc && (
+                    <Avatar
+                      format="image"
+                      src="/avatar.jpg"
+                      alt="Disabled user"
+                      size="lg"
+                      disabled
+                    />
+                  )}
+                  <span>{post.author}</span>
+                </div>
+              )}
+            </div>
+            <div className="relative max-w-96 h-54 w-full hidden sm:block">
+              <Image
+                src={post.imageSrc}
+                alt={post.imageAlt ?? post.title}
+                fill
+                sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
+                className="rounded-square w-full h-auto object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                priority={false}
+              />
             </div>
           </Link>
         ))}
@@ -149,4 +159,3 @@ export function BlogGrid({
     </>
   );
 }
-
