@@ -50,10 +50,12 @@ export function SidebarBannerCarousel({ slides }: SidebarBannerCarouselProps) {
     e.stopPropagation();
     setDismissingHref(href);
     setTimeout(() => {
-      const next = new Set(dismissedIds);
-      next.add(href);
-      setDismissedIds(next);
-      localStorage.setItem(DISMISSED_KEY, JSON.stringify([...next]));
+      setDismissedIds((prev) => {
+        const next = new Set(prev);
+        next.add(href);
+        localStorage.setItem(DISMISSED_KEY, JSON.stringify([...next]));
+        return next;
+      });
       setDismissingHref(null);
     }, 300);
   }
