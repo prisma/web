@@ -1,5 +1,5 @@
 "use client";
-import { Button } from "@base-ui/react";
+import { withBlogBasePath } from "@/lib/url";import { Button } from "@base-ui/react";
 import { useDocsSearch } from "fumadocs-core/search/client";
 import {
   SearchDialog,
@@ -25,7 +25,8 @@ declare global {
 
 export default function CustomSearchDialog(props: SharedProps) {
   const { search, setSearch, query } = useDocsSearch({
-    type: "static",
+    type: "fetch",
+    api: withBlogBasePath('/api/search'),
   });
 
   const handleAskAI = () => {
