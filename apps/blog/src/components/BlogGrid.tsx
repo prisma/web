@@ -302,13 +302,13 @@ export function BlogGrid({
         {uniqueTags.map((category: string, idx: number) => (
           <Badge
             color={currentCat === category ? "ppg" : "neutral"}
-              onClick={() => {
-                const nextCategory =
-                  category === "show-all" || currentCat === category
-                    ? "show-all"
-                    : category;
-                setCategory(nextCategory);
-              }}
+            onClick={() => {
+              const nextCategory =
+                category === "show-all" || currentCat === category
+                  ? "show-all"
+                  : category;
+              setCategory(nextCategory);
+            }}
             className="cursor-pointer"
             label={formatTag(category)}
             key={idx}
