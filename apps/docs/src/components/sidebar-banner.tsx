@@ -167,6 +167,8 @@ export function SidebarBannerCarousel({ slides }: SidebarBannerCarouselProps) {
         >
           <Link
             href={front.href}
+            target="_blank"
+            rel="noopener noreferrer"
             className={cn(
               "text-xs font-medium transition-colors",
               front.gradient === "ppg"

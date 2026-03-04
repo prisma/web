@@ -12,25 +12,11 @@ import { cn } from "@prisma-docs/ui/lib/cn";
 // Sidebar announcement slides — set to [] to hide the banner
 const SIDEBAR_SLIDES = [
   {
-    title: "Prisma ORM v7.4",
-    description: "Query caching, partial indexes, and major performance improvements.",
-    href: "https://www.prisma.io/blog/prisma-orm-v7-4-query-caching-partial-indexes-and-major-performance-improvements",
-    gradient: "orm" as const,
-    badge: "New",
-  },
-  {
     title: "The Next Evolution of Prisma ORM",
-    description:
-      "Prisma Next: a full TypeScript rewrite with a new query API, SQL builder, and extensible architecture.",
+    description: "Prisma Next: a full TypeScript rewrite with a new query API, SQL builder, and extensible architecture.",
     href: "https://pris.ly/pn-anouncement",
     gradient: "orm" as const,
-  },
-  {
-    title: "Announcing Prisma ORM 7",
-    description:
-      "Major performance gains, a Rust-free client, and a streamlined developer experience.",
-    href: "https://www.prisma.io/blog/announcing-prisma-orm-7-0-0",
-    gradient: "orm" as const,
+    badge: "New",
   },
 ];
 
