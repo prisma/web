@@ -18,6 +18,20 @@ const SIDEBAR_SLIDES = [
     gradient: "orm" as const,
     badge: "New",
   },
+  {
+    title: "The Next Evolution of Prisma ORM",
+    description:
+      "Prisma Next: a full TypeScript rewrite with a new query API, SQL builder, and extensible architecture.",
+    href: "https://pris.ly/pn-anouncement",
+    gradient: "orm" as const,
+  },
+  {
+    title: "Announcing Prisma ORM 7",
+    description:
+      "Major performance gains, a Rust-free client, and a streamlined developer experience.",
+    href: "https://www.prisma.io/blog/announcing-prisma-orm-7-0-0",
+    gradient: "orm" as const,
+  },
 ];
 
 export default async function Layout({ children }: { children: React.ReactNode }) {

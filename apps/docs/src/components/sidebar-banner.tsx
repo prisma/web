@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { X } from "lucide-react";
 import { cn } from "@prisma-docs/ui/lib/cn";
 
 interface BannerSlide {
@@ -16,146 +15,185 @@ interface BannerSlide {
 
 interface SidebarBannerCarouselProps {
   slides: BannerSlide[];
-  /** Auto-rotate interval in ms @default 5000 */
-  interval?: number;
 }
 
-const DISMISSED_KEY = "sidebar-banner-dismissed";
+const DISMISSED_KEY = "sidebar-banner-dismissed-ids";
 
-export function SidebarBannerCarousel({ slides, interval = 5000 }: SidebarBannerCarouselProps) {
-  const [current, setCurrent] = useState(0);
-  const [dismissed, setDismissed] = useState(true);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+export function SidebarBannerCarousel({ slides }: SidebarBannerCarouselProps) {
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  const [mounted, setMounted] = useState(false);
+  const [dismissingHref, setDismissingHref] = useState<string | null>(null);
+  const [hovered, setHovered] = useState(false);
 
   useEffect(() => {
-    setDismissed(localStorage.getItem(DISMISSED_KEY) === "true");
+    try {
+      const stored = JSON.parse(localStorage.getItem(DISMISSED_KEY) || "[]");
+      setDismissedIds(new Set(stored));
+    } catch {
+      /* empty */
+    }
+    setMounted(true);
   }, []);
 
-  const resetTimer = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    timerRef.current = setInterval(() => {
-      setCurrent((prev) => (prev + 1) % slides.length);
-    }, interval);
-  }, [slides.length, interval]);
+  if (!mounted) return null;
 
-  useEffect(() => {
-    if (dismissed || slides.length <= 1) return;
-    resetTimer();
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [dismissed, slides.length, resetTimer]);
+  const visibleSlides = slides.filter(
+    (s) => !dismissedIds.has(s.href) && s.href !== dismissingHref,
+  );
 
-  if (dismissed || slides.length === 0) return null;
+  if (visibleSlides.length === 0) return null;
 
-  const slide = slides[current];
+  const peekCount = Math.min(visibleSlides.length - 1, 3);
 
-  function handleDismiss(e: React.MouseEvent) {
+  function handleDismiss(e: React.MouseEvent, href: string) {
     e.preventDefault();
     e.stopPropagation();
-    localStorage.setItem(DISMISSED_KEY, "true");
-    setDismissed(true);
+    setDismissingHref(href);
+    setTimeout(() => {
+      const next = new Set(dismissedIds);
+      next.add(href);
+      setDismissedIds(next);
+      localStorage.setItem(DISMISSED_KEY, JSON.stringify([...next]));
+      setDismissingHref(null);
+    }, 300);
   }
 
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={handleDismiss}
-        className={cn(
-          "absolute top-2 right-2 z-10 p-0.5 rounded-square",
-          "opacity-60 hover:opacity-100 transition-opacity",
-          "bg-black/10 dark:bg-white/10",
-          slide.image ? "text-foreground-neutral" : "text-foreground-neutral-reverse",
-        )}
-        aria-label="Dismiss banner"
-      >
-        <X className="size-3.5" />
-      </button>
+  const front = visibleSlides[0];
 
-      <Link
-        href={slide.href}
-        className={cn(
-          "group block rounded-high border border-stroke-neutral overflow-hidden shadow-drop-low",
-          "transition-shadow hover:shadow-drop",
-        )}
+  return (
+    <div
+      className="relative"
+      style={{ paddingBottom: peekCount * 6 }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <div
+        className="relative transition-transform duration-300 ease-out"
+        style={{ transform: hovered ? "translateY(-8px)" : "translateY(0)" }}
       >
+        {/* Ghost/peek cards behind */}
+        {visibleSlides
+          .slice(1, 4)
+          .reverse()
+          .map((_, reversedIdx) => {
+            const i = Math.min(peekCount, 3) - reversedIdx;
+            const offset = hovered ? i * 8 : i * 5;
+            const scale = 1 - i * 0.02;
+            const opacity = Math.max(0.15, 0.6 - i * 0.15);
+            return (
+              <div
+                key={`peek-${i}`}
+                className="absolute inset-x-0 top-0 rounded-high border border-stroke-neutral bg-background-default shadow-drop-low"
+                aria-hidden
+                style={{
+                  height: "100%",
+                  transform: `translateY(${offset}px) scale(${scale})`,
+                  opacity,
+                  transformOrigin: "top center",
+                  transition: "transform 0.3s ease, opacity 0.3s ease",
+                  zIndex: -i,
+                }}
+              />
+            );
+          })}
+
+        {/* Front card */}
         <div
           className={cn(
-            "relative flex items-center justify-center aspect-video overflow-hidden",
-            !slide.image && (slide.gradient === "ppg" ? "bg-gradient-ppg" : "bg-gradient-orm"),
+            "relative rounded-high border border-stroke-neutral overflow-hidden shadow-drop-low",
+            "bg-background-default transition-shadow hover:shadow-drop",
           )}
+          style={{ zIndex: 1 }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          {slide.image ? (
-            <img
-              src={slide.image.startsWith("http") ? slide.image : `/docs${slide.image}`}
-              alt=""
-              className="absolute inset-0 size-full object-cover"
-            />
-          ) : (
-            <svg
-              viewBox="0 0 28 37"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-10 w-auto opacity-40"
-            >
-              <path
-                d="M27.4 8.42L15.52.32a3.2 3.2 0 00-3.36 0L.32 8.42A3.22 3.22 0 000 11.1v16.2a3.22 3.22 0 001.6 2.78l11.88 7.6a3.2 3.2 0 003.36 0l11.56-7.6a3.2 3.2 0 001.6-2.78V11.1a3.22 3.22 0 00-1.6-2.68zM12.16 33.48L2.24 27.18a1.6 1.6 0 01-.8-1.38v-7.4l10.72 6.5v8.58zm1.28-10.6L2.28 16.22l5.08-3.16 11.16 6.76-5.08 3.06zm13.12-4.56v7.38a1.6 1.6 0 01-.8 1.38l-9.92 6.3v-8.56l10.72-6.5z"
-                fill="currentColor"
-                className={cn(
-                  slide.gradient === "ppg"
-                    ? "text-foreground-ppg-strong"
-                    : "text-foreground-orm-strong",
-                )}
-              />
-            </svg>
-          )}
-        </div>
-        <div className="p-3 bg-background-default">
-          <div className="flex items-center gap-1.5 mb-1">
-            <span className="text-sm font-semibold text-foreground-neutral">{slide.title}</span>
-            {slide.badge && (
-              <span
-                className={cn(
-                  "text-2xs font-medium px-1.5 py-0.5 rounded-circle",
-                  slide.gradient === "ppg"
-                    ? "bg-background-ppg text-foreground-ppg"
-                    : "bg-background-orm text-foreground-orm",
-                )}
-              >
-                {slide.badge}
+          {/* Title + description */}
+          <div className="p-3 pb-0">
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="text-sm font-semibold text-foreground-neutral leading-tight">
+                {front.title}
               </span>
-            )}
-          </div>
-          <p className="text-xs text-foreground-neutral-weak mb-2">{slide.description}</p>
-          <div className="flex items-center justify-between">
-            <span
-              className={cn(
-                "text-xs font-medium transition-colors",
-                slide.gradient === "ppg"
-                  ? "text-foreground-ppg group-hover:text-foreground-ppg-strong"
-                  : "text-foreground-orm group-hover:text-foreground-orm-strong",
+              {front.badge && (
+                <span
+                  className={cn(
+                    "text-2xs font-medium px-1.5 py-0.5 rounded-circle shrink-0",
+                    front.gradient === "ppg"
+                      ? "bg-background-ppg text-foreground-ppg"
+                      : "bg-background-orm text-foreground-orm",
+                  )}
+                >
+                  {front.badge}
+                </span>
               )}
-            >
-              Read more &rarr;
-            </span>
-            {slides.length > 1 && (
-              <div className="flex gap-1">
-                {slides.map((_, i) => (
-                  <span
-                    key={i}
+            </div>
+            <p className="text-xs text-foreground-neutral-weak truncate">{front.description}</p>
+          </div>
+
+          {/* Image preview */}
+          <div
+            className={cn(
+              "relative mx-3 mt-2 rounded-square overflow-hidden aspect-video",
+              !front.image && (front.gradient === "ppg" ? "bg-gradient-ppg" : "bg-gradient-orm"),
+            )}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {front.image ? (
+              <img
+                src={front.image.startsWith("http") ? front.image : `/docs${front.image}`}
+                alt=""
+                className="absolute inset-0 size-full object-cover"
+              />
+            ) : (
+              <div className="flex items-center justify-center size-full">
+                <svg
+                  viewBox="0 0 28 37"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-8 w-auto opacity-40"
+                >
+                  <path
+                    d="M27.4 8.42L15.52.32a3.2 3.2 0 00-3.36 0L.32 8.42A3.22 3.22 0 000 11.1v16.2a3.22 3.22 0 001.6 2.78l11.88 7.6a3.2 3.2 0 003.36 0l11.56-7.6a3.2 3.2 0 001.6-2.78V11.1a3.22 3.22 0 00-1.6-2.68zM12.16 33.48L2.24 27.18a1.6 1.6 0 01-.8-1.38v-7.4l10.72 6.5v8.58zm1.28-10.6L2.28 16.22l5.08-3.16 11.16 6.76-5.08 3.06zm13.12-4.56v7.38a1.6 1.6 0 01-.8 1.38l-9.92 6.3v-8.56l10.72-6.5z"
+                    fill="currentColor"
                     className={cn(
-                      "size-1.5 rounded-circle transition-colors",
-                      i === current ? "bg-foreground-neutral-weak" : "bg-stroke-neutral",
+                      front.gradient === "ppg"
+                        ? "text-foreground-ppg-strong"
+                        : "text-foreground-orm-strong",
                     )}
                   />
-                ))}
+                </svg>
               </div>
             )}
           </div>
+
+          {/* Action bar */}
+          <div
+            className={cn(
+              "flex items-center justify-between px-3 overflow-hidden transition-all duration-300 ease-out",
+              hovered ? "max-h-12 opacity-100 py-2.5" : "max-h-0 opacity-0 py-0",
+            )}
+          >
+            <Link
+              href={front.href}
+              className={cn(
+                "text-xs font-medium transition-colors",
+                front.gradient === "ppg"
+                  ? "text-foreground-ppg hover:text-foreground-ppg-strong"
+                  : "text-foreground-orm hover:text-foreground-orm-strong",
+              )}
+            >
+              Read more
+            </Link>
+            <button
+              type="button"
+              onClick={(e) => handleDismiss(e, front.href)}
+              className="text-xs text-foreground-neutral-weaker hover:text-foreground-neutral-weak transition-colors"
+            >
+              Dismiss
+            </button>
+          </div>
+
+          {/* Bottom padding when action bar is hidden */}
+          <div className={cn("transition-all duration-300 ease-out", hovered ? "h-0" : "h-3")} />
         </div>
-      </Link>
+      </div>
     </div>
   );
 }
