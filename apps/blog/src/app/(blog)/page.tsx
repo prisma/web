@@ -124,13 +124,12 @@ export default function BlogHome() {
               )}
               {items[0].author && (
                 <span className="mt-auto flex items-center gap-2 font-semibold text-sm">
-                  {items[0]?.authorSrc && (
+                  {items[0]?.authorSrc && items[0] && (
                     <Avatar
                       format="image"
-                      src="/avatar.jpg"
-                      alt="Disabled user"
+                      src={items[0].authorSrc}
+                      alt={items[0].author}
                       size="lg"
-                      disabled
                     />
                   )}
                   <span>{items[0].author}</span>
