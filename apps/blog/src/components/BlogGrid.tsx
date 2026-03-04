@@ -3,11 +3,9 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Avatar,
   Badge,
-  Button,
   Card,
   Pagination,
   PaginationContent,
@@ -173,14 +171,18 @@ export function BlogGrid({
   items: BlogCardItem[];
   pageSize?: number;
 }) {
-  const searchParams = useSearchParams();
   const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
 
-  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [currentPage, setPage] = useState<number>(1);
   const visibleItems = useMemo(
     () => items.slice((currentPage - 1) * pageSize, currentPage * pageSize),
     [items, currentPage, pageSize],
   );
+
+  const setCurrentPage = (page: number) => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    setPage(page);
+  };
 
   const formatDate = (iso: string) => {
     if (!iso) return "";
@@ -195,6 +197,48 @@ export function BlogGrid({
 
   return (
     <>
+      {currentPage === 1 && (
+        <a
+          href={items[0].url}
+          className="grid grid-cols-1 sm:grid-cols-2 rounded-square overflow-hidden border border-stroke-neutral shadow-box-low"
+        >
+          <img
+            src={items[0].imageSrc as string}
+            alt={items[0].imageAlt ?? items[0].title}
+            sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
+            className="object-cover transition-transform duration-300 group-hover:scale-[1.02] max-h-52 h-full w-full sm:max-h-72"
+          />
+          <Card className="rounded-none! border-none! gap-0">
+            <div className="eyebrow flex gap-2 items-center">
+              <Badge color="success" label="Release" className="w-min" />
+              <span className="text-xs text-foreground-neutral-weak">
+                {formatDate(items[0].date)}
+              </span>
+            </div>
+            <h2 className="text-2xl text-foreground-neutral font-bold font-mona-sans mt-4 mb-2">
+              {items[0].title}
+            </h2>
+            {items[0].description && (
+              <p className="text-sm text-foreground-neutral-weak leading-[20px]! line-clamp-5">
+                {items[0].description}
+              </p>
+            )}
+            {items[0].author && (
+              <span className="mt-auto flex items-center gap-2 font-semibold text-sm">
+                {items[0]?.authorSrc && items[0] && (
+                  <Avatar
+                    format="image"
+                    src={items[0].authorSrc}
+                    alt={items[0].author}
+                    size="lg"
+                  />
+                )}
+                <span>{items[0].author}</span>
+              </span>
+            )}
+          </Card>
+        </a>
+      )}
       <div className="grid gap-6 mt-12 grid-cols-1">
         {visibleItems.map((post) => (
           <Link
