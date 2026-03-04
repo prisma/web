@@ -24,7 +24,7 @@ type ChartContextProps = {
 
 const ChartContext = React.createContext<ChartContextProps | null>(null);
 
-function useChart() {
+export function useChart() {
   const context = React.useContext(ChartContext);
 
   if (!context) {
@@ -78,28 +78,56 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
     return null;
   }
 
-  return (
-    <style
-      dangerouslySetInnerHTML={{
-        __html: Object.entries(THEMES)
-          .map(
-            ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
-${colorConfig
-  .map(([key, itemConfig]) => {
-    const color =
-      itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
-      itemConfig.color;
-    return color ? `  --color-${key}: ${color};` : null;
-  })
-  .join("\n")}
-}
-`,
-          )
-          .join("\n"),
-      }}
-    />
-  );
+  // Validate and escape id to prevent CSS injection
+  const isValidIdentifier = (value: string) => /^[A-Za-z0-9_-]+$/.test(value);
+
+  if (!isValidIdentifier(id)) {
+    console.error(
+      `Invalid chart id: ${id}. Only alphanumeric characters, hyphens, and underscores are allowed.`,
+    );
+    return null;
+  }
+
+  // Build CSS safely
+  const css = Object.entries(THEMES)
+    .map(([theme, prefix]) => {
+      const rules = colorConfig
+        .map(([key, itemConfig]) => {
+          // Validate key to prevent CSS injection
+          if (!isValidIdentifier(key)) {
+            console.error(
+              `Invalid config key: ${key}. Only alphanumeric characters, hyphens, and underscores are allowed.`,
+            );
+            return null;
+          }
+
+          const color =
+            itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
+            itemConfig.color;
+
+          // Basic validation for color values to prevent CSS injection
+          // Allow hex colors, rgb(a), hsl(a), CSS color names, and CSS variables
+          if (
+            color &&
+            !/^(#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)|hsla?\([^)]+\)|[a-z-]+|var\([^)]+\))$/.test(
+              color,
+            )
+          ) {
+            console.error(`Invalid color value: ${color}`);
+            return null;
+          }
+
+          return color ? `  --color-${key}: ${color};` : null;
+        })
+        .filter(Boolean)
+        .join("\n");
+
+      return rules ? `${prefix} [data-chart="${id}"] {\n${rules}\n}` : null;
+    })
+    .filter(Boolean)
+    .join("\n");
+
+  return <style>{css}</style>;
 };
 
 const ChartTooltip = RechartsPrimitive.Tooltip;
@@ -245,7 +273,7 @@ function ChartTooltipContent({
                           {itemConfig?.label || item.name}
                         </span>
                       </div>
-                      {item.value && (
+                      {item.value != null && (
                         <span className="font-mono font-medium text-foreground tabular-nums">
                           {item.value.toLocaleString()}
                         </span>
