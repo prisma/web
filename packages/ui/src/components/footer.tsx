@@ -104,7 +104,7 @@ const Footer = ({
             </div>
           </div>
           {/* Main Grid Row */}
-          <div className="grid max-sm:gap-8 max-sm:grid-cols-2 grid-cols-[repeat(4,auto)] lg:gap-8 xl:gap-12 relative lg:w-fit ml-auto">
+          <div className="grid max-md:gap-8 max-md:grid-cols-2 grid-cols-[repeat(4,auto)] lg:gap-8 xl:gap-12 relative lg:w-fit ml-auto">
             {/* Footer Columns */}
             {footerData.footerItems.map((footerItem: any, idx: number) => (
               <div
