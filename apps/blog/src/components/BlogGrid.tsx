@@ -200,15 +200,15 @@ export function BlogGrid({
       {currentPage === 1 && (
         <a
           href={items[0].url}
-          className="grid grid-cols-1 sm:grid-cols-2 rounded-square overflow-hidden border border-stroke-neutral shadow-box-low"
+          className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-background-default rounded-square overflow-hidden border border-stroke-neutral shadow-box-low"
         >
           <img
             src={items[0].imageSrc as string}
             alt={items[0].imageAlt ?? items[0].title}
             sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
-            className="object-cover transition-transform duration-300 group-hover:scale-[1.02] max-h-52 h-full w-full sm:max-h-72"
+            className="object-cover transition-transform duration-300 group-hover:scale-[1.02] h-52! sm:h-72! w-full"
           />
-          <Card className="rounded-none! border-none! gap-0">
+          <Card className="rounded-none! border-none! gap-0 bg-background-default">
             <div className="eyebrow flex gap-2 items-center">
               <Badge color="success" label="Release" className="w-min" />
               <span className="text-xs text-foreground-neutral-weak">
