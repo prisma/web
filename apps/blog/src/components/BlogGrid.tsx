@@ -102,7 +102,7 @@ export function BlogGrid({
                 )}
               </div>
               {post.author && (
-                <div className="mt-auto hidden sm:flex items-center gap-2 font-semibold text-sm">
+                <span className="mt-auto hidden sm:flex items-center gap-2 font-semibold text-sm">
                   {post?.authorSrc && (
                     <Avatar
                       format="image"
@@ -113,7 +113,7 @@ export function BlogGrid({
                     />
                   )}
                   <span>{post.author}</span>
-                </div>
+                </span>
               )}
             </div>
             <div className="relative max-w-96 h-54 w-full hidden sm:block">

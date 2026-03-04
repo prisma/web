@@ -102,12 +102,10 @@ export default function BlogHome() {
             className="grid grid-cols-1 sm:grid-cols-2 rounded-square overflow-hidden border border-stroke-neutral shadow-box-low"
           >
             <img
-              src={items[0].imageSrc}
+              src={items[0].imageSrc as string}
               alt={items[0].imageAlt ?? items[0].title}
-              fill
               sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
               className="object-cover transition-transform duration-300 group-hover:scale-[1.02] max-h-52 h-full w-full sm:max-h-72"
-              priority={false}
             />
             <Card className="rounded-none! border-none! gap-0">
               <div className="eyebrow flex gap-2 items-center">
@@ -119,21 +117,25 @@ export default function BlogHome() {
               <h2 className="text-2xl text-foreground-neutral font-bold font-mona-sans mt-4 mb-2">
                 {items[0].title}
               </h2>
-              <p className="text-sm text-foreground-neutral-weak">
-                {items[0].description}
-              </p>
-              <div className="mt-auto flex items-center gap-2 font-semibold text-sm">
-                {items[0]?.authorSrc && (
-                  <Avatar
-                    format="image"
-                    src="/avatar.jpg"
-                    alt="Disabled user"
-                    size="lg"
-                    disabled
-                  />
-                )}
-                <span>{items[0].author}</span>
-              </div>
+              {items[0].description && (
+                <p className="text-sm text-foreground-neutral-weak">
+                  {items[0].description}
+                </p>
+              )}
+              {items[0].author && (
+                <span className="mt-auto flex items-center gap-2 font-semibold text-sm">
+                  {items[0]?.authorSrc && (
+                    <Avatar
+                      format="image"
+                      src="/avatar.jpg"
+                      alt="Disabled user"
+                      size="lg"
+                      disabled
+                    />
+                  )}
+                  <span>{items[0].author}</span>
+                </span>
+              )}
             </Card>
           </a>
           <BlogGrid items={items.slice(1, -1)} pageSize={12} />
