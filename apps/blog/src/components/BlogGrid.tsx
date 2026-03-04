@@ -116,16 +116,18 @@ export function BlogGrid({
                 </span>
               )}
             </div>
-            <div className="relative max-w-96 h-54 w-full hidden sm:block">
-              <Image
-                src={post.imageSrc}
-                alt={post.imageAlt ?? post.title}
-                fill
-                sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
-                className="rounded-square w-full h-auto object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-                priority={false}
-              />
-            </div>
+            {post.imageSrc && (
+              <div className="relative max-w-96 h-54 w-full hidden sm:block">
+                <Image
+                  src={post.imageSrc}
+                  alt={post.imageAlt ?? post.title}
+                  fill
+                  sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
+                  className="rounded-square w-full h-auto object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                  priority={false}
+                />
+              </div>
+            )}
           </Link>
         ))}
       </div>
