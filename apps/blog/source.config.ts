@@ -89,6 +89,9 @@ export const blogPosts = defineCollections({
         ]),
       )
       .optional(),
+    metaDescription: z.string().optional(),
+    metaTitle: z.string().optional(),
+    description: z.string().optional(),
   }),
   postprocess: {
     includeProcessedMarkdown: true,

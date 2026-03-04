@@ -1,10 +1,23 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Avatar, Badge, Button, Card } from "@prisma-docs/eclipse";
+import {
+  Avatar,
+  Badge,
+  Button,
+  Card,
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationInput,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@prisma-docs/eclipse";
 
 type BlogCardItem = {
   url: string;
@@ -19,6 +32,135 @@ type BlogCardItem = {
   badge?: string | null;
 };
 
+const PaginationWithEllipsis = ({
+  totalPages,
+  currentPage,
+  setCurrentPage,
+}: any) => (
+  <Pagination>
+    <PaginationContent>
+      <PaginationItem>
+        <PaginationPrevious
+          href="#"
+          onClick={(e) => {
+            e.preventDefault();
+            if (currentPage > 1) setCurrentPage(currentPage - 1);
+          }}
+          aria-disabled={currentPage === 1}
+        />
+      </PaginationItem>
+      <PaginationItem>
+        <PaginationLink
+          href="#"
+          onClick={(e) => {
+            e.preventDefault();
+            setCurrentPage(1);
+          }}
+          isActive={currentPage === 1}
+        >
+          1
+        </PaginationLink>
+      </PaginationItem>
+      <PaginationItem>
+        {currentPage > 3 ? (
+          <PaginationEllipsis />
+        ) : (
+          <PaginationLink
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              setCurrentPage(2);
+            }}
+            isActive={currentPage === 2}
+          >
+            2
+          </PaginationLink>
+        )}
+      </PaginationItem>
+      {currentPage > 2 && currentPage < totalPages - 1 && (
+        <>
+          {currentPage > 3 && (
+            <PaginationItem>
+              <PaginationLink
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setCurrentPage(currentPage - 1);
+                }}
+              >
+                {currentPage - 1}
+              </PaginationLink>
+            </PaginationItem>
+          )}
+          <PaginationItem>
+            <PaginationLink
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                setCurrentPage(currentPage);
+              }}
+              isActive
+            >
+              {currentPage}
+            </PaginationLink>
+          </PaginationItem>
+          {currentPage < totalPages - 2 && (
+            <PaginationItem>
+              <PaginationLink
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setCurrentPage(currentPage + 1);
+                }}
+              >
+                {currentPage + 1}
+              </PaginationLink>
+            </PaginationItem>
+          )}
+        </>
+      )}
+      <PaginationItem>
+        {currentPage < totalPages - 2 ? (
+          <PaginationEllipsis />
+        ) : (
+          <PaginationLink
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              setCurrentPage(totalPages - 1);
+            }}
+            isActive={currentPage === totalPages - 1}
+          >
+            {totalPages - 1}
+          </PaginationLink>
+        )}
+      </PaginationItem>
+      <PaginationItem>
+        <PaginationLink
+          href="#"
+          onClick={(e) => {
+            e.preventDefault();
+            setCurrentPage(totalPages);
+          }}
+          isActive={currentPage === totalPages}
+        >
+          {totalPages}
+        </PaginationLink>
+      </PaginationItem>
+      <PaginationItem>
+        <PaginationNext
+          href="#"
+          onClick={(e) => {
+            e.preventDefault();
+            if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+          }}
+          aria-disabled={currentPage === totalPages}
+        />
+      </PaginationItem>
+    </PaginationContent>
+  </Pagination>
+);
+
 function parsePage(value: string | null): number {
   const n = parseInt(value ?? "1", 10);
   return Number.isNaN(n) || n < 1 ? 1 : n;
@@ -31,32 +173,14 @@ export function BlogGrid({
   items: BlogCardItem[];
   pageSize?: number;
 }) {
-  const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const rawPage = useMemo(
-    () => parsePage(searchParams.get("page")),
-    [searchParams],
-  );
   const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
-  const currentPage = Math.min(rawPage, totalPages);
 
+  const [currentPage, setCurrentPage] = useState<number>(1);
   const visibleItems = useMemo(
     () => items.slice((currentPage - 1) * pageSize, currentPage * pageSize),
     [items, currentPage, pageSize],
   );
-
-  const setPage = (newPage: number) => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (newPage <= 1) {
-      params.delete("page");
-    } else {
-      params.set("page", String(newPage));
-    }
-    const query = params.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
 
   const formatDate = (iso: string) => {
     if (!iso) return "";
@@ -76,7 +200,7 @@ export function BlogGrid({
           <Link
             key={post.url}
             href={post.url}
-            className="grid sm:grid-cols-[1fr_384px] overflow-hidden border-b pb-4 sm:pb-6 border-stroke-neutral"
+            className="grid sm:grid-cols-[1fr_384px] overflow-hidden border-b pb-4 sm:pb-6 border-stroke-neutral gap-8"
           >
             <div className="grid grid-rows-[1fr_auto]">
               <div className="">
@@ -96,7 +220,7 @@ export function BlogGrid({
                   </h2>
                 )}
                 {post.description && (
-                  <p className="text-sm text-foreground-neutral-weak">
+                  <p className="text-sm text-foreground-neutral-weak line-clamp-3">
                     {post.description}
                   </p>
                 )}
@@ -131,33 +255,13 @@ export function BlogGrid({
           </Link>
         ))}
       </div>
-
-      {totalPages > 1 ? (
-        <nav
-          className="flex items-center justify-center gap-2 mt-8"
-          aria-label="Blog pagination"
-        >
-          <Button
-            type="button"
-            onClick={() => setPage(currentPage - 1)}
-            disabled={currentPage <= 1}
-            className="inline-flex items-center px-4 py-2 rounded-md border border-fd-primary/30 text-fd-foreground hover:border-fd-primary/60 transition disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-fd-primary/30"
-          >
-            Previous
-          </Button>
-          <span className="px-4 py-2 text-sm text-fd-muted">
-            Page {currentPage} of {totalPages}
-          </span>
-          <Button
-            type="button"
-            onClick={() => setPage(currentPage + 1)}
-            disabled={currentPage >= totalPages}
-            className="inline-flex items-center px-4 py-2 rounded-md border border-fd-primary/30 text-fd-foreground hover:border-fd-primary/60 transition disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-fd-primary/30"
-          >
-            Next
-          </Button>
-        </nav>
-      ) : null}
+      <div className="mt-8">
+        <PaginationWithEllipsis
+          totalPages={totalPages}
+          currentPage={currentPage}
+          setCurrentPage={setCurrentPage}
+        />
+      </div>
     </>
   );
 }

@@ -57,7 +57,8 @@ export default function BlogHome() {
       url: post.url,
       title: data.title as string,
       date: data.date ? new Date(data.date).toISOString() : "",
-      description: (data.description as string) ?? "",
+      description:
+        (data.description as string) || (data.metaDescription as string) || "",
       author: getPrimaryAuthor(post),
       authorSrc: null,
       imageSrc: getCardImageSrc(post),
@@ -118,7 +119,7 @@ export default function BlogHome() {
                 {items[0].title}
               </h2>
               {items[0].description && (
-                <p className="text-sm text-foreground-neutral-weak">
+                <p className="text-sm text-foreground-neutral-weak leading-[20px]! line-clamp-5">
                   {items[0].description}
                 </p>
               )}
