@@ -5,6 +5,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@prisma-docs/eclipse';
+import { withBlogBasePathForImageSrc } from '@/lib/url';
+
 
 type BlogCardItem = {
   url: string;
@@ -83,7 +85,7 @@ export function BlogGrid({
             {post.imageSrc ? (
               <div className="relative w-full aspect-video overflow-hidden">
                 <Image
-                  src={post.imageSrc}
+                  src={withBlogBasePathForImageSrc(post.imageSrc)}
                   alt={post.imageAlt ?? post.title}
                   fill
                   sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
