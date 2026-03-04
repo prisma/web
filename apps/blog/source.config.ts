@@ -1,21 +1,21 @@
-import remarkDirective from 'remark-directive';
+import remarkDirective from "remark-directive";
 import {
   remarkDirectiveAdmonition,
   remarkMdxFiles,
-} from 'fumadocs-core/mdx-plugins';
-import { remarkImage } from 'fumadocs-core/mdx-plugins';
+} from "fumadocs-core/mdx-plugins";
+import { remarkImage } from "fumadocs-core/mdx-plugins";
 import {
   defineCollections,
   defineConfig,
   frontmatterSchema,
-} from 'fumadocs-mdx/config';
-import lastModified from 'fumadocs-mdx/plugins/last-modified';
-import { z } from 'zod';
-import convert from 'npm-to-yarn';
+} from "fumadocs-mdx/config";
+import lastModified from "fumadocs-mdx/plugins/last-modified";
+import { z } from "zod";
+import convert from "npm-to-yarn";
 
 export const blogPosts = defineCollections({
-  type: 'doc',
-  dir: 'content/blog',
+  type: "doc",
+  dir: "content/blog",
   schema: frontmatterSchema.extend({
     authors: z.array(
       z.enum([
@@ -62,6 +62,8 @@ export const blogPosts = defineCollections({
         'Will Madden',
       ]),
     ),
+    authors: z.array(z.string()),
+    authorSrc: z.string().optional(),
     date: z.coerce.date(),
     heroImagePath: z.string().optional(),
     metaImagePath: z.string().optional(),
@@ -104,19 +106,19 @@ export default defineConfig({
     ],
     remarkCodeTabOptions: { parseMdx: true },
     remarkNpmOptions: {
-      persist: { id: 'package-manager' },
+      persist: { id: "package-manager" },
       // Custom package managers to add --bun flag for bunx commands
       packageManagers: [
-        { command: (cmd: string) => convert(cmd, 'npm'), name: 'npm' },
-        { command: (cmd: string) => convert(cmd, 'pnpm'), name: 'pnpm' },
-        { command: (cmd: string) => convert(cmd, 'yarn'), name: 'yarn' },
+        { command: (cmd: string) => convert(cmd, "npm"), name: "npm" },
+        { command: (cmd: string) => convert(cmd, "pnpm"), name: "pnpm" },
+        { command: (cmd: string) => convert(cmd, "yarn"), name: "yarn" },
         {
           command: (cmd: string) => {
-            const converted = convert(cmd, 'bun');
+            const converted = convert(cmd, "bun");
             if (!converted) return undefined;
-            return converted.replace(/^bun x /, 'bunx --bun ');
+            return converted.replace(/^bun x /, "bunx --bun ");
           },
-          name: 'bun',
+          name: "bun",
         },
       ],
     },
