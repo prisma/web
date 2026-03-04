@@ -84,7 +84,7 @@ export function SidebarBannerCarousel({ slides }: SidebarBannerCarouselProps) {
 
   return (
     <div
-      className="flex flex-col"
+      className="hidden lg:flex flex-col"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
