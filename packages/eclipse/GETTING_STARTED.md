@@ -200,21 +200,21 @@ import { Button } from "@prisma-docs/eclipse";
 
 ```tsx
 // Error message
-<div className="p-6 bg-background-error rounded-high border border-stroke-error">
+<div className="p-6 bg-background-error rounded-square-high border border-stroke-error">
   <p className="text-foreground-error">
     An error occurred
   </p>
 </div>
 
 // Success message
-<div className="p-6 bg-background-success rounded-high border border-stroke-success">
+<div className="p-6 bg-background-success rounded-square-high border border-stroke-success">
   <p className="text-foreground-success">
     Operation successful!
   </p>
 </div>
 
 // Warning message
-<div className="p-6 bg-background-warning rounded-high border border-stroke-warning">
+<div className="p-6 bg-background-warning rounded-square-high border border-stroke-warning">
   <p className="text-foreground-warning">
     Please review this carefully
   </p>
@@ -224,11 +224,11 @@ import { Button } from "@prisma-docs/eclipse";
 ### Gradients
 
 ```tsx
-<div className="bg-gradient-orm text-foreground-orm-reverse p-8 rounded-high">
+<div className="bg-gradient-orm text-foreground-orm-reverse p-8 rounded-square-high">
   ORM Branded Section
 </div>
 
-<div className="bg-gradient-ppg text-foreground-ppg-reverse p-8 rounded-high">
+<div className="bg-gradient-ppg text-foreground-ppg-reverse p-8 rounded-square-high">
   PPG Branded Section
 </div>
 ```
@@ -334,7 +334,7 @@ const fontFamily = tokens.typography.fontFamily.sans; // "Inter"
 <div className="
   bg-background-default
   text-foreground-neutral
-  rounded-high
+  rounded-square-high
   border border-stroke-neutral
   shadow-lg
 ">

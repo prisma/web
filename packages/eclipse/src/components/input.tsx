@@ -14,7 +14,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     const sizes = {
       lg: " px-2 h-lg file:py-1 file:px-2",
       xl: "px-3 h-xl file:py-1.5 file:px-3",
-      "2xl": "py-2 px-3 file:py-2 file:px-3",
+      "2xl": "px-3 h-2xl file:py-2 file:px-3",
     };
 
     return (

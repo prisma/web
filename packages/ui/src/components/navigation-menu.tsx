@@ -65,7 +65,7 @@ function NavigationWrapper({
   return (
     <div
       className={cn(
-        "transition-navbar max-w-7xl w-full mx-auto py-3 px-6 shadow-drop-high bg-background-neutral-weaker rounded-high flex justify-between align-center",
+        "transition-navbar max-w-7xl w-full mx-auto py-3 px-6 shadow-drop-high bg-background-neutral-weaker rounded-square-high flex justify-between align-center",
         mobileOpen &&
           "py-7 px-10 rounded-none md:py-3! md:px-6! md:rounded-high",
         className,
@@ -279,7 +279,7 @@ function MenuNavigationItem({
       href={link.url}
       className="flex gap-2 items-center justify-start hover:bg-background-ppg-strong w-full rounded-square! overflow-hidden"
     >
-      <Action color="ppg" size="nav">
+      <Action color="ppg" size="3xl">
         <i className={cn("text-background-ppg-reverse", link.icon)} />
       </Action>
       <div className="flex flex-col gap-0">
