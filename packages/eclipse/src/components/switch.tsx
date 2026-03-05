@@ -15,10 +15,12 @@ function Switch({
     <SwitchPrimitive.Root
       data-slot="switch"
       data-size={size}
-      className={cn(
-        "peer data-[checked]:bg-background-neutral-reverse data-[unchecked]:bg-background-neutral-strong focus-visible:border-ring  group/switch inline-flex shrink-0 items-center rounded-circle border-1 border-transparent shadow-xs transition-all outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed h-[1.15rem] w-8 disabled:outline-stroke-neutral-weak disabled:outline disabled:outline-solid disabled:bg-background-neutral-weak disabled:[&>span]:bg-foreground-neutral-weaker [&>span]:bg-foreground-neutral-reverse",
-        className,
-      )}
+      className={(s) =>
+        cn(
+          "peer data-[checked]:bg-background-neutral-reverse data-[unchecked]:bg-background-neutral-strong focus-visible:border-ring  group/switch inline-flex shrink-0 items-center rounded-circle border-1 border-transparent shadow-xs transition-all outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed h-[1.15rem] w-8 disabled:outline-stroke-neutral-weak disabled:outline disabled:outline-solid disabled:bg-background-neutral-weak disabled:[&>span]:bg-foreground-neutral-weaker [&>span]:bg-foreground-neutral-reverse",
+          typeof className === "function" ? className(s) : className,
+        )
+      }
       {...props}
     >
       <SwitchPrimitive.Thumb
