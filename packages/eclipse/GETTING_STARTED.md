@@ -243,7 +243,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@prisma-docs/eclipse/lib/cn";
 
 const cardVariants = cva(
-  "rounded-high border",
+  "rounded-square-high border",
   {
     variants: {
       variant: {

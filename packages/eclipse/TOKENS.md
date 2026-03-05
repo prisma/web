@@ -239,17 +239,17 @@ All font sizes include corresponding line heights:
 ## Border Radius Tokens
 
 - `rounded-circle` - 999px (fully rounded)
-- `rounded-low` - 3px
+- `rounded-square-low` - 3px
 - `rounded-square` - 6px
-- `rounded-high` - 12px
+- `rounded-square-high` - 12px
 
 ---
 
 ## Blur Tokens
 
-- `blur-background-low` - 16px
-- `blur-background` - 24px
-- `blur-background-high` - 40px
+- `blur-low` - 16px
+- `blur` - 24px
+- `blur-high` - 40px
 
 ---
 
@@ -306,7 +306,7 @@ All font sizes include corresponding line heights:
 ### Using Border Radius
 
 ```tsx
-<div className="rounded-high p-4 bg-background-neutral">
+<div className="rounded-square-high p-4 bg-background-neutral">
   Card with rounded corners
 </div>
 
