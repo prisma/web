@@ -80,7 +80,7 @@ void generateFiles({
         .replace(/^management-api\/endpoints\//, "");
       const url = `/management-api/endpoints/${normalizedPath}`;
 
-      if (typeof data.url !== "string") {
+      if (data.url !== url) {
         data.url = url;
         changed = true;
       }
@@ -91,7 +91,7 @@ void generateFiles({
           : operation.title;
       const metaTitle = `${operation.method} ${operation.path} | ${title}`;
 
-      if (typeof data.metaTitle !== "string") {
+      if (data.metaTitle !== metaTitle) {
         data.metaTitle = metaTitle;
         changed = true;
       }
@@ -104,7 +104,7 @@ void generateFiles({
         ? description
         : `Management API: ${description}`;
 
-      if (typeof data.metaDescription !== "string") {
+      if (data.metaDescription !== metaDescription) {
         data.metaDescription = metaDescription;
         changed = true;
       }

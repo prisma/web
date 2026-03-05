@@ -22,6 +22,15 @@ const HTTP_METHOD_COLORS = {
   PATCH: "#F7B955",
 } as const;
 
+type OpenApiMetadata = {
+  method?: string;
+  path?: string;
+};
+
+type PageFrontmatter = {
+  _openapi?: OpenApiMetadata;
+};
+
 function PrismaOGImage({
   title,
   description,
@@ -203,8 +212,9 @@ export async function GET(_req: Request, { params }: RouteContext<"/og/[...slug]
   const page = source.getPage(slug.slice(0, -1)) ?? sourceV6.getPage(slug.slice(0, -1));
   if (!page) notFound();
 
-  const method = (page.data as any)?._openapi?.method as string | undefined;
-  const apiPath = (page.data as any)?._openapi?.path as string | undefined;
+  const openApiMetadata = (page.data as PageFrontmatter)._openapi;
+  const method = openApiMetadata?.method;
+  const apiPath = openApiMetadata?.path;
   const section = page.slugs[0];
 
   return new ImageResponse(
