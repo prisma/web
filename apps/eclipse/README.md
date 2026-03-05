@@ -24,6 +24,20 @@ Runs on **http://localhost:3002** (docs is 3000, blog is 3001).
 - Uses [Fumadocs](https://fumadocs.dev) for the doc framework
 - Consumes `@prisma/eclipse` from `packages/eclipse` (workspace package)
 
+## Deployment
+
+### Vercel
+
+This app has a `vercel.json` configuration that ensures the `@prisma/eclipse` package is built before the app itself. The build command uses Turborepo's dependency graph:
+
+```bash
+turbo run build --filter=eclipse
+```
+
+This automatically builds `@prisma/eclipse` and `@prisma-docs/ui` before building the Eclipse docs app, ensuring all built assets (CSS, components) are available.
+
+**Important**: If you see errors about missing files in `@prisma/eclipse/dist/`, it means the package wasn't built before the app. The `vercel.json` in this directory ensures this happens automatically on Vercel.
+
 ## Related
 
 - **Package**: `packages/eclipse` — the actual `@prisma/eclipse` component library
