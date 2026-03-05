@@ -111,7 +111,7 @@ const Footer = ({
                 className="flex-1 lg:mb-0 lg:px-2 min-w-40"
                 key={`footer-${idx}`}
               >
-                <span className="uppercase stretch-display font-mona-sans inline-block font-bold text-base text-foreground-neutral tracking-[0.1em] mt-0 mb-2.5 lg:mb-3">
+                <span className="uppercase stretch-display font-sans-display inline-block font-bold text-base text-foreground-neutral tracking-[0.1em] mt-0 mb-2.5 lg:mb-3">
                   {footerItem.title}
                 </span>
                 {footerItem.links.map((link: any, idx: number) =>
