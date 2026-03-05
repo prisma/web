@@ -1,3 +1,5 @@
+export { Textarea } from "./textarea";
+
 export {
   ChartContainer,
   ChartTooltip,
