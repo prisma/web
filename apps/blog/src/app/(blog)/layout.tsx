@@ -1,4 +1,6 @@
 import { WebNavigation } from "@prisma-docs/ui/components/web-navigation";
+import { Footer } from "@prisma-docs/ui/components/footer";
+import { ThemeProvider } from "@prisma-docs/ui/components/theme-provider";
 export function baseOptions() {
   return {
     nav: {
@@ -104,9 +106,10 @@ export function baseOptions() {
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <>
+    <ThemeProvider defaultTheme="system" storageKey="blog-theme">
       <WebNavigation links={baseOptions().links} />
       {children}
-    </>
+      <Footer />
+    </ThemeProvider>
   );
 }
