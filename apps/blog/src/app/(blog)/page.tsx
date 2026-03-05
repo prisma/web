@@ -45,7 +45,7 @@ export default function BlogHome() {
       description:
         (data.description as string) || (data.metaDescription as string) || "",
       author: getPrimaryAuthor(post),
-      authorSrc: null,
+      authorSrc: (data.authorSrc as string | undefined) ?? null,
       imageSrc: getCardImageSrc(post),
       imageAlt: (data.heroImageAlt as string) ?? (data.title as string),
       seriesTitle: data.series?.title ?? null,
