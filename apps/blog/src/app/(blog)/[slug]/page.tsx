@@ -14,7 +14,8 @@ import {
   Label,
   Separator,
 } from "@prisma-docs/eclipse";
-import { socialIcons } from "@prisma-docs/ui/data/footer";
+import { shareSocials } from "@prisma-docs/ui/data/footer";
+import { BlogShare } from "@/components/BlogShare";
 
 export default async function Page(props: {
   params: Promise<{ slug: string }>;
@@ -52,15 +53,14 @@ export default async function Page(props: {
           <div className="text-sm text-fd-muted-foreground flex gap-2 items-center text-foreground-neutral mb-4">
             {page.data.authors?.length > 1 ? (
               page.data.authors.join(", ")
-            ) : page.data.authors.length === 1 ? (
+            ) : page.data.authors?.length === 1 ? (
               <span className="mt-auto flex items-center gap-2 font-semibold text-sm">
                 {page.data?.authorSrc && (
                   <Avatar
                     format="image"
-                    src="/avatar.jpg"
-                    alt="Disabled user"
+                    src={page.data.authorSrc}
+                    alt={page.data.authors[0]}
                     size="lg"
-                    disabled
                   />
                 )}
                 <span>{page.data.authors[0]}</span>
@@ -112,31 +112,7 @@ export default async function Page(props: {
         <Separator className="my-12" />
 
         {/* Share Container */}
-        <div className="w-fit mx-auto">
-          <h5 className="text-center mb-4 font-semibold text-background-default-reverse">
-            Share this article
-          </h5>
-          <div className="flex justify-start gap-2 md:max-w-[190px]">
-            {socialIcons.map((socialLink: any, idx: number) => (
-              <a
-                href={socialLink.url}
-                target="_blank"
-                rel="noopener"
-                key={idx}
-                aria-label={socialLink.title}
-                className={cn(
-                  "text-[1.375rem] transition-colors hover:[&>div]:bg-background-ppg-strong",
-                )}
-              >
-                <Action color="neutral" size="2xl">
-                  <i
-                    className={`fa-brands fa-${socialLink.icon} text-current text-foreground-neutral-weak transition-colors`}
-                  />
-                </Action>
-              </a>
-            ))}
-          </div>
-        </div>
+        <BlogShare desc={page.data.metaDescription as string} />
 
         {/* Newsletter CTA */}
         <div className="w-full px-8 py-12 shadow-box-low newsletter-bg rounded-square border border-background-neutral flex max-sm:flex-col wrap items-start gap-4 sm:items-center justify-between my-12">
