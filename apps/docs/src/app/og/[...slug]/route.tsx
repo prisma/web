@@ -19,6 +19,7 @@ const HTTP_METHOD_COLORS = {
   GET: "#07DC71",
   POST: "#51A2FF",
   DELETE: "#FF6467",
+  PATCH: "#F7B955",
 } as const;
 
 function PrismaOGImage({
@@ -30,10 +31,12 @@ function PrismaOGImage({
 }: {
   title: string;
   description?: string;
-  method?: "GET" | "POST" | "DELETE";
+  method?: string;
   apiPath?: string;
   section?: string;
 }) {
+  const methodColor = method ? HTTP_METHOD_COLORS[method as keyof typeof HTTP_METHOD_COLORS] ?? "#71e8df" : null;
+
   return (
     <div
       style={{
@@ -47,7 +50,7 @@ function PrismaOGImage({
         position: "relative",
       }}
     >
-      {method ? (
+      {method && methodColor ? (
         <div
           style={{
             position: "absolute",
@@ -57,14 +60,14 @@ function PrismaOGImage({
             alignItems: "center",
             justifyContent: "center",
             backgroundColor: "transparent",
-            color: HTTP_METHOD_COLORS[method],
-            border: `3px solid ${HTTP_METHOD_COLORS[method]}`,
+            color: methodColor,
+            border: `3px solid ${methodColor}`,
             padding: "12px 24px",
             borderRadius: 9999,
             fontSize: 24,
             fontFamily: "Barlow, sans-serif",
             fontWeight: 700,
-            boxShadow: `0 0 40px ${HTTP_METHOD_COLORS[method]}40`,
+            boxShadow: `0 0 40px ${methodColor}40`,
           }}
         >
           {method}
@@ -200,7 +203,7 @@ export async function GET(_req: Request, { params }: RouteContext<"/og/[...slug]
   const page = source.getPage(slug.slice(0, -1)) ?? sourceV6.getPage(slug.slice(0, -1));
   if (!page) notFound();
 
-  const method = (page.data as any)?._openapi?.method as "GET" | "POST" | "DELETE" | undefined;
+  const method = (page.data as any)?._openapi?.method as string | undefined;
   const apiPath = (page.data as any)?._openapi?.path as string | undefined;
   const section = page.slugs[0];
 
