@@ -143,9 +143,9 @@ Use consistent spacing throughout your app:
 ### Border Radius
 
 ```tsx
-<div className="rounded-low">Low radius (3px)</div>
+<div className="rounded-square-low">Low radius (3px)</div>
 <div className="rounded-square">Default radius (6px)</div>
-<div className="rounded-high">High radius (12px)</div>
+<div className="rounded-square-high">High radius (12px)</div>
 <div className="rounded-circle">Circular (999px)</div>
 ```
 
