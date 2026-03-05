@@ -72,8 +72,11 @@ export function WebNavigation({ links }: WebNavigationProps) {
                           link?.col && `grid grid-cols-${link.col}`,
                         )}
                       >
-                        {link.sub.map((sub: any) => (
-                          <MenuNavigationItem key={link.text} link={sub} />
+                        {link.sub.map((sub: any, index: number) => (
+                          <MenuNavigationItem
+                            key={`${sub.text}-${sub.url}-${index}`}
+                            link={sub}
+                          />
                         ))}
                       </div>
                     </NavigationMenuContent>
