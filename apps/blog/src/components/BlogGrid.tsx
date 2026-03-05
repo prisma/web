@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Button } from '@prisma-docs/eclipse';
+import { Button } from '@prisma/eclipse';
 
 type BlogCardItem = {
   url: string;

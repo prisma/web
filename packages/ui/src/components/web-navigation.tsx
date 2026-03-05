@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@prisma-docs/eclipse";
+import { Button } from "@prisma/eclipse";
 import {
   Logo,
   NavigationMenu,

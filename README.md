@@ -11,7 +11,7 @@ This repository is a **pnpm monorepo** containing the Prisma documentation, blog
 | `apps/docs` | Prisma documentation site (Next.js + Fumadocs) |
 | `apps/blog` | Prisma blog |
 | `apps/eclipse` | Eclipse design system documentation |
-| `packages/eclipse` | Eclipse design system component library (`@prisma-docs/eclipse`) |
+| `packages/eclipse` | Eclipse design system component library (`@prisma/eclipse`) |
 | `packages/ui` | Shared UI components and utilities (`@prisma-docs/ui`) |
 
 See each app’s `README.md` for more detail.

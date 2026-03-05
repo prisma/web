@@ -6,15 +6,30 @@ import {
   type HTMLAttributes,
   type ReactNode,
   type RefObject,
+  useCallback,
   use,
   useMemo,
   useRef,
+  useState,
 } from "react";
 import { cn } from "../lib/cn";
-import { useCopyButton } from "fumadocs-ui/utils/use-copy-button";
 import { buttonVariants } from "./ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { mergeRefs } from "../lib/merge-refs";
+
+function useCopyButton(copy: () => void | Promise<void>, timeout = 2000) {
+  const [checked, setChecked] = useState(false);
+
+  const onClick = useCallback(async () => {
+    await copy();
+    setChecked(true);
+    window.setTimeout(() => {
+      setChecked(false);
+    }, timeout);
+  }, [copy, timeout]);
+
+  return [checked, onClick] as const;
+}
 
 export interface CodeBlockProps extends ComponentProps<"figure"> {
   /**

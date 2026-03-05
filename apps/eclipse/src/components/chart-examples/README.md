@@ -4,7 +4,7 @@ This directory contains interactive chart examples used in the Eclipse design sy
 
 ## Overview
 
-These examples demonstrate various chart types and configurations using the Chart component from `@prisma-docs/eclipse`, which is built on top of Recharts.
+These examples demonstrate various chart types and configurations using the Chart component from `@prisma/eclipse`, which is built on top of Recharts.
 
 ## Available Examples
 

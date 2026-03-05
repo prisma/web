@@ -24,7 +24,7 @@ import {
   TableCell,
   TableCaption,
   Input,
-} from "@prisma-docs/eclipse";
+} from "@prisma/eclipse";
 
 export function getMDXComponents(components?: MDXComponents): MDXComponents {
   const mdxComponents = {
