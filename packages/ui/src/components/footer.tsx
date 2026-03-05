@@ -8,7 +8,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@prisma-docs/eclipse";
+} from "@prisma/eclipse";
 import { Logo } from "./navigation-menu";
 import { gdpr, hipaa, iso27, soc2 } from "./footer-badges";
 import PDPStatus from "./pdp-status";
