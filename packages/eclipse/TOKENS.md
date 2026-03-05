@@ -151,40 +151,6 @@ Margin tokens for consistent spacing between elements:
 - `margin-xl` - 32px
 - `margin-4xl` - 48px
 
-### Padding
-
-#### Container Padding (Block)
-
-- `padding-block-container-tighter` - 12px
-- `padding-block-container-tight` - 16px
-- `padding-block-container` - 24px
-- `padding-block-container-loose` - 48px
-- `padding-block-container-looser` - 48px
-
-#### Container Padding (Inline)
-
-- `padding-inline-container-tighter` - 12px
-- `padding-inline-container-tight` - 16px
-- `padding-inline-container` - 24px
-- `padding-inline-container-loose` - 48px
-- `padding-inline-container-looser` - 48px
-
-#### Element Padding (Block)
-
-- `padding-block-element-lg` - 4px
-- `padding-block-element-xl` - 6px
-- `padding-block-element-2xl` - 8px
-- `padding-block-element-3xl` - 10px
-- `padding-block-element-4xl` - 12px
-
-#### Element Padding (Inline)
-
-- `padding-inline-element-lg` - 8px
-- `padding-inline-element-xl` - 10px
-- `padding-inline-element-2xl` - 12px
-- `padding-inline-element-3xl` - 16px
-- `padding-inline-element-4xl` - 16px
-
 ### Size
 
 Element sizing tokens:
@@ -207,9 +173,9 @@ Element sizing tokens:
 
 ### Font Families
 
-- `font-sans-display` - Inter (for display text)
+- `font-sans-display` - Mona Sans (for display text)
 - `font-sans` - Inter (body text)
-- `font-mono` - JetBrains Mono (code)
+- `font-mono` - Mona Sans Mono (code)
 
 ### Font Sizes
 
@@ -247,9 +213,9 @@ All font sizes include corresponding line heights:
 
 ## Blur Tokens
 
-- `blur-low` - 16px
-- `blur` - 24px
-- `blur-high` - 40px
+- `blur-surface-low` - 16px
+- `blur-surface` - 24px
+- `blur-surface-high` - 40px
 
 ---
 
