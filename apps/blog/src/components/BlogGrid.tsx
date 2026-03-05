@@ -202,7 +202,7 @@ export function BlogGrid({
           href={items[0].url}
           className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-background-default rounded-square overflow-hidden border border-stroke-neutral shadow-box-low"
         >
-          <img
+          <Image
             src={items[0].imageSrc as string}
             alt={items[0].imageAlt ?? items[0].title}
             sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"

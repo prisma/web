@@ -53,10 +53,25 @@ export default function BlogHome() {
   };
   const items = posts.map((post) => {
     const data = post.data as any;
+
+    // Safely convert date to ISO string with validation
+    let dateISO = "";
+    if (data.date) {
+      try {
+        const dateObj = new Date(data.date);
+        if (!isNaN(dateObj.getTime())) {
+          dateISO = dateObj.toISOString();
+        }
+      } catch (error) {
+        // If date conversion fails, fall back to empty string
+        dateISO = "";
+      }
+    }
+
     return {
       url: post.url,
       title: data.title as string,
-      date: data.date ? new Date(data.date).toISOString() : "",
+      date: dateISO,
       description:
         (data.description as string) || (data.metaDescription as string) || "",
       author: getPrimaryAuthor(post),
