@@ -17,10 +17,10 @@ const buttonVariants = cva(
       link: "text-foreground-neutral underline-offset-4 hover:underline focus-visible:ring-foreground-neutral",
     },
     size: {
-      lg: "px-2 h-lg text-sm",
-      xl: "px-3 h-xl text-md",
-      "2xl": "px-3  h-2xl text-lg",
-      "4xl": "px-4  h-4xl text-xl",
+      lg: "px-2 h-element-lg text-sm",
+      xl: "px-3 h-element-xl text-md",
+      "2xl": "px-3  h-element-2xl text-lg",
+      "4xl": "px-4  h-element-4xl text-xl",
     },
   },
   defaultVariants: {

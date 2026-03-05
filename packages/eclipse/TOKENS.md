@@ -155,17 +155,17 @@ Margin tokens for consistent spacing between elements:
 
 Element sizing tokens:
 
-- `size-2xs` - 12px
-- `size-xs` - 16px
-- `size-sm` - 20px
-- `size-md` - 24px
-- `size-lg` - 28px
-- `size-xl` - 32px
-- `size-2xl` - 36px
-- `size-3xl` - 40px
-- `size-4xl` - 48px
-- `size-5xl` - 64px
-- `size-6xl` - 96px
+- `size-element-2xs` - 12px
+- `size-element-xs` - 16px
+- `size-element-sm` - 20px
+- `size-element-md` - 24px
+- `size-element-lg` - 28px
+- `size-element-xl` - 32px
+- `size-element-2xl` - 36px
+- `size-element-3xl` - 40px
+- `size-element-4xl` - 48px
+- `size-element-5xl` - 64px
+- `size-element-6xl` - 96px
 
 ---
 

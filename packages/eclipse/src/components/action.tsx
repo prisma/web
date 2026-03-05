@@ -25,11 +25,11 @@ const actionVariants = cva(
         "neutral-reversed": "bg-background-neutral-reverse text-foreground-neutral-reverse",
       },
       size: {
-        lg: "size-lg p-1.5",
-        "2xl": "size-2xl p-2",
-        "3xl": "size-3xl p-2.5",
-        "4xl": "size-4xl p-3",
-        "5xl": "size-5xl p-4",
+        lg: "size-element-lg p-1.5",
+        "2xl": "size-element-2xl p-2",
+        "3xl": "size-element-3xl p-2.5",
+        "4xl": "size-element-4xl p-3",
+        "5xl": "size-element-5xl p-4",
       },
       isFramed: {
         true: "border",

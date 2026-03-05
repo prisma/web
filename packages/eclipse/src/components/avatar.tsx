@@ -14,10 +14,10 @@ const avatarVariants = cva(
         false: "",
       },
       size: {
-        lg: "size-lg text-2xs",
-        xl: "size-xl text-2xs",
-        "2xl": "size-2xl text-sm",
-        "3xl": "size-3xl text-sm",
+        lg: "size-element-lg text-2xs",
+        xl: "size-element-xl text-2xs",
+        "2xl": "size-element-2xl text-sm",
+        "3xl": "size-element-3xl text-sm",
       },
     },
     defaultVariants: {
