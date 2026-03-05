@@ -235,7 +235,7 @@ export const typography = {
   fontFamily: {
     "sans-display": "Inter",
     sans: "Inter",
-    monospace: "Mona Sans Mono",
+    mono: "Mona Sans Mono",
   },
   fontSize: {
     "2xs": 11,
