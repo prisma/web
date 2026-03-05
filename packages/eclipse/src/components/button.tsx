@@ -13,7 +13,7 @@ const buttonVariants = cva(
       default: "bg-background-default hover:bg-background-neutral border border-stroke-neutral hover:border-stroke-neutral-strong text-foreground-neutral shadow-box-low",
       "default-weaker": "bg-transparent hover:bg-background-neutral text-foreground-neutral",
       error: "bg-background-error-reverse text-foreground-error-reverse hover:bg-background-error-reverse-strong focus-visible:ring-stroke-error",
-      success: "bg-background-success-reverse text-foreground-success-reverse hover:bg-background-success-reverse-strong focus-visible:ring-stroke-error",
+      success: "bg-background-success-reverse text-foreground-success-reverse hover:bg-background-success-reverse-strong focus-visible:ring-stroke-success",
       link: "text-foreground-neutral underline-offset-4 hover:underline focus-visible:ring-foreground-neutral",
     },
     size: {
