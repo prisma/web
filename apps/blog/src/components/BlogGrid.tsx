@@ -205,6 +205,8 @@ export function BlogGrid({
           <Image
             src={items[0].imageSrc as string}
             alt={items[0].imageAlt ?? items[0].title}
+            width={200}
+            height={200}
             sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
             className="object-cover transition-transform duration-300 group-hover:scale-[1.02] h-52! sm:h-72! w-full"
           />
