@@ -216,7 +216,7 @@ export function EclipseShowcase() {
           Semantic Patterns
         </h3>
 
-        <div className="p-padding-block-container bg-background-error rounded-high border border-stroke-error">
+        <div className="p-6 bg-background-error rounded-high border border-stroke-error">
           <div className="flex items-start gap-3">
             <span className="text-foreground-error">⚠️</span>
             <div>
@@ -230,7 +230,7 @@ export function EclipseShowcase() {
           </div>
         </div>
 
-        <div className="p-padding-block-container bg-background-success rounded-high border border-stroke-success">
+        <div className="p-6 bg-background-success rounded-high border border-stroke-success">
           <div className="flex items-start gap-3">
             <span className="text-foreground-success">✓</span>
             <div>
@@ -244,7 +244,7 @@ export function EclipseShowcase() {
           </div>
         </div>
 
-        <div className="p-padding-block-container bg-background-warning rounded-high border border-stroke-warning">
+        <div className="p-6 bg-background-warning rounded-high border border-stroke-warning">
           <div className="flex items-start gap-3">
             <span className="text-foreground-warning">!</span>
             <div>

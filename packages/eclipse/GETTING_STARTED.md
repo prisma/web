@@ -110,7 +110,7 @@ Use consistent spacing throughout your app:
 <div className="m-margin-md">Content with margin</div>
 
 // Padding
-<div className="p-padding-block-container">
+<div className="p-6">
   Container with padding
 </div>
 
@@ -200,21 +200,21 @@ import { Button } from "@prisma-docs/eclipse";
 
 ```tsx
 // Error message
-<div className="p-padding-block-container bg-background-error rounded-high border border-stroke-error">
+<div className="p-6 bg-background-error rounded-high border border-stroke-error">
   <p className="text-foreground-error">
     An error occurred
   </p>
 </div>
 
 // Success message
-<div className="p-padding-block-container bg-background-success rounded-high border border-stroke-success">
+<div className="p-6 bg-background-success rounded-high border border-stroke-success">
   <p className="text-foreground-success">
     Operation successful!
   </p>
 </div>
 
 // Warning message
-<div className="p-padding-block-container bg-background-warning rounded-high border border-stroke-warning">
+<div className="p-6 bg-background-warning rounded-high border border-stroke-warning">
   <p className="text-foreground-warning">
     Please review this carefully
   </p>
@@ -251,9 +251,9 @@ const cardVariants = cva(
         elevated: "bg-background-default border-stroke-neutral shadow-lg",
       },
       padding: {
-        sm: "p-padding-block-container-tight",
-        md: "p-padding-block-container",
-        lg: "p-padding-block-container-loose",
+        sm: "p-4",
+        md: "p-6",
+        lg: "p-12",
       },
     },
     defaultVariants: {
@@ -307,7 +307,7 @@ const fontFamily = tokens.typography.fontFamily.sans; // "Inter"
 ### Responsive Design
 
 ```tsx
-<div className="p-padding-block-container-tight md:p-padding-block-container lg:p-padding-block-container-loose">
+<div className="p-4 md:p-6 lg:p-12">
   Responsive padding
 </div>
 ```
@@ -334,7 +334,6 @@ const fontFamily = tokens.typography.fontFamily.sans; // "Inter"
 <div className="
   bg-background-default
   text-foreground-neutral
-  p-padding-block-container
   rounded-high
   border border-stroke-neutral
   shadow-lg

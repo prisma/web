@@ -280,11 +280,6 @@ All font sizes include corresponding line heights:
 // Margin
 <div className="m-margin-md">Spaced content</div>
 
-// Padding
-<div className="p-padding-block-container">
-  Container with padding
-</div>
-
 // Sizes
 <div className="w-size-xl h-size-xl">
   Square element
