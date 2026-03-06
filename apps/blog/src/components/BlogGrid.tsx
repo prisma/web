@@ -200,9 +200,9 @@ export function BlogGrid({
       {currentPage === 1 && (
         <a
           href={items[0].url}
-          className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-background-default rounded-square overflow-hidden border border-stroke-neutral shadow-box-low"
+          className="group grid grid-cols-1 sm:grid-cols-2 gap-4 bg-background-default rounded-square overflow-hidden border border-stroke-neutral shadow-box-low"
         >
-          <div className="relative w-full h-52 sm:h-72">
+          <div className="relative w-full aspect-video">
             <Image
               src={items[0].imageSrc as string}
               alt={items[0].imageAlt ?? items[0].title}
@@ -248,7 +248,7 @@ export function BlogGrid({
           <Link
             key={post.url}
             href={post.url}
-            className="grid sm:grid-cols-[1fr_384px] overflow-hidden border-b pb-4 sm:pb-6 border-stroke-neutral gap-8"
+            className="group grid sm:grid-cols-[1fr_384px] overflow-hidden border-b pb-4 sm:pb-6 border-stroke-neutral gap-8"
           >
             <div className="grid grid-rows-[1fr_auto]">
               <div className="">
