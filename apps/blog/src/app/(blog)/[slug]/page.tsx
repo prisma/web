@@ -14,7 +14,7 @@ import {
   Label,
   Separator,
 } from "@prisma-docs/eclipse";
-import { shareSocials } from "@prisma-docs/ui/data/footer";
+import { FooterNewsletterForm } from "@prisma-docs/ui/components/newsletter";
 import { BlogShare } from "@/components/BlogShare";
 
 export default async function Page(props: {
@@ -116,26 +116,7 @@ export default async function Page(props: {
 
         {/* Newsletter CTA */}
         <div className="w-full px-8 py-12 shadow-box-low newsletter-bg rounded-square border border-background-neutral flex max-sm:flex-col wrap items-start gap-4 sm:items-center justify-between my-12">
-          <h5 className="font-family-sans font-[650] text-white w-fit">
-            Subscribe to our newsletter
-          </h5>
-          <div className="input flex items-center gap-2 justify-center">
-            <Input
-              type="email"
-              id="newsletter"
-              size="2xl"
-              placeholder="email@example.com"
-              className="w-62"
-            />
-            <Button
-              size="xl"
-              variant="ppg"
-              type="submit"
-              className="whitespace-nowrap font-semibold"
-            >
-              Subscribe
-            </Button>
-          </div>
+          <FooterNewsletterForm />
         </div>
       </div>
       <div className="max-md:hidden toc">
