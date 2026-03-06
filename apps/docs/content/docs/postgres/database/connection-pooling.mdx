@@ -8,25 +8,28 @@ metaDescription: Learn about connection pooling in Prisma Postgres
 
 Connection pooling keeps a set of database connections open and reuses them across requests, rather than opening a new connection for every query. This reduces latency and lets your database handle more concurrent requests. This is especially important in serverless and high-traffic environments where connection limits can be exhausted quickly.
 
-Prisma Postgres supports connection pooling through [TCP connections](#connection-pooling-with-tcp). You can also use [Prisma Accelerate](#connection-pooling-with-accelerate) for connection pooling with additional features like caching.
+Prisma Postgres supports connection pooling through pooled TCP connections. You can also use [Prisma Accelerate](#connection-pooling-with-accelerate) for connection pooling with additional features like caching.
 
 ## Connection pooling with TCP
 
-:::note
-TCP connection pooling is currently in [Early Access](/console/more/feature-maturity#early-access).
-:::
-
-To use a pooled connection, append `&pool=true` to your Prisma Postgres TCP connection string:
+To use connection pooling over TCP, use the pooled connection string generated for your Prisma Postgres database:
 
 ```bash
 # Direct connection (no pooling)
 DATABASE_URL="postgres://USER:PASSWORD@db.prisma.io:5432/?sslmode=require"
 
 # Pooled connection
-DATABASE_URL="postgres://USER:PASSWORD@db.prisma.io:5432/?sslmode=require&pool=true"
+DATABASE_URL="postgres://USER:PASSWORD@db.prisma.ie:5432/?sslmode=require"
 ```
 
-You can also enable connection pooling when generating your connection string in the [Prisma Console](https://console.prisma.io) by toggling on the **pooling** option.
+Unlike the Early Access release, connection pooling no longer relies on a query parameter on the direct connection string. Use the dedicated pooled connection string instead.
+
+### How to enable connection pooling
+
+1. Open your Prisma Postgres database in [Prisma Console](https://console.prisma.io).
+2. Generate or copy the pooled TCP connection string for your database.
+3. Set it as `DATABASE_URL` in your application environment.
+4. Redeploy your application so new instances use the pooled connection.
 
 This works with any PostgreSQL client, ORM, or database tool you already use.
 
@@ -39,7 +42,7 @@ The number of available connections depends on your plan and whether you use a p
 | **Direct connections** | 10   | 10      | 50  | 100      |
 | **Pooled connections** | 10   | 100     | 500 | 1000     |
 
-Idle connections are closed after 60 minutes. You can compare plans on the [Prisma pricing page](https://www.prisma.io/pricing).
+Idle pooled connections are closed after 60 minutes. You can compare plans on the [Prisma pricing page](https://www.prisma.io/pricing).
 
 With TCP connections, there are no limits on query duration, transaction duration, or response size.
 
@@ -53,3 +56,6 @@ With TCP connections, there are no limits on query duration, transaction duratio
 
 For most production applications, pooled connections are recommended. Use direct connections when you need a persistent connection or are working in a low-concurrency environment like local development.
 
+## Connection pooling with Accelerate
+
+If you want connection pooling together with caching and global routing, use [Prisma Accelerate](/accelerate). Prisma Accelerate uses a `prisma+postgres://...` connection string and is configured separately from pooled TCP connections.
