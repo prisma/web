@@ -38,7 +38,7 @@ export interface BadgeProps
   /**
    * The label text to display inside the badge
    */
-  label: string;
+  label: any;
 }
 
 /**
