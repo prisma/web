@@ -76,6 +76,7 @@ const ContentSecurityPolicy = `
     https://vercel.live https://vercel.com data: blob:
     https://td.doubleclick.net
     https://raw.githubusercontent.com;
+
   connect-src 'self'
     https://api.github.com
     https://p2zxqf70.api.sanity.io
@@ -121,7 +122,8 @@ const ContentSecurityPolicy = `
     https://unpkg.com
     https://proxy.kapa.ai
     https://hcaptcha.com
-    https://*.hcaptcha.com;
+    https://*.hcaptcha.com
+    https://ka-p.fontawesome.com;
 
   media-src 'self'
     https://*.prisma.io

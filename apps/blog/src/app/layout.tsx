@@ -28,7 +28,7 @@ export default function Layout({ children }: LayoutProps<"/">) {
         ></Script>
       </head>
       <body className="flex flex-col min-h-screen bg-blog pt-24">
-        <RootProvider>{children}</RootProvider>
+        <Provider>{children}</Provider>
       </body>
     </html>
   );

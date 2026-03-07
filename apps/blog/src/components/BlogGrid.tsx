@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Avatar,
   Badge,
@@ -10,12 +11,13 @@ import {
   Pagination,
   PaginationContent,
   PaginationEllipsis,
-  PaginationInput,
   PaginationItem,
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
 } from "@prisma-docs/eclipse";
+
+import { withBlogBasePathForImageSrc } from "@/lib/url";
 
 type BlogCardItem = {
   url: string;
@@ -172,17 +174,54 @@ export function BlogGrid({
   pageSize?: number;
 }) {
   const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-  const [currentPage, setPage] = useState<number>(1);
-  const visibleItems = useMemo(
-    () => items.slice((currentPage - 1) * pageSize, currentPage * pageSize),
-    [items, currentPage, pageSize],
-  );
+  const [currentPage, setPage] = useState<number>(() => {
+    const pageFromQuery = parsePage(searchParams.get("page"));
+    return Math.max(1, Math.min(pageFromQuery, totalPages));
+  });
+  const visibleItems = useMemo(() => {
+    if (currentPage === 1) {
+      return items.slice(1, pageSize);
+    }
+
+    return items.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  }, [items, currentPage, pageSize]);
 
   const setCurrentPage = (page: number) => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    setPage(page);
+    const clampedPage = Math.max(1, Math.min(page, totalPages));
+    setPage(clampedPage);
   };
+
+  useEffect(() => {
+    const pageFromQuery = parsePage(searchParams.get("page"));
+    const clampedPage = Math.max(1, Math.min(pageFromQuery, totalPages));
+    setPage((prevPage) => (prevPage === clampedPage ? prevPage : clampedPage));
+  }, [searchParams, totalPages]);
+
+  useEffect(() => {
+    const clampedCurrentPage = Math.max(1, Math.min(currentPage, totalPages));
+    const currentQuery = searchParams.toString();
+
+    if (clampedCurrentPage === 1) {
+      if (!currentQuery) return;
+
+      router.replace(pathname, { scroll: false });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", String(clampedCurrentPage));
+    const nextQuery = params.toString();
+
+    if (currentQuery === nextQuery) return;
+
+    router.replace(`${pathname}?${nextQuery}`, { scroll: false });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [currentPage, pathname, router, searchParams, totalPages]);
 
   const formatDate = (iso: string) => {
     if (!iso) return "";
@@ -198,17 +237,18 @@ export function BlogGrid({
   return (
     <>
       {currentPage === 1 && (
-        <a
+        <Link
           href={items[0].url}
-          className="group grid grid-cols-1 sm:grid-cols-2 gap-4 bg-background-default rounded-square overflow-hidden border border-stroke-neutral shadow-box-low"
+          className="group grid grid-cols-1 md:grid-cols-2 gap-4 bg-background-default rounded-square overflow-hidden border border-stroke-neutral shadow-box-low"
         >
-          <div className="relative w-full aspect-video">
+          <div className="relative w-full h-full aspect-video">
             <Image
-              src={items[0].imageSrc as string}
+              src={withBlogBasePathForImageSrc(items[0].imageSrc as string)}
               alt={items[0].imageAlt ?? items[0].title}
               fill
               sizes="(min-width: 640px) 50vw, 100vw"
               className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+              loading="eager"
               priority
             />
           </div>
@@ -223,7 +263,7 @@ export function BlogGrid({
               {items[0].title}
             </h2>
             {items[0].description && (
-              <p className="text-sm text-foreground-neutral-weak leading-[20px]! line-clamp-5">
+              <p className="text-sm text-foreground-neutral-weak leading-[20px]! line-clamp-2">
                 {items[0].description}
               </p>
             )}
@@ -241,7 +281,7 @@ export function BlogGrid({
               </span>
             )}
           </Card>
-        </a>
+        </Link>
       )}
       <div className="grid gap-6 mt-12 grid-cols-1">
         {visibleItems.map((post) => (
@@ -250,8 +290,8 @@ export function BlogGrid({
             href={post.url}
             className="group grid sm:grid-cols-[1fr_384px] overflow-hidden border-b pb-4 sm:pb-6 border-stroke-neutral gap-8"
           >
-            <div className="grid grid-rows-[1fr_auto]">
-              <div className="">
+            <div className="flex flex-col justify-between">
+              <div>
                 <div className="eyebrow flex gap-2 items-center">
                   {post.badge && (
                     <Badge color="success" label="Release" className="w-min" />
@@ -263,18 +303,18 @@ export function BlogGrid({
                   )}
                 </div>
                 {post.title && (
-                  <h2 className="text-2xl text-foreground-neutral font-[650] sm:font-bold font-mona-sans mt-4 mb-2">
+                  <h2 className="text-md  md:text-lg text-foreground-neutral font-[650] sm:font-bold font-mona-sans mt-4 mb-2">
                     {post.title}
                   </h2>
                 )}
                 {post.description && (
-                  <p className="text-sm text-foreground-neutral-weak line-clamp-3">
+                  <p className="text-sm text-foreground-neutral-weak line-clamp-2">
                     {post.description}
                   </p>
                 )}
               </div>
               {post.author && (
-                <span className="mt-auto hidden sm:flex items-center gap-2 font-semibold text-sm">
+                <span className="hidden sm:flex items-center gap-2 font-semibold text-sm">
                   {post?.authorSrc && (
                     <Avatar
                       format="image"
@@ -289,7 +329,7 @@ export function BlogGrid({
               )}
             </div>
             {post.imageSrc && (
-              <div className="relative max-w-96 aspect-[16/9] w-full hidden sm:block">
+              <div className="relative max-w-96 aspect-video w-full h-full hidden sm:block">
                 <Image
                   src={post.imageSrc}
                   alt={post.imageAlt ?? post.title}
