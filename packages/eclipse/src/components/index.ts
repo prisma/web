@@ -10,6 +10,7 @@ export {
   useChart,
 } from "./chart";
 export type { ChartConfig } from "./chart";
+export { FontAwesomeScript } from "./fontawesome-eclipse";
 
 export { Accordion, Accordions } from "./accordion";
 
@@ -151,4 +152,5 @@ export {
   PaginationInput,
 } from "./pagination";
 
+export { Admonition } from "./admonition";
 export { Switch } from "./switch";
