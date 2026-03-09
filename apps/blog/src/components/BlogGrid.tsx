@@ -223,6 +223,13 @@ export function BlogGrid({
     setPage(clampedPage);
   };
 
+  const setCategory = (nextCategory: string) => {
+    if (nextCategory === currentCat) return;
+
+    setCurrentCat(nextCategory);
+    setPage(1);
+  };
+
   useEffect(() => {
     const pageFromQuery = parsePage(searchParams.get("page"));
     const clampedPage = Math.max(1, Math.min(pageFromQuery, totalPages));
@@ -243,11 +250,6 @@ export function BlogGrid({
         : "show-all";
     setCurrentCat((prevCat) => (prevCat === newCat ? prevCat : newCat));
   }, [searchParams, uniqueTags]);
-
-  // Reset to page 1 when filter changes
-  useEffect(() => {
-    setPage(1);
-  }, [currentCat]);
 
   // Sync both tag and page to URL
   useEffect(() => {
@@ -293,20 +295,20 @@ export function BlogGrid({
       <div className="flex flex-wrap gap-2 mb-8">
         <Badge
           color={currentCat === "show-all" ? "ppg" : "neutral"}
-          onClick={() => setCurrentCat("show-all")}
+          onClick={() => setCategory("show-all")}
           className="cursor-pointer"
           label="Show all"
         />
         {uniqueTags.map((category: string, idx: number) => (
           <Badge
             color={currentCat === category ? "ppg" : "neutral"}
-            onClick={() =>
-              setCurrentCat(
-                category === "show-all" || currentCat === category
-                  ? "show-all"
-                  : category,
-              )
-            }
+              onClick={() => {
+                const nextCategory =
+                  category === "show-all" || currentCat === category
+                    ? "show-all"
+                    : category;
+                setCategory(nextCategory);
+              }}
             className="cursor-pointer"
             label={formatTag(category)}
             key={idx}
