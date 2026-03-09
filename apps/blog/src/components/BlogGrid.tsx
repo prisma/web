@@ -18,6 +18,7 @@ import {
 } from "@prisma-docs/eclipse";
 
 import { withBlogBasePathForImageSrc } from "@/lib/url";
+import { formatTag, formatDate } from "@/lib/format";
 
 type BlogCardItem = {
   url: string;
@@ -247,23 +248,6 @@ export function BlogGrid({
     router.replace(`${pathname}?${nextQuery}`, { scroll: false });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [currentPage, pathname, router, searchParams, totalPages]);
-
-  const formatDate = (iso: string) => {
-    if (!iso) return "";
-    const date = new Date(iso);
-    if (Number.isNaN(date.getTime())) return "";
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
-  const formatTag = (tag: string) => {
-    return tag === "orm"
-      ? "ORM"
-      : tag.replace(/-/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
-  };
 
   return (
     <>

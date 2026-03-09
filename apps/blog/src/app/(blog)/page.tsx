@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { blog } from "@/lib/source";
 import { BlogGrid } from "@/components/BlogGrid";
 import { Avatar, Badge, Card } from "@prisma-docs/eclipse";
-
+import { getCardImageSrc } from "@/lib/source";
 export default function BlogHome() {
   const posts = blog.getPages().sort((a, b) => {
     const aTime =
@@ -16,40 +16,10 @@ export default function BlogHome() {
     return bTime - aTime;
   });
 
-  const formatDate = (value: unknown) => {
-    const date =
-      value instanceof Date ? value : new Date((value as string) ?? "");
-    if (Number.isNaN(date.getTime())) return "";
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
   const getPrimaryAuthor = (post: (typeof posts)[number]) => {
     const data = post.data as any;
     const authors = Array.isArray(data?.authors) ? data?.authors : [];
     return authors.length > 0 ? authors[0] : null;
-  };
-  const getCardImageSrc = (post: (typeof posts)[number]) => {
-    const data = post.data as any;
-    const rel =
-      (data.heroImagePath as string | undefined) ??
-      (data.metaImagePath as string | undefined);
-    if (rel) {
-      // If frontmatter already provides an absolute path, use it directly
-      if (rel.startsWith("/")) {
-        return rel;
-      }
-      const base = post.url.startsWith("/") ? post.url : `/${post.url}`;
-      const baseClean = base.endsWith("/") ? base.slice(0, -1) : base;
-      const relClean = rel.replace(/^\.\//, "").replace(/^\/+/, "");
-      return `${baseClean}/${relClean}`;
-    }
-    const absolute =
-      (data.heroImageUrl as string | undefined) ??
-      (data.metaImageUrl as string | undefined);
-    return absolute ?? null;
   };
   const items = posts.map((post) => {
     const data = post.data as any;
