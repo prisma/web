@@ -1,3 +1,4 @@
+import { formatTag, formatDate } from "@/lib/format";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getMDXComponents } from "@/mdx-components";
@@ -25,16 +26,6 @@ export default async function Page(props: {
 
   if (!page) notFound();
   const MDX = page.data.body;
-  const formatDate = (value: unknown) => {
-    const date =
-      value instanceof Date ? value : new Date((value as string) ?? "");
-    if (Number.isNaN(date.getTime())) return "";
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
 
   return (
     <div className="w-full px-4 mx-auto md:grid md:grid-cols-[1fr_180px] mt-4 md:mt-22 gap-6 max-w-257">
@@ -81,7 +72,7 @@ export default async function Page(props: {
                 <Badge
                   key={tag}
                   color="neutral"
-                  label={tag}
+                  label={formatTag(tag)}
                   className="border capitalize border-stroke-neutral-strong bg-transparent text-foreground-neutral-weak"
                 />
               ))}
