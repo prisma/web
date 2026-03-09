@@ -388,7 +388,7 @@ export function BlogGrid({
             {post.imageSrc && (
               <div className="relative max-w-96 aspect-video w-full h-full hidden sm:block">
                 <Image
-                  src={post.imageSrc}
+                  src={withBlogBasePathForImageSrc(post.imageSrc as string)}
                   alt={post.imageAlt ?? post.title}
                   fill
                   sizes="384px"
