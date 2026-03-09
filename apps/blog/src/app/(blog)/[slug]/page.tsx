@@ -28,7 +28,7 @@ export default async function Page(props: {
   const MDX = page.data.body;
 
   return (
-    <div className="w-full px-4 z-1 mx-auto md:grid md:grid-cols-[1fr_180px] mt-4 md:mt-22 gap-6 max-w-257">
+    <div className="w-full px-4 z-1 mx-auto md:grid md:grid-cols-[1fr_180px] mt-4 md:mt-22 gap-12 max-w-257">
       <div className="post-contents w-full">
         {/* Title + meta */}
         <header className="w-full relative">
