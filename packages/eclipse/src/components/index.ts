@@ -150,3 +150,5 @@ export {
   PaginationEllipsis,
   PaginationInput,
 } from "./pagination";
+
+export { Switch } from "./switch";
