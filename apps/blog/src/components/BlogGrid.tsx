@@ -202,14 +202,6 @@ export function BlogGrid({
 
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
 
-  const filteredItems = useMemo(() => {
-    return currentCat === "show-all"
-      ? items
-      : items.filter((item) => item.tags?.includes(currentCat!));
-  }, [items, currentCat]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
-
   const [currentPage, setPage] = useState<number>(() => {
     const pageFromQuery = parsePage(searchParams.get("page"));
     return Math.max(1, Math.min(pageFromQuery, totalPages));
