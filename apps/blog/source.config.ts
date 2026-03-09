@@ -38,9 +38,9 @@ export const blogPosts = defineCollections({
           "data-platform",
           "orm",
           "serverless",
-          "newrelease-feature",
+          "release",
           "education",
-          "usersuccessstory",
+          "user-success-story",
         ]),
       )
       .optional(),

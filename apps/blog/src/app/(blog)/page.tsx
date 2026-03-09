@@ -80,8 +80,13 @@ export default function BlogHome() {
       imageAlt: (data.heroImageAlt as string) ?? (data.title as string),
       seriesTitle: data.series?.title ?? null,
       badge: "Release",
+      tags: data.tags,
     };
   });
+  const uniqueTags = [
+    ...new Set(items.filter((item) => item.tags).flatMap((item) => item.tags)),
+  ];
+
   return (
     <main className="flex-1 w-full max-w-249 mx-auto px-4 py-8">
       <h1 className="stretch-display text-4xl font-bold mb-2 landing-h1 text-center mt-9 font-display">
@@ -93,11 +98,16 @@ export default function BlogHome() {
           <Badge color="ppg" label="Show all" />
           <Badge color="neutral" label="User Story" />
           <Badge color="neutral" label="Release" />
-          {/*
-            {categories.map((category: string, idx: number) =>
-              <Badge color={activeCat === category ? "ppg" : "neutral"} label={category} />
-            )}
-          */}
+
+          {uniqueTags.map((category: string, idx: number) => (
+            <Badge
+              color={"neutral"}
+              label={category
+                .replace(/-/g, " ")
+                .replace(/\b\w/g, (char) => char.toUpperCase())}
+              key={idx}
+            />
+          ))}
         </div>
 
         {/* Grid with pagination */}
@@ -113,7 +123,7 @@ export default function BlogHome() {
             </div>
           }
         >
-          <BlogGrid items={items.slice(1, -1)} pageSize={12} />
+          <BlogGrid items={items.slice(1, -1)} pageSize={12} uniqueTags={uniqueTags} />
         </Suspense>
       </div>
     </main>
