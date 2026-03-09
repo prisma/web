@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -182,10 +182,17 @@ export function BlogGrid({
   uniqueTags: string[];
   pageSize?: number;
 }) {
-  const [currentCat, setCurrentCat] = useState<string>("show-all");
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const isUpdatingUrlRef = useRef(false);
+
+  const [currentCat, setCurrentCat] = useState<string>(() => {
+    const tagFromQuery = searchParams.get("tag");
+    return tagFromQuery && uniqueTags.includes(tagFromQuery)
+      ? tagFromQuery
+      : "show-all";
+  });
 
   const filteredItems = useMemo(() => {
     return currentCat === "show-all"
@@ -223,31 +230,62 @@ export function BlogGrid({
   }, [searchParams, totalPages]);
 
   useEffect(() => {
-    // Reset to page 1 when filter changes
-    setPage(1);
-  }, [currentCat]);
-
-  useEffect(() => {
-    const clampedCurrentPage = Math.max(1, Math.min(currentPage, totalPages));
-    const currentQuery = searchParams.toString();
-
-    if (clampedCurrentPage === 1) {
-      if (!currentQuery) return;
-
-      router.replace(pathname, { scroll: false });
-      window.scrollTo({ top: 0, behavior: "smooth" });
+    // Skip if we just updated the URL programmatically
+    if (isUpdatingUrlRef.current) {
+      isUpdatingUrlRef.current = false;
       return;
     }
 
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("page", String(clampedCurrentPage));
+    const tagFromQuery = searchParams.get("tag");
+    const newCat =
+      tagFromQuery && uniqueTags.includes(tagFromQuery)
+        ? tagFromQuery
+        : "show-all";
+    setCurrentCat((prevCat) => (prevCat === newCat ? prevCat : newCat));
+  }, [searchParams, uniqueTags]);
+
+  // Reset to page 1 when filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [currentCat]);
+
+  // Sync both tag and page to URL
+  useEffect(() => {
+    // Skip if we just updated the URL programmatically
+    if (isUpdatingUrlRef.current) {
+      isUpdatingUrlRef.current = false;
+      return;
+    }
+
+    const clampedCurrentPage = Math.max(1, Math.min(currentPage, totalPages));
+    const params = new URLSearchParams();
+
+    // Add tag if not "show-all"
+    if (currentCat !== "show-all") {
+      params.set("tag", currentCat);
+    }
+
+    // Add page if not page 1
+    if (clampedCurrentPage > 1) {
+      params.set("page", String(clampedCurrentPage));
+    }
+
     const nextQuery = params.toString();
+    const currentQuery = searchParams.toString();
 
     if (currentQuery === nextQuery) return;
 
-    router.replace(`${pathname}?${nextQuery}`, { scroll: false });
+    // Mark that we're updating the URL programmatically
+    isUpdatingUrlRef.current = true;
+
+    if (nextQuery) {
+      router.replace(`${pathname}?${nextQuery}`, { scroll: false });
+    } else {
+      router.replace(pathname, { scroll: false });
+    }
+
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [currentPage, pathname, router, searchParams, totalPages]);
+  }, [currentCat, currentPage, pathname, router, totalPages]);
 
   return (
     <>
