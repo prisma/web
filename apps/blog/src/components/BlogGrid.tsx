@@ -181,7 +181,7 @@ export function BlogGrid({
   uniqueTags: string[];
   pageSize?: number;
 }) {
-  const [currentCat, setCurrentCat] = useState<string | null>("show-all");
+  const [currentCat, setCurrentCat] = useState<string>("show-all");
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
