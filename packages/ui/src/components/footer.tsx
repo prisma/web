@@ -157,10 +157,11 @@ const Footer = ({
             ))}
           </div>
           <div className="h-px w-full bg-stroke-neutral-weak my-6" />
+          
           {/* Compliance Footer */}
-          <div className="gap-6 md:items-center justify-between flex w-full md:pb-0 pb-11">
-            <PDPStatus className="justify-start" />
-            <div className="md:max-w-78 flex justify-between w-full items-center absolute md:relative bottom-0 left-0">
+          <div className="gap-6 md:items-center justify-between flex md:flex-nowrap flex-wrap w-full md:pb-0 pb-11">
+            <PDPStatus className="justify-start order-1" />
+            <div className="md:max-w-78 flex justify-between w-full items-center order-3 md:order-2">
               <a
                 href="https://trust.prisma.io/"
                 target="__blank"
@@ -194,7 +195,10 @@ const Footer = ({
                 {soc2}
               </a>
             </div>
-            <ThemeToggle mode="light-dark-system" className="w-fit" />
+            <ThemeToggle
+              mode="light-dark-system"
+              className="md:order-3 order-2"
+            />
           </div>
         </div>
       </div>
