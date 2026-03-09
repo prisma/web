@@ -36,7 +36,7 @@ export default function Layout({ children }: { children: ReactNode }) {
       suppressHydrationWarning
     >
       <head>
-        <Script src={EclipseFA} crossOrigin="anonymous" async />
+        <Script src={EclipseFA} crossOrigin="anonymous" />
       </head>
       <body className="flex flex-col min-h-screen">
         <Provider>{children}</Provider>

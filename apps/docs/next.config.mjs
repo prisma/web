@@ -49,7 +49,9 @@ const ContentSecurityPolicy = `
     https://vercel.live
     https://proxyhog.prisma-data.net
     https://hcaptcha.com
-    https://*.hcaptcha.com;
+    https://*.hcaptcha.com
+    https://ka-f.fontawesome.com
+    https://ka-p.fontawesome.com;
 
   font-src 'self' data:
     https://fonts.gstatic.com
