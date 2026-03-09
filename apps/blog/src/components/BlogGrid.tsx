@@ -303,22 +303,6 @@ export function BlogGrid({
       : tag.replace(/-/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
   };
 
-  const getDate = (date: object) => {
-    let dateISO = "";
-    if (date) {
-      try {
-        const dateObj = new Date(date);
-        if (!isNaN(dateObj.getTime())) {
-          dateISO = dateObj.toISOString();
-        }
-      } catch (error) {
-        // If date conversion fails, fall back to empty string
-        dateISO = "";
-      }
-    }
-    return formatDate(dateISO);
-  };
-
   return (
     <>
       {/* Category pills (static "Show all" to match layout) */}
