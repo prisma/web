@@ -153,3 +153,4 @@ export {
 } from "./pagination";
 
 export { Admonition } from "./admonition";
+export { Switch } from "./switch";
