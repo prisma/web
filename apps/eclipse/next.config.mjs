@@ -35,7 +35,6 @@ const ContentSecurityPolicy = `
     https://pagead2.googlesyndication.com
     https://googleads.g.doubleclick.net
     https://td.doubleclick.net
-    https://kit.fontawesome.com
     https://cdnjs.cloudflare.com
     https://raw.githubusercontent.com
     https://hcaptcha.com
@@ -129,7 +128,6 @@ const ContentSecurityPolicy = `
     https://proxy.kapa.ai
     https://hcaptcha.com
     https://*.hcaptcha.com
-    https://kit.fontawesome.com
     https://*.fontawesome.com;
 
   media-src 'self'
