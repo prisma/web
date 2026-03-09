@@ -51,7 +51,7 @@ const ContentSecurityPolicy = `
   font-src 'self' data:
     https://fonts.gstatic.com
     https://vercel.live https://assets.vercel.com
-    https://ka-f.fontawesome.com;
+    https://*.fontawesome.com;
 
   img-src 'self' data:
     https://cdn.sanity.io
@@ -203,7 +203,6 @@ const allowedDevOrigins = (
 
 /** @type {import('next').NextConfig} */
 const config = {
-
   async redirects() {
     return [
       {
@@ -217,10 +216,10 @@ const config = {
   async rewrites() {
     return [
       {
-        source: '/:path*.mdx',
-        destination: '/llms.mdx/:path*',
+        source: "/:path*.mdx",
+        destination: "/llms.mdx/:path*",
       },
-    ]
+    ];
   },
   basePath: "/blog",
   assetPrefix: "/blog-static",

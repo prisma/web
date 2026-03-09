@@ -41,8 +41,7 @@ const ContentSecurityPolicy = `
     https://raw.githubusercontent.com
     https://hcaptcha.com
     https://*.hcaptcha.com
-    https://ka-f.fontawesome.com
-    https://ka-p.fontawesome.com;
+    https://*.fontawesome.com;
 
   style-src 'self' 'unsafe-inline'
     https://fonts.googleapis.com
@@ -52,16 +51,14 @@ const ContentSecurityPolicy = `
     https://hcaptcha.com
     https://*.hcaptcha.com
     https://cdnjs.cloudflare.com
-    https://ka-f.fontawesome.com
-    https://ka-p.fontawesome.com;
+    https://*.fontawesome.com;
 
   font-src 'self' data:
     https://fonts.gstatic.com
     https://vercel.live
     https://assets.vercel.com
     https://cdnjs.cloudflare.com
-    https://ka-f.fontawesome.com
-    https://ka-p.fontawesome.com;
+    https://*.fontawesome.com;
 
   img-src 'self' data:
     https://cdn.sanity.io
@@ -134,8 +131,7 @@ const ContentSecurityPolicy = `
     https://hcaptcha.com
     https://*.hcaptcha.com
     https://kit.fontawesome.com
-    https://ka-f.fontawesome.com
-    https://ka-p.fontawesome.com;
+    https://*.fontawesome.com;
 
   media-src 'self'
     https://*.prisma.io
