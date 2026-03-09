@@ -23,7 +23,12 @@ export default function Layout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
     >
       <head>
-        <Script src={EclipseFA} crossOrigin="anonymous" async />
+        <Script
+          src={EclipseFA}
+          crossOrigin="anonymous"
+          async
+          data-auto-add-css="false"
+        />
         <Script
           src="https://widget.kapa.ai/kapa-widget.bundle.js"
           data-website-id="1b51bb03-43cc-4ef4-95f1-93288a91b560"
