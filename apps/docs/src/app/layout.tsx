@@ -5,7 +5,7 @@ import { Inter, Barlow } from "next/font/google";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Script from "next/script";
-import { FontAwesomeScript as EclipseFA } from "@prisma-docs/eclipse";
+import { FontAwesomeScript as EclipseFA } from "@prisma/eclipse";
 
 const inter = Inter({
   subsets: ["latin"],

@@ -2,7 +2,7 @@ import { Provider } from "@/components/provider";
 import Script from "next/script";
 import "./global.css";
 import { Inter, Barlow } from "next/font/google";
-import { FontAwesomeScript as EclipseFA } from "@prisma-docs/eclipse";
+import { FontAwesomeScript as EclipseFA } from "@prisma/eclipse";
 
 const inter = Inter({
   subsets: ["latin"],

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Switch } from "@prisma-docs/eclipse";
+import { Switch } from "@prisma/eclipse";
 
 export function ControlledSwitchExample() {
   const [enabled, setEnabled] = useState(false);

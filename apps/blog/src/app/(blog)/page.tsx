@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { blog } from "@/lib/source";
 import { BlogGrid } from "@/components/BlogGrid";
-import { Avatar, Badge, Card } from "@prisma-docs/eclipse";
+import { Avatar, Badge, Card } from "@prisma/eclipse";
 import { getCardImageSrc } from "@/lib/source";
 export default function BlogHome() {
   const posts = blog.getPages().sort((a, b) => {
