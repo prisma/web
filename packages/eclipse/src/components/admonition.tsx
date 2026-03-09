@@ -4,7 +4,7 @@ import { CircleAlert } from "lucide-react";
 
 import { cn } from "../lib/cn";
 
-const alertVariants = cva(
+const admonitionVariants = cva(
   "relative w-full rounded-md border p-4 gap-3 text-sm [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground [&>svg]:w-5 [&>svg]:h-5 alert-admonition flex items-start",
   {
     variants: {
@@ -24,12 +24,12 @@ const alertVariants = cva(
   },
 );
 
-type AlertProps = React.HTMLAttributes<HTMLDivElement> &
-  VariantProps<typeof alertVariants> & {
+type AdmonitionProps = React.HTMLAttributes<HTMLDivElement> &
+  VariantProps<typeof admonitionVariants> & {
     icon?: React.ReactNode;
   };
 
-const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
+const Admonition = React.forwardRef<HTMLDivElement, AdmonitionProps>(
   ({ className, variant, icon, children, ...props }, ref) => {
     const IconComponent =
       icon !== undefined ? (
@@ -42,7 +42,7 @@ const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
       <div
         ref={ref}
         role="alert"
-        className={cn(alertVariants({ variant }), className)}
+        className={cn(admonitionVariants({ variant }), className)}
         {...props}
       >
         {IconComponent}
@@ -53,6 +53,6 @@ const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
     );
   },
 );
-Alert.displayName = "Alert";
+Admonition.displayName = "Admonition";
 
-export { Alert };
+export { Admonition };

@@ -152,4 +152,4 @@ export {
   PaginationInput,
 } from "./pagination";
 
-export { Alert } from "./alert";
+export { Admonition } from "./admonition";

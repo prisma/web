@@ -29,7 +29,7 @@ import {
   TableCell,
   TableCaption,
   Input,
-  Alert,
+  Admonition,
 } from "@prisma-docs/eclipse";
 
 function withDocsBasePathForImageSrc(src: unknown): unknown {
@@ -100,9 +100,9 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
       };
 
       return (
-        <Alert variant={variantMap[type] || "ppg"} icon={icon} {...props}>
+        <Admonition variant={variantMap[type] || "ppg"} icon={icon} {...props}>
           {children}
-        </Alert>
+        </Admonition>
       );
     },
   };
