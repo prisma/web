@@ -75,7 +75,7 @@ export default async function Page(props: {
               </>
             ) : null}
           </div>
-          {page.data.tags?.length > 0 && (
+          {page.data?.tags?.length > 0 && (
             <div className="filter-badge flex gap-2">
               {page.data.tags?.map((tag) => (
                 <Badge
