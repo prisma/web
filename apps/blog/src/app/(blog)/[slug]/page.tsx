@@ -5,7 +5,7 @@ import { getMDXComponents } from '@/mdx-components';
 import { createRelativeLink } from 'fumadocs-ui/mdx';
 import { blog } from '@/lib/source';
 import Image from 'next/image';
-
+import { withBlogBasePathForImageSrc } from '@/lib/url';
 export default async function Page(props: {
   params: Promise<{ slug: string }>;
 }) {
@@ -50,7 +50,7 @@ export default async function Page(props: {
         <div className="w-full">
           <div className="relative w-full aspect-video">
             <Image
-              src={heroSrc}
+              src={withBlogBasePathForImageSrc(heroSrc)}
               alt={(page.data as any).heroImageAlt ?? page.data.title}
               fill
               priority
@@ -63,7 +63,7 @@ export default async function Page(props: {
 
       {/* Title + meta */}
       <header className="w-full max-w-350 mx-auto px-4 md:px-8 py-10">
-        <Link href="/blog" className="text-fd-primary hover:underline text-sm">
+        <Link href="/" className="text-fd-primary hover:underline text-sm">
           ← Back to Blog
         </Link>
         <h1 className="mt-3 mb-3 text-3xl md:text-4xl font-bold">

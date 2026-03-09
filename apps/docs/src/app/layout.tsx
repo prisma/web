@@ -1,30 +1,30 @@
-import { Provider } from '@/components/provider';
-import { getBaseUrl } from '@/lib/urls';
-import './global.css';
-import { Inter, Barlow } from 'next/font/google';
-import type { Metadata } from 'next';
-import type { ReactNode } from 'react';
-import Script from 'next/script';
+import { Provider } from "@/components/provider";
+import { getBaseUrl } from "@/lib/urls";
+import "./global.css";
+import { Inter, Barlow } from "next/font/google";
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
+import Script from "next/script";
 
 const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-inter',
+  subsets: ["latin"],
+  variable: "--font-inter",
 });
 
 const barlow = Barlow({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-barlow',
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-barlow",
 });
 
 export const metadata: Metadata = {
   metadataBase: new URL(getBaseUrl()),
   title: {
-    default: 'Prisma Documentation',
-    template: '%s | Prisma Documentation',
+    default: "Prisma Documentation",
+    template: "%s | Prisma Documentation",
   },
   description:
-    'Documentation for Prisma ORM, Prisma Postgres, Prisma Accelerate, and the Prisma ecosystem. Build type-safe database applications with ease.',
+    "Documentation for Prisma ORM, Prisma Postgres, Prisma Accelerate, and the Prisma ecosystem. Build type-safe database applications with ease.",
 };
 
 export default function Layout({ children }: { children: ReactNode }) {

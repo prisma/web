@@ -53,7 +53,7 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
             )}
 
             <ViewOptions
-              markdownUrl={`${page.url}.mdx`}
+              markdownUrl={`${withDocsBasePath(page.url)}.mdx`}
               githubUrl={`https://github.com/prisma/docs/blob/main/apps/docs/content/docs/${page.path}`}
             />
           </div>

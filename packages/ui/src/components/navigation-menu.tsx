@@ -108,7 +108,7 @@ function NavigationMenuItem({
 }
 
 const navigationMenuTriggerStyle = cva(
-  "bg-background hover:bg-background-ppg focus:bg-background-ppg data-open:hover:bg-background-ppg data-open:focus:bg-background-ppg data-open:bg-background-ppg/50 focus-visible:ring-ring/50 data-popup-open:bg-background-ppg/50 data-popup-open:hover:bg-background-ppg rounded-none! px-2.5 py-1.5 text-base font-semibold transition-all focus-visible:ring-1 focus-visible:outline-1 disabled:opacity-50 group/navigation-menu-trigger inline-flex h-9 w-max items-center justify-center disabled:pointer-events-none outline-none",
+  "bg-background hover:bg-background-ppg-strong focus:bg-background-ppg-strong data-open:hover:bg-background-ppg-strong data-open:focus:bg-background-ppg-strong data-open:bg-background-ppg-strong focus-visible:ring-ring/50 data-popup-open:bg-background-ppg-strong data-popup-open:hover:bg-background-ppg-strong rounded-none! px-2.5 py-1.5 text-base font-semibold transition-all focus-visible:ring-1 focus-visible:outline-1 disabled:opacity-50 group/navigation-menu-trigger inline-flex h-9 w-max items-center justify-center disabled:pointer-events-none outline-none md:rounded-square! md:overflow-hidden cursor-pointer",
 );
 
 function NavigationMenuTrigger({
@@ -184,7 +184,7 @@ function NavigationMenuLink({
     <NavigationMenuPrimitive.Link
       data-slot="navigation-menu-link"
       className={cn(
-        "data-active:focus:bg-muted data-active:hover:bg-muted data-active:bg-muted/50 focus-visible:ring-ring/50 hover:bg-muted focus:bg-muted flex items-center gap-2 rounded-none p-2 text-base transition-all outline-none focus-visible:ring-1 focus-visible:outline-1 in-data-[slot=navigation-menu-content]:rounded-none [&_svg:not([class*='size-'])]:size-4",
+        "data-active:focus:bg-background-ppg-strong data-active:hover:bg-background-ppg-strong data-active:bg-background-ppg-strong focus-visible:ring-ring/50 hover:bg-background-ppg-strong focus:bg-background-ppg-strong flex items-center gap-2 rounded-none p-2 text-base transition-all outline-none focus-visible:ring-1 focus-visible:outline-1 in-data-[slot=navigation-menu-content]:rounded-none [&_svg:not([class*='size-'])]:size-4 md:rounded-square",
         className,
       )}
       {...props}
@@ -230,7 +230,7 @@ function Socials({
       <NavigationMenuItem>
         <NavigationMenuLink
           href="https://pris.ly/github"
-          className="font-family-mono p-0 leading-5.5"
+          className="font-family-mono p-0 leading-5.5 hover:bg-revert cursor-pointer"
         >
           <i className="fa-brands fa-github text-base"></i>
           <StarCount />
@@ -238,7 +238,10 @@ function Socials({
       </NavigationMenuItem>
       {(include === "all" || include?.includes("discord")) && (
         <NavigationMenuItem className="align-center flex">
-          <NavigationMenuLink className="p-0" href="https://pris.ly/discord">
+          <NavigationMenuLink
+            className="p-0 hover:bg-revert cursor-pointer"
+            href="https://pris.ly/discord"
+          >
             <i className="fa-brands fa-discord"></i>
           </NavigationMenuLink>
         </NavigationMenuItem>
@@ -300,8 +303,8 @@ function MobileMenuItemWithSubmenu({ link }: { link: any }) {
     <NavigationMenuItem key={link.text}>
       <NavigationMenuTrigger
         className={cn(
-          "px-6 py-4 h-auto! hover:bg-background-neutral-weak! rounded-square overflow-hidden w-full justify-start border-b border-stroke-neutral data-open:hover:bg-background-neutral-weak! data-open:bg-background-neutral-weak! data-popup-open:bg-background-neutral-weak! data-popup-open:hover:bg-background-neutral-weak!",
-          isOpen && "bg-background-neutral-weak!",
+          "px-6 py-4 h-auto! hover:bg-background-ppg-strong! rounded-square overflow-hidden w-full justify-start border-b border-stroke-neutral data-open:hover:bg-background-ppg-strong! data-open:bg-background-ppg-strong! data-popup-open:bg-background-ppg-strong! data-popup-open:hover:bg-background-ppg-strong!",
+          isOpen && "bg-background-ppg-strong!",
         )}
         onClick={() => setOpen(!isOpen)}
       >

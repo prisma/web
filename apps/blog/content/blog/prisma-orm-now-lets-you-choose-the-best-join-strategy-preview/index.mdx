@@ -6,8 +6,11 @@ authors:
   - "Nikolas Burk"
 metaTitle: "Prisma ORM Now Lets You Choose the Best Join Strategy (Preview)"
 metaDescription: "Choose between DB-level and application-level joins to pick the most performant approach for your relation queries."
-metaImagePath: "/blog/prisma-orm-now-lets-you-choose-the-best-join-strategy-preview/imgs/meta-0fff8d25a4c84741b32994979eb8ff448d60d4fe-1266x711.png"
-heroImagePath: "/blog/prisma-orm-now-lets-you-choose-the-best-join-strategy-preview/imgs/hero-cb8e59a2cadf127ac984a9913e7742e59a169fc1-844x474.svg"
+metaImagePath: "/prisma-orm-now-lets-you-choose-the-best-join-strategy-preview/imgs/meta-0fff8d25a4c84741b32994979eb8ff448d60d4fe-1266x711.png"
+heroImagePath: "/prisma-orm-now-lets-you-choose-the-best-join-strategy-preview/imgs/hero-cb8e59a2cadf127ac984a9913e7742e59a169fc1-844x474.svg"
+tags:
+  - "announcement"
+  - "orm"
 excerpt: |
   Fetching related data from multiple tables in SQL databases can get expensive. Prisma ORM now lets you choose between _database-level_ and _application-level joins_ so that you can pick the most performant approach for your relation queries.
 ---
@@ -23,7 +26,7 @@ excerpt: |
 ## New in Prisma ORM: Choose the best join strategy 🎉
 
 [Support for database-level joins](https://github.com/prisma/prisma/issues/5184) has been one of the most requested features in Prisma ORM and we're excited to share that it's now available as another query strategy!
-![](/blog/prisma-orm-now-lets-you-choose-the-best-join-strategy-preview/imgs/7273f2beaf20bbf771e47bb7b542b3c21c31e19c-800x653.svg)
+![](/prisma-orm-now-lets-you-choose-the-best-join-strategy-preview/imgs/7273f2beaf20bbf771e47bb7b542b3c21c31e19c-800x653.svg)
 
 For any relation query with `include` (or `select`), there is now a new option on the top-level called `relationLoadStrategy`. This option accepts one out of two possible values:
 
@@ -100,7 +103,7 @@ On the other hand, application developers are typically used to working with _ne
 
 This is a huge difference, not only in the way how data is _physically_ laid out on disk and in memory, but also when it comes to the _mental model_ and reasoning about the data.
 
-![](/blog/prisma-orm-now-lets-you-choose-the-best-join-strategy-preview/imgs/9956ed7492bd6dc77e75c9f2df3db0f2aae902cd-3200x1256.png)
+![](/prisma-orm-now-lets-you-choose-the-best-join-strategy-preview/imgs/9956ed7492bd6dc77e75c9f2df3db0f2aae902cd-3200x1256.png)
 
 ### Relational data needs to be "merged" for application developers
 
@@ -161,7 +164,7 @@ ORDER BY
 ```
 This is what the result could look like with some sample data:
 
-![](/blog/prisma-orm-now-lets-you-choose-the-best-join-strategy-preview/imgs/0d275322775fddbf52e1e3e95cfabaaa9bafd778-874x798.png)
+![](/prisma-orm-now-lets-you-choose-the-best-join-strategy-preview/imgs/0d275322775fddbf52e1e3e95cfabaaa9bafd778-874x798.png)
 
 Notice the redundancy in the `user_name` column in this case. This redundancy is only going to get worse the more tables are being joined. For example, assume there's another `Comment` table, where each comment has a `postId` foreign key that points to a record in the `Post` table.
 
@@ -187,7 +190,7 @@ ORDER BY
 ```
 Now, assume the first post had multiple comments:
 
-![](/blog/prisma-orm-now-lets-you-choose-the-best-join-strategy-preview/imgs/c6bf66d1ff9bac1bc0543020819db31da69ba26a-946x324.png)
+![](/prisma-orm-now-lets-you-choose-the-best-join-strategy-preview/imgs/c6bf66d1ff9bac1bc0543020819db31da69ba26a-946x324.png)
 
 The size of the result set in this case grows exponentially with the number of tables that are being joined. Since this data goes over the wire from the database to the application server, this can become very expensive.
 
@@ -216,7 +219,7 @@ ORDER BY
 ```
 The result set this time doesn't contain redundant data. Additionally, the data structure conveniently already has the shape that's returned by Prisma Client which saves the extra work of transforming results in the query engine:
 
-![](/blog/prisma-orm-now-lets-you-choose-the-best-join-strategy-preview/imgs/c39d9673195c2414f9ca2be1cedcb0229fa58188-1154x652.png)
+![](/prisma-orm-now-lets-you-choose-the-best-join-strategy-preview/imgs/c39d9673195c2414f9ca2be1cedcb0229fa58188-1154x652.png)
 
 ### Lateral JOINs for more efficient queries with pagination and filters
 
@@ -294,17 +297,17 @@ Let's review the different options for joining data from relation queries with P
 
 In the past, Prisma only supported the application-level join strategy which sends multiple queries to the database and does all the work of merging and transforming it into the expected JavaScript object structures inside of the query engine:
 
-![](/blog/prisma-orm-now-lets-you-choose-the-best-join-strategy-preview/imgs/c7adac832f583577880d8f6d308c7446c9d5f27c-3200x2280.png)
+![](/prisma-orm-now-lets-you-choose-the-best-join-strategy-preview/imgs/c7adac832f583577880d8f6d308c7446c9d5f27c-3200x2280.png)
 
 
 Using plain, traditional JOINs, the merging of the data would be delegated to the database. However, as explained above, there are problems with data redundancy (the result sets grow exponentially with the number of tables in the relation query) and the complexity of queries that contain filters and pagination:
 
-![](/blog/prisma-orm-now-lets-you-choose-the-best-join-strategy-preview/imgs/de503bc689a9489f6d97c0151adda8f98fd910bb-3200x2390.png)
+![](/prisma-orm-now-lets-you-choose-the-best-join-strategy-preview/imgs/de503bc689a9489f6d97c0151adda8f98fd910bb-3200x2390.png)
 
 
 To work around these issues, Prisma ORM implements modern, lateral JOINs accompanied with JSON aggregation on the database-level. That way, all the heavy lifting that's needed to resolve the query and bring the data into the expected JavaScript object structures is done on the database-level:
 
-![](/blog/prisma-orm-now-lets-you-choose-the-best-join-strategy-preview/imgs/87f24086f41106526cd3e6178ef56e71682d5855-1600x1140.svg)
+![](/prisma-orm-now-lets-you-choose-the-best-join-strategy-preview/imgs/87f24086f41106526cd3e6178ef56e71682d5855-1600x1140.svg)
 
 
 ## Try it out and share your feedback
