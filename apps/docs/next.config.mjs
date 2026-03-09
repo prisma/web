@@ -37,6 +37,7 @@ const ContentSecurityPolicy = `
     https://googleads.g.doubleclick.net
     https://td.doubleclick.net
     https://kit.fontawesome.com
+    https://cdnjs.cloudflare.com
     https://raw.githubusercontent.com
     https://hcaptcha.com
     https://*.hcaptcha.com
@@ -50,6 +51,7 @@ const ContentSecurityPolicy = `
     https://proxyhog.prisma-data.net
     https://hcaptcha.com
     https://*.hcaptcha.com
+    https://cdnjs.cloudflare.com
     https://ka-f.fontawesome.com
     https://ka-p.fontawesome.com;
 
@@ -57,6 +59,7 @@ const ContentSecurityPolicy = `
     https://fonts.gstatic.com
     https://vercel.live
     https://assets.vercel.com
+    https://cdnjs.cloudflare.com
     https://ka-f.fontawesome.com
     https://ka-p.fontawesome.com;
 
