@@ -181,6 +181,29 @@ const ContentSecurityPolicy = `
   frame-ancestors 'self';
 `;
 
+const securityHeaders = [
+  {
+    key: "Accept-Encoding",
+    value: "gzip, compress, br, zstd",
+  },
+  {
+    key: "X-Frame-Options",
+    value: "SAMEORIGIN",
+  },
+  {
+    key: "X-Content-Type-Options",
+    value: "nosniff",
+  },
+  {
+    key: "Content-Security-Policy",
+    value: ContentSecurityPolicy.replace(/\s{2,}/g, " ").trim(),
+  },
+  {
+    key: "Referrer-Policy",
+    value: "strict-origin-when-cross-origin",
+  },
+];
+
 /** @type {import('next').NextConfig} */
 const config = {
   reactStrictMode: true,
