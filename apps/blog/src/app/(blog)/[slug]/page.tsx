@@ -75,28 +75,18 @@ export default async function Page(props: {
               </>
             ) : null}
           </div>
-          <div className="filter-badge flex gap-2">
-            <Badge
-              color="neutral"
-              label="Release"
-              className="border border-stroke-neutral-strong bg-transparent text-foreground-neutral-weak"
-            />
-            <Badge
-              color="neutral"
-              label="Postgres"
-              className="border border-stroke-neutral-strong bg-transparent text-foreground-neutral-weak"
-            />
-            <Badge
-              color="neutral"
-              label="ORM"
-              className="border border-stroke-neutral-strong bg-transparent text-foreground-neutral-weak"
-            />
-            <Badge
-              color="neutral"
-              label="Customer Story"
-              className="border border-stroke-neutral-strong bg-transparent text-foreground-neutral-weak"
-            />
-          </div>
+          {page.data.tags?.length > 0 && (
+            <div className="filter-badge flex gap-2">
+              {page.data.tags?.map((tag) => (
+                <Badge
+                  key={tag}
+                  color="neutral"
+                  label={tag}
+                  className="border capitalize border-stroke-neutral-strong bg-transparent text-foreground-neutral-weak"
+                />
+              ))}
+            </div>
+          )}
         </header>
 
         {/* Body */}
