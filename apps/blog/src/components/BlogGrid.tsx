@@ -360,7 +360,7 @@ export function BlogGrid({
             <div className="flex flex-col justify-between">
               <div>
                 <div className="eyebrow flex gap-2 items-center">
-                  {post?.tags?.length > 0 && (
+                  {post.tags && post.tags.length > 0 && (
                     <Badge
                       color="success"
                       label={formatTag(
