@@ -237,5 +237,5 @@ const footerData = {
   shareSocials,
 };
 
-export { footerItems, socialIcons };
+export { footerItems, socialIcons, shareSocials };
 export default footerData;
