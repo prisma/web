@@ -61,7 +61,7 @@ export default async function Page(props: {
               <>
                 <Separator orientation="vertical" className="h-4" />
                 <span className="text-foreground-neutral-weak">
-                  {formatDate(page.data.date)}
+                  {formatDate(new Date(page.data.date).toISOString())}
                 </span>
               </>
             ) : null}
