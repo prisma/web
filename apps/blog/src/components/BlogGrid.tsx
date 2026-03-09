@@ -30,136 +30,142 @@ type BlogCardItem = {
   imageAlt?: string | null;
   seriesTitle?: string | null;
   badge?: string | null;
+  tags?: string[];
 };
 
 const PaginationWithEllipsis = ({
   totalPages,
   currentPage,
   setCurrentPage,
-}: any) => (
-  <Pagination>
-    <PaginationContent>
-      <PaginationItem>
-        <PaginationPrevious
-          href="#"
-          onClick={(e) => {
-            e.preventDefault();
-            if (currentPage > 1) setCurrentPage(currentPage - 1);
-          }}
-          aria-disabled={currentPage === 1}
-        />
-      </PaginationItem>
-      <PaginationItem>
-        <PaginationLink
-          href="#"
-          onClick={(e) => {
-            e.preventDefault();
-            setCurrentPage(1);
-          }}
-          isActive={currentPage === 1}
-        >
-          1
-        </PaginationLink>
-      </PaginationItem>
-      <PaginationItem>
-        {currentPage > 3 ? (
-          <PaginationEllipsis />
-        ) : (
+}: any) =>
+  totalPages > 1 && (
+    <Pagination>
+      <PaginationContent>
+        <PaginationItem>
+          <PaginationPrevious
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              if (currentPage > 1) setCurrentPage(currentPage - 1);
+            }}
+            aria-disabled={currentPage === 1}
+          />
+        </PaginationItem>
+        <PaginationItem>
           <PaginationLink
             href="#"
             onClick={(e) => {
               e.preventDefault();
-              setCurrentPage(2);
+              setCurrentPage(1);
             }}
-            isActive={currentPage === 2}
+            isActive={currentPage === 1}
           >
-            2
+            1
           </PaginationLink>
-        )}
-      </PaginationItem>
-      {currentPage > 2 && currentPage < totalPages - 1 && (
-        <>
-          {currentPage > 3 && (
-            <PaginationItem>
-              <PaginationLink
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setCurrentPage(currentPage - 1);
-                }}
-              >
-                {currentPage - 1}
-              </PaginationLink>
-            </PaginationItem>
-          )}
-          <PaginationItem>
+        </PaginationItem>
+        <PaginationItem>
+          {currentPage > 3 ? (
+            <PaginationEllipsis />
+          ) : (
             <PaginationLink
               href="#"
               onClick={(e) => {
                 e.preventDefault();
-                setCurrentPage(currentPage);
+                setCurrentPage(2);
               }}
-              isActive
+              isActive={currentPage === 2}
             >
-              {currentPage}
+              2
             </PaginationLink>
-          </PaginationItem>
-          {currentPage < totalPages - 2 && (
+          )}
+        </PaginationItem>
+        {totalPages > 2 && currentPage > 2 && currentPage < totalPages - 1 && (
+          <>
+            {currentPage > 3 && (
+              <PaginationItem>
+                <PaginationLink
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setCurrentPage(currentPage - 1);
+                  }}
+                >
+                  {currentPage - 1}
+                </PaginationLink>
+              </PaginationItem>
+            )}
             <PaginationItem>
               <PaginationLink
                 href="#"
                 onClick={(e) => {
                   e.preventDefault();
-                  setCurrentPage(currentPage + 1);
+                  setCurrentPage(currentPage);
                 }}
+                isActive
               >
-                {currentPage + 1}
+                {currentPage}
               </PaginationLink>
             </PaginationItem>
-          )}
-        </>
-      )}
-      <PaginationItem>
-        {currentPage < totalPages - 2 ? (
-          <PaginationEllipsis />
-        ) : (
-          <PaginationLink
+            {currentPage < totalPages - 2 && (
+              <PaginationItem>
+                <PaginationLink
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setCurrentPage(currentPage + 1);
+                  }}
+                >
+                  {currentPage + 1}
+                </PaginationLink>
+              </PaginationItem>
+            )}
+          </>
+        )}
+        {totalPages > 2 && (
+          <>
+            <PaginationItem>
+              {currentPage < totalPages - 2 ? (
+                <PaginationEllipsis />
+              ) : (
+                <PaginationLink
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setCurrentPage(totalPages - 1);
+                  }}
+                  isActive={currentPage === totalPages - 1}
+                >
+                  {totalPages - 1}
+                </PaginationLink>
+              )}
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationLink
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setCurrentPage(totalPages);
+                }}
+                isActive={currentPage === totalPages}
+              >
+                {totalPages}
+              </PaginationLink>
+            </PaginationItem>
+          </>
+        )}
+        <PaginationItem>
+          <PaginationNext
             href="#"
             onClick={(e) => {
               e.preventDefault();
-              setCurrentPage(totalPages - 1);
+              if (currentPage < totalPages) setCurrentPage(currentPage + 1);
             }}
-            isActive={currentPage === totalPages - 1}
-          >
-            {totalPages - 1}
-          </PaginationLink>
-        )}
-      </PaginationItem>
-      <PaginationItem>
-        <PaginationLink
-          href="#"
-          onClick={(e) => {
-            e.preventDefault();
-            setCurrentPage(totalPages);
-          }}
-          isActive={currentPage === totalPages}
-        >
-          {totalPages}
-        </PaginationLink>
-      </PaginationItem>
-      <PaginationItem>
-        <PaginationNext
-          href="#"
-          onClick={(e) => {
-            e.preventDefault();
-            if (currentPage < totalPages) setCurrentPage(currentPage + 1);
-          }}
-          aria-disabled={currentPage === totalPages}
-        />
-      </PaginationItem>
-    </PaginationContent>
-  </Pagination>
-);
+            aria-disabled={currentPage === totalPages}
+          />
+        </PaginationItem>
+      </PaginationContent>
+    </Pagination>
+  );
 
 function parsePage(value: string | null): number {
   const n = parseInt(value ?? "1", 10);
@@ -168,27 +174,41 @@ function parsePage(value: string | null): number {
 
 export function BlogGrid({
   items,
+  uniqueTags,
   pageSize = 12,
 }: {
   items: BlogCardItem[];
+  uniqueTags: string[];
   pageSize?: number;
 }) {
-  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+  const [currentCat, setCurrentCat] = useState<string | null>("show-all");
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  const filteredItems = useMemo(() => {
+    return currentCat === "show-all"
+      ? items
+      : items.filter((item) => item.tags?.includes(currentCat!));
+  }, [items, currentCat]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
 
   const [currentPage, setPage] = useState<number>(() => {
     const pageFromQuery = parsePage(searchParams.get("page"));
     return Math.max(1, Math.min(pageFromQuery, totalPages));
   });
+
   const visibleItems = useMemo(() => {
     if (currentPage === 1) {
-      return items.slice(1, pageSize);
+      return filteredItems.slice(1, pageSize + 1);
     }
 
-    return items.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-  }, [items, currentPage, pageSize]);
+    return filteredItems.slice(
+      (currentPage - 1) * pageSize,
+      currentPage * pageSize,
+    );
+  }, [filteredItems, currentPage, pageSize]);
 
   const setCurrentPage = (page: number) => {
     const clampedPage = Math.max(1, Math.min(page, totalPages));
@@ -200,6 +220,11 @@ export function BlogGrid({
     const clampedPage = Math.max(1, Math.min(pageFromQuery, totalPages));
     setPage((prevPage) => (prevPage === clampedPage ? prevPage : clampedPage));
   }, [searchParams, totalPages]);
+
+  useEffect(() => {
+    // Reset to page 1 when filter changes
+    setPage(1);
+  }, [currentCat]);
 
   useEffect(() => {
     const clampedCurrentPage = Math.max(1, Math.min(currentPage, totalPages));
@@ -234,17 +259,49 @@ export function BlogGrid({
     });
   };
 
+  const formatTag = (tag: string) => {
+    return tag === "orm"
+      ? "ORM"
+      : tag.replace(/-/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+  };
+
   return (
     <>
-      {currentPage === 1 && (
+      {/* Category pills (static "Show all" to match layout) */}
+      <div className="flex flex-wrap gap-2 mb-8">
+        <Badge
+          color={currentCat === "show-all" ? "ppg" : "neutral"}
+          onClick={() => setCurrentCat("show-all")}
+          className="cursor-pointer"
+          label="Show all"
+        />
+        {uniqueTags.map((category: string, idx: number) => (
+          <Badge
+            color={currentCat === category ? "ppg" : "neutral"}
+            onClick={() =>
+              setCurrentCat(
+                category === "show-all" || currentCat === category
+                  ? "show-all"
+                  : category,
+              )
+            }
+            className="cursor-pointer"
+            label={formatTag(category)}
+            key={idx}
+          />
+        ))}
+      </div>
+      {currentPage === 1 && filteredItems.length > 0 && (
         <Link
-          href={items[0].url}
+          href={filteredItems[0].url}
           className="group grid grid-cols-1 md:grid-cols-2 gap-4 bg-background-default rounded-square overflow-hidden border border-stroke-neutral shadow-box-low"
         >
           <div className="relative w-full h-full aspect-video">
             <Image
-              src={withBlogBasePathForImageSrc(items[0].imageSrc as string)}
-              alt={items[0].imageAlt ?? items[0].title}
+              src={withBlogBasePathForImageSrc(
+                filteredItems[0].imageSrc as string,
+              )}
+              alt={filteredItems[0].imageAlt ?? filteredItems[0].title}
               fill
               sizes="(min-width: 640px) 50vw, 100vw"
               className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
@@ -254,30 +311,40 @@ export function BlogGrid({
           </div>
           <Card className="rounded-none! border-none! gap-0 bg-background-default">
             <div className="eyebrow flex gap-2 items-center">
-              <Badge color="success" label="Release" className="w-min" />
+              {filteredItems[0].tags && filteredItems[0].tags.length > 0 && (
+                <Badge
+                  color="success"
+                  label={formatTag(
+                    currentCat !== "show-all"
+                      ? currentCat
+                      : filteredItems[0].tags[0],
+                  )}
+                  className="w-fit"
+                />
+              )}
               <span className="text-xs text-foreground-neutral-weak">
-                {formatDate(items[0].date)}
+                {formatDate(filteredItems[0].date)}
               </span>
             </div>
             <h2 className="text-2xl text-foreground-neutral font-bold font-mona-sans mt-4 mb-2">
-              {items[0].title}
+              {filteredItems[0].title}
             </h2>
-            {items[0].description && (
+            {filteredItems[0].description && (
               <p className="text-sm text-foreground-neutral-weak leading-[20px]! line-clamp-2">
-                {items[0].description}
+                {filteredItems[0].description}
               </p>
             )}
-            {items[0].author && (
+            {filteredItems[0].author && (
               <span className="mt-auto flex items-center gap-2 font-semibold text-sm">
-                {items[0]?.authorSrc && items[0] && (
+                {filteredItems[0]?.authorSrc && filteredItems[0] && (
                   <Avatar
                     format="image"
-                    src={items[0].authorSrc}
-                    alt={items[0].author}
+                    src={filteredItems[0].authorSrc}
+                    alt={filteredItems[0].author}
                     size="lg"
                   />
                 )}
-                <span>{items[0].author}</span>
+                <span>{filteredItems[0].author}</span>
               </span>
             )}
           </Card>
@@ -293,8 +360,14 @@ export function BlogGrid({
             <div className="flex flex-col justify-between">
               <div>
                 <div className="eyebrow flex gap-2 items-center">
-                  {post.badge && (
-                    <Badge color="success" label="Release" className="w-min" />
+                  {post.tags?.length > 0 && (
+                    <Badge
+                      color="success"
+                      label={formatTag(
+                        currentCat !== "show-all" ? currentCat : post.tags[0],
+                      )}
+                      className="w-fit"
+                    />
                   )}
                   {post.date && (
                     <span className="text-xs text-foreground-neutral-weak">

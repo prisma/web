@@ -79,7 +79,6 @@ export default function BlogHome() {
       imageSrc: getCardImageSrc(post),
       imageAlt: (data.heroImageAlt as string) ?? (data.title as string),
       seriesTitle: data.series?.title ?? null,
-      badge: "Release",
       tags: data.tags,
     };
   });
@@ -94,22 +93,6 @@ export default function BlogHome() {
       </h1>
       {/* Category pills (static "Show all" to match layout) */}
       <div className="pt-6 pb-12 mt-10">
-        <div className="flex flex-wrap gap-2 mb-8">
-          <Badge color="ppg" label="Show all" />
-          <Badge color="neutral" label="User Story" />
-          <Badge color="neutral" label="Release" />
-
-          {uniqueTags.map((category: string, idx: number) => (
-            <Badge
-              color={"neutral"}
-              label={category
-                .replace(/-/g, " ")
-                .replace(/\b\w/g, (char) => char.toUpperCase())}
-              key={idx}
-            />
-          ))}
-        </div>
-
         {/* Grid with pagination */}
         <Suspense
           fallback={
@@ -123,7 +106,11 @@ export default function BlogHome() {
             </div>
           }
         >
-          <BlogGrid items={items.slice(1, -1)} pageSize={12} uniqueTags={uniqueTags} />
+          <BlogGrid
+            items={items.slice(1, -1)}
+            pageSize={12}
+            uniqueTags={uniqueTags}
+          />
         </Suspense>
       </div>
     </main>
