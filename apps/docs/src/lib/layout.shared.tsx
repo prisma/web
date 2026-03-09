@@ -83,12 +83,12 @@ export function baseOptions(): BaseLayoutProps {
         <>
           <Link
             href="https://www.prisma.io"
-            className="mb-0 hover:mb-1 transition-[margin]"
+            className="mb-0 hover:mb-1 transition-[margin] -mr-3!"
           >
             {logo}
           </Link>{" "}
           /
-          <Link href="/" className="group relative inline-block">
+          <Link href="/" className="group relative inline-block pl-3 -ml-3!">
             <span className="font-mono text-lg mt-1 block group-hover:mt-0 transition-[margin]">
               docs
             </span>
