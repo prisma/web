@@ -66,7 +66,7 @@ const Footer = ({
   absoluteLinks = false,
 }: FooterProps) => {
   return (
-    <footer className="bg-background-default w-screen overflow-x-hidden overflow-y-visible max-w-full">
+    <footer className="z-1 bg-background-default w-screen overflow-x-hidden overflow-y-visible max-w-full">
       <div
         className={clsx(
           "px-8 pt-[72px] pb-8 md:px-6 md:pt-[46px] md:pb-[100px] max-w-[1288px] mx-auto",
