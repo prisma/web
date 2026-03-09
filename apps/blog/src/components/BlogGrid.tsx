@@ -249,22 +249,6 @@ export function BlogGrid({
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [currentPage, pathname, router, searchParams, totalPages]);
 
-  const getDate = (date: object) => {
-    let dateISO = "";
-    if (date) {
-      try {
-        const dateObj = new Date(date);
-        if (!isNaN(dateObj.getTime())) {
-          dateISO = dateObj.toISOString();
-        }
-      } catch (error) {
-        // If date conversion fails, fall back to empty string
-        dateISO = "";
-      }
-    }
-    return formatDate(dateISO);
-  };
-
   return (
     <>
       {/* Category pills (static "Show all" to match layout) */}
@@ -323,7 +307,7 @@ export function BlogGrid({
                 />
               )}
               <span className="text-xs text-foreground-neutral-weak">
-                {formatDate(filteredItems[0].date)}
+                {formatDate(new Date(filteredItems[0].date).toISOString())}
               </span>
             </div>
             <h2 className="text-2xl text-foreground-neutral font-bold font-mona-sans mt-4 mb-2">
@@ -371,7 +355,7 @@ export function BlogGrid({
                   )}
                   {post.date && (
                     <span className="text-xs text-foreground-neutral-weak">
-                      {formatDate(post.date)}
+                      {formatDate(new Date(post.date).toISOString())}
                     </span>
                   )}
                 </div>
