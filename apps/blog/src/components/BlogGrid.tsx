@@ -249,6 +249,22 @@ export function BlogGrid({
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [currentPage, pathname, router, searchParams, totalPages]);
 
+  const getDate = (date: object) => {
+    let dateISO = "";
+    if (date) {
+      try {
+        const dateObj = new Date(date);
+        if (!isNaN(dateObj.getTime())) {
+          dateISO = dateObj.toISOString();
+        }
+      } catch (error) {
+        // If date conversion fails, fall back to empty string
+        dateISO = "";
+      }
+    }
+    return formatDate(dateISO);
+  };
+
   return (
     <>
       {/* Category pills (static "Show all" to match layout) */}
