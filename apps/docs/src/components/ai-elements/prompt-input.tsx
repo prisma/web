@@ -45,7 +45,7 @@ export const PromptInput = forwardRef<HTMLTextAreaElement, PromptInputProps>(
       className,
       ...props
     },
-    ref
+    ref,
   ) => {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     useImperativeHandle(ref, () => textareaRef.current!);
@@ -57,7 +57,7 @@ export const PromptInput = forwardRef<HTMLTextAreaElement, PromptInputProps>(
           onSubmit(value.trim());
         }
       },
-      [value, disabled, loading, onSubmit]
+      [value, disabled, loading, onSubmit],
     );
 
     const handleKeyDown = useCallback(
@@ -69,7 +69,7 @@ export const PromptInput = forwardRef<HTMLTextAreaElement, PromptInputProps>(
           }
         }
       },
-      [value, disabled, loading, onSubmit]
+      [value, disabled, loading, onSubmit],
     );
 
     const handleInput = useCallback(() => {
@@ -80,7 +80,7 @@ export const PromptInput = forwardRef<HTMLTextAreaElement, PromptInputProps>(
       }
     }, []);
 
-    const maxLength = 1000;
+    const maxLength = 10000;
 
     return (
       <form
@@ -119,7 +119,7 @@ export const PromptInput = forwardRef<HTMLTextAreaElement, PromptInputProps>(
                             size: "icon-sm",
                           }),
                           "h-8 w-8 rounded-full",
-                          loading && "opacity-50 cursor-not-allowed"
+                          loading && "opacity-50 cursor-not-allowed",
                         )}
                       >
                         <BrainIcon className="size-4" />
@@ -177,10 +177,10 @@ export const PromptInput = forwardRef<HTMLTextAreaElement, PromptInputProps>(
         </InputGroup>
       </form>
     );
-  }
+  },
 );
 
-PromptInput.displayName = "PromptInput"
+PromptInput.displayName = "PromptInput";
 
 export type PromptInputFooterProps = ComponentProps<"div"> & {
   attribution?: string;
@@ -196,7 +196,7 @@ export const PromptInputFooter = ({
   <div
     className={cn(
       "text-xs text-center text-fd-muted-foreground pt-2",
-      className
+      className,
     )}
     {...props}
   >
