@@ -27,7 +27,7 @@ import { TweetEmbedComp } from "@/components/TweetEmbed";
 import { Youtube } from "@/components/Youtube";
 import { Meetup, MeetupList } from "@/components/Meetup";
 import { Employee } from "@/components/Employee";
-
+import { withBlogBasePath, withBlogBasePathForImageSrc } from "@/lib/url";
 export function getMDXComponents(components?: MDXComponents): MDXComponents {
   const mdxComponents = {
     ...(icons as unknown as MDXComponents),
@@ -58,7 +58,9 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     Employee,
     Steps,
     Step,
-    img: (props: any) => <ImageZoom {...(props as any)} />,
+    img: (props: any) => (
+      <ImageZoom {...(props as any)} src={withBlogBasePathForImageSrc((props as any).src)} />
+    ),
   };
 
   return {
