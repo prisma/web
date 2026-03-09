@@ -14,13 +14,59 @@ For complete documentation, examples, and interactive demos, visit:
 pnpm add @prisma/eclipse
 ```
 
+### 1) Configure PostCSS in the consuming app
+
+Use Tailwind v4 PostCSS plugin in the app (or re-export a shared config):
+
+```js
+// postcss.config.mjs
+export default {
+  plugins: {
+    "@tailwindcss/postcss": {},
+  },
+};
+```
+
+### 2) Import styles in your app global CSS
+
+Initialize Tailwind once in the consuming app, then import Eclipse styles:
+
+```css
+/* app global.css */
+@import "tailwindcss";
+@import "@prisma/eclipse/styles/globals.css";
+```
+
+### 3) Use components
+
 ```tsx
 import { Button } from "@prisma/eclipse";
-import "@prisma/eclipse/styles/globals.css";
 
 export function App() {
   return <Button variant="ppg">Click me</Button>;
 }
+```
+
+## Tailwind Setup Model
+
+Eclipse uses an app-owned Tailwind setup:
+
+- The **consuming app** imports `tailwindcss` once.
+- The Eclipse stylesheet (`@prisma/eclipse/styles/globals.css`) provides tokens, utilities, and `@source` directives.
+- Eclipse does **not** initialize Tailwind itself.
+
+This avoids duplicate base/utilities output and keeps CSS generation in one place.
+
+## Avoid Duplicate Imports
+
+Do not import `tailwindcss` from multiple library stylesheets. Only import it from the app entry stylesheet.
+
+Recommended pattern:
+
+```css
+@import "tailwindcss";
+@import "@prisma/eclipse/styles/globals.css";
+/* other library/theme css */
 ```
 
 ## What's Included

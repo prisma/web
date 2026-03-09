@@ -8,6 +8,7 @@ import {
   Avatar,
   Badge,
   Card,
+  Input,
   Pagination,
   PaginationContent,
   PaginationEllipsis,
@@ -19,6 +20,7 @@ import {
 
 import { withBlogBasePathForImageSrc } from "@/lib/url";
 import { formatTag, formatDate } from "@/lib/format";
+import { LargeSearchToggle } from "./search-toggle";
 
 type BlogCardItem = {
   url: string;
@@ -291,19 +293,14 @@ export function BlogGrid({
 
   return (
     <>
-      {/* Category pills (static "Show all" to match layout) */}
-      <div className="flex flex-wrap gap-2 mb-8">
-        <Badge
-          color={currentCat === "show-all" ? "ppg" : "neutral"}
-          onClick={() => setCategory("show-all")}
-          className="cursor-pointer"
-          label="Show all"
-        />
+      {/* Category pills */}
+      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-wrap gap-1">
         {uniqueTags.map((category: string, idx: number) => (
           <Badge
             color={currentCat === category ? "ppg" : "neutral"}
               onClick={() => {
-                const nextCategory =
+                const nextCategory =  
                   category === "show-all" || currentCat === category
                     ? "show-all"
                     : category;
@@ -315,6 +312,9 @@ export function BlogGrid({
           />
         ))}
       </div>
+      <LargeSearchToggle className="w-52" />
+      </div>
+     
       {currentPage === 1 && filteredItems.length > 0 && (
         <Link
           href={filteredItems[0].url}
