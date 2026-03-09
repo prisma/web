@@ -1,11 +1,10 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { CircleAlert } from "lucide-react";
 
 import { cn } from "../lib/cn";
 
 const admonitionVariants = cva(
-  "relative w-full rounded-md border p-4 gap-3 text-sm [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground [&>svg]:w-5 [&>svg]:h-5 alert-admonition flex items-start",
+  "relative w-full rounded-md border p-4 gap-3 text-sm [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground [&>svg]:w-5 [&>svg]:h-5 alert-admonition flex items-start [&>i]:mt-0.5",
   {
     variants: {
       variant: {
@@ -35,9 +34,8 @@ const Admonition = React.forwardRef<HTMLDivElement, AdmonitionProps>(
       icon !== undefined ? (
         icon
       ) : (
-        <i className="fa-duotone fa-solid fa-circle-exclamation mt-1"></i>
+        <i className="fa-duotone fa-solid fa-circle-exclamation"></i>
       );
-
     return (
       <div
         ref={ref}
