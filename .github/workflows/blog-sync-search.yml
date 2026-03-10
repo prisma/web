@@ -1,0 +1,38 @@
+name: Blog Sync Search
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [apps/blog/content/blog/**/*.mdx]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  sync-search:
+    name: Blog Sync Search
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Upload Blog
+        run: pnpm dlx @mixedbread/cli store sync "${MIXEDBREAD_VECTOR_STORE_ID_BLOG}" "apps/blog/content/blog/**/*.mdx" --yes --strategy fast
+        env:
+          MXBAI_API_KEY: ${{ secrets.MIXEDBREAD_API_KEY }}
+          MIXEDBREAD_VECTOR_STORE_ID_BLOG: blog-search

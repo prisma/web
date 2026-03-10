@@ -55,7 +55,7 @@ export default function BlogHome() {
   const uniqueTags = [
     ...new Set(items.filter((item) => item.tags).flatMap((item) => item.tags)),
   ];
-
+  
   return (
     <main className="flex-1 w-full max-w-249 mx-auto px-4 py-8 z-1">
       <h1 className="stretch-display text-4xl font-bold mb-2 landing-h1 text-center mt-9 font-display">
