@@ -11,11 +11,10 @@ import {
   SearchDialogList,
   SearchDialogOverlay,
   SearchDialogFooter,
+  SearchDialogListItem,
   type SharedProps,
-  useSearchList,
 } from "fumadocs-ui/components/dialog/search";
 import Image from "next/image";
-import Link from "next/link";
 import { formatTag } from "@/lib/format";
 import { withBlogBasePathForImageSrc } from "@/lib/url";
 import { ComponentProps, type ReactNode } from "react";
@@ -41,15 +40,18 @@ type SearchResultItemProps = Parameters<
   NonNullable<ComponentProps<typeof SearchDialogList>["Item"]>
 >[0];
 
-function SearchResultItem({ item, onClick }: SearchResultItemProps): ReactNode {
+function SearchResultItem({
+  item,
+  onClick,
+}: SearchResultItemProps): ReactNode {
   const post = item as BlogSearchResult;
   if (!post) return null;
 
   return (
-    <Link
-      href={post.url}
+    <SearchDialogListItem
+      item={item}
       onClick={onClick}
-      className="group grid grid-cols-[128px_1fr] sm:grid-cols-[160px_1fr] gap-4 p-2 rounded-square border border-transparent hover:border-stroke-neutral transition-colors items-center"
+      className="group grid grid-cols-[128px_1fr] sm:grid-cols-[160px_1fr] gap-4 items-center p-2! rounded-square border border-transparent"
     >
       <div className="relative aspect-video w-full overflow-hidden rounded-square bg-background-neutral">
         {post.heroImagePath ? (
@@ -84,7 +86,7 @@ function SearchResultItem({ item, onClick }: SearchResultItemProps): ReactNode {
           </div>
         ) : null}
       </div>
-    </Link>
+    </SearchDialogListItem>
   );
 }
 
