@@ -44,7 +44,7 @@ export function Accordions({
   const rootRef = useRef<HTMLDivElement>(null);
   const composedRef = mergeRefs(ref, rootRef);
   const [value, setValue] = useState<string | string[]>(() =>
-    type === "single" ? (defaultValue ?? "") : (defaultValue ?? []),
+    type === "single" ? defaultValue ?? "" : defaultValue ?? [],
   );
 
   useEffect(() => {
