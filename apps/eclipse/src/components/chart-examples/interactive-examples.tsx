@@ -6,7 +6,7 @@ import {
   ChartTooltipContent,
   ChartLegend,
   ChartLegendContent,
-} from "@prisma-docs/eclipse";
+} from "@prisma/eclipse";
 import {
   Bar,
   BarChart,

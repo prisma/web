@@ -25,7 +25,7 @@ apps/eclipse/
 │   │   └── styles/
 │   │       └── globals.css      # Imports from ../../../src/styles/
 │   ├── index.html
-│   ├── package.json             # Depends on @prisma-docs/eclipse
+│   ├── package.json             # Depends on @prisma/eclipse
 │   ├── tailwind.config.ts       # Extends main config
 │   └── vite.config.ts
 ├── package.json                  # Package configuration
@@ -137,7 +137,7 @@ export default {
 
 **Usage**:
 ```tsx
-import { cn } from "@prisma-docs/eclipse/lib/cn";
+import { cn } from "@prisma/eclipse/lib/cn";
 
 <button className={cn("bg-background-default", isDark && "bg-background-neutral")} />
 ```
@@ -203,17 +203,17 @@ import { cn } from "@prisma-docs/eclipse/lib/cn";
 
 1. **Install the package**:
    ```bash
-   pnpm add @prisma-docs/eclipse
+   pnpm add @prisma/eclipse
    ```
 
 2. **Import the CSS** (in your root component):
    ```tsx
-   import "@prisma-docs/eclipse/styles/globals.css";
+   import "@prisma/eclipse/styles/globals.css";
    ```
 
 3. **Extend Tailwind config**:
    ```ts
-   import eclipseConfig from "@prisma-docs/eclipse/tailwind.config";
+   import eclipseConfig from "@prisma/eclipse/tailwind.config";
    
    export default {
      presets: [eclipseConfig],
@@ -223,7 +223,7 @@ import { cn } from "@prisma-docs/eclipse/lib/cn";
 
 4. **Use the components**:
    ```tsx
-   import { Button } from "@prisma-docs/eclipse";
+   import { Button } from "@prisma/eclipse";
    ```
 
 That's it! No build steps, no complex configuration.
@@ -231,7 +231,7 @@ That's it! No build steps, no complex configuration.
 ## Development Workflow
 
 The `/dev` folder is a clean showcase that:
-- ✅ Imports from `@prisma-docs/eclipse` (no duplication)
+- ✅ Imports from `@prisma/eclipse` (no duplication)
 - ✅ Extends the main Tailwind config
 - ✅ Provides live preview of all components
 

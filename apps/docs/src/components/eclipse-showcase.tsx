@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Button } from "@prisma-docs/eclipse";
+import { Button } from "@prisma/eclipse";
 
 export function EclipseShowcase() {
   const [isDark, setIsDark] = React.useState(false);

@@ -1,7 +1,15 @@
 import remarkDirective from "remark-directive";
-import { remarkDirectiveAdmonition, remarkMdxFiles } from "fumadocs-core/mdx-plugins";
+import {
+  remarkDirectiveAdmonition,
+  remarkMdxFiles,
+} from "fumadocs-core/mdx-plugins";
 import { remarkImage } from "fumadocs-core/mdx-plugins";
-import { defineConfig, defineDocs, frontmatterSchema, metaSchema } from "fumadocs-mdx/config";
+import {
+  defineConfig,
+  defineDocs,
+  frontmatterSchema,
+  metaSchema,
+} from "fumadocs-mdx/config";
 import lastModified from "fumadocs-mdx/plugins/last-modified";
 import { z } from "zod";
 import convert from "npm-to-yarn";
@@ -34,7 +42,7 @@ export const docsV6 = defineDocs({
   docs: {
     schema: frontmatterSchema.extend({
       image: z.string().optional(),
-      badge: z.enum(['early-access', 'deprecated', 'preview']).optional(),
+      badge: z.enum(["early-access", "deprecated", "preview"]).optional(),
       url: z.string().optional(),
       metaTitle: z.string().optional(),
       metaDescription: z.string().optional(),
@@ -54,7 +62,22 @@ export default defineConfig({
   mdxOptions: {
     remarkPlugins: [
       remarkDirective,
-      remarkDirectiveAdmonition,
+      [
+        remarkDirectiveAdmonition,
+        {
+          types: {
+            note: "info",
+            tip: "info",
+            info: "info",
+            warn: "warning",
+            warning: "warning",
+            danger: "error",
+            success: "success",
+            ppg: "ppg",
+            error: "error",
+          },
+        },
+      ],
       [remarkImage, { useImport: false }],
       remarkMdxFiles,
     ],

@@ -1,5 +1,5 @@
 'use client';
-import { Spinner } from '@prisma-docs/eclipse';
+import { Spinner } from '@prisma/eclipse';
 import { useDocsSearch } from 'fumadocs-core/search/client';
 import {
   SearchDialog,
