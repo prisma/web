@@ -1,3 +1,5 @@
+export { default as Statistic } from "./statistic";
+
 export { Textarea } from "./textarea";
 
 export {
