@@ -14,7 +14,7 @@ export function LargeSearchToggle({
     <Button
       variant="default"
       className={cn(
-        'flex items-center justify-center gap-2 hover:cursor-pointer md:justify-between py-2.5',
+        'flex items-center justify-center gap-2 hover:cursor-pointer md:justify-between py-2.5 transition-colors hover:bg-background-ppg/50',
         props.className,
       )}
       onClick={() => {

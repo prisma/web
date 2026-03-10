@@ -94,7 +94,7 @@ export function CategoryTagFilter({
             key={idx}
             color={currentCategory === category ? "ppg" : "neutral"}
             onClick={() => handleSelect(category)}
-            className="cursor-pointer"
+            className="cursor-pointer transition-colors hover:bg-background-ppg/50"
             label={formatTag(category)}
           />
         ))}
