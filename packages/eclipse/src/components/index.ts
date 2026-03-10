@@ -1,3 +1,17 @@
+export { Textarea } from "./textarea";
+
+export {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
+  ChartStyle,
+  useChart,
+} from "./chart";
+export type { ChartConfig } from "./chart";
+export { FontAwesomeScript } from "./fontawesome-eclipse";
+
 export { Accordion, Accordions } from "./accordion";
 
 export { Action, actionVariants } from "./action";
@@ -137,3 +151,6 @@ export {
   PaginationEllipsis,
   PaginationInput,
 } from "./pagination";
+
+export { Admonition } from "./admonition";
+export { Switch } from "./switch";

@@ -5,8 +5,10 @@ date: "2025-06-19"
 authors:
   - "Tyler Benfield"
 metaTitle: "Optimizing Postgres for Global Apps"
-metaImagePath: "/blog/optimizing-postgres-for-global-apps/imgs/meta-2d60d46aec9dc44a8e90072330ce14346817df5b-1266x711.png"
-heroImagePath: "/blog/optimizing-postgres-for-global-apps/imgs/hero-8633a2e3d0da7dccae76ab2597e841ac444cbe7a-844x474.svg"
+metaImagePath: "/optimizing-postgres-for-global-apps/imgs/meta-2d60d46aec9dc44a8e90072330ce14346817df5b-1266x711.png"
+heroImagePath: "/optimizing-postgres-for-global-apps/imgs/hero-8633a2e3d0da7dccae76ab2597e841ac444cbe7a-844x474.svg"
+tags:
+  - "education"
 excerpt: |
   Postgres uses a chatty, stateful protocol to connect clients to the database. While great for connecting over a local network, it was designed before the age of serverless deployments, multi-region applications, and modern network architectures. Let's talk about the challenges that occur when connecting to Postgres in 2025 and how to mitigate them.
 ---
@@ -39,11 +41,11 @@ The [Postgres wire protocol](https://www.postgresql.org/docs/current/protocol.ht
 
 Let's break down a typical Postgres connection. We'll use the modern protocol here rather than the original from 1998:
 
-![](/blog/optimizing-postgres-for-global-apps/imgs/df130688a802da5bd87e58fd82ef867d28fd8a82-1269x1660.png)
+![](/optimizing-postgres-for-global-apps/imgs/df130688a802da5bd87e58fd82ef867d28fd8a82-1269x1660.png)
 
 That's 18 messages across the network before the first query can be executed! Let's also look at how we prepare a query. There are two methods for this: simple query protocol and extended query protocol. Applications typically use the extended query protocol as it supports parameterized queries to prevent SQL injection, so we'll keep our focus there:
 
-![](/blog/optimizing-postgres-for-global-apps/imgs/e003a199c4bfcfff090449148d3185d331d5a113-1269x1660.png)
+![](/optimizing-postgres-for-global-apps/imgs/e003a199c4bfcfff090449148d3185d331d5a113-1269x1660.png)
 
 14 messages just to execute a query! For the wEll aCTuaLLy readers, not all of these messages are blocking. Multiple arrows in the same direction are sent without waiting for any response, so technically we have 4 I/O blocking sequences. The prepare phase is expected to be reused with different parameter values _on the same connection_, taking this to a harmless pair of 2 I/O sequences: one to the server and one back to the client forming a single round-trip. That's not so bad! Fortunately for this blog post, there's more to unpack…
 
@@ -89,7 +91,7 @@ We will have to establish a connection from the proxy to the database, potential
 
 All in all, the connection looks something like this:
 
-![](/blog/optimizing-postgres-for-global-apps/imgs/a1acd9147d4e1ffc6b0284fc578538ab7fbc541e-1269x1660.png)
+![](/optimizing-postgres-for-global-apps/imgs/a1acd9147d4e1ffc6b0284fc578538ab7fbc541e-1269x1660.png)
 
 Now you might be realizing that is more messages than the original. You're right! Geographic distance and optimizations are important here. Client → Proxy is a close-proximity connection, while Proxy → Postgres is potentially a geographically distant connection. That geographic distance is still there, right? Right.
 

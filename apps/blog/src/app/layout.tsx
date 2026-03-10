@@ -1,4 +1,4 @@
-import { RootProvider } from "fumadocs-ui/provider/next";
+import { Provider } from "@/components/provider";
 import "./global.css";
 import { Inter, Barlow } from "next/font/google";
 import Script from "next/script";
@@ -27,8 +27,9 @@ export default function Layout({ children }: LayoutProps<"/">) {
           crossOrigin="anonymous"
         ></Script>
       </head>
-      <body className="flex flex-col min-h-screen">
-        <RootProvider>{children}</RootProvider>
+      <body className="flex flex-col min-h-screen pt-24 relative">
+        <div className="bg-blog absolute inset-0 -z-1 overflow-hidden" />
+        <Provider>{children}</Provider>
       </body>
     </html>
   );

@@ -11,7 +11,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuGroup,
-} from "@prisma-docs/eclipse";
+} from "@prisma/eclipse";
 
 export function CheckboxDropdownExample() {
   const [showStatusBar, setShowStatusBar] = useState(true);

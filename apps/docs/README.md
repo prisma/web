@@ -76,7 +76,7 @@ Run these from the repo root with `pnpm --filter docs <script>`:
 
 The docs app uses workspace packages:
 
-- `@prisma-docs/eclipse` — design system components
+- `@prisma/eclipse` — design system components
 - `@prisma-docs/ui` — shared UI components, utilities, and config
 
 If you change those packages, rebuild or run them in watch mode so docs sees updates.

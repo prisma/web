@@ -53,7 +53,7 @@ const PaginationLink = ({
         variant: isActive ? "default-weaker" : "default",
         size,
       }),
-      "flex border-none text-foreground-neutral",
+      "flex border-none text-foreground-neutral cursor-pointer",
       className,
     )}
     {...props}

@@ -1,9 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { Banner as FumadocsBanner } from "fumadocs-ui/components/banner";
+import { X } from "lucide-react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../lib/cn";
+import { buttonVariants } from "./ui/button";
 
 /**
  * Banner variants based on color prop
@@ -78,7 +79,7 @@ export interface BannerProps
  * Banner component
  *
  * A page-level banner that appears at the top of the layout.
- * Built on Fumadocs Banner with Eclipse design system styling.
+ * Styled for the Eclipse design system.
  *
  * @example
  * ```tsx
@@ -113,14 +114,42 @@ export const Banner = React.forwardRef<HTMLDivElement, BannerProps>(
     },
     ref,
   ) => {
+    const [open, setOpen] = React.useState(true);
+    const globalKey = id ? `nd-banner-${id}` : null;
+
+    React.useEffect(() => {
+      if (globalKey) setOpen(localStorage.getItem(globalKey) !== "true");
+    }, [globalKey]);
+
+    if (!open) return null;
+
     return (
-      <FumadocsBanner
+      <div
         id={id}
-        changeLayout={changeLayout}
-        height={height}
+        ref={ref}
         className={cn(bannerVariants({ color }), className)}
+        style={
+          {
+            height,
+          } as React.CSSProperties
+        }
         {...props}
       >
+        {changeLayout && open ? (
+          <style>
+            {globalKey
+              ? `:root:not(.${globalKey}) { --fd-banner-height: ${height ?? "3rem"}; }`
+              : `:root { --fd-banner-height: ${height ?? "3rem"}; }`}
+          </style>
+        ) : null}
+        {globalKey ? <style>{`.${globalKey} #${id} { display: none; }`}</style> : null}
+        {globalKey ? (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `if (localStorage.getItem('${globalKey}') === 'true') document.documentElement.classList.add('${globalKey}');`,
+            }}
+          />
+        ) : null}
         <div className="flex items-center justify-center gap-3">
           {showIcon && (
             <svg
@@ -149,7 +178,27 @@ export const Banner = React.forwardRef<HTMLDivElement, BannerProps>(
           )}
           <span>{description}</span>
         </div>
-      </FumadocsBanner>
+        {id ? (
+          <button
+            type="button"
+            aria-label="Close Banner"
+            onClick={() => {
+              setOpen(false);
+              if (globalKey) localStorage.setItem(globalKey, "true");
+            }}
+            className={cn(
+              buttonVariants({
+                variant: "ghost",
+                className:
+                  "absolute end-2 top-1/2 -translate-y-1/2 text-foreground-neutral-weaker",
+                size: "icon-sm",
+              }),
+            )}
+          >
+            <X />
+          </button>
+        ) : null}
+      </div>
     );
   },
 );

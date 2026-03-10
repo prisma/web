@@ -4,12 +4,12 @@ import { Check, Link as LinkIcon } from "lucide-react";
 import {
   ComponentProps,
   type ReactNode,
+  useCallback,
   useEffect,
   useRef,
   useState,
 } from "react";
 import { cn } from "../lib/cn";
-import { useCopyButton } from "fumadocs-ui/utils/use-copy-button";
 import { buttonVariants } from "./ui/button";
 import { mergeRefs } from "../lib/merge-refs";
 import {
@@ -19,6 +19,20 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "./ui/accordion";
+
+function useCopyButton(copy: () => void | Promise<void>, timeout = 2000) {
+  const [checked, setChecked] = useState(false);
+
+  const onClick = useCallback(async () => {
+    await copy();
+    setChecked(true);
+    window.setTimeout(() => {
+      setChecked(false);
+    }, timeout);
+  }, [copy, timeout]);
+
+  return [checked, onClick] as const;
+}
 
 export function Accordions({
   type = "single",
