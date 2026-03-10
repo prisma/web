@@ -14,14 +14,14 @@ export function FloatingAsk() {
   const checkScroll = useCallback(() => {
     const scrollHeight = document.documentElement.scrollHeight;
     const viewportHeight = window.innerHeight;
+    const distanceFromBottom = scrollHeight - window.scrollY - viewportHeight;
     const isShortPage = scrollHeight - viewportHeight < 200;
 
     if (isShortPage) {
-      setVisible(true);
+      setVisible(distanceFromBottom > 10);
       return;
     }
 
-    const distanceFromBottom = scrollHeight - window.scrollY - viewportHeight;
     setVisible(distanceFromBottom > 200);
   }, []);
 
