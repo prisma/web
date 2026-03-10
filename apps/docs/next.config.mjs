@@ -231,7 +231,7 @@ const config = {
   allowedDevOrigins,
   reactStrictMode: true,
   images: { unoptimized: true },
-  transpilePackages: ["@prisma-docs/eclipse"],
+  transpilePackages: ["@prisma/eclipse"],
   experimental: {
     globalNotFound: true,
   },

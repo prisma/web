@@ -15,7 +15,7 @@ import {
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
-} from "@prisma-docs/eclipse";
+} from "@prisma/eclipse";
 
 import { withBlogBasePathForImageSrc } from "@/lib/url";
 import { formatTag, formatDate } from "@/lib/format";

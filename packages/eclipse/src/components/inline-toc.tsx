@@ -1,11 +1,12 @@
 "use client";
 
 import { cn } from "../lib/cn";
-import type { TOCItemType as BaseTOCItemType } from "fumadocs-core/toc";
 import { type ComponentProps, useEffect, useRef, useState } from "react";
 
-// Extend TOCItemType to support nested items
-export interface TOCItem extends BaseTOCItemType {
+export interface TOCItem {
+  title: string;
+  url: string;
+  depth: number;
   items?: TOCItem[];
 }
 

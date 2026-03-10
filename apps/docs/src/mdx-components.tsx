@@ -30,7 +30,7 @@ import {
   TableCaption,
   Input,
   Admonition,
-} from "@prisma-docs/eclipse";
+} from "@prisma/eclipse";
 
 function withDocsBasePathForImageSrc(src: unknown): unknown {
   if (typeof src !== "string") return src;

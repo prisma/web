@@ -11,7 +11,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
-} from '@prisma-docs/eclipse';
+} from '@prisma/eclipse';
 
 interface VersionSwitcherProps {
   currentVersion: Version;

@@ -22,7 +22,7 @@ import {
   TabsList,
   TabsTrigger,
   Steps,Step
-} from "@prisma-docs/eclipse";
+} from "@prisma/eclipse";
 import { TweetEmbedComp } from "@/components/TweetEmbed";
 import { Youtube } from "@/components/Youtube";
 import { Meetup, MeetupList } from "@/components/Meetup";

@@ -1,7 +1,6 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
-import Link from "fumadocs-core/link";
 import { cva } from "class-variance-authority";
 import { cn } from "../lib/cn";
 import { type ReactNode, useState } from "react";
@@ -114,12 +113,12 @@ function Item({
           {!required && "?"}
         </code>
         {typeDescriptionLink ? (
-          <Link
+          <a
             href={typeDescriptionLink}
             className="underline text-foreground-neutral @max-xl:hidden"
           >
             {type}
-          </Link>
+          </a>
         ) : (
           <span className="@max-xl:hidden text-foreground-neutral">{type}</span>
         )}

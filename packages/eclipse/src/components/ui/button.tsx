@@ -13,7 +13,7 @@ export const buttonVariants = cva(
   {
     variants: {
       variant: variants,
-      // fumadocs use `color` instead of `variant`
+      // Keep `color` as a compatibility alias for `variant`.
       color: variants,
       size: {
         sm: 'gap-1 px-2 py-1.5 text-xs',

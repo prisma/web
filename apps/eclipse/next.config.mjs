@@ -201,9 +201,9 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const config = {
   reactStrictMode: true,
+  transpilePackages: ["@prisma/eclipse"],
   output: "export",
   images: { unoptimized: true },
-  transpilePackages: ["@prisma-docs/eclipse"],
   async headers() {
     return [
       {
