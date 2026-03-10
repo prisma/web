@@ -152,5 +152,5 @@ export {
   PaginationInput,
 } from "./pagination";
 
-export { Admonition } from "./admonition";
+export { Alert } from "./alert";
 export { Switch } from "./switch";
