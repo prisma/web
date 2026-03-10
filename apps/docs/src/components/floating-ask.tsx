@@ -24,9 +24,9 @@ export function FloatingAsk() {
   }, [checkScroll]);
 
   const handleSubmit = () => {
-    if (inputValue.trim()) {
-      setPendingMessage(inputValue.trim());
-    }
+    const val = inputValue.trim();
+    if (!val) return;
+    setPendingMessage(val);
     setIsOpen(true);
     setInputValue("");
   };
