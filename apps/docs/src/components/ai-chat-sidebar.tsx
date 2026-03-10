@@ -180,12 +180,14 @@ const ChatInner = ({
 
   const deepThinking = useDeepThinking();
 
+  const isBusy = isGeneratingAnswer || isPreparingAnswer;
+
   useEffect(() => {
-    if (pendingMessage && !isGeneratingAnswer) {
+    if (pendingMessage && !isBusy) {
       submitQuery(pendingMessage);
       setPendingMessage("");
     }
-  }, [pendingMessage, isGeneratingAnswer, submitQuery, setPendingMessage]);
+  }, [pendingMessage, isBusy, submitQuery, setPendingMessage]);
 
   useEffect(() => {
     if (conversation.length === 0) return;

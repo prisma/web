@@ -67,6 +67,7 @@ export function FloatingAsk() {
           <button
             type="button"
             onClick={handleSubmit}
+            aria-label="Submit question"
             className="flex size-7 shrink-0 items-center justify-center rounded-full bg-fd-primary text-fd-primary-foreground transition-colors hover:bg-fd-primary/90"
           >
             <ArrowUp className="size-4" />
