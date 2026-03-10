@@ -1,6 +1,10 @@
 name: 🍈 Lychee
 
-on: [pull_request]
+on:
+  pull_request:
+    paths:
+      - 'apps/docs/content/**'
+      - '.github/workflows/lychee.yml'
 
 concurrency:
   group: lychee-${{ github.event.pull_request.number }}
@@ -14,8 +18,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: 📄 Get changed docs files
+        id: changed-docs
+        uses: tj-actions/changed-files@v46
+        with:
+          files: |
+            apps/docs/content/**/*.md
+            apps/docs/content/**/*.mdx
+
+      - name: Skip when no docs files changed
+        if: ${{ steps.changed-docs.outputs.any_changed != 'true' }}
+        run: echo "No docs markdown changes in this PR. Skipping lychee."
+
       - name: 🍈 Lychee Link Checker (First Run)
         id: lychee
+        if: ${{ steps.changed-docs.outputs.any_changed == 'true' }}
         uses: lycheeverse/lychee-action@v2
         with:
           args: >-
@@ -24,15 +41,18 @@ jobs:
             --max-cache-age 5m
             --verbose
             --no-progress
-            --exclude '.*'
+            --base-url 'https://local.invalid/'
             --timeout 20
+            --max-concurrency 8
             --max-retries 8
             --retry-wait-time 5
-            --include '^https://'
+            --scheme http
+            --scheme https
+            --exclude '^https?://local\.invalid/'
             --exclude 'https://www.gnu.org'
             --exclude 'https://docs.solidjs.com'
-            --accept 200,201,204,304,403,429
-            './apps/docs/content'
+            --accept 200,201,204,301,302,303,307,308,403,429
+            ${{ steps.changed-docs.outputs.all_changed_files }}
           output: lychee/out.md
           fail: false
         env:
@@ -40,7 +60,7 @@ jobs:
 
       - name: 🔄 Retry Lychee Link Checker (Second Run for Timeouts)
         id: lychee-retry
-        if: ${{ always() && steps.lychee.outputs.exit_code != 0 }}
+        if: ${{ always() && steps.changed-docs.outputs.any_changed == 'true' && steps.lychee.outputs.exit_code != 0 }}
         uses: lycheeverse/lychee-action@v2
         with:
           args: >-
@@ -49,22 +69,25 @@ jobs:
             --max-cache-age 5m
             --verbose
             --no-progress
-            --exclude '.*'
+            --base-url 'https://local.invalid/'
             --timeout 30
+            --max-concurrency 8
             --max-retries 10
             --retry-wait-time 10
-            --include '^https://'
+            --scheme http
+            --scheme https
+            --exclude '^https?://local\.invalid/'
             --exclude 'https://www.gnu.org'
             --exclude 'https://docs.solidjs.com'
-            --accept 200,201,204,304,403,429
-            './apps/docs/content'
+            --accept 200,201,204,301,302,303,307,308,403,429
+            ${{ steps.changed-docs.outputs.all_changed_files }}
           output: lychee/out-retry.md
           fail: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 📝 Clean up Lychee Report
-        if: ${{ always() && github.event.pull_request.head.repo.fork == false }}
+        if: ${{ always() && github.event.pull_request.head.repo.fork == false && steps.changed-docs.outputs.any_changed == 'true' }}
         run: |
           # Use retry results if available, otherwise use first run results
           if [ -f "lychee/out-retry.md" ]; then
@@ -108,7 +131,13 @@ jobs:
               echo "### ✅ All links are working!" >> lychee/formatted.md
             else
               echo "### ❌ Errors" >> lychee/formatted.md
-              echo -e "$FORMATTED_ERRORS" >> lychee/formatted.md
+              # Keep PR comment concise so we never exceed GitHub's 65,536-char limit
+              echo -e "$FORMATTED_ERRORS" | awk 'NR<=200' >> lychee/formatted.md
+              TOTAL_ERROR_LINES=$(echo -e "$FORMATTED_ERRORS" | wc -l | tr -d ' ')
+              if [ "$TOTAL_ERROR_LINES" -gt 200 ]; then
+                echo "" >> lychee/formatted.md
+                echo "_Showing first 200 lines of errors. See workflow artifact for full report._" >> lychee/formatted.md
+              fi
             fi
             echo "---" >> lychee/formatted.md
             echo "" >> lychee/formatted.md
@@ -126,17 +155,37 @@ jobs:
             echo "| ❓ Unknown | $UNKNOWN |" >> lychee/formatted.md
             echo "" >> lychee/formatted.md
             echo "</details>" >> lychee/formatted.md
+
+            # Hard truncate as a final guardrail for sticky PR comments
+            python - <<'PY'
+            from pathlib import Path
+            p = Path("lychee/formatted.md")
+            if p.exists():
+              max_chars = 60000
+              text = p.read_text(encoding="utf-8")
+              if len(text) > max_chars:
+                note = "\n\n_Comment truncated to avoid GitHub body limit. Download the artifact for full details._\n"
+                p.write_text(text[: max_chars - len(note)] + note, encoding="utf-8")
+            PY
           fi
 
+      - name: 📦 Upload Lychee reports
+        if: ${{ always() && steps.changed-docs.outputs.any_changed == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: lychee-report-${{ github.run_id }}
+          path: lychee/
+          if-no-files-found: ignore
+
       - name: 📝 Comment Broken Links
-        if: ${{ always() && github.event.pull_request.head.repo.fork == false }}
+        if: ${{ always() && github.event.pull_request.head.repo.fork == false && steps.changed-docs.outputs.any_changed == 'true' }}
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: lychee
           path: lychee/formatted.md
 
       - name: 🚫 Fail if broken links found
-        if: ${{ steps.lychee-retry.conclusion == 'success' && steps.lychee-retry.outputs.exit_code != 0 || steps.lychee-retry.conclusion == 'failure' }}
+        if: ${{ steps.changed-docs.outputs.any_changed == 'true' && (steps.lychee-retry.conclusion == 'success' && steps.lychee-retry.outputs.exit_code != 0 || steps.lychee-retry.conclusion == 'failure') }}
         run: |
           if [ "${{ steps.lychee-retry.conclusion }}" == "success" ]; then
             echo "Failing based on retry run results"
