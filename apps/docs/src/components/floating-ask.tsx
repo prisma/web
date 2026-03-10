@@ -12,8 +12,16 @@ export function FloatingAsk() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const checkScroll = useCallback(() => {
-    const distanceFromBottom =
-      document.documentElement.scrollHeight - window.scrollY - window.innerHeight;
+    const scrollHeight = document.documentElement.scrollHeight;
+    const viewportHeight = window.innerHeight;
+    const isShortPage = scrollHeight - viewportHeight < 200;
+
+    if (isShortPage) {
+      setVisible(true);
+      return;
+    }
+
+    const distanceFromBottom = scrollHeight - window.scrollY - viewportHeight;
     setVisible(distanceFromBottom > 200);
   }, []);
 
