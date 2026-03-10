@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@prisma-docs/eclipse";
+import { Button } from "@prisma/eclipse";
 import {
   Logo,
   NavigationMenu,
@@ -15,7 +15,7 @@ import {
   Socials,
 } from "./navigation-menu";
 import { useEffect, useState } from "react";
-import { FontAwesomeScript } from "./fontawesome-web";
+import { FontAwesomeScript as WebFA } from "./fontawesome-web";
 import { cn } from "../lib/cn";
 
 interface Link {
@@ -45,7 +45,7 @@ export function WebNavigation({ links }: WebNavigationProps) {
   }, [mobileView]);
   return (
     <>
-      <FontAwesomeScript />
+      <WebFA />
       <NavigationMenu mobileOpen={mobileView}>
         <NavigationWrapper mobileOpen={mobileView}>
           <NavigationMenuList>

@@ -11,12 +11,12 @@ For complete documentation, examples, and interactive demos, visit:
 ## Quick Start
 
 ```bash
-pnpm add @prisma-docs/eclipse
+pnpm add @prisma/eclipse
 ```
 
 ```tsx
-import { Button } from "@prisma-docs/eclipse";
-import "@prisma-docs/eclipse/styles/globals.css";
+import { Button } from "@prisma/eclipse";
+import "@prisma/eclipse/styles/globals.css";
 
 export function App() {
   return <Button variant="ppg">Click me</Button>;

@@ -7,7 +7,7 @@ import { ChevronDownIcon } from "lucide-react";
 import { useScrollThreshold } from "../hooks/use-scroll-threshold";
 import { StarCount } from "./star-count";
 import { useState } from "react";
-import { Action, Button } from "@prisma-docs/eclipse";
+import { Action, Button } from "@prisma/eclipse";
 
 const Logo = (
   <svg

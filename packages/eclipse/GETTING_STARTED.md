@@ -22,7 +22,7 @@ Since Eclipse is part of the monorepo, add it to your project's dependencies:
 ```json
 {
   "dependencies": {
-    "@prisma-docs/eclipse": "workspace:*"
+    "@prisma/eclipse": "workspace:*"
   }
 }
 ```
@@ -38,7 +38,7 @@ pnpm install
 Import the global styles in your app's entry point:
 
 ```tsx
-import "@prisma-docs/eclipse/styles/globals.css";
+import "@prisma/eclipse/styles/globals.css";
 ```
 
 ### 3. Configure Tailwind (Optional)
@@ -48,7 +48,7 @@ To use Eclipse tokens in your Tailwind config:
 ```ts
 // tailwind.config.ts
 import type { Config } from "tailwindcss";
-import eclipseConfig from "@prisma-docs/eclipse/tailwind.config";
+import eclipseConfig from "@prisma/eclipse/tailwind.config";
 
 const config: Config = {
   presets: [eclipseConfig],
@@ -67,7 +67,7 @@ export default config;
 Import and use Eclipse components:
 
 ```tsx
-import { Button } from "@prisma-docs/eclipse";
+import { Button } from "@prisma/eclipse";
 
 export function MyComponent() {
   return (
@@ -175,7 +175,7 @@ export function App() {
 ### Button Variants
 
 ```tsx
-import { Button } from "@prisma-docs/eclipse";
+import { Button } from "@prisma/eclipse";
 
 <Button variant="default">Default</Button>
 <Button variant="ppg">Prisma Pulse & Accelerate</Button>
@@ -240,7 +240,7 @@ Use the `cn` utility for className merging and CVA for variants:
 ```tsx
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "@prisma-docs/eclipse/lib/cn";
+import { cn } from "@prisma/eclipse/lib/cn";
 
 const cardVariants = cva(
   "rounded-high border",
@@ -287,7 +287,7 @@ Card.displayName = "Card";
 Access tokens directly in TypeScript:
 
 ```tsx
-import { tokens } from "@prisma-docs/eclipse/tokens";
+import { tokens } from "@prisma/eclipse/tokens";
 
 // Use in JavaScript/TypeScript logic
 const buttonHeight = tokens.size.element.lg; // 28

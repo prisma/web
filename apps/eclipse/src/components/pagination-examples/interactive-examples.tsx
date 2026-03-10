@@ -10,7 +10,7 @@ import {
   PaginationNext,
   PaginationEllipsis,
   PaginationInput,
-} from "@prisma-docs/eclipse";
+} from "@prisma/eclipse";
 
 export function BasicPaginationExample() {
   const [currentPage, setCurrentPage] = useState(2);

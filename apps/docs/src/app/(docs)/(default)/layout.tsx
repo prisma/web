@@ -54,7 +54,6 @@ export default async function Layout({ children }: { children: React.ReactNode }
           <div className={cn("flex flex-col p-4 pt-2 gap-3", className)} {...props}>
             <SidebarBannerCarousel slides={slides} />
             <StatusIndicator />
-            {props.children}
           </div>
         ),
       }}
