@@ -3,13 +3,13 @@
 import { atom, useAtom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 
-// Atom for the current prompt/input text
+
 export const chatPromptAtom = atom<string>("");
 
-// Atom for sidebar open/closed state (persisted to localStorage)
+
 export const chatOpenAtom = atomWithStorage<boolean>("prisma-docs:chat-open", false);
 
-// Atom for a message queued from the floating input to be auto-submitted
+
 export const pendingMessageAtom = atom<string>("");
 
 export const useAIChatContext = () => {

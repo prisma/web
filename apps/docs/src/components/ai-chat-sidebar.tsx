@@ -180,7 +180,6 @@ const ChatInner = ({
 
   const deepThinking = useDeepThinking();
 
-  // Auto-submit pending message from the floating input
   useEffect(() => {
     if (pendingMessage && !isGeneratingAnswer) {
       submitQuery(pendingMessage);
