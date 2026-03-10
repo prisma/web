@@ -29,7 +29,7 @@ import {
   TableCell,
   TableCaption,
   Input,
-  Admonition,
+  Alert,
 } from "@prisma/eclipse";
 
 function withDocsBasePathForImageSrc(src: unknown): unknown {
@@ -81,7 +81,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     th: ({ ref: _ref, ...props }) => <TableHead {...props} />,
     td: ({ ref: _ref, ...props }) => <TableCell {...props} />,
     caption: ({ ref: _ref, ...props }) => <TableCaption {...props} />,
-    // Override Fumadocs Callout components with Eclipse Alert for admonitions (:::ppg, :::error, :::success, :::warning)
+    // Override Fumadocs Callout components with Eclipse Alert for alerts (:::ppg, :::error, :::success, :::warning)
     CalloutTitle: ({ children }: any) => <>{children}</>,
     CalloutDescription: ({ children }: any) => <>{children}</>,
     CalloutContainer: ({ type, children, icon, ...props }: any) => {
@@ -100,9 +100,9 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
       };
 
       return (
-        <Admonition variant={variantMap[type] || "ppg"} icon={icon} {...props}>
+        <Alert variant={variantMap[type] || "ppg"} icon={icon} {...props}>
           {children}
-        </Admonition>
+        </Alert>
       );
     },
   };

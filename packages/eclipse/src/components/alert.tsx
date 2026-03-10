@@ -3,8 +3,8 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "../lib/cn";
 
-const admonitionVariants = cva(
-  "relative w-full rounded-md border p-4 gap-3 text-sm [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground [&>svg]:w-5 [&>svg]:h-5 alert-admonition flex items-start [&>i]:mt-0.5",
+const alertVariants = cva(
+  "relative w-full rounded-md border p-4 gap-3 text-sm [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground [&>svg]:w-5 [&>svg]:h-5 alert-alert flex items-start [&>i]:mt-0.5",
   {
     variants: {
       variant: {
@@ -23,12 +23,12 @@ const admonitionVariants = cva(
   },
 );
 
-type AdmonitionProps = React.HTMLAttributes<HTMLDivElement> &
-  VariantProps<typeof admonitionVariants> & {
+type AlertProps = React.HTMLAttributes<HTMLDivElement> &
+  VariantProps<typeof alertVariants> & {
     icon?: React.ReactNode;
   };
 
-const Admonition = React.forwardRef<HTMLDivElement, AdmonitionProps>(
+const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
   ({ className, variant, icon, children, ...props }, ref) => {
     const IconComponent =
       icon !== undefined ? (
@@ -40,7 +40,7 @@ const Admonition = React.forwardRef<HTMLDivElement, AdmonitionProps>(
       <div
         ref={ref}
         role="alert"
-        className={cn(admonitionVariants({ variant }), className)}
+        className={cn(alertVariants({ variant }), className)}
         {...props}
       >
         {IconComponent}
@@ -51,6 +51,6 @@ const Admonition = React.forwardRef<HTMLDivElement, AdmonitionProps>(
     );
   },
 );
-Admonition.displayName = "Admonition";
+Alert.displayName = "Alert";
 
-export { Admonition };
+export { Alert };

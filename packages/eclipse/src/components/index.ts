@@ -1,3 +1,5 @@
+export { default as Statistic } from "./statistic";
+
 export { Textarea } from "./textarea";
 
 export {
@@ -152,5 +154,5 @@ export {
   PaginationInput,
 } from "./pagination";
 
-export { Admonition } from "./admonition";
+export { Alert } from "./alert";
 export { Switch } from "./switch";
