@@ -7,7 +7,7 @@ import { useAIChatContext } from "@/hooks/use-ai-chat";
 
 export function FloatingAsk() {
   const { isOpen, setIsOpen, setPendingMessage } = useAIChatContext();
-  const [visible, setVisible] = useState(true);
+  const [visible, setVisible] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
