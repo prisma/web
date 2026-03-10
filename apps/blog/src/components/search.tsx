@@ -22,12 +22,14 @@ import { SearchIcon } from "lucide-react";
 import { Badge, Spinner } from "@prisma/eclipse";
 import { BlogSearchResult } from "../lib/search-types";
 
-export function CustomSearchDialogIcon(
-  props: ComponentProps<'svg'> & { isLoading: boolean },
-) {
+export function CustomSearchDialogIcon({
+  isLoading,
+}: {
+  isLoading: boolean;
+}) {
   return (
     <>
-      {props.isLoading ? (
+      {isLoading ? (
         <Spinner className="size-5 text-fd-muted-foreground" />
       ) : (
         <SearchIcon className="size-5 text-fd-muted-foreground" />
@@ -40,18 +42,24 @@ type SearchResultItemProps = Parameters<
   NonNullable<ComponentProps<typeof SearchDialogList>["Item"]>
 >[0];
 
+function isBlogSearchResult(value: unknown): value is BlogSearchResult {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<BlogSearchResult>;
+  return typeof candidate.url === "string" && typeof candidate.content === "string";
+}
+
 function SearchResultItem({
   item,
   onClick,
 }: SearchResultItemProps): ReactNode {
-  const post = item as BlogSearchResult;
-  if (!post) return null;
+  if (!isBlogSearchResult(item)) return null;
+  const post = item;
 
   return (
     <SearchDialogListItem
       item={item}
       onClick={onClick}
-      className="group grid grid-cols-[128px_1fr] sm:grid-cols-[160px_1fr] gap-4 items-center p-2! rounded-square border border-transparent"
+      className="group grid grid-cols-[128px_1fr] sm:grid-cols-[160px_1fr] gap-4 items-center p-2! rounded-square border border-transparent aria-selected:border-stroke-neutral aria-selected:bg-background-muted/60"
     >
       <div className="relative aspect-video w-full overflow-hidden rounded-square bg-background-neutral">
         {post.heroImagePath ? (

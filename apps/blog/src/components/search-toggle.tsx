@@ -7,21 +7,28 @@ import { Button } from '@prisma/eclipse';
 
 
 export function LargeSearchToggle({
+  className,
+  onClick,
   ...props
 }: ComponentProps<'button'>) {
   const { setOpenSearch } = useSearchContext();
   return (
     <Button
+      {...props}
+      aria-label={props["aria-label"] ?? "Search the blog"}
       variant="default"
       className={cn(
         'flex items-center justify-center gap-2 hover:cursor-pointer md:justify-between py-2.5 transition-colors hover:bg-background-ppg/50',
-        props.className,
+        className,
       )}
-      onClick={() => {
-        setOpenSearch(true);
+      onClick={(event) => {
+        onClick?.(event);
+        if (!event.defaultPrevented) {
+          setOpenSearch(true);
+        }
       }}
     >
-      <span className="hidden text-sm text-foreground-neutral-weak md:inline-flex">
+      <span className="sr-only text-sm text-foreground-neutral-weak md:not-sr-only md:inline-flex">
         Search the blog
       </span>
       <Search className="size-4 justify-end" />

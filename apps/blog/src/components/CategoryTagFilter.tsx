@@ -54,6 +54,7 @@ export function CategoryTagFilter({
             <button
                   key="show-all"
                   type="button"
+                  aria-pressed={currentCategory === "show-all"}
                   onClick={() => handleSelect("show-all")}
                   className="inline-flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-left hover:bg-background-muted"
                 >
@@ -70,6 +71,7 @@ export function CategoryTagFilter({
                 <button
                   key={idx}
                   type="button"
+                  aria-pressed={currentCategory === category}
                   onClick={() => handleSelect(category)}
                   className="inline-flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-left hover:bg-background-muted"
                 >
@@ -94,6 +96,13 @@ export function CategoryTagFilter({
             key={idx}
             color={currentCategory === category ? "ppg" : "neutral"}
             onClick={() => handleSelect(category)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                handleSelect(category);
+              }
+            }}
+            tabIndex={0}
             className="cursor-pointer transition-colors hover:bg-background-ppg/50"
             label={formatTag(category)}
           />

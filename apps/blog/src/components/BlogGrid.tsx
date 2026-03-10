@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
-  Input,
   Pagination,
   PaginationContent,
   PaginationEllipsis,
@@ -209,7 +208,7 @@ export function BlogGrid({
     if (currentPage === 1) {
       return {
         featuredPost: filteredItems[0],
-        postsToRender: filteredItems.slice(1, pageSize + 1),
+        postsToRender: filteredItems.slice(1, pageSize),
       };
     }
 

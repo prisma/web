@@ -159,10 +159,9 @@ export function PostCard({
             {post?.authorSrc && (
               <Avatar
                 format="image"
-                src="/avatar.jpg"
-                alt="Disabled user"
+                src={post.authorSrc}
+                alt={post.author ?? "Author"}
                 size="lg"
-                disabled
               />
             )}
             <span>{post.author}</span>
