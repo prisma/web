@@ -1,12 +1,12 @@
 "use client";
 import {
   Action,
-  cn,
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@prisma-docs/eclipse";
+  } from "@prisma/eclipse";
+import { cn } from "@prisma-docs/ui/lib/cn";
 import { shareSocials } from "@prisma-docs/ui/data/footer";
 import { usePathname } from "next/navigation";
 import { useState } from "react";

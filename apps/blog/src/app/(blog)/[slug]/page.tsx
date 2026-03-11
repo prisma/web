@@ -1,22 +1,26 @@
 import { formatTag, formatDate } from "@/lib/format";
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { getMDXComponents } from "@/mdx-components";
 import { createRelativeLink } from "fumadocs-ui/mdx";
 import { blog } from "@/lib/source";
 import {
-  Action,
-  Avatar,
   Badge,
-  Button,
-  cn,
   InlineTOC,
-  Input,
-  Label,
   Separator,
-} from "@prisma-docs/eclipse";
+} from "@prisma/eclipse";
+
 import { FooterNewsletterForm } from "@prisma-docs/ui/components/newsletter";
 import { BlogShare } from "@/components/BlogShare";
+import { AuthorAvatarGroup } from "@/components/AuthorAvatarGroup";
+import { withBlogBasePath } from "@/lib/url";
+import Link from "next/link";
+
+interface TOCItem {
+  title: string;
+  url: string;
+  depth: number;
+  items?: TOCItem[];
+}
 
 export default async function Page(props: {
   params: Promise<{ slug: string }>;
@@ -27,13 +31,14 @@ export default async function Page(props: {
   if (!page) notFound();
   const MDX = page.data.body;
 
+  const newsletterApiUrl = withBlogBasePath("/api/newsletter");
   return (
     <div className="w-full px-4 z-1 mx-auto md:grid md:grid-cols-[1fr_180px] mt-4 md:mt-22 gap-12 max-w-257">
       <div className="post-contents w-full">
         {/* Title + meta */}
         <header className="w-full relative">
           <Link
-            href="/blog"
+            href="/"
             className="text-fd-primary hover:underline text-sm absolute -top-8"
           >
             ← Back to Blog
@@ -41,22 +46,8 @@ export default async function Page(props: {
           <h1 className="mt-3 mb-8 font-bold max-md:text-3xl md:text-5xl   stretch-display font-display text-foreground-neutral">
             {page.data.title}
           </h1>
-          <div className="text-sm text-fd-muted-foreground flex gap-2 items-center text-foreground-neutral mb-4">
-            {page.data.authors?.length > 1 ? (
-              page.data.authors.join(", ")
-            ) : page.data.authors?.length === 1 ? (
-              <span className="mt-auto flex items-center gap-2 font-semibold text-sm">
-                {page.data?.authorSrc && (
-                  <Avatar
-                    format="image"
-                    src={page.data.authorSrc}
-                    alt={page.data.authors[0]}
-                    size="lg"
-                  />
-                )}
-                <span>{page.data.authors[0]}</span>
-              </span>
-            ) : null}
+          <div className="text-sm flex gap-2 items-center text-foreground-neutral mb-4">
+            <AuthorAvatarGroup authors={page.data.authors} />
             {page.data.date ? (
               <>
                 <Separator orientation="vertical" className="h-4" />
@@ -82,7 +73,7 @@ export default async function Page(props: {
 
         {/* Body */}
         <article className="w-full flex flex-col pb-8 mt-12">
-          <div className="prose min-w-0 [&_figure]:w-full! [&_figure]:md:max-w-140! [&_figure]:lg:max-w-200!">
+          <div className="prose min-w-0 [&_figure]:w-full [&_figure]:md:max-w-140 [&_figure]:lg:max-w-200">
             <MDX
               components={getMDXComponents({
                 a: createRelativeLink(blog, page),
@@ -97,7 +88,7 @@ export default async function Page(props: {
 
         {/* Newsletter CTA */}
         <div className="w-full px-8 py-12 shadow-box-low newsletter-bg rounded-square border border-background-neutral flex max-sm:flex-col wrap items-start gap-4 sm:items-center justify-between my-12">
-          <FooterNewsletterForm />
+          <FooterNewsletterForm apiUrl={newsletterApiUrl} />
         </div>
       </div>
       <div className="max-md:hidden toc">
@@ -105,7 +96,7 @@ export default async function Page(props: {
           <span className="text-shadow-foreground-neutral-reverse font-semibold text-md mb-4 mt-0 block">
             On this page
           </span>
-          <InlineTOC items={page.data.toc} className="px-0" />
+          <InlineTOC items={page.data.toc as TOCItem[]} className="px-0" />
         </div>
       </div>
     </div>

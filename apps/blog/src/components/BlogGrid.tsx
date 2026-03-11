@@ -205,7 +205,9 @@ export function BlogGrid({
   });
 
   const { featuredPost, postsToRender } = useMemo(() => {
-    if (currentPage === 1) {
+    const shouldShowFeatured = currentCat === "show-all" && currentPage === 1;
+
+    if (shouldShowFeatured) {
       return {
         featuredPost: filteredItems[0],
         postsToRender: filteredItems.slice(1, pageSize),
@@ -219,7 +221,7 @@ export function BlogGrid({
         currentPage * pageSize,
       ),
     };
-  }, [filteredItems, currentPage, pageSize]);
+  }, [filteredItems, currentCat, currentPage, pageSize]);
 
   const setCurrentPage = (page: number) => {
     const clampedPage = Math.max(1, Math.min(page, totalPages));

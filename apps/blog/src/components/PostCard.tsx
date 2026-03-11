@@ -2,8 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Avatar, Badge, Card } from "@prisma/eclipse";
+import { Badge, Card } from "@prisma/eclipse";
 
+import { AuthorAvatarGroup } from "@/components/AuthorAvatarGroup";
 import { formatDate, formatTag } from "@/lib/format";
 import { withBlogBasePathForImageSrc } from "@/lib/url";
 
@@ -39,7 +40,7 @@ export function PostCard({
           : "group grid sm:grid-cols-[1fr_384px] overflow-hidden border-b pb-4 sm:pb-6 border-stroke-neutral gap-8"
       }
     >
-      {post.imageSrc && (
+      {isFeatured && post.imageSrc && (
         <div
           className={
             isFeatured
@@ -93,17 +94,10 @@ export function PostCard({
             )}
           </div>
           {post.author && (
-            <span className="mt-auto flex items-center gap-2 font-semibold text-sm">
-              {post?.authorSrc && (
-                <Avatar
-                  format="image"
-                  src={post.authorSrc}
-                  alt={post.author ?? "Author"}
-                  size="lg"
-                />
-              )}
-              <span>{post.author}</span>
-            </span>
+            <AuthorAvatarGroup
+              authors={[post.author]}
+              className="mt-auto flex items-center gap-2 font-semibold text-sm"
+            />
           )}
         </Card>
       ) : (
@@ -149,24 +143,38 @@ export function PostCard({
           )}
         </div>
         {post.author && (
-          <span
+          <AuthorAvatarGroup
+            authors={[post.author]}
             className={
               isFeatured
                 ? "mt-auto flex items-center gap-2 font-semibold text-sm"
                 : "hidden sm:flex items-center gap-2 font-semibold text-sm"
             }
-          >
-            {post?.authorSrc && (
-              <Avatar
-                format="image"
-                src={post.authorSrc}
-                alt={post.author ?? "Author"}
-                size="lg"
-              />
-            )}
-            <span>{post.author}</span>
-          </span>
+          />
         )}
+        </div>
+      )}
+      {!isFeatured && post.imageSrc && (
+        <div
+          className={
+            isFeatured
+              ? "relative w-full h-full aspect-video"
+              : "relative max-w-96 aspect-video w-full h-full hidden sm:block"
+          }
+        >
+          <Image
+            src={withBlogBasePathForImageSrc(post.imageSrc as string)}
+            alt={post.imageAlt ?? post.title}
+            fill
+            sizes={isFeatured ? "(min-width: 640px) 50vw, 100vw" : "384px"}
+            className={
+              isFeatured
+                ? "object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                : "rounded-square object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+            }
+            loading={isFeatured ? "eager" : undefined}
+            priority={isFeatured}
+          />
         </div>
       )}
     </Link>

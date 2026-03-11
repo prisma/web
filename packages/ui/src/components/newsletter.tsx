@@ -1,7 +1,8 @@
 "use client";
 import React from "react";
 
-import { Button, cn, Input } from "@prisma-docs/eclipse";
+import { Button, Input } from "@prisma/eclipse";
+import { cn } from "@prisma-docs/ui/lib/cn";
 import { useNewsletter } from "../hooks/use-newsletter";
 
 const icon = (name: string) => (
