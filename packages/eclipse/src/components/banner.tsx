@@ -10,20 +10,16 @@ import { buttonVariants } from "./ui/button";
  * Banner variants based on color prop
  */
 const bannerVariants = cva(
-  "text-sm font-medium py-3 px-[27px] flex items-center justify-center",
+  "text-sm font-medium py-3 px-6 flex items-center justify-center",
   {
     variants: {
       color: {
-        default:
-          "bg-background-neutral-reverse text-foreground-neutral-reverse",
+        default: "bg-background-neutral-reverse text-foreground-neutral-reverse",
         ppg: "bg-background-ppg-reverse-strong text-foreground-ppg-reverse",
         orm: "bg-background-orm-reverse-strong text-foreground-orm-reverse",
-        error:
-          "bg-background-error-reverse-strong text-foreground-error-reverse",
-        success:
-          "bg-background-success-reverse-strong text-foreground-success-reverse",
-        warning:
-          "bg-background-warning-reverse-strong text-foreground-warning-reverse",
+        error: "bg-background-error-reverse-strong text-foreground-error-reverse",
+        success: "bg-background-success-reverse-strong text-foreground-success-reverse",
+        warning: "bg-background-warning-reverse-strong text-foreground-warning-reverse",
         gradient: "bg-gradient-ppg-orm text-foreground-neutral",
       },
     },

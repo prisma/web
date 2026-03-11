@@ -43,7 +43,7 @@ export default async function Page(props: {
           >
             ← Back to Blog
           </Link>
-          <h1 className="mt-3 mb-8 font-bold max-md:text-3xl md:text-5xl   stretch-display font-display text-foreground-neutral">
+          <h1 className="mt-3 mb-8 font-bold max-md:text-3xl md:text-5xl   stretch-display font-sans-display text-foreground-neutral">
             {page.data.title}
           </h1>
           <div className="text-sm flex gap-2 items-center text-foreground-neutral mb-4">

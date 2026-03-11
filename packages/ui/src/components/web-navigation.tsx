@@ -65,7 +65,7 @@ export function WebNavigation({ links }: WebNavigationProps) {
                 ) : link?.sub?.length ? (
                   <NavigationMenuItem key={link.text}>
                     <NavigationMenuTrigger>{link.text}</NavigationMenuTrigger>
-                    <NavigationMenuContent className="rounded-high! overflow-hidden!">
+                    <NavigationMenuContent className="rounded-square-high! overflow-hidden!">
                       <div
                         className={cn(
                           "list gap-1 flex flex-col",

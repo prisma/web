@@ -2,25 +2,25 @@ import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../lib/cn";
 
-const buttonVariants = cva("", {
+const buttonVariants = cva(
+  "flex flex-row justify-center items-center rounded-square transition-all duration-50 cursor-pointer disabled:cursor-not-allowed",
+  {
   variants: {
     variant: {
-      ppg: "bg-background-ppg-reverse text-foreground-ppg-reverse hover:bg-background-ppg-reverse-strong",
-      orm: "bg-background-orm-reverse text-foreground-orm-reverse hover:bg-background-orm-reverse-strong",
-      default:
-        "bg-background-default border border-stroke-neutral text-foreground-neutral",
-      "default-stronger":
-        "bg-background-neutral text-foreground-neutral hover:bg-background-neutral-strong",
-      "default-weaker": "bg-background-neutral text-foreground-neutral-weaker",
-      error:
-        "bg-background-error-reverse text-foreground-error-reverse hover:bg-backΩground-error-reverse-strong focus-visible:ring-stroke-error",
+      ppg: "bg-background-ppg-reverse text-foreground-ppg-reverse hover:bg-background-ppg-reverse-strong shadow-box-low",
+      orm: "bg-background-orm-reverse text-foreground-orm-reverse hover:bg-background-orm-reverse-strong shadow-box-low",
+      "default-stronger": "bg-background-neutral text-foreground-neutral hover:bg-background-neutral-strong transition-all duration-50",
+      default: "bg-background-default hover:bg-background-neutral border border-stroke-neutral hover:border-stroke-neutral-strong text-foreground-neutral shadow-box-low",
+      "default-weaker": "bg-transparent hover:bg-background-neutral text-foreground-neutral",
+      error: "bg-background-error-reverse text-foreground-error-reverse hover:bg-background-error-reverse-strong focus-visible:ring-stroke-error",
+      success: "bg-background-success-reverse text-foreground-success-reverse hover:bg-background-success-reverse-strong focus-visible:ring-stroke-success",
       link: "text-foreground-neutral underline-offset-4 hover:underline focus-visible:ring-foreground-neutral",
     },
     size: {
-      lg: "px-2 py-1 text-sm rounded-square",
-      xl: "py-1.5 px-2.5 text-md rounded-square",
-      "2xl": "py-2 px-3 text-lg rounded-square",
-      "4xl": "py-3 px-4 text-xl rounded-square",
+      lg: "px-2 h-element-lg text-sm",
+      xl: "px-3 h-element-xl text-md",
+      "2xl": "px-3  h-element-2xl text-lg",
+      "4xl": "px-4  h-element-4xl text-xl",
     },
   },
   defaultVariants: {

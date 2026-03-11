@@ -197,7 +197,7 @@ export function EclipseShowcase() {
               Square (6px)
             </span>
           </div>
-          <div className="px-6 py-4 bg-background-orm rounded-high border border-stroke-orm">
+          <div className="px-6 py-4 bg-background-orm rounded-square-high border border-stroke-orm">
             <span className="text-sm font-medium text-foreground-neutral">
               High (12px)
             </span>
@@ -216,7 +216,7 @@ export function EclipseShowcase() {
           Semantic Patterns
         </h3>
 
-        <div className="p-padding-block-container bg-background-error rounded-high border border-stroke-error">
+        <div className="p-6 bg-background-error rounded-square-high border border-stroke-error">
           <div className="flex items-start gap-3">
             <span className="text-foreground-error">⚠️</span>
             <div>
@@ -230,7 +230,7 @@ export function EclipseShowcase() {
           </div>
         </div>
 
-        <div className="p-padding-block-container bg-background-success rounded-high border border-stroke-success">
+        <div className="p-6 bg-background-success rounded-square-high border border-stroke-success">
           <div className="flex items-start gap-3">
             <span className="text-foreground-success">✓</span>
             <div>
@@ -244,7 +244,7 @@ export function EclipseShowcase() {
           </div>
         </div>
 
-        <div className="p-padding-block-container bg-background-warning rounded-high border border-stroke-warning">
+        <div className="p-6 bg-background-warning rounded-square-high border border-stroke-warning">
           <div className="flex items-start gap-3">
             <span className="text-foreground-warning">!</span>
             <div>
@@ -265,12 +265,12 @@ export function EclipseShowcase() {
           Gradients
         </h3>
         <div className="space-y-4">
-          <div className="h-24 bg-gradient-orm rounded-high flex items-center justify-center">
+          <div className="h-24 bg-gradient-orm rounded-square-high flex items-center justify-center">
             <span className="text-lg font-semibold text-foreground-orm-reverse">
               ORM Gradient
             </span>
           </div>
-          <div className="h-24 bg-gradient-ppg rounded-high flex items-center justify-center">
+          <div className="h-24 bg-gradient-ppg rounded-square-high flex items-center justify-center">
             <span className="text-lg font-semibold text-foreground-ppg-reverse">
               PPG Gradient
             </span>
