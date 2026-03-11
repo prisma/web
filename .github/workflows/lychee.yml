@@ -89,6 +89,8 @@ jobs:
       - name: 📝 Clean up Lychee Report
         if: ${{ always() && github.event.pull_request.head.repo.fork == false && steps.changed-docs.outputs.any_changed == 'true' }}
         run: |
+          mkdir -p lychee
+
           # Use retry results if available, otherwise use first run results
           if [ -f "lychee/out-retry.md" ]; then
             REPORT_FILE="lychee/out-retry.md"
@@ -167,6 +169,14 @@ jobs:
                 note = "\n\n_Comment truncated to avoid GitHub body limit. Download the artifact for full details._\n"
                 p.write_text(text[: max_chars - len(note)] + note, encoding="utf-8")
             PY
+          else
+            # Ensure sticky PR comment always has content even if Lychee output is missing
+            cat > lychee/formatted.md <<'EOF'
+            ## 🍈 Lychee Link Check Report
+
+            Lychee did not produce a markdown report file for this run.
+            Check the workflow logs and uploaded artifact for details.
+            EOF
           fi
 
       - name: 📦 Upload Lychee reports
