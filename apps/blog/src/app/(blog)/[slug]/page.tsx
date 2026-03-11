@@ -92,7 +92,7 @@ export default async function Page(props: {
         </div>
       </div>
       <div className="max-md:hidden toc">
-        <div className="sticky top-24 [&_a[data-state=inactive]]:text-foreground-neutral-weak! [&_a[data-state=active]]:text-foreground-neutral!">
+        <div className="sticky top-24 max-h-[calc(100vh-6rem)] overflow-y-auto [&_a[data-state=inactive]]:text-foreground-neutral-weak! [&_a[data-state=active]]:text-foreground-neutral!">
           <span className="text-shadow-foreground-neutral-reverse font-semibold text-md mb-4 mt-0 block">
             On this page
           </span>
