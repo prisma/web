@@ -1,13 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState, useRef } from "react";
-import Image from "next/image";
-import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
-  Avatar,
-  Badge,
-  Card,
   Pagination,
   PaginationContent,
   PaginationEllipsis,
@@ -17,8 +12,9 @@ import {
   PaginationPrevious,
 } from "@prisma/eclipse";
 
-import { withBlogBasePathForImageSrc } from "@/lib/url";
-import { formatTag, formatDate } from "@/lib/format";
+import { LargeSearchToggle } from "./search-toggle";
+import { CategoryTagFilter } from "./CategoryTagFilter";
+import { PostCard } from "./PostCard";
 
 type BlogCardItem = {
   url: string;
@@ -186,10 +182,11 @@ export function BlogGrid({
   const router = useRouter();
   const searchParams = useSearchParams();
   const isUpdatingUrlRef = useRef(false);
+  const validTags = useMemo(() => new Set(uniqueTags), [uniqueTags]);
 
   const [currentCat, setCurrentCat] = useState<string>(() => {
     const tagFromQuery = searchParams.get("tag");
-    return tagFromQuery && uniqueTags.includes(tagFromQuery)
+    return tagFromQuery && validTags.has(tagFromQuery)
       ? tagFromQuery
       : "show-all";
   });
@@ -197,7 +194,7 @@ export function BlogGrid({
   const filteredItems = useMemo(() => {
     return currentCat === "show-all"
       ? items
-      : items.filter((item) => item.tags?.includes(currentCat!));
+      : items.filter((item) => item.tags?.includes(currentCat));
   }, [items, currentCat]);
 
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
@@ -207,34 +204,36 @@ export function BlogGrid({
     return Math.max(1, Math.min(pageFromQuery, totalPages));
   });
 
-  const visibleItems = useMemo(() => {
-    if (currentPage === 1) {
-      return filteredItems.slice(1, pageSize + 1);
+  const { featuredPost, postsToRender } = useMemo(() => {
+    const shouldShowFeatured = currentCat === "show-all" && currentPage === 1;
+
+    if (shouldShowFeatured) {
+      return {
+        featuredPost: filteredItems[0],
+        postsToRender: filteredItems.slice(1, pageSize),
+      };
     }
 
-    return filteredItems.slice(
-      (currentPage - 1) * pageSize,
-      currentPage * pageSize,
-    );
-  }, [filteredItems, currentPage, pageSize]);
+    return {
+      featuredPost: undefined,
+      postsToRender: filteredItems.slice(
+        (currentPage - 1) * pageSize,
+        currentPage * pageSize,
+      ),
+    };
+  }, [filteredItems, currentCat, currentPage, pageSize]);
 
   const setCurrentPage = (page: number) => {
     const clampedPage = Math.max(1, Math.min(page, totalPages));
-    setPage(clampedPage);
+    setPage((prevPage) => (prevPage === clampedPage ? prevPage : clampedPage));
   };
 
   const setCategory = (nextCategory: string) => {
     if (nextCategory === currentCat) return;
 
     setCurrentCat(nextCategory);
-    setPage(1);
+    setPage((prevPage) => (prevPage === 1 ? prevPage : 1));
   };
-
-  useEffect(() => {
-    const pageFromQuery = parsePage(searchParams.get("page"));
-    const clampedPage = Math.max(1, Math.min(pageFromQuery, totalPages));
-    setPage((prevPage) => (prevPage === clampedPage ? prevPage : clampedPage));
-  }, [searchParams, totalPages]);
 
   useEffect(() => {
     // Skip if we just updated the URL programmatically
@@ -243,13 +242,17 @@ export function BlogGrid({
       return;
     }
 
+    const pageFromQuery = parsePage(searchParams.get("page"));
+    const clampedPage = Math.max(1, Math.min(pageFromQuery, totalPages));
+    setPage((prevPage) => (prevPage === clampedPage ? prevPage : clampedPage));
+
     const tagFromQuery = searchParams.get("tag");
     const newCat =
-      tagFromQuery && uniqueTags.includes(tagFromQuery)
+      tagFromQuery && validTags.has(tagFromQuery)
         ? tagFromQuery
         : "show-all";
     setCurrentCat((prevCat) => (prevCat === newCat ? prevCat : newCat));
-  }, [searchParams, uniqueTags]);
+  }, [searchParams, totalPages, validTags]);
 
   // Sync both tag and page to URL
   useEffect(() => {
@@ -289,154 +292,35 @@ export function BlogGrid({
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [currentCat, currentPage, pathname, router, totalPages]);
 
+  const formatTag = (tag: string) => {
+    return tag === "orm"
+      ? "ORM"
+      : tag.replace(/-/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+  };
+
   return (
     <>
-      {/* Category pills (static "Show all" to match layout) */}
-      <div className="flex flex-wrap gap-2 mb-8">
-        <Badge
-          color={currentCat === "show-all" ? "ppg" : "neutral"}
-          onClick={() => setCategory("show-all")}
-          className="cursor-pointer"
-          label="Show all"
+      {/* Category pills */}
+      <div className="flex justify-between items-center gap-4 mb-8">
+        <CategoryTagFilter
+          uniqueTags={uniqueTags}
+          currentCategory={currentCat}
+          onChange={setCategory}
+          className="flex justify-center  flex-wrap gap-1"
         />
-        {uniqueTags.map((category: string, idx: number) => (
-          <Badge
-            color={currentCat === category ? "ppg" : "neutral"}
-              onClick={() => {
-                const nextCategory =
-                  category === "show-all" || currentCat === category
-                    ? "show-all"
-                    : category;
-                setCategory(nextCategory);
-              }}
-            className="cursor-pointer"
-            label={formatTag(category)}
-            key={idx}
-          />
-        ))}
+        <LargeSearchToggle className="w-20 h-full md:w-52" />
       </div>
-      {currentPage === 1 && filteredItems.length > 0 && (
-        <Link
-          href={filteredItems[0].url}
-          className="group grid grid-cols-1 md:grid-cols-2 gap-4 bg-background-default rounded-square overflow-hidden border border-stroke-neutral shadow-box-low"
-        >
-          <div className="relative w-full h-full aspect-video">
-            <Image
-              src={withBlogBasePathForImageSrc(
-                filteredItems[0].imageSrc as string,
-              )}
-              alt={filteredItems[0].imageAlt ?? filteredItems[0].title}
-              fill
-              sizes="(min-width: 640px) 50vw, 100vw"
-              className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-              loading="eager"
-              priority
-            />
-          </div>
-          <Card className="rounded-none! border-none! gap-0 bg-background-default">
-            <div className="eyebrow flex gap-2 items-center">
-              {filteredItems[0].tags && filteredItems[0].tags.length > 0 && (
-                <Badge
-                  color="success"
-                  label={formatTag(
-                    currentCat !== "show-all"
-                      ? currentCat
-                      : filteredItems[0].tags[0],
-                  )}
-                  className="w-fit"
-                />
-              )}
-              <span className="text-xs text-foreground-neutral-weak">
-                {formatDate(new Date(filteredItems[0].date).toISOString())}
-              </span>
-            </div>
-            <h2 className="text-2xl text-foreground-neutral font-bold font-mona-sans mt-4 mb-2">
-              {filteredItems[0].title}
-            </h2>
-            {filteredItems[0].description && (
-              <p className="text-sm text-foreground-neutral-weak leading-[20px]! line-clamp-2">
-                {filteredItems[0].description}
-              </p>
-            )}
-            {filteredItems[0].author && (
-              <span className="mt-auto flex items-center gap-2 font-semibold text-sm">
-                {filteredItems[0]?.authorSrc && filteredItems[0] && (
-                  <Avatar
-                    format="image"
-                    src={filteredItems[0].authorSrc}
-                    alt={filteredItems[0].author}
-                    size="lg"
-                  />
-                )}
-                <span>{filteredItems[0].author}</span>
-              </span>
-            )}
-          </Card>
-        </Link>
+     
+      {featuredPost && (
+        <PostCard
+          post={featuredPost}
+          currentCategory={currentCat}
+          featured
+        />
       )}
       <div className="grid gap-6 mt-12 grid-cols-1">
-        {visibleItems.map((post) => (
-          <Link
-            key={post.url}
-            href={post.url}
-            className="group grid sm:grid-cols-[1fr_384px] overflow-hidden border-b pb-4 sm:pb-6 border-stroke-neutral gap-8"
-          >
-            <div className="flex flex-col justify-between">
-              <div>
-                <div className="eyebrow flex gap-2 items-center">
-                  {post.tags && post.tags.length > 0 && (
-                    <Badge
-                      color="success"
-                      label={formatTag(
-                        currentCat !== "show-all" ? currentCat : post.tags[0],
-                      )}
-                      className="w-fit"
-                    />
-                  )}
-                  {post.date && (
-                    <span className="text-xs text-foreground-neutral-weak">
-                      {formatDate(new Date(post.date).toISOString())}
-                    </span>
-                  )}
-                </div>
-                {post.title && (
-                  <h2 className="text-md  md:text-lg text-foreground-neutral font-[650] sm:font-bold font-mona-sans mt-4 mb-2">
-                    {post.title}
-                  </h2>
-                )}
-                {post.description && (
-                  <p className="text-sm text-foreground-neutral-weak line-clamp-2">
-                    {post.description}
-                  </p>
-                )}
-              </div>
-              {post.author && (
-                <span className="hidden sm:flex items-center gap-2 font-semibold text-sm">
-                  {post?.authorSrc && (
-                    <Avatar
-                      format="image"
-                      src="/avatar.jpg"
-                      alt="Disabled user"
-                      size="lg"
-                      disabled
-                    />
-                  )}
-                  <span>{post.author}</span>
-                </span>
-              )}
-            </div>
-            {post.imageSrc && (
-              <div className="relative max-w-96 aspect-video w-full h-full hidden sm:block">
-                <Image
-                  src={withBlogBasePathForImageSrc(post.imageSrc as string)}
-                  alt={post.imageAlt ?? post.title}
-                  fill
-                  sizes="384px"
-                  className="rounded-square object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-                />
-              </div>
-            )}
-          </Link>
+        {postsToRender.map((post) => (
+          <PostCard key={post.url} post={post} currentCategory={currentCat} />
         ))}
       </div>
       <div className="mt-8">

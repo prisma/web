@@ -9,12 +9,14 @@ import { StatusIndicator } from "@/components/status-indicator";
 import { SidebarBannerCarousel } from "@/components/sidebar-banner";
 import { fetchOgImage } from "@/lib/og-image";
 import { cn } from "@prisma-docs/ui/lib/cn";
+import { FloatingAsk } from "@/components/floating-ask";
 
 // Sidebar announcement slides — set to [] to hide the banner
 const SIDEBAR_SLIDES = [
   {
     title: "The Next Evolution of Prisma ORM",
-    description: "Prisma Next: a full TypeScript rewrite with a new query API, SQL builder, and extensible architecture.",
+    description:
+      "Prisma Next: a full TypeScript rewrite with a new query API, SQL builder, and extensible architecture.",
     href: "https://pris.ly/pn-anouncement",
     gradient: "orm" as const,
     badge: "New",
@@ -44,22 +46,25 @@ export default async function Layout({ children }: { children: React.ReactNode }
   );
 
   return (
-    <DocsLayout
-      {...base}
-      links={navbarLinks}
-      nav={{ ...nav }}
-      sidebar={{
-        collapsible: false,
-        footer: ({ className, ...props }: ComponentProps<"div">) => (
-          <div className={cn("flex flex-col p-4 pt-2 gap-3", className)} {...props}>
-            <SidebarBannerCarousel slides={slides} />
-            <StatusIndicator />
-          </div>
-        ),
-      }}
-      tree={source.pageTree}
-    >
-      {children}
-    </DocsLayout>
+    <>
+      <DocsLayout
+        {...base}
+        links={navbarLinks}
+        nav={{ ...nav }}
+        sidebar={{
+          collapsible: false,
+          footer: ({ className, ...props }: ComponentProps<"div">) => (
+            <div className={cn("flex flex-col p-4 pt-2 gap-3", className)} {...props}>
+              <SidebarBannerCarousel slides={slides} />
+              <StatusIndicator />
+            </div>
+          ),
+        }}
+        tree={source.pageTree}
+      >
+        {children}
+      </DocsLayout>
+      <FloatingAsk />
+    </>
   );
 }

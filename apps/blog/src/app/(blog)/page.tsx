@@ -1,8 +1,8 @@
 import { Suspense } from "react";
 import { blog } from "@/lib/source";
 import { BlogGrid } from "@/components/BlogGrid";
-import { Avatar, Badge, Card } from "@prisma/eclipse";
 import { getCardImageSrc } from "@/lib/source";
+import { getAuthorProfiles } from "@/lib/authors";
 export default function BlogHome() {
   const posts = blog.getPages().sort((a, b) => {
     const aTime =
@@ -20,6 +20,14 @@ export default function BlogHome() {
     const data = post.data as any;
     const authors = Array.isArray(data?.authors) ? data?.authors : [];
     return authors.length > 0 ? authors[0] : null;
+  };
+
+  const getPrimaryAuthorImage = (post: (typeof posts)[number]) => {
+    const data = post.data as any;
+    const authors = Array.isArray(data?.authors) ? data?.authors : [];
+    const profiles = getAuthorProfiles(authors);
+    const firstWithImage = profiles.find((profile) => profile.imageSrc);
+    return firstWithImage?.imageSrc ?? null;
   };
   const items = posts.map((post) => {
     const data = post.data as any;
@@ -45,7 +53,6 @@ export default function BlogHome() {
       description:
         (data.description as string) || (data.metaDescription as string) || "",
       author: getPrimaryAuthor(post),
-      authorSrc: null,
       imageSrc: getCardImageSrc(post),
       imageAlt: (data.heroImageAlt as string) ?? (data.title as string),
       seriesTitle: data.series?.title ?? null,
@@ -55,7 +62,7 @@ export default function BlogHome() {
   const uniqueTags = [
     ...new Set(items.filter((item) => item.tags).flatMap((item) => item.tags)),
   ];
-
+  
   return (
     <main className="flex-1 w-full max-w-249 mx-auto px-4 py-8 z-1">
       <h1 className="stretch-display text-4xl font-bold mb-2 landing-h1 text-center mt-9 font-display">

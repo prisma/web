@@ -203,6 +203,7 @@ const allowedDevOrigins = (
 
 /** @type {import('next').NextConfig} */
 const config = {
+  reactCompiler: true,
   async redirects() {
     return [
       {

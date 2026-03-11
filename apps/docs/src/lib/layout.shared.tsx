@@ -7,18 +7,8 @@ import Link from "next/link";
 
 export const logo = (
   <>
-    <Image
-      alt="Prisma"
-      src={logoDark}
-      aria-label="Prisma"
-      className="dark:hidden"
-    />
-    <Image
-      alt="Prisma"
-      src={logoWhite}
-      aria-label="Prisma"
-      className="hidden dark:block"
-    />
+    <Image alt="Prisma" src={logoDark} aria-label="Prisma" className="dark:hidden" />
+    <Image alt="Prisma" src={logoWhite} aria-label="Prisma" className="hidden dark:block" />
   </>
 );
 
@@ -81,17 +71,12 @@ export function baseOptions(): BaseLayoutProps {
     nav: {
       title: (
         <>
-          <Link
-            href="https://www.prisma.io"
-            className="mb-0 hover:mb-1 transition-[margin] -mr-3!"
-          >
+          <Link href="https://www.prisma.io" className="mb-0 hover:mb-1 transition-[margin]">
             {logo}
-          </Link>{" "}
-          /
+          </Link>
+          <span className="text-fd-muted-foreground">/</span>
           <Link href="/" className="group relative inline-block pl-3 -ml-3!">
-            <span className="font-mono text-lg mt-1 block group-hover:mt-0 transition-[margin]">
-              docs
-            </span>
+            <span className="font-mono text-lg block translate-y-px">docs</span>
           </Link>
         </>
       ),

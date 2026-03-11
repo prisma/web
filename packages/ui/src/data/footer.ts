@@ -189,9 +189,53 @@ const socialIcons = [
   },
 ];
 
+const shareSocials = [
+  {
+    label: "LinkedIn",
+    icon: "fa-brands fa-square-linkedin",
+    url: ({
+      current_page,
+      text_data,
+    }: {
+      current_page: string;
+      text_data: string;
+    }) => `https://www.linkedin.com/sharing/share-offsite/?url=${current_page}`,
+  },
+  {
+    label: "X",
+    icon: "fa-brands fa-x-twitter",
+    url: ({
+      current_page,
+      text_data,
+      hashtags,
+    }: {
+      current_page: string;
+      text_data: string;
+      hashtags: Array<string>;
+    }) =>
+      `http://x.com/share?text=${text_data}&url=${current_page}${
+        hashtags ? `&hashtags=${hashtags.join()}` : ``
+      }`,
+  },
+  {
+    label: "Bluesky",
+    icon: "fa-brands fa-bluesky",
+    url: ({
+      current_page,
+      text_data,
+    }: {
+      current_page: string;
+      text_data: string;
+    }) => `https://bsky.app/intent/compose?text=${text_data}${current_page}`,
+  },
+  { label: "Copy link", icon: "fa-solid fa-link", copy: true },
+];
+
 const footerData = {
   footerItems,
   socialIcons,
+  shareSocials,
 };
 
+export { footerItems, socialIcons, shareSocials };
 export default footerData;
