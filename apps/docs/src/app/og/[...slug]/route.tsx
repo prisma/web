@@ -284,7 +284,7 @@ async function loadGoogleFont(font: string, weight: number) {
     }
   }
 
-  throw new Error("failed to load font data");
+  throw new Error(`failed to load font data for ${font}:${weight}`);
 }
 
 function getFonts() {
@@ -295,7 +295,10 @@ function getFonts() {
       weight,
       style: "normal" as const,
     })),
-  );
+  ).catch((err) => {
+    fontCache = undefined;
+    throw err;
+  });
 
   return fontCache;
 }
