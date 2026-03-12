@@ -6,7 +6,7 @@ import { cn } from "../lib/cn";
  * Define badge variants using CVA based on Figma design
  */
 const badgeVariants = cva(
-  "inline-flex flex-row justify-center items-center px-2 h-element-lg min-w-[24px] rounded-square text-xs font-medium",
+  "inline-flex flex-row justify-center items-center rounded-square text-xs font-medium",
   {
     variants: {
       color: {
@@ -17,9 +17,14 @@ const badgeVariants = cva(
         success: "bg-background-success text-foreground-success",
         warning: "bg-background-warning text-foreground-warning",
       },
+      size: {
+        md: "px-2 h-element-md min-w-element-md",
+        lg: "px-2 h-element-lg min-w-element-lg",
+      },
     },
     defaultVariants: {
       color: "neutral",
+      size: "md",
     },
   },
 );
@@ -35,6 +40,10 @@ export interface BadgeProps
    * The color variant of the badge
    */
   color?: "neutral" | "ppg" | "orm" | "error" | "success" | "warning";
+  /**
+   * The size variant of the badge
+   */
+  size?: "md" | "lg";
   /**
    * The label text to display inside the badge
    */
@@ -55,11 +64,11 @@ export interface BadgeProps
  * ```
  */
 const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
-  ({ className, color, label, ...props }, ref) => {
+  ({ className, color, size, label, ...props }, ref) => {
     return (
       <span
         ref={ref}
-        className={cn(badgeVariants({ color, className }))}
+        className={cn(badgeVariants({ color, size, className }))}
         {...props}
       >
         <span className="flex-grow-1">{label}</span>
