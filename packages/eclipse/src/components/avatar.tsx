@@ -6,7 +6,7 @@ import { cn } from "../lib/cn";
  * Define Avatar variants using CVA
  */
 const avatarVariants = cva(
-  "bg-background-neutral-reverse hover:bg-background-neutral-reverse-strong font-semibold text-foreground-neutral-reverse relative flex shrink-0 overflow-hidden rounded-square uppercase flex items-center justify-center",
+  "bg-background-neutral-reverse hover:bg-background-neutral-reverse-strong text-foreground-neutral-reverse relative flex shrink-0 overflow-hidden rounded-square uppercase flex items-center justify-center",
   {
     variants: {
       disabled: {
@@ -14,10 +14,10 @@ const avatarVariants = cva(
         false: "",
       },
       size: {
-        lg: "size-element-lg text-2xs",
-        xl: "size-element-xl text-2xs",
-        "2xl": "size-element-2xl text-sm",
-        "3xl": "size-element-3xl text-sm",
+        lg: "size-element-lg type-text-xs-stronger",
+        xl: "size-element-xl type-text-xs-stronger",
+        "2xl": "size-element-2xl type-text-sm-stronger",
+        "3xl": "size-element-3xl type-text-sm-stronger",
       },
     },
     defaultVariants: {

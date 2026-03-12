@@ -86,7 +86,7 @@ export const TabsTrigger = React.forwardRef<
       ref={ref}
       {...props}
       className={cn(
-        "inline-flex items-center gap-2 whitespace-nowrap border-b border-transparent py-2 text-sm font-medium transition-colors [&_svg]:size-4 disabled:pointer-events-none disabled:opacity-50 text-foreground-neutral-weak",
+        "inline-flex items-center gap-2 whitespace-nowrap border-b border-transparent py-2 type-text-sm-strong transition-colors [&_svg]:size-4 disabled:pointer-events-none disabled:opacity-50 text-foreground-neutral-weak",
         tabsTriggerVariants[resolvedColor],
         props.className,
       )}
@@ -128,7 +128,7 @@ export function Tabs({
         {items && (
           <TabsList>
             {label && (
-              <span className="text-sm font-medium my-auto me-auto">
+              <span className="type-text-sm-strong my-auto me-auto">
                 {label}
               </span>
             )}

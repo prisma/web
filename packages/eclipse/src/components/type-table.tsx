@@ -58,8 +58,8 @@ const fieldVariants = cva("text-foreground-neutral-weaker not-prose pe-2");
 
 export function TypeTable({ type }: { type: Record<string, TypeNode> }) {
   return (
-    <div className="@container flex flex-col p-1 bg-background-neutral-weaker text-fd-card-foreground rounded-square border my-6 text-sm overflow-hidden">
-      <div className="flex font-medium items-center px-3 py-1 mb-1 not-prose text-foreground-neutral-weak">
+    <div className="@container flex flex-col p-1 bg-background-neutral-weaker text-fd-card-foreground rounded-square border my-6 type-text-sm overflow-hidden">
+      <div className="flex type-text-sm-strong items-center px-3 py-1 mb-1 not-prose text-foreground-neutral-weak">
         <p className="w-[25%]">Prop</p>
         <p className="@max-xl:hidden">Type</p>
       </div>
@@ -105,7 +105,7 @@ function Item({
           className={cn(
             keyVariants({
               deprecated,
-              className: "min-w-fit w-[25%] font-medium pe-2",
+              className: "min-w-fit w-[25%] type-code-sm-strong pe-2",
             }),
           )}
         >
@@ -125,8 +125,8 @@ function Item({
         <ChevronDown className="absolute end-2 size-4 text-fd-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="grid grid-cols-[1fr_3fr] gap-y-4 text-sm p-3 overflow-auto fd-scroll-container border-t border-stroke-neutral">
-          <div className="text-sm prose col-span-full prose-no-margin empty:hidden text-foreground-neutral-weak">
+        <div className="grid grid-cols-[1fr_3fr] gap-y-4 type-text-sm p-3 overflow-auto fd-scroll-container border-t border-stroke-neutral">
+          <div className="type-text-sm prose col-span-full prose-no-margin empty:hidden text-foreground-neutral-weak">
             {description}
           </div>
           {typeDescription && (
@@ -152,10 +152,10 @@ function Item({
                     key={param.name}
                     className="inline-flex items-center flex-wrap gap-1"
                   >
-                    <p className="font-medium not-prose text-nowrap">
+                    <p className="type-text-sm-strong not-prose text-nowrap">
                       {param.name} -
                     </p>
-                    <div className="text-sm prose prose-no-margin">
+                    <div className="type-text-sm prose prose-no-margin">
                       {param.description}
                     </div>
                   </div>
@@ -166,7 +166,7 @@ function Item({
           {returns && (
             <>
               <p className={cn(fieldVariants())}>Returns</p>
-              <div className="my-auto text-sm prose prose-no-margin">
+              <div className="my-auto type-text-sm prose prose-no-margin">
                 {returns}
               </div>
             </>

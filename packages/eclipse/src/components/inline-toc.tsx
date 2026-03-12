@@ -36,7 +36,7 @@ function TOCItemComponent({
         href={item.url}
         data-state={isActive ? "active" : "inactive"}
         className={cn(
-          "toc-item-comp border-s py-1 font-normal transition-colors no-underline data-[state=active]:border-s-fd-primary data-[state=active]:text-fd-accent-foreground data-[state=active]:font-medium data-[state=inactive]:text-foreground-neutral-weak data-[state=inactive]:hover:text-foreground-neutral data-[state=inactive]:hover:text-fd-accent-foreground",
+          "toc-item-comp border-s py-1 type-text-sm transition-colors no-underline data-[state=active]:border-s-fd-primary data-[state=active]:text-fd-accent-foreground data-[state=active]:type-text-sm-strong data-[state=inactive]:text-foreground-neutral-weak data-[state=inactive]:hover:text-foreground-neutral data-[state=inactive]:hover:text-fd-accent-foreground",
         )}
         style={{
           paddingInlineStart: 12 * Math.max(item.depth - 1, 0),
@@ -83,7 +83,7 @@ export function InlineTOC({ items, className, ...props }: InlineTocProps) {
   return (
     <div
       className={cn(
-        "flex cursor-default flex-col p-4 pt-0 text-sm text-foreground-neutral-weak",
+        "flex cursor-default flex-col p-4 pt-0 type-text-sm text-foreground-neutral-weak",
         className,
       )}
       {...props}

@@ -9,7 +9,7 @@ const Table = React.forwardRef<
   <div className="relative w-full overflow-auto">
     <table
       ref={ref}
-      className={cn("w-full caption-bottom text-sm", className)}
+      className={cn("w-full caption-bottom type-text-sm", className)}
       {...props}
     />
   </div>
@@ -43,7 +43,7 @@ const TableFooter = React.forwardRef<
   <tfoot
     ref={ref}
     className={cn(
-      "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0",
+      "border-t bg-muted/50 type-text-sm-strong [&>tr]:last:border-b-0",
       className,
     )}
     {...props}
@@ -73,7 +73,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "h-10 px-3 py-4 text-left align-middle font-medium text-foreground-neutral [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] only:text-xl bg-background-neutral-weaker",
+      "h-10 px-3 py-4 text-left align-middle type-text-sm-strong text-foreground-neutral [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] only:text-xl bg-background-neutral-weaker",
       className,
     )}
     {...props}
@@ -102,7 +102,7 @@ const TableCaption = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <caption
     ref={ref}
-    className={cn("mt-4 text-sm text-muted-foreground", className)}
+    className={cn("mt-4 type-text-sm text-muted-foreground", className)}
     {...props}
   />
 ));
