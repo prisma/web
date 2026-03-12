@@ -1,4 +1,4 @@
-import { createHmac } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
 
 export const runtime = "nodejs";
 
@@ -7,9 +7,9 @@ export async function POST(req: Request) {
   const payload = await req.text();
 
   const sig = req.headers.get("x-hub-signature-256") ?? "";
-  const hmac = createHmac("sha256", process.env.GITHUB_WEBHOOK_SECRET!);
-  const expected = `sha256=${hmac.update(payload).digest("hex")}`;
-  if (sig !== expected) {
+  const expectedBuf = createHmac("sha256", process.env.GITHUB_WEBHOOK_SECRET!).update(payload).digest();
+  const sigBuf = Buffer.from(sig.replace("sha256=", ""), "hex");
+  if (expectedBuf.length !== sigBuf.length || !timingSafeEqual(expectedBuf, sigBuf)) {
     return new Response("Unauthorized", { status: 401 });
   }
 
