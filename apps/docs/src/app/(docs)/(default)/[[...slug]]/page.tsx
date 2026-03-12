@@ -24,7 +24,11 @@ interface PageParams {
   slug?: string[];
 }
 
-export default async function Page({ params }: { params: Promise<PageParams> }) {
+export default async function Page({
+  params,
+}: {
+  params: Promise<PageParams>;
+}) {
   const { slug } = await params;
   const page = source.getPage(slug);
   if (!page) notFound();
@@ -32,7 +36,9 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
   const MDX = page.data.body;
 
   const aiPromptSlug = (page.data as { aiPrompt?: string }).aiPrompt;
-  const promptContent = aiPromptSlug ? await getPromptContent(aiPromptSlug) : null;
+  const promptContent = aiPromptSlug
+    ? await getPromptContent(aiPromptSlug)
+    : null;
 
   return (
     <>
@@ -49,7 +55,9 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
           <DocsTitle>{page.data.title}</DocsTitle>
           <div className="flex flex-row gap-2 items-center">
             {!page.url.startsWith("/management-api/endpoints") && (
-              <LLMCopyButton markdownUrl={`${withDocsBasePath(page.url)}.mdx`} />
+              <LLMCopyButton
+                markdownUrl={`${withDocsBasePath(page.url)}.mdx`}
+              />
             )}
 
             <ViewOptions
@@ -60,7 +68,10 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
         </div>
         <DocsDescription>{page.data.description}</DocsDescription>
         {promptContent && (
-          <AIPromptBanner fullPrompt={promptContent.fullPrompt} guideName={page.data.title} />
+          <AIPromptBanner
+            fullPrompt={promptContent.fullPrompt}
+            guideName={page.data.title}
+          />
         )}
         <DocsBody>
           <MDX
@@ -110,7 +121,7 @@ export async function generateMetadata({
       title,
       description,
       url: withDocsBasePath(page.url),
-      images: page.data.image || withDocsBasePath(getPageImage(page).url),
+      images: withDocsBasePath(page.data.image ?? getPageImage(page).url),
     },
     twitter: {
       card: "summary_large_image",
