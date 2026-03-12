@@ -50,7 +50,7 @@ export const links: LinkItemTypeWithActivePaths[] = [
       { text: "Management API", url: "/management-api", active: "nested-url" },
       { text: "Studio", url: "/studio", active: "nested-url" },
       { text: "AI", url: "/ai", active: "nested-url" },
-      { text: "Optimize", url: "/optimize", active: "nested-url" },
+      { text: "Query Insights", url: "/query-insights", active: "nested-url" },
       { text: "Accelerate", url: "/accelerate", active: "nested-url" },
       { text: "Console", url: "/console", active: "nested-url" },
     ],

@@ -1,0 +1,158 @@
+---
+title: Query Insights
+description: Inspect slow queries, connect Prisma calls to SQL, and apply focused fixes with Prisma Postgres.
+url: /query-insights
+metaTitle: Query Insights with Prisma Postgres
+metaDescription: Inspect slow queries, connect Prisma calls to SQL, and apply focused fixes with Prisma Postgres.
+---
+
+Query Insights is built into Prisma Postgres and helps you understand which queries are slow, why they are expensive, and what to change next. It works out of the box with no agents or instrumentation required, and it does not automatically rewrite your queries or schema.
+
+For Prisma ORM queries, it connects your Prisma calls to the SQL they generate, including when a single call expands into multiple statements. For raw SQL or queries issued outside Prisma ORM, it still shows full SQL behavior.
+
+:::info
+Query Insights replaces Prisma Optimize and is now included with Prisma Postgres at no extra cost.
+:::
+
+## Dashboard
+
+The main Query Insights view gives you a live summary of query activity for your database.
+
+At the top of the page, you can inspect:
+
+- Average latency over the selected period
+- Queries per second
+- A time-based chart for each metric
+- Hover values for exact timestamps and measurements
+- Playback controls for stepping through captured activity
+
+This makes it easier to see whether a problem is steady, bursty, or tied to a short window of activity.
+
+## Query list
+
+Below the charts, Query Insights shows a list of grouped queries.
+
+Each row includes:
+
+- Latency
+- Executions
+- Reads
+- Last seen
+- The SQL statement shape
+
+You can use the controls above the table to:
+
+- Filter results by table
+- Sort the list to surface the most important queries first
+- Focus on repeated, high-read, or recently executed statements
+
+This view is the fastest way to identify which query patterns deserve investigation first.
+
+## Query detail
+
+Selecting a query opens a detail view for that statement.
+
+The detail view shows:
+
+- A stat summary describing the query's table, execution count, average latency, and reads per call
+- The full SQL statement
+- An AI-generated analysis explaining whether the query needs optimization and why
+- A copyable prompt you can paste into your editor to apply the fix
+
+This is where Query Insights becomes actionable. Instead of only seeing that a query is expensive, you can move from symptom to root cause to fix without leaving your workflow.
+
+:::info
+Treat the AI analysis as a starting point, not a final answer. Review any suggested change before shipping it.
+:::
+
+## Prisma context
+
+The main difference between Query Insights and a SQL-only dashboard is attribution.
+
+With Prisma ORM queries, Query Insights traces the full chain: from the slow endpoint, to the Prisma query responsible, to the SQL it generated and its runtime impact. This is especially useful when a single Prisma call expands into multiple SQL statements, because you can inspect that relationship in one place instead of correlating it manually across logs and code.
+
+For queries issued outside Prisma ORM, Query Insights still shows full SQL behavior, but ORM-to-SQL attribution is exclusive to Prisma ORM.
+
+## Availability
+
+Query Insights is included with Prisma Postgres.
+
+## Typical issues
+
+Query Insights is most useful when it connects a database symptom to a concrete code change.
+
+| Issue | What you might see | Typical fix |
+| --- | --- | --- |
+| N+1 queries | High query count for one request | Use nested reads, batching, or joins |
+| Missing indexes | High reads relative to rows returned | Add the right index for the filter pattern |
+| Over-fetching | Wide rows or large payloads | Use `select` to fetch fewer fields |
+| Offset pagination | Reads grow on deeper pages | Switch to cursor pagination |
+| Large nested reads | High reads and large payloads | Limit fields, limit depth, or split queries |
+| Repeated queries | The same statement shape runs often | Cache or reuse results when appropriate |
+
+## How to use it
+
+When an endpoint gets slow, Query Insights gives you a practical workflow:
+
+1. Open Query Insights and scan the latency and queries-per-second charts.
+2. Sort or filter the query list to isolate the expensive statement.
+3. Open the query detail view.
+4. Read the AI analysis and inspect the SQL.
+5. Copy the suggested prompt and paste it into your editor.
+6. Review the suggested change, then apply it in code or schema.
+7. Re-run the workload and compare the same signals again.
+
+In most cases, the next change falls into one of these buckets:
+
+- Change the Prisma query shape
+- Add or adjust an index
+- Return fewer fields or fewer rows
+- Cache repeated work
+
+## Example
+
+A common example is an N+1 pattern:
+```ts
+const users = await prisma.user.findMany({
+  select: { id: true, name: true, email: true },
+});
+
+for (const user of users) {
+  await prisma.post.findMany({
+    where: { authorId: user.id },
+    select: { id: true, title: true },
+  });
+}
+```
+
+Query Insights would typically show:
+
+- One query to load users
+- Many repeated queries to load posts
+- A high execution count for the same statement shape
+- More reads and latency than the route should need
+
+In this case, the likely fix is to load the related posts in one nested read:
+```ts
+const usersWithPosts = await prisma.user.findMany({
+  select: {
+    id: true,
+    name: true,
+    email: true,
+    posts: {
+      select: {
+        id: true,
+        title: true,
+      },
+    },
+  },
+});
+```
+
+The same pattern applies to other issues. Query Insights helps you identify the expensive query shape, understand why it is expensive, and choose the next change to verify.
+
+## Next steps
+
+- Review [Connection pooling](/postgres/database/connection-pooling) for high-concurrency workloads
+- Use [Direct connections](/postgres/database/direct-connections) when connecting Prisma Postgres from other tools
+- See [Prisma Client query optimization](/orm/prisma-client/queries/advanced/query-optimization-performance) for related Prisma ORM patterns
