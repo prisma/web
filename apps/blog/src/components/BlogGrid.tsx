@@ -290,7 +290,7 @@ export function BlogGrid({
     }
 
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [currentCat, currentPage, pathname, router, totalPages]);
+  }, [currentCat, currentPage, pathname, router, searchParams, totalPages]);
 
   const formatTag = (tag: string) => {
     return tag === "orm"
