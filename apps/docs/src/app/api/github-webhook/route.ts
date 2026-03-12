@@ -18,7 +18,13 @@ export async function POST(req: Request) {
     return new Response("Ignored", { status: 200 });
   }
 
-  const body = JSON.parse(payload);
+  let body: ReturnType<typeof JSON.parse>;
+  try {
+    body = JSON.parse(payload);
+  } catch (err) {
+    console.error(`[${delivery}] Failed to parse payload:`, err, payload);
+    return new Response("Invalid payload", { status: 400 });
+  }
   if (body.action !== "opened") {
     return new Response("Ignored", { status: 200 });
   }
@@ -29,30 +35,42 @@ export async function POST(req: Request) {
     return new Response("Internal contributor, skipping", { status: 200 });
   }
 
-  const res = await fetch("https://api.linear.app/graphql", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: process.env.LINEAR_API_KEY!,
-    },
-    body: JSON.stringify({
-      query: `
-        mutation CreateIssue($input: IssueCreateInput!) {
-          issueCreate(input: $input) {
-            success
-            issue { identifier url }
-          }
-        }
-      `,
-      variables: {
-        input: {
-          teamId: process.env.LINEAR_TEAM_ID!,
-          title: `Review PR #${pr.number}: ${pr.title}`,
-          description: `**PR:** [#${pr.number}](${pr.html_url})\n**Author:** @${pr.user.login}\n**Branch:** \`${pr.head.ref}\` → \`${pr.base.ref}\`\n\n${pr.body ?? "_No description provided._"}`,
-        },
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10_000);
+
+  let res: Response;
+  try {
+    res = await fetch("https://api.linear.app/graphql", {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: process.env.LINEAR_API_KEY!,
       },
-    }),
-  });
+      body: JSON.stringify({
+        query: `
+          mutation CreateIssue($input: IssueCreateInput!) {
+            issueCreate(input: $input) {
+              success
+              issue { identifier url }
+            }
+          }
+        `,
+        variables: {
+          input: {
+            teamId: process.env.LINEAR_TEAM_ID!,
+            title: `Review PR #${pr.number}: ${pr.title}`,
+            description: `**PR:** [#${pr.number}](${pr.html_url})\n**Author:** @${pr.user.login}\n**Branch:** \`${pr.head.ref}\` → \`${pr.base.ref}\`\n\n${pr.body ?? "_No description provided._"}`,
+          },
+        },
+      }),
+    });
+  } catch (err) {
+    clearTimeout(timeout);
+    console.error(`[${delivery}] Linear request failed:`, err);
+    return new Response("Failed to create Linear issue", { status: 500 });
+  }
+  clearTimeout(timeout);
 
   let data: unknown;
   try {
