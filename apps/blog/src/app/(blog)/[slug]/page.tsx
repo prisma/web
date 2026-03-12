@@ -12,14 +12,30 @@ import {
 import { FooterNewsletterForm } from "@prisma-docs/ui/components/newsletter";
 import { BlogShare } from "@/components/BlogShare";
 import { AuthorAvatarGroup } from "@/components/AuthorAvatarGroup";
-import { withBlogBasePath } from "@/lib/url";
+import {
+  getBaseUrl,
+  withBlogBasePath,
+  withBlogBasePathForImageSrc,
+} from "@/lib/url";
 import Link from "next/link";
+import type { Metadata } from "next";
 
 interface TOCItem {
   title: string;
   url: string;
   depth: number;
   items?: TOCItem[];
+}
+
+interface PageParams {
+  slug: string;
+}
+
+const isAbsoluteUrl = (value: string) => /^https?:\/\//i.test(value);
+
+function toAbsoluteUrl(pathOrUrl: string): string {
+  if (isAbsoluteUrl(pathOrUrl)) return pathOrUrl;
+  return new URL(pathOrUrl, getBaseUrl()).toString();
 }
 
 export default async function Page(props: {
@@ -101,6 +117,45 @@ export default async function Page(props: {
       </div>
     </div>
   );
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<PageParams>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const page = blog.getPage([slug]);
+  if (!page) notFound();
+
+  const title = page.data.metaTitle ?? page.data.title;
+  const description = page.data.metaDescription ?? page.data.description;
+
+  const metadataImagePath = page.data.metaImagePath ?? page.data.heroImagePath;
+  const metadataImage = metadataImagePath
+    ? withBlogBasePathForImageSrc(metadataImagePath)
+    : undefined;
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: withBlogBasePath(page.url),
+    },
+    openGraph: {
+      title,
+      description,
+      url: withBlogBasePath(page.url),
+      images: metadataImage ? [metadataImage] : undefined,
+      type: "article",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: metadataImage ? [metadataImage] : undefined,
+    },
+  };
 }
 
 export function generateStaticParams(): { slug: string }[] {

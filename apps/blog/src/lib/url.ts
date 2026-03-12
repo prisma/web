@@ -32,7 +32,8 @@ export function getBaseUrl(): string {
     return `${BLOG_PREFIX}${normalizedPath}`;
   }
   
-  export function withBlogBasePathForImageSrc(src: string): string {
+  export function withBlogBasePathForImageSrc(src?: string | null): string {
+    if (!src) return "";
     if (!src.startsWith("/")) return src;
     if (src.startsWith("/_next/")) return src;
     return withBlogBasePath(src) as string;

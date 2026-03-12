@@ -1,8 +1,16 @@
-import { getPageImage, blog as source } from "@/lib/source";
-import { notFound } from "next/navigation";
+import { BLOG_HOME_DESCRIPTION, BLOG_HOME_TITLE } from "@/lib/blog-metadata";
 import { ImageResponse } from "next/og";
 
 export const revalidate = false;
+
+const SECTION_BADGE_COLOR = "#71e8df";
+const GOOGLE_FONT_RESOURCE_REGEX =
+  /src: url\((.+)\) format\('(opentype|truetype)'\)/;
+const BADGE_HORIZONTAL_PADDING = 24;
+const BADGE_VERTICAL_PADDING = 12;
+const BADGE_FONT_SIZE = 24;
+const BADGE_BORDER_RADIUS = 9999;
+const BADGE_BORDER_WIDTH = 3;
 
 const PrismaLogo = () => (
   <svg width="150" height="46" viewBox="0 0 90 28" fill="none">
@@ -15,24 +23,29 @@ const PrismaLogo = () => (
   </svg>
 );
 
-const HTTP_METHOD_COLORS = {
-  GET: "#07DC71",
-  POST: "#51A2FF",
-  DELETE: "#FF6467",
-} as const;
+const FONT_DEFINITIONS = [
+  { name: "Barlow", family: "Barlow", weight: 700 },
+  { name: "Inter", family: "Inter", weight: 400 },
+  { name: "JetBrains Mono", family: "JetBrains+Mono", weight: 400 },
+] as const;
+
+type FontWeight = (typeof FONT_DEFINITIONS)[number]["weight"];
+
+type LoadedFont = {
+  name: string;
+  data: ArrayBuffer;
+  weight: FontWeight;
+  style: "normal";
+};
+
+let fontCache: Promise<LoadedFont[]> | undefined;
 
 function PrismaOGImage({
   title,
   description,
-  method,
-  apiPath,
-  section,
 }: {
   title: string;
-  description?: string;
-  method?: "GET" | "POST" | "DELETE";
-  apiPath?: string;
-  section?: string;
+  description: string;
 }) {
   return (
     <div
@@ -47,61 +60,37 @@ function PrismaOGImage({
         position: "relative",
       }}
     >
-      {method ? (
-        <div
-          style={{
-            position: "absolute",
-            top: 60,
-            left: 60,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: "transparent",
-            color: HTTP_METHOD_COLORS[method],
-            border: `3px solid ${HTTP_METHOD_COLORS[method]}`,
-            padding: "12px 24px",
-            borderRadius: 9999,
-            fontSize: 24,
-            fontFamily: "Barlow, sans-serif",
-            fontWeight: 700,
-            boxShadow: `0 0 40px ${HTTP_METHOD_COLORS[method]}40`,
-          }}
-        >
-          {method}
-        </div>
-      ) : section ? (
-        <div
-          style={{
-            position: "absolute",
-            top: 60,
-            left: 60,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: "transparent",
-            color: "#71e8df",
-            border: "3px solid #71e8df",
-            padding: "12px 24px",
-            borderRadius: 9999,
-            fontSize: 24,
-            fontFamily: "Barlow, sans-serif",
-            fontWeight: 700,
-            textTransform: "uppercase",
-            boxShadow: "0 0 40px rgba(62, 192, 219, 0.3)",
-          }}
-        >
-          {section === "orm"
-            ? "PRISMA ORM"
-            : section === "postgres"
-              ? "PRISMA POSTGRES"
-              : section.replace(/-/g, " ").toUpperCase()}
-        </div>
-      ) : null}
+      <div
+        style={{
+          position: "absolute",
+          top: 60,
+          left: 60,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: "auto",
+          backgroundColor: "transparent",
+          color: SECTION_BADGE_COLOR,
+          border: `${BADGE_BORDER_WIDTH}px solid ${SECTION_BADGE_COLOR}`,
+          padding: `${BADGE_VERTICAL_PADDING}px ${BADGE_HORIZONTAL_PADDING}px`,
+          borderRadius: BADGE_BORDER_RADIUS,
+          fontSize: BADGE_FONT_SIZE,
+          fontFamily: "Barlow, sans-serif",
+          fontWeight: 700,
+          textTransform: "uppercase",
+          lineHeight: 1,
+          whiteSpace: "nowrap",
+          textAlign: "center",
+          boxShadow: "0 0 40px rgba(62, 192, 219, 0.3)",
+        }}
+      >
+        Blog
+      </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
         <h1
           style={{
-            fontSize: title.length > 30 ? "3.5rem" : "5rem",
+            fontSize: "5rem",
             fontWeight: 700,
             fontFamily: "Barlow, sans-serif",
             color: "#f7fafc",
@@ -111,44 +100,18 @@ function PrismaOGImage({
         >
           {title}
         </h1>
-        {description && (
-          <p
-            style={{
-              fontSize: "2rem",
-              fontFamily: "Inter, sans-serif",
-              fontWeight: 400,
-              color: "#a0aec0",
-              lineHeight: 1.5,
-              margin: 0,
-            }}
-          >
-            {description}
-          </p>
-        )}
-        {apiPath && (
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              fontSize: "2rem",
-              fontFamily: "JetBrains Mono, monospace",
-              fontWeight: 400,
-              lineHeight: 1.5,
-              margin: 0,
-            }}
-          >
-            {apiPath.split(/(\{[^}]+\})/).map((segment, i) => (
-              <span
-                key={i}
-                style={{
-                  color: segment.startsWith("{") && segment.endsWith("}") ? "#71e8df" : "#a0aec0",
-                }}
-              >
-                {segment}
-              </span>
-            ))}
-          </div>
-        )}
+        <p
+          style={{
+            fontSize: "2rem",
+            fontFamily: "Inter, sans-serif",
+            fontWeight: 400,
+            color: "#a0aec0",
+            lineHeight: 1.5,
+            margin: 0,
+          }}
+        >
+          {description}
+        </p>
       </div>
 
       <div
@@ -162,7 +125,7 @@ function PrismaOGImage({
           color: "#71e8df",
         }}
       >
-        prisma.io/docs
+        prisma.io/blog
       </div>
 
       <div
@@ -181,66 +144,44 @@ function PrismaOGImage({
 
 async function loadGoogleFont(font: string, weight: number) {
   const url = `https://fonts.googleapis.com/css2?family=${font}:wght@${weight}`;
-  const css = await (await fetch(url)).text();
-  const resource = css.match(/src: url\((.+)\) format\('(opentype|truetype)'\)/);
+  const css = await (await fetch(url, { cache: "force-cache" })).text();
+  const resource = css.match(GOOGLE_FONT_RESOURCE_REGEX);
 
   if (resource) {
-    const response = await fetch(resource[1]);
-    if (response.status == 200) {
+    const response = await fetch(resource[1], { cache: "force-cache" });
+    if (response.status === 200) {
       return await response.arrayBuffer();
     }
   }
 
-  throw new Error("failed to load font data");
+  throw new Error(`failed to load font data for ${font}:${weight}`);
 }
 
-export async function GET(_req: Request, { params }: RouteContext<"/og/docs/[...slug]">) {
-  const { slug } = await params;
-  const page = source.getPage(slug.slice(0, -1));
-  if (!page) notFound();
+function getFonts() {
+  fontCache ??= Promise.all(
+    FONT_DEFINITIONS.map(async ({ name, family, weight }) => ({
+      name,
+      data: await loadGoogleFont(family, weight),
+      weight,
+      style: "normal" as const,
+    })),
+  ).catch((err) => {
+    fontCache = undefined;
+    throw err;
+  });
 
-  const method = (page.data as any)?._openapi?.method as "GET" | "POST" | "DELETE" | undefined;
-  const apiPath = (page.data as any)?._openapi?.path as string | undefined;
-  const section = page.slugs[0];
+  return fontCache;
+}
+
+export async function GET() {
+  const fonts = await getFonts();
 
   return new ImageResponse(
-    <PrismaOGImage
-      title={page.data.title}
-      description={page.data.description}
-      method={method}
-      apiPath={apiPath}
-      section={section}
-    />,
+    <PrismaOGImage title="Prisma Blog" description="Guides, announcements, and articles about Prisma, ORMs, databases, and the data access layer." />,
     {
       width: 1200,
       height: 630,
-      fonts: [
-        {
-          name: "Barlow",
-          data: await loadGoogleFont("Barlow", 700),
-          weight: 700,
-          style: "normal",
-        },
-        {
-          name: "Inter",
-          data: await loadGoogleFont("Inter", 400),
-          weight: 400,
-          style: "normal",
-        },
-        {
-          name: "JetBrains Mono",
-          data: await loadGoogleFont("JetBrains+Mono", 400),
-          weight: 400,
-          style: "normal",
-        },
-      ],
+      fonts,
     },
   );
-}
-
-export function generateStaticParams() {
-  return source.getPages().map((page) => ({
-    lang: page.locale,
-    slug: getPageImage(page).segments,
-  }));
 }
