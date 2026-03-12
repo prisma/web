@@ -1,6 +1,11 @@
 "use client";
 
-import { useChat, useDeepThinking, type Reaction, type Source } from "@kapaai/react-sdk";
+import {
+  useChat,
+  useDeepThinking,
+  type Reaction,
+  type Source,
+} from "@kapaai/react-sdk";
 import {
   AlertCircleIcon,
   ChevronRightIcon,
@@ -15,7 +20,11 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@prisma-docs/ui/lib/cn";
 import { buttonVariants } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@prisma-docs/ui/components/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@prisma-docs/ui/components/tooltip";
 import {
   Drawer,
   DrawerContent,
@@ -37,17 +46,28 @@ import {
   ConversationContent,
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
-import { Message, MessageContent, MessageResponseMarkdown } from "@/components/ai-elements/message";
+import {
+  Message,
+  MessageContent,
+  MessageResponseMarkdown,
+} from "@/components/ai-elements/message";
 import { Shimmer } from "@/components/ai-elements/shimmer";
 import { Spinner } from "@/components/ai-elements/spinner";
-import { PromptInput, PromptInputFooter } from "@/components/ai-elements/prompt-input";
+import {
+  PromptInput,
+  PromptInputFooter,
+} from "@/components/ai-elements/prompt-input";
 import { CopyChat } from "@/components/ai-elements/copy-chat";
 
 interface AIChatSidebarProps {
   exampleQuestions?: string[];
 }
 
-const SourcesDisplay = ({ sources }: { sources: (Source | StoredSource)[] }) => {
+const SourcesDisplay = ({
+  sources,
+}: {
+  sources: (Source | StoredSource)[];
+}) => {
   const [showAll, setShowAll] = useState(false);
   const displayedSources = showAll ? sources : sources.slice(0, 3);
   const hasMore = sources.length > 3;
@@ -112,11 +132,14 @@ const FeedbackButtons = ({
                 "h-7 w-7",
                 currentReaction === "upvote" &&
                   "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950",
-                disabled && "opacity-50 cursor-not-allowed",
+                disabled && "opacity-50 cursor-not-allowed"
               )}
             >
               <ThumbsUpIcon
-                className={cn("size-3.5", currentReaction === "upvote" && "fill-current")}
+                className={cn(
+                  "size-3.5",
+                  currentReaction === "upvote" && "fill-current"
+                )}
               />
             </button>
           )}
@@ -136,11 +159,14 @@ const FeedbackButtons = ({
                 "h-7 w-7",
                 currentReaction === "downvote" &&
                   "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950",
-                disabled && "opacity-50 cursor-not-allowed",
+                disabled && "opacity-50 cursor-not-allowed"
               )}
             >
               <ThumbsDownIcon
-                className={cn("size-3.5", currentReaction === "downvote" && "fill-current")}
+                className={cn(
+                  "size-3.5",
+                  currentReaction === "downvote" && "fill-current"
+                )}
               />
             </button>
           )}
@@ -159,7 +185,6 @@ const ChatInner = ({
   onClose: () => void;
 }) => {
   const [inputValue, setInputValue] = useState("");
-  const { pendingMessage, setPendingMessage } = useAIChatContext();
   const {
     initialMessages,
     isLoading: isPersistenceLoading,
@@ -179,15 +204,6 @@ const ChatInner = ({
   } = useChat();
 
   const deepThinking = useDeepThinking();
-
-  const isBusy = isGeneratingAnswer || isPreparingAnswer;
-
-  useEffect(() => {
-    if (pendingMessage && !isBusy) {
-      submitQuery(pendingMessage);
-      setPendingMessage("");
-    }
-  }, [pendingMessage, isBusy, submitQuery, setPendingMessage]);
 
   useEffect(() => {
     if (conversation.length === 0) return;
@@ -242,7 +258,9 @@ const ChatInner = ({
   };
 
   const messagesForCopy: ChatMessage[] = conversation.flatMap((qa) => {
-    const msgs: ChatMessage[] = [{ id: `${qa.id}-user`, role: "user", content: qa.question }];
+    const msgs: ChatMessage[] = [
+      { id: `${qa.id}-user`, role: "user", content: qa.question },
+    ];
     if (qa.answer) {
       msgs.push({
         id: `${qa.id}-assistant`,
@@ -255,24 +273,30 @@ const ChatInner = ({
 
   const hasActiveConversation = conversation.length > 0;
   const hasPersistedMessages = initialMessages.length > 0;
-  const showEmptyState = !hasActiveConversation && !hasPersistedMessages && !isPersistenceLoading;
+  const showEmptyState =
+    !hasActiveConversation && !hasPersistedMessages && !isPersistenceLoading;
 
   return (
     <div className="flex size-full w-full flex-col overflow-hidden bg-fd-background">
       <div className="flex items-center justify-between px-4 py-2.5 border-b shrink-0">
         <h2 className="font-semibold text-sm">Chat</h2>
         <div className="flex items-center gap-1">
-          <CopyChat messages={hasActiveConversation ? messagesForCopy : initialMessages} />
+          <CopyChat
+            messages={hasActiveConversation ? messagesForCopy : initialMessages}
+          />
           <Tooltip>
             <TooltipTrigger
               render={(props) => (
                 <button
                   {...props}
                   onClick={handleClearChat}
-                  disabled={(!hasActiveConversation && !hasPersistedMessages) || isGeneratingAnswer}
+                  disabled={
+                    (!hasActiveConversation && !hasPersistedMessages) ||
+                    isGeneratingAnswer
+                  }
                   className={cn(
                     buttonVariants({ variant: "ghost", size: "icon-sm" }),
-                    "disabled:opacity-50",
+                    "disabled:opacity-50"
                   )}
                 >
                   <Trash2 className="size-3.5" />
@@ -287,7 +311,9 @@ const ChatInner = ({
                 <button
                   {...props}
                   onClick={onClose}
-                  className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }))}
+                  className={cn(
+                    buttonVariants({ variant: "ghost", size: "icon-sm" })
+                  )}
                 >
                   <ChevronRightIcon className="size-3.5" />
                 </button>
@@ -307,7 +333,9 @@ const ChatInner = ({
                   <MessagesSquareIcon className="size-6 text-fd-primary" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-fd-foreground">How can I help?</h3>
+                  <h3 className="font-semibold text-fd-foreground">
+                    How can I help?
+                  </h3>
                   <p className="text-sm text-fd-muted-foreground mt-1">
                     Ask me anything about Prisma
                   </p>
@@ -345,7 +373,8 @@ const ChatInner = ({
             <>
               {conversation.map((qa, index) => {
                 const isLastItem = index === conversation.length - 1;
-                const isLoading = isLastItem && (isGeneratingAnswer || isPreparingAnswer);
+                const isLoading =
+                  isLastItem && (isGeneratingAnswer || isPreparingAnswer);
                 const hasAnswer = !!qa.answer;
                 const isComplete = qa.id && !isLoading;
 
@@ -358,7 +387,9 @@ const ChatInner = ({
                     <Message from="assistant">
                       <MessageContent>
                         {hasAnswer ? (
-                          <MessageResponseMarkdown>{qa.answer}</MessageResponseMarkdown>
+                          <MessageResponseMarkdown>
+                            {qa.answer}
+                          </MessageResponseMarkdown>
                         ) : isLoading ? (
                           <div className="flex items-center gap-2 overflow-hidden">
                             <Spinner />
@@ -412,14 +443,18 @@ const ChatInner = ({
                 <Message key={message.id} from={message.role}>
                   <MessageContent>
                     {message.role === "assistant" ? (
-                      <MessageResponseMarkdown>{message.content}</MessageResponseMarkdown>
+                      <MessageResponseMarkdown>
+                        {message.content}
+                      </MessageResponseMarkdown>
                     ) : (
                       message.content
                     )}
                   </MessageContent>
                   {message.role === "assistant" &&
                     message.sources &&
-                    message.sources.length > 0 && <SourcesDisplay sources={message.sources} />}
+                    message.sources.length > 0 && (
+                      <SourcesDisplay sources={message.sources} />
+                    )}
                 </Message>
               ))}
             </>
@@ -488,18 +523,14 @@ export const AIChatSidebar = ({
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
           buttonVariants({ variant: "outline" }),
-          "hidden shrink-0 shadow-none md:inline-flex items-center gap-2 h-8 group cursor-pointer",
+          "hidden shrink-0 shadow-none md:inline-flex items-center gap-2 h-8 group cursor-pointer"
         )}
       >
         <MessagesSquareIcon className="size-4 text-fd-muted-foreground group-hover:text-fd-accent-foreground" />
         <span>Ask AI</span>
         <div className="ms-auto inline-flex gap-0.5">
-          <kbd className="rounded-md border bg-fd-background px-1.5 text-fd-muted-foreground group-hover:text-fd-accent-foreground">
-            {isMac ? "⌘" : "Ctrl"}
-          </kbd>
-          <kbd className="rounded-md border bg-fd-background px-1.5 text-fd-muted-foreground group-hover:text-fd-accent-foreground">
-            I
-          </kbd>
+          <kbd className="rounded-md border bg-fd-background px-1.5 text-fd-muted-foreground group-hover:text-fd-accent-foreground">{isMac ? "⌘" : "Ctrl"}</kbd>
+          <kbd className="rounded-md border bg-fd-background px-1.5 text-fd-muted-foreground group-hover:text-fd-accent-foreground">I</kbd>
         </div>
       </button>
 
@@ -511,22 +542,28 @@ export const AIChatSidebar = ({
               "inset-y-0 right-0 h-full w-3/4 border-l sm:max-w-[500px]",
               "translate-x-full data-[state=open]:translate-x-0",
               "pointer-events-none data-[state=open]:pointer-events-auto",
-              "hidden md:flex",
+              "hidden md:flex"
             )}
             data-state={isOpen ? "open" : "closed"}
           >
-            <ChatInner exampleQuestions={exampleQuestions} onClose={() => setIsOpen(false)} />
+            <ChatInner
+              exampleQuestions={exampleQuestions}
+              onClose={() => setIsOpen(false)}
+            />
           </div>,
-          document.body,
+          document.body
         )}
 
       <div className="md:hidden">
-        <Drawer open={isMobile ? isOpen : false} onOpenChange={isMobile ? setIsOpen : undefined}>
+        <Drawer
+          open={isMobile ? isOpen : false}
+          onOpenChange={isMobile ? setIsOpen : undefined}
+        >
           <DrawerTrigger asChild>
             <button
               className={cn(
                 buttonVariants({ variant: "outline", size: "sm" }),
-                "shadow-none inline-flex items-center gap-1.5",
+                "shadow-none inline-flex items-center gap-1.5"
               )}
             >
               <MessagesSquareIcon className="size-3.5 text-fd-muted-foreground" />
@@ -538,7 +575,10 @@ export const AIChatSidebar = ({
               <DrawerTitle>AI Chat</DrawerTitle>
               <DrawerDescription>Ask questions about Prisma</DrawerDescription>
             </DrawerHeader>
-            <ChatInner exampleQuestions={exampleQuestions} onClose={() => setIsOpen(false)} />
+            <ChatInner
+              exampleQuestions={exampleQuestions}
+              onClose={() => setIsOpen(false)}
+            />
           </DrawerContent>
         </Drawer>
       </div>
