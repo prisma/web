@@ -131,6 +131,11 @@ export async function generateMetadata({
   const title = page.data.metaTitle ?? page.data.title;
   const description = page.data.metaDescription ?? page.data.description;
 
+  const metadataImagePath = page.data.metaImagePath ?? page.data.heroImagePath;
+  const metadataImage = metadataImagePath
+    ? withBlogBasePathForImageSrc(metadataImagePath)
+    : undefined;
+
   return {
     title,
     description,
@@ -141,13 +146,14 @@ export async function generateMetadata({
       title,
       description,
       url: withBlogBasePath(page.url),
-      images: withBlogBasePathForImageSrc(page.data.metaImagePath!),
+      images: metadataImage ? [metadataImage] : undefined,
       type: "article",
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
+      images: metadataImage ? [metadataImage] : undefined,
     },
   };
 }
