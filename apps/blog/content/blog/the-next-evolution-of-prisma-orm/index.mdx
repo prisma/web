@@ -1,0 +1,450 @@
+---
+title: "The Next Evolution of Prisma ORM"
+slug: "the-next-evolution-of-prisma-orm"
+date: "2026-03-04"
+authors:
+  - "Will Madden"
+  - "Ankur Datta"
+metaTitle: "The Next Evolution of Prisma ORM"
+metaDescription: "A look at Prisma Next, a ground-up rethink of Prisma that improves queries, extensibility, migrations, and AI-friendly workflows while keeping Prisma’s schema-first approach."
+metaImagePath: "/the-next-evolution-of-prisma-orm/imgs/meta-558fe7eccfd12d3b52c325d62e5fa463a1b5f619-1200x640-3212708663.png"
+heroImagePath: "/the-next-evolution-of-prisma-orm/imgs/hero-61773d2cc286213d32b63e59605b0f5e0df4fe52-844x474-cb41e2fab7.svg"
+heroImageAlt: "The Next Evolution of Prisma ORM"
+tags:
+  - "orm"
+---
+
+Today, we're excited to share what we've been working on the last few months: Prisma Next, a new foundation for Prisma ORM written fully in TypeScript.
+
+## Before we begin
+
+This is not a product release, but an open look at where we’re headed next.
+
+We are **fully committed to Prisma 7**. It remains the recommended version of Prisma for production applications and will continue to receive updates and support for the next 12 months.
+
+## Motivation
+
+Over the past year, we’ve fixed bugs, improved performance, and shipped major refactors and we feel we've reached the limits of what we can achieve with the current codebase.
+
+If you’ve been using Prisma, you will have felt the pain. Fixes take longer than they should. New capabilities take time to land. And progress doesn’t always move at the pace you’d hope.
+
+Prisma Next is a rewrite, which allows us to address what’s holding us back in the existing codebase, by rebuilding it end-to-end to be **extensible** and **composable** by default.
+
+And we’re keeping what developers love about Prisma: the **declarative schema** and the **model-first query experience**.
+
+And we’re doing it for the world we’re in now: AI agents are increasingly part of how teams ship software, so Prisma Next is designed to make **agent-assisted workflows** safer and more predictable.
+
+In this article, we’ll show **what changes in practice**: how you write queries, extend Prisma Next with new types and behavior, and manage your database.
+
+Let’s start with queries.
+
+## We’re overhauling Prisma queries
+
+If you know Prisma, you know its GraphQL-inspired query API. It lets you express complex queries across models and their relationships in a way that feels natural and easy to read. That design has even inspired other TypeScript query builders.
+
+But as queries grow deeper, those nested objects can become difficult to manage. Deeply nested structures are harder to reason about, and they are not always easy to extend when new database features come into play, for example when integrating something like PGVector into your ORM.
+
+Before long, you are staring at a cascade of closing braces `}`, trying to remember which `create` or `update` belongs to which model.
+
+```ts tab="Prisma 7"
+const orders = await prisma.order.findMany({
+  where: {
+    userId: currentUserId,
+    status: { in: ["shipped", "delivered"] },
+  },
+  include: {
+    shippingAddress: true,
+    items: {
+      include: {
+        product: {
+          include: {
+            category: true,
+            images: {
+              where: { isPrimary: true },
+              take: 1,
+            },
+            reviews: {
+              where: {
+                rating: { gte: 4 },
+              },
+              orderBy: { createdAt: "desc" },
+              take: 3,
+              include: {
+                author: {
+                  select: {
+                    name: true,
+                    avatar: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+});
+```
+
+```ts tab="Prisma Next"
+const orders = await db.orders
+  .where({ userId: currentUserId })
+  .where((o) => o.status.in(["shipped", "delivered"]))
+  .include("shippingAddress")
+  .include("items", (item) =>
+    item.include("product", (product) =>
+      product
+        .include("category")
+        .include("images", (img) => img.where({ isPrimary: true }).take(1))
+        .include("reviews", (reviews) =>
+          reviews
+            .where((r) => r.rating.gte(4))
+            .orderBy((r) => r.createdAt.desc())
+            .take(3)
+            .include("author", (a) => a.select("name", "avatar")),
+        ),
+    ),
+  )
+  .all();
+```
+
+In Prisma Next, queries remain easy to read, your editor continues to provide autocompletion, and even as queries grow more complex, they stay manageable.
+
+If you’d like a deeper side-by-side comparison of Prisma ORM and Prisma Next, take a look at [the API comparison doc](https://github.com/prisma/prisma-next/blob/27ae1d164ae7060626aabaefce1af8428031e5ef/specs/2026-02-16-repository-model-client/prisma-orm-comparison.md?plain=1).
+
+## We’re adding a SQL query builder
+
+But an ORM can’t fit every use case. When you need something custom, or you need to tune performance, drop down to the **type-safe SQL query builder** and write it directly:
+
+```ts title="sql-builder.ts"
+db.sql
+  .selectFrom("customer")
+  .leftJoin(
+    (q) =>
+      q
+        .selectFrom("order")
+        .select(["customerId", sql<number>`sum(total)`.as("totalSpent")])
+        .where("status", "=", "completed")
+        .groupBy("customerId")
+        .having(sql`sum(total)`, ">", 500)
+        .as("orderStats"),
+    (join) => join.onRef("customer.id", "=", "orderStats.customerId"),
+  )
+  .select(["customer.email", "orderStats.totalSpent"])
+  .orderBy("orderStats.totalSpent", "desc");
+```
+
+Your query **builder stays in sync with your Prisma schema**, ensuring full type safety. Your editor provides autocompletion, and **return types** are fully inferred and propagate cleanly through your application logic.
+
+## Write `schema.prisma` or TypeScript
+
+The other thing Prisma is known for is its clean, declarative schema language. In Prisma Next we add support for a TypeScript alternative, so you can keep your schema in the same language as your application.
+
+Both versions are read by your application the same way, determining the shape of queries you can write on your models, their fields and their relationships:
+
+```prisma tab="Prisma Schema Language"
+model User {
+  id     Int    @id
+  email  String @unique
+  name   String
+  posts  Post[]
+}
+
+model Post {
+  id        Int     @id
+  title     String
+  content   String
+  published Boolean @default(false)
+
+  author   User
+  authorId Int
+}
+```
+
+```ts tab="TypeScript Schema"
+export const contract = defineContract()
+  .target(postgres)
+  .model("User", (user) =>
+    user
+      .column("id", { type: int4Column })
+      .column("email", { type: textColumn })
+      .primaryKey(["id"])
+      .unique(["email"]),
+  )
+  .model("Post", (post) =>
+    post
+      .column("id", { type: int4Column })
+      .column("authorId", { type: int4Column })
+      .column("title", { type: textColumn })
+      .foreignKey(["authorId"], {
+        table: "user",
+        columns: ["id"],
+      }),
+  );
+```
+
+## Extending your schema and queries
+
+Prisma Next is built to fit your app, not the other way around. Instead of one fixed bundle, you install the pieces you need and plug them into your setup.
+
+```ts title="prisma-next.config.ts"
+import pgvector from "@prisma-next/extension-pgvector/control";
+
+export default defineConfig({
+  target: postgres,
+  extensions: [pgvector],
+  db: { connection: process.env["DATABASE_URL"]! },
+});
+```
+
+When you install an extension like `pgvector` above, your schema and your queries gain new capabilities:
+
+```prisma tab="Usage in Schema"
+// Use @pgvector columns in your Prisma schema
+model Document {
+  id        Int    @id
+  title     String
+  embedding Bytes  @pgvector.column(length: 1536)
+}
+```
+
+```ts tab="Features in Queries"
+// Prisma Next queries know about
+// extension column types and their operations
+const post = db.schema.tables.post;
+const embedding = post.columns.embedding;
+
+// pgvector adds vector operations to your column types
+const distance = embedding.cosineDistance(param("queryVector"));
+
+const plan = db.sql
+  .from(post)
+  .select({ id: post.columns.id, title: post.columns.title, distance })
+  .orderBy(distance.asc())
+  .limit(10)
+  .build({ params: { queryVector: [0.1, 0.2, 0.3] } });
+```
+
+Using the example above, queries remain fully type-safe, covering new vector columns, operations such as `cosineDistance`, and the resulting return types.
+
+You can wire these types of extensions directly into your config in Prisma Next:
+
+- **Database support**: Postgres today (others will follow the same package shape)
+- **Query builders**: including the two we demonstrated above, plugged into the framework
+- **Middleware**: we provide simple query linting and budgeting middleware
+- **Database extensions**: Like PGVector (and we’re working with [ParadeDB for full-text search](https://www.paradedb.com/))
+
+<blockquote>
+
+**Extension authors**
+
+If you’re a package author and you’d like to build a Prisma Next extension, join [the discussion in the `#prisma-next-discussions`](https://pris.ly/prisma-next-discord) channel in our discord.
+
+</blockquote>
+
+## Add your own model query methods
+
+Extensions teach Prisma Next about new data types. You can also teach it about your application’s business logic.
+
+With model collections, you define your own methods and extend Prisma’s query interface using the language of your domain. Instead of repeating filters and sorting logic throughout your codebase, you capture that logic once and reuse it everywhere.
+
+```ts title="post-collection.ts"
+import type { Contract } from "../prisma/contract";
+
+class PostCollection extends Collection<Contract, "Post"> {
+  forUser(userId: string) {
+    return this.where({ userId });
+  }
+
+  newestFirst() {
+    return this.orderBy((post) => post.createdAt.desc());
+  }
+}
+
+const posts = await db.posts.forUser(userId).newestFirst().take(20).all();
+```
+
+## Aggregation & grouping
+
+If you missed support for `GROUP BY` ([like the people here](https://github.com/prisma/prisma/issues/8744)) in Prisma ORM, we have good news for you:
+
+```ts title="aggregation.ts"
+const users = await db.users
+  .select("id", "email")
+  .include("posts", (posts) =>
+    posts.combine({
+      postCount: posts.count(),
+      newestPostAt: posts.max((post) => post.createdAt),
+    }),
+  )
+  .include("comments", (comments) => comments.where({ approved: true }).count())
+  .all();
+```
+
+As always, inputs are autocompleted and return types are safe.
+
+## Streaming for large result sets
+
+When you’re working with large datasets, loading everything into memory can slow your app down - or blow it up - whether it’s a backend job or a request path serving your UI.
+
+Prisma Next queries stream over async iterables, so you can process rows as soon as they arrive rather than loading them all up into memory, and then process them one by one. That lowers memory usage and improves time to first result.
+
+```ts title="streaming.ts"
+for await (const post of db.posts.forUser(userId).take(10_000).all()) {
+  // Processing begins when the first row arrives, not the last
+  await process(post);
+}
+```
+
+This is useful for background jobs, exports, analytics, AI pipelines, or streaming data to the frontend in frameworks that support streaming responses.
+
+## A type-safe ORM for agent-centric development
+
+If you’re building with AI agents, **fast feedback** is everything. Prisma Next is designed to make iteration fast and predictable, which makes _your_ development faster too.
+
+Every operation produces structured output that machines can understand: query plans, schema details, and diagnostics. That means agents can explain failures, suggest fixes, and adjust their queries without guesswork.
+
+You get:
+
+**Compile-time guardrails** that catch mistakes before runtime:
+
+```ts title="guardrails.ts"
+// Type error: update() requires where()
+await db.users.update({ active: false });
+
+// Type error: cursor() requires orderBy()
+await db.users.cursor({ id: 42 }).all();
+```
+
+**Machine-readable errors** with stable codes and suggested fixes:
+
+```json title="error.json"
+{
+  "code": "CAPABILITY_REQUIRED",
+  "message": "updateAll() requires 'returning' capability",
+  "fix": "Add 'returning' to contract capabilities or use updateCount()"
+}
+```
+
+Agents can propose changes to your schema and preview their impact before anything is applied to your database or turned into a migration. That way, you can see what will happen before it happens.
+
+Together, these tools create **fast feedback loops** that let agents iterate safely.
+
+But fast feedback is only half the story - you also need enforcement.
+
+## Middleware
+
+Middleware runs in your application and sees every query before it hits the database. It lets you inspect, block, or rewrite queries before execution.
+
+This is where you add real guardrails, for agents and humans alike.
+
+We like to think about this as ESLint for your database, and look forward to nurturing a growing ecosystem of linting rules that help agents work safely with data.
+
+We already provide some simple, ready-to-use middleware:
+
+- **Query lints** to block risky patterns like deletes without a `where`
+- **Query budgets** to prevent expensive or unbounded queries
+
+Example:
+
+```ts title="middleware.ts"
+const db = postgres({
+  contract,
+  middleware: [
+    lints({
+      noLimit: "error", // e.g. block unbounded SELECT
+      selectStar: "error", // e.g. block select-all intent
+      deleteWithoutWhere: "error",
+      updateWithoutWhere: "error",
+    }),
+    budgetEnforcer({ maxRows: 10000, requireWhere: ["update", "delete"] }),
+    telemetry({ endpoint: "/metrics" }),
+  ],
+});
+```
+
+You can also build or install your own middleware for telemetry, custom policies, query transforms, or domain-specific rules.
+
+## Validation at every layer
+
+Every Prisma Next query is validated before it reaches your database.
+
+- **In your editor:** TypeScript prevents you from selecting fields that don’t exist, omitting required filters, or returning the wrong data structure.
+- **Against your schema:** Before execution, the query is checked to ensure your schema and database are aligned. If they are not, the query will not run.
+- **Through middleware:** Every query can be inspected and enforced against rules like required filters, row limits, or performance budgets.
+
+The result is simple: the query you write, the schema you define, and the database you run against stay aligned, meaning fewer “it compiled but failed in prod” moments.
+
+## Migrations that show you where you are
+
+One of Prisma's core promises has always been simple: update your Prisma schema, and your database follows.
+
+Prisma Next makes migrations safer and more transparent. Instead of a linear list of files, migrations form a **graph** like Git branches, but for your database schema.
+
+With Prisma next you will be able to see exactly where your database is and where it's going:
+
+```
+Migration Status
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Database:  H2 (def456...)
+Contract:  H3 (ghi789...)
+Status:    1 pending migration
+
+Migration Graph:
+∅
+├─ e1: createTable(user)         ✓ Applied
+│  └─ H1
+│
+├─ e2: addColumn(user.email)     ✓ Applied (current DB)
+│  └─ H2 ◄─ YOU ARE HERE
+│
+└─ e3: addIndex(user.email)      ⧗ Pending
+   └─ H3 ◄─ TARGET
+```
+
+This graph model handles real-world scenarios that Prisma 7’s linear migrations can't:
+
+- **Branching histories** when multiple developers create migrations in parallel
+- **Squashing** old migrations to keep history manageable
+- **Baselines** for adopting existing databases without replaying hundreds of migrations
+
+### Data migrations are coming
+
+We're working on **data migrations** - a long-standing gap in Prisma ORM. You'll be able to write type-safe data transformations that run alongside schema changes, with the same safety guarantees and preflight validation.
+
+We’ll be publishing specific content around Prisma Next migrations, so stay tuned!
+
+## MongoDB, Prisma 7 and Prisma Next
+
+In Prisma 7, we shipped a major rewrite of the query system that removed Rust native binaries from users’ applications. Extending that rewrite to MongoDB - as a non‑SQL database - turned out to be more difficult than anticipated.
+
+That’s why Prisma 7 shipped without MongoDB support. We **committed** to bring bring MongoDB support to Prisma 7 in the months that followed, but the work was larger and riskier than we could responsibly ship on that timeline.
+
+This was a major motivator behind Prisma Next: we need an architecture that’s extensible enough to accommodate non-SQL databases like MongoDB.
+
+So we’ve made a clear call: **MongoDB support will come through Prisma Next, not Prisma 7**. We’re actively working with the Mongo team to build a truly **Mongo‑native** experience in Prisma Next.
+
+The goal isn’t just “Mongo support” - it’s MongoDB’s strengths reflected end‑to‑end, including capabilities like aggregations and field‑level encryption.
+
+## Prisma 7 continues, Prisma Next will become Prisma 8
+
+Prisma Next is an open look at where we’re headed.
+
+**Prisma 7 is still the right choice for your production apps**. It’s stable, supported, and actively maintained. If you’re shipping now, keep upgrading to Prisma 7.
+
+We’re publishing a [Prisma 7 roadmap alongside this post](https://pris.ly/p7-roadmap) so you can see what’s ahead. In parallel, we’ll keep iterating on Prisma Next in the open. When it’s ready for general use, Prisma Next becomes **Prisma 8**.
+
+## We’re working in the open
+
+Today we’re publishing the Prisma Next repo so you can follow the work as it happens. Even though it's early and not yet production-ready, we’re sharing it now so the community can see where we’re headed and help shape the design.
+
+If you want to stay close to the work, **star + watch** the repo.
+
+<Button varient="ppg">
+
+[Star and watch the repository](https://github.com/prisma/prisma-next)
+
+</Button>
+
+If you want to build alongside us, join `#prisma-next` on [Discord](http://pris.ly/discord?utm_campaign=prisma-next).

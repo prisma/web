@@ -90,6 +90,9 @@ export default async function Page(props: {
         {/* Body */}
         <article className="w-full flex flex-col pb-8 mt-12">
           <div className="prose min-w-0 [&_figure]:w-full [&_figure]:md:max-w-140 [&_figure]:lg:max-w-200">
+
+          <p className="font-semibold text-lg">{page.data.excerpt}</p>
+
             <MDX
               components={getMDXComponents({
                 a: createRelativeLink(blog, page),

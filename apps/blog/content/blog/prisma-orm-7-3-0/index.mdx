@@ -1,0 +1,68 @@
+---
+title: "Prisma ORM 7.3.0: Faster queries, safer data, smoother upgrades"
+slug: "prisma-orm-7-3-0"
+date: "2026-01-21"
+authors:
+  - "Mike Hartington"
+metaTitle: "Prisma ORM 7.3.0: Faster Query Compilation, Safer BigInt JSON, Better Adapters"
+metaDescription: "Prisma ORM 7.3.0 adds a new compilerBuild option (fast or small), speeds up raw queries by bypassing compilation, improves MSSQL and better-sqlite3 stability, reverts mapped enum behavior, and preserves BigInt precision in relationJoins JSON aggregation."
+heroImagePath: "/prisma-orm-7-3-0/imgs/hero-e84b7eb35dc73daddb55d22bb7a24b71f40d3d5d-844x474-552f491d83.svg"
+tags:
+  - "orm"
+---
+
+Prisma ORM 7.3.0 focuses on a theme we’ve been steadily pushing since 7.0: **performance improvements without sacrificing reliability**. This release introduces new ways to tune query compilation, reduces overhead for raw queries, includes important adapter updates, and ships a few correctness fixes that make upgrading and day-to-day usage smoother.
+
+## Choose the right query compiler for your app
+
+One of the biggest changes in 7.3.0 is a new `compilerBuild` option in your Prisma Client generator. It lets you choose between two query compiler builds:
+
+- **`fast`**: optimized for speed (default), with a larger footprint
+- **`small`**: optimized for bundle size, trading off some performance
+
+This is the first step in a larger set of performance work we’re continuing to roll out across the ORM.
+
+```prisma
+generator client {
+  provider      = "prisma-client"
+  output        = "../src/generated/prisma"
+  compilerBuild = "fast" // "fast" | "small"
+}
+```
+
+## Raw queries now skip unnecessary overhead
+
+If you’re using raw queries (`$executeRaw`, `$queryRaw`), 7.3.0 reduces the work Prisma has to do before sending your query to the database. Raw queries can now **bypass the query compiler and interpreter path** and go straight to the driver adapter, removing extra layers and trimming latency in raw-query heavy workloads.
+
+## Adapter and platform updates
+
+This release includes a couple of practical ecosystem improvements:
+
+- **MSSQL adapter updated**: `@prisma/adapter-mssql` now uses MSSQL **v12.2.0**, thanks to community contributor [Jay-Lokhande](https://github.com/Jay-Lokhande).
+- **SQLite stability fix for `better-sqlite3`**: an underlying SQLite 3.51.0 issue impacted the `better-sqlite3` adapter. Prisma 7.3.0 **bumps and pins** the dependency used by `@prisma/better-sqlite3` to prevent unexpected breakage. If you rely on this adapter, upgrading to 7.3.0 is strongly recommended.
+
+## Mapped enums behavior reverted for compatibility
+
+In Prisma 7.0, mapped enums changed how values were generated when using `@map`, which turned out to be a sharp edge for many users migrating from Prisma 6. In 7.3.0, we’ve **reverted that behavior** to restore the prior, more compatible semantics.
+
+## BigInt precision preserved in JSON aggregation with relation joins
+
+When using `relationJoins` with `BigInt` fields in Prisma 7, BigInt values could be returned as JSON numbers from PostgreSQL JSON aggregation, then **silently lose precision** when parsed in JavaScript (because values above `Number.MAX_SAFE_INTEGER` can’t be represented exactly).
+
+In 7.3.0, BigInt fields are **cast to text inside JSON aggregation**, ensuring values come back as JSON strings and preserve full precision in JavaScript.
+
+
+## Upgrade notes
+
+- If you’re using `@prisma/better-sqlite3`, upgrading to **7.3.0** is recommended to avoid SQLite-related issues.
+- If you had to work around Prisma 7.0 mapped enum changes, those workarounds may no longer be necessary in 7.3.0.
+- Consider `compilerBuild = "small"` if bundle size matters more than raw performance (serverless/edge constraints), and stick with the default `fast` build for most production backends.
+
+
+Be sure to follow us on social media to stay up to date with the latest releases of Prisma ORM and Prisma Postgres:
+
+- [X/Twitter](https://pris.ly/x)
+- [Bluesky](https://bsky.app/profile/prisma.io)
+- [YouTube](https://pris.ly/youtube)
+- [LinkedIn](https://pris.ly/linkedin)
+- [Discord](https://pris.ly/discord)
