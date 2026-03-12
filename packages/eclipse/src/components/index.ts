@@ -1,4 +1,6 @@
-export { Textarea } from "./textarea";
+export { default as Statistic } from "./statistic";
+
+export { Textarea, textareaVariants } from "./textarea";
 
 export {
   ChartContainer,
@@ -10,6 +12,7 @@ export {
   useChart,
 } from "./chart";
 export type { ChartConfig } from "./chart";
+export { FontAwesomeScript } from "./fontawesome-eclipse";
 
 export { Accordion, Accordions } from "./accordion";
 
@@ -100,7 +103,7 @@ export {
   TableCell,
   TableCaption,
 } from "./table";
-export { Input } from "./input";
+export { Input, inputVariants } from "./input";
 
 export { Label } from "./label";
 
@@ -150,3 +153,6 @@ export {
   PaginationEllipsis,
   PaginationInput,
 } from "./pagination";
+
+export { Alert } from "./alert";
+export { Switch } from "./switch";

@@ -6,7 +6,7 @@ import { cn } from "../lib/cn";
  * Define Avatar variants using CVA
  */
 const avatarVariants = cva(
-  "bg-background-neutral-reverse hover:bg-background-neutral-reverse-strong text-foreground-neutral-reverse relative flex shrink-0 overflow-hidden rounded-square uppercase flex items-center justify-center font-semibold",
+  "bg-background-neutral-reverse hover:bg-background-neutral-reverse-strong font-semibold text-foreground-neutral-reverse relative flex shrink-0 overflow-hidden rounded-square uppercase flex items-center justify-center",
   {
     variants: {
       disabled: {
@@ -14,10 +14,10 @@ const avatarVariants = cva(
         false: "",
       },
       size: {
-        lg: "not-prose text-2xs",
-        xl: "not-prose text-2xs",
-        "2xl": "text-sm",
-        "3xl": "text-sm",
+        lg: "size-element-lg text-2xs",
+        xl: "size-element-xl text-2xs",
+        "2xl": "size-element-2xl text-sm",
+        "3xl": "size-element-3xl text-sm",
       },
     },
     defaultVariants: {
@@ -38,13 +38,6 @@ const avatarContentVariants = cva("", {
     format: "image",
   },
 });
-
-const sizeMap = {
-  lg: { width: 28, height: 28 },
-  xl: { width: 32, height: 32 },
-  "2xl": { width: 36, height: 36 },
-  "3xl": { width: 40, height: 40 },
-} as const;
 
 /**
  * Avatar component props
@@ -116,22 +109,14 @@ const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
       src,
       alt,
       children,
-      style,
       ...props
     },
     ref,
   ) => {
-    const dimensions = sizeMap[size];
-
     return (
       <div
         ref={ref}
         className={cn(avatarVariants({ size, disabled, className }))}
-        style={{
-          width: `${dimensions?.width}px`,
-          height: `${dimensions?.height}px`,
-          ...style,
-        }}
         {...props}
       >
         {format === "image" && src ? (

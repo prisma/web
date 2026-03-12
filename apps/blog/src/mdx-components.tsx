@@ -21,8 +21,9 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  Steps,Step
-} from "@prisma-docs/eclipse";
+  Steps,
+  Step,
+} from "@prisma/eclipse";
 import { TweetEmbedComp } from "@/components/TweetEmbed";
 import { Youtube } from "@/components/Youtube";
 import { Meetup, MeetupList } from "@/components/Meetup";
@@ -59,7 +60,10 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     Steps,
     Step,
     img: (props: any) => (
-      <ImageZoom {...(props as any)} src={withBlogBasePathForImageSrc((props as any).src)} />
+      <ImageZoom
+        {...(props as any)}
+        src={withBlogBasePathForImageSrc((props as any).src)}
+      />
     ),
   };
 

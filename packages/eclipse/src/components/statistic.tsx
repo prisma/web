@@ -27,7 +27,7 @@ export default function Statistic({
 
       {/* Value + Measure */}
       <div className="flex items-baseline gap-2 leading-8">
-        <span className="text-2xl font-bold text-foreground-neutral font-mona-sans">
+        <span className="text-2xl font-bold text-foreground-neutral font-sans-display">
           {value}
         </span>
         <span className="text-sm text-foreground-neutral-weak">{measure}</span>

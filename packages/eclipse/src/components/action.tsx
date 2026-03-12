@@ -22,15 +22,14 @@ const actionVariants = cva(
         violet: "bg-background-violet text-foreground-violet",
         yellow: "bg-background-yellow text-foreground-yellow",
         neutral: "bg-background-neutral text-foreground-neutral",
-        "neutral-reversed":
-          "bg-background-neutral-reverse text-foreground-neutral-reverse",
+        "neutral-reversed": "bg-background-neutral-reverse text-foreground-neutral-reverse",
       },
       size: {
-        lg: "h-7 w-7 p-1.5",
-        "2xl": "h-9 w-9 p-2",
-        nav: "h-10 w-10 p-2.5",
-        "4xl": "h-12 w-12 p-3",
-        "5xl": "h-16 w-16 p-4",
+        lg: "size-element-lg p-1.5",
+        "2xl": "size-element-2xl p-2",
+        "3xl": "size-element-3xl p-2.5",
+        "4xl": "size-element-4xl p-3",
+        "5xl": "size-element-5xl p-4",
       },
       isFramed: {
         true: "border",
@@ -67,42 +66,42 @@ const actionVariants = cva(
       {
         color: "cyan",
         isFramed: true,
-        className: "border-stroke-neutral",
+        className: "border-stroke-cyan",
       },
       {
         color: "fuchsia",
         isFramed: true,
-        className: "border-stroke-neutral",
+        className: "border-stroke-fuchsia",
       },
       {
         color: "lime",
         isFramed: true,
-        className: "border-stroke-neutral",
+        className: "border-stroke-lime",
       },
       {
         color: "pink",
         isFramed: true,
-        className: "border-stroke-neutral",
+        className: "border-stroke-pink",
       },
       {
         color: "purple",
         isFramed: true,
-        className: "border-stroke-neutral",
+        className: "border-stroke-purple",
       },
       {
         color: "sky",
         isFramed: true,
-        className: "border-stroke-neutral",
+        className: "border-stroke-sky",
       },
       {
         color: "violet",
         isFramed: true,
-        className: "border-stroke-neutral",
+        className: "border-stroke-violet",
       },
       {
         color: "yellow",
         isFramed: true,
-        className: "border-stroke-neutral",
+        className: "border-stroke-yellow",
       },
       {
         color: "neutral",

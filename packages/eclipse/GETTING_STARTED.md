@@ -22,7 +22,7 @@ Since Eclipse is part of the monorepo, add it to your project's dependencies:
 ```json
 {
   "dependencies": {
-    "@prisma-docs/eclipse": "workspace:*"
+    "@prisma/eclipse": "workspace:*"
   }
 }
 ```
@@ -38,7 +38,7 @@ pnpm install
 Import the global styles in your app's entry point:
 
 ```tsx
-import "@prisma-docs/eclipse/styles/globals.css";
+import "@prisma/eclipse/styles/globals.css";
 ```
 
 ### 3. Configure Tailwind (Optional)
@@ -48,7 +48,7 @@ To use Eclipse tokens in your Tailwind config:
 ```ts
 // tailwind.config.ts
 import type { Config } from "tailwindcss";
-import eclipseConfig from "@prisma-docs/eclipse/tailwind.config";
+import eclipseConfig from "@prisma/eclipse/tailwind.config";
 
 const config: Config = {
   presets: [eclipseConfig],
@@ -67,7 +67,7 @@ export default config;
 Import and use Eclipse components:
 
 ```tsx
-import { Button } from "@prisma-docs/eclipse";
+import { Button } from "@prisma/eclipse";
 
 export function MyComponent() {
   return (
@@ -110,7 +110,7 @@ Use consistent spacing throughout your app:
 <div className="m-margin-md">Content with margin</div>
 
 // Padding
-<div className="p-padding-block-container">
+<div className="p-6">
   Container with padding
 </div>
 
@@ -143,9 +143,9 @@ Use consistent spacing throughout your app:
 ### Border Radius
 
 ```tsx
-<div className="rounded-low">Low radius (3px)</div>
+<div className="rounded-square-low">Low radius (3px)</div>
 <div className="rounded-square">Default radius (6px)</div>
-<div className="rounded-high">High radius (12px)</div>
+<div className="rounded-square-high">High radius (12px)</div>
 <div className="rounded-circle">Circular (999px)</div>
 ```
 
@@ -175,7 +175,7 @@ export function App() {
 ### Button Variants
 
 ```tsx
-import { Button } from "@prisma-docs/eclipse";
+import { Button } from "@prisma/eclipse";
 
 <Button variant="default">Default</Button>
 <Button variant="ppg">Prisma Pulse & Accelerate</Button>
@@ -200,21 +200,21 @@ import { Button } from "@prisma-docs/eclipse";
 
 ```tsx
 // Error message
-<div className="p-padding-block-container bg-background-error rounded-high border border-stroke-error">
+<div className="p-6 bg-background-error rounded-square-high border border-stroke-error">
   <p className="text-foreground-error">
     An error occurred
   </p>
 </div>
 
 // Success message
-<div className="p-padding-block-container bg-background-success rounded-high border border-stroke-success">
+<div className="p-6 bg-background-success rounded-square-high border border-stroke-success">
   <p className="text-foreground-success">
     Operation successful!
   </p>
 </div>
 
 // Warning message
-<div className="p-padding-block-container bg-background-warning rounded-high border border-stroke-warning">
+<div className="p-6 bg-background-warning rounded-square-high border border-stroke-warning">
   <p className="text-foreground-warning">
     Please review this carefully
   </p>
@@ -224,11 +224,11 @@ import { Button } from "@prisma-docs/eclipse";
 ### Gradients
 
 ```tsx
-<div className="bg-gradient-orm text-foreground-orm-reverse p-8 rounded-high">
+<div className="bg-gradient-orm text-foreground-orm-reverse p-8 rounded-square-high">
   ORM Branded Section
 </div>
 
-<div className="bg-gradient-ppg text-foreground-ppg-reverse p-8 rounded-high">
+<div className="bg-gradient-ppg text-foreground-ppg-reverse p-8 rounded-square-high">
   PPG Branded Section
 </div>
 ```
@@ -240,10 +240,10 @@ Use the `cn` utility for className merging and CVA for variants:
 ```tsx
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "@prisma-docs/eclipse/lib/cn";
+import { cn } from "@prisma/eclipse/lib/cn";
 
 const cardVariants = cva(
-  "rounded-high border",
+  "rounded-square-high border",
   {
     variants: {
       variant: {
@@ -251,9 +251,9 @@ const cardVariants = cva(
         elevated: "bg-background-default border-stroke-neutral shadow-lg",
       },
       padding: {
-        sm: "p-padding-block-container-tight",
-        md: "p-padding-block-container",
-        lg: "p-padding-block-container-loose",
+        sm: "p-4",
+        md: "p-6",
+        lg: "p-12",
       },
     },
     defaultVariants: {
@@ -287,7 +287,7 @@ Card.displayName = "Card";
 Access tokens directly in TypeScript:
 
 ```tsx
-import { tokens } from "@prisma-docs/eclipse/tokens";
+import { tokens } from "@prisma/eclipse/tokens";
 
 // Use in JavaScript/TypeScript logic
 const buttonHeight = tokens.size.element.lg; // 28
@@ -307,7 +307,7 @@ const fontFamily = tokens.typography.fontFamily.sans; // "Inter"
 ### Responsive Design
 
 ```tsx
-<div className="p-padding-block-container-tight md:p-padding-block-container lg:p-padding-block-container-loose">
+<div className="p-4 md:p-6 lg:p-12">
   Responsive padding
 </div>
 ```
@@ -334,8 +334,7 @@ const fontFamily = tokens.typography.fontFamily.sans; // "Inter"
 <div className="
   bg-background-default
   text-foreground-neutral
-  p-padding-block-container
-  rounded-high
+  rounded-square-high
   border border-stroke-neutral
   shadow-lg
 ">

@@ -35,7 +35,7 @@ const ContentSecurityPolicy = `
     https://pagead2.googlesyndication.com
     https://googleads.g.doubleclick.net
     https://td.doubleclick.net
-    https://kit.fontawesome.com
+    https://*.fontawesome.com
     https://raw.githubusercontent.com
     https://hcaptcha.com
     https://*.hcaptcha.com;
@@ -51,7 +51,7 @@ const ContentSecurityPolicy = `
   font-src 'self' data:
     https://fonts.gstatic.com
     https://vercel.live https://assets.vercel.com
-    https://ka-f.fontawesome.com;
+    https://*.fontawesome.com;
 
   img-src 'self' data:
     https://cdn.sanity.io
@@ -76,6 +76,7 @@ const ContentSecurityPolicy = `
     https://vercel.live https://vercel.com data: blob:
     https://td.doubleclick.net
     https://raw.githubusercontent.com;
+
   connect-src 'self'
     https://api.github.com
     https://p2zxqf70.api.sanity.io
@@ -121,7 +122,8 @@ const ContentSecurityPolicy = `
     https://unpkg.com
     https://proxy.kapa.ai
     https://hcaptcha.com
-    https://*.hcaptcha.com;
+    https://*.hcaptcha.com
+    https://ka-p.fontawesome.com;
 
   media-src 'self'
     https://*.prisma.io
@@ -201,7 +203,7 @@ const allowedDevOrigins = (
 
 /** @type {import('next').NextConfig} */
 const config = {
-
+  reactCompiler: true,
   async redirects() {
     return [
       {
@@ -215,17 +217,17 @@ const config = {
   async rewrites() {
     return [
       {
-        source: '/:path*.mdx',
-        destination: '/llms.mdx/:path*',
+        source: "/:path*.mdx",
+        destination: "/llms.mdx/:path*",
       },
-    ]
+    ];
   },
   basePath: "/blog",
   assetPrefix: "/blog-static",
   allowedDevOrigins,
   reactStrictMode: true,
   images: { unoptimized: true },
-  transpilePackages: ["@prisma-docs/eclipse"],
+  transpilePackages: ["@prisma/eclipse"],
   experimental: {
     globalNotFound: true,
   },

@@ -4,6 +4,18 @@ import { ImageResponse } from "next/og";
 
 export const revalidate = false;
 
+const FALLBACK_METHOD_COLOR = "#71e8df";
+const SECTION_BADGE_COLOR = "#71e8df";
+const LONG_TITLE_FONT_SIZE = "3.5rem";
+const DEFAULT_TITLE_FONT_SIZE = "5rem";
+const API_PATH_SEGMENT_REGEX = /(\{[^}]+\})/;
+const GOOGLE_FONT_RESOURCE_REGEX = /src: url\((.+)\) format\('(opentype|truetype)'\)/;
+const BADGE_HORIZONTAL_PADDING = 24;
+const BADGE_VERTICAL_PADDING = 12;
+const BADGE_FONT_SIZE = 24;
+const BADGE_BORDER_RADIUS = 9999;
+const BADGE_BORDER_WIDTH = 3;
+
 const PrismaLogo = () => (
   <svg width="150" height="46" viewBox="0 0 90 28" fill="none">
     <path
@@ -22,6 +34,8 @@ const HTTP_METHOD_COLORS = {
   PATCH: "#F7B955",
 } as const;
 
+type HttpMethod = keyof typeof HTTP_METHOD_COLORS;
+
 type OpenApiMetadata = {
   method?: string;
   path?: string;
@@ -31,21 +45,84 @@ type PageFrontmatter = {
   _openapi?: OpenApiMetadata;
 };
 
+type ApiPathSegment = {
+  text: string;
+  color: string;
+};
+
+const FONT_DEFINITIONS = [
+  { name: "Barlow", family: "Barlow", weight: 700 },
+  { name: "Inter", family: "Inter", weight: 400 },
+  { name: "JetBrains Mono", family: "JetBrains+Mono", weight: 400 },
+] as const;
+
+type FontWeight = (typeof FONT_DEFINITIONS)[number]["weight"];
+
+type LoadedFont = {
+  name: string;
+  data: ArrayBuffer;
+  weight: FontWeight;
+  style: "normal";
+};
+
+let fontCache: Promise<LoadedFont[]> | undefined;
+
+function getMethodColor(method?: string) {
+  if (!method) {
+    return undefined;
+  }
+
+  return HTTP_METHOD_COLORS[method as HttpMethod] ?? FALLBACK_METHOD_COLOR;
+}
+
+function getSectionLabel(section?: string) {
+  if (!section) {
+    return undefined;
+  }
+
+  if (section === "orm") {
+    return "PRISMA ORM";
+  }
+
+  if (section === "postgres") {
+    return "PRISMA POSTGRES";
+  }
+
+  return section.replace(/-/g, " ").toUpperCase();
+}
+
+function getTitleFontSize(title: string) {
+  return title.length > 30 ? LONG_TITLE_FONT_SIZE : DEFAULT_TITLE_FONT_SIZE;
+}
+
+function getApiPathSegments(apiPath?: string) {
+  if (!apiPath) {
+    return undefined;
+  }
+
+  return apiPath.split(API_PATH_SEGMENT_REGEX).filter(Boolean).map((segment) => ({
+    text: segment,
+    color: segment.startsWith("{") && segment.endsWith("}") ? FALLBACK_METHOD_COLOR : "#a0aec0",
+  }));
+}
+
 function PrismaOGImage({
   title,
   description,
   method,
-  apiPath,
-  section,
+  methodColor,
+  apiPathSegments,
+  badgeLabel,
+  titleFontSize,
 }: {
   title: string;
   description?: string;
   method?: string;
-  apiPath?: string;
-  section?: string;
+  methodColor?: string;
+  apiPathSegments?: ApiPathSegment[];
+  badgeLabel?: string;
+  titleFontSize: string;
 }) {
-  const methodColor = method ? HTTP_METHOD_COLORS[method as keyof typeof HTTP_METHOD_COLORS] ?? "#71e8df" : null;
-
   return (
     <div
       style={{
@@ -59,7 +136,7 @@ function PrismaOGImage({
         position: "relative",
       }}
     >
-      {method && methodColor ? (
+      {methodColor && method ? (
         <div
           style={{
             position: "absolute",
@@ -68,20 +145,24 @@ function PrismaOGImage({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            width: "auto",
             backgroundColor: "transparent",
             color: methodColor,
-            border: `3px solid ${methodColor}`,
-            padding: "12px 24px",
-            borderRadius: 9999,
-            fontSize: 24,
+            border: `${BADGE_BORDER_WIDTH}px solid ${methodColor}`,
+            padding: `${BADGE_VERTICAL_PADDING}px ${BADGE_HORIZONTAL_PADDING}px`,
+            borderRadius: BADGE_BORDER_RADIUS,
+            fontSize: BADGE_FONT_SIZE,
             fontFamily: "Barlow, sans-serif",
             fontWeight: 700,
+            lineHeight: 1,
+            whiteSpace: "nowrap",
+            textAlign: "center",
             boxShadow: `0 0 40px ${methodColor}40`,
           }}
         >
           {method}
         </div>
-      ) : section ? (
+      ) : badgeLabel ? (
         <div
           style={{
             position: "absolute",
@@ -90,30 +171,30 @@ function PrismaOGImage({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            width: "auto",
             backgroundColor: "transparent",
-            color: "#71e8df",
-            border: "3px solid #71e8df",
-            padding: "12px 24px",
-            borderRadius: 9999,
-            fontSize: 24,
+            color: SECTION_BADGE_COLOR,
+            border: `${BADGE_BORDER_WIDTH}px solid ${SECTION_BADGE_COLOR}`,
+            padding: `${BADGE_VERTICAL_PADDING}px ${BADGE_HORIZONTAL_PADDING}px`,
+            borderRadius: BADGE_BORDER_RADIUS,
+            fontSize: BADGE_FONT_SIZE,
             fontFamily: "Barlow, sans-serif",
             fontWeight: 700,
             textTransform: "uppercase",
+            lineHeight: 1,
+            whiteSpace: "nowrap",
+            textAlign: "center",
             boxShadow: "0 0 40px rgba(62, 192, 219, 0.3)",
           }}
         >
-          {section === "orm"
-            ? "PRISMA ORM"
-            : section === "postgres"
-              ? "PRISMA POSTGRES"
-              : section.replace(/-/g, " ").toUpperCase()}
+          {badgeLabel}
         </div>
       ) : null}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
         <h1
           style={{
-            fontSize: title.length > 30 ? "3.5rem" : "5rem",
+            fontSize: titleFontSize,
             fontWeight: 700,
             fontFamily: "Barlow, sans-serif",
             color: "#f7fafc",
@@ -137,7 +218,7 @@ function PrismaOGImage({
             {description}
           </p>
         )}
-        {apiPath && (
+        {apiPathSegments && (
           <div
             style={{
               display: "flex",
@@ -149,14 +230,14 @@ function PrismaOGImage({
               margin: 0,
             }}
           >
-            {apiPath.split(/(\{[^}]+\})/).map((segment, i) => (
+            {apiPathSegments.map((segment, index) => (
               <span
-                key={i}
+                key={`${segment.text}-${index}`}
                 style={{
-                  color: segment.startsWith("{") && segment.endsWith("}") ? "#71e8df" : "#a0aec0",
+                  color: segment.color,
                 }}
               >
-                {segment}
+                {segment.text}
               </span>
             ))}
           </div>
@@ -193,61 +274,61 @@ function PrismaOGImage({
 
 async function loadGoogleFont(font: string, weight: number) {
   const url = `https://fonts.googleapis.com/css2?family=${font}:wght@${weight}`;
-  const css = await (await fetch(url)).text();
-  const resource = css.match(/src: url\((.+)\) format\('(opentype|truetype)'\)/);
+  const css = await (await fetch(url, { cache: "force-cache" })).text();
+  const resource = css.match(GOOGLE_FONT_RESOURCE_REGEX);
 
   if (resource) {
-    const response = await fetch(resource[1]);
+    const response = await fetch(resource[1], { cache: "force-cache" });
     if (response.status == 200) {
       return await response.arrayBuffer();
     }
   }
 
-  throw new Error("failed to load font data");
+  throw new Error(`failed to load font data for ${font}:${weight}`);
+}
+
+function getFonts() {
+  fontCache ??= Promise.all(
+    FONT_DEFINITIONS.map(async ({ name, family, weight }) => ({
+      name,
+      data: await loadGoogleFont(family, weight),
+      weight,
+      style: "normal" as const,
+    })),
+  ).catch((err) => {
+    fontCache = undefined;
+    throw err;
+  });
+
+  return fontCache;
 }
 
 export async function GET(_req: Request, { params }: RouteContext<"/og/[...slug]">) {
   const { slug } = await params;
+  const pageSlug = slug.slice(0, -1);
   // Check v7 first, then v6
-  const page = source.getPage(slug.slice(0, -1)) ?? sourceV6.getPage(slug.slice(0, -1));
+  const page = source.getPage(pageSlug) ?? sourceV6.getPage(pageSlug);
   if (!page) notFound();
 
   const openApiMetadata = (page.data as PageFrontmatter)._openapi;
   const method = openApiMetadata?.method;
-  const apiPath = openApiMetadata?.path;
-  const section = page.slugs[0];
+  const fonts = await getFonts();
+  const imageProps = {
+    title: page.data.title,
+    description: page.data.description,
+    method,
+    methodColor: getMethodColor(method),
+    apiPathSegments: getApiPathSegments(openApiMetadata?.path),
+    badgeLabel: getSectionLabel(page.slugs[0]),
+    titleFontSize: getTitleFontSize(page.data.title),
+  };
 
   return new ImageResponse(
-    <PrismaOGImage
-      title={page.data.title}
-      description={page.data.description}
-      method={method}
-      apiPath={apiPath}
-      section={section}
-    />,
+    <PrismaOGImage {...imageProps} />,
     {
       width: 1200,
       height: 630,
-      fonts: [
-        {
-          name: "Barlow",
-          data: await loadGoogleFont("Barlow", 700),
-          weight: 700,
-          style: "normal",
-        },
-        {
-          name: "Inter",
-          data: await loadGoogleFont("Inter", 400),
-          weight: 400,
-          style: "normal",
-        },
-        {
-          name: "JetBrains Mono",
-          data: await loadGoogleFont("JetBrains+Mono", 400),
-          weight: 400,
-          style: "normal",
-        },
-      ],
+      fonts,
     },
   );
 }

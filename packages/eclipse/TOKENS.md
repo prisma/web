@@ -151,55 +151,21 @@ Margin tokens for consistent spacing between elements:
 - `margin-xl` - 32px
 - `margin-4xl` - 48px
 
-### Padding
-
-#### Container Padding (Block)
-
-- `padding-block-container-tighter` - 12px
-- `padding-block-container-tight` - 16px
-- `padding-block-container` - 24px
-- `padding-block-container-loose` - 48px
-- `padding-block-container-looser` - 48px
-
-#### Container Padding (Inline)
-
-- `padding-inline-container-tighter` - 12px
-- `padding-inline-container-tight` - 16px
-- `padding-inline-container` - 24px
-- `padding-inline-container-loose` - 48px
-- `padding-inline-container-looser` - 48px
-
-#### Element Padding (Block)
-
-- `padding-block-element-lg` - 4px
-- `padding-block-element-xl` - 6px
-- `padding-block-element-2xl` - 8px
-- `padding-block-element-3xl` - 10px
-- `padding-block-element-4xl` - 12px
-
-#### Element Padding (Inline)
-
-- `padding-inline-element-lg` - 8px
-- `padding-inline-element-xl` - 10px
-- `padding-inline-element-2xl` - 12px
-- `padding-inline-element-3xl` - 16px
-- `padding-inline-element-4xl` - 16px
-
 ### Size
 
 Element sizing tokens:
 
-- `size-2xs` - 12px
-- `size-xs` - 16px
-- `size-sm` - 20px
-- `size-md` - 24px
-- `size-lg` - 28px
-- `size-xl` - 32px
-- `size-2xl` - 36px
-- `size-3xl` - 40px
-- `size-4xl` - 48px
-- `size-5xl` - 64px
-- `size-6xl` - 96px
+- `size-element-2xs` - 12px
+- `size-element-xs` - 16px
+- `size-element-sm` - 20px
+- `size-element-md` - 24px
+- `size-element-lg` - 28px
+- `size-element-xl` - 32px
+- `size-element-2xl` - 36px
+- `size-element-3xl` - 40px
+- `size-element-4xl` - 48px
+- `size-element-5xl` - 64px
+- `size-element-6xl` - 96px
 
 ---
 
@@ -207,9 +173,9 @@ Element sizing tokens:
 
 ### Font Families
 
-- `font-sans-display` - Inter (for display text)
+- `font-sans-display` - Mona Sans (for display text)
 - `font-sans` - Inter (body text)
-- `font-mono` - JetBrains Mono (code)
+- `font-mono` - Mona Sans Mono (code)
 
 ### Font Sizes
 
@@ -239,17 +205,17 @@ All font sizes include corresponding line heights:
 ## Border Radius Tokens
 
 - `rounded-circle` - 999px (fully rounded)
-- `rounded-low` - 3px
+- `rounded-square-low` - 3px
 - `rounded-square` - 6px
-- `rounded-high` - 12px
+- `rounded-square-high` - 12px
 
 ---
 
 ## Blur Tokens
 
-- `blur-background-low` - 16px
-- `blur-background` - 24px
-- `blur-background-high` - 40px
+- `blur-surface-low` - 16px
+- `blur-surface` - 24px
+- `blur-surface-high` - 40px
 
 ---
 
@@ -280,11 +246,6 @@ All font sizes include corresponding line heights:
 // Margin
 <div className="m-margin-md">Spaced content</div>
 
-// Padding
-<div className="p-padding-block-container">
-  Container with padding
-</div>
-
 // Sizes
 <div className="w-size-xl h-size-xl">
   Square element
@@ -311,7 +272,7 @@ All font sizes include corresponding line heights:
 ### Using Border Radius
 
 ```tsx
-<div className="rounded-high p-4 bg-background-neutral">
+<div className="rounded-square-high p-4 bg-background-neutral">
   Card with rounded corners
 </div>
 

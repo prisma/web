@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@prisma-docs/eclipse";
+import { Button } from "@prisma/eclipse";
 import {
   Logo,
   NavigationMenu,
@@ -15,7 +15,7 @@ import {
   Socials,
 } from "./navigation-menu";
 import { useEffect, useState } from "react";
-import { FontAwesomeScript } from "./fontawesome-web";
+import { FontAwesomeScript as WebFA } from "./fontawesome-web";
 import { cn } from "../lib/cn";
 
 interface Link {
@@ -45,7 +45,7 @@ export function WebNavigation({ links }: WebNavigationProps) {
   }, [mobileView]);
   return (
     <>
-      <FontAwesomeScript />
+      <WebFA />
       <NavigationMenu mobileOpen={mobileView}>
         <NavigationWrapper mobileOpen={mobileView}>
           <NavigationMenuList>
@@ -65,7 +65,7 @@ export function WebNavigation({ links }: WebNavigationProps) {
                 ) : link?.sub?.length ? (
                   <NavigationMenuItem key={link.text}>
                     <NavigationMenuTrigger>{link.text}</NavigationMenuTrigger>
-                    <NavigationMenuContent className="rounded-high! overflow-hidden!">
+                    <NavigationMenuContent className="rounded-square-high! overflow-hidden!">
                       <div
                         className={cn(
                           "list gap-1 flex flex-col",

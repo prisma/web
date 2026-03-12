@@ -152,16 +152,16 @@ export const colors = {
 // Border Radius Tokens
 export const borderRadius = {
   circle: 999,
-  low: 3,
+  "square-low": 3,
   square: 6,
-  high: 12,
+  "square-high": 12,
 } as const;
 
 // Blur Tokens
 export const blur = {
-  "background-low": 16,
-  background: 24,
-  "background-high": 40,
+  "surface-low": 16,
+  surface: 24,
+  "surface-high": 40,
 } as const;
 
 // Spacing/Margin Tokens
@@ -235,7 +235,7 @@ export const typography = {
   fontFamily: {
     "sans-display": "Inter",
     sans: "Inter",
-    monospace: "Monaspace Neon Var",
+    mono: "Mona Sans Mono",
   },
   fontSize: {
     "2xs": 11,
