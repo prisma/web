@@ -3,7 +3,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../lib/cn";
 
 const inputVariants = cva(
-  "flex w-full rounded-square border border-stroke-neutral bg-background-default text-foreground-neutral transition-colors placeholder:text-foreground-neutral-weak focus-visible:outline-none focus-visible:shadow-box-low focus-visible:ring-ring focus-visible:border-stroke-neutral-strong disabled:cursor-not-allowed disabled:text-foreground-neutral-weaker disabled:placeholder:text-foreground-neutral-weaker disabled:border-stroke-neutral-weak disabled:bg-background-neutral-weak aria-invalid:border-stroke-error aria-invalid:text-foreground-error aria-invalid:focus-visible:border-stroke-error text-sm",
+  "flex w-full rounded-square border border-stroke-neutral bg-background-default text-foreground-neutral transition-colors placeholder:text-foreground-neutral-weak focus-visible:outline-none focus-visible:shadow-box-low focus-visible:ring-ring focus-visible:border-stroke-neutral-strong disabled:cursor-not-allowed disabled:text-foreground-neutral-weaker disabled:placeholder:text-foreground-neutral-weaker disabled:border-stroke-neutral-weak disabled:bg-background-neutral-weak aria-invalid:border-stroke-error aria-invalid:text-foreground-error aria-invalid:focus-visible:border-stroke-error type-text-sm",
   {
     variants: {
       size: {

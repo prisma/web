@@ -7,7 +7,7 @@ import { cn } from "../lib/cn";
 import { Badge } from "./badge";
 
 const textareaVariants = cva(
-  "border border-stroke-neutral bg-background-default text-foreground-neutral disabled:cursor-not-allowed disabled:text-foreground-neutral disabled:bg-background-neutral-weak disabled:stroke-neutral-weak focus-visible:text-foreground-neutral focus:text-foreground-neutral aria-invalid:border-stroke-error aria-invalid:text-foreground-error rounded-square text-sm transition-colors flex field-sizing-content min-h-16 w-full outline-none",
+  "border border-stroke-neutral bg-background-default text-foreground-neutral disabled:cursor-not-allowed disabled:text-foreground-neutral disabled:bg-background-neutral-weak disabled:stroke-neutral-weak focus-visible:text-foreground-neutral focus:text-foreground-neutral aria-invalid:border-stroke-error aria-invalid:text-foreground-error rounded-square type-text-sm transition-colors flex field-sizing-content min-h-16 w-full outline-none",
   {
     variants: {
       size: {
