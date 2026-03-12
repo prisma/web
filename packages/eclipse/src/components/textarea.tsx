@@ -24,7 +24,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           ref={ref}
           data-slot="textarea"
           className={cn(
-            "border border-stroke-neutral bg-background-default text-foreground-neutral disabled:cursor-not-allowed disabled:text-foreground-neutral disabled:bg-background-neutral-weak disabled:stroke-neutral-weak focus-visible:text-foreground-neutral focus:text-foreground-neutral aria-invalid:border-stroke-error aria-invalid:text-foreground-error rounded-square p-2 text-sm transition-colors flex field-sizing-content min-h-16 w-full outline-none",
+            "border border-stroke-neutral bg-background-default text-foreground-neutral disabled:cursor-not-allowed disabled:text-foreground-neutral disabled:bg-background-neutral-weak disabled:stroke-neutral-weak focus-visible:text-foreground-neutral focus:text-foreground-neutral aria-invalid:border-stroke-error aria-invalid:text-foreground-error rounded-square p-2 type-text-sm transition-colors flex field-sizing-content min-h-16 w-full outline-none",
             showCharCount && maxLength && "pb-8",
             className,
           )}
@@ -35,7 +35,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         {showCharCount && maxLength && (
           <Badge
             color="neutral"
-            className="absolute bottom-1 right-1 text-foreground-neutral font-mono"
+            className="absolute bottom-1 right-1"
             label={`${charCount}/${maxLength}`}
           ></Badge>
         )}

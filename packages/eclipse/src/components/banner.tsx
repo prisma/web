@@ -10,7 +10,7 @@ import { buttonVariants } from "./ui/button";
  * Banner variants based on color prop
  */
 const bannerVariants = cva(
-  "text-sm font-medium py-3 px-6 flex items-center justify-center",
+  "py-3 px-6 flex items-center justify-center type-text-sm-strong",
   {
     variants: {
       color: {

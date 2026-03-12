@@ -15,7 +15,7 @@ import {
 } from "./ui/collapsible";
 
 const itemVariants = cva(
-  "flex flex-row items-center gap-2 rounded-square my-1 px-2 py-1.5 text-sm hover:bg-background-neutral-weak [&_svg]:size-4",
+  "flex flex-row items-center gap-2 rounded-square my-1 px-2 py-1.5 type-text-sm hover:bg-background-neutral-weak [&_svg]:size-4",
 );
 
 export function Files({

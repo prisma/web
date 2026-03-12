@@ -19,7 +19,7 @@ export default function Statistic({
     <div className="relative">
       {/* Title + Badge */}
       <div className="flex items-center gap-3 mb-2">
-        <span className="text-2xs font-semibold text-foreground-neutral-weak uppercase tracking-[1.1px]">
+        <span className="text-foreground-neutral-weak type-heading-2xs">
           {title}
         </span>
         {badge && <Badge color={badgeColor} label={badge} />}
@@ -27,10 +27,10 @@ export default function Statistic({
 
       {/* Value + Measure */}
       <div className="flex items-baseline gap-2 leading-8">
-        <span className="text-2xl font-bold text-foreground-neutral font-sans-display">
+        <span className="text-foreground-neutral type-heading-2xl">
           {value}
         </span>
-        <span className="text-sm text-foreground-neutral-weak">{measure}</span>
+        <span className="text-foreground-neutral-weak type-text-sm">{measure}</span>
       </div>
     </div>
   );
