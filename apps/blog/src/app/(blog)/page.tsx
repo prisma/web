@@ -69,8 +69,7 @@ export default function BlogHome() {
       url: post.url,
       title: data.title as string,
       date: dateISO,
-      description:
-        (data.description as string) || (data.metaDescription as string) || "",
+      excerpt: data.metaDescription as string,
       author: getPrimaryAuthor(post),
       imageSrc: withBlogBasePathForImageSrc(post.data.heroImagePath ?? ""),
       imageAlt: (data.heroImageAlt as string) ?? (data.title as string),
@@ -92,18 +91,34 @@ export default function BlogHome() {
         {/* Grid with pagination */}
         <Suspense
           fallback={
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {items.slice(0, 12).map((post) => (
-                <div
-                  key={post.url}
-                  className="rounded-2xl border border-fd-primary/20 bg-fd-secondary animate-pulse h-64"
-                />
-              ))}
+            <div className="animate-pulse">
+              <div className="flex justify-between items-center gap-4 mb-8">
+                <div className="flex flex-wrap gap-2">
+                  {[...Array(5)].map((_, index) => (
+                    <div
+                      key={`pill-${index}`}
+                      className="h-8 w-20 rounded-full bg-fd-secondary border border-fd-primary/20"
+                    />
+                  ))}
+                </div>
+                <div className="h-10 w-20 md:w-52 rounded-full bg-fd-secondary border border-fd-primary/20" />
+              </div>
+
+              <div className="rounded-square border border-fd-primary/20 bg-fd-secondary h-64 md:h-80 mb-12" />
+
+              <div className="grid gap-6 mt-12 grid-cols-1">
+                {items.slice(0, 6).map((post) => (
+                  <div
+                    key={post.url}
+                    className="h-44 border-b border-fd-primary/20 bg-fd-secondary/60"
+                  />
+                ))}
+              </div>
             </div>
           }
         >
           <BlogGrid
-            items={items.slice(1, -1)}
+            items={items}
             pageSize={12}
             uniqueTags={uniqueTags}
           />
