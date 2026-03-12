@@ -1,6 +1,8 @@
 import { Provider } from "@/components/provider";
+import { getBaseUrl } from "@/lib/url";
 import "./global.css";
 import { Inter, Barlow } from "next/font/google";
+import type { Metadata } from "next";
 import Script from "next/script";
 
 const inter = Inter({
@@ -13,6 +15,16 @@ const barlow = Barlow({
   weight: ["400", "500", "600", "700"],
   variable: "--font-barlow",
 });
+
+export const metadata: Metadata = {
+  metadataBase: new URL(getBaseUrl()),
+  title: {
+    default: "Prisma Blog",
+    template: "%s | Prisma Blog",
+  },
+  description:
+    "Engineering updates, product announcements, and technical deep dives from the Prisma team.",
+};
 
 export default function Layout({ children }: LayoutProps<"/">) {
   return (

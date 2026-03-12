@@ -1,8 +1,33 @@
 import { Suspense } from "react";
-import { blog } from "@/lib/source";
+import { blog, getPageImage } from "@/lib/source";
 import { BlogGrid } from "@/components/BlogGrid";
-import { getCardImageSrc } from "@/lib/source";
-import { getAuthorProfiles } from "@/lib/authors";
+import { BLOG_HOME_DESCRIPTION, BLOG_HOME_TITLE } from "@/lib/blog-metadata";
+import type { Metadata } from "next";
+import { withBlogBasePath, withBlogBasePathForImageSrc } from "@/lib/url";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: BLOG_HOME_TITLE,
+    description: BLOG_HOME_DESCRIPTION,
+    alternates: {
+      canonical: withBlogBasePath("/"),
+    },
+    openGraph: {
+      type: "website",
+      title: BLOG_HOME_TITLE,
+      description: BLOG_HOME_DESCRIPTION,
+      url: withBlogBasePath("/"),
+      images: withBlogBasePath(getPageImage().url),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: BLOG_HOME_TITLE,
+      description: BLOG_HOME_DESCRIPTION,
+      images: withBlogBasePath(getPageImage().url),
+    },
+  };
+}
+
 export default function BlogHome() {
   const posts = blog.getPages().sort((a, b) => {
     const aTime =
@@ -22,13 +47,7 @@ export default function BlogHome() {
     return authors.length > 0 ? authors[0] : null;
   };
 
-  const getPrimaryAuthorImage = (post: (typeof posts)[number]) => {
-    const data = post.data as any;
-    const authors = Array.isArray(data?.authors) ? data?.authors : [];
-    const profiles = getAuthorProfiles(authors);
-    const firstWithImage = profiles.find((profile) => profile.imageSrc);
-    return firstWithImage?.imageSrc ?? null;
-  };
+
   const items = posts.map((post) => {
     const data = post.data as any;
 
@@ -53,7 +72,7 @@ export default function BlogHome() {
       description:
         (data.description as string) || (data.metaDescription as string) || "",
       author: getPrimaryAuthor(post),
-      imageSrc: getCardImageSrc(post),
+      imageSrc: withBlogBasePathForImageSrc(post.data.heroImagePath ?? ""),
       imageAlt: (data.heroImageAlt as string) ?? (data.title as string),
       seriesTitle: data.series?.title ?? null,
       tags: data.tags,

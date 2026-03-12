@@ -8,20 +8,12 @@ export const blog = loader({
   source: toFumadocsSource(blogPosts, []),
 });
 
-// Combined loader for search across docs + blog
-
-/* export const search = loader(blog, { */
-/*   // Build URLs from virtual path segments directly: "/docs/..." and "/blog/..." */
-/*   baseUrl: '/', */
-/*   url: (slugs) => `/${slugs.join('/')}`, */
-/* }); */
-/**/
-export function getPageImage(page: InferPageType<typeof blog>) {
-  const segments = [...page.slugs, "image.png"];
+export function getPageImage() {
+  const segments = ["image.png"];
 
   return {
     segments,
-    url: `/og/docs/${segments.join("/")}`,
+    url: `/og/${segments.join("/")}`,
   };
 }
 
