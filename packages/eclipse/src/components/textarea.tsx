@@ -46,9 +46,9 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     };
 
     const charCountPadding = {
-      lg: "pb-11",
-      xl: "pb-13",
-      "2xl": "pb-13",
+      lg: "pb-10",
+      xl: "pb-12",
+      "2xl": "pb-12",
     };
 
     return (
@@ -67,9 +67,15 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         />
         {showCharCount && maxLength && (
           <Badge
-            color="neutral"
+            color={
+              charCount >= maxLength
+                ? "error"
+                : charCount >= 0.8 * maxLength
+                  ? "warning"
+                  : "neutral"
+            }
             className={cn(
-              "absolute text-foreground-neutral font-mono",
+              "absolute",
               badgeInset[resolvedSize],
             )}
             label={`${charCount}/${maxLength}`}
