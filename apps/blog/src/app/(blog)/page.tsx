@@ -4,6 +4,8 @@ import { BlogGrid } from "@/components/BlogGrid";
 import { BLOG_HOME_DESCRIPTION, BLOG_HOME_TITLE } from "@/lib/blog-metadata";
 import type { Metadata } from "next";
 import { withBlogBasePath, withBlogBasePathForImageSrc } from "@/lib/url";
+import Link from "next/link";
+import { formatDate, formatTag } from "@/lib/format";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
@@ -80,6 +82,8 @@ export default function BlogHome() {
   const uniqueTags = [
     ...new Set(items.filter((item) => item.tags).flatMap((item) => item.tags)),
   ];
+  const staticFallbackItems = items.slice(0, 12);
+  const staticFallbackTags = uniqueTags.slice(0, 10);
   
   return (
     <main className="flex-1 w-full max-w-249 mx-auto px-4 py-8 z-1">
@@ -91,27 +95,47 @@ export default function BlogHome() {
         {/* Grid with pagination */}
         <Suspense
           fallback={
-            <div className="animate-pulse">
+            <div>
               <div className="flex justify-between items-center gap-4 mb-8">
                 <div className="flex flex-wrap gap-2">
-                  {[...Array(5)].map((_, index) => (
-                    <div
-                      key={`pill-${index}`}
-                      className="h-8 w-20 rounded-full bg-fd-secondary border border-fd-primary/20"
-                    />
+                  <Link
+                    href={withBlogBasePath("/")}
+                    className="rounded-full border px-3 py-1 text-sm"
+                  >
+                    Show all
+                  </Link>
+                  {staticFallbackTags.map((tag) => (
+                    <Link
+                      key={tag}
+                      href={`${withBlogBasePath("/")}?tag=${encodeURIComponent(tag)}`}
+                      className="rounded-full border px-3 py-1 text-sm"
+                    >
+                      {formatTag(tag)}
+                    </Link>
                   ))}
                 </div>
-                <div className="h-10 w-20 md:w-52 rounded-full bg-fd-secondary border border-fd-primary/20" />
               </div>
 
-              <div className="rounded-square border border-fd-primary/20 bg-fd-secondary h-64 md:h-80 mb-12" />
-
               <div className="grid gap-6 mt-12 grid-cols-1">
-                {items.slice(0, 6).map((post) => (
-                  <div
+                {staticFallbackItems.map((post) => (
+                  <article
                     key={post.url}
-                    className="h-44 border-b border-fd-primary/20 bg-fd-secondary/60"
-                  />
+                    className="border-b border-fd-primary/20 pb-6"
+                  >
+                    <h2 className="text-xl font-semibold">
+                      <Link href={post.url} className="hover:underline">
+                        {post.title}
+                      </Link>
+                    </h2>
+                    {post.date ? (
+                      <p className="mt-2 text-sm text-foreground-neutral-weak">
+                        {formatDate(post.date)}
+                      </p>
+                    ) : null}
+                    {post.excerpt ? (
+                      <p className="mt-2 text-foreground-neutral-weak">{post.excerpt}</p>
+                    ) : null}
+                  </article>
                 ))}
               </div>
             </div>
