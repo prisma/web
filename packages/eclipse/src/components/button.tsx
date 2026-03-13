@@ -29,9 +29,7 @@ const buttonVariants = cva(
   },
 });
 
-type ButtonBaseProps = VariantProps<typeof buttonVariants> & {
-  asChild?: boolean;
-};
+type ButtonBaseProps = VariantProps<typeof buttonVariants>;
 
 type ButtonAsButtonProps = ButtonBaseProps &
   React.ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -48,7 +46,7 @@ export type ButtonProps = ButtonAsButtonProps | ButtonAsAnchorProps;
 const Button = React.forwardRef<
   HTMLButtonElement | HTMLAnchorElement,
   ButtonProps
->(({ className, variant, size, asChild = false, href, ...props }, ref) => {
+>(({ className, variant, size, href, ...props }, ref) => {
     const classNames = cn(buttonVariants({ variant, size, className }));
 
     if (href) {

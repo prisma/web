@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Badge, Button, Card } from "@prisma/eclipse";
+import { Badge, Card } from "@prisma/eclipse";
 import { cn } from "@prisma-docs/ui/lib/cn";
 
 import { AuthorAvatarGroup } from "@/components/AuthorAvatarGroup";
