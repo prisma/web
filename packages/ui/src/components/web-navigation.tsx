@@ -51,7 +51,7 @@ export function WebNavigation({ links }: WebNavigationProps) {
           <NavigationMenuList>
             <NavigationMenuItem>
               <NavigationMenuLink
-                className="shrink-0 w-full p-0 hover:bg-transparent"
+                className="shrink-0 w-full p-0 hover:bg-transparent focus:bg-transparent"
                 href="/"
               >
                 {Logo}
