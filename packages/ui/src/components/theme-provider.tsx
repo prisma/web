@@ -101,7 +101,6 @@ export function ThemeProvider({
     setThemeState(newTheme);
     const resolved = resolveTheme(newTheme);
     setResolvedTheme(resolved);
-    applyTheme(resolved);
 
     if (typeof window !== "undefined") {
       try {
@@ -128,7 +127,6 @@ export function ThemeProvider({
     const handleChange = (e: MediaQueryListEvent) => {
       const newResolvedTheme = e.matches ? "dark" : "light";
       setResolvedTheme(newResolvedTheme);
-      applyTheme(newResolvedTheme);
     };
 
     mediaQuery.addEventListener("change", handleChange);
