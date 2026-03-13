@@ -125,7 +125,7 @@ const Footer = ({
                       {link.title}
                     </Link>
                   ) : (
-                    <DropdownMenu key={idx}>
+                    <DropdownMenu key={idx} modal={false}>
                       <DropdownMenuTrigger className="focus-visible:outline-none">
                         <span className="text-foreground-neutral-weak text-lg flex cursor-pointer font-medium box-border no-underline leading-[1.39] px-8 -ml-8 py-1.5 transition-colors relative w-max items-center hover:bg-background-ppg-strong rounded-square transition-all">
                           {link.title}
