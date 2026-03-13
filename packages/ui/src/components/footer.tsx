@@ -125,9 +125,9 @@ const Footer = ({
                       {link.title}
                     </Link>
                   ) : (
-                    <DropdownMenu key={idx}>
-                      <DropdownMenuTrigger className="focus-visible:outline-none">
-                        <span className="text-foreground-neutral-weak text-lg flex cursor-pointer font-medium box-border no-underline leading-[1.39] px-8 -ml-8 py-1.5 transition-colors relative w-max items-center hover:bg-background-ppg-strong rounded-square transition-all">
+                    <DropdownMenu key={idx} modal={false}>
+                      <DropdownMenuTrigger className="focus-visible:outline-none px-2.5 -ml-2.5 py-1.5 w-[calc(100%+10px)] hover:bg-background-ppg-strong rounded-square transition-all">
+                        <span className="text-foreground-neutral-weak text-lg w-full flex cursor-pointer font-medium box-border no-underline leading-[1.39] relative items-center">
                           {link.title}
                           <i className="fa-regular fa-chevron-down text-foreground-neutral-weaker ml-2 text-base text-inherit" />
                         </span>
@@ -157,7 +157,7 @@ const Footer = ({
             ))}
           </div>
           <div className="h-px w-full bg-stroke-neutral-weak my-6" />
-          
+
           {/* Compliance Footer */}
           <div className="gap-6 md:items-center justify-between flex md:flex-nowrap flex-wrap w-full md:pb-0 pb-11">
             <PDPStatus className="justify-start order-1" />
