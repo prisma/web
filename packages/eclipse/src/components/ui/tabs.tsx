@@ -60,7 +60,9 @@ export function Tabs({
   const tabsRef = useRef<HTMLDivElement>(null);
   const valueToIdMap = useMemo(() => new Map<string, string>(), []);
   const onValueChangeRef = useRef(_onValueChange);
-  onValueChangeRef.current = _onValueChange;
+  useLayoutEffect(() => {
+    onValueChangeRef.current = _onValueChange;
+  }, [_onValueChange]);
   const [internalValue, setInternalValue] = useState(defaultValue);
   const stableOnValueChange = useCallback((v: string) => onValueChangeRef.current?.(v), []);
   const value = _value !== undefined ? _value : internalValue;
