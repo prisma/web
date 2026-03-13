@@ -66,7 +66,12 @@ export function ThemeProvider({
   const getInitialTheme = (): Theme => {
     if (typeof window === "undefined") return defaultTheme;
 
-    const stored = toTheme(localStorage.getItem(storageKey));
+    let stored: Theme | null = null;
+    try {
+      stored = toTheme(window.localStorage.getItem(storageKey));
+    } catch {
+      // Ignore blocked/unavailable storage and fall back to defaultTheme.
+    }
     // Prefer stored value; otherwise respect configured default.
     return stored ?? defaultTheme;
   };
@@ -99,7 +104,11 @@ export function ThemeProvider({
     applyTheme(resolved);
 
     if (typeof window !== "undefined") {
-      localStorage.setItem(storageKey, newTheme);
+      try {
+        window.localStorage.setItem(storageKey, newTheme);
+      } catch {
+        // Keep in-memory theme state even when persistence is unavailable.
+      }
     }
   };
 
