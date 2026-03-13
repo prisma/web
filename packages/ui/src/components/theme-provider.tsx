@@ -76,9 +76,9 @@ export function ThemeProvider({
     return stored ?? defaultTheme;
   };
 
-  const [theme, setThemeState] = useState<Theme>(() => getInitialTheme());
+  const [theme, setThemeState] = useState<Theme>(getInitialTheme);
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() =>
-    resolveTheme(getInitialTheme()),
+    resolveTheme(theme),
   );
 
   // Apply theme to document
@@ -112,7 +112,7 @@ export function ThemeProvider({
     }
   };
 
-  // Apply initial theme on mount.
+  // Apply theme whenever the resolved theme changes.
   useEffect(() => {
     if (typeof window === "undefined") return;
     applyTheme(resolvedTheme);
