@@ -274,12 +274,14 @@ function Socials({
 function MenuNavigationItem({
   link,
 }: {
-  link: { text: string; desc: string; icon: string; url: string };
+  link: { text: string; desc: string; icon: string; url: string; external?: boolean };
 }) {
   return (
     <NavigationMenuLink
       key={link.url}
       href={link.url}
+      target={link.external ? "_blank" : "_self"}
+      rel={link.external ? "noopener noreferrer" : undefined}
       className="flex gap-2 items-center justify-start hover:bg-background-ppg-strong w-full rounded-square! overflow-hidden"
     >
       <Action color="ppg" size="3xl">
@@ -288,6 +290,7 @@ function MenuNavigationItem({
       <div className="flex flex-col gap-0">
         <span className="text-md font-semibold text-foreground-neutral">
           {link.text}
+          {link.external && <i className=" ml-1 fa-regular fa-arrow-up-right text-foreground-neutral text-sm" />}
         </span>
         <p className="text-xs text-foreground-neutral-weaker">{link.desc}</p>
       </div>

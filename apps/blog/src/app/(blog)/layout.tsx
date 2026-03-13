@@ -34,12 +34,12 @@ export function baseOptions() {
             desc: "Make your database global",
             url: "https://www.prisma.io/accelerate",
           },
-          {
-            icon: "fa-regular fa-plug",
-            text: "Management API",
-            desc: "Offer Postgres to your users",
-            url: "https://www.prisma.io/management-api",
-          },
+          // {
+          //   icon: "fa-regular fa-plug",
+          //   text: "Management API",
+          //   desc: "Offer Postgres to your users",
+          //   url: "https://www.prisma.io/management-api",
+          // },
         ],
       },
       {
@@ -62,13 +62,14 @@ export function baseOptions() {
           },
           {
             text: "Tutorials",
-            url: "https://www.prisma.io/learn",
-            icon: "fa-regular fa-clapperboard-play",
+            url: "https://www.prisma.io/docs/guides",
+            icon: "fa-regular fa-clapperboard-play"
           },
           {
             text: "Examples",
-            url: "https://www.prisma.io/examples",
+            url: "https://github.com/prisma/prisma-examples",
             icon: "fa-regular fa-grid-2",
+            external: true,
           },
           {
             text: "Stack",
@@ -89,6 +90,7 @@ export function baseOptions() {
             text: "Data guide",
             url: "https://www.prisma.io/dataguide",
             icon: "fa-regular fa-file-binary",
+            external: true,
           },
         ],
       },
@@ -107,7 +109,7 @@ export function baseOptions() {
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider defaultTheme="system" storageKey="theme">
-      <WebNavigation links={baseOptions().links} />
+      <WebNavigation links={baseOptions().links} utm={{source: "website", medium: "blog"}} />
       {children}
       <Footer />
     </ThemeProvider>

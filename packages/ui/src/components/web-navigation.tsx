@@ -20,11 +20,13 @@ import { cn } from "../lib/cn";
 
 interface Link {
   text: string;
+  external?: boolean;
   url?: string;
   desc?: string;
   col?: number;
   sub?: Array<{
     text: string;
+    external?: boolean;
     url: string;
     desc?: string;
   }>;
@@ -32,9 +34,13 @@ interface Link {
 
 interface WebNavigationProps {
   links: Link[];
+  utm?: {
+    source: "website";
+    medium: string;
+  };
 }
 
-export function WebNavigation({ links }: WebNavigationProps) {
+export function WebNavigation({ links, utm }: WebNavigationProps) {
   const [mobileView, setMobileView] = useState(false);
 
   useEffect(() => {
@@ -52,7 +58,7 @@ export function WebNavigation({ links }: WebNavigationProps) {
             <NavigationMenuItem className="outline-none!">
               <NavigationMenuLink
                 className="shrink-0 w-full p-0 hover:bg-transparent focus:bg-transparent focus-visible:outline-none focus-visible:ring-0"
-                href="/"
+                href="https://www.prisma.io"
               >
                 {Logo}
               </NavigationMenuLink>
@@ -94,10 +100,10 @@ export function WebNavigation({ links }: WebNavigationProps) {
             >
               <Socials include={["discord"]} />
               <NavigationMenuItem className="ml-2 -mr-2 hidden sm:block">
-                <Button variant="default-stronger">Login</Button>
+                <Button variant="default-stronger" href={`https://console.prisma.io/login?utm_source=${utm?.source}&utm_medium=${utm?.medium}&utm_campaign=login`}>Login</Button>
               </NavigationMenuItem>
               <NavigationMenuItem className="hidden sm:block">
-                <Button variant="ppg" className="whitespace-nowrap">
+                <Button variant="ppg" className="whitespace-nowrap" href={`https://console.prisma.io/signup?utm_source=${utm?.source}&utm_medium=${utm?.medium}&utm_campaign=signup`}>
                   Get started
                 </Button>
               </NavigationMenuItem>

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Badge, Card } from "@prisma/eclipse";
+import { Badge, Button, Card } from "@prisma/eclipse";
 import { cn } from "@prisma-docs/ui/lib/cn";
 
 import { AuthorAvatarGroup } from "@/components/AuthorAvatarGroup";
@@ -84,6 +84,8 @@ export function PostCard({
         </div>
         {post.title && <h2 className={titleClassName}>{post.title}</h2>}
         {post.excerpt && <p className={excerptClassName}>{post.excerpt}</p>}
+
+
       </div>
       {post.author && (
         <AuthorAvatarGroup authors={[post.author]} className={authorClassName} />
