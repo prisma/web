@@ -46,13 +46,27 @@ export const FooterNewsletterForm = ({
     return buttonText;
   };
 
+  const statusMessage = error
+    ? { text: error, className: "text-red-500" }
+    : isSubmitted
+      ? {
+          text: "Please check your email to confirm your subscription!",
+          className: "text-green-500",
+        }
+      : isAlreadySubscribed
+        ? {
+            text: "You're already subscribed to our newsletter!",
+            className: "text-blue-500",
+          }
+        : null;
+
   return (
     <div className="w-full">
       <form
         onSubmit={handleSubmit}
         className="flex gap-6 sm:gap-2 items-center justify-between w-full flex-col sm:flex-row "
       >
-        <h5 className="font-family-display font-[650] text-white text-base">
+        <h5 className="font-family-display font-[650] text-neutral text-base">
           Subscribe to our newsletter
         </h5>
         <div>
@@ -84,21 +98,17 @@ export const FooterNewsletterForm = ({
               />
             </Button>
           </div>
-          {error && (
-            <p className="text-red-500 text-sm mt-2 self-start sm:absolute">
-              {error}
-            </p>
-          )}
-          {isSubmitted && (
-            <p className="text-green-500 text-sm mt-2 self-start sm:absolute">
-              Please check your email to confirm your subscription!
-            </p>
-          )}
-          {isAlreadySubscribed && (
-            <p className="text-blue-500 text-sm mt-2 self-start sm:absolute">
-              You're already subscribed to our newsletter!
-            </p>
-          )}
+          <div className="mt-2 min-h-5">
+            {statusMessage ? (
+              <p
+                className={cn("text-sm self-start", statusMessage.className)}
+                role={error ? "alert" : "status"}
+                aria-live={error ? "assertive" : "polite"}
+              >
+                {statusMessage.text}
+              </p>
+            ) : null}
+          </div>
         </div>
       </form>
     </div>

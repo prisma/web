@@ -12,38 +12,38 @@ export function baseOptions() {
         sub: [
           {
             text: "Postgres",
-            url: "/postgres",
+            url: "https://www.prisma.io/postgres",
             desc: "Managed Postgres for global workloads",
             icon: "fa-regular fa-chart-pyramid",
           },
           {
             text: "ORM",
-            url: "/orm",
+            url: "https://www.prisma.io/orm",
             desc: "Managed Postgres for global workloads",
             icon: "fa-regular fa-database",
           },
           {
             text: "Studio",
             icon: "fa-regular fa-table",
-            url: "/studio",
+            url: "https://www.prisma.io/studio",
             desc: "Explore and manipulate your data",
           },
           {
             icon: "fa-regular fa-bolt",
             text: "Accelerate",
             desc: "Make your database global",
-            url: "/accelerate",
+            url: "https://www.prisma.io/accelerate",
           },
           {
             icon: "fa-regular fa-plug",
             text: "Management API",
             desc: "Offer Postgres to your users",
-            url: "/",
+            url: "https://www.prisma.io/management-api",
           },
         ],
       },
       {
-        url: "/pricing",
+        url: "https://www.prisma.io/pricing",
         text: "Pricing",
       },
       {
@@ -52,42 +52,42 @@ export function baseOptions() {
         sub: [
           {
             text: "MCP",
-            url: "/mcp",
+            url: "https://www.prisma.io/mcp",
             icon: "fa-regular fa-message-code",
           },
           {
             text: "Get started",
-            url: "/docs",
+            url: "https://www.prisma.io/docs",
             icon: "fa-regular fa-book-open",
           },
           {
             text: "Tutorials",
-            url: "/learn",
+            url: "https://www.prisma.io/learn",
             icon: "fa-regular fa-clapperboard-play",
           },
           {
             text: "Examples",
-            url: "/",
+            url: "https://www.prisma.io/examples",
             icon: "fa-regular fa-grid-2",
           },
           {
             text: "Stack",
-            url: "/stack",
+            url: "https://www.prisma.io/stack",
             icon: "fa-regular fa-layer-group",
           },
           {
             text: "Ecosystem",
-            url: "/ecosystem",
+            url: "https://www.prisma.io/ecosystem",
             icon: "fa-regular fa-globe",
           },
           {
             text: "Customer stories",
-            url: "/",
+            url: "https://www.prisma.io/showcase",
             icon: "fa-regular fa-users",
           },
           {
             text: "Data guide",
-            url: "/dataguide",
+            url: "https://www.prisma.io/dataguide",
             icon: "fa-regular fa-file-binary",
           },
         ],
@@ -97,7 +97,7 @@ export function baseOptions() {
         text: "Partners",
       },
       {
-        url: "/blog",
+        url: "https://www.prisma.io/blog",
         text: "Blog",
       },
     ],
@@ -106,7 +106,7 @@ export function baseOptions() {
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider defaultTheme="system" storageKey="blog-theme">
+    <ThemeProvider defaultTheme="system" storageKey="theme">
       <WebNavigation links={baseOptions().links} />
       {children}
       <Footer />

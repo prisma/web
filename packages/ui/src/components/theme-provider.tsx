@@ -43,9 +43,6 @@ export function ThemeProvider({
   storageKey = "theme",
   attribute = "data-theme",
 }: ThemeProviderProps) {
-  const [theme, setThemeState] = useState<Theme>(defaultTheme);
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>("light");
-
   // Get system theme preference
   const getSystemTheme = (): ResolvedTheme => {
     if (typeof window === "undefined") return "light";
@@ -58,6 +55,31 @@ export function ThemeProvider({
   const resolveTheme = (themeValue: Theme): ResolvedTheme => {
     return themeValue === "system" ? getSystemTheme() : themeValue;
   };
+
+  const toTheme = (value: string | null): Theme | null => {
+    if (value === "light" || value === "dark" || value === "system") {
+      return value;
+    }
+    return null;
+  };
+
+  const getInitialTheme = (): Theme => {
+    if (typeof window === "undefined") return defaultTheme;
+
+    let stored: Theme | null = null;
+    try {
+      stored = toTheme(window.localStorage.getItem(storageKey));
+    } catch {
+      // Ignore blocked/unavailable storage and fall back to defaultTheme.
+    }
+    // Prefer stored value; otherwise respect configured default.
+    return stored ?? defaultTheme;
+  };
+
+  const [theme, setThemeState] = useState<Theme>(getInitialTheme);
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() =>
+    resolveTheme(theme),
+  );
 
   // Apply theme to document
   const applyTheme = (themeValue: ResolvedTheme) => {
@@ -79,25 +101,21 @@ export function ThemeProvider({
     setThemeState(newTheme);
     const resolved = resolveTheme(newTheme);
     setResolvedTheme(resolved);
-    applyTheme(resolved);
 
     if (typeof window !== "undefined") {
-      localStorage.setItem(storageKey, newTheme);
+      try {
+        window.localStorage.setItem(storageKey, newTheme);
+      } catch {
+        // Keep in-memory theme state even when persistence is unavailable.
+      }
     }
   };
 
-  // Initialize theme from localStorage or default
+  // Apply theme whenever the resolved theme changes.
   useEffect(() => {
     if (typeof window === "undefined") return;
-
-    const stored = localStorage.getItem(storageKey) as Theme | null;
-    const initialTheme = stored || defaultTheme;
-    const resolved = resolveTheme(initialTheme);
-
-    setThemeState(initialTheme);
-    setResolvedTheme(resolved);
-    applyTheme(resolved);
-  }, []);
+    applyTheme(resolvedTheme);
+  }, [resolvedTheme]);
 
   // Listen for system theme changes
   useEffect(() => {
@@ -109,7 +127,6 @@ export function ThemeProvider({
     const handleChange = (e: MediaQueryListEvent) => {
       const newResolvedTheme = e.matches ? "dark" : "light";
       setResolvedTheme(newResolvedTheme);
-      applyTheme(newResolvedTheme);
     };
 
     mediaQuery.addEventListener("change", handleChange);

@@ -59,8 +59,8 @@ export function PostCard({
     isFeatured && "leading-[20px]!",
   );
   const authorClassName = cn(
-    "items-center gap-2 font-semibold text-sm",
-    isFeatured ? "mt-auto flex" : "hidden sm:flex",
+    "items-center gap-2 font-semibold text-sm mt-4 md:mt-0",
+    isFeatured ? "flex" : "hidden sm:flex",
   );
 
   const postBody = (
