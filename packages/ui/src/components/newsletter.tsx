@@ -102,8 +102,8 @@ export const FooterNewsletterForm = ({
             {statusMessage ? (
               <p
                 className={cn("text-sm self-start", statusMessage.className)}
-                role="status"
-                aria-live="polite"
+                role={error ? "alert" : "status"}
+                aria-live={error ? "assertive" : "polite"}
               >
                 {statusMessage.text}
               </p>

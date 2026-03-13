@@ -67,8 +67,8 @@ export function ThemeProvider({
     if (typeof window === "undefined") return defaultTheme;
 
     const stored = toTheme(localStorage.getItem(storageKey));
-    // Requested behavior: prefer stored value, otherwise system preference.
-    return stored ?? "system";
+    // Prefer stored value; otherwise respect configured default.
+    return stored ?? defaultTheme;
   };
 
   const [theme, setThemeState] = useState<Theme>(() => getInitialTheme());
