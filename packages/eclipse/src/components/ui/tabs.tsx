@@ -4,7 +4,7 @@ import {
   type ComponentProps,
   createContext,
   use,
-  useEffectEvent,
+  useCallback,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -59,12 +59,14 @@ export function Tabs({
 }: TabsProps) {
   const tabsRef = useRef<HTMLDivElement>(null);
   const valueToIdMap = useMemo(() => new Map<string, string>(), []);
+  const onValueChangeRef = useRef(_onValueChange);
+  onValueChangeRef.current = _onValueChange;
   const [value, setValue] =
     _value === undefined
       ? // eslint-disable-next-line react-hooks/rules-of-hooks -- not supposed to change controlled/uncontrolled
         useState(defaultValue)
       : // eslint-disable-next-line react-hooks/rules-of-hooks -- not supposed to change controlled/uncontrolled
-        [_value, useEffectEvent((v: string) => _onValueChange?.(v))];
+        [_value, useCallback((v: string) => onValueChangeRef.current?.(v), [])];
 
   useLayoutEffect(() => {
     if (!groupId) return;
