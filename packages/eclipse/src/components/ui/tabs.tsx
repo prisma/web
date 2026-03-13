@@ -61,12 +61,10 @@ export function Tabs({
   const valueToIdMap = useMemo(() => new Map<string, string>(), []);
   const onValueChangeRef = useRef(_onValueChange);
   onValueChangeRef.current = _onValueChange;
-  const [value, setValue] =
-    _value === undefined
-      ? // eslint-disable-next-line react-hooks/rules-of-hooks -- not supposed to change controlled/uncontrolled
-        useState(defaultValue)
-      : // eslint-disable-next-line react-hooks/rules-of-hooks -- not supposed to change controlled/uncontrolled
-        [_value, useCallback((v: string) => onValueChangeRef.current?.(v), [])];
+  const [internalValue, setInternalValue] = useState(defaultValue);
+  const stableOnValueChange = useCallback((v: string) => onValueChangeRef.current?.(v), []);
+  const value = _value !== undefined ? _value : internalValue;
+  const setValue = _value !== undefined ? stableOnValueChange : setInternalValue;
 
   useLayoutEffect(() => {
     if (!groupId) return;
