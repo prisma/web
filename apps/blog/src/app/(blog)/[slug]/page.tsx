@@ -31,11 +31,109 @@ interface PageParams {
   slug: string;
 }
 
+interface PersonSchema {
+  "@type": "Person";
+  name: string;
+}
+
+interface ImageObjectSchema {
+  "@type": "ImageObject";
+  url: string;
+}
+
+interface BlogPostingSchema {
+  "@context": "https://schema.org";
+  "@type": "BlogPosting";
+  headline: string;
+  description: string;
+  mainEntityOfPage: string;
+  url: string;
+  image?: string | ImageObjectSchema;
+  author?: PersonSchema | PersonSchema[];
+  datePublished?: string;
+  dateModified?: string;
+  publisher: {
+    "@type": "Organization";
+    name: string;
+  };
+}
+
 const isAbsoluteUrl = (value: string) => /^https?:\/\//i.test(value);
 
 function toAbsoluteUrl(pathOrUrl: string): string {
   if (isAbsoluteUrl(pathOrUrl)) return pathOrUrl;
   return new URL(pathOrUrl, getBaseUrl()).toString();
+}
+
+function toIsoDate(value: unknown): string | undefined {
+  if (!value) return undefined;
+  const date = new Date(String(value));
+  if (Number.isNaN(date.getTime())) return undefined;
+  return date.toISOString();
+}
+
+function getBlogPostingJsonLd(page: ReturnType<typeof blog.getPage>): BlogPostingSchema | null {
+  if (!page) return null;
+
+  const title = (page.data.metaTitle ?? page.data.title)?.trim();
+  const description = (page.data.metaDescription ?? page.data.description ?? "").trim();
+  if (!title || !description) return null;
+
+  const canonicalPath = withBlogBasePath(page.url);
+  const canonicalUrl = toAbsoluteUrl(canonicalPath);
+  const imagePath = page.data.metaImagePath ?? page.data.heroImagePath;
+  const imageUrl = imagePath
+    ? toAbsoluteUrl(withBlogBasePathForImageSrc(imagePath))
+    : undefined;
+
+  const authorNames = Array.isArray(page.data.authors)
+    ? page.data.authors.filter((author): author is string => Boolean(author?.trim()))
+    : [];
+
+  const datePublished = toIsoDate(page.data.date);
+  const dateModified = toIsoDate((page.data as { lastModified?: unknown }).lastModified) ?? datePublished;
+
+  const jsonLd: BlogPostingSchema = {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: title,
+    description,
+    mainEntityOfPage: canonicalUrl,
+    url: canonicalUrl,
+    publisher: {
+      "@type": "Organization",
+      name: "Prisma",
+    },
+  };
+
+  if (imageUrl) {
+    jsonLd.image = {
+      "@type": "ImageObject",
+      url: imageUrl,
+    };
+  }
+
+  if (authorNames.length === 1) {
+    jsonLd.author = {
+      "@type": "Person",
+      name: authorNames[0],
+    };
+  } else if (authorNames.length > 1) {
+    jsonLd.author = authorNames.map((name) => ({
+      "@type": "Person" as const,
+      name,
+    }));
+  }
+
+  if (datePublished) {
+    jsonLd.datePublished = datePublished;
+  }
+
+  if (dateModified) {
+    jsonLd.dateModified = dateModified;
+  }
+
+  return jsonLd;
 }
 
 export default async function Page(props: {
@@ -46,10 +144,19 @@ export default async function Page(props: {
 
   if (!page) notFound();
   const MDX = page.data.body;
+  const blogPostingJsonLd = getBlogPostingJsonLd(page);
 
   const newsletterApiUrl = withBlogBasePath("/api/newsletter");
   return (
     <div className="w-full px-4 z-1 mx-auto md:grid md:grid-cols-[1fr_180px] mt-4 md:mt-22 gap-12 max-w-257">
+      {blogPostingJsonLd ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(blogPostingJsonLd).replace(/</g, "\\u003c"),
+          }}
+        />
+      ) : null}
       <div className="post-contents w-full">
         {/* Title + meta */}
         <header className="w-full relative">

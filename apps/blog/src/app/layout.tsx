@@ -4,6 +4,8 @@ import "./global.css";
 import { Inter, Barlow } from "next/font/google";
 import type { Metadata } from "next";
 import Script from "next/script";
+import { BLOG_HOME_DESCRIPTION,
+BLOG_HOME_TITLE } from "@/lib/blog-metadata";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -18,12 +20,8 @@ const barlow = Barlow({
 
 export const metadata: Metadata = {
   metadataBase: new URL(getBaseUrl()),
-  title: {
-    default: "Prisma Blog",
-    template: "%s | Prisma Blog",
-  },
-  description:
-    "Engineering updates, product announcements, and technical deep dives from the Prisma team.",
+  title: BLOG_HOME_TITLE,
+  description: BLOG_HOME_DESCRIPTION, 
 };
 
 export default function Layout({ children }: LayoutProps<"/">) {
