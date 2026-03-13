@@ -50,7 +50,10 @@ export function WebNavigation({ links }: WebNavigationProps) {
         <NavigationWrapper mobileOpen={mobileView}>
           <NavigationMenuList>
             <NavigationMenuItem>
-              <NavigationMenuLink className="shrink-0 w-full p-0">
+              <NavigationMenuLink
+                className="shrink-0 w-full p-0 hover:bg-transparent"
+                href="/"
+              >
                 {Logo}
               </NavigationMenuLink>
             </NavigationMenuItem>
