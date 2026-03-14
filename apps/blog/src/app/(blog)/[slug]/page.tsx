@@ -87,7 +87,10 @@ function getBlogPostingJsonLd(page: ReturnType<typeof blog.getPage>): BlogPostin
     : undefined;
 
   const authorNames = Array.isArray(page.data.authors)
-    ? page.data.authors.filter((author): author is string => Boolean(author?.trim()))
+    ? page.data.authors
+        .filter((author): author is string => typeof author === "string")
+        .map((author) => author.trim())
+        .filter(Boolean)
     : [];
 
   const datePublished = toIsoDate(page.data.date);
