@@ -48,7 +48,7 @@ function buildBlogHref(tag: string, page: number): string {
   }
 
   const query = params.toString();
-  const basePath = "/"
+  const basePath = withBlogBasePath("/");
   return query ? `${basePath}?${query}` : basePath;
 }
 
