@@ -222,6 +222,11 @@ export default async function BlogHome({
                       <PaginationLink
                         href={buildBlogHref(currentCategory, entry)}
                         isActive={entry === currentPage}
+                        className={
+                          entry === currentPage
+                            ? "bg-background-neutral border border-stroke-neutral shadow-box-low hover:bg-background-neutral-strong"
+                            : undefined
+                        }
                       >
                         {entry}
                       </PaginationLink>
