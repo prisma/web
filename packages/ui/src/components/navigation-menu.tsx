@@ -8,6 +8,7 @@ import { useScrollThreshold } from "../hooks/use-scroll-threshold";
 import { StarCount } from "./star-count";
 import { useState } from "react";
 import { Action, Button } from "@prisma/eclipse";
+import type { Link as WebNavigationLink } from "./web-navigation";
 
 const Logo = (
   <svg
@@ -280,7 +281,7 @@ function Socials({
 function MenuNavigationItem({
   link,
 }: {
-  link: { text: string; desc: string; icon: string; url: string; external?: boolean };
+  link: NonNullable<WebNavigationLink["sub"]>[number];
 }) {
   return (
     <NavigationMenuLink
@@ -290,22 +291,26 @@ function MenuNavigationItem({
       rel={link.external ? "noopener noreferrer" : undefined}
       className="flex gap-2 items-center justify-start hover:bg-background-ppg-strong w-full rounded-square! overflow-hidden"
     >
-      <Action color="ppg" size="3xl">
-        <i className={cn("text-background-ppg-reverse", link.icon)} />
-      </Action>
+      {link.icon ? (
+        <Action color="ppg" size="3xl">
+          <i className={cn("text-background-ppg-reverse", link.icon)} />
+        </Action>
+      ) : null}
       <div className="flex flex-col gap-0">
         <span className="text-md font-semibold text-foreground-neutral">
           {link.text}
           {link.external && <i className=" ml-1 fa-regular fa-arrow-up-right text-foreground-neutral text-sm" />}
         </span>
-        <p className="text-xs text-foreground-neutral-weaker">{link.desc}</p>
+        {link.desc ? (
+          <p className="text-xs text-foreground-neutral-weaker">{link.desc}</p>
+        ) : null}
       </div>
     </NavigationMenuLink>
   );
 }
 
 // Add this new component before NavigationMobileMenu
-function MobileMenuItemWithSubmenu({ link }: { link: any }) {
+function MobileMenuItemWithSubmenu({ link }: { link: WebNavigationLink }) {
   const [isOpen, setOpen] = useState(false);
 
   return (
@@ -319,9 +324,9 @@ function MobileMenuItemWithSubmenu({ link }: { link: any }) {
       >
         {link.text}
       </NavigationMenuTrigger>
-      {isOpen && (
+      {isOpen && link.sub && (
         <NavigationMenuList className="flex-col items-start bg-background-neutral-weaker p-2 gap-0 border-b border-stroke-neutral">
-          {link.sub.map((sublink: any) => (
+          {link.sub.map((sublink) => (
             <MenuNavigationItem link={sublink} key={sublink.url} />
           ))}
         </NavigationMenuList>
@@ -330,11 +335,19 @@ function MobileMenuItemWithSubmenu({ link }: { link: any }) {
   );
 }
 
-function NavigationMobileMenu({ links }: any) {
+function NavigationMobileMenu({
+  links,
+  loginHref,
+  signupHref,
+}: {
+  links: WebNavigationLink[];
+  loginHref: string;
+  signupHref: string;
+}) {
   return (
     <div className="fixed px-0 md:hidden w-screen h-screen pt-22 top-0 left-0 -z-1 bg-background-default flex flex-col justify-between">
       <div className="list pb-[130px] overflow-scroll">
-        {links.map((link: any) =>
+        {links.map((link) =>
           link.url ? (
             <NavigationMenuItem key={link.url}>
               <NavigationMenuLink
@@ -353,7 +366,12 @@ function NavigationMobileMenu({ links }: any) {
         <Socials className="flex items-center justify-center" include="all" />
         <div className="grid gap-2 grid-cols-2 w-full">
           <NavigationMenuItem className="w-full">
-            <Button size="xl" variant="default-stronger" className="w-full">
+            <Button
+              size="xl"
+              variant="default-stronger"
+              className="w-full"
+              href={loginHref}
+            >
               Login
             </Button>
           </NavigationMenuItem>
@@ -362,6 +380,7 @@ function NavigationMobileMenu({ links }: any) {
               size="xl"
               variant="ppg"
               className="whitespace-nowrap w-full"
+              href={signupHref}
             >
               Get started
             </Button>

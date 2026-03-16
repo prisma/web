@@ -27,14 +27,7 @@ export const { GET } = createMixedbreadSearchAPI({
   storeIdentifier: "blog-search",
   topK: 20,
   transform: (results, _query) => {
-
-    return results.sort((a, b) => {
-      const aMetadata = a.generated_metadata as unknown as GeneratedMetadata;
-      const bMetadata = b.generated_metadata as unknown as GeneratedMetadata;
-
-      // Dates are YYYY-MM-DD, so lexical sort is safe and fast.
-      return (bMetadata?.date ?? "").localeCompare(aMetadata?.date ?? "");
-    }).flatMap((item) => {
+    return results.flatMap((item) => {
       const metadata = item.generated_metadata as unknown as GeneratedMetadata;
       const slug = (metadata?.slug ?? "").replace(/^\/+/, "");
       const title = metadata?.metaTitle ?? metadata?.title ?? "Untitled";

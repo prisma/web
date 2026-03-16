@@ -186,9 +186,8 @@ export default async function Page(props: {
           {page.data.tags && page.data.tags.length > 0 && (
             <div className="filter-badge flex gap-2">
               {page.data?.tags?.map((tag) => (
-                <Link href={`/?tag=${tag}`} key={tag}>
+                <Link href={{ pathname: "/", query: { tag } }} key={tag}>
                   <Badge
-                    key={tag}
                     color="neutral"
                     label={formatTag(tag)}
                     className="
