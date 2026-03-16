@@ -103,7 +103,7 @@ export function PostCard({
             fill
             sizes={imageSizes}
             className={imageClassName}
-            loading={isFeatured ? "eager" : undefined}
+            loading="eager"
             priority={isFeatured}
           />
         </div>
