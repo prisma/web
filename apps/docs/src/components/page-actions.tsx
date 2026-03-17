@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
-import { Check, ChevronDown, Copy, ExternalLinkIcon, MessageCircleIcon } from "lucide-react";
+
 import { useCopyButton } from "fumadocs-ui/utils/use-copy-button";
 import { buttonVariants } from "@prisma-docs/ui/components/button";
 import { cn } from "@prisma-docs/ui/lib/cn";
@@ -54,12 +54,12 @@ export function CopyPromptButton({ fullPrompt }: { fullPrompt: string }) {
         buttonVariants({
           color: "secondary",
           size: "sm",
-          className: "gap-2 [&_svg]:size-3.5 [&_svg]:text-fd-muted-foreground",
+          className: "gap-2 [&_i]:text-[0.875rem] [&_i]:text-fd-muted-foreground",
         }),
       )}
       onClick={onClick}
     >
-      {checked ? <Check /> : <Copy />}
+      {checked ? <i className="fa-regular fa-check" /> : <i className="fa-regular fa-copy" />}
       Copy Prompt
     </button>
   );
@@ -103,19 +103,19 @@ export function LLMCopyButton({
         buttonVariants({
           color: "secondary",
           size: "sm",
-          className: "gap-2 [&_svg]:size-3.5 [&_svg]:text-fd-muted-foreground",
+          className: "gap-2 [&_i]:text-[0.875rem] [&_i]:text-fd-muted-foreground",
         }),
       )}
       onClick={onClick}
     >
-      {checked ? <Check /> : <Copy />}
+      {checked ? <i className="fa-regular fa-check" /> : <i className="fa-regular fa-copy" />}
       Copy Markdown
     </button>
   );
 }
 
 const optionVariants = cva(
-  "text-sm p-2 rounded-lg inline-flex items-center gap-2 hover:text-fd-accent-foreground hover:bg-fd-accent [&_svg]:size-4",
+  "text-sm p-2 rounded-lg inline-flex items-center gap-2 hover:text-fd-accent-foreground hover:bg-fd-accent [&_i]:text-base",
 );
 
 export function ViewOptions({
@@ -188,7 +188,7 @@ export function ViewOptions({
         href: `https://t3.chat/new?${new URLSearchParams({
           q,
         })}`,
-        icon: <MessageCircleIcon />,
+        icon: <i className="fa-regular fa-message" />,
       },
     ];
   }, [githubUrl, markdownUrl]);
@@ -205,7 +205,7 @@ export function ViewOptions({
         )}
       >
         Open
-        <ChevronDown className="size-3.5 text-fd-muted-foreground" />
+        <i className="fa-regular fa-chevron-down text-[0.875rem] text-fd-muted-foreground" />
       </PopoverTrigger>
       <PopoverContent className="flex flex-col">
         {items.map((item) => (
@@ -218,7 +218,7 @@ export function ViewOptions({
           >
             {item.icon}
             {item.title}
-            <ExternalLinkIcon className="text-fd-muted-foreground size-3.5 ms-auto" />
+            <i className="fa-regular fa-arrow-up-right-from-square text-fd-muted-foreground text-[0.875rem] ms-auto" />
           </a>
         ))}
       </PopoverContent>
