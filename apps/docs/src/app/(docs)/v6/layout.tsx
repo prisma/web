@@ -34,11 +34,6 @@ export default async function Layout({
       active: 'nested-url',
     },
     {
-      text: 'Optimize',
-      url: '/v6/optimize',
-      active: 'nested-url',
-    },
-    {
       text: 'Guides',
       url: '/v6/guides',
       active: 'nested-url',

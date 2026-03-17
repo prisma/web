@@ -4,7 +4,6 @@ import logoDark from "../../public/img/logo-dark.svg";
 import logoWhite from "../../public/img/logo-white.svg";
 import { DiscordIcon } from "@/components/icons/discord";
 import Link from "next/link";
-import { Badge } from "@prisma/eclipse";
 
 export const logo = (
   <>
@@ -51,16 +50,7 @@ export const links: LinkItemTypeWithActivePaths[] = [
       { text: "Management API", url: "/management-api", active: "nested-url" },
       { text: "Studio", url: "/studio", active: "nested-url" },
       { text: "AI", url: "/ai", active: "nested-url" },
-      {
-        text: (
-          <span className="flex items-center w-full gap-2">
-            Query Insights
-            <Badge color="ppg" label="Early Access" size="md" className="ml-auto" />
-          </span>
-        ),
-        url: "/query-insights",
-        active: "nested-url",
-      },
+      { text: "Query Insights", url: "/query-insights", active: "nested-url" },
       { text: "Accelerate", url: "/accelerate", active: "nested-url" },
       { text: "Console", url: "/console", active: "nested-url" },
     ],
