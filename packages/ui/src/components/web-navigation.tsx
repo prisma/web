@@ -18,16 +18,18 @@ import { useEffect, useState } from "react";
 import { FontAwesomeScript as WebFA } from "./fontawesome-web";
 import { cn } from "../lib/cn";
 
-interface Link {
+export interface Link {
   text: string;
   external?: boolean;
   url?: string;
+  icon?: string;
   desc?: string;
   col?: number;
   sub?: Array<{
     text: string;
     external?: boolean;
     url: string;
+    icon?: string;
     desc?: string;
   }>;
 }
@@ -46,8 +48,8 @@ export function WebNavigation({ links, utm }: WebNavigationProps) {
     ? `https://console.prisma.io/login?utm_source=${utm.source}&utm_medium=${utm.medium}&utm_campaign=login`
     : "https://console.prisma.io/login";
   const signupHref = utm
-    ? `https://console.prisma.io/signup?utm_source=${utm.source}&utm_medium=${utm.medium}&utm_campaign=signup`
-    : "https://console.prisma.io/signup";
+    ? `https://console.prisma.io/sign-up?utm_source=${utm.source}&utm_medium=${utm.medium}&utm_campaign=signup`
+    : "https://console.prisma.io/sign-up";
 
   useEffect(() => {
     if (mobileView) {
@@ -87,7 +89,7 @@ export function WebNavigation({ links, utm }: WebNavigationProps) {
                           link?.col && `grid grid-cols-${link.col}`,
                         )}
                       >
-                        {link.sub.map((sub: any, index: number) => (
+                        {link.sub.map((sub, index: number) => (
                           <MenuNavigationItem
                             key={`${sub.text}-${sub.url}-${index}`}
                             link={sub}
@@ -127,7 +129,13 @@ export function WebNavigation({ links, utm }: WebNavigationProps) {
                 )}
               />
             </NavigationMenuItem>
-            {mobileView && <NavigationMobileMenu links={links} />}
+            {mobileView && (
+              <NavigationMobileMenu
+                links={links}
+                loginHref={loginHref}
+                signupHref={signupHref}
+              />
+            )}
           </NavigationMenuList>
         </NavigationWrapper>
       </NavigationMenu>

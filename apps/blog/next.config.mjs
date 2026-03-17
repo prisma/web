@@ -226,6 +226,7 @@ const config = {
   assetPrefix: "/blog-static",
   allowedDevOrigins,
   reactStrictMode: true,
+  images: { unoptimized: true },
   transpilePackages: ["@prisma/eclipse"],
   experimental: {
     globalNotFound: true,
