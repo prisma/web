@@ -9,6 +9,8 @@ import { StatusIndicator } from "@/components/status-indicator";
 import { SidebarBannerCarousel } from "@/components/sidebar-banner";
 import { fetchOgImage } from "@/lib/og-image";
 import { cn } from "@prisma-docs/ui/lib/cn";
+import { getPageBadges } from "@/lib/page-badges";
+import { BadgeProvider, SidebarBadgeItem } from "@/components/sidebar-badge-provider";
 
 // Sidebar announcement slides — set to [] to hide the banner
 const SIDEBAR_SLIDES = [
@@ -43,23 +45,28 @@ export default async function Layout({ children }: { children: React.ReactNode }
     }),
   );
 
+  const badges = Object.fromEntries(getPageBadges());
+
   return (
-    <DocsLayout
-      {...base}
-      links={navbarLinks}
-      nav={{ ...nav }}
-      sidebar={{
-        collapsible: false,
-        footer: ({ className, ...props }: ComponentProps<"div">) => (
-          <div className={cn("flex flex-col p-4 pt-2 gap-3", className)} {...props}>
-            <SidebarBannerCarousel slides={slides} />
-            <StatusIndicator />
-          </div>
-        ),
-      }}
-      tree={source.pageTree}
-    >
-      {children}
-    </DocsLayout>
+    <BadgeProvider badges={badges}>
+      <DocsLayout
+        {...base}
+        links={navbarLinks}
+        nav={{ ...nav }}
+        sidebar={{
+          collapsible: false,
+          components: { Item: SidebarBadgeItem },
+          footer: ({ className, ...props }: ComponentProps<"div">) => (
+            <div className={cn("flex flex-col p-4 pt-2 gap-3", className)} {...props}>
+              <SidebarBannerCarousel slides={slides} />
+              <StatusIndicator />
+            </div>
+          ),
+        }}
+        tree={source.pageTree}
+      >
+        {children}
+      </DocsLayout>
+    </BadgeProvider>
   );
 }
