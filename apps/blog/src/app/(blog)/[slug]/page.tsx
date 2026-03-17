@@ -88,9 +88,9 @@ function getBlogPostingJsonLd(page: ReturnType<typeof blog.getPage>): BlogPostin
 
   const authorNames = Array.isArray(page.data.authors)
     ? page.data.authors
-        .filter((author): author is string => typeof author === "string")
-        .map((author) => author.trim())
-        .filter(Boolean)
+      .filter((author): author is string => typeof author === "string")
+      .map((author) => author.trim())
+      .filter(Boolean)
     : [];
 
   const datePublished = toIsoDate(page.data.date);
@@ -186,12 +186,23 @@ export default async function Page(props: {
           {page.data.tags && page.data.tags.length > 0 && (
             <div className="filter-badge flex gap-2">
               {page.data?.tags?.map((tag) => (
-                <Badge
-                  key={tag}
-                  color="neutral"
-                  label={formatTag(tag)}
-                  className="border capitalize border-stroke-neutral-strong bg-transparent text-foreground-neutral-weak"
-                />
+                <Link href={{ pathname: "/", query: { tag } }} key={tag}>
+                  <Badge
+                    color="neutral"
+                    label={formatTag(tag)}
+                    className="
+                    transition-colors
+                    border capitalize
+                  border-stroke-neutral-strong 
+                    bg-transparent
+                  text-foreground-neutral-weak 
+                  hover:bg-background-ppg/50
+                  hover:border-stroke-ppg/50
+                  hover:text-foreground-ppg"
+
+                  />
+                </Link>
+
               ))}
             </div>
           )}
@@ -201,7 +212,7 @@ export default async function Page(props: {
         <article className="w-full flex flex-col pb-8 mt-12">
           <div className="prose min-w-0 [&_figure]:w-full [&_figure]:md:max-w-140 [&_figure]:lg:max-w-200">
 
-          <p className="font-semibold text-lg">{page.data.excerpt}</p>
+            <p className="font-semibold text-lg">{page.data.excerpt}</p>
 
             <MDX
               components={getMDXComponents({
