@@ -18,16 +18,18 @@ import { useEffect, useState } from "react";
 import { FontAwesomeScript as WebFA } from "./fontawesome-web";
 import { cn } from "../lib/cn";
 
-interface Link {
+export interface Link {
   text: string;
   external?: boolean;
   url?: string;
+  icon?: string;
   desc?: string;
   col?: number;
   sub?: Array<{
     text: string;
     external?: boolean;
     url: string;
+    icon?: string;
     desc?: string;
   }>;
 }
@@ -87,7 +89,7 @@ export function WebNavigation({ links, utm }: WebNavigationProps) {
                           link?.col && `grid grid-cols-${link.col}`,
                         )}
                       >
-                        {link.sub.map((sub: any, index: number) => (
+                        {link.sub.map((sub, index: number) => (
                           <MenuNavigationItem
                             key={`${sub.text}-${sub.url}-${index}`}
                             link={sub}
@@ -127,7 +129,13 @@ export function WebNavigation({ links, utm }: WebNavigationProps) {
                 )}
               />
             </NavigationMenuItem>
-            {mobileView && <NavigationMobileMenu links={links} />}
+            {mobileView && (
+              <NavigationMobileMenu
+                links={links}
+                loginHref={loginHref}
+                signupHref={signupHref}
+              />
+            )}
           </NavigationMenuList>
         </NavigationWrapper>
       </NavigationMenu>
