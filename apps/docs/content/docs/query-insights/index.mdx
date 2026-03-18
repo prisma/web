@@ -77,18 +77,23 @@ To enable ORM attribution, install the `@prisma/sqlcommenter-query-insights` pac
 npm install @prisma/sqlcommenter-query-insights
 ```
 
-Then add it as a Prisma Client extension:
+Then pass it to the `comments` option in your `PrismaClient` constructor:
 
 ```ts
 import "dotenv/config";
-import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client";
-import { withQueryInsights } from "@prisma/sqlcommenter-query-insights";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { prismaQueryInsights } from "@prisma/sqlcommenter-query-insights";
 
-const connectionString = `${process.env.DATABASE_URL}`;
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL,
+});
 
-const adapter = new PrismaPg({ connectionString });
-const prisma = new PrismaClient({ adapter }).$extends(withQueryInsights());
+export const prisma = new PrismaClient({
+  adapter: adapter,
+  comments: [prismaQueryInsights()],
+})
+
 ```
 
 This adds SQL comment annotations to queries so Query Insights can map SQL statements back to the Prisma calls that generated them. It is built on top of the [SQL comments](/orm/prisma-client/observability-and-logging/sql-comments) feature in Prisma Client.
