@@ -18,6 +18,7 @@ const SIDEBAR_SLIDES = [
     href: "https://pris.ly/pn-anouncement",
     gradient: "orm" as const,
     badge: "New",
+    image: "/imgs/sidebar-banners/prisma-next.png",
   },
 ];
 
@@ -35,7 +36,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
   // Resolve OG images server-side for slides that don't have a hardcoded image
   const slides = await Promise.all(
     SIDEBAR_SLIDES.map(async (slide) => {
-      if (slide.href.startsWith("http")) {
+      if (!slide.image && slide.href.startsWith("http")) {
         const ogImage = await fetchOgImage(slide.href);
         if (ogImage) return { ...slide, image: ogImage };
       }
