@@ -156,3 +156,12 @@ export {
 
 export { Alert } from "./alert";
 export { Switch } from "./switch";
+
+export {
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  EmptyDescription,
+  EmptyContent,
+  EmptyMedia,
+} from "./empty";

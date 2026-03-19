@@ -344,50 +344,45 @@ Check the [pricing page](https://www.prisma.io/pricing) for more details on the 
 While you can increase these limits based on your subscription plan, it's _still_ recommended to optimize your database operations. [Learn more in our troubleshooting guide.](/postgres/error-reference)
 :::
 
-## Query optimization
+## Query Insights
 
-Prisma Postgres allows query optimization via [Prisma Optimize](/optimize) and provides performance recommendations to help improve your database queries during development. You can enable it with Prisma Postgres or [also use it with your own database](/optimize/getting-started), but setup and integration steps differ.
+[Query Insights](/query-insights) is built into Prisma Postgres and helps you identify slow queries, understand their cost, and decide what to fix.
 
-### Can you automatically implement optimizations?
+### I only see raw SQL — how do I see my Prisma ORM queries?
 
-Prisma Postgres's query optimization feature offers insights and recommendations on how to improve your database queries. It does not alter any existing queries or your Prisma schema.
+By default, Query Insights shows raw SQL. To also see the Prisma ORM operation that generated each query (model name, action, and query shape), install the `@prisma/sqlcommenter-query-insights` package:
 
-### How long is a recording session retained?
-
-There are no limits on the storage retention period. A query performance recording session will be stored until you explicitly delete it.
-
-### Do recommendation limits reset monthly?
-
-Yes, the recommendation usage resets at the beginning of each calendar month. For example, if you use `5` recommendations by the end of the month, your usage will reset to `0` at the start of the next month.
-
-### Can I get charged for exceeding the recommendation limit on the starter plan?
-
-Yes, if you’re on the starter plan, exceeding `5` recommendations in a billing cycle will result in a `$5` charge at the end of that cycle. For more information, visit [our pricing page](https://www.prisma.io/pricing#optimize).
-
-### How are viewed Prisma AI recommendations tracked for billing? Are they counted based on generated or viewed recommendations?
-
-They are counted based on viewed recommendations. Once you click on a recommendation from the recommendations table and view the recommendation's detail page, it counts as being seen.
-
-### Can I enable query optimizations for Prisma Postgres in production?
-
-No, query optimizations for Prisma Postgres is not meant to be enabled for production use. It is specifically designed for local development, providing valuable insights and optimizations during that phase. While it's technically possible to run it in a production environment, doing so could result in performance problems or unexpected behaviors, as this is not built to handle the complexity and scale of production workloads. For the best experience, we recommend testing query optimization solely in your development environment.
-
-You can use the `enable` property in the client extension to run it [only in development environment](https://www.npmjs.com/package/@prisma/extension-optimize). By default, the `enable` property is set to `true`.
-
-```ts title="script.ts" copy showLineNumbers
-import { PrismaClient } from "@prisma/client";
-import { withOptimize } from "@prisma/extension-optimize";
-
-const prisma = new PrismaClient().$extends(
-  withOptimize({
-    apiKey: process.env.OPTIMIZE_API_KEY,
-    enable: process.env.ENVIRONMENT === "development",
-  }),
-);
+```bash
+npm install @prisma/sqlcommenter-query-insights
 ```
 
-### Why do I see "[optimize] HTTP 409 Conflict: There is no active recording to write queries to" warning?
+Then pass it to the `comments` option in your `PrismaClient` constructor:
 
-This warning may occur when Prisma Optimize receives queries but no recording session is active. Typically, this can happen if Prisma Optimize is unintentionally enabled in your production environment. Prisma Optimize is specifically designed for use in local development environments and should not be enabled in production. To avoid this warning, ensure that Prisma Optimize is configured to run only during development.
+```ts
+import { prismaQueryInsights } from "@prisma/sqlcommenter-query-insights";
+import { PrismaClient } from "@prisma/client";
 
-If you are seeing this warning in your development environment, ensure that you have started a recording session in the Prisma Optimize Dashboard.
+const prisma = new PrismaClient({
+  adapter: myAdapter,
+  comments: [prismaQueryInsights()],
+});
+```
+
+This annotates every query with a SQL comment containing the model, action, and parameterized query shape. Query Insights uses these annotations to map SQL back to the Prisma call that generated it.
+
+#### Let your AI agent handle setup
+
+Copy this prompt into your AI coding assistant:
+
+```
+Install and configure @prisma/sqlcommenter-query-insights in my project so I can
+see Prisma ORM queries in Query Insights. Docs: https://www.prisma.io/docs/query-insights
+```
+
+### Does Query Insights alter my queries or schema?
+
+No. Query Insights is read-only — it observes query behavior but does not rewrite queries or modify your Prisma schema.
+
+### Can I use Query Insights in production?
+
+Query Insights is designed primarily for development and debugging. Running it in production is possible but not recommended, as the SQL comment annotations add a small overhead to every query.

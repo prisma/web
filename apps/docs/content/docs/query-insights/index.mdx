@@ -6,12 +6,10 @@ metaTitle: Query Insights with Prisma Postgres
 metaDescription: Inspect slow queries, connect Prisma calls to SQL, and apply focused fixes with Prisma Postgres.
 ---
 
-Query Insights is built into Prisma Postgres and helps you understand which queries are slow, why they are expensive, and what to change next. It works out of the box with no agents or instrumentation required, and it does not automatically rewrite your queries or schema.
-
-For Prisma ORM queries, it connects your Prisma calls to the SQL they generate, including when a single call expands into multiple statements. For raw SQL or queries issued outside Prisma ORM, it still shows full SQL behavior.
+Query Insights is built into Prisma Postgres and helps you understand which queries are slow, why they are expensive, and what to change next. It does not automatically rewrite your queries or schema.
 
 :::info
-Query Insights replaces Prisma Optimize and is now included with Prisma Postgres at no extra cost.
+Query Insights replaces Prisma Optimize and is now included with Prisma Postgres at no extra cost. You can try it today in the [Prisma Console](https://console.prisma.io).
 :::
 
 ## Dashboard
@@ -57,25 +55,52 @@ The detail view shows:
 - A stat summary describing the query's table, execution count, average latency, and reads per call
 - The full SQL statement
 - An AI-generated analysis explaining whether the query needs optimization and why
-- A copyable prompt you can paste into your editor to apply the fix
+- A copyable prompt you can paste directly into your editor or an AI coding assistant to apply the suggested fix
 
-This is where Query Insights becomes actionable. Instead of only seeing that a query is expensive, you can move from symptom to root cause to fix without leaving your workflow.
+The AI analysis describes the likely cause of the performance issue, the specific change it recommends, and the expected impact. The copyable prompt includes your actual query along with context, so you can paste it into your editor or a tool like Cursor, Copilot, or Claude and get a concrete code change without switching context.
 
 :::info
 Treat the AI analysis as a starting point, not a final answer. Review any suggested change before shipping it.
 :::
 
-## Prisma context
+## Prisma ORM attribution
 
-The main difference between Query Insights and a SQL-only dashboard is attribution.
+When using Prisma ORM, Query Insights can trace the full chain from your application code to the SQL it generates. This means you can see which `prisma.*` call produced a slow query, even when a single Prisma call expands into multiple SQL statements.
 
-With Prisma ORM queries, Query Insights traces the full chain: from the slow endpoint, to the Prisma query responsible, to the SQL it generated and its runtime impact. This is especially useful when a single Prisma call expands into multiple SQL statements, because you can inspect that relationship in one place instead of correlating it manually across logs and code.
+For raw SQL or queries issued outside Prisma ORM, Query Insights still shows full SQL behavior, but ORM-level attribution requires the steps below.
 
-For queries issued outside Prisma ORM, Query Insights still shows full SQL behavior, but ORM-to-SQL attribution is exclusive to Prisma ORM.
+### Setup
+
+To enable ORM attribution, install the `@prisma/sqlcommenter-query-insights` package:
+
+```bash
+npm install @prisma/sqlcommenter-query-insights
+```
+
+Then pass it to the `comments` option in your `PrismaClient` constructor:
+
+```ts
+import "dotenv/config";
+import { PrismaClient } from "../generated/prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { prismaQueryInsights } from "@prisma/sqlcommenter-query-insights";
+
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL,
+});
+
+export const prisma = new PrismaClient({
+  adapter: adapter,
+  comments: [prismaQueryInsights()],
+})
+
+```
+
+This adds SQL comment annotations to queries so Query Insights can map SQL statements back to the Prisma calls that generated them. It is built on top of the [SQL comments](/orm/prisma-client/observability-and-logging/sql-comments) feature in Prisma Client.
 
 ## Availability
 
-Query Insights is included with Prisma Postgres.
+Query Insights is included with Prisma Postgres at no extra cost. You can try it today in the [Prisma Console](https://console.prisma.io).
 
 ## Typical issues
 

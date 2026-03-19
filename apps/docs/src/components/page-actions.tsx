@@ -1,20 +1,10 @@
 "use client";
 import { useMemo, useState } from "react";
-import {
-  Check,
-  ChevronDown,
-  Copy,
-  ExternalLinkIcon,
-  MessageCircleIcon,
-} from "lucide-react";
+
 import { useCopyButton } from "fumadocs-ui/utils/use-copy-button";
 import { buttonVariants } from "@prisma-docs/ui/components/button";
 import { cn } from "@prisma-docs/ui/lib/cn";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "fumadocs-ui/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "fumadocs-ui/components/ui/popover";
 import { cva } from "class-variance-authority";
 
 const cache = new Map<string, string>();
@@ -40,9 +30,7 @@ async function fetchMarkdownWithFallback(
 
   const fallbackUrl = toIndexMarkdownUrl(markdownUrl);
   if (!fallbackUrl) {
-    throw new Error(
-      `Failed to fetch markdown from ${markdownUrl} (${res.status})`,
-    );
+    throw new Error(`Failed to fetch markdown from ${markdownUrl} (${res.status})`);
   }
 
   const fallbackRes = await fetch(fallbackUrl);
@@ -55,6 +43,28 @@ async function fetchMarkdownWithFallback(
   );
 }
 
+export function CopyPromptButton({ fullPrompt }: { fullPrompt: string }) {
+  const [checked, onClick] = useCopyButton(async () => {
+    await navigator.clipboard.writeText(fullPrompt);
+  });
+
+  return (
+    <button
+      className={cn(
+        buttonVariants({
+          color: "secondary",
+          size: "sm",
+          className: "gap-2 [&_i]:text-[0.875rem] [&_i]:text-fd-muted-foreground",
+        }),
+      )}
+      onClick={onClick}
+    >
+      {checked ? <i className="fa-regular fa-check" /> : <i className="fa-regular fa-copy" />}
+      Copy Prompt
+    </button>
+  );
+}
+
 export function LLMCopyButton({
   /**
    * A URL to fetch the raw Markdown/MDX content of page
@@ -63,13 +73,10 @@ export function LLMCopyButton({
 }: {
   markdownUrl: string;
 }) {
-  
   const [isLoading, setLoading] = useState(false);
   const [checked, onClick] = useCopyButton(async () => {
     const fallbackUrl = toIndexMarkdownUrl(markdownUrl);
-    const cached =
-      cache.get(markdownUrl) ??
-      (fallbackUrl ? cache.get(fallbackUrl) : undefined);
+    const cached = cache.get(markdownUrl) ?? (fallbackUrl ? cache.get(fallbackUrl) : undefined);
     if (cached) return navigator.clipboard.writeText(cached);
 
     setLoading(true);
@@ -96,19 +103,19 @@ export function LLMCopyButton({
         buttonVariants({
           color: "secondary",
           size: "sm",
-          className: "gap-2 [&_svg]:size-3.5 [&_svg]:text-fd-muted-foreground",
+          className: "gap-2 [&_i]:text-[0.875rem] [&_i]:text-fd-muted-foreground",
         }),
       )}
       onClick={onClick}
     >
-      {checked ? <Check /> : <Copy />}
+      {checked ? <i className="fa-regular fa-check" /> : <i className="fa-regular fa-copy" />}
       Copy Markdown
     </button>
   );
 }
 
 const optionVariants = cva(
-  "text-sm p-2 rounded-lg inline-flex items-center gap-2 hover:text-fd-accent-foreground hover:bg-fd-accent [&_svg]:size-4",
+  "text-sm p-2 rounded-lg inline-flex items-center gap-2 hover:text-fd-accent-foreground hover:bg-fd-accent [&_i]:text-base [&_svg]:size-4",
 );
 
 export function ViewOptions({
@@ -127,9 +134,7 @@ export function ViewOptions({
 }) {
   const items = useMemo(() => {
     const fullMarkdownUrl =
-      typeof window !== "undefined"
-        ? new URL(markdownUrl, window.location.origin)
-        : "loading";
+      typeof window !== "undefined" ? new URL(markdownUrl, window.location.origin) : "loading";
     const q = `Read ${fullMarkdownUrl}, I want to ask questions about it.`;
 
     return [
@@ -183,7 +188,7 @@ export function ViewOptions({
         href: `https://t3.chat/new?${new URLSearchParams({
           q,
         })}`,
-        icon: <MessageCircleIcon />,
+        icon: <i className="fa-regular fa-message" />,
       },
     ];
   }, [githubUrl, markdownUrl]);
@@ -200,7 +205,7 @@ export function ViewOptions({
         )}
       >
         Open
-        <ChevronDown className="size-3.5 text-fd-muted-foreground" />
+        <i className="fa-regular fa-chevron-down text-[0.875rem] text-fd-muted-foreground" />
       </PopoverTrigger>
       <PopoverContent className="flex flex-col">
         {items.map((item) => (
@@ -213,7 +218,7 @@ export function ViewOptions({
           >
             {item.icon}
             {item.title}
-            <ExternalLinkIcon className="text-fd-muted-foreground size-3.5 ms-auto" />
+            <i className="fa-regular fa-arrow-up-right-from-square text-fd-muted-foreground text-[0.875rem] ms-auto" />
           </a>
         ))}
       </PopoverContent>
