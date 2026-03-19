@@ -1,145 +1,71 @@
 ---
 title: Connection pooling
-description: Use the pooled connection string for application traffic and the direct connection string for migrations and admin tooling.
+description: Use Prisma Postgres connection pooling for concurrent application traffic.
 url: /postgres/database/connection-pooling
 metaTitle: Connection pooling in Prisma Postgres
-metaDescription: Prisma Postgres manages connection pooling for you. Use the pooled string for application traffic, the direct string for migrations.
+metaDescription: Prisma Postgres manages connection pooling for you. Use it for concurrent application traffic and know when to bypass it.
 ---
 
-Prisma Postgres includes built-in connection pooling. You don't need to configure or manage it. Your only job is to use the right connection string in the right place.
+Prisma Postgres routes application traffic through a tenant-isolated PgBouncer instance running in transactional pool mode. This page covers how pooling works, what limits apply, and when to bypass it. For connection string setup and runtime-specific guidance, see [Connecting to your database](/postgres/database/connecting-to-your-database).
 
-## Your two connection strings
-
-Every Prisma Postgres database has two connection strings. They use the same credentials and cost the same. The only difference is the hostname.
-
-```bash title=".env"
-# Application traffic (pooled)
-DATABASE_URL="postgres://USER:PASSWORD@pooled.db.prisma.io:5432/?sslmode=require"
-
-# Migrations, admin tooling, long-running queries (direct)
-DIRECT_URL="postgres://USER:PASSWORD@db.prisma.io:5432/?sslmode=require"
-```
-
-**`DATABASE_URL`** routes through a managed connection pooler. Use it for all application traffic: API routes, serverless functions, background jobs, web requests. The pooler reuses a small number of database connections across many clients, so your application can handle high concurrency without exhausting the database's connection limit. Your pool is isolated — you do not share connection capacity with other tenants.
-
-**`DIRECT_URL`** connects straight to the database. Use it for migrations, Prisma Studio, bulk exports, and anything that requires a persistent session or runs longer than 10 minutes.
-
-Both strings are available in the [Prisma Console](https://console.prisma.io). The pooled string uses the hostname `pooled.db.prisma.io`. The direct string uses `db.prisma.io`. Everything else is identical.
-
-### Connection limits by plan
+## Connection limits
 
 |                        | Free | Starter | Pro  | Business |
 | ---------------------- | ---- | ------- | ---- | -------- |
+| **Pooled connections** | 50   | 50      | 250  | 500      |
 | **Direct connections** | 10   | 10      | 50   | 100      |
-| **Pooled connections** | 10   | 100     | 500  | 1000     |
 
-Each concurrent `PrismaClient` instance holds at least one pooled connection. On serverless platforms, each function instance counts against this limit independently.
+These are concurrent connection limits per plan. 5 direct connections are reserved for platform operations (maintenance, monitoring) and are not available to your workload.
 
 Idle pooled connections are closed after 60 minutes. Compare plans on the [Prisma pricing page](https://www.prisma.io/pricing).
 
-### Why the connection string choice matters
-- Using the direct string for application traffic works fine under low load. Under high concurrency, especially in serverless environments where each function invocation can open its own connection, you can exhaust your plan's connection limit. When that happens, Postgres will start rejecting new connections with a `too many connections` error.
-- The migration engine depends on advisory locks and persistent session state. The pooler operates in transactional mode and drops session state between transactions. This causes intermittent lock failures or `prepared statement "s0" already exists` errors, not on every run, but unpredictably depending on timing and pool state. Use the direct string for migrations.
+## How the pooler works
 
-## Where each connection string goes
-
-### Application runtime (Prisma Client)
-
-In Prisma 7, the two URLs are split across two places:
-
-- **`prisma.config.ts`** uses `DIRECT_URL` for CLI commands (migrations, introspection, `db push`)
-- **Driver adapter** uses `DATABASE_URL` (pooled) for Prisma Client at runtime
-
-```ts title="prisma.config.ts"
-import "dotenv/config";
-import { defineConfig, env } from "prisma/config";
-
-export default defineConfig({
-  schema: "prisma/schema.prisma",
-  datasource: {
-    url: env("DIRECT_URL"),
-  },
-});
+```
+Application → Connection Proxy → PgBouncer (per tenant, transactional mode) → Database
 ```
 
-```ts title="src/db/client.ts"
-import { PrismaClient } from "../prisma/generated/client";
-import { PrismaPg } from "@prisma/adapter-pg";
+Your application opens a connection to the pooled hostname (`pooled.db.prisma.io`). The pooler multiplexes many client connections onto a smaller number of database connections, assigning a backend connection for the duration of each transaction and returning it to the pool when the transaction completes.
 
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
-export const prisma = new PrismaClient({ adapter });
-```
+Because PgBouncer operates in transactional mode:
 
-### Serverless and edge runtimes
+- **Session state does not persist between transactions.** Any `SET` commands, prepared statements, advisory locks, or temporary tables are lost after each transaction boundary. If your workload depends on session state, use a direct connection.
+- **Queries are limited to 10 minutes.** Queries exceeding this timeout are terminated. For long-running jobs, use a direct connection.
 
-In serverless environments, each function invocation can create its own `PrismaClient` instance with its own connection to the pooler. Under load, this adds up fast.
+## When to use each connection type
 
-If you have 100 concurrent function instances and each opens 1 connection through the pooler, that is 100 pooled connections. On the Starter plan, that is your entire limit.
+**Use pooled connections** (`pooled.db.prisma.io`) for all application traffic: API handlers, background workers, serverless functions, edge runtimes.
 
-To control this:
+**Use direct connections** (`db.prisma.io`) for:
 
-**Singleton pattern** for platforms that reuse containers (AWS Lambda, Google Cloud Functions):
+- Migrations (`prisma migrate deploy`, `prisma db push`)
+- Schema introspection (`prisma db pull`)
+- Prisma Studio and admin tooling
+- `pg_dump` / `pg_restore`
+- `LISTEN` / `NOTIFY`
+- Workloads that use session-level `SET` commands or prepared statements outside transactions
+- Queries that may exceed 10 minutes
 
-```ts title="lib/prisma.ts"
-import { PrismaClient } from "../prisma/generated/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
-
-if (!globalForPrisma.prisma) {
-  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
-  globalForPrisma.prisma = new PrismaClient({ adapter });
-}
-
-export const prisma = globalForPrisma.prisma;
-```
-
-**`@prisma/ppg` driver** for true edge runtimes (Cloudflare Workers, Vercel Edge, Deno Deploy):
-
-[`@prisma/ppg`](/postgres/database/serverless-driver) is the Prisma Postgres serverless driver. It uses HTTP and WebSocket instead of TCP, which makes it well suited to edge environments where invocations are short-lived and globally distributed. TCP connections are supported on these platforms, but `@prisma/ppg` removes the need to manage persistent TCP connections across ephemeral invocations. This is the recommended approach for edge runtimes. See the [serverless driver docs](/postgres/database/serverless-driver) for setup instructions.
-
-Your plan's [connection limits](#connection-limits-by-plan) still apply and should be monitored.
-
-### Migrations
-
-Configure `prisma.config.ts` to point to `DIRECT_URL` (shown in [Application runtime](#application-runtime-prisma-client) above). Prisma CLI commands then automatically use the direct connection:
-
-```bash
-npx prisma migrate deploy
-npx prisma db push
-```
-
-### Prisma Studio and admin tooling
-
-Use the direct connection string.
-
-### LISTEN/NOTIFY
-
-Requires a direct connection. The pooler operates in transactional mode and cannot maintain the persistent session that `LISTEN`/`NOTIFY` requires. If you use the pooled string, subscriptions will not receive messages.
+Getting this wrong has asymmetric failure modes. Running migrations through the pooler produces clear errors (lock failures, session state errors). Running application traffic over direct connections works fine at low concurrency but causes silent connection exhaustion under load. The kind of issue that only surfaces in production.
 
 ## Troubleshooting
 
-### "Too many connections" or connection limit error
+### "Too many connections" or connection limit errors
 
-**Cause:** `PrismaClient` is being instantiated per request (common in serverless), or too many function instances are running concurrently.
+Your application is exceeding the pooled connection limit for your plan. Common causes:
 
-**Fix:** Use the [singleton pattern](#serverless-and-edge-runtimes). Set serverless function concurrency limits so that total connections stay within your plan's [connection limits](#connection-limits-by-plan). If using a driver adapter, lower the adapter's `max` pool size.
+1. **Creating a new database client per request.** Prisma Client should be instantiated once and reused across requests. In serverless environments, instantiate the client outside the handler function so it persists across warm invocations.
+2. **Too many concurrent serverless instances.** Each function instance holds its own connection(s). If your platform auto-scales to 200 instances and your plan allows 50 pooled connections, you will hit the limit. Cap concurrency at the platform level or upgrade your plan.
+3. **Using the direct hostname for application traffic.** Direct connection limits are much lower (10–100 depending on plan). Switch application traffic to `pooled.db.prisma.io`.
 
-### Migration fails with lock, session, or prepared statement error
+### Migration fails with lock, session, or prepared statement errors
 
-**Cause:** The pooled connection string was used for migrations. The pooler drops session state between transactions, which can cause advisory lock failures, session errors, or `prepared statement "s0" already exists` errors.
-
-**Fix:** Set `DIRECT_URL` in `.env` to the direct connection string (`db.prisma.io`, not `pooled.db.prisma.io`). Confirm your `prisma.config.ts` uses `env("DIRECT_URL")` for the datasource URL.
+The pooled connection string was used for a migration or admin workflow that requires session continuity. Switch to the direct hostname (`db.prisma.io`) for all Prisma CLI commands and admin tooling.
 
 ### Session state not persisting between queries
 
-**Cause:** The pooled connection string is being used for a workload that requires session state: `SET` commands, advisory locks outside a transaction.
-
-**Fix:** Use the direct connection string for that workload.
+Expected behavior in transactional pool mode. The pooler returns the backend connection to the pool after each transaction, so `SET` commands, temporary tables, and prepared statements do not carry over. Use a direct connection for session-dependent workloads.
 
 ### Query killed after 10 minutes
 
-**Cause:** Pooled connections enforce a 10-minute query timeout.
-
-**Fix:** Break the query into smaller batches, or run it over the [direct connection string](/postgres/database/direct-connections).
-
+Pooled connections enforce a 10-minute query timeout. Break the query into smaller batches, or run it over a direct connection where no timeout is enforced.
