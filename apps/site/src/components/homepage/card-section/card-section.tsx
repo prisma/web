@@ -1,9 +1,10 @@
 "use client";
 
 import { LogoGrid } from "./logo-grid";
+import { ReactNode } from "react";
 
 interface TwoColumnItem {
-  content: any[];
+  content: ReactNode;
   imageUrl: string | null;
   imageAlt: string | null;
   mobileImageUrl: string | null;
