@@ -1,6 +1,5 @@
 "use client";
 
-import clsx from "clsx";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Action } from "@prisma/eclipse";
@@ -62,7 +61,7 @@ interface BentoProps {
 
 const HeroContent = ({ className = "" }: { className?: string }) => (
   <div
-    className={clsx(
+    className={cn(
       "flex flex-col items-center justify-center text-center opacity-0 scale-95 mx-auto mb-10",
       className,
     )}
@@ -247,7 +246,7 @@ const Card = ({ card, isVisible }: CardProps) => {
       href={card.link}
       target="_blank"
       rel="noopener noreferrer"
-      className={clsx(
+      className={cn(
         "box",
         "md:w-[32%] sm:w-full",
         isCenterCard && "w-full md:order-none",

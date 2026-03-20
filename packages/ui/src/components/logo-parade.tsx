@@ -1,5 +1,4 @@
 import clsx from "clsx";
-import Image from "next/image";
 
 const LogoParadeItem = ({
   logo,
@@ -32,7 +31,7 @@ const LogoParadeItem = ({
       style={{ minWidth: `${logo.width}px` }}
     >
       <LogoParadeWrapper href={clickable ? logo.url || false : false}>
-        <Image
+        <img
           className={clsx(
             !noFilter &&
               "grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all",
