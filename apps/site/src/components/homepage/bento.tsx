@@ -5,76 +5,6 @@ import Link from "next/link";
 import { Action } from "@prisma/eclipse";
 import { cn } from "@prisma-docs/ui/lib/cn";
 import { useTheme } from "@prisma-docs/ui/components/theme-provider";
-// Inline Icon component
-const Icon = ({
-  icon,
-  size,
-  color,
-}: {
-  icon: string;
-  size: string;
-  color: string;
-}) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <text
-      x="50%"
-      y="50%"
-      dominantBaseline="middle"
-      textAnchor="middle"
-      fill={color}
-      fontSize="14"
-    >
-      {icon}
-    </text>
-  </svg>
-);
-
-// Dynamic SVG component that imports and renders SVG files directly
-const DynamicSVG = ({
-  src,
-  className,
-}: {
-  src: string;
-  className?: string;
-}) => {
-  const [SvgComponent, setSvgComponent] =
-    useState<React.ComponentType<any> | null>(null);
-  const [error, setError] = useState(false);
-
-  useEffect(() => {
-    // Extract the SVG path (e.g., "/illustrations/home-page/image.svg")
-    // and convert it to a dynamic import path
-    const loadSvg = async () => {
-      try {
-        // Remove leading slash and file extension
-        const svgPath = src.replace(/^\//, "").replace(/\.svg$/, "");
-
-        // Try to import the SVG as a React component
-        // This assumes SVGs are in the public folder or imported as modules
-        const module = await import(`@/../public/${svgPath}.svg`);
-        setSvgComponent(() => module.default);
-      } catch (err) {
-        console.warn(`Could not load SVG as component: ${src}`, err);
-        setError(true);
-      }
-    };
-
-    loadSvg();
-  }, [src]);
-
-  // Fallback to img tag if dynamic import fails
-  if (error || !SvgComponent) {
-    return <img src={src} alt="" className={className} />;
-  }
-
-  return <SvgComponent className={className} />;
-};
 
 interface CardData {
   id: string;
@@ -257,6 +187,11 @@ const Card = ({ card, isVisible }: CardProps) => {
   const cardRef = useRef<HTMLAnchorElement>(null);
   const isCenterCard = ["4", "5"].includes(card.id);
   const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -312,9 +247,10 @@ const Card = ({ card, isVisible }: CardProps) => {
         </div>
       </div>
       {card.image && (
+        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={
-            resolvedTheme === "light"
+            mounted && resolvedTheme === "light"
               ? `${card.image}_light.svg`
               : `${card.image}.svg`
           }

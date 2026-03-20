@@ -9,8 +9,38 @@ import { CopyCode } from "@/components/homepage/copy-btn";
 import LogoParade from "@prisma-docs/ui/components/logo-parade";
 import React from "react";
 import { Bento } from "@/components/homepage/bento";
+import { CardSection } from "@/components/homepage/card-section/card-section";
 const MemorizedLogoParade = React.memo(LogoParade);
 
+const twoCol = [
+  {
+    content: (
+      <>
+        <h2 className="text-foreground-neutral stretch-display text-4xl font-black! font-sans-display mt-0 mb-4">
+          Postgres that fits your stack.
+        </h2>
+        <p className="text-foreground-neutral-weak! text-base">
+          Works with your existing stack, wherever you deploy.Your choice of
+          ORM, frameworks, and tools, they all just connect.
+        </p>
+      </>
+    ),
+    useDefaultLogos: true,
+    visualPosition: "right",
+    visualType: "logoGrid",
+  },
+  {
+    content: (
+      <>
+        <h2></h2>
+        <p></p>
+      </>
+    ),
+    useDefaultLogos: false,
+    visualPosition: "left",
+    visualType: "image",
+  },
+];
 export const metadata: Metadata = {
   title: SITE_HOME_TITLE,
   description: SITE_HOME_DESCRIPTION,
@@ -69,54 +99,63 @@ export default function SiteHome() {
         </div>
       </div>
       <div className="logo-parade"></div>
-      <Bento
-        bentoSection={{
-          boxes: [
-            {
-              title: "MCP Server",
-              subtitle: "Use AI to configure and manage databases.",
-              imageUrl: "/illustrations/homepage/mcp",
-              imageAlt: "MCP server",
-              icon: "fa-light fa-cloud-arrow-up",
-              link: "/mcp",
-            },
-            {
-              title: "Manage databases",
-              subtitle:
-                "Create, manage and explore databases directly in your IDE.",
-              imageUrl: "/illustrations/homepage/ide",
-              imageAlt: "IDE",
-              icon: "fa-light fa-screwdriver-wrench",
-              link: "https://marketplace.visualstudio.com/items?itemName=Prisma.prisma",
-            },
-            {
-              title: "Type-safety",
-              subtitle: "Code faster with auto-completion and type safety.",
-              imageUrl: "/illustrations/homepage/typesafe",
-              imageAlt: "Type-safe queries",
-              icon: "fa-light fa-message-text",
-              link: "https://prisma.io/docs/orm/prisma-client/type-safety",
-            },
-            {
-              title: "Work collaboratively",
-              subtitle: "Manage projects and databases with your team.",
-              imageUrl: "/illustrations/homepage/collaborative",
-              imageAlt: "Collaborative work",
-              icon: "fa-light fa-screen-users",
-              link: "https://console.prisma.io",
-            },
-            {
-              title: "Browse your data",
-              subtitle:
-                "Explore, filter, and edit your data with an interface.",
-              imageUrl: "/illustrations/homepage/data",
-              imageAlt: "Data browsing",
-              icon: "fa-light fa-magnifying-glass-arrow-right",
-              link: "/studio",
-            },
-          ],
-        }}
-      />
+      <div>
+        <div className="my-12">
+          <Bento
+            bentoSection={{
+              boxes: [
+                {
+                  title: "MCP Server",
+                  subtitle: "Use AI to configure and manage databases.",
+                  imageUrl: "/illustrations/homepage/mcp",
+                  imageAlt: "MCP server",
+                  icon: "fa-light fa-cloud-arrow-up",
+                  link: "/mcp",
+                },
+                {
+                  title: "Manage databases",
+                  subtitle:
+                    "Create, manage and explore databases directly in your IDE.",
+                  imageUrl: "/illustrations/homepage/ide",
+                  imageAlt: "IDE",
+                  icon: "fa-light fa-screwdriver-wrench",
+                  link: "https://marketplace.visualstudio.com/items?itemName=Prisma.prisma",
+                },
+                {
+                  title: "Type-safety",
+                  subtitle: "Code faster with auto-completion and type safety.",
+                  imageUrl: "/illustrations/homepage/typesafe",
+                  imageAlt: "Type-safe queries",
+                  icon: "fa-light fa-message-text",
+                  link: "https://prisma.io/docs/orm/prisma-client/type-safety",
+                },
+                {
+                  title: "Work collaboratively",
+                  subtitle: "Manage projects and databases with your team.",
+                  imageUrl: "/illustrations/homepage/collaborative",
+                  imageAlt: "Collaborative work",
+                  icon: "fa-light fa-screen-users",
+                  link: "https://console.prisma.io",
+                },
+                {
+                  title: "Browse your data",
+                  subtitle:
+                    "Explore, filter, and edit your data with an interface.",
+                  imageUrl: "/illustrations/homepage/data",
+                  imageAlt: "Data browsing",
+                  icon: "fa-light fa-magnifying-glass-arrow-right",
+                  link: "/studio",
+                },
+              ],
+            }}
+          />
+        </div>
+      </div>
+      <div>
+        <div className="my-12">
+          <CardSection cardSection={twoCol} />
+        </div>
+      </div>
     </main>
   );
 }

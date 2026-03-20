@@ -18,21 +18,16 @@ interface CardSectionProps {
   cardSection: TwoColumnItem[];
 }
 
-const PortableTextPulse = ({ value }: { value: any[] }) => {
-  // Placeholder component - implement based on your needs
-  return <div>{JSON.stringify(value)}</div>;
-};
-
 export const CardSection = ({ cardSection }: CardSectionProps) => {
   return (
-    <div className="max-w-[1240px] mx-auto mt-8 px-6 overflow-visible text-white [&_p]:text-[#E2E8F0]">
+    <div className="max-w-[1240px] mx-auto mt-8 px-6 overflow-visible">
       {cardSection.map((item, index) => (
         <section
           key={index}
           className="py-16 lg:py-12 md:py-8 sm:py-6 w-full overflow-visible"
         >
           <div
-            className={`flex gap-16 lg:flex-col lg:gap-12 md:gap-8 sm:gap-6 items-center overflow-visible ${
+            className={`flex gap-16 lg:gap-12 md:gap-8 sm:gap-6 items-center overflow-visible ${
               item.visualPosition === "left"
                 ? "flex-row-reverse lg:flex-col"
                 : ""
@@ -45,7 +40,7 @@ export const CardSection = ({ cardSection }: CardSectionProps) => {
                   : "flex-1 min-w-0 overflow-visible w-full"
               }
             >
-              <PortableTextPulse value={item.content} />
+              {item.content}
             </div>
             <div className="flex-1 min-w-0 overflow-visible w-full">
               {item.visualType === "logoGrid" && item.useDefaultLogos && (

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useState, useRef, useEffect, useCallback, memo } from "react";
-
+import defaultLogosData from "./default-logos.json";
 // Inline keyframe animations
 const AnimationStyles = () => (
   <style jsx global>{`
@@ -51,7 +51,7 @@ const LogoBar = ({
           <a
             key={`${logo.alt}-${index}`}
             href={logo.link}
-            className="w-[85px] h-[85px] md:w-[60px] md:h-[60px] flex-shrink-0 rounded-xl z-[1] bg-[#090A15] border border-white/10 flex items-center justify-center p-3 md:p-2 transition-[opacity_0.2s_ease,filter_0.2s_ease,transform_0.2s_ease,background_0.2s_ease,border-color_0.2s_ease] cursor-pointer opacity-80 mr-6 md:mr-2 hover:bg-white/8 hover:border-[#16A394] hover:shadow-[0_4px_12px_rgba(22,163,148,0.2)] hover:opacity-100"
+            className="w-[85px] h-[85px] md:w-[60px] md:h-[60px] flex-shrink-0 rounded-xl z-[1] bg-background-default border border-white/10 flex items-center justify-center p-3 md:p-2 transition-[opacity_0.2s_ease,filter_0.2s_ease,transform_0.2s_ease,background_0.2s_ease,border-color_0.2s_ease] cursor-pointer opacity-80 mr-6 md:mr-2  hover:border-[#16A394] hover:opacity-100"
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -62,29 +62,6 @@ const LogoBar = ({
     </div>
   );
 };
-
-// Default logos data
-const defaultLogosData: Logo[] = [
-  { imageUrl: "/logos/vercel.svg", link: "https://vercel.com", alt: "Vercel" },
-  { imageUrl: "/logos/next.svg", link: "https://nextjs.org", alt: "Next.js" },
-  { imageUrl: "/logos/react.svg", link: "https://react.dev", alt: "React" },
-  {
-    imageUrl: "/logos/typescript.svg",
-    link: "https://typescriptlang.org",
-    alt: "TypeScript",
-  },
-  {
-    imageUrl: "/logos/tailwind.svg",
-    link: "https://tailwindcss.com",
-    alt: "Tailwind CSS",
-  },
-  {
-    imageUrl: "/logos/postgres.svg",
-    link: "https://postgresql.org",
-    alt: "PostgreSQL",
-  },
-  { imageUrl: "/logos/prisma.svg", link: "https://prisma.io", alt: "Prisma" },
-];
 
 // ============================================================================
 // TYPES
@@ -283,7 +260,7 @@ const SpotlightMode = memo(
         {/* Gradient background - desktop/tablet only or static on mobile */}
         {!isMobile && !isTablet && (
           <div
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 translate-z-0 w-[350px] h-[350px] md:w-[300px] md:h-[300px] rounded-full bg-[radial-gradient(circle,#092A28_0%,#090A15_100%)] blur-[50px] md:blur-[40px] pointer-events-none z-0 will-change-[top,left,transform] [backface-visibility:hidden] [-webkit-backface-visibility:hidden] [perspective:1000px] [-webkit-perspective:1000px] isolate"
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 translate-z-0 w-[350px] h-[350px] md:w-[300px] md:h-[300px] rounded-full blur-[50px] bg-background-ppg-strong md:blur-[40px] pointer-events-none z-0 will-change-[top,left,transform] [backface-visibility:hidden] [-webkit-backface-visibility:hidden] [perspective:1000px] [-webkit-perspective:1000px] isolate"
             style={{
               left: `${gradientPosition.x}%`,
               top: `${gradientPosition.y}%`,
@@ -301,7 +278,7 @@ const SpotlightMode = memo(
         )}
 
         {/* Logo grid */}
-        <div className="grid grid-cols-7 md:grid-cols-5 gap-4 lg:gap-2 md:gap-1 relative py-2 pr-0 pl-8 md:px-6 [mask-image:radial-gradient(ellipse_75%_75%_at_50%_50%,black_30%,rgba(0,0,0,0.9)_50%,rgba(0,0,0,0.6)_70%,rgba(0,0,0,0.2)_85%,transparent_100%)] [-webkit-mask-image:radial-gradient(ellipse_75%_75%_at_50%_50%,black_30%,rgba(0,0,0,0.9)_50%,rgba(0,0,0,0.6)_70%,rgba(0,0,0,0.2)_85%,transparent_100%)] lg:[mask-image:radial-gradient(ellipse_70%_70%_at_50%_50%,black_25%,rgba(0,0,0,0.9)_50%,rgba(0,0,0,0.5)_75%,rgba(0,0,0,0.2)_90%,transparent_100%)] lg:[-webkit-mask-image:radial-gradient(ellipse_70%_70%_at_50%_50%,black_25%,rgba(0,0,0,0.9)_50%,rgba(0,0,0,0.5)_75%,rgba(0,0,0,0.2)_90%,transparent_100%)] z-[1]">
+        <div className="grid grid-cols-7 gap-4 lg:gap-2 md:gap-1 relative py-2 pr-0 pl-8 md:px-6 [mask-image:radial-gradient(ellipse_75%_75%_at_50%_50%,black_30%,rgba(0,0,0,0.9)_50%,rgba(0,0,0,0.6)_70%,rgba(0,0,0,0.2)_85%,transparent_100%)] [-webkit-mask-image:radial-gradient(ellipse_75%_75%_at_50%_50%,black_30%,rgba(0,0,0,0.9)_50%,rgba(0,0,0,0.6)_70%,rgba(0,0,0,0.2)_85%,transparent_100%)] lg:[mask-image:radial-gradient(ellipse_70%_70%_at_50%_50%,black_25%,rgba(0,0,0,0.9)_50%,rgba(0,0,0,0.5)_75%,rgba(0,0,0,0.2)_90%,transparent_100%)] lg:[-webkit-mask-image:radial-gradient(ellipse_70%_70%_at_50%_50%,black_25%,rgba(0,0,0,0.9)_50%,rgba(0,0,0,0.5)_75%,rgba(0,0,0,0.2)_90%,transparent_100%)] z-[1]">
           {logos.map((logo, index) => {
             const opacity =
               isMobile || isTablet ? 1 : (logoOpacities[index] ?? 0.2);
@@ -337,7 +314,7 @@ const SpotlightMode = memo(
                   logoRefs.current[index] = el;
                 }}
                 href={logo.link}
-                className={`w-full aspect-square rounded-xl z-[1] bg-[#090A15] border border-white/10 flex items-center justify-center p-4 md:p-3 transition-[opacity_0.2s_ease,filter_0.2s_ease,transform_0.2s_ease,background_0.2s_ease,border-color_0.2s_ease] cursor-pointer will-change-[opacity,filter] hover:bg-white/8 hover:border-[#16A394] hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(22,163,148,0.2)] active:translate-y-0 lg:opacity-100 lg:filter-none ${getMobileTransform()} ${getDesktopMargin()}`}
+                className={`w-full aspect-square rounded-xl z-[1] bg-background-default border border-white/10 flex items-center justify-center p-4 md:p-3 transition-[opacity_0.2s_ease,filter_0.2s_ease,transform_0.2s_ease,background_0.2s_ease,border-color_0.2s_ease] cursor-pointer will-change-[opacity,filter]  hover:border-[#16A394] hover:-translate-y-0.5  active:translate-y-0 lg:opacity-100 lg:filter-none ${getMobileTransform()} ${getDesktopMargin()}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={
