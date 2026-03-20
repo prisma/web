@@ -15,7 +15,7 @@ pnpm install
 pnpm dev
 ```
 
-Runs on **http://localhost:3002** (docs is 3000, blog is 3001).
+Runs on **http://localhost:3003** (site is 3000, docs is 3001, blog is 3002).
 
 ## Structure
 
