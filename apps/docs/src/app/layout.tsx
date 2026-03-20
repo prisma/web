@@ -45,6 +45,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           src="https://ingest.promptwatch.com/js/client.min.js"
           strategy="afterInteractive"
           data-project-id="25f18e15-6306-4faa-b5c2-8078804778ac"
+          data-cookieyes="cookieyes-analytics"
         />
       </head>
       <body className="flex flex-col min-h-screen">
@@ -53,6 +54,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           async
           src="https://cdn.tolt.io/tolt.js"
           data-tolt="fda67739-7ed0-42d2-b716-6da0edbec191"
+          data-cookieyes="cookieyes-analytics"
         />
         <Script
           async
