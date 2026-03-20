@@ -17,7 +17,7 @@ const twoCol = [
     content: (
       <>
         <h2 className="text-foreground-neutral stretch-display text-4xl font-black! font-sans-display mt-0 mb-4">
-          Postgres that fits your stack.
+          Postgres that fits your stack.
         </h2>
         <p className="text-foreground-neutral-weak! text-base">
           Works with your existing stack, wherever you deploy.Your choice of
@@ -25,9 +25,14 @@ const twoCol = [
         </p>
       </>
     ),
+    imageUrl: null,
+    imageAlt: null,
+    mobileImageUrl: null,
+    mobileImageAlt: null,
+    logos: null,
     useDefaultLogos: true,
-    visualPosition: "right",
-    visualType: "logoGrid",
+    visualPosition: "right" as const,
+    visualType: "logoGrid" as const,
   },
 ];
 export const metadata: Metadata = {
