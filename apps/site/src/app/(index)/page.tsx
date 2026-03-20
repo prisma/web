@@ -29,17 +29,6 @@ const twoCol = [
     visualPosition: "right",
     visualType: "logoGrid",
   },
-  {
-    content: (
-      <>
-        <h2></h2>
-        <p></p>
-      </>
-    ),
-    useDefaultLogos: false,
-    visualPosition: "left",
-    visualType: "image",
-  },
 ];
 export const metadata: Metadata = {
   title: SITE_HOME_TITLE,
