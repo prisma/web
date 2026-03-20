@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Action } from "@prisma/eclipse";
 import { cn } from "@prisma-docs/ui/lib/cn";
+import { useTheme } from "@prisma-docs/ui/components/theme-provider";
 // Inline Icon component
 const Icon = ({
   icon,
@@ -33,6 +34,47 @@ const Icon = ({
     </text>
   </svg>
 );
+
+// Dynamic SVG component that imports and renders SVG files directly
+const DynamicSVG = ({
+  src,
+  className,
+}: {
+  src: string;
+  className?: string;
+}) => {
+  const [SvgComponent, setSvgComponent] =
+    useState<React.ComponentType<any> | null>(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    // Extract the SVG path (e.g., "/illustrations/home-page/image.svg")
+    // and convert it to a dynamic import path
+    const loadSvg = async () => {
+      try {
+        // Remove leading slash and file extension
+        const svgPath = src.replace(/^\//, "").replace(/\.svg$/, "");
+
+        // Try to import the SVG as a React component
+        // This assumes SVGs are in the public folder or imported as modules
+        const module = await import(`@/../public/${svgPath}.svg`);
+        setSvgComponent(() => module.default);
+      } catch (err) {
+        console.warn(`Could not load SVG as component: ${src}`, err);
+        setError(true);
+      }
+    };
+
+    loadSvg();
+  }, [src]);
+
+  // Fallback to img tag if dynamic import fails
+  if (error || !SvgComponent) {
+    return <img src={src} alt="" className={className} />;
+  }
+
+  return <SvgComponent className={className} />;
+};
 
 interface CardData {
   id: string;
@@ -214,6 +256,7 @@ interface CardProps {
 const Card = ({ card, isVisible }: CardProps) => {
   const cardRef = useRef<HTMLAnchorElement>(null);
   const isCenterCard = ["4", "5"].includes(card.id);
+  const { resolvedTheme } = useTheme();
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -270,7 +313,11 @@ const Card = ({ card, isVisible }: CardProps) => {
       </div>
       {card.image && (
         <img
-          src={card.image}
+          src={
+            resolvedTheme === "light"
+              ? `${card.image}_light.svg`
+              : `${card.image}.svg`
+          }
           alt={card.title}
           className="px-4 z-2 pt-0 pb-0 min-w-full min-h-[60%] object-contain object-[top_left] [mask-image:linear-gradient(to_bottom,rgba(0,0,0,1)_60%,transparent_90%)] [-webkit-mask-image:linear-gradient(to_bottom,rgba(0,0,0,1)_60%,transparent_90%)]"
         />

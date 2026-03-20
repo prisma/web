@@ -75,7 +75,7 @@ export default function SiteHome() {
             {
               title: "MCP Server",
               subtitle: "Use AI to configure and manage databases.",
-              imageUrl: "/illustrations/homepage/mcp.svg",
+              imageUrl: "/illustrations/homepage/mcp",
               imageAlt: "MCP server",
               icon: "fa-light fa-cloud-arrow-up",
               link: "/mcp",
@@ -84,7 +84,7 @@ export default function SiteHome() {
               title: "Manage databases",
               subtitle:
                 "Create, manage and explore databases directly in your IDE.",
-              imageUrl: "/illustrations/homepage/ide.svg",
+              imageUrl: "/illustrations/homepage/ide",
               imageAlt: "IDE",
               icon: "fa-light fa-screwdriver-wrench",
               link: "https://marketplace.visualstudio.com/items?itemName=Prisma.prisma",
@@ -92,7 +92,7 @@ export default function SiteHome() {
             {
               title: "Type-safety",
               subtitle: "Code faster with auto-completion and type safety.",
-              imageUrl: "/illustrations/homepage/typesafe.svg",
+              imageUrl: "/illustrations/homepage/typesafe",
               imageAlt: "Type-safe queries",
               icon: "fa-light fa-message-text",
               link: "https://prisma.io/docs/orm/prisma-client/type-safety",
@@ -100,7 +100,7 @@ export default function SiteHome() {
             {
               title: "Work collaboratively",
               subtitle: "Manage projects and databases with your team.",
-              imageUrl: "/illustrations/homepage/collaborative.svg",
+              imageUrl: "/illustrations/homepage/collaborative",
               imageAlt: "Collaborative work",
               icon: "fa-light fa-screen-users",
               link: "https://console.prisma.io",
@@ -109,7 +109,7 @@ export default function SiteHome() {
               title: "Browse your data",
               subtitle:
                 "Explore, filter, and edit your data with an interface.",
-              imageUrl: "/illustrations/homepage/data.svg",
+              imageUrl: "/illustrations/homepage/data",
               imageAlt: "Data browsing",
               icon: "fa-light fa-magnifying-glass-arrow-right",
               link: "/studio",
