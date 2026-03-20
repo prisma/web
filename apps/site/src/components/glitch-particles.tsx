@@ -124,6 +124,7 @@ export default function GlitchParticles({
 
     // — Animation loop —
     function animate() {
+      if (!ctx) return;
       ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
       const repelRadius = isPressed ? 200 : 80;
