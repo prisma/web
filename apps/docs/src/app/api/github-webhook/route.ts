@@ -31,7 +31,20 @@ export async function POST(req: Request) {
 
   const pr = body.pull_request;
 
-  if (["OWNER", "MEMBER", "COLLABORATOR"].includes(pr.author_association)) {
+  const isMember = pr.author_association === "MEMBER";
+
+  const teamRes = await fetch(
+    `https://api.github.com/orgs/prisma/teams/dev-connections-write/memberships/${pr.user.login}`,
+    {
+      headers: {
+        Authorization: `Bearer ${process.env.BOT_TOKEN_PR_LINEAR_WEBHOOK!}`,
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+    }
+  );
+  const isTeamMember = teamRes.status === 200;
+  
+  if (isMember || isTeamMember) {
     return new Response("Internal contributor, skipping", { status: 200 });
   }
 
