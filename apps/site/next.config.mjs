@@ -216,9 +216,6 @@ const config = {
   reactStrictMode: true,
   images: { unoptimized: true },
   transpilePackages: ["@prisma/eclipse"],
-  experimental: {
-    globalNotFound: true,
-  },
   async headers() {
     return [
       {
