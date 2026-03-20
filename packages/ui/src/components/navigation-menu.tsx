@@ -66,7 +66,7 @@ function NavigationWrapper({
   return (
     <div
       className={cn(
-        "transition-navbar max-w-7xl w-full mx-auto py-3 px-6 shadow-box-high bg-background-neutral-weaker rounded-square-high flex justify-between align-center",
+        "transition-navbar max-w-7xl w-full mx-auto py-3 px-6 shadow-box-high bg-background-default/50 [backdrop-filter:blur(3))] rounded-square-high flex justify-between align-center",
         mobileOpen &&
           "py-7 px-10 rounded-none md:py-3! md:px-6! md:rounded-square-high",
         className,
@@ -109,7 +109,7 @@ function NavigationMenuItem({
 }
 
 const navigationMenuTriggerStyle = cva(
-  "bg-background-neutral-weaker hover:bg-background-ppg-strong focus:bg-background-ppg-strong data-open:hover:bg-background-ppg-strong data-open:focus:bg-background-ppg-strong data-open:bg-background-ppg-strong focus-visible:ring-ring/50 data-popup-open:bg-background-ppg-strong data-popup-open:hover:bg-background-ppg-strong rounded-none! px-2.5 py-1.5 text-base font-semibold transition-all focus-visible:ring-1 focus-visible:outline-1 disabled:opacity-50 group/navigation-menu-trigger inline-flex h-9 w-max items-center justify-center disabled:pointer-events-none outline-none md:rounded-square! md:overflow-hidden cursor-pointer",
+  "bg-transparent hover:bg-background-ppg-strong focus:bg-background-ppg-strong data-open:hover:bg-background-ppg-strong data-open:focus:bg-background-ppg-strong data-open:bg-background-ppg-strong focus-visible:ring-ring/50 data-popup-open:bg-background-ppg-strong data-popup-open:hover:bg-background-ppg-strong rounded-none! px-2.5 py-1.5 text-base font-semibold transition-all focus-visible:ring-1 focus-visible:outline-1 disabled:opacity-50 group/navigation-menu-trigger inline-flex h-9 w-max items-center justify-center disabled:pointer-events-none outline-none md:rounded-square! md:overflow-hidden cursor-pointer",
 );
 
 function NavigationMenuTrigger({

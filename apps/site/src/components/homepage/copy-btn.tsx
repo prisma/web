@@ -26,7 +26,7 @@ export const CopyCode = ({
   return (
     <TooltipProvider>
       <Tooltip>
-        <TooltipTrigger>
+        <TooltipTrigger asChild>
           <Button
             variant="default-stronger"
             size="3xl"

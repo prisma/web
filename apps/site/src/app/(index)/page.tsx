@@ -6,6 +6,10 @@ import {
 } from "../../lib/blog-metadata";
 import { Button } from "@prisma/eclipse";
 import { CopyCode } from "@/components/homepage/copy-btn";
+import LogoParade from "@prisma-docs/ui/components/logo-parade";
+import React from "react";
+import { Bento } from "@/components/homepage/bento";
+const MemorizedLogoParade = React.memo(LogoParade);
 
 export const metadata: Metadata = {
   title: SITE_HOME_TITLE,
@@ -64,6 +68,55 @@ export default function SiteHome() {
           </div>
         </div>
       </div>
+      <div className="logo-parade"></div>
+      <Bento
+        bentoSection={{
+          boxes: [
+            {
+              title: "MCP Server",
+              subtitle: "Use AI to configure and manage databases.",
+              imageUrl: "/illustrations/homepage/mcp.svg",
+              imageAlt: "MCP server",
+              icon: "fa-light fa-cloud-arrow-up",
+              link: "/mcp",
+            },
+            {
+              title: "Manage databases",
+              subtitle:
+                "Create, manage and explore databases directly in your IDE.",
+              imageUrl: "/illustrations/homepage/ide.svg",
+              imageAlt: "IDE",
+              icon: "fa-light fa-screwdriver-wrench",
+              link: "https://marketplace.visualstudio.com/items?itemName=Prisma.prisma",
+            },
+            {
+              title: "Type-safety",
+              subtitle: "Code faster with auto-completion and type safety.",
+              imageUrl: "/illustrations/homepage/typesafe.svg",
+              imageAlt: "Type-safe queries",
+              icon: "fa-light fa-message-text",
+              link: "https://prisma.io/docs/orm/prisma-client/type-safety",
+            },
+            {
+              title: "Work collaboratively",
+              subtitle: "Manage projects and databases with your team.",
+              imageUrl: "/illustrations/homepage/collaborative.svg",
+              imageAlt: "Collaborative work",
+              icon: "fa-light fa-screen-users",
+              link: "https://console.prisma.io",
+            },
+            {
+              title: "Browse your data",
+              subtitle:
+                "Explore, filter, and edit your data with an interface.",
+              imageUrl: "/illustrations/homepage/data.svg",
+              imageAlt: "Data browsing",
+              icon: "fa-light fa-magnifying-glass-arrow-right",
+              link: "/studio",
+            },
+          ],
+        }}
+      />
     </main>
   );
 }
