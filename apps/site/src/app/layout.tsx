@@ -8,6 +8,7 @@ import { SITE_HOME_DESCRIPTION, SITE_HOME_TITLE } from "@/lib/blog-metadata";
 import { WebNavigation } from "@prisma-docs/ui/components/web-navigation";
 import { Footer } from "@prisma-docs/ui/components/footer";
 import { ThemeProvider } from "@prisma-docs/ui/components/theme-provider";
+import { FontAwesomeScript as WebFA } from "@prisma/eclipse";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -121,16 +122,9 @@ function baseOptions() {
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html
-      lang="en"
-      className={`${inter.variable}`}
-      suppressHydrationWarning
-    >
+    <html lang="en" className={`${inter.variable}`} suppressHydrationWarning>
       <head>
-        <Script
-          src="https://kit.fontawesome.com/6916e9db27.js"
-          crossOrigin="anonymous"
-        ></Script>
+        <Script src={WebFA} crossOrigin="anonymous" />
       </head>
       <body className="flex flex-col min-h-screen pt-24 relative">
         <div className="bg-blog absolute inset-0 -z-1 overflow-hidden" />

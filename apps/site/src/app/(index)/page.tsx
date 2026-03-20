@@ -1,5 +1,11 @@
+import Antigravity from "../../components/homepage/antigravity";
 import type { Metadata } from "next";
-import { SITE_HOME_DESCRIPTION, SITE_HOME_TITLE } from "../../lib/blog-metadata";
+import {
+  SITE_HOME_DESCRIPTION,
+  SITE_HOME_TITLE,
+} from "../../lib/blog-metadata";
+import { Button } from "@prisma/eclipse";
+import { CopyCode } from "@/components/homepage/copy-btn";
 
 export const metadata: Metadata = {
   title: SITE_HOME_TITLE,
@@ -8,14 +14,56 @@ export const metadata: Metadata = {
 
 export default function SiteHome() {
   return (
-    <main className="flex-1 w-full max-w-249 mx-auto px-4 py-12 z-1">
-      <h1 className="stretch-display text-4xl font-bold mb-4 text-center mt-9 font-sans-display">
-        Prisma Site
-      </h1>
-      <p className="text-center text-foreground-neutral-weak max-w-2xl mx-auto">
-        This app is the primary host zone. Content sections are served by their
-        own zones via routing rules.
-      </p>
+    <main className="flex-1 w-full z-1 bg-background-default">
+      <div className="hero h-123 -mt-24 flex items-end justify-center">
+        <div className="w-screen h-123 absolute inset-0">
+          <Antigravity
+            count={300}
+            magnetRadius={16}
+            ringRadius={15}
+            waveSpeed={2.6}
+            waveAmplitude={2.6}
+            particleSize={0.9}
+            lerpSpeed={0.02}
+            color="#14b8a6"
+            autoAnimate
+            particleVariance={1}
+            rotationSpeed={0}
+            depthFactor={2.6}
+            pulseSpeed={4.9}
+            particleShape="capsule"
+            fieldStrength={15.3}
+          />
+        </div>
+        <div className="content relative z-2 my-12 flex flex-col gap-8">
+          <h1 className="text-6xl [font-variation-settings:'wght'_900,'wdth'_125] mb-0 text-center mt-0 font-sans-display text-foreground-neutral">
+            Postgres, <br />
+            perfectly managed.
+          </h1>
+          <p className="text-center text-foreground-neutral max-w-2xl mx-auto">
+            Real Postgres with the developer experience and infrastructure to
+            ship faster.
+          </p>
+          <div className="flex gap-4 items-center justify-center">
+            <Button
+              variant="ppg"
+              href="/signup"
+              size="3xl"
+              className="font-sans-display! font-[650]"
+            >
+              <span>Create database</span>
+              <i className="fa-regular fa-database ml-2" />
+            </Button>
+            <CopyCode text="npx prisma init --db">
+              <span className="text-foreground-neutral-reverse-weak">$</span>
+              <span className="text-foreground-neutral-weak">
+                &nbsp;npx prisma init --db
+              </span>
+              <i className="fa-regular fa-copy ml-2" />
+            </CopyCode>
+          </div>
+        </div>
+      </div>
     </main>
   );
 }
