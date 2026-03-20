@@ -3,6 +3,8 @@
 import clsx from "clsx";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { Action } from "@prisma/eclipse";
+import { cn } from "@prisma-docs/ui/lib/cn";
 // Inline Icon component
 const Icon = ({
   icon,
@@ -254,10 +256,10 @@ const Card = ({ card, isVisible }: CardProps) => {
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
-      <div className="flex gap-4 text-xs py-4 px-0 mx-4 w-[calc(100%-2rem)] border-b border-[#161D2B]">
-        <div className="flex justify-center items-center w-8 flex-shrink-0 h-8 rounded-lg bg-[linear-gradient(360deg,#0B1A1E_0%,#0A0B16_100%)] border border-[#16A394] z-[2] shadow-[0px_-0.06px_1.12px_0px_#27EDA30B,0px_-0.13px_2.7px_0px_#27EDA30F,0px_-0.25px_5.08px_0px_#27EDA313]">
-          <i className={`${card.icon} text-[#71E8DF]`} />
-        </div>
+      <div className="flex gap-4 text-xs py-4 px-0 mx-4 w-[calc(100%-2rem)]">
+        <Action color="ppg" size="4xl">
+          <i className={cn("text-xl", card.icon)} />
+        </Action>
         <div className="z-2">
           <h2 className="text-foreground-neutral font-sans-display text-base mt-0 mb-1 font-bold">
             {card.title}
@@ -271,7 +273,7 @@ const Card = ({ card, isVisible }: CardProps) => {
         <img
           src={card.image}
           alt={card.title}
-          className="pl-4 z-2 pr-0 pt-0 pb-0 min-w-full min-h-[60%] object-cover object-[top_left] [mask-image:linear-gradient(to_bottom,rgba(0,0,0,1)_60%,transparent_90%)] [-webkit-mask-image:linear-gradient(to_bottom,rgba(0,0,0,1)_60%,transparent_90%)]"
+          className="px-4 z-2 pt-0 pb-0 min-w-full min-h-[60%] object-contain object-[top_left] [mask-image:linear-gradient(to_bottom,rgba(0,0,0,1)_60%,transparent_90%)] [-webkit-mask-image:linear-gradient(to_bottom,rgba(0,0,0,1)_60%,transparent_90%)]"
         />
       )}
     </Link>
