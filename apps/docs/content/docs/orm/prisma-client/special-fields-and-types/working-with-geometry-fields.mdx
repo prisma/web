@@ -45,6 +45,12 @@ model Location {
 
 The field definition follows the format `Geometry(GeometryType, SRID)`. You can make the field optional by adding `?` at the end, allowing records without a position.
 
+:::info
+
+For optimal performance with spatial queries, add a GIST spatial index on your geometry columns using a [customized migration](/orm/prisma-migrate/workflows/customizing-migrations). See the [Performance considerations](#spatial-indexes) section for details.
+
+:::
+
 ### Supported geometry types
 
 PostGIS supports the following geometry types with their coordinate formats:
@@ -254,7 +260,7 @@ const updated = await prisma.location.update({
 
 ### Omitting the SRID
 
-If you omit the `srid` field, the SRID defined in your schema will be used:
+The `srid` field is optional in the input geometry object. If omitted, PostGIS will use the SRID defined in your schema column:
 
 ```ts
 // Schema: position Geometry(Point, 4326)?
@@ -264,11 +270,17 @@ const location = await prisma.location.create({
     position: {
       type: "Point",
       coordinates: [13.4, 52.5],
-      // srid defaults to 4326 from schema
+      // srid defaults to 4326 from schema column definition
     },
   },
 });
 ```
+
+:::tip
+
+While the `srid` field is optional, it's recommended to always specify it explicitly for clarity and to catch coordinate system mismatches early during development.
+
+:::
 
 ## Filtering by geometry
 
@@ -325,9 +337,11 @@ const locationsInArea = await prisma.location.findMany({
 });
 ```
 
-**How it works:** This filter uses PostGIS `ST_Within` function to test if a geometry is fully contained within the polygon. For a point to match, it must be inside the polygon boundary (not on the edge).
+**How it works:** This filter uses PostGIS `ST_Within` function to test if a geometry is fully contained within the polygon. For a point to match, it must be strictly inside the polygon interior (points exactly on the boundary may not match).
 
-**When to use:** Use `within` when you need to validate if locations fall inside a specific area - for example, checking if a delivery address is in your service zone, or filtering properties within a neighborhood boundary.
+**When to use:** Use `within` when you need strict containment validation. If you need to include boundary touches, use `intersects` instead (which includes points on edges).
+
+**Difference from `intersects`:** `within` requires full containment (inside only), while `intersects` includes any spatial contact (inside, on boundary, or crossing).
 
 ### Filter by intersection - `intersects`
 
@@ -504,7 +518,7 @@ const nearbyRestaurants = await prisma.restaurant.findMany({
 
 ### Delivery zone validation
 
-Food delivery and logistics companies need to validate if a customer's address falls within their service area before accepting orders. This example stores delivery zones as polygons and checks if a given address point is within any zone:
+Food delivery and logistics companies need to validate if a customer's address falls within their service area before accepting orders. This example stores delivery zones as polygons and checks if a customer point intersects with any zone boundary:
 
 ```prisma
 model DeliveryZone {
@@ -518,29 +532,26 @@ model DeliveryZone {
 // Check if delivery is available at a customer's address
 const customerLocation = [2.35, 48.85]; // Paris coordinates from geocoding API
 
-// Create a small polygon around the customer's location
-// This checks if any delivery zone contains this point
+// Find zones that contain the customer's location
 const availableZones = await prisma.deliveryZone.findMany({
   where: {
     boundary: {
-      within: {
-        polygon: [
-          [customerLocation[0] - 0.001, customerLocation[1] - 0.001],
-          [customerLocation[0] - 0.001, customerLocation[1] + 0.001],
-          [customerLocation[0] + 0.001, customerLocation[1] + 0.001],
-          [customerLocation[0] + 0.001, customerLocation[1] - 0.001],
-          [customerLocation[0] - 0.001, customerLocation[1] - 0.001],
-        ],
+      intersects: {
+        geometry: {
+          type: "Point",
+          coordinates: customerLocation,
+        },
       },
     },
   },
 });
 
-// If we found zones, delivery is available
 const canDeliver = availableZones.length > 0;
 
 if (canDeliver) {
-  console.log(`Delivery available in zones: ${availableZones.map((z) => z.name).join(", ")}`);
+  console.log(
+    `Delivery available in zones: ${availableZones.map((z) => z.name).join(", ")}`
+  );
 } else {
   console.log("Sorry, we don't deliver to this address yet");
 }
@@ -606,7 +617,7 @@ console.log(`Found ${activitiesInPark.length} activities that went through the p
 
 ## TypeScript types
 
-Prisma Client automatically generates TypeScript types for your geometry fields. Since geometries are stored as JSON in the database and represented as GeoJSON objects in your code, Prisma uses `JsonValue` types for geometry fields:
+Prisma Client automatically generates TypeScript types for your geometry fields, providing full type safety for spatial operations:
 
 ```ts
 import { Prisma } from "@prisma/client";
@@ -617,48 +628,95 @@ import { Prisma } from "@prisma/client";
 // Input type (when creating/updating)
 type LocationCreateInput = {
   name: string;
-  position?: Prisma.InputJsonValue; // GeoJSON-like object
+  position?: Prisma.InputGeometry | null;
 };
 
 // Output type (when reading)
 type Location = {
   id: number;
   name: string;
-  position: Prisma.JsonValue | null; // GeoJSON object or null
+  position: Prisma.Geometry | null;
+};
+```
+
+### Available geometry types
+
+Prisma exports specific TypeScript interfaces for each geometry type:
+
+```ts
+import { Prisma } from "@prisma/client";
+
+// Prisma.InputGeometry - flexible input type for create/update
+const input: Prisma.InputGeometry = {
+  type: "Point",
+  coordinates: [13.4, 52.5],
+  srid: 4326,
+};
+
+// Prisma.Geometry - union type for query results
+// Can be: Prisma.Point | Prisma.LineString | Prisma.Polygon
+
+// Prisma.Point - specific point type
+const point: Prisma.Point = {
+  type: "Point",
+  coordinates: [13.4, 52.5], // [lon, lat] or [x, y, z]
+  srid: 4326,
+};
+
+// Prisma.LineString - line/route type
+const line: Prisma.LineString = {
+  type: "LineString",
+  coordinates: [
+    [13.4, 52.5],
+    [13.5, 52.6],
+  ],
+  srid: 4326,
+};
+
+// Prisma.Polygon - area/boundary type
+const polygon: Prisma.Polygon = {
+  type: "Polygon",
+  coordinates: [
+    [
+      [0, 0],
+      [0, 10],
+      [10, 10],
+      [10, 0],
+      [0, 0],
+    ],
+  ],
+  srid: 4326,
 };
 ```
 
 ### Working with geometry types
 
-You can use the `Prisma.JsonValue` type to work with geometry data:
+Use type narrowing to handle different geometry types in query results:
 
 ```ts
 import { Prisma } from "@prisma/client";
 
-// Type guard for geometry
-function isValidGeometry(value: Prisma.JsonValue): value is {
-  type: string;
-  coordinates: number[] | number[][] | number[][][];
-  srid: number;
-} {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "type" in value &&
-    "coordinates" in value &&
-    "srid" in value
-  );
-}
-
-// Usage
 const location = await prisma.location.findUnique({
   where: { id: 1 },
 });
 
-if (location?.position && isValidGeometry(location.position)) {
-  console.log(`Location type: ${location.position.type}`);
-  console.log(`Coordinates: ${location.position.coordinates}`);
-  console.log(`SRID: ${location.position.srid}`);
+if (location?.position) {
+  const geometry: Prisma.Geometry = location.position;
+
+  switch (geometry.type) {
+    case "Point":
+      const [lon, lat] = geometry.coordinates;
+      console.log(`Point at ${lon}, ${lat}`);
+      break;
+
+    case "LineString":
+      console.log(`Line with ${geometry.coordinates.length} points`);
+      break;
+
+    case "Polygon":
+      console.log(`Polygon with ${geometry.coordinates.length} rings`);
+      break;
+  }
 }
 ```
 
@@ -670,16 +728,27 @@ Geometry queries can be extremely fast or extremely slow depending on how you us
 
 PostGIS uses [GIST (Generalized Search Tree) indexes](https://postgis.net/workshops/postgis-intro/indexing.html) for efficient spatial queries. These indexes organize geometries spatially, allowing the database to quickly eliminate large portions of the dataset when searching for nearby or intersecting geometries.
 
-When you create a table with a geometry column, PostGIS automatically creates a GIST index:
+For optimal query performance, create GIST indexes on your geometry columns:
 
 ```sql
--- Automatically created by PostGIS
+-- Create a spatial index on the position column
 CREATE INDEX location_position_idx ON "Location" USING GIST (position);
+```
+
+You can add this index using a [customized migration](/orm/prisma-migrate/workflows/customizing-migrations):
+
+```bash
+# Create an empty migration
+npx prisma migrate dev --create-only
+
+# Add the CREATE INDEX statement to the generated SQL file
+# Then apply the migration
+npx prisma migrate dev
 ```
 
 :::tip
 
-All native geometry filters (`near`, `within`, `intersects`) are optimized to use GIST indexes, providing fast spatial queries even with millions of records.
+All native geometry filters (`near`, `within`, `intersects`) are optimized to use GIST indexes. Adding a GIST index can improve spatial query performance by 100-1000x on large datasets.
 
 :::
 
