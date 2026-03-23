@@ -70,9 +70,9 @@ function baseOptions() {
             icon: "fa-regular fa-message-code",
           },
           {
-            text: "Get started",
-            url: "https://www.prisma.io/docs",
-            icon: "fa-regular fa-book-open",
+            text: "Prisma Partners",
+            url: "/partners",
+            icon: "fa-regular fa-lightbulb",
           },
           {
             text: "Tutorials",
@@ -109,8 +109,8 @@ function baseOptions() {
         ],
       },
       {
-        url: "/partners",
-        text: "Partners",
+        url: "/docs",
+        text: "Docs",
       },
       {
         url: "https://www.prisma.io/blog",

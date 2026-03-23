@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useState, useRef, useEffect, useCallback, memo } from "react";
 import defaultLogosData from "./default-logos.json";
 import { cn } from "../../../lib/cn";
+import { useTheme } from "@prisma-docs/ui/components/theme-provider";
 
 // Inline keyframe animations
 const AnimationStyles = () => (
@@ -71,6 +72,7 @@ const LogoBar = ({
 
 interface Logo {
   imageUrl: string;
+  mobileImageUrl?: string;
   link: string;
   alt: string;
 }
@@ -117,12 +119,24 @@ const useResponsive = () => {
 // ============================================================================
 
 const LogoImage = memo(({ logo, size }: { logo: Logo; size: number }) => {
-  const isSvg = logo.imageUrl.endsWith(".svg");
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const imageUrl =
+    mounted && resolvedTheme === "light" && logo.mobileImageUrl
+      ? logo.mobileImageUrl
+      : logo.imageUrl;
+
+  const isSvg = imageUrl.endsWith(".svg");
   const ImageComponent = isSvg ? Image : "img";
 
   return (
     <ImageComponent
-      src={logo.imageUrl}
+      src={imageUrl}
       alt={logo.alt}
       width={size}
       height={size}

@@ -1,8 +1,9 @@
 "use client";
 
 import { LogoGrid } from "./logo-grid";
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { cn } from "../../../lib/cn";
+import { useTheme } from "@prisma-docs/ui/components/theme-provider";
 
 interface TwoColumnItem {
   content: ReactNode;
@@ -21,6 +22,13 @@ interface CardSectionProps {
 }
 
 export const CardSection = ({ cardSection }: CardSectionProps) => {
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
     <div className="max-w-[1232px] mx-auto mt-8 px-4 overflow-visible">
       {cardSection.map((item, index) => (
@@ -57,13 +65,21 @@ export const CardSection = ({ cardSection }: CardSectionProps) => {
                 <>
                   <img
                     className="hidden sm:block w-full h-auto shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)]"
-                    src={item.imageUrl}
+                    src={
+                      mounted && resolvedTheme === "light"
+                        ? `${item.imageUrl}_light.svg`
+                        : `${item.imageUrl}.svg`
+                    }
                     alt={item.imageAlt || ""}
                   />
                   {item.mobileImageUrl && (
                     <img
                       className="w-full h-auto shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)] sm:hidden"
-                      src={item.mobileImageUrl}
+                      src={
+                        mounted && resolvedTheme === "light"
+                          ? `${item.mobileImageUrl}_light.svg`
+                          : `${item.mobileImageUrl}.svg`
+                      }
                       alt={item.mobileImageAlt || ""}
                     />
                   )}
