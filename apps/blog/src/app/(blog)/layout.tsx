@@ -52,7 +52,7 @@ export function baseOptions() {
           {
             text: "Prisma Partners",
             url: "/partners",
-            icon: "fa-regular fa-book-open",
+            icon: "fa-regular fa-lightbulb",
           },
           {
             text: "Tutorials",
