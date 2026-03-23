@@ -31,9 +31,10 @@ pnpm dev
 
 This starts all apps via Turbo:
 
-- **Docs** — http://localhost:3000  
-- **Blog** — http://localhost:3001  
-- **Eclipse** — http://localhost:3002  
+- **Site** — http://localhost:3000  
+- **Docs** — http://localhost:3001  
+- **Blog** — http://localhost:3002  
+- **Eclipse** — http://localhost:3003  
 
 To run a single app:
 

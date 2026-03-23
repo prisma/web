@@ -169,3 +169,12 @@ export {
   SelectTrigger,
   SelectValue,
 } from "./select";
+
+export {
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  EmptyDescription,
+  EmptyContent,
+  EmptyMedia,
+} from "./empty";

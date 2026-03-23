@@ -15,7 +15,7 @@ pnpm install
 pnpm dev
 ```
 
-Runs on **http://localhost:3001** (docs is 3000, eclipse is 3002).
+Runs on **http://localhost:3002** (site is 3000, docs is 3001, eclipse is 3003).
 
 ## Structure
 
