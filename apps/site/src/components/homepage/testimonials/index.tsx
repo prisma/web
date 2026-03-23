@@ -71,7 +71,7 @@ const Testimonials = ({ list, noShadow, mask }: TestimonialsType) => {
   const [tabletCol1, tabletCol2] = getTabletSlices(list);
 
   const gridClasses = cn(
-    "grid max-w-full gap-[30px] relative",
+    "grid max-w-full gap-4 relative",
     !noShadow &&
       "before:content-[''] before:absolute before:top-0 before:left-0 before:w-full before:h-[30%] before:pointer-events-none before:z-[1] before:bg-gradient-to-b before:from-[#0B0C17] before:to-[rgba(11,12,23,0)]",
     !noShadow &&

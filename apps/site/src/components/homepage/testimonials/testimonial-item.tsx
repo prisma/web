@@ -27,11 +27,11 @@ export const TestimonialItem = ({
   <div
     {...rest}
     className={cn(
-      "text-foreground-neutral p-6 my-3 font-[family-name:var(--barlow)] font-normal text-lg bg-surface-primary border border-border-primary rounded-[10px] leading-[25.2px]",
+      "text-foreground-neutral p-3 my-2 font-[family-name:var(--barlow)] font-normal text-lg bg-surface-primary border border-border-primary rounded-[10px] leading-[25.2px]",
       startups && "grid m-0",
     )}
   >
-    <div className="text-foreground-neutral-weak">
+    <div className="text-foreground-neutral italic text-md font-[375]">
       {typeof text === "string" ? parse(text) : text}
     </div>
     <div className="flex gap-4 items-center font-bold leading-[19.8px] tracking-[0.02em] mt-8">

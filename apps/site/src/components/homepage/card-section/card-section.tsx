@@ -57,14 +57,14 @@ export const CardSection = ({ cardSection }: CardSectionProps) => {
                 <>
                   <img
                     className="w-full h-auto shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)] sm:hidden"
-                    src={item.mobileImageUrl}
-                    alt={item.mobileImageAlt || ""}
+                    src={item.imageUrl}
+                    alt={item.imageAlt || ""}
                   />
                   {item.mobileImageUrl && (
                     <img
                       className="hidden sm:block w-full h-auto shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)]"
-                      src={item.imageUrl}
-                      alt={item.imageAlt || ""}
+                      src={item.mobileImageUrl}
+                      alt={item.mobileImageAlt || ""}
                     />
                   )}
                 </>
