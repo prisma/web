@@ -216,7 +216,7 @@ export default function SiteHome() {
           </div>
         </div>
       )}
-      <div className="bg-[url('/illustrations/homepage/footer_grid.svg')] bg-contain bg-center">
+      <div className="bg-[url('/illustrations/homepage/footer_grid.svg')] bg-contain bg-center before:inset-x-30 before:inset-y-[45%] before:absolute relative before:content-[''] before:pointer-events-none before:-z-1 rounded-full before:bg-teal-400 before:blur-[100px]">
         <div className="my-12 p-12">
           <div className="flex flex-col mx-auto w-fit items-center justify-center gap-8">
             <div className="flex flex-col items-center text-center gap-4">
@@ -232,7 +232,7 @@ export default function SiteHome() {
                 <span>Create your first Database</span>
                 <i className="fa-regular fa-arrow-right ml-2" />
               </Button>
-              <Button variant="default-strong" size="2xl" href="/pricing">
+              <Button variant="default-stronger" size="2xl" href="/pricing">
                 <span>Explore Pricing</span>
                 <i className="fa-regular fa-arrow-right ml-2" />
               </Button>
