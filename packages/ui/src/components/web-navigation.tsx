@@ -113,7 +113,11 @@ export function WebNavigation({ links, utm }: WebNavigationProps) {
                 </Button>
               </NavigationMenuItem>
               <NavigationMenuItem className="hidden sm:block">
-                <Button variant="ppg" className="whitespace-nowrap" href={signupHref}>
+                <Button
+                  variant="ppg"
+                  className="whitespace-nowrap"
+                  href={signupHref}
+                >
                   Get started
                 </Button>
               </NavigationMenuItem>

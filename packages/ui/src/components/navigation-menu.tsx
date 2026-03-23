@@ -109,7 +109,7 @@ function NavigationMenuItem({
 }
 
 const navigationMenuTriggerStyle = cva(
-  "bg-transparent hover:bg-background-ppg-strong focus:bg-background-ppg-strong data-open:hover:bg-background-ppg-strong data-open:focus:bg-background-ppg-strong data-open:bg-background-ppg-strong focus-visible:ring-ring/50 data-popup-open:bg-background-ppg-strong data-popup-open:hover:bg-background-ppg-strong rounded-none! px-2.5 py-1.5 text-base font-semibold transition-all focus-visible:ring-1 focus-visible:outline-1 disabled:opacity-50 group/navigation-menu-trigger inline-flex h-9 w-max items-center justify-center disabled:pointer-events-none outline-none md:rounded-square! md:overflow-hidden cursor-pointer",
+  "bg-transparent hover:bg-background-ppg-strong data-open:hover:bg-background-ppg-strong data-open:focus:bg-background-ppg-strong data-open:bg-background-ppg-strong focus-visible:ring-ring/50 data-popup-open:bg-background-ppg-strong data-popup-open:hover:bg-background-ppg-strong rounded-none! px-2.5 py-1.5 text-base font-semibold transition-all focus-visible:ring-1 focus-visible:outline-1 disabled:opacity-50 group/navigation-menu-trigger inline-flex h-9 w-max items-center justify-center disabled:pointer-events-none outline-none md:rounded-square! md:overflow-hidden cursor-pointer",
 );
 
 function NavigationMenuTrigger({
@@ -185,7 +185,7 @@ function NavigationMenuLink({
     <NavigationMenuPrimitive.Link
       data-slot="navigation-menu-link"
       className={cn(
-        "data-active:focus:bg-background-ppg-strong data-active:hover:bg-background-ppg-strong data-active:bg-background-ppg-strong focus-visible:ring-ring/50 hover:bg-background-ppg-strong focus:bg-background-ppg-strong flex items-center gap-2 rounded-none p-2 text-base transition-all outline-none focus-visible:ring-1 focus-visible:outline-1 in-data-[slot=navigation-menu-content]:rounded-none [&_svg:not([class*='size-'])]:size-4 md:rounded-square",
+        "data-active:focus:bg-background-ppg-strong data-active:hover:bg-background-ppg-strong data-active:bg-background-ppg-strong focus-visible:ring-ring/50 hover:bg-background-ppg-strong flex items-center gap-2 rounded-none p-2 text-base transition-all outline-none focus-visible:ring-1 focus-visible:outline-1 in-data-[slot=navigation-menu-content]:rounded-none [&_svg:not([class*='size-'])]:size-4 md:rounded-square",
         className,
       )}
       {...props}
