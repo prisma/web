@@ -30,7 +30,7 @@ const TestimonialCol = ({ list, reverse }: TestimonialColProps) => (
   <div className="relative flex flex-row items-center overflow-hidden w-full min-h-[680px] max-w-[1200px] mx-auto h-[100px] hover:![animation-duration:0s]">
     <div
       className={cn(
-        "mx-auto flex-shrink-0 w-full absolute min-w-full flex justify-around flex-col",
+        "mx-auto flex-shrink-0 w-full absolute min-w-full flex flex-col",
         reverse
           ? "animate-slide-up md:hover:paused"
           : "animate-slide-down md:hover:paused",
@@ -42,18 +42,30 @@ const TestimonialCol = ({ list, reverse }: TestimonialColProps) => (
           {...testimonial}
         />
       ))}
+      {list.map((testimonial: TestimonialItemType, idx) => (
+        <MemoizedTestimonialItem
+          key={`testimonial-rst-dup-${idx}`}
+          {...testimonial}
+        />
+      ))}
     </div>
     <div
       className={cn(
-        "mx-auto flex-shrink-0 w-full absolute min-w-full flex justify-around flex-col",
+        "mx-auto flex-shrink-0 w-full absolute min-w-full flex flex-col",
         reverse
-          ? "animate-slide-up-2 md:hover:paused translate-y-full"
-          : "animate-slide-down-2 md:hover:paused -translate-y-full",
+          ? "animate-slide-up-2 md:hover:paused translate-y-1/2"
+          : "animate-slide-down-2 md:hover:paused -translate-y-1/2",
       )}
     >
       {list.map((testimonial: TestimonialItemType, idx) => (
         <MemoizedTestimonialItem
           key={`testimonial-nd-${idx}`}
+          {...testimonial}
+        />
+      ))}
+      {list.map((testimonial: TestimonialItemType, idx) => (
+        <MemoizedTestimonialItem
+          key={`testimonial-nd-dup-${idx}`}
           {...testimonial}
         />
       ))}
