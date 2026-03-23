@@ -3,6 +3,8 @@
 import Image from "next/image";
 import { useState, useRef, useEffect, useCallback, memo } from "react";
 import defaultLogosData from "./default-logos.json";
+import { cn } from "../../../lib/cn";
+
 // Inline keyframe animations
 const AnimationStyles = () => (
   <style jsx global>{`
@@ -84,8 +86,8 @@ interface LogoGridProps {
 
 const SPOTLIGHT_RADIUS = 200; // Distance in pixels for spotlight effect
 const SPOTLIGHT_POWER = 1.5; // Easing power for spotlight fade
-const MOBILE_BREAKPOINT = 767;
-const TABLET_BREAKPOINT = 960;
+const MOBILE_BREAKPOINT = 874;
+const TABLET_BREAKPOINT = 1024;
 
 // ============================================================================
 // UTILITY HOOKS
@@ -278,7 +280,7 @@ const SpotlightMode = memo(
         )}
 
         {/* Logo grid */}
-        <div className="grid grid-cols-7 gap-4 lg:gap-2 md:gap-1 relative py-2 pr-0 pl-8 md:px-6 [mask-image:radial-gradient(ellipse_75%_75%_at_50%_50%,black_30%,rgba(0,0,0,0.9)_50%,rgba(0,0,0,0.6)_70%,rgba(0,0,0,0.2)_85%,transparent_100%)] [-webkit-mask-image:radial-gradient(ellipse_75%_75%_at_50%_50%,black_30%,rgba(0,0,0,0.9)_50%,rgba(0,0,0,0.6)_70%,rgba(0,0,0,0.2)_85%,transparent_100%)] lg:[mask-image:radial-gradient(ellipse_70%_70%_at_50%_50%,black_25%,rgba(0,0,0,0.9)_50%,rgba(0,0,0,0.5)_75%,rgba(0,0,0,0.2)_90%,transparent_100%)] lg:[-webkit-mask-image:radial-gradient(ellipse_70%_70%_at_50%_50%,black_25%,rgba(0,0,0,0.9)_50%,rgba(0,0,0,0.5)_75%,rgba(0,0,0,0.2)_90%,transparent_100%)] z-[1]">
+        <div className="grid grid-cols-6 md:grid-cols-7 lg:gap-2 gap-1 relative py-2 pr-0 pl-8 md:px-6 [mask-image:radial-gradient(ellipse_75%_75%_at_50%_50%,black_30%,rgba(0,0,0,0.9)_50%,rgba(0,0,0,0.6)_70%,rgba(0,0,0,0.2)_85%,transparent_100%)] [-webkit-mask-image:radial-gradient(ellipse_75%_75%_at_50%_50%,black_30%,rgba(0,0,0,0.9)_50%,rgba(0,0,0,0.6)_70%,rgba(0,0,0,0.2)_85%,transparent_100%)] lg:[mask-image:radial-gradient(ellipse_70%_70%_at_50%_50%,black_25%,rgba(0,0,0,0.9)_50%,rgba(0,0,0,0.5)_75%,rgba(0,0,0,0.2)_90%,transparent_100%)] lg:[-webkit-mask-image:radial-gradient(ellipse_70%_70%_at_50%_50%,black_25%,rgba(0,0,0,0.9)_50%,rgba(0,0,0,0.5)_75%,rgba(0,0,0,0.2)_90%,transparent_100%)] z-[1]">
           {logos.map((logo, index) => {
             const opacity =
               isMobile || isTablet ? 1 : (logoOpacities[index] ?? 0.2);
@@ -292,10 +294,10 @@ const SpotlightMode = memo(
               if (!isMobile) return "";
               const pos = index + 1;
               if (pos >= 21) return "hidden";
-              if (pos >= 1 && pos <= 5) return "-translate-x-[15px]";
-              if (pos >= 6 && pos <= 10) return "translate-x-[15px]";
-              if (pos >= 11 && pos <= 15) return "-translate-x-[15px]";
-              if (pos >= 16 && pos <= 20) return "translate-x-[15px]";
+              if (pos >= 1 && pos <= 6) return "-translate-x-[20px]";
+              if (pos >= 7 && pos <= 12) return "translate-x-[20px]";
+              if (pos >= 13 && pos <= 18) return "-translate-x-[20px]";
+              if (pos >= 19 && pos <= 21) return "translate-x-[190%]";
               return "";
             };
 
@@ -303,7 +305,7 @@ const SpotlightMode = memo(
             const getDesktopMargin = () => {
               if (isMobile) return "";
               const pos = index + 1;
-              if (pos >= 8 && pos <= 14) return "md:-ml-[30px]";
+              if (pos >= 8 && pos <= 14) return "md:-ml-[20px]";
               return "";
             };
 
@@ -314,7 +316,12 @@ const SpotlightMode = memo(
                   logoRefs.current[index] = el;
                 }}
                 href={logo.link}
-                className={`w-full aspect-square rounded-xl z-[1] bg-background-default border border-white/10 flex items-center justify-center p-4 md:p-3 transition-[opacity_0.2s_ease,filter_0.2s_ease,transform_0.2s_ease,background_0.2s_ease,border-color_0.2s_ease] cursor-pointer will-change-[opacity,filter]  hover:border-[#16A394] hover:-translate-y-0.5  active:translate-y-0 lg:opacity-100 lg:filter-none ${getMobileTransform()} ${getDesktopMargin()}`}
+                className={cn(
+                  "w-full aspect-square rounded-xl z-[1] bg-background-default border border-white/10 flex items-center justify-center p-4 md:p-3 transition-[opacity_0.2s_ease,filter_0.2s_ease,transform_0.2s_ease,background_0.2s_ease,border-color_0.2s_ease] cursor-pointer will-change-[opacity,filter]  hover:border-[#16A394] hover:-translate-y-0.5  active:translate-y-0 lg:opacity-100 lg:filter-none",
+                  getMobileTransform(),
+                  getDesktopMargin(),
+                  index === 18 ? "md:ml-[calc(50%-1.grid-column-start:3]" : "",
+                )}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={

@@ -46,9 +46,9 @@ const HeroContent = ({ className = "" }: { className?: string }) => (
 
 const useResponsiveLayout = () => {
   const [isDesktop, setIsDesktop] = useState(true);
+  const handleResize = () => setIsDesktop(window.innerWidth > 1024);
 
   useEffect(() => {
-    const handleResize = () => setIsDesktop(window.innerWidth > 960);
     handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
@@ -119,11 +119,10 @@ export const Bento = ({ bentoSection }: BentoProps) => {
 
   const centerCards = CARDS.filter((card) => card.row === "center");
   const [firstCenterCard, secondCenterCard] = centerCards;
-
   return (
     <div
       ref={containerRef}
-      className="max-w-[1240px] mx-auto w-full z-10 px-6 pt-4 pb-0"
+      className="max-w-[1240px] mx-auto w-full z-10 px-4 pt-4 pb-0"
     >
       {/* Desktop Layout (961+): Original 3-row layout with text in middle */}
       <HeroContent
@@ -164,7 +163,7 @@ export const Bento = ({ bentoSection }: BentoProps) => {
           </div>
         </>
       ) : (
-        <div className="flex lg:hidden gap-4 flex-wrap justify-center md:grid md:grid-cols-2 sm:grid-cols-1">
+        <div className="flex gap-4 flex-wrap justify-center md:grid md:grid-cols-2 md:[&>*]:last:col-span-2">
           {CARDS.map((card) => (
             <Card
               key={card.id}
@@ -226,7 +225,7 @@ const Card = ({ card, isVisible }: CardProps) => {
       rel="noopener noreferrer"
       className={cn(
         "box",
-        "md:w-[32%] sm:w-full",
+        "sm:w-full",
         isCenterCard && "w-full md:order-none",
         isVisible && "box-visible",
       )}
@@ -255,7 +254,7 @@ const Card = ({ card, isVisible }: CardProps) => {
               : `${card.image}.svg`
           }
           alt={card.title}
-          className="px-4 z-2 pt-0 pb-0 min-w-full min-h-[60%] object-contain object-[top_left] [mask-image:linear-gradient(to_bottom,rgba(0,0,0,1)_60%,transparent_90%)] [-webkit-mask-image:linear-gradient(to_bottom,rgba(0,0,0,1)_60%,transparent_90%)]"
+          className="px-4 z-2 pt-0 pb-0 min-w-full min-h-[60%] object-fill object-[top_left] [mask-image:linear-gradient(to_bottom,rgba(0,0,0,1)_60%,transparent_90%)] [-webkit-mask-image:linear-gradient(to_bottom,rgba(0,0,0,1)_60%,transparent_90%)]"
         />
       )}
     </Link>
