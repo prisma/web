@@ -99,8 +99,10 @@ export default function SiteHome() {
           <div className="flex gap-4 items-center justify-center">
             <Button
               variant="ppg"
-              href="/signup"
+              href="https://console.prisma.io/sign-up?utm_source=website&utm_medium=index&utm_campaign=cta"
               size="3xl"
+              target="_blank"
+              rel="noopener noreferrer"
               className="font-sans-display! font-[650]"
             >
               <span>Create database</span>
@@ -230,7 +232,7 @@ export default function SiteHome() {
                 <span>Create your first Database</span>
                 <i className="fa-regular fa-arrow-right ml-2" />
               </Button>
-              <Button variant="default-strong" size="2xl">
+              <Button variant="default-strong" size="2xl" href="/pricing">
                 <span>Explore Pricing</span>
                 <i className="fa-regular fa-arrow-right ml-2" />
               </Button>
