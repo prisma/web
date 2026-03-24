@@ -1,7 +1,5 @@
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
 import { Badge, Card } from "@prisma/eclipse";
 import { cn } from "../lib/cn";
 import { AuthorAvatarGroup, type AuthorProfile } from "./author-avatar-group";
@@ -91,17 +89,14 @@ export function PostCard({
   );
 
   return (
-    <Link href={post.url} className={containerClassName}>
+    <a href={post.url} className={containerClassName}>
       {post.imageSrc && (
         <div className={imageWrapperClassName}>
-          <Image
+          <img
             src={post.imageSrc}
             alt={post.imageAlt ?? post.title}
-            fill
-            sizes={imageSizes}
             className={imageClassName}
-            loading={isFeatured ? "eager" : undefined}
-            priority={isFeatured}
+            loading={isFeatured ? "eager" : "lazy"}
           />
         </div>
       )}
@@ -124,6 +119,6 @@ export function PostCard({
           {postBody}
         </div>
       )}
-    </Link>
+    </a>
   );
 }

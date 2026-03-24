@@ -4,7 +4,7 @@ import { Quote } from "@prisma-docs/ui/components/quote";
 import type { Metadata } from "next";
 import parse from "html-react-parser";
 import { prisma_highlighter } from "../../../lib/shiki_prisma";
-import * as data from "../../../data/prisma-with/nextjs";
+import * as data from "../../../data/prisma-with/nextjs.json";
 import { cn } from "../../../lib/cn";
 import { Button, Card, Action } from "@prisma/eclipse";
 import {
@@ -15,7 +15,7 @@ import {
   TabsContent,
 } from "@prisma/eclipse";
 
-const code_obj = {
+const code_obj: Record<string, string> = {
   "static-data": `// app/blog/[slug]/page.tsx
 import { PrismaClient } from '@prisma/client'
 
@@ -52,7 +52,9 @@ export const metadata: Metadata = {
   title: "Next.js Database with Prisma | Next-Generation ORM for SQL Databases",
   description:
     "Prisma is a next-generation ORM for Node.js & TypeScript. It's the easiest way to build Next.js apps with MySQL, PostgreSQL & SQL Server databases.",
-  canonical: "https://www.prisma.io/nextjs",
+  alternates: {
+    canonical: "https://www.prisma.io/nextjs",
+  },
 };
 
 const Hero = () => {
