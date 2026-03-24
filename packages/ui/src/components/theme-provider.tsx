@@ -17,7 +17,13 @@
  * ```
  */
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useState,
+} from "react";
 
 type Theme = "light" | "dark" | "system";
 type ResolvedTheme = "light" | "dark";
@@ -111,8 +117,8 @@ export function ThemeProvider({
     }
   };
 
-  // Apply theme whenever the resolved theme changes.
-  useEffect(() => {
+  // Apply theme before paint on the client to avoid flashes.
+  useLayoutEffect(() => {
     if (typeof window === "undefined") return;
     applyTheme(resolvedTheme);
   }, [resolvedTheme]);

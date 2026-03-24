@@ -177,7 +177,7 @@ export default function SiteHome() {
         </div>
       </div>
       <div>
-        <div className="my-12 bg-[linear-gradient(180deg,_var(--color-background-default)-177.75%,var(--color-background-ppg)100%)] shadow-[0_1px_2px_0_rgba(0,0,0,0.04)] p-12">
+        <div className="my-12 bg-[linear-gradient(180deg,var(--color-background-default)-177.75%,var(--color-background-ppg-str)100%)] shadow-[0_1px_2px_0_rgba(0,0,0,0.04)] p-12">
           <div className="web-cta flex gap-3 md:gap-12 items-center mx-auto w-fit lg:p-4 flex-col md:flex-row">
             <h3 className="text-2xl text-foreground-neutral font-sans-display font-bold text-center md:text-left">
               Build anything.

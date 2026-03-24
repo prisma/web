@@ -34,7 +34,7 @@ interface BentoProps {
 const HeroContent = ({ className = "" }: { className?: string }) => (
   <div
     className={cn(
-      "flex flex-col items-center justify-center text-center opacity-0 scale-95 mx-auto mb-10",
+      "flex flex-col items-center justify-center text-center mx-auto mb-10",
       className,
     )}
   >
@@ -57,39 +57,8 @@ const useResponsiveLayout = () => {
   return { isDesktop };
 };
 
-const useCardAnimation = () => {
-  const [visibleBoxes, setVisibleBoxes] = useState<Set<string>>(new Set());
-  const [heroVisible, setHeroVisible] = useState(false);
-
-  const startAnimations = useCallback(() => {
-    setHeroVisible(true);
-
-    const rippleOrder = [
-      { ids: ["1"] as const, delay: 100 },
-      { ids: ["2"] as const, delay: 200 },
-      { ids: ["3"] as const, delay: 300 },
-      { ids: ["4"] as const, delay: 400 },
-      { ids: ["5"] as const, delay: 500 },
-    ] as const;
-
-    rippleOrder.forEach(({ ids, delay }) => {
-      setTimeout(() => {
-        setVisibleBoxes((prev) => {
-          const next = new Set(prev);
-          ids.forEach((id) => next.add(id));
-          return next;
-        });
-      }, delay);
-    });
-  }, []);
-
-  return { visibleBoxes, heroVisible, startAnimations };
-};
-
 export const Bento = ({ bentoSection }: BentoProps) => {
-  const containerRef = useRef<HTMLDivElement>(null);
   const { isDesktop } = useResponsiveLayout();
-  const { visibleBoxes, heroVisible, startAnimations } = useCardAnimation();
 
   // Transform Sanity data to internal CardData format
   const CARDS: CardData[] = bentoSection.boxes.map((box, index) => ({
@@ -102,74 +71,34 @@ export const Bento = ({ bentoSection }: BentoProps) => {
     row: index < 3 ? "top" : "center",
   }));
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => entry.isIntersecting && startAnimations(),
-      { threshold: 0.1 },
-    );
-
-    const currentRef = containerRef.current;
-    if (currentRef) observer.observe(currentRef);
-
-    return () => {
-      if (currentRef) observer.unobserve(currentRef);
-      observer.disconnect();
-    };
-  }, [startAnimations]);
-
   const centerCards = CARDS.filter((card) => card.row === "center");
   const [firstCenterCard, secondCenterCard] = centerCards;
   return (
-    <div
-      ref={containerRef}
-      className="max-w-[1240px] mx-auto w-full z-10 px-4 pt-4 pb-0"
-    >
+    <div className="max-w-[1240px] mx-auto w-full z-10 px-4 pt-4 pb-0">
       {/* Desktop Layout (961+): Original 3-row layout with text in middle */}
-      <HeroContent
-        className={
-          heroVisible
-            ? "opacity-100 scale-100 transition-[opacity_0.8s_cubic-bezier(0.16,1,0.3,1),transform_0.8s_cubic-bezier(0.16,1,0.3,1)]"
-            : ""
-        }
-      />
+      <HeroContent />
       {isDesktop ? (
         <>
           <div className="hidden lg:grid grid-cols-3 gap-4 mb-4">
             {CARDS.filter((card) => card.row === "top").map((card) => (
-              <Card
-                key={card.id}
-                card={card}
-                isVisible={visibleBoxes.has(card.id)}
-              />
+              <Card key={card.id} card={card} />
             ))}
           </div>
 
           <div className="hidden lg:flex gap-8 mb-4 items-center justify-between">
             {firstCenterCard && (
-              <Card
-                key={firstCenterCard.id}
-                card={firstCenterCard}
-                isVisible={visibleBoxes.has(firstCenterCard.id)}
-              />
+              <Card key={firstCenterCard.id} card={firstCenterCard} />
             )}
 
             {secondCenterCard && (
-              <Card
-                key={secondCenterCard.id}
-                card={secondCenterCard}
-                isVisible={visibleBoxes.has(secondCenterCard.id)}
-              />
+              <Card key={secondCenterCard.id} card={secondCenterCard} />
             )}
           </div>
         </>
       ) : (
         <div className="flex gap-4 flex-wrap justify-center md:grid md:grid-cols-2 md:[&>*]:last:col-span-2">
           {CARDS.map((card) => (
-            <Card
-              key={card.id}
-              card={card}
-              isVisible={visibleBoxes.has(card.id)}
-            />
+            <Card key={card.id} card={card} />
           ))}
         </div>
       )}
@@ -179,10 +108,9 @@ export const Bento = ({ bentoSection }: BentoProps) => {
 
 interface CardProps {
   card: CardData;
-  isVisible: boolean;
 }
 
-const Card = ({ card, isVisible }: CardProps) => {
+const Card = ({ card }: CardProps) => {
   const cardRef = useRef<HTMLAnchorElement>(null);
   const isCenterCard = ["4", "5"].includes(card.id);
   const { resolvedTheme } = useTheme();
@@ -225,22 +153,22 @@ const Card = ({ card, isVisible }: CardProps) => {
       rel="noopener noreferrer"
       className={cn(
         "box",
+        "box-visible",
         "sm:w-full",
-        isCenterCard && "w-full md:order-none",
-        isVisible && "box-visible",
+        isCenterCard && "w-full md:order-0",
       )}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
       <div className="flex gap-4 text-xs py-4 px-0 mx-4 w-[calc(100%-2rem)]">
-        <Action color="ppg" size="4xl">
+        <Action color="ppg" size="4xl" className="bg-background-ppg-strong">
           <i className={cn("text-xl", card.icon)} />
         </Action>
         <div className="z-2">
           <h2 className="text-foreground-neutral font-sans-display text-base mt-0 mb-1 font-bold">
             {card.title}
           </h2>
-          <p className="text-foreground-neutral-weak text-sm font-normal m-0">
+          <p className="text-foreground-neutral dark:text-foreground-neutral-weak text-sm font-normal m-0">
             {card.subtitle}
           </p>
         </div>
@@ -253,6 +181,7 @@ const Card = ({ card, isVisible }: CardProps) => {
               ? `${card.image}_light.svg`
               : `${card.image}.svg`
           }
+
           alt={card.title}
           className="px-4 z-2 pt-0 pb-0 min-w-full min-h-[60%] object-fill object-[top_left] [mask-image:linear-gradient(to_bottom,rgba(0,0,0,1)_60%,transparent_90%)] [-webkit-mask-image:linear-gradient(to_bottom,rgba(0,0,0,1)_60%,transparent_90%)]"
         />

@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable react/no-unknown-property */
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
 const AntigravityInner = ({
@@ -28,6 +28,19 @@ const AntigravityInner = ({
   const lastMousePos = useRef({ x: 0, y: 0 });
   const lastMouseMoveTime = useRef(0);
   const virtualMouse = useRef({ x: 0, y: 0 });
+  const isPageVisible = useRef(true);
+
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      isPageVisible.current = !document.hidden;
+    };
+
+    onVisibilityChange();
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, []);
 
   const particles = useMemo(() => {
     const temp = [];
@@ -72,24 +85,25 @@ const AntigravityInner = ({
 
   useFrame((state) => {
     const mesh = meshRef.current;
-    if (!mesh) return;
+    if (!mesh || !isPageVisible.current) return;
 
     const { viewport: v, pointer: m } = state;
+    const now = performance.now();
 
-    const mouseDist = Math.sqrt(
-      Math.pow(m.x - lastMousePos.current.x, 2) +
-        Math.pow(m.y - lastMousePos.current.y, 2),
-    );
+    const mouseDeltaX = m.x - lastMousePos.current.x;
+    const mouseDeltaY = m.y - lastMousePos.current.y;
+    const mouseDistSq =
+      mouseDeltaX * mouseDeltaX + mouseDeltaY * mouseDeltaY;
 
-    if (mouseDist > 0.001) {
-      lastMouseMoveTime.current = Date.now();
+    if (mouseDistSq > 0.000001) {
+      lastMouseMoveTime.current = now;
       lastMousePos.current = { x: m.x, y: m.y };
     }
 
     let destX = (m.x * v.width) / 2;
     let destY = (m.y * v.height) / 2;
 
-    if (autoAnimate && Date.now() - lastMouseMoveTime.current > 2000) {
+    if (autoAnimate && now - lastMouseMoveTime.current > 2000) {
       const time = state.clock.getElapsedTime();
       destX = Math.sin(time * 0.5) * (v.width / 4);
       destY = Math.cos(time * 0.5 * 2) * (v.height / 4);
@@ -103,11 +117,18 @@ const AntigravityInner = ({
     const targetY = virtualMouse.current.y;
 
     const globalRotation = state.clock.getElapsedTime() * rotationSpeed;
+    const magnetRadiusSq = magnetRadius * magnetRadius;
+    const inverseFieldStrength = 5 / (fieldStrength + 0.1);
 
-    particles.forEach((particle, i) => {
-      let { t, speed, mx, my, mz, cz, randomRadiusOffset } = particle;
-
-      t = particle.t += speed / 2;
+    for (let i = 0; i < particles.length; i++) {
+      const particle = particles[i];
+      const mx = particle.mx;
+      const my = particle.my;
+      const mz = particle.mz;
+      const cz = particle.cz;
+      const randomRadiusOffset = particle.randomRadiusOffset;
+      particle.t += particle.speed / 2;
+      const t = particle.t;
 
       const projectionFactor = 1 - cz / 50;
       const projectedTargetX = targetX * projectionFactor;
@@ -115,36 +136,38 @@ const AntigravityInner = ({
 
       const dx = mx - projectedTargetX;
       const dy = my - projectedTargetY;
-      const dist = Math.sqrt(dx * dx + dy * dy);
+      const distSq = dx * dx + dy * dy;
 
-      let targetPos = { x: mx, y: my, z: mz * depthFactor };
+      let targetXPos = mx;
+      let targetYPos = my;
+      let targetZPos = mz * depthFactor;
 
-      if (dist < magnetRadius) {
+      if (distSq < magnetRadiusSq) {
         const angle = Math.atan2(dy, dx) + globalRotation;
 
         const wave = Math.sin(t * waveSpeed + angle) * (0.5 * waveAmplitude);
-        const deviation = randomRadiusOffset * (5 / (fieldStrength + 0.1));
+        const deviation = randomRadiusOffset * inverseFieldStrength;
 
         const currentRingRadius = ringRadius + wave + deviation;
 
-        targetPos.x = projectedTargetX + currentRingRadius * Math.cos(angle);
-        targetPos.y = projectedTargetY + currentRingRadius * Math.sin(angle);
-        targetPos.z =
-          mz * depthFactor + Math.sin(t) * (1 * waveAmplitude * depthFactor);
+        targetXPos = projectedTargetX + currentRingRadius * Math.cos(angle);
+        targetYPos = projectedTargetY + currentRingRadius * Math.sin(angle);
+        targetZPos = mz * depthFactor + Math.sin(t) * waveAmplitude * depthFactor;
       }
 
-      particle.cx += (targetPos.x - particle.cx) * lerpSpeed;
-      particle.cy += (targetPos.y - particle.cy) * lerpSpeed;
-      particle.cz += (targetPos.z - particle.cz) * lerpSpeed;
+      particle.cx += (targetXPos - particle.cx) * lerpSpeed;
+      particle.cy += (targetYPos - particle.cy) * lerpSpeed;
+      particle.cz += (targetZPos - particle.cz) * lerpSpeed;
 
       dummy.position.set(particle.cx, particle.cy, particle.cz);
 
       dummy.lookAt(projectedTargetX, projectedTargetY, particle.cz);
       dummy.rotateX(Math.PI / 2);
 
+      const currentDx = particle.cx - projectedTargetX;
+      const currentDy = particle.cy - projectedTargetY;
       const currentDistToMouse = Math.sqrt(
-        Math.pow(particle.cx - projectedTargetX, 2) +
-          Math.pow(particle.cy - projectedTargetY, 2),
+        currentDx * currentDx + currentDy * currentDy,
       );
 
       const distFromRing = Math.abs(currentDistToMouse - ringRadius);
@@ -161,7 +184,7 @@ const AntigravityInner = ({
       dummy.updateMatrix();
 
       mesh.setMatrixAt(i, dummy.matrix);
-    });
+    }
 
     mesh.instanceMatrix.needsUpdate = true;
   });
@@ -180,8 +203,57 @@ const AntigravityInner = ({
 };
 
 const Antigravity = (props: any) => {
+  const [shouldStart, setShouldStart] = useState(false);
+
+  useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let idleCallbackId: number | null = null;
+
+    const scheduleStartup = () => {
+      const hasIdleCallback =
+        typeof window.requestIdleCallback === "function";
+
+      if (hasIdleCallback) {
+        idleCallbackId = window.requestIdleCallback(
+          () => setShouldStart(true),
+          { timeout: 500 },
+        );
+        return;
+      }
+
+      timeoutId = setTimeout(() => setShouldStart(true), 0);
+    };
+
+    if (document.readyState === "complete") {
+      scheduleStartup();
+    } else {
+      window.addEventListener("load", scheduleStartup, { once: true });
+    }
+
+    return () => {
+      window.removeEventListener("load", scheduleStartup);
+
+      if (
+        idleCallbackId !== null &&
+        "cancelIdleCallback" in window
+      ) {
+        window.cancelIdleCallback(idleCallbackId);
+      }
+
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, []);
+
+  if (!shouldStart) return null;
+
   return (
-    <Canvas camera={{ position: [0, 0, 50], fov: 35 }}>
+    <Canvas
+      camera={{ position: [0, 0, 50], fov: 35 }}
+      dpr={[1, 1.5]}
+      gl={{ antialias: false, powerPreference: "high-performance" }}
+    >
       <AntigravityInner {...props} />
     </Canvas>
   );
