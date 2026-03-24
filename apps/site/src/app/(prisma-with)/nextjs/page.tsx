@@ -59,8 +59,8 @@ export const metadata: Metadata = {
 
 const Hero = () => {
   return (
-    <div className="hero dark:bg-[linear-gradient(180deg,var(--color-foreground-ppg)_0%,var(--color-background-default)_100%)] bg-[linear-gradient(180deg,var(--color-background-ppg)_0%,var(--color-background-default)_100%)] relative before:absolute before:content-[''] before:bg-[url('/illustrations/hero-grid.svg')] before:inset-0 w-full px-4 before:z-0">
-      <div className="max-w-300 mx-auto my-12 grid md:grid-cols-[1fr_320px] lg:grid-cols-[736px_1fr] gap-11 relative z-1">
+    <div className="hero dark:bg-[linear-gradient(180deg,var(--color-foreground-ppg-weaker)_0%,var(--color-background-default)_100%)] bg-[linear-gradient(180deg,var(--color-background-ppg)_0%,var(--color-background-default)_100%)] relative before:absolute">
+      <div className="max-w-300 mx-auto py-12 grid md:grid-cols-[1fr_320px] lg:grid-cols-[736px_1fr] gap-11 relative z-1">
         <div className="content flex flex-col gap-8">
           <div className="flex flex-col gap-4">
             <h5 className="uppercase text-foreground-ppg-weak my-0!">
@@ -96,22 +96,29 @@ const Hero = () => {
           </div>
         </div>
         <div className="logos relative max-h-78">
-          <div className="absolute left-0 top-0 w-57 h-44 object-cover bg-background-default flex items-center justify-center px-9 border border-stroke-ppg-weak rounded-2xl">
+          <div className="absolute left-0 top-0 w-57 h-44 object-cover bg-background-default flex items-center justify-center p-9 border border-stroke-ppg-weak rounded-2xl">
             <img
               src={data.hero.imageUrl}
-              className="w-full"
+              className="w-full block dark:hidden"
               alt={`Prisma with ${data.hero.tech}`}
             />
+            {data.hero.imageUrlLight && (
+              <img
+                src={data.hero.imageUrlLight}
+                className="w-full hidden dark:block"
+                alt={`Prisma with ${data.hero.tech}`}
+              />
+            )}
           </div>
-          <div className="absolute right-0 bottom-0 w-57 h-44 object-cover bg-background-default flex items-center justify-center px-9 border border-stroke-ppg-weak rounded-2xl">
+          <div className="absolute right-0 bottom-0 w-57 h-44 object-cover bg-background-default flex items-center justify-center p-9 border border-stroke-ppg-weak rounded-2xl">
             <img
               src="/icons/technologies/prisma.svg"
-              className="dark:block hidden"
+              className="dark:block hidden h-full contain"
               alt="Prisma"
             />
             <img
               src="/icons/technologies/prisma_light.svg"
-              className="dark:hidden "
+              className="dark:hidden h-full contain"
               alt="Prisma"
             />
           </div>
@@ -133,7 +140,10 @@ export default async function SiteHome() {
             </h2>
             <div className="cards grid grid-cols-3 gap-6">
               {data.why.cards.map((card) => (
-                <Card key={card.title}>
+                <Card
+                  key={card.title}
+                  className="bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-ppg)_262.5%)]"
+                >
                   <Action size="4xl" color="ppg">
                     <i className={cn("text-xl", card.icon)} />
                   </Action>
@@ -255,7 +265,7 @@ export default async function SiteHome() {
               <Card
                 key={idx}
                 className={cn(
-                  "col-span-2",
+                  "col-span-2 bg-background-neutral-weaker",
                   idx >= 3 && idx === 3 && "col-start-2",
                   idx >= 3 && idx === 4 && "col-start-4",
                 )}
