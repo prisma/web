@@ -164,7 +164,7 @@ export default prisma
 10. You MUST create a test script at `scripts/test-database.ts` to verify setup
 11. You MUST NOT include `url` in the datasource block of `schema.prisma`
 12. You MUST NOT include `engine` property in `prisma.config.ts`
-13. You MUST use `npx prisma init --db --output ../app/generated/prisma` to create a real cloud database
+13. You MUST use `npx prisma init --output ../app/generated/prisma` to scaffold Prisma, then `npx create-db` to create a real cloud database
 14. You MUST use standard TCP URLs (`postgres://...`) in .env
 15. You MUST NOT use `accelerateUrl` or `withAccelerate`
 
@@ -186,37 +186,35 @@ npm install @prisma/adapter-pg @prisma/client dotenv
 
 ## CORRECT PRISMA INITIALIZATION
 
-> **FOR AI ASSISTANTS**: This command is **interactive** and requires user input. You **MUST ask the user to run this command manually** in their own terminal, then **wait for them to confirm completion** before proceeding with the next steps. Do NOT attempt to run this command yourself.
+> **FOR AI ASSISTANTS**: `npx prisma init` is not interactive. Run it yourself if your environment allows it. If you need a real Prisma Postgres database, either run `npx create-db` or ask the user to run it and update `DATABASE_URL` before you continue.
 
 ```bash
-# Initialize Prisma AND create a real Prisma Postgres cloud database
-npx prisma init --db --output ../app/generated/prisma
+# Initialize Prisma and scaffold the Prisma files
+npx prisma init --output ../app/generated/prisma
+
+# Then create a Prisma Postgres database
+npx create-db
 ```
 
-This command:
+This step:
 
-- Authenticates you with Prisma Console (if needed)
-- Prompts for **region** and **project name**
-- **Creates a cloud Prisma Postgres database**
-- Generates:
-  - `prisma/schema.prisma` (with correct output path)
-  - `prisma.config.ts` (with dotenv import)
-  - **`.env` with a `DATABASE_URL`**
+- Generates `prisma/schema.prisma` with the correct output path
+- Generates `prisma.config.ts`
+- Generates `.env` with a local `DATABASE_URL`
+- Requires `npx create-db` if you want a real Prisma Postgres database
 
-**IMPORTANT**: Ensure the generated `.env` uses a `postgres://` URL scheme. If it generates `prisma+postgres://`, replace it with the standard TCP connection string available in the Prisma Console.
+**IMPORTANT**: After `npx create-db`, replace the generated `DATABASE_URL` in `.env` with the returned `postgres://...` connection string.
 
 ```text
 DATABASE_URL="postgres://..."
 ```
 
-**IMPORTANT**: Do NOT use `npx prisma init` without `--db` as this only creates local files without a database.
-
 ## CORRECT PRISMA CONFIG (prisma.config.ts)
 
-When using `npx prisma init --db`, the `prisma.config.ts` is **auto-generated** with the correct configuration:
+When using `npx prisma init`, the `prisma.config.ts` is **auto-generated** with the correct configuration:
 
 ```typescript
-import "dotenv/config"; // ✅ Auto-included by prisma init --db
+import "dotenv/config"; // ✅ Auto-included by prisma init
 import { defineConfig, env } from "prisma/config";
 
 export default defineConfig({
@@ -447,30 +445,26 @@ User should follow these steps (AI should provide these instructions):
    npm install @prisma/adapter-pg @prisma/client dotenv
    ```
 
-2. **Initialize Prisma AND create Prisma Postgres database** (⚠️ USER MUST RUN MANUALLY):
+2. **Initialize Prisma, then create Prisma Postgres:**
 
-   > **AI ASSISTANT**: Ask the user to run this command in their own terminal. This is interactive and requires user input. Wait for the user to confirm completion before continuing.
+   > **AI ASSISTANT**: You can run `npx prisma init` yourself. If you should not provision cloud resources automatically, ask the user to run `npx create-db` and update `DATABASE_URL` before continuing.
 
    ```npm
-   npx prisma init --db --output ../app/generated/prisma
+   npx prisma init --output ../app/generated/prisma
+   npx create-db
    ```
 
-   The user should follow the terminal prompts to:
-   - Authenticate with Prisma Console (if needed)
-   - Choose a region (e.g., us-east-1)
-   - Name your project
+   This creates `prisma/schema.prisma`, `prisma.config.ts`, and `.env`, then returns a `postgres://...` connection string for Prisma Postgres.
 
-   Once complete, this creates `prisma/schema.prisma`, `prisma.config.ts`, AND `.env` with the `DATABASE_URL`.
+   **If you asked the user to run `npx create-db`, wait for them to share or paste the returned connection string before proceeding.**
 
-   **User should confirm when done** so the AI can proceed with the next steps.
-
-3. **Verify `.env` was created** - Ensure `DATABASE_URL` uses `postgres://`. If it uses `prisma+postgres://`, change it to the TCP connection string.
+3. **Verify `.env` was created** - Replace the generated `DATABASE_URL` with the `postgres://...` connection string returned by `npx create-db`.
 
    ```text
    DATABASE_URL="postgres://..."
    ```
 
-   **Do NOT invent or manually change this URL. Use the one from Prisma Console.**
+   **Do NOT invent this URL. Use the one returned by `npx create-db`.**
 
 4. **Update `prisma/schema.prisma`** - Add the User model (generator and datasource are already configured):
 
@@ -529,7 +523,7 @@ Before generating any code, you MUST verify:
 10. Did you add `db:test` and `db:studio` scripts to package.json? If not, STOP and FIX.
 11. Did you remove `url` from the datasource block in `schema.prisma`? If not, STOP and FIX.
 12. Did you remove `engine` property from `prisma.config.ts`? If not, STOP and FIX.
-13. Are you using `npx prisma init --db` (not just `npx prisma init`)? If not, STOP and FIX.
+13. Did you run `npx prisma init` with the documented output path? If not, STOP and FIX.
 14. Is the DATABASE_URL a TCP URL (`postgres://...`)? If it's a `prisma+postgres://` URL, STOP and FIX.
 15. Did Prisma generate the `.env` file? If you invented the URL manually, STOP and FIX.
 
@@ -630,8 +624,8 @@ When asked about Prisma + Next.js implementation, you MUST:
 11. ALWAYS use `@prisma/adapter-pg` and `adapter` property
 12. NEVER include `url` in the datasource block of schema.prisma
 13. NEVER include `engine` property in prisma.config.ts
-14. ALWAYS ask the user to run `npx prisma init --db --output ../app/generated/prisma` **manually in their own terminal** (this command is interactive and requires user input for region and project name)
-15. ALWAYS wait for user confirmation after they run the interactive `prisma init --db` command before proceeding
+14. ALWAYS run `npx prisma init --output ../app/generated/prisma` before editing Prisma files. If you cannot provision cloud resources automatically, ask the user to run `npx create-db` and update `DATABASE_URL` before continuing
+15. ALWAYS wait for user confirmation after they run `npx create-db` and share or apply the returned `postgres://...` connection string before proceeding
 16. NEVER attempt to run interactive commands yourself - ask the user to do it
 17. NEVER use `prisma+postgres://` URLs - ONLY `postgres://` TCP URLs
 18. NEVER manually invent or fabricate DATABASE_URL values
