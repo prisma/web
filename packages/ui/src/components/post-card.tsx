@@ -41,7 +41,7 @@ export function PostCard({
   const imageWrapperClassName = cn(
     "relative aspect-video w-full h-full",
     isFeatured ? "order-1" : "order-2 max-w-96 hidden sm:block",
-    vertical && "order-none!",
+    vertical && "order-none! h-52 cover",
   );
 
   const titleClassName = cn(
