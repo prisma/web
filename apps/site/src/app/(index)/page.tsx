@@ -108,10 +108,10 @@ export default function SiteHome() {
               <span>Create database</span>
               <i className="fa-regular fa-database ml-2" />
             </Button>
-            <CopyCode text="npx prisma init --db">
+            <CopyCode text="npx prisma init">
               <span className="text-foreground-neutral-reverse-weak">$</span>
               <span className="text-foreground-neutral-weak">
-                &nbsp;npx prisma init --db
+                &nbsp;npx prisma init
               </span>
               <i className="fa-regular fa-copy ml-2" />
             </CopyCode>
@@ -171,7 +171,7 @@ export default function SiteHome() {
           />
         </div>
       </div>
-      <div className="w-screen overflow-hidden">
+      <div className="w-screen  ">
         <div className="my-12">
           <CardSection cardSection={twoCol} />
         </div>

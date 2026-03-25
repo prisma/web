@@ -154,7 +154,7 @@ const Card = ({ card }: CardProps) => {
       className={cn(
         "box",
         "box-visible",
-        "sm:w-full",
+        "w-full",
         isCenterCard && "w-full md:order-0",
       )}
       onMouseMove={handleMouseMove}

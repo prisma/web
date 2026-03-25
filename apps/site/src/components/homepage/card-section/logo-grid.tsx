@@ -122,67 +122,24 @@ LogoImage.displayName = "LogoImage";
 const SpotlightMode = memo(({ logos }: { logos: Logo[] }) => {
   const logoSize = 50;
   const visibleLogos = logos.slice(0, 21);
-  const rowsMdUp: Logo[][] = [
-    visibleLogos.slice(0, 7),
-    visibleLogos.slice(7, 14),
-    visibleLogos.slice(14, 21),
-  ];
-  const rowsSm: Logo[][] = [];
-  for (let i = 0; i < visibleLogos.length; i += 5) {
-    rowsSm.push(visibleLogos.slice(i, i + 5));
-  }
 
   return (
     <GlowCursor color="var(--color-background-ppg-strong)">
       <div className="relative w-full h-full overflow-visible">
-        <div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 translate-z-0 w-[300px] h-[300px] rounded-full blur-[40px] pointer-events-none z-0 will-change-[top,left,transform] [backface-visibility:hidden] [-webkit-backface-visibility:hidden] [perspective:1000px] [-webkit-perspective:1000px] isolate"
-          style={{ width: "100%", height: "100%" }}
-        />
         {/* Logo grid */}
         <div className="relative z-1 flex justify-center px-2 md:px-4">
-          <div className="flex w-fit flex-col items-center gap-2 md:gap-3 max-w-[760px]">
-            <div className="flex flex-col items-center gap-2 md:hidden">
-              {rowsSm.map((row, rowIndex) => (
-                <div
-                  key={`sm-row-${rowIndex}`}
-                  className="flex items-center justify-center gap-2"
-                >
-                  {row.map((logo, logoIndex) => (
-                    <a
-                      key={`${logo.alt}-sm-${rowIndex}-${logoIndex}`}
-                      href={logo.link}
-                      className="w-16 h-16 rounded-xl z-1 bg-background-default border border-white/10 flex items-center justify-center p-3 transition-[transform_0.2s_ease,border-color_0.2s_ease] hover:border-[#16A394] hover:-translate-y-0.5 hover:scale-[1.02] active:translate-y-0 active:scale-100"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <LogoImage logo={logo} size={logoSize} />
-                    </a>
-                  ))}
-                </div>
-              ))}
-            </div>
-
-            <div className="hidden md:flex md:flex-col md:items-center md:gap-3">
-              {rowsMdUp.map((row, rowIndex) => (
-                <div
-                  key={`md-row-${rowIndex}`}
-                  className={`flex items-center justify-center gap-2 md:gap-3 ${rowIndex === 1 ? "-translate-x-3 md:-translate-x-4" : ""}`}
-                >
-                  {row.map((logo, logoIndex) => (
-                    <a
-                      key={`${logo.alt}-md-${rowIndex}-${logoIndex}`}
-                      href={logo.link}
-                      className="w-16 h-16 md:w-18 md:h-18 lg:w-20 lg:h-20 rounded-xl z-1 bg-background-default border border-white/10 flex items-center justify-center p-3 md:p-3.5 transition-[transform_0.2s_ease,border-color_0.2s_ease] hover:border-[#16A394] hover:-translate-y-0.5 hover:scale-[1.02] active:translate-y-0 active:scale-100"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <LogoImage logo={logo} size={logoSize} />
-                    </a>
-                  ))}
-                </div>
-              ))}
-            </div>
+          <div className="flex max-w-[760px] flex-wrap items-center justify-center gap-2 md:gap-3">
+            {visibleLogos.map((logo, index) => (
+              <a
+                key={`${logo.alt}-${index}`}
+                href={logo.link}
+                className="w-[20%] sm:w-[14%] aspect-square rounded-xl z-1 bg-background-default border border-white/10 flex items-center justify-center p-3 md:p-3.5 transition-[transform_0.2s_ease,border-color_0.2s_ease] hover:border-[#16A394] hover:-translate-y-0.5 hover:scale-[1.02] active:translate-y-0 active:scale-100"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <LogoImage logo={logo} size={logoSize} />
+              </a>
+            ))}
           </div>
         </div>
       </div>
