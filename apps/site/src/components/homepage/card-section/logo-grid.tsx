@@ -133,7 +133,7 @@ const SpotlightMode = memo(({ logos }: { logos: Logo[] }) => {
               <a
                 key={`${logo.alt}-${index}`}
                 href={logo.link}
-                className="w-[20%] sm:w-[14%] aspect-square rounded-xl z-1 bg-background-default border border-white/10 flex items-center justify-center p-3 md:p-3.5 transition-[transform_0.2s_ease,border-color_0.2s_ease] hover:border-[#16A394] hover:-translate-y-0.5 hover:scale-[1.02] active:translate-y-0 active:scale-100"
+                className="w-[20%] sm:w-[12%] aspect-square rounded-xl z-1 bg-background-default border border-white/10 flex items-center justify-center p-3 md:p-2 transition-[transform_0.2s_ease,border-color_0.2s_ease] hover:border-[#16A394] hover:-translate-y-0.5 hover:scale-[1.02] active:translate-y-0 active:scale-100"
                 target="_blank"
                 rel="noopener noreferrer"
               >
