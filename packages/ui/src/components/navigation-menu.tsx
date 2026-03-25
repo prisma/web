@@ -66,7 +66,7 @@ function NavigationWrapper({
   return (
     <div
       className={cn(
-        "transition-navbar max-w-7xl w-full mx-auto py-3 px-6 shadow-box-high bg-background-default/50 [backdrop-filter:blur(3))] rounded-square-high flex justify-between align-center",
+        "transition-navbar max-w-7xl w-full mx-auto py-3 px-6 shadow-box-high bg-background-default/50 [backdrop-filter:blur(3)] rounded-square-high flex justify-between align-center",
         mobileOpen &&
           "py-7 px-10 rounded-none md:py-3! md:px-6! md:rounded-square-high",
         className,

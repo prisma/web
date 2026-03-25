@@ -95,7 +95,7 @@ export default function SiteHome() {
             Real Postgres with the developer experience and infrastructure to
             ship faster.
           </p>
-          <div className="flex gap-4 items-center justify-center flex-wrap">
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
             <Button
               variant="ppg"
               href="https://console.prisma.io/sign-up?utm_source=website&utm_medium=index&utm_campaign=cta"
@@ -226,7 +226,7 @@ export default function SiteHome() {
                 Deploy a Postgres database instantly.
               </p>
             </div>
-            <div className="flex gap-6">
+            <div className="flex flex-col md:flex-row gap-6">
               <Button variant="ppg" size="2xl">
                 <span>Create your first Database</span>
                 <i className="fa-regular fa-arrow-right ml-2" />
