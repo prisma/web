@@ -5,83 +5,162 @@ import {
 } from "../../lib/blog-metadata";
 import { Action, Button, Card } from "@prisma/eclipse";
 import API from "@/components/client/api";
+import { CardSection } from "@/components/homepage/card-section/card-section";
+import { cn } from "@/lib/cn";
+import { Technology } from "@/components/client/technology";
 
 export const metadata: Metadata = {
   title: SITE_HOME_TITLE,
   description: SITE_HOME_DESCRIPTION,
 };
 
-const migrateSteps: HeroCodeStep[] = [
-  {
-    title: "Creating a new model",
-    migrateFileName: "init/20210211160000_init/migration.sql",
-    schema: `model User {
-  id    Int     @id @default(autoincrement())
-  email String  @unique
-  name  String?
-}`.trim(),
-    migrateFileContents: `-- CreateTable
-CREATE TABLE "User" (
-  "id" SERIAL NOT NULL,
-  "email" TEXT NOT NULL,
-  "name" TEXT,
-
-  PRIMARY KEY ("id")
-);
-
--- CreateIndex
-CREATE UNIQUE INDEX "User.email_unique" IN "User"("email");`.trim(),
-    arrowOffset: {
-      x: -60,
-      y: 0,
-      rotation: 0,
+const databases = {
+  title: "Supported Databases",
+  list: [
+    {
+      name: "PostgreSQL",
+      icon: "/icons/companies/postgres.svg",
+      url: "/",
     },
+    {
+      name: "MySQL",
+      icon: "/icons/technologies/mysqlsimple.svg",
+      url: "/",
+    },
+    {
+      name: "MariaDB",
+      icon: "/icons/technologies/mariadb.svg",
+      url: "/",
+    },
+    {
+      name: "SQLite",
+      icon: "/icons/companies/sqlite.svg",
+      url: "/",
+    },
+    {
+      name: "SQL Server",
+      icon: "/icons/companies/sqlserver.svg",
+      url: "/",
+    },
+    {
+      name: "CockroachDB",
+      icon: "/icons/companies/cockroachdb.svg",
+      url: "/",
+    },
+    {
+      name: "PlanetScale",
+      icon: "/icons/companies/planetscale.svg",
+      url: "/",
+    },
+    {
+      name: "MongoDB",
+      icon: "/icons/technologies/mongodbsimple.svg",
+      url: "/",
+    },
+  ],
+};
+const frameworks = {
+  title: "Selected Frameworks",
+  description:
+    "Easy to integrate into your framework of choice, Prisma simplifies database access, saves repetitive CRUD boilerplate and increases type safety.",
+  list: [
+    {
+      name: "React",
+      icon: "/icons/technologies/react.svg",
+      url: "/react",
+    },
+    {
+      name: "Next.js",
+      icon: "/icons/technologies/nextjs.svg",
+      url: "/nextjs",
+    },
+    {
+      name: "NestJS",
+      icon: "/icons/technologies/nestjs.svg",
+      url: "/nestjs",
+    },
+    {
+      name: "Apollo",
+      icon: "/icons/technologies/apollo.svg",
+      url: "/apollo",
+    },
+    {
+      name: "Hapi",
+      icon: "/icons/technologies/hapi.svg",
+      url: "/hapi",
+    },
+    {
+      name: "GraphQL",
+      icon: "/icons/technologies/graphql.svg",
+      url: "/graphql",
+    },
+    {
+      name: "ExpressJS",
+      icon: "/icons/technologies/express.svg",
+      url: "/express",
+    },
+    {
+      name: "Redwood",
+      icon: "/icons/technologies/redwoodjs.svg",
+      url: "/redwood",
+    },
+  ],
+};
+const twoCol = [
+  {
+    content: (
+      <>
+        <h2 className="text-foreground-neutral stretch-display text-4xl font-black! font-sans-display mt-0 mb-4">
+          Autocomplete your way to success
+        </h2>
+        <p className="text-foreground-neutral-weak! text-base">
+          The best code is the code that writes itself. Prisma Client gives you
+          a fantastic autocomplete experience so you can move quickly and be
+          sure you don't write an invalid query. Our obsession with type safety
+          means you can rest assured that your code works as expected, every
+          time.
+        </p>
+      </>
+    ),
+    imageUrl: "/illustrations/client/client_0",
+    imageAlt: "Autocomplete your way to success",
+    mobileImageUrl: null,
+    mobileImageAlt: null,
+    logos: null,
+    useDefaultLogos: false,
+    visualPosition: "right" as const,
+    visualType: "image" as const,
   },
   {
-    title: "Adding a model",
-    migrateFileName: "init/20210325160100_add_post/migration.sql",
-    schema: `
-model User {
-  id    Int     @id @default(autoincrement())
-  email String  @unique
-  name  String?
-+  posts Post[]
-}
-+
-+model Post {
-+  id        Int      @id @default(autoincrement())
-+  created   DateTime @default(now())
-+  title     String   @db.VarChar(70)
-+  content   String
-+  author    User?    @relation(fields: [authorId], references: [id])
-+  authorId  Int
-+}`.trim(),
-    migrateFileContents: `
--- CreateTable
-CREATE TABLE "Post" (
-  "id" SERIAL NOT NULL,
-  "created" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "title" VARCHAR(70) NOT NULL,
-  "content" TEXT NOT NULL,
-  "authorId" INTEGER NOT NULL,
-  PRIMARY KEY ("id")
-);
-
--- AddForeignKey
-ALTER TABLE "Post" ADD FOREIGN KEY ("authorId") REFERENCES
-"User"("id") ON DELETE CASCADE ON UPDATE CASCADE;`.trim(),
-    arrowOffset: {
-      x: 190,
-      y: -20,
-      rotation: -70,
-    },
+    content: (
+      <>
+        <h2 className="text-foreground-neutral stretch-display text-4xl font-black! font-sans-display mt-0 mb-4">
+          Fully type-safe raw SQL
+        </h2>
+        <p className="text-foreground-neutral-weak! text-base">
+          Execute SQL queries directly against your database without losing the
+          benefits of Prisma’s type-checking and auto-completion. TypedSQL
+          leverages the capabilities of Prisma Client to write raw SQL queries
+          that are type-checked at compile time.
+        </p>
+      </>
+    ),
+    imageUrl: "/illustrations/client/client_1",
+    imageAlt: "Fully type-safe raw SQL",
+    mobileImageUrl: null,
+    mobileImageAlt: null,
+    logos: null,
+    useDefaultLogos: false,
+    noShadow: true,
+    visualPosition: "left" as const,
+    visualType: "image" as const,
   },
 ];
 
 export default function Client() {
   return (
     <main className="flex-1 w-screen bg-background-default">
-      <div className="hero relative w-full -mt-33 pt-45 pb-8 flex flex-col gap-8">
+      <div className="hero relative w-full -mt-33 pt-45 pb-8 flex flex-col gap-8 px-4">
         <div className="bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] absolute inset-0 z-0 overflow-hidden opacity-20" />
         <div className="flex flex-col gap-4 relative z-1">
           <h5 className="stretch-display font-sans-display mx-auto w-fit my-0 text-foreground-orm-strong uppercase">
@@ -99,249 +178,127 @@ export default function Client() {
           API tailored specifically for your app.
         </p>
       </div>
-      <div className="px-4 my-12 relative z-1">
+      <div className="px-4 relative z-1">
         <div className="max-w-[1200px] mx-auto py-12">
           <API />
         </div>
       </div>
-      <div className="px-4 my-12">
-        <div className="max-w-[1200px] mx-auto py-8">
-          <div className="grid md:grid-cols-3 gap-8">
-            <Card className="bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-orm)_262.5%)]">
-              <div className="flex gap-2 items-center">
-                <Action color="orm" size="4xl">
-                  <i className="fa-regular fa-file-binary text-xl" />
-                </Action>
-                <h4 className="text-xl text-foreground-neutral font-sans-display font-extrabold">
-                  Auto-generated
-                </h4>
-              </div>
-              <p className="text-foreground-neutral-weak">
-                Migrations are automatically generated so you don't have to
-                write the SQL by hand.
-              </p>
-            </Card>
-            <Card className="bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-orm)_262.5%)]">
-              <div className="flex gap-2 items-center">
-                <Action color="orm" size="4xl">
-                  <i className="fa-regular fa-file-binary text-xl" />
-                </Action>
-                <h4 className="text-xl text-foreground-neutral font-sans-display font-extrabold">
-                  Deterministic/ Repeatable
-                </h4>
-              </div>
-              <p className="text-foreground-neutral-weak">
-                Migrate generates SQL migrations, ensuring migrations will
-                always result in the same database schema across environments.
-              </p>
-            </Card>
-            <Card className="bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-orm)_262.5%)]">
-              <div className="flex gap-2 items-center">
-                <Action color="orm" size="4xl">
-                  <i className="fa-regular fa-file-binary text-xl" />
-                </Action>
-                <h4 className="text-xl text-foreground-neutral font-sans-display font-extrabold">
-                  Customizable
-                </h4>
-              </div>
-              <p className="text-foreground-neutral-weak">
-                Generated SQL migrations can be fully customized giving you full
-                control over the exact changes.
-              </p>
-            </Card>
-          </div>
+      <div
+        className={cn(
+          "-mb-12 px-4 relative",
+          "before:absolute before:content-[''] before:inset-0 before:opacity-20",
+          "before:bg-[linear-gradient(0deg,var(--color-foreground-orm-weak)_0%,var(--color-background-default)_100%)]",
+        )}
+      >
+        <div className="relative z-1">
+          <CardSection cardSection={twoCol} />
         </div>
       </div>
-      <div className="px-4 my-12">
-        <div className="max-w-[1200px] mx-auto py-8">
-          <div className="grid md:grid-cols-2 gap-18">
-            <div>
-              <h5 className="stretch-display font-sans-display w-fit my-0 text-background-orm-reverse uppercase">
-                Iteration
+      <div
+        className={cn(
+          "py-12 px-4 relative",
+          "before:absolute before:content-[''] before:inset-0 before:opacity-20 before:z-0",
+          "before:bg-[linear-gradient(180deg,var(--color-foreground-orm-weak)_0%,var(--color-background-default)_100%)]",
+        )}
+      >
+        <div className="max-w-[1200px] mx-auto z-1 relative flex flex-col gap-40">
+          <div className="cards mx-auto max-w-222 flex flex-col gap-6">
+            <h2 className="text-foreground-neutral text-center stretch-display text-4xl font-black! font-sans-display mt-0 mb-4">
+              Works with your favourite
+              <br />
+              databases and framework
+            </h2>
+            <Card className="bg-background-default flex-row! md:gap-8! justify-between items-center md:p-8 flex-wrap">
+              <h5 className="text-xl font-sans-display stretch-display font-bold md:w-min text-foreground-neutral">
+                {databases.title}
               </h5>
-              <h3 className="text-[48px] text-foreground-neutral font-bold mt-4 mb-8 leading-13">
-                Fast in development
-              </h3>
-              <ul className="list-none space-y-6">
-                <li className="flex gap-4">
-                  <i className="fa-solid fa-circle-check text-background-orm-reverse text-2xl shrink-0 mt-1" />
-                  <div>
-                    <h4 className="text-2xl mb-3 text-foreground-neutral font-bold">
-                      Prototype fast without migrations
-                    </h4>
-                    <p className="text-base text-foreground-neutral-weak">
-                      While prototyping you can create the database schema
-                      quickly using the prisma db push command without creating
-                      migrations.
-                    </p>
-                  </div>
-                </li>
-
-                <li className="flex gap-4">
-                  <i className="fa-solid fa-circle-check text-background-orm-reverse text-2xl shrink-0 mt-1" />
-                  <div>
-                    <h4 className="text-2xl mb-3 text-foreground-neutral font-bold">
-                      Integrated seeding
-                    </h4>
-                    <p className="text-base text-foreground-neutral-weak">
-                      Quickly seed your database with data by defining a seed
-                      script in JavaScript, TypeScript or Shell.
-                    </p>
-                  </div>
-                </li>
-                <li className="flex gap-4">
-                  <i className="fa-solid fa-circle-check text-background-orm-reverse text-2xl shrink-0 mt-1" />
-                  <div>
-                    <h4 className="text-2xl mb-3 text-foreground-neutral font-bold">
-                      Smart problem resolution
-                    </h4>
-                    <p className="text-base text-foreground-neutral-weak">
-                      Migrate detects database schema drift and assists you in
-                      resolving them.
-                    </p>
-                  </div>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h5 className="stretch-display font-sans-display w-fit my-0 text-background-orm-reverse uppercase">
-                Deployment
-              </h5>
-              <h3 className="text-[48px] text-foreground-neutral font-bold mt-4 mb-8 leading-13">
-                Reliable in Production
-              </h3>
-              <ul className="list-none space-y-6">
-                <li className="flex gap-4">
-                  <i className="fa-solid fa-circle-check text-background-orm-reverse text-2xl shrink-0 mt-1" />
-                  <div>
-                    <h4 className="text-2xl mb-3 text-foreground-neutral font-bold">
-                      Dedicated production workflows
-                    </h4>
-                    <p className="text-base text-foreground-neutral-weak">
-                      Migrate supports dedicated workflows for carrying out
-                      migrations safely in production.
-                    </p>
-                  </div>
-                </li>
-                <li className="flex gap-4">
-                  <i className="fa-solid fa-circle-check text-background-orm-reverse text-2xl shrink-0 mt-1" />
-                  <div>
-                    <h4 className="text-2xl mb-3 text-foreground-neutral font-bold">
-                      CI/CD Integration
-                    </h4>
-                    <p className="text-base text-foreground-neutral-weak">
-                      Migrate can be integrated into CI/CD pipelines, e.g.
-                      GitHub Actions, to automate applying migrations before
-                      deployment.
-                    </p>
-                  </div>
-                </li>
-                <li className="flex gap-4">
-                  <i className="fa-solid fa-circle-check text-background-orm-reverse text-2xl shrink-0 mt-1" />
-                  <div>
-                    <h4 className="text-2xl mb-3 text-foreground-neutral font-bold">
-                      Conflict detection and resolution
-                    </h4>
-                    <p className="text-base text-foreground-neutral-weak">
-                      Migrate keeps track of applied migrations and provides
-                      tools to detect and resolve conflicts and drifts between
-                      migrations and the database schema.
-                    </p>
-                  </div>
-                </li>
-              </ul>
+              <div className="flex gap-1 flex-wrap">
+                {databases.list.map((db) => (
+                  <Technology text={db.name} url={db.url}>
+                    <Action
+                      color="neutral"
+                      size="4xl"
+                      key={db.name}
+                      className="h-[75px]! w-[75px]! hover:bg-background-neutral-strong"
+                    >
+                      <img src={db.icon} alt={db.name} />
+                    </Action>
+                  </Technology>
+                ))}
+              </div>
+            </Card>
+            <Card className="bg-background-default md:gap-8! justify-between items-start md:items-center md:p-8">
+              <div className="flex gap-2 md:gap-6 items-start md:items-center md:flex-row flex-col">
+                <h5 className="text-xl font-sans-display stretch-display font-bold md:w-min text-foreground-neutral">
+                  {frameworks.title}
+                </h5>
+                <p className="text-base text-foreground-neutral-weak">
+                  {frameworks.description}
+                </p>
+              </div>
+              <div className="flex gap-1 flex-wrap">
+                {frameworks.list.map((fw) => (
+                  <Technology text={fw.name} url={fw.url}>
+                    <Action
+                      color="neutral"
+                      size="4xl"
+                      key={fw.name}
+                      className="h-[75px]! w-[75px]! hover:bg-background-neutral-strong"
+                    >
+                      <img src={fw.icon} alt={fw.name} />
+                    </Action>
+                  </Technology>
+                ))}
+              </div>
+            </Card>
+            <div className="flex gap-4 mx-auto w-fit flex-wrap justify-center">
+              <Button variant="default-stronger" size="3xl">
+                <span>Browse examples on GitHub</span>
+                <i className="fa-brands fa-github" />
+              </Button>
+              <Button variant="orm" size="3xl">
+                <span>Prisma in your stack</span>
+                <i className="fa-regular fa-arrow-right" />
+              </Button>
             </div>
           </div>
-        </div>
-      </div>
-      <div className="px-4 my-12">
-        <div className="max-w-[1200px] mx-auto py-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-6">
-            {/* Card 1 */}
-            <Card className="bg-background-default justify-start md:col-span-2 lg:col-span-3">
-              <div className="flex gap-4 items-center">
-                <Action color="orm" size="4xl">
-                  <i className="fa-regular fa-terminal text-xl" />
-                </Action>
-                <h3 className="text-xl font-bold text-foreground-neutral font-sans-display">
-                  Seamless integration with Prisma Client
-                </h3>
-              </div>
-              <p className="text-foreground-neutral-weak">
-                When using Prisma Migrate with Prisma Client, schema changes are
-                type checked in your application code. This eliminates errors
-                that arise when database schema changes require changes to the
-                application code.
+          <div className="grid md:grid-cols-2 gap-12 lg:gap-23">
+            <div className="grid grid-rows-[auto_auto_1fr_auto]">
+              <h5 className="text-base uppercase font-sans-display stretch-display font-bold text-foreground-orm-strong mb-1">
+                Prisma Studio
+              </h5>
+              <h3 className="text-foreground-neutral text-3xl stretch-display font-sans-display mb-4">
+                Visual database browser
+              </h3>
+              <p className="text-foreground-neutral-weak text-md mb-8">
+                Prisma Studio is the easiest way to explore and manipulate data
+                in your Prisma projects. Understand your data by browsing across
+                tables, filter, paginate, traverse relations and edit your data
+                with safety.
               </p>
-            </Card>
-
-            {/* Card 2 */}
-            <Card className="bg-background-default justify-start md:col-span-2 lg:col-span-3">
-              <div className="flex gap-4 items-center">
-                <Action color="orm" size="4xl">
-                  <i className="fa-regular fa-messages text-xl" />
-                </Action>
-                <h3 className="text-xl font-bold text-foreground-neutral font-sans-display">
-                  Declarative data modelling
-                </h3>
-              </div>
-              <p className="text-foreground-neutral-weak">
-                Prisma Migrate generates migrations based on changes in the
-                Prisma schema – a human-readable declarative definition of your
-                database schema. This allows you to focus on your desired
-                database schema rather than the steps to get there.
+              <Button variant="orm" size="3xl" className="w-fit">
+                <span>Learn more about Prisma Studio</span>
+                <i className="fa-regular fa-arrow-right" />
+              </Button>
+            </div>
+            <div className="grid grid-rows-[auto_auto_1fr_auto]">
+              <h5 className="text-base uppercase font-sans-display stretch-display font-bold text-foreground-orm-strong mb-1">
+                Prisma Migrate
+              </h5>
+              <h3 className="text-foreground-neutral text-3xl stretch-display font-sans-display mb-4">
+                Hassle-free migrations
+              </h3>
+              <p className="text-foreground-neutral-weak text-md mb-8">
+                Prisma Migrate auto-generates SQL migrations from your Prisma
+                schema. These migration files are fully customizable, giving you
+                full control and ultimate flexibility — from local development
+                to production environments.
               </p>
-            </Card>
-
-            {/* Card 3 */}
-            <Card className="bg-background-default justify-start md:col-span-2 lg:col-span-2">
-              <div className="flex gap-4 items-center">
-                <Action color="orm" size="4xl">
-                  <i className="fa-regular fa-code-branch text-xl" />
-                </Action>
-                <h3 className="text-xl font-bold text-foreground-neutral font-sans-display">
-                  Version control for your database
-                </h3>
-              </div>
-              <p className="text-foreground-neutral-weak">
-                With Prisma Migrate, generated migrations are tracked in your
-                Git repository, allowing you to make changes to your database
-                schema in tandem with your application code.
-              </p>
-            </Card>
-
-            {/* Card 4 */}
-            <Card className="bg-background-default justify-start md:col-span-2 lg:col-span-2">
-              <div className="flex gap-4 items-center">
-                <Action color="orm" size="4xl">
-                  <i className="fa-regular fa-users text-xl" />
-                </Action>
-                <h3 className="text-xl font-bold text-foreground-neutral font-sans-display">
-                  Streamlined collaboration
-                </h3>
-              </div>
-              <p className="text-foreground-neutral-weak">
-                With Prisma Migrate, generated migrations are tracked in your
-                Git repository, allowing you to make changes to your database
-                schema in tandem with your application code.
-              </p>
-            </Card>
-
-            {/* Card 5 */}
-            <Card className="bg-background-default justify-start md:col-span-2 lg:col-span-2">
-              <div className="flex gap-4 items-center">
-                <Action color="orm" size="4xl">
-                  <i className="fa-regular fa-hand-pointer text-xl" />
-                </Action>
-                <h3 className="text-xl font-bold text-foreground-neutral font-sans-display">
-                  Bring your own project
-                </h3>
-              </div>
-              <p className="text-foreground-neutral-weak">
-                Prisma Migrate can be adopted in any existing project that uses
-                PostgreSQL, MySQL, MariaDB, SQL Server, CockroachDB or SQLite.
-              </p>
-            </Card>
+              <Button variant="orm" size="3xl" className="w-fit">
+                <span>Learn more about Prisma Studio</span>
+                <i className="fa-regular fa-arrow-right" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>

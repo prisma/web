@@ -179,7 +179,7 @@ const API = () => {
 
   return (
     <div className="text-white grid gap-20 md:gap-10 lg:grid-cols-[1fr_2fr] grid-rows-[auto_auto]">
-      <div className="w-full md:max-w-100 mt-10 md:mt-12 relative [&>ul]:list-none [&>ul]:p-0 max-md:*:text-left max-md:[&>p]:text-left">
+      <div className="w-full lg:max-w-100 mt-10 md:mt-12 relative [&>ul]:list-none [&>ul]:p-0 max-md:*:text-left max-md:[&>p]:text-left">
         <div className="hidden lg:inline-block">
           <CurvedArrow className="absolute right-0 -top-8" />
         </div>
@@ -252,7 +252,7 @@ const API = () => {
         </div>
         {<CodeUIItems item={selectedAPIItem} blockType={blockType} />}
       </div>
-      <div className="w-full min-w-0 top-0 -mt-7.5 md:p-0 md:w-full md:max-w-180 lg:mt-10 flex flex-col gap-4">
+      <div className="w-full min-w-0 top-0 -mt-7.5 md:p-0 md:w-full lg:max-w-180 lg:mt-10 flex flex-col gap-4">
         {contentBlocks}
       </div>
     </div>
