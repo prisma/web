@@ -59,24 +59,24 @@ export const metadata: Metadata = {
 
 const Hero = () => {
   return (
-    <div className="hero dark:bg-[linear-gradient(180deg,var(--color-foreground-ppg-weaker)_0%,var(--color-background-default)_100%)] bg-[linear-gradient(180deg,var(--color-background-ppg)_0%,var(--color-background-default)_100%)] relative before:absolute">
+    <div className="px-4 hero dark:bg-[linear-gradient(180deg,var(--color-foreground-ppg-weaker)_0%,var(--color-background-default)_100%)] bg-[linear-gradient(180deg,var(--color-background-ppg)_0%,var(--color-background-default)_100%)] relative before:absolute">
       <div className="max-w-300 mx-auto py-12 grid md:grid-cols-[1fr_320px] lg:grid-cols-[736px_1fr] gap-11 relative z-1">
-        <div className="content flex flex-col gap-8">
-          <div className="flex flex-col gap-4">
+        <div className="content flex flex-col gap-8 justify-center">
+          <div className="flex flex-col gap-4 items-center md:items-start">
             <h5 className="uppercase text-foreground-ppg-weak my-0!">
               <i className={cn("mr-2", data.hero.icon)} />
               <span className="stretch-display font-sans-display">
                 {data.hero.eyebrow}
               </span>
             </h5>
-            <h1 className="stretch-display text-[40px] lg:text-[60px] font-bold my-0! font-sans-display max-w-184 leading-16">
+            <h1 className="stretch-display text-[40px] lg:text-[60px] font-bold my-0! font-sans-display max-w-184 leading-10 lg:leading-16 md:text-left text-center">
               {parse(data.hero.title)}
             </h1>
           </div>
-          <p className="text-left text-foreground-neutral-weak max-w-2xl font-sans-display [font-variation-settings:'wght'_400,'wdth'_115]">
+          <p className=" text-foreground-neutral-weak max-w-2xl font-sans-display [font-variation-settings:'wght'_400,'wdth'_115] text-center md:text-left mx-auto md:mx-0">
             {data.hero.description}
           </p>
-          <div className="flex gap-4">
+          <div className="flex gap-4 md:justify-start justify-center">
             <Button variant="ppg" size="3xl" href={data.hero.btns[0].url}>
               <span>{data.hero.btns[0].label}</span>
               {data.hero.btns[0].icon && (
@@ -95,7 +95,7 @@ const Hero = () => {
             </Button>
           </div>
         </div>
-        <div className="logos relative max-h-78">
+        <div className="logos relative max-h-78 hidden md:block">
           <div className="absolute left-0 top-0 w-57 h-44 object-cover bg-background-default flex items-center justify-center p-9 border border-stroke-ppg-weak rounded-2xl">
             <img
               src={data.hero.imageUrl}
@@ -133,12 +133,12 @@ export default async function SiteHome() {
     <main className="w-screen overflow-hidden">
       <Hero />
       <div className="my-12">
-        <div className="p-12">
+        <div className="px-4 md:px-8 py-12">
           <div className="max-w-[1200px] mx-auto flex flex-col gap-12">
             <h2 className="stretch-display text-4xl font-bold text-center font-sans-display">
               {data.why.title}
             </h2>
-            <div className="cards grid grid-cols-3 gap-6">
+            <div className="cards grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3! gap-6">
               {data.why.cards.map((card) => (
                 <Card
                   key={card.title}
@@ -160,7 +160,7 @@ export default async function SiteHome() {
         </div>
       </div>
       <div className="my-12">
-        <div className="p-12 flex flex-col gap-12">
+        <div className="px-4 md:px-8 py-12 flex flex-col gap-12">
           <h2 className="stretch-display text-foreground-neutral text-4xl font-bold text-center font-sans-display max-w-106 mx-auto">
             {data.how.title}
           </h2>
@@ -216,11 +216,11 @@ export default async function SiteHome() {
         </div>
       </div>
       <div className="my-12">
-        <div className="p-12 flex flex-col gap-12 max-w-344 w-full mx-auto">
+        <div className="px-4 md:px-8 py-12 flex flex-col gap-12 max-w-344 w-full mx-auto">
           <h2 className="stretch-display text-foreground-neutral text-4xl font-bold text-center font-sans-display mx-auto">
             {data.why_prisma.title}
           </h2>
-          <div className="cards grid grid-cols-3 gap-6">
+          <div className="cards grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3! gap-6">
             {data.why_prisma.cards.map((card, idx: number) => (
               <div
                 key={idx}
@@ -249,25 +249,25 @@ export default async function SiteHome() {
         </div>
       </div>
       <div className="my-12">
-        <div className="p-12 flex flex-col gap-12 mx-auto w-fit">
+        <div className="px-4 md:px-8 py-12 flex flex-col gap-12 mx-auto w-fit">
           <Quote author={data.quote.author} className="max-w-173">
             <p>{data.quote.text}</p>
           </Quote>
         </div>
       </div>
       <div className="my-12">
-        <div className="p-12 flex flex-col gap-12">
+        <div className="px-4 md:px-8 py-12 flex flex-col gap-12">
           <h2 className="stretch-display text-foreground-neutral text-4xl font-bold text-center font-sans-display mx-auto">
             {data.community.title}
           </h2>
-          <div className="cards grid grid-cols-[repeat(6,1fr)] gap-6 mx-auto max-w-[1200px]">
+          <div className="cards grid grid-cols-1 sm:grid-cols-2 md:grid-cols-[repeat(6,1fr)]! gap-6 mx-auto max-w-[1200px]">
             {data.community.cards.map((card, idx: number) => (
               <Card
                 key={idx}
                 className={cn(
-                  "col-span-2 bg-background-neutral-weaker",
-                  idx >= 3 && idx === 3 && "col-start-2",
-                  idx >= 3 && idx === 4 && "col-start-4",
+                  "md:col-span-2 bg-background-neutral-weaker",
+                  idx >= 3 && idx === 3 && "md:col-start-2",
+                  idx >= 3 && idx === 4 && "md:col-start-4",
                 )}
               >
                 <div className={"flex gap-4 items-center"}>
