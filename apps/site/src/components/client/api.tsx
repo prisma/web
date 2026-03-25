@@ -36,7 +36,7 @@ const CurvedArrow = (props: any) => (
   >
     <path
       d="M1.1931 57.3302C0.867673 28.5257 34.0246 -6.62876 80.5571 10.7968M80.5571 10.7968L69.7148 15.6517M80.5571 10.7968L73.128 1.06228"
-      stroke="#4A5568"
+      stroke="var(--color-foreground-orm-strong)"
       strokeWidth="2"
     />
   </svg>
@@ -183,10 +183,6 @@ const API = () => {
         <div className="hidden lg:inline-block">
           <CurvedArrow className="absolute right-0 -top-8" />
         </div>
-
-        <h5 className="stretch-display font-sans-display w-fit my-0 text-foreground-orm-strong uppercase">
-          Prisma Client
-        </h5>
         <h2 className="mt-2 text-foreground-neutral text-4xl stretch-display leading-13">
           Explore the <br /> Prisma Client API
         </h2>
