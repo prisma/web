@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import * as data from "../../../data/prisma-with/nextjs.json";
+import * as data from "../../../data/prisma-with/nestjs.json";
 import { PrismaWithLayout } from "../../../components/prisma-with/layout";
 
 const codeExamples: Record<string, string> = {
