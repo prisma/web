@@ -179,7 +179,7 @@ export default function Client() {
         </p>
       </div>
       <div className="px-4 relative z-1">
-        <div className="max-w-[1200px] mx-auto py-12">
+        <div className="max-w-[1200px] mx-auto pt-12">
           <API />
         </div>
       </div>
