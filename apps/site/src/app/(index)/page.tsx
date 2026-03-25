@@ -10,7 +10,6 @@ import LogoParade from "@prisma-docs/ui/components/logo-parade";
 import React from "react";
 import { Bento } from "@/components/homepage/bento";
 import { CardSection } from "@/components/homepage/card-section/card-section";
-const MemorizedLogoParade = React.memo(LogoParade);
 import review from "../../data/homepage.json";
 import Testimonials from "../../components/homepage/testimonials";
 
@@ -67,7 +66,7 @@ export const metadata: Metadata = {
 export default function SiteHome() {
   return (
     <main className="flex-1 w-full z-1 bg-background-default">
-      <div className="hero h-123 -mt-24 flex items-end justify-center">
+      <div className="hero h-123 -mt-24 flex items-end justify-center px-4">
         <div className="w-screen h-123 absolute inset-0">
           <Antigravity
             count={300}
@@ -96,7 +95,7 @@ export default function SiteHome() {
             Real Postgres with the developer experience and infrastructure to
             ship faster.
           </p>
-          <div className="flex gap-4 items-center justify-center">
+          <div className="flex gap-4 items-center justify-center flex-wrap">
             <Button
               variant="ppg"
               href="https://console.prisma.io/sign-up?utm_source=website&utm_medium=index&utm_campaign=cta"

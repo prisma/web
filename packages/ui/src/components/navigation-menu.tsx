@@ -378,7 +378,7 @@ function NavigationMobileMenu({
           ) : null,
         )}
       </div>
-      <div className="h-min-content mx-auto w-full fixed bottom-0 left-0 py-6 px-4 bg-background-default justify-center items-center gap-6 flex flex-col">
+      <div className="h-min-content mx-auto w-full absolute bottom-0 left-0 py-6 px-4 bg-background-default justify-center items-center gap-6 flex flex-col">
         <Socials className="flex items-center justify-center" include="all" />
         <div className="grid gap-2 grid-cols-2 w-full">
           <NavigationMenuItem className="w-full">
