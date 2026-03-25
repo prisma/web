@@ -254,11 +254,11 @@ export default function Client() {
             <div className="flex gap-4 mx-auto w-fit flex-wrap justify-center">
               <Button variant="default-stronger" size="3xl">
                 <span>Browse examples on GitHub</span>
-                <i className="fa-brands fa-github" />
+                <i className="fa-brands fa-github ml-2" />
               </Button>
               <Button variant="orm" size="3xl">
                 <span>Prisma in your stack</span>
-                <i className="fa-regular fa-arrow-right" />
+                <i className="fa-regular fa-arrow-right ml-2" />
               </Button>
             </div>
           </div>
@@ -278,7 +278,7 @@ export default function Client() {
               </p>
               <Button variant="orm" size="3xl" className="w-fit">
                 <span>Learn more about Prisma Studio</span>
-                <i className="fa-regular fa-arrow-right" />
+                <i className="fa-regular fa-arrow-right ml-2" />
               </Button>
             </div>
             <div className="grid grid-rows-[auto_auto_1fr_auto]">
@@ -296,7 +296,7 @@ export default function Client() {
               </p>
               <Button variant="orm" size="3xl" className="w-fit">
                 <span>Learn more about Prisma Studio</span>
-                <i className="fa-regular fa-arrow-right" />
+                <i className="fa-regular fa-arrow-right ml-2" />
               </Button>
             </div>
           </div>
