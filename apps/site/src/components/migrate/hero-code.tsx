@@ -197,8 +197,8 @@ const HeroCode: React.FC<HeroCodeProps> = ({ steps }) => {
             y2="66"
             gradientUnits="userSpaceOnUse"
           >
-            <stop stopColor="#0A141A" />
-            <stop offset="1" stopColor="#5A67D8" />
+            <stop stopColor="var(--color-background-orm)" />
+            <stop offset="1" stopColor="var(--color-background-orm-strong)" />
           </linearGradient>
         </defs>
       </svg>
