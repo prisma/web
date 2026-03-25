@@ -151,7 +151,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <Script src={WebFA} crossOrigin="anonymous" />
       </head>
       <body className="flex flex-col min-h-screen pt-24 relative">
-        <div className="bg-blog absolute inset-0 -z-1 overflow-hidden" />
+        <div className="bg-background-default absolute inset-0 -z-1 overflow-hidden" />
         <Provider>
           <ThemeProvider defaultTheme="system" storageKey="theme">
             <WebNavigation
