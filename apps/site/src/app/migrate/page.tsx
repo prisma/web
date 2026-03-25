@@ -127,7 +127,7 @@ export default function Migrate() {
             <Card className="bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-orm)_262.5%)]">
               <div className="flex gap-2 items-center">
                 <Action color="orm" size="4xl">
-                  <i className="fa-regular fa-file-binary" />
+                  <i className="fa-regular fa-file-binary text-xl" />
                 </Action>
                 <h4 className="text-xl text-foreground-neutral font-sans-display font-extrabold">
                   Auto-generated
@@ -141,7 +141,7 @@ export default function Migrate() {
             <Card className="bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-orm)_262.5%)]">
               <div className="flex gap-2 items-center">
                 <Action color="orm" size="4xl">
-                  <i className="fa-regular fa-file-binary" />
+                  <i className="fa-regular fa-file-binary text-xl" />
                 </Action>
                 <h4 className="text-xl text-foreground-neutral font-sans-display font-extrabold">
                   Deterministic/ Repeatable
@@ -155,7 +155,7 @@ export default function Migrate() {
             <Card className="bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-orm)_262.5%)]">
               <div className="flex gap-2 items-center">
                 <Action color="orm" size="4xl">
-                  <i className="fa-regular fa-file-binary" />
+                  <i className="fa-regular fa-file-binary text-xl" />
                 </Action>
                 <h4 className="text-xl text-foreground-neutral font-sans-display font-extrabold">
                   Customizable
@@ -278,7 +278,7 @@ export default function Migrate() {
             <Card className="bg-background-default justify-start md:col-span-2 lg:col-span-3">
               <div className="flex gap-4 items-center">
                 <Action color="orm" size="4xl">
-                  <i className="fa-regular fa-terminal" />
+                  <i className="fa-regular fa-terminal text-xl" />
                 </Action>
                 <h3 className="text-xl font-bold text-foreground-neutral font-sans-display">
                   Seamless integration with Prisma Client
@@ -296,7 +296,7 @@ export default function Migrate() {
             <Card className="bg-background-default justify-start md:col-span-2 lg:col-span-3">
               <div className="flex gap-4 items-center">
                 <Action color="orm" size="4xl">
-                  <i className="fa-regular fa-messages" />
+                  <i className="fa-regular fa-messages text-xl" />
                 </Action>
                 <h3 className="text-xl font-bold text-foreground-neutral font-sans-display">
                   Declarative data modelling
@@ -314,7 +314,7 @@ export default function Migrate() {
             <Card className="bg-background-default justify-start md:col-span-2 lg:col-span-2">
               <div className="flex gap-4 items-center">
                 <Action color="orm" size="4xl">
-                  <i className="fa-regular fa-code-branch" />
+                  <i className="fa-regular fa-code-branch text-xl" />
                 </Action>
                 <h3 className="text-xl font-bold text-foreground-neutral font-sans-display">
                   Version control for your database
@@ -331,7 +331,7 @@ export default function Migrate() {
             <Card className="bg-background-default justify-start md:col-span-2 lg:col-span-2">
               <div className="flex gap-4 items-center">
                 <Action color="orm" size="4xl">
-                  <i className="fa-regular fa-users" />
+                  <i className="fa-regular fa-users text-xl" />
                 </Action>
                 <h3 className="text-xl font-bold text-foreground-neutral font-sans-display">
                   Streamlined collaboration
@@ -348,7 +348,7 @@ export default function Migrate() {
             <Card className="bg-background-default justify-start md:col-span-2 lg:col-span-2">
               <div className="flex gap-4 items-center">
                 <Action color="orm" size="4xl">
-                  <i className="fa-regular fa-hand-pointer" />
+                  <i className="fa-regular fa-hand-pointer text-xl" />
                 </Action>
                 <h3 className="text-xl font-bold text-foreground-neutral font-sans-display">
                   Bring your own project
