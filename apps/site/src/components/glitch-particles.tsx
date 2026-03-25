@@ -25,8 +25,6 @@ interface Glitch {
 }
 
 interface GlitchParticlesProps {
-  /** Background color of the container */
-  background?: string;
   /** Width of the content area (canvas = this + padding * 2) */
   contentWidth?: number;
   /** Height of the content area (canvas = this + padding * 2) */
@@ -36,7 +34,6 @@ interface GlitchParticlesProps {
 }
 
 export default function GlitchParticles({
-  background = "transparent",
   contentWidth = 427,
   contentHeight = 178,
   padding = 300,
@@ -54,6 +51,9 @@ export default function GlitchParticles({
     const canvasHeight = contentHeight + padding * 2;
     canvas.width = canvasWidth;
     canvas.height = canvasHeight;
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
 
     const particles: Particle[] = [];
     const mouse = { x: 0, y: 0 };
@@ -64,9 +64,9 @@ export default function GlitchParticles({
       offsetY1: 0,
       offsetY2: 0,
       slices: [0, 0, 0, 0, 0],
-      showGlitch: true,
+      showGlitch: false,
     };
-    let rafId: number;
+    let rafId: number | undefined;
 
     // — Init particles from SVG path —
     const offscreen = document.createElement("canvas");
@@ -76,7 +76,7 @@ export default function GlitchParticles({
     const path2d = new Path2D(SVG_PATH);
     offCtx.save();
     offCtx.scale(contentWidth / 381, contentHeight / 133);
-    offCtx.fillStyle = "var(--background-default)";
+    offCtx.fillStyle = "#000";
     offCtx.fill(path2d);
     offCtx.restore();
 
@@ -103,57 +103,62 @@ export default function GlitchParticles({
       }
     }
 
-    // — Glitch updater —
-    const glitchInterval = setInterval(() => {
-      const isHeavy = Math.random() > 0.07;
-      glitch = {
-        offsetX1: (Math.random() - 0.5) * (isHeavy ? 8 : 4),
-        offsetX2: (Math.random() - 0.5) * (isHeavy ? 8 : 4),
-        offsetY1: (Math.random() - 0.5) * 2,
-        offsetY2: (Math.random() - 0.5) * 2,
-        slices: [
-          (Math.random() - 0.5) * (isHeavy ? 16 : 6),
-          (Math.random() - 0.5) * (isHeavy ? 20 : 8),
-          (Math.random() - 0.5) * (isHeavy ? 16 : 6),
-          (Math.random() - 0.5) * (isHeavy ? 12 : 6),
-          (Math.random() - 0.5) * (isHeavy ? 16 : 5),
-        ],
-        showGlitch: Math.random() > 0.008,
-      };
-    }, 50);
+    let glitchInterval: ReturnType<typeof setInterval> | undefined;
+    if (!prefersReducedMotion) {
+      // — Glitch updater —
+      glitchInterval = setInterval(() => {
+        const isHeavy = Math.random() > 0.07;
+        glitch = {
+          offsetX1: (Math.random() - 0.5) * (isHeavy ? 8 : 4),
+          offsetX2: (Math.random() - 0.5) * (isHeavy ? 8 : 4),
+          offsetY1: (Math.random() - 0.5) * 2,
+          offsetY2: (Math.random() - 0.5) * 2,
+          slices: [
+            (Math.random() - 0.5) * (isHeavy ? 16 : 6),
+            (Math.random() - 0.5) * (isHeavy ? 20 : 8),
+            (Math.random() - 0.5) * (isHeavy ? 16 : 6),
+            (Math.random() - 0.5) * (isHeavy ? 12 : 6),
+            (Math.random() - 0.5) * (isHeavy ? 16 : 5),
+          ],
+          showGlitch: Math.random() > 0.008,
+        };
+      }, 50);
+    }
 
     // — Animation loop —
     function animate() {
       if (!ctx) return;
       ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
-      const repelRadius = isPressed ? 200 : 80;
-      const repelStrength = isPressed ? 50 : 15;
+      if (!prefersReducedMotion) {
+        const repelRadius = isPressed ? 200 : 80;
+        const repelStrength = isPressed ? 50 : 15;
 
-      particles.forEach((p) => {
-        const dx = p.x - mouse.x;
-        const dy = p.y - mouse.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
+        particles.forEach((p) => {
+          const dx = p.x - mouse.x;
+          const dy = p.y - mouse.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
 
-        if (dist < repelRadius && dist > 0) {
-          const force = (repelRadius - dist) / repelRadius;
-          const angle = Math.atan2(dy, dx);
-          p.vx += Math.cos(angle) * force * repelStrength;
-          p.vy += Math.sin(angle) * force * repelStrength;
-        }
+          if (dist < repelRadius && dist > 0) {
+            const force = (repelRadius - dist) / repelRadius;
+            const angle = Math.atan2(dy, dx);
+            p.vx += Math.cos(angle) * force * repelStrength;
+            p.vy += Math.sin(angle) * force * repelStrength;
+          }
 
-        if (isPressed) {
-          p.vx += (Math.random() - 0.5) * 6;
-          p.vy += (Math.random() - 0.5) * 6;
-        }
+          if (isPressed) {
+            p.vx += (Math.random() - 0.5) * 6;
+            p.vy += (Math.random() - 0.5) * 6;
+          }
 
-        p.vx += (p.homeX - p.x) * 0.08;
-        p.vy += (p.homeY - p.y) * 0.08;
-        p.vx *= 0.85;
-        p.vy *= 0.85;
-        p.x += p.vx;
-        p.y += p.vy;
-      });
+          p.vx += (p.homeX - p.x) * 0.08;
+          p.vy += (p.homeY - p.y) * 0.08;
+          p.vx *= 0.85;
+          p.vy *= 0.85;
+          p.x += p.vx;
+          p.y += p.vy;
+        });
+      }
 
       if (!glitch.showGlitch) {
         ctx.globalAlpha = 0.3;
@@ -163,11 +168,12 @@ export default function GlitchParticles({
         });
         ctx.globalAlpha = 1;
       } else {
-        ctx.globalAlpha = 0.6;
         particles.forEach((p) => {
           const sliceIndex = Math.floor((p.homeY - padding) / 27);
           const sliceOffset =
             glitch.slices[Math.min(Math.max(sliceIndex, 0), 4)];
+
+          ctx.globalAlpha = 0.6;
           ctx.fillStyle = "#CCFBF1";
           ctx.fillRect(
             p.x + glitch.offsetX1 + sliceOffset * 0.3,
@@ -175,11 +181,6 @@ export default function GlitchParticles({
             p.size,
             p.size,
           );
-        });
-        particles.forEach((p) => {
-          const sliceIndex = Math.floor((p.homeY - padding) / 27);
-          const sliceOffset =
-            glitch.slices[Math.min(Math.max(sliceIndex, 0), 4)];
           ctx.fillStyle = "#E0E7FF";
           ctx.fillRect(
             p.x + glitch.offsetX2 + sliceOffset * 0.3,
@@ -187,18 +188,15 @@ export default function GlitchParticles({
             p.size,
             p.size,
           );
-        });
-        ctx.globalAlpha = 1;
-        particles.forEach((p) => {
-          const sliceIndex = Math.floor((p.homeY - padding) / 27);
-          const sliceOffset =
-            glitch.slices[Math.min(Math.max(sliceIndex, 0), 4)];
+          ctx.globalAlpha = 1;
           ctx.fillStyle = "#FFFFFF";
           ctx.fillRect(p.x + sliceOffset, p.y, p.size, p.size);
         });
       }
 
-      rafId = requestAnimationFrame(animate);
+      if (!prefersReducedMotion) {
+        rafId = requestAnimationFrame(animate);
+      }
     }
 
     animate();
@@ -249,8 +247,12 @@ export default function GlitchParticles({
     canvas.addEventListener("touchend", onTouchEnd);
 
     return () => {
-      cancelAnimationFrame(rafId);
-      clearInterval(glitchInterval);
+      if (rafId !== undefined) {
+        cancelAnimationFrame(rafId);
+      }
+      if (glitchInterval !== undefined) {
+        clearInterval(glitchInterval);
+      }
       canvas.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mousedown", onMouseDown);
       window.removeEventListener("mouseup", onMouseUp);
@@ -261,7 +263,7 @@ export default function GlitchParticles({
   }, [contentWidth, contentHeight, padding]);
 
   return (
-    <div className="invert dark:filter-none flex align-center justify-center overflow-hidden inset-0">
+    <div className="invert dark:filter-none flex items-center justify-center overflow-hidden inset-0">
       <canvas ref={canvasRef} className="block max-w-full max-h-full" />
     </div>
   );
