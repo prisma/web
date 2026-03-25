@@ -198,6 +198,24 @@ const prismaTheme: ThemeRegistration = {
         foreground: "#FC644D",
       },
     },
+    {
+      scope: ["markup.inserted", "markup.inserted.diff"],
+      settings: {
+        background: "var(--color-background-success-reverse-strong)",
+      },
+    },
+    {
+      scope: ["markup.deleted", "markup.deleted.diff"],
+      settings: {
+        background: "var(--color-background-error-reverse-strong)",
+      },
+    },
+    {
+      scope: ["meta.diff.header"],
+      settings: {
+        background: "var(--color-foreground-neutral-weak)",
+      },
+    },
   ],
 };
 
@@ -218,6 +236,7 @@ async function getHighlighter() {
         "sh",
         "prisma",
         "sql",
+        "diff",
       ],
     });
   }

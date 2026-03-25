@@ -35,6 +35,7 @@ const HeroCode: React.FC<HeroCodeProps> = ({ steps }) => {
       setIsLoading(true);
       try {
         const highlighter = await getHighlighter();
+
         const [schemaHtml, migrationHtml] = await Promise.all([
           highlighter.codeToHtml(steps[activeStep].schema, {
             lang: "prisma",
@@ -46,8 +47,22 @@ const HeroCode: React.FC<HeroCodeProps> = ({ steps }) => {
           }),
         ]);
 
+        // Post-process to add diff styling for lines starting with +
+        const processedSchemaHtml = schemaHtml.replace(
+          /<span class="line">([\s\S]*?)(<\/span>)/g,
+          (match, content, closing) => {
+            // Check if line starts with + (accounting for any leading spans)
+            const startsWithPlus =
+              /<span[^>]*>\+/.test(content) || content.trim().startsWith("+");
+            if (startsWithPlus) {
+              return `<span class="line diff-add">${content}${closing}`;
+            }
+            return match;
+          },
+        );
+
         if (isMounted) {
-          setHighlightedSchema(schemaHtml);
+          setHighlightedSchema(processedSchemaHtml);
           setHighlightedMigration(migrationHtml);
           setIsLoading(false);
         }
@@ -106,7 +121,7 @@ const HeroCode: React.FC<HeroCodeProps> = ({ steps }) => {
         </CardHeader>
         <CodeBlock
           keepBackground={true}
-          className="border-none [&_pre]:bg-transparent my-0!"
+          className="border-none [&_pre]:bg-transparent my-0! [&_.diff-add]:text-background-success-reverse-strong"
         >
           {isLoading ? (
             <div className="p-4 text-center text-gray-400">Loading...</div>
@@ -124,7 +139,7 @@ const HeroCode: React.FC<HeroCodeProps> = ({ steps }) => {
       <Card
         className={cn(
           // Base styles
-          "flex-1 relative max-w-full w-full border border-transparent transition-[margin-right] duration-300 ease-in-out z-2 bg-[linear-gradient(180deg,#7F9CF5_0%,#4A5B8F_100%)] gap-0!",
+          "flex-1 relative max-w-full w-full border border-transparent transition-[margin-right] duration-300 ease-in-out z-2 bg-[linear-gradient(180deg,var(--color-background-orm)_0%,var(--color-background-orm-strong)_100%)] gap-0!",
           // After pseudo-element (gradient background)
           "after:content-[''] after:bg-background-default after:absolute after:z-1 after:inset-0.25 after:rounded-square",
           // Desktop styles
@@ -138,6 +153,7 @@ const HeroCode: React.FC<HeroCodeProps> = ({ steps }) => {
           </span>
         </CardHeader>
         <CodeBlock
+          data-line-numbers
           keepBackground={true}
           className="border-none [&_pre]:bg-transparent relative z-2 my-0!"
         >
