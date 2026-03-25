@@ -111,7 +111,7 @@ const HeroCode: React.FC<HeroCodeProps> = ({ steps }) => {
             size="lg"
             onClick={() => cycleActiveStep()}
             className={cn(
-              "w-fit transition-all delay-300 duration-300",
+              "w-fit transition-all duration-300",
               activeStep !== 0 && "lg:mr-31",
             )}
             disabled={isLoading}
@@ -121,7 +121,10 @@ const HeroCode: React.FC<HeroCodeProps> = ({ steps }) => {
         </CardHeader>
         <CodeBlock
           keepBackground={true}
-          className="border-none [&_pre]:bg-transparent my-0! [&_.diff-add]:text-background-success-reverse-strong"
+          className={cn(
+            "border-none [&_pre]:bg-transparent my-0! [&_.diff-add]:text-background-success-reverse-strong [&>.absolute]:duration-300 [&>.absolute]:transition-all",
+            activeStep !== 0 && "[&>.absolute]:lg:mr-31",
+          )}
         >
           {isLoading ? (
             <div className="p-4 text-center text-gray-400">Loading...</div>
