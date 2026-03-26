@@ -148,6 +148,7 @@ export function WebNavigation({
                 buttonVariant={buttonVariant}
                 loginHref={loginHref}
                 signupHref={signupHref}
+                buttonVariant={buttonVariant}
               />
             )}
           </NavigationMenuList>
