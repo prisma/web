@@ -381,7 +381,7 @@ export default function ORM() {
       <div className="my-12 py-12 px-4">
         <div className="grid md:grid-cols-2 gap-4 max-w-249 w-full mx-auto">
           {features.map((card: any) => (
-            <FeatureCard key={card.title} card={card} color="orm" href="/" />
+            <FeatureCard key={card.title} card={card} color="orm" />
           ))}
         </div>
       </div>
