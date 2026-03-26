@@ -5,6 +5,7 @@ import { useState, useEffect, memo } from "react";
 import defaultLogosData from "./default-logos.json";
 import { useTheme } from "@prisma-docs/ui/components/theme-provider";
 import GlowCursor from "@/components/homepage/glow-cursor";
+import { cn } from "@/lib/cn";
 
 // Inline keyframe animations
 const AnimationStyles = () => (
@@ -31,6 +32,7 @@ const AnimationStyles = () => (
 // Inline LogoBar component
 const LogoBar = ({
   logos,
+  color,
   direction = "right",
   pauseOnHover = false,
   duplicateCount = 3,
@@ -54,7 +56,12 @@ const LogoBar = ({
           <a
             key={`${logo.alt}-${index}`}
             href={logo.link}
-            className="w-[85px] h-[85px] md:w-[60px] md:h-[60px] flex-shrink-0 rounded-xl z-[1] bg-background-default border border-white/10 flex items-center justify-center p-3 md:p-2 transition-[opacity_0.2s_ease,filter_0.2s_ease,transform_0.2s_ease,background_0.2s_ease,border-color_0.2s_ease] cursor-pointer opacity-80 mr-6 md:mr-2  hover:border-[#16A394] hover:opacity-100"
+            className={cn(
+              "w-[85px] h-[85px] md:w-[60px] md:h-[60px] flex-shrink-0 rounded-xl z-[1] bg-background-default border border-white/10 flex items-center justify-center p-3 md:p-2 transition-[opacity_0.2s_ease,filter_0.2s_ease,transform_0.2s_ease,background_0.2s_ease,border-color_0.2s_ease] cursor-pointer opacity-80 mr-6 md:mr-2   hover:opacity-100",
+              color === "orm"
+                ? "hover:border-background-orm"
+                : "hover:border-background-ppg",
+            )}
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -80,6 +87,7 @@ interface Logo {
 interface LogoGridProps {
   logos?: Logo[];
   type?: "spotlight" | "track";
+  color?: "orm" | "ppg";
 }
 
 // ============================================================================
@@ -119,33 +127,40 @@ LogoImage.displayName = "LogoImage";
 // SPOTLIGHT MODE COMPONENT
 // ============================================================================
 
-const SpotlightMode = memo(({ logos }: { logos: Logo[] }) => {
-  const logoSize = 50;
-  const visibleLogos = logos.slice(0, 21);
+const SpotlightMode = memo(
+  ({ logos, color }: { logos: Logo[]; color?: "orm" | "ppg" }) => {
+    const logoSize = 50;
+    const visibleLogos = logos.slice(0, 21);
 
-  return (
-    <GlowCursor color="var(--color-background-ppg-strong)">
-      <div className="relative w-full h-full overflow-visible">
-        {/* Logo grid */}
-        <div className="relative z-1 flex justify-center px-2 md:px-4">
-          <div className="flex max-w-[760px] flex-wrap items-center justify-center gap-2 md:gap-3">
-            {visibleLogos.map((logo, index) => (
-              <a
-                key={`${logo.alt}-${index}`}
-                href={logo.link}
-                className="w-[20%] sm:w-[12%] aspect-square rounded-xl z-1 bg-background-default border border-white/10 flex items-center justify-center p-3 md:p-2 transition-[transform_0.2s_ease,border-color_0.2s_ease] hover:border-[#16A394] hover:-translate-y-0.5 hover:scale-[1.02] active:translate-y-0 active:scale-100"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <LogoImage logo={logo} size={logoSize} />
-              </a>
-            ))}
+    return (
+      <GlowCursor color={`var(--color-background-${color ?? "ppg"}-strong)`}>
+        <div className="relative w-full h-full overflow-visible">
+          {/* Logo grid */}
+          <div className="relative z-1 flex justify-center px-2 md:px-4">
+            <div className="flex max-w-[760px] flex-wrap items-center justify-center gap-2 md:gap-3">
+              {visibleLogos.map((logo, index) => (
+                <a
+                  key={`${logo.alt}-${index}`}
+                  href={logo.link}
+                  className={cn(
+                    "w-[20%] sm:w-[12%] aspect-square rounded-xl z-1 bg-background-default border border-white/10 flex items-center justify-center p-3 md:p-2 transition-[transform_0.2s_ease,border-color_0.2s_ease] hover:-translate-y-0.5 hover:scale-[1.02] active:translate-y-0 active:scale-100",
+                    color === "orm"
+                      ? "hover:border-background-orm"
+                      : "hover:border-background-ppg",
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <LogoImage logo={logo} size={logoSize} />
+                </a>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
-    </GlowCursor>
-  );
-});
+      </GlowCursor>
+    );
+  },
+);
 
 SpotlightMode.displayName = "SpotlightMode";
 
@@ -193,6 +208,7 @@ TrackMode.displayName = "TrackMode";
 export const LogoGrid = ({
   logos: propLogos,
   type = "spotlight",
+  color = undefined,
 }: LogoGridProps) => {
   const logos =
     propLogos && propLogos.length > 0 ? propLogos : defaultLogosData;
@@ -201,9 +217,9 @@ export const LogoGrid = ({
     <>
       <AnimationStyles />
       {type === "track" ? (
-        <TrackMode logos={logos} />
+        <TrackMode logos={logos} color={color} />
       ) : (
-        <SpotlightMode logos={logos} />
+        <SpotlightMode logos={logos} color={color} />
       )}
     </>
   );

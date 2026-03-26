@@ -13,11 +13,14 @@ interface TwoColumnItem {
   mobileImageAlt: string | null;
   logos: any[] | null;
   alignItems?: "items-end" | "items-start" | "items-center";
+  footer?: ReactNode;
+  color?: "orm" | "ppg";
   useDefaultLogos: boolean;
   noShadow?: boolean;
   visualPosition: "left" | "right";
   visualType: "logoGrid" | "image" | "other";
   other?: ReactNode;
+  visualType: "logoGrid" | "image" | "video";
 }
 
 interface CardSectionProps {
@@ -102,6 +105,7 @@ export const CardSection = ({ cardSection }: CardSectionProps) => {
               )}
             </div>
           </div>
+          {item.footer && <>{item.footer}</>}
         </section>
       ))}
     </div>
