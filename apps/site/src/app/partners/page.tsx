@@ -178,31 +178,11 @@ export default function Partners() {
         </div>
         <div className="content relative z-1 flex flex-col gap-8 pb-12">
           <p className="text-center text-foreground-neutral max-w-2xl mx-auto">
-            Real Postgres with the developer experience and infrastructure to
-            ship faster.
+            Focus on shipping, we'll handle the infrastructure complexity. One
+            API call provisions databases in under a second, plus embeddable
+            data editing that feels native to your product. Oh, and app hosting
+            too!
           </p>
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
-            <Button
-              variant="orm"
-              href="/docs/getting-started/quickstart-prismaPostgres"
-              size="3xl"
-              className="font-sans-display! font-[650]"
-            >
-              <span>Create database</span>
-              <i className="fa-regular fa-database ml-2" />
-            </Button>
-            <Button
-              variant="default-stronger"
-              href="https://console.prisma.io/sign-up?utm_source=website&utm_medium=index&utm_campaign=cta"
-              size="3xl"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-sans-display! font-[650]"
-            >
-              <span>Create database</span>
-              <i className="fa-regular fa-database ml-2" />
-            </Button>
-          </div>
         </div>
       </div>
       <div className="w-screen">
