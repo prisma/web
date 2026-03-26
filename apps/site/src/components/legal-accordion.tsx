@@ -47,26 +47,35 @@ function AccordionItem({
   );
 }
 
-export function TermsAccordion({ sections }: { sections: Section[] }) {
-  const [expandAll, setExpandAll] = useState(false);
-  const [selected, setSelected] = useState(0);
+export function LegalAccordion({
+  sections,
+  defaultExpand = false,
+}: {
+  sections: Section[];
+  defaultExpand?: boolean;
+}) {
+  const allIndices = sections.map((_, i) => i);
+  const [openItems, setOpenItems] = useState<Set<number>>(
+    () => new Set(defaultExpand ? allIndices : []),
+  );
+
+  const isAllExpanded = openItems.size === sections.length;
 
   const toggleAll = () => {
-    if (expandAll) {
-      setSelected(-1);
-      setExpandAll(false);
-    } else {
-      setExpandAll(true);
-    }
+    setOpenItems(new Set(isAllExpanded ? [] : allIndices));
   };
 
   const toggleItem = (idx: number) => {
-    if (expandAll) setExpandAll(false);
-    setSelected(selected === idx ? -1 : idx);
+    setOpenItems((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
   };
 
   const printPage = () => {
-    setExpandAll(true);
+    setOpenItems(new Set(allIndices));
     setTimeout(() => window.print(), 50);
   };
 
@@ -80,10 +89,10 @@ export function TermsAccordion({ sections }: { sections: Section[] }) {
           onClick={toggleAll}
         >
           <span className="text-lg leading-6 font-semibold underline">
-            {expandAll ? "Collapse" : "Expand"} all
+            {isAllExpanded ? "Collapse" : "Expand"} all
           </span>
           <i
-            className={`fa-regular fa-${expandAll ? "minus" : "plus"} ml-2 text-base`}
+            className={`fa-regular fa-${isAllExpanded ? "minus" : "plus"} ml-2 text-base`}
           />
         </button>
         <button
@@ -104,7 +113,7 @@ export function TermsAccordion({ sections }: { sections: Section[] }) {
           <AccordionItem
             key={idx}
             section={section}
-            isOpen={expandAll || selected === idx}
+            isOpen={openItems.has(idx)}
             onToggle={() => toggleItem(idx)}
           />
         ))}
