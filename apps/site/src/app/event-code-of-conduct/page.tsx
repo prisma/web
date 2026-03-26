@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 
 export default function EventCodeOfConductPage() {
   return (
-    <main className="flex-1 w-full z-1 -mt-24 pt-24 relative before:absolute before:inset-x-0 before:top-0 before:h-[600px] before:bg-[linear-gradient(180deg,#171937_0%,transparent_100%)] before:-z-1">
+    <main className="flex-1 w-full z-1 -mt-24 pt-24 relative legal-hero-gradient">
       {/* Hero */}
       <div className="text-center py-16">
         <h1 className="text-5xl font-bold font-sans-display text-foreground-neutral mb-6">
