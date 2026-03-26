@@ -29,20 +29,29 @@ interface BentoProps {
   bentoSection: {
     boxes: BentoBox[];
   };
+  hero?: React.ReactNode;
+  color?: "orm" | "ppg";
 }
 
-const HeroContent = ({ className = "" }: { className?: string }) => (
-  <div
-    className={cn(
-      "flex flex-col items-center justify-center text-center mx-auto mb-10",
-      className,
-    )}
-  >
-    <h2 className="text-center m-0 mb-4 text-4xl md:text-[36px] font-black text-foreground-neutral font-sans-display stretch-display">
-      Your database, right in your workflow
-    </h2>
-  </div>
-);
+const HeroContent = ({
+  className = "",
+  hero,
+}: {
+  className?: string;
+  hero?: React.ReactNode;
+}) =>
+  hero || (
+    <div
+      className={cn(
+        "flex flex-col items-center justify-center text-center mx-auto mb-10",
+        className,
+      )}
+    >
+      <h2 className="text-center m-0 mb-4 text-4xl md:text-[36px] font-black text-foreground-neutral font-sans-display stretch-display">
+        Your database, right in your workflow
+      </h2>
+    </div>
+  );
 
 const useResponsiveLayout = () => {
   const [isDesktop, setIsDesktop] = useState(true);
@@ -57,7 +66,7 @@ const useResponsiveLayout = () => {
   return { isDesktop };
 };
 
-export const Bento = ({ bentoSection }: BentoProps) => {
+export const Bento = ({ bentoSection, hero, color }: BentoProps) => {
   const { isDesktop } = useResponsiveLayout();
 
   // Transform Sanity data to internal CardData format
@@ -76,29 +85,37 @@ export const Bento = ({ bentoSection }: BentoProps) => {
   return (
     <div className="max-w-[1240px] mx-auto w-full z-10 px-4 pt-4 pb-0">
       {/* Desktop Layout (961+): Original 3-row layout with text in middle */}
-      <HeroContent />
+      <HeroContent hero={hero} />
       {isDesktop ? (
         <>
           <div className="hidden lg:grid grid-cols-3 gap-4 mb-4">
             {CARDS.filter((card) => card.row === "top").map((card) => (
-              <Card key={card.id} card={card} />
+              <Card color={color} key={card.id} card={card} />
             ))}
           </div>
 
           <div className="hidden lg:flex gap-8 mb-4 items-center justify-between">
             {firstCenterCard && (
-              <Card key={firstCenterCard.id} card={firstCenterCard} />
+              <Card
+                color={color}
+                key={firstCenterCard.id}
+                card={firstCenterCard}
+              />
             )}
 
             {secondCenterCard && (
-              <Card key={secondCenterCard.id} card={secondCenterCard} />
+              <Card
+                color={color}
+                key={secondCenterCard.id}
+                card={secondCenterCard}
+              />
             )}
           </div>
         </>
       ) : (
         <div className="flex gap-4 flex-wrap justify-center md:grid md:grid-cols-2 md:[&>*]:last:col-span-2">
           {CARDS.map((card) => (
-            <Card key={card.id} card={card} />
+            <Card color={color} key={card.id} card={card} />
           ))}
         </div>
       )}
@@ -108,9 +125,10 @@ export const Bento = ({ bentoSection }: BentoProps) => {
 
 interface CardProps {
   card: CardData;
+  color?: "orm" | "ppg";
 }
 
-const Card = ({ card }: CardProps) => {
+export const Card = ({ card, color }: CardProps) => {
   const cardRef = useRef<HTMLAnchorElement>(null);
   const isCenterCard = ["4", "5"].includes(card.id);
   const { resolvedTheme } = useTheme();
@@ -156,12 +174,13 @@ const Card = ({ card }: CardProps) => {
         "box-visible",
         "w-full",
         isCenterCard && "w-full md:order-0",
+        color,
       )}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
       <div className="flex gap-4 text-xs py-4 px-0 mx-4 w-[calc(100%-2rem)]">
-        <Action color="ppg" size="4xl" className="bg-background-ppg-strong">
+        <Action color={color || "ppg"} size="4xl">
           <i className={cn("text-xl", card.icon)} />
         </Action>
         <div className="z-2">
@@ -181,7 +200,6 @@ const Card = ({ card }: CardProps) => {
               ? `${card.image}_light.svg`
               : `${card.image}.svg`
           }
-
           alt={card.title}
           className="px-4 z-2 pt-0 pb-0 min-w-full min-h-[60%] object-fill object-[top_left] [mask-image:linear-gradient(to_bottom,rgba(0,0,0,1)_60%,transparent_90%)] [-webkit-mask-image:linear-gradient(to_bottom,rgba(0,0,0,1)_60%,transparent_90%)]"
         />

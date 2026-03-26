@@ -8,11 +8,13 @@ type TestimonialsType = {
   list: Array<TestimonialItemType>;
   noShadow?: boolean;
   mask?: string;
+  color?: string;
 };
 
 type TestimonialColProps = {
   list: TestimonialItemType[];
   reverse?: boolean;
+  color?: string;
 };
 
 const MemoizedTestimonialItem = memo(TestimonialItem);
@@ -26,7 +28,7 @@ const getColumnSlices = (list: TestimonialItemType[]) => {
   ];
 };
 
-const TestimonialCol = ({ list, reverse }: TestimonialColProps) => (
+const TestimonialCol = ({ color, list, reverse }: TestimonialColProps) => (
   <div className="relative flex flex-row items-center overflow-hidden w-full min-h-[680px] max-w-[1200px] mx-auto h-[100px] hover:![animation-duration:0s]">
     <div
       className={cn(
@@ -38,12 +40,14 @@ const TestimonialCol = ({ list, reverse }: TestimonialColProps) => (
     >
       {list.map((testimonial: TestimonialItemType, idx) => (
         <MemoizedTestimonialItem
+          color={color}
           key={`testimonial-rst-${idx}`}
           {...testimonial}
         />
       ))}
       {list.map((testimonial: TestimonialItemType, idx) => (
         <MemoizedTestimonialItem
+          color={color}
           key={`testimonial-rst-dup-${idx}`}
           {...testimonial}
         />
@@ -59,12 +63,14 @@ const TestimonialCol = ({ list, reverse }: TestimonialColProps) => (
     >
       {list.map((testimonial: TestimonialItemType, idx) => (
         <MemoizedTestimonialItem
+          color={color}
           key={`testimonial-nd-${idx}`}
           {...testimonial}
         />
       ))}
       {list.map((testimonial: TestimonialItemType, idx) => (
         <MemoizedTestimonialItem
+          color={color}
           key={`testimonial-nd-dup-${idx}`}
           {...testimonial}
         />
@@ -78,7 +84,7 @@ const getTabletSlices = (list: TestimonialItemType[]) => {
   return [list.slice(0, half), list.slice(half)];
 };
 
-const Testimonials = ({ list, noShadow, mask }: TestimonialsType) => {
+const Testimonials = ({ color, list, noShadow, mask }: TestimonialsType) => {
   const [col1, col2, col3] = getColumnSlices(list);
   const [tabletCol1, tabletCol2] = getTabletSlices(list);
 
@@ -94,7 +100,7 @@ const Testimonials = ({ list, noShadow, mask }: TestimonialsType) => {
     <div style={mask ? { maskImage: mask } : {}} data-testid="testimonials">
       {/* Mobile */}
       <div className={cn(gridClasses, "grid-cols-1 md:hidden")}>
-        <TestimonialCol reverse list={list} />
+        <TestimonialCol color={color} reverse list={list} />
       </div>
 
       {/* Tablet */}
@@ -105,8 +111,8 @@ const Testimonials = ({ list, noShadow, mask }: TestimonialsType) => {
           "[&>*:nth-child(2)]:flex [&>*]:flex-1",
         )}
       >
-        <TestimonialCol reverse list={tabletCol1} />
-        <TestimonialCol list={tabletCol2} />
+        <TestimonialCol color={color} reverse list={tabletCol1} />
+        <TestimonialCol color={color} list={tabletCol2} />
       </div>
 
       {/* Desktop */}
@@ -117,9 +123,9 @@ const Testimonials = ({ list, noShadow, mask }: TestimonialsType) => {
           "[&>*:nth-child(2)]:flex [&>*:nth-child(3)]:flex [&>*]:flex-1",
         )}
       >
-        <TestimonialCol reverse list={col1} />
-        <TestimonialCol list={col2} />
-        <TestimonialCol reverse list={col3} />
+        <TestimonialCol color={color} reverse list={col1} />
+        <TestimonialCol color={color} list={col2} />
+        <TestimonialCol color={color} reverse list={col3} />
       </div>
     </div>
   );

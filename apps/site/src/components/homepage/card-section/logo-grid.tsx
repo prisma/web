@@ -38,6 +38,7 @@ const LogoBar = ({
   duplicateCount = 3,
 }: {
   logos: Logo[];
+  color?: "orm" | "ppg";
   direction?: "left" | "right";
   pauseOnHover?: boolean;
   duplicateCount?: number;
@@ -168,36 +169,49 @@ SpotlightMode.displayName = "SpotlightMode";
 // TRACK MODE COMPONENT
 // ============================================================================
 
-const TrackMode = memo(({ logos }: { logos: Logo[] }) => {
-  // Split logos into 3 even groups
-  const logosPerBar = Math.ceil(logos.length / 3);
-  const logosBar1 = logos.slice(0, logosPerBar);
-  const logosBar2 = logos.slice(logosPerBar, logosPerBar * 2);
-  const logosBar3 = logos.slice(logosPerBar * 2);
+const TrackMode = memo(
+  ({ logos, color }: { logos: Logo[]; color?: "orm" | "ppg" }) => {
+    // Split logos into 3 even groups
+    const logosPerBar = Math.ceil(logos.length / 3);
+    const logosBar1 = logos.slice(0, logosPerBar);
+    const logosBar2 = logos.slice(logosPerBar, logosPerBar * 2);
+    const logosBar3 = logos.slice(logosPerBar * 2);
 
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        width: "100%",
-        overflow: "visible",
-        gap: "10px",
-        position: "relative",
-      }}
-    >
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 translate-z-0 w-[350px] h-[350px] md:w-[300px] md:h-[300px] rounded-full bg-[radial-gradient(circle,#092A28_0%,#090A15_100%)] blur-[50px] md:blur-[40px] pointer-events-none z-0 will-change-[top,left,transform] [backface-visibility:hidden] [-webkit-backface-visibility:hidden] [perspective:1000px] [-webkit-perspective:1000px] isolate" />
-      <LogoBar logos={logosBar1} pauseOnHover={false} duplicateCount={3} />
-      <LogoBar
-        logos={logosBar2}
-        direction="left"
-        pauseOnHover={false}
-        duplicateCount={3}
-      />
-      <LogoBar logos={logosBar3} pauseOnHover={false} duplicateCount={3} />
-    </div>
-  );
-});
+    return (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          width: "100%",
+          overflow: "visible",
+          gap: "10px",
+          position: "relative",
+        }}
+      >
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 translate-z-0 w-[350px] h-[350px] md:w-[300px] md:h-[300px] rounded-full bg-[radial-gradient(circle,#092A28_0%,#090A15_100%)] blur-[50px] md:blur-[40px] pointer-events-none z-0 will-change-[top,left,transform] [backface-visibility:hidden] [-webkit-backface-visibility:hidden] [perspective:1000px] [-webkit-perspective:1000px] isolate" />
+        <LogoBar
+          logos={logosBar1}
+          color={color}
+          pauseOnHover={false}
+          duplicateCount={3}
+        />
+        <LogoBar
+          logos={logosBar2}
+          color={color}
+          direction="left"
+          pauseOnHover={false}
+          duplicateCount={3}
+        />
+        <LogoBar
+          logos={logosBar3}
+          color={color}
+          pauseOnHover={false}
+          duplicateCount={3}
+        />
+      </div>
+    );
+  },
+);
 
 TrackMode.displayName = "TrackMode";
 

@@ -15,12 +15,11 @@ interface TwoColumnItem {
   alignItems?: "items-end" | "items-start" | "items-center";
   footer?: ReactNode;
   color?: "orm" | "ppg";
+  other?: ReactNode;
   useDefaultLogos: boolean;
   noShadow?: boolean;
   visualPosition: "left" | "right";
   visualType: "logoGrid" | "image" | "other";
-  other?: ReactNode;
-  visualType: "logoGrid" | "image" | "video";
 }
 
 interface CardSectionProps {
@@ -65,7 +64,7 @@ export const CardSection = ({ cardSection }: CardSectionProps) => {
                 item.visualType === "logoGrid" ? "max-w-full" : "lg:w-full",
               )}
             >
-              {item.visualType === "other" && item.other}
+              {item.other && item.visualType === "other" && item.other}
               {item.visualType === "logoGrid" && item.useDefaultLogos && (
                 <LogoGrid />
               )}
