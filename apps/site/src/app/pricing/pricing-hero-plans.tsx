@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import {
+  Badge,
   Button,
   Select,
   SelectContent,
@@ -39,10 +40,17 @@ export function PricingHeroPlans({
       <section className="relative pt-28 pb-16 px-4">
         <div className="absolute inset-0 bg-[radial-gradient(80%_60%_at_50%_0%,rgba(20,184,166,0.22),transparent_60%)] pointer-events-none" />
         <div className="relative max-w-[1200px] mx-auto flex flex-col items-center gap-6">
-          <span className="inline-flex items-center gap-2 rounded-md bg-background-ppg px-3 py-1 text-sm font-medium text-foreground-ppg-strong">
-            <i className="fa-regular fa-message-code text-xs" />
-            Prisma ORM will always be free
-          </span>
+          <Badge
+            color="ppg"
+            size="lg"
+            className="rounded-md gap-2"
+            label={
+              <>
+                <i className="fa-regular fa-message-code text-xs" />
+                Prisma ORM will always be free
+              </>
+            }
+          />
           <h1 className="m-0 text-center text-foreground-neutral text-5xl md:text-7xl leading-tight font-sans-display [font-variation-settings:'wght'_900]">
             Scale as You Grow <br /> with Prisma Postgres
           </h1>
@@ -84,9 +92,11 @@ export function PricingHeroPlans({
                   } bg-background-default p-5 text-foreground-neutral shadow-[0px_18px_42px_0px_rgba(23,43,77,0.08)]`}
                 >
                   {highlighted && (
-                    <span className="absolute -top-8 left-0 inline-flex rounded-md bg-background-ppg px-2 py-1 text-xs font-bold text-foreground-ppg-strong">
-                      POPULAR
-                    </span>
+                    <Badge
+                      color="ppg"
+                      className="absolute -top-8 left-0 rounded-md"
+                      label="POPULAR"
+                    />
                   )}
                   <div className="flex items-center justify-between gap-4">
                     <p className="m-0 text-base uppercase tracking-[1.6px] font-sans-display [font-variation-settings:'wght'_800]">

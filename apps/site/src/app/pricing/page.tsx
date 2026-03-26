@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import {
   Accordion,
   Accordions,
+  Badge,
   Button,
   Table,
   TableBody,
@@ -39,14 +40,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default function SiteHome() {
+export default function PricingPage() {
   return (
     <main className="flex-1 w-full -mt-24 bg-background-default text-background-neutral-weak">
       <PricingPageContent />
 
-
-            {/* Compare plans */}
-     <section className="px-4 py-16">
+      {/* Compare plans */}
+      <section className="px-4 py-16">
         <div className="max-w-[1200px] mx-auto flex flex-col items-center gap-6">
           <h3 className="m-0 text-center text-foreground-neutral text-5xl font-sans-display [font-variation-settings:'wght'_900]">
             Compare plans
@@ -54,9 +54,6 @@ export default function SiteHome() {
           <p className="m-0 text-center text-foreground-neutral-weak">
             All of the features below are included with Prisma Postgres.
           </p>
-          <button className="rounded-full bg-background-ppg-reverse px-4 py-2 text-base font-sans-display text-white">
-            Use Prisma Postgres
-          </button>
         </div>
         <div className="max-w-[996px] mx-auto mt-10 border border-background-neutral-reverse-weak rounded-xl overflow-hidden">
           <Table className="table-fixed">
@@ -70,35 +67,35 @@ export default function SiteHome() {
                     key={label}
                     className="bg-background-neutral-weak text-left text-background-neutral-weak"
                   >
-                    <span
-                      className={`inline-flex rounded-md px-3 py-1 text-sm ${
+                    <Badge
+                      size="lg"
+                      className="rounded-md"
+                      color={
                         label === "Pro"
-                          ? "bg-background-ppg-strong text-foreground-ppg-strong"
+                          ? "ppg"
                           : label === "Starter"
-                            ? "bg-background-orm-strong text-foreground-orm-strong"
+                            ? "orm"
                             : label === "Business"
-                              ? "bg-background-warning text-foreground-warning-strong"
-                              : "bg-background-neutral-reverse text-background-neutral-strong"
-                      }`}
-                    >
-                      {label}
-                    </span>
+                              ? "warning"
+                              : "neutral"
+                      }
+                      label={label}
+                    />
                   </TableHead>
                 ))}
               </TableRow>
             </TableHeader>
             {comparisonSections.map((section) => (
               <TableBody key={section.title}>
-                
-                  <TableRow className="hover:bg-transparent border-t border-b border-background-neutral-reverse-weak bg-background-neutral-weak">
-                    <TableCell
-                      colSpan={5}
-                      className="bg-background-neutral-weak text-base uppercase tracking-[1.6px] font-sans-display [font-variation-settings:'wght'_800] text-foreground-neutral"
-                    >
-                      {section.title}
-                    </TableCell>
-                  </TableRow>
-                
+                <TableRow className="hover:bg-transparent border-t border-b border-background-neutral-reverse-weak bg-background-neutral-weak">
+                  <TableCell
+                    colSpan={5}
+                    className="bg-background-neutral-weak text-base uppercase tracking-[1.6px] font-sans-display [font-variation-settings:'wght'_800] text-foreground-neutral"
+                  >
+                    {section.title}
+                  </TableCell>
+                </TableRow>
+
                 {section.rows.map((row) => (
                   <TableRow
                     key={row[0]}
@@ -121,7 +118,7 @@ export default function SiteHome() {
             ))}
           </Table>
         </div>
-      </section> 
+      </section>
 
       {/* FAQ */}
       <section className="px-4 py-16">
@@ -163,9 +160,15 @@ export default function SiteHome() {
           <h5 className="m-0 text-5xl text-foreground-neutral font-sans-display [font-variation-settings:'wght'_900]">
             Try Prisma Postgres
           </h5>
-          <p className="m-0 mt-4 text-xl text-foreground-neutral-weak">Deploy a Postgres database instantly.</p>
+          <p className="m-0 mt-4 text-xl text-foreground-neutral-weak">
+            Deploy a Postgres database instantly.
+          </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-            <Button variant="ppg" size="2xl" href="https://console.prisma.io/sign-up?utm_source=website&utm_medium=pricing&utm_campaign=cta">
+            <Button
+              variant="ppg"
+              size="2xl"
+              href="https://console.prisma.io/sign-up?utm_source=website&utm_medium=pricing&utm_campaign=cta"
+            >
               <span>Create your first Database</span>
               <i className="fa-regular fa-arrow-right ml-2" />
             </Button>
@@ -174,7 +177,9 @@ export default function SiteHome() {
               <i className="fa-regular fa-book-open ml-2" />
             </Button>
           </div>
-          <p className="m-0 mt-4 text-xs text-foreground-neutral-weak">Free to get started, no credit card needed.</p>
+          <p className="m-0 mt-4 text-xs text-foreground-neutral-weak">
+            Free to get started, no credit card needed.
+          </p>
         </div>
       </section>
     </main>

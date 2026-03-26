@@ -39,7 +39,17 @@ export type PricingPlan = {
   price: CurrencyMap;
 };
 
-export function convertToAllCurrencies(
+export type UsagePricing = {
+  baseMonthlyPrice: number;
+  includedOperations: number;
+  includedStorageGb: number;
+  operationPricePerThousand: number;
+  storagePricePerGb: number;
+  yearlyDiscount: number;
+};
+
+/** Formats a single numeric amount with every supported currency symbol. */
+export function formatAmountForAllCurrencies(
   amount: number,
   digits: number,
 ): CurrencyMap {
@@ -51,6 +61,7 @@ export function convertToAllCurrencies(
   ) as CurrencyMap;
 }
 
+/** Replaces the inline price token in a plan bullet for the active currency. */
 export function renderPlanPoint(point: PlanPoint, currency: Symbol): string {
   if (typeof point === "string") {
     return point;
@@ -60,15 +71,17 @@ export function renderPlanPoint(point: PlanPoint, currency: Symbol): string {
 }
 
 export const planOrder = ["free", "starter", "pro", "business"] as const;
+export type PricingPlanKey = (typeof planOrder)[number];
+export type BillablePricingPlanKey = Exclude<PricingPlanKey, "free">;
 
-export const planActions: Record<(typeof planOrder)[number], string> = {
+export const planActions: Record<PricingPlanKey, string> = {
   free: "Start for Free",
   starter: "Get started",
   pro: "Start building",
   business: "Start building",
 };
 
-export const plans: Record<(typeof planOrder)[number], PricingPlan> = {
+export const plans: Record<PricingPlanKey, PricingPlan> = {
   free: {
     title: "Free",
     subtitle: "Perfect for that weekend idea",
@@ -78,7 +91,7 @@ export const plans: Record<(typeof planOrder)[number], PricingPlan> = {
       "<b>5</b> databases",
       "No credit card required",
     ],
-    price: convertToAllCurrencies(0, 0),
+    price: formatAmountForAllCurrencies(0, 0),
   },
   starter: {
     title: "Starter",
@@ -86,16 +99,16 @@ export const plans: Record<(typeof planOrder)[number], PricingPlan> = {
     points: [
       {
         text: "<b>1,000,000</b> operations<span>*</span>&nbsp; included, then <b><price> </b> per <b>1,000 </b>",
-        price: convertToAllCurrencies(0.008, 4),
+        price: formatAmountForAllCurrencies(0.008, 4),
       },
       {
         text: "<b>10 GB</b> storage included<br/>then <b><price></b> per <b>GB</b>",
-        price: convertToAllCurrencies(2, 2),
+        price: formatAmountForAllCurrencies(2, 2),
       },
       "<b>10</b> databases",
       "Includes spend limits <br/><b>Daily backups</b> stored for <b>7 days</b>",
     ],
-    price: convertToAllCurrencies(10, 0),
+    price: formatAmountForAllCurrencies(10, 0),
   },
   pro: {
     title: "Pro",
@@ -103,16 +116,16 @@ export const plans: Record<(typeof planOrder)[number], PricingPlan> = {
     points: [
       {
         text: "<b>10,000,000</b> operations<span>*</span> included, then <b><price></b> per <b>1,000</b>",
-        price: convertToAllCurrencies(0.002, 4),
+        price: formatAmountForAllCurrencies(0.002, 4),
       },
       {
         text: "<b>50 GB</b> storage included<br/>then <b><price></b> per <b>GB</b>",
-        price: convertToAllCurrencies(1.5, 2),
+        price: formatAmountForAllCurrencies(1.5, 2),
       },
       "<b>100</b> databases",
       "Includes spend limits <br/><b>Daily backups</b> stored for <b>7 days</b>",
     ],
-    price: convertToAllCurrencies(49, 0),
+    price: formatAmountForAllCurrencies(49, 0),
   },
   business: {
     title: "Business",
@@ -120,16 +133,43 @@ export const plans: Record<(typeof planOrder)[number], PricingPlan> = {
     points: [
       {
         text: "<b>50,000,000</b> operations<span>*</span> included, then <b><price></b> per <b>1,000</b>",
-        price: convertToAllCurrencies(0.001, 4),
+        price: formatAmountForAllCurrencies(0.001, 4),
       },
       {
         text: "<b>100 GB</b> storage included<br/>then <b><price></b> per <b>GB</b>",
-        price: convertToAllCurrencies(1, 2),
+        price: formatAmountForAllCurrencies(1, 2),
       },
       "<b>1000</b> databases",
       "Includes spend limits <br/><b>Daily backups</b> stored for <b>30 days</b>",
     ],
-    price: convertToAllCurrencies(129, 0),
+    price: formatAmountForAllCurrencies(129, 0),
+  },
+};
+
+export const usagePricing: Record<BillablePricingPlanKey, UsagePricing> = {
+  starter: {
+    baseMonthlyPrice: 10,
+    includedOperations: 1_000_000,
+    includedStorageGb: 10,
+    operationPricePerThousand: 0.008,
+    storagePricePerGb: 2,
+    yearlyDiscount: 0.25,
+  },
+  pro: {
+    baseMonthlyPrice: 49,
+    includedOperations: 10_000_000,
+    includedStorageGb: 50,
+    operationPricePerThousand: 0.002,
+    storagePricePerGb: 1.5,
+    yearlyDiscount: 0.25,
+  },
+  business: {
+    baseMonthlyPrice: 129,
+    includedOperations: 50_000_000,
+    includedStorageGb: 100,
+    operationPricePerThousand: 0.001,
+    storagePricePerGb: 1,
+    yearlyDiscount: 0.25,
   },
 };
 
@@ -157,7 +197,6 @@ export const comparisonSections = [
     title: "Database optimizations",
     rows: [
       ["Query insights", "✓", "✓", "✓", "✓"],
-      ["AI Insights", "5 included", "5 included, then $5 for 100 max", "unlimited", "unlimited"],
     ],
   },
   {
@@ -167,8 +206,8 @@ export const comparisonSections = [
   {
     title: "Platform",
     rows: [
-      ["Cache tag invalidations", "Community", "Community", "Standard", "Premium"],
-      ["Cache purge requests", "GDPR", "GDPR", "GDPR / HIPAA", "GDPR / HIPAA / SOC2 / ISO:27001"],
+      ["Support", "Community", "Community", "Standard", "Premium"],
+      ["Compliance", "GDPR", "GDPR", "GDPR / HIPAA", "GDPR / HIPAA / SOC2 / ISO:27001"],
     ],
   },
 ] as const;
