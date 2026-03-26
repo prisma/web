@@ -52,17 +52,19 @@ const CardFooter = () => (
           <h6 className="font-semibold text-2xs text-foreground-neutral uppercase">
             {badge.title}
           </h6>
-          {badge.list &&
-            badge.list.map((item: any) => (
-              <Button
-                variant="orm-reverse"
-                href={item.url}
-                key={item.label}
-                className="text-base"
-              >
-                {item.label}
-              </Button>
-            ))}
+          <div className="flex gap-3">
+            {badge.list &&
+              badge.list.map((item: any) => (
+                <Button
+                  variant="orm-reverse"
+                  href={item.url}
+                  key={item.label}
+                  className="text-base"
+                >
+                  {item.label}
+                </Button>
+              ))}
+          </div>
         </div>
       ))}
     </div>
