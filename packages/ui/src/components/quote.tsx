@@ -7,7 +7,12 @@ export const Quote = ({
   color,
 }: {
   children: React.ReactNode;
-  author?: { name: string; imageUrl: string; title?: string; company?: string };
+  author?: {
+    name: string;
+    imageUrl?: string;
+    title?: string;
+    company?: string;
+  };
   className?: string;
   color?: "orm" | "ppg";
 }) => {
@@ -21,12 +26,14 @@ export const Quote = ({
       <span className="font-sans-display contents font-bold">{children}</span>
       {author && (
         <footer className="flex gap-2 justify-start items-center">
-          <Avatar
-            format="image"
-            src={author.imageUrl}
-            alt={author.name}
-            size="2xl"
-          />
+          {author.imageUrl && (
+            <Avatar
+              format="image"
+              src={author.imageUrl}
+              alt={author.name}
+              size="2xl"
+            />
+          )}
           <div className="flex flex-col gap-1 text-base text-foreground-neutral-weak">
             <cite className="[font-style:normal] font-[650]">
               {author.name}
