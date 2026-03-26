@@ -40,14 +40,7 @@ export const YouTubePlayer = ({
   }, [inView, playOnView, playing]);
 
   return (
-    <div
-      className={cn(
-        "w-full rounded-lg",
-        "shadow-[0px_0px_46px_rgba(23,43,77,0.01),0px_4px_26px_rgba(23,43,77,0.05),0px_18px_42px_rgba(23,43,77,0.08)]",
-        className,
-      )}
-      ref={ref}
-    >
+    <div className={cn("w-full rounded-lg", className)} ref={ref}>
       {overlay && (
         <div
           className={cn(
