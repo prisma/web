@@ -361,8 +361,8 @@ export default function About() {
             our products.
           </p>
           <Card className="grid! md:grid-cols-3 gap-6 max-w-[1200px] mx-auto bg-background-default p-12 border-none -mb-80 gap-y-8">
-            {boxes.map((box) => (
-              <div className="flex flex-col gap-4">
+            {boxes.map((box: any, idx: number) => (
+              <div className="flex flex-col gap-4" key={idx}>
                 <div className="flex gap-4 items-center">
                   <Action color="orm" size="4xl">
                     <i className={box.icon} />
