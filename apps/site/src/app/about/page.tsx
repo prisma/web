@@ -391,9 +391,9 @@ export default function About() {
             Our Investors
           </h2>
           <div className="my-12 relative z-1 flex justify-center lg:justify-between items-center flex-wrap gap-4 gap-y-6 invert dark:filter-none">
-            {investors.companies.map((company) => (
+            {investors.companies.map((company: any, idx: number) => (
               <a
-                key={company.id}
+                key={idx}
                 className="contents"
                 href={company.url}
                 target="_blank"
