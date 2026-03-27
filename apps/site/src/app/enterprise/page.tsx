@@ -14,6 +14,7 @@ import Testimonials from "../../components/homepage/testimonials";
 import { cn } from "@/lib/cn";
 import { Technology } from "@/components/technology";
 import { Animation } from "@/components/animation";
+import { Fit } from "@rive-app/react-webgl2";
 
 const first = [
   {
@@ -45,7 +46,7 @@ const first = [
     other: (
       <Animation
         name="enterprise/build_fortify_grow"
-        fit={FitHeight}
+        fit={Fit.FitHeight}
         className={cn(
           "h-94",
           "[&>canvas]:max-w-full",
