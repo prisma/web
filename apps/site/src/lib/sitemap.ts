@@ -1,3 +1,4 @@
+import type { Dirent } from "node:fs";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { getBaseUrl } from "@/lib/url";
@@ -11,6 +12,7 @@ type SitemapEntry = {
 const HOST_SITEMAPS = ["/sitemap-site.xml", "/docs/sitemap.xml", "/blog/sitemap.xml"];
 const APP_DIRECTORY = path.join(process.cwd(), "src/app");
 
+/** Escape XML-sensitive characters before writing values into sitemap markup. */
 function escapeXml(value: string): string {
   return value
     .replaceAll("&", "&amp;")
@@ -20,22 +22,46 @@ function escapeXml(value: string): string {
     .replaceAll("'", "&apos;");
 }
 
+/** Build absolute URLs for the top-level sitemap index. */
 export function getHostSitemapUrls(baseUrl = getBaseUrl()): string[] {
   return HOST_SITEMAPS.map((pathname) => new URL(pathname, baseUrl).toString());
 }
 
-function toRouteSegment(segment: string): string | null {
-  if (segment.startsWith("(") && segment.endsWith(")")) {
-    return null;
+type SegmentDisposition = "include" | "omit" | "exclude";
+
+const INTERCEPTING_ROUTE_PREFIXES = ["(.)", "(..)", "(...)", "(..)(..)"] as const;
+
+/** Classify app segments for sitemap generation. */
+function getSegmentDisposition(segment: string): SegmentDisposition {
+  if (segment.startsWith("_") || segment.startsWith("@")) {
+    return "exclude";
   }
 
-  if (segment.startsWith("_") || (segment.startsWith("[") && segment.endsWith("]"))) {
+  if (segment.startsWith("[") && segment.endsWith("]")) {
+    return "exclude";
+  }
+
+  if (INTERCEPTING_ROUTE_PREFIXES.some((prefix) => segment.startsWith(prefix))) {
+    return "exclude";
+  }
+
+  if (segment.startsWith("(") && segment.endsWith(")")) {
+    return "omit";
+  }
+
+  return "include";
+}
+
+/** Convert an app directory segment into its public URL segment. */
+function toRouteSegment(segment: string): string | null {
+  if (getSegmentDisposition(segment) !== "include") {
     return null;
   }
 
   return segment;
 }
 
+/** Assign default sitemap metadata for a public pathname. */
 function getEntryMetadata(pathname: string): Omit<SitemapEntry, "url"> {
   if (pathname === "/") {
     return {
@@ -50,8 +76,17 @@ function getEntryMetadata(pathname: string): Omit<SitemapEntry, "url"> {
   };
 }
 
+/** Recursively collect public page routes from the App Router tree. */
 async function collectPageRoutes(directory: string, segments: string[] = []): Promise<string[]> {
-  const entries = await readdir(directory, { withFileTypes: true });
+  let entries: Dirent<string>[];
+
+  try {
+    entries = await readdir(directory, { encoding: "utf8", withFileTypes: true });
+  } catch (error) {
+    console.error(`Failed to read sitemap routes from ${directory}`, error);
+    return [];
+  }
+
   const routes = await Promise.all(
     entries.map(async (entry) => {
       const entryPath = path.join(directory, entry.name);
@@ -69,9 +104,7 @@ async function collectPageRoutes(directory: string, segments: string[] = []): Pr
         .filter((segment): segment is string => Boolean(segment));
 
       const hasUnsupportedSegment = segments.some(
-        (segment) =>
-          segment.startsWith("_") ||
-          (segment.startsWith("[") && segment.endsWith("]")),
+        (segment) => getSegmentDisposition(segment) === "exclude",
       );
 
       if (hasUnsupportedSegment) {
@@ -85,6 +118,7 @@ async function collectPageRoutes(directory: string, segments: string[] = []): Pr
   return routes.flat();
 }
 
+/** Generate sitemap entries for all public pages in the site app. */
 export async function getSiteSitemapEntries(baseUrl = getBaseUrl()): Promise<SitemapEntry[]> {
   const pathnames = await collectPageRoutes(APP_DIRECTORY);
 
@@ -96,6 +130,7 @@ export async function getSiteSitemapEntries(baseUrl = getBaseUrl()): Promise<Sit
     }));
 }
 
+/** Render a sitemap index document. */
 export function renderSitemapIndexXml(urls: string[]): string {
   const items = urls
     .map(
@@ -111,6 +146,7 @@ ${items}
 </sitemapindex>`;
 }
 
+/** Render a URL sitemap document. */
 export function renderSitemapXml(entries: SitemapEntry[]): string {
   const items = entries
     .map(({ url, changeFrequency, priority }) => {
