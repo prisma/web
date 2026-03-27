@@ -47,35 +47,42 @@ export const EcosystemGrid = () => {
               {ecosystem.list
                 .filter((box) => box.type === filter)
                 .map((box) => (
-                  <Card
-                    key={box.name}
-                    className="grid grid-rows-[auto_1fr_auto]"
+                  <a
+                    href={box.npmUrl}
+                    target="_blank"
+                    className="contents"
+                    rel="noopener noreferrer"
                   >
-                    <h3 className="text-foreground-neutral font-sans-display text-xl stretch-display my-0 font-bold line-clamp-2 hover:line-clamp-none">
-                      {box.name}
-                    </h3>
-                    <p className="text-foreground-neutral font-sans-display text-sm line-clamp-3">
-                      {box.description}
-                    </p>
-                    <div className="flex gap-2 justify-between items-center">
-                      <Badge
-                        className="w-fit"
-                        color="orm"
-                        size="lg"
-                        label={box.type}
-                      ></Badge>
+                    <Card
+                      key={box.name}
+                      className="grid grid-rows-[auto_1fr_auto]"
+                    >
+                      <h3 className="text-foreground-neutral font-sans-display text-xl stretch-display my-0 font-bold line-clamp-2 hover:line-clamp-none">
+                        {box.name}
+                      </h3>
+                      <p className="text-foreground-neutral font-sans-display text-sm line-clamp-3">
+                        {box.description}
+                      </p>
+                      <div className="flex gap-2 justify-between items-center">
+                        <Badge
+                          className="w-fit"
+                          color="orm"
+                          size="lg"
+                          label={box.type}
+                        ></Badge>
 
-                      <div className="relative after:content-[''] after:absolute after:w-full after:h-full after:z-[10000] after:left-0 after:top-0">
-                        <GitHubButton
-                          href={`https://github.com/${box.githubRepo}`}
-                          data-color-scheme="no-preference: light; light: light; dark: dark;"
-                          data-icon="octicon-star"
-                          data-show-count="true"
-                          aria-label="Star prisma/prisma on GitHub"
-                        />
+                        <div className="relative after:content-[''] after:absolute after:w-full after:h-full after:z-[10000] after:left-0 after:top-0">
+                          <GitHubButton
+                            href={`https://github.com/${box.githubRepo}`}
+                            data-color-scheme="no-preference: light; light: light; dark: dark;"
+                            data-icon="octicon-star"
+                            data-show-count="true"
+                            aria-label="Star prisma/prisma on GitHub"
+                          />
+                        </div>
                       </div>
-                    </div>
-                  </Card>
+                    </Card>
+                  </a>
                 ))}
             </div>
           </div>
