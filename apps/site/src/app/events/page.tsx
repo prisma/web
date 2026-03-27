@@ -88,7 +88,10 @@ export default function EventsPage() {
                     </p>
                     <span className="mt-auto flex items-center gap-1 pt-2 text-sm font-medium text-foreground-ppg">
                       Join Meetup
-                      <i className="fa-regular fa-arrow-right text-xs ml-1 transition-transform duration-200 group-hover:translate-x-1" />
+                      <i
+                        className="fa-regular fa-arrow-right text-xs ml-1 transition-transform duration-200 group-hover:translate-x-1"
+                        aria-hidden
+                      />
                     </span>
                   </div>
                 </Card>
@@ -139,7 +142,7 @@ export default function EventsPage() {
               Want to partner on an event? Send us your sponsorship deck.
             </p>
             <Button variant="ppg" size="lg" href="mailto:events@prisma.io" className="w-fit">
-              <i className="fa-regular fa-envelope mr-2" />
+              <i className="fa-regular fa-envelope mr-2" aria-hidden />
               Contact us
             </Button>
           </div>
@@ -171,7 +174,7 @@ export default function EventsPage() {
                     )}
                   </div>
                   <div className="flex items-center gap-1.5 text-xs text-foreground-neutral-weaker">
-                    <i className="fa-regular fa-location-dot" />
+                    <i className="fa-regular fa-calendar" aria-hidden />
                     {event.date}
                   </div>
                   <p className="text-sm leading-relaxed text-foreground-neutral-weak line-clamp-3">
@@ -179,7 +182,10 @@ export default function EventsPage() {
                   </p>
                   <span className="mt-auto flex items-center gap-1 pt-1 text-sm font-medium text-foreground-ppg">
                     Read more
-                    <i className="fa-regular fa-arrow-right text-xs ml-1 transition-transform duration-200 group-hover:translate-x-1" />
+                    <i
+                      className="fa-regular fa-arrow-right text-xs ml-1 transition-transform duration-200 group-hover:translate-x-1"
+                      aria-hidden
+                    />
                   </span>
                 </Card>
               </a>
