@@ -237,18 +237,19 @@ export default function SiteHome() {
             managing complex infrastructure components.
           </p>
         </div>
-        <div className="grid grid-cols-2 gap-6 max-w-230 mx-auto w-full">
+        <div className="grid md:grid-cols-2 gap-6 max-w-230 mx-auto w-full">
           {complexities.map((card: any, index: number) => {
             const last = index === complexities.length - 1;
             return (
               <Card
                 key={card.title}
                 className={cn(
-                  "bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-orm)_262.5%)]",
-                  last && "col-span-2",
+                  "bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-orm)_262.5%)] relative",
+                  last && "md:col-span-2",
+                  !last && "pb-25",
                 )}
               >
-                <div className={cn(last && "grid grid-cols-2 gap-6")}>
+                <div className={cn(last && "grid md:grid-cols-2 gap-6")}>
                   <div className="flex flex-col gap-4">
                     <div className="flex gap-4 items-center">
                       <Action color="orm" size="4xl">
@@ -262,15 +263,15 @@ export default function SiteHome() {
                       {card.subtitle}
                     </p>
                     {!last && (
-                      <div className="relative after:content-[''] after:absolute after:inset-0 after:bg-[linear-gradient(0deg,var(--color-background-default)_0%,transparent_62.5%)] after:-bottom-4">
+                      <div className="bottom-0 left-0 right-0 px-4 after:content-[''] after:absolute after:inset-0 after:bg-[linear-gradient(0deg,var(--color-background-default)_0%,transparent_62.5%)] after:top-0 absolute after:rounded-square">
                         <img
                           src={`${card.image}.svg`}
                           alt="Enterprise"
-                          className="hidden dark:block -mb-4"
+                          className="hidden dark:block mx-auto"
                         />
                         <img
                           src={`${card.image}_light.svg`}
-                          className="block dark:hidden -mb-4"
+                          className="block dark:hidden mx-auto"
                           alt="Enterprise"
                         />
                       </div>
