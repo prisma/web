@@ -4,7 +4,6 @@ import { cn } from "@/lib/cn";
 export const CarouselItem = ({
   card,
   className,
-  last = false,
 }: {
   card: {
     title: string;
