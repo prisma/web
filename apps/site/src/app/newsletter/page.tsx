@@ -13,7 +13,7 @@ import { NewsletterSignup } from "./newsletter-signup";
 export const metadata: Metadata = {
   title: "Newsletter | Prisma",
   description:
-    "Get releases updates, tutorials, and more content delivered to your inbox monthly.",
+    "Get release updates, tutorials, and more content delivered to your inbox monthly.",
   alternates: {
     canonical: "https://www.prisma.io/newsletter",
   },
@@ -29,7 +29,7 @@ type RssItem = {
 
 async function getLatestBlogPosts(count = 3): Promise<RssItem[]> {
   try {
-    const res = await fetch("http://localhost:3002/blog/rss.xml", {
+    const res = await fetch("http://www.prisma.io/blog/rss.xml", {
       next: { revalidate: 3600 },
     });
     const xml = await res.text();
@@ -73,7 +73,7 @@ async function getLatestBlogPosts(count = 3): Promise<RssItem[]> {
         title: get("title"),
         link: get("link"),
         date: get("pubDate"),
-        description: get("description").replace(/<[^>]*>/g, "").slice(0, 200),
+        description: get("description").replace(/<|>/g, "").slice(0, 200),
         image,
       });
     }
@@ -118,8 +118,8 @@ export default async function NewsletterPage() {
               Sign up for the Prisma newsletter today
             </CardTitle>
             <CardDescription>
-              Get releases updates, tutorials, and more content delivered to
-              your inbox monthly.
+              Get release updates, tutorials, and more content delivered to your
+              inbox monthly.
             </CardDescription>
           </CardHeader>
           <CardContent>
