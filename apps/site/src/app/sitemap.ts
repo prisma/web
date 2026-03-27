@@ -12,5 +12,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "daily",
       priority: 1,
     },
+    {
+      url: new URL("/typedsql", baseUrl).toString(),
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
   ];
 }
