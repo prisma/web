@@ -15,6 +15,7 @@ import {
 } from "@prisma/eclipse";
 import { CardSection } from "@/components/homepage/card-section/card-section";
 import review from "../../data/homepage.json";
+import { cn } from "@/lib/cn";
 
 import { MasonryPict } from "@/components/careers/masonry";
 
@@ -365,7 +366,7 @@ export default function About() {
               <div className="flex flex-col gap-4" key={idx}>
                 <div className="flex gap-4 items-center">
                   <Action color="orm" size="4xl">
-                    <i className={box.icon} />
+                    <i className={cn("text-xl", box.icon)} />
                   </Action>
                   <h3 className="text-foreground-neutral font-sans-display text-xl stretch-display mt-0 mb-1 font-bold">
                     {box.title}
