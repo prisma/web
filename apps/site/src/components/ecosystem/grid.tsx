@@ -48,7 +48,7 @@ export const EcosystemGrid = () => {
                 .filter((box) => box.type === filter)
                 .map((box) => (
                   <Card
-                    key={box.title}
+                    key={box.name}
                     className="grid grid-rows-[auto_1fr_auto]"
                   >
                     <h3 className="text-foreground-neutral font-sans-display text-xl stretch-display my-0 font-bold line-clamp-2 hover:line-clamp-none">
