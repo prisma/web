@@ -10,7 +10,7 @@ export const EcosystemGrid = () => {
   const [activeFilter, setActiveFilter] = useState("show-all");
   return (
     <>
-      <div className="flex gap-4 items-center justify-start mx-auto">
+      <div className="flex gap-4 items-center justify-start mx-auto flex-col md:flex-row">
         <div className="text-foreground-neutral font-black text-lg uppercase font-sans-display">
           Filter by:
         </div>
@@ -43,7 +43,7 @@ export const EcosystemGrid = () => {
             <h3 className="text-foreground-neutral font-sans-display text-3xl stretch-display my-0 font-bold capitalize">
               {filter.replace("-", " ")}
             </h3>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid lg:grid-cols-3! md:grid-cols-2 gap-4">
               {ecosystem.list
                 .filter((box) => box.type === filter)
                 .map((box) => (
