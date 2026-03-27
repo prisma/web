@@ -138,7 +138,7 @@ export default function LogoParade() {
           {allItems.map((item, i) => (
             <div
               key={i}
-              className="relative flex-shrink-0 rounded-lg overflow-hidden cursor-pointer transition-transform duration-200 grayscale hover:filter-none"
+              className="relative flex-shrink-0 rounded-lg overflow-hidden cursor-pointer transition-transform duration-200 invert-100 dark:brightness-150 dark:hover:filter-none contrast-75 grayscale hover:filter-none"
             >
               <img
                 src={item.imageUrl}

@@ -1,3 +1,9 @@
+import { EnterpriseForm } from "@/components/enterprise/form";
+
+import Script from "next/script";
+import { FooterAccordion } from "@/components/enterprise/footer-accordion";
+
+import { SwitchEnterprise } from "@/components/enterprise/switch-enterprise";
 import LogoParade from "@/components/logo-parade";
 import type { Metadata } from "next";
 import {
@@ -62,6 +68,7 @@ const first = [
     visualType: "other" as const,
   },
 ];
+
 const databases = {
   title: "Supported Databases",
   list: [
@@ -107,53 +114,6 @@ const databases = {
     },
   ],
 };
-const frameworks = {
-  title: "Selected Frameworks",
-  description:
-    "Easy to integrate into your framework of choice, Prisma simplifies database access, saves repetitive CRUD boilerplate and increases type safety.",
-  list: [
-    {
-      name: "React",
-      icon: "/icons/technologies/react.svg",
-      url: "/react",
-    },
-    {
-      name: "Next.js",
-      icon: "/icons/technologies/nextjs.svg",
-      url: "/nextjs",
-    },
-    {
-      name: "NestJS",
-      icon: "/icons/technologies/nestjs.svg",
-      url: "/nestjs",
-    },
-    {
-      name: "Apollo",
-      icon: "/icons/technologies/apollo.svg",
-      url: "/apollo",
-    },
-    {
-      name: "Hapi",
-      icon: "/icons/technologies/hapi.svg",
-      url: "/hapi",
-    },
-    {
-      name: "GraphQL",
-      icon: "/icons/technologies/graphql.svg",
-      url: "/graphql",
-    },
-    {
-      name: "ExpressJS",
-      icon: "/icons/technologies/express.svg",
-      url: "/express",
-    },
-    {
-      name: "Redwood",
-      icon: "/icons/technologies/redwoodjs.svg",
-      url: "/redwood",
-    },
-  ],
-};
 
 const complexities = [
   {
@@ -175,6 +135,112 @@ const complexities = [
     subtitle:
       "Prisma ORM’s extensive compatibility enables teams to work with different databases and switch without significant changes to the application logic.",
     icon: "fa-regular fa-database",
+  },
+];
+
+const enterprises = [
+  {
+    title: "Enterprise-level support",
+    description:
+      "Obtain the level of dedicated support from a team that understands and caters to the complexities and demands of large-scale enterprise operations.",
+    icon: "fa-regular fa-headset", // or "fa-light fa-headset"
+  },
+  {
+    title: "Risk and compliance",
+    description:
+      "Obtain the level of dedicated support from a team that understands and caters to the complexities and demands of large-scale enterprise operations.",
+    icon: "fa-regular fa-file-contract", // or "fa-light fa-file-contract"
+  },
+  {
+    title: "Custom solutions",
+    description:
+      "Obtain the level of dedicated support from a team that understands and caters to the complexities and demands of large-scale enterprise operations.",
+    icon: "fa-regular fa-wrench", // or "fa-light fa-wrench"
+  },
+  {
+    title: "Priority resolution",
+    description:
+      "Obtain the level of dedicated support from a team that understands and caters to the complexities and demands of large-scale enterprise operations.",
+    icon: "fa-regular fa-check-to-slot", // or "fa-light fa-circle-check"
+  },
+  {
+    title: "Advanced security",
+    description:
+      "Obtain the level of dedicated support from a team that understands and caters to the complexities and demands of large-scale enterprise operations.",
+    icon: "fa-regular fa-shield-exclamation", // or "fa-light fa-shield-exclamation"
+  },
+  {
+    title: "Performance optimization",
+    description:
+      "Obtain the level of dedicated support from a team that understands and caters to the complexities and demands of large-scale enterprise operations.",
+    icon: "fa-regular fa-chart-line-up", // or "fa-light fa-chart-line-up"
+  },
+  {
+    title: "Expert scalability consultation",
+    description:
+      "Obtain the level of dedicated support from a team that understands and caters to the complexities and demands of large-scale enterprise operations.",
+    icon: "fa-regular fa-up-right-and-down-left-from-center", // or "fa-light fa-arrow-trend-up"
+  },
+  {
+    title: "Comprehensive team training",
+    description:
+      "Obtain the level of dedicated support from a team that understands and caters to the complexities and demands of large-scale enterprise operations.",
+    icon: "fa-regular fa-screen-users", // or "fa-light fa-people-group"
+  },
+  {
+    title: "Influential feedback loop",
+    description:
+      "Obtain the level of dedicated support from a team that understands and caters to the complexities and demands of large-scale enterprise operations.",
+    icon: "fa-regular fa-repeat", // or "fa-light fa-repeat"
+  },
+];
+const solution_providers = [
+  {
+    title: "Direct access to product experts",
+    description:
+      "Engage with the brains behind the Prisma ORM for in-depth problem-solving and specialized insights.",
+    icon: "fa-regular fa-person-chalkboard", // or "fa-light fa-person-chalkboard"
+  },
+  {
+    title: "Swift problem resolution",
+    description:
+      "Benefit from quick and effective support responses that are crucial in maintaining the pace of your project timelines.",
+    icon: "fa-regular fa-gauge-simple-max", // or "fa-light fa-badge-check"
+  },
+  {
+    title: "Bespoke customization guidance",
+    description:
+      "Receive personalized advice on tailoring the Prisma ORM to the specific requirements of your unique projects.",
+    icon: "fa-regular fa-comments-question-check", // or "fa-light fa-comments-question"
+  },
+  {
+    title: "Advanced updates",
+    description:
+      "Stay ahead in the game with the latest updates and best practices.",
+    icon: "fa-regular fa-file-arrow-up", // or "fa-light fa-file-import"
+  },
+  {
+    title: "Expedited and priority support",
+    description:
+      "Benefit from prioritized attention to your inquiries and problems.",
+    icon: "fa-regular fa-phone-volume", // or "fa-light fa-phone-arrow-up-right"
+  },
+  {
+    title: "Specialized training for your team",
+    description:
+      "Empower your team with advanced training sessions, enabling them to leverage the full capabilities of our ORM.",
+    icon: "fa-regular fa-screen-users", // or "fa-light fa-people-group"
+  },
+  {
+    title: "Optimization for peak performance",
+    description: "Ensure your software solutions run smoothly and efficiently.",
+    icon: "fa-regular fa-arrow-up-right-dots", // or "fa-light fa-chart-mixed"
+  },
+  {
+    title: "Proactive risk management",
+    description:
+      "Help you to anticipate and mitigate risks, ensuring a seamless development process and uninterrupted service to your clients.",
+    icon: "fa-regular fa-triangle-exclamation", // or "fa-light fa-triangle-exclamation"
   },
 ];
 
@@ -219,7 +285,7 @@ export default function SiteHome() {
         </div>
       </div>
       <div className="my-12 px-4">
-        <h5 className="pt-12 text-center text-foreground-orm-strong stretch-display text-base font-sans-display uppercase">
+        <h5 className=" text-center text-foreground-orm-strong stretch-display text-base font-sans-display uppercase">
           Trusted by teams at
         </h5>
         <LogoParade />
@@ -284,7 +350,12 @@ export default function SiteHome() {
                       </h5>
                       <div className="flex gap-1 flex-wrap">
                         {databases.list.map((db) => (
-                          <Technology text={db.name} url={db.url} key={db.name}>
+                          <Technology
+                            text={db.name}
+                            url={db.url}
+                            key={db.name}
+                            className="bg-transparent! [&>div]:bg-transparent! hover:bg-background-default!"
+                          >
                             <Action
                               color="neutral"
                               size="4xl"
@@ -302,6 +373,74 @@ export default function SiteHome() {
               </Card>
             );
           })}
+        </div>
+      </div>
+      <div className="my-12 px-4">
+        <div className="py-12 gap-8 flex flex-col max-w-[1200px] mx-auto">
+          <h2 className="text-foreground-neutral stretch-display text-left text-4xl font-black! font-sans-display ">
+            Code quality and safety
+          </h2>
+          <section className="w-full overflow-visible">
+            <div
+              className={cn(
+                "[&_h2]:mt-0 flex gap-8 lg:gap-12 md:gap-8 sm:gap-6 items-center overflow-visible lg:flex-row-reverse flex-col",
+              )}
+            >
+              <div
+                className={cn(
+                  "flex-1 min-w-0 overflow-visible text-center lg:text-left lg:w-full lg:ml-12",
+                )}
+              >
+                <FooterAccordion />
+              </div>
+              <div
+                className={cn(
+                  "flex-1 min-w-0 overflow-visible w-full lg:max-w-unset max-w-137 lg:w-full",
+                )}
+              >
+                <img
+                  className="sm:relative w-full h-auto hidden dark:block object-contain w-full"
+                  src="/illustrations/enterprise/enterprise_2.svg"
+                  alt="Code quality and safety"
+                />
+                <img
+                  className="sm:relative block w-full h-auto dark:hidden object-contain w-full"
+                  src="/illustrations/enterprise/enterprise_2_light.svg"
+                  alt="Code quality and safety"
+                />
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+      <div className="my-12 px-4">
+        <div className="py-12 gap-8 flex flex-col max-w-[968px] mx-auto">
+          <h2 className="text-foreground-neutral stretch-display text-center text-4xl font-black! font-sans-display my-0">
+            Dedicated ORM support options
+          </h2>
+          <p className="text-center text-foreground-neutral max-w-xl mx-auto">
+            Focus on core competencies of your team, rather than building and
+            managing complex infrastructure components.
+          </p>
+          <SwitchEnterprise
+            content={[enterprises, solution_providers]}
+            tabs={[
+              { id: "enterprise", value: "Enterprise" },
+              { id: "agencies", value: "Agencies" },
+            ]}
+          />
+        </div>
+      </div>
+      <div className="my-12 px-4">
+        <div className="py-12 gap-8 flex flex-col max-w-221 mx-auto">
+          <h2 className="text-foreground-neutral stretch-display text-center text-4xl font-black! font-sans-display my-0">
+            Connect with us
+          </h2>
+          <p className="text-center text-foreground-neutral max-w-192 mx-auto">
+            To explore how our support solutions can revolutionize your agency
+            or enterprise's approach to developing with Prisma ORM.
+          </p>
+          <EnterpriseForm />
         </div>
       </div>
     </main>

@@ -1,4 +1,5 @@
 "use client";
+
 import {
   Button,
   Tooltip,
@@ -7,15 +8,17 @@ import {
   TooltipTrigger,
 } from "@prisma/eclipse";
 import { useState } from "react";
-
+import { cn } from "@/lib/cn";
 export const Technology = ({
   children,
   text,
   url,
+  className,
 }: {
   children: React.ReactNode;
   text: string;
   url?: string;
+  className?: string;
 }) => {
   return (
     <TooltipProvider>
@@ -24,7 +27,10 @@ export const Technology = ({
           <Button
             variant="default-stronger"
             href={url}
-            className="font-sans-display! font-normal! text-base! font-mono! w-[75px]! h-[75px]!"
+            className={cn(
+              "font-sans-display! font-normal! text-base! font-mono! w-[75px]! h-[75px]!",
+              className,
+            )}
           >
             {children}
           </Button>
