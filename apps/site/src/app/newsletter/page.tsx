@@ -23,7 +23,7 @@ type RssItem = {
 
 async function getLatestBlogPosts(count = 3): Promise<RssItem[]> {
   try {
-    const res = await fetch("https://www.prisma.io/blog/rss.xml", {
+    const res = await fetch("http://prisma.io/blog/rss.xml", {
       next: { revalidate: 3600 },
     });
     const xml = await res.text();
@@ -45,14 +45,30 @@ async function getLatestBlogPosts(count = 3): Promise<RssItem[]> {
         return m2 ? m2[1].trim() : "";
       };
 
-      const imageMatch = block.match(/<image\s+href="([^"]+)"/);
+      const imageFromRss = (() => {
+        const enc = block.match(/<enclosure\b([^>]*)\/?>/i);
+        if (!enc) return null;
+        const attrs = enc[1];
+        const typeM = attrs.match(/\btype="([^"]*)"/i);
+        if (
+          typeM &&
+          typeM[1] &&
+          !typeM[1].toLowerCase().startsWith("image/")
+        ) {
+          return null;
+        }
+        const urlM = attrs.match(/\burl="([^"]+)"/i);
+        return urlM?.[1] ?? null;
+      })();
+      const imageLegacy = block.match(/<image\s+href="([^"]+)"/)?.[1] ?? null;
+      const image = imageFromRss ?? imageLegacy;
 
       items.push({
         title: get("title"),
         link: get("link"),
         date: get("pubDate"),
         description: get("description").replace(/<[^>]*>/g, "").slice(0, 200),
-        image: imageMatch?.[1] ?? null,
+        image,
       });
     }
 

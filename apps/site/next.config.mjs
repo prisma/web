@@ -50,6 +50,8 @@ const ContentSecurityPolicy = `
     https://*.fontawesome.com;
 
   img-src 'self' data:
+    http://localhost:3002 http://127.0.0.1:3002
+    https://www.prisma.io https://prisma.io
     https://cdn.sanity.io
     https://prismalens.vercel.app
     https://api.producthunt.com
