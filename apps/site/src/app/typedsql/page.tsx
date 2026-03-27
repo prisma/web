@@ -104,7 +104,7 @@ export default function TypedSQLPage() {
   return (
     <main className="flex-1 w-full z-1 bg-background-default">
       <div className="hero h-123 -mt-24 flex items-end justify-center px-4 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_65%,var(--color-background-orm-strong)_0%,var(--color-background-default)_70%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,var(--color-background-orm-strong)_0%,var(--color-background-default)_70%)]" />
         <div className="content relative z-2 my-12 flex flex-col gap-8">
           <div className="flex flex-col items-center gap-4">
             <span className="text-foreground-orm font-sans-display text-sm font-bold tracking-widest uppercase">
@@ -144,7 +144,9 @@ export default function TypedSQLPage() {
       <div className="w-screen">
         <CardSection cardSection={twoCol} />
       </div>
-      <VideoSection />
+      <div className="bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-orm)_50%,var(--color-background-default)_100%)]">
+        <VideoSection />
+      </div>
       <ExpandCapabilities />
       <div className="bg-[url('/illustrations/homepage/footer_grid.svg')] bg-contain bg-center before:inset-x-30 before:inset-y-[45%] before:absolute relative before:content-[''] before:pointer-events-none before:-z-1 rounded-full before:bg-indigo-400 before:blur-[100px]">
         <div className="my-12 p-12">
