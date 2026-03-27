@@ -1,7 +1,6 @@
 "use client";
 
 import { Button, Input } from "@prisma/eclipse";
-import { Mail } from "lucide-react";
 import { useNewsletter } from "@prisma-docs/ui/hooks/use-newsletter";
 
 export function NewsletterSignup() {
@@ -43,13 +42,18 @@ export function NewsletterSignup() {
           Email Address
         </label>
         <div className="relative flex-1">
-          <Mail className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-foreground-neutral-weaker" />
+          <i
+            className="fa-regular fa-envelope pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-foreground-neutral-weaker"
+            aria-hidden
+          />
           <Input
             id="newsletter-email"
             type="email"
             placeholder="Email Address"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setEmail(e.target.value)
+            }
             disabled={disabled}
             size="2xl"
             className="pl-9"

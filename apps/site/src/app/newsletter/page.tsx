@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { Card } from "@prisma/eclipse";
-import { Bell } from "lucide-react";
 import { NewsletterSignup } from "./newsletter-signup";
 
 export const metadata: Metadata = {
@@ -83,7 +82,7 @@ export default async function NewsletterPage() {
       <section className="px-4 pt-36 pb-16">
         <div className="max-w-[720px] mx-auto flex flex-col items-center gap-6 text-center">
           <p className="m-0 flex items-center justify-center gap-2 text-base font-semibold uppercase tracking-[1.6px] text-foreground-ppg font-sans">
-            <Bell className="size-3.5 shrink-0" strokeWidth={2} aria-hidden />
+            <i className="fa-regular fa-bell" aria-hidden />
             Stay Updated
           </p>
           <h1 className="m-0 text-foreground-neutral text-5xl font-sans-display [font-variation-settings:'wght'_900]">
@@ -134,9 +133,6 @@ export default async function NewsletterPage() {
                       </h3>
                       <p className="m-0 text-xs text-foreground-neutral-weak">
                         {formatDate(post.date)}
-                      </p>
-                      <p className="m-0 text-sm text-foreground-neutral-weak line-clamp-3">
-                        {post.description}
                       </p>
                     </div>
                   </Card>
