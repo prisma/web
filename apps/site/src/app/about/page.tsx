@@ -405,8 +405,8 @@ export default function About() {
           </div>
           <Separator className="my-12" />
           <div className="investors-grid grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-            {investors.people.map((investor) => (
-              <div key={investor.id} className="p-4 flex gap-4">
+            {investors.people.map((investor: any, idx: number) => (
+              <div key={idx} className="p-4 flex gap-4">
                 <Avatar size="3xl">
                   <img
                     src={investor.imageUrl}
