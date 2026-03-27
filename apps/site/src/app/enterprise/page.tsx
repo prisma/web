@@ -13,7 +13,6 @@ import review from "../../data/homepage.json";
 import Testimonials from "../../components/homepage/testimonials";
 import { cn } from "@/lib/cn";
 import { Technology } from "@/components/technology";
-import { FitHeight } from "@rive-app/react-canvas";
 import { Animation } from "@/components/animation";
 
 const first = [
