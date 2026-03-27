@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     `https://api.github.com/orgs/prisma/teams/dev-connections-write/memberships/${pr.user.login}`,
     {
       headers: {
-        Authorization: `Bearer ${process.env.BOT_TOKEN_PR_LINEAR_WEBHOOK!}`,
+        Authorization: `Bearer ${process.env.BOT_TOKEN_GITHUB_PR_LINEAR_WEBHOOK!}`,
         "X-GitHub-Api-Version": "2022-11-28",
       },
     }
