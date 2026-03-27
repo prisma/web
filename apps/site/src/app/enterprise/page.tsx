@@ -1,3 +1,4 @@
+import { CarouselItem } from "@/components/enterprise/carousel-item";
 import { EnterpriseForm } from "@/components/enterprise/form";
 
 import Script from "next/script";
@@ -243,6 +244,32 @@ const solution_providers = [
     icon: "fa-regular fa-triangle-exclamation", // or "fa-light fa-triangle-exclamation"
   },
 ];
+const scal_port = [
+  {
+    title: "Support for multiple databases",
+    description:
+      "Prisma ORM's compatibility enables teams to work with different databases without significant changes to the application logic. Developers can easily switch between different projects, and applications can be easily adapted to future requirements without extensive rework.",
+    icon: "fa-regular fa-layer-plus", // or "fa-light fa-layer-group"
+  },
+  {
+    title: "Community and ecosystem",
+    description:
+      "The vibrant Prisma community and ecosystem offer extensive resources, including documentation, tutorials, and support forums. This knowledge pool aids in resolving issues swiftly and exchanging best practices.",
+    icon: "fa-regular fa-hands-holding-circle", // or "fa-light fa-people-group"
+  },
+  {
+    title: "Scalability at its core",
+    description:
+      "Designed with scalability in mind, Prisma products support efficient data fetching and manipulation patterns that are essential for high-load applications, ensuring that the database layer does not become a bottleneck as the application grows.",
+    icon: "fa-regular fa-up-right-and-down-left-from-center", // or "fa-light fa-chart-network"
+  },
+  {
+    title: "Code maintainability",
+    description:
+      "The reduction in handwritten SQL leads to cleaner, more maintainable codebases. Developers can focus on the business logic rather than the intricacies of SQL syntax, making it easier to update and refactor code.",
+    icon: "fa-regular fa-gear-complex-code", // or "fa-light fa-code"
+  },
+];
 
 export const metadata: Metadata = {
   title: SITE_HOME_TITLE,
@@ -291,7 +318,7 @@ export default function SiteHome() {
         <LogoParade />
       </div>
       <div className="my-12 px-4">
-        <CardSection cardSection={first} />
+        <CardSection cardSection={first} key="first" />
       </div>
       <div className="my-12 px-4">
         <div className="py-12 relative gap-8 flex flex-col">
@@ -325,7 +352,7 @@ export default function SiteHome() {
                         {card.title}
                       </h3>
                     </div>
-                    <p className="text-foreground-neutral dark:text-foreground-neutral-weak text-sm font-normal m-0">
+                    <p className="text-foreground-neutral text-foreground-neutral-weak text-sm font-normal m-0">
                       {card.subtitle}
                     </p>
                     {!last && (
@@ -349,22 +376,24 @@ export default function SiteHome() {
                         {databases.title}
                       </h5>
                       <div className="flex gap-1 flex-wrap">
-                        {databases.list.map((db) => (
-                          <Technology
-                            text={db.name}
-                            url={db.url}
-                            key={db.name}
-                            className="bg-transparent! [&>div]:bg-transparent! hover:bg-background-default!"
-                          >
-                            <Action
-                              color="neutral"
-                              size="4xl"
+                        {databases.list.map((db: any, idx: number) => (
+                          <div key={idx}>
+                            <Technology
+                              text={db.name}
+                              url={db.url}
                               key={db.name}
-                              className="h-[75px]! w-[75px]! hover:bg-background-neutral-strong"
+                              className="bg-transparent! [&>div]:bg-transparent! hover:bg-background-default!"
                             >
-                              <img src={db.icon} alt={db.name} />
-                            </Action>
-                          </Technology>
+                              <Action
+                                color="neutral"
+                                size="4xl"
+                                key={db.name}
+                                className="h-[75px]! w-[75px]! hover:bg-background-neutral-strong"
+                              >
+                                <img src={db.icon} alt={db.name} />
+                              </Action>
+                            </Technology>
+                          </div>
                         ))}
                       </div>
                     </div>
@@ -443,6 +472,7 @@ export default function SiteHome() {
           <EnterpriseForm />
         </div>
       </div>
+      {/* <CarouselItem className="bg-background-default" card={development_efficiency[0]} /> use this item inside the carousel */}
     </main>
   );
 }
