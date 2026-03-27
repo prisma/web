@@ -16,14 +16,16 @@ const twoCol = [
           types and improving DX. Any type mismatches can be caught right away, while type-safety
           significantly improves ergonomics while developing.
         </p>
-        <Button
-          variant="link"
-          href="https://www.prisma.io/docs/orm/prisma-client/using-raw-sql/typedsql"
-          className="mt-4 text-foreground-orm! p-0!"
-        >
-          <span>Learn more about type-safety with TypedSQL</span>
-          <i className="fa-regular fa-arrow-right ml-2" />
-        </Button>
+        <div className="mt-4">
+          <Button
+            variant="link"
+            href="https://www.prisma.io/docs/orm/prisma-client/using-raw-sql/typedsql"
+            className="w-full justify-start text-left text-foreground-orm! p-0!"
+          >
+            <span>Learn more about type-safety with TypedSQL</span>
+            <i className="fa-regular fa-arrow-right ml-2" />
+          </Button>
+        </div>
       </>
     ),
     imageUrl: "/illustrations/typedsql/end-to-end-type-safety",
@@ -47,14 +49,16 @@ const twoCol = [
           optimizations that are not available in the Prisma Client API, while maintaining type
           safety.
         </p>
-        <Button
-          variant="link"
-          href="https://www.prisma.io/docs/orm/prisma-client/using-raw-sql/typedsql"
-          className="mt-4 text-foreground-orm! p-0!"
-        >
-          <span>Write queries using TypedSQL</span>
-          <i className="fa-regular fa-arrow-right ml-2" />
-        </Button>
+        <div className="mt-4">
+          <Button
+            variant="link"
+            href="https://www.prisma.io/docs/orm/prisma-client/using-raw-sql/typedsql"
+            className="w-full justify-start text-left text-foreground-orm! p-0!"
+          >
+            <span>Write queries using TypedSQL</span>
+            <i className="fa-regular fa-arrow-right ml-2" />
+          </Button>
+        </div>
       </>
     ),
     imageUrl: "/illustrations/typedsql/full-controll-sql",

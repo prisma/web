@@ -2,7 +2,7 @@ import { Card, CardContent, Action } from "@prisma/eclipse";
 
 const capabilities = [
   {
-    icon: "fa-light fa-diagram-project",
+    icon: "fa-regular fa-layer-group",
     title: "Works alongside Prisma Schema & Migrate",
     description:
       "TypedSQL complements Prisma Schema and Prisma Migrate. It extends the functionality you're already used to with type-safe SQL queries.",
