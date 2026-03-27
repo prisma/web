@@ -1,7 +1,13 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { Card } from "@prisma/eclipse";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@prisma/eclipse";
 import { NewsletterSignup } from "./newsletter-signup";
 
 export const metadata: Metadata = {
@@ -23,7 +29,7 @@ type RssItem = {
 
 async function getLatestBlogPosts(count = 3): Promise<RssItem[]> {
   try {
-    const res = await fetch("http://prisma.io/blog/rss.xml", {
+    const res = await fetch("http://localhost:3002/blog/rss.xml", {
       next: { revalidate: 3600 },
     });
     const xml = await res.text();
@@ -106,20 +112,20 @@ export default async function NewsletterPage() {
           </h1>
         </div>
 
-        <div className="max-w-[520px] mx-auto mt-10">
-          <div className="rounded-xl border border-stroke-neutral bg-background-neutral-weak p-8 dark:bg-[#0A101D]">
-            <h4 className="m-0 text-lg font-semibold text-foreground-neutral font-sans-display">
+        <Card className="mx-auto mt-10 max-w-[520px]">
+          <CardHeader>
+            <CardTitle className="text-lg font-sans-display">
               Sign up for the Prisma newsletter today
-            </h4>
-            <p className="m-0 mt-2 text-sm text-foreground-neutral-weak">
+            </CardTitle>
+            <CardDescription>
               Get releases updates, tutorials, and more content delivered to
               your inbox monthly.
-            </p>
-            <div className="mt-6">
-              <NewsletterSignup />
-            </div>
-          </div>
-        </div>
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <NewsletterSignup />
+          </CardContent>
+        </Card>
       </section>
 
       {posts.length > 0 && (
@@ -130,27 +136,33 @@ export default async function NewsletterPage() {
             </h2>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {posts.map((post) => (
-                <Link key={post.link} href={post.link} className="group">
-                  <Card className="flex h-full flex-col overflow-hidden p-0 transition-colors hover:border-stroke-neutral-strong dark:bg-[#0A101D]">
+                <Link key={post.link} href={post.link}>
+                  <Card className="flex h-full flex-col overflow-hidden p-0 transition-colors hover:border-stroke-neutral-strong">
                     {post.image && (
                       <div className="relative aspect-video w-full overflow-hidden">
                         <Image
                           src={post.image}
                           alt={post.title}
                           fill
-                          className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                          className="object-cover"
                           sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
                         />
                       </div>
                     )}
-                    <div className="flex flex-1 flex-col gap-2 p-5">
-                      <h3 className="m-0 text-base font-semibold text-foreground-neutral line-clamp-2">
+                    <CardContent className="flex flex-1 flex-col gap-2 px-3 pb-3">
+                      <CardTitle className="text-base font-semibold">
                         {post.title}
-                      </h3>
-                      <p className="m-0 text-xs text-foreground-neutral-weak">
+                      </CardTitle>
+                      {post.description ? (
+                        <CardDescription className="line-clamp-2">
+                          {post.description}
+                        </CardDescription>
+                      ) : null}
+                      <p className="m-0 flex items-center gap-1.5 text-xs text-foreground-neutral-weak">
+                        <i className="fa-regular fa-calendar" aria-hidden />
                         {formatDate(post.date)}
                       </p>
-                    </div>
+                    </CardContent>
                   </Card>
                 </Link>
               ))}
