@@ -1,12 +1,12 @@
 "use client";
-import { useRive, Layout, Alignment } from "@rive-app/react-webgl2";
+import { useRive, Layout, Alignment, Fit } from "@rive-app/react-webgl2";
 import { useEffect, useState } from "react";
 import { useInView } from "react-intersection-observer";
 
 interface AnimationProps {
   name: string;
   className?: string;
-  fit?: reactCanvas.Fit;
+  fit?: Fit;
   threshold?: number;
   style?: React.CSSProperties;
   autoplay?: boolean;
