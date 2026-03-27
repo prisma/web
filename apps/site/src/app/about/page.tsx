@@ -22,7 +22,7 @@ import { MasonryPict } from "@/components/careers/masonry";
 const what_we_care_about = [
   {
     content: (
-      <div className="flex flex-col gap-4 self-start">
+      <div className="flex flex-col gap-6 self-start">
         <h3 className="text-foreground-neutral stretch-display text-2xl font-black! font-sans-display">
           Open-Source
         </h3>
@@ -37,30 +37,36 @@ const what_we_care_about = [
           <Accordion title="How the program works">
             <>
               <Separator className="-ml-[36px] -mr-[16px] w-[calc(100%+36px+16px)]" />
-              <ul className="list-disc">
-                <li className="my-4">
+              <ul className="list-disc text-left flex flex-col items-start">
+                <li className="my-1 md:my-1.5">
                   The Prisma team nominates projects they believe deserve
                   support.
                 </li>
-                <li className="my-4">
+                <li className="my-1 md:my-1.5">
                   The Developer Connections team and representatives from the
                   engineering teams review the nominations.
                 </li>
-                <li className="my-4">
+                <li className="my-1 md:my-1.5">
                   The entire company votes to select three recipients each
                   quarter to receive the one-time stipend of $500.
                 </li>
-                <li className="my-4">
+                <li className="my-1 md:my-1.5">
                   Recipient projects are announced each month on social media.
                 </li>
               </ul>
-              To qualify, nominees need to meet the following criteria:
-              <ul>
-                <li>Usage within Prisma or the Prisma ecosystem</li>
-                <li>
+              <p className="my-2 text-left">
+                To qualify, nominees need to meet the following criteria:
+              </p>
+              <ul className="list-disc text-left flex flex-col items-start">
+                <li className="my-1 md:my-1.5">
+                  Usage within Prisma or the Prisma ecosystem
+                </li>
+                <li className="my-1 md:my-1.5">
                   Overall project health and aligned with Prisma company values
                 </li>
-                <li>Ability to receive and distribute funds</li>
+                <li className="my-1 md:my-1.5">
+                  Ability to receive and distribute funds
+                </li>
               </ul>
               <h6 className="mt-6 mb-4  text-foreground-neutral-weaker text-xs">
                 Projects owned or managed by Prisma employees cannot be
@@ -77,13 +83,13 @@ const what_we_care_about = [
     mobileImageAlt: "About",
     logos: null,
     useDefaultLogos: true,
-    alignItems: "items-start" as const,
+    alignItems: "md:items-start" as const,
     visualPosition: "left" as const,
     visualType: "image" as const,
   },
   {
     content: (
-      <div className="flex flex-col gap-4 self-start">
+      <div className="flex flex-col gap-6 self-start">
         <h3 className="text-foreground-neutral stretch-display text-2xl font-black! font-sans-display">
           Climate change
         </h3>
@@ -98,20 +104,20 @@ const what_we_care_about = [
         <Accordions type="single" className="border-none">
           <Accordion title="To fight climate change, Prisma...">
             <Separator className="-ml-[36px] -mr-[16px] w-[calc(100%+36px+16px)]" />
-            <ul className="list-disc">
-              <li className="my-4">
+            <ul className="list-disc text-left flex flex-col items-start">
+              <li className="my-1 md:my-1.5">
                 Matches all employee donations for climate change-related
                 charities and fundraising
               </li>
-              <li className="my-4">
+              <li className="my-1 md:my-1.5">
                 Maintains sustainable practices—i.e. utilizing green energy,
                 recycling, and reducing waste—in the Prisma office space
               </li>
-              <li className="my-4">
+              <li className="my-1 md:my-1.5">
                 Encourages all employees to participate in local climate
                 strikes/events
               </li>
-              <li className="my-4">
+              <li className="my-1 md:my-1.5">
                 <a
                   href="https://www.travelperk.com/travel-solutions/sustainability/greenperk/"
                   target="_blank"
@@ -121,7 +127,7 @@ const what_we_care_about = [
                 </a>{" "}
                 of company travel and shipping
               </li>
-              <li className="my-4">
+              <li className="my-1 md:my-1.5">
                 Commits 1% of earned revenue (via Stripe) to fund{" "}
                 <a
                   href="https://www.nap.edu/read/25259/chapter/2#4"
@@ -132,17 +138,6 @@ const what_we_care_about = [
                 </a>
               </li>
             </ul>
-            To qualify, nominees need to meet the following criteria:
-            <ul>
-              <li>Usage within Prisma or the Prisma ecosystem</li>
-              <li>
-                Overall project health and aligned with Prisma company values
-              </li>
-              <li>Ability to receive and distribute funds</li>
-            </ul>
-            <h6 className="mt-6 mb-4  text-foreground-neutral-weaker text-xs">
-              Projects owned or managed by Prisma employees cannot be nominated.
-            </h6>
           </Accordion>
         </Accordions>
       </div>
@@ -153,7 +148,7 @@ const what_we_care_about = [
     mobileImageAlt: "About",
     logos: null,
     useDefaultLogos: true,
-    alignItems: "items-start" as const,
+    alignItems: "md:items-start" as const,
     visualPosition: "right" as const,
     visualType: "image" as const,
   },
@@ -480,7 +475,7 @@ export default function About() {
           </section>
         </div>
       </div>
-      <div className="pb-24 px-4 relative">
+      <div className="pb-24 relative">
         <div className="bg-[linear-gradient(180deg,var(--color-background-default)-177.75%,var(--color-background-orm-strong)100%)] shadow-[0_1px_2px_0_rgba(0,0,0,0.04)] p-12">
           <div className="web-cta flex gap-3 md:gap-12 items-center mx-auto w-fit lg:p-4 flex-col md:flex-row">
             <h3 className="text-2xl text-foreground-neutral font-sans-display font-bold text-center md:text-left">
