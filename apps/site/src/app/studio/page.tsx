@@ -7,7 +7,6 @@ import { Youtube } from "@prisma-docs/ui/components/youtube";
 const CONSOLE_URL =
   "https://console.prisma.io/login?utm_source=website&utm_medium=studio&utm_campaign=cta";
 const STUDIO_DOCS_URL = "https://www.prisma.io/docs/studio";
-const VIDEO_URL = "https://www.prisma.io/studio";
 const TRY_STUDIO_COMMAND = `npx try-prisma@latest --template orm/starter \\
 && cd hello-prisma \\
 && npx prisma studio`;
@@ -246,12 +245,14 @@ export default function StudioPage() {
             </Button>
           </div>
 
-          <a
-            href={VIDEO_URL}
-            className="group relative block overflow-hidden rounded-lg shadow-box-low"
-          >
-            <Youtube videoId="s3NS9KBRMcQ" width="100%" height="400" />
-          </a>
+          <div className="relative overflow-hidden rounded-lg shadow-box-low">
+            <Youtube
+              videoId="s3NS9KBRMcQ"
+              width="100%"
+              height="400"
+              title="See how Prisma Studio works"
+            />
+          </div>
         </div>
       </section>
 
