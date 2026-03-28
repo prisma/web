@@ -61,6 +61,25 @@ const twoCol = [
 export const metadata: Metadata = {
   title: SITE_HOME_TITLE,
   description: SITE_HOME_DESCRIPTION,
+  alternates: {
+    canonical: "https://www.prisma.io/",
+  },
+  openGraph: {
+    title: SITE_HOME_TITLE,
+    description: SITE_HOME_DESCRIPTION,
+    url: "https://www.prisma.io/",
+    images: [
+      {
+        url: "/og/og-index.png",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_HOME_TITLE,
+    description: SITE_HOME_DESCRIPTION,
+    images: ["/og/og-index.png"],
+  },
 };
 
 export default function SiteHome() {

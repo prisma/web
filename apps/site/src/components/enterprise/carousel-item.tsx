@@ -1,22 +1,24 @@
 import { Action, Card } from "@prisma/eclipse";
 import { cn } from "@/lib/cn";
 
+export interface EnterpriseCarouselCard {
+  title: string;
+  description: string;
+  icon: string;
+}
+
 export const CarouselItem = ({
   card,
   className,
 }: {
-  card: {
-    title: string;
-    description: string;
-    icon: string;
-  };
+  card: EnterpriseCarouselCard;
   className?: string;
 }) => {
   return (
     <Card
       key={card.title}
       className={cn(
-        "bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-orm)_262.5%)] relative",
+        "bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-orm)_262.5%)] relative h-full",
         className,
       )}
     >
@@ -25,7 +27,7 @@ export const CarouselItem = ({
           <Action color="orm" size="4xl">
             <i className={card.icon} />
           </Action>
-          <h3 className="text-foreground-neutral font-sans-display text-xl stretch-display mt-0 mb-1 font-bold">
+          <h3 className="text-foreground-neutral font-sans-display text-lg stretch-display mt-0 mb-1 font-bold">
             {card.title}
           </h3>
         </div>

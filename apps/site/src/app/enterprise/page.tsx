@@ -1,27 +1,14 @@
-import { CarouselItem } from "@/components/enterprise/carousel-item";
 import { EnterpriseForm } from "@/components/enterprise/form";
-
-import Script from "next/script";
+import { EnterpriseScrollCarousel } from "@/components/enterprise/scroll-carousel";
+import Image from "next/image";
 import { FooterAccordion } from "@/components/enterprise/footer-accordion";
-
 import { SwitchEnterprise } from "@/components/enterprise/switch-enterprise";
 import LogoParade from "@/components/logo-parade";
 import type { Metadata } from "next";
-import {
-  SITE_HOME_DESCRIPTION,
-  SITE_HOME_TITLE,
-} from "../../lib/blog-metadata";
 import { Button, Card, Action } from "@prisma/eclipse";
-import { CopyCode } from "@/components/homepage/copy-btn";
-import React from "react";
-import { Bento } from "@/components/homepage/bento";
 import { CardSection } from "@/components/homepage/card-section/card-section";
-import review from "../../data/homepage.json";
-import Testimonials from "../../components/homepage/testimonials";
 import { cn } from "@/lib/cn";
 import { Technology } from "@/components/technology";
-import { Animation } from "@/components/animation";
-import { Fit } from "@rive-app/react-webgl2";
 
 const first = [
   {
@@ -51,18 +38,22 @@ const first = [
     mobileImageAlt: null,
     logos: null,
     other: (
-      <Animation
-        name="enterprise/build_fortify_grow"
-        fit={Fit.FitHeight}
-        className={cn(
-          "h-94",
-          "[&>canvas]:max-w-full",
-          "[&>canvas]:h-auto!",
-          "[&>div]:flex",
-          "[&>div]:items-center",
-          "[&>div]:justify-center",
-        )}
-      />
+      <>
+        <Image
+          src="/illustrations/enterprise/bgf.svg"
+          alt="Build Fortify Grow"
+          width={100}
+          height={100}
+          className="w-94 h-94 object-contain mx-auto hidden dark:block"
+        />
+        <Image
+          src="/illustrations/enterprise/bgf-light.svg"
+          alt="Build Fortify Grow"
+          width={100}
+          height={100}
+          className="w-94 h-94 object-contain mx-auto dark:hidden"
+        />
+      </>
     ),
     useDefaultLogos: true,
     visualPosition: "left" as const,
@@ -271,15 +262,84 @@ const scal_port = [
   },
 ];
 
+const abstraction_ease_of_use = [
+  {
+    title: "Abstraction and ease of use",
+    description:
+      "Prisma ORM allows developers to work with high-level objects and methods instead of raw SQL queries. This accelerates development and minimizes errors associated with directly handling SQL. Retrieving user data can be as straightforward as `prisma.user.findMany()` instead of constructing a complex SQL query.",
+    icon: "fa-regular fa-shapes",
+  },
+  {
+    title: "Database schema migration",
+    description:
+      "Prisma Migrate facilitates easy version control for database schemas, streamlining the deployment and rollback of changes. This is crucial for maintaining consistency across environments. The schema evolution necessary for application development becomes safe and hassle-free, yet customizable to provide flexibility.",
+    icon: "fa-regular fa-arrow-up-triangle-square",
+  },
+  {
+    title: "Reduced training needs",
+    description:
+      "By standardizing database interactions, Prisma ORM reduces the need for in-depth database-specific training. New team members can contribute quickly, focusing on learning your data model rather than the nuances of SQL.",
+    icon: "fa-regular fa-head-side-gear",
+  },
+  {
+    title: "Transferability of responsibilities",
+    description:
+      "The uniform interface provided by Prisma ORM simplifies the transfer of responsibilities within the team. Developers can easily understand and work on different parts of the application, enhancing team flexibility and resilience.",
+    icon: "fa-regular fa-person-walking-dashed-line-arrow-right",
+  },
+  {
+    title: "Improved productivity",
+    description:
+      "The Prisma ORM Client API boosts developer productivity by providing a querying interface that is intuitive and comes with features like editor auto-completion. This reduces the cognitive load on developers, allowing them to focus on business logic rather than database syntax intricacies.",
+    icon: "fa-regular fa-arrow-up-right-dots",
+  },
+  {
+    title: "Cross-functional team collaboration",
+    description:
+      "Prisma ORM's schema-centric approach enhances collaboration between developers and database administrators (DBAs) by providing a clear, version-controlled schema definition. This shared understanding facilitates smoother communication and decision-making.",
+    icon: "fa-regular fa-screen-users",
+  },
+  {
+    title: "Improved developer experience",
+    description:
+      "Prisma ORM contributes to a more modular and understandable codebase, significantly enhancing developer experience. The modularity facilitates easier testing and debugging, as developers can focus on smaller, more isolated parts of the application logic.",
+    icon: "fa-regular fa-cubes-stacked",
+  },
+];
+
+const ENTERPRISE_TITLE = "Streamline your enterprise development workflow with Prisma";
+const ENTERPRISE_DESCRIPTION =
+  "Learn how Prisma ORM can improve your team's productivity and explore our tailored ORM support solutions for enterprises and solution providers.";
+
 export const metadata: Metadata = {
-  title: SITE_HOME_TITLE,
-  description: SITE_HOME_DESCRIPTION,
+  title: ENTERPRISE_TITLE,
+  description: ENTERPRISE_DESCRIPTION,
+  alternates: {
+    canonical: "https://www.prisma.io/enterprise",
+  },
+  openGraph: {
+    title: ENTERPRISE_TITLE,
+    description: ENTERPRISE_DESCRIPTION,
+    url: "https://www.prisma.io/enterprise",
+    images: [
+      {
+        url: "/og/og-enterprise.png",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: ENTERPRISE_TITLE,
+    description: ENTERPRISE_DESCRIPTION,
+    images: ["/og/og-enterprise.png"],
+  },
 };
 
 export default function SiteHome() {
   return (
     <main className="flex-1 w-full z-1 bg-background-default">
-      <div className="hero -mt-24 flex items-end justify-center px-4 relative">
+      {/* Hero */}
+      <section className="hero -mt-24 flex items-end justify-center px-4 relative">
         <div className="absolute inset-0 z-0 bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20" />
         <div className="content pt-31 relative z-2 my-12 flex flex-col gap-8">
           <div className="flex flex-col gap-1">
@@ -310,17 +370,23 @@ export default function SiteHome() {
             </Button>
           </div>
         </div>
-      </div>
-      <div className="my-12 px-4">
+      </section>
+
+      {/* Trusted by teams at */}
+      <section className="my-12 px-4">
         <h5 className=" text-center text-foreground-orm-strong stretch-display text-base font-sans-display uppercase">
           Trusted by teams at
         </h5>
         <LogoParade />
-      </div>
-      <div className="my-12 px-4">
+      </section>
+
+      {/* Boost your application’s lifecycle */}
+      <section className="my-12 px-4">
         <CardSection cardSection={first} key="first" />
-      </div>
-      <div className="my-12 px-4">
+      </section>
+
+      {/* Leave the database complexities to us */}
+      <section className="my-12 px-4">
         <div className="py-12 relative gap-8 flex flex-col">
           <h3 className="text-center text-foreground-neutral stretch-display text-3xl stretch-display font-sans-display my-0">
             Leave the database complexities to us
@@ -352,7 +418,7 @@ export default function SiteHome() {
                         {card.title}
                       </h3>
                     </div>
-                    <p className="text-foreground-neutral text-foreground-neutral-weak text-sm font-normal m-0">
+                    <p className="text-foreground-neutral-weak text-sm font-normal m-0">
                       {card.subtitle}
                     </p>
                     {!last && (
@@ -403,13 +469,24 @@ export default function SiteHome() {
             );
           })}
         </div>
-      </div>
-      <div className="my-12 px-4">
+      </section>
+
+      {/* Developer experience */}
+      <section className="my-12 px-4">
+        <div className="py-12 gap-8 flex flex-col max-w-[1200px] mx-auto">
+          <h2 className="text-foreground-neutral stretch-display text-left text-4xl font-black! font-sans-display ">
+            Developer experience
+          </h2>
+          <EnterpriseScrollCarousel items={abstraction_ease_of_use} />
+        </div>
+      </section>
+      {/* Code quality and safety */}
+      <section className="my-12 px-4">
         <div className="py-12 gap-8 flex flex-col max-w-[1200px] mx-auto">
           <h2 className="text-foreground-neutral stretch-display text-left text-4xl font-black! font-sans-display ">
             Code quality and safety
           </h2>
-          <section className="w-full overflow-visible">
+          <div className="w-full overflow-visible">
             <div
               className={cn(
                 "[&_h2]:mt-0 flex gap-8 lg:gap-12 md:gap-8 sm:gap-6 items-center overflow-visible lg:flex-row-reverse flex-col",
@@ -428,21 +505,33 @@ export default function SiteHome() {
                 )}
               >
                 <img
-                  className="sm:relative w-full h-auto hidden dark:block object-contain w-full"
+                  className="sm:relative w-full h-auto hidden dark:block object-contain"
                   src="/illustrations/enterprise/enterprise_2.svg"
                   alt="Code quality and safety"
                 />
                 <img
-                  className="sm:relative block w-full h-auto dark:hidden object-contain w-full"
+                  className="sm:relative block w-full h-auto dark:hidden object-contain"
                   src="/illustrations/enterprise/enterprise_2_light.svg"
                   alt="Code quality and safety"
                 />
               </div>
             </div>
-          </section>
+          </div>
         </div>
-      </div>
-      <div className="my-12 px-4">
+      </section>
+
+      {/* Scalability and portability */}
+      <section className="my-12 px-4">
+        <div className="py-12 gap-8 flex flex-col max-w-[1200px] mx-auto">
+          <h2 className="text-foreground-neutral stretch-display text-left text-4xl font-black! font-sans-display">
+            Scalability and portability
+          </h2>
+          <EnterpriseScrollCarousel items={scal_port} />
+        </div>
+      </section>
+
+      {/* Dedicated ORM support options */}
+      <section className="my-12 px-4">
         <div className="py-12 gap-8 flex flex-col max-w-[968px] mx-auto">
           <h2 className="text-foreground-neutral stretch-display text-center text-4xl font-black! font-sans-display my-0">
             Dedicated ORM support options
@@ -459,20 +548,22 @@ export default function SiteHome() {
             ]}
           />
         </div>
-      </div>
-      <div className="my-12 px-4">
+      </section>
+
+      {/* Connect with us */}
+      <section className="my-12 px-4">
         <div className="py-12 gap-8 flex flex-col max-w-221 mx-auto">
           <h2 className="text-foreground-neutral stretch-display text-center text-4xl font-black! font-sans-display my-0">
             Connect with us
           </h2>
-          <p className="text-center text-foreground-neutral max-w-192 mx-auto">
+          <p className="text-center text-foreground-neutral max-w-3xl mx-auto">
             To explore how our support solutions can revolutionize your agency
             or enterprise's approach to developing with Prisma ORM.
           </p>
           <EnterpriseForm />
         </div>
-      </div>
-      {/* <CarouselItem className="bg-background-default" card={development_efficiency[0]} /> use this item inside the carousel */}
+      </section>
+  
     </main>
   );
 }
