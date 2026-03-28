@@ -48,30 +48,18 @@ export const EnterpriseScrollCarousel = ({
 
     const itemList = Array.from(items);
     const currentScroll = container.scrollLeft;
-    const tolerance = 8;
+    const currentIndex = itemList.reduce((closestIndex, item, index) => {
+      const currentDistance = Math.abs(item.offsetLeft - currentScroll);
+      const closestDistance = Math.abs(
+        itemList[closestIndex].offsetLeft - currentScroll,
+      );
 
-    const currentIndex = itemList.findIndex((item, index) => {
-      const start = item.offsetLeft;
-      const nextStart = itemList[index + 1]?.offsetLeft ?? Number.POSITIVE_INFINITY;
-
-      return currentScroll >= start - tolerance && currentScroll < nextStart - tolerance;
-    });
-
-    const safeCurrentIndex =
-      currentIndex === -1
-        ? itemList.reduce((closestIndex, item, index) => {
-            const currentDistance = Math.abs(item.offsetLeft - currentScroll);
-            const closestDistance = Math.abs(
-              itemList[closestIndex].offsetLeft - currentScroll,
-            );
-
-            return currentDistance < closestDistance ? index : closestIndex;
-          }, 0)
-        : currentIndex;
+      return currentDistance < closestDistance ? index : closestIndex;
+    }, 0);
 
     const targetIndex = Math.max(
       0,
-      Math.min(itemList.length - 1, safeCurrentIndex + direction),
+      Math.min(itemList.length - 1, currentIndex + direction),
     );
 
     container.scrollTo({
