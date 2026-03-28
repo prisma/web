@@ -114,7 +114,7 @@ export default function LogoParade() {
   const allItems = [...logoParade, ...logoParade];
 
   return (
-    <div className="flex flex-col items-center justify-center gap-10 p-6">
+    <div className="flex flex-col items-center justify-center gap-10 p-6 overflow-hidden">
       <style>{keyframes}</style>
       {/* Ticker wrapper */}
       <div className="relative overflow-hidden max-w-[1200px] mx-auto">

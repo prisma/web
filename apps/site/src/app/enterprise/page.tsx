@@ -266,7 +266,7 @@ const abstraction_ease_of_use = [
   {
     title: "Abstraction and ease of use",
     description:
-      "Prisma ORM allows developers to work with high-level objects and methods instead of raw SQL queries. This accelerates development and minimizes errors associated with directly handling SQL. Retrieving user data can be as straightforward as `prisma.user.findMany()` instead of constructing a complex SQL query.",
+      "Prisma ORM allows developers to work with high-level objects and methods instead of raw SQL queries. This accelerates development and minimizes errors associated with directly handling SQL. Retrieving user data can be as straightforward as <code>prisma.user.findMany()</code> instead of constructing a complex SQL query.",
     icon: "fa-regular fa-shapes",
   },
   {
@@ -377,7 +377,7 @@ export default function EnterprisePage() {
         <h5 className=" text-center text-foreground-orm-strong stretch-display text-base font-sans-display uppercase">
           Trusted by teams at
         </h5>
-        <LogoParade />
+        <LogoParade/>
       </section>
 
       {/* Boost your application’s lifecycle */}

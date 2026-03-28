@@ -6,8 +6,6 @@ import {
 } from "../../lib/blog-metadata";
 import { Button } from "@prisma/eclipse";
 import { CopyCode } from "@/components/homepage/copy-btn";
-import LogoParade from "@prisma-docs/ui/components/logo-parade";
-import React from "react";
 import { Bento } from "@/components/homepage/bento";
 import { CardSection } from "@/components/homepage/card-section/card-section";
 import review from "../../data/homepage.json";

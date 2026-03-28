@@ -26,13 +26,11 @@ export const CarouselItem = ({
           <Action color="orm" size="4xl">
             <i className={card.icon} />
           </Action>
-          <h3 className="text-foreground-neutral font-sans-display text-lg stretch-display mt-0 mb-1 font-bold">
+          <h3 className="text-foreground-neutral font-sans-display text-md md:text-lg stretch-display mt-0 mb-1 font-bold">
             {card.title}
           </h3>
         </div>
-        <p className="text-foreground-neutral-weak text-sm font-normal m-0">
-          {card.description}
-        </p>
+        <p className="text-foreground-neutral-weak text-sm font-normal m-0" dangerouslySetInnerHTML={{ __html: card.description }} />
       </div>
     </Card>
   );

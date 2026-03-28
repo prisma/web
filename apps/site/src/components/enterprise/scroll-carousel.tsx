@@ -121,12 +121,12 @@ export const EnterpriseScrollCarousel = ({
           className="overflow-x-auto snap-x snap-mandatory pb-4 scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
           aria-label="Enterprise carousel"
         >
-          <div className="flex gap-4">
+          <div className="grid grid-flow-col auto-cols-[100%] gap-4 sm:auto-cols-[calc((100%-2rem)/3)]">
             {items.map((item, index) => (
               <div
                 key={`${item.title}-${index}`}
                 data-carousel-item
-                className="min-w-0 shrink-0 snap-start basis-[calc((100%-2rem)/3)]"
+                className="min-w-0 snap-start"
               >
                 <CarouselItem card={item} className="min-h-full" />
               </div>
