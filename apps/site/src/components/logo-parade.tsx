@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState } from "react";
 
 const logoParade = [
   {
@@ -33,7 +33,7 @@ const logoParade = [
   {
     label: "Panther",
     imageUrl: `/icons/companies/panther.svg`,
-    url: " https://www.panther.co/",
+    url: "https://www.panther.co/",
     width: 122,
     height: 28,
   },
@@ -102,8 +102,6 @@ const logoParade = [
   },
 ];
 
-const speeds = { slow: "100s", normal: "30s", fast: "15s" };
-
 const keyframes = `
   @keyframes scroll-left {
     0%   { transform: translateX(0); }
@@ -112,7 +110,6 @@ const keyframes = `
 `;
 
 export default function LogoParade() {
-  const [speed, setSpeed] = useState("normal");
   const [paused, setPaused] = useState(false);
   const allItems = [...logoParade, ...logoParade];
 
@@ -122,8 +119,8 @@ export default function LogoParade() {
       {/* Ticker wrapper */}
       <div className="relative overflow-hidden max-w-[1200px] mx-auto">
         {/* Fade edges */}
-        <div className="pointer-events-none absolute inset-y-0 left-0 w-100 z-10 bg-gradient-to-r from-background-default to-transparent" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-100 z-10 bg-gradient-to-l from-background-default to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 left-0 w-100 z-10 bg-linear-to-r from-background-default to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-100 z-10 bg-linear-to-l from-background-default to-transparent" />
 
         {/* Track */}
         <div
@@ -138,7 +135,7 @@ export default function LogoParade() {
           {allItems.map((item, i) => (
             <div
               key={i}
-              className="relative flex-shrink-0 rounded-lg overflow-hidden cursor-pointer transition-transform duration-200 invert-100 dark:brightness-150 dark:hover:filter-none contrast-75 grayscale hover:filter-none"
+              className="relative shrink-0 rounded-lg overflow-hidden cursor-pointer transition-transform duration-200 invert-100 dark:brightness-150 dark:hover:filter-none contrast-75 grayscale hover:filter-none"
             >
               <img
                 src={item.imageUrl}

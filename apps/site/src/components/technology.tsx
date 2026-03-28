@@ -7,7 +7,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@prisma/eclipse";
-import { useState } from "react";
 import { cn } from "@/lib/cn";
 export const Technology = ({
   children,
@@ -28,7 +27,7 @@ export const Technology = ({
             variant="default-stronger"
             href={url}
             className={cn(
-              "font-sans-display! font-normal! text-base! font-mono! w-[75px]! h-[75px]!",
+              "font-mono! font-normal! text-base! w-[75px]! h-[75px]!",
               className,
             )}
           >

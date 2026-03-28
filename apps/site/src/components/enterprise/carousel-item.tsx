@@ -16,7 +16,6 @@ export const CarouselItem = ({
 }) => {
   return (
     <Card
-      key={card.title}
       className={cn(
         "bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-orm)_262.5%)] relative h-full",
         className,
@@ -31,7 +30,7 @@ export const CarouselItem = ({
             {card.title}
           </h3>
         </div>
-        <p className="text-foreground-neutral text-foreground-neutral-weak text-sm font-normal m-0">
+        <p className="text-foreground-neutral-weak text-sm font-normal m-0">
           {card.description}
         </p>
       </div>

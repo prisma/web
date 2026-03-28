@@ -13,8 +13,7 @@ export const EnterpriseForm = () => (
     />
     <Script
       src="https://tally.so/widgets/embed.js"
-      //@ts-ignore
-      onLoad={() => Tally.loadEmbeds()}
+      onLoad={() => window.Tally?.loadEmbeds()}
     />
   </>
 );

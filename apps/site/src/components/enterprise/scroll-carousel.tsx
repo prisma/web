@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CarouselItem, type EnterpriseCarouselCard } from "./carousel-item";
 import { cn } from "@/lib/cn";
 
@@ -14,12 +14,35 @@ export const EnterpriseScrollCarousel = ({
   className,
 }: EnterpriseScrollCarouselProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [isAtStart, setIsAtStart] = useState(true);
+  const [isAtEnd, setIsAtEnd] = useState(false);
+
+  const updateScrollBounds = () => {
+    const container = scrollRef.current;
+
+    if (!container) {
+      return;
+    }
+
+    const maxScrollLeft = Math.max(
+      0,
+      container.scrollWidth - container.clientWidth,
+    );
+    const tolerance = 8;
+
+    setIsAtStart(container.scrollLeft <= tolerance);
+    setIsAtEnd(container.scrollLeft >= maxScrollLeft - tolerance);
+  };
 
   const scrollByItem = (direction: -1 | 1) => {
     const container = scrollRef.current;
     const items = container?.querySelectorAll<HTMLElement>("[data-carousel-item]");
 
     if (!container || !items?.length) {
+      return;
+    }
+
+    if ((direction === -1 && isAtStart) || (direction === 1 && isAtEnd)) {
       return;
     }
 
@@ -57,21 +80,49 @@ export const EnterpriseScrollCarousel = ({
     });
   };
 
+  useEffect(() => {
+    const container = scrollRef.current;
+
+    if (!container) {
+      return;
+    }
+
+    updateScrollBounds();
+
+    container.addEventListener("scroll", updateScrollBounds, { passive: true });
+    window.addEventListener("resize", updateScrollBounds);
+
+    return () => {
+      container.removeEventListener("scroll", updateScrollBounds);
+      window.removeEventListener("resize", updateScrollBounds);
+    };
+  }, []);
+
   return (
     <div className={cn("relative", className)}>
       <button
         type="button"
         aria-label="Scroll carousel left"
+        aria-disabled={isAtStart}
+        disabled={isAtStart}
         onClick={() => scrollByItem(-1)}
-        className="absolute left-2 top-1/2 z-20 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border-subtle bg-background-default/90 text-foreground-neutral shadow-sm backdrop-blur md:flex"
+        className={cn(
+          "absolute left-2 top-1/2 z-20 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border-subtle bg-background-default/90 text-foreground-neutral shadow-sm backdrop-blur md:flex",
+          isAtStart && "cursor-not-allowed opacity-40",
+        )}
       >
         <i className="fa-regular fa-chevron-left" aria-hidden="true" />
       </button>
       <button
         type="button"
         aria-label="Scroll carousel right"
+        aria-disabled={isAtEnd}
+        disabled={isAtEnd}
         onClick={() => scrollByItem(1)}
-        className="absolute right-2 top-1/2 z-20 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border-subtle bg-background-default/90 text-foreground-neutral shadow-sm backdrop-blur md:flex"
+        className={cn(
+          "absolute right-2 top-1/2 z-20 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border-subtle bg-background-default/90 text-foreground-neutral shadow-sm backdrop-blur md:flex",
+          isAtEnd && "cursor-not-allowed opacity-40",
+        )}
       >
         <i className="fa-regular fa-chevron-right" aria-hidden="true" />
       </button>
@@ -83,9 +134,9 @@ export const EnterpriseScrollCarousel = ({
           aria-label="Enterprise carousel"
         >
           <div className="flex gap-4">
-            {items.map((item) => (
+            {items.map((item, index) => (
               <div
-                key={item.title}
+                key={`${item.title}-${index}`}
                 data-carousel-item
                 className="min-w-0 shrink-0 snap-start basis-[calc((100%-2rem)/3)]"
               >
@@ -100,16 +151,26 @@ export const EnterpriseScrollCarousel = ({
         <button
           type="button"
           aria-label="Scroll carousel left"
+          aria-disabled={isAtStart}
+          disabled={isAtStart}
           onClick={() => scrollByItem(-1)}
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-border-subtle bg-background-default/90 text-foreground-neutral shadow-sm backdrop-blur"
+          className={cn(
+            "flex h-10 w-10 items-center justify-center rounded-full border border-border-subtle bg-background-default/90 text-foreground-neutral shadow-sm backdrop-blur",
+            isAtStart && "cursor-not-allowed opacity-40",
+          )}
         >
           <i className="fa-regular fa-chevron-left" aria-hidden="true" />
         </button>
         <button
           type="button"
           aria-label="Scroll carousel right"
+          aria-disabled={isAtEnd}
+          disabled={isAtEnd}
           onClick={() => scrollByItem(1)}
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-border-subtle bg-background-default/90 text-foreground-neutral shadow-sm backdrop-blur"
+          className={cn(
+            "flex h-10 w-10 items-center justify-center rounded-full border border-border-subtle bg-background-default/90 text-foreground-neutral shadow-sm backdrop-blur",
+            isAtEnd && "cursor-not-allowed opacity-40",
+          )}
         >
           <i className="fa-regular fa-chevron-right" aria-hidden="true" />
         </button>

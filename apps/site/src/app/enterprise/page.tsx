@@ -134,55 +134,55 @@ const enterprises = [
   {
     title: "Enterprise-level support",
     description:
-      "Obtain the level of dedicated support from a team that understands and caters to the complexities and demands of large-scale enterprise operations.",
+      "Work directly with Prisma specialists who understand enterprise architectures, delivery timelines, and production constraints.",
     icon: "fa-regular fa-headset", // or "fa-light fa-headset"
   },
   {
     title: "Risk and compliance",
     description:
-      "Obtain the level of dedicated support from a team that understands and caters to the complexities and demands of large-scale enterprise operations.",
+      "Navigate security reviews, procurement, and compliance requirements with clearer guidance and supporting documentation.",
     icon: "fa-regular fa-file-contract", // or "fa-light fa-file-contract"
   },
   {
     title: "Custom solutions",
     description:
-      "Obtain the level of dedicated support from a team that understands and caters to the complexities and demands of large-scale enterprise operations.",
+      "Shape an engagement that fits your stack, internal processes, and the needs of your organization.",
     icon: "fa-regular fa-wrench", // or "fa-light fa-wrench"
   },
   {
     title: "Priority resolution",
     description:
-      "Obtain the level of dedicated support from a team that understands and caters to the complexities and demands of large-scale enterprise operations.",
+      "Escalate urgent issues faster to reduce downtime, unblock teams, and keep releases on schedule.",
     icon: "fa-regular fa-check-to-slot", // or "fa-light fa-circle-check"
   },
   {
     title: "Advanced security",
     description:
-      "Obtain the level of dedicated support from a team that understands and caters to the complexities and demands of large-scale enterprise operations.",
+      "Adopt secure defaults and harden database access patterns for sensitive workloads and regulated environments.",
     icon: "fa-regular fa-shield-exclamation", // or "fa-light fa-shield-exclamation"
   },
   {
     title: "Performance optimization",
     description:
-      "Obtain the level of dedicated support from a team that understands and caters to the complexities and demands of large-scale enterprise operations.",
+      "Tune query patterns, schema design, and workflows for predictable performance under real production load.",
     icon: "fa-regular fa-chart-line-up", // or "fa-light fa-chart-line-up"
   },
   {
     title: "Expert scalability consultation",
     description:
-      "Obtain the level of dedicated support from a team that understands and caters to the complexities and demands of large-scale enterprise operations.",
+      "Plan for growth with guidance on scaling data access, team workflows, and application architecture.",
     icon: "fa-regular fa-up-right-and-down-left-from-center", // or "fa-light fa-arrow-trend-up"
   },
   {
     title: "Comprehensive team training",
     description:
-      "Obtain the level of dedicated support from a team that understands and caters to the complexities and demands of large-scale enterprise operations.",
+      "Upskill developers with hands-on enablement tailored to your codebase, workflows, and Prisma adoption goals.",
     icon: "fa-regular fa-screen-users", // or "fa-light fa-people-group"
   },
   {
     title: "Influential feedback loop",
     description:
-      "Obtain the level of dedicated support from a team that understands and caters to the complexities and demands of large-scale enterprise operations.",
+      "Share direct product feedback with the Prisma team and help shape the roadmap around enterprise needs.",
     icon: "fa-regular fa-repeat", // or "fa-light fa-repeat"
   },
 ];
@@ -335,7 +335,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function SiteHome() {
+export default function EnterprisePage() {
   return (
     <main className="flex-1 w-full z-1 bg-background-default">
       {/* Hero */}

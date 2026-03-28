@@ -2,13 +2,38 @@
 import React from "react";
 import { cn } from "@/lib/cn";
 import { Action, Button } from "@prisma/eclipse";
+
+interface ContentBox {
+  icon: string;
+  title: string;
+  description: string;
+}
+
+interface SwitchEnterpriseProps {
+  content: ContentBox[][];
+  tabs: { id: string; value: string }[];
+}
+
+const ContentCard = ({ box }: { box: ContentBox }) => (
+  <div className="flex flex-col gap-4 relative z-2">
+    <div className="flex gap-4 items-center">
+      <Action color="orm" size="4xl">
+        <i className={cn("text-foreground-orm-strong text-2xl", box.icon)} />
+      </Action>
+      <h3 className="text-foreground-neutral font-sans-display text-xl stretch-display mt-0 mb-1 font-bold line-clamp-2 hover:line-clamp-none">
+        {box.title}
+      </h3>
+    </div>
+    <p className="text-foreground-neutral dark:text-foreground-neutral-weak text-sm font-normal m-0">
+      {box.description}
+    </p>
+  </div>
+);
+
 export const SwitchEnterprise = ({
   content,
   tabs,
-}: {
-  content: Array<any>;
-  tabs: { id: string; value: string }[];
-}) => {
+}: SwitchEnterpriseProps) => {
   const [activeTab, setActiveTab] = React.useState<number>(0);
 
   return (
@@ -33,50 +58,16 @@ export const SwitchEnterprise = ({
         )}
       >
         <div className="hidden md:contents">
-          {content[activeTab].map((box: any, idx: number) => (
-            <div className="flex flex-col gap-4 relative z-2" key={idx}>
-              <div className="flex gap-4 items-center">
-                <Action color="orm" size="4xl">
-                  <i
-                    className={cn(
-                      "text-foreground-orm-strong text-2xl",
-                      box.icon,
-                    )}
-                  />
-                </Action>
-                <h3 className="text-foreground-neutral font-sans-display text-xl stretch-display mt-0 mb-1 font-bold line-clamp-2 hover:line-clamp-none">
-                  {box.title}
-                </h3>
-              </div>
-              <p className="text-foreground-neutral dark:text-foreground-neutral-weak text-sm font-normal m-0">
-                {box.description}
-              </p>
-            </div>
+          {content[activeTab].map((box, idx) => (
+            <ContentCard key={`${box.title}-${idx}`} box={box} />
           ))}
         </div>
         <div className="contents md:hidden">
           <h4 className="text-foreground-neutral font-sans-display text-3xl stretch-display mt-0 mb-10 font-bold z-2 relative mx-auto text-center">
             {tabs[0].value}
           </h4>
-          {content[0].map((box: any, idx: number) => (
-            <div className="flex flex-col gap-4 relative z-2" key={idx}>
-              <div className="flex gap-4 items-center">
-                <Action color="orm" size="4xl">
-                  <i
-                    className={cn(
-                      "text-foreground-orm-strong text-2xl",
-                      box.icon,
-                    )}
-                  />
-                </Action>
-                <h3 className="text-foreground-neutral font-sans-display text-xl stretch-display mt-0 mb-1 font-bold line-clamp-2 hover:line-clamp-none">
-                  {box.title}
-                </h3>
-              </div>
-              <p className="text-foreground-neutral dark:text-foreground-neutral-weak text-sm font-normal m-0">
-                {box.description}
-              </p>
-            </div>
+          {content[0].map((box, idx) => (
+            <ContentCard key={`${box.title}-${idx}`} box={box} />
           ))}
         </div>
       </div>
@@ -90,25 +81,8 @@ export const SwitchEnterprise = ({
         <h4 className="text-foreground-neutral font-sans-display text-3xl stretch-display mt-0 mb-10 font-bold z-2 relative mx-auto text-center">
           {tabs[1].value}
         </h4>
-        {content[1].map((box: any, idx: number) => (
-          <div className="flex flex-col gap-4 relative z-2" key={idx}>
-            <div className="flex gap-4 items-center">
-              <Action color="orm" size="4xl">
-                <i
-                  className={cn(
-                    "text-foreground-orm-strong text-2xl",
-                    box.icon,
-                  )}
-                />
-              </Action>
-              <h3 className="text-foreground-neutral font-sans-display text-xl stretch-display mt-0 mb-1 font-bold line-clamp-2 hover:line-clamp-none">
-                {box.title}
-              </h3>
-            </div>
-            <p className="text-foreground-neutral dark:text-foreground-neutral-weak text-sm font-normal m-0">
-              {box.description}
-            </p>
-          </div>
+        {content[1].map((box, idx) => (
+          <ContentCard key={`${box.title}-${idx}`} box={box} />
         ))}
       </div>
     </>
