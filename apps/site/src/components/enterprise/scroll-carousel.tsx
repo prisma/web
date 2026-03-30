@@ -9,6 +9,37 @@ interface EnterpriseScrollCarouselProps {
   className?: string;
 }
 
+interface NavButtonProps {
+  direction: "left" | "right";
+  disabled: boolean;
+  onClick: () => void;
+  className: string;
+}
+
+const NavButton = ({
+  direction,
+  disabled,
+  onClick,
+  className,
+}: NavButtonProps) => (
+  <button
+    type="button"
+    aria-label={`Scroll carousel ${direction}`}
+    aria-disabled={disabled}
+    disabled={disabled}
+    onClick={onClick}
+    className={cn(className, disabled && "cursor-not-allowed opacity-40")}
+  >
+    <i
+      className={cn(
+        "fa-regular",
+        direction === "left" ? "fa-chevron-left" : "fa-chevron-right",
+      )}
+      aria-hidden="true"
+    />
+  </button>
+);
+
 export const EnterpriseScrollCarousel = ({
   items,
   className,
@@ -36,9 +67,10 @@ export const EnterpriseScrollCarousel = ({
 
   const scrollByItem = (direction: -1 | 1) => {
     const container = scrollRef.current;
-    const items = container?.querySelectorAll<HTMLElement>("[data-carousel-item]");
+    const carouselItems =
+      container?.querySelectorAll<HTMLElement>("[data-carousel-item]");
 
-    if (!container || !items?.length) {
+    if (!container || !carouselItems?.length) {
       return;
     }
 
@@ -46,7 +78,7 @@ export const EnterpriseScrollCarousel = ({
       return;
     }
 
-    const itemList = Array.from(items);
+    const itemList = Array.from(carouselItems);
     const currentScroll = container.scrollLeft;
     const currentIndex = itemList.reduce((closestIndex, item, index) => {
       const currentDistance = Math.abs(item.offsetLeft - currentScroll);
@@ -70,8 +102,13 @@ export const EnterpriseScrollCarousel = ({
 
   useEffect(() => {
     const container = scrollRef.current;
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(() => updateScrollBounds())
+        : null;
 
     if (!container) {
+      resizeObserver?.disconnect();
       return;
     }
 
@@ -79,41 +116,30 @@ export const EnterpriseScrollCarousel = ({
 
     container.addEventListener("scroll", updateScrollBounds, { passive: true });
     window.addEventListener("resize", updateScrollBounds);
+    resizeObserver?.observe(container);
+    Array.from(container.children).forEach((child) => resizeObserver?.observe(child));
 
     return () => {
       container.removeEventListener("scroll", updateScrollBounds);
       window.removeEventListener("resize", updateScrollBounds);
+      resizeObserver?.disconnect();
     };
   }, []);
 
   return (
     <div className={cn("relative", className)}>
-      <button
-        type="button"
-        aria-label="Scroll carousel left"
-        aria-disabled={isAtStart}
+      <NavButton
+        direction="left"
         disabled={isAtStart}
         onClick={() => scrollByItem(-1)}
-        className={cn(
-          "absolute left-2 top-1/2 z-20 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border-subtle bg-background-default/90 text-foreground-neutral shadow-sm backdrop-blur md:flex",
-          isAtStart && "cursor-not-allowed opacity-40",
-        )}
-      >
-        <i className="fa-regular fa-chevron-left" aria-hidden="true" />
-      </button>
-      <button
-        type="button"
-        aria-label="Scroll carousel right"
-        aria-disabled={isAtEnd}
+        className="absolute left-2 top-1/2 z-20 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border-subtle bg-background-default/90 text-foreground-neutral shadow-sm backdrop-blur md:flex"
+      />
+      <NavButton
+        direction="right"
         disabled={isAtEnd}
         onClick={() => scrollByItem(1)}
-        className={cn(
-          "absolute right-2 top-1/2 z-20 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border-subtle bg-background-default/90 text-foreground-neutral shadow-sm backdrop-blur md:flex",
-          isAtEnd && "cursor-not-allowed opacity-40",
-        )}
-      >
-        <i className="fa-regular fa-chevron-right" aria-hidden="true" />
-      </button>
+        className="absolute right-2 top-1/2 z-20 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border-subtle bg-background-default/90 text-foreground-neutral shadow-sm backdrop-blur md:flex"
+      />
 
       <div className="overflow-hidden md:mx-16">
         <div
@@ -136,32 +162,18 @@ export const EnterpriseScrollCarousel = ({
       </div>
 
       <div className="mt-4 flex items-center justify-center gap-3 md:hidden">
-        <button
-          type="button"
-          aria-label="Scroll carousel left"
-          aria-disabled={isAtStart}
+        <NavButton
+          direction="left"
           disabled={isAtStart}
           onClick={() => scrollByItem(-1)}
-          className={cn(
-            "flex h-10 w-10 items-center justify-center rounded-full border border-border-subtle bg-background-default/90 text-foreground-neutral shadow-sm backdrop-blur",
-            isAtStart && "cursor-not-allowed opacity-40",
-          )}
-        >
-          <i className="fa-regular fa-chevron-left" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          aria-label="Scroll carousel right"
-          aria-disabled={isAtEnd}
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-border-subtle bg-background-default/90 text-foreground-neutral shadow-sm backdrop-blur"
+        />
+        <NavButton
+          direction="right"
           disabled={isAtEnd}
           onClick={() => scrollByItem(1)}
-          className={cn(
-            "flex h-10 w-10 items-center justify-center rounded-full border border-border-subtle bg-background-default/90 text-foreground-neutral shadow-sm backdrop-blur",
-            isAtEnd && "cursor-not-allowed opacity-40",
-          )}
-        >
-          <i className="fa-regular fa-chevron-right" aria-hidden="true" />
-        </button>
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-border-subtle bg-background-default/90 text-foreground-neutral shadow-sm backdrop-blur"
+        />
       </div>
     </div>
   );

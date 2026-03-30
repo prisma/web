@@ -10,6 +10,19 @@ import { CardSection } from "@/components/homepage/card-section/card-section";
 import { cn } from "@/lib/cn";
 import { Technology } from "@/components/technology";
 
+interface DatabaseItem {
+  name: string;
+  icon: string;
+  url?: string;
+}
+
+interface ComplexityCard {
+  title: string;
+  subtitle: string;
+  icon: string;
+  image?: string;
+}
+
 const first = [
   {
     content: (
@@ -61,53 +74,45 @@ const first = [
   },
 ];
 
-const databases = {
+const databases: { title: string; list: DatabaseItem[] } = {
   title: "Supported Databases",
   list: [
     {
       name: "PostgreSQL",
       icon: "/icons/companies/postgres.svg",
-      url: "/",
     },
     {
       name: "MySQL",
       icon: "/icons/technologies/mysqlsimple.svg",
-      url: "/",
     },
     {
       name: "MariaDB",
       icon: "/icons/technologies/mariadb.svg",
-      url: "/",
     },
     {
       name: "SQLite",
       icon: "/icons/companies/sqlite.svg",
-      url: "/",
     },
     {
       name: "SQL Server",
       icon: "/icons/companies/sqlserver.svg",
-      url: "/",
     },
     {
       name: "CockroachDB",
       icon: "/icons/companies/cockroachdb.svg",
-      url: "/",
     },
     {
       name: "PlanetScale",
       icon: "/icons/companies/planetscale.svg",
-      url: "/",
     },
     {
       name: "MongoDB",
       icon: "/icons/technologies/mongodbsimple.svg",
-      url: "/",
     },
   ],
 };
 
-const complexities = [
+const complexities: ComplexityCard[] = [
   {
     title: "Improved developer experience",
     image: "/illustrations/enterprise/enterprise_0",
@@ -347,9 +352,8 @@ export default function EnterprisePage() {
             <h5 className="text-foreground-orm-strong text-center stretch-display font-sans-display text-base uppercase">
               Enterprise & Solution Providers
             </h5>
-            <h1 className="text-5xl md:text-6xl [font-variation-settings:'wght'_900,'wdth'_125] mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-200 mx-auto">
-              Streamline your
-              <br /> development workflow
+            <h1 className="text-[clamp(2.5rem,9vw,3.75rem)] md:text-6xl [font-variation-settings:'wght'_900,'wdth'_125] mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-200 mx-auto">
+              Streamline your <br /> development workflow
             </h1>
           </div>
           <p className="text-center text-foreground-neutral max-w-2xl mx-auto">
@@ -398,7 +402,7 @@ export default function EnterprisePage() {
           </p>
         </div>
         <div className="grid md:grid-cols-2 gap-6 max-w-230 mx-auto w-full">
-          {complexities.map((card: any, index: number) => {
+          {complexities.map((card, index) => {
             const last = index === complexities.length - 1;
             return (
               <Card
@@ -443,7 +447,7 @@ export default function EnterprisePage() {
                         {databases.title}
                       </h5>
                       <div className="flex gap-1 flex-wrap">
-                        {databases.list.map((db: any, idx: number) => (
+                        {databases.list.map((db, idx) => (
                           <div key={idx}>
                             <Technology
                               text={db.name}
