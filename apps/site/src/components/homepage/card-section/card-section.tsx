@@ -17,7 +17,6 @@ interface TwoColumnItem {
   color?: "orm" | "ppg";
   other?: ReactNode;
   useDefaultLogos: boolean;
-  noShadow?: boolean;
   visualPosition: "left" | "right";
   visualType: "logoGrid" | "image" | "other";
   noShadow?: boolean;
