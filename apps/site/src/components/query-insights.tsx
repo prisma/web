@@ -111,7 +111,7 @@ export const ContentBox = ({
 }) => {
   return (
     <div
-      className={clsx(
+      className={cn(
         "flex flex-col gap-12 py-12",
         reverse ? "md:flex-row-reverse" : "md:flex-row",
       )}
