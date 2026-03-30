@@ -45,7 +45,11 @@ const LogoBar = ({
 }) => {
   const duplicatedLogos = Array.from(
     { length: duplicateCount },
-    () => logos,
+    (_, setIndex) =>
+      logos.map((logo, logoIndex) => ({
+        logo,
+        key: `${setIndex}-${logoIndex}`,
+      })),
   ).flat();
 
   return (
@@ -53,10 +57,10 @@ const LogoBar = ({
       <div
         className={`flex flex-nowrap items-center absolute w-max min-w-full ${direction === "left" ? "animate-[slideLeft_40s_linear_infinite]" : "animate-[slideRight_40s_linear_infinite]"} ${pauseOnHover ? "hover:[animation-play-state:paused]" : ""}`}
       >
-        {duplicatedLogos.map((logo, index) => (
+        {duplicatedLogos.map((item) => (
           <a
-            key={`${logo.alt}-${index}`}
-            href={logo.link}
+            key={item.key}
+            href={item.logo.link}
             className={cn(
               "w-[85px] h-[85px] md:w-[60px] md:h-[60px] flex-shrink-0 rounded-xl z-[1] bg-background-default border border-white/10 flex items-center justify-center p-3 md:p-2 transition-[opacity_0.2s_ease,filter_0.2s_ease,transform_0.2s_ease,background_0.2s_ease,border-color_0.2s_ease] cursor-pointer opacity-80 mr-6 md:mr-2   hover:opacity-100",
               color === "orm"
@@ -66,7 +70,7 @@ const LogoBar = ({
             target="_blank"
             rel="noopener noreferrer"
           >
-            <LogoImage logo={logo} size={60} />
+            <LogoImage logo={item.logo} size={60} />
           </a>
         ))}
       </div>
