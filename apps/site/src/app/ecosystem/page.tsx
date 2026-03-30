@@ -79,7 +79,7 @@ export default function SiteHome() {
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
             <Button
               variant="orm"
-              href="https://console.prisma.io/sign-up?utm_source=website&utm_medium=index&utm_campaign=cta"
+              href="https://pris.ly/submit-your-package"
               size="3xl"
               target="_blank"
               rel="noopener noreferrer"
