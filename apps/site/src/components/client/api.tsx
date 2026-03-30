@@ -49,7 +49,7 @@ const icons: any = {
 
 const renderItem = (item: any) => {
   return (
-    <div className="flex font-barlow text-xl font-bold leading-6 items-center">
+    <div className="flex font-barlow text-base font-bold leading-6 items-center">
       {icons[item.value]}&nbsp;&nbsp;
       <span>{item.label}</span>
     </div>
@@ -194,6 +194,7 @@ const API = () => {
           <div className="min-w-50 relative w-full sm:w-auto">
             <Select
               value={selectedLang.value}
+              className="w-full"
               onValueChange={(value: string | null) => {
                 if (value) {
                   handleChange(
@@ -202,12 +203,12 @@ const API = () => {
                 }
               }}
             >
-              <SelectTrigger className="bg-border-primary text-foreground-neutral hover:border-surface-brand-darker w-full sm:w-auto h-[unset]! p-2">
+              <SelectTrigger className="bg-border-primary text-foreground-neutral hover:border-surface-brand-darker w-full h-[unset]! p-1.5">
                 <SelectValue>
                   {selectedLang.label && renderItem(selectedLang)}
                 </SelectValue>
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent alignItemWithTrigger={false}>
                 {langOptions.map((lang: any) => (
                   <SelectItem value={lang.value} key={lang.value}>
                     {renderItem(lang)}
@@ -241,7 +242,7 @@ const API = () => {
                 {selectedAPIItem.label && <span>{selectedAPIItem.label}</span>}
               </SelectValue>
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent alignItemWithTrigger={false}>
               {apiItems.map((item: any) => (
                 <SelectItem value={item.value} key={item.value}>
                   <span>{item.label}</span>
