@@ -112,12 +112,12 @@ const twoCol = [
           Works with your favorite databases and frameworks
         </h2>
         <p className="text-foreground-neutral-weak! text-base">
-          Prisma's compatibility with popular tools ensures no stack  lock-in,
+          Prisma's compatibility with popular tools ensures no stack lock-in,
           lower integration costs, and smooth transitions.
         </p>
         <a href="/" className="link-btn orm">
           <span>Learn more</span>
-          <i className="fa-regular fa-arrow-right" />
+          <i className="fa-regular fa-arrow-right ml-2" />
         </a>
       </div>
     ),
@@ -179,7 +179,7 @@ const twoCol_2 = [
         </p>
         <a href="/" className="link-btn orm">
           <span>Learn more</span>
-          <i className="fa-regular fa-arrow-right" />
+          <i className="fa-regular fa-arrow-right ml-2" />
         </a>
       </div>
     ),

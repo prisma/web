@@ -448,23 +448,20 @@ export default function EnterprisePage() {
                       </h5>
                       <div className="flex gap-1 flex-wrap">
                         {databases.list.map((db, idx) => (
-                          <div key={idx}>
-                            <Technology
-                              text={db.name}
-                              url={db.url}
-                              key={db.name}
-                              className="bg-transparent! [&>div]:bg-transparent! hover:bg-background-default!"
+                          <Technology
+                            key={db.name}
+                            text={db.name}
+                            url={db.url}
+                            className="bg-transparent! [&>div]:bg-transparent! hover:bg-background-default!"
+                          >
+                            <Action
+                              color="neutral"
+                              size="4xl"
+                              className="h-[75px]! w-[75px]! hover:bg-background-neutral-strong"
                             >
-                              <Action
-                                color="neutral"
-                                size="4xl"
-                                key={db.name}
-                                className="h-[75px]! w-[75px]! hover:bg-background-neutral-strong"
-                              >
-                                <img src={db.icon} alt={db.name} />
-                              </Action>
-                            </Technology>
-                          </div>
+                              <img src={db.icon} alt={db.name} />
+                            </Action>
+                          </Technology>
                         ))}
                       </div>
                     </div>

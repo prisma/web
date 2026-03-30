@@ -230,11 +230,10 @@ export default function Client() {
               </h5>
               <div className="flex gap-1 flex-wrap">
                 {databases.list.map((db) => (
-                  <Technology text={db.name} url={db.url}>
+                  <Technology key={db.name} text={db.name} url={db.url}>
                     <Action
                       color="neutral"
                       size="4xl"
-                      key={db.name}
                       className="h-[75px]! w-[75px]! hover:bg-background-neutral-strong"
                     >
                       <img src={db.icon} alt={db.name} />
@@ -254,11 +253,10 @@ export default function Client() {
               </div>
               <div className="flex gap-1 flex-wrap">
                 {frameworks.list.map((fw) => (
-                  <Technology text={fw.name} url={fw.url}>
+                  <Technology key={fw.name} text={fw.name} url={fw.url}>
                     <Action
                       color="neutral"
                       size="4xl"
-                      key={fw.name}
                       className="h-[75px]! w-[75px]! hover:bg-background-neutral-strong"
                     >
                       <img src={fw.icon} alt={fw.name} />
