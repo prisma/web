@@ -131,7 +131,7 @@ export default async function Page({
               {
                 imageUrl: "/illustrations/query-insights/features_1",
                 imageAlt: "Query insights features",
-                imageMobileUrl:
+                mobileImageUrl:
                   "/illustrations/query-insights/features_1_mobile",
                 mobileImageAlt: "Query insights features",
                 logos: null,
@@ -154,7 +154,7 @@ export default async function Page({
               {
                 imageUrl: "/illustrations/query-insights/features_2",
                 imageAlt: "Query insights features",
-                imageMobileUrl:
+                mobileImageUrl:
                   "/illustrations/query-insights/features_2_mobile",
                 mobileImageAlt: "Query insights features",
                 logos: null,
@@ -177,7 +177,7 @@ export default async function Page({
               {
                 imageUrl: "/illustrations/query-insights/features_3",
                 imageAlt: "Query insights features",
-                imageMobileUrl:
+                mobileImageUrl:
                   "/illustrations/query-insights/features_3_mobile",
                 mobileImageAlt: "Query insights features",
                 logos: null,
