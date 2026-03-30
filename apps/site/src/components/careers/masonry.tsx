@@ -1,7 +1,9 @@
-"use client";
-// @ts-ignore - no types available for react-responsive-masonry
-import Masonry, { ResponsiveMasonry } from "react-responsive-masonry";
 import Image from "next/image";
+
+const gutterClasses: Record<string, string> = {
+  "10px": "[column-gap:10px]",
+  "16px": "[column-gap:16px]",
+};
 
 export const MasonryPict = ({
   images,
@@ -12,23 +14,22 @@ export const MasonryPict = ({
 }) => {
   return (
     <div className="w-full">
-      <div className="max-w-[1232px] w-full p-4 mx-auto [&_>_div_>_div]:items-center!">
-        <ResponsiveMasonry
-          columnsCountBreakPoints={{ 350: 2, 750: 3, 940: 4, 1124: 5 }}
+      <div className="max-w-[1232px] w-full p-4 mx-auto">
+        <div
+          className={`mx-auto columns-1 text-center min-[350px]:columns-2 min-[750px]:columns-3 min-[940px]:columns-4 min-[1124px]:columns-5 ${gutterClasses[gutter] ?? gutterClasses["16px"]}`}
         >
-          <Masonry gutter={gutter} center>
-            {images.map((e: any, idx: number) => (
+          {images.map((e: any, idx: number) => (
+            <div key={idx} className="mx-auto mb-4 break-inside-avoid">
               <Image
-                key={idx}
                 src={e.imageUrl}
                 width={400}
                 height={400}
                 alt={`img-${idx}`}
-                className="w-full rounded-lg shadow-[0px_18px_42px_0px_rgba(23,43,77,0.08),0px_4px_26px_0px_rgba(23,43,77,0.05),0px_0px_46px_0px_rgba(23,43,77,0.01)]"
+                className="mx-auto h-auto w-full rounded-lg shadow-[0px_18px_42px_0px_rgba(23,43,77,0.08),0px_4px_26px_0px_rgba(23,43,77,0.05),0px_0px_46px_0px_rgba(23,43,77,0.01)]"
               />
-            ))}
-          </Masonry>
-        </ResponsiveMasonry>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
