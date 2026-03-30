@@ -105,7 +105,7 @@ export default function Migrate() {
           >
             <span>Install Prisma</span>
           </Button>
-          <Button
+          {/*<Button
             variant="default-stronger"
             size="3xl"
             href="https://playground.prisma.io/"
@@ -113,7 +113,7 @@ export default function Migrate() {
             rel="noopener noreferrer"
           >
             <span>Playground</span>
-          </Button>
+          </Button>*/}
         </div>
       </div>
       <div className="px-4 mb-12">
