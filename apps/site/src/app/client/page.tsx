@@ -109,10 +109,15 @@ const frameworks = {
 const twoCol = [
   {
     content: (
-      <>
-        <h2 className="text-foreground-neutral stretch-display text-4xl font-black! font-sans-display mt-0 mb-4">
-          Autocomplete your way to success
-        </h2>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1">
+          <h5 className="text-base uppercase font-sans-display stretch-display font-bold text-foreground-orm-strong mb-1">
+            Editor Integration
+          </h5>
+          <h2 className="text-foreground-neutral stretch-display text-4xl font-black! font-sans-display my-0">
+            Autocomplete your way to success
+          </h2>
+        </div>
         <p className="text-foreground-neutral-weak! text-base">
           The best code is the code that writes itself. Prisma Client gives you
           a fantastic autocomplete experience so you can move quickly and be
@@ -120,7 +125,10 @@ const twoCol = [
           means you can rest assured that your code works as expected, every
           time.
         </p>
-      </>
+        <Button variant="orm" size="3xl" className="w-fit" href="/studio">
+          <span>Get started in 5 minutes</span>
+        </Button>
+      </div>
     ),
     imageUrl: "/illustrations/client/client_0",
     imageAlt: "Autocomplete your way to success",
@@ -128,22 +136,30 @@ const twoCol = [
     mobileImageAlt: null,
     logos: null,
     useDefaultLogos: false,
-    visualPosition: "right" as const,
+    visualPosition: "left" as const,
     visualType: "image" as const,
   },
   {
     content: (
-      <>
-        <h2 className="text-foreground-neutral stretch-display text-4xl font-black! font-sans-display mt-0 mb-4">
-          Fully type-safe raw SQL
-        </h2>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1">
+          <h5 className="text-base uppercase font-sans-display stretch-display font-bold text-foreground-orm-strong mb-1">
+            TypedSQL
+          </h5>
+          <h2 className="text-foreground-neutral stretch-display text-4xl font-black! font-sans-display my-0">
+            Fully type-safe raw SQL
+          </h2>
+        </div>
         <p className="text-foreground-neutral-weak! text-base">
           Execute SQL queries directly against your database without losing the
           benefits of Prisma’s type-checking and auto-completion. TypedSQL
           leverages the capabilities of Prisma Client to write raw SQL queries
           that are type-checked at compile time.
         </p>
-      </>
+        <Button variant="orm" size="3xl" className="w-fit" href="/typedsql">
+          <span>Learn more about TypedSQL</span>
+        </Button>
+      </div>
     ),
     imageUrl: "/illustrations/client/client_1",
     imageAlt: "Fully type-safe raw SQL",
@@ -152,7 +168,7 @@ const twoCol = [
     logos: null,
     useDefaultLogos: false,
     noShadow: true,
-    visualPosition: "left" as const,
+    visualPosition: "right" as const,
     visualType: "image" as const,
   },
 ];
@@ -276,7 +292,7 @@ export default function Client() {
                 tables, filter, paginate, traverse relations and edit your data
                 with safety.
               </p>
-              <Button variant="orm" size="3xl" className="w-fit">
+              <Button variant="orm" size="3xl" className="w-fit" href="/studio">
                 <span>Learn more about Prisma Studio</span>
                 <i className="fa-regular fa-arrow-right ml-2" />
               </Button>
@@ -294,8 +310,13 @@ export default function Client() {
                 full control and ultimate flexibility — from local development
                 to production environments.
               </p>
-              <Button variant="orm" size="3xl" className="w-fit">
-                <span>Learn more about Prisma Studio</span>
+              <Button
+                variant="orm"
+                size="3xl"
+                className="w-fit"
+                href="/migrate"
+              >
+                <span>Learn more about Prisma Migrate</span>
                 <i className="fa-regular fa-arrow-right ml-2" />
               </Button>
             </div>
