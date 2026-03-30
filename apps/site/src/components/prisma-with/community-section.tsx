@@ -5,13 +5,18 @@ import { Card, Action } from "@prisma/eclipse";
 type CommunitySectionData = {
   title: string;
   cards: Array<{
-    icon: string;
+    icon?: string;
+    image?: string;
     title: string;
     description: string;
-    btn: {
+    btn?: {
       label: string;
       url: string;
     };
+    btns?: Array<{
+      label: string;
+      url: string;
+    }>;
   }>;
 };
 
@@ -32,27 +37,42 @@ export function CommunitySection({ data }: { data: CommunitySectionData }) {
                 idx >= 3 && idx === 4 && "md:col-start-4",
               )}
             >
-              <div className={"flex gap-4 items-center"}>
-                <Action
-                  size="4xl"
-                  color="neutral"
-                  className={idx === 1 ? "mt-1 self-start" : ""}
-                >
-                  <i className={cn("text-xl", card.icon)} />
-                </Action>
-                <h3 className="stretch-display text-foreground-neutral text-xl font-bold font-sans-display">
+              <div className="flex gap-4 items-start">
+                {(card.icon || card.image) && (
+                  <Action
+                    size="4xl"
+                    color="neutral"
+                    className="self-start flex-none"
+                  >
+                    {card.image ? (
+                      <img
+                        src={card.image}
+                        alt=""
+                        className="h-6 w-6 object-contain"
+                      />
+                    ) : (
+                      <i className={cn("text-xl", card.icon)} />
+                    )}
+                  </Action>
+                )}
+                <h3 className="min-w-0 text-balance stretch-display text-foreground-neutral text-lg leading-tight font-bold font-sans-display">
                   {parse(card.title)}
                 </h3>
               </div>
               <p className="text-foreground-neutral-weak text-base">
                 {parse(card.description)}
               </p>
-              <a
-                href={card.btn.url}
-                className="text-foreground-neutral text-sm font-medium underline underline-offset-2 text-foreground-ppg hover:text-foreground-ppg-strong w-fit mt-auto"
-              >
-                {card.btn.label}
-              </a>
+              <div className="flex flex-wrap gap-4 mt-auto">
+                {(card.btns ?? (card.btn ? [card.btn] : [])).map((btn) => (
+                  <a
+                    key={`${card.title}-${btn.label}`}
+                    href={btn.url}
+                    className="text-foreground-neutral text-sm font-medium underline underline-offset-2 text-foreground-ppg hover:text-foreground-ppg-strong w-fit"
+                  >
+                    {btn.label}
+                  </a>
+                ))}
+              </div>
             </Card>
           ))}
         </div>

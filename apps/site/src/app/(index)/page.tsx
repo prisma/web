@@ -1,9 +1,6 @@
 import Antigravity from "../../components/homepage/antigravity";
 import type { Metadata } from "next";
-import {
-  SITE_HOME_DESCRIPTION,
-  SITE_HOME_TITLE,
-} from "../../lib/blog-metadata";
+import { SITE_HOME_DESCRIPTION, SITE_HOME_TITLE } from "@/lib/site-metadata";
 import { Button } from "@prisma/eclipse";
 import { CopyCode } from "@/components/homepage/copy-btn";
 import { Bento } from "@/components/homepage/bento";

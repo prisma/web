@@ -4,10 +4,12 @@ import { Button } from "@prisma/eclipse";
 
 type HeroData = {
   tech: string;
-  eyebrow: string;
-  icon: string;
+  eyebrow?: string;
+  icon?: string;
   imageUrl: string;
   imageUrlLight?: string;
+  imageClassName?: string;
+  imageClassNameLight?: string;
   title: string;
   description: string;
   btns: Array<{
@@ -18,17 +20,21 @@ type HeroData = {
 };
 
 export function Hero({ data }: { data: HeroData }) {
+  const secondaryButton = data.btns[1];
+
   return (
     <div className="px-4 hero dark:bg-[linear-gradient(180deg,var(--color-foreground-ppg-weaker)_0%,var(--color-background-default)_100%)] bg-[linear-gradient(180deg,var(--color-background-ppg)_0%,var(--color-background-default)_100%)] relative before:absolute">
       <div className="max-w-300 mx-auto py-12 grid md:grid-cols-[1fr_320px] lg:grid-cols-[736px_1fr] gap-11 relative z-1">
         <div className="content flex flex-col gap-8 justify-center">
           <div className="flex flex-col gap-4 items-center md:items-start">
-            <h5 className="uppercase text-foreground-ppg-weak my-0!">
-              <i className={cn("mr-2", data.icon)} />
-              <span className="stretch-display font-sans-display">
-                {data.eyebrow}
-              </span>
-            </h5>
+            {data.eyebrow && (
+              <h5 className="uppercase text-foreground-ppg-weak my-0!">
+                {data.icon && <i className={cn("mr-2", data.icon)} />}
+                <span className="stretch-display font-sans-display">
+                  {data.eyebrow}
+                </span>
+              </h5>
+            )}
             <h1 className="stretch-display text-[40px] lg:text-[60px] font-bold my-0! font-sans-display max-w-184 leading-10 lg:leading-16 md:text-left text-center">
               {parse(data.title)}
             </h1>
@@ -43,29 +49,37 @@ export function Hero({ data }: { data: HeroData }) {
                 <i className={cn("ml-2", data.btns[0].icon)} />
               )}
             </Button>
-            <Button
-              variant="default-stronger"
-              size="3xl"
-              href={data.btns[1].url}
-            >
-              <span>{data.btns[1].label}</span>
-              {data.btns[1].icon && (
-                <i className={cn("ml-2", data.btns[1].icon)} />
-              )}
-            </Button>
+            {secondaryButton && (
+              <Button
+                variant="default-stronger"
+                size="3xl"
+                href={secondaryButton.url}
+              >
+                <span>{secondaryButton.label}</span>
+                {secondaryButton.icon && (
+                  <i className={cn("ml-2", secondaryButton.icon)} />
+                )}
+              </Button>
+            )}
           </div>
         </div>
         <div className="logos relative max-h-78 hidden md:block">
           <div className="absolute left-0 top-0 w-57 h-44 object-cover bg-background-default flex items-center justify-center p-9 border border-stroke-ppg-weak rounded-2xl">
             <img
               src={data.imageUrl}
-              className="w-full block dark:hidden"
+              className={cn(
+                "dark:hidden h-full max-w-full contain",
+                data.imageClassName,
+              )}
               alt={`Prisma with ${data.tech}`}
             />
             {data.imageUrlLight && (
               <img
                 src={data.imageUrlLight}
-                className="w-full hidden dark:block"
+                className={cn(
+                  "hidden dark:block h-full max-w-full contain",
+                  data.imageClassNameLight,
+                )}
                 alt={`Prisma with ${data.tech}`}
               />
             )}

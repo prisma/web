@@ -8,10 +8,12 @@ import { CommunitySection } from "./community-section";
 export type PrismaWithData = {
   hero: {
     tech: string;
-    eyebrow: string;
-    icon: string;
+    eyebrow?: string;
+    icon?: string;
     imageUrl: string;
     imageUrlLight?: string;
+    imageClassName?: string;
+    imageClassNameLight?: string;
     title: string;
     description: string;
     btns: Array<{
@@ -31,7 +33,7 @@ export type PrismaWithData = {
   how: {
     title: string;
     description: string;
-    tabs: {
+    tabs?: {
       defaultValue: string;
       head: Array<{
         title: string;
@@ -43,22 +45,22 @@ export type PrismaWithData = {
       }>;
     };
   };
-  why_prisma: {
+  why_prisma?: {
     title: string;
     cards: Array<{
       image: string;
       url: string;
-      badge: string;
-      date: string;
+      badge?: string;
+      date?: string;
       title: string;
       description: string;
-      author: {
+      author?: {
         name: string;
         avatar: string;
       };
     }>;
   };
-  quote: {
+  quote?: {
     text: string;
     author: {
       name: string;
@@ -70,13 +72,18 @@ export type PrismaWithData = {
   community: {
     title: string;
     cards: Array<{
-      icon: string;
+      icon?: string;
+      image?: string;
       title: string;
       description: string;
-      btn: {
+      btn?: {
         label: string;
         url: string;
       };
+      btns?: Array<{
+        label: string;
+        url: string;
+      }>;
     }>;
   };
 };
@@ -93,8 +100,10 @@ export async function PrismaWithLayout({
       <Hero data={data.hero} />
       <WhySection data={data.why} />
       <HowSection data={data.how} codeExamples={codeExamples} />
-      <ResourcesSection data={data.why_prisma} />
-      <QuoteSection data={data.quote} />
+      {data.why_prisma && data.why_prisma.cards.length > 0 && (
+        <ResourcesSection data={data.why_prisma} />
+      )}
+      {data.quote && <QuoteSection data={data.quote} />}
       <CommunitySection data={data.community} />
     </main>
   );

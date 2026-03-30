@@ -5,11 +5,11 @@ type ResourcesSectionData = {
   cards: Array<{
     image: string;
     url: string;
-    badge: string;
-    date: string;
+    badge?: string;
+    date?: string;
     title: string;
     description: string;
-    author: {
+    author?: {
       name: string;
       avatar: string;
     };
@@ -35,12 +35,14 @@ export function ResourcesSection({ data }: { data: ResourcesSectionData }) {
                 post={{
                   url: card.url,
                   title: card.title,
-                  date: card.date,
+                  date: card.date ?? "",
                   excerpt: card.description,
-                  author: {
-                    name: card.author.name,
-                    imageSrc: card.author.avatar,
-                  },
+                  author: card.author
+                    ? {
+                        name: card.author.name,
+                        imageSrc: card.author.avatar,
+                      }
+                    : undefined,
                   imageSrc: card.image,
                   imageAlt: "Post image",
                   badge: card.badge,
