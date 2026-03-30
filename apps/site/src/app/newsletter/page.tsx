@@ -29,7 +29,7 @@ type RssItem = {
 
 async function getLatestBlogPosts(count = 3): Promise<RssItem[]> {
   try {
-    const res = await fetch("http://www.prisma.io/blog/rss.xml", {
+    const res = await fetch("https://www.prisma.io/blog/rss.xml", {
       next: { revalidate: 3600 },
     });
     const xml = await res.text();
