@@ -144,7 +144,7 @@ export default function Migrate() {
                   <i className="fa-regular fa-file-binary text-xl" />
                 </Action>
                 <h4 className="text-xl text-foreground-neutral font-sans-display font-extrabold">
-                  Deterministic/ Repeatable
+                  Deterministic / Repeatable
                 </h4>
               </div>
               <p className="text-foreground-neutral-weak">
