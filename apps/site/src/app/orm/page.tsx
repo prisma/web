@@ -31,17 +31,11 @@ const badge_list = [
   {
     title: "supported languages",
     list: [
-      { label: "JavaScript", url: "/js" },
-      { label: "TypeScript", url: "/ts" },
-    ],
-  },
-  {
-    title: "community-supported languages",
-    list: [
-      { label: "Python", url: "/py" },
-      { label: "Dart", url: "/dart" },
-      { label: "GO", url: "/GO" },
-      { label: "Rust", url: "/rust" },
+      {
+        label: "JavaScript",
+        url: "https://github.com/prisma/prisma-examples/tree/latest/orm",
+      },
+      { label: "TypeScript", url: "/typescript" },
     ],
   },
 ];
