@@ -6,7 +6,10 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import type React from "react";
 import { SITE_HOME_DESCRIPTION, SITE_HOME_TITLE } from "@/lib/blog-metadata";
-import { WebNavigation } from "@prisma-docs/ui/components/web-navigation";
+import {
+  NavigationWrapper,
+  FooterWrapper,
+} from "@/components/navigation-wrapper";
 import { Footer } from "@prisma-docs/ui/components/footer";
 import { ThemeProvider } from "@prisma-docs/ui/components/theme-provider";
 import { FontAwesomeScript as WebFA } from "@prisma/eclipse";
@@ -154,12 +157,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="bg-background-default absolute inset-0 -z-1 overflow-hidden" />
         <Provider>
           <ThemeProvider defaultTheme="system" storageKey="theme">
-            <WebNavigation
+            <NavigationWrapper
               links={baseOptions().links}
               utm={{ source: "website", medium: "blog" }}
             />
             {children}
-            <Footer />
+            <FooterWrapper />
           </ThemeProvider>
         </Provider>
       </body>

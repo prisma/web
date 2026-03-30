@@ -355,10 +355,12 @@ function NavigationMobileMenu({
   links,
   loginHref,
   signupHref,
+  buttonVariant = "ppg",
 }: {
   links: WebNavigationLink[];
   loginHref: string;
   signupHref: string;
+  buttonVariant?: "ppg" | "orm" | "default-stronger";
 }) {
   return (
     <div className="fixed px-0 md:hidden w-screen h-screen pt-22 top-0 left-0 -z-1 bg-background-default flex flex-col justify-between">
@@ -394,7 +396,7 @@ function NavigationMobileMenu({
           <NavigationMenuItem className="w-full">
             <Button
               size="xl"
-              variant="ppg"
+              variant={buttonVariant}
               className="whitespace-nowrap w-full"
               href={signupHref}
             >
