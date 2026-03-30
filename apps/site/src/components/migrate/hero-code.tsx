@@ -27,6 +27,25 @@ const HeroCode: React.FC<HeroCodeProps> = ({ steps }) => {
   const [highlightedMigration, setHighlightedMigration] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
 
+  // Guard: Return early if steps array is empty
+  if (!steps || steps.length === 0) {
+    return (
+      <div className="inline-flex w-full relative items-start justify-center flex-col mt-22.5 gap-12.75 lg:gap-4 lg:flex-row">
+        <Card className="flex-1 relative max-w-full w-full bg-background-default gap-0!">
+          <CardHeader>
+            <span className="mb-0 text-foreground-neutral-weak text-xs font-bold">
+              No steps available
+            </span>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+
+  // Clamp activeStep to valid range
+  const safeActiveStep = Math.min(activeStep, steps.length - 1);
+  const currentStep = steps[safeActiveStep];
+
   // Load highlighted code when activeStep changes
   useEffect(() => {
     let isMounted = true;
@@ -37,11 +56,11 @@ const HeroCode: React.FC<HeroCodeProps> = ({ steps }) => {
         const highlighter = await getHighlighter();
 
         const [schemaHtml, migrationHtml] = await Promise.all([
-          highlighter.codeToHtml(steps[activeStep].schema, {
+          highlighter.codeToHtml(currentStep?.schema || "", {
             lang: "prisma",
             theme: "prisma-dark",
           }),
-          highlighter.codeToHtml(steps[activeStep].migrateFileContents, {
+          highlighter.codeToHtml(currentStep?.migrateFileContents || "", {
             lang: "sql",
             theme: "prisma-dark",
           }),
@@ -79,10 +98,11 @@ const HeroCode: React.FC<HeroCodeProps> = ({ steps }) => {
     return () => {
       isMounted = false;
     };
-  }, [activeStep, steps]);
+  }, [activeStep, steps, currentStep]);
 
   // cycle across steps and go back to if we're at the end
   const cycleActiveStep = () => {
+    if (steps.length === 0) return;
     activeStep === steps.length - 1
       ? setActiveStep(0)
       : setActiveStep(activeStep + 1);
@@ -116,7 +136,7 @@ const HeroCode: React.FC<HeroCodeProps> = ({ steps }) => {
             )}
             disabled={isLoading}
           >
-            {steps[activeStep].title}
+            {currentStep?.title || "No title"}
           </Button>
         </CardHeader>
         <CodeBlock
@@ -152,7 +172,7 @@ const HeroCode: React.FC<HeroCodeProps> = ({ steps }) => {
         {/* Card Header */}
         <CardHeader className="flex justify-between flex-row! items-center relative z-2">
           <span className="mb-0 text-foreground-neutral text-xs font-bold">
-            {steps[activeStep].migrateFileName}
+            {currentStep?.migrateFileName || "migration.sql"}
           </span>
         </CardHeader>
         <CodeBlock
@@ -180,7 +200,7 @@ const HeroCode: React.FC<HeroCodeProps> = ({ steps }) => {
         fill="none"
         className="absolute bottom-[56%] z-1 left-[40%] lg:left-[46%] lg:block lg:z-100 lg:bottom-0"
         style={{
-          transform: `translate(${steps[activeStep].arrowOffset.x}px, ${steps[activeStep].arrowOffset.y}px) rotate(${steps[activeStep].arrowOffset.rotation}deg)`,
+          transform: `translate(${currentStep?.arrowOffset?.x || 0}px, ${currentStep?.arrowOffset?.y || 0}px) rotate(${currentStep?.arrowOffset?.rotation || 0}deg)`,
         }}
         xmlns="http://www.w3.org/2000/svg"
       >
