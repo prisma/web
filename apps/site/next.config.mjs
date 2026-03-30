@@ -71,7 +71,8 @@ const ContentSecurityPolicy = `
     https://googleads.g.doubleclick.net
     https://vercel.live https://vercel.com data: blob:
     https://td.doubleclick.net
-    https://raw.githubusercontent.com;
+    https://raw.githubusercontent.com
+    https://*.meetupstatic.com;
 
   connect-src 'self'
     https://api.github.com
