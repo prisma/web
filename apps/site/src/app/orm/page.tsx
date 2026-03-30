@@ -115,7 +115,7 @@ const twoCol = [
           Prisma's compatibility with popular tools ensures no stack lock-in,
           lower integration costs, and smooth transitions.
         </p>
-        <a href="/" className="link-btn orm">
+        <a href="/stack" className="link-btn orm">
           <span>Learn more</span>
           <i className="fa-regular fa-arrow-right ml-2" />
         </a>
@@ -177,7 +177,7 @@ const twoCol_2 = [
           brand new to databases. The auto-completion helps you figure out your
           query without the need for documentation.
         </p>
-        <a href="/" className="link-btn orm">
+        <a href="/client" className="link-btn orm">
           <span>Learn more</span>
           <i className="fa-regular fa-arrow-right ml-2" />
         </a>
@@ -203,7 +203,7 @@ const twoCol_3 = [
     description:
       "Auto-completion, linting, formatting and more help Prisma developers in VSCode stay confident and productive.",
     btn: {
-      url: "/",
+      url: "https://marketplace.visualstudio.com/items?itemName=Prisma.prisma",
       label: "Download Prisma VSCode Extension",
       icon: "fa-regular fa-arrow-up-right",
     },
@@ -214,7 +214,7 @@ const twoCol_3 = [
     description:
       "Prisma ORM provides the strongest type-safety guarantees of all the ORMs in the TypeScript ecosystem.",
     btn: {
-      url: "/",
+      url: "/docs/orm/more/comparisons/prisma-and-typeorm",
       label: "Read comparison with TypeORM",
       icon: "fa-regular fa-arrow-up-right",
     },
@@ -415,11 +415,15 @@ export default function ORM() {
               </p>
             </div>
             <div className="flex flex-col md:flex-row gap-6">
-              <Button variant="orm" size="2xl">
+              <Button
+                variant="orm"
+                size="2xl"
+                href="/docs/getting-started/prisma-orm/quickstart/prisma-postgres"
+              >
                 <span>Try Prisma ORM</span>
                 <i className="fa-regular fa-arrow-right ml-2" />
               </Button>
-              <Button variant="default-stronger" size="2xl" href="/pricing">
+              <Button variant="default-stronger" size="2xl" href="/docs">
                 <span>Read the docs</span>
                 <i className="fa-regular fa-arrow-right ml-2" />
               </Button>
