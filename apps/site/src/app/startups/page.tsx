@@ -28,7 +28,7 @@ const testimonials = [
     quote: (
       <>
         We <b>adopted Prisma conventions as our standard</b>, and it saves lots
-        of time having from reinventing things ourselves.
+        of time from having to reinvent things ourselves.
       </>
     ),
     author: "Yuval Hazaz",
