@@ -36,6 +36,7 @@ const orm = [
   "/typedsql",
   "/partners",
   "/client",
+  "/orm",
 ];
 type ColorType = "orm" | "ppg" | undefined;
 

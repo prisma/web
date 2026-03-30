@@ -115,7 +115,7 @@ const twoCol = [
           Prisma's compatibility with popular tools ensures no stack  lock-in,
           lower integration costs, and smooth transitions.
         </p>
-        <a href="/" className="link-btn">
+        <a href="/" className="link-btn orm">
           <span>Learn more</span>
           <i className="fa-regular fa-arrow-right" />
         </a>
@@ -177,7 +177,7 @@ const twoCol_2 = [
           brand new to databases. The auto-completion helps you figure out your
           query without the need for documentation.
         </p>
-        <a href="/" className="link-btn">
+        <a href="/" className="link-btn orm">
           <span>Learn more</span>
           <i className="fa-regular fa-arrow-right" />
         </a>
