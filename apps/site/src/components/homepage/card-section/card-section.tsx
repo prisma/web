@@ -15,7 +15,8 @@ interface TwoColumnItem {
   useDefaultLogos: boolean;
   noShadow?: boolean;
   visualPosition: "left" | "right";
-  visualType: "logoGrid" | "image";
+  visualType: "logoGrid" | "image" | "other";
+  other?: ReactNode;
 }
 
 interface CardSectionProps {
@@ -59,11 +60,12 @@ export const CardSection = ({ cardSection }: CardSectionProps) => {
                 item.visualType === "logoGrid" ? "max-w-full" : "lg:w-full",
               )}
             >
+              {item.visualType === "other" && item.other}
               {item.visualType === "logoGrid" && item.useDefaultLogos && (
                 <LogoGrid />
               )}
               {item.visualType === "image" && item.imageUrl && (
-                <>
+                <div>
                   <img
                     className={cn(
                       "hidden sm:block w-full h-auto",
@@ -94,7 +96,7 @@ export const CardSection = ({ cardSection }: CardSectionProps) => {
                       alt={item.mobileImageAlt || ""}
                     />
                   )}
-                </>
+                </div>
               )}
             </div>
           </div>
