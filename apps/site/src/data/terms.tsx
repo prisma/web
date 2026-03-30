@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 export const termsLastUpdated = "October 15, 2024";
 
-type TermsSection = {
+export type TermsSection = {
   title: string;
   content: ReactNode;
 };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
@@ -13,12 +13,15 @@ function AccordionItem({
   section,
   isOpen,
   onToggle,
+  index,
 }: {
   section: Section;
   isOpen: boolean;
   onToggle: () => void;
+  index: number;
 }) {
   const anchorId = section.title.trim().toLowerCase().replace(/\s+/g, "-");
+  const contentId = `${anchorId}-content-${index}`;
 
   return (
     <div className="scroll-mt-16 md:scroll-mt-24 border-t border-stroke-neutral" id={anchorId}>
@@ -27,6 +30,7 @@ function AccordionItem({
         className="flex w-full items-center justify-between py-3 text-left cursor-pointer"
         onClick={onToggle}
         aria-expanded={isOpen}
+        aria-controls={contentId}
       >
         <span className="text-lg font-bold leading-[25px] text-foreground-neutral">
           {section.title}
@@ -38,11 +42,13 @@ function AccordionItem({
           )}
         />
       </button>
-      {isOpen && (
-        <div className="pb-4 text-foreground-neutral-weak text-left [&_p]:my-4 [&_a]:underline [&_a]:transition-colors [&_a]:duration-150 hover:[&_a]:text-foreground-neutral [&_ul]:list-revert [&_ul]:m-revert [&_ul]:p-revert [&_ol]:list-revert [&_ol]:m-revert [&_ol]:p-revert [&_li]:my-2 print:text-foreground-neutral">
-          {section.content}
-        </div>
-      )}
+      <div
+        id={contentId}
+        hidden={!isOpen}
+        className="pb-4 text-foreground-neutral-weak text-left [&_p]:my-4 [&_a]:underline [&_a]:transition-colors [&_a]:duration-150 hover:[&_a]:text-foreground-neutral [&_ul]:list-revert [&_ul]:m-revert [&_ul]:p-revert [&_ol]:list-revert [&_ol]:m-revert [&_ol]:p-revert [&_li]:my-2 print:text-foreground-neutral"
+      >
+        {section.content}
+      </div>
     </div>
   );
 }
@@ -74,10 +80,19 @@ export function LegalAccordion({
     });
   };
 
+  const [isPrinting, setIsPrinting] = useState(false);
+
   const printPage = () => {
     setOpenItems(new Set(allIndices));
-    setTimeout(() => window.print(), 50);
+    setIsPrinting(true);
   };
+
+  useEffect(() => {
+    if (isPrinting && openItems.size === sections.length) {
+      window.print();
+      setIsPrinting(false);
+    }
+  }, [isPrinting, openItems, sections.length]);
 
   return (
     <>
@@ -115,6 +130,7 @@ export function LegalAccordion({
             section={section}
             isOpen={openItems.has(idx)}
             onToggle={() => toggleItem(idx)}
+            index={idx}
           />
         ))}
       </div>
