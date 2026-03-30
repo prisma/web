@@ -169,7 +169,7 @@ export default function Partners() {
       <div className="hero pt-36 -mt-24 flex items-center justify-center px-4 relative flex-col gap-8">
         <div className="absolute inset-0 z-0 bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20"></div>
         <div className="flex flex-col gap-4 z-1 relative">
-          <h5 className="font-sans-display text-foreground-orm uppercase stretch-display text-center mx-auto">
+          <h5 className="font-sans-display text-foreground-orm-strong uppercase stretch-display text-center mx-auto">
             Prisma Partners
           </h5>
           <h1 className="text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
