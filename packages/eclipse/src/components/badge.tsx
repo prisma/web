@@ -40,7 +40,14 @@ export interface BadgeProps
   /**
    * The color variant of the badge
    */
-  color?: "neutral" | "ppg" | "orm" | "error" | "success" | "warning";
+  color?:
+    | "neutral"
+    | "ppg"
+    | "orm"
+    | "error"
+    | "success"
+    | "warning"
+    | "orm-reverse";
   /**
    * The size variant of the badge
    */
