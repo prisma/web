@@ -3,6 +3,8 @@ import {
   SITE_HOME_DESCRIPTION,
   SITE_HOME_TITLE,
 } from "../../lib/blog-metadata";
+import LogoParade from "@prisma-docs/ui/components/logo-parade";
+
 import { Accordion, Accordions, Button } from "@prisma/eclipse";
 import { CardSection } from "@/components/homepage/card-section/card-section";
 import { Quote } from "@prisma-docs/ui/components/quote";
@@ -53,6 +55,7 @@ const twoCol = [
     mobileImageUrl: "/illustrations/partners/partners_0",
     mobileImageAlt: "Partners illustration",
     logos: null,
+    noShadow: true,
     useDefaultLogos: true,
     visualPosition: "right" as const,
     visualType: "image" as const,
@@ -98,6 +101,7 @@ const twoCol = [
     mobileImageUrl: "/illustrations/partners/partners_1",
     mobileImageAlt: "Partners illustration",
     logos: null,
+    noShadow: true,
     useDefaultLogos: true,
     visualPosition: "left" as const,
     visualType: "image" as const,
@@ -153,6 +157,7 @@ const twoCol = [
     mobileImageAlt: "Partners illustration",
     logos: null,
     useDefaultLogos: true,
+    noShadow: true,
     visualPosition: "right" as const,
     visualType: "image" as const,
   },
@@ -165,7 +170,7 @@ export const metadata: Metadata = {
 
 export default function Partners() {
   return (
-    <main className="flex-1 w-full z-1 ">
+    <main className="flex-1 w-full z-1 text-prety">
       <div className="hero pt-36 -mt-24 flex items-center justify-center px-4 relative flex-col gap-8">
         <div className="absolute inset-0 z-0 bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20"></div>
         <div className="flex flex-col gap-4 z-1 relative">
@@ -185,9 +190,12 @@ export default function Partners() {
           </p>
         </div>
       </div>
-      <div className="w-screen">
+      <div className="w-screen py-12!">
+        <LogoParade />
+      </div>
+      <div className="w-screen px-4 ">
         <div className="my-12 flex flex-col gap-8">
-          <h2 className="text-foreground-neutral stretch-display text-4xl font-black! font-sans-display my-0 mx-auto">
+          <h2 className="text-foreground-neutral stretch-display text-4xl font-black! font-sans-display my-0 mx-auto text-center">
             Everything you need from data to deployment
           </h2>
           <p className="text-center text-base text-foreground-neutral-weak max-w-2xl mx-auto -mb-20">

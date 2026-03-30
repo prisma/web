@@ -28,7 +28,14 @@ interface NavigationWrapperProps {
   };
 }
 
-const orm = ["/careers", "/studio", "/events", "/newsletter", "/typedsql"];
+const orm = [
+  "/careers",
+  "/studio",
+  "/events",
+  "/newsletter",
+  "/typedsql",
+  "/partners",
+];
 type ColorType = "orm" | "ppg" | undefined;
 
 export function NavigationWrapper({ links, utm }: NavigationWrapperProps) {
