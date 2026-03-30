@@ -12,9 +12,10 @@ const twoCol = [
           End-to-end <br /> type-safety
         </h2>
         <p className="text-foreground-neutral-weak! text-base">
-          All TypedSQL queries have typed inputs and outputs preventing errors related to incorrect
-          types and improving DX. Any type mismatches can be caught right away, while type-safety
-          significantly improves ergonomics while developing.
+          All TypedSQL queries have typed inputs and outputs preventing errors
+          related to incorrect types and improving DX. Any type mismatches can
+          be caught right away, while type-safety significantly improves
+          ergonomics while developing.
         </p>
         <div className="mt-4">
           <Button
@@ -34,6 +35,7 @@ const twoCol = [
     mobileImageAlt: null,
     logos: null,
     useDefaultLogos: false,
+    noShadow: true,
     visualPosition: "right" as const,
     visualType: "image" as const,
   },
@@ -44,10 +46,10 @@ const twoCol = [
           Full control <br /> of SQL
         </h2>
         <p className="text-foreground-neutral-weak! text-base">
-          When you need the full control of the SQL engine, write and execute raw SQL queries
-          directly. This gives you the flexibility to use advanced SQL-specific features and
-          optimizations that are not available in the Prisma Client API, while maintaining type
-          safety.
+          When you need the full control of the SQL engine, write and execute
+          raw SQL queries directly. This gives you the flexibility to use
+          advanced SQL-specific features and optimizations that are not
+          available in the Prisma Client API, while maintaining type safety.
         </p>
         <div className="mt-4">
           <Button
@@ -67,6 +69,7 @@ const twoCol = [
     mobileImageAlt: null,
     logos: null,
     useDefaultLogos: false,
+    noShadow: true,
     visualPosition: "left" as const,
     visualType: "image" as const,
   },
@@ -77,9 +80,10 @@ const twoCol = [
           Great DX
         </h2>
         <p className="text-foreground-neutral-weak! text-base">
-          TypedSQL combines the productivity of a higher-level abstraction with type-safety for
-          crafting SQL directly. Use familiar SQL tools in your editor, complete with syntax
-          highlighting, error checking, and autocompletion.
+          TypedSQL combines the productivity of a higher-level abstraction with
+          type-safety for crafting SQL directly. Use familiar SQL tools in your
+          editor, complete with syntax highlighting, error checking, and
+          autocompletion.
         </p>
       </>
     ),
@@ -89,6 +93,7 @@ const twoCol = [
     mobileImageAlt: null,
     logos: null,
     useDefaultLogos: false,
+    noShadow: true,
     visualPosition: "right" as const,
     visualType: "image" as const,
   },
@@ -115,8 +120,9 @@ export default function TypedSQLPage() {
               raw SQL
             </h1>
             <p className="text-center text-foreground-neutral max-w-2xl mx-auto">
-              TypedSQL is the best way to express the full power of SQL in queries. Fully type-safe,
-              with auto-completion, and a fantastic DX for using raw SQL with Prisma.
+              TypedSQL is the best way to express the full power of SQL in
+              queries. Fully type-safe, with auto-completion, and a fantastic DX
+              for using raw SQL with Prisma.
             </p>
           </div>
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
@@ -156,8 +162,9 @@ export default function TypedSQLPage() {
                 Raw SQL with type-safety and autocompletion
               </h2>
               <p className="text-foreground-neutral-weak max-w-xl">
-                TypedSQL gives you even more flexibility and control in your database queries. Start
-                using TypedSQL in any new or existing Prisma project.
+                TypedSQL gives you even more flexibility and control in your
+                database queries. Start using TypedSQL in any new or existing
+                Prisma project.
               </p>
             </div>
             <div className="flex flex-col md:flex-row gap-6">

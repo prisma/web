@@ -13,6 +13,7 @@ interface TwoColumnItem {
   mobileImageAlt: string | null;
   logos: any[] | null;
   useDefaultLogos: boolean;
+  noShadow?: boolean;
   visualPosition: "left" | "right";
   visualType: "logoGrid" | "image";
 }
@@ -58,11 +59,18 @@ export const CardSection = ({ cardSection }: CardSectionProps) => {
                 item.visualType === "logoGrid" ? "max-w-full" : "lg:w-full",
               )}
             >
-              {item.visualType === "logoGrid" && item.useDefaultLogos && <LogoGrid />}
+              {item.visualType === "logoGrid" && item.useDefaultLogos && (
+                <LogoGrid />
+              )}
               {item.visualType === "image" && item.imageUrl && (
                 <>
                   <img
-                    className="hidden sm:block w-full h-auto shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)]"
+                    className={cn(
+                      "hidden sm:block w-full h-auto",
+                      item.noShadow
+                        ? undefined
+                        : "shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)]",
+                    )}
                     src={
                       mounted && resolvedTheme === "light"
                         ? `${item.imageUrl}_light.svg`
@@ -72,7 +80,12 @@ export const CardSection = ({ cardSection }: CardSectionProps) => {
                   />
                   {item.mobileImageUrl && (
                     <img
-                      className="w-full h-auto shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)] sm:hidden"
+                      className={cn(
+                        "w-full h-auto sm:hidden",
+                        item.noShadow
+                          ? undefined
+                          : "shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)]",
+                      )}
                       src={
                         mounted && resolvedTheme === "light"
                           ? `${item.mobileImageUrl}_light.svg`

@@ -28,7 +28,7 @@ interface NavigationWrapperProps {
   };
 }
 
-const orm = ["/careers", "/studio"];
+const orm = ["/careers", "/studio", "/events", "/newsletter", "/typedsql"];
 
 export function NavigationWrapper({ links, utm }: NavigationWrapperProps) {
   const pathname = usePathname();
