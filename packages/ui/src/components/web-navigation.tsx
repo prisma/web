@@ -32,7 +32,7 @@ export interface Link {
     icon?: string;
     desc?: string;
   }>;
-  buttonVariant?: "ppg" | "orm" | "default-stronger";
+  buttonVariant?: "ppg" | "orm" | undefined;
 }
 
 interface WebNavigationProps {
@@ -41,7 +41,7 @@ interface WebNavigationProps {
     source: "website";
     medium: string;
   };
-  buttonVariant?: "ppg" | "orm" | "default-stronger";
+  buttonVariant?: "ppg" | "orm" | undefined;
 }
 
 export function WebNavigation({
@@ -142,7 +142,7 @@ export function WebNavigation({
             {mobileView && (
               <NavigationMobileMenu
                 links={links}
-                variant={buttonVariant}
+                buttonVariant={buttonVariant}
                 loginHref={loginHref}
                 signupHref={signupHref}
               />

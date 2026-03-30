@@ -360,7 +360,7 @@ function NavigationMobileMenu({
   links: WebNavigationLink[];
   loginHref: string;
   signupHref: string;
-  buttonVariant?: "ppg" | "orm" | "default-stronger";
+  buttonVariant?: "ppg" | "orm";
 }) {
   return (
     <div className="fixed px-0 md:hidden w-screen h-screen pt-22 top-0 left-0 -z-1 bg-background-default flex flex-col justify-between">

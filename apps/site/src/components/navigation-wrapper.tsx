@@ -29,7 +29,7 @@ interface NavigationWrapperProps {
 }
 
 const orm = ["/careers", "/studio", "/events", "/newsletter", "/typedsql"];
-type ColorType = "orm" | "ppg" | "default-stronger" | undefined;
+type ColorType = "orm" | "ppg" | undefined;
 
 export function NavigationWrapper({ links, utm }: NavigationWrapperProps) {
   const pathname = usePathname();

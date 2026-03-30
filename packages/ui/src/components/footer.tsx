@@ -1,5 +1,5 @@
 import footerData from "../data/footer";
-import { cn } from "@/lib/cn";
+import { cn } from "../lib/cn";
 import { AnchorHTMLAttributes } from "react";
 import { getRedirectableLink, isAbsoluteUrl } from "../lib/is-absolute-url";
 import {
@@ -14,7 +14,7 @@ import { gdpr, hipaa, iso27, soc2 } from "./footer-badges";
 import PDPStatus from "./pdp-status";
 import { ThemeToggle } from "./theme-toggle";
 
-type ColorType = "orm" | "ppg" | "default-stronger" | undefined;
+type ColorType = "orm" | "ppg" | undefined;
 
 type LinkProps = AnchorHTMLAttributes<HTMLAnchorElement> & {
   external?: boolean;
