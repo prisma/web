@@ -70,15 +70,10 @@ export const CardSection = ({ cardSection }: CardSectionProps) => {
                 <div>
                   <img
                     className={cn(
-<<<<<<< HEAD
                       "hidden sm:block w-full h-auto",
                       item.noShadow
                         ? undefined
                         : "shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)]",
-=======
-                      "hidden sm:block w-full h-auto shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)]",
-                      item.noShadow && "shadow-none",
->>>>>>> 063019f0 (Add client page)
                     )}
                     src={
                       mounted && resolvedTheme === "light"
