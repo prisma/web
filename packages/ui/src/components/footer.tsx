@@ -22,9 +22,16 @@ type LinkProps = AnchorHTMLAttributes<HTMLAnchorElement> & {
 };
 
 const Link = ({ external, color, children, href, ...rest }: LinkProps) => {
+  const hoverClass =
+    color === "orm"
+      ? "hover:bg-background-orm-strong"
+      : color === "ppg"
+        ? "hover:bg-background-ppg-strong"
+        : "";
+
   const className = cn(
     "text-foreground-neutral-weak text-md font-semibold leading-md flex items-center cursor-pointer font-medium box-border no-underline px-2.5 -ml-2.5 py-1.5 transition-colors rounded-square transition-all",
-    color && `hover:bg-background-${color}-strong`,
+    hoverClass,
   );
 
   if (external || !href || href.startsWith("http") || href.startsWith("#")) {
@@ -85,25 +92,34 @@ const Footer = ({
               </div>
             </div>
             <div className="flex justify-start gap-2 md:max-w-[190px]">
-              {footerData.socialIcons.map((socialLink: any, idx: number) => (
-                <a
-                  href={socialLink.url}
-                  target="_blank"
-                  rel="noopener"
-                  key={idx}
-                  aria-label={socialLink.title}
-                  className={cn(
-                    "text-[1.375rem] transition-colors",
-                    color && `hover:[&>div]:bg-background-${color}-strong`,
-                  )}
-                >
-                  <Action color="neutral" size="2xl">
-                    <i
-                      className={`fa-brands fa-${socialLink.icon} text-current text-foreground-neutral-weak transition-colors`}
-                    />
-                  </Action>
-                </a>
-              ))}
+              {footerData.socialIcons.map((socialLink: any, idx: number) => {
+                const socialHoverClass =
+                  color === "orm"
+                    ? "hover:[&>div]:bg-background-orm-strong"
+                    : color === "ppg"
+                      ? "hover:[&>div]:bg-background-ppg-strong"
+                      : "";
+
+                return (
+                  <a
+                    href={socialLink.url}
+                    target="_blank"
+                    rel="noopener"
+                    key={idx}
+                    aria-label={socialLink.title}
+                    className={cn(
+                      "text-[1.375rem] transition-colors",
+                      socialHoverClass,
+                    )}
+                  >
+                    <Action color="neutral" size="2xl">
+                      <i
+                        className={`fa-brands fa-${socialLink.icon} text-current text-foreground-neutral-weak transition-colors`}
+                      />
+                    </Action>
+                  </a>
+                );
+              })}
             </div>
           </div>
           {/* Main Grid Row */}
@@ -133,7 +149,11 @@ const Footer = ({
                       <DropdownMenuTrigger
                         className={cn(
                           "focus-visible:outline-none px-2.5 -ml-2.5 py-1.5 w-[calc(100%+10px)] rounded-square transition-all",
-                          color && `hover:bg-background-${color}-strong`,
+                          color === "orm"
+                            ? "hover:bg-background-orm-strong"
+                            : color === "ppg"
+                              ? "hover:bg-background-ppg-strong"
+                              : "",
                         )}
                       >
                         <span className="text-foreground-neutral-weak text-lg w-full flex cursor-pointer font-medium box-border no-underline leading-[1.39] relative items-center">
@@ -143,20 +163,27 @@ const Footer = ({
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
                         {link.links.map(
-                          (dropLink: { title: string; url: string }) => (
-                            <DropdownMenuItem
-                              key={dropLink.title}
-                              className={`hover:bg-background-${color || "ppg"}-strong!`}
-                            >
-                              <a
-                                href={dropLink.url}
-                                target="_blank"
-                                className="text-left capitalize text-foreground-neutral-weak text-md font-semibold"
+                          (dropLink: { title: string; url: string }) => {
+                            const dropdownHoverClass =
+                              color === "orm"
+                                ? "hover:bg-background-orm-strong!"
+                                : "hover:bg-background-ppg-strong!";
+
+                            return (
+                              <DropdownMenuItem
+                                key={dropLink.title}
+                                className={dropdownHoverClass}
                               >
-                                {dropLink.title}
-                              </a>
-                            </DropdownMenuItem>
-                          ),
+                                <a
+                                  href={dropLink.url}
+                                  target="_blank"
+                                  className="text-left capitalize text-foreground-neutral-weak text-md font-semibold"
+                                >
+                                  {dropLink.title}
+                                </a>
+                              </DropdownMenuItem>
+                            );
+                          },
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>
