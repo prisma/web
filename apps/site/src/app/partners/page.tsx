@@ -172,7 +172,7 @@ export default function Partners() {
           <h5 className="font-sans-display text-foreground-orm uppercase stretch-display text-center mx-auto">
             Prisma Partners
           </h5>
-          <h1 className="text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
+          <h1 className="text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
             Add mission critical infra to your platform in hours, not weeks.
           </h1>
         </div>
