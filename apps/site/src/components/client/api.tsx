@@ -194,7 +194,6 @@ const API = () => {
           <div className="min-w-50 relative w-full sm:w-auto">
             <Select
               value={selectedLang.value}
-              className="w-full"
               onValueChange={(value: string | null) => {
                 if (value) {
                   handleChange(
