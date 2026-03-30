@@ -290,7 +290,7 @@ export default function ORM() {
               <span>Create database</span>
               <i className="fa-regular fa-database ml-2" />
             </Button>
-            <Button
+            {/*<Button
               variant="default-stronger"
               href="https://console.prisma.io/sign-up?utm_source=website&utm_medium=index&utm_campaign=cta"
               size="3xl"
@@ -298,9 +298,9 @@ export default function ORM() {
               rel="noopener noreferrer"
               className="font-sans-display! font-[650]"
             >
-              <span>Create database</span>
-              <i className="fa-regular fa-database ml-2" />
-            </Button>
+              <span>Playground</span>
+              <i className="fa-regular fa-arrow-up-right ml-2" />
+            </Button>*/}
           </div>
         </div>
       </div>
