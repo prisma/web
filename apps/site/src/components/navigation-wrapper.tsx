@@ -47,7 +47,7 @@ export function NavigationWrapper({ links, utm }: NavigationWrapperProps) {
   );
 }
 
-export function FooterWrapper({ children }: { children: React.ReactNode }) {
+export function FooterWrapper() {
   const pathname = usePathname();
 
   // Determine button variant based on pathname
