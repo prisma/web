@@ -102,7 +102,7 @@ const twoCol = [
     other: (
       <YouTubePlayer
         autoplay={false}
-        video="EEDGwLB55bIo"
+        video="EEDGwLB55bI"
         thumbnail={"/illustrations/orm/thumbnail.png"}
       />
     ),
