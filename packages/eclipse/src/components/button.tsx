@@ -25,7 +25,7 @@ const buttonVariants = cva(
         lg: "px-2 h-element-lg type-text-sm-strong",
         xl: "px-3 h-element-xl type-text-sm-strong",
         "2xl": "px-3  h-element-2xl type-text-sm-strong",
-        "3xl": "px-4 h-element-3xl type-text-sm-strong",
+        "3xl": "px-3  h-element-3xl type-text-sm-strong",
         "4xl": "px-4  h-element-4xl type-heading-md",
       },
     },
