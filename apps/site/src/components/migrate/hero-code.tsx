@@ -89,7 +89,7 @@ const HeroCode: React.FC<HeroCodeProps> = ({ steps }) => {
   };
 
   return (
-    <div className="inline-flex w-full relative items-start justify-center flex-col mt-22.5 gap-12.75 lg:gap-0 lg:flex-row">
+    <div className="inline-flex w-full relative items-start justify-center flex-col mt-22.5 gap-12.75 lg:gap-4 lg:flex-row">
       {/* First Code Card - schema.prisma */}
       <Card
         className={cn(
@@ -112,7 +112,7 @@ const HeroCode: React.FC<HeroCodeProps> = ({ steps }) => {
             onClick={() => cycleActiveStep()}
             className={cn(
               "w-fit transition-all duration-300",
-              activeStep !== 0 && "lg:mr-31",
+              activeStep !== 0 && "lg:mr-26",
             )}
             disabled={isLoading}
           >
@@ -123,7 +123,7 @@ const HeroCode: React.FC<HeroCodeProps> = ({ steps }) => {
           keepBackground={true}
           className={cn(
             "border-none [&_pre]:bg-transparent my-0! [&_.diff-add]:text-background-success-reverse-strong [&>.absolute]:duration-300 [&>.absolute]:transition-all",
-            activeStep !== 0 && "[&>.absolute]:lg:mr-31",
+            activeStep !== 0 && "[&>.absolute]:lg:mr-23",
           )}
         >
           {isLoading ? (
