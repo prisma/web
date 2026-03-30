@@ -14,7 +14,7 @@ import { gdpr, hipaa, iso27, soc2 } from "./footer-badges";
 import PDPStatus from "./pdp-status";
 import { ThemeToggle } from "./theme-toggle";
 
-type ColorType = "orm" | "ppg" | "white" | undefined;
+type ColorType = "orm" | "ppg" | "default-stronger" | undefined;
 
 type LinkProps = AnchorHTMLAttributes<HTMLAnchorElement> & {
   external?: boolean;
