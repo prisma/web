@@ -44,7 +44,7 @@ export default async function Page({
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
   return (
-    <main className="bg-background-default" fixedMode="dark" tealPage={true}>
+    <main className="bg-background-default">
       <div className="pt-42! -mt-42! relative">
         <div className="opacity-20 absolute top-0 left-0 w-full h-full bg-[linear-gradient(180deg,var(--color-foreground-ppg)_0%,var(--color-background-default)_100%)]" />
         <div className="section-hero mt-18! max-w-308 px-4 w-full mx-auto! flex flex-col gap-8 relative pt-12">
