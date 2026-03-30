@@ -63,6 +63,8 @@ export interface RSSItem {
    * Categories or tags for the item
    */
   categories?: string[];
+  /** Absolute image URL (RSS 2.0 enclosure) */
+  image?: string;
 }
 
 /**
@@ -113,6 +115,7 @@ export function generateRSS(config: RSSConfig, items: RSSItem[]): string {
       date: item.date || new Date(),
       author: item.author ? [item.author] : undefined,
       category: item.categories?.map((name) => ({ name })),
+      ...(item.image ? { image: item.image } : {}),
     });
   }
 
