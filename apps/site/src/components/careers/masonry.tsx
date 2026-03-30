@@ -23,7 +23,7 @@ export const MasonryPict = ({
                 src={e.imageUrl}
                 width={400}
                 height={400}
-                alt="hello"
+                alt={`img-${idx}`}
                 className="w-full rounded-lg shadow-[0px_18px_42px_0px_rgba(23,43,77,0.08),0px_4px_26px_0px_rgba(23,43,77,0.05),0px_0px_46px_0px_rgba(23,43,77,0.01)]"
               />
             ))}
