@@ -29,12 +29,13 @@ interface NavigationWrapperProps {
 }
 
 const orm = ["/careers", "/studio", "/events", "/newsletter", "/typedsql"];
+type ColorType = "orm" | "ppg" | "white" | undefined;
 
 export function NavigationWrapper({ links, utm }: NavigationWrapperProps) {
   const pathname = usePathname();
 
   // Determine button variant based on pathname
-  const getButtonVariant = (): "orm" | "ppg" | "white" | undefined => {
+  const getButtonVariant = (): ColorType => {
     if (orm.includes(pathname.split("?")[0])) {
       return "orm";
     }
@@ -51,7 +52,7 @@ export function FooterWrapper() {
   const pathname = usePathname();
 
   // Determine button variant based on pathname
-  const getButtonVariant = (): "ppg" | "orm" | "default-stronger" => {
+  const getButtonVariant = (): ColorType => {
     if (orm.includes(pathname.split("?")[0])) {
       return "orm";
     }
