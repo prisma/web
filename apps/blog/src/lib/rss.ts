@@ -4,7 +4,10 @@ import { getBaseUrl, withBlogBasePath } from "@/lib/url";
 
 export function getRSS() {
   const baseUrl = getBaseUrl();
-  const pages = blog.getPages();
+  const pages = [...blog.getPages()].sort(
+    (a, b) =>
+      new Date(b.data.date).getTime() - new Date(a.data.date).getTime(),
+  );
 
   return generateRSS(
     {
