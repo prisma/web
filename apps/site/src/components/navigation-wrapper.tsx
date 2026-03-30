@@ -34,7 +34,7 @@ export function NavigationWrapper({ links, utm }: NavigationWrapperProps) {
   const pathname = usePathname();
 
   // Determine button variant based on pathname
-  const getButtonVariant = (): "ppg" | "orm" | "default-stronger" => {
+  const getButtonVariant = (): "orm" | "ppg" | "white" | undefined => {
     if (orm.includes(pathname.split("?")[0])) {
       return "orm";
     }
