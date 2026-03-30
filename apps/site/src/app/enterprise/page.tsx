@@ -307,7 +307,8 @@ const abstraction_ease_of_use = [
   },
 ];
 
-const ENTERPRISE_TITLE = "Streamline your enterprise development workflow with Prisma";
+const ENTERPRISE_TITLE =
+  "Streamline your enterprise development workflow with Prisma";
 const ENTERPRISE_DESCRIPTION =
   "Learn how Prisma ORM can improve your team's productivity and explore our tailored ORM support solutions for enterprises and solution providers.";
 
@@ -346,7 +347,7 @@ export default function EnterprisePage() {
             <h5 className="text-foreground-orm-strong text-center stretch-display font-sans-display text-base uppercase">
               Enterprise & Solution Providers
             </h5>
-            <h1 className="text-6xl [font-variation-settings:'wght'_900,'wdth'_125] mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-200 mx-auto">
+            <h1 className="text-5xl md:text-6xl [font-variation-settings:'wght'_900,'wdth'_125] mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-200 mx-auto">
               Streamline your
               <br /> development workflow
             </h1>
@@ -377,7 +378,7 @@ export default function EnterprisePage() {
         <h5 className=" text-center text-foreground-orm-strong stretch-display text-base font-sans-display uppercase">
           Trusted by teams at
         </h5>
-        <LogoParade/>
+        <LogoParade />
       </section>
 
       {/* Boost your application’s lifecycle */}
@@ -563,7 +564,6 @@ export default function EnterprisePage() {
           <EnterpriseForm />
         </div>
       </section>
-  
     </main>
   );
 }
