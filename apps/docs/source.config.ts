@@ -1,18 +1,11 @@
 import remarkDirective from "remark-directive";
-import {
-  remarkDirectiveAdmonition,
-  remarkMdxFiles,
-} from "fumadocs-core/mdx-plugins";
+import { remarkDirectiveAdmonition, remarkMdxFiles } from "fumadocs-core/mdx-plugins";
 import { remarkImage } from "fumadocs-core/mdx-plugins";
-import {
-  defineConfig,
-  defineDocs,
-  frontmatterSchema,
-  metaSchema,
-} from "fumadocs-mdx/config";
+import { defineConfig, defineDocs, frontmatterSchema, metaSchema } from "fumadocs-mdx/config";
 import lastModified from "fumadocs-mdx/plugins/last-modified";
 import { z } from "zod";
 import convert from "npm-to-yarn";
+import remarkConsoleUtm from "@/lib/remark-console-utm";
 
 // npm-to-yarn only converts the last line of multi-line strings,
 // so we split, convert each line, and rejoin.
@@ -89,6 +82,7 @@ export default defineConfig({
       ],
       [remarkImage, { useImport: false }],
       remarkMdxFiles,
+      remarkConsoleUtm,
     ],
     remarkCodeTabOptions: {
       parseMdx: true,

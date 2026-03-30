@@ -4,10 +4,12 @@ import "./global.css";
 import { Inter } from "next/font/google";
 import type { Metadata } from "next";
 import Script from "next/script";
+import type React from "react";
 import { SITE_HOME_DESCRIPTION, SITE_HOME_TITLE } from "@/lib/blog-metadata";
 import { WebNavigation } from "@prisma-docs/ui/components/web-navigation";
 import { Footer } from "@prisma-docs/ui/components/footer";
 import { ThemeProvider } from "@prisma-docs/ui/components/theme-provider";
+import { FontAwesomeScript as WebFA } from "@prisma/eclipse";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -19,6 +21,28 @@ export const metadata: Metadata = {
   title: SITE_HOME_TITLE,
   description: SITE_HOME_DESCRIPTION,
 };
+
+const themeInitScript = `
+(() => {
+  try {
+    const storageKey = "theme";
+    const stored = localStorage.getItem(storageKey);
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const resolved =
+      stored === "light" || stored === "dark"
+        ? stored
+        : prefersDark
+          ? "dark"
+          : "light";
+
+    const root = document.documentElement;
+    root.setAttribute("data-theme", resolved);
+    root.classList.toggle("dark", resolved === "dark");
+  } catch {
+    // Ignore storage/media-query failures and use CSS defaults.
+  }
+})();
+`;
 
 function baseOptions() {
   return {
@@ -69,9 +93,9 @@ function baseOptions() {
             icon: "fa-regular fa-message-code",
           },
           {
-            text: "Get started",
-            url: "https://www.prisma.io/docs",
-            icon: "fa-regular fa-book-open",
+            text: "Prisma Partners",
+            url: "/partners",
+            icon: "fa-regular fa-lightbulb",
           },
           {
             text: "Tutorials",
@@ -108,8 +132,8 @@ function baseOptions() {
         ],
       },
       {
-        url: "/partners",
-        text: "Partners",
+        url: "/docs",
+        text: "Docs",
       },
       {
         url: "https://www.prisma.io/blog",
@@ -121,16 +145,10 @@ function baseOptions() {
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html
-      lang="en"
-      className={`${inter.variable}`}
-      suppressHydrationWarning
-    >
+    <html lang="en" className={`${inter.variable}`} suppressHydrationWarning>
       <head>
-        <Script
-          src="https://kit.fontawesome.com/6916e9db27.js"
-          crossOrigin="anonymous"
-        ></Script>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <Script src={WebFA} crossOrigin="anonymous" />
       </head>
       <body className="flex flex-col min-h-screen pt-24 relative">
         <div className="bg-blog absolute inset-0 -z-1 overflow-hidden" />
