@@ -30,10 +30,7 @@ const ContentCard = ({ box }: { box: ContentBox }) => (
   </div>
 );
 
-export const SwitchEnterprise = ({
-  content,
-  tabs,
-}: SwitchEnterpriseProps) => {
+export const SwitchEnterprise = ({ content, tabs }: SwitchEnterpriseProps) => {
   const [activeTab, setActiveTab] = React.useState<number>(0);
 
   return (
@@ -63,27 +60,18 @@ export const SwitchEnterprise = ({
           ))}
         </div>
         <div className="contents md:hidden">
-          <h4 className="text-foreground-neutral font-sans-display text-3xl stretch-display mt-0 mb-10 font-bold z-2 relative mx-auto text-center">
-            {tabs[0].value}
-          </h4>
-          {content[0].map((box, idx) => (
-            <ContentCard key={`${box.title}-${idx}`} box={box} />
+          {tabs.map((tab, tabIdx) => (
+            <React.Fragment key={tab.id}>
+              {tabIdx > 0 && <div className="col-span-full" />}
+              <h4 className="text-foreground-neutral font-sans-display text-3xl stretch-display mt-0 mb-10 font-bold z-2 relative mx-auto text-center col-span-full">
+                {tab.value}
+              </h4>
+              {content[tabIdx].map((box, idx) => (
+                <ContentCard key={`${box.title}-${idx}`} box={box} />
+              ))}
+            </React.Fragment>
           ))}
         </div>
-      </div>
-      <div
-        className={cn(
-          "before:absolute before:content-[''] before:inset-0 before:opacity-20 before:z-1 before:rounded-square-high",
-          "before:bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-orm)_100%)]",
-          "relative rounded-square-high p-12 grid md:grid-cols-2 lg:grid-cols-3! gap-8 md:hidden",
-        )}
-      >
-        <h4 className="text-foreground-neutral font-sans-display text-3xl stretch-display mt-0 mb-10 font-bold z-2 relative mx-auto text-center">
-          {tabs[1].value}
-        </h4>
-        {content[1].map((box, idx) => (
-          <ContentCard key={`${box.title}-${idx}`} box={box} />
-        ))}
       </div>
     </>
   );
