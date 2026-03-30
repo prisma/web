@@ -13,7 +13,7 @@ export default function SlaPage() {
     <main className="flex-1 w-full z-1 -mt-24 pt-24 relative legal-hero-gradient">
       {/* Hero */}
       <div className="text-center py-16">
-        <h1 className="text-5xl font-bold font-sans-display text-foreground-neutral mb-6">
+        <h1 className="text-5xl md:text-6xl font-bold font-sans-display text-foreground-neutral mb-6">
           Prisma Service Level Agreement
         </h1>
         <p className="text-lg text-foreground-neutral-weak">
