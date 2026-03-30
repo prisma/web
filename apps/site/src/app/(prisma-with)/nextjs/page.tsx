@@ -4,28 +4,18 @@ import { PrismaWithLayout } from "../../../components/prisma-with/layout";
 
 const codeExamples: Record<string, string> = {
   "static-data": `// app/blog/[slug]/page.tsx
-import { PrismaClient } from '@prisma/client'
 
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 
-// Return a list of 'params' to populate the [slug] dynamic segment
 export async function generateStaticParams() {
   const posts = await prisma.post.findMany()
-
-  return posts.map((post) => ({
-    slug: post.slug,
-  }))
+  return posts.map((post) => ({ slug: post.slug }))
 }
 
-// Multiple versions of this page will be statically generated
-// using the 'params' returned by 'generateStaticParams'
 export default async function Page({ params }: { params: { slug: string } }) {
-  // Fetch the post based on slug
   const post = await prisma.post.findUnique({
     where: { slug: params.slug },
   })
-
-  // Simple demo rendering
   return (
     <div>
       <h1>{post?.title || 'Post not found'}</h1>
@@ -36,13 +26,9 @@ export default async function Page({ params }: { params: { slug: string } }) {
   "dynamic-data": `// app/dashboard/page.tsx
 
 import { auth } from '@/lib/auth'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 
-const prisma = new PrismaClient()
-
-// Dynamic by default
 export default async function DashboardPage() {
-  // Get the session using your auth solution
   const session = await auth()
 
   if (!session) {
@@ -50,9 +36,7 @@ export default async function DashboardPage() {
   }
 
   const posts = await prisma.post.findMany({
-    where: {
-      authorId: session.user.id
-    }
+    where: { authorId: session.user.id }
   })
 
   return (
@@ -66,30 +50,20 @@ export default async function DashboardPage() {
   "server-actions": `// app/actions.ts
 'use server'
 
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
-
-const prisma = new PrismaClient()
 
 export async function createPost(formData: FormData) {
   const title = formData.get('title') as string
   const content = formData.get('content') as string
 
-  await prisma.post.create({
-    data: {
-      title,
-      content
-    }
-  })
-
+  await prisma.post.create({ data: { title, content } })
   revalidatePath('/blog')
 }`,
   "api-routes": `// app/api/posts/route.ts
 
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
-
-const prisma = new PrismaClient()
 
 export async function GET() {
   const posts = await prisma.post.findMany()
@@ -98,25 +72,17 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const json = await request.json()
-  const post = await prisma.post.create({
-    data: json
-  })
+  const post = await prisma.post.create({ data: json })
   return NextResponse.json(post)
-}
-`,
+}`,
   "client-components": `// app/components/PostList.tsx
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Post } from '@prisma/client'
+import { useState } from 'react'
+import { Post } from '../generated/client'
 
-export default function PostList({
-  initialPosts
-}: {
-  initialPosts: Post[]
-}) {
+export default function PostList({ initialPosts }: { initialPosts: Post[] }) {
   const [posts, setPosts] = useState(initialPosts)
-
   return (
     <ul>
       {posts.map(post => (
@@ -127,10 +93,8 @@ export default function PostList({
 }
 
 // app/blog/page.tsx
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import PostList from '../components/PostList'
-
-const prisma = new PrismaClient()
 
 export default async function BlogPage() {
   const posts = await prisma.post.findMany()
@@ -144,6 +108,20 @@ export const metadata: Metadata = {
     "Prisma is a next-generation ORM for Node.js & TypeScript. It's the easiest way to build Next.js apps with MySQL, PostgreSQL & SQL Server databases.",
   alternates: {
     canonical: "https://www.prisma.io/nextjs",
+  },
+  openGraph: {
+    title: "Next.js Database with Prisma | Next-Generation ORM for SQL Databases",
+    description:
+      "Prisma is a next-generation ORM for Node.js & TypeScript. It's the easiest way to build Next.js apps with MySQL, PostgreSQL & SQL Server databases.",
+    url: "https://www.prisma.io/nextjs",
+    images: [{ url: "/og/prisma-with/nextjs.png" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Next.js Database with Prisma | Next-Generation ORM for SQL Databases",
+    description:
+      "Prisma is a next-generation ORM for Node.js & TypeScript. It's the easiest way to build Next.js apps with MySQL, PostgreSQL & SQL Server databases.",
+    images: ["/og/prisma-with/nextjs.png"],
   },
 };
 
