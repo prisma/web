@@ -41,6 +41,7 @@ interface WebNavigationProps {
     source: "website";
     medium: string;
   };
+  buttonVariant?: "ppg" | "orm" | "default-stronger";
 }
 
 export function WebNavigation({
