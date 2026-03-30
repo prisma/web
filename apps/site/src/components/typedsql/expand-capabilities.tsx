@@ -30,12 +30,14 @@ export const ExpandCapabilities = () => {
         {capabilities.map((item) => (
           <Card key={item.title} className="p-6!">
             <CardContent className="flex flex-col gap-4">
-              <Action color="orm" size="4xl" className="bg-background-orm-strong">
-                <i className={`text-xl ${item.icon}`} />
-              </Action>
-              <h3 className="text-foreground-neutral font-sans-display text-lg font-bold m-0">
-                {item.title}
-              </h3>
+              <div className="flex items-center gap-3">
+                <Action color="orm" size="4xl" className="bg-background-orm-strong shrink-0">
+                  <i className={`text-xl ${item.icon}`} />
+                </Action>
+                <h3 className="text-foreground-neutral font-sans-display text-lg font-bold m-0">
+                  {item.title}
+                </h3>
+              </div>
               <p className="text-foreground-neutral-weak text-sm m-0">{item.description}</p>
             </CardContent>
           </Card>

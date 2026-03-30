@@ -20,7 +20,7 @@ const twoCol = [
           <Button
             variant="link"
             href="https://www.prisma.io/docs/orm/prisma-client/using-raw-sql/typedsql"
-            className="w-full justify-start text-left text-foreground-orm! p-0!"
+            className="w-full justify-center lg:justify-start text-center lg:text-left text-foreground-orm! p-0!"
           >
             <span>Learn more about type-safety with TypedSQL</span>
             <i className="fa-regular fa-arrow-right ml-2" />
@@ -53,7 +53,7 @@ const twoCol = [
           <Button
             variant="link"
             href="https://www.prisma.io/docs/orm/prisma-client/using-raw-sql/typedsql"
-            className="w-full justify-start text-left text-foreground-orm! p-0!"
+            className="w-full justify-center lg:justify-start text-center lg:text-left text-foreground-orm! p-0!"
           >
             <span>Write queries using TypedSQL</span>
             <i className="fa-regular fa-arrow-right ml-2" />
@@ -103,14 +103,14 @@ export const metadata: Metadata = {
 export default function TypedSQLPage() {
   return (
     <main className="flex-1 w-full z-1 bg-background-default">
-      <div className="hero h-123 -mt-24 flex items-end justify-center px-4 relative overflow-hidden">
+      <div className="hero -mt-24 flex items-center md:items-end justify-center px-4 relative overflow-hidden pt-36 pb-16 md:pt-0 md:pb-0 md:h-123">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,var(--color-background-orm-strong)_0%,var(--color-background-default)_70%)]" />
-        <div className="content relative z-2 my-12 flex flex-col gap-8">
+        <div className="content relative z-2 md:my-12 flex flex-col gap-8">
           <div className="flex flex-col items-center gap-4">
             <span className="text-foreground-orm font-sans-display text-sm font-bold tracking-widest uppercase">
               TypedSQL
             </span>
-            <h1 className="text-6xl [font-variation-settings:'wght'_900,'wdth'_125] mb-0 text-center mt-0 font-sans-display text-foreground-neutral">
+            <h1 className="text-4xl md:text-6xl [font-variation-settings:'wght'_900,'wdth'_125] mb-0 text-center mt-0 font-sans-display text-foreground-neutral">
               Fully type-safe <br />
               raw SQL
             </h1>
@@ -149,7 +149,7 @@ export default function TypedSQLPage() {
       </div>
       <ExpandCapabilities />
       <div className="bg-[url('/illustrations/homepage/footer_grid.svg')] bg-contain bg-center before:inset-x-30 before:inset-y-[45%] before:absolute relative before:content-[''] before:pointer-events-none before:-z-1 rounded-full before:bg-indigo-400 before:blur-[100px]">
-        <div className="my-12 p-12">
+        <div className="my-8 p-6 md:my-12 md:p-12">
           <div className="flex flex-col mx-auto w-fit items-center justify-center gap-8">
             <div className="flex flex-col items-center text-center gap-4">
               <h2 className="text-3xl text-foreground-neutral font-sans-display stretch-display">

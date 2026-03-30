@@ -34,7 +34,7 @@ export const CardSection = ({ cardSection }: CardSectionProps) => {
       {cardSection.map((item, index) => (
         <section
           key={index}
-          className="py-16 sm:py-6 md:py-8 lg:py-12 my-12 w-full overflow-visible"
+          className="py-6 md:py-8 lg:py-12 my-6 md:my-8 lg:my-12 w-full overflow-visible"
         >
           <div
             className={cn(
@@ -58,9 +58,7 @@ export const CardSection = ({ cardSection }: CardSectionProps) => {
                 item.visualType === "logoGrid" ? "max-w-full" : "lg:w-full",
               )}
             >
-              {item.visualType === "logoGrid" && item.useDefaultLogos && (
-                <LogoGrid />
-              )}
+              {item.visualType === "logoGrid" && item.useDefaultLogos && <LogoGrid />}
               {item.visualType === "image" && item.imageUrl && (
                 <>
                   <img
