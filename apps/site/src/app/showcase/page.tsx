@@ -101,12 +101,16 @@ export default function EnterprisePage() {
                 rel="noopener noreferrer"
                 key={box.id}
               >
-                <Card className="flex flex-col hover:row-span-2 [&:hover>p]:line-clamp-none">
+                <Card
+                  className={cn(
+                    "flex flex-col items-start [&:hover>div>p]:line-clamp-none min-h-[194px] relative z-1 hover:scale-104 transition-transform bg-background-neutral-weak transition-bg",
+                  )}
+                >
                   <img
                     src={box.logo}
                     alt={box.name}
                     className={cn(
-                      "max-h-element-3xl h-full max-w-[50%] object-contain w-fit",
+                      "max-h-element-3xl h-full max-w-[50%] object-contain w-fit flex-1",
                       box.logo_light && "dark:hidden block",
                     )}
                   />
@@ -120,7 +124,7 @@ export default function EnterprisePage() {
                   <h3 className="text-foreground-neutral font-sans-display text-xl stretch-display my-0 font-bold md:line-clamp-2">
                     {box.name}
                   </h3>
-                  <p className="text-foreground-neutral font-sans-display text-sm md:line-clamp-3">
+                  <p className="text-foreground-neutral font-sans-display text-sm">
                     {box.description}
                   </p>
                 </Card>
