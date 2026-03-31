@@ -1,8 +1,4 @@
 import type { Metadata } from "next";
-import {
-  SITE_HOME_DESCRIPTION,
-  SITE_HOME_TITLE,
-} from "../../lib/blog-metadata";
 import { Action, Button } from "@prisma/eclipse";
 import { CardSection } from "@/components/homepage/card-section/card-section";
 import { StatsList } from "@/components/careers/stats-list";
@@ -154,8 +150,33 @@ const statsList = [
 ];
 
 export const metadata: Metadata = {
-  title: SITE_HOME_TITLE,
-  description: SITE_HOME_DESCRIPTION,
+  title: "Careers | Prisma",
+  description:
+    "See open positions at Prisma. Join us to empower developers to build data-intensive applications.",
+  alternates: {
+    canonical: "https://www.prisma.io/careers",
+  },
+  openGraph: {
+    title: "Careers | Prisma",
+    description:
+      "See open positions at Prisma. Join us to empower developers to build data-intensive applications.",
+    url: "https://www.prisma.io/careers",
+    images: [
+      {
+        url: "/og/og-careers.png",
+        width: 1200,
+        height: 630,
+        alt: "Database tools for modern developers",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Careers | Prisma",
+    description:
+      "See open positions at Prisma. Join us to empower developers to build data-intensive applications.",
+    images: [["/og/og-careers.png"]],
+  },
 };
 
 export default function Careers() {
