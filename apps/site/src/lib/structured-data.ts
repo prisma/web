@@ -18,6 +18,9 @@ function absoluteUrl(pathOrUrl: string): string {
 function toPlainText(value: string): string {
   return value
     .replace(/<[^>]+>/g, " ")
+    .replace(/&amp;quot;/g, '"')
+    .replace(/&amp;#39;|&amp;apos;/g, "'")
+    .replace(/&amp;nbsp;/g, " ")
     .replace(/&quot;/g, '"')
     .replace(/&#39;|&apos;/g, "'")
     .replace(/&nbsp;/g, " ")
