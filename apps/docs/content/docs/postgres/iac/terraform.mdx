@@ -1,0 +1,179 @@
+---
+title: Terraform
+description: Provision and manage Prisma Postgres projects, databases, and connections using Terraform.
+metaTitle: Manage Prisma Postgres with Terraform
+metaDescription: Provision and manage Prisma Postgres projects, databases, and connections using Terraform.
+url: /postgres/iac/terraform
+tocDepth: 3
+toc: true
+---
+
+Use the [Prisma Postgres Terraform provider](https://registry.terraform.io/providers/prisma/prisma-postgres/latest) to manage projects, databases, and connections with code.
+
+## Conceptual model
+
+Terraform is a desired-state engine:
+
+- You declare the target infrastructure in `.tf` files.
+- Terraform computes a plan (`terraform plan`) by comparing config vs current state.
+- Terraform applies only the required changes (`terraform apply`) and records the result in state.
+
+For Prisma Postgres, this gives a predictable workflow for creating projects, databases, and connections across environments.
+
+## When to use Terraform
+
+Terraform is a strong fit when:
+
+- You already manage infrastructure in Terraform and want one workflow.
+- You prefer explicit `plan` output before applying changes.
+- Your team standardizes on HCL modules and Terraform state backends.
+
+## What you can manage
+
+The provider currently supports:
+
+- `prisma-postgres_project`
+- `prisma-postgres_database`
+- `prisma-postgres_connection`
+- `prisma-postgres_regions` data source
+
+## Prerequisites
+
+- [Terraform](https://developer.hashicorp.com/terraform/install) `>= 1.0`
+- A Prisma account and workspace in [Prisma Console](https://console.prisma.io)
+- A Prisma service token (see [Management API authentication docs](/management-api/authentication#service-tokens))
+
+## 1. Set your service token
+
+Set your token as an environment variable:
+
+```bash
+export PRISMA_SERVICE_TOKEN="prsc_your_token_here"
+```
+
+## 2. Create `main.tf`
+
+Create the following Terraform configuration:
+
+```hcl file=main.tf
+terraform {
+  required_providers {
+    prisma-postgres = {
+      source = "prisma/prisma-postgres"
+    }
+  }
+}
+
+provider "prisma-postgres" {}
+
+resource "prisma-postgres_project" "main" {
+  name = "my-app"
+}
+
+resource "prisma-postgres_database" "production" {
+  project_id = prisma-postgres_project.main.id
+  name       = "production"
+  region     = "us-east-1"
+}
+
+resource "prisma-postgres_connection" "api" {
+  database_id = prisma-postgres_database.production.id
+  name        = "api-key"
+}
+
+output "connection_string" {
+  value     = prisma-postgres_connection.api.connection_string
+  sensitive = true
+}
+
+output "direct_url" {
+  value     = prisma-postgres_database.production.direct_url
+  sensitive = true
+}
+```
+
+## 3. Initialize and apply
+
+Initialize your working directory:
+
+```bash
+terraform init
+```
+
+Review and apply:
+
+```bash
+terraform plan
+terraform apply
+```
+
+After apply, retrieve values:
+
+```bash
+terraform output -raw connection_string
+terraform output -raw direct_url
+```
+
+## 4. Clean up (optional)
+
+```bash
+terraform destroy
+```
+
+## Optional: discover available regions
+
+If you want to select regions dynamically:
+
+```hcl
+data "prisma-postgres_regions" "available" {}
+
+output "available_regions" {
+  value = [
+    for r in data.prisma-postgres_regions.available.regions : "${r.id} (${r.name})"
+    if r.status == "available"
+  ]
+}
+```
+
+## Production notes
+
+- Store Terraform state in a secure remote backend (for example, S3 + DynamoDB, Terraform Cloud, etc.).
+- Treat state as sensitive: even with `sensitive = true`, secret values are still stored in state.
+- Keep `PRISMA_SERVICE_TOKEN` in your secret manager or CI secrets, not in code.
+- Use separate Terraform workspaces or stacks for `dev`, `staging`, and `prod`.
+- Rotate credentials intentionally when required by replacing connection resources.
+
+## Import existing resources
+
+You can import existing resources into state:
+
+```bash
+terraform import prisma-postgres_project.main <project-id>
+terraform import prisma-postgres_database.production <database-id>
+terraform import prisma-postgres_connection.api <database-id>,<connection-id>
+```
+
+Credentials are only returned at creation time and cannot be recovered after import.
+
+## Common troubleshooting
+
+### Missing token
+
+If provider configuration fails with a missing token error, confirm `PRISMA_SERVICE_TOKEN` is set in the same shell session running Terraform.
+
+### Region issues
+
+If create fails for a region value, use `prisma-postgres_regions` to list currently available regions for your workspace.
+
+### Authorization failures
+
+If you receive authorization errors, verify your service token belongs to the expected workspace and has permission to create projects and databases.
+
+## References
+
+- [Prisma Postgres provider on Terraform Registry](https://registry.terraform.io/providers/prisma/prisma-postgres/latest)
+- [Provider configuration](https://registry.terraform.io/providers/prisma/prisma-postgres/latest/docs)
+- [Project resource](https://registry.terraform.io/providers/prisma/prisma-postgres/latest/docs/resources/project)
+- [Database resource](https://registry.terraform.io/providers/prisma/prisma-postgres/latest/docs/resources/database)
+- [Connection resource](https://registry.terraform.io/providers/prisma/prisma-postgres/latest/docs/resources/connection)
+- [Regions data source](https://registry.terraform.io/providers/prisma/prisma-postgres/latest/docs/data-sources/regions)

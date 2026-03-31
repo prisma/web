@@ -15,14 +15,14 @@ pnpm install
 pnpm dev
 ```
 
-Runs on **http://localhost:3001** (docs is 3000, eclipse is 3002).
+Runs on **http://localhost:3002** (site is 3000, docs is 3001, eclipse is 3003).
 
 ## Structure
 
 - `content/blog/` — MDX blog posts
-- `src/` — App shell, layout, search, and MDX components (TweetEmbed, Youtube, Quote, etc.)
+- `src/` — App shell, layout, search, and MDX components (TweetEmbed, Quote, etc.)
 - Uses [Fumadocs](https://fumadocs.dev) for the blog framework
-- Uses `@prisma-docs/eclipse` for UI components
+- Uses `@prisma/eclipse` for UI components
 
 ## Related
 

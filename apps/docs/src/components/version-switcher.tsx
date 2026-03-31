@@ -11,7 +11,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
-} from '@prisma-docs/eclipse';
+} from '@prisma/eclipse';
 
 interface VersionSwitcherProps {
   currentVersion: Version;
@@ -26,7 +26,7 @@ export function VersionSwitcher({ currentVersion }: VersionSwitcherProps) {
 
     const VERSION_SECTIONS: Record<string, Set<string>> = {
       v7: new Set(['accelerate', 'ai', 'cli', 'console', 'guides', 'management-api', 'optimize', 'orm', 'postgres', 'studio']),
-      v6: new Set(['accelerate', 'ai', 'guides', 'optimize', 'orm', 'platform', 'postgres']),
+      v6: new Set(['accelerate', 'ai', 'guides', 'orm', 'platform', 'postgres']),
     };
 
     const rawPath = pathname.replace(/^\/v\d+(?=\/|$)/, '') || '/';

@@ -28,11 +28,11 @@ If you require IP allowlisting or firewall configurations with trusted IP addres
 
 ### 2.1. Update your database connection string
 
-Once enabled, you'll be prompted to generate an API key that you'll use in your new Accelerate connection string to authenticate requests.
+Once enabled, you'll be prompted to generate a connection string that you'll use to authenticate requests.
 
 Replace your direct database URL with your new Accelerate connection string.
 
-```text title=".env"
+```bash title=".env"
 # New Accelerate connection string with generated API_KEY
 DATABASE_URL="prisma://accelerate.prisma-data.net/?api_key=__API_KEY__"
 
@@ -44,9 +44,9 @@ Prisma Client reads the `prisma://` URL from `DATABASE_URL` at runtime, while Pr
 
 Prisma Migrate and Introspection do not work with a `prisma://` connection string. In order to continue using these features add a new variable to the `.env` file named `DIRECT_DATABASE_URL` whose value is the direct database connection string:
 
-```text title=".env" highlight=3;add showLineNumbers
+```bash title=".env"
 DATABASE_URL="prisma://accelerate.prisma-data.net/?api_key=__API_KEY__"
-DIRECT_DATABASE_URL="postgresql://user:password@host:port/db_name?schema=public"
+DIRECT_DATABASE_URL="postgresql://user:password@host:port/db_name?schema=public" # [!code ++]
 ```
 
 Then point `prisma.config.ts` to the direct connection string:
@@ -151,7 +151,7 @@ If VS Code does not recognize the `$extends` method, refer to [this section](/ac
 
 Since [extensions are applied one after another](/orm/prisma-client/client-extensions#conflicts-in-combined-extensions), make sure you apply them in the correct order. Extensions cannot share behavior and the last extension applied takes precedence.
 
-If you are using [Prisma Optimize](/optimize) in your application, make sure you apply it _before_ the Accelerate extension. For example:
+If you are using [Query Insights](/query-insights) in your application, make sure you apply it _before_ the Accelerate extension. For example:
 
 ```ts
 const prisma = new PrismaClient({
@@ -174,26 +174,6 @@ If you simply want to take advantage of Accelerate's connection pooling feature 
 
 By enabling Accelerate and supplying the Accelerate connection string, your queries now use the connection pooler by default.
 
-#### Define a cache strategy
-
-Update a query with the new `cacheStrategy` property which allows you to define a cache strategy for that specific query:
-
-```ts
-const user = await prisma.user.findMany({
-  where: {
-    email: {
-      contains: "alice@prisma.io",
-    },
-  },
-  cacheStrategy: { swr: 60, ttl: 60 },
-});
-```
-
-In the example above, `swr: 60` and `ttl: 60` means Accelerate will serve cached data for 60 seconds and then another 60 seconds while Accelerate fetches fresh data in the background.
-
-You should now see improved performance for your cached queries.
-
-For information about which strategy best serves your application, see [Select a cache strategy](/postgres/database/caching#selecting-a-cache-strategy).
 
 :::info
 
@@ -203,7 +183,7 @@ As of Prisma version `5.2.0` you can use Prisma Studio with the Accelerate conne
 
 #### Invalidate the cache and keep your cached query results up-to-date
 
-If your application requires real-time or near-real-time data, cache invalidation ensures that users see the most current data, even when using a large `ttl` (Time-To-Live) or `swr` (Stale-While-Revalidate) [cache strategy](/postgres/database/caching#cache-strategies). By invalidating your cache, you can bypass extended caching periods to show live data whenever it's needed.
+If your application requires real-time or near-real-time data, cache invalidation ensures that users see the most current data, even when using a large `ttl` (Time-To-Live) or `swr` (Stale-While-Revalidate) [cache strategy](/accelerate/caching). By invalidating your cache, you can bypass extended caching periods to show live data whenever it's needed.
 
 For example, if a dashboard displays customer information and a customer’s contact details change, cache invalidation allows you to refresh only that data instantly, ensuring support staff always see the latest information without waiting for the cache to expire.
 

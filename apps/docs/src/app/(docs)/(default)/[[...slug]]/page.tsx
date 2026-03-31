@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import { getMDXComponents } from "@/mdx-components";
 import type { Metadata } from "next";
 import { createRelativeLink } from "fumadocs-ui/mdx";
-import { LLMCopyButton, ViewOptions } from "@/components/page-actions";
+import { CopyPromptButton, LLMCopyButton, ViewOptions } from "@/components/page-actions";
+import { getPromptContent } from "@/lib/get-prompt-content";
 import {
   DocsBody,
   DocsDescription,
@@ -13,25 +14,21 @@ import {
   EditOnGitHub,
   PageLastUpdate,
 } from "@/components/layout/notebook/page";
-import {
-  TechArticleSchema,
-  BreadcrumbSchema,
-} from "@/components/structured-data";
+import { TechArticleSchema, BreadcrumbSchema } from "@/components/structured-data";
 
 interface PageParams {
   slug?: string[];
 }
 
-export default async function Page({
-  params,
-}: {
-  params: Promise<PageParams>;
-}) {
+export default async function Page({ params }: { params: Promise<PageParams> }) {
   const { slug } = await params;
   const page = source.getPage(slug);
   if (!page) notFound();
 
   const MDX = page.data.body;
+
+  const aiPromptSlug = (page.data as { aiPrompt?: string }).aiPrompt;
+  const promptContent = aiPromptSlug ? await getPromptContent(aiPromptSlug) : null;
 
   return (
     <>
@@ -47,12 +44,13 @@ export default async function Page({
         <div className="flex flex-col md:flex-row items-start gap-4 pt-2 pb-1 md:justify-between">
           <DocsTitle>{page.data.title}</DocsTitle>
           <div className="flex flex-row gap-2 items-center">
+            {promptContent && <CopyPromptButton fullPrompt={promptContent.fullPrompt} />}
             {!page.url.startsWith("/management-api/endpoints") && (
               <LLMCopyButton markdownUrl={`${withDocsBasePath(page.url)}.mdx`} />
             )}
 
             <ViewOptions
-              markdownUrl={`${page.url}.mdx`}
+              markdownUrl={`${withDocsBasePath(page.url)}.mdx`}
               githubUrl={`https://github.com/prisma/docs/blob/main/apps/docs/content/docs/${page.path}`}
             />
           </div>
@@ -70,9 +68,7 @@ export default async function Page({
             href={`https://github.com/prisma/docs/edit/main/apps/docs/content/docs/${page.path}`}
           />
           {(page.data as { lastModified?: Date }).lastModified && (
-            <PageLastUpdate
-              date={(page.data as { lastModified: Date }).lastModified}
-            />
+            <PageLastUpdate date={(page.data as { lastModified: Date }).lastModified} />
           )}
         </div>
       </DocsPage>
@@ -106,7 +102,7 @@ export async function generateMetadata({
       title,
       description,
       url: withDocsBasePath(page.url),
-      images: page.data.image || withDocsBasePath(getPageImage(page).url),
+      images: withDocsBasePath(page.data.image ?? getPageImage(page).url),
     },
     twitter: {
       card: "summary_large_image",

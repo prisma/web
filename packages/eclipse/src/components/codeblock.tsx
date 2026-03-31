@@ -6,15 +6,30 @@ import {
   type HTMLAttributes,
   type ReactNode,
   type RefObject,
+  useCallback,
   use,
   useMemo,
   useRef,
+  useState,
 } from "react";
 import { cn } from "../lib/cn";
-import { useCopyButton } from "fumadocs-ui/utils/use-copy-button";
 import { buttonVariants } from "./ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { mergeRefs } from "../lib/merge-refs";
+
+function useCopyButton(copy: () => void | Promise<void>, timeout = 2000) {
+  const [checked, setChecked] = useState(false);
+
+  const onClick = useCallback(async () => {
+    await copy();
+    setChecked(true);
+    window.setTimeout(() => {
+      setChecked(false);
+    }, timeout);
+  }, [copy, timeout]);
+
+  return [checked, onClick] as const;
+}
 
 export interface CodeBlockProps extends ComponentProps<"figure"> {
   /**
@@ -97,7 +112,7 @@ export function CodeBlock({
           : "my-4 bg-fd-card rounded-square",
         keepBackground && "bg-(--shiki-light-bg) dark:bg-(--shiki-dark-bg)",
 
-        "shiki relative border border-stroke-neutral not-prose overflow-hidden text-sm",
+        "shiki relative border border-stroke-neutral not-prose overflow-hidden type-code-sm",
         props.className,
       )}
     >
@@ -243,7 +258,7 @@ export function CodeBlockTabsTrigger({
     <TabsTrigger
       {...props}
       className={cn(
-        "relative group inline-flex text-sm font-medium text-nowrap items-center transition-colors gap-2 px-2 py-1.5 hover:text-fd-accent-foreground data-[state=active]:text-fd-primary [&_svg]:size-3.5",
+        "relative group inline-flex type-text-sm-strong text-nowrap items-center transition-colors gap-2 px-2 py-1.5 hover:text-fd-accent-foreground data-[state=active]:text-fd-primary [&_svg]:size-3.5",
         props.className,
       )}
     >

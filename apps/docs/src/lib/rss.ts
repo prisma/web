@@ -21,8 +21,8 @@ export function getRSS() {
       },
     },
     allPages.map((page: any) => ({
-      id: `${baseUrl}${withDocsBasePath(page.url)}`,
-      url: `${baseUrl}${withDocsBasePath(page.url)}`,
+      id: `${withDocsBasePath(page.url)}`,
+      url: `${withDocsBasePath(page.url)}`,
       title: page.data.title,
       description: page.data.description,
       date: page.data.lastModified ? new Date(page.data.lastModified) : new Date(),

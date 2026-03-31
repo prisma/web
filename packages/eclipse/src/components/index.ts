@@ -1,3 +1,19 @@
+export { default as Statistic } from "./statistic";
+
+export { Textarea, textareaVariants } from "./textarea";
+
+export {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
+  ChartStyle,
+  useChart,
+} from "./chart";
+export type { ChartConfig } from "./chart";
+export { FontAwesomeScript } from "./fontawesome-eclipse";
+
 export { Accordion, Accordions } from "./accordion";
 
 export { Action, actionVariants } from "./action";
@@ -87,7 +103,7 @@ export {
   TableCell,
   TableCaption,
 } from "./table";
-export { Input } from "./input";
+export { Input, inputVariants } from "./input";
 
 export { Label } from "./label";
 
@@ -137,3 +153,28 @@ export {
   PaginationEllipsis,
   PaginationInput,
 } from "./pagination";
+
+export { Alert } from "./alert";
+export { Switch } from "./switch";
+
+export {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectScrollDownButton,
+  SelectScrollUpButton,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "./select";
+
+export {
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  EmptyDescription,
+  EmptyContent,
+  EmptyMedia,
+} from "./empty";

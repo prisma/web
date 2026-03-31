@@ -1,5 +1,5 @@
 "use client";
-import { Button } from "@base-ui/react";
+import { withBlogBasePath } from "@/lib/url";
 import { useDocsSearch } from "fumadocs-core/search/client";
 import {
   SearchDialog,
@@ -11,63 +11,114 @@ import {
   SearchDialogList,
   SearchDialogOverlay,
   SearchDialogFooter,
+  SearchDialogListItem,
   type SharedProps,
 } from "fumadocs-ui/components/dialog/search";
+import Image from "next/image";
+import { formatTag } from "@/lib/format";
+import { withBlogBasePathForImageSrc } from "@/lib/url";
+import { ComponentProps, type ReactNode } from "react";
+import { SearchIcon } from "lucide-react";
+import { Badge, Spinner } from "@prisma/eclipse";
+import { BlogSearchResult } from "../lib/search-types";
 
-// Extend Window interface to include Kapa
-declare global {
-  interface Window {
-    Kapa?: {
-      open: (options?: { query?: string; submit?: boolean }) => void;
-    };
-  }
+export function CustomSearchDialogIcon({ isLoading }: { isLoading: boolean }) {
+  return (
+    <>
+      {isLoading ? (
+        <Spinner className="size-5 text-fd-muted-foreground" />
+      ) : (
+        <SearchIcon className="size-5 text-fd-muted-foreground" />
+      )}
+    </>
+  );
+}
+
+type SearchResultItemProps = Parameters<
+  NonNullable<ComponentProps<typeof SearchDialogList>["Item"]>
+>[0];
+
+function isBlogSearchResult(value: unknown): value is BlogSearchResult {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<BlogSearchResult>;
+  return (
+    typeof candidate.url === "string" && typeof candidate.content === "string"
+  );
+}
+
+function SearchResultItem({ item, onClick }: SearchResultItemProps): ReactNode {
+  if (!isBlogSearchResult(item)) return null;
+  const post = item;
+
+  return (
+    <SearchDialogListItem
+      item={item}
+      onClick={onClick}
+      className="group grid grid-cols-[128px_1fr] sm:grid-cols-[160px_1fr] gap-4 items-center p-2! rounded-square border border-transparent aria-selected:border-stroke-neutral aria-selected:bg-background-muted/60"
+    >
+      <div className="relative aspect-video w-full overflow-hidden rounded-square bg-background-neutral">
+        {post.heroImagePath ? (
+          <Image
+            src={withBlogBasePathForImageSrc(post.heroImagePath)}
+            alt={post.content}
+            fill
+            sizes="(min-width: 640px) 160px, 128px"
+            className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+          />
+        ) : null}
+      </div>
+      <div className="min-w-0 flex flex-col gap-2 justify-center">
+        <h3 className="text-sm sm:text-base text-foreground-neutral font-[650] sm:font-bold font-mona-sans line-clamp-2">
+          {post.content}
+        </h3>
+        {post.description ? (
+          <p className="text-xs sm:text-sm text-foreground-neutral-weak line-clamp-2">
+            {post.description}
+          </p>
+        ) : null}
+        {post.tags?.length ? (
+          <div className="flex flex-wrap gap-1 pt-1">
+            {post.tags.slice(0, 3).map((tag) => (
+              <Badge
+                key={tag}
+                color="success"
+                label={formatTag(tag)}
+                className="w-fit"
+              />
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </SearchDialogListItem>
+  );
 }
 
 export default function CustomSearchDialog(props: SharedProps) {
   const { search, setSearch, query } = useDocsSearch({
-    type: "static",
+    type: "fetch",
+    api: withBlogBasePath("/api/search"),
+    delayMs: 500,
   });
 
-  const handleAskAI = () => {
-    // Close the search dialog first
-    props.onOpenChange?.(false);
-    // Open Kapa with the current search query
-    if (window.Kapa) {
-      window.Kapa.open({ query: search, submit: search.length > 0 });
-    }
-  };
-
   return (
-    <SearchDialog search={search} onSearchChange={setSearch} isLoading={query.isLoading} {...props}>
+    <SearchDialog
+      search={search}
+      onSearchChange={setSearch}
+      isLoading={query.isLoading}
+      {...props}
+    >
       <SearchDialogOverlay />
       <SearchDialogContent>
         <SearchDialogHeader>
-          <SearchDialogIcon />
+          <CustomSearchDialogIcon isLoading={query.isLoading} />
           <SearchDialogInput />
           <SearchDialogClose />
         </SearchDialogHeader>
-        <SearchDialogList items={query.data !== "empty" ? query.data : null} />
-        <SearchDialogFooter className="border-t border-fd-border p-2">
-          <Button
-            onClick={handleAskAI}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-fd-primary px-4 py-2.5 text-sm font-medium text-fd-primary-foreground transition-all hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-fd-ring focus:ring-offset-2"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
-            </svg>
-            Ask AI
-          </Button>
-        </SearchDialogFooter>
+        <SearchDialogList
+          items={query.data !== "empty" ? query.data : null}
+          Item={SearchResultItem}
+        />
+        <SearchDialogFooter className="border-t border-fd-border p-2"></SearchDialogFooter>
       </SearchDialogContent>
     </SearchDialog>
   );

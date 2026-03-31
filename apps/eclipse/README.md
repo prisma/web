@@ -1,6 +1,6 @@
 # Eclipse Design System Docs
 
-The **documentation site** for the [Eclipse Design System](https://prisma.io/docs/design-system). This Next.js app showcases and documents all components from the `@prisma-docs/eclipse` package.
+The **documentation site** for the [Eclipse Design System](https://prisma.io/docs/design-system). This Next.js app showcases and documents all components from the `@prisma/eclipse` package.
 
 ## What it does
 
@@ -15,16 +15,16 @@ pnpm install
 pnpm dev
 ```
 
-Runs on **http://localhost:3002** (docs is 3000, blog is 3001).
+Runs on **http://localhost:3003** (site is 3000, docs is 3001, blog is 3002).
 
 ## Structure
 
 - `content/design-system/` — MDX docs (atoms, molecules, colors)
 - `src/` — App shell, search, layout, and MDX components
 - Uses [Fumadocs](https://fumadocs.dev) for the doc framework
-- Consumes `@prisma-docs/eclipse` from `packages/eclipse` (workspace package)
+- Consumes `@prisma/eclipse` from `packages/eclipse` (workspace package)
 
 ## Related
 
-- **Package**: `packages/eclipse` — the actual `@prisma-docs/eclipse` component library
+- **Package**: `packages/eclipse` — the actual `@prisma/eclipse` component library
 - **Usage**: `apps/docs` — Prisma docs site that uses Eclipse components

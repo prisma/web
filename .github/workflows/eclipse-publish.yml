@@ -1,0 +1,135 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Release to npm
+    if: "startsWith(github.event.head_commit.message, 'chore(eclipse): release ')"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version from commit message
+        id: version
+        run: |
+          VERSION=$(echo "${{ github.event.head_commit.message }}" | sed -E 's/^chore\(eclipse\): release ([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Releasing version: $VERSION"
+
+      - name: Validate version format
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Error: Invalid version format '$VERSION'. Expected x.y.z"
+            exit 1
+          fi
+
+      - name: Verify package version matches commit
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          PACKAGE_VERSION=$(node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('packages/eclipse/package.json','utf8'));process.stdout.write(p.version)")
+          if [[ "$PACKAGE_VERSION" != "$VERSION" ]]; then
+            echo "Error: packages/eclipse/package.json version is '$PACKAGE_VERSION' but commit version is '$VERSION'"
+            exit 1
+          fi
+
+      - name: Check if version already exists on npm
+        id: check-version
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if npm view @prisma/eclipse@$VERSION version >/dev/null 2>&1; then
+            echo "Version $VERSION already exists on npm"
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Version $VERSION is new"
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup pnpm
+        if: steps.check-version.outputs.exists == 'false'
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        if: steps.check-version.outputs.exists == 'false'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Ensure npm version for trusted publishing
+        if: steps.check-version.outputs.exists == 'false'
+        run: |
+          npm install -g npm@11.5.1
+          echo "Node: $(node --version)"
+          echo "npm: $(npm --version)"
+
+      - name: Install dependencies
+        if: steps.check-version.outputs.exists == 'false'
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        if: steps.check-version.outputs.exists == 'false'
+        run: pnpm --filter @prisma/eclipse run types:check
+
+      - name: Verify publish dry run
+        if: steps.check-version.outputs.exists == 'false'
+        working-directory: packages/eclipse
+        run: pnpm publish --dry-run --access public
+
+      - name: Publish to npm
+        if: steps.check-version.outputs.exists == 'false'
+        working-directory: packages/eclipse
+        run: pnpm publish --access public
+
+      - name: Create and push git tag
+        if: steps.check-version.outputs.exists == 'false'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="eclipse-v$VERSION"
+          if ! git rev-parse "$TAG" >/dev/null 2>&1; then
+            git tag "$TAG"
+            git push origin "$TAG"
+          else
+            echo "Tag $TAG already exists, skipping"
+          fi
+
+      - name: Create GitHub Release
+        if: steps.check-version.outputs.exists == 'false'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="eclipse-v$VERSION"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --title "@prisma/eclipse v$VERSION" --generate-notes
+          else
+            echo "Release $TAG already exists, skipping"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release summary
+        if: steps.check-version.outputs.exists == 'false'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="eclipse-v$VERSION"
+          echo "## Release @prisma/eclipse v$VERSION complete" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Tag: $TAG" >> "$GITHUB_STEP_SUMMARY"
+          echo "- GitHub release: https://github.com/${{ github.repository }}/releases/tag/$TAG" >> "$GITHUB_STEP_SUMMARY"
+          echo "- https://www.npmjs.com/package/@prisma/eclipse/v/$VERSION" >> "$GITHUB_STEP_SUMMARY"

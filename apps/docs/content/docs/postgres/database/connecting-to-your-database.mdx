@@ -1,0 +1,149 @@
+---
+title: Connecting to your database
+description: Choose the right Prisma Postgres connection string for your runtime, tool, and workload.
+url: /postgres/database/connecting-to-your-database
+metaTitle: Connecting to your Prisma Postgres database
+metaDescription: Learn where to get Prisma Postgres connection strings, when to use pooled or direct connections, and how to debug connection issues.
+---
+
+Every Prisma Postgres database has two connection strings: **pooled** for application traffic, **direct** for migrations and admin tooling. This page covers how to get them, where each one goes, and the recommended setup for common runtimes.
+
+For pooling behavior, limits, and timeouts, see [Connection pooling](/postgres/database/connection-pooling).
+
+## Get your connection strings
+
+1. Open your project in the [Prisma Console](https://console.prisma.io).
+1. Select your database.
+1. Click **Connect to your database**.
+1. Click **Generate new connection string**.
+1. Copy both the **pooled** and **direct** connection strings.
+
+![Animated walkthrough of generating a connection string in Prisma Console: navigating to the database, clicking Connect, generating a new connection string, and copying the result.](/img/postgres/connection-string.gif)
+
+## Connection string format
+
+Both strings share the same credentials. The only difference is the hostname:
+
+```bash title=".env"
+# Pooled — routes through the connection pooler
+DATABASE_URL="postgres://USER:PASSWORD@pooled.db.prisma.io:5432/?sslmode=require"
+
+# Direct — connects straight to the database
+DIRECT_URL="postgres://USER:PASSWORD@db.prisma.io:5432/?sslmode=require"
+```
+
+| Part       | Description                                               |
+| ---------- | --------------------------------------------------------- |
+| `USER`     | Database user (generated in Console)                      |
+| `PASSWORD` | Database password (generated in Console)                  |
+| Host       | `pooled.db.prisma.io` (pooled) or `db.prisma.io` (direct) |
+| Port       | `5432`                                                    |
+| `sslmode`  | Always `require` - SSL is mandatory                       |
+
+## Which connection to use
+
+| If you are...                                                    | Use        | Why                                                                  |
+| ---------------------------------------------------------------- | ---------- | -------------------------------------------------------------------- |
+| Running application queries (API handlers, workers, functions)   | **Pooled** | Safer under concurrency. Reuses a small set of database connections. |
+| Running migrations, introspection, `pg_dump`, `pg_restore`, Prisma Studio, or admin tooling | **Direct** | These workflows need session continuity or should bypass the pooler. |
+| Using `LISTEN/NOTIFY` or session-level `SET` commands            | **Direct** | The pooler does not preserve session state across transactions.      |
+| Running queries or jobs that may exceed 10 minutes               | **Direct** | Pooled connections enforce a 10-minute query timeout.                |
+
+If you swap them, the failure modes are asymmetric. Using the pooled string for migrations produces obvious errors (lock failures, prepared statement errors). Using the direct string for application traffic works at low concurrency but silently exhausts connections under production load. See [Connection pooling](/postgres/database/connection-pooling) for details.
+
+## Recommended setups
+
+### Prisma ORM in Node.js
+
+Set `DATABASE_URL` to the pooled string for runtime queries. Set `DIRECT_URL` to the direct string so the Prisma CLI (migrations, introspection, Studio) bypasses the pooler.
+
+```bash title=".env"
+DATABASE_URL="postgres://USER:PASSWORD@pooled.db.prisma.io:5432/postgres?sslmode=require"
+DIRECT_URL="postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require"
+```
+
+```ts title="prisma.config.ts"
+import "dotenv/config";
+import { defineConfig, env } from "prisma/config";
+
+export default defineConfig({
+  schema: "prisma/schema.prisma",
+  datasource: {
+    url: env("DIRECT_URL"),
+  },
+});
+```
+
+```ts title="src/db.ts"
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "./generated/prisma/client";
+
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+
+export const prisma = new PrismaClient({ adapter });
+```
+
+This gives you pooled runtime traffic for application queries and direct CLI access for migrations, introspection, and schema changes.
+
+### Serverless and edge runtimes
+
+For serverless runtimes that support PostgreSQL over TCP, use the same setup as above but wrap the client in a singleton. Without this, each warm invocation creates a new client and a new connection, making it easy to exhaust your plan's pooled connection limit.
+
+```ts title="src/db.ts"
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "./generated/prisma/client";
+
+const globalForPrisma = globalThis as unknown as {
+  prisma?: PrismaClient;
+};
+
+export const prisma =
+  globalForPrisma.prisma ??
+  new PrismaClient({
+    adapter: new PrismaPg({
+      connectionString: process.env.DATABASE_URL,
+    }),
+  });
+
+if (process.env.NODE_ENV !== "production") {
+  globalForPrisma.prisma = prisma;
+}
+```
+
+**When TCP is not a good fit:** If your runtime is short-lived, globally distributed, or does not support PostgreSQL TCP connections well, use the [serverless driver (`@prisma/ppg`)](/postgres/database/serverless-driver) instead. It communicates over HTTP and WebSockets rather than TCP and has built in connection pooling. See the [serverless driver docs](/postgres/database/serverless-driver) for setup.
+
+<CalloutContainer type="info">
+  <CalloutDescription>
+    The serverless driver uses the **direct** connection string but does **not** open a TCP connection to the database. The direct hostname is used for routing only, the transport is HTTP/WebSocket, not PostgreSQL wire protocol.
+  </CalloutDescription>
+</CalloutContainer>
+
+### PostgreSQL tools and other ORMs
+
+Use the **direct** connection string with `psql`, `pg_dump`, `pg_restore`, and GUI tools (TablePlus, DataGrip, DBeaver, Postico):
+
+```bash
+psql "postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require"
+```
+
+For non-Prisma ORMs, see the getting-started guides for [Drizzle](/prisma-postgres/quickstart/drizzle-orm), [Kysely](/prisma-postgres/quickstart/kysely), or [TypeORM](/prisma-postgres/quickstart/typeorm).
+
+## Troubleshooting
+
+### Migrations or db push fail with lock or prepared statement errors
+
+The pooled connection string is being used where the direct string is required. Check that `prisma.config.ts` points at `DIRECT_URL` (`db.prisma.io`), not `DATABASE_URL`.
+
+### "Too many connections"
+
+Your application is exceeding the connection limit for your plan. See the [Connection pooling troubleshooting](/postgres/database/connection-pooling#too-many-connections-or-connection-limit-errors) for specific causes and fixes.
+
+### Connection refused or timeout on first connect
+
+Check that your connection string includes `sslmode=require` and uses port `5432`. If you are behind a corporate firewall or VPN that blocks outbound PostgreSQL traffic, you may need to allowlist `*.db.prisma.io` on port 5432, or use the [serverless driver](/postgres/database/serverless-driver) which operates over HTTPS.
+
+## Related pages
+
+- [Connection pooling](/postgres/database/connection-pooling)
+- [Serverless driver](/postgres/database/serverless-driver)
+- [Backups](/postgres/database/backups)

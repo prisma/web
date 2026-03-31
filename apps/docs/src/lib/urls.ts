@@ -6,7 +6,7 @@ export function getBaseUrl(): string {
   return (
     process.env.NEXT_PUBLIC_PRISMA_URL ??
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ??
-    "http://localhost:3000"
+    "http://localhost:3001"
   );
 }
 

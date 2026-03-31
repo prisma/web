@@ -16,7 +16,7 @@ pnpm install
 pnpm dev
 ```
 
-Open http://localhost:3000 in your browser.
+Open http://localhost:3001 in your browser.
 
 ---
 
@@ -42,7 +42,7 @@ The build runs `fetch-openapi` before `next build` to pull the latest Management
 pnpm dev
 ```
 
-Turbo runs `dev` for every app in parallel (docs on 3000, blog on 3001, eclipse on 3002).
+Turbo runs `dev` for every app in parallel (site on 3000, docs on 3001, blog on 3002, eclipse on 3003).
 
 ---
 
@@ -76,7 +76,7 @@ Run these from the repo root with `pnpm --filter docs <script>`:
 
 The docs app uses workspace packages:
 
-- `@prisma-docs/eclipse` — design system components
+- `@prisma/eclipse` — design system components
 - `@prisma-docs/ui` — shared UI components, utilities, and config
 
 If you change those packages, rebuild or run them in watch mode so docs sees updates.
