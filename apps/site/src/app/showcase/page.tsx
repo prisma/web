@@ -11,32 +11,30 @@ import { cn } from "@/lib/cn";
 import { Technology } from "@/components/technology";
 import data from "@/data/showcase";
 
-const ENTERPRISE_TITLE =
-  "Streamline your enterprise development workflow with Prisma";
-const ENTERPRISE_DESCRIPTION =
-  "Learn how Prisma ORM can improve your team's productivity and explore our tailored ORM support solutions for enterprises and solution providers.";
+const SHOWCASE_TITLE = "Made with Prisma";
+const SHOWCASE_DESCRIPTION = "Learn how companies use Prisma in production";
 
 export const metadata: Metadata = {
-  title: ENTERPRISE_TITLE,
-  description: ENTERPRISE_DESCRIPTION,
+  title: SHOWCASE_TITLE,
+  description: SHOWCASE_DESCRIPTION,
   alternates: {
-    canonical: "https://www.prisma.io/enterprise",
+    canonical: "https://www.prisma.io/showcase",
   },
   openGraph: {
-    title: ENTERPRISE_TITLE,
-    description: ENTERPRISE_DESCRIPTION,
-    url: "https://www.prisma.io/enterprise",
+    title: SHOWCASE_TITLE,
+    description: SHOWCASE_DESCRIPTION,
+    url: "https://www.prisma.io/showcase",
     images: [
       {
-        url: "/og/og-enterprise.png",
+        url: "/og/og-showcase.png",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: ENTERPRISE_TITLE,
-    description: ENTERPRISE_DESCRIPTION,
-    images: ["/og/og-enterprise.png"],
+    title: SHOWCASE_TITLE,
+    description: SHOWCASE_DESCRIPTION,
+    images: ["/og/og-showcase.png"],
   },
 };
 
