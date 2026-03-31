@@ -175,7 +175,7 @@ export const metadata: Metadata = {
     title: "Careers | Prisma",
     description:
       "See open positions at Prisma. Join us to empower developers to build data-intensive applications.",
-    images: [["/og/og-careers.png"]],
+    images: ["/og/og-careers.png"],
   },
 };
 
