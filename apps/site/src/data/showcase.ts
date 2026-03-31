@@ -8,7 +8,7 @@ const stories = [
     imageAlt: "Showcase story",
     technologies: ["prisma"],
     excerpt: `Discover how Bucket, a fast-growing feature management platform, uses Prisma ORM to simplify complex relational queries and accelerate feature releases. Learn how their lean team delivers high-quality features faster while managing evolving database needs with ease.`,
-    url: "/blog/how-bucket-uses-prisma-orm",
+    url: "https://prisma.io/blog/how-bucket-uses-prisma-orm",
   },
   {
     name: "Amplication",
@@ -18,7 +18,7 @@ const stories = [
     imageAlt: "Showcase story",
     technologies: ["nest", "postgres", "prisma", "graphql", "docker"],
     excerpt: `Amplication is an open-source development tool. It helps you develop quality Node.js applications without spending time on repetitive coding tasks. It’s perfect for both backend and fullstack developers.`,
-    url: "/blog/amplication-customer-story-nmlkBNlLlxnN",
+    url: "https://prisma.io/blog/amplication-customer-story-nmlkbnlllxnn",
   },
   {
     name: "Formbricks",
@@ -28,7 +28,7 @@ const stories = [
     imageAlt: "Showcase story",
     technologies: [],
     excerpt: `Formbricks, an open-source survey platform, effectively tackled scalability challenges with Prisma Accelerate and strategically integrated it to manage growing user demands and maintain high performance.`,
-    url: "/blog/formbricks-and-prisma-accelerate-solving-scalability-together",
+    url: "https://prisma.io/blog/formbricks-and-prisma-accelerate-solving-scalability-together",
   },
   {
     name: "Solin",
@@ -38,7 +38,7 @@ const stories = [
     imageAlt: "Showcase story",
     technologies: [],
     excerpt: `Learn how Prisma Accelerate has contributed to Solin's success by enhancing performance and reliability with its scalable connection pool and global database cache.`,
-    url: "/blog/how-solin-uses-prisma-accelerate-to-serve-2-5m-database-queries-per",
+    url: "https://prisma.io/blog/how-solin-uses-prisma-accelerate-to-serve-2-5m-database-queries-per",
   },
   {
     name: "Elsevier",
@@ -50,7 +50,7 @@ const stories = [
     technologies: ["graphql", "ts", "prisma", "aws", "nexus"],
     excerpt: `Elsevier is a global leader in information and analytics in scientific publishing and helps researchers and healthcare professionals.
     With the help of Prisma, Elsevier is in the process of modernizing the scientific publishing process efficiently and with flexibility.`,
-    url: "/blog/elsevier-customer-story-SsAASKagMHtN",
+    url: "https://prisma.io/blog/elsevier-customer-story-ssaaskagmhtn",
   },
   {
     name: "Tryg",
@@ -60,7 +60,7 @@ const stories = [
     imageAlt: "Showcase story",
     technologies: ["kafka", "cockroach", "graphql", "kubernetes", "prisma"],
     excerpt: `Tryg saved huge amounts of time thanks to its “360” Data Broker platform that accelerated development cycles by removing the overhead incurred by configuring environments manually. Prisma was the critical technology that enabled them to democratize billions of records from different data sources.`,
-    url: "/blog/tryg-customer-story-pdmdrRhTupvd",
+    url: "https://prisma.io/blog/tryg-customer-story-pdmdrrhtupvd",
   },
   {
     name: "Panther",
@@ -70,7 +70,7 @@ const stories = [
     imageAlt: "Showcase story",
     technologies: ["mysql", "mongodb", "graphql", "react", "prisma"],
     excerpt: `Panther leverages Prisma and a cutting edge tech stack to power a domain-driven architecture. This allows Panther to ensure that its customers can automate global payroll and compliance for their remote teams with one click.`,
-    url: "/blog/Panther-customer-story-pdmdrRhTupsl",
+    url: "https://prisma.io/blog/panther-customer-story-pdmdrrhtupsl",
   },
   {
     name: "Rapha",
@@ -80,7 +80,7 @@ const stories = [
     imageAlt: "Showcase story",
     technologies: ["postgres", "prisma", "nexus", "apollo", "cloudflare"],
     excerpt: `Rapha is a company dedicated to redefining comfort, performance, and style for cyclists around the world, whether beginners or World Tour professionals. Learn how Prisma helps Rapha build consistent data APIs across various teams and platforms.`,
-    url: "/blog/helping-rapha-access-data-across-platforms-n3jfhtyu6rgn",
+    url: "https://prisma.io/blog/helping-rapha-access-data-across-platforms-n3jfhtyu6rgn",
   },
   {
     name: "Grover",
@@ -90,7 +90,7 @@ const stories = [
     imageAlt: "Showcase story",
     technologies: ["postgres", "nest", "prisma", "nexus", "apollo"],
     excerpt: `Grover offers monthly tech product subscriptions and splits work on its services across many teams. Some teams have recently found huge productivity gains by adopting Prisma. Read on to find out how Prisma has benefited Grover and how you can benefit as well.`,
-    url: "/blog/grover-customer-success-story-nxkWGcGNuvFd",
+    url: "https://prisma.io/blog/grover-customer-success-story-nxkwgcgnuvfd",
   },
   {
     name: "Invisible",
@@ -100,7 +100,7 @@ const stories = [
     imageAlt: "Showcase story",
     technologies: ["next", "trpc", "prisma", "vercel", "postgres"],
     excerpt: `Invisible is a B2B productivity startup that allows its users to automate and outsource any complex workflow or business process through Worksharing. Prisma played a crucial role in allowing Invisible to future proof their tech stack and in supporting its scale.`,
-    url: "/blog/how-migrating-from-Sequelize-to-Prisma-allowed-Invisible-to-scale-i4pz2mwu6q",
+    url: "https://prisma.io/blog/how-migrating-from-sequelize-to-prisma-allowed-invisible-to-scale-i4pz2mwu6q",
   },
   {
     name: "Pearly",
@@ -111,7 +111,7 @@ const stories = [
     technologies: ["apollo", "nexus", "prisma", "gcp", "postgres"],
     excerpt:
       "Pearly provides a platform for dentists to create better and reliable revenue streams and affordable care plans for their patients. Learn how Prisma has helped them scale quickly with an ultra-lean team. ",
-    url: "/blog/pearly-plan-customer-success-pdmdrRhTupve",
+    url: "https://prisma.io/blog/pearly-plan-customer-success-pdmdrrhtupve",
   },
   {
     name: "Poppy",
@@ -122,7 +122,7 @@ const stories = [
     technologies: ["node", "postgres", "prisma", "redis", "gcp"],
     excerpt:
       "Poppy offers rides of all kinds through its mobile app. Whether its a car, scooter, or e-step, Poppy has it. Prisma plays a vital role in helping Poppy ship quickly and confidently and is a big reason they ve just hit 1.5 million total rides taken.",
-    url: "/blog/poppy-customer-success-story-swnWQcGRRvpd",
+    url: "https://prisma.io/blog/poppy-customer-success-story-swnwqcgrrvpd",
   },
   {
     name: "iopool",
@@ -132,7 +132,7 @@ const stories = [
     imageAlt: "Showcase story",
     technologies: ["cognito", "postgres", "aws", "prisma", "nexus"],
     excerpt: `In 2020, iopool realized that their architecture was slowing them down and preventing them from innovating. They decided to switch to Lambda functions and a PostgreSQL database powered by Prisma. Learn how this has helped them move fast with confidence and has greatly simplified their process.`,
-    url: "/blog/iopool-customer-success-story-uLsCWvaqzXoa",
+    url: "https://prisma.io/blog/iopool-customer-success-story-ulscwvaqzxoa",
   },
 ];
 
@@ -180,7 +180,7 @@ const communityProjects = [
   {
     name: "Wasp",
     id: "wasp",
-    logo: "/icons/companies/wasp.png",
+    logo: "/icons/companies/wasp.svg",
     technologies: ["react", "node", "prisma", "haskell", "ts"],
     description:
       "Wasp is the fastest way to develop full-stack web apps in React & Node.js. Describe high-level features (auth, CRUD, async jobs, …) via a simple config language, and write the rest of your logic in React, Node.js and Prisma.",
@@ -239,6 +239,7 @@ const communityProjects = [
     name: "Gamma",
     id: "gamma",
     logo: "/icons/companies/gamma.svg",
+    logo_light: "/icons/companies/gamma-light.svg",
     technologies: ["nest", "prisma", "aws", "next", "chakraui"],
     description:
       "Gamma is an alternative to slide decks - a fast, simple way to share and present your work. Create engaging presentations, memos, briefs, and docs that are easy to discuss live or share async. All in your browser, nothing to download or install.",
@@ -258,6 +259,7 @@ const communityProjects = [
     name: "Flux",
     id: "flux",
     logo: "/icons/companies/flux.svg",
+    logo_light: "/icons/companies/flux-light.svg",
     technologies: ["ts", "prisma", "next", "vercel", "mongodb"],
     description:
       "FLUX is Malaysia's #1 car subscription service for consumers & companies. It offers a multi brand all-inclusive monthly car subscription service that provides you with the ability to subscribe and swap cars as your needs change.",
@@ -278,7 +280,7 @@ const communityProjects = [
     name: "Nuna",
     id: "nuna",
     logo: "/icons/companies/nuna.png",
-    light_logo: "/icons/companies/nuna_light.png",
+    logo_light: "/icons/companies/nuna_light.png",
     technologies: ["react", "prisma", "next", "vercel"],
     description:
       "Nuna is a mental health companion that helps people understand and cope better with their emotions, thoughts and behaviour via psychological tools and chat.",
@@ -355,7 +357,7 @@ const communityProjects = [
     name: "wingfield",
     id: "wingfield",
     logo: "/icons/companies/wingfield.svg",
-    light_logo: "/icons/companies/wingfield_light.svg",
+    logo_light: "/icons/companies/wingfield_light.svg",
     technologies: ["ts", "prisma", "postgres", "node", "digital-ocean"],
     description:
       "Wingfield provides smart solutions to connect modern Tennis players, coaches and clubs, extending your Tennis experience into the virtual world. Their AI-powered tennis courts are loved by over 250 clubs and 20.000 players around the world.",
@@ -375,7 +377,8 @@ const communityProjects = [
   {
     name: "trunk",
     id: "trunk",
-    logo: "/icons/companies/trunk.png",
+    logo: "/icons/companies/trunk.svg",
+    logo_light: "/icons/companies/trunk-light.svg",
     technologies: ["ts", "prisma", "kubernetes", "aws", "mysql"],
     description:
       "Trunk is a dev tools startup, redefining software development at scale. It simplifies checking, testing, and merging your code, allowing you to focus on writing features instead of babysitting PRs.",
@@ -470,7 +473,8 @@ const communityProjects = [
   {
     name: "Tabya",
     id: "tabya",
-    logo: "/icons/companies/tabya.png",
+    logo: "/icons/companies/tabya.svg",
+    logo_light: "/icons/companies/tabya-light.svg",
     technologies: ["ts", "node", "graphql", "prisma", "postgres"],
     description:
       "Tabya! serves as the link between the German construction sector and the IT sector. It provides solutions that not only address and solve specific problems, but also optimize the entire process.",
@@ -659,7 +663,7 @@ const communityProjects = [
     name: "oxio",
     id: "oxio",
     logo: "/icons/companies/oxio.svg",
-    logo_light: "/icons/companies/oxio_light.svg",
+    logo_light: "/icons/companies/oxio-light.svg",
     technologies: ["ts", "graphql", "prisma", "aws", "aurora"],
     description: `oxio is a radically transparent, customer obsessed ISP that's here to change the way Canadians think about the internet—not as a commitment but as a utility.`,
     link: "https://oxio.ca/en",
@@ -696,6 +700,7 @@ const communityProjects = [
     name: "Motionbox",
     id: "motionbox",
     logo: "/icons/companies/motionbox.svg",
+    logo_light: "/icons/companies/motionbox-light.svg",
     technologies: ["react", "next", "prisma", "postgres", "aws"],
     description: `Motionbox is a simple collaborative video editing tool designed to make teams and creators make better videos, faster.`,
     link: "https://motionbox.io/",
@@ -769,7 +774,7 @@ const communityProjects = [
   {
     name: "Digital Speed",
     id: "digitalspeed",
-    logo: "/icons/companies/digitalspeed.png",
+    logo: "/icons/companies/digitalspeed.svg",
     logo_light: "/icons/companies/digitalspeed_light.svg",
     technologies: ["ts", "prisma", "mongodb"],
     description: `Digital Speed is an award-winning digital marketing agency partnering with some of the world's most exciting automotive companies to deliver industry-leading web development, digital marketing, and content production services.`,
@@ -824,6 +829,7 @@ const communityProjects = [
     name: "Everify",
     id: "everify",
     logo: "/icons/companies/everify.svg",
+    logo_light: "/icons/companies/everify-light.svg",
     technologies: ["ts", "postgres", "prisma"],
     description: `Secure SMS verification made simple. Just 8 lines of code get you automatic message translation, scalable international SMS routing and a free development sandbox.`,
     link: "https://everify.vercel.app/",
@@ -841,7 +847,8 @@ const communityProjects = [
   {
     name: "Expand by Monroe Institute",
     id: "expandbymonroe",
-    logo: "/icons/companies/expand.png",
+    logo: "/icons/companies/expand.svg",
+    logo_light: "/icons/companies/expand-light.svg",
     technologies: ["ts", "react", "nest", "prisma", "heroku"],
     description: `The Monroe Institute is the world's leading education center for the study of human consciousness. It uses sound technology to empower your journey of self-discovery. Expand is a meditation app unlike any you've ever experienced — relax, de-stress, improve your sleep, and rediscover feelings of joy that are buried deep inside.`,
     link: "https://info.monroeinstitute.org/get-expand-app",
@@ -1059,6 +1066,7 @@ const communityProjects = [
     name: "Stellate",
     id: "Stellate",
     logo: "/icons/companies/stellate.svg",
+    logo_light: "/icons/companies/stellate-light.svg",
     technologies: ["next", "ts", "graphql", "prisma", "postgres"],
     description: `The GraphQL CDN with edge caching, analytics and security protection. Stellate allows you to reduce your origin traffic by up to 95% with their GraphQL edge cache and never worry about scaling again.`,
     link: "https://stellate.co/",

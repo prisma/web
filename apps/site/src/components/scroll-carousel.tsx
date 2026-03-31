@@ -1,20 +1,29 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { CarouselItem, type EnterpriseCarouselCard } from "./carousel-item";
+import {
+  Children,
+  isValidElement,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { cn } from "@/lib/cn";
-
-interface EnterpriseScrollCarouselProps {
-  items: EnterpriseCarouselCard[];
-  className?: string;
-  color?: "ppg" | "orm";
-}
 
 interface NavButtonProps {
   direction: "left" | "right";
   disabled: boolean;
   onClick: () => void;
   className: string;
+}
+
+export interface ScrollCarouselProps {
+  ariaLabel: string;
+  className?: string;
+  gridClassName: string;
+  itemClassName?: string;
+  children: ReactNode;
 }
 
 const NavButton = ({
@@ -41,16 +50,19 @@ const NavButton = ({
   </button>
 );
 
-export const EnterpriseScrollCarousel = ({
-  items,
+export function ScrollCarousel({
+  ariaLabel,
   className,
-  color,
-}: EnterpriseScrollCarouselProps) => {
+  gridClassName,
+  itemClassName,
+  children,
+}: ScrollCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isAtStart, setIsAtStart] = useState(true);
   const [isAtEnd, setIsAtEnd] = useState(false);
+  const items = Children.toArray(children);
 
-  const updateScrollBounds = () => {
+  const updateScrollBounds = useCallback(() => {
     const container = scrollRef.current;
 
     if (!container) {
@@ -65,43 +77,45 @@ export const EnterpriseScrollCarousel = ({
 
     setIsAtStart(container.scrollLeft <= tolerance);
     setIsAtEnd(container.scrollLeft >= maxScrollLeft - tolerance);
-  };
+  }, []);
 
-  const scrollByItem = (direction: -1 | 1) => {
-    const container = scrollRef.current;
-    const carouselItems = container?.querySelectorAll<HTMLElement>(
-      "[data-carousel-item]",
-    );
+  const scrollByItem = useCallback(
+    (direction: -1 | 1) => {
+      const container = scrollRef.current;
+      const carouselItems =
+        container?.querySelectorAll<HTMLElement>("[data-carousel-item]");
 
-    if (!container || !carouselItems?.length) {
-      return;
-    }
+      if (!container || !carouselItems?.length) {
+        return;
+      }
 
-    if ((direction === -1 && isAtStart) || (direction === 1 && isAtEnd)) {
-      return;
-    }
+      if ((direction === -1 && isAtStart) || (direction === 1 && isAtEnd)) {
+        return;
+      }
 
-    const itemList = Array.from(carouselItems);
-    const currentScroll = container.scrollLeft;
-    const currentIndex = itemList.reduce((closestIndex, item, index) => {
-      const currentDistance = Math.abs(item.offsetLeft - currentScroll);
-      const closestDistance = Math.abs(
-        itemList[closestIndex].offsetLeft - currentScroll,
+      const itemList = Array.from(carouselItems);
+      const currentScroll = container.scrollLeft;
+      const currentIndex = itemList.reduce((closestIndex, item, index) => {
+        const currentDistance = Math.abs(item.offsetLeft - currentScroll);
+        const closestDistance = Math.abs(
+          itemList[closestIndex].offsetLeft - currentScroll,
+        );
+
+        return currentDistance < closestDistance ? index : closestIndex;
+      }, 0);
+
+      const targetIndex = Math.max(
+        0,
+        Math.min(itemList.length - 1, currentIndex + direction),
       );
 
-      return currentDistance < closestDistance ? index : closestIndex;
-    }, 0);
-
-    const targetIndex = Math.max(
-      0,
-      Math.min(itemList.length - 1, currentIndex + direction),
-    );
-
-    container.scrollTo({
-      left: itemList[targetIndex].offsetLeft,
-      behavior: "smooth",
-    });
-  };
+      container.scrollTo({
+        left: itemList[targetIndex].offsetLeft,
+        behavior: "smooth",
+      });
+    },
+    [isAtEnd, isAtStart],
+  );
 
   useEffect(() => {
     const container = scrollRef.current;
@@ -129,7 +143,7 @@ export const EnterpriseScrollCarousel = ({
       window.removeEventListener("resize", updateScrollBounds);
       resizeObserver?.disconnect();
     };
-  }, []);
+  }, [updateScrollBounds]);
 
   return (
     <div className={cn("relative", className)}>
@@ -150,20 +164,24 @@ export const EnterpriseScrollCarousel = ({
         <div
           ref={scrollRef}
           className="overflow-x-auto snap-x snap-mandatory pb-4 scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-          aria-label="Enterprise carousel"
+          aria-label={ariaLabel}
         >
-          <div className="grid grid-flow-col auto-cols-[100%] gap-4 sm:auto-cols-[calc((100%-2rem)/3)]">
+          <div className={cn("grid grid-flow-col gap-4", gridClassName)}>
             {items.map((item, index) => (
               <div
-                key={`${item.title}-${index}`}
+                key={isValidElement(item) && item.key != null ? item.key : index}
                 data-carousel-item
-                className="min-w-0 snap-start"
+                className={cn("min-w-0 snap-start", itemClassName)}
               >
+<<<<<<< HEAD:apps/site/src/components/enterprise/scroll-carousel.tsx
                 <CarouselItem
                   card={item}
                   className="min-h-full"
                   color={color}
                 />
+=======
+                {item}
+>>>>>>> 63de57b4 (feat(site): showcase refinement):apps/site/src/components/scroll-carousel.tsx
               </div>
             ))}
           </div>
@@ -186,4 +204,4 @@ export const EnterpriseScrollCarousel = ({
       </div>
     </div>
   );
-};
+}

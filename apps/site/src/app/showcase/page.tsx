@@ -1,5 +1,4 @@
 import { EnterpriseForm } from "@/components/enterprise/form";
-import { ShowcaseScrollCarousel } from "@/components/showcase/components";
 import Image from "next/image";
 import { FooterAccordion } from "@/components/enterprise/footer-accordion";
 import { SwitchEnterprise } from "@/components/enterprise/switch-enterprise";
@@ -8,8 +7,10 @@ import type { Metadata } from "next";
 import { Button, Card, Action, Avatar } from "@prisma/eclipse";
 import { CardSection } from "@/components/homepage/card-section/card-section";
 import { cn } from "@/lib/cn";
+import { ScrollCarousel } from "@/components/scroll-carousel";
 import { Technology } from "@/components/technology";
 import data from "@/data/showcase";
+import { PostCard } from "@/components/showcase/post-card";
 
 const SHOWCASE_TITLE = "Made with Prisma";
 const SHOWCASE_DESCRIPTION = "Learn how companies use Prisma in production";
@@ -57,14 +58,18 @@ export default function EnterprisePage() {
               href="https://github.com/prisma/presskit/tree/main?tab=readme-ov-file#badges"
               className="inline-flex items-center justify-center"
             >
-              <img
+              <Image
                 src="/icons/made_with_prisma.svg"
                 alt="Made with Prisma"
+                width={140}
+                height={20}
                 className="w-auto h-5 hidden dark:inline-block "
               />
-              <img
+              <Image
                 src="/icons/made_with_prisma_light.svg"
                 alt="Made with Prisma"
+                width={140}
+                height={20}
                 className="w-auto h-5 dark:hidden inline-block "
               />
               <i className="fa-regular fa-arrow-up-right" />
@@ -80,7 +85,19 @@ export default function EnterprisePage() {
 
       <section className="my-12 px-4">
         <div className="content relative z-2 flex flex-col gap-8 max-w-">
-          <ShowcaseScrollCarousel items={data.stories} />
+          <ScrollCarousel
+            ariaLabel="Showcase carousel"
+            gridClassName="auto-cols-[100%] xs:auto-cols-[calc((100%-16px)/2)] sm:auto-cols-[calc((100%-16px)/3)] md:auto-cols-[calc((100%-32px)/4)] lg:auto-cols-[calc((100%-64px)/5)]"
+            itemClassName="min-h-full h-full"
+          >
+            {data.stories.map((item) => (
+              <PostCard
+                key={item.title}
+                post={item}
+                className="min-h-full"
+              />
+            ))}
+          </ScrollCarousel>
         </div>
       </section>
       <section className="my-12 px-4 relative">
@@ -104,18 +121,22 @@ export default function EnterprisePage() {
                     "flex flex-col items-start [&:hover>div>p]:line-clamp-none min-h-[194px] relative z-1 hover:scale-104 transition-transform bg-background-neutral-weak transition-bg",
                   )}
                 >
-                  <img
+                  <Image
                     src={box.logo}
                     alt={box.name}
+                    width={240}
+                    height={96}
                     className={cn(
                       "max-h-element-3xl h-full max-w-[50%] object-contain w-fit flex-1",
                       box.logo_light && "dark:block hidden",
                     )}
                   />
                   {box.logo_light && (
-                    <img
+                    <Image
                       src={box.logo_light}
                       alt={box.name}
+                      width={240}
+                      height={96}
                       className="max-h-element-3xl h-full max-w-[50%] object-contain w-fit dark:hidden block"
                     />
                   )}
