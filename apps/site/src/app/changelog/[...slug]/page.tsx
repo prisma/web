@@ -132,7 +132,7 @@ export async function generateMetadata({
       page.data.description ??
       "Read the latest Prisma release notes.",
     path: page.url,
-    ogImage: page.data.ogImage,
+    ogImage: "/og/og-changelog.png",
   });
 }
 

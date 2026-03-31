@@ -12,6 +12,7 @@ export const metadata = createPageMetadata({
   description:
     "Track Prisma release notes, product improvements, and rollout details in one markdown-driven changelog.",
   path: "/changelog",
+  ogImage: "/og/og-changelog.png",
 });
 
 export default async function ChangelogPage() {
