@@ -1,3 +1,5 @@
+import { JsonLd } from "@/components/json-ld";
+import { createFaqStructuredData } from "@/lib/structured-data";
 import type { Metadata } from "next";
 import {
   Accordion,
@@ -13,6 +15,12 @@ import {
 } from "@prisma/eclipse";
 import { comparisonSections, faqs } from "./pricing-data";
 import { PricingPageContent } from "./pricing-page-content";
+
+const pricingFaqStructuredData = createFaqStructuredData(
+  "/pricing",
+  faqs,
+  "Prisma pricing FAQ",
+);
 
 export const metadata: Metadata = {
   title: "Pricing | Prisma Postgres",
@@ -43,6 +51,7 @@ export const metadata: Metadata = {
 export default function PricingPage() {
   return (
     <main className="flex-1 w-full -mt-24 bg-background-default text-background-neutral-weak">
+      <JsonLd id="pricing-faq-structured-data" data={pricingFaqStructuredData} />
       <PricingPageContent />
 
       {/* Compare plans */}

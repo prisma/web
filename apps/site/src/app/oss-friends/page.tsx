@@ -1,14 +1,13 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { Card } from "@prisma/eclipse";
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: "OSS Friends | Prisma",
   description:
-    "Discover open-source projects and communities that we love and support.",
-  alternates: {
-    canonical: "https://www.prisma.io/oss-friends",
-  },
-};
+    "Explore open-source projects and communities Prisma supports across the ecosystem, from developer tools to OSS friends we love to highlight.",
+  path: "/oss-friends",
+  ogImage: "/og/og-oss-friends.png",
+});
 
 type OSSFriend = {
   href: string;

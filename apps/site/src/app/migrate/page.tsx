@@ -1,15 +1,14 @@
-import type { Metadata } from "next";
-import {
-  SITE_HOME_DESCRIPTION,
-  SITE_HOME_TITLE,
-} from "../../lib/blog-metadata";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { Action, Button, Card } from "@prisma/eclipse";
 import HeroCode, { HeroCodeStep } from "@/components/migrate/hero-code";
 
-export const metadata: Metadata = {
-  title: SITE_HOME_TITLE,
-  description: SITE_HOME_DESCRIPTION,
-};
+export const metadata = createPageMetadata({
+  title: "Prisma Migrate | Schema-driven SQL database migrations",
+  description:
+    "Prisma Migrate turns schema changes into SQL migrations with safe, repeatable workflows for local development, CI, and production.",
+  path: "/migrate",
+  ogImage: "/og/og-migrate.png",
+});
 
 const migrateSteps: HeroCodeStep[] = [
   {
@@ -101,7 +100,7 @@ export default function Migrate() {
           <Button
             variant="orm"
             size="3xl"
-            href="/docs/getting-started/setup-prisma/start-from-scratch/relational-databases-typescript-postgresql"
+            href="https://www.prisma.io/docs/getting-started/setup-prisma/start-from-scratch/relational-databases-typescript-postgresql"
           >
             <span>Install Prisma</span>
           </Button>

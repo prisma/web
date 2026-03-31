@@ -10,6 +10,7 @@ const actionVariants = cva(
       color: {
         ppg: "bg-background-ppg text-foreground-ppg",
         orm: "bg-background-orm text-foreground-orm",
+        "orm-reverse": "bg-background-orm-reverse text-foreground-orm-reverse",
         error: "bg-background-error text-foreground-error",
         success: "bg-background-success text-foreground-success",
         warning: "bg-background-warning text-foreground-warning",
@@ -22,7 +23,8 @@ const actionVariants = cva(
         violet: "bg-background-violet text-foreground-violet",
         yellow: "bg-background-yellow text-foreground-yellow",
         neutral: "bg-background-neutral text-foreground-neutral",
-        "neutral-reversed": "bg-background-neutral-reverse text-foreground-neutral-reverse",
+        "neutral-reversed":
+          "bg-background-neutral-reverse text-foreground-neutral-reverse",
       },
       size: {
         lg: "size-element-lg p-1.5",

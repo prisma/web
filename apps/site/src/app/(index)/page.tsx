@@ -6,8 +6,6 @@ import {
 } from "../../lib/blog-metadata";
 import { Button } from "@prisma/eclipse";
 import { CopyCode } from "@/components/homepage/copy-btn";
-import LogoParade from "@prisma-docs/ui/components/logo-parade";
-import React from "react";
 import { Bento } from "@/components/homepage/bento";
 import { CardSection } from "@/components/homepage/card-section/card-section";
 import review from "../../data/homepage.json";
@@ -61,6 +59,25 @@ const twoCol = [
 export const metadata: Metadata = {
   title: SITE_HOME_TITLE,
   description: SITE_HOME_DESCRIPTION,
+  alternates: {
+    canonical: "https://www.prisma.io/",
+  },
+  openGraph: {
+    title: SITE_HOME_TITLE,
+    description: SITE_HOME_DESCRIPTION,
+    url: "https://www.prisma.io/",
+    images: [
+      {
+        url: "/og/og-index.png",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_HOME_TITLE,
+    description: SITE_HOME_DESCRIPTION,
+    images: ["/og/og-index.png"],
+  },
 };
 
 export default function SiteHome() {
@@ -146,7 +163,7 @@ export default function SiteHome() {
                   imageUrl: "/illustrations/homepage/typesafe",
                   imageAlt: "Type-safe queries",
                   icon: "fa-light fa-message-text",
-                  link: "https://prisma.io/docs/orm/prisma-client/type-safety",
+                  link: "https://www.prisma.io/docs/orm/prisma-client/type-safety",
                 },
                 {
                   title: "Work collaboratively",

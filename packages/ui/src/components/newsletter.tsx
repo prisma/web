@@ -9,7 +9,7 @@ const icon = (name: string) => (
   <i color="currentColor" className={cn("text-[1.125rem]", name)} />
 );
 
-type ColorType = "indigo" | "teal" | "white" | undefined;
+type ColorType = "orm" | "ppg" | undefined;
 
 type FooterNewsletterFormProps = {
   theme?: any;

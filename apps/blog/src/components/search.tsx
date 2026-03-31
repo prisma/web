@@ -22,11 +22,7 @@ import { SearchIcon } from "lucide-react";
 import { Badge, Spinner } from "@prisma/eclipse";
 import { BlogSearchResult } from "../lib/search-types";
 
-export function CustomSearchDialogIcon({
-  isLoading,
-}: {
-  isLoading: boolean;
-}) {
+export function CustomSearchDialogIcon({ isLoading }: { isLoading: boolean }) {
   return (
     <>
       {isLoading ? (
@@ -45,13 +41,12 @@ type SearchResultItemProps = Parameters<
 function isBlogSearchResult(value: unknown): value is BlogSearchResult {
   if (!value || typeof value !== "object") return false;
   const candidate = value as Partial<BlogSearchResult>;
-  return typeof candidate.url === "string" && typeof candidate.content === "string";
+  return (
+    typeof candidate.url === "string" && typeof candidate.content === "string"
+  );
 }
 
-function SearchResultItem({
-  item,
-  onClick,
-}: SearchResultItemProps): ReactNode {
+function SearchResultItem({ item, onClick }: SearchResultItemProps): ReactNode {
   if (!isBlogSearchResult(item)) return null;
   const post = item;
 
@@ -98,20 +93,20 @@ function SearchResultItem({
   );
 }
 
-
-
-
 export default function CustomSearchDialog(props: SharedProps) {
   const { search, setSearch, query } = useDocsSearch({
-    type: 'fetch',
-    api: withBlogBasePath('/api/search'),
+    type: "fetch",
+    api: withBlogBasePath("/api/search"),
     delayMs: 500,
   });
 
-
-
   return (
-    <SearchDialog search={search} onSearchChange={setSearch} isLoading={query.isLoading} {...props}>
+    <SearchDialog
+      search={search}
+      onSearchChange={setSearch}
+      isLoading={query.isLoading}
+      {...props}
+    >
       <SearchDialogOverlay />
       <SearchDialogContent>
         <SearchDialogHeader>
@@ -123,8 +118,7 @@ export default function CustomSearchDialog(props: SharedProps) {
           items={query.data !== "empty" ? query.data : null}
           Item={SearchResultItem}
         />
-        <SearchDialogFooter className="border-t border-fd-border p-2">
-        </SearchDialogFooter>
+        <SearchDialogFooter className="border-t border-fd-border p-2"></SearchDialogFooter>
       </SearchDialogContent>
     </SearchDialog>
   );

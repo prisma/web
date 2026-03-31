@@ -1,10 +1,9 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { Card } from "@prisma/eclipse";
 import { Layers } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
-import { getBaseUrl } from "@/lib/url";
 import {
   stackCategories,
   type StackCategory,
@@ -15,23 +14,12 @@ const title = "Prisma Stack";
 const description =
   "Prisma works with every major TypeScript stack. Explore how Prisma fits Next.js, NestJS, GraphQL, your database, and more.";
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title,
   description,
-  openGraph: {
-    title,
-    description,
-    url: `${getBaseUrl()}/stack`,
-    siteName: "Prisma",
-    locale: "en_US",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title,
-    description,
-  },
-};
+  path: "/stack",
+  ogImage: "/og/og-stack.png",
+});
 
 export default function StackPage() {
   return (

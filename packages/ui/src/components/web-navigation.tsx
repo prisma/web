@@ -32,6 +32,7 @@ export interface Link {
     icon?: string;
     desc?: string;
   }>;
+  buttonVariant?: "ppg" | "orm" | undefined;
 }
 
 interface WebNavigationProps {
@@ -40,9 +41,14 @@ interface WebNavigationProps {
     source: "website";
     medium: string;
   };
+  buttonVariant?: "ppg" | "orm" | undefined;
 }
 
-export function WebNavigation({ links, utm }: WebNavigationProps) {
+export function WebNavigation({
+  links,
+  utm,
+  buttonVariant = "ppg",
+}: WebNavigationProps) {
   const [mobileView, setMobileView] = useState(false);
   const loginHref = utm
     ? `https://console.prisma.io/login?utm_source=${utm.source}&utm_medium=${utm.medium}&utm_campaign=login`
@@ -75,13 +81,15 @@ export function WebNavigation({ links, utm }: WebNavigationProps) {
               {links.map((link) =>
                 link.url ? (
                   <NavigationMenuItem key={link.url}>
-                    <NavigationMenuLink href={link.url}>
+                    <NavigationMenuLink href={link.url} variant={buttonVariant}>
                       {link.text}
                     </NavigationMenuLink>
                   </NavigationMenuItem>
                 ) : link?.sub?.length ? (
                   <NavigationMenuItem key={link.text}>
-                    <NavigationMenuTrigger>{link.text}</NavigationMenuTrigger>
+                    <NavigationMenuTrigger variant={buttonVariant}>
+                      {link.text}
+                    </NavigationMenuTrigger>
                     <NavigationMenuContent className="rounded-square-high! overflow-hidden!">
                       <div
                         className={cn(
@@ -93,6 +101,7 @@ export function WebNavigation({ links, utm }: WebNavigationProps) {
                           <MenuNavigationItem
                             key={`${sub.text}-${sub.url}-${index}`}
                             link={sub}
+                            variant={buttonVariant}
                           />
                         ))}
                       </div>
@@ -114,7 +123,7 @@ export function WebNavigation({ links, utm }: WebNavigationProps) {
               </NavigationMenuItem>
               <NavigationMenuItem className="hidden sm:block">
                 <Button
-                  variant="ppg"
+                  variant={buttonVariant}
                   className="whitespace-nowrap"
                   href={signupHref}
                 >
@@ -136,6 +145,7 @@ export function WebNavigation({ links, utm }: WebNavigationProps) {
             {mobileView && (
               <NavigationMobileMenu
                 links={links}
+                buttonVariant={buttonVariant}
                 loginHref={loginHref}
                 signupHref={signupHref}
               />
