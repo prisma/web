@@ -514,6 +514,7 @@ const communityProjects = [
     name: "Cal.com",
     id: "cal",
     logo: "/icons/companies/cal.svg",
+    logo_light: "/icons/companies/cal_light.svg",
     technologies: ["ts", "next", "trpc", "prisma", "turborepo"],
     description:
       "Cal.com is the scheduling platform that is open-source, white-label, privacy-first and developer friendly.",
@@ -861,39 +862,6 @@ const communityProjects = [
         twitter: "https://twitter.com/AntStack",
       },
     },
-  },
-  {
-    name: "Fig",
-    id: "fig",
-    logo: "/icons/companies/fig.svg",
-    technologies: ["ts", "react", "postgres", "prisma", "rust"],
-    description: `Fig adds VSCode-style autocomplete to your existing terminal. As you type, Fig pops up subcommands, options, and contextually relevant arguments in your existing terminal on macOS.`,
-    link: "https://fig.io/",
-    externalLink: true,
-    quote: {
-      text: `I'd always thought that ORMs added a needless layer of complexity, but now I realize I just wasn't using the right one. Prisma has been amazing. Everything from the initial migration to the thoughtfully-designed query API to the excellent TypeScript support. It is such a pleasure to work - I can't imagine using anything else.`,
-      author: "Matt Schrage",
-      title: "Co-founder & CTO",
-      socials: {
-        linkedin: "https://www.linkedin.com/in/matt-schrage-957b6843/",
-        twitter: "https://twitter.com/mattschrage",
-        github: "https://github.com/mschrage",
-      },
-    },
-    points: [
-      {
-        title: "Prisma & Fig",
-        description: `We tried Prisma out on a new project and immediately the whole team fell in love with it. The ability to seamlessly import our existing Postgres database made switching to Prisma a no-brainer. Needless to say, we use it for everything now!`,
-      },
-      {
-        title: "Why choose Prisma",
-        description: `Prisma lets us ship faster and worry less. Migrations are handled for us and excellent support for TypeScript means that we can focus on writing code rather than wrangling with our database.`,
-      },
-      {
-        title: "Looking at the future",
-        description: `Fig is building the source of truth for your developer environment. With our new dotfiles product, you can sync your shell configuration — environment variables, aliases & plugins — across devices. Under the hood, all of this configuration is stored and queried using Prisma.`,
-      },
-    ],
   },
   {
     name: "Stone Giant Studio",

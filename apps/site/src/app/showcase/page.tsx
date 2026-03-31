@@ -105,8 +105,18 @@ export default function EnterprisePage() {
                   <img
                     src={box.logo}
                     alt={box.name}
-                    className="max-h-element-3xl h-full w-auto max-w-[50%] object-contain w-fit"
+                    className={cn(
+                      "max-h-element-3xl h-full max-w-[50%] object-contain w-fit",
+                      box.logo_light && "dark:hidden block",
+                    )}
                   />
+                  {box.logo_light && (
+                    <img
+                      src={box.logo_light}
+                      alt={box.name}
+                      className="max-h-element-3xl h-full max-w-[50%] object-contain w-fit dark:hidden block"
+                    />
+                  )}
                   <h3 className="text-foreground-neutral font-sans-display text-xl stretch-display my-0 font-bold md:line-clamp-2">
                     {box.name}
                   </h3>
