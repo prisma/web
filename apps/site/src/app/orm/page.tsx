@@ -35,6 +35,9 @@ const badge_list = [
     ],
   },
 ];
+const prismaPostgresQuickstartUrl =
+  "https://www.prisma.io/docs/getting-started/prisma-orm/quickstart/prisma-postgres";
+
 const CardFooter = () => (
   <>
     <Separator className="my-6" />
@@ -276,7 +279,7 @@ export default function ORM() {
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
             <Button
               variant="orm"
-              href="https://www.prisma.io/docs/getting-started/quickstart-prismaPostgres"
+              href={prismaPostgresQuickstartUrl}
               size="3xl"
               className="font-sans-display! font-[650]"
             >
@@ -417,7 +420,7 @@ export default function ORM() {
               <Button
                 variant="orm"
                 size="2xl"
-                href="https://www.prisma.io/docs/getting-started/prisma-orm/quickstart/prisma-postgres"
+                href={prismaPostgresQuickstartUrl}
               >
                 <span>Try Prisma ORM</span>
                 <i className="fa-regular fa-arrow-right ml-2" />

@@ -15,7 +15,11 @@ export function createPageMetadata({
   ogImage = "/og/og-index.png",
 }: PageMetadataOptions): Metadata {
   const pathname = path === "/" ? "/" : path.startsWith("/") ? path : `/${path}`;
-  const url = new URL(pathname, getBaseUrl()).toString();
+  const baseUrl = getBaseUrl();
+  const url = new URL(pathname, baseUrl).toString();
+  const ogImageUrl = ogImage
+    ? new URL(ogImage.startsWith("/") ? ogImage : `/${ogImage}`, baseUrl).toString()
+    : undefined;
 
   return {
     title,
@@ -30,13 +34,13 @@ export function createPageMetadata({
       siteName: "Prisma",
       locale: "en_US",
       type: "website",
-      images: ogImage ? [{ url: ogImage }] : undefined,
+      images: ogImageUrl ? [{ url: ogImageUrl }] : undefined,
     },
     twitter: {
-      card: ogImage ? "summary_large_image" : "summary",
+      card: ogImageUrl ? "summary_large_image" : "summary",
       title,
       description,
-      images: ogImage ? [ogImage] : undefined,
+      images: ogImageUrl ? [ogImageUrl] : undefined,
     },
   };
 }

@@ -3,8 +3,21 @@
  * Used for canonical URLs, OpenGraph, and sitemaps.
  */
 export function getBaseUrl(): string {
-  if (process.env.NEXT_PUBLIC_PRISMA_URL) {
-    return process.env.NEXT_PUBLIC_PRISMA_URL;
+  const configuredBaseUrl = process.env.NEXT_PUBLIC_PRISMA_URL?.trim();
+
+  if (configuredBaseUrl) {
+    try {
+      const normalized = new URL(
+        configuredBaseUrl.startsWith("http://") ||
+          configuredBaseUrl.startsWith("https://")
+          ? configuredBaseUrl
+          : `https://${configuredBaseUrl}`,
+      );
+
+      return normalized.origin;
+    } catch {
+      // Fall back to environment-based defaults if the configured URL is invalid.
+    }
   }
 
   if (process.env.NODE_ENV === "production") {

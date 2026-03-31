@@ -20,7 +20,6 @@ function toPlainText(value: string): string {
     .replace(/<[^>]+>/g, " ")
     .replace(/&quot;/g, '"')
     .replace(/&#39;|&apos;/g, "'")
-    .replace(/&amp;/g, "&")
     .replace(/&nbsp;/g, " ")
     .replace(/\s+/g, " ")
     .trim();

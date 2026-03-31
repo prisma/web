@@ -158,13 +158,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           src="https://cdn-cookieyes.com/client_data/96980f76df67ad5235fc3f0d/script.js"
         />
 
-        <Script
+        <script
           async
+          type="text/plain"
           src="https://cdn.tolt.io/tolt.js"
           data-tolt="fda67739-7ed0-42d2-b716-6da0edbec191"
+          data-cookieyes="cookieyes-analytics"
+          data-cookieyes-category="analytics"
         />
-        <Script
+        <script
           id="gmanager"
+          type="text/plain"
+          data-cookieyes="cookieyes-analytics"
+          data-cookieyes-category="analytics"
           dangerouslySetInnerHTML={{
             __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
             new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
