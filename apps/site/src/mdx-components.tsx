@@ -44,7 +44,6 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     TabsContent,
     TabsList,
     TabsTrigger,
-    ...components,
     img: ({ src, ...props }: ComponentProps<"img">) =>
       typeof src === "string" ? <ImageZoom {...props} src={src} /> : null,
   };
@@ -56,5 +55,6 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
         <Pre>{props.children}</Pre>
       </CodeBlock>
     ),
+    ...components,
   };
 }

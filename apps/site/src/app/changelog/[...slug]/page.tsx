@@ -32,6 +32,7 @@ export default async function ReleaseNotesPage({
   const MDX = page.data.body;
   const description = page.data.summary ?? page.data.description;
   const tags = page.data.tags ?? [];
+  const toc = (page.data.toc as TOCItem[] | undefined) ?? [];
 
   return (
     <main className="flex-1 w-full max-w-249 mx-auto px-4 py-8 z-1">
@@ -101,14 +102,16 @@ export default async function ReleaseNotesPage({
           <FooterNewsletterForm apiUrl={newsletterApiUrl} />
         </div> */}
       </div>
-      <div className="max-md:hidden toc">
-        <div className="sticky top-24 max-h-[calc(100vh-6rem)] overflow-y-auto [&_a[data-state=inactive]]:text-foreground-neutral-weak! [&_a[data-state=active]]:text-foreground-neutral!">
-          <span className="text-shadow-foreground-neutral-reverse font-semibold text-md mb-4 mt-0 block">
-            On this page
-          </span>
-          <InlineTOC items={page.data.toc as TOCItem[]} className="px-0" />
+      {toc.length > 0 ? (
+        <div className="max-md:hidden toc">
+          <div className="sticky top-24 max-h-[calc(100vh-6rem)] overflow-y-auto [&_a[data-state=inactive]]:text-foreground-neutral-weak! [&_a[data-state=active]]:text-foreground-neutral!">
+            <span className="text-shadow-foreground-neutral-reverse font-semibold text-md mb-4 mt-0 block">
+              On this page
+            </span>
+            <InlineTOC items={toc} className="px-0" />
+          </div>
         </div>
-      </div>
+      ) : null}
       </div>
     </main>
   );
@@ -132,7 +135,7 @@ export async function generateMetadata({
       page.data.description ??
       "Read the latest Prisma release notes.",
     path: page.url,
-    ogImage: "/og/og-changelog.png",
+    ogImage: page.data.ogImage ?? "/og/og-changelog.png",
   });
 }
 

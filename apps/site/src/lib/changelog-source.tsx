@@ -43,7 +43,22 @@ export async function getReleaseNotePreview(slug: string) {
     "changelog",
     `${slug}.mdx`,
   );
-  const raw = await readFile(filePath, "utf8");
+  let raw: string;
+
+  try {
+    raw = await readFile(filePath, "utf8");
+  } catch (error) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "ENOENT"
+    ) {
+      return null;
+    }
+
+    throw error;
+  }
   const body = raw.replace(/^---[\s\S]*?\n---\n?/, "");
 
   const lines = body.split("\n");

@@ -23,7 +23,7 @@ export default async function ChangelogPage() {
       summary:
         entry.data.summary ??
         entry.data.description ??
-        (await getReleaseNotePreview(entry.slugs[0])),
+        (entry.slugs[0] ? await getReleaseNotePreview(entry.slugs[0]) : null),
     })),
   );
 

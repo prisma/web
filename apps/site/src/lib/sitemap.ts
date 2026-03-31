@@ -123,12 +123,10 @@ async function collectPageRoutes(directory: string, segments: string[] = []): Pr
 export async function getSiteSitemapEntries(baseUrl = getBaseUrl()): Promise<SitemapEntry[]> {
   const [pathnames, changelogEntries] = await Promise.all([
     collectPageRoutes(APP_DIRECTORY),
-    Promise.resolve(
-      changelogSource.getPages().map((page) => page.url),
-    ),
+    changelogSource.getPages().map((page) => page.url),
   ]);
 
-  const allPathnames = [...pathnames, ...changelogEntries];
+  const allPathnames = [...new Set([...pathnames, ...changelogEntries])];
 
   return allPathnames
     .sort((left, right) => left.localeCompare(right))
