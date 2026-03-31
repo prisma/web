@@ -64,7 +64,11 @@ export const CardSection = ({ cardSection }: CardSectionProps) => {
                 item.visualType === "logoGrid" ? "max-w-full" : "lg:w-full",
               )}
             >
-              {item.other && item.visualType === "other" && item.other}
+              {item.other && item.visualType === "other" && (
+                <div className="max-w-full w-full [&>svg]:w-full">
+                  {item.other}
+                </div>
+              )}
               {item.visualType === "logoGrid" && item.useDefaultLogos && (
                 <LogoGrid />
               )}

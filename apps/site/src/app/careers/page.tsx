@@ -205,7 +205,7 @@ export default function Careers() {
         </div>
       </div>
       <div className="py-12 px-4 relative">
-        <div className="max-w-[1200px] w-full p-4 mx-auto">
+        <div className="max-w-[1200px] w-full mx-auto">
           <div className="absolute inset-0 z-0 bg-[linear-gradient(0deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20" />
           <h2 className="relative z-1 text-center m-0 mb-4 text-4xl md:text-[36px] font-black text-foreground-neutral font-sans-display stretch-display">
             Why Prisma?
