@@ -56,24 +56,36 @@ export const OpenRoles = () => {
   const [jobs, setJobs]: any = React.useState({});
 
   async function fetchJobs() {
-    const rdata = await fetch(
-      `https://api.rippling.com/platform/api/ats/v1/board/${BOARD_ID}/jobs`,
-    ).then((res) => res.json());
-    const rjobsWithDept = rdata
-      .map((job: any) => {
-        job.dept = job.department.label;
-        return job;
-      })
-      .sort((a: any) => (a.name.includes("General Applications") ? 1 : -1));
+    try {
+      const rdata = await fetch(
+        `https://api.rippling.com/platform/api/ats/v1/board/${BOARD_ID}/jobs`,
+      ).then((res) => res.json());
+      const rjobsWithDept = rdata
+        .map((job: any) => {
+          job.dept = job.department.label;
+          return job;
+        })
+        .sort((a: any, b: any) => {
+          const aIsGeneral = a.name.includes("General Applications");
+          const bIsGeneral = b.name.includes("General Applications");
 
-    const sameUrls = groupBy(rjobsWithDept, "url");
+          if (aIsGeneral && !bIsGeneral) return 1;
+          if (!aIsGeneral && bIsGeneral) return -1;
+          return a.name.localeCompare(b.name);
+        });
 
-    const sameUrl = Object.keys(sameUrls);
-    const rjobsWithDeptSet = sameUrl.map((e: any) => sameUrls[e][0]);
+      const sameUrls = groupBy(rjobsWithDept, "url");
 
-    const rjobsData = groupBy(rjobsWithDeptSet, "dept");
+      const sameUrl = Object.keys(sameUrls);
+      const rjobsWithDeptSet = sameUrl.map((e: any) => sameUrls[e][0]);
 
-    setJobs(rjobsData);
+      const rjobsData = groupBy(rjobsWithDeptSet, "dept");
+
+      setJobs(rjobsData);
+    } catch (error) {
+      console.error("Failed to fetch jobs:", error);
+      setJobs({});
+    }
   }
 
   React.useEffect(() => {
@@ -87,36 +99,34 @@ export const OpenRoles = () => {
           (filter === "All" ? Object.keys(jobs) : [filter]).map(
             (d: any, idx: number) => (
               <div className="mb-[-10px]" key={idx}>
-                <>
-                  <span className="z-1 mb-2.5 px-4 items-center stretch-display text-foreground-orm-strong relative rounded-full inline-flex font-bold text-base h-8 uppercase font-sans-display">
-                    {d}
-                  </span>
-                  {jobs[d].map((job: any) => (
-                    <div
-                      className="shadow-[0px_0px_46px_rgba(23,43,77,0.01),0px_4px_26px_rgba(23,43,77,0.05),0px_18px_42px_rgba(23,43,77,0.08)] rounded-lg bg-background-default relative z-1 p-5 md:px-6 gap-5 flex mb-2.5 justify-between flex-col items-start lg:items-center lg:flex-row border border-stroke-neutral"
-                      key={job.id}
-                    >
-                      <div className="text-left w-full md:w-auto">
-                        <span className="text-base leading-[140%] text-foreground-neutral-weak mb-1 block">
-                          {job &&
-                            job.workLocation &&
-                            job.workLocation.label.split(" (")[0]}
-                        </span>
-                        <p className="text-foreground-neutral font-bold text-lg leading-[140%] m-0">
-                          {job.name}
-                        </p>
-                      </div>
-                      <Button
-                        href={job.url}
-                        variant="orm"
-                        size="2xl"
-                        className="w-full md:w-auto shrink-0"
-                      >
-                        View job listing
-                      </Button>
+                <span className="z-1 mb-2.5 px-4 items-center stretch-display text-foreground-orm-strong relative rounded-full inline-flex font-bold text-base h-8 uppercase font-sans-display">
+                  {d}
+                </span>
+                {jobs[d].map((job: any, jobIdx: number) => (
+                  <div
+                    key={job.id || job.url || `${d}-${jobIdx}`}
+                    className="shadow-[0px_0px_46px_rgba(23,43,77,0.01),0px_4px_26px_rgba(23,43,77,0.05),0px_18px_42px_rgba(23,43,77,0.08)] rounded-lg bg-background-default relative z-1 p-5 md:px-6 gap-5 flex mb-2.5 justify-between flex-col items-start lg:items-center lg:flex-row border border-stroke-neutral"
+                  >
+                    <div className="text-left w-full md:w-auto">
+                      <span className="text-base leading-[140%] text-foreground-neutral-weak mb-1 block">
+                        {job &&
+                          job.workLocation &&
+                          job.workLocation.label.split(" (")[0]}
+                      </span>
+                      <p className="text-foreground-neutral font-bold text-lg leading-[140%] m-0">
+                        {job.name}
+                      </p>
                     </div>
-                  ))}
-                </>
+                    <Button
+                      href={job.url}
+                      variant="orm"
+                      size="2xl"
+                      className="w-full md:w-auto shrink-0"
+                    >
+                      View job listing
+                    </Button>
+                  </div>
+                ))}
               </div>
             ),
           )}
