@@ -145,7 +145,6 @@ export function WebNavigation({
             {mobileView && (
               <NavigationMobileMenu
                 links={links}
-                buttonVariant={buttonVariant}
                 loginHref={loginHref}
                 signupHref={signupHref}
                 buttonVariant={buttonVariant}

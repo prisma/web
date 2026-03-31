@@ -1,4 +1,3 @@
-import Antigravity from "../../components/homepage/antigravity";
 import type { Metadata } from "next";
 import {
   SITE_HOME_DESCRIPTION,
@@ -6,7 +5,6 @@ import {
 } from "../../lib/blog-metadata";
 import { Action, Button } from "@prisma/eclipse";
 import { CardSection } from "@/components/homepage/card-section/card-section";
-import review from "../../data/homepage.json";
 import { StatsList } from "@/components/careers/stats-list";
 
 import { Flexible } from "@/components/careers/Flexible";
