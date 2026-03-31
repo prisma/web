@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { Button } from "@prisma/eclipse";
 import { CardSection } from "@/components/homepage/card-section/card-section";
 import { VideoSection } from "@/components/typedsql/video-section";
@@ -99,11 +99,13 @@ const twoCol = [
   },
 ];
 
-export const metadata: Metadata = {
-  title: "TypedSQL - Fully Type-Safe Raw SQL | Prisma ORM",
+export const metadata = createPageMetadata({
+  title: "TypedSQL | Fully type-safe raw SQL for Prisma ORM",
   description:
-    "TypedSQL is the best way to express the full power of SQL in queries. Fully type-safe, with auto-completion, and a fantastic DX for using raw SQL with Prisma.",
-};
+    "Use TypedSQL with Prisma ORM for fully type-safe raw SQL queries with autocomplete, better ergonomics, and the full power of SQL.",
+  path: "/typedsql",
+  ogImage: "/og/og-typedsql.png",
+});
 
 export default function TypedSQLPage() {
   return (

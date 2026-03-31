@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import {
   cocSections,
   cocLastUpdated,
@@ -6,11 +6,13 @@ import {
 } from "@/data/event-code-of-conduct";
 import { LegalAccordion } from "@/components/legal-accordion";
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: "Event Code of Conduct | Prisma",
   description:
     "All attendees, speakers, sponsors, and volunteers at Prisma events are required to agree to this code of conduct.",
-};
+  path: "/event-code-of-conduct",
+  ogImage: "/og/og-event-code-of-conduct.png",
+});
 
 export default function EventCodeOfConductPage() {
   return (

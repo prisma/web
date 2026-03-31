@@ -1,12 +1,14 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { partnersTosSections, partnersTosLastUpdated } from "@/data/partners-tos";
 import { LegalAccordion } from "@/components/legal-accordion";
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: "Partner Network Terms of Service | Prisma",
   description:
     "Terms of Service for the Prisma Partner Network covering affiliates, technology partners, and resellers.",
-};
+  path: "/partners/tos",
+  ogImage: "/og/og-partners-tos.png",
+});
 
 export default function PartnersTosPage() {
   return (

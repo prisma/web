@@ -1,9 +1,5 @@
 import Antigravity from "../../components/homepage/antigravity";
-import type { Metadata } from "next";
-import {
-  SITE_HOME_DESCRIPTION,
-  SITE_HOME_TITLE,
-} from "../../lib/blog-metadata";
+import { createPageMetadata } from "@/lib/page-metadata";
 import {
   Action,
   Accordion,
@@ -195,7 +191,7 @@ const boxes = [
     description: (
       <p className="text-foreground-neutral text-foreground-neutral-weak text-sm font-normal m-0 leading-6">
         We equip developers with the right tools at every stage, whether they
-        are <a href="/blog/bfg">building, fortifying, or growing</a> their
+        are <a href="https://www.prisma.io/blog/bfg">building, fortifying, or growing</a> their
         applications.
       </p>
     ),
@@ -325,10 +321,13 @@ const investors = {
   ],
 };
 
-export const metadata: Metadata = {
-  title: SITE_HOME_TITLE,
-  description: SITE_HOME_DESCRIPTION,
-};
+export const metadata = createPageMetadata({
+  title: "About Prisma | Mission, investors & open source",
+  description:
+    "Discover Prisma's mission and Data DX focus, our open-source roots, backers, and programs that help developers build faster with data.",
+  path: "/about",
+  ogImage: "/og/og-about.png",
+});
 
 export default function About() {
   return (

@@ -1,8 +1,4 @@
-import type { Metadata } from "next";
-import {
-  SITE_HOME_DESCRIPTION,
-  SITE_HOME_TITLE,
-} from "../../lib/blog-metadata";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { Action, Button, Card, Separator } from "@prisma/eclipse";
 import { Bento } from "@/components/homepage/bento";
 import { CardSection } from "@/components/homepage/card-section/card-section";
@@ -214,7 +210,7 @@ const twoCol_3 = [
     description:
       "Prisma ORM provides the strongest type-safety guarantees of all the ORMs in the TypeScript ecosystem.",
     btn: {
-      url: "/docs/orm/more/comparisons/prisma-and-typeorm",
+      url: "https://www.prisma.io/docs/orm/more/comparisons/prisma-and-typeorm",
       label: "Read comparison with TypeORM",
       icon: "fa-regular fa-arrow-up-right",
     },
@@ -236,7 +232,7 @@ const features = [
     image: "/illustrations/orm/typesafe",
     alt: "Type-safe queries",
     icon: "fa-light fa-message-text",
-    link: "https://prisma.io/docs/orm/prisma-client/type-safety",
+    link: "https://www.prisma.io/docs/orm/prisma-client/type-safety",
   },
   {
     title: "Data model you can read",
@@ -256,10 +252,13 @@ const features = [
   },
 ];
 
-export const metadata: Metadata = {
-  title: SITE_HOME_TITLE,
-  description: SITE_HOME_DESCRIPTION,
-};
+export const metadata = createPageMetadata({
+  title: "Prisma ORM | Next-generation database toolkit for TypeScript",
+  description:
+    "Prisma ORM combines a clean schema, type-safe queries, and developer-friendly workflows for building with Postgres and other databases in TypeScript.",
+  path: "/orm",
+  ogImage: "/og/og-orm.png",
+});
 
 export default function ORM() {
   return (
@@ -277,7 +276,7 @@ export default function ORM() {
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
             <Button
               variant="orm"
-              href="/docs/getting-started/quickstart-prismaPostgres"
+              href="https://www.prisma.io/docs/getting-started/quickstart-prismaPostgres"
               size="3xl"
               className="font-sans-display! font-[650]"
             >
@@ -418,12 +417,12 @@ export default function ORM() {
               <Button
                 variant="orm"
                 size="2xl"
-                href="/docs/getting-started/prisma-orm/quickstart/prisma-postgres"
+                href="https://www.prisma.io/docs/getting-started/prisma-orm/quickstart/prisma-postgres"
               >
                 <span>Try Prisma ORM</span>
                 <i className="fa-regular fa-arrow-right ml-2" />
               </Button>
-              <Button variant="default-stronger" size="2xl" href="/docs">
+              <Button variant="default-stronger" size="2xl" href="https://www.prisma.io/docs">
                 <span>Read the docs</span>
                 <i className="fa-regular fa-arrow-right ml-2" />
               </Button>

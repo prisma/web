@@ -1,18 +1,17 @@
-import type { Metadata } from "next";
-import {
-  SITE_HOME_DESCRIPTION,
-  SITE_HOME_TITLE,
-} from "../../lib/blog-metadata";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { Action, Button, Card } from "@prisma/eclipse";
 import API from "@/components/client/api";
 import { CardSection } from "@/components/homepage/card-section/card-section";
 import { cn } from "@/lib/cn";
 import { Technology } from "@/components/client/technology";
 
-export const metadata: Metadata = {
-  title: SITE_HOME_TITLE,
-  description: SITE_HOME_DESCRIPTION,
-};
+export const metadata = createPageMetadata({
+  title: "Prisma Client | Type-safe database client for TypeScript & Node.js",
+  description:
+    "Prisma Client is a type-safe database client for TypeScript and Node.js with autocomplete, raw SQL support, and broad database compatibility.",
+  path: "/client",
+  ogImage: "/og/og-client.png",
+});
 
 const databases = {
   title: "Supported Databases",

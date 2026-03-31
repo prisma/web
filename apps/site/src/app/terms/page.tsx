@@ -1,12 +1,14 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { termsSections, termsLastUpdated } from "@/data/terms";
 import { LegalAccordion } from "@/components/legal-accordion";
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: "Terms of Service | Prisma",
   description:
     "Read the Prisma Terms of Service governing your use of Prisma products and services.",
-};
+  path: "/terms",
+  ogImage: "/og/og-terms.png",
+});
 
 export default function TermsPage() {
   return (

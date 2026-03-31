@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { Action, Card, CardHeader } from "@prisma/eclipse";
 import PDPStatus from "@prisma-docs/ui/components/pdp-status";
 import * as data from "../../data/support.json";
@@ -10,26 +10,12 @@ const description =
   "Get help with Prisma. Search for answers, report bugs, request features, or contact the Prisma support team.";
 const ogImage = "/og/og-support.png";
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title,
   description,
-  alternates: {
-    canonical: "https://prisma.io/support",
-  },
-  openGraph: {
-    type: "website",
-    title,
-    description,
-    url: "https://prisma.io/support",
-    images: ogImage,
-  },
-  twitter: {
-    card: "summary_large_image",
-    title,
-    description,
-    images: ogImage,
-  },
-};
+  path: "/support",
+  ogImage,
+});
 
 type SupportLink = {
   label: string;

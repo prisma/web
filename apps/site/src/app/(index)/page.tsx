@@ -163,7 +163,7 @@ export default function SiteHome() {
                   imageUrl: "/illustrations/homepage/typesafe",
                   imageAlt: "Type-safe queries",
                   icon: "fa-light fa-message-text",
-                  link: "https://prisma.io/docs/orm/prisma-client/type-safety",
+                  link: "https://www.prisma.io/docs/orm/prisma-client/type-safety",
                 },
                 {
                   title: "Work collaboratively",

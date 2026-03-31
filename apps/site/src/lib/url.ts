@@ -3,8 +3,15 @@
  * Used for canonical URLs, OpenGraph, and sitemaps.
  */
 export function getBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_PRISMA_URL) {
+    return process.env.NEXT_PUBLIC_PRISMA_URL;
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    return "https://www.prisma.io";
+  }
+
   return (
-    process.env.NEXT_PUBLIC_PRISMA_URL ??
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ??
     "http://localhost:3002"
   );

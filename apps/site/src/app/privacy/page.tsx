@@ -1,12 +1,14 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { privacySections, privacyLastUpdated } from "@/data/privacy";
 import { LegalAccordion } from "@/components/legal-accordion";
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: "Privacy Policy | Prisma",
   description:
     "Read the Prisma Privacy Policy covering how we collect, use, and protect your data.",
-};
+  path: "/privacy",
+  ogImage: "/og/og-privacy.png",
+});
 
 export default function PrivacyPage() {
   return (

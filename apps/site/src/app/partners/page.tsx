@@ -1,8 +1,4 @@
-import type { Metadata } from "next";
-import {
-  SITE_HOME_DESCRIPTION,
-  SITE_HOME_TITLE,
-} from "../../lib/blog-metadata";
+import { createPageMetadata } from "@/lib/page-metadata";
 import LogoParade from "@prisma-docs/ui/components/logo-parade";
 
 import { Accordion, Accordions, Button } from "@prisma/eclipse";
@@ -41,7 +37,7 @@ const twoCol = [
             <i className="fa-regular fa-arrow-right ml-1" />
           </a>
           <a
-            href="/docs/postgres/introduction/management-api"
+            href="https://www.prisma.io/docs/postgres/introduction/management-api"
             className="link-btn orm"
           >
             <span>Management API Docs</span>
@@ -83,13 +79,13 @@ const twoCol = [
         </p>
         <div className="flex gap-4 items-center justify-start mx-auto md:ml-0">
           <a
-            href="/docs/postgres/database/prisma-studio/embedding-studio"
+            href="https://www.prisma.io/docs/postgres/database/prisma-studio/embedding-studio"
             className="link-btn orm"
           >
             <span>Studio Embedding Docs</span>
             <i className="fa-regular fa-arrow-right ml-1" />
           </a>
-          <a href="/docs/guides/embed-studio-nextjs" className="link-btn orm">
+          <a href="https://www.prisma.io/docs/guides/embed-studio-nextjs" className="link-btn orm">
             <span>Integration Guide</span>
             <i className="fa-regular fa-arrow-right ml-1" />
           </a>
@@ -163,10 +159,13 @@ const twoCol = [
   },
 ];
 
-export const metadata: Metadata = {
-  title: SITE_HOME_TITLE,
-  description: SITE_HOME_DESCRIPTION,
-};
+export const metadata = createPageMetadata({
+  title: "Prisma Partners | Postgres provisioning and data infra for platforms",
+  description:
+    "Embed Prisma Postgres, white-label Prisma Studio, and provision data infrastructure faster with partner tooling built for modern platforms.",
+  path: "/partners",
+  ogImage: "/og/og-partners.png",
+});
 
 export default function Partners() {
   return (

@@ -21,7 +21,7 @@ const storeIdentifiers = ["blog-search", "web-search"] as const;
 const client = mixedbreadApiKey
   ? new Mixedbread({ apiKey: mixedbreadApiKey })
   : null;
-const websiteBaseUrl = "https://prisma.io";
+const websiteBaseUrl = "https://www.prisma.io";
 const blogPrefix = "/blog";
 const docsPrefix = "/docs";
 

@@ -1,12 +1,14 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { slaSections, slaLastUpdated } from "@/data/sla";
 import { LegalAccordion } from "@/components/legal-accordion";
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: "Service Level Agreement | Prisma",
   description:
     "Read the Prisma Service Level Agreement covering uptime commitments and service credits.",
-};
+  path: "/sla",
+  ogImage: "/og/og-sla.png",
+});
 
 export default function SlaPage() {
   return (

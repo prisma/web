@@ -1,10 +1,6 @@
 import { EcosystemGrid } from "@/components/ecosystem/grid";
 import Antigravity from "../../components/homepage/antigravity";
-import type { Metadata } from "next";
-import {
-  SITE_HOME_DESCRIPTION,
-  SITE_HOME_TITLE,
-} from "../../lib/blog-metadata";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { Button } from "@prisma/eclipse";
 import { CopyCode } from "@/components/homepage/copy-btn";
 import LogoParade from "@prisma-docs/ui/components/logo-parade";
@@ -59,10 +55,13 @@ const twoCol = [
     visualType: "image" as const,
   },
 ];
-export const metadata: Metadata = {
-  title: SITE_HOME_TITLE,
-  description: SITE_HOME_DESCRIPTION,
-};
+export const metadata = createPageMetadata({
+  title: "Prisma Ecosystem | Community tools and ORM integrations",
+  description:
+    "Discover community-built tools, packages, and integrations for Prisma, plus support options and ways to share your project with the ecosystem.",
+  path: "/ecosystem",
+  ogImage: "/og/og-ecosystem.png",
+});
 
 export default function SiteHome() {
   return (
