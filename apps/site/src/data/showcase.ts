@@ -255,40 +255,6 @@ const communityProjects = [
     },
   },
   {
-    name: "Friday Finance",
-    id: "fridayfinance",
-    logo: "/icons/companies/fridayfinance.svg",
-    technologies: ["ts", "graphql", "prisma"],
-    description: `Friday Finance helps startups and SMEs manage and automate everything between their bank transactions and accounting software in real-time.No more spreadsheet chaos, manual inputs, and missing data.`,
-    link: "https://www.fridayfinance.com/",
-    externalLink: true,
-    quote: {
-      text: `Prisma empowers our team to be productive in evolving the data model and writing operations, while also maintaining the flexibility of writing raw SQL whenever we feel the need.`,
-      author: "Patrick de Castro Neuhaus",
-      title: "Co-founder & CTO",
-      socials: {
-        linkedin: "https://www.linkedin.com/company/fridayfinance/",
-        twitter: "https://twitter.com/fridayfin",
-      },
-    },
-    points: [
-      {
-        title: "Why choose Prisma",
-        description: `There was never a question of whether we should use an ORM or not - writing raw SQL should be restricted to complex operations, given that few people these days possess good SQL skills and it’s way less maintainable in the long run. Since we opted for TypeScript, the obvious options were TypeORM, Sequelize, and of course Prisma.<br><br>
-
-        What led us to go for Prisma were mainly three factors. <br>
-        First, the schema file, which is much easier to work with and maintainable as a team than the class-based structure of classic ORMs, and also resembles a lot GraphQL, which is another core part of our stack. <br>
-        Then, the migration management, which once again makes our database models more maintainable in a collaborative environment. <br>
-        Finally, the community and team behind Prisma give us a strong sense of safety although it’s pretty new compared to the other two, and keep launching great new things that we want to incorporate into our stack.`,
-      },
-      {
-        title: "Journey with Prisma",
-        description: `Prisma has been with us since the early days of development and is at the core of all that Friday Finance has built so far. This means open banking integrations, cash flow management, cash flow forecasting, reconciliation, multiple different integrations with external services, and so on. <br>
-                    We are also about to launch our own accounts and payments, which we were able to implement in record time, also in part due to the use of Prisma.`,
-      },
-    ],
-  },
-  {
     name: "Flux",
     id: "flux",
     logo: "/icons/companies/flux.svg",
@@ -309,40 +275,10 @@ const communityProjects = [
     },
   },
   {
-    name: "Everfund",
-    id: "everfund",
-    logo: "/icons/companies/everfund.svg",
-    technologies: ["graphql", "next", "prisma", "postgres", "redwoodjs"],
-    description: `The dev-first nonprofit tool to build custom fundraising systems that help nonprofits capture more donations and grow better supporter relationships, without building from scratch.`,
-    link: "https://everfund.io/",
-    externalLink: true,
-    quote: {
-      text: `Prisma has enabled Everfund to move fast while building, migrating and scaffolding our databases. It has given us the confidence and ease of deployment of migrations throughout the dev stages to production.`,
-      author: "Christopher Burns",
-      title: "Co-founder & CEO",
-      socials: {
-        linkedin: "https://www.linkedin.com/company/everfunduk/",
-        twitter: "https://twitter.com/_everfund",
-      },
-    },
-    points: [
-      {
-        title: "Why choose Prisma",
-        description:
-          "In the early days of building your product or MVP, it is critical to go as fast as possible and stay lean with the resources you have. With Prisma, the data layer is handled quickly and efficiently to scale from startup to enterprise without switching out platforms.",
-      },
-      {
-        title: "Journey with Prisma",
-        description: `When we started Everfund we needed to move fast and agile with the little resources we had. Prisma 1 was the cornerstone of our data layer with a GraphQL server sitting in front of it using GraphQL Nexus.
-
-        With the evolution of Prisma into what we know it as today, we made the choice to migrate to Prisma coupled with RedwoodJS. Redwood completely changes the game when it comes to code generation. Generating GraphQL SDL & functions are generated straight from the Prisma schema with RedwoodJS.`,
-      },
-    ],
-  },
-  {
     name: "Nuna",
     id: "nuna",
-    logo: "/icons/companies/nuna.svg",
+    logo: "/icons/companies/nuna.png",
+    light_logo: "/icons/companies/nuna_light.png",
     technologies: ["react", "prisma", "next", "vercel"],
     description:
       "Nuna is a mental health companion that helps people understand and cope better with their emotions, thoughts and behaviour via psychological tools and chat.",
@@ -366,7 +302,7 @@ const communityProjects = [
     technologies: ["ts", "prisma", "next", "graphql", "postgres"],
     description:
       "prosperity solutions enables financial players like robo-advisors, neo-banks, or trading-apps to offer investment-style pension insurances.",
-    link: "https://prosperitysolutions.li/en",
+    link: "https://prosperity.app/en",
     externalLink: true,
     quote: {
       text: "Prisma is more than just a clean and type-safe database client to us. We appreciate how it's covering the entire lifecycle. It started with a powerful introspection of our existing schema, giving us all its benefits without much upfront investment. Data-modelling is intuitive and works well with the VS Code extension. And a personal favorite: thanks to Prisma we don't have to write migrations by hand anymore.",
@@ -418,7 +354,8 @@ const communityProjects = [
   {
     name: "wingfield",
     id: "wingfield",
-    logo: "/icons/companies/wingfield.png",
+    logo: "/icons/companies/wingfield.svg",
+    light_logo: "/icons/companies/wingfield_light.svg",
     technologies: ["ts", "prisma", "postgres", "node", "digital-ocean"],
     description:
       "Wingfield provides smart solutions to connect modern Tennis players, coaches and clubs, extending your Tennis experience into the virtual world. Their AI-powered tennis courts are loved by over 250 clubs and 20.000 players around the world.",
@@ -480,7 +417,7 @@ const communityProjects = [
     technologies: ["ts", "prisma"],
     description:
       "Dotworld Technologies is made up of a creative team of robotics engineers, design enthusiasts and innovationeers, that help you solve challenges using cutting-edge technology.",
-    link: "https://www.dotworld.in/about",
+    link: "https://www.dotworld.in/",
     externalLink: true,
     quote: {
       text: "We are using Prisma for various internal products such as MDM applications for managing our products, a robot command center, etc. Thanks to Prisma the speed of the development increased significantly, for example I was able to develop the backend for a demo application in a single night using Prisma. There are no words to express how happy we are with the rate of development!",
@@ -499,7 +436,7 @@ const communityProjects = [
     technologies: ["next", "react", "vercel", "prisma", "planetscale"],
     description:
       "simpler is a unique to-do app that helps you do what needs to get done so you can focus on what truly matters.",
-    link: "https://usesimpler.com/",
+    link: "https://fluidwave.com/",
     externalLink: true,
     quote: {
       text: "Prisma speeds up development by an incredible amount. Prisma is an invaluable technology for frontend, backend, and full-stack developers. So grateful to the Prisma community.",
@@ -531,7 +468,7 @@ const communityProjects = [
     },
   },
   {
-    name: "Tabya!",
+    name: "Tabya",
     id: "tabya",
     logo: "/icons/companies/tabya.png",
     technologies: ["ts", "node", "graphql", "prisma", "postgres"],
@@ -564,25 +501,6 @@ const communityProjects = [
       socials: {
         twitter: "https://twitter.com/caribou_wealth",
         linkedin: "https://www.linkedin.com/company/caribouwealth/",
-      },
-    },
-  },
-  {
-    name: "Goodsouls",
-    id: "Goodsouls",
-    logo: "/icons/companies/goodsouls.svg",
-    technologies: ["ts", "react", "prisma", "expo", "postgres"],
-    description:
-      "Goodsouls’ goal is to make delicious and healthy plant-based recipes accessible to everyone. Whether you are just curious about plant based cooking and baking, a vegan beginner, or a long-term vegan looking for inspiration, their recipes have been created for you!",
-    link: "https://goodsoulsapp.com/",
-    externalLink: true,
-    quote: {
-      text: `Prisma was just what I was looking for when starting a new project. It is accessible to beginners, yet, as you progress, there are more advanced features to help improve your product. I’ve used a few ORMs before, but nothing comes close to Prisma with regard to feature set and stability. The Prisma community is incredible, and I had so much support and positive feedback from the team and other members on their Slack channel.`,
-      author: "Darryl Young",
-      title: "Co-founder & Software Engineer",
-      socials: {
-        twitter: "https://twitter.com/GoodsoulsApp",
-        instagram: "https://www.instagram.com/GoodsoulsApp/",
       },
     },
   },
@@ -680,27 +598,10 @@ const communityProjects = [
     },
   },
   {
-    name: "Outrider",
-    id: "outrider",
-    logo: "/icons/companies/outrider.svg",
-    technologies: ["ts", "graphql", "prisma", "azure", "postgres"],
-    description: `Outrider, the pioneer in autonomous yard operations for logistics hubs, helps large enterprises improve safety and increase efficiency. The only company exclusively focused on automating all aspects of yard operations, Outrider eliminates manual tasks that are hazardous and repetitive.`,
-    link: "https://www.outrider.ai/",
-    externalLink: true,
-    quote: {
-      text: `Since our team adopted Prisma, we’ve been able to focus on feature development instead of technical debt. We’ve been impressed with Prisma’s tooling, documentation, and steadfast support of our team’s needs, and we look forward to new releases to the product.`,
-      author: "Liz Einstein",
-      title: "Software Engineer",
-      socials: {
-        twitter: "https://twitter.com/OutriderTech",
-        linkedin: "https://www.linkedin.com/company/outridertech/",
-      },
-    },
-  },
-  {
     name: "AGVOLUTION",
     id: "agvolution",
     logo: "/icons/companies/agvolution.svg",
+    logo_light: "/icons/companies/agvolution_light.svg",
     technologies: ["ts", "react", "graphql", "prisma", "aws"],
     description: `AGVOLUTION is fighting for a climate-smart revolution of agriculture. It offers customer specific decision support for long-term sustainability of agriculture and for a higher profitability.`,
     link: "https://agvolution.com/",
@@ -722,7 +623,7 @@ const communityProjects = [
     logo: "/icons/companies/avenue.svg",
     technologies: ["ts", "react", "nest", "prisma", "react-query"],
     description: `Avenue is the world's first operations observability platform built on the modern data stack. Avenue allows customers to set up monitors and incident response workflows on top of their database or data warehouse.`,
-    link: "https://avenue.so/",
+    link: "https://avenue.app/",
     externalLink: true,
     quote: {
       text: `Prisma has been a fundamental part of our tech stack at Avenue since our very first commit. We've loved the biweekly release cadence and extraordinary developer experience that lets us ship fast, safely, and reliably.`,
@@ -738,6 +639,7 @@ const communityProjects = [
     name: "instatus",
     id: "instatus",
     logo: "/icons/companies/instatus.svg",
+    logo_light: "/icons/companies/instatus_light.png",
     technologies: ["next", "graphql", "prisma", "aws", "postgres"],
     description: `Get ready for downtime! Instatus helps you share your current status with customers. Communicating early helps you reduce support tickets, build trust, and keep your customers happy, even during downtime.`,
     link: "https://instatus.com/",
@@ -757,6 +659,7 @@ const communityProjects = [
     name: "oxio",
     id: "oxio",
     logo: "/icons/companies/oxio.svg",
+    logo_light: "/icons/companies/oxio_light.svg",
     technologies: ["ts", "graphql", "prisma", "aws", "aurora"],
     description: `oxio is a radically transparent, customer obsessed ISP that's here to change the way Canadians think about the internet—not as a commitment but as a utility.`,
     link: "https://oxio.ca/en",
@@ -790,24 +693,6 @@ const communityProjects = [
     },
   },
   {
-    name: "dooboolab",
-    id: "dooboolab",
-    logo: "/icons/companies/dooboolab.png",
-    technologies: ["ts", "apollo", "prisma", "mongodb", "graphql"],
-    description: `dooboolab is a tech company located in South Korea, that provides technical support to various domestic startups and also maintains a number of open sources. Their current focus is developing Puzz, a solution for collecting videos.`,
-    link: "https://dooboolab.com",
-    externalLink: true,
-    quote: {
-      text: `By using Prisma, we could build products like Puzz blazingly fast. Prisma is a really easy tool that helps developers to communicate well. What is most cool about it is the Prisma team and we have strong faith that the Prisma product and services will continue to get better!`,
-      author: "Hyo Chan Jang",
-      title: "CEO",
-      socials: {
-        linkedin: "https://www.linkedin.com/company/18177501",
-        github: "http://github.com/dooboolab",
-      },
-    },
-  },
-  {
     name: "Motionbox",
     id: "motionbox",
     logo: "/icons/companies/motionbox.svg",
@@ -826,31 +711,13 @@ const communityProjects = [
     },
   },
   {
-    name: "Pabio",
-    id: "pabio",
-    logo: "/icons/companies/pabio.svg",
-    technologies: ["ts", "prisma", "react", "nest", "remix"],
-    description: `Pabio provides beautiful interior design for your home with the flexibility to rent or buy the furniture you love.`,
-    link: "https://pabio.com/en-de/",
-    externalLink: true,
-    quote: {
-      text: `Prisma is wonderful because it takes care of all the things I don't want to think about -- connection pooling, migrations, easy indexing, and of course SQL JOINs. We've been using Prisma from day 1 and will never go back!`,
-      author: "Anand Chowdhary",
-      title: "Co-founder & CTO",
-      socials: {
-        github: "https://github.com/pabio",
-        twitter: "https://twitter.com/pabiohq",
-        instagram: "https://www.instagram.com/pabiohq",
-      },
-    },
-  },
-  {
     name: "Antstack",
     id: "Antstack",
     logo: "/icons/companies/anstack.svg",
+    logo_light: "/icons/companies/anstack_light.svg",
     technologies: ["ts", "prisma", "aws"],
     description: `Antstack is a leading full-stack serverless company aiming at disrupting the cloud computing space by providing holistic solutions to get you up and running with serverless.`,
-    link: "https://www.antstack.io/",
+    link: "https://www.antstack.com/",
     externalLink: true,
     quote: {
       text: `I've found Prisma ORM very productive and I can't recommend you enough to try it. When looking for an external connection pooler at Antstack we naturally gravitated towards the Prisma Data Proxy: it was very simple to use and it allowed us to immediately address scaling issues.`,
@@ -888,7 +755,7 @@ const communityProjects = [
     logo: "/icons/companies/insta.svg",
     technologies: ["ts", "azure", "prisma"],
     description: `Insta Group Oy is a Finnish family business expert in industrial automation, industrial digitalisation, cyber security and defence technologies that helps its customers develop and maintain their performance and profitability.`,
-    link: "https://www.insta.fi/en/en/",
+    link: "https://www.insta.fi/en/",
     externalLink: true,
     quote: {
       text: `We've been using Prisma with SQL Server on production in multiple projects and have been really happy with it. It fits nicely to our stack with TypeScript and Azure Functions. The support we received from development team during the Preview phase was amazing, our feedback was noted instantly. And the community around Prisma is extremely active!`,
@@ -900,28 +767,10 @@ const communityProjects = [
     },
   },
   {
-    name: "Travis",
-    id: "travis",
-    logo: "/icons/companies/travis.svg",
-    technologies: ["ts", "aws", "prisma", "planetscale", "vue"],
-    description: `Travis is building the most collaborative visual trip planner for millennials and Gen Zs`,
-    link: "https://www.travistravis.co/",
-    externalLink: true,
-    quote: {
-      text: "Prisma enabled our team to iterate at speed without compromising quality and maintainability. It’s also a crucial part of Prisma-AppSync, an open-source Prisma Generator to create GraphQL APIs, and currently powering our entire platform.",
-      author: "Sylvain Simao",
-      title: "CTO",
-      socials: {
-        linkedin: "https://www.linkedin.com/in/sylvainsimao/",
-        twitter: "https://twitter.com/_maoosi",
-        github: "https://github.com/maoosi",
-      },
-    },
-  },
-  {
     name: "Digital Speed",
     id: "digitalspeed",
     logo: "/icons/companies/digitalspeed.png",
+    logo_light: "/icons/companies/digitalspeed_light.svg",
     technologies: ["ts", "prisma", "mongodb"],
     description: `Digital Speed is an award-winning digital marketing agency partnering with some of the world's most exciting automotive companies to deliver industry-leading web development, digital marketing, and content production services.`,
     link: "https://www.digitalspeed.co.uk/",
@@ -957,6 +806,7 @@ const communityProjects = [
     name: "CargOn",
     id: "cargon",
     logo: "/icons/companies/cargon.svg",
+    logo_light: "/icons/companies/cargon_light.svg",
     technologies: ["node", "prisma", "react", "azure"],
     description: `CargOn is focused on developing solutions for cargo logistics operations by optimizing time, resources and costs through technology. They are the bridge between people, shippers, carriers and drivers!`,
     link: "https://cargon.com.br/",
@@ -1064,6 +914,7 @@ const communityProjects = [
     name: "NachoNacho",
     id: "nachonacho",
     logo: "/icons/companies/nachonacho.svg",
+    logo_light: "/icons/companies/nachonacho_light.svg",
     technologies: ["next", "apollo", "mysql", "prisma", "graphql"],
     description: `NachoNacho offers businesses and individuals the ability to consolidate and manage all their subscriptions (software, content, education, etc.) in one account. For example, businesses can keep track of which subscriptions they have across the whole company, and allocate spending budgets per employee and per subscription. `,
     link: "https://nachonacho.com/",
@@ -1096,44 +947,10 @@ const communityProjects = [
     ],
   },
   {
-    name: "Sequin",
-    id: "sequin",
-    logo: "/icons/companies/sequin.svg",
-    technologies: ["elixir", "next", "postgres", "prisma", "redis"],
-    description: `Sequin replicates third-party APIs to Postgres databases in real-time. With a Sequin-powered database, you can query all your data from services like Airtable and Stripe natively using Prisma.`,
-    link: "https://www.sequin.io/",
-    externalLink: true,
-    quote: {
-      text: `Imagine being able to query for any data point, from any API, all through Prisma.`,
-      author: "Anthony Accomazzo",
-      title: "Co-founder",
-      socials: {
-        linkedin: "https://www.linkedin.com/in/anthonyaccomazzo/",
-        twitter: "https://twitter.com/accomazzo",
-        github: "https://github.com/acco",
-      },
-    },
-    points: [
-      {
-        title: "Prisma & Sequin",
-        description: `Sequin replicates third-party APIs to Postgres databases in real-time. This means all your Stripe subscribers or Shopify orders sit right alongside your production data. And you can query it all using Prisma's type-safe query syntax.`,
-      },
-      {
-        title: "Why choose Prisma",
-        description: `Prisma makes building on your Sequin database easy. With type-safety, type-ahead, an ergonomic query builder, and team features, Prisma allows you to ship features on top of your third-party data faster than ever.`,
-      },
-      {
-        title: "What next for Sequin",
-        description: `Sequin is working to sync more APIs in real-time, so you never need to leave your database — or Prisma. They just added support for Stripe, with more on the way soon.
-
-        🏗️ To get started with Sequin and Stripe, Prisma customers can add a billing portal to their app using this “plug-and-play” feature: <a href="https://github.com/syncinc-so/stripe-billing-prisma" style="text-decoration: underline">https://github.com/syncinc-so/stripe-billing-prisma</a>`,
-      },
-    ],
-  },
-  {
     name: "Superblog",
     id: "superblog",
-    logo: "/icons/companies/superblog.svg",
+    logo: "/icons/companies/superblog.png",
+    light_logo: "/icons/companies/superblog_light.png",
     technologies: ["elderjs", "next", "netlify", "prisma", "jamstack"],
     description: `Superblog is a blazing fast alternative to WordPress and medium blogs. Superblog takes care of everything: optimizing your blog for speed, consistent performance, SEO, high-quality hosting, and design to rank better in search results.`,
     link: "https://superblog.ai/",
@@ -1160,39 +977,6 @@ const communityProjects = [
       {
         title: "Looking at the future",
         description: `Superblog looks to improve the developer experience (which will lead to faster feature shipping) by looking at esbuild/vite. In addition to the auto-optimzation of Technical SEO and on-page SEO, Superblog is looking to implement Content-Level optimizations and topic research via AI. As a wise man once said, "Every company is going to be a content company in the future".`,
-      },
-    ],
-  },
-  {
-    name: "Ecstatic",
-    id: "ecstatic",
-    logo: "/icons/companies/ecstatic.svg",
-    technologies: ["js", "postgres", "next", "prisma", "vercel"],
-    description: `Ecstatic is an invitation-based events platform that rewards people for growing event audiences.`,
-    link: "https://ecstatic.com",
-    externalLink: true,
-    quote: {
-      text: `For most startups, resources are stretched thin; this demands us to only focus on the essentials — the things that will make the greatest impact for our end-users. Both Prisma Client and Prisma Migrate are phenomenal tools that let us interface with our database in ways that boost our developer productivity by at least 10x compared to other tools or manual SQL queries.`,
-      author: "Martin Adams",
-      title: "Co-founder",
-      socials: {
-        linkedin: "https://www.linkedin.com/in/heymartinadams/",
-        twitter: "https://twitter.com/heyMartinAdams",
-        github: "https://github.com/heymartinadams",
-      },
-    },
-    points: [
-      {
-        title: "Prisma & Ecstatic",
-        description: `Developing good software is hard. Prisma does the database heavy lifting and lets us focus on creating a great user experience.`,
-      },
-      {
-        title: "Why choose Prisma",
-        description: `Prisma makes accessing our database both safe and easy.`,
-      },
-      {
-        title: "Looking at the future",
-        description: `We believe that in the near future apps will distinguish themselves by their speed: any app that saves the customer time, even a few hundred milliseconds, will become increasingly valued by their users. So it’s only natural that we put together a tech stack where “time is of the essence” — that tech stack includes Prisma (ORM), Next.js (framework), Vercel (hosting), and PlanetScale (database).`,
       },
     ],
   },
@@ -1233,6 +1017,7 @@ const communityProjects = [
     name: "Jelly",
     id: "jelly",
     logo: "/icons/companies/jelly.svg",
+    logo_light: "/icons/companies/jelly_light.webp",
     technologies: ["nexus", "apollo", "aws", "prisma", "postgres"],
     description: `Jelly is the starting point to a more profitable and transparent kitchen, creating a nicer workplace environment. Jelly works with the best chefs and hottest restaurants in the independent foodservice market to create a centralised, all-in-one app. Jelly is already loved by thousands of chefs from Michelin-starred restaurants to school canteens and catering companies, in the UK and the US.`,
     link: "https://www.getjelly.co.uk/",
@@ -1308,7 +1093,8 @@ const communityProjects = [
   {
     name: "Prevalentware",
     id: "prevalentware",
-    logo: "/icons/companies/prevalentware.png",
+    logo: "/icons/companies/prevalentware.webp",
+    light_logo: "/icons/companies/prevalentware_light.png",
     technologies: ["next", "python", "graphql", "prisma", "postgres"],
     description: `PrevalentWare is dedicated to consulting and developing solutions based on RPA and web technologies. PrevalentWare aims to create fast, reliable, and robust solutions for aiding the digital transformation processes of their customers.`,
     link: "https://www.prevalentware.com/",
@@ -1349,7 +1135,8 @@ const communityProjects = [
   {
     name: "Krisenchat",
     id: "Krisenchat",
-    logo: "/icons/companies/krisenchat.png",
+    logo: "/icons/companies/krisenchat.svg",
+    logo_light: "/icons/companies/krisenchat_light.svg",
     technologies: ["ts", "graphql", "prisma", "postgres"],
     description: `Krisenchat is a chat platform of highly trained and experienced specialists to support young people in need. These specialists advise young people on their concerns and problems: at any time, free of charge and confidentially.`,
     link: "https://krisenchat.de/en",

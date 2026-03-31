@@ -109,7 +109,7 @@ export default function EnterprisePage() {
                     alt={box.name}
                     className={cn(
                       "max-h-element-3xl h-full max-w-[50%] object-contain w-fit flex-1",
-                      box.logo_light && "dark:hidden block",
+                      box.logo_light && "dark:block hidden",
                     )}
                   />
                   {box.logo_light && (
