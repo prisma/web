@@ -96,10 +96,8 @@ export default function CommunityPage() {
   return (
     <main className="flex-1 w-full -mt-24 bg-background-default text-foreground-neutral">
       {/* Hero */}
-      <section className="relative overflow-hidden px-4 pt-36 pb-12 md:pb-16 bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)]">
-        <div className="bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] absolute inset-0 z-0 overflow-hidden opacity-20" />
-        <div className="pointer-events-none absolute inset-x-1/2 top-20 h-[780px] w-[1664px] -translate-x-1/2 rounded-full bg-[repeating-radial-gradient(circle_at_top,rgba(99,102,241,0.28)_0,rgba(99,102,241,0.28)_2px,transparent_2px,transparent_42px)] opacity-45 mask-[linear-gradient(to_bottom,rgba(0,0,0,0.9),transparent_78%)]" />
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(70%_65%_at_50%_5%,rgba(79,70,229,0.3),transparent_70%)]" />
+      <section className="relative overflow-hidden px-4 pt-36 pb-12 md:pb-16">
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20" />
         <div className="relative z-1 mx-auto flex w-full max-w-[720px] flex-col items-center gap-6 text-center">
           <p className="m-0 flex items-center justify-center gap-2 text-base font-semibold uppercase tracking-[1.6px] text-foreground-orm-strong font-sans">
             <i className="fa-regular fa-users" aria-hidden />
