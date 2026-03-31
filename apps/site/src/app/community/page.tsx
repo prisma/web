@@ -121,13 +121,8 @@ export default function CommunityPage() {
           </h2>
 
           {/* Discord — featured */}
-          <a
-            href="https://pris.ly/discord"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group mb-4 block"
-          >
-            <Card className="flex flex-col items-center text-center gap-4 p-6 transition-colors bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-orm)_262.5%)] hover:border-stroke-neutral-strong sm:flex-row sm:items-center sm:text-left sm:justify-between">
+          <div className="group mb-4">
+            <Card className="flex flex-col items-center text-center gap-4 p-6 transition-colors bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-orm)_262.5%)] sm:flex-row sm:items-center sm:text-left sm:justify-between">
               <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:gap-4">
                 <Action color="orm" size="4xl" className="shrink-0">
                   <i className="fa-brands fa-discord text-xl" aria-hidden />
@@ -140,12 +135,19 @@ export default function CommunityPage() {
                   </p>
                 </div>
               </div>
-              <Button variant="orm" size="lg" className="shrink-0 w-fit">
+              <Button
+                variant="orm"
+                size="lg"
+                className="shrink-0 w-fit"
+                href="https://pris.ly/discord"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 Join Discord
                 <i className="fa-regular fa-arrow-up-right ml-2" aria-hidden />
               </Button>
             </Card>
-          </a>
+          </div>
 
           {/* Other channels */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
