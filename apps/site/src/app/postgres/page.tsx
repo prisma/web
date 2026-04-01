@@ -5,8 +5,9 @@ import { CardSection } from "@/components/homepage/card-section/card-section";
 import { PostgresTabs } from "../../components/postgres";
 import postgresData from "../../data/postgres.json";
 import { LogoGrid } from "@/components/homepage/card-section/logo-grid";
-import { EnterpriseScrollCarousel } from "@/components/enterprise/scroll-carousel";
+import { ScrollCarousel } from "@/components/scroll-carousel";
 import { Youtube } from "@prisma-docs/ui/components/youtube";
+import { CarouselItem } from "@/components/enterprise/carousel-item";
 
 const CONSOLE_URL =
   "https://console.prisma.io/login?utm_source=website&utm_medium=postgres&utm_campaign=cta";
@@ -268,7 +269,14 @@ export default async function SiteHome() {
           <h2 className="text-foreground-neutral stretch-display text-center text-4xl font-black! font-sans-display ">
             Made for every kind of app
           </h2>
-          <EnterpriseScrollCarousel items={postgresData.made_for} color="ppg" />
+          <ScrollCarousel
+            ariaLabel="Made for every kind of app carousel"
+            gridClassName="auto-cols-[100%] sm:auto-cols-[calc((100%-2rem)/3)]"
+          >
+            {postgresData.made_for.map((item) => (
+              <CarouselItem key={item.title} card={item} color="ppg" />
+            ))}
+          </ScrollCarousel>
         </div>
       </section>
 
