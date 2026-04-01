@@ -82,8 +82,9 @@ export function ScrollCarousel({
   const scrollByItem = useCallback(
     (direction: -1 | 1) => {
       const container = scrollRef.current;
-      const carouselItems =
-        container?.querySelectorAll<HTMLElement>("[data-carousel-item]");
+      const carouselItems = container?.querySelectorAll<HTMLElement>(
+        "[data-carousel-item]",
+      );
 
       if (!container || !carouselItems?.length) {
         return;
@@ -169,19 +170,13 @@ export function ScrollCarousel({
           <div className={cn("grid grid-flow-col gap-4", gridClassName)}>
             {items.map((item, index) => (
               <div
-                key={isValidElement(item) && item.key != null ? item.key : index}
+                key={
+                  isValidElement(item) && item.key != null ? item.key : index
+                }
                 data-carousel-item
                 className={cn("min-w-0 snap-start", itemClassName)}
               >
-<<<<<<< HEAD:apps/site/src/components/enterprise/scroll-carousel.tsx
-                <CarouselItem
-                  card={item}
-                  className="min-h-full"
-                  color={color}
-                />
-=======
                 {item}
->>>>>>> 63de57b4 (feat(site): showcase refinement):apps/site/src/components/scroll-carousel.tsx
               </div>
             ))}
           </div>
