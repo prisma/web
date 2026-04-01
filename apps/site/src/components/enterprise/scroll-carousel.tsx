@@ -7,6 +7,7 @@ import { cn } from "@/lib/cn";
 interface EnterpriseScrollCarouselProps {
   items: EnterpriseCarouselCard[];
   className?: string;
+  color?: "ppg" | "orm";
 }
 
 interface NavButtonProps {
@@ -43,6 +44,7 @@ const NavButton = ({
 export const EnterpriseScrollCarousel = ({
   items,
   className,
+  color,
 }: EnterpriseScrollCarouselProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isAtStart, setIsAtStart] = useState(true);
@@ -67,8 +69,9 @@ export const EnterpriseScrollCarousel = ({
 
   const scrollByItem = (direction: -1 | 1) => {
     const container = scrollRef.current;
-    const carouselItems =
-      container?.querySelectorAll<HTMLElement>("[data-carousel-item]");
+    const carouselItems = container?.querySelectorAll<HTMLElement>(
+      "[data-carousel-item]",
+    );
 
     if (!container || !carouselItems?.length) {
       return;
@@ -117,7 +120,9 @@ export const EnterpriseScrollCarousel = ({
     container.addEventListener("scroll", updateScrollBounds, { passive: true });
     window.addEventListener("resize", updateScrollBounds);
     resizeObserver?.observe(container);
-    Array.from(container.children).forEach((child) => resizeObserver?.observe(child));
+    Array.from(container.children).forEach((child) =>
+      resizeObserver?.observe(child),
+    );
 
     return () => {
       container.removeEventListener("scroll", updateScrollBounds);
@@ -154,7 +159,11 @@ export const EnterpriseScrollCarousel = ({
                 data-carousel-item
                 className="min-w-0 snap-start"
               >
-                <CarouselItem card={item} className="min-h-full" />
+                <CarouselItem
+                  card={item}
+                  className="min-h-full"
+                  color={color}
+                />
               </div>
             ))}
           </div>

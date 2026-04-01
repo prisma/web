@@ -1,3 +1,7 @@
+import { createMDX } from "fumadocs-mdx/next";
+
+const withMDX = createMDX();
+
 const ContentSecurityPolicy = `
   default-src 'self';
   script-src 'self' 'unsafe-inline' 'unsafe-eval'
@@ -219,7 +223,15 @@ const config = {
   assetPrefix: "/site-static",
   allowedDevOrigins,
   reactStrictMode: true,
-  images: { unoptimized: true },
+  images: {
+    unoptimized: true,
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "cdn.sanity.io",
+      },
+    ],
+  },
   transpilePackages: ["@prisma/eclipse"],
   async headers() {
     return [
@@ -231,4 +243,4 @@ const config = {
   },
 };
 
-export default config;
+export default withMDX(config);

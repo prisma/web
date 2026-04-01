@@ -83,7 +83,7 @@ export const metadata: Metadata = {
 export default function SiteHome() {
   return (
     <main className="flex-1 w-full z-1 bg-background-default">
-      <div className="hero h-123 -mt-24 flex items-end justify-center px-4">
+      <section className="hero h-123 -mt-24 flex items-end justify-center px-4">
         <div className="w-screen h-123 absolute inset-0">
           <Antigravity
             count={300}
@@ -133,132 +133,134 @@ export default function SiteHome() {
             </CopyCode>
           </div>
         </div>
-      </div>
-      <div className="logo-parade"></div>
-      <div>
-        <div className="my-12">
-          <Bento
-            bentoSection={{
-              boxes: [
-                {
-                  title: "MCP Server",
-                  subtitle: "Use AI to configure and manage databases.",
-                  imageUrl: "/illustrations/homepage/mcp",
-                  imageAlt: "MCP server",
-                  icon: "fa-light fa-cloud-arrow-up",
-                  link: "/mcp",
-                },
-                {
-                  title: "Manage databases",
-                  subtitle:
-                    "Create, manage and explore databases directly in your IDE.",
-                  imageUrl: "/illustrations/homepage/ide",
-                  imageAlt: "IDE",
-                  icon: "fa-light fa-screwdriver-wrench",
-                  link: "https://marketplace.visualstudio.com/items?itemName=Prisma.prisma",
-                },
-                {
-                  title: "Type-safety",
-                  subtitle: "Code faster with auto-completion and type safety.",
-                  imageUrl: "/illustrations/homepage/typesafe",
-                  imageAlt: "Type-safe queries",
-                  icon: "fa-light fa-message-text",
-                  link: "https://www.prisma.io/docs/orm/prisma-client/type-safety",
-                },
-                {
-                  title: "Work collaboratively",
-                  subtitle: "Manage projects and databases with your team.",
-                  imageUrl: "/illustrations/homepage/collaborative",
-                  imageAlt: "Collaborative work",
-                  icon: "fa-light fa-screen-users",
-                  link: "https://console.prisma.io",
-                },
-                {
-                  title: "Browse your data",
-                  subtitle:
-                    "Explore, filter, and edit your data with an interface.",
-                  imageUrl: "/illustrations/homepage/data",
-                  imageAlt: "Data browsing",
-                  icon: "fa-light fa-magnifying-glass-arrow-right",
-                  link: "/studio",
-                },
-              ],
-            }}
-          />
-        </div>
-      </div>
-      <div className="w-screen  ">
-        <div className="my-12">
-          <CardSection cardSection={twoCol} />
-        </div>
-      </div>
-      <div>
-        <div className="my-12 bg-[linear-gradient(180deg,var(--color-background-default)-177.75%,var(--color-background-ppg-str)100%)] shadow-[0_1px_2px_0_rgba(0,0,0,0.04)] p-12">
-          <div className="web-cta flex gap-3 md:gap-12 items-center mx-auto w-fit lg:p-4 flex-col md:flex-row">
-            <h3 className="text-2xl text-foreground-neutral font-sans-display font-bold text-center md:text-left">
-              Build anything.
-              <br />
-              Deploy instantly.
-            </h3>
-            <div className="content flex flex-col lg:flex-row gap-3 lg:gap-12 items-center md:items-start lg:items-center">
-              <p className="max-w-94 w-full text-center md:text-left text-foreground-neutral-weak text-md">
-                Give your users instant production-ready Postgres, create
-                databases, add a built-in data browser, and personalize it.
-              </p>
-              <Button variant="ppg" size="2xl">
-                <span>Explore Pricing</span>
-                <i className="fa-regular fa-arrow-right ml-2" />
-              </Button>
-            </div>
+      </section>
+
+      <section className="my-12">
+        <Bento
+          bentoSection={{
+            boxes: [
+              {
+                title: "MCP Server",
+                subtitle: "Use AI to configure and manage databases.",
+                imageUrl: "/illustrations/homepage/mcp",
+                imageAlt: "MCP server",
+                icon: "fa-light fa-cloud-arrow-up",
+                link: "/mcp",
+              },
+              {
+                title: "Manage databases",
+                subtitle:
+                  "Create, manage and explore databases directly in your IDE.",
+                imageUrl: "/illustrations/homepage/ide",
+                imageAlt: "IDE",
+                icon: "fa-light fa-screwdriver-wrench",
+                link: "https://marketplace.visualstudio.com/items?itemName=Prisma.prisma",
+              },
+              {
+                title: "Type-safety",
+                subtitle: "Code faster with auto-completion and type safety.",
+                imageUrl: "/illustrations/homepage/typesafe",
+                imageAlt: "Type-safe queries",
+                icon: "fa-light fa-message-text",
+                link: "https://prisma.io/docs/orm/prisma-client/type-safety",
+              },
+              {
+                title: "Work collaboratively",
+                subtitle: "Manage projects and databases with your team.",
+                imageUrl: "/illustrations/homepage/collaborative",
+                imageAlt: "Collaborative work",
+                icon: "fa-light fa-screen-users",
+                link: "https://console.prisma.io",
+              },
+              {
+                title: "Browse your data",
+                subtitle:
+                  "Explore, filter, and edit your data with an interface.",
+                imageUrl: "/illustrations/homepage/data",
+                imageAlt: "Data browsing",
+                icon: "fa-light fa-magnifying-glass-arrow-right",
+                link: "/studio",
+              },
+            ],
+          }}
+        />
+      </section>
+
+      {/* Card Sections */}
+      <section className="w-screen my-12">
+        <CardSection cardSection={twoCol} />
+      </section>
+
+      {/* Pricing CTA Section */}
+      <section className="my-12 bg-[linear-gradient(180deg,var(--color-background-default)-177.75%,var(--color-background-ppg-str)100%)] p-12 shadow-[0_1px_2px_0_rgba(0,0,0,0.04)]">
+        <div className="web-cta mx-auto flex w-fit flex-col items-center gap-3 md:flex-row md:gap-12 lg:p-4">
+          <h3 className="text-2xl text-center font-sans-display font-bold text-foreground-neutral md:text-left">
+            Build anything.
+            <br />
+            Deploy instantly.
+          </h3>
+          <div className="content flex flex-col items-center gap-3 md:items-start lg:flex-row lg:items-center lg:gap-12">
+            <p className="max-w-94 w-full text-center text-md text-foreground-neutral-weak md:text-left">
+              Give your users instant production-ready Postgres, create
+              databases, add a built-in data browser, and personalize it.
+            </p>
+            <Button variant="ppg" size="2xl" href="/pricing">
+              <span>Explore Pricing</span>
+              <i className="fa-regular fa-arrow-right ml-2" />
+            </Button>
           </div>
         </div>
-      </div>
+      </section>
+
+      {/* Testimonials Section */}
       {review?.testimonials?.length > 0 && (
-        <div>
-          <div className="my-12">
-            <div className="px-4 py-10">
-              <div className="max-w-[1240px] mx-auto">
-                <h5
-                  className="[&>b]:text-background-ppg-reverse-strong font-sans-display stretch-display text-center text-base mb-12"
-                  dangerouslySetInnerHTML={{ __html: review.title }}
-                />
-                <Testimonials
-                  noShadow
-                  list={review.testimonials}
-                  mask="linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)"
-                />
-              </div>
+        <section className="my-12">
+          <div className="px-4 py-10">
+            <div className="max-w-[1240px] mx-auto">
+              <h5
+                className="[&>b]:text-background-ppg-reverse-strong font-sans-display stretch-display text-center text-base mb-12"
+                dangerouslySetInnerHTML={{ __html: review.title }}
+              />
+              <Testimonials
+                noShadow
+                list={review.testimonials}
+                mask="linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)"
+              />
             </div>
           </div>
-        </div>
+        </section>
       )}
-      <div className="bg-[url('/illustrations/homepage/footer_grid.svg')] bg-contain bg-center before:inset-x-30 before:inset-y-[45%] before:absolute relative before:content-[''] before:pointer-events-none before:-z-1 rounded-full before:bg-teal-400 before:blur-[100px]">
-        <div className="my-12 p-12">
-          <div className="flex flex-col mx-auto w-fit items-center justify-center gap-8">
-            <div className="flex flex-col items-center text-center gap-4">
-              <h2 className="text-3xl text-foreground-neutral font-sans-display stretch-display">
-                Ready to try Prisma?
-              </h2>
-              <p className="text-foreground-neutral-weak">
-                Deploy a Postgres database instantly.
-              </p>
+
+      {/* Footer CTA Section */}
+      <section className="bg-radial from-background-ppg/50 from-0% to-background-default to-70% px-4 py-12">
+        <div className="mx-auto rounded-2xl bg-[url('/illustrations/homepage/footer_grid.svg')] bg-cover bg-center px-4 py-12">
+          <div className="p-4 md:p-8">
+            <div className="mx-auto flex max-w-[580px] flex-col items-center gap-8 text-center">
+              <div className="flex flex-col items-center gap-4">
+                <h2 className="text-3xl text-foreground-neutral font-sans-display stretch-display">
+                  Ready to try Prisma?
+                </h2>
+                <p className="text-foreground-neutral-weak">
+                  Deploy a Postgres database instantly.
+                </p>
+              </div>
+              <div className="flex flex-col gap-6 md:flex-row">
+                <Button variant="ppg" size="2xl">
+                  <span>Create your first Database</span>
+                  <i className="fa-regular fa-arrow-right ml-2" />
+                </Button>
+                <Button variant="default-stronger" size="2xl" href="/pricing">
+                  <span>Explore Pricing</span>
+                  <i className="fa-regular fa-arrow-right ml-2" />
+                </Button>
+              </div>
+              <h6 className="mb-0! -mt-4 text-xs text-foreground-neutral-weaker">
+                Free to get started, no credit card needed.
+              </h6>
             </div>
-            <div className="flex flex-col md:flex-row gap-6">
-              <Button variant="ppg" size="2xl">
-                <span>Create your first Database</span>
-                <i className="fa-regular fa-arrow-right ml-2" />
-              </Button>
-              <Button variant="default-stronger" size="2xl" href="/pricing">
-                <span>Explore Pricing</span>
-                <i className="fa-regular fa-arrow-right ml-2" />
-              </Button>
-            </div>
-            <h6 className="mb-0! -mt-4 text-foreground-neutral-weaker text-xs">
-              Free to get started, no credit card needed.
-            </h6>
           </div>
         </div>
-      </div>
+      </section>
     </main>
   );
 }

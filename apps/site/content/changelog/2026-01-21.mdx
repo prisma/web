@@ -1,0 +1,61 @@
+---
+title: "Prisma ORM v7.3.0: fast and small query compilers"
+date: "2026-01-21"
+version: "v7.3.0"
+slug: "2026-01-21"
+headline: "Prisma ORM v7.3.0: fast and small query compilers"
+tags:
+  - "Prisma ORM"
+canonical: "/changelog#log2026-01-21"
+share:
+  active: true
+  content: "Look at this page: "
+source:
+  exportedAt: "2026-03-31T10:29:19.701Z"
+---
+
+## Prisma ORM v7.3.0: fast and small query compilers
+
+- [\#28976](https://github.com/prisma/prisma/pull/28976): Fast and Small Query Compilers
+We've been working on various performance-related bugs since the initial ORM 7.0 release. With 7.3.0, we're introducing a new `compilerBuild` option for the client generator block in `schema.prisma` with two options: `fast` and `small`. This allows you to swap the underlying Query Compiler engine based on your selection, one built for speed (with an increase in size), and one built for size (with the trade-off for speed). By default, the `fast` mode is used, but this can be set by the user. We still have more in progress for performance, but this new `compilerBuild` option is our first step toward addressing your concerns!
+
+```text
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+  compilerBuild = "fast" // "fast" | "small"
+}
+```
+
+- [\#29005](https://github.com/prisma/prisma/pull/29005): Bypass the Query Compiler for Raw Queries
+Raw queries (`$executeRaw`, `$queryRaw`) can now skip going through the query compiler and query interpreter infrastructure. They can be sent directly to the driver adapter, removing additional overhead.
+- [\#28965](https://github.com/prisma/prisma/pull/28965): Update MSSQL to v12.2.0
+This community PR updates the `@prisma/adapter-mssql` to use MSSQL v12.2.0. Thanks [Jay-Lokhande](https://github.com/Jay-Lokhande)!
+- [\#29001](https://github.com/prisma/prisma/pull/29001): Pin better-sqlite3 version to avoid SQLite bug
+An underlying bug in SQLite 3.51.0 has affected the `better-sqlite3` adapter. We’ve bumped the version that powers `@prisma/better-sqlite3` and have pinned the version to prevent any unexpected issues. If you are using `@prisma/better-sqlite3` , please upgrade to v7.3.0.
+- [\#29002](https://github.com/prisma/prisma/pull/29002): Revert `@map` enums to v6.19.0 behavior 
+In the initial release of v7.0, we made a change with Mapped Enums where the generated enum would get its value from the value passed to the `@map` function. This was a breaking change from v6 that caused issues for many users. We have reverted this change for the time being, as many different diverging approaches have emerged from the community discussion.
+- [prisma-engines\#5745](https://github.com/prisma/prisma-engines/pull/5745): Cast BigInt to text in JSON aggregation
+When using `relationJoins` with BigInt fields in Prisma 7, JavaScript's `JSON.parse` loses precision for integers larger than `Number.MAX_SAFE_INTEGER` (2^53 - 1).This happens because PostgreSQL's `JSONB_BUILD_OBJECT` returns BigInt values as JSON numbers, which JavaScript cannot represent precisely.
+
+```text
+// Original BigInt ID: 312590077454712834
+// After JSON.parse: 312590077454712830 (corrupted!)
+
+```
+
+This PR cast BigInt columns to `::text` inside `JSONB_BUILD_OBJECT` calls, similar to how `MONEY` is already cast to `::numeric`.This ensures BigInt values are returned as JSON strings, preserving full precision when parsed in JavaScript.
+
+```text
+-- Before
+JSONB_BUILD_OBJECT('id', "id")
+
+-- After
+JSONB_BUILD_OBJECT('id', "id"::text)
+```
+
+## Enterprise support
+
+Thousands of teams use Prisma and many of them already tap into our Enterprise & Agency Support Program for hands-on help with everything from schema integrations and performance tuning to security and compliance.
+
+With this program you also get priority issue triage and bug fixes, expert scalability advice, and custom training so that your Prisma-powered apps stay rock-solid at any scale. Learn more or join: [https://prisma.io/enterprise](https://prisma.io/enterprise).
