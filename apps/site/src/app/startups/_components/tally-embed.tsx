@@ -15,10 +15,7 @@ export function TallyEmbed() {
       />
       <Script
         src="https://tally.so/widgets/embed.js"
-        onLoad={() => {
-          // @ts-expect-error -- Tally is loaded via script
-          if (window.Tally) window.Tally.loadEmbeds();
-        }}
+        onLoad={() => window.Tally?.loadEmbeds()}
       />
     </>
   );
