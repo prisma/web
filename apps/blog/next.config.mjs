@@ -205,6 +205,17 @@ const allowedDevOrigins = (
 const config = {
   reactCompiler: true,
   async redirects() {
+    const tagSlugs = [
+      "announcement",
+      "data-platform",
+      "education",
+      "orm",
+      "prisma-postgres",
+      "release",
+      "serverless",
+      "user-success-story",
+    ];
+
     return [
       {
         source: "/",
@@ -212,6 +223,11 @@ const config = {
         permanent: false,
         basePath: false,
       },
+      ...tagSlugs.map((tag) => ({
+        source: `/${tag}`,
+        destination: `/?tag=${tag}`,
+        permanent: true,
+      })),
     ];
   },
   async rewrites() {
