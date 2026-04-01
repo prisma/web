@@ -223,7 +223,15 @@ const config = {
   assetPrefix: "/site-static",
   allowedDevOrigins,
   reactStrictMode: true,
-  images: { unoptimized: true },
+  images: {
+    unoptimized: true,
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "cdn.sanity.io",
+      },
+    ],
+  },
   transpilePackages: ["@prisma/eclipse"],
   async headers() {
     return [

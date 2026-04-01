@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { Button } from "@prisma/eclipse";
 import { TallyEmbed } from "./_components/tally-embed";
 
@@ -82,7 +83,7 @@ export default function StartupsPage() {
           </p>
           <Button variant="orm" size="4xl" href="#contact-us">
             <span>Join the program</span>
-            <i className="fa-regular fa-arrow-down ml-2" />
+            <i className="fa-regular fa-arrow-down ml-2" aria-hidden="true" />
           </Button>
         </div>
       </div>
@@ -120,7 +121,10 @@ export default function StartupsPage() {
                     key={b.title}
                     className="flex items-start gap-4 rounded-lg border border-stroke-neutral bg-background-neutral-weak p-4"
                   >
-                    <i className="fa-solid fa-circle-check text-foreground-orm text-lg mt-0.5 shrink-0" />
+                    <i
+                      className="fa-solid fa-circle-check text-foreground-orm text-lg mt-0.5 shrink-0"
+                      aria-hidden="true"
+                    />
                     <div>
                       <span className="font-bold text-foreground-neutral">
                         {b.title}
@@ -144,19 +148,28 @@ export default function StartupsPage() {
               </h2>
               <ul className="space-y-3">
                 <li className="flex items-start gap-3 text-foreground-neutral">
-                  <i className="fa-solid fa-arrow-right text-foreground-orm mt-1 shrink-0" />
+                  <i
+                    className="fa-solid fa-arrow-right text-foreground-orm mt-1 shrink-0"
+                    aria-hidden="true"
+                  />
                   <span className="font-semibold">
                     Pre-seed, seed, or series-A
                   </span>
                 </li>
                 <li className="flex items-start gap-3 text-foreground-neutral">
-                  <i className="fa-solid fa-arrow-right text-foreground-orm mt-1 shrink-0" />
+                  <i
+                    className="fa-solid fa-arrow-right text-foreground-orm mt-1 shrink-0"
+                    aria-hidden="true"
+                  />
                   <span className="font-semibold">
                     Raised venture funding in the last 12 months
                   </span>
                 </li>
                 <li className="flex items-start gap-3 text-foreground-neutral">
-                  <i className="fa-solid fa-arrow-right text-foreground-orm mt-1 shrink-0" />
+                  <i
+                    className="fa-solid fa-arrow-right text-foreground-orm mt-1 shrink-0"
+                    aria-hidden="true"
+                  />
                   <span className="font-semibold">
                     Founded in the last 5 years
                   </span>
@@ -169,19 +182,28 @@ export default function StartupsPage() {
               </h2>
               <ul className="space-y-3">
                 <li className="flex items-start gap-3 text-foreground-neutral">
-                  <i className="fa-solid fa-arrow-right text-foreground-orm mt-1 shrink-0" />
+                  <i
+                    className="fa-solid fa-arrow-right text-foreground-orm mt-1 shrink-0"
+                    aria-hidden="true"
+                  />
                   <span className="font-semibold">
                     At least 5k MRR for the last 6 months
                   </span>
                 </li>
                 <li className="flex items-start gap-3 text-foreground-neutral">
-                  <i className="fa-solid fa-arrow-right text-foreground-orm mt-1 shrink-0" />
+                  <i
+                    className="fa-solid fa-arrow-right text-foreground-orm mt-1 shrink-0"
+                    aria-hidden="true"
+                  />
                   <span className="font-semibold">
                     Two full-time team members
                   </span>
                 </li>
                 <li className="flex items-start gap-3 text-foreground-neutral">
-                  <i className="fa-solid fa-arrow-right text-foreground-orm mt-1 shrink-0" />
+                  <i
+                    className="fa-solid fa-arrow-right text-foreground-orm mt-1 shrink-0"
+                    aria-hidden="true"
+                  />
                   <span className="font-semibold">Can do attitude 😉</span>
                 </li>
               </ul>
@@ -198,7 +220,10 @@ export default function StartupsPage() {
               product.
             </p>
             <div className="flex items-center justify-center gap-4 flex-wrap">
-              <i className="fa-solid fa-message text-foreground-orm text-2xl" />
+              <i
+                className="fa-solid fa-message text-foreground-orm text-2xl"
+                aria-hidden="true"
+              />
               <span className="font-bold text-foreground-neutral text-lg">
                 Startups blog announcement
               </span>
@@ -230,8 +255,7 @@ export default function StartupsPage() {
                   {t.quote}
                 </p>
                 <div className="flex items-center gap-4">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <Image
                     src={t.imageUrl}
                     alt={`Profile photo of ${t.author}`}
                     width={48}
