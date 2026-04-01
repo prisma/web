@@ -132,7 +132,7 @@ const capabilities: McpCapability[] = [
 
 export default function McpPage() {
   return (
-    <main className="relative flex flex-col overflow-x-hidden  text-foreground-neutral">
+    <main className="relative flex-1 w-full -mt-24 flex flex-col overflow-x-hidden bg-[linear-gradient(0deg,var(--color-background-default)_95%,var(--color-background-ppg)_100%)] text-foreground-neutral">
       <div className="relative z-1 flex flex-col">
         <McpHeroSection docsHref={DOCS_MCP} features={heroFeatures} />
         <McpVideoSection />
