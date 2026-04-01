@@ -6,8 +6,6 @@ import {
 } from "../../lib/blog-metadata";
 import { Button } from "@prisma/eclipse";
 import { CopyCode } from "@/components/homepage/copy-btn";
-import LogoParade from "@prisma-docs/ui/components/logo-parade";
-import React from "react";
 import { Bento } from "@/components/homepage/bento";
 import { CardSection } from "@/components/homepage/card-section/card-section";
 import review from "../../data/homepage.json";
@@ -61,6 +59,25 @@ const twoCol = [
 export const metadata: Metadata = {
   title: SITE_HOME_TITLE,
   description: SITE_HOME_DESCRIPTION,
+  alternates: {
+    canonical: "https://www.prisma.io/",
+  },
+  openGraph: {
+    title: SITE_HOME_TITLE,
+    description: SITE_HOME_DESCRIPTION,
+    url: "https://www.prisma.io/",
+    images: [
+      {
+        url: "/og/og-index.png",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_HOME_TITLE,
+    description: SITE_HOME_DESCRIPTION,
+    images: ["/og/og-index.png"],
+  },
 };
 
 export default function SiteHome() {
@@ -116,6 +133,7 @@ export default function SiteHome() {
             </CopyCode>
           </div>
         </div>
+<<<<<<< dr-7669-mcp-2026
       </section>
       
       <section className="my-12">
@@ -191,6 +209,85 @@ export default function SiteHome() {
               <span>Explore Pricing</span>
               <i className="fa-regular fa-arrow-right ml-2" />
             </Button>
+=======
+      </div>
+      <div className="logo-parade"></div>
+      <div>
+        <div className="my-12">
+          <Bento
+            bentoSection={{
+              boxes: [
+                {
+                  title: "MCP Server",
+                  subtitle: "Use AI to configure and manage databases.",
+                  imageUrl: "/illustrations/homepage/mcp",
+                  imageAlt: "MCP server",
+                  icon: "fa-light fa-cloud-arrow-up",
+                  link: "/mcp",
+                },
+                {
+                  title: "Manage databases",
+                  subtitle:
+                    "Create, manage and explore databases directly in your IDE.",
+                  imageUrl: "/illustrations/homepage/ide",
+                  imageAlt: "IDE",
+                  icon: "fa-light fa-screwdriver-wrench",
+                  link: "https://marketplace.visualstudio.com/items?itemName=Prisma.prisma",
+                },
+                {
+                  title: "Type-safety",
+                  subtitle: "Code faster with auto-completion and type safety.",
+                  imageUrl: "/illustrations/homepage/typesafe",
+                  imageAlt: "Type-safe queries",
+                  icon: "fa-light fa-message-text",
+                  link: "https://www.prisma.io/docs/orm/prisma-client/type-safety",
+                },
+                {
+                  title: "Work collaboratively",
+                  subtitle: "Manage projects and databases with your team.",
+                  imageUrl: "/illustrations/homepage/collaborative",
+                  imageAlt: "Collaborative work",
+                  icon: "fa-light fa-screen-users",
+                  link: "https://console.prisma.io",
+                },
+                {
+                  title: "Browse your data",
+                  subtitle:
+                    "Explore, filter, and edit your data with an interface.",
+                  imageUrl: "/illustrations/homepage/data",
+                  imageAlt: "Data browsing",
+                  icon: "fa-light fa-magnifying-glass-arrow-right",
+                  link: "/studio",
+                },
+              ],
+            }}
+          />
+        </div>
+      </div>
+      <div className="w-screen  ">
+        <div className="my-12">
+          <CardSection cardSection={twoCol} />
+        </div>
+      </div>
+      <div>
+        <div className="my-12 bg-[linear-gradient(180deg,var(--color-background-default)-177.75%,var(--color-background-ppg-str)100%)] shadow-[0_1px_2px_0_rgba(0,0,0,0.04)] p-12">
+          <div className="web-cta flex gap-3 md:gap-12 items-center mx-auto w-fit lg:p-4 flex-col md:flex-row">
+            <h3 className="text-2xl text-foreground-neutral font-sans-display font-bold text-center md:text-left">
+              Build anything.
+              <br />
+              Deploy instantly.
+            </h3>
+            <div className="content flex flex-col lg:flex-row gap-3 lg:gap-12 items-center md:items-start lg:items-center">
+              <p className="max-w-94 w-full text-center md:text-left text-foreground-neutral-weak text-md">
+                Give your users instant production-ready Postgres, create
+                databases, add a built-in data browser, and personalize it.
+              </p>
+              <Button variant="ppg" size="2xl">
+                <span>Explore Pricing</span>
+                <i className="fa-regular fa-arrow-right ml-2" />
+              </Button>
+            </div>
+>>>>>>> main
           </div>
         </div>
       </section>

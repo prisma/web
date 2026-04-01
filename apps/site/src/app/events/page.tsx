@@ -1,4 +1,6 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
+import { JsonLd } from "@/components/json-ld";
+import { createCollectionPageStructuredData } from "@/lib/structured-data";
 import { Badge, Button, Card, CardContent } from "@prisma/eclipse";
 import Image from "next/image";
 import {
@@ -10,18 +12,42 @@ import {
   type SponsoredEvent,
 } from "./events-data";
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: "Events | Prisma",
   description:
-    "Find out when the next event or Meetup is happening, at which conferences you can see Prisma folks, and explore the content from previous events.",
-  alternates: {
-    canonical: "https://www.prisma.io/events",
-  },
-};
+    "Find upcoming Prisma events and Meetups, see where the team will be speaking, and explore recordings and resources from past events.",
+  path: "/events",
+  ogImage: "/og/og-events.png",
+});
+
+const eventsStructuredData = createCollectionPageStructuredData({
+  path: "/events",
+  name: "Prisma Events",
+  description:
+    "Find upcoming Prisma events and Meetups, see where the team will be speaking, and explore recordings and resources from past events.",
+  items: [
+    ...meetups.map((meetup) => ({
+      name: meetup.title,
+      url: meetup.link,
+      description: meetup.description,
+    })),
+    ...sponsoredEvents.map((event) => ({
+      name: event.name,
+      url: event.link,
+      description: "Sponsored event supported by Prisma.",
+    })),
+    ...pastEvents.map((event) => ({
+      name: event.name,
+      url: event.link,
+      description: event.description,
+    })),
+  ],
+});
 
 export default function EventsPage() {
   return (
     <main className="flex-1 w-full -mt-24 bg-background-default text-foreground-neutral">
+      <JsonLd id="events-structured-data" data={eventsStructuredData} />
       {/* Hero */}
       <section className="px-4 pt-36 pb-12 md:pb-16">
         <div className="mx-auto flex max-w-[720px] flex-col items-center gap-6 text-center">

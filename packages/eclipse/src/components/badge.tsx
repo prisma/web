@@ -12,7 +12,8 @@ const badgeVariants = cva(
       color: {
         neutral: "bg-background-neutral text-foreground-neutral",
         ppg: "bg-background-ppg text-foreground-ppg",
-        orm: "bg-background-orm text-foreground-orm",
+        orm: "bg-background-orm-reverse text-foreground-orm-reverse",
+        "orm-reverse": "bg-background-orm text-foreground-orm",
         error: "bg-background-error text-foreground-error",
         success: "bg-background-success text-foreground-success",
         warning: "bg-background-warning text-foreground-warning",
@@ -39,7 +40,14 @@ export interface BadgeProps
   /**
    * The color variant of the badge
    */
-  color?: "neutral" | "ppg" | "orm" | "error" | "success" | "warning";
+  color?:
+    | "neutral"
+    | "ppg"
+    | "orm"
+    | "error"
+    | "success"
+    | "warning"
+    | "orm-reverse";
   /**
    * The size variant of the badge
    */

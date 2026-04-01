@@ -109,18 +109,36 @@ function NavigationMenuItem({
 }
 
 const navigationMenuTriggerStyle = cva(
-  "bg-transparent hover:bg-background-ppg-strong data-open:hover:bg-background-ppg-strong data-open:focus:bg-background-ppg-strong data-open:bg-background-ppg-strong focus-visible:ring-ring/50 data-popup-open:bg-background-ppg-strong data-popup-open:hover:bg-background-ppg-strong rounded-none! px-2.5 py-1.5 text-base font-semibold transition-all focus-visible:ring-1 focus-visible:outline-1 disabled:opacity-50 group/navigation-menu-trigger inline-flex h-9 w-max items-center justify-center disabled:pointer-events-none outline-none md:rounded-square! md:overflow-hidden cursor-pointer",
+  "bg-transparent rounded-none! px-2.5 py-1.5 text-base font-semibold transition-all focus-visible:ring-1 focus-visible:outline-1 disabled:opacity-50 group/navigation-menu-trigger inline-flex h-9 w-max items-center justify-center disabled:pointer-events-none outline-none md:rounded-square! md:overflow-hidden cursor-pointer focus-visible:ring-ring/50",
+  {
+    variants: {
+      variant: {
+        ppg: "hover:bg-background-ppg-strong data-open:hover:bg-background-ppg-strong data-open:focus:bg-background-ppg-strong data-open:bg-background-ppg-strong data-popup-open:bg-background-ppg-strong data-popup-open:hover:bg-background-ppg-strong",
+        orm: "hover:bg-background-orm-strong data-open:hover:bg-background-orm-strong data-open:focus:bg-background-orm-strong data-open:bg-background-orm-strong data-popup-open:bg-background-orm-strong data-popup-open:hover:bg-background-orm-strong",
+      },
+    },
+    defaultVariants: {
+      variant: "ppg",
+    },
+  },
 );
 
 function NavigationMenuTrigger({
   className,
   children,
+  variant = "ppg",
   ...props
-}: NavigationMenuPrimitive.Trigger.Props) {
+}: NavigationMenuPrimitive.Trigger.Props & {
+  variant?: "ppg" | "orm";
+}) {
   return (
     <NavigationMenuPrimitive.Trigger
       data-slot="navigation-menu-trigger text-foreground-neutral"
-      className={cn(navigationMenuTriggerStyle(), "group", className)}
+      className={cn(
+        navigationMenuTriggerStyle({ variant }),
+        "group",
+        className,
+      )}
       {...props}
     >
       {children}{" "}
@@ -179,13 +197,21 @@ function NavigationMenuPositioner({
 
 function NavigationMenuLink({
   className,
+  variant = "ppg",
   ...props
-}: NavigationMenuPrimitive.Link.Props) {
+}: React.ComponentProps<typeof NavigationMenuPrimitive.Link> & {
+  variant?: "ppg" | "orm";
+}) {
+  const variantClasses =
+    variant === "orm"
+      ? "data-active:focus:bg-background-orm-strong data-active:hover:bg-background-orm-strong data-active:bg-background-orm-strong hover:bg-background-orm-strong"
+      : "data-active:focus:bg-background-ppg-strong data-active:hover:bg-background-ppg-strong data-active:bg-background-ppg-strong hover:bg-background-ppg-strong";
+
   return (
     <NavigationMenuPrimitive.Link
-      data-slot="navigation-menu-link"
       className={cn(
-        "data-active:focus:bg-background-ppg-strong data-active:hover:bg-background-ppg-strong data-active:bg-background-ppg-strong focus-visible:ring-ring/50 hover:bg-background-ppg-strong flex items-center gap-2 rounded-none p-2 text-base transition-all outline-none focus-visible:ring-1 focus-visible:outline-1 in-data-[slot=navigation-menu-content]:rounded-none [&_svg:not([class*='size-'])]:size-4 md:rounded-square",
+        "focus-visible:ring-ring/50 flex items-center gap-2 rounded-none p-2 text-base transition-all outline-none focus-visible:ring-1 focus-visible:outline-1 in-data-[slot=navigation-menu-content]:rounded-none [&_svg:not([class*='size-'])]:size-4 md:rounded-square",
+        variantClasses,
         className,
       )}
       {...props}
@@ -294,20 +320,35 @@ function Socials({
 
 function MenuNavigationItem({
   link,
+  variant = "ppg",
 }: {
   link: NonNullable<WebNavigationLink["sub"]>[number];
+  variant?: "ppg" | "orm";
 }) {
+  const hoverClass =
+    variant === "orm"
+      ? "hover:bg-background-orm-strong"
+      : "hover:bg-background-ppg-strong";
+  const iconColor =
+    variant === "orm"
+      ? "text-background-orm-reverse"
+      : "text-background-ppg-reverse";
+
   return (
     <NavigationMenuLink
       key={link.url}
       href={link.url}
       target={link.external ? "_blank" : "_self"}
       rel={link.external ? "noopener noreferrer" : undefined}
-      className="flex gap-2 items-center justify-start hover:bg-background-ppg-strong w-full rounded-square! overflow-hidden"
+      variant={variant}
+      className={cn(
+        "flex gap-2 items-center justify-start w-full rounded-square! overflow-hidden",
+        hoverClass,
+      )}
     >
       {link.icon ? (
-        <Action color="ppg" size="3xl">
-          <i className={cn("text-background-ppg-reverse", link.icon)} />
+        <Action color={variant} size="3xl">
+          <i className={cn(iconColor, link.icon)} />
         </Action>
       ) : null}
       <div className="flex flex-col gap-0">
@@ -326,15 +367,32 @@ function MenuNavigationItem({
 }
 
 // Add this new component before NavigationMobileMenu
-function MobileMenuItemWithSubmenu({ link }: { link: WebNavigationLink }) {
+function MobileMenuItemWithSubmenu({
+  link,
+  variant = "ppg",
+}: {
+  link: WebNavigationLink;
+  variant?: "ppg" | "orm";
+}) {
   const [isOpen, setOpen] = useState(false);
+
+  const hoverClass =
+    variant === "orm"
+      ? "hover:bg-background-orm-strong! data-open:hover:bg-background-orm-strong! data-open:bg-background-orm-strong! data-popup-open:bg-background-orm-strong! data-popup-open:hover:bg-background-orm-strong!"
+      : "hover:bg-background-ppg-strong! data-open:hover:bg-background-ppg-strong! data-open:bg-background-ppg-strong! data-popup-open:bg-background-ppg-strong! data-popup-open:hover:bg-background-ppg-strong!";
+  const openClass =
+    variant === "orm"
+      ? "bg-background-orm-strong!"
+      : "bg-background-ppg-strong!";
 
   return (
     <NavigationMenuItem key={link.text}>
       <NavigationMenuTrigger
+        variant={variant}
         className={cn(
-          "px-6 py-4 h-auto! hover:bg-background-ppg-strong! rounded-square overflow-hidden w-full justify-start border-b border-stroke-neutral data-open:hover:bg-background-ppg-strong! data-open:bg-background-ppg-strong! data-popup-open:bg-background-ppg-strong! data-popup-open:hover:bg-background-ppg-strong!",
-          isOpen && "bg-background-ppg-strong!",
+          "px-6 py-4 h-auto! rounded-square overflow-hidden w-full justify-start border-b border-stroke-neutral",
+          hoverClass,
+          isOpen && openClass,
         )}
         onClick={() => setOpen(!isOpen)}
       >
@@ -343,7 +401,11 @@ function MobileMenuItemWithSubmenu({ link }: { link: WebNavigationLink }) {
       {isOpen && link.sub && (
         <NavigationMenuList className="flex-col items-start bg-background-neutral-weaker p-2 gap-0 border-b border-stroke-neutral">
           {link.sub.map((sublink) => (
-            <MenuNavigationItem link={sublink} key={sublink.url} />
+            <MenuNavigationItem
+              link={sublink}
+              key={sublink.url}
+              variant={variant}
+            />
           ))}
         </NavigationMenuList>
       )}
@@ -355,10 +417,12 @@ function NavigationMobileMenu({
   links,
   loginHref,
   signupHref,
+  buttonVariant = "ppg",
 }: {
   links: WebNavigationLink[];
   loginHref: string;
   signupHref: string;
+  buttonVariant?: "ppg" | "orm";
 }) {
   return (
     <div className="fixed px-0 md:hidden w-screen h-screen pt-22 top-0 left-0 -z-1 bg-background-default flex flex-col justify-between">
@@ -374,7 +438,11 @@ function NavigationMobileMenu({
               </NavigationMenuLink>
             </NavigationMenuItem>
           ) : link.sub?.length ? (
-            <MobileMenuItemWithSubmenu key={link.text} link={link} />
+            <MobileMenuItemWithSubmenu
+              key={link.text}
+              link={link}
+              variant={buttonVariant}
+            />
           ) : null,
         )}
       </div>
@@ -394,7 +462,7 @@ function NavigationMobileMenu({
           <NavigationMenuItem className="w-full">
             <Button
               size="xl"
-              variant="ppg"
+              variant={buttonVariant}
               className="whitespace-nowrap w-full"
               href={signupHref}
             >

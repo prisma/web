@@ -70,7 +70,7 @@ export function PricingHeroPlans({
               <SelectTrigger className="h-10 min-w-[90px] border-stroke-neutral bg-background-default text-sm text-foreground-neutral-weak">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent alignItemWithTrigger={false}>
                 {Object.entries(symbols).map(([code, symbol]) => (
                   <SelectItem key={code} value={code}>
                     {code} {symbol}
@@ -88,7 +88,9 @@ export function PricingHeroPlans({
                 <article
                   key={planKey}
                   className={`relative rounded-2xl border ${
-                    highlighted ? "border-stroke-ppg" : "border-stroke-neutral-weak"
+                    highlighted
+                      ? "border-stroke-ppg"
+                      : "border-stroke-neutral-weak"
                   } bg-background-default p-5 text-foreground-neutral shadow-[0px_18px_42px_0px_rgba(23,43,77,0.08)]`}
                 >
                   {highlighted && (
@@ -129,7 +131,8 @@ export function PricingHeroPlans({
                   <p className="m-0 mt-3 text-4xl leading-tight font-sans-display slashed-zero tabular-nums [font-variation-settings:'wght'_800] text-foreground-neutral">
                     {plan.price[currency]}
                     <span className="text-2xl text-foreground-neutral-weak">
-                       { ' ' } / month
+                      {" "}
+                      / month
                     </span>
                   </p>
                   <Button
@@ -165,8 +168,8 @@ export function PricingHeroPlans({
             })}
           </div>
           <div className="mt-8 text-center text-xs text-foreground-ppg-weak">
-            *An operation is each time you interact with your database, no matter
-            the compute time.
+            *An operation is each time you interact with your database, no
+            matter the compute time.
             <br />
             We count the Prisma ORM queries you make, not the SQL statements you
             run.{" "}
@@ -181,7 +184,8 @@ export function PricingHeroPlans({
             about our pricing model.
           </div>
           <p className="mt-2 mb-0 text-center text-xs text-foreground-neutral-weak">
-            All quotas and limits are shared across all databases in your account.
+            All quotas and limits are shared across all databases in your
+            account.
           </p>
         </div>
       </section>

@@ -1,4 +1,6 @@
 import { Provider } from "@/components/provider";
+import { JsonLd } from "@/components/json-ld";
+import { createSiteStructuredData } from "@/lib/structured-data";
 import { getBaseUrl } from "@/lib/url";
 import "./global.css";
 import { Inter } from "next/font/google";
@@ -6,7 +8,10 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import type React from "react";
 import { SITE_HOME_DESCRIPTION, SITE_HOME_TITLE } from "@/lib/blog-metadata";
-import { WebNavigation } from "@prisma-docs/ui/components/web-navigation";
+import {
+  NavigationWrapper,
+  FooterWrapper,
+} from "@/components/navigation-wrapper";
 import { Footer } from "@prisma-docs/ui/components/footer";
 import { ThemeProvider } from "@prisma-docs/ui/components/theme-provider";
 import { FontAwesomeScript as WebFA } from "@prisma/eclipse";
@@ -44,6 +49,8 @@ const themeInitScript = `
 })();
 `;
 
+const siteStructuredData = createSiteStructuredData();
+
 function baseOptions() {
   return {
     nav: {
@@ -55,32 +62,27 @@ function baseOptions() {
         sub: [
           {
             text: "Postgres",
-            url: "https://www.prisma.io/postgres",
+            url: "/postgres",
             desc: "Managed Postgres for global workloads",
             icon: "fa-regular fa-chart-pyramid",
           },
           {
             text: "ORM",
-            url: "https://www.prisma.io/orm",
+            url: "/orm",
             desc: "Managed Postgres for global workloads",
             icon: "fa-regular fa-database",
           },
           {
             text: "Studio",
             icon: "fa-regular fa-table",
-            url: "https://www.prisma.io/studio",
+            url: "/studio",
             desc: "Explore and manipulate your data",
           },
-          {
-            icon: "fa-regular fa-bolt",
-            text: "Accelerate",
-            desc: "Make your database global",
-            url: "https://www.prisma.io/accelerate",
-          },
+     
         ],
       },
       {
-        url: "https://www.prisma.io/pricing",
+        url: "/pricing",
         text: "Pricing",
       },
       {
@@ -89,7 +91,7 @@ function baseOptions() {
         sub: [
           {
             text: "MCP",
-            url: "https://www.prisma.io/mcp",
+            url: "/mcp",
             icon: "fa-regular fa-message-code",
           },
           {
@@ -110,17 +112,17 @@ function baseOptions() {
           },
           {
             text: "Stack",
-            url: "https://www.prisma.io/stack",
+            url: "/stack",
             icon: "fa-regular fa-layer-group",
           },
           {
             text: "Ecosystem",
-            url: "https://www.prisma.io/ecosystem",
+            url: "/ecosystem",
             icon: "fa-regular fa-globe",
           },
           {
             text: "Customer stories",
-            url: "https://www.prisma.io/showcase",
+            url: "/showcase",
             icon: "fa-regular fa-users",
           },
           {
@@ -132,7 +134,7 @@ function baseOptions() {
         ],
       },
       {
-        url: "/docs",
+        url: "https://www.prisma.io/docs",
         text: "Docs",
       },
       {
@@ -149,17 +151,47 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <Script src={WebFA} crossOrigin="anonymous" />
+
+        <Script
+          id="cookieyes"
+          type="text/javascript"
+          src="https://cdn-cookieyes.com/client_data/96980f76df67ad5235fc3f0d/script.js"
+        />
+
+        <script
+          async
+          type="text/plain"
+          src="https://cdn.tolt.io/tolt.js"
+          data-tolt="fda67739-7ed0-42d2-b716-6da0edbec191"
+          data-cookieyes="cookieyes-analytics"
+          data-cookieyes-category="analytics"
+        />
+        <script
+          id="gmanager"
+          type="text/plain"
+          data-cookieyes="cookieyes-analytics"
+          data-cookieyes-category="analytics"
+          dangerouslySetInnerHTML={{
+            __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+            new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+            j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+            'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+          })(window,document,'script','dataLayer','GTM-KCGZPWB');
+          `,
+          }}
+        />
+        <JsonLd id="site-structured-data" data={siteStructuredData} />
       </head>
       <body className="flex flex-col min-h-screen pt-24 relative">
-        <div className="bg-blog absolute inset-0 -z-1 overflow-hidden" />
+        <div className="bg-background-default absolute inset-0 -z-1 overflow-hidden" />
         <Provider>
           <ThemeProvider defaultTheme="system" storageKey="theme">
-            <WebNavigation
+            <NavigationWrapper
               links={baseOptions().links}
               utm={{ source: "website", medium: "blog" }}
             />
             {children}
-            <Footer />
+            <FooterWrapper />
           </ThemeProvider>
         </Provider>
       </body>

@@ -132,7 +132,7 @@ export default function StudioPage() {
                 <i className="fa-regular fa-table text-sm" aria-hidden="true" />
                 Prisma Studio
               </p>
-              <h1 className="m-0 text-5xl leading-none text-foreground-neutral font-sans-display md:text-7xl [font-variation-settings:'wght'_900]">
+              <h1 className="m-0 text-5xl leading-none text-foreground-neutral font-sans-display md:text-6xl [font-variation-settings:'wght'_900]">
                 Explore and
                 <br />
                 understand your data
@@ -166,7 +166,12 @@ export default function StudioPage() {
             </div>
           </div>
 
-          <Image src="/illustrations/studio/hero.svg" alt="Prisma Studio Hero" width={1200} height={630} />
+          <Image
+            src="/illustrations/studio/hero.svg"
+            alt="Prisma Studio Hero"
+            width={1200}
+            height={630}
+          />
         </div>
       </section>
 
@@ -257,8 +262,10 @@ export default function StudioPage() {
       </section>
 
       {/* Try Studio Section */}
-      <section className="
-      bg-radial from-background-orm/50 from-0% to-background-default to-70% px-4 py-12">
+      <section
+        className="
+      bg-radial from-background-orm/50 from-0% to-background-default to-70% px-4 py-12"
+      >
         <div className="mx-auto rounded-2xl bg-[url('/illustrations/homepage/footer_grid.svg')] bg-cover bg-center px-4 py-12">
           <div className="p-4 md:p-8">
             <div className="mx-auto flex max-w-[580px] flex-col items-center gap-8 text-center">
