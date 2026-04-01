@@ -68,7 +68,7 @@ const PDPStatus = ({ className }: { className?: string }) => {
   }, []);
 
   const indicator = pdpStatus.status.indicator || "-";
-  const indicatorClass = indicatorStatus[indicator] || "bg-gray-500";
+  const indicatorClass = indicatorStatus[indicator] || "";
 
   return (
     <a

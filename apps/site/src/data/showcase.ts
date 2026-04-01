@@ -707,8 +707,8 @@ const communityProjects = [
   {
     name: "Antstack",
     id: "Antstack",
-    logo: "/icons/companies/anstack.svg",
-    logo_light: "/icons/companies/anstack_light.svg",
+    logo: "/icons/companies/antstack.svg",
+    logo_light: "/icons/companies/antstack_light.svg",
     technologies: ["ts", "prisma", "aws"],
     description: `Antstack is a leading full-stack serverless company aiming at disrupting the cloud computing space by providing holistic solutions to get you up and running with serverless.`,
     link: "https://www.antstack.com/",
