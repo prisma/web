@@ -206,6 +206,7 @@ const config = {
   reactCompiler: true,
   async redirects() {
     const tagSlugs = [
+      "ai",
       "announcement",
       "data-platform",
       "education",
