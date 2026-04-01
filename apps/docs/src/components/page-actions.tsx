@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
-
+import posthog from "posthog-js";
 import { useCopyButton } from "fumadocs-ui/utils/use-copy-button";
 import { buttonVariants } from "@prisma-docs/ui/components/button";
 import { cn } from "@prisma-docs/ui/lib/cn";
@@ -46,6 +46,7 @@ async function fetchMarkdownWithFallback(
 export function CopyPromptButton({ fullPrompt }: { fullPrompt: string }) {
   const [checked, onClick] = useCopyButton(async () => {
     await navigator.clipboard.writeText(fullPrompt);
+    posthog.capture("docs:copy_prompt", { page_path: window.location.pathname });
   });
 
   return (
@@ -77,7 +78,11 @@ export function LLMCopyButton({
   const [checked, onClick] = useCopyButton(async () => {
     const fallbackUrl = toIndexMarkdownUrl(markdownUrl);
     const cached = cache.get(markdownUrl) ?? (fallbackUrl ? cache.get(fallbackUrl) : undefined);
-    if (cached) return navigator.clipboard.writeText(cached);
+    if (cached) {
+      await navigator.clipboard.writeText(cached);
+      posthog.capture("docs:copy_markdown", { page_path: window.location.pathname });
+      return;
+    }
 
     setLoading(true);
 
@@ -91,6 +96,7 @@ export function LLMCopyButton({
           }),
         }),
       ]);
+      posthog.capture("docs:copy_markdown", { page_path: window.location.pathname });
     } finally {
       setLoading(false);
     }
@@ -140,6 +146,7 @@ export function ViewOptions({
     return [
       {
         title: "Open in GitHub",
+        tool: "github",
         href: githubUrl,
         icon: (
           <svg fill="currentColor" role="img" viewBox="0 0 24 24">
@@ -150,6 +157,7 @@ export function ViewOptions({
       },
       {
         title: "Open in ChatGPT",
+        tool: "chatgpt",
         href: `https://chatgpt.com/?${new URLSearchParams({
           hints: "search",
           q,
@@ -168,6 +176,7 @@ export function ViewOptions({
       },
       {
         title: "Open in Claude",
+        tool: "claude",
         href: `https://claude.ai/new?${new URLSearchParams({
           q,
         })}`,
@@ -185,6 +194,7 @@ export function ViewOptions({
       },
       {
         title: "Open in T3 Chat",
+        tool: "t3_chat",
         href: `https://t3.chat/new?${new URLSearchParams({
           q,
         })}`,
@@ -215,6 +225,12 @@ export function ViewOptions({
             rel="noreferrer noopener"
             target="_blank"
             className={cn(optionVariants())}
+            onClick={() =>
+              posthog.capture("docs:open_external_tool", {
+                page_path: window.location.pathname,
+                tool: item.tool,
+              })
+            }
           >
             {item.icon}
             {item.title}

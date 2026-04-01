@@ -33,16 +33,20 @@ export async function POST(req: Request) {
 
   const isMember = pr.author_association === "MEMBER";
 
-  const teamRes = await fetch(
-    `https://api.github.com/orgs/prisma/teams/dev-connections-write/memberships/${pr.user.login}`,
-    {
-      headers: {
-        Authorization: `Bearer ${process.env.BOT_TOKEN_PR_LINEAR_WEBHOOK!}`,
-        "X-GitHub-Api-Version": "2022-11-28",
-      },
-    }
+  const teamSlugs = ["dev-connections-write", "webdev-write"] as const;
+  const authHeaders = {
+    Authorization: `Bearer ${process.env.BOT_TOKEN_GITHUB_PR_LINEAR_WEBHOOK!}`,
+    "X-GitHub-Api-Version": "2022-11-28",
+  } as const;
+  const membershipResults = await Promise.all(
+    teamSlugs.map((slug) =>
+      fetch(
+        `https://api.github.com/orgs/prisma/teams/${encodeURIComponent(slug)}/memberships/${encodeURIComponent(pr.user.login)}`,
+        { headers: authHeaders }
+      )
+    )
   );
-  const isTeamMember = teamRes.status === 200;
+  const isTeamMember = membershipResults.some((r) => r.status === 200);
   
   if (isMember || isTeamMember) {
     return new Response("Internal contributor, skipping", { status: 200 });

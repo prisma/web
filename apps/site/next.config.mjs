@@ -1,3 +1,7 @@
+import { createMDX } from "fumadocs-mdx/next";
+
+const withMDX = createMDX();
+
 const ContentSecurityPolicy = `
   default-src 'self';
   script-src 'self' 'unsafe-inline' 'unsafe-eval'
@@ -50,7 +54,10 @@ const ContentSecurityPolicy = `
     https://*.fontawesome.com;
 
   img-src 'self' data:
+    http://localhost:3002 http://127.0.0.1:3002
+    https://www.prisma.io https://prisma.io
     https://cdn.sanity.io
+    https://prisma.io
     https://prismalens.vercel.app
     https://api.producthunt.com
     https://www.google.com
@@ -71,7 +78,9 @@ const ContentSecurityPolicy = `
     https://googleads.g.doubleclick.net
     https://vercel.live https://vercel.com data: blob:
     https://td.doubleclick.net
-    https://raw.githubusercontent.com;
+    https://raw.githubusercontent.com
+    https://*.meetupstatic.com
+    https://www.prisma.io;
 
   connect-src 'self'
     https://api.github.com
@@ -214,11 +223,16 @@ const config = {
   assetPrefix: "/site-static",
   allowedDevOrigins,
   reactStrictMode: true,
-  images: { unoptimized: true },
-  transpilePackages: ["@prisma/eclipse"],
-  experimental: {
-    globalNotFound: true,
+  images: {
+    unoptimized: true,
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "cdn.sanity.io",
+      },
+    ],
   },
+  transpilePackages: ["@prisma/eclipse"],
   async headers() {
     return [
       {
@@ -229,4 +243,4 @@ const config = {
   },
 };
 
-export default config;
+export default withMDX(config);

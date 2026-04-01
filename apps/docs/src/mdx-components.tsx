@@ -1,6 +1,6 @@
 import defaultMdxComponents from "fumadocs-ui/mdx";
+import { Youtube } from "@prisma-docs/ui/components/youtube";
 import { APIPage } from "@/components/api-page";
-import { Youtube } from "@/components/youtube";
 import { withDocsBasePath } from "@/lib/urls";
 
 import type { MDXComponents } from "mdx/types";

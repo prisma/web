@@ -67,12 +67,12 @@ export default defineConfig({
       persist: { id: "package-manager" },
       // Custom package managers to add --bun flag for bunx commands
       packageManagers: [
-        { command: (cmd: string) => convert(cmd, "npm"), name: "npm" },
-        { command: (cmd: string) => convert(cmd, "pnpm"), name: "pnpm" },
-        { command: (cmd: string) => convert(cmd, "yarn"), name: "yarn" },
+        { command: (cmd: string) => convert(cmd.replace(/^npm init -y$/, "npm init"), "npm"), name: "npm" },
+        { command: (cmd: string) => convert(cmd.replace(/^npm init -y$/, "npm init"), "pnpm"), name: "pnpm" },
+        { command: (cmd: string) => convert(cmd.replace(/^npm init -y$/, "npm init"), "yarn"), name: "yarn" },
         {
           command: (cmd: string) => {
-            const converted = convert(cmd, "bun");
+            const converted = convert(cmd.replace(/^npm init -y$/, "npm init"), "bun");
             if (!converted) return undefined;
             return converted.replace(/^bun x /, "bunx --bun ");
           },

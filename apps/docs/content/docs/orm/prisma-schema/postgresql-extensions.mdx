@@ -1,9 +1,9 @@
 ---
 title: PostgreSQL extensions
-description: 'How to install and manage PostgreSQL extensions with Prisma ORM using customized migrations, and how to use them in Prisma Client'
+description: "How to install and manage PostgreSQL extensions with Prisma ORM using customized migrations, and how to use them in Prisma Client"
 url: /orm/prisma-schema/postgresql-extensions
 metaTitle: How to use PostgreSQL extensions with Prisma ORM
-metaDescription: 'How to install and manage PostgreSQL extensions with Prisma ORM using customized migrations, and how to use them in Prisma Client.'
+metaDescription: "How to install and manage PostgreSQL extensions with Prisma ORM using customized migrations, and how to use them in Prisma Client."
 ---
 
 This page is about [PostgreSQL extensions](https://www.postgresql.org/docs/current/external-extensions.html) and explains how to use them with Prisma ORM.
@@ -45,3 +45,97 @@ npx prisma migrate deploy
 ### 4. Use the extension
 
 You can now use the extension in your queries with Prisma Client. If the extension has special data types that currently can't be natively represented in the Prisma schema, you can still define fields of that type on your models using the [`Unsupported`](/orm/prisma-schema/data-model/models#unsupported-types) fallback type.
+
+## PostGIS extension for spatial data
+
+PostGIS enables spatial and geographic objects for PostgreSQL, allowing you to store and query location data, routes, boundaries, and other geographic features. Prisma ORM provides native support for PostGIS geometry types.
+
+### Prerequisites
+
+1. Install PostGIS on your PostgreSQL server
+2. Enable the extension in your database:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS postgis;
+```
+
+### Using the Geometry type
+
+Once PostGIS is enabled, you can use the native `Geometry` type in your Prisma schema:
+
+```prisma
+model Location {
+  id       Int      @id @default(autoincrement())
+  name     String
+  position Geometry(Point, 4326)?
+}
+
+model Route {
+  id   Int      @id @default(autoincrement())
+  name String
+  path Geometry(LineString, 4326)?
+}
+
+model Zone {
+  id       Int      @id @default(autoincrement())
+  name     String
+  boundary Geometry(Polygon, 4326)?
+}
+```
+
+The `Geometry` type supports various shapes:
+
+- `Point` - Single location (e.g., restaurant, store)
+- `LineString` - Path or route
+- `Polygon` - Area or boundary
+- `MultiPoint`, `MultiLineString`, `MultiPolygon` - Collections of geometries
+
+### Native spatial operations
+
+Prisma Client provides native filters and ordering for spatial queries:
+
+```ts
+// Find locations within 1km radius
+const nearby = await prisma.location.findMany({
+  where: {
+    position: {
+      near: {
+        point: [13.4, 52.5],
+        maxDistance: 1000,
+      },
+    },
+  },
+});
+
+// Find points within a polygon boundary
+const withinArea = await prisma.location.findMany({
+  where: {
+    position: {
+      within: {
+        polygon: [
+          [0, 0],
+          [0, 10],
+          [10, 10],
+          [10, 0],
+          [0, 0],
+        ],
+      },
+    },
+  },
+});
+
+// Sort by distance from a reference point
+const sorted = await prisma.location.findMany({
+  orderBy: {
+    position: {
+      distanceFrom: {
+        point: [13.4, 52.5],
+        direction: "asc",
+      },
+    },
+  },
+  take: 10,
+});
+```
+
+For detailed usage, examples, and real-world use cases, see [Working with geometry fields](/orm/prisma-client/special-fields-and-types/working-with-geometry-fields).
