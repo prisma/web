@@ -12,6 +12,10 @@ const TIMEOUT_MS = 10_000;
 const MAX_CONCURRENCY = 15;
 const ACCEPTED_STATUSES = new Set([403, 429]);
 
+// Links that are known to work correctly but cannot be verified by an HTTP
+// checker (e.g. deeplinks that trigger a native app to open).
+const IGNORED_URLS = new Set(["https://pris.ly/cursor-deeplink"]);
+
 const IMAGE_EXTENSIONS = new Set([
   ".png",
   ".jpg",
@@ -263,6 +267,7 @@ async function main(): Promise<void> {
   const failed: FailedResult[] = [];
 
   await runWithConcurrency(uniqueUrls, MAX_CONCURRENCY, async (url) => {
+    if (IGNORED_URLS.has(url)) return;
     const result = await checkUrl(url);
     if (result.ok) return;
 
