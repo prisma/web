@@ -7,7 +7,7 @@ import { Inter } from "next/font/google";
 import type { Metadata } from "next";
 import Script from "next/script";
 import type React from "react";
-import { SITE_HOME_DESCRIPTION, SITE_HOME_TITLE } from "@/lib/blog-metadata";
+import { SITE_HOME_DESCRIPTION, SITE_HOME_TITLE } from "@/lib/site-metadata";
 import {
   NavigationWrapper,
   FooterWrapper,
@@ -78,7 +78,6 @@ function baseOptions() {
             url: "/studio",
             desc: "Explore and manipulate your data",
           },
-     
         ],
       },
       {
