@@ -141,6 +141,7 @@ const communityProjects = [
     name: "South Pole",
     id: "southpole",
     logo: "/icons/companies/southpole.svg",
+    logo_light: "/icons/companies/southpole_light.svg",
     technologies: ["ts", "prisma", "react", "postgres", "nest"],
     description:
       "South Pole has been at the forefront of decarbonization since 2006, developing and implementing comprehensive strategies that turn climate action into long-term business opportunities for Fortune 500 companies, governments and organizations around the world.",
@@ -184,7 +185,7 @@ const communityProjects = [
     technologies: ["react", "node", "prisma", "haskell", "ts"],
     description:
       "Wasp is the fastest way to develop full-stack web apps in React & Node.js. Describe high-level features (auth, CRUD, async jobs, …) via a simple config language, and write the rest of your logic in React, Node.js and Prisma.",
-    link: "https://wasp-lang.dev/",
+    link: "https://wasp.sh/",
     externalLink: true,
     quote: {
       text: "If it weren’t for Prisma, Wasp probably wouldn’t have existed today. Prisma proved to be a perfect database abstraction layer, it’s declarative philosophy fits great into Wasp and it saved us a ton of work and allowed us to focus on the other parts of the stack. The team is also very supportive and fast to answer in case of any issues, it’s a pleasure to be a member of Prisma community.",
@@ -239,7 +240,7 @@ const communityProjects = [
     name: "Gamma",
     id: "gamma",
     logo: "/icons/companies/gamma.svg",
-    logo_light: "/icons/companies/gamma-light.svg",
+    logo_light: "/icons/companies/gamma_light.svg",
     technologies: ["nest", "prisma", "aws", "next", "chakraui"],
     description:
       "Gamma is an alternative to slide decks - a fast, simple way to share and present your work. Create engaging presentations, memos, briefs, and docs that are easy to discuss live or share async. All in your browser, nothing to download or install.",
@@ -259,7 +260,7 @@ const communityProjects = [
     name: "Flux",
     id: "flux",
     logo: "/icons/companies/flux.svg",
-    logo_light: "/icons/companies/flux-light.svg",
+    logo_light: "/icons/companies/flux_light.svg",
     technologies: ["ts", "prisma", "next", "vercel", "mongodb"],
     description:
       "FLUX is Malaysia's #1 car subscription service for consumers & companies. It offers a multi brand all-inclusive monthly car subscription service that provides you with the ability to subscribe and swap cars as your needs change.",
@@ -300,7 +301,7 @@ const communityProjects = [
   {
     name: "prosperity",
     id: "prosperity",
-    logo: "/icons/companies/prosperity.png",
+    logo: "/icons/companies/prosperity.svg",
     technologies: ["ts", "prisma", "next", "graphql", "postgres"],
     description:
       "prosperity solutions enables financial players like robo-advisors, neo-banks, or trading-apps to offer investment-style pension insurances.",
@@ -337,7 +338,8 @@ const communityProjects = [
   {
     name: "Flycode",
     id: "flycode",
-    logo: "/icons/companies/flycode.png",
+    logo: "/icons/companies/flycode.svg",
+    logo_light: "/icons/companies/flycode_light.svg",
     technologies: ["ts", "prisma", "react", "postgres", "nest"],
     description:
       "FlyCode makes web apps editable without coding so companies can iterate and release products faster. With FlyCode, PMs can simply edit product copy in resource files or hardcoded strings, as well as images and links in the same git-based workflow that their developers use.",
@@ -416,7 +418,7 @@ const communityProjects = [
   {
     name: "Dotworld Technologies",
     id: "Dotworld",
-    logo: "/icons/companies/dotworld.png",
+    logo: "/icons/companies/dotworld_light.webp",
     technologies: ["ts", "prisma"],
     description:
       "Dotworld Technologies is made up of a creative team of robotics engineers, design enthusiasts and innovationeers, that help you solve challenges using cutting-edge technology.",
@@ -429,24 +431,6 @@ const communityProjects = [
       socials: {
         linkedin: "https://www.linkedin.com/company/dotworldindia/",
         twitter: "https://twitter.com/DotworldIndia",
-      },
-    },
-  },
-  {
-    name: "Simpler",
-    id: "simpler",
-    logo: "/icons/companies/simpler.png",
-    technologies: ["next", "react", "vercel", "prisma", "planetscale"],
-    description:
-      "simpler is a unique to-do app that helps you do what needs to get done so you can focus on what truly matters.",
-    link: "https://fluidwave.com/",
-    externalLink: true,
-    quote: {
-      text: "Prisma speeds up development by an incredible amount. Prisma is an invaluable technology for frontend, backend, and full-stack developers. So grateful to the Prisma community.",
-      author: "Martin Adams",
-      title: "Founder",
-      socials: {
-        twitter: "https://twitter.com/usesimpler",
       },
     },
   },
@@ -511,7 +495,8 @@ const communityProjects = [
   {
     name: "Revere",
     id: "revere",
-    logo: "/icons/companies/revere.png",
+    logo: "/icons/companies/revere.svg",
+    logo_light: "/icons/companies/revere_light.svg",
     technologies: ["next", "relay", "prisma", "graphql", "postgres"],
     description:
       "Revere is a networking and deal execution platform for commercial real estate professionals, CRE Sponsors, Brokers, and Capital Providers. With information on 50K+ CRE participants, Revere is capable of matchmaking thousands of potential deal participants with one another in seconds!",
@@ -529,7 +514,8 @@ const communityProjects = [
   {
     name: "Escape",
     id: "Escape",
-    logo: "/icons/companies/escape.png",
+    logo: "/icons/companies/escape.svg",
+    logo_light: "/icons/companies/escape_light.svg",
     technologies: ["nest", "graphql", "apollo", "prisma", "postgres"],
     description:
       "Escape scans your GraphQL endpoints to find and fix their security flaws before production!",
@@ -568,6 +554,7 @@ const communityProjects = [
     name: "Memberstack",
     id: "memberstack",
     logo: "/icons/companies/memberstack.svg",
+    logo_light: "/icons/companies/memberstack_light.svg",
     technologies: ["react", "graphql", "prisma", "aws", "postgres"],
     description:
       "Memberstack helps developers add user logins, payments and gate content on their website. Over 2,000 companies use Memberstack to accept payments and store user account data for millions of users.",
@@ -625,6 +612,7 @@ const communityProjects = [
     name: "Avenue",
     id: "avenue",
     logo: "/icons/companies/avenue.svg",
+    logo_light: "/icons/companies/avenue_light.svg",
     technologies: ["ts", "react", "nest", "prisma", "react-query"],
     description: `Avenue is the world's first operations observability platform built on the modern data stack. Avenue allows customers to set up monitors and incident response workflows on top of their database or data warehouse.`,
     link: "https://avenue.app/",
@@ -682,6 +670,7 @@ const communityProjects = [
     name: "Feather",
     id: "feather",
     logo: "/icons/companies/feather.svg",
+    logo_light: "/icons/companies/feather_light.svg",
     technologies: ["ts", "node", "prisma", "docker", "postgres"],
     description: `Insurance is overly complicated, and you’re never sure if it’s the insurance you actually need. Feather has built a solution: a digital insurance companion for Europe. Feather has helped people from over 150 countries get insurance digitally and is expanding quickly.`,
     link: "https://feather-insurance.com/",
@@ -883,7 +872,7 @@ const communityProjects = [
   {
     name: "WeFindFlats",
     id: "wefindflats",
-    logo: "/icons/companies/wefindflats.svg",
+    logo: "/icons/companies/wefindflats.png",
     technologies: ["ts", "postgres", "nest", "prisma", "aws"],
     description: `WeFindFlats is a B2B platform for data and tech-enabled flat searches for employees relocating for their job. They do this by flipping the marketplace around which massively reduced time and stress when finding a new home abroad.`,
     link: "https://www.wefindflats.com/",
@@ -957,7 +946,7 @@ const communityProjects = [
     name: "Superblog",
     id: "superblog",
     logo: "/icons/companies/superblog.png",
-    light_logo: "/icons/companies/superblog_light.png",
+    logo_light: "/icons/companies/superblog_light.png",
     technologies: ["elderjs", "next", "netlify", "prisma", "jamstack"],
     description: `Superblog is a blazing fast alternative to WordPress and medium blogs. Superblog takes care of everything: optimizing your blog for speed, consistent performance, SEO, high-quality hosting, and design to rank better in search results.`,
     link: "https://superblog.ai/",
@@ -1023,8 +1012,7 @@ const communityProjects = [
   {
     name: "Jelly",
     id: "jelly",
-    logo: "/icons/companies/jelly.svg",
-    logo_light: "/icons/companies/jelly_light.webp",
+    logo: "/icons/companies/jelly.png",
     technologies: ["nexus", "apollo", "aws", "prisma", "postgres"],
     description: `Jelly is the starting point to a more profitable and transparent kitchen, creating a nicer workplace environment. Jelly works with the best chefs and hottest restaurants in the independent foodservice market to create a centralised, all-in-one app. Jelly is already loved by thousands of chefs from Michelin-starred restaurants to school canteens and catering companies, in the UK and the US.`,
     link: "https://www.getjelly.co.uk/",
@@ -1066,7 +1054,7 @@ const communityProjects = [
     name: "Stellate",
     id: "Stellate",
     logo: "/icons/companies/stellate.svg",
-    logo_light: "/icons/companies/stellate-light.svg",
+    logo_light: "/icons/companies/stellate_light.svg",
     technologies: ["next", "ts", "graphql", "prisma", "postgres"],
     description: `The GraphQL CDN with edge caching, analytics and security protection. Stellate allows you to reduce your origin traffic by up to 95% with their GraphQL edge cache and never worry about scaling again.`,
     link: "https://stellate.co/",
@@ -1102,7 +1090,7 @@ const communityProjects = [
     name: "Prevalentware",
     id: "prevalentware",
     logo: "/icons/companies/prevalentware.webp",
-    light_logo: "/icons/companies/prevalentware_light.png",
+    logo_light: "/icons/companies/prevalentware_light.png",
     technologies: ["next", "python", "graphql", "prisma", "postgres"],
     description: `PrevalentWare is dedicated to consulting and developing solutions based on RPA and web technologies. PrevalentWare aims to create fast, reliable, and robust solutions for aiding the digital transformation processes of their customers.`,
     link: "https://www.prevalentware.com/",

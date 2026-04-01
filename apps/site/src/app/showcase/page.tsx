@@ -91,11 +91,7 @@ export default function EnterprisePage() {
             itemClassName="min-h-full h-full"
           >
             {data.stories.map((item) => (
-              <PostCard
-                key={item.title}
-                post={item}
-                className="min-h-full"
-              />
+              <PostCard key={item.title} post={item} className="min-h-full" />
             ))}
           </ScrollCarousel>
         </div>
@@ -121,23 +117,25 @@ export default function EnterprisePage() {
                     "flex flex-col items-start [&:hover>div>p]:line-clamp-none min-h-[194px] relative z-1 hover:scale-104 transition-transform bg-background-neutral-weak transition-bg",
                   )}
                 >
-                  <Image
-                    src={box.logo}
-                    alt={box.name}
-                    width={240}
-                    height={96}
-                    className={cn(
-                      "max-h-element-3xl h-full max-w-[50%] object-contain w-fit flex-1",
-                      box.logo_light && "dark:block hidden",
-                    )}
-                  />
+                  {box.logo && (
+                    <Image
+                      src={box.logo}
+                      alt={box.name}
+                      width={240}
+                      height={96}
+                      className={cn(
+                        "max-h-element-3xl h-full max-w-[50%] object-contain w-fit flex-1",
+                        box.logo_light && "dark:block hidden",
+                      )}
+                    />
+                  )}
                   {box.logo_light && (
                     <Image
                       src={box.logo_light}
                       alt={box.name}
                       width={240}
                       height={96}
-                      className="max-h-element-3xl h-full max-w-[50%] object-contain w-fit dark:hidden block"
+                      className="max-h-element-3xl h-full max-w-[50%] object-contain w-fit dark:hidden block flex-1"
                     />
                   )}
                   <h3 className="text-foreground-neutral font-sans-display text-xl stretch-display my-0 font-bold md:line-clamp-2">
