@@ -37,7 +37,7 @@ const orm = [
   "/client",
   "/orm",
   "/showcase",
-  "/ecosytem",
+  "/ecosystem",
 ];
 type ColorType = "orm" | "ppg" | undefined;
 
