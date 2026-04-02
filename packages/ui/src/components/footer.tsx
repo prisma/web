@@ -85,7 +85,7 @@ const Footer = ({
       >
         <div className="font-inter print:hidden relative">
           {/* Logo and Social Links Column */}
-          <div className="mb-8 flex-1 lg:mb-0 w-full top-0 flex justify-between items-center lg:flex-col lg:items-start lg:absolute lg:max-w-fit lg:h-72">
+          <div className="mb-8 flex-1 lg:mb-0 w-full top-0 flex justify-between items-center lg:flex-col lg:items-start lg:absolute lg:max-w-fit lg:h-[217px]">
             <div className="flex flex-col justify-center">
               <div className="text-stroke-neutral-stronger [&>svg]:h-10!">
                 {Logo}
