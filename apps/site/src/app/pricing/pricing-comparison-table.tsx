@@ -9,11 +9,11 @@ import {
   TableHeader,
   TableRow,
 } from "@prisma/eclipse";
-import { type ComparisonCell, type Symbol, comparisonSections, symbols } from "./pricing-data";
+import { type ComparisonCell, type Symbol, comparisonSections } from "./pricing-data";
 
 function renderCell(cell: ComparisonCell, currency: Symbol): string {
   if (typeof cell === "string") return cell;
-  return cell.text.replace("<price>", `${symbols[currency]}${cell.price[currency]}`);
+  return cell.text.replace("<price>", cell.price[currency]);
 }
 
 export function PricingComparisonTable({ currency }: { currency: Symbol }) {
