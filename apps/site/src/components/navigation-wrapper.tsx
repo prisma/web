@@ -47,7 +47,7 @@ function getUtmMedium(pathname: string) {
     .filter(Boolean)
     .join("-");
 
-  return slug || "home";
+  return slug || "index";
 }
 
 export function NavigationWrapper({ links, utm }: NavigationWrapperProps) {
