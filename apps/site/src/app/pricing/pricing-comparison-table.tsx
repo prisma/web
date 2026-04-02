@@ -18,8 +18,8 @@ function renderCell(cell: ComparisonCell, currency: Symbol): string {
 
 export function PricingComparisonTable({ currency }: { currency: Symbol }) {
   return (
-    <div className="max-w-[996px] mx-auto mt-10 border border-background-neutral-reverse-weak rounded-xl overflow-hidden">
-      <Table className="table-fixed">
+    <div className="max-w-[996px] mx-auto mt-10 border border-background-neutral-reverse-weak rounded-xl overflow-x-auto">
+      <Table className="table-fixed min-w-[700px]">
         <TableHeader className="[&_tr]:border-b-0">
           <TableRow className="hover:bg-transparent border-b border-background-neutral-reverse bg-background-neutral-weak">
             <TableHead className="bg-background-neutral-weak text-base uppercase tracking-[1.6px] font-sans-display [font-variation-settings:'wght'_800] text-background-neutral-weak">

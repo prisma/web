@@ -553,7 +553,7 @@ export function PricingCalculator({ currency }: { currency: Symbol }) {
                       variant="default-weaker"
                       onClick={() => setBillingCycle(cycle)}
                       className={cn(
-                        "rounded-square px-3 py-1.5 text-xs font-sans-display [font-variation-settings:'wght'_700] transition-colors",
+                        "rounded-square whitespace-nowrap flex-1 px-4 py-1.5 text-xs font-sans-display [font-variation-settings:'wght'_700] transition-colors",
                         active
                           ? "bg-background-ppg-reverse-strong text-foreground-ppg-reverse hover:bg-background-ppg-reverse-strong hover:text-foreground-ppg-reverse"
                           : "text-foreground-neutral-weaker",
