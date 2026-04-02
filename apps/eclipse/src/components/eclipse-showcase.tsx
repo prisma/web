@@ -35,8 +35,8 @@ export function EclipseShowcase() {
           <Button variant="ppg">Prisma Pulse & Accelerate</Button>
           <Button variant="orm">Prisma ORM</Button>
           <Button variant="error">Error</Button>
-          <Button variant="default-strong">Default Stronger</Button>
-          <Button variant="default-weak">Default Weaker</Button>
+          <Button variant="default-strong">Default Strong</Button>
+          <Button variant="default-weak">Default Weak</Button>
           <Button variant="link">Link</Button>
         </div>
       </section>
@@ -139,7 +139,7 @@ export function EclipseShowcase() {
 
       {/* Border Radius */}
       <section className="space-y-4">
-        <h3 className="text-xl font-semibold text-foreground-neutral">Border Radius-</h3>
+        <h3 className="text-xl font-semibold text-foreground-neutral">Border Radius</h3>
         <div className="flex flex-wrap gap-4">
           <div className="px-6 py-4 bg-background-orm rounded-low border border-stroke-orm">
             <span className="text-sm font-medium text-foreground-neutral">Low (3px)</span>
