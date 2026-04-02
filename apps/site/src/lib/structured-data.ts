@@ -6,6 +6,13 @@ type FaqEntry = {
   answer: string;
 };
 
+type PricingTier = {
+  name: string;
+  description: string;
+  price: number;
+  billingPeriod: string;
+};
+
 type ListEntry = {
   name: string;
   url: string;
@@ -80,6 +87,55 @@ export function createFaqStructuredData(pagePath: string, faqs: FaqEntry[], name
         text: toPlainText(faq.answer),
       },
     })),
+  };
+}
+
+export function createPricingStructuredData(tiers: PricingTier[]) {
+  const url = absoluteUrl("/pricing");
+  const baseUrl = getBaseUrl();
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "@id": `${url}#webpage`,
+        name: "Prisma Pricing — Plans & Features",
+        url,
+        description:
+          "Get started for free with Prisma Postgres. Choose the right plan for your workspace based on your project requirements.",
+        publisher: {
+          "@id": `${baseUrl}#organization`,
+        },
+        isPartOf: {
+          "@id": `${baseUrl}#website`,
+        },
+      },
+      ...tiers.map((tier) => ({
+        "@type": "Product",
+        name: `Prisma Postgres ${tier.name}`,
+        description: tier.description,
+        brand: {
+          "@id": `${baseUrl}#organization`,
+        },
+        offers: {
+          "@type": "Offer",
+          url,
+          priceCurrency: "USD",
+          price: tier.price,
+          priceValidUntil: new Date(
+            new Date().getFullYear() + 1,
+            new Date().getMonth(),
+            new Date().getDate(),
+          )
+            .toISOString()
+            .split("T")[0],
+          availability: "https://schema.org/InStock",
+          ...(tier.price > 0
+            ? { priceSpecification: { "@type": "UnitPriceSpecification", billingDuration: "P1M" } }
+            : {}),
+        },
+      })),
+    ],
   };
 }
 
