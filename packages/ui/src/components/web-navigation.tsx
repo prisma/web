@@ -44,11 +44,7 @@ interface WebNavigationProps {
   buttonVariant?: "ppg" | "orm" | undefined;
 }
 
-export function WebNavigation({
-  links,
-  utm,
-  buttonVariant = "ppg",
-}: WebNavigationProps) {
+export function WebNavigation({ links, utm, buttonVariant = "ppg" }: WebNavigationProps) {
   const [mobileView, setMobileView] = useState(false);
   const loginHref = utm
     ? `https://console.prisma.io/login?utm_source=${utm.source}&utm_medium=${utm.medium}&utm_campaign=login`
@@ -112,21 +108,15 @@ export function WebNavigation({
             </div>
           </NavigationMenuList>
           <NavigationMenuList>
-            <div
-              className={cn("contents", mobileView && "hidden md:contents!")}
-            >
+            <div className={cn("contents", mobileView && "hidden md:contents!")}>
               <Socials include={["discord"]} />
               <NavigationMenuItem className="ml-2 -mr-2 hidden sm:block">
-                <Button variant="default-stronger" href={loginHref}>
+                <Button variant="default-strong" href={loginHref}>
                   Login
                 </Button>
               </NavigationMenuItem>
               <NavigationMenuItem className="hidden sm:block">
-                <Button
-                  variant={buttonVariant}
-                  className="whitespace-nowrap"
-                  href={signupHref}
-                >
+                <Button variant={buttonVariant} className="whitespace-nowrap" href={signupHref}>
                   Get started
                 </Button>
               </NavigationMenuItem>
@@ -135,12 +125,7 @@ export function WebNavigation({
               className="flex md:hidden"
               onClick={() => setMobileView(!mobileView)}
             >
-              <i
-                className={cn(
-                  "fa-regular",
-                  mobileView ? "fa-xmark" : "fa-bars",
-                )}
-              />
+              <i className={cn("fa-regular", mobileView ? "fa-xmark" : "fa-bars")} />
             </NavigationMenuItem>
             {mobileView && (
               <NavigationMobileMenu
