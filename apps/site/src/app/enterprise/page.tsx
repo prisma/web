@@ -80,34 +80,42 @@ const databases: { title: string; list: DatabaseItem[] } = {
   list: [
     {
       name: "PostgreSQL",
+      url: "https://www.prisma.io/docs/prisma-orm/quickstart/postgresql",
       icon: "/icons/companies/postgres.svg",
     },
     {
       name: "MySQL",
+      url: "https://www.prisma.io/docs/prisma-orm/quickstart/mysql",
       icon: "/icons/technologies/mysqlsimple.svg",
     },
     {
       name: "MariaDB",
       icon: "/icons/technologies/mariadb.svg",
+      url: "https://www.prisma.io/docs/prisma-orm/quickstart/mysql",
     },
     {
       name: "SQLite",
+      url: "https://www.prisma.io/docs/prisma-orm/quickstart/sqlite",
       icon: "/icons/companies/sqlite.svg",
     },
     {
       name: "SQL Server",
+      url: "https://www.prisma.io/docs/prisma-orm/quickstart/sqlserver",
       icon: "/icons/companies/sqlserver.svg",
     },
     {
       name: "CockroachDB",
+      url: "https://www.prisma.io/docs/prisma-orm/quickstart/cockroachdb",
       icon: "/icons/companies/cockroachdb.svg",
     },
     {
       name: "PlanetScale",
+      url: "https://www.prisma.io/docs/prisma-orm/quickstart/planetscale",
       icon: "/icons/companies/planetscale.svg",
     },
     {
       name: "MongoDB",
+      url: "https://www.prisma.io/docs/prisma-orm/quickstart/mongodb",
       icon: "/icons/technologies/mongodbsimple.svg",
     },
   ],
@@ -346,7 +354,7 @@ export default function EnterprisePage() {
   return (
     <main className="flex-1 w-full z-1 bg-background-default">
       {/* Hero */}
-      <section className="hero -mt-24 flex items-end justify-center px-4 relative">
+      <section className="hero -mt-24 flex items-end justify-center px-4 relative pt-24">
         <div className="absolute inset-0 z-0 bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20" />
         <div className="content pt-31 relative z-2 my-12 flex flex-col gap-8">
           <div className="flex flex-col gap-1">

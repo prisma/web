@@ -1,26 +1,11 @@
 import { JsonLd } from "@/components/json-ld";
 import { createFaqStructuredData } from "@/lib/structured-data";
 import type { Metadata } from "next";
-import {
-  Accordion,
-  Accordions,
-  Badge,
-  Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@prisma/eclipse";
-import { comparisonSections, faqs } from "./pricing-data";
+import { Accordion, Accordions, Button } from "@prisma/eclipse";
+import { faqs } from "./pricing-data";
 import { PricingPageContent } from "./pricing-page-content";
 
-const pricingFaqStructuredData = createFaqStructuredData(
-  "/pricing",
-  faqs,
-  "Prisma pricing FAQ",
-);
+const pricingFaqStructuredData = createFaqStructuredData("/pricing", faqs, "Prisma pricing FAQ");
 
 export const metadata: Metadata = {
   title: "Pricing - Prisma Data Platform",
@@ -52,86 +37,8 @@ export const metadata: Metadata = {
 export default function PricingPage() {
   return (
     <main className="flex-1 w-full -mt-24 bg-background-default text-background-neutral-weak pt-24">
-      <JsonLd
-        id="pricing-faq-structured-data"
-        data={pricingFaqStructuredData}
-      />
+      <JsonLd id="pricing-faq-structured-data" data={pricingFaqStructuredData} />
       <PricingPageContent />
-
-      {/* Compare plans */}
-      <section className="px-4 py-16">
-        <div className="max-w-[1200px] mx-auto flex flex-col items-center gap-6">
-          <h3 className="m-0 text-center text-foreground-neutral text-5xl font-sans-display [font-variation-settings:'wght'_900]">
-            Compare plans
-          </h3>
-          <p className="m-0 text-center text-foreground-neutral-weak">
-            All of the features below are included with Prisma Postgres.
-          </p>
-        </div>
-        <div className="max-w-[996px] mx-auto mt-10 border border-background-neutral-reverse-weak rounded-xl overflow-hidden">
-          <Table className="table-fixed">
-            <TableHeader className="[&_tr]:border-b-0">
-              <TableRow className="hover:bg-transparent border-b border-background-neutral-reverse bg-background-neutral-weak">
-                <TableHead className="bg-background-neutral-weak text-base uppercase tracking-[1.6px] font-sans-display [font-variation-settings:'wght'_800] text-background-neutral-weak">
-                  {comparisonSections[0]?.title}
-                </TableHead>
-                {["Free", "Starter", "Pro", "Business"].map((label) => (
-                  <TableHead
-                    key={label}
-                    className="bg-background-neutral-weak text-left text-background-neutral-weak"
-                  >
-                    <Badge
-                      size="lg"
-                      className="rounded-md"
-                      color={
-                        label === "Pro"
-                          ? "ppg"
-                          : label === "Starter"
-                            ? "orm"
-                            : label === "Business"
-                              ? "warning"
-                              : "neutral"
-                      }
-                      label={label}
-                    />
-                  </TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            {comparisonSections.map((section) => (
-              <TableBody key={section.title}>
-                <TableRow className="hover:bg-transparent border-t border-b border-background-neutral-reverse-weak bg-background-neutral-weak">
-                  <TableCell
-                    colSpan={5}
-                    className="bg-background-neutral-weak text-base uppercase tracking-[1.6px] font-sans-display [font-variation-settings:'wght'_800] text-foreground-neutral"
-                  >
-                    {section.title}
-                  </TableCell>
-                </TableRow>
-
-                {section.rows.map((row) => (
-                  <TableRow
-                    key={row[0]}
-                    className="hover:bg-transparent border-b border-background-neutral-reverse-weak"
-                  >
-                    <TableCell className="font-semibold text-sm text-foreground-neutral">
-                      {row[0]}
-                    </TableCell>
-                    {row.slice(1).map((value, valueIndex) => (
-                      <TableCell
-                        key={`${row[0]}-${valueIndex}-${value}`}
-                        className="text-sm text-foreground-neutral-weak"
-                      >
-                        {value}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableBody>
-            ))}
-          </Table>
-        </div>
-      </section>
 
       {/* FAQ */}
       <section className="px-4 py-16">
@@ -190,11 +97,7 @@ export default function PricingPage() {
                   <span>Create your first Database</span>
                   <i className="fa-regular fa-arrow-right ml-2" />
                 </Button>
-                <Button
-                  variant="default-stronger"
-                  size="2xl"
-                  href="https://www.prisma.io/docs/"
-                >
+                <Button variant="default-stronger" size="2xl" href="https://www.prisma.io/docs/">
                   <span>Read the docs</span>
                   <i className="fa-regular fa-book-open ml-2" />
                 </Button>

@@ -11,17 +11,37 @@ export const symbols = {
   USD: "$",
 } as const;
 
-export type Symbol =
-  | "EUR"
-  | "AUD"
-  | "INR"
-  | "GBP"
-  | "CAD"
-  | "BRL"
-  | "JPY"
-  | "CNY"
-  | "KRW"
-  | "USD";
+export type Symbol = "EUR" | "AUD" | "INR" | "GBP" | "CAD" | "BRL" | "JPY" | "CNY" | "KRW" | "USD";
+
+export const exchangeRates: Record<Symbol, number> = {
+  USD: 1,
+  EUR: 0.93,
+  GBP: 0.8,
+  AUD: 1.54,
+  CAD: 1.36,
+  INR: 83.2,
+  BRL: 5.4,
+  JPY: 157.5,
+  CNY: 7.2,
+  KRW: 1370,
+};
+
+export const currencyConfig: Record<Symbol, { decimals: number; microDecimals: number }> = {
+  USD: { decimals: 2, microDecimals: 4 },
+  EUR: { decimals: 2, microDecimals: 4 },
+  GBP: { decimals: 2, microDecimals: 4 },
+  AUD: { decimals: 2, microDecimals: 4 },
+  CAD: { decimals: 2, microDecimals: 4 },
+  INR: { decimals: 0, microDecimals: 2 },
+  BRL: { decimals: 2, microDecimals: 4 },
+  JPY: { decimals: 0, microDecimals: 2 },
+  CNY: { decimals: 2, microDecimals: 4 },
+  KRW: { decimals: 0, microDecimals: 2 },
+};
+
+export function convertFromUsd(amountUsd: number, currency: Symbol): number {
+  return amountUsd * exchangeRates[currency];
+}
 
 export type CurrencyMap = Record<Symbol, string>;
 
@@ -30,7 +50,7 @@ export type PlanPoint =
   | {
       text: string;
       price: CurrencyMap;
-    }
+    };
 
 export type PricingPlan = {
   title: string;
@@ -48,16 +68,23 @@ export type UsagePricing = {
   yearlyDiscount: number;
 };
 
-/** Formats a single numeric amount with every supported currency symbol. */
-export function formatAmountForAllCurrencies(
-  amount: number,
-  digits: number,
-): CurrencyMap {
+export function formatAmountForAllCurrencies(amountUsd: number, digits: number): CurrencyMap {
   return Object.fromEntries(
-    Object.entries(symbols).map(([code, symbol]) => [
-      code,
-      `${symbol}${amount.toFixed(digits)}`,
-    ]),
+    Object.entries(symbols).map(([code, symbol]) => {
+      const typedCode = code as Symbol;
+      const converted = convertFromUsd(amountUsd, typedCode);
+      const config = currencyConfig[typedCode];
+      const isMicroPrice = digits > config.decimals;
+      const effectiveDigits = isMicroPrice ? config.microDecimals : digits;
+      const displayValue = isMicroPrice ? converted : Math.round(converted);
+      return [
+        code,
+        `${symbol}${displayValue.toLocaleString("en-US", {
+          minimumFractionDigits: effectiveDigits,
+          maximumFractionDigits: effectiveDigits,
+        })}`,
+      ];
+    }),
   ) as CurrencyMap;
 }
 
@@ -173,7 +200,12 @@ export const usagePricing: Record<BillablePricingPlanKey, UsagePricing> = {
   },
 };
 
-export const comparisonSections = [
+export type ComparisonCell = string | { text: string; price: CurrencyMap };
+
+export const comparisonSections: Array<{
+  title: string;
+  rows: ComparisonCell[][];
+}> = [
   {
     title: "Managed Connection Pool",
     rows: [
@@ -189,15 +221,25 @@ export const comparisonSections = [
   {
     title: "Global Cache",
     rows: [
-      ["Cache tag invalidations", "-", "-", "$0.002 per 1,000, max 10,000 per day", "$0.001 per 1,000, max 100,000 per day"],
+      [
+        "Cache tag invalidations",
+        "-",
+        "-",
+        {
+          text: "<price> per 1,000, max 10,000 per day",
+          price: formatAmountForAllCurrencies(0.002, 3),
+        },
+        {
+          text: "<price> per 1,000, max 100,000 per day",
+          price: formatAmountForAllCurrencies(0.001, 3),
+        },
+      ],
       ["Cache purge requests", "5 per hour", "5 per hour", "10 per hour", "20 per hour"],
     ],
   },
   {
     title: "Database optimizations",
-    rows: [
-      ["Query insights", "✓", "✓", "✓", "✓"],
-    ],
+    rows: [["Query insights", "✓", "✓", "✓", "✓"]],
   },
   {
     title: "Data management",
@@ -210,18 +252,18 @@ export const comparisonSections = [
       ["Compliance", "GDPR", "GDPR", "GDPR / HIPAA", "GDPR / HIPAA / SOC2 / ISO:27001"],
     ],
   },
-] as const;
+];
 
 export const faqs: Array<{ question: string; answer: string }> = [
   {
     question: "What is an operation?",
     answer:
-      "<p>Each action you perform, whether it’s a create, read, update, or delete query against your Prisma Postgres database counts as a single operation. Even if Prisma issues multiple database queries behind the scenes to fulfill your request, it’s still billed as one operation.</p><p>By treating simple lookups and complex queries the same, you can directly correlate your database usage and costs with your product usage and user behavior. There’s no need to track write-heavy workloads or worry about bandwidth per operation: each of them is counted and billed the same, making your usage and budgeting simple and straightforward. You can learn more about <a class=\"underline underline-offset-2 decoration-[var(--color-foreground-ppg)] text-foreground-neutral hover:text-foreground-neutral-weak\" href=\"https://www.prisma.io/blog/operations-based-billing#what-is-an-operation\">our operations-based pricing model</a> in our blog post.</p>",
+      '<p>Each action you perform, whether it’s a create, read, update, or delete query against your Prisma Postgres database counts as a single operation. Even if Prisma issues multiple database queries behind the scenes to fulfill your request, it’s still billed as one operation.</p><p>By treating simple lookups and complex queries the same, you can directly correlate your database usage and costs with your product usage and user behavior. There’s no need to track write-heavy workloads or worry about bandwidth per operation: each of them is counted and billed the same, making your usage and budgeting simple and straightforward. You can learn more about <a class="underline underline-offset-2 decoration-[var(--color-foreground-ppg)] text-foreground-neutral hover:text-foreground-neutral-weak" href="https://www.prisma.io/blog/operations-based-billing#what-is-an-operation">our operations-based pricing model</a> in our blog post.</p>',
   },
   {
     question: "How many operations do I need for my project?",
     answer:
-      "<p>While the answer to this question will vary from project to project, there are a couple of ways to get an idea of what you will need:</p><ul><li>If you already have a database with another provider, you can often look in their dashboard to see your current usage. The number of queries will be a good hint to the approximate number of operations you’ll use.</li><li>If you already use the Prisma ORM, you can enable the <a class=\"underline underline-offset-2 decoration-[var(--color-foreground-ppg)] text-foreground-neutral hover:text-foreground-neutral-weak\" href=\"https://www.prisma.io/docs/orm/prisma-client/observability-and-logging/metrics\">metrics</a> feature to begin tracking your usage, which is an easy and accurate way to see your current usage.</li><li>If you’re starting a new project, we encourage you to just get started and see how many queries you typically use. We offer a free plan with 100,000 operations <strong>per month</strong>, meaning you can confidently get started without paying anything. From our experience, 100,000 operations per month is more than enough to get started with a project and serve your first users.</li></ul><p>You can find an <a class=\"underline underline-offset-2 decoration-[var(--color-foreground-ppg)] text-foreground-neutral hover:text-foreground-neutral-weak\" href=\"https://www.prisma.io/blog/operations-based-billing#calculation-example\">example calculation </a>for a medium-sized workload in our blog post about our operations-based pricing model.</p>",
+      '<p>While the answer to this question will vary from project to project, there are a couple of ways to get an idea of what you will need:</p><ul><li>If you already have a database with another provider, you can often look in their dashboard to see your current usage. The number of queries will be a good hint to the approximate number of operations you’ll use.</li><li>If you already use the Prisma ORM, you can enable the <a class="underline underline-offset-2 decoration-[var(--color-foreground-ppg)] text-foreground-neutral hover:text-foreground-neutral-weak" href="https://www.prisma.io/docs/orm/prisma-client/observability-and-logging/metrics">metrics</a> feature to begin tracking your usage, which is an easy and accurate way to see your current usage.</li><li>If you’re starting a new project, we encourage you to just get started and see how many queries you typically use. We offer a free plan with 100,000 operations <strong>per month</strong>, meaning you can confidently get started without paying anything. From our experience, 100,000 operations per month is more than enough to get started with a project and serve your first users.</li></ul><p>You can find an <a class="underline underline-offset-2 decoration-[var(--color-foreground-ppg)] text-foreground-neutral hover:text-foreground-neutral-weak" href="https://www.prisma.io/blog/operations-based-billing#calculation-example">example calculation </a>for a medium-sized workload in our blog post about our operations-based pricing model.</p>',
   },
   {
     question: "Can I use Prisma Postgres for free?",
@@ -241,12 +283,12 @@ export const faqs: Array<{ question: string; answer: string }> = [
   {
     question: "What’s the difference between usage pricing and traditional database pricing?",
     answer:
-      "<p>Traditional pricing is where you choose a fixed database size and price, and the amount you pay is generally predictable. But that comes at the expense of flexibility, meaning it’s much harder to scale up and down with your application’s demands. This is usually fine for a small test database, but for production workloads, it can be burdensome: If you have low-traffic periods, and high-traffic periods (most production apps do) then you either under-provision and risk having downtime in busy periods, or you over-provision and pay a lot more for your database.</p><p>With usage pricing, you only pay for what you need, when you need it. If your app has a quiet period, you’ll pay less. If things get busy, we can simply scale up to handle it for you. Prisma Postgres comes with budget controls, so you can always stay in control of your spending, while taking advantage of the flexibility. You can learn more <a class=\"underline underline-offset-2 decoration-[var(--color-foreground-ppg)] text-foreground-neutral hover:text-foreground-neutral-weak\" href=\"https://www.prisma.io/blog/operations-based-billing#why-is-an-operations-based-pricing-model-better?utm_source=pricing_website&amp;utm_content=faq\">on why operations-based pricing is better</a> in our blog post.</p>",
+      '<p>Traditional pricing is where you choose a fixed database size and price, and the amount you pay is generally predictable. But that comes at the expense of flexibility, meaning it’s much harder to scale up and down with your application’s demands. This is usually fine for a small test database, but for production workloads, it can be burdensome: If you have low-traffic periods, and high-traffic periods (most production apps do) then you either under-provision and risk having downtime in busy periods, or you over-provision and pay a lot more for your database.</p><p>With usage pricing, you only pay for what you need, when you need it. If your app has a quiet period, you’ll pay less. If things get busy, we can simply scale up to handle it for you. Prisma Postgres comes with budget controls, so you can always stay in control of your spending, while taking advantage of the flexibility. You can learn more <a class="underline underline-offset-2 decoration-[var(--color-foreground-ppg)] text-foreground-neutral hover:text-foreground-neutral-weak" href="https://www.prisma.io/blog/operations-based-billing#why-is-an-operations-based-pricing-model-better?utm_source=pricing_website&amp;utm_content=faq">on why operations-based pricing is better</a> in our blog post.</p>',
   },
   {
     question: "How is Prisma’s pricing different to others?",
     answer:
-      "<p>Prisma’s pricing is designed to provide maximum flexibility to developers, while aiming to be as intuitive as possible.</p><p>We charge primarily by <em>operation</em>, which is counted each time you invoke the Prisma ORM client to create, read, update or delete a record. Additionally we also charge for <em>storage</em>. All with a very generous free threshold each month.</p><p>We don’t charge by data transfer (bandwidth) or by compute/memory hours, simply because we felt that these metrics are more difficult to grasp as a developer.</p><p>We created a pricing model to more closely match how you use your database as a developer, not how the infrastructure works. You can learn more about our <a class=\"underline underline-offset-2 decoration-[var(--color-foreground-ppg)] text-foreground-neutral hover:text-foreground-neutral-weak\" href=\"https://www.prisma.io/blog/operations-based-billing#a-simpler-approach-to-database-pricing\">approach to an operations-based database pricing model in this blog post</a>.</p>",
+      '<p>Prisma’s pricing is designed to provide maximum flexibility to developers, while aiming to be as intuitive as possible.</p><p>We charge primarily by <em>operation</em>, which is counted each time you invoke the Prisma ORM client to create, read, update or delete a record. Additionally we also charge for <em>storage</em>. All with a very generous free threshold each month.</p><p>We don’t charge by data transfer (bandwidth) or by compute/memory hours, simply because we felt that these metrics are more difficult to grasp as a developer.</p><p>We created a pricing model to more closely match how you use your database as a developer, not how the infrastructure works. You can learn more about our <a class="underline underline-offset-2 decoration-[var(--color-foreground-ppg)] text-foreground-neutral hover:text-foreground-neutral-weak" href="https://www.prisma.io/blog/operations-based-billing#a-simpler-approach-to-database-pricing">approach to an operations-based database pricing model in this blog post</a>.</p>',
   },
   {
     question: "How can I compare Prisma pricing to other providers?",
@@ -261,11 +303,11 @@ export const faqs: Array<{ question: string; answer: string }> = [
   {
     question: "I'm an early stage startup, do you offer any discounts?",
     answer:
-      "<p>Building a startup is hard. Prisma helps you stay laser-focused on what matters the most, which is building features and winning users.</p><p>We offer $10k in credits to eligible startups. Learn more at <a class=\"underline underline-offset-2 decoration-[var(--color-foreground-ppg)] text-foreground-neutral hover:text-foreground-neutral-weak\" href=\"https://prisma.io/startups\">prisma.io/startups</a>.</p>",
+      '<p>Building a startup is hard. Prisma helps you stay laser-focused on what matters the most, which is building features and winning users.</p><p>We offer $10k in credits to eligible startups. Learn more at <a class="underline underline-offset-2 decoration-[var(--color-foreground-ppg)] text-foreground-neutral hover:text-foreground-neutral-weak" href="https://prisma.io/startups">prisma.io/startups</a>.</p>',
   },
   {
     question: "How do I upgrade my plan if I am using Prisma Postgres via Vercel?",
     answer:
-      "<p>If you're using Prisma Postgres via Vercel, your billing is handled directly by Vercel. To upgrade your plan, you'll need to do so in the Vercel Dashboard. The instructions are available in our <a class=\"underline underline-offset-2 decoration-[var(--color-foreground-ppg)] text-foreground-neutral hover:text-foreground-neutral-weak\" href=\"https://www.prisma.io/docs/postgres/more/faq#how-do-i-upgrade-my-plan-if-i-am-using-prisma-postgres-via-vercel\">docs</a>.</p>",
+      '<p>If you\'re using Prisma Postgres via Vercel, your billing is handled directly by Vercel. To upgrade your plan, you\'ll need to do so in the Vercel Dashboard. The instructions are available in our <a class="underline underline-offset-2 decoration-[var(--color-foreground-ppg)] text-foreground-neutral hover:text-foreground-neutral-weak" href="https://www.prisma.io/docs/postgres/more/faq#how-do-i-upgrade-my-plan-if-i-am-using-prisma-postgres-via-vercel">docs</a>.</p>',
   },
 ];

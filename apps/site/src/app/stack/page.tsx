@@ -24,19 +24,23 @@ export const metadata = createPageMetadata({
 export default function StackPage() {
   return (
     <main className="flex-1 w-full -mt-24 bg-[linear-gradient(to_bottom,var(--color-background-ppg),var(--color-background-default)_50%)] text-foreground-neutral">
-      <section className="px-4 pt-60 pb-12 md:px-0 md:pb-16">
-        <div className="mx-auto flex w-full max-w-[720px] flex-col items-center gap-6 text-center">
-          <p className="flex items-center justify-center gap-2 font-sans text-base font-semibold uppercase tracking-[1.6px] text-foreground-ppg">
-            <Layers className="size-3.5 shrink-0" strokeWidth={2} aria-hidden />
-            Prisma Stack
-          </p>
-          <h1 className="m-0 text-foreground-neutral text-5xl font-sans-display [font-variation-settings:'wght'_900]">
-            Build with your favorite tools
-          </h1>
+      <div className="hero -mt-24 pt-64 pb-12 flex items-end justify-center px-4 relative">
+        <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-ppg)_0%,var(--color-background-default)_100%)] opacity-20" />
+        <div className="content relative z-2 my-12 py-12 flex flex-col gap-8">
+          <div className="flex flex-col gap-4 items-center text-center">
+            <div className="flex items-center gap-2 text-foreground-ppg-weak uppercase tracking-widest text-sm font-sans-display font-black">
+              <i className="fa-regular fa-layer-group" />
+              <span>Prisma Stack</span>
+            </div>
+            <h1 className="text-5xl md:text-6xl [font-variation-settings:'wght'_900,'wdth'_125] mb-0 mt-0 font-sans-display text-foreground-neutral">
+              Build with
+              <br /> your favorite tools
+            </h1>
+          </div>
         </div>
-      </section>
+      </div>
 
-      <section className="px-4 pb-16 md:px-0 md:pb-20">
+      <section className="px-4 pb-16 md:pb-20">
         <div className="mx-auto flex w-full max-w-[1024px] flex-col gap-12">
           {stackCategories.map((category: StackCategory) => (
             <div key={category.id} className="flex flex-col gap-4">

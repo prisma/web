@@ -1,16 +1,16 @@
-import { source } from '@/lib/source';
-import { baseOptions, links } from '@/lib/layout.shared';
-import { VersionSwitcher } from '@/components/version-switcher';
-import type { LinkItemType } from 'fumadocs-ui/layouts/shared';
-import { DocsLayout } from '@/components/layout/notebook';
-import { DocsBody, DocsPage } from '@/components/layout/notebook/page';
-import { LATEST_VERSION } from '@/lib/version';
-import { NotFoundTracker } from '@/components/not-found-tracker';
-import type { Metadata } from 'next';
+import { source } from "@/lib/source";
+import { baseOptions, links } from "@/lib/layout.shared";
+import { VersionSwitcher } from "@/components/version-switcher";
+import type { LinkItemType } from "fumadocs-ui/layouts/shared";
+import { DocsLayout } from "@/components/layout/notebook";
+import { DocsBody, DocsPage } from "@/components/layout/notebook/page";
+import { LATEST_VERSION } from "@/lib/version";
+import { NotFoundTracker } from "@/components/not-found-tracker";
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: '404 - Page Not Found',
-  description: 'The page you were looking for could not be found.',
+  title: "404 - Page Not Found",
+  description: "The page you were looking for could not be found.",
 };
 
 export default function NotFound() {
@@ -19,7 +19,7 @@ export default function NotFound() {
   const navbarLinks: LinkItemType[] = [
     ...links,
     {
-      type: 'custom',
+      type: "custom",
       children: <VersionSwitcher currentVersion={LATEST_VERSION} />,
     },
   ];
@@ -51,7 +51,10 @@ export default function NotFound() {
             <p className="text-2xl font-semibold text-white">
               We could not find the page you were looking for
             </p>
-            <a href="/docs" className="hover:underline transition-colors">
+            <a
+              href="https://www.prisma.io/docs"
+              className="hover:underline transition-colors"
+            >
               Go to docs
             </a>
           </div>

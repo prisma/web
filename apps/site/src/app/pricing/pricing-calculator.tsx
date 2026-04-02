@@ -16,6 +16,8 @@ import {
   type Symbol,
   symbols,
   usagePricing,
+  convertFromUsd,
+  currencyConfig,
 } from "./pricing-data";
 
 function cn(...classes: Array<string | false | null | undefined>) {
@@ -66,25 +68,29 @@ const PRESETS: Record<
   },
 };
 
-const CALCULATOR_PLAN_ORDER = Object.keys(
-  usagePricing,
-) as BillablePricingPlanKey[];
+const CALCULATOR_PLAN_ORDER = Object.keys(usagePricing) as BillablePricingPlanKey[];
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat("en-US").format(Math.round(value));
 }
 
-function formatCurrency(value: number, currency: Symbol, digits = 2) {
-  return `${symbols[currency]}${value.toLocaleString("en-US", {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
+function formatCurrency(valueUsd: number, currency: Symbol, digits = 2) {
+  const converted = convertFromUsd(valueUsd, currency);
+  const rounded = converted >= 1 ? Math.round(converted) : converted;
+  const effectiveDigits = converted >= 1 ? 0 : digits;
+  return `${symbols[currency]}${rounded.toLocaleString("en-US", {
+    minimumFractionDigits: effectiveDigits,
+    maximumFractionDigits: effectiveDigits,
   })}`;
 }
 
-function formatCompactCurrency(value: number, currency: Symbol) {
-  return `${symbols[currency]}${value.toLocaleString("en-US", {
-    minimumFractionDigits: Number.isInteger(value) ? 0 : 1,
-    maximumFractionDigits: 2,
+function formatCompactCurrency(valueUsd: number, currency: Symbol) {
+  const converted = convertFromUsd(valueUsd, currency);
+  const config = currencyConfig[currency];
+  const maxDigits = Number.isInteger(converted) && converted > 1 ? 0 : config.microDecimals;
+  return `${symbols[currency]}${converted.toLocaleString("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: maxDigits,
   })}`;
 }
 
@@ -113,7 +119,7 @@ function calculateMonthlyPlanCost(
 
   return (
     details.baseMonthlyPrice +
-    extraOperations / 1_000 * details.operationPricePerThousand +
+    (extraOperations / 1_000) * details.operationPricePerThousand +
     extraStorageGb * details.storagePricePerGb
   );
 }
@@ -140,16 +146,11 @@ function calculatePlanBreakdown(
   billingCycle: BillingCycle,
 ): CostBreakdown {
   const details = usagePricing[plan];
-  const billableOperations = Math.max(
-    0,
-    databaseOperations - details.includedOperations,
-  );
+  const billableOperations = Math.max(0, databaseOperations - details.includedOperations);
   const billableStorageGb = Math.max(0, storageGb - details.includedStorageGb);
-  const operationsCost =
-    billableOperations / 1_000 * details.operationPricePerThousand;
+  const operationsCost = (billableOperations / 1_000) * details.operationPricePerThousand;
   const storageCost = billableStorageGb * details.storagePricePerGb;
-  const yearlyMultiplier =
-    billingCycle === "yearly" ? 1 - details.yearlyDiscount : 1;
+  const yearlyMultiplier = billingCycle === "yearly" ? 1 - details.yearlyDiscount : 1;
 
   return {
     basePlanFee: details.baseMonthlyPrice * yearlyMultiplier,
@@ -187,28 +188,16 @@ function getRecommendedPlan(
   });
 }
 
-function getMatchingPreset(
-  databaseOperations: number,
-  storageGb: number,
-): PresetKey | null {
-  const match = (
-    Object.entries(PRESETS) as Array<[PresetKey, (typeof PRESETS)[PresetKey]]>
-  ).find(
+function getMatchingPreset(databaseOperations: number, storageGb: number): PresetKey | null {
+  const match = (Object.entries(PRESETS) as Array<[PresetKey, (typeof PRESETS)[PresetKey]]>).find(
     ([, preset]) =>
-      preset.databaseOperations === databaseOperations &&
-      preset.storageGb === storageGb,
+      preset.databaseOperations === databaseOperations && preset.storageGb === storageGb,
   );
 
   return match?.[0] ?? null;
 }
 
-function InputShell({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
+function InputShell({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div
       className={cn(
@@ -262,7 +251,10 @@ function SummaryCard({
               />
             )}
           </div>
-          <p className="m-0 max-w-[277px] text-xs leading-4 text-foreground-neutral-weaker" dangerouslySetInnerHTML={{ __html: description }} />
+          <p
+            className="m-0 max-w-[277px] text-xs leading-4 text-foreground-neutral-weaker"
+            dangerouslySetInnerHTML={{ __html: description }}
+          />
         </div>
 
         <button
@@ -320,23 +312,18 @@ function SummaryCard({
                     </button>
                   </TooltipTrigger>
                   <TooltipContent className="max-w-[280px] text-left">
-                    First {formatNumber(planDetails.includedOperations)} operations
-                    are included in this plan. Remaining{" "}
-                    {formatNumber(breakdown.billableOperations)} operations are
+                    First {formatNumber(planDetails.includedOperations)} operations are included in
+                    this plan. Remaining {formatNumber(breakdown.billableOperations)} operations are
                     billed at{" "}
-                    {formatCompactCurrency(
-                      planDetails.operationPricePerThousand,
-                      currency,
-                    )}{" "}
-                    per 1,000.
+                    {formatCompactCurrency(planDetails.operationPricePerThousand, currency)} per
+                    1,000.
                   </TooltipContent>
                 </Tooltip>
               </div>
               <span
                 className={cn(
                   "text-right",
-                  breakdown.operationsCost <= 0 &&
-                    "text-foreground-neutral-weaker",
+                  breakdown.operationsCost <= 0 && "text-foreground-neutral-weaker",
                 )}
               >
                 {formatLineItemCost(breakdown.operationsCost, currency)}
@@ -357,9 +344,8 @@ function SummaryCard({
                     </button>
                   </TooltipTrigger>
                   <TooltipContent className="max-w-[280px] text-left">
-                    First {formatNumber(planDetails.includedStorageGb)}GB of
-                    storage are included. Remaining{" "}
-                    {formatNumber(breakdown.billableStorageGb)}GB are billed at{" "}
+                    First {formatNumber(planDetails.includedStorageGb)}GB of storage are included.
+                    Remaining {formatNumber(breakdown.billableStorageGb)}GB are billed at{" "}
                     {formatCompactCurrency(planDetails.storagePricePerGb, currency)}
                     /GB.
                   </TooltipContent>
@@ -382,12 +368,9 @@ function SummaryCard({
 }
 
 export function PricingCalculator({ currency }: { currency: Symbol }) {
-  const [lastAppliedPreset, setLastAppliedPreset] =
-    React.useState<PresetKey>("scaleup");
-  const [billingCycle, setBillingCycle] =
-    React.useState<BillingCycle>("monthly");
-  const [expandedPlan, setExpandedPlan] =
-    React.useState<BillablePricingPlanKey | null>(null);
+  const [lastAppliedPreset, setLastAppliedPreset] = React.useState<PresetKey>("scaleup");
+  const [billingCycle, setBillingCycle] = React.useState<BillingCycle>("monthly");
+  const [expandedPlan, setExpandedPlan] = React.useState<BillablePricingPlanKey | null>(null);
   const [databaseOperations, setDatabaseOperations] = React.useState(
     PRESETS.scaleup.databaseOperations,
   );
@@ -418,116 +401,116 @@ export function PricingCalculator({ currency }: { currency: Symbol }) {
   return (
     <TooltipProvider>
       <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-4">
-      <div className="rounded-[18px] border border-stroke-neutral bg-background-neutral-weak px-5 py-4 shadow-box-high sm:px-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <h2 className="m-0 text-[28px] uppercase leading-none font-sans-display [font-variation-settings:'wght'_800] text-foreground-neutral sm:text-[42px]">
-            Pricing Calculator
-          </h2>
+        <div className="rounded-[18px] border border-stroke-neutral bg-background-neutral-weak px-5 py-4 shadow-box-high sm:px-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <h2 className="m-0 text-[28px] uppercase leading-none font-sans-display [font-variation-settings:'wght'_800] text-foreground-neutral sm:text-[42px]">
+              Pricing Calculator
+            </h2>
 
-          <div className="flex flex-col gap-3 lg:items-end">
-            <div className="text-base font-semibold text-foreground-neutral">
-              Quick Start Presets 
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {(Object.entries(PRESETS) as Array<[PresetKey, (typeof PRESETS)[PresetKey]]>).map(
-                ([key, item]) => {
-                  const active = key === matchingPreset;
+            <div className="flex flex-col gap-3 lg:items-end">
+              <div className="text-base font-semibold text-foreground-neutral">
+                Quick Start Presets
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {(Object.entries(PRESETS) as Array<[PresetKey, (typeof PRESETS)[PresetKey]]>).map(
+                  ([key, item]) => {
+                    const active = key === matchingPreset;
 
-                  return (
-                    <Button
-                      key={key}
-                      type="button"
-                      variant="default-weaker"
-                      size="lg"
-                      aria-pressed={active}
-                      onClick={() => applyPreset(key)}
-                      className={cn(
-                        "inline-flex h-9 items-center gap-2 rounded-[12px] border px-4 text-sm font-medium transition-colors",
-                        active
-                          ? "border-stroke-ppg bg-background-ppg-reverse-strong text-foreground-ppg-reverse shadow-box-low"
-                          : "border-stroke-neutral bg-transparent text-foreground-neutral hover:border-stroke-neutral-strong hover:bg-background-default-050",
-                      )}
-                    >
-                      <i className={cn(item.icon, "text-xs")} />
-                      <span>{item.label}</span>
-                    </Button>
-                  );
-                },
-              )}
+                    return (
+                      <Button
+                        key={key}
+                        type="button"
+                        variant="default-weaker"
+                        size="lg"
+                        aria-pressed={active}
+                        onClick={() => applyPreset(key)}
+                        className={cn(
+                          "inline-flex h-9 items-center gap-2 rounded-[12px] border px-4 text-sm font-medium transition-colors",
+                          active
+                            ? "border-stroke-ppg bg-background-ppg-reverse-strong text-foreground-ppg-reverse shadow-box-low"
+                            : "border-stroke-neutral bg-transparent text-foreground-neutral hover:border-stroke-neutral-strong hover:bg-background-default-050",
+                        )}
+                      >
+                        <i className={cn(item.icon, "text-xs")} />
+                        <span>{item.label}</span>
+                      </Button>
+                    );
+                  },
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-[18px] border border-stroke-neutral bg-background-neutral-weak p-5 shadow-box-high sm:p-6">
-          <div className="mb-6 flex items-center gap-3 border-b border-stroke-neutral pb-4">
-            <i className="fa-solid fa-calculator text-base text-foreground-neutral-weak" />
-            <h3 className="m-0 text-[20px] leading-7 font-sans-display [font-variation-settings:'wght'_700] text-foreground-neutral">
-              Estimate your monthly usage
-            </h3>
-            <Button
-              type="button"
-              variant="default-weaker"
-              size="lg"
-              onClick={reset}
-              className="ml-auto inline-flex items-center gap-2 rounded-lg px-2 py-1 text-xs text-foreground-neutral-weaker transition-colors hover:bg-background-default-050 hover:text-foreground-neutral"
-            >
-              <i className="fa-solid fa-rotate-right text-[10px]" />
-              <span>Reset</span>
-            </Button>
-          </div>
-
-          <div className="space-y-6">
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm font-bold text-foreground-neutral">
-                <i className="fa-solid fa-bolt text-foreground-ppg" />
-                <span>Database Operations</span>
-                <i className="fa-solid fa-circle-info text-xs text-foreground-neutral-weaker" />
-              </div>
-              <InputShell>{formatNumber(databaseOperations)}</InputShell>
-              <Slider
-                value={[databaseOperations]}
-                min={5_000_000}
-                max={MAX_DATABASE_OPERATIONS}
-                step={1_000_000}
-                onValueChange={(value) => setDatabaseOperations(value[0] ?? databaseOperations)}
-              />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="rounded-[18px] border border-stroke-neutral bg-background-neutral-weak p-5 shadow-box-high sm:p-6">
+            <div className="mb-6 flex items-center gap-3 border-b border-stroke-neutral pb-4">
+              <i className="fa-solid fa-calculator text-base text-foreground-neutral-weak" />
+              <h3 className="m-0 text-[20px] leading-7 font-sans-display [font-variation-settings:'wght'_700] text-foreground-neutral">
+                Estimate your monthly usage
+              </h3>
+              <Button
+                type="button"
+                variant="default-weaker"
+                size="lg"
+                onClick={reset}
+                className="ml-auto inline-flex items-center gap-2 rounded-lg px-2 py-1 text-xs text-foreground-neutral-weaker transition-colors hover:bg-background-default-050 hover:text-foreground-neutral"
+              >
+                <i className="fa-solid fa-rotate-right text-[10px]" />
+                <span>Reset</span>
+              </Button>
             </div>
 
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm text-foreground-neutral">
-                <span>Estimated SQL Queries</span>
-                <span className="text-xs font-bold text-foreground-neutral-weak">
-                  {SQL_QUERY_MULTIPLIER}x
-                </span>
-                <i className="fa-solid fa-circle-info text-xs text-foreground-neutral-weaker" />
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm font-bold text-foreground-neutral">
+                  <i className="fa-solid fa-bolt text-foreground-ppg" />
+                  <span>Database Operations</span>
+                  <i className="fa-solid fa-circle-info text-xs text-foreground-neutral-weaker" />
+                </div>
+                <InputShell>{formatNumber(databaseOperations)}</InputShell>
+                <Slider
+                  value={[databaseOperations]}
+                  min={5_000_000}
+                  max={MAX_DATABASE_OPERATIONS}
+                  step={1_000_000}
+                  onValueChange={(value) => setDatabaseOperations(value[0] ?? databaseOperations)}
+                />
               </div>
-              <InputShell>{formatNumber(estimatedSqlQueries)}</InputShell>
-            </div>
 
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm font-bold text-foreground-neutral">
-                <i className="fa-solid fa-database text-foreground-ppg" />
-                <span>Storage</span>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm text-foreground-neutral">
+                  <span>Estimated SQL Queries</span>
+                  <span className="text-xs font-bold text-foreground-neutral-weak">
+                    {SQL_QUERY_MULTIPLIER}x
+                  </span>
+                  <i className="fa-solid fa-circle-info text-xs text-foreground-neutral-weaker" />
+                </div>
+                <InputShell>{formatNumber(estimatedSqlQueries)}</InputShell>
               </div>
-              <InputShell className="justify-between">
-                <span>{formatNumber(storageGb)}</span>
-                <span className="border-l border-stroke-neutral pl-3 text-foreground-neutral-weak">
-                  GB
-                </span>
-              </InputShell>
-              <Slider
-                value={[storageGb]}
-                min={1}
-                max={100}
-                step={1}
-                onValueChange={(value) => setStorageGb(value[0] ?? storageGb)}
-              />
-            </div>
 
-            <div className="">
-              {/* <div className="space-y-2">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm font-bold text-foreground-neutral">
+                  <i className="fa-solid fa-database text-foreground-ppg" />
+                  <span>Storage</span>
+                </div>
+                <InputShell className="justify-between">
+                  <span>{formatNumber(storageGb)}</span>
+                  <span className="border-l border-stroke-neutral pl-3 text-foreground-neutral-weak">
+                    GB
+                  </span>
+                </InputShell>
+                <Slider
+                  value={[storageGb]}
+                  min={1}
+                  max={100}
+                  step={1}
+                  onValueChange={(value) => setStorageGb(value[0] ?? storageGb)}
+                />
+              </div>
+
+              <div className="">
+                {/* <div className="space-y-2">
                 <div className="text-sm text-foreground-neutral">Compute Size</div>
                 <div className="rounded-[12px] border border-stroke-neutral bg-background-neutral px-3 py-3 text-sm text-foreground-neutral-weaker">
                   Included and auto-scaled by Prisma Postgres
@@ -537,97 +520,92 @@ export function PricingCalculator({ currency }: { currency: Symbol }) {
                 </p>
               </div> */}
 
-              <div className="space-y-2">
-                <div className="text-sm text-foreground-neutral">Data Transfer</div>
-                <div className="rounded-[12px] border border-stroke-neutral bg-background-neutral px-3 py-3 text-sm text-foreground-neutral-weaker">
-                  Unlimited included for free
+                <div className="space-y-2">
+                  <div className="text-sm text-foreground-neutral">Data Transfer</div>
+                  <div className="rounded-[12px] border border-stroke-neutral bg-background-neutral px-3 py-3 text-sm text-foreground-neutral-weaker">
+                    Unlimited included for free
+                  </div>
+                  <p className="m-0 text-[10px] leading-4 text-foreground-neutral-weaker">
+                    Ingress, egress, sidewaysgress, it&apos;s all covered. Just Ship It.
+                  </p>
                 </div>
-                <p className="m-0 text-[10px] leading-4 text-foreground-neutral-weaker">
-                  Ingress, egress, sidewaysgress, it&apos;s all covered. Just Ship It.
-                </p>
               </div>
             </div>
           </div>
-        </div>
 
-        <div className="rounded-[18px] border border-stroke-neutral bg-background-neutral-weak p-5 shadow-box-high sm:p-6">
-          <div className="mb-6 flex flex-col gap-4 border-b border-stroke-neutral pb-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <i className="fa-solid fa-coins text-base text-foreground-neutral-weak" />
-              <h3 className="m-0 text-[20px] leading-7 font-sans-display [font-variation-settings:'wght'_700] text-foreground-neutral">
-                Estimated total cost
-              </h3>
+          <div className="rounded-[18px] border border-stroke-neutral bg-background-neutral-weak p-5 shadow-box-high sm:p-6">
+            <div className="mb-6 flex flex-col gap-4 border-b border-stroke-neutral pb-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <i className="fa-solid fa-coins text-base text-foreground-neutral-weak" />
+                <h3 className="m-0 text-[20px] leading-7 font-sans-display [font-variation-settings:'wght'_700] text-foreground-neutral">
+                  Estimated total cost
+                </h3>
+              </div>
+
+              <div className="inline-flex rounded-square border-[3px] border-stroke-neutral bg-background-neutral p-1">
+                {(["monthly", "yearly"] as BillingCycle[]).map((cycle) => {
+                  const active = cycle === billingCycle;
+
+                  return (
+                    <Button
+                      key={cycle}
+                      type="button"
+                      variant="default-weaker"
+                      onClick={() => setBillingCycle(cycle)}
+                      className={cn(
+                        "rounded-square whitespace-nowrap flex-1 px-4 py-1.5 text-xs font-sans-display [font-variation-settings:'wght'_700] transition-colors",
+                        active
+                          ? "bg-background-ppg-reverse-strong text-foreground-ppg-reverse hover:bg-background-ppg-reverse-strong hover:text-foreground-ppg-reverse"
+                          : "text-foreground-neutral-weaker",
+                      )}
+                    >
+                      {cycle === "monthly" ? "Monthly" : "Yearly (save 25%)"}
+                    </Button>
+                  );
+                })}
+              </div>
             </div>
 
-            <div className="inline-flex rounded-square border-[3px] border-stroke-neutral bg-background-neutral p-1">
-              {(["monthly", "yearly"] as BillingCycle[]).map((cycle) => {
-                const active = cycle === billingCycle;
-
-                return (
-                  <Button
-                    key={cycle}
-                    type="button"
-                    variant="default-weaker"
-                    onClick={() => setBillingCycle(cycle)}
-                    className={cn(
-                      "rounded-square px-3 py-1.5 text-xs font-sans-display [font-variation-settings:'wght'_700] transition-colors",
-                      active
-                        ? "bg-background-ppg-reverse-strong text-foreground-ppg-reverse hover:bg-background-ppg-reverse-strong hover:text-foreground-ppg-reverse"
-                        : "text-foreground-neutral-weaker",
-                    )}
-                  >
-                    {cycle === "monthly" ? "Monthly" : "Yearly (save 25%)"}
-                  </Button>
-                );
-              })}
+            <div className="space-y-6">
+              {isEnterpriseRecommendation && (
+                <Alert variant="ppg">
+                  <p className="m-0">
+                    Usage at this scale is best served on an enterprise plan. Reach out to{" "}
+                    <a href="mailto:support@prisma.io" className="underline">
+                      support@prisma.io
+                    </a>{" "}
+                    for pricing.
+                  </p>
+                </Alert>
+              )}
+              {CALCULATOR_PLAN_ORDER.map((plan) => (
+                <SummaryCard
+                  key={plan}
+                  title={`${plans[plan].title} plan`}
+                  description={getPlanDescription(plan, currency)}
+                  currency={currency}
+                  breakdown={calculatePlanBreakdown(
+                    plan,
+                    databaseOperations,
+                    storageGb,
+                    billingCycle,
+                  )}
+                  plan={plan}
+                  highlighted={!isEnterpriseRecommendation && plan === recommendedPlanForUsage}
+                  expanded={expandedPlan === plan}
+                  onToggle={() => setExpandedPlan((current) => (current === plan ? null : plan))}
+                  yearly={billingCycle === "yearly"}
+                  price={calculateDisplayedPlanCost(
+                    plan,
+                    databaseOperations,
+                    storageGb,
+                    billingCycle,
+                  )}
+                />
+              ))}
             </div>
           </div>
-
-          <div className="space-y-6">
-            {isEnterpriseRecommendation && (
-              <Alert variant="ppg">
-                <p className="m-0">
-                  Usage at this scale is best served on an enterprise plan. Reach
-                  out to{" "}
-                  <a href="mailto:support@prisma.io" className="underline">
-                    support@prisma.io
-                  </a>{" "}
-                  for pricing.
-                </p>
-              </Alert>
-            )}
-            {CALCULATOR_PLAN_ORDER.map((plan) => (
-              <SummaryCard
-                key={plan}
-                title={`${plans[plan].title} plan`}
-                description={getPlanDescription(plan, currency)}
-                currency={currency}
-                breakdown={calculatePlanBreakdown(
-                  plan,
-                  databaseOperations,
-                  storageGb,
-                  billingCycle,
-                )}
-                plan={plan}
-                highlighted={
-                  !isEnterpriseRecommendation && plan === recommendedPlanForUsage
-                }
-                expanded={expandedPlan === plan}
-                onToggle={() =>
-                  setExpandedPlan((current) => (current === plan ? null : plan))
-                }
-                yearly={billingCycle === "yearly"}
-                price={calculateDisplayedPlanCost(
-                  plan,
-                  databaseOperations,
-                  storageGb,
-                  billingCycle,
-                )}
-              />
-            ))}
-          </div>
         </div>
-      </div>
       </div>
     </TooltipProvider>
   );
