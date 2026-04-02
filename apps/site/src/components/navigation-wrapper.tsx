@@ -24,7 +24,6 @@ interface NavigationWrapperProps {
   links: Link[];
   utm: {
     source: "website";
-    medium: string;
   };
 }
 
@@ -41,6 +40,16 @@ const orm = [
 ];
 type ColorType = "orm" | "ppg" | undefined;
 
+function getUtmMedium(pathname: string) {
+  const slug = pathname
+    .split("?")[0]
+    .split("/")
+    .filter(Boolean)
+    .join("-");
+
+  return slug || "index";
+}
+
 export function NavigationWrapper({ links, utm }: NavigationWrapperProps) {
   const pathname = usePathname();
 
@@ -54,7 +63,11 @@ export function NavigationWrapper({ links, utm }: NavigationWrapperProps) {
   };
 
   return (
-    <WebNavigation links={links} utm={utm} buttonVariant={getButtonVariant()} />
+    <WebNavigation
+      links={links}
+      utm={{ source: utm.source, medium: getUtmMedium(pathname) }}
+      buttonVariant={getButtonVariant()}
+    />
   );
 }
 
