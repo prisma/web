@@ -242,17 +242,6 @@ const allowedDevOrigins = (
 /** @type {import('next').NextConfig} */
 const config = {
   reactCompiler: true,
-  async redirects() {
-    return [];
-  },
-  async rewrites() {
-    return [
-      {
-        source: "/:path*.mdx",
-        destination: "/llms.mdx/:path*",
-      },
-    ];
-  },
   assetPrefix: "/site-static",
   allowedDevOrigins,
   reactStrictMode: true,
@@ -745,6 +734,10 @@ const config = {
   async rewrites() {
     return {
       beforeFiles: [
+        {
+          source: "/:path*.mdx",
+          destination: "/llms.mdx/:path*",
+        },
         // subdomains
         {
           source: "/:path*",
