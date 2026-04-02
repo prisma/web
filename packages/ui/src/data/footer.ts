@@ -14,11 +14,6 @@ const footerItems = [
         url: "/studio",
         _type: "footerLinkType",
       },
-{
-        title: "Accelerate",
-        url: "/accelerate",
-        _type: "footerLinkType",
-      },
       {
         _type: "footerLinkType",
         title: "Pricing",
@@ -187,8 +182,13 @@ const shareSocials = [
   {
     label: "LinkedIn",
     icon: "fa-brands fa-square-linkedin",
-    url: ({ current_page, text_data }: { current_page: string; text_data: string }) =>
-      `https://www.linkedin.com/sharing/share-offsite/?url=${current_page}`,
+    url: ({
+      current_page,
+      text_data,
+    }: {
+      current_page: string;
+      text_data: string;
+    }) => `https://www.linkedin.com/sharing/share-offsite/?url=${current_page}`,
   },
   {
     label: "X",
@@ -209,8 +209,13 @@ const shareSocials = [
   {
     label: "Bluesky",
     icon: "fa-brands fa-bluesky",
-    url: ({ current_page, text_data }: { current_page: string; text_data: string }) =>
-      `https://bsky.app/intent/compose?text=${text_data}${current_page}`,
+    url: ({
+      current_page,
+      text_data,
+    }: {
+      current_page: string;
+      text_data: string;
+    }) => `https://bsky.app/intent/compose?text=${text_data}${current_page}`,
   },
   { label: "Copy link", icon: "fa-solid fa-link", copy: true },
 ];
