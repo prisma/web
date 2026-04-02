@@ -1,7 +1,5 @@
 "use client";
 
-import Script from "next/script";
-
 import {
   Dialog,
   DialogContent,
@@ -21,6 +19,8 @@ export type McpAgent = {
 };
 
 export function McpAgentsSection({ agents }: { docsHref: string; agents: readonly McpAgent[] }) {
+  const tallyHref = "https://tally.so/r/wA1R1N";
+
   return (
     <section className="px-4 py-12 md:px-0">
       <div className="mx-auto flex max-w-[790px] flex-col items-center gap-12 text-center">
@@ -55,21 +55,27 @@ export function McpAgentsSection({ agents }: { docsHref: string; agents: readonl
             <DialogHeader>
               <DialogTitle>Want to see your favorite AI tool listed on prisma.io/mcp?</DialogTitle>
             </DialogHeader>
-            <iframe
-              data-tally-src="https://tally.so/r/wA1R1N"
-              title="Tool listing request"
-              width="100%"
-              height="600"
-              className="border-0"
-            />
-            <Script
-              src="https://tally.so/widgets/embed.js"
-              onLoad={() => {
-                if (typeof window !== "undefined" && (window as any).Tally) {
-                  (window as any).Tally.loadEmbeds();
-                }
-              }}
-            />
+            <div className="overflow-hidden rounded-xl border border-stroke-neutral bg-background-neutral-weaker shadow-box-low">
+              <iframe
+                src={tallyHref}
+                title="Tool listing request"
+                width="100%"
+                height="640"
+                className="block min-h-[640px] w-full border-0 bg-white"
+              />
+            </div>
+            <p className="text-sm leading-6 text-foreground-neutral-weak">
+              If the form does not load,{" "}
+              <a
+                href={tallyHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-foreground-ppg underline"
+              >
+                open it in a new tab
+              </a>
+              .
+            </p>
           </DialogContent>
         </Dialog>
       </div>
