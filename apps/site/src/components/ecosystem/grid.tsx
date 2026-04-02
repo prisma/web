@@ -21,7 +21,7 @@ export const EcosystemGrid = () => {
                 activeFilter === filter ? "orm-reverse" : "default-stronger"
               }
               size="lg"
-              className="capitalize"
+              className="capitalize whitespace-nowrap"
               onClick={() => setActiveFilter(filter)}
               key={filter}
             >
