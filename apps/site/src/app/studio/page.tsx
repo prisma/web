@@ -146,7 +146,7 @@ export default function StudioPage() {
 
             <div className="flex flex-col items-center gap-4 sm:flex-row">
               <Button
-                variant="ppg"
+                variant="orm"
                 size="2xl"
                 href={CONSOLE_URL}
                 target="_blank"
