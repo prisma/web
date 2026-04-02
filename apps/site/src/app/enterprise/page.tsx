@@ -346,7 +346,7 @@ export default function EnterprisePage() {
   return (
     <main className="flex-1 w-full z-1 bg-background-default">
       {/* Hero */}
-      <section className="hero -mt-24 flex items-end justify-center px-4 relative">
+      <section className="hero -mt-24 flex items-end justify-center px-4 relative pt-24">
         <div className="absolute inset-0 z-0 bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20" />
         <div className="content pt-31 relative z-2 my-12 flex flex-col gap-8">
           <div className="flex flex-col gap-1">
