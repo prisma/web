@@ -92,24 +92,29 @@ app.listen(4000);`,
 };
 
 export const metadata: Metadata = {
-  title: "GraphQL with Database & Prisma | Next-Generation ORM for SQL Databases",
+  title: "Simple Database Access in GraphQL servers",
   description:
-    "Prisma is a next-generation ORM for Node.js & TypeScript. It's the easiest way to build GraphQL servers with MySQL, PostgreSQL & SQL Server databases.",
+    "Query data from MySQL, PostgreSQL & SQL Server databases in GraphQL with Prisma – a better ORM for JavaScript and TypeScript.",
   alternates: {
     canonical: "https://www.prisma.io/graphql",
   },
   openGraph: {
-    title: "GraphQL with Database & Prisma | Next-Generation ORM for SQL Databases",
+    title: "Simple Database Access in GraphQL servers",
     description:
-      "Prisma is a next-generation ORM for Node.js & TypeScript. It's the easiest way to build GraphQL servers with MySQL, PostgreSQL & SQL Server databases.",
+      "Query data from MySQL, PostgreSQL & SQL Server databases in GraphQL with Prisma – a better ORM for JavaScript and TypeScript.",
     url: "https://www.prisma.io/graphql",
+    siteName: "Prisma",
+    locale: "en_US",
+    type: "website",
     images: [{ url: "/og/prisma-with/graphql.png" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "GraphQL with Database & Prisma | Next-Generation ORM for SQL Databases",
+    site: "@prisma",
+    creator: "@prisma",
+    title: "Simple Database Access in GraphQL servers",
     description:
-      "Prisma is a next-generation ORM for Node.js & TypeScript. It's the easiest way to build GraphQL servers with MySQL, PostgreSQL & SQL Server databases.",
+      "Query data from MySQL, PostgreSQL & SQL Server databases in GraphQL with Prisma – a better ORM for JavaScript and TypeScript.",
     images: ["/og/prisma-with/graphql.png"],
   },
 };

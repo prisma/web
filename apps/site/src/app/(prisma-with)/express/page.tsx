@@ -94,24 +94,29 @@ model User {
 };
 
 export const metadata: Metadata = {
-  title: "Express & Prisma | Next-Generation ORM for SQL DBs",
+  title: "Easy database access in Express servers",
   description:
-    "Prisma is a next-generation ORM for Node.js & TypeScript. It's the easiest way to build Express apps with MySQL, PostgreSQL & SQL Server databases.",
+    "Build high-performance and type-safe Express servers with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and the first serverless database without cold starts.",
   alternates: {
     canonical: "https://www.prisma.io/express",
   },
   openGraph: {
-    title: "Express & Prisma | Next-Generation ORM for SQL DBs",
+    title: "Easy database access in Express servers",
     description:
-      "Prisma is a next-generation ORM for Node.js & TypeScript. It's the easiest way to build Express apps with MySQL, PostgreSQL & SQL Server databases.",
+      "Build high-performance and type-safe Express servers with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and the first serverless database without cold starts.",
     url: "https://www.prisma.io/express",
+    siteName: "Prisma",
+    locale: "en_US",
+    type: "website",
     images: [{ url: "/og/prisma-with/express.png" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Express & Prisma | Next-Generation ORM for SQL DBs",
+    site: "@prisma",
+    creator: "@prisma",
+    title: "Easy database access in Express servers",
     description:
-      "Prisma is a next-generation ORM for Node.js & TypeScript. It's the easiest way to build Express apps with MySQL, PostgreSQL & SQL Server databases.",
+      "Build high-performance and type-safe Express servers with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and the first serverless database without cold starts.",
     images: ["/og/prisma-with/express.png"],
   },
 };

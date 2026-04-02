@@ -105,24 +105,29 @@ server.listen({ port: 4000 });`,
 };
 
 export const metadata: Metadata = {
-  title: "Apollo & Prisma & Database | Next-Generation ORM for SQL Databases",
+  title: "Easy, type-safe database access with Prisma & Apollo",
   description:
-    "Prisma is a next-generation ORM. It's the easiest way to build a GraphQL API with Apollo Server and MySQL, PostgreSQL & SQL Server databases.",
+    "Query data from MySQL, PostgreSQL & SQL Server databases in GraphQL with Prisma – a better ORM for JavaScript and TypeScript.",
   alternates: {
     canonical: "https://www.prisma.io/apollo",
   },
   openGraph: {
-    title: "Apollo & Prisma & Database | Next-Generation ORM for SQL Databases",
+    title: "Easy, type-safe database access with Prisma & Apollo",
     description:
-      "Prisma is a next-generation ORM. It's the easiest way to build a GraphQL API with Apollo Server and MySQL, PostgreSQL & SQL Server databases.",
+      "Query data from MySQL, PostgreSQL & SQL Server databases in GraphQL with Prisma – a better ORM for JavaScript and TypeScript.",
     url: "https://www.prisma.io/apollo",
+    siteName: "Prisma",
+    locale: "en_US",
+    type: "website",
     images: [{ url: "/og/prisma-with/apollo.png" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Apollo & Prisma & Database | Next-Generation ORM for SQL Databases",
+    site: "@prisma",
+    creator: "@prisma",
+    title: "Easy, type-safe database access with Prisma & Apollo",
     description:
-      "Prisma is a next-generation ORM. It's the easiest way to build a GraphQL API with Apollo Server and MySQL, PostgreSQL & SQL Server databases.",
+      "Query data from MySQL, PostgreSQL & SQL Server databases in GraphQL with Prisma – a better ORM for JavaScript and TypeScript.",
     images: ["/og/prisma-with/apollo.png"],
   },
 };

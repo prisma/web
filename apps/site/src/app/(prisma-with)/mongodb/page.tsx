@@ -109,24 +109,29 @@ enum Department {
 };
 
 export const metadata: Metadata = {
-  title: "Prisma & MongoDB | ORM for the scaleable serverless database",
+  title: "Be More Productive with MongoDB & Prisma",
   description:
-    "Prisma is a next-generation ORM for Node.js & TypeScript. It's the easiest way to build applications with MongoDB.",
+    "Bring your developer experience to the next level. Prisma makes it easier than ever to work with your MongoDB database and enables you to query data with confidence.",
   alternates: {
     canonical: "https://www.prisma.io/mongodb",
   },
   openGraph: {
-    title: "Prisma & MongoDB | ORM for the scaleable serverless database",
+    title: "Be More Productive with MongoDB & Prisma",
     description:
-      "Prisma is a next-generation ORM for Node.js & TypeScript. It's the easiest way to build applications with MongoDB.",
+      "Bring your developer experience to the next level. Prisma makes it easier than ever to work with your MongoDB database and enables you to query data with confidence.",
     url: "https://www.prisma.io/mongodb",
+    siteName: "Prisma",
+    locale: "en_US",
+    type: "website",
     images: [{ url: "/og/prisma-with/mongodb.png" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Prisma & MongoDB | ORM for the scaleable serverless database",
+    site: "@prisma",
+    creator: "@prisma",
+    title: "Be More Productive with MongoDB & Prisma",
     description:
-      "Prisma is a next-generation ORM for Node.js & TypeScript. It's the easiest way to build applications with MongoDB.",
+      "Bring your developer experience to the next level. Prisma makes it easier than ever to work with your MongoDB database and enables you to query data with confidence.",
     images: ["/og/prisma-with/mongodb.png"],
   },
 };

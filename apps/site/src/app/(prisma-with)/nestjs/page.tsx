@@ -111,7 +111,7 @@ export class UsersController {
     return user;
   }
 }`,
-  "transactions": `// src/orders/orders.service.ts
+  transactions: `// src/orders/orders.service.ts
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -166,24 +166,29 @@ model User {
 };
 
 export const metadata: Metadata = {
-  title: "NestJS Database & Prisma | Type-safe ORM for SQL Databases",
+  title: "Enterprise-ready database for NestJS apps",
   description:
-    "Prisma is a next-generation ORM for Node.js & TypeScript. It's the easiest way to build NestJS apps with MySQL, PostgreSQL & SQL Server databases.",
+    "Build high-performance and type-safe NestJS apps with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and the first serverless database without cold starts.",
   alternates: {
     canonical: "https://www.prisma.io/nestjs",
   },
   openGraph: {
-    title: "NestJS Database & Prisma | Type-safe ORM for SQL Databases",
+    title: "Enterprise-ready database for NestJS apps",
     description:
-      "Prisma is a next-generation ORM for Node.js & TypeScript. It's the easiest way to build NestJS apps with MySQL, PostgreSQL & SQL Server databases.",
+      "Build high-performance and type-safe NestJS apps with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and the first serverless database without cold starts.",
     url: "https://www.prisma.io/nestjs",
+    siteName: "Prisma",
+    locale: "en_US",
+    type: "website",
     images: [{ url: "/og/prisma-with/nestjs.png" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "NestJS Database & Prisma | Type-safe ORM for SQL Databases",
+    site: "@prisma",
+    creator: "@prisma",
+    title: "Enterprise-ready database for NestJS apps",
     description:
-      "Prisma is a next-generation ORM for Node.js & TypeScript. It's the easiest way to build NestJS apps with MySQL, PostgreSQL & SQL Server databases.",
+      "Build high-performance and type-safe NestJS apps with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and the first serverless database without cold starts.",
     images: ["/og/prisma-with/nestjs.png"],
   },
 };

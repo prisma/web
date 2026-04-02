@@ -74,24 +74,29 @@ model Post {
 };
 
 export const metadata: Metadata = {
-  title: "Hapi Database & Prisma | Next-Generation ORM for SQL DBs",
+  title: "The perfect ORM for hapi developers",
   description:
-    "Prisma is a next-generation ORM for Node.js & TypeScript. It's the easiest way to build hapi apps with MySQL, PostgreSQL & SQL Server databases.",
+    "Query data from MySQL, PostgreSQL & SQL Server databases in hapi apps with Prisma – a better ORM for JavaScript and TypeScript.",
   alternates: {
     canonical: "https://www.prisma.io/hapi",
   },
   openGraph: {
-    title: "Hapi Database & Prisma | Next-Generation ORM for SQL DBs",
+    title: "The perfect ORM for hapi developers",
     description:
-      "Prisma is a next-generation ORM for Node.js & TypeScript. It's the easiest way to build hapi apps with MySQL, PostgreSQL & SQL Server databases.",
+      "Query data from MySQL, PostgreSQL & SQL Server databases in hapi apps with Prisma – a better ORM for JavaScript and TypeScript.",
     url: "https://www.prisma.io/hapi",
+    siteName: "Prisma",
+    locale: "en_US",
+    type: "website",
     images: [{ url: "/og/prisma-with/hapi.png" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Hapi Database & Prisma | Next-Generation ORM for SQL DBs",
+    site: "@prisma",
+    creator: "@prisma",
+    title: "The perfect ORM for hapi developers",
     description:
-      "Prisma is a next-generation ORM for Node.js & TypeScript. It's the easiest way to build hapi apps with MySQL, PostgreSQL & SQL Server databases.",
+      "Query data from MySQL, PostgreSQL & SQL Server databases in hapi apps with Prisma – a better ORM for JavaScript and TypeScript.",
     images: ["/og/prisma-with/hapi.png"],
   },
 };

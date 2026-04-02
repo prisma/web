@@ -141,24 +141,29 @@ export default function Users() {
 };
 
 export const metadata: Metadata = {
-  title: "React with Prisma | Next-Generation Node.js and TypeScript ORM",
+  title: "Access your Database from React Apps with Ease",
   description:
-    "Prisma is a next-generation ORM for Node.js & TypeScript. It's the easiest way to connect React apps to MySQL, PostgreSQL, SQL Server, CockroachDB, and MongoDB databases.",
+    "Build high-performance and type-safe React apps with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and the first serverless database without cold starts.",
   alternates: {
     canonical: "https://www.prisma.io/react",
   },
   openGraph: {
-    title: "React with Prisma | Next-Generation Node.js and TypeScript ORM",
+    title: "Access your Database from React Apps with Ease",
     description:
-      "Prisma is a next-generation ORM for Node.js & TypeScript. It's the easiest way to connect React apps to MySQL, PostgreSQL, SQL Server, CockroachDB, and MongoDB databases.",
+      "Build high-performance and type-safe React apps with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and the first serverless database without cold starts.",
     url: "https://www.prisma.io/react",
+    siteName: "Prisma",
+    locale: "en_US",
+    type: "website",
     images: [{ url: "/og/prisma-with/react.png" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "React with Prisma | Next-Generation Node.js and TypeScript ORM",
+    site: "@prisma",
+    creator: "@prisma",
+    title: "Access your Database from React Apps with Ease",
     description:
-      "Prisma is a next-generation ORM for Node.js & TypeScript. It's the easiest way to connect React apps to MySQL, PostgreSQL, SQL Server, CockroachDB, and MongoDB databases.",
+      "Build high-performance and type-safe React apps with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and the first serverless database without cold starts.",
     images: ["/og/prisma-with/react.png"],
   },
 };

@@ -101,24 +101,29 @@ model Post {
 };
 
 export const metadata: Metadata = {
-  title: "Fastify & Prisma | Next-Generation ORM for SQL DBs",
+  title: "Easy, type-safe database Access in Fastify servers",
   description:
-    "Prisma is a next-generation ORM for Node.js & TypeScript. It's the easiest way to build Fastify apps with MySQL, PostgreSQL, SQL Server and MongoDB databases.",
+    "Query data from MySQL, PostgreSQL & SQL Server databases in Fastify apps with Prisma – a better ORM for JavaScript and TypeScript.",
   alternates: {
     canonical: "https://www.prisma.io/fastify",
   },
   openGraph: {
-    title: "Fastify & Prisma | Next-Generation ORM for SQL DBs",
+    title: "Easy, type-safe database Access in Fastify servers",
     description:
-      "Prisma is a next-generation ORM for Node.js & TypeScript. It's the easiest way to build Fastify apps with MySQL, PostgreSQL, SQL Server and MongoDB databases.",
+      "Query data from MySQL, PostgreSQL & SQL Server databases in Fastify apps with Prisma – a better ORM for JavaScript and TypeScript.",
     url: "https://www.prisma.io/fastify",
+    siteName: "Prisma",
+    locale: "en_US",
+    type: "website",
     images: [{ url: "/og/prisma-with/fastify.png" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Fastify & Prisma | Next-Generation ORM for SQL DBs",
+    site: "@prisma",
+    creator: "@prisma",
+    title: "Easy, type-safe database Access in Fastify servers",
     description:
-      "Prisma is a next-generation ORM for Node.js & TypeScript. It's the easiest way to build Fastify apps with MySQL, PostgreSQL, SQL Server and MongoDB databases.",
+      "Query data from MySQL, PostgreSQL & SQL Server databases in Fastify apps with Prisma – a better ORM for JavaScript and TypeScript.",
     images: ["/og/prisma-with/fastify.png"],
   },
 };

@@ -103,24 +103,29 @@ export default async function BlogPage() {
 };
 
 export const metadata: Metadata = {
-  title: "Next.js Database with Prisma | Next-Generation ORM for SQL Databases",
+  title: "The easiest way to work with a database in Next.js",
   description:
-    "Prisma is a next-generation ORM for Node.js & TypeScript. It's the easiest way to build Next.js apps with MySQL, PostgreSQL & SQL Server databases.",
+    "Build high-performance and type-safe Next.js apps with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and the first serverless database without cold starts.",
   alternates: {
     canonical: "https://www.prisma.io/nextjs",
   },
   openGraph: {
-    title: "Next.js Database with Prisma | Next-Generation ORM for SQL Databases",
+    title: "The easiest way to work with a database in Next.js",
     description:
-      "Prisma is a next-generation ORM for Node.js & TypeScript. It's the easiest way to build Next.js apps with MySQL, PostgreSQL & SQL Server databases.",
+      "Build high-performance and type-safe Next.js apps with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and the first serverless database without cold starts.",
     url: "https://www.prisma.io/nextjs",
+    siteName: "Prisma",
+    locale: "en_US",
+    type: "website",
     images: [{ url: "/og/prisma-with/nextjs.png" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Next.js Database with Prisma | Next-Generation ORM for SQL Databases",
+    site: "@prisma",
+    creator: "@prisma",
+    title: "The easiest way to work with a database in Next.js",
     description:
-      "Prisma is a next-generation ORM for Node.js & TypeScript. It's the easiest way to build Next.js apps with MySQL, PostgreSQL & SQL Server databases.",
+      "Build high-performance and type-safe Next.js apps with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and the first serverless database without cold starts.",
     images: ["/og/prisma-with/nextjs.png"],
   },
 };

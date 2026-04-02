@@ -40,24 +40,29 @@ export type Post = {
 };
 
 export const metadata: Metadata = {
-  title: "TypeScript & Prisma | TypeScript ORM for SQL Databases",
+  title: "TypeScript ORM with zero-cost type-safety for your database",
   description:
-    "Prisma is a TypeScript ORM that makes you more confident with type safe database access. It's the easiest way to access SQL databases in Node.js with TypeScript",
+    "Query data from MySQL, PostgreSQL & SQL Server databases with Prisma – a type-safe TypeScript ORM for Node.js",
   alternates: {
     canonical: "https://www.prisma.io/typescript",
   },
   openGraph: {
-    title: "TypeScript & Prisma | TypeScript ORM for SQL Databases",
+    title: "TypeScript ORM with zero-cost type-safety for your database",
     description:
-      "Prisma is a TypeScript ORM that makes you more confident with type safe database access. It's the easiest way to access SQL databases in Node.js with TypeScript",
+      "Query data from MySQL, PostgreSQL & SQL Server databases with Prisma – a type-safe TypeScript ORM for Node.js",
     url: "https://www.prisma.io/typescript",
+    siteName: "Prisma",
+    locale: "en_US",
+    type: "website",
     images: [{ url: "/og/prisma-with/typescript.png" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "TypeScript & Prisma | TypeScript ORM for SQL Databases",
+    site: "@prisma",
+    creator: "@prisma",
+    title: "TypeScript ORM with zero-cost type-safety for your database",
     description:
-      "Prisma is a TypeScript ORM that makes you more confident with type safe database access. It's the easiest way to access SQL databases in Node.js with TypeScript",
+      "Query data from MySQL, PostgreSQL & SQL Server databases with Prisma – a type-safe TypeScript ORM for Node.js",
     images: ["/og/prisma-with/typescript.png"],
   },
 };
