@@ -41,33 +41,39 @@ export function StatusIndicator() {
 
   useEffect(() => {
     const fetchStatus = () => {
-      Promise.all([
+      Promise.allSettled([
         fetch("https://www.prisma-status.com/api/v2/status.json").then(
           (res) => res.json() as Promise<StatusResponse>,
         ),
         fetch("https://www.prisma-status.com/api/v2/incidents/unresolved.json").then(
           (res) => res.json() as Promise<IncidentsResponse>,
         ),
-      ])
-        .then(([statusData, incidentsData]) => {
-          const summaryIndicator = statusData.status.indicator;
-          const incidents = incidentsData.incidents ?? [];
-          const worstIncidentIndicator = incidents.reduce<StatusIndicator>(
-            (worst, incident) =>
-              SEVERITY[incident.impact] > SEVERITY[worst] ? incident.impact : worst,
-            "none",
-          );
+      ]).then(([statusResult, incidentsResult]) => {
+        if (statusResult.status === "rejected") {
+          setStatus(null);
+          return;
+        }
 
-          if (SEVERITY[worstIncidentIndicator] > SEVERITY[summaryIndicator]) {
-            setStatus({
-              indicator: worstIncidentIndicator,
-              description: incidents.length === 1 ? "Active Incident" : "Active Incidents",
-            });
-          } else {
-            setStatus(statusData.status);
-          }
-        })
-        .catch(() => setStatus(null));
+        const statusData = statusResult.value;
+        const incidents =
+          incidentsResult.status === "fulfilled"
+            ? (incidentsResult.value.incidents ?? [])
+            : [];
+        const worstIncidentIndicator = incidents.reduce<StatusIndicator>(
+          (worst, incident) =>
+            SEVERITY[incident.impact] > SEVERITY[worst] ? incident.impact : worst,
+          "none",
+        );
+
+        if (SEVERITY[worstIncidentIndicator] > SEVERITY[statusData.status.indicator]) {
+          setStatus({
+            indicator: worstIncidentIndicator,
+            description: incidents.length === 1 ? "Active Incident" : "Active Incidents",
+          });
+        } else {
+          setStatus(statusData.status);
+        }
+      });
     };
 
     fetchStatus();
