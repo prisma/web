@@ -25,12 +25,12 @@ export const CarouselItem = ({
         className,
       )}
     >
-      <div className="flex flex-col gap-4">
+      <div className="grid grid-rows-[56px_auto] gap-4">
         <div className="flex gap-4 items-center">
           <Action color={color || "orm"} size="4xl">
             <i className={card.icon} />
           </Action>
-          <h3 className="text-foreground-neutral font-sans-display text-md md:text-lg stretch-display mt-0 mb-1 font-bold">
+          <h3 className="text-foreground-neutral font-sans-display text-md md:text-lg stretch-display mt-0 font-bold">
             {card.title}
           </h3>
         </div>
