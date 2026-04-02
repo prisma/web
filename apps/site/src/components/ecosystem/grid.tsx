@@ -33,6 +33,7 @@ export const EcosystemGrid = () => {
       <div>
         {filters.slice(0, -1).map((filter) => (
           <div
+            key={filter}
             className={cn(
               "flex flex-col gap-12 my-12",
               activeFilter !== filter &&
@@ -69,7 +70,7 @@ export const EcosystemGrid = () => {
                           label={box.type}
                         ></Badge>
 
-                        <div className="relative after:content-[''] after:absolute after:w-full after:h-full after:z-[10000] after:left-0 after:top-0">
+                        <div className="relative after:content-[''] after:absolute after:w-full after:h-full after:z-10000 after:left-0 after:top-0">
                           <GitHubButton
                             href={`https://github.com/${box.githubRepo}`}
                             data-color-scheme="no-preference: light; light: light; dark: dark;"

@@ -203,7 +203,7 @@ export const Card = ({ card, color }: CardProps) => {
           alt={card.title}
           width={1200}
           height={800}
-          loading="lazy"
+          loading="eager"
           className="px-4 z-2 pt-0 pb-0 min-w-full min-h-[60%] object-fill object-[top_left] [mask-image:linear-gradient(to_bottom,rgba(0,0,0,1)_60%,transparent_90%)] [-webkit-mask-image:linear-gradient(to_bottom,rgba(0,0,0,1)_60%,transparent_90%)]"
         />
       )}

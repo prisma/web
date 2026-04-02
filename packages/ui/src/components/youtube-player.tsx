@@ -11,6 +11,7 @@ export const YouTubePlayer = ({
   autoplay = false,
   overlay,
   playOnView = false,
+  loading = "lazy",
 }: {
   className?: string;
   serverlessTalk?: boolean;
@@ -19,6 +20,7 @@ export const YouTubePlayer = ({
   playOnView?: boolean;
   autoplay?: boolean;
   overlay?: string;
+  loading?: "eager" | "lazy";
 }) => {
   const [playing, setPlaying] = useState(false);
   const [shouldAutoplay, setShouldAutoplay] = useState(autoplay);
@@ -97,6 +99,7 @@ export const YouTubePlayer = ({
               serverlessTalk && "absolute top-0 left-0 w-full h-full",
             )}
             height="287"
+            loading={loading}
             src={`https://www.youtube.com/embed/${video}${getAutoplayParams()}`}
             title="YouTube Video"
             allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; autoplay"

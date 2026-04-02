@@ -95,6 +95,7 @@ const twoCol = [
     other: (
       <YouTubePlayer
         autoplay={false}
+        loading="eager"
         video="EEDGwLB55bI"
         thumbnail={"/illustrations/orm/thumbnail.png"}
       />
