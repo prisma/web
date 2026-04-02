@@ -3,9 +3,9 @@ import { slaSections, slaLastUpdated } from "@/data/sla";
 import { LegalAccordion } from "@/components/legal-accordion";
 
 export const metadata = createPageMetadata({
-  title: "Service Level Agreement | Prisma",
+  title: "Service Level Agreement (SLA) | Prisma",
   description:
-    "Read the Prisma Service Level Agreement covering uptime commitments and service credits.",
+    "Explore our Service Level Agreement (SLA) detailing our monthly uptime percentage, service credits, and any exclusions.",
   path: "/sla",
   ogImage: "/og/og-sla.png",
 });

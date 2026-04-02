@@ -10,7 +10,7 @@ import { createPageMetadata } from "@/lib/page-metadata";
 export const metadata = createPageMetadata({
   title: "Prisma Support Policy | Prisma",
   description:
-    "Read the Prisma Support Policy, including support channels, response times, severity levels, and business hours.",
+    "Read our support policy and see how it relates to you.",
   path: "/support-policy",
   ogImage: "/og/og-support.png",
 });

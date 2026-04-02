@@ -56,9 +56,9 @@ const twoCol = [
   },
 ];
 export const metadata = createPageMetadata({
-  title: "Prisma Ecosystem | Community tools and ORM integrations",
+  title: "Prisma ORM Ecosystem",
   description:
-    "Discover community-built tools, packages, and integrations for Prisma, plus support options and ways to share your project with the ecosystem.",
+    "Explore the variety of tools (from generators, to middleware, to CLIs) created by the Prisma community.",
   path: "/ecosystem",
   ogImage: "/og/og-ecosystem.png",
 });

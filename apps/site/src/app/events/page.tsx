@@ -13,9 +13,9 @@ import {
 } from "./events-data";
 
 export const metadata = createPageMetadata({
-  title: "Events | Prisma",
+  title: "Prisma Events",
   description:
-    "Find upcoming Prisma events and Meetups, see where the team will be speaking, and explore recordings and resources from past events.",
+    "Upcoming events or meetups, conferences and and explore the content from previous events.",
   path: "/events",
   ogImage: "/og/og-events.png",
 });

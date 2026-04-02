@@ -325,9 +325,9 @@ const investors = {
 };
 
 export const metadata = createPageMetadata({
-  title: "About Prisma | Mission, investors & open source",
+  title: "About | Prisma",
   description:
-    "Discover Prisma's mission and Data DX focus, our open-source roots, backers, and programs that help developers build faster with data.",
+    "At Prisma, our mission is to provide the best experience for teams to work and interact with databases. Learn more about Prisma.",
   path: "/about",
   ogImage: "/og/og-about.png",
 });

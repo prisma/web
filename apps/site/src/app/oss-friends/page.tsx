@@ -2,9 +2,8 @@ import { createPageMetadata } from "@/lib/page-metadata";
 import { Card } from "@prisma/eclipse";
 
 export const metadata = createPageMetadata({
-  title: "OSS Friends | Prisma",
-  description:
-    "Explore open-source projects and communities Prisma supports across the ecosystem, from developer tools to OSS friends we love to highlight.",
+  title: "Prisma | Our OSS Friends",
+  description: "Promoting and supporting the open source community.",
   path: "/oss-friends",
   ogImage: "/og/og-oss-friends.png",
 });
