@@ -52,7 +52,7 @@ export default function SupportPolicyPage() {
             </Button>
             <Button
               asChild
-              variant="default-stronger"
+              variant="default-strong"
               size="3xl"
             >
               <a href="/support">

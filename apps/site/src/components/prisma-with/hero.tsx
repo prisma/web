@@ -55,7 +55,7 @@ export function Hero({ data }: { data: HeroData }) {
             {secondaryButton && (
               <Button
                 asChild
-                variant="default-stronger"
+                variant="default-strong"
                 size="3xl"
               >
                 <a href={secondaryButton.url}>
