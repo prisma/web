@@ -84,7 +84,7 @@ export default function EnterprisePage() {
       </section>
 
       <section className="my-12 px-4">
-        <div className="content relative z-2 flex flex-col gap-8 max-w-">
+        <div className="content relative z-2 flex flex-col gap-8">
           <ScrollCarousel
             ariaLabel="Showcase carousel"
             gridClassName="auto-cols-[100%] xs:auto-cols-[calc((100%-16px)/2)] sm:auto-cols-[calc((100%-16px)/3)] md:auto-cols-[calc((100%-32px)/4)] lg:auto-cols-[calc((100%-64px)/5)]"
