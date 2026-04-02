@@ -1,6 +1,12 @@
 import { Button } from "@prisma/eclipse";
 
-export function McpCtaSection({ docsHref }: { docsHref: string }) {
+export function McpCtaSection({
+  docsHref,
+  readDocsHref,
+}: {
+  docsHref: string;
+  readDocsHref: string;
+}) {
   return (
     <section className="bg-radial from-background-ppg/50 from-0% to-background-default to-70% px-4 py-12">
       <div className="mx-auto max-w-360 rounded-2xl bg-[url('/illustrations/homepage/footer_grid.svg')] bg-cover bg-center px-4 py-12">
@@ -11,36 +17,25 @@ export function McpCtaSection({ docsHref }: { docsHref: string }) {
                 Start Building with AI
               </h3>
               <p className="max-w-[463px] text-base leading-6 text-foreground-neutral-weak">
-                Join thousands of developers, and agents, already using Prisma MCP
-                for faster, more intuitive database workflows.
+                Join thousands of developers, and agents, already using Prisma MCP for faster, more
+                intuitive database workflows.
               </p>
             </div>
 
             <div className="flex flex-col items-center gap-4">
               <div className="flex w-full flex-col items-center justify-center gap-4 min-[720px]:flex-row min-[720px]:gap-6">
-                <Button
-                  href={docsHref}
-                  variant={"ppg"}
-                  size={"3xl"}
-                  className="gap-3"
-                >
+                <Button href={docsHref} variant={"ppg"} size={"3xl"} className="gap-3">
                   Add MCP Server
-                  <i
-                    className="fa-regular fa-arrow-right shrink-0 text-[16px]"
-                    aria-hidden
-                  />
+                  <i className="fa-regular fa-arrow-right shrink-0 text-[16px]" aria-hidden />
                 </Button>
                 <Button
-                  href={docsHref}
+                  href={readDocsHref}
                   variant={"default-stronger"}
                   size={"3xl"}
                   className="gap-3"
                 >
                   Read Docs
-                  <i
-                    className="fa-regular fa-book-open shrink-0 text-[16px]"
-                    aria-hidden
-                  />
+                  <i className="fa-regular fa-book-open shrink-0 text-[16px]" aria-hidden />
                 </Button>
               </div>
 

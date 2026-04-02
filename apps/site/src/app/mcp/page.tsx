@@ -1,18 +1,9 @@
 import type { Metadata } from "next";
 
-import {
-  type McpAgent,
-  McpAgentsSection,
-} from "./_components/mcp-agents-section";
-import {
-  type McpCapability,
-  McpCapabilitiesSection,
-} from "./_components/mcp-capabilities-section";
+import { type McpAgent, McpAgentsSection } from "./_components/mcp-agents-section";
+import { type McpCapability, McpCapabilitiesSection } from "./_components/mcp-capabilities-section";
 import { McpCtaSection } from "./_components/mcp-cta-section";
-import {
-  type McpHeroFeature,
-  McpHeroSection,
-} from "./_components/mcp-hero-section";
+import { type McpHeroFeature, McpHeroSection } from "./_components/mcp-hero-section";
 import { McpVideoSection } from "./_components/mcp-video-section";
 
 export const metadata: Metadata = {
@@ -82,19 +73,31 @@ const agents: McpAgent[] = [
     logo: "/mcp/logos/cursor.svg",
     alt: "Add to Cursor",
     icon: "fa-regular fa-copy",
-    href: DOCS_MCP,
+    href: "cursor://anysphere.cursor-deeplink/mcp/install?name=Prisma-Remote&config=eyJjb21tYW5kIjoibnB4IC15IG1jcC1yZW1vdGUgaHR0cHM6Ly9tY3AucHJpc21hLmlvL21jcCJ9",
   },
   {
     logo: "/mcp/logos/vscode.svg",
     alt: "Install in VS Code",
     icon: "fa-regular fa-copy",
-    href: DOCS_MCP,
+    href: "vscode:mcp/install?%7B%22name%22%3A%22prisma-postgres%22%2C%22gallery%22%3Atrue%2C%22url%22%3A%22https%3A%2F%2Fmcp.prisma.io%2Fmcp%22%7D",
   },
   {
     logo: "/mcp/logos/warp.svg",
     alt: "Copy JSON configuration",
     icon: "fa-regular fa-copy",
-    href: DOCS_MCP,
+    copyText: JSON.stringify(
+      {
+        "Prisma-Postgres": {
+          command: "npx",
+          args: ["-y", "mcp-remote", "https://mcp.prisma.io/mcp"],
+          env: {},
+          working_directory: null,
+          start_on_launch: true,
+        },
+      },
+      null,
+      2,
+    ),
   },
   {
     logo: "/mcp/logos/chatgpt.svg",
@@ -106,7 +109,7 @@ const agents: McpAgent[] = [
     logo: "/mcp/logos/claude-code.svg",
     alt: "Copy command to add to Claude Code",
     icon: "fa-regular fa-copy",
-    href: DOCS_MCP,
+    copyText: "claude mcp add --transport http prisma https://mcp.prisma.io/mcp",
   },
   {
     logo: "/mcp/logos/windsurf.svg",
@@ -118,7 +121,8 @@ const agents: McpAgent[] = [
     logo: "/mcp/logos/gemini.svg",
     alt: "Copy command to add to Gemini CLI",
     icon: "fa-regular fa-copy",
-    href: DOCS_MCP,
+    copyText:
+      "gemini mcp add Prisma-Remote npx --args -y mcp-remote https://mcp.prisma.io/mcp --scope user",
   },
   {
     logo: null,
@@ -132,8 +136,7 @@ const capabilities: McpCapability[] = [
   {
     icon: "fa-light fa-database",
     title: "Database Management",
-    description:
-      "Create projects, databases, or clean them up via natural language",
+    description: "Create projects, databases, or clean them up via natural language",
     prompt: "Set up this project with a new database in us-east-1",
     mobileTall: false,
   },
@@ -141,8 +144,7 @@ const capabilities: McpCapability[] = [
     icon: "fa-light fa-magnifying-glass-arrow-right",
     title: "Data Analysis",
     description: "Execute queries and analyze data through conversation",
-    prompt:
-      "Show me all users who signed up this week and their activity levels",
+    prompt: "Show me all users who signed up this week and their activity levels",
     mobileTall: true,
   },
   {
@@ -155,17 +157,14 @@ const capabilities: McpCapability[] = [
   {
     icon: "fa-light fa-folder-gear",
     title: "Database Administration",
-    description:
-      "Handle backups, connection strings, and multi-database workflows",
-    prompt:
-      "Create a new database from the most recent backup to my product db",
+    description: "Handle backups, connection strings, and multi-database workflows",
+    prompt: "Create a new database from the most recent backup to my product db",
     mobileTall: false,
   },
   {
     icon: "fa-light fa-arrow-progress",
     title: "Development Workflow",
-    description:
-      "Integrate database operations seamlessly into coding workflow",
+    description: "Integrate database operations seamlessly into coding workflow",
     prompt: "Open Prisma Studio and show me the data in my users table",
     mobileTall: false,
   },
@@ -179,7 +178,7 @@ export default function McpPage() {
         <McpVideoSection />
         <McpAgentsSection docsHref={DOCS_MCP} agents={agents} />
         <McpCapabilitiesSection capabilities={capabilities} />
-        <McpCtaSection docsHref={DOCS_MCP} />
+        <McpCtaSection docsHref={DOCS_MCP} readDocsHref="/docs/ai" />
       </div>
     </main>
   );
