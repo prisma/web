@@ -81,21 +81,18 @@ const agents: McpAgent[] = [
   {
     logo: "/mcp/logos/cursor.svg",
     alt: "Add to Cursor",
-    icon: "fa-regular fa-copy",
-    copyText:
+    href:
       "cursor://anysphere.cursor-deeplink/mcp/install?name=Prisma-Remote&config=eyJjb21tYW5kIjoibnB4IC15IG1jcC1yZW1vdGUgaHR0cHM6Ly9tY3AucHJpc21hLmlvL21jcCJ9",
   },
   {
     logo: "/mcp/logos/vscode.svg",
     alt: "Install in VS Code",
-    icon: "fa-regular fa-copy",
-    copyText:
+    href:
       "vscode:mcp/install?%7B%22name%22%3A%22prisma-postgres%22%2C%22gallery%22%3Atrue%2C%22url%22%3A%22https%3A%2F%2Fmcp.prisma.io%2Fmcp%22%7D",
   },
   {
     logo: "/mcp/logos/warp.svg",
     alt: "Copy JSON configuration",
-    icon: "fa-regular fa-copy",
     copyText: JSON.stringify(
       {
         "Prisma-Postgres": {
@@ -113,32 +110,27 @@ const agents: McpAgent[] = [
   {
     logo: "/mcp/logos/chatgpt.svg",
     alt: "See how to add the remote Prisma MCP server to ChatGPT",
-    icon: "fa-regular fa-arrow-up-right",
     href: "https://pris.ly/gpt-prisma-mcp",
   },
   {
     logo: "/mcp/logos/claude-code.svg",
     alt: "Copy command to add to Claude Code",
-    icon: "fa-regular fa-copy",
     copyText: "claude mcp add --transport http prisma https://mcp.prisma.io/mcp",
   },
   {
     logo: "/mcp/logos/windsurf.svg",
     alt: "Add via Plugin Store",
-    icon: "fa-regular fa-arrow-up-right",
     href: "https://pris.ly/windsurf-mcp",
   },
   {
     logo: "/mcp/logos/gemini.svg",
     alt: "Copy command to add to Gemini CLI",
-    icon: "fa-regular fa-copy",
     copyText:
       "gemini mcp add Prisma-Remote npx --args -y mcp-remote https://mcp.prisma.io/mcp --scope user",
   },
   {
     logo: null,
     alt: "Any AI agent",
-    icon: null,
     href: DOCS_MCP,
   },
 ];

@@ -8,13 +8,11 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@prisma/eclipse";
 export function AgentCard({
   logo,
   alt,
-  icon,
   href,
   copyText,
 }: {
   logo: string | null;
   alt: string;
-  icon: string | null;
   href?: string;
   copyText?: string;
 }) {
@@ -22,6 +20,7 @@ export function AgentCard({
 
   const isCopyAction = !!copyText;
   const isExternalLink = !isCopyAction && href?.startsWith("http");
+  const icon = href ? "fa-regular fa-arrow-up-right" : copyText ? "fa-regular fa-copy" : null;
 
   const handleClick = (e: React.MouseEvent) => {
     if (!isCopyAction) return;
