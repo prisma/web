@@ -2,7 +2,12 @@
 
 import { useId, useState, type ReactNode } from "react";
 
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@prisma/eclipse";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@prisma/eclipse";
 
 const bubbleShadow = "shadow-box-low dark:shadow-box-high";
 
@@ -12,7 +17,11 @@ export type McpBubbleVariant =
   | "hero-mobile-title"
   | "hero-mobile-description";
 
-export type McpPromptBubbleVariant = "mobile" | "mobile-tall" | "wide" | "compact";
+export type McpPromptBubbleVariant =
+  | "mobile"
+  | "mobile-tall"
+  | "wide"
+  | "compact";
 
 type BubbleConfig = {
   shell: string;
@@ -46,11 +55,13 @@ const promptConfig: Record<McpPromptBubbleVariant, string> = {
 };
 
 const promptTextClass =
-  "inline-block w-full break-words text-pretty font-mono text-[14px] font-normal leading-5 text-background-ppg-reverse-strong dark:text-foreground-ppg-reverse-weak";
+  "inline-block w-full break-words text-pretty text-left font-mono text-[14px] font-normal leading-5 text-background-ppg-reverse-strong dark:text-foreground-ppg-reverse-weak";
 
 function BubbleTail({ side }: { side: "left" | "right" }) {
   const positionClass =
-    side === "left" ? "bottom-[-2px] left-[-10.5px]" : "bottom-[-2px] right-[-10.5px] scale-x-[-1]";
+    side === "left"
+      ? "bottom-[-2px] left-[-10.5px]"
+      : "bottom-[-2px] right-[-10.5px] scale-x-[-1]";
   const clipPathId = useId();
 
   return (

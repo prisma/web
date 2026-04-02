@@ -52,7 +52,7 @@ export function McpAgentsSection({ agents }: { docsHref: string; agents: readonl
               Want to see your tool listed?
             </button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-4xl">
             <DialogHeader>
               <DialogTitle>Want to see your favorite AI tool listed on prisma.io/mcp?</DialogTitle>
             </DialogHeader>
@@ -60,7 +60,7 @@ export function McpAgentsSection({ agents }: { docsHref: string; agents: readonl
               data-tally-src="https://tally.so/r/wA1R1N"
               title="Tool listing request"
               width="100%"
-              height="400"
+              height="600"
               className="border-0"
             />
             <Script
