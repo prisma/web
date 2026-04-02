@@ -43,22 +43,14 @@ const CardFooter = () => (
     <Separator className="my-6" />
     <div className="flex flex-col md:flex-row justify-between w-full gap-8">
       {badge_list.map((badge: any) => (
-        <div
-          className="flex flex-col md:flex-row gap-2 md:gap-6 md:items-center"
-          key={badge.title}
-        >
+        <div className="flex flex-col md:flex-row gap-2 md:gap-6 md:items-center" key={badge.title}>
           <h6 className="font-semibold text-2xs text-foreground-neutral uppercase">
             {badge.title}
           </h6>
           <div className="flex gap-3">
             {badge.list &&
               badge.list.map((item: any) => (
-                <Button
-                  variant="orm-reverse"
-                  href={item.url}
-                  key={item.label}
-                  className="text-base"
-                >
+                <Button variant="orm" href={item.url} key={item.label} className="text-base">
                   {item.label}
                 </Button>
               ))}
@@ -81,9 +73,9 @@ const twoCol = [
           </h2>
         </div>
         <p className="text-foreground-neutral-weak! text-base">
-          Database workflows can feel brittle and error-prone. Prisma ORM
-          increases productivity and confidence when working with databases and
-          makes workflows like data modeling, migrations and querying easy.
+          Database workflows can feel brittle and error-prone. Prisma ORM increases productivity and
+          confidence when working with databases and makes workflows like data modeling, migrations
+          and querying easy.
         </p>
       </>
     ),
@@ -111,8 +103,8 @@ const twoCol = [
           Works with your favorite databases and frameworks
         </h2>
         <p className="text-foreground-neutral-weak! text-base">
-          Prisma's compatibility with popular tools ensures no stack lock-in,
-          lower integration costs, and smooth transitions.
+          Prisma's compatibility with popular tools ensures no stack lock-in, lower integration
+          costs, and smooth transitions.
         </p>
         <a href="/stack" className="link-btn orm">
           <span>Learn more</span>
@@ -144,8 +136,8 @@ const twoCol_2 = [
           </h2>
         </div>
         <p className="text-foreground-neutral-weak! text-base">
-          A meaningful comparison of database query latencies across database
-          providers and ORM libraries in the Node.js & TypeScript ecosystem.
+          A meaningful comparison of database query latencies across database providers and ORM
+          libraries in the Node.js & TypeScript ecosystem.
         </p>
       </div>
     ),
@@ -171,10 +163,9 @@ const twoCol_2 = [
           </h2>
         </div>
         <p className="text-foreground-neutral-weak! text-base">
-          Prisma Client is a query builder that’s tailored to your schema. We
-          designed its API to be intuitive, both for SQL veterans and developers
-          brand new to databases. The auto-completion helps you figure out your
-          query without the need for documentation.
+          Prisma Client is a query builder that’s tailored to your schema. We designed its API to be
+          intuitive, both for SQL veterans and developers brand new to databases. The
+          auto-completion helps you figure out your query without the need for documentation.
         </p>
         <a href="/client" className="link-btn orm">
           <span>Learn more</span>
@@ -273,8 +264,7 @@ export default function ORM() {
             Next-generation Node.js and TypeScript ORM
           </h1>
           <p className="text-center text-foreground-neutral max-w-2xl mx-auto">
-            Real Postgres with the developer experience and infrastructure to
-            ship faster.
+            Real Postgres with the developer experience and infrastructure to ship faster.
           </p>
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
             <Button
@@ -287,7 +277,7 @@ export default function ORM() {
               <i className="fa-regular fa-database ml-2" />
             </Button>
             {/*<Button
-              variant="default-stronger"
+              variant="default-strong"
               href="https://console.prisma.io/sign-up?utm_source=website&utm_medium=index&utm_campaign=cta"
               size="3xl"
               target="_blank"
@@ -322,34 +312,16 @@ export default function ORM() {
           <div className="grid md:grid-cols-2 gap-9">
             {twoCol_3.map((stat, index) => (
               <div key={stat.title} className="flex flex-col gap-4">
-                <Action
-                  size="4xl"
-                  color="orm"
-                  className={cn(index === 0 && "p-0")}
-                >
-                  <img
-                    src={stat.icon}
-                    alt={stat.title}
-                    className="w-full h-full"
-                  />
+                <Action size="4xl" color="orm" className={cn(index === 0 && "p-0")}>
+                  <img src={stat.icon} alt={stat.title} className="w-full h-full" />
                 </Action>
                 <h4 className="text-2xl font-sans-display stretch-display text-foreground-neutral">
                   {stat.title}
                 </h4>
-                <p className="text-foreground-neutral-weak">
-                  {stat.description}
-                </p>
-                <Button
-                  variant="default-stronger"
-                  href={stat.btn.url}
-                  size="xl"
-                  className="w-fit"
-                >
+                <p className="text-foreground-neutral-weak">{stat.description}</p>
+                <Button variant="default-strong" href={stat.btn.url} size="xl" className="w-fit">
                   <span>
-                    {stat.btn.label}{" "}
-                    {stat.btn.icon && (
-                      <i className={cn("ml-2", stat.btn.icon)} />
-                    )}
+                    {stat.btn.label} {stat.btn.icon && <i className={cn("ml-2", stat.btn.icon)} />}
                   </span>
                 </Button>
               </div>
@@ -366,8 +338,8 @@ export default function ORM() {
           </h3>
           <div className="content flex flex-col lg:flex-row gap-3 lg:gap-12 items-center md:items-start lg:items-center">
             <p className="max-w-94 w-full text-center md:text-left text-foreground-neutral-weak text-md">
-              Integrate Prisma into your development ecosystem and focus on your
-              team’s core competencies
+              Integrate Prisma into your development ecosystem and focus on your team’s core
+              competencies
             </p>
             <Button variant="orm" size="2xl" href="/enterprise">
               <span>Explore Enterprise</span>
@@ -412,20 +384,16 @@ export default function ORM() {
                 Ready to get started?
               </h2>
               <p className="text-foreground-neutral-weak max-w-121">
-                Start from scratch, add Prisma ORM to your existing project, or
-                explore how to build an app using your favorite framework.
+                Start from scratch, add Prisma ORM to your existing project, or explore how to build
+                an app using your favorite framework.
               </p>
             </div>
             <div className="flex flex-col md:flex-row gap-6">
-              <Button
-                variant="orm"
-                size="2xl"
-                href={prismaPostgresQuickstartUrl}
-              >
+              <Button variant="orm" size="2xl" href={prismaPostgresQuickstartUrl}>
                 <span>Try Prisma ORM</span>
                 <i className="fa-regular fa-arrow-right ml-2" />
               </Button>
-              <Button variant="default-stronger" size="2xl" href="https://www.prisma.io/docs">
+              <Button variant="default-strong" size="2xl" href="https://www.prisma.io/docs">
                 <span>Read the docs</span>
                 <i className="fa-regular fa-arrow-right ml-2" />
               </Button>

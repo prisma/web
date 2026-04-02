@@ -356,7 +356,7 @@ export default function CommunityPage() {
                 <span>Join Discord</span>
                 <i className="fa-brands fa-discord ml-2" aria-hidden />
               </Button>
-              <Button variant="default-stronger" size="2xl" href="/newsletter">
+              <Button variant="default-strong" size="2xl" href="/newsletter">
                 <span>Subscribe to newsletter</span>
                 <i className="fa-regular fa-arrow-right ml-2" aria-hidden />
               </Button>

@@ -16,15 +16,12 @@ import {
 import { comparisonSections, faqs } from "./pricing-data";
 import { PricingPageContent } from "./pricing-page-content";
 
-const pricingFaqStructuredData = createFaqStructuredData(
-  "/pricing",
-  faqs,
-  "Prisma pricing FAQ",
-);
+const pricingFaqStructuredData = createFaqStructuredData("/pricing", faqs, "Prisma pricing FAQ");
 
 export const metadata: Metadata = {
   title: "Pricing | Prisma Postgres",
-  description: "Get started for free using Prisma's products or choose the right plan that meets your needs",
+  description:
+    "Get started for free using Prisma's products or choose the right plan that meets your needs",
   alternates: {
     canonical: "https://www.prisma.io/pricing",
   },
@@ -181,7 +178,7 @@ export default function PricingPage() {
               <span>Create your first Database</span>
               <i className="fa-regular fa-arrow-right ml-2" />
             </Button>
-            <Button variant="default-stronger" size="2xl" href="https://www.prisma.io/docs/">
+            <Button variant="default-strong" size="2xl" href="https://www.prisma.io/docs/">
               <span>Read the docs</span>
               <i className="fa-regular fa-book-open ml-2" />
             </Button>

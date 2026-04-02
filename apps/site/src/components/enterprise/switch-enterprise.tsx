@@ -40,7 +40,7 @@ export const SwitchEnterprise = ({ content, tabs }: SwitchEnterpriseProps) => {
           <Button
             key={tab.id}
             size="4xl"
-            variant={activeTab === idx ? "orm" : "default-stronger"}
+            variant={activeTab === idx ? "orm" : "default-strong"}
             aria-pressed={activeTab === idx}
             onClick={() => setActiveTab(idx)}
           >

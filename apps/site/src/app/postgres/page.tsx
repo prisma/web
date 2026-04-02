@@ -20,9 +20,9 @@ const twoCol = [
           you already know
         </h2>
         <p className="text-foreground-neutral-weak! text-base">
-          This is the mature, proven, and production-tested PostgreSQL millions
-          of developers already rely on. Standard SQL and wire protocol,
-          Postgres extensions like pgvector, and data import with pg_dump.
+          This is the mature, proven, and production-tested PostgreSQL millions of developers
+          already rely on. Standard SQL and wire protocol, Postgres extensions like pgvector, and
+          data import with pg_dump.
         </p>
       </>
     ),
@@ -46,8 +46,8 @@ const twoCol = [
           zero configuration
         </h2>
         <p className="text-foreground-neutral-weak! text-base">
-          Handles connection pooling automatically, and runs on bare metal and
-          unikernels for maximum performance.
+          Handles connection pooling automatically, and runs on bare metal and unikernels for
+          maximum performance.
         </p>
       </>
     ),
@@ -70,9 +70,9 @@ const twoCol = [
           from day one
         </h2>
         <p className="text-foreground-neutral-weak! text-base">
-          Automated backups, encryption at rest and in transit, full tenant
-          isolation and enterprise-grade compliance. Everything you need to ship
-          with confidence, managed automatically.
+          Automated backups, encryption at rest and in transit, full tenant isolation and
+          enterprise-grade compliance. Everything you need to ship with confidence, managed
+          automatically.
         </p>
       </>
     ),
@@ -150,7 +150,7 @@ export default async function SiteHome() {
               <i className="fa-regular fa-database ml-2" />
             </Button>
             <Button
-              variant="default-stronger"
+              variant="default-strong"
               href="/docs/postgres"
               size="3xl"
               className="font-sans-display! font-[650]"
@@ -184,9 +184,7 @@ export default async function SiteHome() {
                   "first:md:col-span-2 overflow-hidden",
                 )}
               >
-                <div
-                  className={cn("flex flex-col gap-6 justify-between h-full")}
-                >
+                <div className={cn("flex flex-col gap-6 justify-between h-full")}>
                   <div className="flex justify-between items-start flex-col lg:flex-row gap-6">
                     <div className="flex flex-col gap-4 w-full flex-1">
                       <div className="flex flex-col gap-4 items-start">
@@ -201,8 +199,7 @@ export default async function SiteHome() {
                         {card.subtitle}
                       </p>
                     </div>
-                    {typeof card.image === "string" &&
-                    card.image === "logo-grid" ? (
+                    {typeof card.image === "string" && card.image === "logo-grid" ? (
                       <div
                         className={cn(
                           "min-w-0 overflow-visible flex-1 flex items-center relative md:max-w-unset sm:max-w-[60%] max-w-full mx-auto",
@@ -216,15 +213,9 @@ export default async function SiteHome() {
                       </div>
                     ) : null}
                   </div>
-                  {typeof card.image === "string" &&
-                  card.image === "logo-bar" &&
-                  card.logos ? (
+                  {typeof card.image === "string" && card.image === "logo-bar" && card.logos ? (
                     <div className={cn("w-full")}>
-                      <LogoGrid
-                        logos={card.logos}
-                        type="spotlight"
-                        color="ppg"
-                      />
+                      <LogoGrid logos={card.logos} type="spotlight" color="ppg" />
                     </div>
                   ) : null}
                 </div>
@@ -253,8 +244,8 @@ export default async function SiteHome() {
           </h3>
           <div className="content flex flex-col lg:flex-row gap-3 lg:gap-12 items-center md:items-start lg:items-center">
             <p className="max-w-94 w-full text-center md:text-left text-foreground-neutral-weak text-md">
-              Usage-based pricing, with a generous free tier.  Spend limits
-              included, so you never get surprised.
+              Usage-based pricing, with a generous free tier.  Spend limits included, so you never
+              get surprised.
             </p>
             <Button variant="ppg" size="2xl" href="/pricing">
               <span>Explore Pricing</span>
@@ -280,8 +271,7 @@ export default async function SiteHome() {
                 See Postgres in action
               </h2>
               <p className="m-0 mt-4 text-base leading-6 text-foreground-neutral-weak">
-                See how to get started in just a couple of minutes, with Prisma
-                Postgres.
+                See how to get started in just a couple of minutes, with Prisma Postgres.
               </p>
             </div>
 
@@ -314,9 +304,7 @@ export default async function SiteHome() {
               <h2 className="text-3xl text-foreground-neutral font-sans-display stretch-display">
                 Try Prisma Postgres
               </h2>
-              <p className="text-foreground-neutral-weak">
-                Deploy a Postgres database instantly.
-              </p>
+              <p className="text-foreground-neutral-weak">Deploy a Postgres database instantly.</p>
             </div>
             <div className="flex flex-col md:flex-row gap-6">
               <Button
@@ -329,7 +317,7 @@ export default async function SiteHome() {
                 <span>Create your first Database</span>
                 <i className="fa-regular fa-arrow-right ml-2" />
               </Button>
-              <Button variant="default-stronger" size="2xl" href="/docs">
+              <Button variant="default-strong" size="2xl" href="/docs">
                 <span>Read the docs</span>
                 <i className="fa-regular fa-arrow-right ml-2" />
               </Button>

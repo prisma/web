@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  Button,
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@prisma/eclipse";
+import { Button, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@prisma/eclipse";
 import { cn } from "@/lib/cn";
 export const Technology = ({
   children,
@@ -24,12 +18,9 @@ export const Technology = ({
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
-            variant="default-stronger"
+            variant="default-strong"
             href={url}
-            className={cn(
-              "font-mono! font-normal! text-base! w-[75px]! h-[75px]!",
-              className,
-            )}
+            className={cn("font-mono! font-normal! text-base! w-[75px]! h-[75px]!", className)}
           >
             {children}
           </Button>

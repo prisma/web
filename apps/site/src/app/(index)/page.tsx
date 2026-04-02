@@ -1,9 +1,6 @@
 import Antigravity from "../../components/homepage/antigravity";
 import type { Metadata } from "next";
-import {
-  SITE_HOME_DESCRIPTION,
-  SITE_HOME_TITLE,
-} from "../../lib/blog-metadata";
+import { SITE_HOME_DESCRIPTION, SITE_HOME_TITLE } from "../../lib/blog-metadata";
 import { Button } from "@prisma/eclipse";
 import { CopyCode } from "@/components/homepage/copy-btn";
 import { Bento } from "@/components/homepage/bento";
@@ -19,8 +16,8 @@ const twoCol = [
           Postgres that <br /> fits your stack.
         </h2>
         <p className="text-foreground-neutral-weak! text-base">
-          Works with your existing stack, wherever you deploy.Your choice of
-          ORM, frameworks, and tools, they all just connect.
+          Works with your existing stack, wherever you deploy.Your choice of ORM, frameworks, and
+          tools, they all just connect.
         </p>
       </>
     ),
@@ -40,9 +37,8 @@ const twoCol = [
           Real Postgres. <br /> Better experience.
         </h2>
         <p className="text-foreground-neutral-weak! text-base">
-          The PostgreSQL millions know and trust in production, ready in seconds
-          with zero configuration. Automatic backups, observability and
-          compliance.
+          The PostgreSQL millions know and trust in production, ready in seconds with zero
+          configuration. Automatic backups, observability and compliance.
         </p>
       </>
     ),
@@ -109,8 +105,7 @@ export default function SiteHome() {
             perfectly managed.
           </h1>
           <p className="text-center text-foreground-neutral max-w-2xl mx-auto">
-            Real Postgres with the developer experience and infrastructure to
-            ship faster.
+            Real Postgres with the developer experience and infrastructure to ship faster.
           </p>
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
             <Button
@@ -126,9 +121,7 @@ export default function SiteHome() {
             </Button>
             <CopyCode text="npx prisma init">
               <span className="text-foreground-neutral-reverse-weak">$</span>
-              <span className="text-foreground-neutral-weak">
-                &nbsp;npx prisma init
-              </span>
+              <span className="text-foreground-neutral-weak">&nbsp;npx prisma init</span>
               <i className="fa-regular fa-copy ml-2" />
             </CopyCode>
           </div>
@@ -149,8 +142,7 @@ export default function SiteHome() {
               },
               {
                 title: "Manage databases",
-                subtitle:
-                  "Create, manage and explore databases directly in your IDE.",
+                subtitle: "Create, manage and explore databases directly in your IDE.",
                 imageUrl: "/illustrations/homepage/ide",
                 imageAlt: "IDE",
                 icon: "fa-light fa-screwdriver-wrench",
@@ -174,8 +166,7 @@ export default function SiteHome() {
               },
               {
                 title: "Browse your data",
-                subtitle:
-                  "Explore, filter, and edit your data with an interface.",
+                subtitle: "Explore, filter, and edit your data with an interface.",
                 imageUrl: "/illustrations/homepage/data",
                 imageAlt: "Data browsing",
                 icon: "fa-light fa-magnifying-glass-arrow-right",
@@ -201,8 +192,8 @@ export default function SiteHome() {
           </h3>
           <div className="content flex flex-col items-center gap-3 md:items-start lg:flex-row lg:items-center lg:gap-12">
             <p className="max-w-94 w-full text-center text-md text-foreground-neutral-weak md:text-left">
-              Give your users instant production-ready Postgres, create
-              databases, add a built-in data browser, and personalize it.
+              Give your users instant production-ready Postgres, create databases, add a built-in
+              data browser, and personalize it.
             </p>
             <Button variant="ppg" size="2xl" href="/pricing">
               <span>Explore Pricing</span>
@@ -249,7 +240,7 @@ export default function SiteHome() {
                   <span>Create your first Database</span>
                   <i className="fa-regular fa-arrow-right ml-2" />
                 </Button>
-                <Button variant="default-stronger" size="2xl" href="/pricing">
+                <Button variant="default-strong" size="2xl" href="/pricing">
                   <span>Explore Pricing</span>
                   <i className="fa-regular fa-arrow-right ml-2" />
                 </Button>

@@ -118,11 +118,10 @@ const twoCol = [
           </h2>
         </div>
         <p className="text-foreground-neutral-weak! text-base">
-          The best code is the code that writes itself. Prisma Client gives you
-          a fantastic autocomplete experience so you can move quickly and be
-          sure you don't write an invalid query. Our obsession with type safety
-          means you can rest assured that your code works as expected, every
-          time.
+          The best code is the code that writes itself. Prisma Client gives you a fantastic
+          autocomplete experience so you can move quickly and be sure you don't write an invalid
+          query. Our obsession with type safety means you can rest assured that your code works as
+          expected, every time.
         </p>
         <Button variant="orm" size="3xl" className="w-fit" href="/studio">
           <span>Get started in 5 minutes</span>
@@ -150,10 +149,9 @@ const twoCol = [
           </h2>
         </div>
         <p className="text-foreground-neutral-weak! text-base">
-          Execute SQL queries directly against your database without losing the
-          benefits of Prisma’s type-checking and auto-completion. TypedSQL
-          leverages the capabilities of Prisma Client to write raw SQL queries
-          that are type-checked at compile time.
+          Execute SQL queries directly against your database without losing the benefits of Prisma’s
+          type-checking and auto-completion. TypedSQL leverages the capabilities of Prisma Client to
+          write raw SQL queries that are type-checked at compile time.
         </p>
         <Button variant="orm" size="3xl" className="w-fit" href="/typedsql">
           <span>Learn more about TypedSQL</span>
@@ -188,9 +186,8 @@ export default function Client() {
           </h1>
         </div>
         <p className="max-w-200 w-full mx-auto text-center relative z-1">
-          The Prisma Client works seamlessly across languages and databases.
-          Ship faster by writing less SQL. Avoid mistakes with a fully type-safe
-          API tailored specifically for your app.
+          The Prisma Client works seamlessly across languages and databases. Ship faster by writing
+          less SQL. Avoid mistakes with a fully type-safe API tailored specifically for your app.
         </p>
       </div>
       <div className="px-4 relative z-1">
@@ -246,9 +243,7 @@ export default function Client() {
                 <h5 className="text-xl font-sans-display stretch-display font-bold md:w-min text-foreground-neutral">
                   {frameworks.title}
                 </h5>
-                <p className="text-base text-foreground-neutral-weak">
-                  {frameworks.description}
-                </p>
+                <p className="text-base text-foreground-neutral-weak">{frameworks.description}</p>
               </div>
               <div className="flex gap-1 flex-wrap">
                 {frameworks.list.map((fw) => (
@@ -265,7 +260,7 @@ export default function Client() {
               </div>
             </Card>
             <div className="flex gap-4 mx-auto w-fit flex-wrap justify-center">
-              <Button variant="default-stronger" size="3xl">
+              <Button variant="default-strong" size="3xl">
                 <span>Browse examples on GitHub</span>
                 <i className="fa-brands fa-github ml-2" />
               </Button>
@@ -284,10 +279,9 @@ export default function Client() {
                 Visual database browser
               </h3>
               <p className="text-foreground-neutral-weak text-md mb-8">
-                Prisma Studio is the easiest way to explore and manipulate data
-                in your Prisma projects. Understand your data by browsing across
-                tables, filter, paginate, traverse relations and edit your data
-                with safety.
+                Prisma Studio is the easiest way to explore and manipulate data in your Prisma
+                projects. Understand your data by browsing across tables, filter, paginate, traverse
+                relations and edit your data with safety.
               </p>
               <Button variant="orm" size="3xl" className="w-fit" href="/studio">
                 <span>Learn more about Prisma Studio</span>
@@ -302,17 +296,11 @@ export default function Client() {
                 Hassle-free migrations
               </h3>
               <p className="text-foreground-neutral-weak text-md mb-8">
-                Prisma Migrate auto-generates SQL migrations from your Prisma
-                schema. These migration files are fully customizable, giving you
-                full control and ultimate flexibility — from local development
-                to production environments.
+                Prisma Migrate auto-generates SQL migrations from your Prisma schema. These
+                migration files are fully customizable, giving you full control and ultimate
+                flexibility — from local development to production environments.
               </p>
-              <Button
-                variant="orm"
-                size="3xl"
-                className="w-fit"
-                href="/migrate"
-              >
+              <Button variant="orm" size="3xl" className="w-fit" href="/migrate">
                 <span>Learn more about Prisma Migrate</span>
                 <i className="fa-regular fa-arrow-right ml-2" />
               </Button>
