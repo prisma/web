@@ -15,15 +15,15 @@ export type Symbol = "EUR" | "AUD" | "INR" | "GBP" | "CAD" | "BRL" | "JPY" | "CN
 
 export const exchangeRates: Record<Symbol, number> = {
   USD: 1,
-  EUR: 0.92,
-  GBP: 0.79,
-  AUD: 1.55,
-  CAD: 1.37,
-  INR: 83.5,
-  BRL: 5.0,
-  JPY: 151,
-  CNY: 7.25,
-  KRW: 1350,
+  EUR: 0.93,
+  GBP: 0.8,
+  AUD: 1.54,
+  CAD: 1.36,
+  INR: 83.2,
+  BRL: 5.4,
+  JPY: 157.5,
+  CNY: 7.2,
+  KRW: 1370,
 };
 
 export const currencyConfig: Record<Symbol, { decimals: number; microDecimals: number }> = {
