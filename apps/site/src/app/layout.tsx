@@ -187,7 +187,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <ThemeProvider defaultTheme="system" storageKey="theme">
             <NavigationWrapper
               links={baseOptions().links}
-              utm={{ source: "website", medium: "blog" }}
+              utm={{ source: "website" }}
             />
             {children}
             <FooterWrapper />
