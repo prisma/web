@@ -243,7 +243,7 @@ const features = [
     image: "/illustrations/orm/collaborative",
     alt: "Collaborative work",
     icon: "fa-light fa-screen-users",
-    link: "https://console.prisma.io",
+    link: "https://console.prisma.io/login?utm_source=website&utm_medium=orm&utm_campaign=cta",
   },
   {
     title: "Browse your data",
