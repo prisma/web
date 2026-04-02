@@ -2,6 +2,23 @@
 import { useEffect, useState } from "react";
 import { cn } from "../lib/cn";
 
+type StatusIndicator = "none" | "minor" | "major" | "critical";
+
+interface Incident {
+  impact: StatusIndicator;
+}
+
+interface IncidentsResponse {
+  incidents: Incident[];
+}
+
+const SEVERITY: Record<StatusIndicator, number> = {
+  none: 0,
+  minor: 1,
+  major: 2,
+  critical: 3,
+};
+
 const indicatorStatus: Record<string, string> = {
   "-": "[&>div]:bg-gray-500 text-foreground-neutral-weak",
   none: "[&>div]:bg-background-success-reverse-strong text-background-success-reverse-strong",
@@ -19,14 +36,35 @@ const PDPStatus = ({ className }: { className?: string }) => {
   });
 
   useEffect(() => {
-    fetch("https://www.prisma-status.com/api/v2/status.json")
-      .then((response) => response.json())
-      .then((json) => {
-        setPdpStatus(json);
+    Promise.all([
+      fetch("https://www.prisma-status.com/api/v2/status.json").then(
+        (res) => res.json(),
+      ),
+      fetch("https://www.prisma-status.com/api/v2/incidents/unresolved.json").then(
+        (res) => res.json() as Promise<IncidentsResponse>,
+      ),
+    ])
+      .then(([statusJson, incidentsData]) => {
+        const summaryIndicator: StatusIndicator = statusJson.status.indicator ?? "none";
+        const incidents: Incident[] = incidentsData.incidents ?? [];
+        const worstIncidentIndicator = incidents.reduce<StatusIndicator>(
+          (worst, incident) =>
+            SEVERITY[incident.impact] > SEVERITY[worst] ? incident.impact : worst,
+          "none",
+        );
+
+        if (SEVERITY[worstIncidentIndicator] > SEVERITY[summaryIndicator]) {
+          setPdpStatus({
+            status: {
+              indicator: worstIncidentIndicator,
+              description: incidents.length === 1 ? "Active Incident" : "Active Incidents",
+            },
+          });
+        } else {
+          setPdpStatus(statusJson);
+        }
       })
-      .catch((error) =>
-        console.log("PDP Status fetch failed " + error.message),
-      );
+      .catch((error) => console.log("PDP Status fetch failed " + error.message));
   }, []);
 
   const indicator = pdpStatus.status.indicator || "-";

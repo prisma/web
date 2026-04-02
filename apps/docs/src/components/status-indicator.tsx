@@ -12,11 +12,26 @@ interface StatusResponse {
   };
 }
 
+interface Incident {
+  impact: StatusIndicator;
+}
+
+interface IncidentsResponse {
+  incidents: Incident[];
+}
+
 const dotColors: Record<StatusIndicator, string> = {
   none: "bg-green-500",
   minor: "bg-yellow-500",
   major: "bg-orange-500",
   critical: "bg-red-500",
+};
+
+const SEVERITY: Record<StatusIndicator, number> = {
+  none: 0,
+  minor: 1,
+  major: 2,
+  critical: 3,
 };
 
 const POLL_INTERVAL = 5 * 60 * 1000; // 5 minutes
@@ -26,9 +41,32 @@ export function StatusIndicator() {
 
   useEffect(() => {
     const fetchStatus = () => {
-      fetch("https://www.prisma-status.com/api/v2/status.json")
-        .then((res) => res.json())
-        .then((data: StatusResponse) => setStatus(data.status))
+      Promise.all([
+        fetch("https://www.prisma-status.com/api/v2/status.json").then(
+          (res) => res.json() as Promise<StatusResponse>,
+        ),
+        fetch("https://www.prisma-status.com/api/v2/incidents/unresolved.json").then(
+          (res) => res.json() as Promise<IncidentsResponse>,
+        ),
+      ])
+        .then(([statusData, incidentsData]) => {
+          const summaryIndicator = statusData.status.indicator;
+          const incidents = incidentsData.incidents ?? [];
+          const worstIncidentIndicator = incidents.reduce<StatusIndicator>(
+            (worst, incident) =>
+              SEVERITY[incident.impact] > SEVERITY[worst] ? incident.impact : worst,
+            "none",
+          );
+
+          if (SEVERITY[worstIncidentIndicator] > SEVERITY[summaryIndicator]) {
+            setStatus({
+              indicator: worstIncidentIndicator,
+              description: incidents.length === 1 ? "Active Incident" : "Active Incidents",
+            });
+          } else {
+            setStatus(statusData.status);
+          }
+        })
         .catch(() => setStatus(null));
     };
 
