@@ -21,11 +21,6 @@ const footerItems = [
         //tag: "Early Access"
       },
       {
-        title: "Accelerate",
-        url: "/accelerate",
-        _type: "footerLinkType",
-      },
-      {
         _type: "footerLinkType",
         title: "Pricing",
         url: "/pricing",
