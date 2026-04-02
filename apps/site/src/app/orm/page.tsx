@@ -319,7 +319,7 @@ export default function ORM() {
                 <Button asChild variant="default-strong" size="xl" className="w-fit">
                   <a href={stat.btn.url}>
                     <span>
-                      {stat.btn.label} {stat.btn.icon && <i className={cn("ml-2", stat.btn.icon)} />}
+                      {stat.btn.label} {stat.btn.icon && <i className={stat.btn.icon} />}
                     </span>
                   </a>
                 </Button>
