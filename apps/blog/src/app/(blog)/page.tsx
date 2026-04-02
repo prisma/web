@@ -143,7 +143,7 @@ export default async function BlogHome({
     }
 
     return {
-      url: post.url,
+      url: withBlogBasePath(post.url),
       title: data.title as string,
       date: dateISO,
       excerpt: data.metaDescription as string,

@@ -33,7 +33,7 @@ export default async function OSSFriendsPage() {
 
   return (
     <main className="flex-1 w-full -mt-24 bg-background-default text-foreground-neutral">
-      <section className="px-4 pt-36 pb-12 md:pb-16">
+      <section className="px-4 pt-50 pb-12 md:pb-16">
         <div className="mx-auto flex w-full max-w-[720px] flex-col items-center gap-6 text-center">
           <p className="m-0 flex items-center justify-center gap-2 text-base font-semibold uppercase tracking-[1.6px] text-foreground-ppg font-sans">
             <i className="fa-regular fa-heart" aria-hidden />

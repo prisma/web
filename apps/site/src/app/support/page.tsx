@@ -36,8 +36,8 @@ export default function Support() {
 
   return (
     <main className="flex-1 w-screen bg-background-default">
-      <div className="hero relative w-full -mt-33 pt-45 block pb-12 flex flex-col gap-8">
-        <div className="bg-[linear-gradient(180deg,var(--color-foreground-orm-strong)_0%,var(--color-background-default)_100%)] absolute inset-0 z-1 overflow-hidden" />
+      <div className="hero relative w-full -mt-33 pt-65 block pb-12 flex flex-col gap-8">
+        <div className="bg-[linear-gradient(180deg,var(--color-foreground-orm-strong)_0%,var(--color-background-default)_100%)] absolute inset-0 z-1 overflow-hidden opacity-20" />
         <h1 className="stretch-display text-6xl font-bold mb-4 text-center mt-9 font-sans-display z-2 relative">
           {data.title}
         </h1>

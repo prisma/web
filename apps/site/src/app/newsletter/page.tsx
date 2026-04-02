@@ -44,9 +44,7 @@ async function getLatestBlogPosts(count = 3): Promise<RssItem[]> {
           new RegExp(`<${tag}><!\\[CDATA\\[([\\s\\S]*?)\\]\\]></${tag}>`),
         );
         if (m) return m[1].trim();
-        const m2 = block.match(
-          new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`),
-        );
+        const m2 = block.match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`));
         return m2 ? m2[1].trim() : "";
       };
 
@@ -55,11 +53,7 @@ async function getLatestBlogPosts(count = 3): Promise<RssItem[]> {
         if (!enc) return null;
         const attrs = enc[1];
         const typeM = attrs.match(/\btype="([^"]*)"/i);
-        if (
-          typeM &&
-          typeM[1] &&
-          !typeM[1].toLowerCase().startsWith("image/")
-        ) {
+        if (typeM && typeM[1] && !typeM[1].toLowerCase().startsWith("image/")) {
           return null;
         }
         const urlM = attrs.match(/\burl="([^"]+)"/i);
@@ -100,13 +94,13 @@ export default async function NewsletterPage() {
 
   return (
     <main className="flex-1 w-full -mt-24 bg-background-default text-foreground-neutral">
-      <section className="px-4 pt-36 pb-16">
+      <section className="px-4 pt-50 pb-16">
         <div className="max-w-[720px] mx-auto flex flex-col items-center gap-6 text-center">
-          <p className="m-0 flex items-center justify-center gap-2 text-base font-semibold uppercase tracking-[1.6px] text-foreground-ppg font-sans">
+          <p className="m-0 flex items-center justify-center gap-2 text-sm stretch-display font-semibold uppercase tracking-[1.6px] text-foreground-ppg font-sans">
             <i className="fa-regular fa-bell" aria-hidden />
             Stay Updated
           </p>
-          <h1 className="m-0 text-foreground-neutral text-5xl font-sans-display [font-variation-settings:'wght'_900]">
+          <h1 className="m-0 text-foreground-neutral text-5xl font-sans-display stretch-display">
             Get our monthly newsletter
           </h1>
         </div>

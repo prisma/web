@@ -24,7 +24,7 @@ export const metadata = createPageMetadata({
 export default function StackPage() {
   return (
     <main className="flex-1 w-full -mt-24 bg-[linear-gradient(to_bottom,var(--color-background-ppg),var(--color-background-default)_50%)] text-foreground-neutral">
-      <section className="px-4 pt-36 pb-12 md:px-0 md:pb-16">
+      <section className="px-4 pt-60 pb-12 md:px-0 md:pb-16">
         <div className="mx-auto flex w-full max-w-[720px] flex-col items-center gap-6 text-center">
           <p className="flex items-center justify-center gap-2 font-sans text-base font-semibold uppercase tracking-[1.6px] text-foreground-ppg">
             <Layers className="size-3.5 shrink-0" strokeWidth={2} aria-hidden />
@@ -43,7 +43,9 @@ export default function StackPage() {
               <h3 className="m-0 text-foreground-neutral text-3xl font-sans-display [font-variation-settings:'wght'_900]">
                 {category.title}
               </h3>
-              <p className="m-0 text-foreground-neutral-weak">{category.description}</p>
+              <p className="m-0 text-foreground-neutral-weak">
+                {category.description}
+              </p>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {category.items.map((item: StackLinkItem) => (
                   <Link key={item.id} href={item.href} className="group">

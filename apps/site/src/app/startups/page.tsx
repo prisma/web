@@ -4,11 +4,40 @@ import { Button } from "@prisma/eclipse";
 import { TallyEmbed } from "./_components/tally-embed";
 
 export const metadata: Metadata = {
-  title: "Startup Program | Prisma",
+  title: "Prisma Startup Program",
   description:
-    "Get exclusive 1:1 guidance from Prisma's database experts, and have your database bill covered for a year and up to $10,000.",
+    "The Prisma Startup Program is designed to help early-stage founders focus on scaling their businesses, and not managing databases.",
+  alternates: {
+    canonical: "https://www.prisma.io/startups",
+  },
+  openGraph: {
+    title: "Prisma Startup Program",
+    description:
+      "The Prisma Startup Program is designed to help early-stage founders focus on scaling their businesses, and not managing databases.",
+    url: "https://www.prisma.io/startups",
+    siteName: "Prisma",
+    locale: "en_US",
+    type: "website",
+    images: [
+      {
+        url: "/og/og-startups.png",
+        width: 1200,
+        height: 630,
+        alt: "Prisma Startups - preview image",
+        type: "image/png",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    site: "@prisma",
+    creator: "@prisma",
+    title: "Prisma Startup Program",
+    description:
+      "The Prisma Startup Program is designed to help early-stage founders focus on scaling their businesses, and not managing databases.",
+    images: ["/og/og-startups.png"],
+  },
 };
-
 const benefits = [
   {
     title: "$10k credits",
@@ -70,7 +99,7 @@ export default function StartupsPage() {
   return (
     <main className="flex-1 w-full z-1 -mt-24 pt-24 relative legal-hero-gradient">
       {/* Hero */}
-      <div className="text-center py-20 px-4">
+      <div className="text-center px-4 pb-20 pt-44">
         <div className="max-w-[748px] mx-auto">
           <h1 className="text-6xl md:text-7xl font-bold font-sans-display text-foreground-neutral mb-8">
             Fuel your startup&apos;s success with Prisma

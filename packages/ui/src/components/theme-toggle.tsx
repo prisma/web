@@ -22,14 +22,12 @@ const itemVariants = cva(
       {
         active: true,
         color: "ppg",
-        className:
-          "bg-foreground-ppg-reverse-weak/50 text-fd-accent-foreground",
+        className: "bg-background-ppg text-foreground-ppg",
       },
       {
         active: true,
         color: "orm",
-        className:
-          "bg-foreground-orm-reverse-weak/50 text-fd-accent-foreground",
+        className: "bg-background-orm text-foreground-orm",
       },
     ],
   },
