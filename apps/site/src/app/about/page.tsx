@@ -344,14 +344,14 @@ export default function About() {
             alt="Hero lines"
             fill
             className="object-cover object-bottom hidden dark:block"
-            loading="lazy"
+            priority
           />
           <Image
             src="/illustrations/about/hero_bg_light.svg"
             alt="Hero lines"
             fill
             className="object-cover object-bottom block dark:hidden"
-            loading="lazy"
+            priority
           />
         </div>
         <div className="content relative z-2 my-12 flex flex-col gap-8 mt-30 py-12">
