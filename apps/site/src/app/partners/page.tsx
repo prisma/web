@@ -22,14 +22,9 @@ const twoCol = [
         </p>
         <p className="text-foreground-neutral-weak! text-base">
           You can also let your AI agent take full control through our{" "}
-          <b>MCP server</b>, automating database creation and management
-          end-to-end. Choose the approach that works best for your product:
-          provision directly into users’ existing{" "}
-          <a href="https://console.prisma.io/" className="underline">
-            Prisma accounts
-          </a>{" "}
-          for instant ownership, or manage the databases yourself until users
-          are ready to claim them.
+          <b>MCP server</b>, automating database creation and management for
+          instant ownership, or manage the databases yourself until users are
+          ready to claim them.
         </p>
         <div className="flex gap-4 items-center justify-start mx-auto md:ml-0">
           <a href="https://create-db.prisma.io/" className="link-btn orm">
@@ -196,7 +191,7 @@ export default function Partners() {
       </div>
       <div className="w-screen px-4 ">
         <div className="my-12 flex flex-col gap-8">
-          <h2 className="text-foreground-neutral stretch-display text-4xl font-black! font-sans-display my-0 mx-auto text-center">
+          <h2 className="text-foreground-neutral stretch-display text-3xl md:text-4xl font-black! font-sans-display my-0 mx-auto text-center">
             Everything you need from data to deployment
           </h2>
           <p className="text-center text-base text-foreground-neutral-weak max-w-2xl mx-auto -mb-20">
@@ -295,7 +290,7 @@ export default function Partners() {
       </div>
       <div className="w-screen px-4">
         <div className="my-12 py-12 w-full gap-8 max-w-[1200px] mx-auto flex flex-col">
-          <h2 className="text-foreground-neutral stretch-display text-4xl font-black! font-sans-display my-0 mx-auto text-center">
+          <h2 className="text-foreground-neutral stretch-display text-3xl md:text-4xl font-black! font-sans-display my-0 mx-auto text-center">
             Get in touch
           </h2>
           <p className="text-center text-base text-foreground-neutral-weak max-w-2xl mx-auto">
