@@ -239,7 +239,7 @@ export default function StudioPage() {
             </div>
 
             <Button
-              variant="ppg"
+              variant="orm"
               size="xl"
               href={CONSOLE_URL}
               target="_blank"
