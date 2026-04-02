@@ -7,14 +7,14 @@ import { type McpHeroFeature, McpHeroSection } from "./_components/mcp-hero-sect
 import { McpVideoSection } from "./_components/mcp-video-section";
 
 export const metadata: Metadata = {
-  title: "Prisma MCP Server",
+  title: "Prisma MCP Server — AI-Powered Database Management",
   description:
     "Manage your databases with natural language via MCP in Claude, Codex, Cursor, Warp, ChatGPT and other AI agents. Works great with Prisma Postgres.",
   alternates: {
     canonical: "https://www.prisma.io/mcp",
   },
   openGraph: {
-    title: "Prisma MCP Server",
+    title: "Prisma MCP Server — AI-Powered Database Management",
     description:
       "Manage your databases with natural language via MCP in Claude, Codex, Cursor, Warp, ChatGPT and other AI agents. Works great with Prisma Postgres.",
     url: "https://www.prisma.io/mcp",
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     site: "@prisma",
     creator: "@prisma",
-    title: "Prisma MCP Server",
+    title: "Prisma MCP Server — AI-Powered Database Management",
     description:
       "Manage your databases with natural language via MCP in Claude, Codex, Cursor, Warp, ChatGPT and other AI agents. Works great with Prisma Postgres.",
     images: ["/og/og-mcp.png"],
