@@ -23,16 +23,16 @@ const pricingFaqStructuredData = createFaqStructuredData(
 );
 
 export const metadata: Metadata = {
-  title: "Pricing | Prisma Postgres",
+  title: "Pricing - Prisma Data Platform",
   description:
-    "Get started for free using Prisma's products or choose the right plan that meets your needs",
+    "Get started for free with Prisma Postgres. Choose the right plan for your workspace based on your project requirements.",
   alternates: {
     canonical: "https://www.prisma.io/pricing",
   },
   openGraph: {
-    title: "Pricing | Prisma Postgres",
+    title: "Pricing - Prisma Data Platform",
     description:
-      "Get started for free using Prisma's products or choose the right plan that meets your needs",
+      "Get started for free with Prisma Postgres. Choose the right plan for your workspace based on your project requirements.",
     url: "https://www.prisma.io/pricing",
     images: [
       {
@@ -42,9 +42,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Pricing | Prisma Postgres",
+    title: "Pricing - Prisma Data Platform",
     description:
-      "Get started for free using Prisma's products or choose the right plan that meets your needs",
+      "Get started for free with Prisma Postgres. Choose the right plan for your workspace based on your project requirements.",
     images: ["/og/og-pricing.png"],
   },
 };

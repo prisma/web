@@ -10,9 +10,9 @@ import {
   type StackLinkItem,
 } from "./stack-data";
 
-const title = "Prisma Stack";
+const title = "Prisma in your stack | Prisma";
 const description =
-  "Prisma works with every major TypeScript stack. Explore how Prisma fits Next.js, NestJS, GraphQL, your database, and more.";
+  "Prisma is a Node.js and TypeScript ORM that integrates easily with popular databases, and frameworks.";
 
 export const metadata = createPageMetadata({
   title,

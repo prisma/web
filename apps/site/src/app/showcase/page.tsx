@@ -12,8 +12,8 @@ import { Technology } from "@/components/technology";
 import data from "@/data/showcase";
 import { PostCard } from "@/components/showcase/post-card";
 
-const SHOWCASE_TITLE = "Made with Prisma";
-const SHOWCASE_DESCRIPTION = "Learn how companies use Prisma in production";
+const SHOWCASE_TITLE = "Prisma Showcase | Customer Success stories";
+const SHOWCASE_DESCRIPTION = "Learn how companies are leveraging our powerful, next-generation, type-safe ORM for Node.js.";
 
 export const metadata: Metadata = {
   title: SHOWCASE_TITLE,

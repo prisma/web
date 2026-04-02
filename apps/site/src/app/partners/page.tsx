@@ -163,9 +163,8 @@ const twoCol = [
 ];
 
 export const metadata = createPageMetadata({
-  title: "Prisma Partners | Postgres provisioning and data infra for platforms",
-  description:
-    "Embed Prisma Postgres, white-label Prisma Studio, and provision data infrastructure faster with partner tooling built for modern platforms.",
+  title: "Prisma | Partner network",
+  description: "Join our partner network designed for affiliates, technology partners, and resellers.",
   path: "/partners",
   ogImage: "/og/og-partners.png",
 });
