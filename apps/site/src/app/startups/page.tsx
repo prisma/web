@@ -102,7 +102,7 @@ export default function StartupsPage() {
       {/* Hero */}
       <div className="text-center px-4 pb-20 pt-44">
         <div className="max-w-[748px] mx-auto">
-          <h1 className="text-6xl md:text-7xl font-bold font-sans-display text-foreground-neutral mb-8">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
             Fuel your startup&apos;s success with Prisma
           </h1>
           <p className="text-xl text-foreground-neutral-weak mb-10 max-w-[700px] mx-auto">

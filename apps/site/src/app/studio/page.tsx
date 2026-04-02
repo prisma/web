@@ -140,7 +140,7 @@ export default function StudioPage() {
                 <i className="fa-regular fa-table text-sm" aria-hidden="true" />
                 Prisma Studio
               </p>
-              <h1 className="m-0 text-5xl leading-none text-foreground-neutral font-sans-display md:text-6xl [font-variation-settings:'wght'_900] stretch-display">
+              <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
                 Explore and
                 <br />
                 understand your data

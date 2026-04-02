@@ -100,11 +100,15 @@ export default function SiteHome() {
             fieldStrength={15.3}
           />
         </div>
-        <div className="content relative z-2 my-12 flex flex-col gap-8">
-          <h1 className="text-6xl [font-variation-settings:'wght'_900,'wdth'_125] mb-0 text-center mt-0 font-sans-display text-foreground-neutral">
-            Postgres, <br />
-            perfectly managed.
-          </h1>
+        <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-ppg)_0%,var(--color-background-default)_100%)] opacity-20" />
+        <div className="content relative z-2 my-12 py-12 flex flex-col gap-8">
+          <div className="flex flex-col gap-4 items-center text-center">
+            
+            <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
+              Postgres, <br />
+              perfectly managed.
+            </h1>
+          </div>
           <p className="text-center text-foreground-neutral max-w-2xl mx-auto">
             Real Postgres with the developer experience and infrastructure to
             ship faster.

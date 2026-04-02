@@ -111,13 +111,13 @@ export default function TypedSQLPage() {
   return (
     <main className="flex-1 w-full z-1 bg-background-default">
       <div className="hero -mt-24 flex items-center md:items-end justify-center px-4 relative overflow-hidden pt-50 pb-16 md:pb-0">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,var(--color-background-orm-strong)_0%,var(--color-background-default)_70%)]" />
+        <div className="absolute inset-0 pointer-events-none z-1 bg-[radial-gradient(ellipse_at_center,var(--color-background-orm-strong)_0%,var(--color-background-default)_70%)]" />
         <div className="content relative z-2 md:my-12 flex flex-col gap-8">
           <div className="flex flex-col items-center gap-4">
             <span className="text-foreground-orm font-sans-display text-sm font-bold tracking-widest uppercase">
               TypedSQL
             </span>
-            <h1 className="text-4xl md:text-6xl [font-variation-settings:'wght'_900,'wdth'_125] mb-0 text-center mt-0 font-sans-display text-foreground-neutral">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
               Fully type-safe <br />
               raw SQL
             </h1>

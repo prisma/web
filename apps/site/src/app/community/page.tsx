@@ -128,13 +128,13 @@ export default function CommunityPage() {
     <main className="flex-1 w-full -mt-24 bg-background-default text-foreground-neutral">
       {/* Hero */}
       <section className="relative overflow-hidden px-4 pt-36 pb-12 md:pb-16">
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20" />
+        <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20" />
         <div className="relative z-1 mx-auto flex w-full max-w-[720px] flex-col items-center gap-6 text-center">
           <p className="m-0 flex items-center justify-center gap-2 text-base font-semibold uppercase tracking-[1.6px] text-foreground-orm-strong font-sans">
             <i className="fa-regular fa-users" aria-hidden />
             Community
           </p>
-          <h1 className="m-0 text-foreground-neutral text-4xl md:text-5xl font-sans-display [font-variation-settings:'wght'_900]">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
             Join the Prisma Community
           </h1>
           <p className="m-0 text-lg text-foreground-neutral-weak max-w-[560px]">

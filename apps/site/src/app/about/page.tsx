@@ -337,7 +337,7 @@ export default function About() {
   return (
     <main className="flex-1 w-full z-1 bg-background-default">
       <div className="hero -mt-24 relative flex items-end justify-center px-4 pb-40 pt-30">
-        <div className="absolute inset-0 z-1 bg-[linear-gradient(180deg,transparent_0%,var(--color-background-default)_150%)]" />
+        <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,transparent_0%,var(--color-background-default)_150%)]" />
         <div className="w-screen absolute inset-0 z-0">
           <Image
             src="/illustrations/about/hero_bg.svg"
@@ -355,7 +355,7 @@ export default function About() {
           />
         </div>
         <div className="content relative z-2 my-12 flex flex-col gap-8 mt-30 py-12">
-          <h1 className="text-6xl [font-variation-settings:'wght'_900,'wdth'_125] mb-0 text-center mt-0 font-sans-display text-foreground-neutral">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
             Join Prisma
           </h1>
           <p className="text-center text-foreground-neutral max-w-2xl mx-auto mb-12">
@@ -388,7 +388,7 @@ export default function About() {
         </div>
       </div>
       <div className="py-12 px-4 relative">
-        <div className="absolute inset-0 z-0 bg-[linear-gradient(0deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20" />
+        <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(0deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20" />
         <div className="max-w-[1200px] w-full p-4 mx-auto">
           <h2 className="relative z-1 text-center m-0 mb-4 text-4xl md:text-[36px] font-black text-foreground-neutral font-sans-display stretch-display">
             Our Investors
@@ -439,7 +439,7 @@ export default function About() {
         </div>
       </div>
       <div className="py-12 px-4 relative">
-        <div className="absolute inset-0 z-0 bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20" />
+        <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20" />
         <div className="max-w-[1200px] w-full p-4 mx-auto relative z-1">
           <Card className="p-12  flex-row justify-around bg-background-default border-none flex-wrap">
             <a

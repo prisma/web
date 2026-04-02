@@ -130,7 +130,7 @@ export default async function SiteHome() {
               <i className="fa-solid fa-chart-pyramid" />
               <span>Prisma Postgres</span>
             </div>
-            <h1 className="text-5xl md:text-6xl [font-variation-settings:'wght'_900,'wdth'_125] mb-0 mt-0 font-sans-display text-foreground-neutral">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
               The fastest way <br />
               to real Postgres
             </h1>

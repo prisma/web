@@ -37,9 +37,9 @@ export function PricingHeroPlans({
 
   return (
     <>
-      <section className="relative pt-28 pb-8 md:pt-28 md:pb-16 px-4 ">
-        <div className="absolute inset-0 bg-[radial-gradient(80%_60%_at_50%_0%,rgba(20,184,166,0.22),transparent_60%)] pointer-events-none" />
-        <div className="relative max-w-[1200px] mx-auto flex flex-col items-center gap-3 md:gap-6">
+      <section className="hero -mt-24 pt-40 flex items-end justify-center px-4 relative">
+        <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-ppg)_0%,var(--color-background-default)_100%)] opacity-20" />
+        <div className="content relative z-2 max-w-[1200px] mx-auto flex flex-col items-center gap-3 md:gap-6 py-12">
           <Badge
             color="ppg"
             size="lg"

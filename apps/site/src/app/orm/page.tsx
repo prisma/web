@@ -277,12 +277,18 @@ export default function ORM() {
   return (
     <main className="flex-1 w-full z-1 ">
       <JsonLd id="orm-software-application" data={ormStructuredData} />
-      <div className="hero pt-50 -mt-24 flex items-end justify-center px-4 relative">
-        <div className="absolute inset-0 z-0 bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20" />
-        <div className="content relative z-2 flex flex-col gap-8 py-12">
-          <h1 className="text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
-            Next-generation Node.js and TypeScript ORM
-          </h1>
+      <div className="hero pt-40 -mt-24 flex items-end justify-center px-4 relative">
+        <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20" />
+        <div className="content relative z-2 my-12 py-12 flex flex-col gap-8">
+          <div className="flex flex-col gap-4 items-center text-center">
+            <div className="flex items-center gap-2 text-foreground-orm-weak uppercase tracking-widest text-sm font-sans-display font-black">
+              <i className="fa-solid fa-database" />
+              <span>Prisma ORM</span>
+            </div>
+            <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
+              Next-generation Node.js and TypeScript ORM
+            </h1>
+          </div>
           <p className="text-center text-foreground-neutral max-w-2xl mx-auto">
             Prisma ORM elevates developer experience with intuitive data modeling, automated
             migrations, and type-safety.

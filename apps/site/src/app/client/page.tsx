@@ -177,12 +177,12 @@ export default function Client() {
   return (
     <main className="flex-1 w-screen bg-background-default">
       <div className="hero relative w-full -mt-33 pt-70 pb-8 flex flex-col gap-8 px-4">
-        <div className="bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] absolute inset-0 z-0 overflow-hidden opacity-20" />
+        <div className="absolute inset-0 pointer-events-none z-1 overflow-hidden bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20" />
         <div className="flex flex-col gap-4 relative z-1">
           <h5 className="stretch-display font-sans-display mx-auto w-fit my-0 text-foreground-orm-strong uppercase">
             Prisma Client
           </h5>
-          <h1 className="stretch-display text-6xl font-bold text-center font-sans-display z-2 relative max-w-223 mx-auto">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
             Intuitive database client for TypeScript and Node.js
             <br />
             Database Migrations

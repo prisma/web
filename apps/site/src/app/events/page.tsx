@@ -55,7 +55,7 @@ export default function EventsPage() {
             <i className="fa-regular fa-calendar" aria-hidden />
             Events
           </p>
-          <h1 className="text-5xl font-black! font-sans-display text-foreground-neutral mt-0 mb-0 stretch-display">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
             Prisma Events
           </h1>
           <p className="text-lg text-foreground-neutral-weak max-w-[600px]">

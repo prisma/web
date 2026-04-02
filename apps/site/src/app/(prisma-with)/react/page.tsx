@@ -19,7 +19,7 @@ export default async function UserList() {
 
   return (
     <div>
-      <h1>Users</h1>
+      <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">Users</h1>
       <ul>
         {users.map((user) => (
           <li key={user.id}>{user.name} ({user.email})</li>
@@ -41,7 +41,7 @@ export default async function UsersPage() {
   const users = await prisma.user.findMany()
   return (
     <div>
-      <h1>Users</h1>
+      <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">Users</h1>
       <ul>{users.map((user) => <li key={user.id}>{user.name}</li>)}</ul>
     </div>
   )
