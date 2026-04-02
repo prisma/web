@@ -22,7 +22,8 @@ export function McpHeroSection({
   features: readonly McpHeroFeature[];
 }) {
   return (
-    <section className="relative overflow-hidden px-4 pb-12 pt-12 md:pb-16 md:pt-10">
+    <section className="relative overflow-hidden px-4 pb-12 pt-20 md:pb-16 md:pt-30">
+      <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-ppg)_0%,var(--color-background-default)_100%)] opacity-20" />
       <div className="relative mx-auto flex w-full max-w-5xl flex-col items-center gap-10 md:gap-16 my-36">
         <div className="flex w-full flex-col items-center gap-8 md:gap-15">
           <div className="flex w-full flex-col items-center gap-8 md:gap-10">

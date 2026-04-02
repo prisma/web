@@ -182,7 +182,7 @@ export const metadata: Metadata = {
 export default function Careers() {
   return (
     <main className="flex-1 w-full z-1 bg-background-default">
-      <div className="hero -mt-24 relative flex items-end justify-center px-4">
+      <div className="hero -mt-24 relative flex items-end justify-center px-4 pt-24">
         <div className="w-screen absolute inset-0 opacity-20">
           <img
             src="/illustrations/careers/hero_lines.svg"

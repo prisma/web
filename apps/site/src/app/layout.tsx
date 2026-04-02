@@ -181,7 +181,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         />
         <JsonLd id="site-structured-data" data={siteStructuredData} />
       </head>
-      <body className="flex flex-col min-h-screen pt-24 relative">
+      <body className="flex flex-col min-h-screen relative">
         <div className="bg-background-default absolute inset-0 -z-1 overflow-hidden" />
         <Provider>
           <ThemeProvider defaultTheme="system" storageKey="theme">

@@ -51,10 +51,10 @@ export function PricingHeroPlans({
               </>
             }
           />
-          <h1 className="m-0 text-center text-foreground-neutral text-5xl md:text-7xl leading-tight font-sans-display [font-variation-settings:'wght'_900]">
+          <h1 className="stretch-display m-0 text-center text-foreground-neutral text-5xl md:text-7xl leading-tight font-sans-display [font-variation-settings:'wght'_900]">
             Scale as You Grow <br /> with Prisma Postgres
           </h1>
-          <p className="m-0 text-center text-xl text-foreground-orm-reverse-weak">
+          <p className="m-0 text-center text-xl text-foreground-neutral-weak">
             Operation-based pricing. We only charge for what you use.
           </p>
         </div>
@@ -101,7 +101,7 @@ export function PricingHeroPlans({
                     />
                   )}
                   <div className="flex items-center justify-between gap-4">
-                    <p className="m-0 text-base uppercase tracking-[1.6px] font-sans-display [font-variation-settings:'wght'_800]">
+                    <p className="m-0 text-base stretch-display uppercase tracking-[1.6px] font-sans-display [font-variation-settings:'wght'_800]">
                       {plan.title}
                     </p>
                     {(planKey === "pro" || planKey === "business") && (

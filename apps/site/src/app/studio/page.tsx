@@ -121,7 +121,7 @@ export default function StudioPage() {
   return (
     <main className="flex-1 w-full -mt-24 bg-background-default text-foreground-neutral">
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-[linear-gradient(180deg,var(--color-background-orm)_0%,var(--color-background-default)_72%)] px-4 pt-28 pb-12">
+      <section className="relative overflow-hidden bg-[linear-gradient(180deg,var(--color-background-orm)_0%,var(--color-background-default)_72%)] px-4 pt-60 pb-12">
         <div className="pointer-events-none absolute inset-x-1/2 top-20 h-[780px] w-[1664px] -translate-x-1/2 rounded-full bg-[repeating-radial-gradient(circle_at_top,rgba(99,102,241,0.28)_0,rgba(99,102,241,0.28)_2px,transparent_2px,transparent_42px)] opacity-45 mask-[linear-gradient(to_bottom,rgba(0,0,0,0.9),transparent_78%)]" />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(70%_65%_at_50%_5%,rgba(79,70,229,0.3),transparent_70%)]" />
 
@@ -132,7 +132,7 @@ export default function StudioPage() {
                 <i className="fa-regular fa-table text-sm" aria-hidden="true" />
                 Prisma Studio
               </p>
-              <h1 className="m-0 text-5xl leading-none text-foreground-neutral font-sans-display md:text-6xl [font-variation-settings:'wght'_900]">
+              <h1 className="m-0 text-5xl leading-none text-foreground-neutral font-sans-display md:text-6xl [font-variation-settings:'wght'_900] stretch-display">
                 Explore and
                 <br />
                 understand your data

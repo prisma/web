@@ -14,7 +14,7 @@ export default function PrivacyPage() {
   return (
     <main className="flex-1 w-full z-1 -mt-24 pt-24 relative legal-hero-gradient">
       {/* Hero */}
-      <div className="text-center py-16">
+      <div className="text-center pb-16 pt-40">
         <h1 className="text-5xl font-bold font-sans-display text-foreground-neutral mb-6">
           Privacy Policy
         </h1>

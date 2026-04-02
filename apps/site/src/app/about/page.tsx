@@ -191,8 +191,11 @@ const boxes = [
     description: (
       <p className="text-foreground-neutral text-foreground-neutral-weak text-sm font-normal m-0 leading-6">
         We equip developers with the right tools at every stage, whether they
-        are <a href="https://www.prisma.io/blog/bfg">building, fortifying, or growing</a> their
-        applications.
+        are{" "}
+        <a href="https://www.prisma.io/blog/bfg">
+          building, fortifying, or growing
+        </a>{" "}
+        their applications.
       </p>
     ),
   },
@@ -332,7 +335,7 @@ export const metadata = createPageMetadata({
 export default function About() {
   return (
     <main className="flex-1 w-full z-1 bg-background-default">
-      <div className="hero -mt-24 relative flex items-end justify-center px-4 py-12 pb-40">
+      <div className="hero -mt-24 relative flex items-end justify-center px-4 pb-40 pt-30">
         <div className="absolute inset-0 z-1 bg-[linear-gradient(180deg,transparent_0%,var(--color-background-default)_150%)]" />
         <div className="w-screen absolute inset-0 z-0">
           <img

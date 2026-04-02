@@ -71,7 +71,7 @@ export default function StartupsPage() {
   return (
     <main className="flex-1 w-full z-1 -mt-24 pt-24 relative legal-hero-gradient">
       {/* Hero */}
-      <div className="text-center py-20 px-4">
+      <div className="text-center px-4 pb-20 pt-44">
         <div className="max-w-[748px] mx-auto">
           <h1 className="text-6xl md:text-7xl font-bold font-sans-display text-foreground-neutral mb-8">
             Fuel your startup&apos;s success with Prisma
