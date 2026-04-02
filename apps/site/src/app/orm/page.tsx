@@ -139,7 +139,7 @@ const twoCol_2 = [
           <h5 className="font-sans-display text-foreground-orm uppercase stretch-display">
             Prisma Benchmarks
           </h5>
-          <h2 className="text-foreground-neutral stretch-display text-3xl font-sans-display mt-0 mb-4">
+          <h2 className="text-foreground-neutral stretch-display text-3xl font-sans-display">
             Prisma vs other ORMs
           </h2>
         </div>
@@ -147,6 +147,15 @@ const twoCol_2 = [
           A meaningful comparison of database query latencies across database
           providers and ORM libraries in the Node.js & TypeScript ecosystem.
         </p>
+        <Button
+          variant="orm"
+          size="xl"
+          href="https://benchmarks.prisma.io"
+          className="w-fit"
+        >
+          <span>Explore Benchmarks</span>
+          <i className="fa-regular fa-arrow-right ml-2!" />
+        </Button>
       </div>
     ),
     imageUrl: "/illustrations/orm/orm_1",
@@ -166,7 +175,7 @@ const twoCol_2 = [
           <h5 className="font-sans-display text-foreground-orm uppercase stretch-display">
             Prisma Client
           </h5>
-          <h2 className="text-foreground-neutral stretch-display text-3xl font-sans-display mt-0 mb-4">
+          <h2 className="text-foreground-neutral stretch-display text-3xl font-sans-display">
             Type-safe database client
           </h2>
         </div>
@@ -243,7 +252,7 @@ const features = [
     image: "/illustrations/orm/collaborative",
     alt: "Collaborative work",
     icon: "fa-light fa-screen-users",
-    link: "https://console.prisma.io",
+    link: "https://console.prisma.io/login?utm_source=website&utm_medium=orm&utm_campaign=cta",
   },
   {
     title: "Browse your data",
@@ -273,13 +282,13 @@ export default function ORM() {
             Next-generation Node.js and TypeScript ORM
           </h1>
           <p className="text-center text-foreground-neutral max-w-2xl mx-auto">
-            Real Postgres with the developer experience and infrastructure to
-            ship faster.
+            Prisma ORM elevates developer experience with intuitive data
+            modeling, automated migrations, and type-safety.
           </p>
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
             <Button
               variant="orm"
-              href={prismaPostgresQuickstartUrl}
+              href="https://www.prisma.io/docs/prisma-orm/quickstart/prisma-postgres"
               size="3xl"
               className="font-sans-display! font-[650]"
             >
@@ -428,6 +437,8 @@ export default function ORM() {
               <Button
                 variant="default-stronger"
                 size="2xl"
+                target="_blank"
+                rel="noopener noreferrer"
                 href="https://www.prisma.io/docs"
               >
                 <span>Read the docs</span>

@@ -3,9 +3,9 @@ import { termsSections, termsLastUpdated } from "@/data/terms";
 import { LegalAccordion } from "@/components/legal-accordion";
 
 export const metadata = createPageMetadata({
-  title: "Terms of Service | Prisma",
+  title: "Terms of Service",
   description:
-    "Read the Prisma Terms of Service governing your use of Prisma products and services.",
+    "Read our terms of services and see how they relate to you.",
   path: "/terms",
   ogImage: "/og/og-terms.png",
 });

@@ -22,14 +22,14 @@ export const CopyCode = ({
   const [tooltip, setTooltip] = useState<string | undefined>(undefined);
   const copyText = async () => {
     navigator.clipboard.writeText(text);
-    setTooltip("copied!");
+    setTooltip("Copied!");
     setTimeout(() => {
       setTooltip(undefined);
     }, 2000);
   };
   return (
     <TooltipProvider>
-      <Tooltip>
+      <Tooltip open={tooltip !== undefined}>
         <TooltipTrigger asChild>
           <Button
             variant="default-stronger"

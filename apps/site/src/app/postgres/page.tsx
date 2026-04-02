@@ -130,7 +130,7 @@ export default async function SiteHome() {
               <i className="fa-solid fa-chart-pyramid" />
               <span>Prisma Postgres</span>
             </div>
-            <h1 className="text-6xl [font-variation-settings:'wght'_900,'wdth'_125] mb-0 mt-0 font-sans-display text-foreground-neutral">
+            <h1 className="text-5xl md:text-6xl [font-variation-settings:'wght'_900,'wdth'_125] mb-0 mt-0 font-sans-display text-foreground-neutral">
               The fastest way <br />
               to real Postgres
             </h1>
@@ -152,7 +152,7 @@ export default async function SiteHome() {
             </Button>
             <Button
               variant="default-stronger"
-              href="/docs/postgres"
+              href="https://www.prisma.io/docs/postgres"
               size="3xl"
               className="font-sans-display! font-[650]"
             >
@@ -337,7 +337,11 @@ export default async function SiteHome() {
                 <span>Create your first Database</span>
                 <i className="fa-regular fa-arrow-right ml-2" />
               </Button>
-              <Button variant="default-stronger" size="2xl" href="/docs">
+              <Button
+                variant="default-stronger"
+                size="2xl"
+                href="https://www.prisma.io/docs"
+              >
                 <span>Read the docs</span>
                 <i className="fa-regular fa-arrow-right ml-2" />
               </Button>

@@ -56,9 +56,9 @@ const twoCol = [
   },
 ];
 export const metadata = createPageMetadata({
-  title: "Prisma Ecosystem | Community tools and ORM integrations",
+  title: "Prisma ORM Ecosystem",
   description:
-    "Discover community-built tools, packages, and integrations for Prisma, plus support options and ways to share your project with the ecosystem.",
+    "Explore the variety of tools (from generators, to middleware, to CLIs) created by the Prisma community.",
   path: "/ecosystem",
   ogImage: "/og/og-ecosystem.png",
 });
@@ -66,7 +66,7 @@ export const metadata = createPageMetadata({
 export default function SiteHome() {
   return (
     <main className="flex-1 w-full z-1 bg-background-default">
-      <div className="hero -mt-24 flex items-end justify-center px-4 relative">
+      <div className="hero -mt-24 flex items-end justify-center px-4 relative pt-24">
         <div className="absolute inset-0 z-0 bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20" />
         <div className="content pt-31 relative z-2 my-12 flex flex-col gap-8">
           <h1 className="text-6xl [font-variation-settings:'wght'_900,'wdth'_125] mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-200 mx-auto">

@@ -127,7 +127,7 @@ const LogoImage = memo(({ logo, size }: { logo: Logo; size: number }) => {
         height={size}
         className={cn(
           "w-full aspect-square rounded-lg object-contain",
-          imageUrlLight && "hidden dark:block",
+          imageUrlLight && "block dark:hidden",
         )}
       />
       {imageUrlLight && (
@@ -136,7 +136,7 @@ const LogoImage = memo(({ logo, size }: { logo: Logo; size: number }) => {
           alt={logo.alt}
           width={size}
           height={size}
-          className="w-full aspect-square rounded-lg object-contain block dark:hidden"
+          className="w-full aspect-square rounded-lg object-contain hidden dark:block"
         />
       )}
     </>
