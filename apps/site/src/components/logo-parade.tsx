@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Image from "next/image";
 
 const logoParade = [
   {
@@ -140,11 +141,12 @@ export default function LogoParade() {
               rel="noopener noreferrer"
               className="relative shrink-0 rounded-lg overflow-hidden cursor-pointer transition-transform duration-200 invert-100 dark:brightness-150 dark:hover:filter-none contrast-75 grayscale hover:filter-none"
             >
-              <img
+              <Image
                 src={item.imageUrl}
                 width={item.width}
                 height={item.height}
                 alt={item.label}
+                loading="lazy"
                 className="w-full h-full object-contain object-center"
               />
             </a>

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { createPageMetadata } from "@/lib/page-metadata";
 import { Action, Button, Card } from "@prisma/eclipse";
 import API from "@/components/client/api";
@@ -235,7 +236,13 @@ export default function Client() {
                       size="4xl"
                       className="h-[75px]! w-[75px]! hover:bg-background-neutral-strong"
                     >
-                      <img src={db.icon} alt={db.name} />
+                      <Image
+                        src={db.icon}
+                        alt={db.name}
+                        width={48}
+                        height={48}
+                        loading="lazy"
+                      />
                     </Action>
                   </Technology>
                 ))}
@@ -258,7 +265,13 @@ export default function Client() {
                       size="4xl"
                       className="h-[75px]! w-[75px]! hover:bg-background-neutral-strong"
                     >
-                      <img src={fw.icon} alt={fw.name} />
+                      <Image
+                        src={fw.icon}
+                        alt={fw.name}
+                        width={48}
+                        height={48}
+                        loading="lazy"
+                      />
                     </Action>
                   </Technology>
                 ))}

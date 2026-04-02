@@ -8,6 +8,7 @@ import { InfoStats } from "@/components/orm/info-stats";
 import { cn } from "@/lib/cn";
 import { Card as FeatureCard } from "@/components/homepage/bento";
 import { YouTubePlayer } from "@prisma-docs/ui/components/youtube-player";
+import Image from "next/image";
 
 const statsSection = [
   {
@@ -334,13 +335,9 @@ export default function ORM() {
                 <Action
                   size="4xl"
                   color="orm"
-                  className={cn(index === 0 && "p-0")}
+                  className={cn(index === 0 && "p-0", "relative")}
                 >
-                  <img
-                    src={stat.icon}
-                    alt={stat.title}
-                    className="w-full h-full"
-                  />
+                  <Image src={stat.icon} alt={stat.title} fill loading="lazy" />
                 </Action>
                 <h4 className="text-2xl font-sans-display stretch-display text-foreground-neutral">
                   {stat.title}

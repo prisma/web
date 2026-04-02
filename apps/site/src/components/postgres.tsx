@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import parse from "html-react-parser";
 import {
   CodeBlock,
@@ -63,36 +64,54 @@ export function PostgresTabs({ data }: { data: HowSectionData }) {
                       {body.image && (
                         <>
                           {/* Dark mode images - only visible in dark mode */}
-                          <img
+                          <Image
                             src={`${body.image}.svg`}
                             alt={body.title}
+                            width={1200}
+                            height={800}
+                            loading="lazy"
                             className="hidden lg:dark:block md:max-h-83"
                           />
-                          <img
+                          <Image
                             src={`${body.image}_tablet.svg`}
                             alt={body.title}
+                            width={1200}
+                            height={800}
+                            loading="lazy"
                             className="hidden sm:dark:block lg:dark:hidden md:max-h-83"
                           />
-                          <img
+                          <Image
                             src={`${body.image}_mobile.svg`}
                             alt={body.title}
+                            width={1200}
+                            height={800}
+                            loading="lazy"
                             className="hidden dark:block sm:dark:hidden md:max-h-83"
                           />
 
                           {/* Light mode images - only visible in light mode */}
-                          <img
+                          <Image
                             src={`${body.image}_light.svg`}
                             alt={body.title}
+                            width={1200}
+                            height={800}
+                            loading="lazy"
                             className="hidden lg:block dark:hidden md:max-h-83"
                           />
-                          <img
+                          <Image
                             src={`${body.image}_tablet_light.svg`}
                             alt={body.title}
+                            width={1200}
+                            height={800}
+                            loading="lazy"
                             className="hidden sm:block lg:hidden dark:hidden md:max-h-83"
                           />
-                          <img
+                          <Image
                             src={`${body.image}_mobile_light.svg`}
                             alt={body.title}
+                            width={1200}
+                            height={800}
+                            loading="lazy"
                             className="block sm:hidden dark:hidden md:max-h-83"
                           />
                         </>

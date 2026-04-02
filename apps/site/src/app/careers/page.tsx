@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { Action, Button } from "@prisma/eclipse";
 import { CardSection } from "@/components/homepage/card-section/card-section";
 import { StatsList } from "@/components/careers/stats-list";
@@ -184,15 +185,19 @@ export default function Careers() {
     <main className="flex-1 w-full z-1 bg-background-default">
       <div className="hero -mt-24 relative flex items-end justify-center px-4 pt-24">
         <div className="w-screen absolute inset-0 opacity-20">
-          <img
+          <Image
             src="/illustrations/careers/hero_lines.svg"
             alt="Hero lines"
-            className="w-full h-full object-cover object-bottom hidden dark:block"
+            fill
+            priority={true}
+            className="object-cover object-bottom hidden dark:block"
           />
-          <img
+          <Image
             src="/illustrations/careers/hero_lines_light.svg"
             alt="Hero lines"
-            className="w-full h-full object-cover object-bottom block dark:hidden"
+            fill
+            priority={true}
+            className="object-cover object-bottom block dark:hidden"
           />
         </div>
         <div className="content relative z-2 my-12 flex flex-col gap-8 mt-30 py-12">

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Antigravity from "../../components/homepage/antigravity";
 import { createPageMetadata } from "@/lib/page-metadata";
 import {
@@ -338,15 +339,19 @@ export default function About() {
       <div className="hero -mt-24 relative flex items-end justify-center px-4 pb-40 pt-30">
         <div className="absolute inset-0 z-1 bg-[linear-gradient(180deg,transparent_0%,var(--color-background-default)_150%)]" />
         <div className="w-screen absolute inset-0 z-0">
-          <img
+          <Image
             src="/illustrations/about/hero_bg.svg"
             alt="Hero lines"
-            className="w-full h-full object-cover object-bottom hidden dark:block"
+            fill
+            className="object-cover object-bottom hidden dark:block"
+            loading="lazy"
           />
-          <img
+          <Image
             src="/illustrations/about/hero_bg_light.svg"
             alt="Hero lines"
-            className="w-full h-full object-cover object-bottom block dark:hidden"
+            fill
+            className="object-cover object-bottom block dark:hidden"
+            loading="lazy"
           />
         </div>
         <div className="content relative z-2 my-12 flex flex-col gap-8 mt-30 py-12">
@@ -397,7 +402,14 @@ export default function About() {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <img src={company.logo} alt={company.name} className="w-auto" />
+                <Image
+                  src={company.logo}
+                  alt={company.name}
+                  width={120}
+                  height={40}
+                  className="w-auto"
+                  loading="lazy"
+                />
               </a>
             ))}
           </div>
@@ -406,10 +418,13 @@ export default function About() {
             {investors.people.map((investor: any, idx: number) => (
               <div key={idx} className="p-4 flex gap-4">
                 <Avatar size="3xl">
-                  <img
+                  <Image
                     src={investor.imageUrl}
                     alt={investor.name}
+                    width={80}
+                    height={80}
                     className="w-full"
+                    loading="lazy"
                   />
                 </Avatar>
                 <div className="flex flex-col gap-1">
