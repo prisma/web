@@ -6,9 +6,36 @@ import { meetups, type Meetup } from "../events/events-data";
 export const metadata: Metadata = {
   title: "Community | Prisma",
   description:
-    "Join thousands of developers building with Prisma. Connect on Discord, get help on GitHub, watch tutorials on YouTube, and attend meetups around the world.",
+    "Have a question, idea, or contribution for the Prisma ORM? You are not alone! Join hundreds of thousands of Prisma developers.",
   alternates: {
     canonical: "https://www.prisma.io/community",
+  },
+  openGraph: {
+    title: "Community | Prisma",
+    description:
+      "Have a question, idea, or contribution for the Prisma ORM? You are not alone! Join hundreds of thousands of Prisma developers.",
+    url: "https://www.prisma.io/community",
+    siteName: "Prisma",
+    locale: "en_US",
+    type: "website",
+    images: [
+      {
+        url: "/og/og-community.png",
+        width: 1200,
+        height: 630,
+        alt: "Database tools for modern developers",
+        type: "image/png",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Community | Prisma",
+    description:
+      "Have a question, idea, or contribution for the Prisma ORM? You are not alone! Join hundreds of thousands of Prisma developers.",
+    images: ["/og/og-community.png"],
+    site: "@prisma",
+    creator: "@prisma",
   },
 };
 
@@ -16,14 +43,16 @@ const channels = [
   {
     icon: "fa-brands fa-github",
     name: "GitHub",
-    description: "Browse the source code, open issues, and contribute to Prisma and its ecosystem.",
+    description:
+      "Browse the source code, open issues, and contribute to Prisma and its ecosystem.",
     link: "https://github.com/prisma",
     cta: "View on GitHub",
   },
   {
     icon: "fa-brands fa-x-twitter",
     name: "X (Twitter)",
-    description: "Follow @prisma for the latest updates, releases, and community highlights.",
+    description:
+      "Follow @prisma for the latest updates, releases, and community highlights.",
     link: "https://twitter.com/prisma",
     cta: "Follow us",
   },
@@ -41,7 +70,8 @@ const starterKit = [
   {
     icon: "fa-regular fa-book-open",
     title: "Read the docs",
-    description: "Get started with Prisma ORM, Prisma Postgres, and all other Prisma products.",
+    description:
+      "Get started with Prisma ORM, Prisma Postgres, and all other Prisma products.",
     link: "/docs",
     cta: "Open docs",
     external: false,
@@ -86,7 +116,8 @@ const contributingLinks = [
   {
     icon: "fa-regular fa-code-branch",
     title: "Contributing guide",
-    description: "Learn how to contribute code, docs, and improvements to the Prisma project.",
+    description:
+      "Learn how to contribute code, docs, and improvements to the Prisma project.",
     link: "https://github.com/prisma/prisma/blob/main/CONTRIBUTING.md",
     cta: "Read guide",
   },
@@ -107,8 +138,9 @@ export default function CommunityPage() {
             Join the Prisma Community
           </h1>
           <p className="m-0 text-lg text-foreground-neutral-weak max-w-[560px]">
-            Connect with thousands of developers building with Prisma. Ask questions, share your
-            work, and help shape the future of the project.
+            Connect with thousands of developers building with Prisma. Ask
+            questions, share your work, and help shape the future of the
+            project.
           </p>
         </div>
       </section>
@@ -128,10 +160,12 @@ export default function CommunityPage() {
                   <i className="fa-brands fa-discord text-xl" aria-hidden />
                 </Action>
                 <div>
-                  <h3 className="m-0 text-lg font-semibold text-foreground-neutral">Discord</h3>
+                  <h3 className="m-0 text-lg font-semibold text-foreground-neutral">
+                    Discord
+                  </h3>
                   <p className="m-0 mt-1 text-sm text-foreground-neutral-weak max-w-[540px]">
-                    The heart of the Prisma community. Get help, share your projects, and connect
-                    with thousands of developers.
+                    The heart of the Prisma community. Get help, share your
+                    projects, and connect with thousands of developers.
                   </p>
                 </div>
               </div>
@@ -292,9 +326,9 @@ export default function CommunityPage() {
               Contributing to Prisma
             </h2>
             <p className="m-0 text-base text-foreground-neutral-weak max-w-[600px]">
-              We welcome contributions of all forms from experienced developers and beginners alike.
-              Showcase your projects, share your ideas, or help us improve Prisma with your
-              feedback.
+              We welcome contributions of all forms from experienced developers
+              and beginners alike. Showcase your projects, share your ideas, or
+              help us improve Prisma with your feedback.
             </p>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -341,8 +375,8 @@ export default function CommunityPage() {
                 Be part of the community
               </h2>
               <p className="text-foreground-neutral-weak max-w-xl">
-                Whether you&apos;re just getting started or have been building with Prisma for
-                years, there&apos;s a place for you.
+                Whether you&apos;re just getting started or have been building
+                with Prisma for years, there&apos;s a place for you.
               </p>
             </div>
             <div className="flex flex-col md:flex-row gap-6">

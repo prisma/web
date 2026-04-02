@@ -256,9 +256,9 @@ const features = [
 ];
 
 export const metadata = createPageMetadata({
-  title: "Prisma ORM | Next-generation database toolkit for TypeScript",
+  title: "Prisma | Next-generation ORM for Node.js & TypeScript",
   description:
-    "Prisma ORM combines a clean schema, type-safe queries, and developer-friendly workflows for building with Postgres and other databases in TypeScript.",
+    "Prisma is a next-generation Node.js and TypeScript ORM for PostgreSQL, MySQL, SQL Server, SQLite, MongoDB, and CockroachDB. It provides type-safety, automated migrations, and an intuitive data model.",
   path: "/orm",
   ogImage: "/og/og-orm.png",
 });
