@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -10,14 +10,13 @@ import {
 } from "@prisma/eclipse";
 import { NewsletterSignup } from "./newsletter-signup";
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: "Newsletter | Prisma",
   description:
-    "Get release updates, tutorials, and more content delivered to your inbox monthly.",
-  alternates: {
-    canonical: "https://www.prisma.io/newsletter",
-  },
-};
+    "Subscribe for monthly Prisma release notes, tutorials, and product updates covering ORM, Postgres, and the developer ecosystem.",
+  path: "/newsletter",
+  ogImage: "/og/og-newsletter.png",
+});
 
 type RssItem = {
   title: string;

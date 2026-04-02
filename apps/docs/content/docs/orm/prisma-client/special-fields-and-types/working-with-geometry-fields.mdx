@@ -1,0 +1,985 @@
+---
+title: Working with geometry fields
+description: "How to read, write, and filter by geometry fields in PostgreSQL"
+url: /orm/prisma-client/special-fields-and-types/working-with-geometry-fields
+metaTitle: Working with geometry fields (Concepts)
+metaDescription: "How to read, write, and filter by geometry fields in PostgreSQL with PostGIS."
+---
+
+:::note
+
+Geometry fields are only available with PostgreSQL and the PostGIS extension.
+
+:::
+
+Use the [`Geometry`](/orm/reference/prisma-schema-reference#geometry) Prisma ORM field type to work with spatial data in PostgreSQL with the PostGIS extension. The `Geometry` type supports various geographic shapes such as points, lines, and polygons, with native filtering and ordering operations.
+
+## Prerequisites
+
+Geometry fields require [PostGIS](https://postgis.net/), a spatial database extension for PostgreSQL. PostGIS adds support for geographic objects and provides functions for spatial queries like distance calculations, area containment, and intersection checks.
+
+Before using geometry fields, you need:
+
+1. **PostgreSQL** database with **PostGIS** installed on your database server
+2. The PostGIS extension enabled in your database:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS postgis;
+```
+
+Once enabled, PostGIS adds spatial data types and functions to your PostgreSQL database, allowing you to store and query geographic data efficiently.
+
+See [PostgreSQL extensions](/orm/prisma-schema/postgresql-extensions) for more details on enabling extensions.
+
+## Defining geometry fields
+
+In your Prisma schema, define a `Geometry` field with a specific geometry type and SRID (Spatial Reference System Identifier). The SRID defines which coordinate system to use - for example, SRID 4326 represents GPS coordinates (latitude/longitude on Earth's surface).
+
+```prisma highlight=4;normal
+model Location {
+  id       Int      @id @default(autoincrement())
+  name     String
+  position Geometry(Point, 4326)? // [!code highlight]
+}
+```
+
+The field definition follows the format `Geometry(GeometryType, SRID)`. You can make the field optional by adding `?` at the end, allowing records without a position.
+
+:::info
+
+For optimal performance with spatial queries, add a GIST spatial index on your geometry columns using a [customized migration](/orm/prisma-migrate/workflows/customizing-migrations). See the [Performance considerations](#spatial-indexes) section for details.
+
+:::
+
+### Supported geometry types
+
+PostGIS supports the following geometry types with their coordinate formats:
+
+| Geometry Type        | Description            | Coordinates Format                       | Example Use Case                   |
+| -------------------- | ---------------------- | ---------------------------------------- | ---------------------------------- |
+| `Point`              | Single location        | `[longitude, latitude]`                  | Restaurant location, user position |
+| `LineString`         | Sequence of points     | `[[x1, y1], [x2, y2], ...]`              | Route, road, path                  |
+| `Polygon`            | Closed area            | `[[[x1, y1], [x2, y2], ..., [x1, y1]]]`  | Delivery zone, park boundary       |
+| `MultiPoint`         | Collection of points   | `[[x1, y1], [x2, y2], ...]`              | Multiple store locations           |
+| `MultiLineString`    | Collection of lines    | `[[[x1, y1], ...], [[x1, y1], ...]]`     | Multiple routes                    |
+| `MultiPolygon`       | Collection of polygons | `[[[[x1, y1], ...]], [[[x1, y1], ...]]]` | Multiple delivery zones            |
+| `GeometryCollection` | Mixed geometry types   | GeoJSON GeometryCollection               | Complex geographic features        |
+| `Geometry`           | Generic type           | Any of the above                         | When type varies by record         |
+
+:::note
+
+For `Point` geometries, coordinates are `[longitude, latitude]`, not `[latitude, longitude]`. This follows the GeoJSON specification.
+
+:::
+
+### Common SRIDs
+
+The SRID (Spatial Reference System Identifier) determines the coordinate system used for storing and calculating positions. Different SRIDs are optimized for different purposes:
+
+- `4326` - **WGS 84** (GPS coordinates, latitude/longitude)
+  - Most common for worldwide data
+  - Used by GPS devices and most location APIs
+  - Distance calculations use spherical geometry (accurate across the globe)
+
+- `3857` - **Web Mercator** (web maps like Google Maps, OpenStreetMap)
+  - Optimized for web mapping applications
+  - Uses planar geometry (faster but less accurate for distances)
+  - Best for visualization, not for precise measurements
+
+- `2154` - **RGF93 / Lambert-93** (France)
+  - Official coordinate system for France
+  - Highly accurate for locations within France
+
+- `27700` - **OSGB 1936 / British National Grid** (UK)
+  - Official coordinate system for Great Britain
+  - Most accurate for UK locations
+
+:::tip
+
+For most applications handling worldwide locations (restaurants, users, stores), use **SRID 4326**. It provides accurate distance calculations and is compatible with GPS data from mobile devices and location APIs.
+
+:::
+
+See [epsg.io](https://epsg.io/) for a complete SRID reference.
+
+## Use cases for geometry fields
+
+Geometry fields enable location-aware applications by providing native database support for spatial queries. Instead of calculating distances or checking boundaries in your application code, you can leverage PostGIS's optimized spatial functions directly in your database queries.
+
+Common use cases include:
+
+- **Location-based services** - Find restaurants, stores, or users near a location. Instead of fetching all records and filtering in JavaScript, use the `near` filter to find nearby locations efficiently.
+
+- **Geofencing** - Define geographic boundaries (polygons) and check if points fall within them. Useful for restricted areas, service zones, or location-triggered notifications.
+
+- **Delivery services** - Define delivery zones as polygons and validate customer addresses before accepting orders. Calculate estimated delivery times based on distance from the restaurant.
+
+- **Real estate** - Search properties within a neighborhood boundary, or find homes within a certain distance of schools, parks, or transit stations.
+
+- **Mapping applications** - Store and query routes (LineString), administrative boundaries (Polygon), or points of interest (Point). Visualize data on maps using the GeoJSON format.
+
+- **Fitness tracking** - Record running or cycling routes as LineString geometries, calculate total distance, and find activities that intersect with specific areas.
+
+## Reading geometry fields
+
+When you query records with geometry fields, Prisma Client automatically converts the internal PostGIS format to [GeoJSON](https://geojson.org/), a standard format for representing geographic data. This makes it easy to work with mapping libraries and external APIs that accept GeoJSON:
+
+```ts
+const location = await prisma.location.findUnique({
+  where: { id: 1 },
+});
+
+console.log(location?.position);
+// Returns: { type: 'Point', coordinates: [13.4, 52.5], srid: 4326 }
+```
+
+The geometry object includes:
+
+- `type` - Geometry type (`'Point'`, `'LineString'`, `'Polygon'`, etc.)
+- `coordinates` - Array of coordinates (format varies by type)
+- `srid` - Spatial reference system identifier
+
+### Reading different geometry types
+
+```ts
+// Point
+const point = await prisma.location.findFirst();
+// Returns: { type: 'Point', coordinates: [13.4, 52.5], srid: 4326 }
+
+// LineString
+const route = await prisma.route.findFirst();
+// Returns: { type: 'LineString', coordinates: [[13.4, 52.5], [13.5, 52.6]], srid: 4326 }
+
+// Polygon
+const zone = await prisma.zone.findFirst();
+// Returns: { type: 'Polygon', coordinates: [[[0, 0], [0, 10], [10, 10], [10, 0], [0, 0]]], srid: 4326 }
+```
+
+## Writing to geometry fields
+
+Creating and updating geometry fields is straightforward - you provide a GeoJSON-like object with the geometry type, coordinates, and optionally the SRID. Prisma Client handles the conversion to PostGIS's internal format automatically.
+
+### Setting the value of a geometry field
+
+The following examples demonstrate how to create records with different geometry types. Each geometry type has a specific coordinate format:
+
+#### Creating a record with a Point
+
+```ts
+const location = await prisma.location.create({
+  data: {
+    name: "Berlin Office",
+    position: {
+      type: "Point",
+      coordinates: [13.4, 52.5], // [longitude, latitude]
+      srid: 4326,
+    },
+  },
+});
+```
+
+#### Creating a record with a LineString
+
+```ts
+const route = await prisma.route.create({
+  data: {
+    name: "Morning Run",
+    path: {
+      type: "LineString",
+      coordinates: [
+        [13.4, 52.5],
+        [13.41, 52.51],
+        [13.42, 52.52],
+      ],
+      srid: 4326,
+    },
+  },
+});
+```
+
+#### Creating a record with a Polygon
+
+Polygons require closed rings (first and last coordinates must be identical):
+
+```ts
+const zone = await prisma.zone.create({
+  data: {
+    name: "Delivery Zone Downtown",
+    boundary: {
+      type: "Polygon",
+      coordinates: [
+        [
+          [-74.0, 40.7],
+          [-74.0, 40.8],
+          [-73.9, 40.8],
+          [-73.9, 40.7],
+          [-74.0, 40.7], // Closes the ring
+        ],
+      ],
+      srid: 4326,
+    },
+  },
+});
+```
+
+:::warning
+
+Polygon rings must be closed - the first and last coordinate pairs must be identical. Failing to close a polygon will result in a database error.
+
+:::
+
+### Updating geometry fields
+
+Update an existing geometry field by providing a new geometry object:
+
+```ts
+const updated = await prisma.location.update({
+  where: { id: 1 },
+  data: {
+    position: {
+      type: "Point",
+      coordinates: [2.35, 48.85], // Paris
+      srid: 4326,
+    },
+  },
+});
+```
+
+### Setting geometry fields to `null`
+
+If a geometry field is optional (marked with `?` in your schema), you can set it to `null`:
+
+```ts
+const updated = await prisma.location.update({
+  where: { id: 1 },
+  data: {
+    position: null,
+  },
+});
+```
+
+### Omitting the SRID
+
+The `srid` field is optional in the input geometry object. If omitted, PostGIS will use the SRID defined in your schema column:
+
+```ts
+// Schema: position Geometry(Point, 4326)?
+const location = await prisma.location.create({
+  data: {
+    name: "Berlin",
+    position: {
+      type: "Point",
+      coordinates: [13.4, 52.5],
+      // srid defaults to 4326 from schema column definition
+    },
+  },
+});
+```
+
+:::tip
+
+While the `srid` field is optional, it's recommended to always specify it explicitly for clarity and to catch coordinate system mismatches early during development.
+
+:::
+
+## Filtering by geometry
+
+:::note
+
+Geometry filters are only available with PostgreSQL and require the PostGIS extension to be enabled.
+
+:::
+
+Spatial queries let you filter records based on geographic relationships. For example, find all restaurants within walking distance, check if a delivery address is in your service area, or find routes that pass through a specific region.
+
+PostgreSQL with PostGIS provides native geometry filters that compile to optimized SQL functions. These filters work with GIST spatial indexes for optimal performance, even with millions of geographic records.
+
+### Filter by distance - `near`
+
+The `near` filter finds all geometries within a specific radius from a reference point. This is commonly used for "find nearby" features - for example, finding restaurants within walking distance, stores near a user's location, or properties within a commute radius.
+
+```ts
+const nearby = await prisma.location.findMany({
+  where: {
+    position: {
+      near: {
+        point: [13.4, 52.5], // Reference point [longitude, latitude]
+        maxDistance: 1000, // Distance in meters
+      },
+    },
+  },
+});
+```
+
+**How it works:** This filter uses PostGIS `ST_DWithin` function, which efficiently checks if geometries are within the specified distance using spatial indexes. When using SRID 4326, the distance is measured in meters using spherical calculations (accounting for Earth's curvature).
+
+**When to use:** Use `near` when you need to find all records within a circular radius from a point. This is more efficient than fetching all records and calculating distances in your application code.
+
+### Filter by containment - `within`
+
+The `within` filter checks if a geometry is completely contained inside a polygon boundary. This is perfect for geofencing applications - checking if a location is within a delivery zone, service area, city boundary, or restricted region.
+
+```ts
+const locationsInArea = await prisma.location.findMany({
+  where: {
+    position: {
+      within: {
+        polygon: [
+          [0, 0],
+          [0, 10],
+          [10, 10],
+          [10, 0],
+          [0, 0], // Must close the ring
+        ],
+      },
+    },
+  },
+});
+```
+
+**How it works:** This filter uses PostGIS `ST_Within` function to test if a geometry is fully contained within the polygon. For a point to match, it must be strictly inside the polygon interior (points exactly on the boundary may not match).
+
+**When to use:** Use `within` when you need strict containment validation. If you need to include boundary touches, use `intersects` instead (which includes points on edges).
+
+**Difference from `intersects`:** `within` requires full containment (inside only), while `intersects` includes any spatial contact (inside, on boundary, or crossing).
+
+### Filter by intersection - `intersects`
+
+The `intersects` filter finds all geometries that have any spatial overlap with another geometry. Unlike `within`, geometries only need to touch or partially overlap - they don't need to be fully contained. This is useful for finding routes that pass through an area, zones that overlap with a region, or activities that touch a park.
+
+```ts
+const intersecting = await prisma.area.findMany({
+  where: {
+    boundary: {
+      intersects: {
+        geometry: {
+          type: "Polygon",
+          coordinates: [
+            [
+              [5, 5],
+              [5, 15],
+              [15, 15],
+              [15, 5],
+              [5, 5],
+            ],
+          ],
+        },
+      },
+    },
+  },
+});
+```
+
+**How it works:** This filter uses PostGIS `ST_Intersects` function to test if two geometries have any points in common. This includes touching boundaries, partial overlaps, or complete containment.
+
+**When to use:** Use `intersects` when you need to find any spatial relationship between geometries - for example, finding delivery zones that overlap with a new service area, routes that pass through a region, or properties that touch a flood zone.
+
+### `NULL` values in geometry filters
+
+When using geometry filters, records with `NULL` geometry values are not included in the results. Consider the following example:
+
+```ts
+// This query returns locations where position is NOT NULL and within the specified area
+const locations = await prisma.location.findMany({
+  where: {
+    position: {
+      within: {
+        polygon: [
+          [0, 0],
+          [0, 10],
+          [10, 10],
+          [10, 0],
+          [0, 0],
+        ],
+      },
+    },
+  },
+});
+```
+
+The query returns:
+
+- ✔ Locations with position inside the polygon
+- ✘ Locations with `NULL` position (not included)
+
+To explicitly include or filter `NULL` values, combine with `isSet` or standard null filters:
+
+```ts
+// Find locations with position set (not NULL) within area
+const locationsWithGeometry = await prisma.location.findMany({
+  where: {
+    AND: [
+      { position: { isNot: null } },
+      {
+        position: {
+          within: {
+            polygon: [
+              [0, 0],
+              [0, 10],
+              [10, 10],
+              [10, 0],
+              [0, 0],
+            ],
+          },
+        },
+      },
+    ],
+  },
+});
+```
+
+## Ordering by distance
+
+Distance-based ordering allows you to sort results by their proximity to a reference point. This is essential for "nearest first" features - showing the closest restaurants at the top, finding the nearest available driver, or displaying stores sorted by distance.
+
+```ts
+const sortedByDistance = await prisma.location.findMany({
+  orderBy: {
+    position: {
+      distanceFrom: {
+        point: [13.4, 52.5], // Reference point
+        direction: "asc", // 'asc' for nearest first, 'desc' for farthest first
+      },
+    },
+  },
+  take: 10, // Get 10 nearest locations
+});
+```
+
+**How it works:** This uses PostGIS `ST_Distance` function with geography casting to calculate the spherical distance between each geometry and the reference point. When using SRID 4326, distances are accurate and measured in meters, accounting for Earth's curvature.
+
+**When to use:** Use `distanceFrom` ordering whenever you want to sort results by proximity. This is more efficient than calculating distances in your application code and allows you to use `take` to limit results at the database level.
+
+### Combining filters and ordering
+
+For the best user experience, combine filters with ordering to create efficient, focused queries. For example, first filter to find restaurants within a reasonable distance, then sort them by proximity to show the closest options first:
+
+```ts
+// Find restaurants within 5km, sorted by distance
+const nearbyRestaurants = await prisma.restaurant.findMany({
+  where: {
+    location: {
+      near: {
+        point: [13.4, 52.5],
+        maxDistance: 5000, // 5km radius
+      },
+    },
+  },
+  orderBy: {
+    location: {
+      distanceFrom: {
+        point: [13.4, 52.5], // Same reference point
+        direction: "asc",
+      },
+    },
+  },
+  take: 10,
+});
+```
+
+## Real-world examples
+
+The following examples demonstrate how to use geometry fields in practical applications, combining filters and ordering to build location-aware features.
+
+### Restaurant finder
+
+A common requirement for food delivery or review apps is finding restaurants near the user's current location. This example combines the `near` filter to limit the search radius with `distanceFrom` ordering to show the closest options first:
+
+```prisma
+model Restaurant {
+  id       Int      @id @default(autoincrement())
+  name     String
+  location Geometry(Point, 4326)?
+}
+```
+
+```ts
+// Find restaurants within 5km, sorted by distance
+const nearbyRestaurants = await prisma.restaurant.findMany({
+  where: {
+    location: {
+      near: {
+        point: [-73.9857, 40.7484], // New York coordinates
+        maxDistance: 5000, // 5km in meters
+      },
+    },
+  },
+  orderBy: {
+    location: {
+      distanceFrom: {
+        point: [-73.9857, 40.7484],
+        direction: "asc",
+      },
+    },
+  },
+  take: 10,
+});
+```
+
+### Delivery zone validation
+
+Food delivery and logistics companies need to validate if a customer's address falls within their service area before accepting orders. This example stores delivery zones as polygons and checks if a customer point intersects with any zone boundary:
+
+```prisma
+model DeliveryZone {
+  id       Int      @id @default(autoincrement())
+  name     String
+  boundary Geometry(Polygon, 4326)?
+}
+```
+
+```ts
+// Check if delivery is available at a customer's address
+const customerLocation = [2.35, 48.85]; // Paris coordinates from geocoding API
+
+// Find zones that contain the customer's location
+const availableZones = await prisma.deliveryZone.findMany({
+  where: {
+    boundary: {
+      intersects: {
+        geometry: {
+          type: "Point",
+          coordinates: customerLocation,
+        },
+      },
+    },
+  },
+});
+
+const canDeliver = availableZones.length > 0;
+
+if (canDeliver) {
+  console.log(
+    `Delivery available in zones: ${availableZones.map((z) => z.name).join(", ")}`
+  );
+} else {
+  console.log("Sorry, we don't deliver to this address yet");
+}
+```
+
+### Activity tracking
+
+Fitness and sports apps track user activities as routes (LineString geometries). This allows querying activities that pass through specific areas, calculating total distance, or finding popular running routes in a neighborhood:
+
+```prisma
+model Activity {
+  id       Int      @id @default(autoincrement())
+  name     String
+  route    Geometry(LineString, 4326)?
+  userId   Int
+}
+```
+
+```ts
+// Record a user's running activity with GPS coordinates
+const activity = await prisma.activity.create({
+  data: {
+    name: "Morning Run",
+    route: {
+      type: "LineString",
+      coordinates: [
+        [-122.4194, 37.7749], // San Francisco start
+        [-122.4184, 37.7759], // Path through the city
+        [-122.4174, 37.7769],
+        [-122.4164, 37.7779], // Finish point
+      ],
+      srid: 4326,
+    },
+    userId: 1,
+  },
+});
+
+// Find all activities that pass through Golden Gate Park
+// This helps discover popular routes or analyze park usage
+const activitiesInPark = await prisma.activity.findMany({
+  where: {
+    route: {
+      intersects: {
+        geometry: {
+          type: "Polygon",
+          coordinates: [
+            [
+              [-122.42, 37.77], // Park boundary coordinates
+              [-122.42, 37.78],
+              [-122.41, 37.78],
+              [-122.41, 37.77],
+              [-122.42, 37.77],
+            ],
+          ],
+        },
+      },
+    },
+  },
+});
+
+console.log(`Found ${activitiesInPark.length} activities that went through the park`);
+```
+
+## TypeScript types
+
+Prisma Client automatically generates TypeScript types for your geometry fields, providing full type safety for spatial operations:
+
+```ts
+import { Prisma } from "@prisma/client";
+
+// For a schema with: position Geometry(Point, 4326)?
+// Prisma Client generates these types:
+
+// Input type (when creating/updating)
+type LocationCreateInput = {
+  name: string;
+  position?: Prisma.InputGeometry | null;
+};
+
+// Output type (when reading)
+type Location = {
+  id: number;
+  name: string;
+  position: Prisma.Geometry | null;
+};
+```
+
+### Available geometry types
+
+Prisma exports specific TypeScript interfaces for each geometry type:
+
+```ts
+import { Prisma } from "@prisma/client";
+
+// Prisma.InputGeometry - flexible input type for create/update
+const input: Prisma.InputGeometry = {
+  type: "Point",
+  coordinates: [13.4, 52.5],
+  srid: 4326,
+};
+
+// Prisma.Geometry - union type for query results
+// Can be: Prisma.Point | Prisma.LineString | Prisma.Polygon
+
+// Prisma.Point - specific point type
+const point: Prisma.Point = {
+  type: "Point",
+  coordinates: [13.4, 52.5], // [lon, lat] or [x, y, z]
+  srid: 4326,
+};
+
+// Prisma.LineString - line/route type
+const line: Prisma.LineString = {
+  type: "LineString",
+  coordinates: [
+    [13.4, 52.5],
+    [13.5, 52.6],
+  ],
+  srid: 4326,
+};
+
+// Prisma.Polygon - area/boundary type
+const polygon: Prisma.Polygon = {
+  type: "Polygon",
+  coordinates: [
+    [
+      [0, 0],
+      [0, 10],
+      [10, 10],
+      [10, 0],
+      [0, 0],
+    ],
+  ],
+  srid: 4326,
+};
+```
+
+### Working with geometry types
+
+Use type narrowing to handle different geometry types in query results:
+
+```ts
+import { Prisma } from "@prisma/client";
+
+const location = await prisma.location.findUnique({
+  where: { id: 1 },
+});
+
+if (location?.position) {
+  const geometry: Prisma.Geometry = location.position;
+
+  switch (geometry.type) {
+    case "Point":
+      const [lon, lat] = geometry.coordinates;
+      console.log(`Point at ${lon}, ${lat}`);
+      break;
+
+    case "LineString":
+      console.log(`Line with ${geometry.coordinates.length} points`);
+      break;
+
+    case "Polygon":
+      console.log(`Polygon with ${geometry.coordinates.length} rings`);
+      break;
+  }
+}
+```
+
+## Performance considerations
+
+Geometry queries can be extremely fast or extremely slow depending on how you use them. Understanding spatial indexes and query optimization is crucial for building responsive location-based applications.
+
+### Spatial indexes
+
+PostGIS uses [GIST (Generalized Search Tree) indexes](https://postgis.net/workshops/postgis-intro/indexing.html) for efficient spatial queries. These indexes organize geometries spatially, allowing the database to quickly eliminate large portions of the dataset when searching for nearby or intersecting geometries.
+
+For optimal query performance, create GIST indexes on your geometry columns:
+
+```sql
+-- Create a spatial index on the position column
+CREATE INDEX location_position_idx ON "Location" USING GIST (position);
+```
+
+You can add this index using a [customized migration](/orm/prisma-migrate/workflows/customizing-migrations):
+
+```bash
+# Create an empty migration
+npx prisma migrate dev --create-only
+
+# Add the CREATE INDEX statement to the generated SQL file
+# Then apply the migration
+npx prisma migrate dev
+```
+
+:::tip
+
+All native geometry filters (`near`, `within`, `intersects`) are optimized to use GIST indexes. Adding a GIST index can improve spatial query performance by 100-1000x on large datasets.
+
+:::
+
+### PostgreSQL 16 query planner issue
+
+:::warning PostgreSQL 16 users with large datasets
+
+If you're using **PostgreSQL 16** with datasets containing thousands of records, you may encounter slow spatial queries (3-5 seconds instead of <100ms) due to a query planner bug that was fixed in PostgreSQL 17+.
+
+**Symptom:** Queries with `near`, `within`, or `intersects` are unexpectedly slow despite having GIST indexes.
+
+**Cause:** PostgreSQL 16 underestimates the number of rows returned by spatial Common Table Expressions (CTEs), causing it to choose Nested Loop joins instead of Hash Joins. This results in thousands of unnecessary loop iterations.
+
+**Workaround:** Use the `withSpatialOptimization` helper from `@prisma/adapter-pg`:
+
+```typescript
+import { PrismaClient } from '@prisma/client'
+import { withSpatialOptimization } from '@prisma/adapter-pg'
+
+const userLocation = [13.4, 52.5] as [number, number]
+
+// The helper automatically detects PostgreSQL 16 and applies optimization only when needed
+const nearby = await withSpatialOptimization(
+  prisma,
+  (client) => client.location.findMany({
+    where: {
+      position: {
+        near: {
+          point: userLocation,
+          maxDistance: 5000,
+        },
+      },
+    },
+    orderBy: {
+      position: {
+        distanceFrom: userLocation,
+      },
+    },
+    take: 20,
+  })
+)
+
+// Works with all spatial filters:
+const zonesContaining = await withSpatialOptimization(
+  prisma,
+  (client) => client.deliveryZone.findMany({
+    where: {
+      boundary: {
+        intersects: {
+          type: 'Point',
+          coordinates: userLocation,
+        },
+      },
+    },
+  })
+)
+```
+
+The helper:
+- **Automatically detects** PostgreSQL version (cached for performance)
+- **Only applies optimization** on PostgreSQL 16
+- **Skips optimization** on PostgreSQL 17+ (where the bug is fixed)
+- **Handles errors gracefully** if version detection fails
+
+**Important notes:**
+
+- The helper is **safe to use on all PostgreSQL versions**—it automatically detects PostgreSQL 16 and only applies the optimization when needed.
+- On PostgreSQL 17+, the helper runs queries normally without any optimization (the bug is already fixed).
+- The optimization uses `SET LOCAL` which only affects the current transaction and is automatically reverted.
+- While the helper is safe, only use it for spatial queries that you've confirmed are slow—it adds a small version-detection overhead on first use (cached afterward).
+- Always ensure you have **GIST indexes** on your geometry columns—this optimization does not replace proper indexing.
+
+**Best practice:** If you can upgrade to PostgreSQL 17+, the bug is fixed natively and you won't need this workaround at all.
+
+:::
+
+### Choose the right SRID
+
+The SRID affects both coordinate interpretation and distance calculations. Choosing the wrong SRID can lead to inaccurate results or slow queries:
+
+- **SRID 4326 (WGS 84)**: Best for worldwide GPS data with lat/long coordinates. Distance calculations use spherical geometry (accurate for Earth's curvature). This is the recommended choice for most applications.
+
+- **SRID 3857 (Web Mercator)**: Optimized for web mapping and visualization. Uses planar geometry (faster but less accurate for distance calculations, especially near poles). Use for display purposes, not distance measurements.
+
+- **Local SRIDs**: Use region-specific SRIDs (e.g., 2154 for France, 27700 for UK) for highly accurate local measurements within a specific country or region. These provide the most accurate distance calculations for their area.
+
+### Query optimization tips
+
+- **Limit results**: Combine `near` filters with `take` to avoid fetching too many records:
+
+  ```ts
+  const nearby = await prisma.location.findMany({
+    where: { position: { near: { point: [13.4, 52.5], maxDistance: 5000 } } },
+    take: 20, // Only return 20 closest results
+  });
+  ```
+
+- **Server-side filtering**: Use native geometry filters instead of fetching all data and filtering in JavaScript:
+
+  ```ts
+  // ❌ Bad: Fetch all and filter in JavaScript
+  const all = await prisma.location.findMany();
+  const nearby = all.filter((loc) => calculateDistance(loc.position, myPoint) < 1000);
+
+  // ✅ Good: Filter in database
+  const nearby = await prisma.location.findMany({
+    where: { position: { near: { point: myPoint, maxDistance: 1000 } } },
+  });
+  ```
+
+- **Combine filters**: Use multiple conditions to narrow down results before distance calculations:
+
+  ```ts
+  const results = await prisma.restaurant.findMany({
+    where: {
+      AND: [
+        { isOpen: true }, // Regular filter first
+        { rating: { gte: 4 } }, // Filter by rating
+        { location: { near: { point: [13.4, 52.5], maxDistance: 2000 } } }, // Then spatial filter
+      ],
+    },
+  });
+  ```
+
+## Migrating from `Unsupported` type
+
+Before Prisma added native `Geometry` support, developers had to use the `Unsupported` type to work with PostGIS columns. If you have an existing schema using `Unsupported("geometry(...)")`, you can migrate to the native `Geometry` type to gain access to native filters and ordering without any breaking changes to your data or application code.
+
+### Before
+
+```prisma
+model Location {
+  id       Int                                 @id @default(autoincrement())
+  position Unsupported("geometry(Point,4326)")?
+}
+```
+
+### After
+
+```prisma
+model Location {
+  id       Int               @id @default(autoincrement())
+  position Geometry(Point, 4326)?
+}
+```
+
+### Migration steps
+
+1. Update your Prisma schema to use `Geometry(...)` instead of `Unsupported(...)`
+2. Run `npx prisma generate` to regenerate Prisma Client
+3. No changes to your application code are required - the GeoJSON format remains identical
+
+:::tip
+
+The migration is backward compatible. Existing data in your database remains unchanged, and the wire format (GeoJSON) stays the same. You can now use native filters and ordering instead of raw SQL queries.
+
+:::
+
+## Common considerations
+
+When working with geometry fields, there are several important details to keep in mind to avoid common mistakes and unexpected behavior.
+
+### Coordinate order
+
+One of the most common mistakes when working with geographic data is using the wrong coordinate order. GeoJSON and PostGIS use `[longitude, latitude]` order, which is opposite to how we typically say addresses ("Paris is at 48.85° latitude, 2.35° longitude"):
+
+```ts
+// ✅ Correct: [longitude, latitude]
+const berlin = { type: "Point", coordinates: [13.4, 52.5], srid: 4326 };
+
+// ❌ Wrong: [latitude, longitude]
+const wrong = { type: "Point", coordinates: [52.5, 13.4], srid: 4326 };
+```
+
+### Closing polygon rings
+
+Polygons in PostGIS must have closed rings, meaning the first and last coordinate pairs must be identical. This is a requirement of the GeoJSON specification and PostGIS will reject polygons with unclosed rings:
+
+```ts
+// ✅ Correct: Closed ring
+const polygon = [
+  [0, 0],
+  [0, 10],
+  [10, 10],
+  [10, 0],
+  [0, 0],
+];
+
+// ❌ Wrong: Unclosed ring
+const unclosed = [
+  [0, 0],
+  [0, 10],
+  [10, 10],
+  [10, 0],
+]; // Missing closing point
+```
+
+### Distance units
+
+Understanding distance units is crucial for setting correct `maxDistance` values and interpreting distance calculations. The units depend on your SRID:
+
+- **SRID 4326 (WGS 84)**: Distances are in **meters** when using spherical calculations (which Prisma does automatically). For example, `maxDistance: 1000` means 1 kilometer.
+
+- **SRID 3857 (Web Mercator)**: Distances are in the projection's units (typically meters for local areas, but accuracy degrades with distance). Not recommended for distance measurements.
+
+- **Local SRIDs**: Distances are typically in meters or feet depending on the specific projection. Check the SRID documentation at [epsg.io](https://epsg.io/).
+
+Always use consistent units across your application and document which SRID you're using.
+
+### Null handling
+
+By default, geometry filters only match records where the geometry field is not `NULL`. This is usually what you want, but can be surprising if you're not expecting it. For example, a `near` filter won't include locations where the position is `NULL`, even if you have an optional geometry field in your schema.
+
+To include records with null geometry in your results, you need to explicitly handle them with separate queries or combine with null checks:
+
+```ts
+// Find locations either within area OR with no position set
+const locationsWithinOrNull = await prisma.location.findMany({
+  where: {
+    OR: [
+      { position: null },
+      { position: { within: { polygon: [...] } } },
+    ],
+  },
+});
+```
+
+## See also
+
+- [CRUD operations](/orm/prisma-client/queries/crud) for general query patterns
+- [Filtering and sorting](/v6/orm/prisma-client/queries/filtering-and-sorting) for more filter options
+- [PostgreSQL extensions](/orm/prisma-schema/postgresql-extensions) for enabling PostGIS
+- [PostGIS documentation](https://postgis.net/documentation/) for advanced spatial operations
+- [GeoJSON specification](https://geojson.org/) for geometry format details

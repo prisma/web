@@ -10,10 +10,28 @@ const itemVariants = cva(
   {
     variants: {
       active: {
-        true: "bg-foreground-ppg-reverse-weak/50 text-fd-accent-foreground",
+        true: "",
         false: "text-fd-muted-foreground",
       },
+      color: {
+        ppg: "",
+        orm: "",
+      },
     },
+    compoundVariants: [
+      {
+        active: true,
+        color: "ppg",
+        className:
+          "bg-foreground-ppg-reverse-weak/50 text-fd-accent-foreground",
+      },
+      {
+        active: true,
+        color: "orm",
+        className:
+          "bg-foreground-orm-reverse-weak/50 text-fd-accent-foreground",
+      },
+    ],
   },
 );
 
@@ -26,9 +44,11 @@ const full = [
 export function ThemeToggle({
   className,
   mode = "light-dark",
+  color = "ppg",
   ...props
 }: ComponentProps<"div"> & {
   mode?: "light-dark" | "light-dark-system";
+  color?: "ppg" | "orm";
 }) {
   const { setTheme, theme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -59,7 +79,7 @@ export function ThemeToggle({
             <Icon
               key={key}
               fill="currentColor"
-              className={cn(itemVariants({ active: value === key }))}
+              className={cn(itemVariants({ active: value === key, color }))}
             />
           );
         })}
@@ -75,7 +95,7 @@ export function ThemeToggle({
         <button
           key={key}
           aria-label={key}
-          className={cn(itemVariants({ active: value === key }))}
+          className={cn(itemVariants({ active: value === key, color }))}
           onClick={() => setTheme(key)}
         >
           <Icon className="size-full" fill="currentColor" />

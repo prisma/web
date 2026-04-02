@@ -1,6 +1,7 @@
 import type { Dirent } from "node:fs";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
+import { changelogSource } from "@/lib/changelog-source";
 import { getBaseUrl } from "@/lib/url";
 
 type SitemapEntry = {
@@ -120,9 +121,14 @@ async function collectPageRoutes(directory: string, segments: string[] = []): Pr
 
 /** Generate sitemap entries for all public pages in the site app. */
 export async function getSiteSitemapEntries(baseUrl = getBaseUrl()): Promise<SitemapEntry[]> {
-  const pathnames = await collectPageRoutes(APP_DIRECTORY);
+  const [pathnames, changelogEntries] = await Promise.all([
+    collectPageRoutes(APP_DIRECTORY),
+    changelogSource.getPages().map((page) => page.url),
+  ]);
 
-  return pathnames
+  const allPathnames = [...new Set([...pathnames, ...changelogEntries])];
+
+  return allPathnames
     .sort((left, right) => left.localeCompare(right))
     .map((pathname) => ({
       url: new URL(pathname, baseUrl).toString(),

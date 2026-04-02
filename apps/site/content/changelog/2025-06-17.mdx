@@ -1,0 +1,88 @@
+---
+title: "Prisma ORM v6.10.0: no Rust engines for MS SQL Server and PlanetScale"
+date: "2025-06-17"
+version: "v6.10.0"
+slug: "2025-06-17"
+headline: "Prisma ORM v6.10.0: no Rust engines for MS SQL Server and PlanetScale"
+tags:
+  - "Prisma Postgres"
+  - "Prisma ORM"
+  - "MCP"
+canonical: "/changelog#log2025-06-17"
+share:
+  active: true
+  content: "Look at this page: "
+source:
+  exportedAt: "2026-03-31T10:29:19.701Z"
+---
+
+## Prisma ORM v6.10.0: no Rust engines for MS SQL Server and PlanetScale
+
+We are in the process of [removing the Rust engines](https://www.prisma.io/docs/orm/prisma-client/setup-and-configuration/no-rust-engine) from Prisma ORM. If you want to try this, you can configure your `generator` like this:
+
+```typescript
+generator client {
+  provider        = "prisma-client-js" // or `prisma-client`
+  output          = "../generated/prisma"
+  previewFeatures = ["queryCompiler", "driverAdapters"]
+}
+```
+
+In this release, we are excited to move the `queryCompiler` (which enables using Prisma ORM without Rust engines) into Preview for MS SQL Server and PlanetScale (via the new `@prisma/adapter-mssql` and existing `@prisma/adapter-planetscale` driver adapters).
+
+## 🏡 Manage local Prisma Postgres instances in VS Code
+
+We recently released a [database management UI](https://www.prisma.io/docs/postgres/integrations/vscode-extension#database-management-ui) as part of the Prisma VS Code extension to enable visual database management workflows for [Prisma Postgres](https://www.prisma.io/postgres). In this release, we added new functionality to it: You can now manage multiple *local* Prisma Postgres instances via the same UI.
+
+![VS Code database UI showing multiple local Prisma Postgres instances](/changelog/image-6cffc085cf7d479b2f7e0b5b2655f9d3cf433d5b-3248x2050-png-local-ppg-annotated.png)
+
+To try it, find the Prisma logo in VS Code’s sidebar and start managing your local Prisma Postgres instances (no Docker required).
+
+## ☁️ “Push to Cloud”: Easily deploy a local Prisma Postgres instance in VS Code
+
+Local Prisma Postgres instances are perfect for development, but how do you go *from local to remote* once you’re ready to deploy?
+
+![VS Code Push to Cloud flow for a local Prisma Postgres instance](/changelog/image-ac94c9e2d1e3410fcbc4416fdea233ab8b817734-3248x2050-png-push-to-cloud-annotated.png)
+
+The [database management UI in VS Code](https://www.prisma.io/docs/postgres/integrations/vscode-extension#database-management-ui) now has a **Push to Cloud** button that makes it easy to deploy your local Prisma Postgres so that you can connect to it from your deployed applications.
+
+## 🧩 Support for shard keys on PlanetScale (Preview)
+
+[Sharding](https://planetscale.com/docs/vitess/sharding) is a popular technique to scale up when database load grows. As of this release, [Prisma ORM supports sharding on PlanetScale natively](https://www.prisma.io/docs/orm/overview/databases/planetscale#how-to-define-shard-keys-in-your-prisma-schema-preview) via the new `@shardKey` and `@@shardKey` attributes in the Prisma schema which you can apply to the fields in your models that should serve as shard keys in your database setup:
+
+```typescript
+// Single-column shard key
+model User {
+  id     String @default(uuid())
+  region String @shardKey
+}
+
+// Multi-column shard key
+model Customer {
+  id         String @default(uuid())
+  country    String
+  customerId String
+  @@shardKey([country, customerId])
+}
+```
+
+Note that this requires you to set the `shardKeys` Preview feature flag on your generator definition: `previewFeatures = ["shardKeys"]`.
+
+## ✨ Local Prisma Postgres now works with any ORM & tool (Early Access)
+
+We recently released [direct connections](https://www.prisma.io/docs/postgres/database/direct-connections) for *remote* Prisma Postgres so that you can now use it with your favorite ORM or database tool. As of this release, this is also possible for your *local* Prisma Postgres instances. To try it, run the `prisma dev` command and use the direct connection string starting with `postgres://` in order to connect from any tool.
+
+## 🤖 Let your favorite AI tool manage Prisma Postgres via remote MCP
+
+We just released a new [*remote* MCP server](https://www.prisma.io/docs/postgres/integrations/mcp-server#remote-mcp-server) that helps you manage Prisma Postgres instances! It enables your AI tools to help with these workflows:
+
+- Managing databases and connection strings
+- Creating and re-instantiating backups
+- Querying databases via plain SQL
+- Introspecting database schemas
+
+You can start it using the `npx -y mcp-remote https://mcp.prisma.io/mcp` command.
+
+Here the MCP server is in action, creating a new database directly in the [Warp AI terminal](https://www.warp.dev/):
+
+![Warp AI creating a Prisma Postgres database through the remote MCP server](/changelog/image-6f5fffc8528e9d079196ecbeca717908e0faba73-1212x720-gif-Warp.gif)

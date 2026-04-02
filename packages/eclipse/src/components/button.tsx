@@ -9,6 +9,8 @@ const buttonVariants = cva(
       variant: {
         ppg: "bg-background-ppg-reverse text-foreground-ppg-reverse hover:bg-background-ppg-reverse-strong shadow-box-low",
         orm: "bg-background-orm-reverse text-foreground-orm-reverse hover:bg-background-orm-reverse-strong shadow-box-low",
+        "orm-reverse":
+          "bg-background-orm text-foreground-orm hover:bg-background-orm-strong shadow-box-low",
         "default-stronger":
           "bg-background-neutral text-foreground-neutral hover:bg-background-neutral-strong border border-stroke-neutral-strong",
         default:

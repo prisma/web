@@ -12,6 +12,7 @@ export type TestimonialItemType = {
   startups?: boolean;
   imageAlt?: string;
   key?: string | number;
+  color?: string;
 };
 
 export const TestimonialItem = ({
@@ -22,6 +23,7 @@ export const TestimonialItem = ({
   imageUrl,
   imageAlt,
   startups,
+  color,
   ...rest
 }: TestimonialItemType) => (
   <div
@@ -75,7 +77,14 @@ export const TestimonialItem = ({
             </span>
           ) : (
             company && (
-              <span className="text-xs [text-transform:none] text-foreground-ppg">
+              <span
+                className={cn(
+                  "text-xs [text-transform:none]",
+                  color === "orm"
+                    ? "text-foreground-orm"
+                    : "text-foreground-ppg",
+                )}
+              >
                 {company}
               </span>
             )
