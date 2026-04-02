@@ -40,7 +40,7 @@ export default function StackPage() {
         </div>
       </div>
 
-      <section className="px-4 pb-16 md:px-0 md:pb-20">
+      <section className="px-4 pb-16 md:pb-20">
         <div className="mx-auto flex w-full max-w-[1024px] flex-col gap-12">
           {stackCategories.map((category: StackCategory) => (
             <div key={category.id} className="flex flex-col gap-4">
