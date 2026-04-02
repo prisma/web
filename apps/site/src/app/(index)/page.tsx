@@ -242,7 +242,11 @@ export default function SiteHome() {
                 </p>
               </div>
               <div className="flex flex-col gap-6 md:flex-row">
-                <Button variant="ppg" size="2xl">
+                <Button
+                  variant="ppg"
+                  size="2xl"
+                  href="https://console.prisma.io/sign-up?utm_source=website&utm_medium=index&utm_campaign=cta"
+                >
                   <span>Create your first Database</span>
                   <i className="fa-regular fa-arrow-right ml-2" />
                 </Button>
