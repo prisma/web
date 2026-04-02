@@ -133,8 +133,11 @@ export default function LogoParade() {
           onMouseLeave={() => setPaused(false)}
         >
           {allItems.map((item, i) => (
-            <div
+            <a
               key={i}
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
               className="relative shrink-0 rounded-lg overflow-hidden cursor-pointer transition-transform duration-200 invert-100 dark:brightness-150 dark:hover:filter-none contrast-75 grayscale hover:filter-none"
             >
               <img
@@ -144,7 +147,7 @@ export default function LogoParade() {
                 alt={item.label}
                 className="w-full h-full object-contain object-center"
               />
-            </div>
+            </a>
           ))}
         </div>
       </div>
