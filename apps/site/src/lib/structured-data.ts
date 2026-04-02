@@ -1,4 +1,5 @@
 import { getBaseUrl } from "@/lib/url";
+import { SITE_HOME_DESCRIPTION } from "@/lib/site-metadata";
 
 type FaqEntry = {
   question: string;
@@ -30,8 +31,7 @@ function toPlainText(value: string): string {
 
 export function createSiteStructuredData() {
   const baseUrl = getBaseUrl();
-  const description =
-    "Prisma is a next-generation Node.js and TypeScript ORM for PostgreSQL, MySQL, SQL Server, SQLite, MongoDB, and CockroachDB. It provides type-safety, automated migrations, and an intuitive data model.";
+  const description = SITE_HOME_DESCRIPTION;
 
   return {
     "@context": "https://schema.org",
