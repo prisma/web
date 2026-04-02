@@ -370,8 +370,8 @@ export default function EnterprisePage() {
               rel="noopener noreferrer"
               className="font-sans-display! font-[650]"
             >
-              <span>Get in touch</span>
-              <i className="fa-regular fa-envelope ml-2" />
+              Get in touch
+              <i className="fa-regular fa-envelope" />
             </Button>
           </div>
         </div>

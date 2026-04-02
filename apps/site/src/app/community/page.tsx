@@ -144,7 +144,7 @@ export default function CommunityPage() {
                 rel="noopener noreferrer"
               >
                 Join Discord
-                <i className="fa-regular fa-arrow-up-right ml-2" aria-hidden />
+                <i className="fa-regular fa-arrow-up-right" aria-hidden />
               </Button>
             </Card>
           </div>
@@ -278,7 +278,7 @@ export default function CommunityPage() {
           <div className="mt-6">
             <Button variant="orm" size="lg" href="/events">
               See all events
-              <i className="fa-regular fa-arrow-right ml-2" aria-hidden />
+              <i className="fa-regular fa-arrow-right" aria-hidden />
             </Button>
           </div>
         </div>
@@ -353,12 +353,12 @@ export default function CommunityPage() {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <span>Join Discord</span>
-                <i className="fa-brands fa-discord ml-2" aria-hidden />
+                Join Discord
+                <i className="fa-brands fa-discord" aria-hidden />
               </Button>
               <Button variant="default-strong" size="2xl" href="/newsletter">
-                <span>Subscribe to newsletter</span>
-                <i className="fa-regular fa-arrow-right ml-2" aria-hidden />
+                Subscribe to newsletter
+                <i className="fa-regular fa-arrow-right" aria-hidden />
               </Button>
             </div>
           </div>

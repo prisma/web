@@ -124,7 +124,7 @@ const twoCol = [
           expected, every time.
         </p>
         <Button variant="orm" size="3xl" className="w-fit" href="/studio">
-          <span>Get started in 5 minutes</span>
+          Get started in 5 minutes
         </Button>
       </div>
     ),
@@ -154,7 +154,7 @@ const twoCol = [
           write raw SQL queries that are type-checked at compile time.
         </p>
         <Button variant="orm" size="3xl" className="w-fit" href="/typedsql">
-          <span>Learn more about TypedSQL</span>
+          Learn more about TypedSQL
         </Button>
       </div>
     ),
@@ -261,12 +261,12 @@ export default function Client() {
             </Card>
             <div className="flex gap-4 mx-auto w-fit flex-wrap justify-center">
               <Button variant="default-strong" size="3xl">
-                <span>Browse examples on GitHub</span>
-                <i className="fa-brands fa-github ml-2" />
+                Browse examples on GitHub
+                <i className="fa-brands fa-github" />
               </Button>
               <Button variant="orm" size="3xl">
-                <span>Prisma in your stack</span>
-                <i className="fa-regular fa-arrow-right ml-2" />
+                Prisma in your stack
+                <i className="fa-regular fa-arrow-right" />
               </Button>
             </div>
           </div>
@@ -284,8 +284,8 @@ export default function Client() {
                 relations and edit your data with safety.
               </p>
               <Button variant="orm" size="3xl" className="w-fit" href="/studio">
-                <span>Learn more about Prisma Studio</span>
-                <i className="fa-regular fa-arrow-right ml-2" />
+                Learn more about Prisma Studio
+                <i className="fa-regular fa-arrow-right" />
               </Button>
             </div>
             <div className="grid grid-rows-[auto_auto_1fr_auto]">
@@ -301,8 +301,8 @@ export default function Client() {
                 flexibility — from local development to production environments.
               </p>
               <Button variant="orm" size="3xl" className="w-fit" href="/migrate">
-                <span>Learn more about Prisma Migrate</span>
-                <i className="fa-regular fa-arrow-right ml-2" />
+                Learn more about Prisma Migrate
+                <i className="fa-regular fa-arrow-right" />
               </Button>
             </div>
           </div>

@@ -273,8 +273,8 @@ export default function ORM() {
               size="3xl"
               className="font-sans-display! font-[650]"
             >
-              <span>Create database</span>
-              <i className="fa-regular fa-database ml-2" />
+              Create database
+              <i className="fa-regular fa-database" />
             </Button>
             {/*<Button
               variant="default-strong"
@@ -342,8 +342,8 @@ export default function ORM() {
               competencies
             </p>
             <Button variant="orm" size="2xl" href="/enterprise">
-              <span>Explore Enterprise</span>
-              <i className="fa-regular fa-arrow-right ml-2" />
+              Explore Enterprise
+              <i className="fa-regular fa-arrow-right" />
             </Button>
           </div>
         </div>
@@ -390,12 +390,12 @@ export default function ORM() {
             </div>
             <div className="flex flex-col md:flex-row gap-6">
               <Button variant="orm" size="2xl" href={prismaPostgresQuickstartUrl}>
-                <span>Try Prisma ORM</span>
-                <i className="fa-regular fa-arrow-right ml-2" />
+                Try Prisma ORM
+                <i className="fa-regular fa-arrow-right" />
               </Button>
               <Button variant="default-strong" size="2xl" href="https://www.prisma.io/docs">
-                <span>Read the docs</span>
-                <i className="fa-regular fa-arrow-right ml-2" />
+                Read the docs
+                <i className="fa-regular fa-arrow-right" />
               </Button>
             </div>
             <h6 className="mb-0! -mt-4 text-foreground-neutral-weaker text-xs">

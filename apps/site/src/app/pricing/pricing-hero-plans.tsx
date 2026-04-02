@@ -109,7 +109,7 @@ export function PricingHeroPlans({
                         rel="noopener noreferrer"
                         className="gap-2 px-2"
                       >
-                        <span>Pay via</span>
+                        Pay via
                         <Image
                           src="/icons/companies/aws.svg"
                           alt="AWS"

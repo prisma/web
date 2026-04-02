@@ -449,7 +449,7 @@ export function PricingCalculator({ currency }: { currency: Symbol }) {
                 className="ml-auto inline-flex items-center gap-2 rounded-lg px-2 py-1 text-xs text-foreground-neutral-weaker transition-colors hover:bg-background-default-050 hover:text-foreground-neutral"
               >
                 <i className="fa-solid fa-rotate-right text-[10px]" />
-                <span>Reset</span>
+                Reset
               </Button>
             </div>
 

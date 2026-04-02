@@ -114,10 +114,9 @@ export default function SiteHome() {
               size="3xl"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-sans-display! font-[650]"
             >
-              <span>Create database</span>
-              <i className="fa-regular fa-database ml-2" />
+              Create database
+              <i className="fa-regular fa-database" />
             </Button>
             <CopyCode text="npx prisma init">
               <span className="text-foreground-neutral-reverse-weak">$</span>
@@ -196,8 +195,8 @@ export default function SiteHome() {
               data browser, and personalize it.
             </p>
             <Button variant="ppg" size="2xl" href="/pricing">
-              <span>Explore Pricing</span>
-              <i className="fa-regular fa-arrow-right ml-2" />
+              Explore Pricing
+              <i className="fa-regular fa-arrow-right" />
             </Button>
           </div>
         </div>
@@ -237,12 +236,12 @@ export default function SiteHome() {
               </div>
               <div className="flex flex-col gap-6 md:flex-row">
                 <Button variant="ppg" size="2xl">
-                  <span>Create your first Database</span>
-                  <i className="fa-regular fa-arrow-right ml-2" />
+                  Create your first Database
+                  <i className="fa-regular fa-arrow-right" />
                 </Button>
                 <Button variant="default-strong" size="2xl" href="/pricing">
-                  <span>Explore Pricing</span>
-                  <i className="fa-regular fa-arrow-right ml-2" />
+                  Explore Pricing
+                  <i className="fa-regular fa-arrow-right" />
                 </Button>
               </div>
               <h6 className="mb-0! -mt-4 text-xs text-foreground-neutral-weaker">

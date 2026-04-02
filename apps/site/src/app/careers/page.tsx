@@ -209,8 +209,8 @@ export default function Careers() {
               size="3xl"
               className="font-sans-display! font-[650]"
             >
-              <span>View open positions</span>
-              <i className="fa-solid fa-arrow-down ml-2" />
+              View open positions
+              <i className="fa-solid fa-arrow-down" />
             </Button>
           </div>
         </div>

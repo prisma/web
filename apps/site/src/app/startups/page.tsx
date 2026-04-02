@@ -80,8 +80,8 @@ export default function StartupsPage() {
             database bill covered for a year and up to $10,000.
           </p>
           <Button variant="orm" size="3xl" href="#contact-us">
-            <span>Join the program</span>
-            <i className="fa-regular fa-arrow-down ml-2" aria-hidden="true" />
+            Join the program
+            <i className="fa-regular fa-arrow-down" aria-hidden="true" />
           </Button>
         </div>
       </div>

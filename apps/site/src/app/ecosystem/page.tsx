@@ -84,8 +84,8 @@ export default function SiteHome() {
               rel="noopener noreferrer"
               className="font-sans-display! font-[650]"
             >
-              <span>Submit your package</span>
-              <i className="fa-regular fa-envelope ml-2" />
+              Submit your package
+              <i className="fa-regular fa-envelope" />
             </Button>
           </div>
         </div>

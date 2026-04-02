@@ -150,12 +150,12 @@ export default function StudioPage() {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <span>Explore Studio in Prisma Console</span>
-                <i className="fa-regular fa-arrow-up-right ml-2" />
+                Explore Studio in Prisma Console
+                <i className="fa-regular fa-arrow-up-right" />
               </Button>
               <Button variant="default-strong" size="2xl" href={STUDIO_DOCS_URL}>
-                <span>Try locally</span>
-                <i className="fa-regular fa-arrow-down ml-2" />
+                Try locally
+                <i className="fa-regular fa-arrow-down" />
               </Button>
             </div>
           </div>
@@ -235,8 +235,8 @@ export default function StudioPage() {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <span>Explore Studio in Console</span>
-              <i className="fa-regular fa-arrow-right ml-2" />
+              Explore Studio in Console
+              <i className="fa-regular fa-arrow-right" />
             </Button>
           </div>
 

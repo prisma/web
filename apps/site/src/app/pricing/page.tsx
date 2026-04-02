@@ -175,12 +175,12 @@ export default function PricingPage() {
               size="2xl"
               href="https://console.prisma.io/sign-up?utm_source=website&utm_medium=pricing&utm_campaign=cta"
             >
-              <span>Create your first Database</span>
-              <i className="fa-regular fa-arrow-right ml-2" />
+              Create your first Database
+              <i className="fa-regular fa-arrow-right" />
             </Button>
             <Button variant="default-strong" size="2xl" href="https://www.prisma.io/docs/">
-              <span>Read the docs</span>
-              <i className="fa-regular fa-book-open ml-2" />
+              Read the docs
+              <i className="fa-regular fa-book-open" />
             </Button>
           </div>
           <p className="m-0 mt-4 text-xs text-foreground-neutral-weak">

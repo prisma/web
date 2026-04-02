@@ -459,8 +459,8 @@ export default function About() {
                 developers to build data-driven applications.
               </p>
               <Button variant="orm" size="3xl" href="/careers">
-                <span>View open positions</span>
-                <i className="fa-regular fa-arrow-right ml-2" />
+                View open positions
+                <i className="fa-regular fa-arrow-right" />
               </Button>
             </div>
           </div>
