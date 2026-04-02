@@ -34,7 +34,7 @@ export async function HowSection({
   const hasTabs = Boolean(data.tabs && data.tabs.body.length > 0);
 
   return (
-    <div className="my-12">
+    <div className="my-12 scroll-mt-20" id={data.tabs?.id}>
       <div className="px-4 md:px-8 py-12 flex flex-col gap-12">
         <h2 className="stretch-display text-foreground-neutral text-4xl font-bold text-center font-sans-display max-w-106 mx-auto">
           {data.title}
