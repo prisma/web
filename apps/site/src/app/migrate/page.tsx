@@ -80,7 +80,7 @@ ALTER TABLE "Post" ADD FOREIGN KEY ("authorId") REFERENCES
 export default function Migrate() {
   return (
     <main className="flex-1 w-screen bg-background-default">
-      <div className="hero relative w-full -mt-33 pt-45 pb-8 flex flex-col gap-8">
+      <div className="hero relative w-full -mt-33 pt-70 pb-8 flex flex-col gap-8">
         <div className="bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] absolute inset-0 z-0 overflow-hidden opacity-20" />
         <div className="flex flex-col gap-4 relative z-1">
           <h5 className="stretch-display font-sans-display mx-auto w-fit my-0 text-foreground-orm-strong uppercase">

@@ -1,4 +1,4 @@
-import { SITE_HOME_DESCRIPTION, SITE_HOME_TITLE } from "@/lib/blog-metadata";
+import { SITE_HOME_DESCRIPTION, SITE_HOME_TITLE } from "@/lib/site-metadata";
 import { ImageResponse } from "next/og";
 
 export const revalidate = false;
@@ -177,7 +177,10 @@ export async function GET() {
   const fonts = await getFonts();
 
   return new ImageResponse(
-    <PrismaOGImage title="Prisma Blog" description="Guides, announcements, and articles about Prisma, ORMs, databases, and the data access layer." />,
+    <PrismaOGImage
+      title="Prisma Blog"
+      description="Guides, announcements, and articles about Prisma, ORMs, databases, and the data access layer."
+    />,
     {
       width: 1200,
       height: 630,

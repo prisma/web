@@ -18,9 +18,37 @@ import { McpVideoSection } from "./_components/mcp-video-section";
 export const metadata: Metadata = {
   title: "Prisma MCP Server",
   description:
-    "Manage your databases with natural language via MCP in Claude, Codex, Cursor, Warp, ChatGPT, and other AI agents.",
+    "Manage your databases with natural language via MCP in Claude, Codex, Cursor, Warp, ChatGPT and other AI agents. Works great with Prisma Postgres.",
+  alternates: {
+    canonical: "https://www.prisma.io/mcp",
+  },
+  openGraph: {
+    title: "Prisma MCP Server",
+    description:
+      "Manage your databases with natural language via MCP in Claude, Codex, Cursor, Warp, ChatGPT and other AI agents. Works great with Prisma Postgres.",
+    url: "https://www.prisma.io/mcp",
+    siteName: "Prisma",
+    locale: "en_US",
+    type: "website",
+    images: [
+      {
+        url: "/og/og-mcp.png",
+        width: 1200,
+        height: 630,
+        alt: "Prisma MCP Server Web Page Open Graph Image",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    site: "@prisma",
+    creator: "@prisma",
+    title: "Prisma MCP Server",
+    description:
+      "Manage your databases with natural language via MCP in Claude, Codex, Cursor, Warp, ChatGPT and other AI agents. Works great with Prisma Postgres.",
+    images: ["/og/og-mcp.png"],
+  },
 };
-
 const DOCS_MCP = "https://www.prisma.io/docs/postgres/integrations/mcp-server";
 
 const heroFeatures: McpHeroFeature[] = [
@@ -36,9 +64,17 @@ const heroFeatures: McpHeroFeature[] = [
       </>
     ),
   },
-  { icon: "fa-light fa-rocket-launch", line1: "Works with any", line2: "AI agent" },
+  {
+    icon: "fa-light fa-rocket-launch",
+    line1: "Works with any",
+    line2: "AI agent",
+  },
   { icon: "fa-light fa-bolt", line1: "Super quick", line2: "2-minute setup" },
-  { icon: "fa-light fa-lock", line1: "Enterprise-grade", line2: "security & OAuth" },
+  {
+    icon: "fa-light fa-lock",
+    line1: "Enterprise-grade",
+    line2: "security & OAuth",
+  },
 ];
 
 const agents: McpAgent[] = [
@@ -96,7 +132,8 @@ const capabilities: McpCapability[] = [
   {
     icon: "fa-light fa-database",
     title: "Database Management",
-    description: "Create projects, databases, or clean them up via natural language",
+    description:
+      "Create projects, databases, or clean them up via natural language",
     prompt: "Set up this project with a new database in us-east-1",
     mobileTall: false,
   },
@@ -104,7 +141,8 @@ const capabilities: McpCapability[] = [
     icon: "fa-light fa-magnifying-glass-arrow-right",
     title: "Data Analysis",
     description: "Execute queries and analyze data through conversation",
-    prompt: "Show me all users who signed up this week and their activity levels",
+    prompt:
+      "Show me all users who signed up this week and their activity levels",
     mobileTall: true,
   },
   {
@@ -117,14 +155,17 @@ const capabilities: McpCapability[] = [
   {
     icon: "fa-light fa-folder-gear",
     title: "Database Administration",
-    description: "Handle backups, connection strings, and multi-database workflows",
-    prompt: "Create a new database from the most recent backup to my product db",
+    description:
+      "Handle backups, connection strings, and multi-database workflows",
+    prompt:
+      "Create a new database from the most recent backup to my product db",
     mobileTall: false,
   },
   {
     icon: "fa-light fa-arrow-progress",
     title: "Development Workflow",
-    description: "Integrate database operations seamlessly into coding workflow",
+    description:
+      "Integrate database operations seamlessly into coding workflow",
     prompt: "Open Prisma Studio and show me the data in my users table",
     mobileTall: false,
   },

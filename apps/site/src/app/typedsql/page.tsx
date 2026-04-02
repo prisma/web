@@ -110,7 +110,7 @@ export const metadata = createPageMetadata({
 export default function TypedSQLPage() {
   return (
     <main className="flex-1 w-full z-1 bg-background-default">
-      <div className="hero -mt-24 flex items-center md:items-end justify-center px-4 relative overflow-hidden pt-36 pb-16 md:pt-0 md:pb-0 md:h-123">
+      <div className="hero -mt-24 flex items-center md:items-end justify-center px-4 relative overflow-hidden pt-50 pb-16 md:pb-0">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,var(--color-background-orm-strong)_0%,var(--color-background-default)_70%)]" />
         <div className="content relative z-2 md:my-12 flex flex-col gap-8">
           <div className="flex flex-col items-center gap-4">

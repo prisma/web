@@ -5,8 +5,9 @@ import { CardSection } from "@/components/homepage/card-section/card-section";
 import { PostgresTabs } from "../../components/postgres";
 import postgresData from "../../data/postgres.json";
 import { LogoGrid } from "@/components/homepage/card-section/logo-grid";
-import { EnterpriseScrollCarousel } from "@/components/enterprise/scroll-carousel";
+import { ScrollCarousel } from "@/components/scroll-carousel";
 import { Youtube } from "@prisma-docs/ui/components/youtube";
+import { CarouselItem } from "@/components/enterprise/carousel-item";
 
 const CONSOLE_URL =
   "https://console.prisma.io/login?utm_source=website&utm_medium=postgres&utm_campaign=cta";
@@ -121,7 +122,7 @@ export const metadata: Metadata = {
 export default async function SiteHome() {
   return (
     <main className="flex-1 w-full z-1 bg-background-default">
-      <div className="hero -mt-24 pt-24 flex items-end justify-center px-4 relative">
+      <div className="hero -mt-24 pt-40 flex items-end justify-center px-4 relative">
         <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-ppg)_0%,var(--color-background-default)_100%)] opacity-20" />
         <div className="content relative z-2 my-12 py-12 flex flex-col gap-8">
           <div className="flex flex-col gap-4 items-center text-center">
@@ -268,7 +269,14 @@ export default async function SiteHome() {
           <h2 className="text-foreground-neutral stretch-display text-center text-4xl font-black! font-sans-display ">
             Made for every kind of app
           </h2>
-          <EnterpriseScrollCarousel items={postgresData.made_for} color="ppg" />
+          <ScrollCarousel
+            ariaLabel="Made for every kind of app carousel"
+            gridClassName="auto-cols-[100%] sm:auto-cols-[calc((100%-2rem)/3)]"
+          >
+            {postgresData.made_for.map((item) => (
+              <CarouselItem key={item.title} card={item} color="ppg" />
+            ))}
+          </ScrollCarousel>
         </div>
       </section>
 

@@ -1,5 +1,5 @@
 import { EnterpriseForm } from "@/components/enterprise/form";
-import { EnterpriseScrollCarousel } from "@/components/enterprise/scroll-carousel";
+import { CarouselItem } from "@/components/enterprise/carousel-item";
 import Image from "next/image";
 import { FooterAccordion } from "@/components/enterprise/footer-accordion";
 import { SwitchEnterprise } from "@/components/enterprise/switch-enterprise";
@@ -8,6 +8,7 @@ import type { Metadata } from "next";
 import { Button, Card, Action } from "@prisma/eclipse";
 import { CardSection } from "@/components/homepage/card-section/card-section";
 import { cn } from "@/lib/cn";
+import { ScrollCarousel } from "@/components/scroll-carousel";
 import { Technology } from "@/components/technology";
 
 interface DatabaseItem {
@@ -428,15 +429,19 @@ export default function EnterprisePage() {
                     </p>
                     {!last && (
                       <div className="bottom-0 left-0 right-0 px-4 after:content-[''] after:absolute after:inset-0 after:bg-[linear-gradient(0deg,var(--color-background-default)_0%,transparent_62.5%)] after:top-0 absolute after:rounded-square">
-                        <img
+                        <Image
                           src={`${card.image}.svg`}
                           alt="Enterprise"
+                          width={1200}
+                          height={900}
                           className="hidden dark:block mx-auto"
                         />
-                        <img
+                        <Image
                           src={`${card.image}_light.svg`}
-                          className="block dark:hidden mx-auto"
                           alt="Enterprise"
+                          width={1200}
+                          height={900}
+                          className="block dark:hidden mx-auto"
                         />
                       </div>
                     )}
@@ -459,7 +464,13 @@ export default function EnterprisePage() {
                               size="4xl"
                               className="h-[75px]! w-[75px]! hover:bg-background-neutral-strong"
                             >
-                              <img src={db.icon} alt={db.name} />
+                              <Image
+                                src={db.icon}
+                                alt={db.name}
+                                width={40}
+                                height={40}
+                                className="h-auto w-auto"
+                              />
                             </Action>
                           </Technology>
                         ))}
@@ -479,7 +490,18 @@ export default function EnterprisePage() {
           <h2 className="text-foreground-neutral stretch-display text-left text-4xl font-black! font-sans-display ">
             Developer experience
           </h2>
-          <EnterpriseScrollCarousel items={abstraction_ease_of_use} />
+          <ScrollCarousel
+            ariaLabel="Enterprise carousel"
+            gridClassName="auto-cols-[100%] sm:auto-cols-[calc((100%-2rem)/3)]"
+          >
+            {abstraction_ease_of_use.map((item) => (
+              <CarouselItem
+                key={item.title}
+                card={item}
+                className="min-h-full"
+              />
+            ))}
+          </ScrollCarousel>
         </div>
       </section>
       {/* Code quality and safety */}
@@ -506,15 +528,19 @@ export default function EnterprisePage() {
                   "flex-1 min-w-0 overflow-visible w-full lg:max-w-unset max-w-137 lg:w-full",
                 )}
               >
-                <img
+                <Image
                   className="sm:relative w-full h-auto hidden dark:block object-contain"
                   src="/illustrations/enterprise/enterprise_2.svg"
                   alt="Code quality and safety"
+                  width={1200}
+                  height={900}
                 />
-                <img
+                <Image
                   className="sm:relative block w-full h-auto dark:hidden object-contain"
                   src="/illustrations/enterprise/enterprise_2_light.svg"
                   alt="Code quality and safety"
+                  width={1200}
+                  height={900}
                 />
               </div>
             </div>
@@ -528,7 +554,18 @@ export default function EnterprisePage() {
           <h2 className="text-foreground-neutral stretch-display text-left text-4xl font-black! font-sans-display">
             Scalability and portability
           </h2>
-          <EnterpriseScrollCarousel items={scal_port} />
+          <ScrollCarousel
+            ariaLabel="Enterprise carousel"
+            gridClassName="auto-cols-[100%] sm:auto-cols-[calc((100%-2rem)/3)]"
+          >
+            {scal_port.map((item) => (
+              <CarouselItem
+                key={item.title}
+                card={item}
+                className="min-h-full"
+              />
+            ))}
+          </ScrollCarousel>
         </div>
       </section>
 

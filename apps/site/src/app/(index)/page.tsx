@@ -1,9 +1,6 @@
 import Antigravity from "../../components/homepage/antigravity";
 import type { Metadata } from "next";
-import {
-  SITE_HOME_DESCRIPTION,
-  SITE_HOME_TITLE,
-} from "../../lib/blog-metadata";
+import { SITE_HOME_DESCRIPTION, SITE_HOME_TITLE } from "@/lib/site-metadata";
 import { Button } from "@prisma/eclipse";
 import { CopyCode } from "@/components/homepage/copy-btn";
 import { Bento } from "@/components/homepage/bento";
@@ -83,8 +80,8 @@ export const metadata: Metadata = {
 export default function SiteHome() {
   return (
     <main className="flex-1 w-full z-1 bg-background-default">
-      <section className="hero h-123 -mt-24 flex items-end justify-center px-4">
-        <div className="w-screen h-123 absolute inset-0">
+      <section className="hero h-full relative -mt-24 flex items-end justify-center px-4 pt-48">
+        <div className="w-screen h-full absolute inset-0">
           <Antigravity
             count={300}
             magnetRadius={16}

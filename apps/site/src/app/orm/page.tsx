@@ -256,9 +256,9 @@ const features = [
 ];
 
 export const metadata = createPageMetadata({
-  title: "Prisma ORM | Next-generation database toolkit for TypeScript",
+  title: "Prisma | Next-generation ORM for Node.js & TypeScript",
   description:
-    "Prisma ORM combines a clean schema, type-safe queries, and developer-friendly workflows for building with Postgres and other databases in TypeScript.",
+    "Prisma is a next-generation Node.js and TypeScript ORM for PostgreSQL, MySQL, SQL Server, SQLite, MongoDB, and CockroachDB. It provides type-safety, automated migrations, and an intuitive data model.",
   path: "/orm",
   ogImage: "/og/og-orm.png",
 });
@@ -266,7 +266,7 @@ export const metadata = createPageMetadata({
 export default function ORM() {
   return (
     <main className="flex-1 w-full z-1 ">
-      <div className="hero pt-36 -mt-24 flex items-end justify-center px-4 relative">
+      <div className="hero pt-50 -mt-24 flex items-end justify-center px-4 relative">
         <div className="absolute inset-0 z-0 bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20" />
         <div className="content relative z-2 flex flex-col gap-8 py-12">
           <h1 className="text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
@@ -425,7 +425,11 @@ export default function ORM() {
                 <span>Try Prisma ORM</span>
                 <i className="fa-regular fa-arrow-right ml-2" />
               </Button>
-              <Button variant="default-stronger" size="2xl" href="https://www.prisma.io/docs">
+              <Button
+                variant="default-stronger"
+                size="2xl"
+                href="https://www.prisma.io/docs"
+              >
                 <span>Read the docs</span>
                 <i className="fa-regular fa-arrow-right ml-2" />
               </Button>
