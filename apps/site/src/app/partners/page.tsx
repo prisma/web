@@ -178,7 +178,7 @@ export default function Partners() {
           <h5 className="font-sans-display text-foreground-orm-strong uppercase stretch-display text-center mx-auto">
             Prisma Partners
           </h5>
-          <h1 className="text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
             Add mission critical infra to your platform in hours, not weeks.
           </h1>
         </div>
@@ -208,7 +208,7 @@ export default function Partners() {
       </div>
       <div className="w-screen px-4">
         <div className="my-12 flex flex-col gap-8 max-w-200 mx-auto">
-          <h2 className="text-foreground-neutral stretch-display text-4xl font-black! font-sans-display my-0 mx-auto">
+          <h2 className="text-center text-foreground-neutral stretch-display text-4xl font-black! font-sans-display my-0 mx-auto">
             Built for modern platforms
           </h2>
 
