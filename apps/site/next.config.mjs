@@ -30,10 +30,9 @@ if (
       !process.env.NEXT_BLOG_ORIGIN && "BLOG_ORIGIN is required in production",
     ]
       .filter(Boolean)
-      .join("; ")
+      .join("; "),
   );
 }
-
 
 const ContentSecurityPolicy = `
   default-src 'self';
@@ -257,7 +256,7 @@ const config = {
   allowedDevOrigins,
   reactStrictMode: true,
   images: {
-    unoptimized: true,
+    unoptimized: false,
     remotePatterns: [
       {
         protocol: "https",
@@ -757,9 +756,8 @@ const config = {
           destination: "https://accelerate-speed-test.vercel.app/:path*",
         },
 
-
-         // Proxy canonical docs path to docs infrastructure
-         {
+        // Proxy canonical docs path to docs infrastructure
+        {
           source: "/docs",
           destination: `${DOCS_ORIGIN}/docs`,
           missing: [{ type: "host", value: DOCS_ORIGIN_HOST }],
@@ -806,7 +804,6 @@ const config = {
         // Pages
         // TODO We have a redirect for this above to /careers, so should probably be removed here?
 
-       
         {
           source: "/dataguide/:any*",
           destination: "https://dataguide.vercel.app/dataguide/:any*",

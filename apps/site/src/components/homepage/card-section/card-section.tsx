@@ -6,6 +6,7 @@ import { useInView } from "react-intersection-observer";
 import { cn } from "../../../lib/cn";
 import { useTheme } from "@prisma-docs/ui/components/theme-provider";
 import { Action } from "@prisma/eclipse";
+import Image from "next/image";
 
 interface TwoColumnItem {
   content: ReactNode;
@@ -166,8 +167,8 @@ export const CardSection = ({ cardSection }: CardSectionProps) => {
                     <LogoGrid color={item.color} />
                   )}
                   {item.visualType === "image" && item.imageUrl && (
-                    <div key={`images-${index}`}>
-                      <img
+                    <div key={`images-${index}`} className="relative w-full">
+                      <Image
                         key={`desktop-img-${index}`}
                         className={cn(
                           "hidden sm:block w-full h-auto",
@@ -180,9 +181,13 @@ export const CardSection = ({ cardSection }: CardSectionProps) => {
                             : `${item.imageUrl}.svg`
                         }
                         alt={item.imageAlt || ""}
+                        width={1200}
+                        height={800}
+                        priority={index === 0}
+                        loading={index === 0 ? "eager" : "lazy"}
                       />
                       {item.mobileImageUrl && (
-                        <img
+                        <Image
                           key={`mobile-img-${index}`}
                           className={cn(
                             "w-full h-auto sm:hidden",
@@ -195,6 +200,10 @@ export const CardSection = ({ cardSection }: CardSectionProps) => {
                               : `${item.mobileImageUrl}.svg`
                           }
                           alt={item.mobileImageAlt || ""}
+                          width={800}
+                          height={600}
+                          priority={index === 0}
+                          loading={index === 0 ? "eager" : "lazy"}
                         />
                       )}
                     </div>

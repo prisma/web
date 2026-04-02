@@ -44,6 +44,7 @@ export const TestimonialItem = ({
           imageUrl || "https://avatar.vercel.sh/" + encodeURIComponent(author)
         }
         alt={imageAlt || `Profile photo of ${author}`}
+        loading="lazy"
       ></Avatar>
       <div
         className={cn(

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Action } from "@prisma/eclipse";
 import { cn } from "@prisma-docs/ui/lib/cn";
 import { useTheme } from "@prisma-docs/ui/components/theme-provider";
@@ -193,14 +194,16 @@ export const Card = ({ card, color }: CardProps) => {
         </div>
       </div>
       {card.image && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <Image
           src={
             mounted && resolvedTheme === "light"
               ? `${card.image}_light.svg`
               : `${card.image}.svg`
           }
           alt={card.title}
+          width={1200}
+          height={800}
+          loading="lazy"
           className="px-4 z-2 pt-0 pb-0 min-w-full min-h-[60%] object-fill object-[top_left] [mask-image:linear-gradient(to_bottom,rgba(0,0,0,1)_60%,transparent_90%)] [-webkit-mask-image:linear-gradient(to_bottom,rgba(0,0,0,1)_60%,transparent_90%)]"
         />
       )}
