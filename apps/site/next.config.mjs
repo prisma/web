@@ -20,6 +20,14 @@ const BLOG_ORIGIN_HOST = (() => {
   }
 })();
 
+const imageRemoteHostnames = [
+  "cdn.sanity.io",
+  "prisma.io",
+  "www.prisma.io",
+  DOCS_ORIGIN_HOST,
+  BLOG_ORIGIN_HOST,
+];
+
 if (
   process.env.NODE_ENV === "production" &&
   (!process.env.NEXT_DOCS_ORIGIN || !process.env.NEXT_BLOG_ORIGIN)
@@ -246,12 +254,10 @@ const config = {
   reactStrictMode: true,
   images: {
     unoptimized: false,
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "cdn.sanity.io",
-      },
-    ],
+    remotePatterns: imageRemoteHostnames.map((hostname) => ({
+      protocol: "https",
+      hostname,
+    })),
   },
   transpilePackages: ["@prisma/eclipse"],
   async redirects() {
