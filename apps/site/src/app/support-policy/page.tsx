@@ -130,7 +130,7 @@ export default function SupportPolicyPage() {
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
             <Button
               variant="orm"
-              href="/docs"
+              href="https://www.prisma.io/docs"
               size="3xl"
               className="font-sans-display! font-[650]"
             >
