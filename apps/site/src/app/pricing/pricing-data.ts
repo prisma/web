@@ -200,7 +200,12 @@ export const usagePricing: Record<BillablePricingPlanKey, UsagePricing> = {
   },
 };
 
-export const comparisonSections = [
+export type ComparisonCell = string | { text: string; price: CurrencyMap };
+
+export const comparisonSections: Array<{
+  title: string;
+  rows: ComparisonCell[][];
+}> = [
   {
     title: "Managed Connection Pool",
     rows: [
@@ -220,8 +225,14 @@ export const comparisonSections = [
         "Cache tag invalidations",
         "-",
         "-",
-        "$0.002 per 1,000, max 10,000 per day",
-        "$0.001 per 1,000, max 100,000 per day",
+        {
+          text: "<price> per 1,000, max 10,000 per day",
+          price: formatAmountForAllCurrencies(0.002, 3),
+        },
+        {
+          text: "<price> per 1,000, max 100,000 per day",
+          price: formatAmountForAllCurrencies(0.001, 3),
+        },
       ],
       ["Cache purge requests", "5 per hour", "5 per hour", "10 per hour", "20 per hour"],
     ],
@@ -241,7 +252,7 @@ export const comparisonSections = [
       ["Compliance", "GDPR", "GDPR", "GDPR / HIPAA", "GDPR / HIPAA / SOC2 / ISO:27001"],
     ],
   },
-] as const;
+];
 
 export const faqs: Array<{ question: string; answer: string }> = [
   {
