@@ -23,7 +23,8 @@ export function Hero({ data }: { data: HeroData }) {
   const secondaryButton = data.btns[1];
 
   return (
-    <div className="px-4 hero dark:bg-[linear-gradient(180deg,var(--color-foreground-ppg-weaker)_0%,var(--color-background-default)_100%)] bg-[linear-gradient(180deg,var(--color-background-ppg)_0%,var(--color-background-default)_100%)] relative before:absolute pt-24">
+    <div className="px-4 hero relative pt-24">
+      <div className="absolute inset-0 z-0 bg-[linear-gradient(180deg,var(--color-foreground-ppg)_0%,var(--color-background-default)_100%)] opacity-20" />
       <div className="max-w-300 mx-auto py-12 grid md:grid-cols-[1fr_320px] lg:grid-cols-[736px_1fr] gap-11 relative z-1">
         <div className="content flex flex-col gap-8 justify-center">
           <div className="flex flex-col gap-4 items-center md:items-start">
