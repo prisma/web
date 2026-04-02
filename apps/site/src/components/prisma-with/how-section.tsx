@@ -12,6 +12,7 @@ type HowSectionData = {
   title: string;
   description: string;
   tabs?: {
+    id?: string;
     defaultValue: string;
     head: Array<{
       title: string;
