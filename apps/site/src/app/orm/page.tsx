@@ -282,13 +282,13 @@ export default function ORM() {
             Next-generation Node.js and TypeScript ORM
           </h1>
           <p className="text-center text-foreground-neutral max-w-2xl mx-auto">
-            Real Postgres with the developer experience and infrastructure to
-            ship faster.
+            Prisma ORM elevates developer experience with intuitive data
+            modeling, automated migrations, and type-safety.
           </p>
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
             <Button
               variant="orm"
-              href={prismaPostgresQuickstartUrl}
+              href="https://www.prisma.io/docs/prisma-orm/quickstart/prisma-postgres"
               size="3xl"
               className="font-sans-display! font-[650]"
             >
@@ -437,6 +437,8 @@ export default function ORM() {
               <Button
                 variant="default-stronger"
                 size="2xl"
+                target="_blank"
+                rel="noopener noreferrer"
                 href="https://www.prisma.io/docs"
               >
                 <span>Read the docs</span>

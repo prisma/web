@@ -80,34 +80,42 @@ const databases: { title: string; list: DatabaseItem[] } = {
   list: [
     {
       name: "PostgreSQL",
+      url: "https://www.prisma.io/docs/prisma-orm/quickstart/postgresql",
       icon: "/icons/companies/postgres.svg",
     },
     {
       name: "MySQL",
+      url: "https://www.prisma.io/docs/prisma-orm/quickstart/mysql",
       icon: "/icons/technologies/mysqlsimple.svg",
     },
     {
       name: "MariaDB",
       icon: "/icons/technologies/mariadb.svg",
+      url: "https://www.prisma.io/docs/prisma-orm/quickstart/mysql",
     },
     {
       name: "SQLite",
+      url: "https://www.prisma.io/docs/prisma-orm/quickstart/sqlite",
       icon: "/icons/companies/sqlite.svg",
     },
     {
       name: "SQL Server",
+      url: "https://www.prisma.io/docs/prisma-orm/quickstart/sqlserver",
       icon: "/icons/companies/sqlserver.svg",
     },
     {
       name: "CockroachDB",
+      url: "https://www.prisma.io/docs/prisma-orm/quickstart/cockroachdb",
       icon: "/icons/companies/cockroachdb.svg",
     },
     {
       name: "PlanetScale",
+      url: "https://www.prisma.io/docs/prisma-orm/quickstart/planetscale",
       icon: "/icons/companies/planetscale.svg",
     },
     {
       name: "MongoDB",
+      url: "https://www.prisma.io/docs/prisma-orm/quickstart/mongodb",
       icon: "/icons/technologies/mongodbsimple.svg",
     },
   ],
