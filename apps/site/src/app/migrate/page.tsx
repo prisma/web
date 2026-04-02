@@ -97,12 +97,10 @@ export default function Migrate() {
           database schema migrations
         </p>
         <div className="flex gap-4 mx-auto relative z-1">
-          <Button
-            variant="orm"
-            size="3xl"
-            href="https://www.prisma.io/docs/getting-started/setup-prisma/start-from-scratch/relational-databases-typescript-postgresql"
-          >
-            Install Prisma
+          <Button asChild variant="orm" size="3xl">
+            <a href="https://www.prisma.io/docs/getting-started/setup-prisma/start-from-scratch/relational-databases-typescript-postgresql">
+              Install Prisma
+            </a>
           </Button>
           {/*<Button
             variant="default-strong"

@@ -138,25 +138,17 @@ export default async function SiteHome() {
             Build, test and ship faster with zero infrastructure to manage.
           </p>
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
-            <Button
-              variant="ppg"
-              href={CONSOLE_URL}
-              size="3xl"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-sans-display! font-[650]"
-            >
-              Create database
-              <i className="fa-regular fa-database" />
+            <Button asChild variant="ppg" size="3xl" className="font-sans-display! font-[650]">
+              <a href={CONSOLE_URL} target="_blank" rel="noopener noreferrer">
+                Create database
+                <i className="fa-regular fa-database" />
+              </a>
             </Button>
-            <Button
-              variant="default-strong"
-              href="/docs/postgres"
-              size="3xl"
-              className="font-sans-display! font-[650]"
-            >
-              Read the docs
-              <i className="fa-regular fa-book-open" />
+            <Button asChild variant="default-strong" size="3xl" className="font-sans-display! font-[650]">
+              <a href="/docs/postgres">
+                Read the docs
+                <i className="fa-regular fa-book-open" />
+              </a>
             </Button>
           </div>
         </div>
@@ -247,9 +239,11 @@ export default async function SiteHome() {
               Usage-based pricing, with a generous free tier.  Spend limits included, so you never
               get surprised.
             </p>
-            <Button variant="ppg" size="2xl" href="/pricing">
-              Explore Pricing
-              <i className="fa-regular fa-arrow-right" />
+            <Button asChild variant="ppg" size="2xl">
+              <a href="/pricing">
+                Explore Pricing
+                <i className="fa-regular fa-arrow-right" />
+              </a>
             </Button>
           </div>
         </div>
@@ -275,15 +269,11 @@ export default async function SiteHome() {
               </p>
             </div>
 
-            <Button
-              variant="ppg"
-              size="xl"
-              href={CONSOLE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Create your first Database
-              <i className="fa-regular fa-arrow-right" />
+            <Button asChild variant="ppg" size="xl">
+              <a href={CONSOLE_URL} target="_blank" rel="noopener noreferrer">
+                Create your first Database
+                <i className="fa-regular fa-arrow-right" />
+              </a>
             </Button>
           </div>
 
@@ -307,19 +297,17 @@ export default async function SiteHome() {
               <p className="text-foreground-neutral-weak">Deploy a Postgres database instantly.</p>
             </div>
             <div className="flex flex-col md:flex-row gap-6">
-              <Button
-                variant="ppg"
-                size="2xl"
-                href={CONSOLE_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Create your first Database
-                <i className="fa-regular fa-arrow-right" />
+              <Button asChild variant="ppg" size="2xl">
+                <a href={CONSOLE_URL} target="_blank" rel="noopener noreferrer">
+                  Create your first Database
+                  <i className="fa-regular fa-arrow-right" />
+                </a>
               </Button>
-              <Button variant="default-strong" size="2xl" href="/docs">
-                Read the docs
-                <i className="fa-regular fa-arrow-right" />
+              <Button asChild variant="default-strong" size="2xl">
+                <a href="/docs">
+                  Read the docs
+                  <i className="fa-regular fa-arrow-right" />
+                </a>
               </Button>
             </div>
             <h6 className="mb-0! -mt-4 text-foreground-neutral-weaker text-xs">

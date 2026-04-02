@@ -108,15 +108,11 @@ export default function SiteHome() {
             Real Postgres with the developer experience and infrastructure to ship faster.
           </p>
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
-            <Button
-              variant="ppg"
-              href="https://console.prisma.io/sign-up?utm_source=website&utm_medium=index&utm_campaign=cta"
-              size="3xl"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Create database
-              <i className="fa-regular fa-database" />
+            <Button asChild variant="ppg" size="3xl">
+              <a href="https://console.prisma.io/sign-up?utm_source=website&utm_medium=index&utm_campaign=cta" target="_blank" rel="noopener noreferrer">
+                Create database
+                <i className="fa-regular fa-database" />
+              </a>
             </Button>
             <CopyCode text="npx prisma init">
               <span className="text-foreground-neutral-reverse-weak">$</span>
@@ -194,9 +190,11 @@ export default function SiteHome() {
               Give your users instant production-ready Postgres, create databases, add a built-in
               data browser, and personalize it.
             </p>
-            <Button variant="ppg" size="2xl" href="/pricing">
-              Explore Pricing
-              <i className="fa-regular fa-arrow-right" />
+            <Button asChild variant="ppg" size="2xl">
+              <a href="/pricing">
+                Explore Pricing
+                <i className="fa-regular fa-arrow-right" />
+              </a>
             </Button>
           </div>
         </div>
@@ -239,9 +237,11 @@ export default function SiteHome() {
                   Create your first Database
                   <i className="fa-regular fa-arrow-right" />
                 </Button>
-                <Button variant="default-strong" size="2xl" href="/pricing">
-                  Explore Pricing
-                  <i className="fa-regular fa-arrow-right" />
+                <Button asChild variant="default-strong" size="2xl">
+                  <a href="/pricing">
+                    Explore Pricing
+                    <i className="fa-regular fa-arrow-right" />
+                  </a>
                 </Button>
               </div>
               <h6 className="mb-0! -mt-4 text-xs text-foreground-neutral-weaker">

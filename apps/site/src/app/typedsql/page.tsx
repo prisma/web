@@ -17,13 +17,11 @@ const twoCol = [
           significantly improves ergonomics while developing.
         </p>
         <div className="mt-4">
-          <Button
-            variant="link"
-            href="https://www.prisma.io/docs/orm/prisma-client/using-raw-sql/typedsql"
-            className="w-full justify-center lg:justify-start text-center lg:text-left text-foreground-orm! p-0!"
-          >
-            Learn more about type-safety with TypedSQL
-            <i className="fa-regular fa-arrow-right" />
+          <Button asChild variant="link" className="w-full justify-center lg:justify-start text-center lg:text-left text-foreground-orm! p-0!">
+            <a href="https://www.prisma.io/docs/orm/prisma-client/using-raw-sql/typedsql">
+              Learn more about type-safety with TypedSQL
+              <i className="fa-regular fa-arrow-right" />
+            </a>
           </Button>
         </div>
       </>
@@ -51,13 +49,11 @@ const twoCol = [
           safety.
         </p>
         <div className="mt-4">
-          <Button
-            variant="link"
-            href="https://www.prisma.io/docs/orm/prisma-client/using-raw-sql/typedsql"
-            className="w-full justify-center lg:justify-start text-center lg:text-left text-foreground-orm! p-0!"
-          >
-            Write queries using TypedSQL
-            <i className="fa-regular fa-arrow-right" />
+          <Button asChild variant="link" className="w-full justify-center lg:justify-start text-center lg:text-left text-foreground-orm! p-0!">
+            <a href="https://www.prisma.io/docs/orm/prisma-client/using-raw-sql/typedsql">
+              Write queries using TypedSQL
+              <i className="fa-regular fa-arrow-right" />
+            </a>
           </Button>
         </div>
       </>
@@ -125,23 +121,17 @@ export default function TypedSQLPage() {
             </p>
           </div>
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
-            <Button
-              variant="orm"
-              href="https://www.prisma.io/docs/orm/prisma-client/using-raw-sql/typedsql"
-              size="3xl"
-              className="font-sans-display! font-[650]"
-            >
-              Get started with TypedSQL
-              <i className="fa-regular fa-arrow-right" />
+            <Button asChild variant="orm" size="3xl" className="font-sans-display! font-[650]">
+              <a href="https://www.prisma.io/docs/orm/prisma-client/using-raw-sql/typedsql">
+                Get started with TypedSQL
+                <i className="fa-regular fa-arrow-right" />
+              </a>
             </Button>
-            <Button
-              variant="default-strong"
-              href="https://www.prisma.io/blog/announcing-typedsql-make-your-raw-sql-queries-type-safe-with-prisma-orm"
-              size="3xl"
-              className="font-sans-display! font-[650]"
-            >
-              Read the announcement
-              <i className="fa-regular fa-arrow-right" />
+            <Button asChild variant="default-strong" size="3xl" className="font-sans-display! font-[650]">
+              <a href="https://www.prisma.io/blog/announcing-typedsql-make-your-raw-sql-queries-type-safe-with-prisma-orm">
+                Read the announcement
+                <i className="fa-regular fa-arrow-right" />
+              </a>
             </Button>
           </div>
         </div>
@@ -166,21 +156,17 @@ export default function TypedSQLPage() {
               </p>
             </div>
             <div className="flex flex-col md:flex-row gap-6">
-              <Button
-                variant="orm"
-                size="2xl"
-                href="https://www.prisma.io/docs/orm/prisma-client/using-raw-sql/typedsql"
-              >
-                Try TypedSQL
-                <i className="fa-regular fa-arrow-right" />
+              <Button asChild variant="orm" size="2xl">
+                <a href="https://www.prisma.io/docs/orm/prisma-client/using-raw-sql/typedsql">
+                  Try TypedSQL
+                  <i className="fa-regular fa-arrow-right" />
+                </a>
               </Button>
-              <Button
-                variant="default-strong"
-                size="2xl"
-                href="https://github.com/prisma/prisma-examples/tree/latest/orm/typedsql"
-              >
-                See an example
-                <i className="fa-regular fa-arrow-right" />
+              <Button asChild variant="default-strong" size="2xl">
+                <a href="https://github.com/prisma/prisma-examples/tree/latest/orm/typedsql">
+                  See an example
+                  <i className="fa-regular fa-arrow-right" />
+                </a>
               </Button>
             </div>
           </div>

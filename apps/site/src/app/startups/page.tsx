@@ -79,9 +79,11 @@ export default function StartupsPage() {
             <b>Get exclusive 1:1 guidance</b> from Prisma&apos;s database experts, and have your
             database bill covered for a year and up to $10,000.
           </p>
-          <Button variant="orm" size="3xl" href="#contact-us">
-            Join the program
-            <i className="fa-regular fa-arrow-down" aria-hidden="true" />
+          <Button asChild variant="orm" size="3xl">
+            <a href="#contact-us">
+              Join the program
+              <i className="fa-regular fa-arrow-down" aria-hidden="true" />
+            </a>
           </Button>
         </div>
       </div>
@@ -208,8 +210,8 @@ export default function StartupsPage() {
               <span className="font-bold text-foreground-neutral text-lg">
                 Startups blog announcement
               </span>
-              <Button variant="default" size="xl" href="/blog/prisma-startup-program">
-                Read it now
+              <Button asChild variant="default" size="xl">
+                <a href="/blog/prisma-startup-program">Read it now</a>
               </Button>
             </div>
           </div>

@@ -170,17 +170,17 @@ export default function PricingPage() {
             Deploy a Postgres database instantly.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-            <Button
-              variant="ppg"
-              size="2xl"
-              href="https://console.prisma.io/sign-up?utm_source=website&utm_medium=pricing&utm_campaign=cta"
-            >
-              Create your first Database
-              <i className="fa-regular fa-arrow-right" />
+            <Button asChild variant="ppg" size="2xl">
+              <a href="https://console.prisma.io/sign-up?utm_source=website&utm_medium=pricing&utm_campaign=cta">
+                Create your first Database
+                <i className="fa-regular fa-arrow-right" />
+              </a>
             </Button>
-            <Button variant="default-strong" size="2xl" href="https://www.prisma.io/docs/">
-              Read the docs
-              <i className="fa-regular fa-book-open" />
+            <Button asChild variant="default-strong" size="2xl">
+              <a href="https://www.prisma.io/docs/">
+                Read the docs
+                <i className="fa-regular fa-book-open" />
+              </a>
             </Button>
           </div>
           <p className="m-0 mt-4 text-xs text-foreground-neutral-weak">

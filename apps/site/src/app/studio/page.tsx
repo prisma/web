@@ -143,19 +143,17 @@ export default function StudioPage() {
             </p>
 
             <div className="flex flex-col items-center gap-4 sm:flex-row">
-              <Button
-                variant="ppg"
-                size="2xl"
-                href={CONSOLE_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Explore Studio in Prisma Console
-                <i className="fa-regular fa-arrow-up-right" />
+              <Button asChild variant="ppg" size="2xl">
+                <a href={CONSOLE_URL} target="_blank" rel="noopener noreferrer">
+                  Explore Studio in Prisma Console
+                  <i className="fa-regular fa-arrow-up-right" />
+                </a>
               </Button>
-              <Button variant="default-strong" size="2xl" href={STUDIO_DOCS_URL}>
-                Try locally
-                <i className="fa-regular fa-arrow-down" />
+              <Button asChild variant="default-strong" size="2xl">
+                <a href={STUDIO_DOCS_URL}>
+                  Try locally
+                  <i className="fa-regular fa-arrow-down" />
+                </a>
               </Button>
             </div>
           </div>
@@ -228,15 +226,11 @@ export default function StudioPage() {
               </p>
             </div>
 
-            <Button
-              variant="ppg"
-              size="xl"
-              href={CONSOLE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Explore Studio in Console
-              <i className="fa-regular fa-arrow-right" />
+            <Button asChild variant="ppg" size="xl">
+              <a href={CONSOLE_URL} target="_blank" rel="noopener noreferrer">
+                Explore Studio in Console
+                <i className="fa-regular fa-arrow-right" />
+              </a>
             </Button>
           </div>
 

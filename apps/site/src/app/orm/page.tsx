@@ -50,8 +50,8 @@ const CardFooter = () => (
           <div className="flex gap-3">
             {badge.list &&
               badge.list.map((item: any) => (
-                <Button variant="orm" href={item.url} key={item.label} className="text-base">
-                  {item.label}
+                <Button asChild variant="orm" key={item.label} className="text-base">
+                  <a href={item.url}>{item.label}</a>
                 </Button>
               ))}
           </div>
@@ -267,14 +267,11 @@ export default function ORM() {
             Real Postgres with the developer experience and infrastructure to ship faster.
           </p>
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
-            <Button
-              variant="orm"
-              href={prismaPostgresQuickstartUrl}
-              size="3xl"
-              className="font-sans-display! font-[650]"
-            >
-              Create database
-              <i className="fa-regular fa-database" />
+            <Button asChild variant="orm" size="3xl" className="font-sans-display! font-[650]">
+              <a href={prismaPostgresQuickstartUrl}>
+                Create database
+                <i className="fa-regular fa-database" />
+              </a>
             </Button>
             {/*<Button
               variant="default-strong"
@@ -319,10 +316,12 @@ export default function ORM() {
                   {stat.title}
                 </h4>
                 <p className="text-foreground-neutral-weak">{stat.description}</p>
-                <Button variant="default-strong" href={stat.btn.url} size="xl" className="w-fit">
-                  <span>
-                    {stat.btn.label} {stat.btn.icon && <i className={cn("ml-2", stat.btn.icon)} />}
-                  </span>
+                <Button asChild variant="default-strong" size="xl" className="w-fit">
+                  <a href={stat.btn.url}>
+                    <span>
+                      {stat.btn.label} {stat.btn.icon && <i className={cn("ml-2", stat.btn.icon)} />}
+                    </span>
+                  </a>
                 </Button>
               </div>
             ))}
@@ -341,9 +340,11 @@ export default function ORM() {
               Integrate Prisma into your development ecosystem and focus on your team’s core
               competencies
             </p>
-            <Button variant="orm" size="2xl" href="/enterprise">
-              Explore Enterprise
-              <i className="fa-regular fa-arrow-right" />
+            <Button asChild variant="orm" size="2xl">
+              <a href="/enterprise">
+                Explore Enterprise
+                <i className="fa-regular fa-arrow-right" />
+              </a>
             </Button>
           </div>
         </div>
@@ -389,13 +390,17 @@ export default function ORM() {
               </p>
             </div>
             <div className="flex flex-col md:flex-row gap-6">
-              <Button variant="orm" size="2xl" href={prismaPostgresQuickstartUrl}>
-                Try Prisma ORM
-                <i className="fa-regular fa-arrow-right" />
+              <Button asChild variant="orm" size="2xl">
+                <a href={prismaPostgresQuickstartUrl}>
+                  Try Prisma ORM
+                  <i className="fa-regular fa-arrow-right" />
+                </a>
               </Button>
-              <Button variant="default-strong" size="2xl" href="https://www.prisma.io/docs">
-                Read the docs
-                <i className="fa-regular fa-arrow-right" />
+              <Button asChild variant="default-strong" size="2xl">
+                <a href="https://www.prisma.io/docs">
+                  Read the docs
+                  <i className="fa-regular fa-arrow-right" />
+                </a>
               </Button>
             </div>
             <h6 className="mb-0! -mt-4 text-foreground-neutral-weaker text-xs">

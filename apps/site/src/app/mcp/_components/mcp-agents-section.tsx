@@ -35,12 +35,10 @@ export function McpAgentsSection({
           ))}
         </div>
 
-        <Button
-          href={docsHref}
-          variant={"link"}
-          className="text-sm font-semibold text-foreground-ppg underline"
-        >
-          Want to see your tool listed?
+        <Button asChild variant={"link"} className="text-sm font-semibold text-foreground-ppg underline">
+          <a href={docsHref}>
+            Want to see your tool listed?
+          </a>
         </Button>
       </div>
     </section>

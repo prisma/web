@@ -422,18 +422,18 @@ function NavigationMobileMenu({
         <Socials className="flex items-center justify-center" include="all" />
         <div className="grid gap-2 grid-cols-2 w-full">
           <NavigationMenuItem className="w-full">
-            <Button size="xl" variant="default-strong" className="w-full" href={loginHref}>
-              Login
+            <Button asChild size="xl" variant="default-strong" className="w-full">
+              <a href={loginHref}>Login</a>
             </Button>
           </NavigationMenuItem>
           <NavigationMenuItem className="w-full">
             <Button
+              asChild
               size="xl"
               variant={buttonVariant}
               className="whitespace-nowrap w-full"
-              href={signupHref}
             >
-              Get started
+              <a href={signupHref}>Get started</a>
             </Button>
           </NavigationMenuItem>
         </div>

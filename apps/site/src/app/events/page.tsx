@@ -167,9 +167,11 @@ export default function EventsPage() {
             <p className="text-sm text-foreground-neutral-weak text-center sm:text-left">
               Want to partner on an event? Send us your sponsorship deck.
             </p>
-            <Button variant="ppg" size="lg" href="mailto:events@prisma.io" className="w-fit">
-              <i className="fa-regular fa-envelope mr-2" aria-hidden />
-              Contact us
+            <Button asChild variant="ppg" size="lg" className="w-fit">
+              <a href="mailto:events@prisma.io">
+                <i className="fa-regular fa-envelope mr-2" aria-hidden />
+                Contact us
+              </a>
             </Button>
           </div>
         </div>

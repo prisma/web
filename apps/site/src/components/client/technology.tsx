@@ -15,12 +15,10 @@ export const Technology = ({
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button
-            variant="default-strong"
-            href={url}
-            className="font-sans-display! font-normal! text-base! font-mono! w-[75px]! h-[75px]!"
-          >
-            {children}
+          <Button asChild variant="default-strong" className="font-sans-display! font-normal! text-base! font-mono! w-[75px]! h-[75px]!">
+            <a href={url}>
+              {children}
+            </a>
           </Button>
         </TooltipTrigger>
         <TooltipContent>{text}</TooltipContent>

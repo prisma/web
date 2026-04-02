@@ -123,8 +123,8 @@ const twoCol = [
           query. Our obsession with type safety means you can rest assured that your code works as
           expected, every time.
         </p>
-        <Button variant="orm" size="3xl" className="w-fit" href="/studio">
-          Get started in 5 minutes
+        <Button asChild variant="orm" size="3xl" className="w-fit">
+          <a href="/studio">Get started in 5 minutes</a>
         </Button>
       </div>
     ),
@@ -153,8 +153,8 @@ const twoCol = [
           type-checking and auto-completion. TypedSQL leverages the capabilities of Prisma Client to
           write raw SQL queries that are type-checked at compile time.
         </p>
-        <Button variant="orm" size="3xl" className="w-fit" href="/typedsql">
-          Learn more about TypedSQL
+        <Button asChild variant="orm" size="3xl" className="w-fit">
+          <a href="/typedsql">Learn more about TypedSQL</a>
         </Button>
       </div>
     ),
@@ -283,9 +283,11 @@ export default function Client() {
                 projects. Understand your data by browsing across tables, filter, paginate, traverse
                 relations and edit your data with safety.
               </p>
-              <Button variant="orm" size="3xl" className="w-fit" href="/studio">
-                Learn more about Prisma Studio
-                <i className="fa-regular fa-arrow-right" />
+              <Button asChild variant="orm" size="3xl" className="w-fit">
+                <a href="/studio">
+                  Learn more about Prisma Studio
+                  <i className="fa-regular fa-arrow-right" />
+                </a>
               </Button>
             </div>
             <div className="grid grid-rows-[auto_auto_1fr_auto]">
@@ -300,9 +302,11 @@ export default function Client() {
                 migration files are fully customizable, giving you full control and ultimate
                 flexibility — from local development to production environments.
               </p>
-              <Button variant="orm" size="3xl" className="w-fit" href="/migrate">
-                Learn more about Prisma Migrate
-                <i className="fa-regular fa-arrow-right" />
+              <Button asChild variant="orm" size="3xl" className="w-fit">
+                <a href="/migrate">
+                  Learn more about Prisma Migrate
+                  <i className="fa-regular fa-arrow-right" />
+                </a>
               </Button>
             </div>
           </div>
