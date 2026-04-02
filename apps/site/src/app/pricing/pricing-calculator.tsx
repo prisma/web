@@ -453,7 +453,7 @@ export function PricingCalculator({ currency }: { currency: Symbol }) {
               <div className="text-base font-semibold text-foreground-neutral">
                 Quick Start Presets
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-col gap-2 md:flex-row md:flex-wrap">
                 {(
                   Object.entries(PRESETS) as Array<
                     [PresetKey, (typeof PRESETS)[PresetKey]]
@@ -489,7 +489,7 @@ export function PricingCalculator({ currency }: { currency: Symbol }) {
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="rounded-[18px] border border-stroke-neutral bg-background-neutral-weak p-5 shadow-box-high sm:p-6">
             <div className="mb-6 flex items-center gap-3 border-b border-stroke-neutral pb-4">
-              <i className="fa-solid fa-calculator text-base text-foreground-neutral-weak" />
+              <i className="fa-solid fa-calculator text-base text-foreground-neutral" />
               <h3 className="m-0 text-[20px] leading-7 font-sans-display [font-variation-settings:'wght'_700] text-foreground-neutral">
                 Estimate your monthly usage
               </h3>
