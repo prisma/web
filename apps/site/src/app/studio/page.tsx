@@ -88,14 +88,14 @@ const featureRows = [
 ] as const;
 
 export const metadata: Metadata = {
-  title: "Prisma Studio | Next-generation ORM for Node.js and TypeScript",
+  title: "Prisma Studio — Visual Database Browser & Editor",
   description:
     "The easiest way to explore and manipulate your data in all of your Prisma projects.",
   alternates: {
     canonical: "https://www.prisma.io/studio",
   },
   openGraph: {
-    title: "Prisma Studio | Next-generation ORM for Node.js and TypeScript",
+    title: "Prisma Studio — Visual Database Browser & Editor",
     description:
       "The easiest way to explore and manipulate your data in all of your Prisma projects.",
     url: "https://www.prisma.io/studio",
@@ -110,7 +110,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Prisma Studio | Next-generation ORM for Node.js and TypeScript",
+    title: "Prisma Studio — Visual Database Browser & Editor",
     description:
       "The easiest way to explore and manipulate your data in all of your Prisma projects.",
     images: ["/og/og-studio.png"],
