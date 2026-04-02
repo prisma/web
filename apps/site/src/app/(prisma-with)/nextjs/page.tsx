@@ -12,9 +12,10 @@ export async function generateStaticParams() {
   return posts.map((post) => ({ slug: post.slug }))
 }
 
-export default async function Page({ params }: { params: { slug: string } }) {
+export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
   const post = await prisma.post.findUnique({
-    where: { slug: params.slug },
+    where: { slug },
   })
   return (
     <div>
