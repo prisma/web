@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { cn } from "../lib/cn";
 
 const logoParade = [
   {
@@ -146,7 +147,10 @@ export default function LogoParade() {
                 width={item.width}
                 height={item.height}
                 alt={item.label}
-                className="w-full h-full object-contain object-center hidden dark:block"
+                className={cn(
+                  "w-full h-full object-contain object-center",
+                  item.imageUrlLight && "hidden dark:block",
+                )}
               />
               {item.imageUrlLight && (
                 <img
