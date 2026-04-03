@@ -225,6 +225,7 @@ export default function SiteHome() {
               <Testimonials
                 noShadow
                 list={review.testimonials}
+                mask="linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)"
               />
             </div>
           </div>
