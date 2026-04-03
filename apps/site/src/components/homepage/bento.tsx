@@ -1,11 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Action } from "@prisma/eclipse";
 import { cn } from "@prisma-docs/ui/lib/cn";
-import { useTheme } from "@prisma-docs/ui/components/theme-provider";
 
 interface CardData {
   id: string;
@@ -54,22 +53,7 @@ const HeroContent = ({
     </div>
   );
 
-const useResponsiveLayout = () => {
-  const [isDesktop, setIsDesktop] = useState(true);
-  const handleResize = () => setIsDesktop(window.innerWidth > 1024);
-
-  useEffect(() => {
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  return { isDesktop };
-};
-
 export const Bento = ({ bentoSection, hero, color }: BentoProps) => {
-  const { isDesktop } = useResponsiveLayout();
-
   // Transform Sanity data to internal CardData format
   const CARDS: CardData[] = bentoSection.boxes.map((box, index) => ({
     id: (index + 1).toString(),
@@ -87,39 +71,33 @@ export const Bento = ({ bentoSection, hero, color }: BentoProps) => {
     <div className="max-w-[1240px] mx-auto w-full z-10 px-4 pt-4 pb-0">
       {/* Desktop Layout (961+): Original 3-row layout with text in middle */}
       <HeroContent hero={hero} />
-      {isDesktop ? (
-        <>
-          <div className="hidden lg:grid grid-cols-3 gap-4 mb-4">
-            {CARDS.filter((card) => card.row === "top").map((card) => (
-              <Card color={color} key={card.id} card={card} />
-            ))}
-          </div>
-
-          <div className="hidden lg:flex gap-8 mb-4 items-center justify-between">
-            {firstCenterCard && (
-              <Card
-                color={color}
-                key={firstCenterCard.id}
-                card={firstCenterCard}
-              />
-            )}
-
-            {secondCenterCard && (
-              <Card
-                color={color}
-                key={secondCenterCard.id}
-                card={secondCenterCard}
-              />
-            )}
-          </div>
-        </>
-      ) : (
-        <div className="flex gap-4 flex-wrap justify-center md:grid md:grid-cols-2 md:[&>*]:last:col-span-2">
+      <>
+        <div className="flex gap-4 flex-wrap justify-center lg:hidden md:grid md:grid-cols-2 md:[&>*]:last:col-span-2">
           {CARDS.map((card) => (
             <Card color={color} key={card.id} card={card} />
           ))}
         </div>
-      )}
+
+        <div className="hidden lg:grid grid-cols-3 gap-4 mb-4">
+          {CARDS.filter((card) => card.row === "top").map((card) => (
+            <Card color={color} key={card.id} card={card} />
+          ))}
+        </div>
+
+        <div className="hidden lg:flex gap-8 mb-4 items-center justify-between">
+          {firstCenterCard && (
+            <Card color={color} key={firstCenterCard.id} card={firstCenterCard} />
+          )}
+
+          {secondCenterCard && (
+            <Card
+              color={color}
+              key={secondCenterCard.id}
+              card={secondCenterCard}
+            />
+          )}
+        </div>
+      </>
     </div>
   );
 };
@@ -131,21 +109,37 @@ interface CardProps {
 
 export const Card = ({ card, color }: CardProps) => {
   const cardRef = useRef<HTMLAnchorElement>(null);
+  const cardCenterRef = useRef<{ x: number; y: number } | null>(null);
   const isCenterCard = ["4", "5"].includes(card.id);
-  const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
+  const imageClassName =
+    "px-4 z-2 pt-0 pb-0 min-w-full min-h-[60%] object-fill object-[top_left] [mask-image:linear-gradient(to_bottom,rgba(0,0,0,1)_60%,transparent_90%)] [-webkit-mask-image:linear-gradient(to_bottom,rgba(0,0,0,1)_60%,transparent_90%)]";
 
-  useEffect(() => {
-    setMounted(true);
+  const updateCardCenter = useCallback(() => {
+    if (!cardRef.current) return false;
+
+    const rect = cardRef.current.getBoundingClientRect();
+    cardCenterRef.current = {
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2,
+    };
+
+    return true;
   }, []);
+
+  const handleMouseEnter = useCallback(() => {
+    updateCardCenter();
+  }, [updateCardCenter]);
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLAnchorElement>) => {
-      if (!cardRef.current) return;
+      const cardElement = cardRef.current;
+      if (!cardElement) return;
+      if (!cardCenterRef.current && !updateCardCenter()) return;
 
-      const rect = cardRef.current.getBoundingClientRect();
-      const centerX = rect.left + rect.width / 2;
-      const centerY = rect.top + rect.height / 2;
+      const cardCenter = cardCenterRef.current;
+      if (!cardCenter) return;
+
+      const { x: centerX, y: centerY } = cardCenter;
       const mouseX = e.clientX;
       const mouseY = e.clientY;
 
@@ -153,15 +147,16 @@ export const Card = ({ card, color }: CardProps) => {
 
       const degrees = ((angle * 180) / Math.PI + 90 + 360) % 360;
 
-      cardRef.current.style.setProperty("--angle", `${degrees}deg`);
+      cardElement.style.setProperty("--angle", `${degrees}deg`);
     },
-    [],
+    [updateCardCenter],
   );
 
   const handleMouseLeave = useCallback(() => {
     if (cardRef.current) {
       cardRef.current.style.setProperty("--angle", "0deg");
     }
+    cardCenterRef.current = null;
   }, []);
 
   return (
@@ -177,6 +172,7 @@ export const Card = ({ card, color }: CardProps) => {
         isCenterCard && "w-full md:order-0",
         color,
       )}
+      onMouseEnter={handleMouseEnter}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
@@ -194,18 +190,24 @@ export const Card = ({ card, color }: CardProps) => {
         </div>
       </div>
       {card.image && (
-        <Image
-          src={
-            mounted && resolvedTheme === "light"
-              ? `${card.image}_light.svg`
-              : `${card.image}.svg`
-          }
-          alt={card.title}
-          width={1200}
-          height={800}
-          loading="eager"
-          className="px-4 z-2 pt-0 pb-0 min-w-full min-h-[60%] object-fill object-[top_left] [mask-image:linear-gradient(to_bottom,rgba(0,0,0,1)_60%,transparent_90%)] [-webkit-mask-image:linear-gradient(to_bottom,rgba(0,0,0,1)_60%,transparent_90%)]"
-        />
+        <>
+          <Image
+            src={`${card.image}_light.svg`}
+            alt={card.title}
+            width={1200}
+            height={800}
+            loading="eager"
+            className={cn(imageClassName, "dark:hidden")}
+          />
+          <Image
+            src={`${card.image}.svg`}
+            alt={card.title}
+            width={1200}
+            height={800}
+            loading="eager"
+            className={cn(imageClassName, "hidden dark:block")}
+          />
+        </>
       )}
     </Link>
   );

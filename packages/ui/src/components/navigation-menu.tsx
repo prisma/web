@@ -6,7 +6,7 @@ import { cn } from "../lib/cn";
 import { ChevronDownIcon } from "lucide-react";
 import { useScrollThreshold } from "../hooks/use-scroll-threshold";
 import { StarCount } from "./star-count";
-import { useState } from "react";
+import { Fragment, useLayoutEffect, useRef, useState } from "react";
 import { Action, Button } from "@prisma/eclipse";
 import type { Link as WebNavigationLink } from "./web-navigation";
 
@@ -40,19 +40,57 @@ function NavigationMenu({
   Pick<NavigationMenuPrimitive.Positioner.Props, "align"> & {
     mobileOpen?: boolean;
   }) {
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const [isStuck, setIsStuck] = useState(false);
+
+  useLayoutEffect(() => {
+    const sentinel = sentinelRef.current;
+
+    if (!sentinel) {
+      return;
+    }
+
+    const updateStuckState = () => {
+      setIsStuck(sentinel.getBoundingClientRect().top < 0);
+    };
+
+    updateStuckState();
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsStuck(!entry.isIntersecting && entry.boundingClientRect.top < 0);
+      },
+      { threshold: [0, 1] },
+    );
+
+    observer.observe(sentinel);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
   return (
-    <NavigationMenuPrimitive.Root
-      data-slot="navigation-menu"
-      className={cn(
-        "z-10 top-0 fixed group/navigation-menu flex max-w-full mx-auto w-full p-4 flex-1 items-center justify-center px-4",
-        mobileOpen && "p-0 md:p-4! md-px-4!",
-        className,
-      )}
-      {...props}
-    >
-      {children}
-      <NavigationMenuPositioner align={align} />
-    </NavigationMenuPrimitive.Root>
+    <Fragment>
+      <div
+        aria-hidden="true"
+        ref={sentinelRef}
+        className="pointer-events-none h-px -mb-px"
+      />
+      <NavigationMenuPrimitive.Root
+        data-slot="navigation-menu"
+        data-stuck={isStuck ? "true" : "false"}
+        className={cn(
+          "z-10 top-0 sticky group/navigation-menu flex max-w-full mx-auto w-full p-4 flex-1 items-center justify-center px-4",
+          mobileOpen && "p-0 md:p-4! md-px-4!",
+          className,
+        )}
+        {...props}
+      >
+        {children}
+        <NavigationMenuPositioner align={align} />
+      </NavigationMenuPrimitive.Root>
+    </Fragment>
   );
 }
 
@@ -61,16 +99,14 @@ function NavigationWrapper({
   mobileOpen,
   ...props
 }: React.ComponentPropsWithRef<"div"> & { mobileOpen?: boolean }) {
-  const scroll = useScrollThreshold(64);
-
   return (
     <div
+      data-slot="navigation-wrapper"
       className={cn(
-        "transition-navbar max-w-7xl w-full mx-auto py-3 px-6 shadow-box-high bg-background-default/50 [backdrop-filter:blur(3)] rounded-square-high flex justify-between align-center",
+        "max-w-7xl w-full mx-auto py-3 px-6 shadow-box-high bg-background-default/50 [backdrop-filter:blur(3)] rounded-square-high flex justify-between align-center transition-[max-width] duration-500 ease-[cubic-bezier(0.075,0.82,0.165,1)] group-data-[stuck=true]/navigation-menu:max-w-235",
         mobileOpen &&
           "py-7 px-10 rounded-none md:py-3! md:px-6! md:rounded-square-high",
         className,
-        scroll && "max-w-235",
       )}
       {...props}
     >

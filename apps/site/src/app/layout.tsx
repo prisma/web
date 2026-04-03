@@ -149,14 +149,18 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <html lang="en" className={`${inter.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
-        <script
+        <Script
+          id="fontawesome"
           src={WebFA}
-          crossOrigin="anonymous" 
-          data-auto-add-css="false" />
+          crossOrigin="anonymous"
+          data-auto-add-css="false"
+          strategy="beforeInteractive"
+        />
         <Script
           id="cookieyes"
           type="text/javascript"
           src="https://cdn-cookieyes.com/client_data/96980f76df67ad5235fc3f0d/script.js"
+          strategy="lazyOnload"
         />
 
         <script

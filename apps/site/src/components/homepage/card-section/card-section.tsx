@@ -2,9 +2,7 @@
 
 import { LogoGrid } from "./logo-grid";
 import { ReactNode, useEffect, useState, useRef } from "react";
-import { useInView } from "react-intersection-observer";
 import { cn } from "../../../lib/cn";
-import { useTheme } from "@prisma-docs/ui/components/theme-provider";
 import { Action } from "@prisma/eclipse";
 import Image from "next/image";
 
@@ -30,20 +28,222 @@ interface CardSectionProps {
   cardSection: TwoColumnItem[];
 }
 
+const imageShadowClass = "shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)]";
+const sectionClass =
+  "py-6 md:py-8 lg:py-12 my-6 md:my-8 lg:my-12 w-full overflow-visible";
+
+const getCardSectionItemKey = (item: TwoColumnItem) =>
+  [
+    item.visualType,
+    item.visualPosition,
+    item.step,
+    item.imageUrl,
+    item.mobileImageUrl,
+    item.imageAlt,
+    item.mobileImageAlt,
+    item.color,
+    item.useDefaultLogos ? "default-logos" : null,
+  ]
+    .filter(Boolean)
+    .join("-");
+
+interface StepIndicatorProps {
+  icon: string;
+  isActive: boolean;
+}
+
+const StepIndicator = ({ icon, isActive }: StepIndicatorProps) => (
+  <Action
+    size="5xl"
+    color={isActive ? "ppg" : "neutral"}
+    className={cn(
+      "relative z-2 transition-all md:size-element-5xl! size-element-3xl!",
+      isActive
+        ? "border border-stroke-ppg shadow-[0_-7px_80px_0_rgba(45,212,191,0.16),0_-2.924px_33.422px_0_rgba(45,212,191,0.12),0_-1.564px_17.869px_0_rgba(45,212,191,0.10),0_-0.877px_10.017px_0_rgba(45,212,191,0.08),0_-0.466px_5.32px_0_rgba(45,212,191,0.06),0_-0.194px_2.214px_0_rgba(45,212,191,0.04)]"
+        : "border border-stroke-neutral bg-background-neutral-weaker",
+    )}
+  >
+    <i
+      className={cn(
+        icon,
+        "text-xl md:text-3xl",
+        isActive ? "text-foreground-ppg" : "text-background-neutral-strong",
+      )}
+    />
+  </Action>
+);
+
+interface ThemeImagePairProps {
+  imageUrl: string;
+  alt: string;
+  width: number;
+  height: number;
+  priority: boolean;
+  fetchPriority: "high" | "low" | "auto";
+  loading: "eager" | "lazy";
+  noShadow?: boolean;
+  wrapperClassName: string;
+}
+
+const ThemeImagePair = ({
+  imageUrl,
+  alt,
+  width,
+  height,
+  priority,
+  fetchPriority,
+  loading,
+  noShadow,
+  wrapperClassName,
+}: ThemeImagePairProps) => (
+  <div className={wrapperClassName}>
+    <Image
+      className={cn("hidden dark:block w-full h-auto", !noShadow && imageShadowClass)}
+      src={`${imageUrl}.svg`}
+      alt={alt}
+      width={width}
+      height={height}
+      priority={priority}
+      fetchPriority={fetchPriority}
+      loading={loading}
+    />
+    <Image
+      className={cn("block dark:hidden w-full h-auto", !noShadow && imageShadowClass)}
+      src={`${imageUrl}_light.svg`}
+      alt={alt}
+      width={width}
+      height={height}
+      priority={priority}
+      fetchPriority={fetchPriority}
+      loading={loading}
+    />
+  </div>
+);
+
+interface ImageVisualProps {
+  item: TwoColumnItem;
+  isLcpImage: boolean;
+}
+
+const ImageVisual = ({ item, isLcpImage }: ImageVisualProps) => {
+  if (!item.imageUrl) return null;
+
+  const imageAlt = item.imageAlt || "";
+  const mobileImageAlt = item.mobileImageAlt || "";
+  const imageLoading = isLcpImage ? "eager" : "lazy";
+  const imagePriority = isLcpImage;
+  const imageFetchPriority = isLcpImage ? "high" : "low";
+
+  return (
+    <div className="relative w-full">
+      <ThemeImagePair
+        imageUrl={item.imageUrl}
+        alt={imageAlt}
+        width={1200}
+        height={800}
+        priority={imagePriority}
+        fetchPriority={imageFetchPriority}
+        loading={imageLoading}
+        noShadow={item.noShadow}
+        wrapperClassName="hidden sm:block"
+      />
+      {item.mobileImageUrl && (
+        <ThemeImagePair
+          imageUrl={item.mobileImageUrl}
+          alt={mobileImageAlt}
+          width={800}
+          height={600}
+          priority={imagePriority}
+          fetchPriority={imageFetchPriority}
+          loading={imageLoading}
+          noShadow={item.noShadow}
+          wrapperClassName="sm:hidden"
+        />
+      )}
+    </div>
+  );
+};
+
+const SectionVisual = ({
+  item,
+  isLcpImage,
+}: {
+  item: TwoColumnItem;
+  isLcpImage: boolean;
+}) => {
+  if (item.visualType === "other") {
+    return item.other ? <>{item.other}</> : null;
+  }
+
+  if (item.visualType === "logoGrid" && item.useDefaultLogos) {
+    return <LogoGrid color={item.color} />;
+  }
+
+  if (item.visualType === "image") {
+    return <ImageVisual item={item} isLcpImage={isLcpImage} />;
+  }
+
+  return null;
+};
+
+const CardSectionItem = ({
+  item,
+  isLcpImage,
+  isActive,
+  onRef,
+}: {
+  item: TwoColumnItem;
+  isLcpImage: boolean;
+  isActive: boolean;
+  onRef: (element: HTMLElement | null) => void;
+}) => (
+  <section ref={onRef} className={sectionClass}>
+    <div
+      className={cn(
+        "[&_h2]:mt-0 flex gap-6 md:gap-8 lg:gap-12 sm:gap-6 items-center overflow-visible",
+        item.visualPosition === "left" && "lg:flex-row-reverse flex-col",
+        item.visualPosition === "right" && "md:flex-row flex-col",
+        item.alignItems,
+        item.step && "items-start! flex-row! justify-between",
+      )}
+    >
+      {item.step && <StepIndicator icon={item.step} isActive={isActive} />}
+      <div className="md:contents">
+        <div
+          className={cn(
+            "flex-1 min-w-0 overflow-visible text-center lg:text-left max-w-160 mx-auto",
+            item.visualType === "logoGrid" ? "lg:max-w-full" : "lg:w-full",
+            item.visualPosition === "left" ? "lg:ml-12" : "lg:mr-12",
+            item.step && "text-left",
+          )}
+        >
+          {item.content}
+        </div>
+        <div
+          className={cn(
+            "flex-1 min-w-0 overflow-visible w-full lg:max-w-unset max-w-137 mt-3 mx-auto",
+            item.visualType === "logoGrid" ? "max-w-full" : "lg:w-full",
+          )}
+        >
+          <SectionVisual item={item} isLcpImage={isLcpImage} />
+        </div>
+      </div>
+    </div>
+    {item.footer && <>{item.footer}</>}
+  </section>
+);
+
 export const CardSection = ({ cardSection }: CardSectionProps) => {
-  const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
   const [active, setActive] = useState(0);
   const [progressHeight, setProgressHeight] = useState(0);
   const sectionRefs = useRef<(HTMLElement | null)[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
+  const firstImageIndex = cardSection.findIndex(
+    (item) => item.visualType === "image" && item.imageUrl,
+  );
 
   // Safe guard against empty array
   const hasSteps = Boolean(cardSection[0]?.step);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     if (!hasSteps || !containerRef.current) return;
@@ -80,11 +280,11 @@ export const CardSection = ({ cardSection }: CardSectionProps) => {
       });
     };
 
-    window.addEventListener("scroll", scrollWatcher);
+    window.addEventListener("scroll", scrollWatcher, { passive: true });
     scrollWatcher();
 
     return () => window.removeEventListener("scroll", scrollWatcher);
-  }, [cardSection]);
+  }, [cardSection, hasSteps]);
 
   return (
     <div
@@ -96,125 +296,21 @@ export const CardSection = ({ cardSection }: CardSectionProps) => {
     >
       {hasSteps && (
         <div
-          className="max-h-full absolute top-0 left-8.5 md:left-12 w-[2px] bg-[linear-gradient(180deg,var(--color-background-default)_25%,var(--color-stroke-ppg-weak)_50%,var(--color-background-default)_75%)] z-[1]"
+          className="max-h-full absolute top-0 left-8.5 md:left-12 w-[2px] bg-[linear-gradient(180deg,var(--color-background-default)_25%,var(--color-stroke-ppg-weak)_50%,var(--color-background-default)_75%)] z-1"
           style={{ height: `${progressHeight}px` }}
         />
       )}
-      {cardSection.map((item, index) => {
-        return (
-          <section
-            key={`card-section-${index}-${item.visualType}-${item.visualPosition}`}
-            ref={(el) => {
-              sectionRefs.current[index] = el;
-            }}
-            className={
-              "py-6 md:py-8 lg:py-12 my-6 md:my-8 lg:my-12 w-full overflow-visible"
-            }
-          >
-            <div
-              className={cn(
-                "[&_h2]:mt-0 flex gap-6 md:gap-8 lg:gap-12 sm:gap-6 items-center overflow-visible",
-                item.visualPosition === "left" &&
-                  "lg:flex-row-reverse flex-col",
-                item.visualPosition === "right" && "md:flex-row flex-col",
-                item.alignItems,
-                item.step && "items-start! flex-row! justify-between",
-              )}
-            >
-              {item.step && (
-                <Action
-                  size="5xl"
-                  color={active === index ? "ppg" : "neutral"}
-                  className={cn(
-                    "relative z-[2] transition-all md:size-element-5xl! size-element-3xl!",
-                    active === index
-                      ? "border border-stroke-ppg shadow-[0_-7px_80px_0_rgba(45,212,191,0.16),0_-2.924px_33.422px_0_rgba(45,212,191,0.12),0_-1.564px_17.869px_0_rgba(45,212,191,0.10),0_-0.877px_10.017px_0_rgba(45,212,191,0.08),0_-0.466px_5.32px_0_rgba(45,212,191,0.06),0_-0.194px_2.214px_0_rgba(45,212,191,0.04)]"
-                      : "border border-stroke-neutral bg-background-neutral-weaker",
-                  )}
-                >
-                  <i
-                    className={cn(
-                      item.step,
-                      "text-xl md:text-3xl",
-                      active === index
-                        ? "text-foreground-ppg"
-                        : "text-background-neutral-strong",
-                    )}
-                  />
-                </Action>
-              )}
-              <div className="md:contents">
-                <div
-                  className={cn(
-                    "flex-1 min-w-0 overflow-visible text-center lg:text-left max-w-160",
-                    item.visualType === "logoGrid"
-                      ? "lg:max-w-full"
-                      : "lg:w-full",
-                    item.visualPosition === "left" ? "lg:ml-12" : "lg:mr-12",
-                    item.step && "text-left",
-                  )}
-                >
-                  {item.content}
-                </div>
-                <div
-                  className={cn(
-                    "flex-1 min-w-0 overflow-visible w-full lg:max-w-unset max-w-137",
-                    item.visualType === "logoGrid" ? "max-w-full" : "lg:w-full",
-                  )}
-                >
-                  {item.other && item.visualType === "other" && item.other}
-                  {item.visualType === "logoGrid" && item.useDefaultLogos && (
-                    <LogoGrid color={item.color} />
-                  )}
-                  {item.visualType === "image" && item.imageUrl && (
-                    <div key={`images-${index}`} className="relative w-full">
-                      <Image
-                        key={`desktop-img-${index}`}
-                        className={cn(
-                          "hidden sm:block w-full h-auto",
-                          !item.noShadow &&
-                            "shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)]",
-                        )}
-                        src={
-                          mounted && resolvedTheme === "light"
-                            ? `${item.imageUrl}_light.svg`
-                            : `${item.imageUrl}.svg`
-                        }
-                        alt={item.imageAlt || ""}
-                        width={1200}
-                        height={800}
-                        priority={index === 0}
-                        loading={index === 0 ? "eager" : "lazy"}
-                      />
-                      {item.mobileImageUrl && (
-                        <Image
-                          key={`mobile-img-${index}`}
-                          className={cn(
-                            "w-full h-auto sm:hidden",
-                            !item.noShadow &&
-                              "shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)]",
-                          )}
-                          src={
-                            mounted && resolvedTheme === "light"
-                              ? `${item.mobileImageUrl}_light.svg`
-                              : `${item.mobileImageUrl}.svg`
-                          }
-                          alt={item.mobileImageAlt || ""}
-                          width={800}
-                          height={600}
-                          priority={index === 0}
-                          loading={index === 0 ? "eager" : "lazy"}
-                        />
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-            {item.footer && <>{item.footer}</>}
-          </section>
-        );
-      })}
+      {cardSection.map((item, index) => (
+        <CardSectionItem
+          key={getCardSectionItemKey(item)}
+          item={item}
+          isLcpImage={index === firstImageIndex}
+          isActive={active === index}
+          onRef={(element) => {
+            sectionRefs.current[index] = element;
+          }}
+        />
+      ))}
     </div>
   );
 };
