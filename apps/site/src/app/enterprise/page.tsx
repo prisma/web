@@ -373,10 +373,8 @@ export default function EnterprisePage() {
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
             <Button
               variant="orm"
-              href="https://console.prisma.io/sign-up?utm_source=website&utm_medium=index&utm_campaign=cta"
+              href="#contact-us"
               size="3xl"
-              target="_blank"
-              rel="noopener noreferrer"
               className="font-sans-display! font-[650]"
             >
               <span>Get in touch</span>
@@ -598,9 +596,9 @@ export default function EnterprisePage() {
       </section>
 
       {/* Connect with us */}
-      <section className="my-12 px-4">
+      <section className="my-12 px-4" id="contact-us">
         <div className="py-12 gap-8 flex flex-col max-w-221 mx-auto">
-          <h2 className="text-foreground-neutral stretch-display text-center text-4xl font-black! font-sans-display my-0">
+          <h2  className="text-foreground-neutral stretch-display text-center text-4xl font-black! font-sans-display my-0">
             Connect with us
           </h2>
           <p className="text-center text-foreground-neutral max-w-3xl mx-auto">
