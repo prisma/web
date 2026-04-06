@@ -15,6 +15,7 @@ This repository is a **pnpm monorepo** containing the Prisma documentation, blog
 | `packages/ui` | Shared UI components and utilities (`@prisma-docs/ui`) |
 
 See each app’s `README.md` for more detail.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the cross-app multi-zone overview.
 
 ## Contributing
 
