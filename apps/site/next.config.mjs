@@ -741,7 +741,7 @@ const config = {
       beforeFiles: [
         {
           source: "/sitemap",
-          destination: "/sitemap.xml",
+          destination: "/sitemap-site.xml",
         },
         {
           source: "/sitemap-site",
