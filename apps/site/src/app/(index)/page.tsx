@@ -9,6 +9,12 @@ import { ConsoleCtaButton } from "@/components/console-cta-button";
 import review from "../../data/homepage.json";
 import Testimonials from "../../components/homepage/testimonials";
 
+const INDEX_CTA_DEFAULT_UTM = {
+  utm_source: "website",
+  utm_medium: "index",
+  utm_campaign: "cta",
+} as const;
+
 const twoCol = [
   {
     content: (
@@ -118,11 +124,7 @@ export default function SiteHome() {
             <ConsoleCtaButton
               variant="ppg"
               consolePath="/sign-up"
-              defaultUtm={{
-                utm_source: "website",
-                utm_medium: "index",
-                utm_campaign: "cta",
-              }}
+              defaultUtm={INDEX_CTA_DEFAULT_UTM}
               size="3xl"
               target="_blank"
               rel="noopener noreferrer"
@@ -256,11 +258,7 @@ export default function SiteHome() {
                   variant="ppg"
                   size="2xl"
                   consolePath="/sign-up"
-                  defaultUtm={{
-                    utm_source: "website",
-                    utm_medium: "index",
-                    utm_campaign: "cta",
-                  }}
+                  defaultUtm={INDEX_CTA_DEFAULT_UTM}
                 >
                   <span>Create your first Database</span>
                   <i className="fa-regular fa-arrow-right ml-2" />
