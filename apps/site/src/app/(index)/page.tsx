@@ -5,6 +5,7 @@ import { Button } from "@prisma/eclipse";
 import { CopyCode } from "@/components/homepage/copy-btn";
 import { Bento } from "@/components/homepage/bento";
 import { CardSection } from "@/components/homepage/card-section/card-section";
+import { ConsoleCtaButton } from "@/components/console-cta-button";
 import review from "../../data/homepage.json";
 import Testimonials from "../../components/homepage/testimonials";
 
@@ -114,9 +115,14 @@ export default function SiteHome() {
             ship faster.
           </p>
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
-            <Button
+            <ConsoleCtaButton
               variant="ppg"
-              href="https://console.prisma.io/sign-up?utm_source=website&utm_medium=index&utm_campaign=cta"
+              consolePath="/sign-up"
+              defaultUtm={{
+                utm_source: "website",
+                utm_medium: "index",
+                utm_campaign: "cta",
+              }}
               size="3xl"
               target="_blank"
               rel="noopener noreferrer"
@@ -124,7 +130,7 @@ export default function SiteHome() {
             >
               <span>Create database</span>
               <i className="fa-regular fa-database ml-2" />
-            </Button>
+            </ConsoleCtaButton>
             <CopyCode text="npx prisma init">
               <span className="text-foreground-neutral-reverse-weak">$</span>
               <span className="text-foreground-neutral-weak">
@@ -246,14 +252,19 @@ export default function SiteHome() {
                 </p>
               </div>
               <div className="flex flex-col gap-6 md:flex-row">
-                <Button
+                <ConsoleCtaButton
                   variant="ppg"
                   size="2xl"
-                  href="https://console.prisma.io/sign-up?utm_source=website&utm_medium=index&utm_campaign=cta"
+                  consolePath="/sign-up"
+                  defaultUtm={{
+                    utm_source: "website",
+                    utm_medium: "index",
+                    utm_campaign: "cta",
+                  }}
                 >
                   <span>Create your first Database</span>
                   <i className="fa-regular fa-arrow-right ml-2" />
-                </Button>
+                </ConsoleCtaButton>
                 <Button variant="default-stronger" size="2xl" href="/pricing">
                   <span>Explore Pricing</span>
                   <i className="fa-regular fa-arrow-right ml-2" />

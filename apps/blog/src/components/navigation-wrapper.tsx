@@ -1,6 +1,7 @@
 "use client";
 
 import { WebNavigation } from "@prisma-docs/ui/components/web-navigation";
+import { useEffect, useState } from "react";
 import { getUtmParams, hasUtmParams, type UtmParams } from "@/lib/utm";
 
 interface Link {
@@ -28,22 +29,26 @@ interface NavigationWrapperProps {
 }
 
 export function NavigationWrapper({ links, utm }: NavigationWrapperProps) {
+  const [mounted, setMounted] = useState(false);
   const defaultUtmParams = {
     utm_source: utm.source,
     utm_medium: utm.medium,
   };
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const currentUtmParams: UtmParams =
-    typeof window === "undefined"
-      ? {}
-      : getUtmParams(new URLSearchParams(window.location.search));
-  const hasExactUtm = hasUtmParams(currentUtmParams);
-  const resolvedUtmParams = hasExactUtm ? currentUtmParams : defaultUtmParams;
+    mounted ? getUtmParams(new URLSearchParams(window.location.search)) : {};
+  const preserveExactUtm = hasUtmParams(currentUtmParams);
+  const resolvedUtmParams = preserveExactUtm ? currentUtmParams : defaultUtmParams;
 
   return (
     <WebNavigation
       links={links}
       utm={resolvedUtmParams}
-      preserveExactUtm={hasExactUtm}
+      preserveExactUtm={preserveExactUtm}
     />
   );
 }
