@@ -1,6 +1,6 @@
 type JsonLdProps = {
   id: string;
-  data: Record<string, unknown> | Array<Record<string, unknown>>;
+  data: object | object[];
 };
 
 function sanitizeJsonLd(data: JsonLdProps["data"]) {
