@@ -70,9 +70,7 @@ export function UtmPersistence() {
         return;
       }
 
-      const updated = syncUtmParams(targetUrl, activeUtmParams);
-
-      if (!updated) {
+      if (!syncUtmParams(targetUrl, activeUtmParams)) {
         return;
       }
 

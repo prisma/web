@@ -1,4 +1,4 @@
-export const UTM_STORAGE_KEY = "site_utm_params";
+export const UTM_STORAGE_KEY = "blog_utm_params";
 export const CONSOLE_HOST = "console.prisma.io";
 
 export type UtmParams = Record<string, string>;

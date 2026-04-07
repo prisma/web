@@ -38,12 +38,14 @@ export interface Link {
 interface WebNavigationProps {
   links: Link[];
   utm?: Record<string, string>;
+  preserveExactUtm?: boolean;
   buttonVariant?: "ppg" | "orm" | undefined;
 }
 
 function buildConsoleHref(
   pathname: "/login" | "/sign-up",
   utm?: WebNavigationProps["utm"],
+  preserveExactUtm = false,
 ) {
   if (!utm) {
     return `https://console.prisma.io${pathname}`;
@@ -57,7 +59,7 @@ function buildConsoleHref(
     }
   }
 
-  if (!href.searchParams.has("utm_campaign")) {
+  if (!preserveExactUtm && !href.searchParams.has("utm_campaign")) {
     href.searchParams.set(
       "utm_campaign",
       pathname === "/login" ? "login" : "signup",
@@ -70,11 +72,12 @@ function buildConsoleHref(
 export function WebNavigation({
   links,
   utm,
+  preserveExactUtm = false,
   buttonVariant = "ppg",
 }: WebNavigationProps) {
   const [mobileView, setMobileView] = useState(false);
-  const loginHref = buildConsoleHref("/login", utm);
-  const signupHref = buildConsoleHref("/sign-up", utm);
+  const loginHref = buildConsoleHref("/login", utm, preserveExactUtm);
+  const signupHref = buildConsoleHref("/sign-up", utm, preserveExactUtm);
 
   useEffect(() => {
     if (mobileView) {

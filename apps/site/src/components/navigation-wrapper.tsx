@@ -5,7 +5,7 @@ import { Footer } from "@prisma-docs/ui/components/footer";
 import { usePathname } from "next/navigation";
 import {
   getUtmParams,
-  readStoredUtmParams,
+  hasUtmParams,
   type UtmParams,
 } from "@/lib/utm";
 
@@ -58,14 +58,12 @@ export function NavigationWrapper({ links, utm }: NavigationWrapperProps) {
     utm_source: utm.source,
     utm_medium: getUtmMedium(pathname),
   };
-  const storedUtmParams: UtmParams =
+  const currentUtmParams: UtmParams =
     typeof window === "undefined"
-      ? defaultUtmParams
-      : {
-          ...defaultUtmParams,
-          ...readStoredUtmParams(),
-          ...getUtmParams(new URLSearchParams(window.location.search)),
-        };
+      ? {}
+      : getUtmParams(new URLSearchParams(window.location.search));
+  const hasExactUtm = hasUtmParams(currentUtmParams);
+  const resolvedUtmParams = hasExactUtm ? currentUtmParams : defaultUtmParams;
 
   // Determine button variant based on pathname
   const getButtonVariant = (): ColorType => {
@@ -79,7 +77,8 @@ export function NavigationWrapper({ links, utm }: NavigationWrapperProps) {
   return (
     <WebNavigation
       links={links}
-      utm={storedUtmParams}
+      utm={resolvedUtmParams}
+      preserveExactUtm={hasExactUtm}
       buttonVariant={getButtonVariant()}
     />
   );
