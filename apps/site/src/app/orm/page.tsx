@@ -1,7 +1,7 @@
-import { JsonLd } from "@/components/json-ld";
 import { createSoftwareApplicationStructuredData } from "@/lib/structured-data";
 import { createPageMetadata } from "@/lib/page-metadata";
 import { Action, Button, Card, Separator } from "@prisma/eclipse";
+import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import { Bento } from "@/components/homepage/bento";
 import { CardSection } from "@/components/homepage/card-section/card-section";
 import review from "../../data/homepage.json";

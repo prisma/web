@@ -1,5 +1,4 @@
 import { Provider } from "@/components/provider";
-import { JsonLd } from "@/components/json-ld";
 import { createSiteStructuredData } from "@/lib/structured-data";
 import { getBaseUrl } from "@/lib/url";
 import "./global.css";
@@ -13,6 +12,7 @@ import {
   FooterWrapper,
 } from "@/components/navigation-wrapper";
 import { Footer } from "@prisma-docs/ui/components/footer";
+import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import { ThemeProvider } from "@prisma-docs/ui/components/theme-provider";
 import { FontAwesomeScript as WebFA } from "@prisma/eclipse";
 import { UtmPersistence } from "@/components/utm-persistence";

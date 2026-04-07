@@ -1,7 +1,7 @@
-import { JsonLd } from "@/components/json-ld";
 import { createSoftwareApplicationStructuredData } from "@/lib/structured-data";
 import type { Metadata } from "next";
 import { Button } from "@prisma/eclipse";
+import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import Image from "next/image";
 import { CopyCode } from "@/components/homepage/copy-btn";
 import { Youtube } from "@prisma-docs/ui/components/youtube";

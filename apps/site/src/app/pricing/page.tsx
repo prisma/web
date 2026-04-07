@@ -1,7 +1,7 @@
-import { JsonLd } from "@/components/json-ld";
 import { createPricingStructuredData } from "@/lib/structured-data";
 import type { Metadata } from "next";
 import { Accordion, Accordions, Button } from "@prisma/eclipse";
+import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import { faqs } from "./pricing-data";
 import { PricingPageContent } from "./pricing-page-content";
 

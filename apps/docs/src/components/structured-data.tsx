@@ -1,6 +1,7 @@
 import { getBaseUrl, withDocsBasePath } from '@/lib/urls';
 import type { InferPageType } from 'fumadocs-core/source';
 import type { source, sourceV6 } from '@/lib/source';
+import { JsonLd } from '@prisma-docs/ui/components/json-ld';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -98,10 +99,7 @@ export function TechArticleSchema({ page }: StructuredDataProps) {
   };
 
   return (
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema).replace(/</g, '\\u003c') }}
-    />
+    <JsonLd id="tech-article-structured-data" data={schema} />
   );
 }
 
@@ -136,9 +134,6 @@ export function BreadcrumbSchema({ page }: StructuredDataProps) {
   };
 
   return (
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema).replace(/</g, '\\u003c') }}
-    />
+    <JsonLd id="breadcrumb-structured-data" data={schema} />
   );
 }

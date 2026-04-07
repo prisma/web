@@ -1,6 +1,6 @@
-import { JsonLd } from "@/components/json-ld";
 import { createSoftwareApplicationStructuredData } from "@/lib/structured-data";
 import type { Metadata } from "next";
+import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 
 import { type McpAgent, McpAgentsSection } from "./_components/mcp-agents-section";
 import { type McpCapability, McpCapabilitiesSection } from "./_components/mcp-capabilities-section";
