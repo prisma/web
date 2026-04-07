@@ -1,68 +1,19 @@
-import { JsonLd } from "@/components/json-ld";
-import { createPricingStructuredData } from "@/lib/structured-data";
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { Accordion, Accordions, Button } from "@prisma/eclipse";
 import { faqs } from "./pricing-data";
 import { PricingPageContent } from "./pricing-page-content";
 
-const pricingStructuredData = createPricingStructuredData([
-  {
-    name: "Free",
-    description: "Perfect for that weekend idea. 100,000 operations and 500 MB storage included.",
-    price: 0,
-    billingPeriod: "month",
-  },
-  {
-    name: "Starter",
-    description: "The basics you need to launch. 1,000,000 operations and 10 GB storage included.",
-    price: 10,
-    billingPeriod: "month",
-  },
-  {
-    name: "Pro",
-    description: "Growing for business success. 10,000,000 operations and 50 GB storage included.",
-    price: 49,
-    billingPeriod: "month",
-  },
-  {
-    name: "Business",
-    description: "For mission-critical apps. 50,000,000 operations and 100 GB storage included.",
-    price: 129,
-    billingPeriod: "month",
-  },
-]);
-
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: "Pricing — Prisma Postgres Plans & Features",
   description:
-    "Get started for free with Prisma Postgres. Choose the right plan for your workspace based on your project requirements.",
-  alternates: {
-    canonical: "https://www.prisma.io/pricing",
-  },
-  openGraph: {
-    title: "Pricing — Prisma Postgres Plans & Features",
-    description:
-      "Get started for free with Prisma Postgres. Choose the right plan for your workspace based on your project requirements.",
-    url: "https://www.prisma.io/pricing",
-    images: [
-      {
-        url: "/og/og-pricing.png",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Pricing — Prisma Postgres Plans & Features",
-    description:
-      "Get started for free with Prisma Postgres. Choose the right plan for your workspace based on your project requirements.",
-    images: ["/og/og-pricing.png"],
-  },
-};
+    "Get started for free with Prisma Postgres. Choose the right plan for your workspace based on your project requirements.",
+  path: "/pricing",
+  ogImage: "/og/og-pricing.png",
+});
 
 export default function PricingPage() {
   return (
     <main className="flex-1 w-full -mt-24 bg-background-default text-background-neutral-weak pt-24">
-      <JsonLd id="pricing-structured-data" data={pricingStructuredData} />
       <PricingPageContent />
 
       {/* FAQ */}
