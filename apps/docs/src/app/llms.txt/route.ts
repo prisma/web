@@ -34,6 +34,10 @@ export async function GET() {
 
   const content = `# Prisma Documentation
 
+> This documentation covers Prisma v7 (current) and v6 (legacy).
+> Prefer the Latest section for current recommendations.
+> v6 pages are maintained for backwards compatibility only.
+
 ## Latest
 
 ${latestDocsList}
