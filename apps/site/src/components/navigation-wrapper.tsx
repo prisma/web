@@ -2,7 +2,14 @@
 
 import { WebNavigation } from "@prisma-docs/ui/components/web-navigation";
 import { Footer } from "@prisma-docs/ui/components/footer";
-import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import {
+  getUtmParams,
+  readStoredUtmParams,
+  type UtmParams,
+  writeStoredUtmParams,
+} from "@/lib/utm";
 
 interface Link {
   text: string;
@@ -23,7 +30,7 @@ interface Link {
 interface NavigationWrapperProps {
   links: Link[];
   utm: {
-    source: "website";
+    source: string;
   };
 }
 
@@ -49,6 +56,27 @@ function getUtmMedium(pathname: string) {
 
 export function NavigationWrapper({ links, utm }: NavigationWrapperProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [storedUtmParams, setStoredUtmParams] = useState<UtmParams>({
+    utm_source: utm.source,
+  });
+
+  useEffect(() => {
+    const currentUtmParams = getUtmParams(new URLSearchParams(searchParams.toString()));
+
+    if (currentUtmParams.utm_source) {
+      setStoredUtmParams(currentUtmParams);
+      writeStoredUtmParams(currentUtmParams);
+      return;
+    }
+
+    const persistedUtmParams = readStoredUtmParams();
+    setStoredUtmParams(
+      persistedUtmParams.utm_source
+        ? persistedUtmParams
+        : { utm_source: utm.source },
+    );
+  }, [searchParams, utm.source]);
 
   // Determine button variant based on pathname
   const getButtonVariant = (): ColorType => {
@@ -62,7 +90,13 @@ export function NavigationWrapper({ links, utm }: NavigationWrapperProps) {
   return (
     <WebNavigation
       links={links}
-      utm={{ source: utm.source, medium: getUtmMedium(pathname) }}
+      utm={{
+        source: storedUtmParams.utm_source || utm.source,
+        medium: storedUtmParams.utm_medium || getUtmMedium(pathname),
+        campaign: storedUtmParams.utm_campaign,
+        content: storedUtmParams.utm_content,
+        term: storedUtmParams.utm_term,
+      }}
       buttonVariant={getButtonVariant()}
     />
   );

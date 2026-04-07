@@ -38,10 +38,41 @@ export interface Link {
 interface WebNavigationProps {
   links: Link[];
   utm?: {
-    source: "website";
+    source: string;
     medium: string;
+    campaign?: string;
+    content?: string;
+    term?: string;
   };
   buttonVariant?: "ppg" | "orm" | undefined;
+}
+
+function buildConsoleHref(
+  pathname: "/login" | "/sign-up",
+  utm?: WebNavigationProps["utm"],
+) {
+  if (!utm) {
+    return `https://console.prisma.io${pathname}`;
+  }
+
+  const href = new URL(`https://console.prisma.io${pathname}`);
+
+  href.searchParams.set("utm_source", utm.source);
+  href.searchParams.set("utm_medium", utm.medium);
+  href.searchParams.set(
+    "utm_campaign",
+    utm.campaign || (pathname === "/login" ? "login" : "signup"),
+  );
+
+  if (utm.content) {
+    href.searchParams.set("utm_content", utm.content);
+  }
+
+  if (utm.term) {
+    href.searchParams.set("utm_term", utm.term);
+  }
+
+  return href.toString();
 }
 
 export function WebNavigation({
@@ -50,12 +81,8 @@ export function WebNavigation({
   buttonVariant = "ppg",
 }: WebNavigationProps) {
   const [mobileView, setMobileView] = useState(false);
-  const loginHref = utm
-    ? `https://console.prisma.io/login?utm_source=${utm.source}&utm_medium=${utm.medium}&utm_campaign=login`
-    : "https://console.prisma.io/login";
-  const signupHref = utm
-    ? `https://console.prisma.io/sign-up?utm_source=${utm.source}&utm_medium=${utm.medium}&utm_campaign=signup`
-    : "https://console.prisma.io/sign-up";
+  const loginHref = buildConsoleHref("/login", utm);
+  const signupHref = buildConsoleHref("/sign-up", utm);
 
   useEffect(() => {
     if (mobileView) {

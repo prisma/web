@@ -15,6 +15,7 @@ import {
 import { Footer } from "@prisma-docs/ui/components/footer";
 import { ThemeProvider } from "@prisma-docs/ui/components/theme-provider";
 import { FontAwesomeScript as WebFA } from "@prisma/eclipse";
+import { UtmPersistence } from "@/components/utm-persistence";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -187,6 +188,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="bg-background-default absolute inset-0 -z-1 overflow-hidden" />
         <Provider>
           <ThemeProvider defaultTheme="system" storageKey="theme">
+            <UtmPersistence />
             <NavigationWrapper
               links={baseOptions().links}
               utm={{ source: "website" }}
