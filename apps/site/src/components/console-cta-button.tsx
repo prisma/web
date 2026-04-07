@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { ComponentProps } from "react";
-import { Button } from "@prisma/eclipse";
+import { Button, type ButtonProps } from "@prisma/eclipse";
 import { getUtmParams, hasUtmParams, type UtmParams } from "@/lib/utm";
 
-interface ConsoleCtaButtonProps extends Omit<ComponentProps<typeof Button>, "href"> {
+type ButtonLinkProps = Extract<ButtonProps, { href: string }>;
+
+interface ConsoleCtaButtonProps extends Omit<ButtonLinkProps, "href"> {
   consolePath: "/login" | "/sign-up";
   defaultUtm: UtmParams;
 }
