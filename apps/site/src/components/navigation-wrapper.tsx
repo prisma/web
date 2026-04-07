@@ -3,7 +3,7 @@
 import { WebNavigation } from "@prisma-docs/ui/components/web-navigation";
 import { Footer } from "@prisma-docs/ui/components/footer";
 import { useEffect, useState } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   getUtmParams,
   readStoredUtmParams,
@@ -56,13 +56,14 @@ function getUtmMedium(pathname: string) {
 
 export function NavigationWrapper({ links, utm }: NavigationWrapperProps) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const [storedUtmParams, setStoredUtmParams] = useState<UtmParams>({
     utm_source: utm.source,
   });
 
   useEffect(() => {
-    const currentUtmParams = getUtmParams(new URLSearchParams(searchParams.toString()));
+    const currentUtmParams = getUtmParams(
+      new URLSearchParams(window.location.search),
+    );
 
     if (currentUtmParams.utm_source) {
       setStoredUtmParams(currentUtmParams);
@@ -76,7 +77,7 @@ export function NavigationWrapper({ links, utm }: NavigationWrapperProps) {
         ? persistedUtmParams
         : { utm_source: utm.source },
     );
-  }, [searchParams, utm.source]);
+  }, [pathname, utm.source]);
 
   // Determine button variant based on pathname
   const getButtonVariant = (): ColorType => {

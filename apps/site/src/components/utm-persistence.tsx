@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   getUtmParams,
   hasUtmParams,
@@ -12,10 +12,11 @@ import {
 
 export function UtmPersistence() {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
 
   useEffect(() => {
-    const currentUtmParams = getUtmParams(new URLSearchParams(searchParams.toString()));
+    const currentUtmParams = getUtmParams(
+      new URLSearchParams(window.location.search),
+    );
 
     if (hasUtmParams(currentUtmParams)) {
       writeStoredUtmParams(currentUtmParams);
@@ -39,7 +40,7 @@ export function UtmPersistence() {
       "",
       `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`,
     );
-  }, [pathname, searchParams]);
+  }, [pathname]);
 
   useEffect(() => {
     function handleClick(event: MouseEvent) {
