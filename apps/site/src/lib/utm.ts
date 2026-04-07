@@ -2,6 +2,19 @@ export const UTM_STORAGE_KEY = "site_utm_params";
 
 export type UtmParams = Record<string, string>;
 
+function sanitizeUtmParams(input: unknown): UtmParams {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(input).filter(
+      ([key, value]) =>
+        key.startsWith("utm_") && typeof value === "string" && value.length > 0,
+    ),
+  );
+}
+
 export function getUtmParams(searchParams: URLSearchParams): UtmParams {
   const utmParams: UtmParams = {};
 
@@ -32,21 +45,37 @@ export function mergeUtmParams(url: URL, utmParams: UtmParams) {
 }
 
 export function readStoredUtmParams() {
-  const storedUtmParams = window.sessionStorage.getItem(UTM_STORAGE_KEY);
-
-  if (!storedUtmParams) {
+  if (typeof window === "undefined") {
     return {};
   }
 
   try {
-    return JSON.parse(storedUtmParams) as UtmParams;
+    const storedUtmParams = window.sessionStorage.getItem(UTM_STORAGE_KEY);
+
+    if (!storedUtmParams) {
+      return {};
+    }
+
+    return sanitizeUtmParams(JSON.parse(storedUtmParams));
   } catch {
     return {};
   }
 }
 
 export function writeStoredUtmParams(utmParams: UtmParams) {
-  if (hasUtmParams(utmParams)) {
-    window.sessionStorage.setItem(UTM_STORAGE_KEY, JSON.stringify(utmParams));
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const validUtmParams = sanitizeUtmParams(utmParams);
+
+  if (!hasUtmParams(validUtmParams)) {
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem(UTM_STORAGE_KEY, JSON.stringify(validUtmParams));
+  } catch {
+    // Ignore storage failures in restricted environments.
   }
 }

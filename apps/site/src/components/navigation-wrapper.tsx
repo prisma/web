@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
   getUtmParams,
+  hasUtmParams,
   readStoredUtmParams,
   type UtmParams,
   writeStoredUtmParams,
@@ -56,27 +57,30 @@ function getUtmMedium(pathname: string) {
 
 export function NavigationWrapper({ links, utm }: NavigationWrapperProps) {
   const pathname = usePathname();
-  const [storedUtmParams, setStoredUtmParams] = useState<UtmParams>({
+  const defaultUtmParams = {
     utm_source: utm.source,
-  });
+    utm_medium: getUtmMedium(pathname),
+  };
+  const [storedUtmParams, setStoredUtmParams] = useState<UtmParams>(() => ({
+    ...defaultUtmParams,
+    ...readStoredUtmParams(),
+  }));
 
   useEffect(() => {
     const currentUtmParams = getUtmParams(
       new URLSearchParams(window.location.search),
     );
 
-    if (currentUtmParams.utm_source) {
-      setStoredUtmParams(currentUtmParams);
+    if (hasUtmParams(currentUtmParams)) {
+      setStoredUtmParams({ ...defaultUtmParams, ...currentUtmParams });
       writeStoredUtmParams(currentUtmParams);
       return;
     }
 
-    const persistedUtmParams = readStoredUtmParams();
-    setStoredUtmParams(
-      persistedUtmParams.utm_source
-        ? persistedUtmParams
-        : { utm_source: utm.source },
-    );
+    setStoredUtmParams({
+      ...defaultUtmParams,
+      ...readStoredUtmParams(),
+    });
   }, [pathname, utm.source]);
 
   // Determine button variant based on pathname
@@ -91,13 +95,7 @@ export function NavigationWrapper({ links, utm }: NavigationWrapperProps) {
   return (
     <WebNavigation
       links={links}
-      utm={{
-        source: storedUtmParams.utm_source || utm.source,
-        medium: storedUtmParams.utm_medium || getUtmMedium(pathname),
-        campaign: storedUtmParams.utm_campaign,
-        content: storedUtmParams.utm_content,
-        term: storedUtmParams.utm_term,
-      }}
+      utm={storedUtmParams}
       buttonVariant={getButtonVariant()}
     />
   );

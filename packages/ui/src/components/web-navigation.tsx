@@ -37,13 +37,7 @@ export interface Link {
 
 interface WebNavigationProps {
   links: Link[];
-  utm?: {
-    source: string;
-    medium: string;
-    campaign?: string;
-    content?: string;
-    term?: string;
-  };
+  utm?: Record<string, string>;
   buttonVariant?: "ppg" | "orm" | undefined;
 }
 
@@ -57,19 +51,17 @@ function buildConsoleHref(
 
   const href = new URL(`https://console.prisma.io${pathname}`);
 
-  href.searchParams.set("utm_source", utm.source);
-  href.searchParams.set("utm_medium", utm.medium);
-  href.searchParams.set(
-    "utm_campaign",
-    utm.campaign || (pathname === "/login" ? "login" : "signup"),
-  );
-
-  if (utm.content) {
-    href.searchParams.set("utm_content", utm.content);
+  for (const [key, value] of Object.entries(utm)) {
+    if (key.startsWith("utm_") && value) {
+      href.searchParams.set(key, value);
+    }
   }
 
-  if (utm.term) {
-    href.searchParams.set("utm_term", utm.term);
+  if (!href.searchParams.has("utm_campaign")) {
+    href.searchParams.set(
+      "utm_campaign",
+      pathname === "/login" ? "login" : "signup",
+    );
   }
 
   return href.toString();

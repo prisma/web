@@ -105,7 +105,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <ThemeProvider defaultTheme="system" storageKey="theme">
       <WebNavigation
         links={baseOptions().links}
-        utm={{ source: "website", medium: "blog" }}
+        utm={{ utm_source: "website", utm_medium: "blog" }}
       />
       {children}
       <Footer />
