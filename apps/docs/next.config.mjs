@@ -213,7 +213,7 @@ const config = {
       {
         source: "/",
         destination: "/docs",
-        permanent: false,
+        permanent: true,
         basePath: false,
       },
     ];
