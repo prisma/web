@@ -3,10 +3,12 @@
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import {
+  CONSOLE_HOST,
   getUtmParams,
   hasUtmParams,
   mergeUtmParams,
   readStoredUtmParams,
+  replaceUtmParams,
   writeStoredUtmParams,
 } from "@/lib/utm";
 
@@ -59,7 +61,6 @@ export function UtmPersistence() {
         href.startsWith("#") ||
         href.startsWith("mailto:") ||
         href.startsWith("tel:") ||
-        anchor.target === "_blank" ||
         anchor.hasAttribute("download")
       ) {
         return;
@@ -72,18 +73,26 @@ export function UtmPersistence() {
       }
 
       const targetUrl = new URL(anchor.href, window.location.href);
+      const isInternalLink = targetUrl.origin === window.location.origin;
+      const isConsoleLink = targetUrl.hostname === CONSOLE_HOST;
 
-      if (targetUrl.origin !== window.location.origin) {
+      if (!isInternalLink && !isConsoleLink) {
         return;
       }
 
-      if (!mergeUtmParams(targetUrl, storedUtmParams)) {
+      const updated = isConsoleLink
+        ? replaceUtmParams(targetUrl, storedUtmParams)
+        : mergeUtmParams(targetUrl, storedUtmParams);
+
+      if (!updated) {
         return;
       }
 
       anchor.setAttribute(
         "href",
-        `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`,
+        isInternalLink
+          ? `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`
+          : targetUrl.toString(),
       );
     }
 

@@ -1,4 +1,5 @@
 export const UTM_STORAGE_KEY = "site_utm_params";
+export const CONSOLE_HOST = "console.prisma.io";
 
 export type UtmParams = Record<string, string>;
 
@@ -36,6 +37,19 @@ export function mergeUtmParams(url: URL, utmParams: UtmParams) {
 
   for (const [key, value] of Object.entries(utmParams)) {
     if (!url.searchParams.has(key)) {
+      url.searchParams.set(key, value);
+      updated = true;
+    }
+  }
+
+  return updated;
+}
+
+export function replaceUtmParams(url: URL, utmParams: UtmParams) {
+  let updated = false;
+
+  for (const [key, value] of Object.entries(utmParams)) {
+    if (url.searchParams.get(key) !== value) {
       url.searchParams.set(key, value);
       updated = true;
     }
