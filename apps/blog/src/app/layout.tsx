@@ -36,7 +36,7 @@ export default function Layout({ children }: LayoutProps<"/">) {
           crossOrigin="anonymous"
         ></Script>
       </head>
-      <body className="flex flex-col min-h-screen pt-24 relative">
+      <body className="flex flex-col min-h-screen relative">
         <div className="bg-blog absolute inset-0 -z-1 overflow-hidden" />
         <Provider>{children}</Provider>
       </body>
