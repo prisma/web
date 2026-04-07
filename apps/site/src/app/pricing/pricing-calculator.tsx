@@ -12,6 +12,11 @@ import {
   TooltipTrigger,
 } from "@prisma/eclipse";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@prisma-docs/ui/components/popover";
+import {
   plans,
   type BillablePricingPlanKey,
   type Symbol,
@@ -238,6 +243,85 @@ function InputShell({
   );
 }
 
+function DatabaseOperationsInfoContent() {
+  return (
+    <>
+      <p className="text-foreground-neutral my-2">
+        <b>What are database operations?</b>
+      </p>
+      <p className="text-foreground-neutral my-2">
+        One database operation equals one SQL query, simple as that. When using
+        Prisma Accelerate, we may bundle multiple queries into a single
+        operation.
+      </p>
+      <p className="text-foreground-neutral-weak my-2">
+        An operation is any action you perform against your database, like a
+        create, read, update, delete, or even a cached read. If your
+        application makes 10,000 SQL queries in a month, that is exactly 10,000
+        operations.
+      </p>
+      <p className="text-foreground-neutral-weak my-2">
+        To learn more, read our{" "}
+        <a
+          href="https://www.prisma.io/blog/operations-based-billing?utm_source=pricing-calculator"
+          className="text-foreground-ppg hover:text-foreground-ppg-strong hover:underline"
+        >
+          detailed blog post
+        </a>
+      </p>
+    </>
+  );
+}
+
+function ResponsiveInfoTrigger({
+  label,
+  children,
+  tooltipClassName = "max-w-[280px] text-left",
+  popoverClassName = "w-[calc(100vw-2rem)] max-w-[280px] p-4",
+  iconClassName = "text-xs",
+}: {
+  label: string;
+  children: React.ReactNode;
+  tooltipClassName?: string;
+  popoverClassName?: string;
+  iconClassName?: string;
+}) {
+  return (
+    <>
+      <div className="md:hidden">
+        <Popover>
+          <PopoverTrigger
+            aria-label={label}
+            className="inline-flex h-6 w-6 items-center justify-center rounded-full text-foreground-neutral-weaker transition-colors hover:text-foreground-neutral"
+          >
+            <i className={cn("fa-solid fa-circle-info", iconClassName)} />
+            <span className="sr-only">{label}</span>
+          </PopoverTrigger>
+          <PopoverContent align="start" className={popoverClassName}>
+            {children}
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      <div className="hidden md:block">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              aria-label={label}
+              className="inline-flex h-6 w-6 items-center justify-center rounded-full text-foreground-neutral-weaker transition-colors hover:text-foreground-neutral"
+            >
+              <i className={cn("fa-solid fa-circle-info", iconClassName)} />
+              <span className="sr-only">{label}</span>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent className={tooltipClassName}>{children}</TooltipContent>
+        </Tooltip>
+      </div>
+    </>
+  );
+}
+
 function SummaryCard({
   title,
   description,
@@ -330,28 +414,17 @@ function SummaryCard({
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-1.5">
                 <span>Billable database operations</span>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="inline-flex h-6 w-6 items-center justify-center rounded-full text-foreground-neutral-weaker transition-colors hover:text-foreground-neutral"
-                      aria-label="Explain billable database operations"
-                    >
-                      <i className="fa-solid fa-circle-info text-xs" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-[280px] text-left">
-                    First {formatNumber(planDetails.includedOperations)}{" "}
-                    operations are included in this plan. Remaining{" "}
-                    {formatNumber(breakdown.billableOperations)} operations are
-                    billed at{" "}
-                    {formatCompactCurrency(
-                      planDetails.operationPricePerThousand,
-                      currency,
-                    )}{" "}
-                    per 1,000.
-                  </TooltipContent>
-                </Tooltip>
+                <ResponsiveInfoTrigger label="Explain billable database operations">
+                  First {formatNumber(planDetails.includedOperations)} operations
+                  are included in this plan. Remaining{" "}
+                  {formatNumber(breakdown.billableOperations)} operations are
+                  billed at{" "}
+                  {formatCompactCurrency(
+                    planDetails.operationPricePerThousand,
+                    currency,
+                  )}{" "}
+                  per 1,000.
+                </ResponsiveInfoTrigger>
               </div>
               <span
                 className={cn(
@@ -367,27 +440,13 @@ function SummaryCard({
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-1.5">
                 <span>Billable storage</span>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="inline-flex h-6 w-6 items-center justify-center rounded-full text-foreground-neutral-weaker transition-colors hover:text-foreground-neutral"
-                      aria-label="Explain billable storage"
-                    >
-                      <i className="fa-solid fa-circle-info text-xs" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-[280px] text-left">
-                    First {formatNumber(planDetails.includedStorageGb)}GB of
-                    storage are included. Remaining{" "}
-                    {formatNumber(breakdown.billableStorageGb)}GB are billed at{" "}
-                    {formatCompactCurrency(
-                      planDetails.storagePricePerGb,
-                      currency,
-                    )}
-                    /GB.
-                  </TooltipContent>
-                </Tooltip>
+                <ResponsiveInfoTrigger label="Explain billable storage">
+                  First {formatNumber(planDetails.includedStorageGb)}GB of storage
+                  are included. Remaining{" "}
+                  {formatNumber(breakdown.billableStorageGb)}GB are billed at{" "}
+                  {formatCompactCurrency(planDetails.storagePricePerGb, currency)}
+                  /GB.
+                </ResponsiveInfoTrigger>
               </div>
               <span
                 className={cn(
@@ -511,38 +570,47 @@ export function PricingCalculator({ currency }: { currency: Symbol }) {
                   <i className="fa-solid fa-bolt text-foreground-ppg" />
                   <span>Database Operations</span>
 
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <i className="fa-solid fa-circle-info text-base text-foreground-neutral-weaker" />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-88">
-                        <p className="text-foreground-neutral my-2">
-                          <b>What are database operations?</b>
-                        </p>
-                        <p className="text-foreground-neutral my-2">
-                          One database operation equals one SQL query, simple as
-                          that. When using Prisma Accelerate, we may bundle
-                          multiple queries into a single operation.
-                        </p>
-                        <p className="text-foreground-neutral-weak my-2">
-                          An operation is any action you perform against your
-                          database, like a create, read, update, delete, or even
-                          a cached read. If your application makes 10,000 SQL
-                          queries in a month, that is exactly 10,000 operations.
-                        </p>
-                        <p className="text-foreground-neutral-weak my-2">
-                          To learn more, read our{" "}
-                          <a
-                            href="https://www.prisma.io/blog/operations-based-billing?utm_source=pricing-calculator"
-                            className="text-foreground-ppg hover:text-foreground-ppg-strong hover:underline"
+                  <div className="md:hidden">
+                    <Popover>
+                      <PopoverTrigger
+                        aria-label="What are database operations?"
+                        className="inline-flex items-center justify-center text-base text-foreground-neutral-weaker transition-colors hover:text-foreground-neutral"
+                      >
+                        <i className="fa-solid fa-circle-info" />
+                        <span className="sr-only">
+                          What are database operations?
+                        </span>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        align="start"
+                        className="w-[calc(100vw-2rem)] max-w-88 p-4"
+                      >
+                        <DatabaseOperationsInfoContent />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  <div className="hidden md:block">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            aria-label="What are database operations?"
+                            className="inline-flex items-center justify-center text-base text-foreground-neutral-weaker transition-colors hover:text-foreground-neutral"
                           >
-                            detailed blog post
-                          </a>
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                            <i className="fa-solid fa-circle-info" />
+                            <span className="sr-only">
+                              What are database operations?
+                            </span>
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-88">
+                          <DatabaseOperationsInfoContent />
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                 </div>
                 <InputShell>{formatNumber(databaseOperations)}</InputShell>
                 <Slider
