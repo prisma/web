@@ -5,8 +5,15 @@ import { Button } from "@prisma/eclipse";
 import { CopyCode } from "@/components/homepage/copy-btn";
 import { Bento } from "@/components/homepage/bento";
 import { CardSection } from "@/components/homepage/card-section/card-section";
+import { ConsoleCtaButton } from "@/components/console-cta-button";
 import review from "../../data/homepage.json";
 import Testimonials from "../../components/homepage/testimonials";
+
+const INDEX_CTA_DEFAULT_UTM = {
+  utm_source: "website",
+  utm_medium: "index",
+  utm_campaign: "cta",
+} as const;
 
 const twoCol = [
   {
@@ -79,7 +86,7 @@ export const metadata: Metadata = {
 export default function SiteHome() {
   return (
     <main className="flex-1 w-full z-1 bg-background-default">
-      <section className="hero h-full relative -mt-24 flex items-end justify-center px-4 pt-48">
+      <section className="hero h-full relative -mt-24 flex items-end justify-center px-4 pt-40">
         <div className="w-screen h-full absolute inset-0">
           <Antigravity
             count={300}
@@ -99,21 +106,31 @@ export default function SiteHome() {
             fieldStrength={15.3}
           />
         </div>
-        <div className="content relative z-2 my-12 flex flex-col gap-8">
-          <h1 className="text-6xl [font-variation-settings:'wght'_900,'wdth'_125] mb-0 text-center mt-0 font-sans-display text-foreground-neutral">
-            Postgres, <br />
-            perfectly managed.
-          </h1>
+        <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-ppg)_0%,var(--color-background-default)_100%)] opacity-20" />
+        <div className="content relative z-2 flex flex-col gap-8">
+          <div className="flex flex-col gap-4 items-center text-center">
+            
+            <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
+              Postgres, <br />
+              perfectly managed.
+            </h1>
+          </div>
           <p className="text-center text-foreground-neutral max-w-2xl mx-auto">
             Real Postgres with the developer experience and infrastructure to ship faster.
           </p>
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
-            <Button asChild variant="ppg" size="3xl">
-              <a href="https://console.prisma.io/sign-up?utm_source=website&utm_medium=index&utm_campaign=cta" target="_blank" rel="noopener noreferrer">
-                Create database
-                <i className="fa-regular fa-database" />
-              </a>
-            </Button>
+            <ConsoleCtaButton
+              variant="ppg"
+              consolePath="/sign-up"
+              defaultUtm={INDEX_CTA_DEFAULT_UTM}
+              size="3xl"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-sans-display! font-[650]"
+            >
+              <span>Create database</span>
+              <i className="fa-regular fa-database ml-2" />
+            </ConsoleCtaButton>
             <CopyCode text="npx prisma init">
               <span className="text-foreground-neutral-reverse-weak">$</span>
               <span className="text-foreground-neutral-weak">&nbsp;npx prisma init</span>
@@ -233,10 +250,15 @@ export default function SiteHome() {
                 </p>
               </div>
               <div className="flex flex-col gap-6 md:flex-row">
-                <Button variant="ppg" size="2xl">
-                  Create your first Database
-                  <i className="fa-regular fa-arrow-right" />
-                </Button>
+                <ConsoleCtaButton
+                  variant="ppg"
+                  size="2xl"
+                  consolePath="/sign-up"
+                  defaultUtm={INDEX_CTA_DEFAULT_UTM}
+                >
+                  <span>Create your first Database</span>
+                  <i className="fa-regular fa-arrow-right ml-2" />
+                </ConsoleCtaButton>
                 <Button asChild variant="default-strong" size="2xl">
                   <a href="/pricing">
                     Explore Pricing

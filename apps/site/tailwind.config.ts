@@ -21,32 +21,12 @@ const config: Config = {
         "black-wide": "'wght' 900, 'wdth' 125",
       },
       keyframes: {
-        slideDown: {
-          from: { transform: "translateY(0%)" },
-          to: { transform: "translateY(100%)" },
-        },
-        slideDown2: {
-          from: { transform: "translateY(-100%)" },
-          to: { transform: "translateY(0%)" },
-        },
-        slideUp: {
-          from: { transform: "translateY(0%)" },
-          to: { transform: "translateY(-100%)" },
-        },
-        slideUp2: {
-          from: { transform: "translateY(100%)" },
-          to: { transform: "translateY(0%)" },
-        },
         fadein: {
           "0%": { opacity: "0" },
           "100%": { opacity: "1" },
         },
       },
       animation: {
-        "slide-down": "slideDown 130s linear infinite",
-        "slide-down-2": "slideDown2 130s linear infinite",
-        "slide-up": "slideUp 100s linear infinite",
-        "slide-up-2": "slideUp2 100s linear infinite",
         "fade-in":
           "fadein 0.5s cubic-bezier(0.455, 0.03, 0.515, 0.955) forwards",
       },
@@ -66,15 +46,6 @@ const config: Config = {
       );
       addUtilities(utilities);
 
-      // Add animation-play-state utilities
-      addUtilities({
-        ".paused": {
-          "animation-play-state": "paused",
-        },
-        ".running": {
-          "animation-play-state": "running",
-        },
-      });
     },
   ],
 };

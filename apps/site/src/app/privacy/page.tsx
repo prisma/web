@@ -15,7 +15,7 @@ export default function PrivacyPage() {
     <main className="flex-1 w-full z-1 -mt-24 pt-24 relative legal-hero-gradient">
       {/* Hero */}
       <div className="text-center pb-16 pt-40">
-        <h1 className="text-5xl font-bold font-sans-display text-foreground-neutral mb-6">
+        <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
           Privacy Policy
         </h1>
         <p className="text-lg text-foreground-neutral-weak">

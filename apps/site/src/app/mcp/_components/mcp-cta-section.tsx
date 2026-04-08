@@ -1,6 +1,12 @@
 import { Button } from "@prisma/eclipse";
 
-export function McpCtaSection({ docsHref }: { docsHref: string }) {
+export function McpCtaSection({
+  docsHref,
+  readDocsHref,
+}: {
+  docsHref: string;
+  readDocsHref: string;
+}) {
   return (
     <section className="bg-radial from-background-ppg/50 from-0% to-background-default to-70% px-4 py-12">
       <div className="mx-auto max-w-360 rounded-2xl bg-[url('/illustrations/homepage/footer_grid.svg')] bg-cover bg-center px-4 py-12">
@@ -25,7 +31,7 @@ export function McpCtaSection({ docsHref }: { docsHref: string }) {
                   </a>
                 </Button>
                 <Button asChild variant={"default-strong"} size={"3xl"} className="gap-3">
-                  <a href={docsHref}>
+                  <a href={readDocsHref}>
                     Read Docs
                     <i className="fa-regular fa-book-open shrink-0 text-[16px]" aria-hidden />
                   </a>

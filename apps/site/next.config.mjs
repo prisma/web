@@ -20,6 +20,14 @@ const BLOG_ORIGIN_HOST = (() => {
   }
 })();
 
+const imageRemoteHostnames = [
+  "cdn.sanity.io",
+  "prisma.io",
+  "www.prisma.io",
+  DOCS_ORIGIN_HOST,
+  BLOG_ORIGIN_HOST,
+];
+
 if (
   process.env.NODE_ENV === "production" &&
   (!process.env.NEXT_DOCS_ORIGIN || !process.env.NEXT_BLOG_ORIGIN)
@@ -30,10 +38,9 @@ if (
       !process.env.NEXT_BLOG_ORIGIN && "BLOG_ORIGIN is required in production",
     ]
       .filter(Boolean)
-      .join("; ")
+      .join("; "),
   );
 }
-
 
 const ContentSecurityPolicy = `
   default-src 'self';
@@ -242,28 +249,15 @@ const allowedDevOrigins = (
 /** @type {import('next').NextConfig} */
 const config = {
   reactCompiler: true,
-  async redirects() {
-    return [];
-  },
-  async rewrites() {
-    return [
-      {
-        source: "/:path*.mdx",
-        destination: "/llms.mdx/:path*",
-      },
-    ];
-  },
   assetPrefix: "/site-static",
   allowedDevOrigins,
   reactStrictMode: true,
   images: {
-    unoptimized: true,
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "cdn.sanity.io",
-      },
-    ],
+    unoptimized: false,
+    remotePatterns: imageRemoteHostnames.map((hostname) => ({
+      protocol: "https",
+      hostname,
+    })),
   },
   transpilePackages: ["@prisma/eclipse"],
   async redirects() {
@@ -745,6 +739,18 @@ const config = {
   async rewrites() {
     return {
       beforeFiles: [
+        {
+          source: "/sitemap",
+          destination: "/sitemap-site.xml",
+        },
+        {
+          source: "/sitemap-site",
+          destination: "/sitemap-site.xml",
+        },
+        {
+          source: "/:path*.mdx",
+          destination: "/llms.mdx/:path*",
+        },
         // subdomains
         {
           source: "/:path*",
@@ -757,9 +763,8 @@ const config = {
           destination: "https://accelerate-speed-test.vercel.app/:path*",
         },
 
-
-         // Proxy canonical docs path to docs infrastructure
-         {
+        // Proxy canonical docs path to docs infrastructure
+        {
           source: "/docs",
           destination: `${DOCS_ORIGIN}/docs`,
           missing: [{ type: "host", value: DOCS_ORIGIN_HOST }],
@@ -806,7 +811,6 @@ const config = {
         // Pages
         // TODO We have a redirect for this above to /careers, so should probably be removed here?
 
-       
         {
           source: "/dataguide/:any*",
           destination: "https://dataguide.vercel.app/dataguide/:any*",

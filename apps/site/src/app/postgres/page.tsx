@@ -124,13 +124,13 @@ export default async function SiteHome() {
     <main className="flex-1 w-full z-1 bg-background-default">
       <div className="hero -mt-24 pt-40 flex items-end justify-center px-4 relative">
         <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-ppg)_0%,var(--color-background-default)_100%)] opacity-20" />
-        <div className="content relative z-2 my-12 py-12 flex flex-col gap-8">
+        <div className="content relative z-2 flex flex-col gap-8">
           <div className="flex flex-col gap-4 items-center text-center">
             <div className="flex items-center gap-2 text-foreground-ppg-weak uppercase tracking-widest text-sm font-sans-display font-black">
               <i className="fa-solid fa-chart-pyramid" />
               <span>Prisma Postgres</span>
             </div>
-            <h1 className="text-6xl [font-variation-settings:'wght'_900,'wdth'_125] mb-0 mt-0 font-sans-display text-foreground-neutral">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
               The fastest way <br />
               to real Postgres
             </h1>
@@ -146,7 +146,7 @@ export default async function SiteHome() {
               </a>
             </Button>
             <Button asChild variant="default-strong" size="3xl" className="font-sans-display! font-[650]">
-              <a href="/docs/postgres">
+              <a href="https://www.prisma.io/docs/postgres">
                 Read the docs
                 <i className="fa-regular fa-book-open" />
               </a>
@@ -237,7 +237,7 @@ export default async function SiteHome() {
           </h3>
           <div className="content flex flex-col lg:flex-row gap-3 lg:gap-12 items-center md:items-start lg:items-center">
             <p className="max-w-94 w-full text-center md:text-left text-foreground-neutral-weak text-md">
-              Usage-based pricing, with a generous free tier.  Spend limits included, so you never
+              Usage-based pricing, with a generous free tier. Spend limits included, so you never
               get surprised.
             </p>
             <Button asChild variant="ppg" size="2xl">
@@ -312,7 +312,7 @@ export default async function SiteHome() {
                 </a>
               </Button>
               <Button asChild variant="default-strong" size="2xl">
-                <a href="/docs">
+                <a href="https://www.prisma.io/docs">
                   Read the docs
                   <i className="fa-regular fa-arrow-right" />
                 </a>

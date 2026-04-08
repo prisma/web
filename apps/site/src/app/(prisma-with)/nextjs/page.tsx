@@ -19,7 +19,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
   })
   return (
     <div>
-      <h1>{post?.title || 'Post not found'}</h1>
+      <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">{post?.title || 'Post not found'}</h1>
       <p>{post?.content || 'No content available'}</p>
     </div>
   )

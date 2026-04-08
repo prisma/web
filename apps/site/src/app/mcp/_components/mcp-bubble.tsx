@@ -1,4 +1,13 @@
-import { useId, type ReactNode } from "react";
+"use client";
+
+import { useId, useState, type ReactNode } from "react";
+
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@prisma/eclipse";
 
 const bubbleShadow = "shadow-box-low dark:shadow-box-high";
 
@@ -46,7 +55,7 @@ const promptConfig: Record<McpPromptBubbleVariant, string> = {
 };
 
 const promptTextClass =
-  "inline-block w-full break-words text-pretty font-mono text-[14px] font-normal leading-5 text-background-ppg-reverse-strong dark:text-foreground-ppg-reverse-weak";
+  "inline-block w-full break-words text-pretty text-left font-mono text-[14px] font-normal leading-5 text-background-ppg-reverse-strong dark:text-foreground-ppg-reverse-weak";
 
 function BubbleTail({ side }: { side: "left" | "right" }) {
   const positionClass =
@@ -92,14 +101,34 @@ export function McpPromptBubble({
   variant: McpPromptBubbleVariant;
   children: ReactNode;
 }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    if (typeof children === "string") {
+      navigator.clipboard.writeText(children);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }
+  };
+
   return (
     <div className="relative w-full">
-      <div
-        className={`relative z-10 flex w-full items-center rounded-[12px] border bg-background-ppg text-background-ppg-reverse-strong transition-colors duration-300 ${promptConfig[variant]} [--mcp-bubble-fill:var(--color-background-ppg)] dark:[--mcp-bubble-fill:var(--color-background-ppg)] [--mcp-bubble-stroke:var(--color-stroke-ppg)] bg-(--mcp-bubble-fill) border-(--mcp-bubble-stroke)`}
-      >
-        <code className={promptTextClass}>{children}</code>
-        <BubbleTail side="right" />
-      </div>
+      <TooltipProvider>
+        <Tooltip open={copied || undefined}>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={handleCopy}
+              aria-label={copied ? "Copied!" : "Copy prompt"}
+              className={`relative z-10 flex w-full cursor-pointer items-center rounded-[12px] border bg-background-ppg text-background-ppg-reverse-strong transition-colors duration-300 ${promptConfig[variant]} [--mcp-bubble-fill:var(--color-background-ppg)] dark:[--mcp-bubble-fill:var(--color-background-ppg)] [--mcp-bubble-stroke:var(--color-stroke-ppg)] bg-(--mcp-bubble-fill) border-(--mcp-bubble-stroke) hover:brightness-110`}
+            >
+              <code className={promptTextClass}>{children}</code>
+              <BubbleTail side="right" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>{copied ? "Copied!" : "Copy prompt"}</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     </div>
   );
 }

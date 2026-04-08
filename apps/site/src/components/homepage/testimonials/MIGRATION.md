@@ -15,16 +15,24 @@ This document outlines the migration of the testimonials component from Vanilla 
 
 ### 1. Tailwind Config Updates
 
-Added custom animations:
-- `slideDown` / `slideDown2` - For downward scrolling testimonials
-- `slideUp` / `slideUp2` - For upward scrolling testimonials  
-- `fadein` - Fade-in animation
+The testimonials component no longer uses custom marquee animations. The
+remaining Tailwind setup is only used for general utility generation in the app.
 
-Added custom utilities:
-- `.paused` - For pausing animations on hover
-- `.running` - For running animations
+### 2. Component Structure
 
-### 2. Component Class Conversions
+The current implementation renders a static responsive grid and calculates the
+active column count in React instead of mounting separate mobile, tablet, and
+desktop trees.
+
+Each breakpoint renders a capped subset of testimonials:
+- mobile: 1 column of up to 8 testimonials
+- tablet: 2 columns of up to 8 testimonials each
+- desktop: 3 columns of up to 8 testimonials each
+
+The selected testimonials are shuffled deterministically from the source list so
+the DOM stays small without introducing hydration mismatches.
+
+### 3. Component Class Conversions
 
 #### testimonialRoot
 **Before:** Vanilla Extract style object
@@ -44,23 +52,22 @@ cn(
 
 #### brandWheel
 **Before:** Complex Vanilla Extract style
-**After:** `relative flex flex-row items-center overflow-hidden w-full min-h-[680px] h-[100px] max-w-[1200px] mx-auto hover:![animation-duration:0s]`
+**After:** static column wrapper
 
 #### rollingList
 **Before:** Separate style with animation
 **After:** 
 ```tsx
-cn(
-  "absolute flex-shrink-0 w-full min-w-full flex flex-col justify-around mx-auto",
-  reverse ? "animate-slide-up md:hover:paused" : "animate-slide-down md:hover:paused"
-)
+<div className="flex flex-col gap-4">
+  {/* testimonial cards */}
+</div>
 ```
 
 #### testimonialItemRoot
 **Before:** Vanilla Extract style object
 **After:** `text-foreground-neutral p-6 my-3 font-[family-name:var(--barlow)] font-normal text-lg bg-surface-primary border border-border-primary rounded-[10px] leading-[25.2px]`
 
-### 3. Nth-child Selectors
+### 4. Nth-child Selectors
 
 Converted global styles to Tailwind arbitrary variants:
 
@@ -77,7 +84,7 @@ globalStyle(`${testimonialRoot} > div:nth-child(3)`, {
 "[&>*:nth-child(3)]:flex [&>*]:flex-1"
 ```
 
-### 4. Pseudo-elements
+### 5. Pseudo-elements
 
 **Before:**
 ```ts
@@ -94,9 +101,7 @@ globalStyle(`${testimonialRoot} > div:nth-child(3)`, {
 
 ## Animation Timing
 
-- Original: 100s base, 130s for slide down
-- Kept the same durations in Tailwind config
-- Hover pause behavior maintained with `md:hover:paused` utility
+The scrolling animation was removed in favor of a static grid layout.
 
 ## Color Token Mapping
 

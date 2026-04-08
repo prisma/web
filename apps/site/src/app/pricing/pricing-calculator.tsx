@@ -1,5 +1,6 @@
 "use client";
 import * as React from "react";
+
 import {
   Alert,
   Badge,
@@ -11,11 +12,18 @@ import {
   TooltipTrigger,
 } from "@prisma/eclipse";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@prisma-docs/ui/components/popover";
+import {
   plans,
   type BillablePricingPlanKey,
   type Symbol,
   symbols,
   usagePricing,
+  convertFromUsd,
+  currencyConfig,
 } from "./pricing-data";
 
 function cn(...classes: Array<string | false | null | undefined>) {
@@ -72,17 +80,24 @@ function formatNumber(value: number) {
   return new Intl.NumberFormat("en-US").format(Math.round(value));
 }
 
-function formatCurrency(value: number, currency: Symbol, digits = 2) {
-  return `${symbols[currency]}${value.toLocaleString("en-US", {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
+function formatCurrency(valueUsd: number, currency: Symbol, digits = 2) {
+  const converted = convertFromUsd(valueUsd, currency);
+  const rounded = converted >= 1 ? Math.round(converted) : converted;
+  const effectiveDigits = converted >= 1 ? 0 : digits;
+  return `${symbols[currency]}${rounded.toLocaleString("en-US", {
+    minimumFractionDigits: effectiveDigits,
+    maximumFractionDigits: effectiveDigits,
   })}`;
 }
 
-function formatCompactCurrency(value: number, currency: Symbol) {
-  return `${symbols[currency]}${value.toLocaleString("en-US", {
-    minimumFractionDigits: Number.isInteger(value) ? 0 : 1,
-    maximumFractionDigits: 2,
+function formatCompactCurrency(valueUsd: number, currency: Symbol) {
+  const converted = convertFromUsd(valueUsd, currency);
+  const config = currencyConfig[currency];
+  const maxDigits =
+    Number.isInteger(converted) && converted > 1 ? 0 : config.microDecimals;
+  return `${symbols[currency]}${converted.toLocaleString("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: maxDigits,
   })}`;
 }
 
@@ -106,7 +121,10 @@ function calculateMonthlyPlanCost(
   storageGb: number,
 ) {
   const details = usagePricing[plan];
-  const extraOperations = Math.max(0, databaseOperations - details.includedOperations);
+  const extraOperations = Math.max(
+    0,
+    databaseOperations - details.includedOperations,
+  );
   const extraStorageGb = Math.max(0, storageGb - details.includedStorageGb);
 
   return (
@@ -122,7 +140,11 @@ function calculateDisplayedPlanCost(
   storageGb: number,
   billingCycle: BillingCycle,
 ) {
-  const monthlyCost = calculateMonthlyPlanCost(plan, databaseOperations, storageGb);
+  const monthlyCost = calculateMonthlyPlanCost(
+    plan,
+    databaseOperations,
+    storageGb,
+  );
 
   if (billingCycle === "monthly") {
     return monthlyCost;
@@ -199,6 +221,85 @@ function InputShell({ children, className }: { children: React.ReactNode; classN
     >
       {children}
     </div>
+  );
+}
+
+function DatabaseOperationsInfoContent() {
+  return (
+    <>
+      <p className="text-foreground-neutral my-2">
+        <b>What are database operations?</b>
+      </p>
+      <p className="text-foreground-neutral my-2">
+        One database operation equals one SQL query, simple as that. When using
+        Prisma Accelerate, we may bundle multiple queries into a single
+        operation.
+      </p>
+      <p className="text-foreground-neutral-weak my-2">
+        An operation is any action you perform against your database, like a
+        create, read, update, delete, or even a cached read. If your
+        application makes 10,000 SQL queries in a month, that is exactly 10,000
+        operations.
+      </p>
+      <p className="text-foreground-neutral-weak my-2">
+        To learn more, read our{" "}
+        <a
+          href="https://www.prisma.io/blog/operations-based-billing?utm_source=pricing-calculator"
+          className="text-foreground-ppg hover:text-foreground-ppg-strong hover:underline"
+        >
+          detailed blog post
+        </a>
+      </p>
+    </>
+  );
+}
+
+function ResponsiveInfoTrigger({
+  label,
+  children,
+  tooltipClassName = "max-w-[280px] text-left",
+  popoverClassName = "w-[calc(100vw-2rem)] max-w-[280px] p-4",
+  iconClassName = "text-xs",
+}: {
+  label: string;
+  children: React.ReactNode;
+  tooltipClassName?: string;
+  popoverClassName?: string;
+  iconClassName?: string;
+}) {
+  return (
+    <>
+      <div className="md:hidden">
+        <Popover>
+          <PopoverTrigger
+            aria-label={label}
+            className="inline-flex h-6 w-6 items-center justify-center rounded-full text-foreground-neutral-weaker transition-colors hover:text-foreground-neutral"
+          >
+            <i className={cn("fa-solid fa-circle-info", iconClassName)} />
+            <span className="sr-only">{label}</span>
+          </PopoverTrigger>
+          <PopoverContent align="start" className={popoverClassName}>
+            {children}
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      <div className="hidden md:block">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              aria-label={label}
+              className="inline-flex h-6 w-6 items-center justify-center rounded-full text-foreground-neutral-weaker transition-colors hover:text-foreground-neutral"
+            >
+              <i className={cn("fa-solid fa-circle-info", iconClassName)} />
+              <span className="sr-only">{label}</span>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent className={tooltipClassName}>{children}</TooltipContent>
+        </Tooltip>
+      </div>
+    </>
   );
 }
 
@@ -283,7 +384,8 @@ function SummaryCard({
               <span
                 className={cn(
                   "text-right",
-                  breakdown.basePlanFee <= 0 && "text-foreground-neutral-weaker",
+                  breakdown.basePlanFee <= 0 &&
+                    "text-foreground-neutral-weaker",
                 )}
               >
                 {formatLineItemCost(breakdown.basePlanFee, currency)}
@@ -293,24 +395,17 @@ function SummaryCard({
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-1.5">
                 <span>Billable database operations</span>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="inline-flex h-6 w-6 items-center justify-center rounded-full text-foreground-neutral-weaker transition-colors hover:text-foreground-neutral"
-                      aria-label="Explain billable database operations"
-                    >
-                      <i className="fa-solid fa-circle-info text-xs" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-[280px] text-left">
-                    First {formatNumber(planDetails.includedOperations)} operations are included in
-                    this plan. Remaining {formatNumber(breakdown.billableOperations)} operations are
-                    billed at{" "}
-                    {formatCompactCurrency(planDetails.operationPricePerThousand, currency)} per
-                    1,000.
-                  </TooltipContent>
-                </Tooltip>
+                <ResponsiveInfoTrigger label="Explain billable database operations">
+                  First {formatNumber(planDetails.includedOperations)} operations
+                  are included in this plan. Remaining{" "}
+                  {formatNumber(breakdown.billableOperations)} operations are
+                  billed at{" "}
+                  {formatCompactCurrency(
+                    planDetails.operationPricePerThousand,
+                    currency,
+                  )}{" "}
+                  per 1,000.
+                </ResponsiveInfoTrigger>
               </div>
               <span
                 className={cn(
@@ -325,28 +420,19 @@ function SummaryCard({
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-1.5">
                 <span>Billable storage</span>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="inline-flex h-6 w-6 items-center justify-center rounded-full text-foreground-neutral-weaker transition-colors hover:text-foreground-neutral"
-                      aria-label="Explain billable storage"
-                    >
-                      <i className="fa-solid fa-circle-info text-xs" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-[280px] text-left">
-                    First {formatNumber(planDetails.includedStorageGb)}GB of storage are included.
-                    Remaining {formatNumber(breakdown.billableStorageGb)}GB are billed at{" "}
-                    {formatCompactCurrency(planDetails.storagePricePerGb, currency)}
-                    /GB.
-                  </TooltipContent>
-                </Tooltip>
+                <ResponsiveInfoTrigger label="Explain billable storage">
+                  First {formatNumber(planDetails.includedStorageGb)}GB of storage
+                  are included. Remaining{" "}
+                  {formatNumber(breakdown.billableStorageGb)}GB are billed at{" "}
+                  {formatCompactCurrency(planDetails.storagePricePerGb, currency)}
+                  /GB.
+                </ResponsiveInfoTrigger>
               </div>
               <span
                 className={cn(
                   "text-right",
-                  breakdown.storageCost <= 0 && "text-foreground-neutral-weaker",
+                  breakdown.storageCost <= 0 &&
+                    "text-foreground-neutral-weaker",
                 )}
               >
                 {formatLineItemCost(breakdown.storageCost, currency)}
@@ -403,32 +489,34 @@ export function PricingCalculator({ currency }: { currency: Symbol }) {
               <div className="text-base font-semibold text-foreground-neutral">
                 Quick Start Presets
               </div>
-              <div className="flex flex-wrap gap-2">
-                {(Object.entries(PRESETS) as Array<[PresetKey, (typeof PRESETS)[PresetKey]]>).map(
-                  ([key, item]) => {
-                    const active = key === matchingPreset;
+              <div className="flex flex-col gap-2 md:flex-row md:flex-wrap">
+                {(
+                  Object.entries(PRESETS) as Array<
+                    [PresetKey, (typeof PRESETS)[PresetKey]]
+                  >
+                ).map(([key, item]) => {
+                  const active = key === matchingPreset;
 
-                    return (
-                      <Button
-                        key={key}
-                        type="button"
-                        variant="default-weak"
-                        size="lg"
-                        aria-pressed={active}
-                        onClick={() => applyPreset(key)}
-                        className={cn(
-                          "inline-flex h-9 items-center gap-2 rounded-[12px] border px-4 text-sm font-medium transition-colors",
-                          active
-                            ? "border-stroke-ppg bg-background-ppg-reverse-strong text-foreground-ppg-reverse shadow-box-low"
-                            : "border-stroke-neutral bg-transparent text-foreground-neutral hover:border-stroke-neutral-strong hover:bg-background-default-050",
-                        )}
-                      >
-                        <i className={cn(item.icon, "text-xs")} />
-                        <span>{item.label}</span>
-                      </Button>
-                    );
-                  },
-                )}
+                  return (
+                    <Button
+                      key={key}
+                      type="button"
+                      variant="default-weak"
+                      size="lg"
+                      aria-pressed={active}
+                      onClick={() => applyPreset(key)}
+                      className={cn(
+                        "inline-flex h-9 items-center gap-2 rounded-[12px] border px-4 text-sm font-medium transition-colors",
+                        active
+                          ? "border-stroke-ppg bg-background-ppg-reverse-strong text-foreground-ppg-reverse shadow-box-low"
+                          : "border-stroke-neutral bg-transparent text-foreground-neutral hover:border-stroke-neutral-strong hover:bg-background-default-050",
+                      )}
+                    >
+                      <i className={cn(item.icon, "text-xs")} />
+                      <span>{item.label}</span>
+                    </Button>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -437,7 +525,7 @@ export function PricingCalculator({ currency }: { currency: Symbol }) {
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="rounded-[18px] border border-stroke-neutral bg-background-neutral-weak p-5 shadow-box-high sm:p-6">
             <div className="mb-6 flex items-center gap-3 border-b border-stroke-neutral pb-4">
-              <i className="fa-solid fa-calculator text-base text-foreground-neutral-weak" />
+              <i className="fa-solid fa-calculator text-base text-foreground-neutral" />
               <h3 className="m-0 text-[20px] leading-7 font-sans-display [font-variation-settings:'wght'_700] text-foreground-neutral">
                 Estimate your monthly usage
               </h3>
@@ -458,7 +546,48 @@ export function PricingCalculator({ currency }: { currency: Symbol }) {
                 <div className="flex items-center gap-2 text-sm font-bold text-foreground-neutral">
                   <i className="fa-solid fa-bolt text-foreground-ppg" />
                   <span>Database Operations</span>
-                  <i className="fa-solid fa-circle-info text-xs text-foreground-neutral-weaker" />
+
+                  <div className="md:hidden">
+                    <Popover>
+                      <PopoverTrigger
+                        aria-label="What are database operations?"
+                        className="inline-flex items-center justify-center text-base text-foreground-neutral-weaker transition-colors hover:text-foreground-neutral"
+                      >
+                        <i className="fa-solid fa-circle-info" />
+                        <span className="sr-only">
+                          What are database operations?
+                        </span>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        align="start"
+                        className="w-[calc(100vw-2rem)] max-w-88 p-4"
+                      >
+                        <DatabaseOperationsInfoContent />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  <div className="hidden md:block">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            aria-label="What are database operations?"
+                            className="inline-flex items-center justify-center text-base text-foreground-neutral-weaker transition-colors hover:text-foreground-neutral"
+                          >
+                            <i className="fa-solid fa-circle-info" />
+                            <span className="sr-only">
+                              What are database operations?
+                            </span>
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-88">
+                          <DatabaseOperationsInfoContent />
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                 </div>
                 <InputShell>{formatNumber(databaseOperations)}</InputShell>
                 <Slider
@@ -466,7 +595,9 @@ export function PricingCalculator({ currency }: { currency: Symbol }) {
                   min={5_000_000}
                   max={MAX_DATABASE_OPERATIONS}
                   step={1_000_000}
-                  onValueChange={(value) => setDatabaseOperations(value[0] ?? databaseOperations)}
+                  onValueChange={(value) =>
+                    setDatabaseOperations(value[0] ?? databaseOperations)
+                  }
                 />
               </div>
 
@@ -476,7 +607,6 @@ export function PricingCalculator({ currency }: { currency: Symbol }) {
                   <span className="text-xs font-bold text-foreground-neutral-weak">
                     {SQL_QUERY_MULTIPLIER}x
                   </span>
-                  <i className="fa-solid fa-circle-info text-xs text-foreground-neutral-weaker" />
                 </div>
                 <InputShell>{formatNumber(estimatedSqlQueries)}</InputShell>
               </div>
@@ -545,7 +675,7 @@ export function PricingCalculator({ currency }: { currency: Symbol }) {
                       variant="default-weak"
                       onClick={() => setBillingCycle(cycle)}
                       className={cn(
-                        "rounded-square px-3 py-1.5 text-xs font-sans-display [font-variation-settings:'wght'_700] transition-colors",
+                        "rounded-square whitespace-nowrap flex-1 px-4 py-1.5 text-xs font-sans-display [font-variation-settings:'wght'_700] transition-colors",
                         active
                           ? "bg-background-ppg-reverse-strong text-foreground-ppg-reverse hover:bg-background-ppg-reverse-strong hover:text-foreground-ppg-reverse"
                           : "text-foreground-neutral-weaker",

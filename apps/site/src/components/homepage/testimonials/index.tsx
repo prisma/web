@@ -1,7 +1,7 @@
 "use client";
-
+import { CSSProperties, memo } from "react";
 import { cn } from "@/lib/cn";
-import { memo } from "react";
+import { Marquee } from "@/components/marquee";
 import { TestimonialItem, TestimonialItemType } from "./testimonial-item";
 
 type TestimonialsType = {
@@ -19,6 +19,10 @@ type TestimonialColProps = {
 
 const MemoizedTestimonialItem = memo(TestimonialItem);
 
+const getTestimonialKey = (testimonial: TestimonialItemType, idx: number) =>
+  testimonial.key ??
+  `${testimonial.author}-${testimonial.company}-${testimonial.title}-${idx}`;
+
 const getColumnSlices = (list: TestimonialItemType[]) => {
   const third = Math.ceil(list.length / 3);
   return [
@@ -29,54 +33,26 @@ const getColumnSlices = (list: TestimonialItemType[]) => {
 };
 
 const TestimonialCol = ({ color, list, reverse }: TestimonialColProps) => (
-  <div className="relative flex flex-row items-center overflow-hidden w-full min-h-[680px] max-w-[1200px] mx-auto h-[100px] hover:![animation-duration:0s]">
-    <div
-      className={cn(
-        "mx-auto flex-shrink-0 w-full absolute min-w-full flex flex-col",
-        reverse
-          ? "animate-slide-up md:hover:paused"
-          : "animate-slide-down md:hover:paused",
-      )}
-    >
-      {list.map((testimonial: TestimonialItemType, idx) => (
-        <MemoizedTestimonialItem
-          color={color}
-          key={`testimonial-rst-${idx}`}
-          {...testimonial}
-        />
-      ))}
-      {list.map((testimonial: TestimonialItemType, idx) => (
-        <MemoizedTestimonialItem
-          color={color}
-          key={`testimonial-rst-dup-${idx}`}
-          {...testimonial}
-        />
-      ))}
-    </div>
-    <div
-      className={cn(
-        "mx-auto flex-shrink-0 w-full absolute min-w-full flex flex-col",
-        reverse
-          ? "animate-slide-up-2 md:hover:paused translate-y-1/2"
-          : "animate-slide-down-2 md:hover:paused -translate-y-1/2",
-      )}
-    >
-      {list.map((testimonial: TestimonialItemType, idx) => (
-        <MemoizedTestimonialItem
-          color={color}
-          key={`testimonial-nd-${idx}`}
-          {...testimonial}
-        />
-      ))}
-      {list.map((testimonial: TestimonialItemType, idx) => (
-        <MemoizedTestimonialItem
-          color={color}
-          key={`testimonial-nd-dup-${idx}`}
-          {...testimonial}
-        />
-      ))}
-    </div>
-  </div>
+  <Marquee
+    direction="up"
+    pauseOnHover
+    reverse={reverse}
+    className="w-full min-h-[680px] max-w-[1200px] mx-auto h-[100px]"
+    innerClassName="w-full"
+    style={
+      {
+        "--duration": reverse ? "100s" : "130s",
+      } as CSSProperties
+    }
+  >
+    {list.map((testimonial: TestimonialItemType, idx) => (
+      <MemoizedTestimonialItem
+        color={color}
+        key={getTestimonialKey(testimonial, idx)}
+        {...testimonial}
+      />
+    ))}
+  </Marquee>
 );
 
 const getTabletSlices = (list: TestimonialItemType[]) => {
@@ -108,7 +84,7 @@ const Testimonials = ({ color, list, noShadow, mask }: TestimonialsType) => {
         className={cn(
           gridClasses,
           "hidden md:grid lg:hidden grid-cols-2",
-          "[&>*:nth-child(2)]:flex [&>*]:flex-1",
+          "[&>*:nth-child(2)]:flex *:flex-1",
         )}
       >
         <TestimonialCol color={color} reverse list={tabletCol1} />
@@ -120,7 +96,7 @@ const Testimonials = ({ color, list, noShadow, mask }: TestimonialsType) => {
         className={cn(
           gridClasses,
           "hidden lg:grid grid-cols-3",
-          "[&>*:nth-child(2)]:flex [&>*:nth-child(3)]:flex [&>*]:flex-1",
+          "[&>*:nth-child(2)]:flex [&>*:nth-child(3)]:flex *:flex-1",
         )}
       >
         <TestimonialCol color={color} reverse list={col1} />

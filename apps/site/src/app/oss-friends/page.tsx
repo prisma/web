@@ -38,7 +38,7 @@ export default async function OSSFriendsPage() {
             <i className="fa-regular fa-heart" aria-hidden />
             Community
           </p>
-          <h1 className="m-0 text-foreground-neutral text-5xl font-sans-display [font-variation-settings:'wght'_900]">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
             OSS Friends
           </h1>
           <p className="m-0 text-lg text-foreground-neutral-weak max-w-[560px]">

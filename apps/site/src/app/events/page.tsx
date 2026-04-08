@@ -1,7 +1,7 @@
 import { createPageMetadata } from "@/lib/page-metadata";
-import { JsonLd } from "@/components/json-ld";
 import { createCollectionPageStructuredData } from "@/lib/structured-data";
 import { Badge, Button, Card, CardContent } from "@prisma/eclipse";
+import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import Image from "next/image";
 import {
   meetups,

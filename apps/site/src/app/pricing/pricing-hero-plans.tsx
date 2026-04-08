@@ -37,9 +37,9 @@ export function PricingHeroPlans({
 
   return (
     <>
-      <section className="relative pt-28 pb-16 px-4">
-        <div className="absolute inset-0 bg-[radial-gradient(80%_60%_at_50%_0%,rgba(20,184,166,0.22),transparent_60%)] pointer-events-none" />
-        <div className="relative max-w-[1200px] mx-auto flex flex-col items-center gap-6">
+      <section className="hero h-full relative -mt-24 flex items-end justify-center px-4 pt-40">
+        <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-ppg)_0%,var(--color-background-default)_100%)] opacity-20" />
+        <div className="content relative z-2 max-w-[1200px] mx-auto flex flex-col items-center gap-3 md:gap-6">
           <Badge
             color="ppg"
             size="lg"
@@ -51,16 +51,16 @@ export function PricingHeroPlans({
               </>
             }
           />
-          <h1 className="stretch-display m-0 text-center text-foreground-neutral text-5xl md:text-7xl leading-tight font-sans-display [font-variation-settings:'wght'_900]">
+          <h1 className="stretch-display m-0 text-center text-foreground-neutral text-3xl md:text-7xl leading-tight font-sans-display [font-variation-settings:'wght'_900]">
             Scale as You Grow <br /> with Prisma Postgres
           </h1>
-          <p className="m-0 text-center text-xl text-foreground-neutral-weak">
+          <p className="m-0 text-center text-base md:text-xl text-foreground-neutral-weak">
             Operation-based pricing. We only charge for what you use.
           </p>
         </div>
       </section>
 
-      <section className="px-4 py-12">
+      <section className="px-4 py-6 md:py-12">
         <div className="max-w-[1288px] mx-auto">
           <div className="mb-6 flex justify-end">
             <Select value={currency} onValueChange={(value) => onCurrencyChange(value as Symbol)}>
@@ -85,7 +85,9 @@ export function PricingHeroPlans({
                 <article
                   key={planKey}
                   className={`relative rounded-2xl border ${
-                    highlighted ? "border-stroke-ppg" : "border-stroke-neutral-weak"
+                    highlighted
+                      ? "border-stroke-ppg mt-4 md:mt-0"
+                      : "border-stroke-neutral-weak"
                   } bg-background-default p-5 text-foreground-neutral shadow-[0px_18px_42px_0px_rgba(23,43,77,0.08)]`}
                 >
                   {highlighted && (

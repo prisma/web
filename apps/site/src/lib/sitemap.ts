@@ -1,11 +1,12 @@
 import type { Dirent } from "node:fs";
-import { readdir } from "node:fs/promises";
+import { readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { changelogSource } from "@/lib/changelog-source";
 import { getBaseUrl } from "@/lib/url";
 
 type SitemapEntry = {
   url: string;
+  lastModified?: string;
   changeFrequency?: "daily" | "weekly" | "monthly";
   priority?: number;
 };
@@ -77,8 +78,13 @@ function getEntryMetadata(pathname: string): Omit<SitemapEntry, "url"> {
   };
 }
 
+type PageRoute = {
+  pathname: string;
+  filePath: string;
+};
+
 /** Recursively collect public page routes from the App Router tree. */
-async function collectPageRoutes(directory: string, segments: string[] = []): Promise<string[]> {
+async function collectPageRoutes(directory: string, segments: string[] = []): Promise<PageRoute[]> {
   let entries: Dirent<string>[];
 
   try {
@@ -112,26 +118,62 @@ async function collectPageRoutes(directory: string, segments: string[] = []): Pr
         return [];
       }
 
-      return [routeSegments.length === 0 ? "/" : `/${routeSegments.join("/")}`];
+      return [{
+        pathname: routeSegments.length === 0 ? "/" : `/${routeSegments.join("/")}`,
+        filePath: entryPath,
+      }];
     }),
   );
 
   return routes.flat();
 }
 
+/** Get the last modified date of a file as an ISO date string (YYYY-MM-DD). */
+async function getFileLastModified(filePath: string): Promise<string | undefined> {
+  try {
+    const fileStat = await stat(filePath);
+    return fileStat.mtime.toISOString().split("T")[0];
+  } catch {
+    return undefined;
+  }
+}
+
 /** Generate sitemap entries for all public pages in the site app. */
 export async function getSiteSitemapEntries(baseUrl = getBaseUrl()): Promise<SitemapEntry[]> {
-  const [pathnames, changelogEntries] = await Promise.all([
+  const [pageRoutes, changelogPages] = await Promise.all([
     collectPageRoutes(APP_DIRECTORY),
-    changelogSource.getPages().map((page) => page.url),
+    changelogSource.getPages(),
   ]);
 
-  const allPathnames = [...new Set([...pathnames, ...changelogEntries])];
+  // Build a map of pathname → lastmod from page file stats
+  const pageLastModMap = new Map<string, string | undefined>();
+  await Promise.all(
+    pageRoutes.map(async ({ pathname, filePath }) => {
+      pageLastModMap.set(pathname, await getFileLastModified(filePath));
+    }),
+  );
+
+  // Changelog entries use their frontmatter date as lastmod
+  const changelogLastModMap = new Map<string, string>();
+  for (const page of changelogPages) {
+    const date = page.data.date instanceof Date
+      ? page.data.date.toISOString().split("T")[0]
+      : String(page.data.date).split("T")[0];
+    changelogLastModMap.set(page.url, date);
+  }
+
+  const allPathnames = [
+    ...new Set([
+      ...pageRoutes.map((route) => route.pathname),
+      ...changelogPages.map((page) => page.url),
+    ]),
+  ];
 
   return allPathnames
     .sort((left, right) => left.localeCompare(right))
     .map((pathname) => ({
       url: new URL(pathname, baseUrl).toString(),
+      lastModified: changelogLastModMap.get(pathname) ?? pageLastModMap.get(pathname),
       ...getEntryMetadata(pathname),
     }));
 }
@@ -155,8 +197,11 @@ ${items}
 /** Render a URL sitemap document. */
 export function renderSitemapXml(entries: SitemapEntry[]): string {
   const items = entries
-    .map(({ url, changeFrequency, priority }) => {
+    .map(({ url, lastModified, changeFrequency, priority }) => {
       const metadata = [
+        lastModified
+          ? `    <lastmod>${escapeXml(lastModified)}</lastmod>`
+          : null,
         changeFrequency
           ? `    <changefreq>${escapeXml(changeFrequency)}</changefreq>`
           : null,

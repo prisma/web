@@ -34,7 +34,7 @@ export default async function ChangelogPage() {
           <i className="fa-regular fa-sparkles" aria-hidden />
           Changelog
         </p>
-        <h1 className="stretch-display text-4xl font-bold mb-2 landing-h1 text-center mt-9 font-sans-display">
+        <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
           The Latest News from Prisma
         </h1>
         <p className="m-0 max-w-[640px] mx-auto text-center text-base text-foreground-neutral-weak md:text-lg">

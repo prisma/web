@@ -1,0 +1,137 @@
+---
+title: "Improving Query Performance with Indexes using Prisma: Introduction"
+slug: "improving-query-performance-using-indexes-1-zuLNZwBkuL"
+date: "2022-09-06"
+authors:
+  - "Alex Ruheni"
+metaTitle: "Improving query performance with database indexes using Prisma: Introduction"
+metaDescription: "Learn the fundamentals of database indexes: what they are, the problem they solve, and their benefit and cost"
+metaImagePath: "/improving-query-performance-using-indexes-1-zuLNZwBkuL/imgs/meta-c92a4afeb9d9b1df6f8104fced300d5e49233bd0-1269x714.png"
+heroImagePath: "/improving-query-performance-using-indexes-1-zuLNZwBkuL/imgs/hero-1c62649f62f41f22d8a54c882cd24da906c51479-844x474.svg"
+heroImageAlt: "Improving Query Performance with Indexes using Prisma: Introduction"
+series:
+  title: "Improving query performance with indexes using Prisma"
+seriesIndex: 1
+tags:
+  - "education"
+---
+
+One strategy for improving the performance of your database queries is using _indexes_. This article covers the fundamentals of database indexes: what they are, how they work, and their cost and benefits.
+
+## Overview
+- [What we can learn about databases from a book library](#what-we-can-learn-about-databases-from-a-book-library)
+  - [Storing books in smaller shelves (partitioning)](#storing-books-in-smaller-shelves-partitioning)
+  - [More people searching leads to faster searches (query parallelization)](#more-people-searching-leads-to-faster-searches-query-parallelization)
+  - [Using a catalog to store book metadata for faster retrieval (indexes)](#using-a-catalog-to-store-book-metadata-for-faster-retrieval-indexes)
+  - [Conclusion: You can speed up search time by reducing search scope](#conclusion-you-can-speed-up-search-time-by-reducing-search-scope)
+- [What are database indexes?](#what-are-database-indexes)
+  - [Types of database indexes](#types-of-database-indexes)
+  - [Anatomy of a database query](#anatomy-of-a-database-query)
+  - [Sequential scans go through the entire table](#sequential-scans-go-through-the-entire-table)
+  - [Index scans first look up metadata to find the record faster](#index-scans-first-look-up-metadata-to-find-the-record-faster)
+  - [Index-only scans look up the record in the index directly](#index-only-scans-look-up-the-record-in-the-index-directly)
+  - [The price you pay for faster reads](#the-price-you-pay-for-faster-reads)
+- [Summary and next steps](#summary-and-next-steps)
+
+## What we can learn about databases from a book library
+
+A database is like a library. Books in a library are usually well organized, much like data in a database. Both provide great structures for storing vast amounts of information for later retrieval. 
+
+Continuing with the library analogy, libraries store large amounts of data.  The more books you have, the longer the time it takes to find a book. The time taken to retrieve a book can be influenced by the strategy for **storing** and **searching**  books in the library.
+
+### Storing books in smaller shelves (partitioning)
+
+You may naively organize the books into one big shelf alphabetically according to the title, for example. One strategy for retrieving a book faster would be storing them in smaller bookshelves in alphabetical ranges.
+
+This is similar to [_partitioning_](https://docs.gitlab.com/ee/development/database/table_partitioning.html) a table in a database. A table is split into smaller chunks by a _partition key_ which is included in a query. A partition key is the column used to split the table. The database narrows down the data to be queried using the partition key.
+
+![Table Partitioning](/improving-query-performance-using-indexes-1-zuLNZwBkuL/imgs/table-partitioning.png)
+
+### More people searching leads to faster searches (query parallelization)
+
+Another strategy for faster book retrieval would be to ask more people to join your search and distribute their work in a structured way. Some databases support a similar pattern where the database server can assign more compute or CPU cores to execute a query. This is known as [_parallel query execution_](https://www.postgresql.org/docs/current/parallel-query.html).
+
+![Parallelized database query](/improving-query-performance-using-indexes-1-zuLNZwBkuL/imgs/query-parallelization.png)
+
+### Using a catalog to store book metadata for faster retrieval (indexes)
+
+Another pattern you could use to retrieve a book is using a catalog. The catalog is an external, organized structure separate from the existing shelves containing the _metadata_ of the books in the library. The metadata contains information such as titles, authors, subjects, publication dates, and the book's location. Databases provide similar structures called indexes.
+
+![Database index](/improving-query-performance-using-indexes-1-zuLNZwBkuL/imgs/index.png)
+
+### Conclusion: You can speed up search time by reducing search scope
+
+The common denominator for all three strategies is retrieving data faster by reducing the scope of the search.
+
+The rest of the article will explore database indexes: what they are and how they work, benefits, cost, the anatomy of a query, and how to identify slow database queries.
+
+## What are database indexes?
+
+A database index is a smaller, secondary data structure used by the database server to store a subset of a table's data. Indexes are commonly used to improve the read performance of a given table.
+
+Indexes contain key-value pairs: 
+- **key**: the column(s) that will be used to create an index
+- **value**: and a pointer to the record in the specific table 
+
+You can index more than one column in a table. For example, if you have a table called `User` with 3 columns:`id`, `firstName`, and `lastName`, you can create one index on the `firstName` and `lastName` columns.
+
+The length of an index may be identical to the original column in the table but indexes have a smaller width.
+
+### Types of database indexes
+
+There are different types of indexes, each one suitable for a different use case. Some of the general categories of indexes include but are not limited to:
+
+- **Index (default)**: a normal, non-unique index that does not enforce any constraints on your data
+- **Primary keys**: used to uniquely identify a row in a table
+- **Unique indexes**: used to enforce uniqueness of a value in a column, preventing duplicate values
+- **Full-text indexes**: used on text columns and enables [full-text search](https://www.joshgraham.com/full-text-search-explained/)
+
+There are more specialized types of indexes different databases support. Some of the other types include hash indexes, GIN indexes for PostgreSQL, and clustered indexes for SQL server. 
+
+> The tutorial series will cover more specialized indexes that Prisma supports in future articles. Stay tuned!
+
+### Anatomy of a database query
+
+When the database receives a query, it first creates a _query plan_. A query plan is a list of instructions the database needs to follow to execute a given query. 
+
+The query plan specifies how the database intends to retrieve records. The database chooses the most optimal query strategy.
+
+You can prefix your SQL query with `EXPLAIN` to see information about your database's query plan. [Josh Berkus](https://twitter.com/fuzzychef) gave a presentation on "Explaining EXPLAIN" if you are interested in learning more about the PostgreSQL query planner.
+
+<Youtube videoId="ZOZglRUjfFI" />
+
+### Sequential scans go through the entire table
+
+One path the database might choose is look through each row in a table to find the records matching the filters. This is known as a _sequential scan_ or _full table scan_. 
+
+If you're working with a large dataset, sequential scans will slow down your queries. The time taken to find a record is influenced by the size of your dataset. The bigger the dataset, the longer it takes to retrieve a record.
+
+### Index scans first look up metadata to find the record faster
+
+Another path the database might choose is query the index, matching the filter with the values available in the index. The database then "consults" the original table for more data such as more columns. This is known as an _index scan_.
+
+### Index-only scans look up the record in the index directly
+
+The database might also choose to return the matching records from the index without even "consulting" the original table. This is known as an _index-only scan_. This can happen when the columns being returned and being filtered on already exist in the index. Here's an example that could make use of an index-only scan.
+
+```sql
+SELECT firstName from 'User' where firstName = 'Jimmy';
+```
+Other database providers such as PostgreSQL support other types of query plans such as [bitmap heap scan](https://pganalyze.com/docs/explain/scan-nodes/bitmap-heap-scan) and [bitmap index scans](https://pganalyze.com/docs/explain/scan-nodes/bitmap-index-scan) will not be covered in this series.
+
+### The price you pay for faster reads
+
+The universal consensus is that indexes are great for speeding up read performance. However, indexes come at a cost.
+
+You will incur additional overhead for your write operations. This is because every write requires the index to be updated as well.
+
+The other cost of indexes is that they require additional resources from the database server for maintenance. Indexes require additional storage, memory, and IO from the database server.
+
+**A general rule of thumb is to use indexes sparingly and on columns that are queried frequently.** You should also select the appropriate index type based on your requirements.
+
+## Summary and next steps
+
+In this article, you learned what a database index is, the different types of database indexes, the anatomy of a database query, and the cost of using database indexes to optimize your queries.
+
+In the next article, you will learn how you can improve the performance of your existing query using indexes in your application with Prisma.
+

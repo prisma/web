@@ -18,7 +18,7 @@ const stories = [
     imageAlt: "Showcase story",
     technologies: ["nest", "postgres", "prisma", "graphql", "docker"],
     excerpt: `Amplication is an open-source development tool. It helps you develop quality Node.js applications without spending time on repetitive coding tasks. It’s perfect for both backend and fullstack developers.`,
-    url: "https://prisma.io/blog/amplication-customer-story-nmlkbnlllxnn",
+    url: "https://prisma.io/blog/amplication-customer-story-nmlkBNlLlxnN",
   },
   {
     name: "Formbricks",
@@ -50,7 +50,7 @@ const stories = [
     technologies: ["graphql", "ts", "prisma", "aws", "nexus"],
     excerpt: `Elsevier is a global leader in information and analytics in scientific publishing and helps researchers and healthcare professionals.
     With the help of Prisma, Elsevier is in the process of modernizing the scientific publishing process efficiently and with flexibility.`,
-    url: "https://prisma.io/blog/elsevier-customer-story-ssaaskagmhtn",
+    url: "https://prisma.io/blog/elsevier-customer-story-SsAASKagMHtN",
   },
   {
     name: "Tryg",
@@ -60,7 +60,7 @@ const stories = [
     imageAlt: "Showcase story",
     technologies: ["kafka", "cockroach", "graphql", "kubernetes", "prisma"],
     excerpt: `Tryg saved huge amounts of time thanks to its “360” Data Broker platform that accelerated development cycles by removing the overhead incurred by configuring environments manually. Prisma was the critical technology that enabled them to democratize billions of records from different data sources.`,
-    url: "https://prisma.io/blog/tryg-customer-story-pdmdrrhtupvd",
+    url: "https://prisma.io/blog/tryg-customer-story-pdmdrRhTupvd",
   },
   {
     name: "Panther",
@@ -90,7 +90,7 @@ const stories = [
     imageAlt: "Showcase story",
     technologies: ["postgres", "nest", "prisma", "nexus", "apollo"],
     excerpt: `Grover offers monthly tech product subscriptions and splits work on its services across many teams. Some teams have recently found huge productivity gains by adopting Prisma. Read on to find out how Prisma has benefited Grover and how you can benefit as well.`,
-    url: "https://prisma.io/blog/grover-customer-success-story-nxkwgcgnuvfd",
+    url: "https://prisma.io/blog/grover-customer-success-story-nxkWGcGNuvFd",
   },
   {
     name: "Invisible",
@@ -100,7 +100,7 @@ const stories = [
     imageAlt: "Showcase story",
     technologies: ["next", "trpc", "prisma", "vercel", "postgres"],
     excerpt: `Invisible is a B2B productivity startup that allows its users to automate and outsource any complex workflow or business process through Worksharing. Prisma played a crucial role in allowing Invisible to future proof their tech stack and in supporting its scale.`,
-    url: "https://prisma.io/blog/how-migrating-from-sequelize-to-prisma-allowed-invisible-to-scale-i4pz2mwu6q",
+    url: "https://prisma.io/blog/how-migrating-from-Sequelize-to-Prisma-allowed-Invisible-to-scale-i4pz2mwu6q",
   },
   {
     name: "Pearly",
@@ -111,7 +111,7 @@ const stories = [
     technologies: ["apollo", "nexus", "prisma", "gcp", "postgres"],
     excerpt:
       "Pearly provides a platform for dentists to create better and reliable revenue streams and affordable care plans for their patients. Learn how Prisma has helped them scale quickly with an ultra-lean team. ",
-    url: "https://prisma.io/blog/pearly-plan-customer-success-pdmdrrhtupve",
+    url: "https://prisma.io/blog/pearly-plan-customer-success-pdmdrRhTupve",
   },
   {
     name: "Poppy",
@@ -122,7 +122,7 @@ const stories = [
     technologies: ["node", "postgres", "prisma", "redis", "gcp"],
     excerpt:
       "Poppy offers rides of all kinds through its mobile app. Whether its a car, scooter, or e-step, Poppy has it. Prisma plays a vital role in helping Poppy ship quickly and confidently and is a big reason they ve just hit 1.5 million total rides taken.",
-    url: "https://prisma.io/blog/poppy-customer-success-story-swnwqcgrrvpd",
+    url: "https://prisma.io/blog/poppy-customer-success-story-swnWQcGRRvpd",
   },
   {
     name: "iopool",
@@ -132,7 +132,7 @@ const stories = [
     imageAlt: "Showcase story",
     technologies: ["cognito", "postgres", "aws", "prisma", "nexus"],
     excerpt: `In 2020, iopool realized that their architecture was slowing them down and preventing them from innovating. They decided to switch to Lambda functions and a PostgreSQL database powered by Prisma. Learn how this has helped them move fast with confidence and has greatly simplified their process.`,
-    url: "https://prisma.io/blog/iopool-customer-success-story-ulscwvaqzxoa",
+    url: "https://prisma.io/blog/iopool-customer-success-story-uLsCWvaqzXoa",
   },
 ];
 

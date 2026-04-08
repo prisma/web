@@ -30,7 +30,7 @@ export default function SupportPolicyPage() {
               <i className="fa-regular fa-headset" />
               <span>Support</span>
             </div>
-            <h1 className="text-6xl [font-variation-settings:'wght'_900,'wdth'_125] mb-0 mt-0 font-sans-display text-foreground-neutral">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
               Prisma Support Policy
             </h1>
           </div>

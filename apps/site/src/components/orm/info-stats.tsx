@@ -1,7 +1,14 @@
 "use client";
-import { FunctionComponent } from "react";
-import AnimatedNumbers from "react-animated-numbers";
+import { type CSSProperties, FunctionComponent } from "react";
 import { cn } from "@/lib/cn";
+
+const numberStyle = {
+  fontStyle: "normal",
+  fontWeight: 700,
+  lineHeight: "100%",
+  letterSpacing: "-0.02em",
+} satisfies CSSProperties;
+
 export const InfoStats: FunctionComponent<{
   icon?: any;
   number?: string;
@@ -12,7 +19,7 @@ export const InfoStats: FunctionComponent<{
 
   return (
     match && (
-      <div className="relative flex items-center cursor-default text-foreground-orm-strong w-full sm:w-fit sm:mx-auto [&>div]:first:flex [&>div]:first:justify-center [&>div]:first:items-center [&>div]:first:mb-[10px] font-sans-display flex-col justify-center items-center">
+      <div className="relative flex cursor-default text-foreground-orm-strong w-full sm:w-fit sm:mx-auto [&>div]:first:flex [&>div]:first:justify-center [&>div]:first:items-center [&>div]:first:mb-[10px] font-sans-display flex-col justify-center items-center">
         {link && (
           <a
             href={link}
@@ -28,15 +35,7 @@ export const InfoStats: FunctionComponent<{
               marginTop: `4px`,
             }}
           />
-          <AnimatedNumbers
-            animateToNumber={Number(match[1])}
-            fontStyle={{
-              fontStyle: "normal",
-              fontWeight: 700,
-              lineHeight: "100%",
-              letterSpacing: "-0.02em",
-            }}
-          />
+          <span style={numberStyle}>{match[1]}</span>
           <span className="-translate-y-1">{match[2]}</span>
         </div>
         <span className="font-mono text-foreground-neutral-weak text-sm">

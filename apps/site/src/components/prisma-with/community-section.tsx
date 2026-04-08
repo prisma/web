@@ -1,3 +1,4 @@
+import Image from "next/image";
 import parse from "html-react-parser";
 import { cn } from "../../lib/cn";
 import { Card, Action } from "@prisma/eclipse";
@@ -45,9 +46,12 @@ export function CommunitySection({ data }: { data: CommunitySectionData }) {
                     className="self-start flex-none"
                   >
                     {card.image ? (
-                      <img
+                      <Image
                         src={card.image}
                         alt=""
+                        width={24}
+                        height={24}
+                        loading="lazy"
                         className="h-6 w-6 object-contain"
                       />
                     ) : (

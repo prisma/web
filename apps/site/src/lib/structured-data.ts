@@ -1,4 +1,5 @@
 import { getBaseUrl } from "@/lib/url";
+import { SITE_HOME_DESCRIPTION } from "@/lib/site-metadata";
 
 type FaqEntry = {
   question: string;
@@ -30,8 +31,7 @@ function toPlainText(value: string): string {
 
 export function createSiteStructuredData() {
   const baseUrl = getBaseUrl();
-  const description =
-    "Prisma is a next-generation Node.js and TypeScript ORM for PostgreSQL, MySQL, SQL Server, SQLite, MongoDB, and CockroachDB. It provides type-safety, automated migrations, and an intuitive data model.";
+  const description = SITE_HOME_DESCRIPTION;
 
   return {
     "@context": "https://schema.org",
@@ -65,11 +65,7 @@ export function createSiteStructuredData() {
   };
 }
 
-export function createFaqStructuredData(
-  pagePath: string,
-  faqs: FaqEntry[],
-  name: string,
-) {
+export function createFaqStructuredData(pagePath: string, faqs: FaqEntry[], name: string) {
   return {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -84,6 +80,42 @@ export function createFaqStructuredData(
         text: toPlainText(faq.answer),
       },
     })),
+  };
+}
+
+export function createSoftwareApplicationStructuredData({
+  path,
+  name,
+  description,
+  applicationCategory = "DeveloperApplication",
+  operatingSystem = "Cross-platform",
+}: {
+  path: string;
+  name: string;
+  description: string;
+  applicationCategory?: string;
+  operatingSystem?: string;
+}) {
+  const url = absoluteUrl(path);
+  const baseUrl = getBaseUrl();
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "@id": `${url}#software`,
+    name,
+    description,
+    url,
+    applicationCategory,
+    operatingSystem,
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "USD",
+    },
+    provider: {
+      "@id": `${baseUrl}#organization`,
+    },
   };
 }
 

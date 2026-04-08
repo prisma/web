@@ -46,7 +46,7 @@ export default async function ReleaseNotesPage({
             >
               ← Back to Changelog
             </Link>
-            <h1 className="mt-3 mb-8 font-bold max-md:text-3xl md:text-5xl   stretch-display font-sans-display text-foreground-neutral">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
               {page.data.title}
             </h1>
             <div className="text-sm flex gap-2 items-center text-foreground-neutral mb-4">
