@@ -47,7 +47,10 @@ const CardFooter = () => (
     <Separator className="my-6" />
     <div className="flex flex-col items-center md:items-stretch md:flex-row justify-between w-full gap-8">
       {badge_list.map((badge: any) => (
-        <div className="flex flex-col md:flex-row gap-2 md:gap-6 md:items-center" key={badge.title}>
+        <div
+          className="flex flex-col items-center md:items-center md:flex-row gap-2 md:gap-6"
+          key={badge.title}
+        >
           <h6 className="font-semibold text-2xs text-foreground-neutral uppercase">
             {badge.title}
           </h6>
@@ -144,9 +147,11 @@ const twoCol_2 = [
           A meaningful comparison of database query latencies across database providers and ORM
           libraries in the Node.js & TypeScript ecosystem.
         </p>
-        <Button variant="orm" size="xl" href="https://benchmarks.prisma.io" className="w-fit mx-auto lg:w-full">
-          <span>Explore Benchmarks</span>
-          <i className="fa-regular fa-arrow-right ml-2!" />
+        <Button asChild variant="orm" size="xl" className="w-fit mx-auto lg:w-full">
+          <a href="https://benchmarks.prisma.io">
+            Explore Benchmarks
+            <i className="fa-regular fa-arrow-right" />
+          </a>
         </Button>
       </div>
     ),

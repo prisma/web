@@ -103,8 +103,9 @@ function NavigationWrapper({
     <div
       data-slot="navigation-wrapper"
       className={cn(
-        "transition-navbar max-w-7xl w-full mx-auto py-3 px-6 shadow-box-high bg-background-default/50 [backdrop-filter:blur(3)] rounded-square-high flex justify-between align-center",
-        mobileOpen && "py-7 px-10 rounded-none md:py-3! md:px-6! md:rounded-square-high",
+        "max-w-7xl w-full mx-auto py-3 px-6 shadow-box-high bg-background-default/50 [backdrop-filter:blur(3)] rounded-square-high flex justify-between align-center transition-[max-width] duration-500 ease-[cubic-bezier(0.075,0.82,0.165,1)] group-data-[stuck=true]/navigation-menu:max-w-235",
+        mobileOpen &&
+          "py-7 px-10 rounded-none md:py-3! md:px-6! md:rounded-square-high",
         className,
       )}
       {...props}

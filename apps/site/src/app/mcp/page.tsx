@@ -180,7 +180,7 @@ export default function McpPage() {
       <div className="relative z-1 flex flex-col">
         <McpHeroSection docsHref={DOCS_MCP} features={heroFeatures} />
         <McpVideoSection />
-        <McpAgentsSection docsHref={DOCS_MCP} agents={agents} />
+        <McpAgentsSection agents={agents} />
         <McpCapabilitiesSection capabilities={capabilities} />
         <McpCtaSection docsHref={DOCS_MCP} readDocsHref="https://www.prisma.io/docs/ai" />
       </div>
