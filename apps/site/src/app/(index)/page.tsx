@@ -87,7 +87,7 @@ export const metadata: Metadata = {
 export default function SiteHome() {
   return (
     <main className="flex-1 w-full z-1 bg-background-default">
-      <section className="hero h-full relative -mt-24 flex items-end justify-center px-4 pt-48">
+      <section className="hero h-full relative -mt-24 flex items-end justify-center px-4 pt-40">
         <div className="w-screen h-full absolute inset-0">
           <Antigravity
             count={300}
@@ -108,7 +108,7 @@ export default function SiteHome() {
           />
         </div>
         <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-ppg)_0%,var(--color-background-default)_100%)] opacity-20" />
-        <div className="content relative z-2 my-12 py-12 flex flex-col gap-8">
+        <div className="content relative z-2 flex flex-col gap-8">
           <div className="flex flex-col gap-4 items-center text-center">
             
             <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">

@@ -30,7 +30,7 @@ interface CardSectionProps {
 
 const imageShadowClass = "shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)]";
 const sectionClass =
-  "py-6 md:py-8 lg:py-12 my-6 md:my-8 lg:my-12 w-full overflow-visible";
+  "py-6 md:py-8 lg:py-12 my-6 md:my-8 lg:my-12 w-full overflow-visible px-4 sm:px-0";
 
 const getCardSectionItemKey = (item: TwoColumnItem) =>
   [
@@ -290,7 +290,7 @@ export const CardSection = ({ cardSection }: CardSectionProps) => {
     <div
       ref={containerRef}
       className={cn(
-        "max-w-[1232px] mx-auto mt-8 px-4 overflow-visible",
+        "max-w-[1232px] mx-auto mt-8 px-0 sm:px-4 overflow-visible",
         hasSteps && "flex-col md:flex-row items-start gap-6! relative",
       )}
     >
