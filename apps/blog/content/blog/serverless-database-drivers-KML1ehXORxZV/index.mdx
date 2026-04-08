@@ -1,0 +1,212 @@
+---
+title: "Support for Serverless Database Drivers in Prisma ORM Is Now in Preview"
+slug: "serverless-database-drivers-KML1ehXORxZV"
+date: "2023-10-06"
+authors:
+  - "Jon Harrell"
+metaTitle: "Support for Serverless Database Drivers in Prisma ORM Is Now in Preview"
+metaDescription: "Prisma support for JavaScript-based serverless database drivers is now in Preview, enabling you to connect to Neon and PlanetScale via HTTP and WebSockets."
+metaImagePath: "/serverless-database-drivers-KML1ehXORxZV/imgs/meta-216c379698ad6fde0769ab278a33890eecc24240-1266x711.png"
+heroImagePath: "/serverless-database-drivers-KML1ehXORxZV/imgs/hero-57908d058c349573b2f17ef889d25a23a427b0e2-844x474.svg"
+heroImageAlt: "Support for Serverless Database Drivers in Prisma ORM Is Now in Preview"
+tags:
+  - "orm"
+  - "serverless"
+  - "release"
+---
+
+Prisma is releasing Preview support for serverless database drivers from [Neon](#use-neon-with-neondatabaseserverless) and [PlanetScale](#use-planetscale-with-planetscaledatabase). This feature allows Prisma users to leverage the existing database drivers for communication with their database without long-lived TCP connections!
+
+## What are serverless database drivers?
+
+Traditionally, database drivers establish a long-lived TCP connection with a database to communicate. Even though a TCP connection has some overhead at the start, continued communication has little to no overhead, making it ideal for serverful deployments.
+
+However, long-lived connections can cause problems in serverless environments. Given the ephemeral nature of serverless functions, it can become a chore to track connections, close idle ones, handle zombies, and maintain an internal connection pool so your database doesn’t get overwhelmed. On top of this, a growing number of cloud providers disallow arbitrary TCP connections, making it challenging to use existing databases that rely on TCP connections.
+
+<Image
+  className="mx-auto"
+  src="/blog/serverless-database-drivers-KML1ehXORxZV/imgs/connection-pooling.png"
+  alt="Using a traditional database with serverless functions can quickly lead to an overwhelmed database."
+  caption="Serverless functions can quickly exhaust database connections"
+/>
+
+As a response to the above issues, Prisma developed [Prisma Accelerate](https://prisma.io/accelerate) in order to provide a better experience for apps running on serverless functions. In addition, several database providers have also developed their own database driver libraries. These drivers use different protocols, such as HTTP or WebSocket, rather than traditional TCP connections, and as such are ideal for serverless, which is evolving rapidly.
+
+So, how do these serverless drivers fit in with Prisma?
+
+## Prisma ORM now supports serverless drivers
+
+Since its [initial release](https://www.prisma.io/blog/announcing-prisma-2-zq1s745db8i5), a crucial part of the Prisma ORM has been the Query Engine. Written in Rust, the Query Engine allows for Prisma Client queries to be reliably and efficiently translated into SQL statements, which are then executed via the included database drivers. This system has worked well in the past, but a few months ago, we noticed the trend of new database providers providing serverless database drivers written in JavaScript, that talk to special endpoints via HTTP. Our team knew building Rust-based implementations that communicated with these new endpoints would be a massive undertaking.
+
+<Image
+  className="mx-auto"
+  src="/blog/serverless-database-drivers-KML1ehXORxZV/imgs/without-driver-adapter.png"
+  alt="A diagram showing Prisma Client using Prisma's Query Engine to open long-lived TCP connections to a database"
+  caption="Prisma Client communicating with a database without a driver adapter."
+/>
+
+Also, while Prisma ORM works with many database engines and providers, it could only connect to these databases via a direct TCP connection, or through a connection pooler such as [Prisma Accelerate](https://prisma.io/accelerate). Today, both of these issues are resolved with the introduction of **driver adapters** that enables the Prisma ORM to use existing JavaScript database drivers when connecting to supported databases.
+
+Today, we are releasing two driver adapters: `@prisma/adapter-neon` and `@prisma/adapter-planetscale`. These adapters act as _translators_ between Prisma Client and JavaScript serverless database drivers. If you are using a database driver and a driver adapter, your app no longer requires a direct TCP connection to your database in order to function and instead communicates with your database over HTTP or a WebSocket connection. Prisma uses the Rust engine to translate Prisma Client queries to SQL and then run these queries via these drivers. With this setup, we’re able to offer the best of both worlds: a battle-tested query engine and the ability to use an increasing number of providers in Prisma-powered codebases.
+
+<Image
+  className="mx-auto"
+  src="/blog/serverless-database-drivers-KML1ehXORxZV/imgs/with-driver-adapter.png"
+  alt="A diagram showing Prisma Client using Prisma's Query Engine translate queries but a separate database driver to communicate."
+  caption="Prisma Client using a driver adapter and serverless database driver to communicate with a database."
+/>
+
+ Now, the only requirement is the ability to make HTTP or WebSocket requests, dramatically simplifying Function-as-a-Service (FaaS) deployments.
+
+## How to use Prisma ORM with serverless database drivers
+
+Setting up Prisma to work with the Neon or PlanetScale serverless database drivers is easy:
+
+1. Set up your database driver as usual
+1. Pass it to the corresponding Prisma driver adapter
+1. Create a Prisma Client with that driver adapter
+
+First, install `prisma` and `@prisma/client` to at least version `5.4.1`. Also install `dotenv` so that any environment variable defined in your `.env` file will be available in your script via `process.env`.
+
+```shell
+npm install --save-dev prisma@^5.4.1
+npm install @prisma/client@^5.4.1
+npm install dotenv
+```
+Now, you can set up Prisma Client as below.
+
+### Use Neon with `@neondatabase/serverless`
+
+<Image
+  src="/blog/serverless-database-drivers-KML1ehXORxZV/imgs/neon-logo.png"
+  alt="The logo of neon.tech"
+  className="mx-auto w-[30%] pl-5 float-right"
+/>
+
+After [creating your database on Neon](https://neon.tech/docs/get-started-with-neon/setting-up-a-project) you'll need to install the `@prisma/adapter-neon` driver adapter, Neon’s serverless database driver `@neondatabase/serverless`, and `ws` to set up a WebSocket connection for use by Neon.
+
+```shell
+npm install @prisma/adapter-neon
+npm install @neondatabase/serverless
+npm install ws
+```
+Then make sure your [Neon database connection string](https://neon.tech/docs/connect/connect-from-any-app) is copied over to your `.env` file. The connection string will start with `postgres://`.
+```
+// .env
+DATABASE_URL="postgres://..."
+```
+You can now reference this environment variable in your `schema.prisma` datasource. Make sure you also include the `driverAdapters` Preview feature.
+
+```prisma
+// schema.prisma
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+```
+Now run `npx prisma generate` to re-generate Prisma Client and make the Preview feature available in your app.
+
+After the above setup, you can continue in your script:
+
+1. Import packages
+1. [Set up the Neon serverless database driver](https://neon.tech/docs/serverless/serverless-driver#using-node-postgres-pool-or-client)
+1. Instantiate the Prisma Neon adapter with the Neon serverless database driver
+1. Pass the driver adapter to the Prisma Client instance
+
+```ts
+// Import needed packages
+import { Pool, neonConfig } from '@neondatabase/serverless';
+import { PrismaNeon } from '@prisma/adapter-neon';
+import { PrismaClient } from '@prisma/client';
+import dotenv from 'dotenv';
+import ws from 'ws';
+
+// Setup
+dotenv.config()
+neonConfig.webSocketConstructor = ws;
+const connectionString = `${process.env.DATABASE_URL}`;
+
+// Init prisma client
+const pool = new Pool({ connectionString });
+const adapter = new PrismaNeon(pool);
+const prisma = new PrismaClient({ adapter });
+
+// Use Prisma Client as normal
+```
+Now your code has built-in benefits of the Neon serverless driver, such as WebSocket connections and [message pipelining](https://neon.tech/blog/quicker-serverless-postgres), while Prisma covers connection creation and destruction, error handling, and type safety. If you have any feedback about our Neon Serverless Driver support, please leave a comment on our [dedicated GitHub issue](https://github.com/prisma/prisma/discussions/21346) and we'll use it as we continue development.
+
+### Use PlanetScale with `@planetscale/database`
+
+<Image
+  src="/blog/serverless-database-drivers-KML1ehXORxZV/imgs/planetscale-logo.png"
+  alt="The logo of planetscale.com"
+  className="mx-auto w-[40%] pl-5 pb-5 float-right"
+/>
+
+After [getting started with PlanetScale](https://planetscale.com/docs/tutorials/planetscale-quick-start-guide) you can use the [PlanetScale serverless driver](https://planetscale.com/docs/tutorials/planetscale-serverless-driver) to connect to your database. You will need to install the `@prisma/adapter-planetscale` driver adapter, the `@planetscale/database` serverless driver, and `undici` to provide a `fetch` function to the PlanetScale driver.
+
+```shell
+npm install @prisma/adapter-planetscale
+npm install @planetscale/database
+npm install undici
+```
+Then make sure your [PlanetScale database connection string](https://planetscale.com/docs/concepts/connection-strings) is copied over to your `.env` file. The connection string will start with `mysql://`
+```
+// .env
+DATABASE_URL="mysql://..."
+```
+You can now reference this environment variable in your `schema.prisma` datasource. Make sure you also include the `driverAdapters` Preview feature.
+
+```prisma
+// schema.prisma
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider     = "mysql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+```
+Now run `npx prisma generate` to re-generate Prisma Client and make the Preview feature available in your app.
+
+```ts
+// Import needed packages
+import { connect } from '@planetscale/database';
+import { PrismaPlanetScale } from '@prisma/adapter-planetscale';
+import { PrismaClient } from '@prisma/client';
+import dotenv from 'dotenv';
+import { fetch as undiciFetch } from 'undici';
+
+// setup
+dotenv.config();
+const connectionString = `${process.env.DATABASE_URL}`;
+
+// init prisma client
+const connection = connect({ url: connectionString, fetch: undiciFetch });
+const adapter = new PrismaPlanetScale(connection);
+const prisma = new PrismaClient({ adapter });
+
+// Use Prisma Client as normal
+```
+Your Prisma Client instance now uses PlanetScale's [`database-js`](https://github.com/planetscale/database-js) which can [improve connection reliability and performance](https://planetscale.com/blog/faster-mysql-with-http3). It uses HTTP requests instead of Prisma’s connection pool, but Prisma will continue to handle error handling and type safety. If you have any feedback about our PlanetScale Serverless Driver support, please leave a comment on our [dedicated GitHub issue](https://github.com/prisma/prisma/discussions/21347) and we'll use it as we continue development.
+
+
+<hr />
+
+While the setup of the database driver and the driver adapter differ from our existing Getting Started guides, your Prisma Client will feel very familiar, except now it is taking advantage of your chosen database client and communicates with your database without using TCP connections.
+
+## Wrapping up
+
+We're excited that Prisma users can now take advantage of the Neon and PlanetScale serverless database drivers. These drivers are perfect for serverless environments or areas where long-lived TCP connections are not possible.
+
+Prisma Client and the new driver adapters feature currently do not support Edge Functions deployments such as CloudFlare Workers or Vercel Edge Functions yet. If you want to test the Neon or PlanetScale Serverless Driver in Edge Functions environments, make sure to submit a [response to our survey](https://pris.ly/survey/driver-adapters-serverless-blog) so that you will be considered for Early Access to our edge function support as well. We'll have news soon.
+
+We would love to know what you think! Try out the `driverAdapters` [Preview feature](https://www.prisma.io/docs/about/prisma/releases#preview) and pass any feedback you have via our GitHub disccussions for [Neon](https://github.com/prisma/prisma/discussions/21346) and [PlanetScale](https://github.com/prisma/prisma/discussions/21347) or on our [Discord](https://pris.ly/discord/driver-adapters).

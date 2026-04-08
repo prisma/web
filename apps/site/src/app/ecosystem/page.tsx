@@ -76,16 +76,11 @@ export default function SiteHome() {
             Explore the wide variety of tools created by our amazing community.
           </p>
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
-            <Button
-              variant="orm"
-              href="https://pris.ly/submit-your-package"
-              size="3xl"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-sans-display! font-[650]"
-            >
-              <span>Submit your package</span>
-              <i className="fa-regular fa-envelope ml-2" />
+            <Button asChild variant="orm" size="3xl" className="font-sans-display! font-[650]">
+              <a href="https://pris.ly/submit-your-package" target="_blank" rel="noopener noreferrer">
+                Submit your package
+                <i className="fa-regular fa-envelope" />
+              </a>
             </Button>
           </div>
         </div>

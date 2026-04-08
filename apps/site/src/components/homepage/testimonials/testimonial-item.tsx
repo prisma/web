@@ -29,7 +29,7 @@ export const TestimonialItem = ({
   <div
     {...rest}
     className={cn(
-      "text-foreground-neutral p-3 my-2 font-[family-name:var(--barlow)] font-normal text-lg bg-surface-primary border border-border-primary rounded-[10px] leading-[25.2px]",
+      "text-foreground-neutral p-3 my-2 font-[family-name:var(--barlow)] font-normal text-lg bg-background-default border border-border-primary rounded-[10px] leading-[25.2px]",
       startups && "grid m-0",
     )}
   >

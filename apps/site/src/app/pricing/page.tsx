@@ -1,68 +1,19 @@
-import { JsonLd } from "@/components/json-ld";
-import { createPricingStructuredData } from "@/lib/structured-data";
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { Accordion, Accordions, Button } from "@prisma/eclipse";
 import { faqs } from "./pricing-data";
 import { PricingPageContent } from "./pricing-page-content";
 
-const pricingStructuredData = createPricingStructuredData([
-  {
-    name: "Free",
-    description: "Perfect for that weekend idea. 100,000 operations and 500 MB storage included.",
-    price: 0,
-    billingPeriod: "month",
-  },
-  {
-    name: "Starter",
-    description: "The basics you need to launch. 1,000,000 operations and 10 GB storage included.",
-    price: 10,
-    billingPeriod: "month",
-  },
-  {
-    name: "Pro",
-    description: "Growing for business success. 10,000,000 operations and 50 GB storage included.",
-    price: 49,
-    billingPeriod: "month",
-  },
-  {
-    name: "Business",
-    description: "For mission-critical apps. 50,000,000 operations and 100 GB storage included.",
-    price: 129,
-    billingPeriod: "month",
-  },
-]);
-
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: "Pricing — Prisma Postgres Plans & Features",
   description:
-    "Get started for free with Prisma Postgres. Choose the right plan for your workspace based on your project requirements.",
-  alternates: {
-    canonical: "https://www.prisma.io/pricing",
-  },
-  openGraph: {
-    title: "Pricing — Prisma Postgres Plans & Features",
-    description:
-      "Get started for free with Prisma Postgres. Choose the right plan for your workspace based on your project requirements.",
-    url: "https://www.prisma.io/pricing",
-    images: [
-      {
-        url: "/og/og-pricing.png",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Pricing — Prisma Postgres Plans & Features",
-    description:
-      "Get started for free with Prisma Postgres. Choose the right plan for your workspace based on your project requirements.",
-    images: ["/og/og-pricing.png"],
-  },
-};
+    "Get started for free with Prisma Postgres. Choose the right plan for your workspace based on your project requirements.",
+  path: "/pricing",
+  ogImage: "/og/og-pricing.png",
+});
 
 export default function PricingPage() {
   return (
     <main className="flex-1 w-full -mt-24 bg-background-default text-background-neutral-weak pt-24">
-      <JsonLd id="pricing-structured-data" data={pricingStructuredData} />
       <PricingPageContent />
 
       {/* FAQ */}
@@ -100,7 +51,6 @@ export default function PricingPage() {
       </section>
 
       {/* Try Prisma Postgres */}
-
       <section className="bg-radial from-background-ppg from-0% to-background-default to-70% px-4 py-12">
         <div className="mx-auto rounded-2xl bg-[url('/illustrations/homepage/footer_grid.svg')] bg-cover bg-center px-4 py-12">
           <div className="p-4 md:p-8">
@@ -114,17 +64,17 @@ export default function PricingPage() {
                 </p>
               </div>
               <div className="flex flex-col gap-6 md:flex-row">
-                <Button
-                  variant="ppg"
-                  size="2xl"
-                  href="https://console.prisma.io/sign-up?utm_source=website&utm_medium=pricing&utm_campaign=cta"
-                >
-                  <span>Create your first Database</span>
-                  <i className="fa-regular fa-arrow-right ml-2" />
+                <Button asChild variant="ppg" size="2xl">
+                  <a href="https://console.prisma.io/sign-up?utm_source=website&utm_medium=pricing&utm_campaign=cta">
+                    Create your first Database
+                    <i className="fa-regular fa-arrow-right" />
+                  </a>
                 </Button>
-                <Button variant="default-stronger" size="2xl" href="https://www.prisma.io/docs/">
-                  <span>Read the docs</span>
-                  <i className="fa-regular fa-book-open ml-2" />
+                <Button asChild variant="default-strong" size="2xl">
+                  <a href="https://www.prisma.io/docs/">
+                    Read the docs
+                    <i className="fa-regular fa-book-open" />
+                  </a>
                 </Button>
               </div>
               <h6 className="mb-0! -mt-4 text-xs text-foreground-neutral-weaker">

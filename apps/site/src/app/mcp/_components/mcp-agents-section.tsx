@@ -18,7 +18,7 @@ export type McpAgent = {
   copyText?: string;
 };
 
-export function McpAgentsSection({ agents }: { docsHref: string; agents: readonly McpAgent[] }) {
+export function McpAgentsSection({ agents }: { agents: readonly McpAgent[] }) {
   const tallyHref = "https://tally.so/r/wA1R1N";
 
   return (

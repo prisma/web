@@ -1,9 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useEffect, memo } from "react";
+import { memo } from "react";
 import defaultLogosData from "./default-logos.json";
-import { useTheme } from "@prisma-docs/ui/components/theme-provider";
 import GlowCursor from "@/components/homepage/glow-cursor";
 import { cn } from "@/lib/cn";
 
@@ -101,42 +100,27 @@ interface LogoGridProps {
 // ============================================================================
 
 const LogoImage = memo(({ logo, size }: { logo: Logo; size: number }) => {
-  const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const imageUrl =
-    mounted && resolvedTheme === "light" && logo.mobileImageUrl
-      ? logo.mobileImageUrl
-      : logo.imageUrl;
-
-  const imageUrlLight = logo.imageUrlLight;
-
-  const isSvg = imageUrl.endsWith(".svg");
-  const ImageComponent = isSvg ? Image : "img";
+  const lightImageUrl = logo.mobileImageUrl ?? logo.imageUrl;
+  const darkImageUrl = logo.imageUrlLight ?? logo.imageUrl;
+  const hasThemeVariant = lightImageUrl !== darkImageUrl;
+  const imageClassName = "w-full aspect-square rounded-lg object-contain";
 
   return (
     <>
-      <ImageComponent
-        src={imageUrl}
+      <Image
+        src={lightImageUrl}
         alt={logo.alt}
         width={size}
         height={size}
-        className={cn(
-          "w-full aspect-square rounded-lg object-contain",
-          imageUrlLight && "block dark:hidden",
-        )}
+        className={cn(imageClassName, hasThemeVariant && "block dark:hidden")}
       />
-      {imageUrlLight && (
-        <ImageComponent
-          src={imageUrlLight}
+      {hasThemeVariant && (
+        <Image
+          src={darkImageUrl}
           alt={logo.alt}
           width={size}
           height={size}
-          className="w-full aspect-square rounded-lg object-contain hidden dark:block"
+          className={cn(imageClassName, "hidden dark:block")}
         />
       )}
     </>
@@ -210,25 +194,9 @@ const TrackMode = memo(
         }}
       >
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 translate-z-0 w-[350px] h-[350px] md:w-[300px] md:h-[300px] rounded-full bg-[radial-gradient(circle,#E0F2F1_0%,_#F5F7FA_100%)] dark:bg-[radial-gradient(circle,#092A28_0%,#090A15_100%)] blur-[50px] md:blur-[40px] pointer-events-none z-0 will-change-[top,left,transform] [backface-visibility:hidden] [-webkit-backface-visibility:hidden] [perspective:1000px] [-webkit-perspective:1000px] isolate" />
-        <LogoBar
-          logos={logosBar1}
-          color={color}
-          pauseOnHover={false}
-          duplicateCount={2}
-        />
-        <LogoBar
-          logos={logosBar2}
-          color={color}
-          direction="left"
-          pauseOnHover={false}
-          duplicateCount={2}
-        />
-        <LogoBar
-          logos={logosBar3}
-          color={color}
-          pauseOnHover={false}
-          duplicateCount={2}
-        />
+        <LogoBar logos={logosBar1} color={color} />
+        <LogoBar logos={logosBar2} color={color} direction="left" />
+        <LogoBar logos={logosBar3} color={color} />
       </div>
     );
   },
@@ -243,20 +211,20 @@ TrackMode.displayName = "TrackMode";
 export const LogoGrid = ({
   logos: propLogos,
   type = "spotlight",
-  color = undefined,
+  color,
 }: LogoGridProps) => {
-  const logos =
-    propLogos && propLogos.length > 0 ? propLogos : defaultLogosData;
+  const logos = propLogos?.length ? propLogos : defaultLogosData;
+  const content =
+    type === "track" ? (
+      <TrackMode logos={logos} color={color} />
+    ) : (
+      <SpotlightMode logos={logos} color={color} />
+    );
 
-  const comps = {
-    track: <TrackMode logos={logos} color={color} />,
-    spotlight: <SpotlightMode logos={logos} color={color} />,
-    wrap: <SpotlightMode logos={logos} color={color} />,
-  };
   return (
     <>
       <AnimationStyles />
-      {comps[type]}
+      {content}
     </>
   );
 };

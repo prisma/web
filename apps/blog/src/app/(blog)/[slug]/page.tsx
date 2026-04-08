@@ -9,6 +9,7 @@ import {
   Separator,
 } from "@prisma/eclipse";
 
+import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import { FooterNewsletterForm } from "@prisma-docs/ui/components/newsletter";
 import { BlogShare } from "@/components/BlogShare";
 import { AuthorAvatarGroup } from "@/components/AuthorAvatarGroup";
@@ -153,12 +154,7 @@ export default async function Page(props: {
   return (
     <div className="w-full px-4 z-1 mx-auto md:grid md:grid-cols-[1fr_180px] mt-4 md:mt-22 gap-12 max-w-257">
       {blogPostingJsonLd ? (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(blogPostingJsonLd).replace(/</g, "\\u003c"),
-          }}
-        />
+        <JsonLd id="blog-posting-structured-data" data={blogPostingJsonLd} />
       ) : null}
       <div className="post-contents w-full">
         {/* Title + meta */}

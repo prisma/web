@@ -41,22 +41,24 @@ export default function SupportPolicyPage() {
           </p>
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
             <Button
+              asChild
               variant="orm"
-              href="https://www.prisma.io/docs"
               size="3xl"
-              className="font-sans-display! font-[650]"
             >
-              <span>Read the docs</span>
-              <i className="fa-regular fa-book-open ml-2" />
+              <a href="https://www.prisma.io/docs">
+                <span>Read the docs</span>
+                <i className="fa-regular fa-book-open" />
+              </a>
             </Button>
             <Button
-              variant="default-stronger"
-              href="/support"
+              asChild
+              variant="default-strong"
               size="3xl"
-              className="font-sans-display! font-[650]"
             >
-              <span>Visit support</span>
-              <i className="fa-regular fa-arrow-right ml-2" />
+              <a href="/support">
+                <span>Visit support</span>
+                <i className="fa-regular fa-arrow-right" />
+              </a>
             </Button>
           </div>
         </div>

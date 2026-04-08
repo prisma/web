@@ -1,6 +1,7 @@
-import { WebNavigation } from "@prisma-docs/ui/components/web-navigation";
 import { Footer } from "@prisma-docs/ui/components/footer";
 import { ThemeProvider } from "@prisma-docs/ui/components/theme-provider";
+import { NavigationWrapper } from "@/components/navigation-wrapper";
+import { UtmPersistence } from "@/components/utm-persistence";
 export function baseOptions() {
   return {
     nav: {
@@ -103,7 +104,8 @@ export function baseOptions() {
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider defaultTheme="system" storageKey="theme">
-      <WebNavigation
+      <UtmPersistence />
+      <NavigationWrapper
         links={baseOptions().links}
         utm={{ source: "website", medium: "blog" }}
       />

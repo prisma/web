@@ -1,6 +1,6 @@
-import { JsonLd } from "@/components/json-ld";
 import { createSoftwareApplicationStructuredData } from "@/lib/structured-data";
 import type { Metadata } from "next";
+import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 
 import { type McpAgent, McpAgentsSection } from "./_components/mcp-agents-section";
 import { type McpCapability, McpCapabilitiesSection } from "./_components/mcp-capabilities-section";
@@ -180,7 +180,7 @@ export default function McpPage() {
       <div className="relative z-1 flex flex-col">
         <McpHeroSection docsHref={DOCS_MCP} features={heroFeatures} />
         <McpVideoSection />
-        <McpAgentsSection docsHref={DOCS_MCP} agents={agents} />
+        <McpAgentsSection agents={agents} />
         <McpCapabilitiesSection capabilities={capabilities} />
         <McpCtaSection docsHref={DOCS_MCP} readDocsHref="https://www.prisma.io/docs/ai" />
       </div>

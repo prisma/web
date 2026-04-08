@@ -2,7 +2,13 @@ import type { MetadataRoute } from "next";
 import { source, sourceV6 } from "@/lib/source";
 import { getBaseUrl, withDocsBasePath } from "@/lib/urls";
 
-export const revalidate = false;
+export const revalidate = 3600;
+
+function getPriority(slugCount: number) {
+  if (slugCount === 0) return 1.0;
+  if (slugCount === 1) return 0.8;
+  return 0.5;
+}
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = getBaseUrl();
@@ -16,7 +22,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: url(page.url),
       lastModified: lastModified ? new Date(lastModified) : undefined,
       changeFrequency: "weekly",
-      priority: 0.5,
+      priority: getPriority(page.slugs.length),
     } as MetadataRoute.Sitemap[number];
   });
 

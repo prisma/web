@@ -37,25 +37,47 @@ export interface Link {
 
 interface WebNavigationProps {
   links: Link[];
-  utm?: {
-    source: "website";
-    medium: string;
-  };
+  utm?: Record<string, string>;
+  preserveExactUtm?: boolean;
   buttonVariant?: "ppg" | "orm" | undefined;
+}
+
+function buildConsoleHref(
+  pathname: "/login" | "/sign-up",
+  utm?: WebNavigationProps["utm"],
+  preserveExactUtm = false,
+) {
+  if (!utm) {
+    return `https://console.prisma.io${pathname}`;
+  }
+
+  const href = new URL(`https://console.prisma.io${pathname}`);
+
+  for (const [key, value] of Object.entries(utm)) {
+    if (key.startsWith("utm_") && value) {
+      href.searchParams.set(key, value);
+    }
+  }
+
+  if (!preserveExactUtm && !href.searchParams.has("utm_campaign")) {
+    href.searchParams.set(
+      "utm_campaign",
+      pathname === "/login" ? "login" : "signup",
+    );
+  }
+
+  return href.toString();
 }
 
 export function WebNavigation({
   links,
   utm,
+  preserveExactUtm = false,
   buttonVariant = "ppg",
 }: WebNavigationProps) {
   const [mobileView, setMobileView] = useState(false);
-  const loginHref = utm
-    ? `https://console.prisma.io/login?utm_source=${utm.source}&utm_medium=${utm.medium}&utm_campaign=login`
-    : "https://console.prisma.io/login";
-  const signupHref = utm
-    ? `https://console.prisma.io/sign-up?utm_source=${utm.source}&utm_medium=${utm.medium}&utm_campaign=signup`
-    : "https://console.prisma.io/sign-up";
+  const loginHref = buildConsoleHref("/login", utm, preserveExactUtm);
+  const signupHref = buildConsoleHref("/sign-up", utm, preserveExactUtm);
 
   useEffect(() => {
     if (mobileView) {
@@ -112,22 +134,16 @@ export function WebNavigation({
             </div>
           </NavigationMenuList>
           <NavigationMenuList>
-            <div
-              className={cn("contents", mobileView && "hidden md:contents!")}
-            >
+            <div className={cn("contents", mobileView && "hidden md:contents!")}>
               <Socials include={["discord"]} />
               <NavigationMenuItem className="ml-2 -mr-2 hidden sm:block">
-                <Button variant="default-stronger" href={loginHref}>
-                  Login
+                <Button asChild variant="default-strong">
+                  <a href={loginHref}>Login</a>
                 </Button>
               </NavigationMenuItem>
               <NavigationMenuItem className="hidden sm:block">
-                <Button
-                  variant={buttonVariant}
-                  className="whitespace-nowrap"
-                  href={signupHref}
-                >
-                  Get started
+                <Button asChild variant={buttonVariant} className="whitespace-nowrap">
+                  <a href={signupHref}>Get started</a>
                 </Button>
               </NavigationMenuItem>
             </div>
@@ -135,12 +151,7 @@ export function WebNavigation({
               className="flex md:hidden"
               onClick={() => setMobileView(!mobileView)}
             >
-              <i
-                className={cn(
-                  "fa-regular",
-                  mobileView ? "fa-xmark" : "fa-bars",
-                )}
-              />
+              <i className={cn("fa-regular", mobileView ? "fa-xmark" : "fa-bars")} />
             </NavigationMenuItem>
             {mobileView && (
               <NavigationMobileMenu

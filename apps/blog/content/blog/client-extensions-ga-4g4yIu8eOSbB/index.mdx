@@ -1,0 +1,120 @@
+---
+title: "Prisma Client Extensions Are Now Production Ready"
+slug: "client-extensions-ga-4g4yIu8eOSbB"
+date: "2023-06-22"
+authors:
+  - "Jon Harrell"
+metaTitle: "Prisma Client Extensions Are Now Production Ready (4.16.0)"
+metaDescription: "Make Prisma Client do even more with Client extensions, now Generally Available. Extend your client, models, queries, and results to tailor Prisma Client to your use case."
+metaImagePath: "/client-extensions-ga-4g4yIu8eOSbB/imgs/meta-50e7e57ea5967ad67ce89e682aca57f5e19fd65a-1266x712.png"
+heroImagePath: "/client-extensions-ga-4g4yIu8eOSbB/imgs/hero-b404c12ca7de2f9288368dacbce578b790bfd66d-844x474.svg"
+heroImageAlt: "Prisma Client Extensions"
+tags:
+  - "orm"
+  - "announcement"
+  - "release"
+---
+
+With the release of version [4.16.0](https://github.com/prisma/prisma/releases/tag/4.16.0) of the Prisma ORM, [Client extensions](https://www.prisma.io/docs/orm/prisma-client/client-extensions) are now Generally Available! This new feature allows users to extend and customize Prisma Client to meet their individual use cases.
+
+## Tailor Prisma Client to meet your codebase's needs
+
+In [4.7.0](https://github.com/prisma/prisma/releases/tag/4.7.0), we released Prisma Client extensions [as a Preview feature](https://www.prisma.io/docs/orm/more/releases#preview). Today we are happy to announce the General Availability of Prisma Client extensions! Extensions have proven to be extremely useful and powerful during the Preview period, even powering Prisma products like [Accelerate](https://www.prisma.io/data-platform/accelerate) and [Optimize](https://www.prisma.io/docs/optimize)!
+
+### A straightforward and easy to use API
+
+If this is the first time you're hearing about Client extensions, don't worry. We have [an existing blog post](/client-extensions-preview-8t3w27xkrxxn) that covers the usage in-depth. To sum it up here: creating an extension is as easy as using `$extends`.
+
+This code snippet shows how you can add a _new method_ to the `User` model using a [`model`](https://www.prisma.io/docs/orm/prisma-client/client-extensions/model) extension:
+
+```typescript
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient().$extends({
+  model: {
+    user: {
+      async signUp(email: string) { 
+        // code for the new method goes inside the brackets
+      }, 
+    },
+  },
+});
+
+// The new method can then be used like this:
+
+const newUser = await prisma.user.signUp('myemail@email.com');
+```
+If you instead require a method on _all models_, you can even use the builtin `$allModels` feature:
+
+```typescript
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient().$extends({
+  model: {
+    $allModels: {
+      async exists<T>(
+        this: T,
+        where: Prisma.Args<T, 'findFirst'>['where']
+      ): Promise<boolean> {
+        // code for the new method goes inside the brackets
+      },
+    },
+  },
+});
+
+// You can now invoke `exists` on any of your models. For example:
+
+const postExists = await prisma.post.exists({ id: 1 });
+```
+For a more in-depth look into changes we made to the extensions API as a part of this release, please check out [our release notes](https://github.com/prisma/prisma/releases/tag/4.16.0)
+
+### Extensions built by the community
+
+While client extensions are now generally available, we have already seen some cool examples in the wild. [`prisma-extension-pagination`](https://github.com/deptyped/prisma-extension-pagination) is an awesome contribution from our community. Importing and using an external client extension is easy too:
+
+```typescript
+import { PrismaClient } from '@prisma/client';
+import pagination from 'prisma-extension-pagination';
+
+const prisma = new PrismaClient().$extends(pagination);
+
+const [users, meta] = prisma.user
+  .paginate({
+    select: {
+      id: true,
+    }
+  })
+  .withPages({
+    limit: 10,
+  });
+```
+### Reference examples for various use cases
+
+In addition to community contributions, we have a set of reference examples in the [`prisma-client-extensions` example repository](https://github.com/prisma/prisma-client-extensions) that showcase different areas where we believe Prisma Client extensions can be useful. The repository currently contains the following example extensions:
+
+| Example                                                                                                   | Description                                                                                 |
+| --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| [audit-log-context](https://github.com/prisma/prisma-client-extensions/tree/main/audit-log-context)       | Provides the current user's ID as context to Postgres audit log triggers                    |
+| [callback-free-itx](https://github.com/prisma/prisma-client-extensions/tree/main/callback-free-itx)       | Adds a method to start interactive transactions without callbacks                           |
+| [computed-fields](https://github.com/prisma/prisma-client-extensions/tree/main/computed-fields)           | Adds virtual / computed fields to result objects                                            |
+| [input-transformation](https://github.com/prisma/prisma-client-extensions/tree/main/input-transformation) | Transforms the input arguments passed to Prisma Client queries to filter the result set     |
+| [input-validation](https://github.com/prisma/prisma-client-extensions/tree/main/input-validation)         | Runs custom validation logic on input arguments passed to mutation methods                  |
+| [instance-methods](https://github.com/prisma/prisma-client-extensions/tree/main/instance-methods)         | Adds Active Record-like methods like `save()` and `delete()` to result objects                  |
+| [json-field-types](https://github.com/prisma/prisma-client-extensions/tree/main/json-field-types)         | Uses strongly-typed runtime parsing for data stored in JSON columns                         |
+| [model-filters](https://github.com/prisma/prisma-client-extensions/tree/main/model-filters)               | Adds reusable filters that can composed into complex where conditions for a model           |
+| [obfuscated-fields](https://github.com/prisma/prisma-client-extensions/tree/main/obfuscated-fields)       | Prevents sensitive data (e.g. password fields) from being included in results               |
+| [query-logging](https://github.com/prisma/prisma-client-extensions/tree/main/query-logging)               | Wraps Prisma Client queries with simple query timing and logging                            |
+| [readonly-client](https://github.com/prisma/prisma-client-extensions/tree/main/readonly-client)           | Creates a client that only allows read operations                                           |
+| [retry-transactions](https://github.com/prisma/prisma-client-extensions/tree/main/retry-transactions)     | Adds a retry mechanism to transactions with exponential backoff and jitter                  |
+| [row-level-security](https://github.com/prisma/prisma-client-extensions/tree/main/row-level-security)     | Uses Postgres row-level security policies to isolate data a multi-tenant application        |
+| [static-methods](https://github.com/prisma/prisma-client-extensions/tree/main/static-methods)             | Adds custom query methods to Prisma Client models                                           |
+| [transformed-fields](https://github.com/prisma/prisma-client-extensions/tree/main/transformed-fields)     | Demonstrates how to use result extensions to transform query results and add i18n to an app |
+| [exists-fn](https://github.com/prisma/prisma-client-extensions/tree/main/exists-fn)               | Demonstrates how to add an exists method to all your models                                 |
+
+### Show off your extensions!
+
+If you'd like a deeper dive into Prisma Client extensions, be sure to check out our previous write-up: [Prisma Client Just Became a Lot More Flexible: Prisma Client Extensions](/client-extensions-preview-8t3w27xkrxxn)! 
+
+We'd also love to hear about your extensions (and maybe even take them for a spin). 
+
+Be sure to show of your `#MadeWithPrisma` work in our [Discord](https://discord.gg/KQyTW2H5ca)

@@ -1,7 +1,7 @@
-import { JsonLd } from "@/components/json-ld";
 import { createSoftwareApplicationStructuredData } from "@/lib/structured-data";
 import type { Metadata } from "next";
 import { Button } from "@prisma/eclipse";
+import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import Image from "next/image";
 import { CopyCode } from "@/components/homepage/copy-btn";
 import { Youtube } from "@prisma-docs/ui/components/youtube";
@@ -126,51 +126,48 @@ export const metadata: Metadata = {
 
 export default function StudioPage() {
   return (
-    <main className="flex-1 w-full -mt-24 bg-background-default text-foreground-neutral">
+    <main className="flex-1 w-full bg-background-default text-foreground-neutral">
       <JsonLd id="studio-software-application" data={studioStructuredData} />
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-[linear-gradient(180deg,var(--color-background-orm)_0%,var(--color-background-default)_72%)] px-4 pt-60 pb-12">
+      <section className="hero pt-40 -mt-24 flex items-end justify-center px-4 relative overflow-hidden bg-[linear-gradient(180deg,var(--color-background-orm)_0%,var(--color-background-default)_72%)]">
         <div className="pointer-events-none absolute inset-x-1/2 top-20 h-[780px] w-[1664px] -translate-x-1/2 rounded-full bg-[repeating-radial-gradient(circle_at_top,rgba(99,102,241,0.28)_0,rgba(99,102,241,0.28)_2px,transparent_2px,transparent_42px)] opacity-45 mask-[linear-gradient(to_bottom,rgba(0,0,0,0.9),transparent_78%)]" />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(70%_65%_at_50%_5%,rgba(79,70,229,0.3),transparent_70%)]" />
 
-        <div className="relative mx-auto flex max-w-[1200px] flex-col items-center gap-12">
-          <div className="flex max-w-[766px] flex-col items-center gap-8 text-center">
-            <div className="flex flex-col items-center gap-2">
-              <p className="m-0 flex items-center gap-2 text-base uppercase tracking-[1.6px] text-foreground-orm-strong font-sans-display [font-variation-settings:'wght'_800]">
-                <i className="fa-regular fa-table text-sm" aria-hidden="true" />
-                Prisma Studio
-              </p>
-              <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
-                Explore and
-                <br />
-                understand your data
-              </h1>
+        <div className="content relative z-2 flex w-full max-w-[1200px] flex-col gap-8">
+          <div className="flex flex-col gap-4 items-center text-center">
+            <div className="flex items-center gap-2 text-foreground-orm-weak uppercase tracking-widest text-sm font-sans-display font-black">
+              <i className="fa-regular fa-table" aria-hidden="true" />
+              <span>Prisma Studio</span>
             </div>
+            <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
+              Explore and
+              <br />
+              understand your data
+            </h1>
+          </div>
 
-            <p className="m-0 max-w-[650px] text-lg leading-8 text-foreground-neutral md:text-xl">
-              The ultimate tool for exploring and editing data in your Prisma project. Work locally
-              or team up inside the Prisma Console.
-            </p>
+          <p className="text-center text-foreground-neutral max-w-2xl mx-auto">
+            The ultimate tool for exploring and editing data in your Prisma project. Work locally
+            or team up inside the Prisma Console.
+          </p>
 
-            <div className="flex flex-col items-center gap-4 sm:flex-row">
-              <Button
-                variant="orm"
-                size="2xl"
-                href={CONSOLE_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <span>Explore Studio in Prisma Console</span>
-                <i className="fa-regular fa-arrow-up-right ml-2" />
-              </Button>
-              <Button variant="default-stronger" size="2xl" href={STUDIO_DOCS_URL}>
-                <span>Try locally</span>
-                <i className="fa-regular fa-arrow-down ml-2" />
-              </Button>
-            </div>
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
+            <Button asChild variant="ppg" size="2xl">
+              <a href={CONSOLE_URL} target="_blank" rel="noopener noreferrer">
+                Explore Studio in Prisma Console
+                <i className="fa-regular fa-arrow-up-right" />
+              </a>
+            </Button>
+            <Button asChild variant="default-strong" size="2xl">
+              <a href={STUDIO_DOCS_URL}>
+                Try locally
+                <i className="fa-regular fa-arrow-down" />
+              </a>
+            </Button>
           </div>
 
           <Image
+            className="w-full h-auto"
             src="/illustrations/studio/hero.svg"
             alt="Prisma Studio Hero"
             width={1200}
@@ -238,15 +235,11 @@ export default function StudioPage() {
               </p>
             </div>
 
-            <Button
-              variant="orm"
-              size="xl"
-              href={CONSOLE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <span>Explore Studio in Console</span>
-              <i className="fa-regular fa-arrow-right ml-2" />
+            <Button asChild variant="ppg" size="xl">
+              <a href={CONSOLE_URL} target="_blank" rel="noopener noreferrer">
+                Explore Studio in Console
+                <i className="fa-regular fa-arrow-right" />
+              </a>
             </Button>
           </div>
 

@@ -67,3 +67,21 @@ jobs:
 The highlighted line shows that this action will only run if there is a change in the `prisma/migrations` directory, so `npx prisma migrate deploy` will only run when migrations are updated.
 
 Ensure you have the `DATABASE_URL` variable [set as a secret in your repository](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions), without quotes around the connection string.
+
+## Pre-deploy migration safety checks
+
+Before running `prisma migrate deploy`, you can analyze your migration SQL files for potentially dangerous patterns using a migration safety tool like [pgfence](/guides/integrations/pgfence). pgfence detects operations that acquire heavy locks (such as `CREATE INDEX` without `CONCURRENTLY` or `ALTER COLUMN TYPE`), reports risk levels, and provides safe rewrite recipes.
+
+To add pgfence as a pre-deploy step in your GitHub Actions workflow:
+
+```yaml
+- name: Run migration safety check
+  run: npx @flvmnt/pgfence analyze --ci --max-risk medium prisma/migrations/**/migration.sql
+
+- name: Apply all pending migrations to the database
+  run: npx prisma migrate deploy
+  env:
+    DATABASE_URL: ${{ secrets.DATABASE_URL }}
+```
+
+For a full setup guide, see the [pgfence integration guide](/guides/integrations/pgfence).

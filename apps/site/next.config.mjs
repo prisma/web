@@ -740,6 +740,14 @@ const config = {
     return {
       beforeFiles: [
         {
+          source: "/sitemap",
+          destination: "/sitemap-site.xml",
+        },
+        {
+          source: "/sitemap-site",
+          destination: "/sitemap-site.xml",
+        },
+        {
           source: "/:path*.mdx",
           destination: "/llms.mdx/:path*",
         },
