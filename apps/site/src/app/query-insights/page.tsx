@@ -38,11 +38,7 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function Page({
-  searchParams,
-}: {
-  searchParams: { [key: string]: string | string[] | undefined };
-}) {
+export default async function Page() {
   return (
     <main className="bg-background-default">
       <div className="pt-42! -mt-42! relative">
@@ -51,7 +47,10 @@ export default async function Page({
           <div className="title">
             <div className="eyebrow text-center uppercase font-mona-sans stretch-display font-extrabold text-foreground-ppg-weak mb-4!">
               <span>Query insights</span>
-              <i className="fa-solid fa-brain-circuit ml-2! inline-block!"></i>
+              <i
+                className="fa-solid fa-brain-circuit ml-2! inline-block!"
+                aria-hidden="true"
+              ></i>
             </div>
             <h1 className="font-mona-sans stretch-display text-6xl text-foreground-neutral text-center">
               AI-powered insights
@@ -64,17 +63,27 @@ export default async function Page({
           </p>
           <div className="btn-group inline-flex gap-4 md:w-fit mx-auto! items-center justify-center flex-col sm:flex-row w-full sm:w-fit">
             <Button
+              asChild
               variant="ppg"
-              size="4xl"
+              size="3xl"
               className="font-mona-sans font-[650] text-base! w-full sm:w-fit"
-              href="/postgres"
             >
-              <span>Start with Prisma Postgres</span>
-              <i className="fa-regular fa-database ml-3!" />
+              <a href="/postgres">
+                <span>Start with Prisma Postgres</span>
+                <i
+                  className="fa-regular fa-database ml-3!"
+                  aria-hidden="true"
+                />
+              </a>
             </Button>
-            <Button variant="default-stronger" size="4xl" href="/docs">
-              <span>Read the docs</span>
-              <i className="fa-regular fa-book-open ml-3!" />
+            <Button asChild variant="default-strong" size="3xl">
+              <a href="/docs">
+                <span>Read the docs</span>
+                <i
+                  className="fa-regular fa-book-open ml-3!"
+                  aria-hidden="true"
+                />
+              </a>
             </Button>
           </div>
           <i className="text-xs text-foreground-neutral-weaker text-center mx-auto!">
@@ -206,26 +215,7 @@ export default async function Page({
           />
         </div>
       </div>
-      {/*
-
-      COMMENTED VIDEO SECTION UNTIL WE HAVE A VIDEO
-
-      <div className="relative my-12! z-1">
-        <div className="max-w-182 px-4 w-full mx-auto!">
-          <h4 className="text-[30px]! text-foreground-neutral text-center font-mona-sans my-0! stretch-display font-black!">
-            See how it works
-          </h4>
-          <p className="mb-6! mt-4! text-foreground-neutral-weak text-center text-base! max-w-92 md:max-w-full mx-auto!">
-            <strong>See the full workflow:</strong> a slow endpoint, the query
-            behind it, and the prompt that helps fix it.
-          </p>
-          <div className="player max-w-171 w-full mx-auto! rounded-square overflow-hidden">
-            <YouTubePlayer video="/" playOnView />
-          </div>
-        </div>
-      </div>
-        */}
-      <div className="bg-[url('/illustrations/homepage/footer_grid.svg')] bg-contain bg-center before:inset-x-30 before:inset-y-0 before:absolute relative before:content-[''] before:pointer-events-none before:-z-1 rounded-full before:bg-teal-400 before:blur-[100px] relative">
+      <div className="bg-[url('/illustrations/homepage/footer_grid.svg')] bg-contain bg-center before:inset-x-30 before:inset-y-0 before:absolute relative before:content-[''] before:pointer-events-none before:-z-1 rounded-full before:bg-teal-400 before:blur-[100px]">
         <div className="my-12 p-12">
           <div className="flex flex-col mx-auto w-fit items-center justify-center gap-8">
             <div className="flex flex-col items-center text-center gap-4">
@@ -238,17 +228,27 @@ export default async function Page({
               </p>
             </div>
             <div className="flex flex-col md:flex-row gap-6">
-              <Button variant="ppg" size="2xl" href="/postgres">
-                <span>Start with Prisma Postgres</span>
-                <i className="fa-regular fa-arrow-right ml-2" />
+              <Button asChild variant="ppg" size="2xl">
+                <a href="/postgres">
+                  <span>Start with Prisma Postgres</span>
+                  <i
+                    className="fa-regular fa-arrow-right ml-2"
+                    aria-hidden="true"
+                  />
+                </a>
               </Button>
               <Button
-                variant="default-stronger"
+                asChild
+                variant="default-strong"
                 size="2xl"
-                href="/docs/postgres/faq#query-insights"
               >
-                <span>Read the docs</span>
-                <i className="fa-regular fa-book-open ml-2" />
+                <a href="/docs/postgres/faq#query-insights">
+                  <span>Read the docs</span>
+                  <i
+                    className="fa-regular fa-book-open ml-2"
+                    aria-hidden="true"
+                  />
+                </a>
               </Button>
             </div>
           </div>

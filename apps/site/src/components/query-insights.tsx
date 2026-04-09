@@ -12,11 +12,13 @@ import Image from "next/image";
 import { Bar, BarChart } from "recharts";
 
 const Table = ({ children }: { children?: React.ReactNode }) => (
-  <div className="">{children ?? null}</div>
+  <table className="w-full border-separate border-spacing-0">
+    {children ?? null}
+  </table>
 );
 
 const TableHeader = ({ children }: { children?: React.ReactNode }) => (
-  <div className="">{children ?? null}</div>
+  <thead>{children ?? null}</thead>
 );
 
 const TableRow = ({
@@ -26,28 +28,31 @@ const TableRow = ({
   children?: React.ReactNode;
   className?: string;
 }) => (
-  <div
+  <tr
     className={cn(
       "rounded-square relative border-none grid grid-cols-[72px_minmax(0,1fr)_80px_48px_72px] gap-6 py-4 px-3",
       className,
     )}
   >
     {children ?? null}
-  </div>
+  </tr>
 );
 
 const TableHead = ({ children }: { children?: React.ReactNode }) => (
-  <div className="text-foreground-neutral font-medium font-mona-sans bg-transparent">
+  <th
+    scope="col"
+    className="text-left text-foreground-neutral font-medium font-mona-sans bg-transparent"
+  >
     {children}
-  </div>
+  </th>
 );
 
 const TableCell = ({ children }: { children?: React.ReactNode }) => (
-  <div className="bg-transparent text-sm">{children ?? null}</div>
+  <td className="bg-transparent text-sm align-top">{children ?? null}</td>
 );
 
 const TableBody = ({ children }: { children?: React.ReactNode }) => (
-  <div className="text-foreground-neutral font-mono">{children ?? null}</div>
+  <tbody className="text-foreground-neutral font-mono">{children ?? null}</tbody>
 );
 
 export const QueryInsightsTable = () => (
@@ -116,7 +121,7 @@ export const ContentBox = ({
         reverse ? "md:flex-row-reverse" : "md:flex-row",
       )}
     >
-      <div className="w-full md:min-w-[50%] md:w-[50%] lg:w-120 lg:min-w-120 h-auto flex flex-col justify-center flex-shrink-0">
+      <div className="w-full md:min-w-[50%] md:w-[50%] lg:w-120 lg:min-w-120 h-auto flex flex-col justify-center shrink-0">
         {children}
       </div>
       {image && (
@@ -126,7 +131,7 @@ export const ContentBox = ({
             alt={image.alt ?? ""}
             width={image.width}
             height={image.height}
-            className="flex-shrink hidden sm:block min-w-0 max-w-full h-auto object-contain"
+            className="shrink hidden sm:block min-w-0 max-w-full h-auto object-contain"
           />
           {image.mobile && (
             <Image
@@ -134,7 +139,7 @@ export const ContentBox = ({
               alt={image.alt ?? ""}
               width={image.width}
               height={image.height}
-              className="flex-shrink block sm:hidden min-w-0 max-w-full h-auto object-contain"
+              className="shrink block sm:hidden min-w-0 max-w-full h-auto object-contain"
             />
           )}
         </>
