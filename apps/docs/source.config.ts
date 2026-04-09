@@ -1,18 +1,20 @@
 import remarkDirective from "remark-directive";
-import {
-  remarkDirectiveAdmonition,
-  remarkMdxFiles,
-} from "fumadocs-core/mdx-plugins";
+import { remarkDirectiveAdmonition, remarkMdxFiles } from "fumadocs-core/mdx-plugins";
 import { remarkImage } from "fumadocs-core/mdx-plugins";
-import {
-  defineConfig,
-  defineDocs,
-  frontmatterSchema,
-  metaSchema,
-} from "fumadocs-mdx/config";
+import { defineConfig, defineDocs, frontmatterSchema, metaSchema } from "fumadocs-mdx/config";
 import lastModified from "fumadocs-mdx/plugins/last-modified";
 import { z } from "zod";
 import convert from "npm-to-yarn";
+import remarkConsoleUtm from "@/lib/remark-console-utm";
+
+// npm-to-yarn only converts the last line of multi-line strings,
+// so we split, convert each line, and rejoin.
+function convertLine(cmd: string, pm: "npm" | "pnpm" | "yarn" | "bun"): string {
+  return cmd
+    .split("\n")
+    .map((line) => convert(line.replace(/^npm init -y$/, "npm init"), pm))
+    .join("\n");
+}
 
 // You can customise Zod schemas for frontmatter and `meta.json` here
 // see https://fumadocs.dev/docs/mdx/collections
@@ -80,6 +82,7 @@ export default defineConfig({
       ],
       [remarkImage, { useImport: false }],
       remarkMdxFiles,
+      remarkConsoleUtm,
     ],
     remarkCodeTabOptions: {
       parseMdx: true,
@@ -89,12 +92,12 @@ export default defineConfig({
         id: "package-manager",
       },
       packageManagers: [
-        { command: (cmd: string) => convert(cmd, "npm"), name: "npm" },
-        { command: (cmd: string) => convert(cmd, "pnpm"), name: "pnpm" },
-        { command: (cmd: string) => convert(cmd, "yarn"), name: "yarn" },
+        { command: (cmd: string) => convertLine(cmd, "npm"), name: "npm" },
+        { command: (cmd: string) => convertLine(cmd, "pnpm"), name: "pnpm" },
+        { command: (cmd: string) => convertLine(cmd, "yarn"), name: "yarn" },
         {
           command: (cmd: string) => {
-            const converted = convert(cmd, "bun");
+            const converted = convertLine(cmd, "bun");
             if (!converted) return undefined;
             return converted.replace(/^bun x /, "bunx --bun ");
           },

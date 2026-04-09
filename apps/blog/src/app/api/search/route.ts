@@ -27,9 +27,7 @@ export const { GET } = createMixedbreadSearchAPI({
   storeIdentifier: "blog-search",
   topK: 20,
   transform: (results, _query) => {
-    
     return results.flatMap((item) => {
-      
       const metadata = item.generated_metadata as unknown as GeneratedMetadata;
       const slug = (metadata?.slug ?? "").replace(/^\/+/, "");
       const title = metadata?.metaTitle ?? metadata?.title ?? "Untitled";
@@ -47,7 +45,6 @@ export const { GET } = createMixedbreadSearchAPI({
           tags: metadata?.tags ?? [],
         },
       ];
-    
       return chunkResults;
     });
   },

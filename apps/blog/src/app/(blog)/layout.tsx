@@ -1,6 +1,7 @@
-import { WebNavigation } from "@prisma-docs/ui/components/web-navigation";
 import { Footer } from "@prisma-docs/ui/components/footer";
 import { ThemeProvider } from "@prisma-docs/ui/components/theme-provider";
+import { NavigationWrapper } from "@/components/navigation-wrapper";
+import { UtmPersistence } from "@/components/utm-persistence";
 export function baseOptions() {
   return {
     nav: {
@@ -12,38 +13,32 @@ export function baseOptions() {
         sub: [
           {
             text: "Postgres",
-            url: "/postgres",
+            url: "https://www.prisma.io/postgres",
             desc: "Managed Postgres for global workloads",
             icon: "fa-regular fa-chart-pyramid",
           },
           {
             text: "ORM",
-            url: "/orm",
+            url: "https://www.prisma.io/orm",
             desc: "Managed Postgres for global workloads",
             icon: "fa-regular fa-database",
           },
           {
             text: "Studio",
             icon: "fa-regular fa-table",
-            url: "/studio",
+            url: "https://www.prisma.io/studio",
             desc: "Explore and manipulate your data",
           },
           {
             icon: "fa-regular fa-bolt",
             text: "Accelerate",
             desc: "Make your database global",
-            url: "/accelerate",
-          },
-          {
-            icon: "fa-regular fa-plug",
-            text: "Management API",
-            desc: "Offer Postgres to your users",
-            url: "/",
+            url: "https://www.prisma.io/accelerate",
           },
         ],
       },
       {
-        url: "/pricing",
+        url: "https://www.prisma.io/pricing",
         text: "Pricing",
       },
       {
@@ -52,52 +47,54 @@ export function baseOptions() {
         sub: [
           {
             text: "MCP",
-            url: "/mcp",
+            url: "https://www.prisma.io/mcp",
             icon: "fa-regular fa-message-code",
           },
           {
-            text: "Get started",
-            url: "/docs",
-            icon: "fa-regular fa-book-open",
+            text: "Prisma Partners",
+            url: "/partners",
+            icon: "fa-regular fa-lightbulb",
           },
           {
             text: "Tutorials",
-            url: "/learn",
+            url: "https://www.prisma.io/docs/guides",
             icon: "fa-regular fa-clapperboard-play",
           },
           {
             text: "Examples",
-            url: "/",
+            url: "https://github.com/prisma/prisma-examples",
             icon: "fa-regular fa-grid-2",
+            external: true,
           },
           {
             text: "Stack",
-            url: "/stack",
+            url: "https://www.prisma.io/stack",
             icon: "fa-regular fa-layer-group",
           },
           {
             text: "Ecosystem",
-            url: "/ecosystem",
+            url: "https://www.prisma.io/ecosystem",
             icon: "fa-regular fa-globe",
           },
           {
             text: "Customer stories",
-            url: "/",
+            url: "https://www.prisma.io/showcase",
             icon: "fa-regular fa-users",
           },
           {
             text: "Data guide",
-            url: "/dataguide",
+            url: "https://www.prisma.io/dataguide",
             icon: "fa-regular fa-file-binary",
+            external: true,
           },
         ],
       },
       {
-        url: "/partners",
-        text: "Partners",
+        url: "/docs",
+        text: "Docs",
       },
       {
-        url: "/blog",
+        url: "https://www.prisma.io/blog",
         text: "Blog",
       },
     ],
@@ -106,8 +103,12 @@ export function baseOptions() {
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider defaultTheme="system" storageKey="blog-theme">
-      <WebNavigation links={baseOptions().links} />
+    <ThemeProvider defaultTheme="system" storageKey="theme">
+      <UtmPersistence />
+      <NavigationWrapper
+        links={baseOptions().links}
+        utm={{ source: "website", medium: "blog" }}
+      />
       {children}
       <Footer />
     </ThemeProvider>

@@ -6,7 +6,7 @@ import { cn } from "../lib/cn";
  * Define Avatar variants using CVA
  */
 const avatarVariants = cva(
-  "bg-background-neutral-reverse hover:bg-background-neutral-reverse-strong text-foreground-neutral-reverse relative flex shrink-0 overflow-hidden rounded-square uppercase flex items-center justify-center font-semibold",
+  "bg-background-neutral-reverse hover:bg-background-neutral-reverse-strong text-foreground-neutral-reverse relative flex shrink-0 overflow-hidden rounded-square uppercase flex items-center justify-center",
   {
     variants: {
       disabled: {
@@ -14,10 +14,10 @@ const avatarVariants = cva(
         false: "",
       },
       size: {
-        lg: "not-prose text-2xs",
-        xl: "not-prose text-2xs",
-        "2xl": "text-sm",
-        "3xl": "text-sm",
+        lg: "size-element-lg type-text-xs-stronger",
+        xl: "size-element-xl type-text-xs-stronger",
+        "2xl": "size-element-2xl type-text-sm-stronger",
+        "3xl": "size-element-3xl type-text-sm-stronger",
       },
     },
     defaultVariants: {
@@ -38,13 +38,6 @@ const avatarContentVariants = cva("", {
     format: "image",
   },
 });
-
-const sizeMap = {
-  lg: { width: 28, height: 28 },
-  xl: { width: 32, height: 32 },
-  "2xl": { width: 36, height: 36 },
-  "3xl": { width: 40, height: 40 },
-} as const;
 
 /**
  * Avatar component props
@@ -73,6 +66,10 @@ export interface AvatarProps extends Omit<
    * Alt text for image format
    */
   alt?: string;
+  /**
+   * Loading behavior for image format
+   */
+  loading?: "lazy" | "eager";
   /**
    * Icon or initials content
    */
@@ -115,29 +112,23 @@ const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
       format = "image",
       src,
       alt,
+      loading,
       children,
-      style,
       ...props
     },
     ref,
   ) => {
-    const dimensions = sizeMap[size];
-
     return (
       <div
         ref={ref}
         className={cn(avatarVariants({ size, disabled, className }))}
-        style={{
-          width: `${dimensions?.width}px`,
-          height: `${dimensions?.height}px`,
-          ...style,
-        }}
         {...props}
       >
         {format === "image" && src ? (
           <img
             src={src}
             alt={alt || "Avatar"}
+            loading={loading}
             className={cn(avatarContentVariants({ format }))}
           />
         ) : (

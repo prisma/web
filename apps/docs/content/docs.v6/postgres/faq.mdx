@@ -344,10 +344,45 @@ Check the [pricing page](https://www.prisma.io/pricing) for more details on the 
 While you can increase these limits based on your subscription plan, it's _still_ recommended to optimize your database operations. [Learn more in our troubleshooting guide.](/v6/postgres/database/api-reference/error-reference)
 :::
 
-## Query optimization
+## Query Insights
 
-Prisma Postgres includes [Query Insights](/postgres/query-insights), which provides performance recommendations to help identify and fix slow database queries. Query Insights is built in and requires no additional setup.
+[Query Insights](/query-insights) is built into Prisma Postgres and helps you identify slow queries, understand their cost, and decide what to fix.
 
-### Can you automatically implement optimizations?
+### I only see raw SQL — how do I see my Prisma ORM queries?
 
-Query Insights provides insights and recommendations on how to improve your database queries, including AI-generated prompts you can use to fix issues. It does not alter any existing queries or your Prisma schema.
+By default, Query Insights shows raw SQL. To also see the Prisma ORM operation that generated each query (model name, action, and query shape), install the `@prisma/sqlcommenter-query-insights` package:
+
+```bash
+npm install @prisma/sqlcommenter-query-insights
+```
+
+Then pass it to the `comments` option in your `PrismaClient` constructor:
+
+```ts
+import { prismaQueryInsights } from "@prisma/sqlcommenter-query-insights";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient({
+  adapter: myAdapter, // driver adapter or Accelerate URL required
+  comments: [prismaQueryInsights()],
+});
+```
+
+This annotates every query with a SQL comment containing the model, action, and parameterized query shape. Query Insights uses these annotations to map SQL back to the Prisma call that generated it.
+
+#### Let your AI agent handle setup
+
+Copy this prompt into your AI coding assistant:
+
+```
+Install and configure @prisma/sqlcommenter-query-insights in my project so I can
+see Prisma ORM queries in Query Insights. Docs: https://www.prisma.io/docs/query-insights
+```
+
+### Does Query Insights alter my queries or schema?
+
+No. Query Insights is read-only — it observes query behavior but does not rewrite queries or modify your Prisma schema.
+
+### Can I use Query Insights in production?
+
+Query Insights is designed primarily for development and debugging. Running it in production is possible but not recommended, as the SQL comment annotations add a small overhead to every query.

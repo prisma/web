@@ -11,9 +11,9 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
     <div
       ref={ref}
       className={cn(
-        "rounded-square border border-stroke-neutral bg-card text-card-foreground shadow-box-low p-4 flex flex-col gap-4 hover:border-stroke-neutral-strong hover:shadow-drop transition-colors",
+        "rounded-square border border-stroke-neutral bg-card text-card-foreground shadow-box-low p-4 flex flex-col gap-4 hover:border-stroke-neutral-strong hover:shadow-box transition-colors",
         active &&
-          "border-stroke-neutral-strong shadow-drop bg-surface-elevated",
+          "border-stroke-neutral-strong shadow-box bg-surface-elevated",
         className,
       )}
       {...props}
@@ -43,7 +43,7 @@ const CardTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("font-semibold leading-none tracking-tight", className)}
+    className={cn("type-text-sm-stronger", className)}
     {...props}
   />
 ));
@@ -55,7 +55,7 @@ const CardDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
+    className={cn("type-text-sm text-muted-foreground", className)}
     {...props}
   />
 ));

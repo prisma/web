@@ -1,0 +1,776 @@
+---
+title: "The Ultimate Guide to Testing with Prisma: Mocking Prisma Client"
+slug: "testing-series-1-8eRB5p0Y8o"
+date: "2022-12-22"
+authors:
+  - "Sabin Adams"
+metaTitle: "The Ultimate Guide to Testing with Prisma: Mocking Prisma Client"
+metaDescription: "Learn about mocking and spying, why they are useful, and how they can be done with Prisma Client."
+metaImagePath: "/testing-series-1-8eRB5p0Y8o/imgs/meta-4fe84c71772f90f758778c5a9f5e6db96af0efd2-1266x712.png"
+heroImagePath: "/testing-series-1-8eRB5p0Y8o/imgs/hero-c96c41c8c5f42d2c52751fac51563dbc8f01b52c-844x474.svg"
+heroImageAlt: "The Ultimate Guide to Testing with Prisma: Mocking Prisma Client"
+series:
+  title: "The Ultimate Guide to Testing with Prisma"
+seriesIndex: 1
+tags:
+  - "education"
+---
+
+As your applications grow, automated testing becomes more and more important. In this article, you will learn how to mock Prisma Client so you can test functions with database interactions without hitting an actual database.
+
+## Table Of Contents
+
+- [Table Of Contents](#table-of-contents)
+- [Introduction](#introduction)
+  - [Technologies you will use](#technologies-you-will-use)
+- [Prerequisites](#prerequisites)
+  - [Assumed knowledge](#assumed-knowledge)
+  - [Development environment](#development-environment)
+- [What is a mock?](#what-is-a-mock)
+- [Set up a Prisma project](#set-up-a-prisma-project)
+- [Set up Vitest](#set-up-vitest)
+- [Why mock Prisma Client?](#why-mock-prisma-client)
+- [Mock Prisma Client](#mock-prisma-client)
+- [Using the mocked client](#using-the-mocked-client)
+  - [Mocking query responses](#mocking-query-responses)
+  - [Triggering and capturing errors](#triggering-and-capturing-errors)
+  - [Mocking transactions](#mocking-transactions)
+- [Spy on methods](#spy-on-methods)
+- [Why Vitest?](#why-vitest)
+- [Summary & What's next](#summary--whats-next)
+
+
+
+## Introduction
+
+Testing is becoming increasingly important in applications as it allows developers to be more confident in the code they write and iterate on their products more efficiently.
+
+Being able to work confidently and efficiently are, as one might imagine, important aspects of any developer's workflow. So... why doesn't every developer write tests for their applications? The answer to this question often is: Writing tests, especially when a database is involved, can be tricky! 
+
+![Testing meme](/testing-series-1-8eRB5p0Y8o/imgs/testing_meme.png)
+
+*Warning: bad advice 👆🏻*
+
+In this series, you will learn how to perform different types of tests against various applications that interact with a database.
+
+This article specifically will dive into the topic of _mocking_ and walk through how to mock Prisma Client. Then, you will take a look at what you can do with the mocked client.
+
+### Technologies you will use
+
+- [Vitest](https://vitest.dev/) (learn [why Vitest instead of Jest](#why-vitest))
+- [Prisma](https://www.prisma.io/)
+- [Node.js](https://nodejs.org/en/)
+- [SQLite](https://sqlite.org/index.html)
+
+## Prerequisites
+
+### Assumed knowledge
+
+The following would be helpful to have coming in to this series:
+
+- Basic knowledge of JavaScript or TypeScript
+- Basic knowledge of Prisma Client and its functionalities
+
+### Development environment
+
+To follow along with the examples provided, you will be expected to have:
+
+- [Node.js](https://nodejs.org) installed
+- A code editor of your choice _(we recommend [VSCode](https://code.visualstudio.com/))_
+
+## What is a mock?
+
+The first concept you will look at in this series is _mocking_. This term refers to the practice of creating a controlled replacement for an object that acts similarly to the real object it replaces.
+
+The goal of mocking is typically to allow a developer to replace any external dependencies a function may require so they can effectively write unit tests against that function. This way tests can be isolated to the function's behavior without worrying about the behavior of external modules that aren't directly related.
+
+> **Note**: You will take a closer look at unit tests in the next article of this series.
+
+To illustrate this, consider the following function:
+
+```ts
+import { isValidEmail } from './validators'
+import mailer from 'mail-service'
+
+async function sendEmail(to: string, message: string) {
+  // 1
+  if (!isValidEmail(to)) {
+    // 2
+    throw new Error('Please provide a valid email address')
+  }
+
+  // 3
+  mailer.send({ to, message })
+}
+```
+This function does three things:
+
+1. Checks to make sure a valid email address is provided 
+2. Throws an error if an invalid address was provided
+3. Sends an email via an imaginary `mailer` service
+
+To write a test to validate this function behaves as expected, you would likely start by testing the scenario where the function is provided an invalid email address and verifying an error is thrown. 
+
+The function, however, relies on two external pieces of code: `isValidEmail` and `mailer`. Because these are separate pieces of code and technically unrelated to the function you are testing, you would not want to have to worry about whether these imports function properly. Instead, these should be assumed to be functional and tested independently. 
+
+You also likely would not want an actual email to be sent during your test when `mailer.send()` is called, as that functionality is independent of the function you are testing. 
+
+In situations like this, it is common practice to _mock_ those dependencies instead, replacing the real imported object with a "fake" that returns a controlled value. In doing so, you gain the ability to trigger specific states in the test's target function without having to consider the behavior of another module.
+
+This is a fairly basic scenario that illustrates how mocking can be useful, however the rest of this article will dive deeper into the different patterns and tools you can use to mock modules and use those mocks to test specific scenarios.
+
+## Set up a Prisma project
+
+Before jumping into writing tests, you will need a project to experiment with. To set one up you will use [`try-prisma`](https://github.com/prisma/try-prisma), a tool that allows you to quickly set up a sample project that with Prisma.
+
+Run the following command in a terminal:
+
+```sh
+npx try-prisma \
+  --template typescript/script \
+  --path . \
+  --name mocking_playground \
+  --install npm
+```
+Once that finishes, a starter project should have been set up in your current working directory in a folder named `mocking_playground`.
+
+You will also see additional output in your terminal with instructions on next steps. Follow those instructions to enter your project and run your first Prisma migration:
+
+```sh
+cd mocking_playground
+npx prisma migrate dev
+```
+A SQLite database has now been generated, your schema applied, and Prisma Client has been generated. You are ready to begin working in your project!
+
+## Set up Vitest
+
+In order to create tests and mocks, you will need a testing framework. In this series, you will use the increasingly popular [Vitest](https://vitest.dev/) testing framework which provides a set of tooling that allows you to build and run tests, as well as create mocks of modules.
+
+> **Note**: Vitest also does a ton of other super cool things! Give their [docs](https://vitest.dev/guide/) a look if you're curious.
+
+Run this command in your project to install the Vitest framework and its CLI tools:
+
+```sh
+npm i -D vitest
+```
+Next, create a new folder in the root of your project named `test` where all of your tests will live:
+
+```sh
+mkdir test
+```
+> **Note**: It is not required by Vitest to put your tests in a `/test` folder. Vitest will by default detect test files based on these [naming conventions](https://vitest.dev/config/#include).
+
+Finally, in `package.json`, add a new script named `test` that simply runs the command `vitest`:
+
+```json
+{
+  "name": "script",
+  "license": "MIT",
+  "scripts": {
+    "dev": "ts-node ./script.ts",
++    "test": "vitest"
+  },
+  "dependencies": {
+    "@prisma/client": "4.7.1",
+    "@types/node": "18.11.11"
+  },
+  "devDependencies": {
+    "prisma": "4.7.1",
+    "ts-node": "10.9.1",
+    "typescript": "4.9.3",
+    "vitest": "^0.25.5"
+  }
+}
+```
+You can now use `npm run test` to run your tests. You can also run `npm t` for short. Currently, your tests will fail because there are no test files.
+
+Create a new file inside of the `/test` directory named `sample.test.ts`:
+
+```sh
+touch test/sample.test.ts
+```
+Add the following test so that you can verify Vitest is set up correctly:
+
+```ts
+// test/sample.test.ts
+import { expect, test } from 'vitest'
+
+test('1 === 1', () => {
+  expect(1).toBe(1)
+})
+```
+Now that there is a valid test, running `npm t` should result in a success! Vitest is set up and ready to be put to use.
+
+## Why mock Prisma Client?
+
+The best way to illustrate why mocking Prisma Client is useful in unit testing is to write a function that uses Prisma Client and write a test for that function that does not use a mocked client.
+
+In the root of your project, create a new folder named `libs`. Then create a file within that folder named `prisma.ts`:
+
+```sh
+mkdir libs
+touch libs/prisma.ts
+```
+Add the following snippet to that new file:
+
+```ts
+// libs/prisma.ts
+import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient()
+export default prisma
+```
+The code above instantiates Prisma Client and exports it as a singleton instance. This is the "real" Prisma Client instance.
+
+Now that there is a usable instance of Prisma Client available, write a function that makes use of it.
+
+Replace the contents of `script.ts` with the following:
+
+```ts
+// script.ts
+import { Prisma } from '@prisma/client'
+import prisma from './libs/prisma'
+
+// 1
+export const createUser = async (user: Prisma.UserCreateInput) => {
+  // 2 & 3
+  return await prisma.user.create({
+    data: user,
+  })
+}
+```
+The `createUser` function does the following:
+
+1. Takes in a `user` argument
+2. Passes `user` along to the `prisma.user.create` function
+3. Returns the response, which should be the new user object
+
+Next you will write a test for that new function. This test will ensure the `createUser` returns the expected data when provided a valid user: the new user.
+
+Update `test/sample.test.ts` so that it matches the snippet below:
+
+```ts
+//test/sample.test.ts
+import { expect, test } from 'vitest'
+import { createUser } from '../script'
+
+test('createUser should return the generated user', async () => {
+  const newUser = { email: 'user@prisma.io', name: 'Prisma Fan' }
+  const user = await createUser(newUser)
+  expect(user).toStrictEqual({ ...newUser, id: 1 })
+})
+```
+> **Note**: The test above **is not** using a mocked Prisma Client. It is using the real client instance to demonstrate the problem you may run into when testing against a real database.
+
+Assuming your database had not yet contained any users records, this test should pass the first time you run it. There are a few problems though:
+
+- The next time you run this test, the `id` of the created user will not be `1`, causing the test to fail.
+- The `email` field has a `@unique` attribute in your Prisma schema, signifying that column has a unique index in the database. This will cause an error to occur on subsequent runs of the test.
+- This test assumes you are running against a development database and requires a database to be available. Every time you run this test a record will be added to your database.
+
+In situations such as unit testing which focus on a single function, the best practice is to assume your database operations will behave correctly and use a mocked version of your client or driver instead, allowing you to focus on testing the specific behavior of the function you are targeting.
+
+> **Note**: There are scenarios where you may want to test against a database and actually perform operations on it. Integration and end-to-end tests are good example of these cases. These tests may rely on multiple database operations occurring across multiple functions and areas of your application. 
+
+
+## Mock Prisma Client
+
+For the reasons outlined in the previous section, it is considered best practice to create a mock of your client to properly unit test your functions that use Prisma Client. This mock will replace the imported module that your function would normally use. 
+
+To accomplish this, you will make use of Vitest's mocking tools and an external library named [`vitest-mock-extended`](https://github.com/eratio08/vitest-mock-extended).
+
+First off, install `vitest-mock-extended` in your project:
+
+```sh
+npm i -D vitest-mock-extended
+```
+Next, head over to the `test/sample.test.ts` file and make the following changes to let Vitest know it should mock the `libs/prisma.ts` module:
+
+```ts
+// test/sample.test.ts
++import { expect, test, vi } from 'vitest' // 👈🏻 Added the `vi` import
+import { createUser } from '../script'
+
++vi.mock('../libs/prisma')
+
+test('createUser should return the generated user', async () => {
+  const newUser = { email: 'user@prisma.io', name: 'Prisma Fan' }
+  const user = await createUser(newUser)
+  expect(user).toStrictEqual({ ...newUser, id: 1 })
+})
+```
+The `mock` function available in the `vi` object lets Vitest know it should mock the module found at a provided file path. There are a few different ways the `mock` function can decide how to mock the target module, as described in the [documentation](https://vitest.dev/api/#vi-mock). 
+
+Currently, Vitest will attempt to mock the module found at `'../libs/prisma'`, however it will not be able to automatically mock the "deep", or "nested", properties of the `prisma` object. For example, `prisma.user.create()` will not be mocked properly as it is a deeply nested property of the Prisma Client instance. This causes the tests to fail as the function will still be run as it normally against the real database.
+
+To solve this problem, you need to let Vitest know how exactly you want that module to be mocked and provide it the value that should be returned when the mocked module is imported, which should include mocked versions of the deeply nested properties.
+
+Create a new folder within the `libs` directory named `__mocks__`:
+
+```sh
+mkdir libs/__mocks__
+```
+The folder name `__mocks__` is a common convention in testing frameworks where you may place any _manually created_ mocks of modules. The `__mocks__` folder must be directly adjacent to the module you are mocking, which is why we created the folder next to the `libs/prisma.ts` file. 
+
+Within that new folder, create a file named `prisma.ts`:
+
+```sh
+touch libs/__mocks__/prisma.ts
+```
+Notice this file has the same name as the "real" file, `prisma.ts`. By following this convention, Vitest will know when it mocks the module via `vi.mock` that it should use that file to find the mocked version of the client. 
+
+With that structure in place, you will now create the manual mock. 
+
+In the new `libs/__mocks__/prisma.ts` file, add the following:
+
+```ts
+// libs/__mocks__/prisma.ts
+// 1
+import { PrismaClient } from '@prisma/client'
+import { beforeEach } from 'vitest'
+import { mockDeep, mockReset } from 'vitest-mock-extended'
+
+// 2
+beforeEach(() => {
+  mockReset(prisma)
+})
+
+// 3
+const prisma = mockDeep<PrismaClient>()
+export default prisma
+```
+The snippet above does the following:
+
+1. Imports all of the tools needed to create the mocked client.
+2. Lets Vitest know that between each individual test the mock should be reset to its original state.
+3. Creates and exports a "deep mock" of Prisma Client using the `vitest-mock-extended` library's `mockDeep` function which ensures all properties of the object, even deeply nested ones, are mocked.
+
+> **Note**: Essentially, `mockDeep` will set every Prisma Client function's value to the Vitest helper function: [`vi.fn()`](https://vitest.dev/api/#vi-fn).
+
+At this point, if you run your test with `npm t` again you should see you no longer receiving the same error as before! But there is still a problem...
+
+![Failed test](/testing-series-1-8eRB5p0Y8o/imgs/undefined.png)
+
+*The query returns `undefined`*
+
+This error actually occurs because the mock has been put in place correctly. Your `prisma.user.create` invocation in `script.ts` is no longer hitting the database. Currently, that function essentially does nothing and returns `undefined`. 
+
+You need to tell Vitest what `prisma.user.create` should do by _mocking_ its behavior. Now that you have a proper mocked version of Prisma Client, this requires a simple change to your test.
+
+In `test/sample.test.ts` file, add the following to tell Vitest how that function should behave during the course of that individual test:
+
+```ts
+// test/sample.test.ts
+import { expect, test, vi } from 'vitest'
+import { createUser } from '../script'
++import prisma from '../libs/__mocks__/prisma'
+
+vi.mock('../libs/prisma')
+
+test('createUser should return the generated user', async () => {
+  const newUser = { email: 'user@prisma.io', name: 'Prisma Fan' }
++  prisma.user.create.mockResolvedValue({ ...newUser, id: 1 })
+  const user = await createUser(newUser)
+  expect(user).toStrictEqual({ ...newUser, id: 1 })
+})
+```
+Above, the "fake" client was imported as it exports the deep mock of Prisma Client. 
+
+On this object you will notice a new set of functions attached to each Prisma Client property and function:
+
+![Mock Functions](/testing-series-1-8eRB5p0Y8o/imgs/mock-functions.png)
+
+The one used in the snippet above, `mockResolvedValue`, replaces the normal `prisma.user.create` function with a function that returns the provided value. For the course of that single test, that function will behave as if you performed the following assignment:
+
+```ts
+prisma.user.create = async (data: Prisma.UserCreateArgs) => ({ 
+  ...newUser, 
+  id: 1 
+}) 
+```
+> **Note**: Later in this article you will dive in to some of the helpful functions available to your mocked Prisma Client and how you might use them.
+
+You can now run functions that use Prisma Client by mocking the client's behaviors beforehand to ensure a desired outcome. This way, rather than worrying about the individual queries, you can focus on the function's actual business logic.
+
+If you now run your tests again, you should finally see that all of your tests have passed! ✅
+
+## Using the mocked client
+
+So you've got a mocked Prisma Client instance and have the ability to manipulate the client to generate the query results you need to test specific scenarios in your functions... what next?
+
+The remainder of this article will dive into many of the functions your mocked client and Vitest have available and how they might be used in different scenarios to enable your testing experience.
+
+> **Note**: The examples below will not be viable, full-blown unit tests. Rather, they will be functional samples of the tools available via your mocked client. The next article in this series will cover unit testing in-depth.
+
+### Mocking query responses
+
+One of the most common things you will use your mocked client for is mocking the responses of queries. You already mocked the response of the `create` method previously in this article, however there are multiple ways to do this that each have their own use-cases. 
+
+Take this scenario, for example:
+
+
+
+```ts
+// test/sample.test.ts
+// ...
+import { getPosts } from '../script'
+
+test('getPosts should return an object with published & un-published posts separated', async () => {
+  const mockPublishedPost = { id: 1, content: 'content', published: true, title: 'title', authorId: 1}
+  prisma.post.findMany.mockResolvedValue([mockPublishedPost])
+
+  const posts = await getPosts()
+  expect(posts).toStrictEqual({
+    published: [mockPublishedPost],
+    unpublished: [mockPublishedPost]
+  })
+})
+```
+```ts
+// script.ts
+// ...
+export const getPosts = async () => {
+  const published = await prisma.post.findMany({ where: { published: true }})
+  const unpublished = await prisma.post.findMany({ where: { published: false }})
+
+  return { published, unpublished }
+}
+```
+
+
+> **Note**: The usage of [`toStrictEqual`](https://vitest.dev/api/#tostrictequal) here is important. When comparing objects, `toStrictEqual` ensures the objects have the same structure and type.
+
+Although this test passes successfully, it doesn't make much sense. When `prisma.post.findMany.mockResolvedValue` is invoked, the value provided to that function is used as the response of `prisma.post.findMany` for the remainder of the test. More specifically, until the `mockReset` function is called in `libs/__mocks__/prisma.ts`.
+
+As a result, the `unpublished` and `published` arrays will contain the exact same values, including the `true` value in the `published` property.
+
+In order to generate a more realistic response in this scenario, you can make use of another function: [`mockResolvedValueOnce`](https://vitest.dev/api/#mockresolvedvalueonce). This function can be called multiple times to mock the responses of a function and the responses of subsequent invocations. 
+
+In your `getPosts` function, you can use `mockResolvedValueOnce` to mock the first and second responses that function should return.
+
+
+
+```ts
+// test/sample.test.ts
+// ...
+import { getPosts } from '../script'
+
+test('getPosts should return an object with published & un-published posts separated', async () => {
+  const mockPublishedPost = { id: 1, content: 'content', published: true, title: 'title', authorId: 1}
+
+  prisma.post.findMany
+    .mockResolvedValueOnce([mockPublishedPost])
+    .mockResolvedValueOnce([{...mockPublishedPost, published: false}])
+    
+  const posts = await getPosts()
+  expect(posts).toStrictEqual({
+    published: [mockPublishedPost],
+    unpublished: [{...mockPublishedPost, published: false}]
+  })
+})
+```
+```ts
+// script.ts
+// ...
+export const getPosts = async () => {
+  const published = await prisma.post.findMany({ where: { published: true }})
+  const unpublished = await prisma.post.findMany({ where: { published: false }})
+
+  return { published, unpublished }
+}
+```
+
+
+> **Note**: Many functions available via Vitest have a `mockXValueOnce` method  along with `mockXValue`. Refer to the [documentation](https://vitest.dev/api/#api-reference) for more details.
+
+### Triggering and capturing errors
+
+Another scenario you may want to test for is a case where a query fails and returns or throws an error. A great example of where this may be useful is Prisma Client's [`findUniqueOrThrow`](https://www.prisma.io/docs/orm/reference/prisma-client-reference#finduniqueorthrow) function. 
+
+This function searches for a unique record but throws an error if a record is not found. Because your Prisma Client's functions are mocked, however, the `findUniqueOrThrow` function no longer behaves that way. You must manually trigger the errored state. An example of how you might test for this behavior is shown below:
+
+
+
+```ts
+// test/sample.test.ts
+// ...
+import { getPostByID } from '../script'
+
+test('getPostByID should throw an error when no ID found', async () => {
+  prisma.post.findUniqueOrThrow.mockImplementation(() => {
+    throw new Error('There was an error.')
+  })
+
+  const response = await getPostByID(200)
+
+  expect(response).toBe('There was an error.')
+})
+```
+```ts
+// script.ts
+// ...
+export const getPostByID = async (id: number) => {
+  try {
+    return await prisma.post.findUniqueOrThrow({ where: { id }})
+  } catch ( e: any ) {
+    return e.message
+  }
+}
+```
+
+
+The [`mockImplementation`](https://vitest.dev/api/#mockimplementation) allows you to provide a function that replaces the behavior of the mocked function. In the case above, the replacement function simply throws an error.
+
+While this may seem a bit tedious at first glance, the need to manually define the behavior of a function in this case is actually an added benefit. This allows you to have fine-grain control of what the output of your function will be in different states, even errored ones.
+
+Along the same lines as above, if the method you are testing is intended to throw an actual error rather than return some message related to the error, you can also test for that! 
+
+
+
+```ts
+// test/sample.test.ts
+// ...
+import { getPostByID } from '../script'
+
+test('getPostByID should throw an error', async () => {
+  prisma.post.findUniqueOrThrow.mockImplementation(() => {
+    throw new Error('There was an error.')
+  })
+  
+  await expect(getPostByID(1)).rejects.toThrow()
+  await expect(getPostByID(1)).rejects.toThrowError('There was an error')
+})
+```
+```ts
+// script.ts
+// ...
+export const getPostByID = async (id: number) => {
+  return await prisma.post.findUniqueOrThrow({ where: { id }})
+}
+```
+
+
+By using the [`rejects`](https://vitest.dev/api/#rejects) keyword on the response of the `expect` function, Vitest knows to resolve the `Promise` given to `expect` and look for an errored response. Once the `Promise` resolves, the `toThrow` and [`toThrowError`](https://vitest.dev/api/#tothrowerror) functions allow you to check for specific details about the error. 
+
+### Mocking transactions
+
+Another piece of Prisma Client you may need to mock is a [`$transaction`](https://www.prisma.io/docs/orm/prisma-client/queries/transactions#the-transaction-api). 
+
+There are different types of transactions: [sequential operations](https://www.prisma.io/docs/orm/prisma-client/queries/transactions#sequential-prisma-client-operations) and [interactive transactions](https://www.prisma.io/docs/orm/prisma-client/queries/transactions#interactive-transactions). The way you mock these will depend greatly on the goal of your test and the context in which you are using the `$transaction`. There are, however, two general ways in which you will mock this function.
+
+For both sequential operations and interactive transactions, the result of the completed transaction is eventually returned from the `$transaction` function. If your test only cares about the result of the transaction, your test will look very similar to the tests above where you mocked a function's response.
+
+An example might look something like this:
+
+
+
+```ts
+// test/sample.test.ts
+// ...
+import { addPost } from '../script'
+
+test('addPost should return an object containing the new post and the total count', async () => {
+  // 1
+  const mockPost = {
+    authorId: 1,
+    title: 'title',
+    content: 'content',
+    published: true
+  }
+
+  // 2
+  const mockResponse = [ {...mockPost, id: 1 }, 100 ]
+  prisma.$transaction.mockResolvedValue(mockResponse)
+
+  // 3
+  const data = await addPost(mockPost)
+
+  // 4
+  expect(data).toStrictEqual({
+    newPost: mockResponse[0],
+    count: mockResponse[1]
+  })
+})
+```
+```ts
+// script.ts
+// ...
+export const addPost = async (data: Prisma.PostCreateInput) => {
+  const [ newPost, count ] = await prisma.$transaction([
+    prisma.post.create({ data }),
+    prisma.post.count()
+  ])
+  
+  return { newPost, count }
+}
+```
+
+
+In the test above you:
+
+1. Mocked out the data for the post you intended to create.
+2. Mocked what the response from `$transaction` should look like.
+3. Invoked the function after the Prisma Client methods had been mocked.
+4. Ensured the returned value from your function matched what you would have expected.
+
+By mocking the response of the `$transaction` function itself, you did not have to worry about what went on within the transaction's sequential actions (or the interactive transaction if that were the case). 
+
+What if you want to test an interactive transaction that has important business logic you need to validate? This method would not work as it completely forgoes the inner workings of the transaction. 
+
+To test an interactive transaction with important business logic, you may write a test that looks like the following:
+
+
+
+```ts
+// test/sample.test.ts
+// ...
+import { addPost } from '../script'
+
+test('addPost should return an object containing the new post and the total count', async () => {
+  // 1
+  const mockPost = {
+    authorId: 1,
+    title: 'title',
+    content: 'content'
+  }
+  const mockResponse = {
+    newPost: { ...mockPost, id: 1, published: true },
+    count: 100
+  }
+
+  // 2
+  prisma.post.create.mockResolvedValue(mockResponse.newPost)
+  prisma.post.count.mockResolvedValue(mockResponse.count)
+
+  // 3
+  prisma.$transaction.mockImplementation((callback) => callback(prisma))
+
+  // 4
+  const data = await addPost(mockPost)
+
+  // 5
+  expect(data.newPost.published).toBe(true)
+  expect(data).toStrictEqual(mockResponse)
+})
+```
+```ts
+// script.ts
+// ...
+export const addPost = async (data: Prisma.PostCreateInput) => {
+  return await prisma.$transaction(async (tx) => {
+    if (!('published' in data)) {
+      data['published'] = true
+    }
+
+    const newPost = await tx.post.create({ data })
+    const count = await tx.post.count()
+
+    return { newPost, count }
+  })
+}
+```
+
+
+This test is a little bit more involved, as there are a lot of different moving pieces to consider.
+
+Here is what happens:
+
+1. The post and response objects are mocked.
+2. The responses of the `create` and `count` methods are mocked.
+3. The `$transaction` function's implementation is mocked so that you can provide the mocked Prisma Client to the interactive transaction function rather than the actual client instance.
+4. The `addPost` method is invoked.
+5. The values of the response are validated to ensure the business logic within the interactive transaction worked. More specifically, it ensures the new post's `published` flag is set to `true`.
+  
+
+## Spy on methods
+
+The last concept you will explore is _spying_. Vitest, via a package named [TinySpy](https://github.com/tinylibs/tinyspy), gives you the ability to _spy_ on a function. Spying allows you to observe a function during the course of the code's execution and determine things such as: how many times it was invoked, what parameters were passed to it, the value it returned, and more.
+
+> **Note**: Spying on a function allows you to observe details about the function as your code is executed without modifying the target function or its behavior.
+
+You may spy on an un-mocked function using `vi.spyOn()`, however a mocked function with `vi.fn()` has all of the spying functionalities available to it by default. Because Prisma Client has been mocked, every function should be capable of being spied on.
+
+![Spy functions.](/testing-series-1-8eRB5p0Y8o/imgs/spy-functions.png)
+
+Below is a quick example of what a test might look like using a _spy_:
+
+
+
+```ts
+// test/sample.test.ts
+// ...
+import { updateUser } from '../script'
+
+test('updateUser should delete user posts if clearPosts flag is true', async () => {
+  prisma.user.update.mockResolvedValue({
+    id: 1,
+    email: 'adams@prisma.io',
+    name: 'Sabin Adams'
+  })
+
+  await updateUser(1, {}, true)
+
+  expect(prisma.post.deleteMany).toHaveBeenCalled()
+  expect(prisma.post.deleteMany).toHaveBeenCalledWith({
+    where: { authorId: 1 }
+  })
+})
+```
+```ts
+// script.ts
+// ...
+export const updateUser = async (
+  id: number, 
+  data: Prisma.UserUpdateInput,
+  clearPosts: boolean
+) => {
+  const user = await prisma.user.update({
+    where: { id },
+    data
+  })
+  if (clearPosts) {
+    await prisma.post.deleteMany({ where: { authorId: id }})
+  }
+
+  return user
+}
+```
+
+
+These _spy_ functions are especially useful when you are attempting to ensure certain scenarios are triggered based on various inputs.
+
+## Why Vitest?
+
+You may be curious about why this article focuses on Vitest as a testing framework rather than a more established and popular framework like [Jest](https://jestjs.io/).
+
+The reasoning behind this decision has to do with the different tools' compatibility with Node.js, specifically when dealing with `Error` objects. [Matteo Collina](https://twitter.com/matteocollina), a member of the Node.js Technical Steering Committee among other awesome achievements, describes this issue very well on a recent livestream of his. 
+
+<TweetEmbedComp tweets={['1600058525916360704']}  />
+
+
+The problem in a nutshell is that Jest cannot out of the box determine whether an error is an instance of the `Error` class.
+
+This may cause various unexpected problems as you write tests for different cases in your application. 
+
+### How are they different?
+
+Fortunately, for the most part every testing framework is very similar and the concepts transfer fairly seamlessly. For example, if you are accustomed to working with Jest and are considering a move to something like Vitest or `node-tap` (another testing framework), the knowledge you already have will be very transferrable to the new technology. 
+
+Very minor adjustments will be required: things like function naming conventions and configuration.
+ 
+### Should you ever use Jest?
+
+Yes! Jest is a fantastic tool written by very capable people. While Vitest may be the "best tool for the job" when testing a backend application in Node.js, Jest is still more than capable for testing frontend JavaScript applications. 
+
+## Summary & What's next
+
+In this article, you focused on the concepts of _mocking_ and _spying_, both of which play a major role in unit testing an application. Specifically, you explored:
+
+- What mocking is and why it is useful
+- How to set up a project with Vitest and Prisma configured
+- How to mock Prisma Client
+- How to use a mocked Prisma Client instance
+
+With this knowledge and context into the world of testing, you now have the tool set required to unit test an application. In the next article of this series you will do exactly that! 
+
+We hope you'll join along in the next parts of this series as we explore the various ways you can test your applications that use Prisma Client.

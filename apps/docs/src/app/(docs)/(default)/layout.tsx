@@ -9,17 +9,18 @@ import { StatusIndicator } from "@/components/status-indicator";
 import { SidebarBannerCarousel } from "@/components/sidebar-banner";
 import { fetchOgImage } from "@/lib/og-image";
 import { cn } from "@prisma-docs/ui/lib/cn";
-import { FloatingAsk } from "@/components/floating-ask";
+import { getPageBadges } from "@/lib/page-badges";
+import { BadgeProvider, SidebarBadgeItem } from "@/components/sidebar-badge-provider";
 
 // Sidebar announcement slides — set to [] to hide the banner
 const SIDEBAR_SLIDES = [
   {
     title: "The Next Evolution of Prisma ORM",
-    description:
-      "Prisma Next: a full TypeScript rewrite with a new query API, SQL builder, and extensible architecture.",
+    description: "Prisma Next: a full TypeScript rewrite with a new query API, SQL builder, and extensible architecture.",
     href: "https://pris.ly/pn-anouncement",
     gradient: "orm" as const,
     badge: "New",
+    image: "/imgs/sidebar-banners/prisma-next.png",
   },
 ];
 
@@ -37,7 +38,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
   // Resolve OG images server-side for slides that don't have a hardcoded image
   const slides = await Promise.all(
     SIDEBAR_SLIDES.map(async (slide) => {
-      if (slide.href.startsWith("http")) {
+      if (!slide.image && slide.href.startsWith("http")) {
         const ogImage = await fetchOgImage(slide.href);
         if (ogImage) return { ...slide, image: ogImage };
       }
@@ -45,14 +46,17 @@ export default async function Layout({ children }: { children: React.ReactNode }
     }),
   );
 
+  const badges = Object.fromEntries(getPageBadges());
+
   return (
-    <>
+    <BadgeProvider badges={badges}>
       <DocsLayout
         {...base}
         links={navbarLinks}
         nav={{ ...nav }}
         sidebar={{
           collapsible: false,
+          components: { Item: SidebarBadgeItem },
           footer: ({ className, ...props }: ComponentProps<"div">) => (
             <div className={cn("flex flex-col p-4 pt-2 gap-3", className)} {...props}>
               <SidebarBannerCarousel slides={slides} />
@@ -64,7 +68,6 @@ export default async function Layout({ children }: { children: React.ReactNode }
       >
         {children}
       </DocsLayout>
-      <FloatingAsk />
-    </>
+    </BadgeProvider>
   );
 }

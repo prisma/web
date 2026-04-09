@@ -1,6 +1,6 @@
 export { default as Statistic } from "./statistic";
 
-export { Textarea } from "./textarea";
+export { Textarea, textareaVariants } from "./textarea";
 
 export {
   ChartContainer,
@@ -103,7 +103,7 @@ export {
   TableCell,
   TableCaption,
 } from "./table";
-export { Input } from "./input";
+export { Input, inputVariants } from "./input";
 
 export { Label } from "./label";
 
@@ -156,3 +156,25 @@ export {
 
 export { Alert } from "./alert";
 export { Switch } from "./switch";
+
+export {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectScrollDownButton,
+  SelectScrollUpButton,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "./select";
+
+export {
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  EmptyDescription,
+  EmptyContent,
+  EmptyMedia,
+} from "./empty";

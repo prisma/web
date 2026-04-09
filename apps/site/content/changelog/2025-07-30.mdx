@@ -1,0 +1,185 @@
+---
+title: "Prisma ORM v6.13.0: Prisma Config is now GA"
+date: "2025-07-30"
+version: "v6.13.0"
+slug: "2025-07-30"
+headline: "Prisma ORM v6.13.0: Prisma Config is now GA"
+tags:
+  - "Prisma Postgres"
+  - "Prisma ORM"
+canonical: "/changelog#log2025-07-30"
+share:
+  active: true
+  content: "Look at this page: "
+source:
+  exportedAt: "2026-03-31T10:29:19.701Z"
+---
+
+## Prisma ORM v6.13.0: Prisma Config is now GA
+
+#### 📂 Prisma Config is now Generally Available
+
+The [`prisma.config.ts`](https://www.prisma.io/docs/orm/reference/prisma-config-reference) file is Prisma ORM’s native way to provide configuration options for your project. The Prisma Config file now allows you to:
+
+- Define locations for Prisma-related assets:
+  - Prisma schema file
+  - Migrations
+  - SQL view definitions
+  - TypedSQL queries
+- Set up a `seed` command to populate the database.
+- Configure **externally managed tables** to be ignored by Prisma Migrate.
+- Specify **driver adapters** for Prisma CLI database interactions.
+- Remove `earlyAccess` flag for stable projects.
+- Opt into **Preview/Early Access** features via the new `experimental` field (e.g., adapters).
+- Support for multiple file extensions: `.js`, `.ts`, `.mjs`, `.cjs`, `.mts`, `.cts`, and `.config/prisma.\{ext\}`.
+
+Here’s an example Prisma Config file that specified custom locations for various project assets in and a seed script inside a `db` directory:
+
+```typescript
+import path from "node:path";
+import { defineConfig } from "prisma/config";
+
+export default defineConfig({
+  schema: path.join("db", "schema.prisma"),
+  migrations: {
+    path: path.join("db", "migrations"),
+    seed: "tsx db/seed.ts"
+  },
+});
+```
+
+📚 Learn more [in the docs](https://www.prisma.io/docs/orm/reference/prisma-config-reference).
+
+#### 🗄️ Multi-schema feature is now Generally Available
+
+Databases like PostgreSQL or SQL Server provide a way to logically organize your tables in dedicated namespaces called *schemas*. In Prisma ORM, you can assign tables to various schemas via the `@@schema` attribute:
+
+```css
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["base", "shop"]
+}
+
+model User {
+  id     Int     @id
+  orders Order[]
+
+  @@schema("base")
+}
+
+model Order {
+  id      Int  @id
+  user    User @relation(fields: [userId], references: [id])
+  userId  Int
+
+  @@schema("shop")
+}
+
+```
+
+📚 Learn more [in the docs](https://www.prisma.io/docs/orm/prisma-schema/data-model/multi-schema).
+
+#### 📶 Externally managed tables
+
+Sometimes, you may not want Prisma ORM to manage certain tables because they’re handled by another team or external service.
+
+With this release, you can mark tables as **externally managed** and they’ll be:
+
+- ignored by Prisma Migrate
+- still queryable via Prisma Client
+
+You can now use the `tables` option in `prisma.config.ts` to specify which tables Prisma Migrate should ignore:
+
+```typescript
+// prisma.config.ts
+ export default defineConfig({
+  tables: {
+    external: [
+      "users",
+    ]
+  },
+})
+
+```
+
+A typical use case for this is the [`users` table from Supabase](https://supabase.com/docs/guides/auth/managing-user-data) which you never want be changed by Prisma Migrate but still may want to query with Prisma Client.
+
+📚 Learn more [in the docs](https://www.prisma.io/docs/orm/prisma-schema/data-model/externally-managed-tables).
+
+#### 🔍 More robust support for SQL views (Preview)
+
+SQL views are virtual tables, showing the results of a stored query without storing data themselves. We’re making SQL views support in Prisma ORM more robust by removing incompatible attributes (`@id`, `@index`, `@unique`) and turning off features that don’t apply to native SQL views, such as `findUnique`, cursor pagination, writes, implicit ordering, and relationships.
+
+These updates align Prisma ORM’s API with how SQL views truly work, giving you a safer and more predictable experience.
+
+📚 Learn more [in the docs](https://www.prisma.io/docs/orm/prisma-schema/data-model/views).
+
+## 🏹 `pgvector` extension support for Prisma Postgres (Early Access)
+
+It enables efficient storage and querying of high-dimensional vector embeddings directly in a Postgres database and thus is perfect for building AI-driven applications. `pgvector` essentially allows developers to perform similarity search (e.g., for recommendation systems or semantic search) using standard SQL, eliminating the need for a separate vector database.
+
+Native support for `pgvector` in Prisma ORM is going to follow soon, until then you can use `pgvector` via [custom migrations](https://www.prisma.io/docs/orm/prisma-migrate/workflows/customizing-migrations) and [TypedSQL](https://www.prisma.io/blog/announcing-typedsql-make-your-raw-sql-queries-type-safe-with-prisma-orm).
+
+📚 Learn more [in the docs](https://www.prisma.io/docs/postgres/database/postgres-extensions).
+
+## 🔌 Manage Prisma Postgres programmatically via an API
+
+Need to provision a Prisma Postgres instance in CI/CD, attach a fresh database to a preview branch, or offer Prisma Postgres to your users? The new Management API makes it easy.
+
+With a familiar REST interface, you can programmatically provision or delete instances, create or retrieve connection strings, and manage entire projects in [Prisma Console](https://console.prisma.io/).
+
+📚 Learn more [in the docs](https://www.prisma.io/docs/postgres/database/api-reference/management-api).
+
+## ♻️ CI/CD GitHub Actions for Prisma Postgres available on GitHub Marketplace
+
+We’ve released two GitHub Actions, built on the Management API, to simplify Prisma Postgres integration in your CI/CD workflows:
+
+- [**Create Prisma Postgres Database Action**](https://github.com/marketplace/actions/create-prisma-postgres-database)
+- [**Delete Prisma Postgres Database Action**](https://github.com/marketplace/actions/delete-prisma-postgres-database)
+
+These Actions serve as the foundational building blocks for integrating Prisma Postgres into CI/CD pipelines.
+
+![image (2).png](/changelog/image-d08557fd614a1bcf64b7c3f55bd81d799443f426-2040x1618-png-image-2-.png)
+
+These Actions make it easy to provision databases on pull requests, run integration tests against real instances, and manage database lifecycles. The READMEs includes examples to help you get started quickly, with minimal setup required.
+
+## 🏎️ Instant Postgres with `npx create-db` — no auth required
+
+We launched a new CLI command that allows you to spin up a new database instantly:
+
+```sh
+npx create-db # no auth required
+```
+
+The command doesn’t require authentication, so you can play around with your database without any initial hurdles!
+
+![create-db.gif](/changelog/image-bd1a52263c6e36773fe0c4b003a81298d7f175f4-800x450-gif-create-db.gif)
+
+Your instance will be automatically deleted after 24 hours *but* you can claim it and put it into your [Prisma Console](https://console.prisma.io) account if you want to keep using it after that period. Learn more [in the docs](https://www.prisma.io/docs/postgres/introduction/npx-create-db).
+
+## 🧭 New navigation UI for Prisma Console
+
+The [Prisma Console](https://console.prisma.io) got a little makeover, including a new design for navigating and managing your projects and their databases. This makes common workflows like *creating new projects*, *navigating between projects and databases*, as well as *accessing project settings* a lot more smooth.
+
+![new_ui.png](/changelog/image-a3438ae7d08cb86d8ac9db19dc2ad2ac4edf2c4c-3070x1866-png-new_ui.png)
+
+We’re eager to hear your feedback, [let us know on X](https://pris.ly/x) what you think of the new UI.
+
+## 🧑‍🚀 More from the Prismaverse
+
+#### 🤖 **Why SiteGPT Chose Prisma Postgres for Scalable AI-Powered Chatbots**
+
+SiteGPT helps businesses create AI-powered chatbots trained on their own content, websites, documentation, or internal data. These chatbots act as the first line of support for customers, handling requests with contextual accuracy.
+
+Read [the customer story](https://www.prisma.io/blog/why-sitegpt-chose-prisma-postgres-for-scalable-ai-powered-chatbots) to learn why they chose Prisma Postgres as their database.
+
+#### 🦀 **Prisma ORM without Rust: Latest Performance Benchmarks**
+
+Our move from Rust to TypeScript in the Prisma ORM internals is now in Preview for all first-class databases! In this article, we’re sharing the performance improvements we observed in our latest benchmarks and give an outlook for Prisma v7 where the ORM will become “Rust-free” by default.
+
+Check out [the article](https://www.prisma.io/blog/prisma-orm-without-rust-latest-performance-benchmarks) to explore the benchmarks and see what’s next.
+
+## 🏢 Enterprise support
+
+Thousands of teams use Prisma and many of them already tap into our Enterprise & Agency Support Program for hands-on help with everything from schema integrations and performance tuning to security and compliance. With this program you also get priority issue triage and bug fixes, expert scalability advice, and custom training so that your Prisma-powered apps stay rock-solid at any scale. Learn more or join: [https://prisma.io/enterprise](https://prisma.io/enterprise).

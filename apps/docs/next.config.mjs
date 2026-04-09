@@ -213,13 +213,17 @@ const config = {
       {
         source: "/",
         destination: "/docs",
-        permanent: false,
+        permanent: true,
         basePath: false,
       },
     ];
   },
   async rewrites() {
     return [
+      {
+        source: "/sitemap",
+        destination: "/sitemap.xml",
+      },
       {
         source: "/:path*.mdx",
         destination: "/llms.mdx/:path*",

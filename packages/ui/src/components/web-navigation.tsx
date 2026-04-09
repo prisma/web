@@ -18,24 +18,66 @@ import { useEffect, useState } from "react";
 import { FontAwesomeScript as WebFA } from "./fontawesome-web";
 import { cn } from "../lib/cn";
 
-interface Link {
+export interface Link {
   text: string;
+  external?: boolean;
   url?: string;
+  icon?: string;
   desc?: string;
   col?: number;
   sub?: Array<{
     text: string;
+    external?: boolean;
     url: string;
+    icon?: string;
     desc?: string;
   }>;
+  buttonVariant?: "ppg" | "orm" | undefined;
 }
 
 interface WebNavigationProps {
   links: Link[];
+  utm?: Record<string, string>;
+  preserveExactUtm?: boolean;
+  buttonVariant?: "ppg" | "orm" | undefined;
 }
 
-export function WebNavigation({ links }: WebNavigationProps) {
+function buildConsoleHref(
+  pathname: "/login" | "/sign-up",
+  utm?: WebNavigationProps["utm"],
+  preserveExactUtm = false,
+) {
+  if (!utm) {
+    return `https://console.prisma.io${pathname}`;
+  }
+
+  const href = new URL(`https://console.prisma.io${pathname}`);
+
+  for (const [key, value] of Object.entries(utm)) {
+    if (key.startsWith("utm_") && value) {
+      href.searchParams.set(key, value);
+    }
+  }
+
+  if (!preserveExactUtm && !href.searchParams.has("utm_campaign")) {
+    href.searchParams.set(
+      "utm_campaign",
+      pathname === "/login" ? "login" : "signup",
+    );
+  }
+
+  return href.toString();
+}
+
+export function WebNavigation({
+  links,
+  utm,
+  preserveExactUtm = false,
+  buttonVariant = "ppg",
+}: WebNavigationProps) {
   const [mobileView, setMobileView] = useState(false);
+  const loginHref = buildConsoleHref("/login", utm, preserveExactUtm);
+  const signupHref = buildConsoleHref("/sign-up", utm, preserveExactUtm);
 
   useEffect(() => {
     if (mobileView) {
@@ -49,8 +91,11 @@ export function WebNavigation({ links }: WebNavigationProps) {
       <NavigationMenu mobileOpen={mobileView}>
         <NavigationWrapper mobileOpen={mobileView}>
           <NavigationMenuList>
-            <NavigationMenuItem>
-              <NavigationMenuLink className="shrink-0 w-full p-0">
+            <NavigationMenuItem className="outline-none!">
+              <NavigationMenuLink
+                className="shrink-0 w-full p-0 hover:bg-transparent focus:bg-transparent focus-visible:outline-none focus-visible:ring-0"
+                href="https://www.prisma.io"
+              >
                 {Logo}
               </NavigationMenuLink>
             </NavigationMenuItem>
@@ -58,24 +103,27 @@ export function WebNavigation({ links }: WebNavigationProps) {
               {links.map((link) =>
                 link.url ? (
                   <NavigationMenuItem key={link.url}>
-                    <NavigationMenuLink href={link.url}>
+                    <NavigationMenuLink href={link.url} variant={buttonVariant}>
                       {link.text}
                     </NavigationMenuLink>
                   </NavigationMenuItem>
                 ) : link?.sub?.length ? (
                   <NavigationMenuItem key={link.text}>
-                    <NavigationMenuTrigger>{link.text}</NavigationMenuTrigger>
-                    <NavigationMenuContent className="rounded-high! overflow-hidden!">
+                    <NavigationMenuTrigger variant={buttonVariant}>
+                      {link.text}
+                    </NavigationMenuTrigger>
+                    <NavigationMenuContent className="rounded-square-high! overflow-hidden!">
                       <div
                         className={cn(
                           "list gap-1 flex flex-col",
                           link?.col && `grid grid-cols-${link.col}`,
                         )}
                       >
-                        {link.sub.map((sub: any, index: number) => (
+                        {link.sub.map((sub, index: number) => (
                           <MenuNavigationItem
                             key={`${sub.text}-${sub.url}-${index}`}
                             link={sub}
+                            variant={buttonVariant}
                           />
                         ))}
                       </div>
@@ -86,16 +134,16 @@ export function WebNavigation({ links }: WebNavigationProps) {
             </div>
           </NavigationMenuList>
           <NavigationMenuList>
-            <div
-              className={cn("contents", mobileView && "hidden md:contents!")}
-            >
+            <div className={cn("contents", mobileView && "hidden md:contents!")}>
               <Socials include={["discord"]} />
               <NavigationMenuItem className="ml-2 -mr-2 hidden sm:block">
-                <Button variant="default-stronger">Login</Button>
+                <Button asChild variant="default-strong">
+                  <a href={loginHref}>Login</a>
+                </Button>
               </NavigationMenuItem>
               <NavigationMenuItem className="hidden sm:block">
-                <Button variant="ppg" className="whitespace-nowrap">
-                  Get started
+                <Button asChild variant={buttonVariant} className="whitespace-nowrap">
+                  <a href={signupHref}>Get started</a>
                 </Button>
               </NavigationMenuItem>
             </div>
@@ -103,14 +151,16 @@ export function WebNavigation({ links }: WebNavigationProps) {
               className="flex md:hidden"
               onClick={() => setMobileView(!mobileView)}
             >
-              <i
-                className={cn(
-                  "fa-regular",
-                  mobileView ? "fa-xmark" : "fa-bars",
-                )}
-              />
+              <i className={cn("fa-regular", mobileView ? "fa-xmark" : "fa-bars")} />
             </NavigationMenuItem>
-            {mobileView && <NavigationMobileMenu links={links} />}
+            {mobileView && (
+              <NavigationMobileMenu
+                links={links}
+                loginHref={loginHref}
+                signupHref={signupHref}
+                buttonVariant={buttonVariant}
+              />
+            )}
           </NavigationMenuList>
         </NavigationWrapper>
       </NavigationMenu>
