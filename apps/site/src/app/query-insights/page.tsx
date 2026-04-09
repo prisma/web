@@ -41,50 +41,49 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function Page() {
   return (
     <main className="bg-background-default">
-      <div className="pt-42! -mt-42! relative">
-        <div className="opacity-20 absolute top-0 left-0 w-full h-full bg-[linear-gradient(180deg,var(--color-foreground-ppg)_0%,var(--color-background-default)_100%)]" />
-        <div className="section-hero mt-18! max-w-308 px-4 w-full mx-auto! flex flex-col gap-8 relative pt-12">
-          <div className="title">
-            <div className="eyebrow text-center uppercase font-mona-sans stretch-display font-extrabold text-foreground-ppg-weak mb-4!">
+      <div className="hero -mt-24 pt-40 flex items-end justify-center px-4 relative">
+        <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-ppg)_0%,var(--color-background-default)_100%)] opacity-20" />
+        <div className="content relative z-2 flex flex-col gap-8 max-w-308 w-full">
+          <div className="flex flex-col gap-4 items-center text-center">
+            <div className="flex items-center gap-2 text-foreground-ppg-weak uppercase tracking-widest text-sm font-sans-display font-black">
               <span>Query insights</span>
               <i
-                className="fa-solid fa-brain-circuit ml-2! inline-block!"
+                className="fa-solid fa-brain-circuit"
                 aria-hidden="true"
               ></i>
             </div>
-            <h1 className="font-mona-sans stretch-display text-6xl text-foreground-neutral text-center">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-4xl mx-auto">
               AI-powered insights
               <br /> built into Prisma Postgres
             </h1>
           </div>
-          <p className="text-foreground-neutral-weak font-mona-sans max-w-200 w-full mx-auto! text-center">
+          <p className="text-center text-foreground-neutral max-w-2xl mx-auto text-xl">
             Understand why your database queries are slow, see their real impact
             in production, and generate a structured AI prompt to improve them.
           </p>
-          <div className="btn-group inline-flex gap-4 md:w-fit mx-auto! items-center justify-center flex-col sm:flex-row w-full sm:w-fit">
-            <Button
-              asChild
-              variant="ppg"
-              size="3xl"
-              className="font-mona-sans font-[650] text-base! w-full sm:w-fit"
-            >
-              <a href="/postgres">
-                <span>Start with Prisma Postgres</span>
-                <i
-                  className="fa-regular fa-database ml-3!"
-                  aria-hidden="true"
-                />
-              </a>
-            </Button>
-            <Button asChild variant="default-strong" size="3xl">
-              <a href="/docs">
-                <span>Read the docs</span>
-                <i
-                  className="fa-regular fa-book-open ml-3!"
-                  aria-hidden="true"
-                />
-              </a>
-            </Button>
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
+          <Button asChild variant="ppg" size="2xl">
+                <a href="/postgres">
+                  <span>Get Started</span>
+                  <i
+                    className="fa-regular fa-arrow-right ml-2"
+                    aria-hidden="true"
+                  />
+                </a>
+              </Button>
+              <Button
+                asChild
+                variant="default-strong"
+                size="2xl"
+              >
+                <a href="/docs/postgres/faq#query-insights">
+                  <span>Read the docs</span>
+                  <i
+                    className="fa-regular fa-book-open ml-2"
+                    aria-hidden="true"
+                  />
+                </a>
+              </Button>
           </div>
           <i className="text-xs text-foreground-neutral-weaker text-center mx-auto!">
             Query Insights is <span className="underline">included</span> with
@@ -230,7 +229,7 @@ export default async function Page() {
             <div className="flex flex-col md:flex-row gap-6">
               <Button asChild variant="ppg" size="2xl">
                 <a href="/postgres">
-                  <span>Start with Prisma Postgres</span>
+                  <span>Get Started</span>
                   <i
                     className="fa-regular fa-arrow-right ml-2"
                     aria-hidden="true"
