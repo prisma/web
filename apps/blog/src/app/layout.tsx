@@ -5,6 +5,7 @@ import { Inter, Barlow } from "next/font/google";
 import type { Metadata } from "next";
 import Script from "next/script";
 import { BLOG_HOME_DESCRIPTION, BLOG_HOME_TITLE } from "@/lib/blog-metadata";
+import { FontAwesomeScript as EclipseFA } from "@prisma/eclipse";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -32,9 +33,10 @@ export default function Layout({ children }: LayoutProps<"/">) {
     >
       <head>
         <Script
-          src="https://kit.fontawesome.com/6916e9db27.js"
+          src={EclipseFA}
           crossOrigin="anonymous"
-        ></Script>
+          data-auto-add-css="false"
+        />
       </head>
       <body className="flex flex-col min-h-screen relative">
         <div className="bg-blog absolute inset-0 -z-1 overflow-hidden" />
