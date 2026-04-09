@@ -15,6 +15,11 @@ const footerItems = [
         _type: "footerLinkType",
       },
       {
+        title: "Query Insights",
+        url: "/query-insights",
+        _type: "footerLinkType",
+      },
+      {
         _type: "footerLinkType",
         title: "Pricing",
         url: "/pricing",
