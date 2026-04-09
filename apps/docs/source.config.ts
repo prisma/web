@@ -12,7 +12,24 @@ import remarkConsoleUtm from "@/lib/remark-console-utm";
 function convertLine(cmd: string, pm: "npm" | "pnpm" | "yarn" | "bun"): string {
   return cmd
     .split("\n")
-    .map((line) => convert(line.replace(/^npm init -y$/, "npm init"), pm))
+    .map((line) => {
+      // npm-to-yarn strips @latest from `npm create X@latest` and handles the
+      // npm-specific `--` separator inconsistently across PMs. Handle this
+      // pattern directly instead of fighting the library's output.
+      const m = line.match(/^npm create ([^\s]+@latest)((?:\s+--\s*.*)?)$/);
+      if (m) {
+        const pkg = m[1]; // e.g. "prisma@latest"
+        const flags = m[2].replace(/^\s+--\s*/, " ").trim(); // strip -- separator
+        const f = flags ? ` ${flags}` : "";
+        switch (pm) {
+          case "npm":  return line;
+          case "pnpm": return `pnpm create ${pkg}${f}`;
+          case "yarn": return `yarn create ${pkg}${f}`;
+          case "bun":  return `bun create ${pkg}${f}`;
+        }
+      }
+      return convert(line.replace(/^npm init -y$/, "npm init"), pm);
+    })
     .join("\n");
 }
 
