@@ -1,0 +1,316 @@
+---
+title: "Prisma ORM v7.0.0: Rust-free Prisma Client becomes the default"
+date: "2025-11-19"
+version: "v7.0.0"
+slug: "2025-11-19"
+headline: "Prisma ORM v7.0.0: Rust-free Prisma Client becomes the default"
+tags:
+  - "Prisma ORM"
+  - "Prisma Postgres"
+canonical: "/changelog#log2025-11-19"
+share:
+  active: true
+  content: "Look at this page: "
+source:
+  exportedAt: "2026-03-31T10:29:19.701Z"
+---
+
+## Prisma ORM v7.0.0: Rust-free Prisma Client becomes the default
+
+**Rust-free Prisma Client as the default**
+
+The Rust-free Prisma Client has been in the works for some time now, all the way [back to v6.16.0](https://www.prisma.io/docs/orm/more/upgrade-guides/upgrading-versions/upgrading-to-prisma-6), with early iterations being available for developers to adopt. Now with version 7.0, we’re making this the default for all new projects. With this, developers are able to get:
+
+- ~90% smaller bundle sizes
+- Up to 3x faster queries
+- ESM-first Prisma Client
+- Significantly simpler deployments
+
+Adopting the new Rust-free client is as simple as swapping the `prisma-client-js` provider for `prisma-client` in your main `schema.prisma` :
+
+```text
+// schema.prisma
+generator client {
+- provider = "prisma-client-js"
++ provider = "prisma-client"
+}
+```
+
+**Generated Client and types move out of **`node_modules`
+
+When running `prisma generate`, the generated Client runtime and project types will now **require** a `output` path to be set in your project’s main `schema.prisma`. We recommend that they be generated inside of your project’s `src` directory to ensure that your existing tools are able to consume them like any other piece of code you might have.
+
+```text
+// schema.prisma
+generator client {
+  provider = "prisma-client"
+  // Generate my Client and Project types
+  output   = "../src/generated/prisma"
+}
+```
+
+Update your code to import PrismaClient from this generated output:
+
+```typescript
+// Import from the generated prisma client
+import { PrismaClient } from './generated/prisma/client';
+```
+
+For developers who still need to stay on `prisma-client-js` but are using the new output option, there’s a new required package, `@prisma/client-runtime-utils`, which needs to be installed:
+
+```sh
+# for prisma-client-js users only
+npm install @prisma/client-runtime-utils
+```
+
+## `prisma generate` changes and post-install hook removal
+
+For `prisma generate` , we’ve removed a few flags that were no longer needed:
+
+- `prisma generate --data-proxy`
+- `prisma generate --accelerate`
+- `prisma generate --no-engine`
+- `prisma generate --allow-no-models`
+
+In previous releases, there was a post-install hook that we utilized to automatically generate your project’s Client and types. With modern package managers like pnpm, this actually has introduced more problems than it has solved. So we’ve removed this post-install hook and now require developers to explicitly call `prisma generate` .
+
+As a part of those changes, we’ve also removed the implicit run of `prisma db seed` in-between `migrate` commands.
+
+**Prisma Client**
+
+As part of the move to a Rust-free Prisma Client, we moved away from embedding the drivers of the databases that we support. Now developers explicitly provide the driver adapters they need for their project, right in their source code. For PostgreSQL, simply install `@prisma/adapter-pg` in your project, configure the connection string, and pass it when creating the Prisma Client:
+
+```typescript
+// Import from the generated prisma client
+import { PrismaClient } from './generated/prisma/client';
+
+// Driver Adapter for Postgres
+import { PrismaPg } from '@prisma/adapter-pg';
+
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL!,
+});
+
+export const prisma = new PrismaClient({ adapter });
+```
+
+For other databases:
+
+```typescript
+// If using SQLite
+import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
+const adapter = new PrismaBetterSqlite3({
+  url: process.env.DATABASE_URL || 'file:./dev.db'
+})
+
+// If using MySql
+import { PrismaMariaDb } from '@prisma/adapter-mariadb';
+const adapter = new PrismaMariaDb({
+  host: "localhost",
+  port: 3306,
+  connectionLimit: 5
+});
+```
+
+We’ve also removed support for additional options when configuring your Prisma Client
+
+- `new PrismaClient({ datasources: .. })` support has been removed
+- `new PrismaClient({datasourceUrl: ..})` support has been removed
+
+**Driver Adapter naming updates**
+
+We’ve standardized our naming conventions for the various driver adapters internally. The following driver adapters have been updated:
+
+- `PrismaBetterSQLite3` ⇒ `PrismaBetterSqlite3`
+- `PrismaD1HTTP` ⇒ `PrismaD1Http`
+- `PrismaLibSQL` ⇒ `PrismaLibSql`
+- `PrismaNeonHTTP` ⇒ `PrismaNeonHttp`
+
+**Schema and config file updates**
+
+As part of a larger change in how the Prisma CLI reads your project configuration, we’ve updated what gets set in the schema and what gets set in `prisma.config.ts`. Also as part of this release, `prisma.config.ts` is now required for projects looking to perform introspection.
+
+**Schema changes**
+
+- `datasource.url` is now configured in the config file
+- `datasource.shadowDatabaseUrl` is now configured in the config file
+- `datasource.directUrl` is no longer needed and has been removed
+- `generator.runtime=”react-native”` has been removed
+
+For early adopters of the config file, a few things have been removed with this release
+
+- `engine: 'js'| 'classic'` has been removed
+- `adapter` has been removed
+
+A brief before/after:
+
+```text
+// schema.prisma
+datasource db {
+  provider = "postgresql"
+  url = ".."
+  directUrl = ".."
+  shadowDatabaseUrl = ".."
+}
+```
+
+```typescript
+// ./prisma.config.ts
+export default defineConfig({
+  datasource: {
+    url: '..',
+    shadowDatabaseUrl: '..',
+  }
+})
+```
+
+**Explicit loading of environment variables**
+
+As part of the move to Prisma config, we’re no longer automatically loading environment variables when invoking the Prisma CLI. Instead, developers can utilize libraries like `dotenv` to manage their environment variables and load them as they need. This means you can have dedicated local environment variables or ones set only for production. This removes any accidental loading of environment variables while giving developers full control.
+
+## Removed support for `prisma` keyword in `package.json`
+
+In previous releases, users could configure their schema entry point and seed script in a `prisma` block in the `package.json` of their project. With the move to `prisma.config.ts`, this no longer makes sense and has been removed. To migrate, utilize the Prisma config instead:
+
+```json
+{
+  "name": "my-project",
+  "version": "1.0.0",
+  "prisma": {
+    "schema": "./custom-path-to-schema/schema.prisma",
+    "seed": "tsx ./prisma/seed.ts"
+  }
+}
+```
+
+```typescript
+import 'dotenv/config'
+import { defineConfig, env } from "prisma/config";
+export default defineConfig({
+  schema: "prisma/schema.prisma",
+  migrations: {
+      seed: "tsx prisma/seed.ts"
+  },
+  datasource: {
+    url: env("DATABASE_URL"),
+  },
+});
+```
+
+**Removed Client Engines**
+
+We’ve removed the following client engines:
+
+- `LibraryEngine` (`engineType = "library"`, the Node-API Client)
+- `BinaryEngine` (`engineType = "binary"`, the long-running executable binary)
+- `DataProxyEngine` and `AccelerateEngine` (Accelerate uses a new `RemoteExecutor` now)
+- `ReactNativeEngine`
+
+**Deprecated metrics feature has been removed**
+
+We deprecated the previewFeature `metrics` some time ago, and have removed it fully for version 7. If you need metrics related data available, you can use the underlying driver adapter itself, like the Pool metric from the Postgres driver.
+
+**Mapped enums**
+
+If [you followed along on X](https://x.com/prisma/status/1988970132690071600), you will have seen that we teased a highly requested user feature was coming to v7.0. That highly requested feature is... mapped enums! We now support the `@map` attribute for enum members, which can be used to set their expected runtime values.
+
+```text
+enum PaymentProvider {
+  MixplatSMS    @map("mixplat/sms")
+  InternalToken @map("internal/token")
+  Offline       @map("offline")
+
+  @@map("payment_provider")
+}
+```
+
+```typescript
+export const PaymentProvider: {
+  MixplatSMS: 'mixplat/sms'
+  InternalToken: 'internal/token'
+  Offline: 'offline'
+}
+```
+
+**Miscellaneous**
+
+- [\#28493](https://github.com/prisma/prisma/pull/28493): Stop shimming `WeakRef` in Cloudflare Workers. This will now avoid any unexpected memory leaks.
+- [\#28297](https://github.com/prisma/prisma/pull/28297): Remove hardcoded URL validation. Users are now required to make sure they don’t include sensitive information in their config files.
+- [\#28273](https://github.com/prisma/prisma/pull/28273): Removed Prisma v1 detection
+- [\#28343](https://github.com/prisma/prisma/pull/28343): Remove undocumented `--url` flag from `prisma db pull`
+- [\#28286](https://github.com/prisma/prisma/pull/28286): Remove deprecated `prisma introspect` command.
+- [\#28480](https://github.com/prisma/prisma/pull/28480): Rename `/wasm` to `/edge`
+  - This change only affects `prisma-client-js`
+  - Before:
+    - `/edge` → meant “for Prisma Accelerate”
+    - `/wasm` → meant “for Edge JS runtimes (e.g., Cloudflare, Vercel Edge)”
+  - After:
+    - `/edge` → means “for Edge JS runtimes (e.g., Cloudflare, Vercel Edge)”
+- The following Prisma-specific environment variables have been removed
+  - `PRISMA_CLI_QUERY_ENGINE_TYPE`
+  - `PRISMA_CLIENT_ENGINE_TYPE`
+  - `PRISMA_QUERY_ENGINE_BINARY`
+  - `PRISMA_QUERY_ENGINE_LIBRARY`
+  - `PRISMA_GENERATE_SKIP_AUTOINSTALL`
+  - `PRISMA_SKIP_POSTINSTALL_GENERATE`
+  - `PRISMA_GENERATE_IN_POSTINSTALL`
+  - `PRISMA_GENERATE_DATAPROXY`
+  - `PRISMA_GENERATE_NO_ENGINE`
+  - `PRISMA_CLIENT_NO_RETRY`
+  - `PRISMA_MIGRATE_SKIP_GENERATE`
+  - `PRISMA_MIGRATE_SKIP_SEED`
+
+**Prisma Accelerate changes**
+
+We’ve changed how to configure Prisma ORM to use Prisma Accelerate. In conjunction with some more Prisma Postgres updates (more on that later), you now use the new `accelerateUrl` option when instantiating the Prisma Client.
+
+```typescript
+import { PrismaClient } from "./generated/prisma/client"
+import { withAccelerate } from "@prisma/extension-accelerate"
+
+const prisma = new PrismaClient({
+  accelerateUrl: process.env.DATABASE_URL,
+}).$extends(withAccelerate())
+```
+
+## New Prisma Studio comes to the CLI
+
+We launched a new version of Prisma Studio to our Console and VS Code extension a while back, but the Prisma CLI still shipped with the older version.
+
+Now, with v7.0, we’ve updated the Prisma CLI to include the new Prisma Studio. Not only are you able to inspect your database, but you get rich visualization to help you understand connected relationships in your database. It’s customizable, much smaller, and can inspect remote database by passing a `--url` flag. This new version of Prisma Studio is not tied to the Prisma ORM, and establishes a new foundation for what comes next.
+
+## Prisma Postgres
+
+[Prisma Postgres](https://www.prisma.io/postgres) is our managed Postgres service, designed with the same philosophy of great DX that has guided Prisma for close to a decade. It works great with serverless, it’s fast, and with simple pricing and a generous free tier. Here’s what’s new:
+
+**Connection Pooling Changes with Prisma Accelerate**
+
+With support for connection pooling being added natively to Prisma Postgres, Prisma Accelerate now serves as a dedicated caching layer. If you were using Accelerate for the connection pooling features, don’t worry! Your existing connection string via Accelerate will continue to work, and you can switch to the new connection pool when you’re ready.
+
+**Simplified connection flow**
+
+We added support for pooled/unpooled direct connections in Prisma Postgres a few weeks back. Now, in an effort to make this more clear and accessible, we’ve made the connection user flow in your dashboard simpler. Now, when you go to connect to a database, you’ll get new options to enable connection pooling, or to enable Prisma Accelerate for caching. Below, you’ll get code snippets for getting things configured in your project right away.
+
+![Screenshot 2025-11-19 at 6.53.34 AM.png](/changelog/image-dbf4a5b41bff50451203b70220e81e27e1c722c1-1672x1872-png-Screenshot-2025-11-19-at-6.53.34-AM.png)
+
+**Serverless driver**
+
+For those who want to connect to Prisma Postgres but are deploying to environments like Cloudflare Workers, we have a new version of the serverless client library to support these runtimes.
+
+- Compatible with Cloudflare Workers, Vercel Edge Functions, Deno Deploy, AWS Lambda, and Bun
+- Stream results row-by-row to handle large datasets with constant memory usage
+- Pipeline multiple queries over a single connection, reducing latency by up to 3x
+- SQL template literals with automatic parameterization and full TypeScript support
+- Built-in transactions, batch operations, and extensible type system
+
+[Check out the serverless driver docs](https://www.prisma.io/docs/postgres/database/serverless-driver) for more details
+
+## Open roles at Prisma
+
+Interested in joining Prisma? We’re growing and have several exciting opportunities across the company for developers who are passionate about building with Prisma. Explore our open positions on our [Careers page](https://www.prisma.io/careers#current) and find the role that’s right for you.
+
+## Enterprise support
+
+Thousands of teams use Prisma and many of them already tap into our Enterprise & Agency Support Program for hands-on help with everything from schema integrations and performance tuning to security and compliance.
+
+With this program you also get priority issue triage and bug fixes, expert scalability advice, and custom training so that your Prisma-powered apps stay rock-solid at any scale. Learn more or join: [https://prisma.io/enterprise](https://prisma.io/enterprise).

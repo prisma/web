@@ -67,6 +67,10 @@ export interface AvatarProps extends Omit<
    */
   alt?: string;
   /**
+   * Loading behavior for image format
+   */
+  loading?: "lazy" | "eager";
+  /**
    * Icon or initials content
    */
   children?: React.ReactNode;
@@ -108,6 +112,7 @@ const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
       format = "image",
       src,
       alt,
+      loading,
       children,
       ...props
     },
@@ -123,6 +128,7 @@ const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
           <img
             src={src}
             alt={alt || "Avatar"}
+            loading={loading}
             className={cn(avatarContentVariants({ format }))}
           />
         ) : (

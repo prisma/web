@@ -31,7 +31,24 @@ export async function POST(req: Request) {
 
   const pr = body.pull_request;
 
-  if (["OWNER", "MEMBER", "COLLABORATOR"].includes(pr.author_association)) {
+  const isMember = pr.author_association === "MEMBER";
+
+  const teamSlugs = ["dev-connections-write", "webdev-write"] as const;
+  const authHeaders = {
+    Authorization: `Bearer ${process.env.BOT_TOKEN_GITHUB_PR_LINEAR_WEBHOOK!}`,
+    "X-GitHub-Api-Version": "2022-11-28",
+  } as const;
+  const membershipResults = await Promise.all(
+    teamSlugs.map((slug) =>
+      fetch(
+        `https://api.github.com/orgs/prisma/teams/${encodeURIComponent(slug)}/memberships/${encodeURIComponent(pr.user.login)}`,
+        { headers: authHeaders }
+      )
+    )
+  );
+  const isTeamMember = membershipResults.some((r) => r.status === 200);
+  
+  if (isMember || isTeamMember) {
     return new Response("Internal contributor, skipping", { status: 200 });
   }
 

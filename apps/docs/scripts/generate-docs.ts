@@ -2,6 +2,26 @@ import { generateFiles } from "fumadocs-openapi";
 import matter from "gray-matter";
 import { openapi } from "@/lib/openapi";
 
+function withDescriptionFirst(
+  data: Record<string, unknown>,
+  description: string,
+) {
+  const { title, description: _description, ...rest } = data;
+
+  return {
+    ...(title !== undefined ? { title } : {}),
+    description,
+    ...rest,
+  };
+}
+
+function stripEmoji(value: string) {
+  return value
+    .replace(/[\p{Extended_Pictographic}\uFE0F]/gu, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 void generateFiles({
   input: openapi,
   output: "./content/docs/management-api/endpoints",
@@ -98,11 +118,16 @@ void generateFiles({
 
       const description =
         typeof operation.description === "string" && operation.description.trim().length > 0
-          ? operation.description.trim()
+          ? stripEmoji(operation.description.trim())
           : `${operation.method} ${operation.path}.`;
       const metaDescription = description.startsWith("Management API:")
         ? description
         : `Management API: ${description}`;
+
+      if (data.description !== description) {
+        data.description = description;
+        changed = true;
+      }
 
       if (data.metaDescription !== metaDescription) {
         data.metaDescription = metaDescription;
@@ -111,9 +136,13 @@ void generateFiles({
 
       if (!changed) continue;
 
-      file.content = matter.stringify(parsed.content, data, {
+      file.content = matter.stringify(
+        parsed.content,
+        withDescriptionFirst(data, description),
+        {
         lineWidth: -1,
-      } as Parameters<typeof matter.stringify>[2]);
+        } as Parameters<typeof matter.stringify>[2],
+      );
     }
   },
 });

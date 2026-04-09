@@ -1,0 +1,188 @@
+---
+title: "Prisma ORM v7.1.0: SQL comments and Prisma 7 read replicas"
+date: "2025-12-03"
+version: "v7.1.0"
+slug: "2025-12-03"
+headline: "Prisma ORM v7.1.0: SQL comments and Prisma 7 read replicas"
+tags:
+  - "Prisma ORM"
+canonical: "/changelog#log2025-12-03"
+share:
+  active: true
+  content: "Look at this page: "
+source:
+  exportedAt: "2026-03-31T10:29:19.701Z"
+---
+
+## Prisma ORM v7.1.0: SQL comments and Prisma 7 read replicas
+
+- [\#28735](https://github.com/prisma/prisma/pull/28735): **pnpm monorepo issues with prisma client runtime utils** Resolves issues in pnpm monorepos where users would report TypeScript issues related to `@prisma/client-runtime-utils`.
+- [\#28769](https://github.com/prisma/prisma/pull/28769): **implement sql commenter plugins for Prisma Client** This PR implements support for SQL commenter plugins to Prisma Client. The feature will allow users to add metadata to SQL queries as comments, following the [sqlcommenter format](https://google.github.io/sqlcommenter/). Here are two related PRs that were also merged:
+  - [\#28796](https://github.com/prisma/prisma/pull/28796): **implement query tags for SQL commenter plugin**
+  - [\#28802](https://github.com/prisma/prisma/pull/28802): **add `traceContext` SQL commenter plugin**
+- [\#28737](https://github.com/prisma/prisma/pull/28737): **added error message when constructing client without configs** This commit adds an error message when trying to create a new PrismaClient instance without any arguments. Thanks to @xio84 for this community contribution!
+- [\#28820](https://github.com/prisma/prisma/pull/28820): **mark `@opentelemetry/api` as external in instrumentation** Ensures `@opentelemetry/api` is treated as an external dependency rather than bundled. Since it is a peer dependency, this prevents applications from ending up with duplicate copies of the package.
+- [\#28694](https://github.com/prisma/prisma/pull/28694): **allow `env()` helper to accept interface-based generics** Updates the `env()` helper’s type definition so it works with interfaces as well as type aliases. This removes the previous constraint requiring an index signature and resolves TS2344 errors when using interface-based env types. Runtime behavior is unchanged. Thanks to @SaubhagyaAnubhav for this community contribution!
+
+## Read Replicas extension
+
+- [\#53](https://github.com/prisma/extension-read-replicas/pull/53): **Add support for Prisma 7** Users of the read-replicas extension can now use the extension in Prisma v7. You can update by installing:
+
+```npm
+npm install @prisma/extension-read-replicas@latest
+```
+
+For folks still on Prisma v6, install version `0.4.1`:
+
+```npm
+npm install @prisma/extension-read-replicas@0.4.1
+```
+
+For more information, [visit the repo](https://github.com/prisma/extension-read-replicas)
+
+## SQL comments
+
+We're excited to announce **SQL Comments** support in Prisma 7.1.0! This new feature allows you to append metadata to your SQL queries as comments, making it easier to correlate queries with application context for improved observability, debugging, and tracing.
+
+SQL comments follow the [sqlcommenter format](https://google.github.io/sqlcommenter/) developed by Google, which is widely supported by database monitoring tools. With this feature, your SQL queries can include rich metadata:
+
+```text
+SELECT "id", "name" FROM "User" /*application='my-app',traceparent='00-abc123...-01'*/
+```
+
+**Basic usage**
+
+Pass an array of SQL commenter plugins to the new `comments` option when creating a `PrismaClient` instance:
+
+```typescript
+import { PrismaClient } from './generated/prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { queryTags } from '@prisma/sqlcommenter-query-tags';
+import { traceContext } from '@prisma/sqlcommenter-trace-context';
+
+const adapter = new PrismaPg({
+  connectionString: `${process.env.DATABASE_URL}`,
+});
+
+const prisma = new PrismaClient({
+  adapter,
+  comments: [queryTags(), traceContext()],
+});
+```
+
+**Query tags**
+
+The `@prisma/sqlcommenter-query-tags` package lets you add arbitrary tags to queries within an async context:
+
+```typescript
+import { queryTags, withQueryTags } from '@prisma/sqlcommenter-query-tags';
+
+const prisma = new PrismaClient({
+  adapter,
+  comments: [queryTags()],
+});
+
+// Wrap your queries to add tags
+const users = await withQueryTags(
+  { route: '/api/users', requestId: 'abc-123' },
+  () => prisma.user.findMany(),
+);
+```
+
+Resulting SQL:
+
+```text
+SELECT ... FROM "User" /*requestId='abc-123',route='/api/users'*/
+```
+
+Use `withMergedQueryTags` to merge tags with outer scopes:
+
+```typescript
+import {
+  withQueryTags,
+  withMergedQueryTags,
+} from '@prisma/sqlcommenter-query-tags';
+
+await withQueryTags({ requestId: 'req-123', source: 'api' }, async () => {
+  await withMergedQueryTags(
+    { userId: 'user-456', source: 'handler' },
+    async () => {
+      // Queries here have: requestId='req-123', userId='user-456', source='handler'
+      await prisma.user.findMany();
+    },
+  );
+});
+```
+
+**Trace context**
+
+The `@prisma/sqlcommenter-trace-context` package adds W3C Trace Context (`traceparent`) headers for distributed tracing correlation:
+
+```typescript
+import { traceContext } from '@prisma/sqlcommenter-trace-context';
+
+const prisma = new PrismaClient({
+  adapter,
+  comments: [traceContext()],
+});
+```
+
+When tracing is enabled and the span is sampled:
+
+```text
+SELECT * FROM "User" /*traceparent='00-0af7651916cd43dd8448eb211c80319c-b9c7c989f97918e1-01'*/
+```
+
+Note: Requires @prisma/instrumentation to be configured. The traceparent is only added when tracing is active and the span is sampled.
+
+**Custom plugins**
+
+Create your own plugins to add custom metadata:
+
+```typescript
+import type { SqlCommenterPlugin } from '@prisma/sqlcommenter';
+
+const applicationTags: SqlCommenterPlugin = (context) => ({
+  application: 'my-service',
+  environment: process.env.NODE_ENV ?? 'development',
+  operation: context.query.action,
+  model: context.query.modelName,
+});
+
+const prisma = new PrismaClient({
+  adapter,
+  comments: [applicationTags],
+});
+```
+
+**Framework integration**
+
+SQL comments work seamlessly with popular frameworks, e.g., **Hono**:
+
+```typescript
+import { createMiddleware } from 'hono/factory';
+import { withQueryTags } from '@prisma/sqlcommenter-query-tags';
+
+app.use(
+  createMiddleware(async (c, next) => {
+    await withQueryTags(
+      {
+        route: c.req.path,
+        method: c.req.method,
+        requestId: c.req.header('x-request-id') ?? crypto.randomUUID(),
+      },
+      () => next(),
+    );
+  }),
+);
+```
+
+Additional framework examples for **Express**, **Koa**, **Fastify**, and **NestJS** are available in the documentation.
+
+For complete documentation, see [SQL Comments](https://www.prisma.io/docs/orm/prisma-client/observability-and-logging/sql-comments). We'd love to hear your feedback on this feature! Please open an issue on [GitHub](https://github.com/prisma/prisma) or join the discussion in our [Discord community](https://pris.ly/discord).
+
+## Enterprise support
+
+Thousands of teams use Prisma and many of them already tap into our Enterprise & Agency Support Program for hands-on help with everything from schema integrations and performance tuning to security and compliance.
+
+With this program you also get priority issue triage and bug fixes, expert scalability advice, and custom training so that your Prisma-powered apps stay rock-solid at any scale. Learn more or join: [https://prisma.io/enterprise](https://prisma.io/enterprise).

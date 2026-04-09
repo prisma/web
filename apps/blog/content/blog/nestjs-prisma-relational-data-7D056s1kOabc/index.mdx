@@ -1,0 +1,901 @@
+---
+title: "Building a REST API with NestJS and Prisma: Handling Relational Data"
+slug: "nestjs-prisma-relational-data-7D056s1kOabc"
+date: "2023-03-23"
+authors:
+  - "Tasin Ishmam"
+metaTitle: "Building a REST API with NestJS and Prisma: Handling Relational Data"
+metaDescription: "In this tutorial, you will learn how to handle relational data in a REST API built with NestJS, Prisma and PostgreSQL. You will create a new User model and learn how to model relations in the data layer and API layer."
+metaImagePath: "/nestjs-prisma-relational-data-7D056s1kOabc/imgs/hero-2d5ec1b2f38575e64a7ae28b6915e68d77e197f2-1920x1080.png"
+heroImagePath: "/nestjs-prisma-relational-data-7D056s1kOabc/imgs/hero-2d5ec1b2f38575e64a7ae28b6915e68d77e197f2-1920x1080.png"
+heroImageAlt: "Building a REST API with NestJS and Prisma: Handling Relational Data"
+series:
+  title: "Building a REST API with NestJS, PostgreSQL, Swagger and Prisma"
+seriesIndex: 4
+tags:
+  - "education"
+---
+
+<center>
+      <i>8 min read</i>
+  </center>
+
+  Welcome to the fourth tutorial in this series about building a REST API with NestJS, Prisma and PostgreSQL!
+  In this tutorial, you will learn how to handle relational data in your NestJS REST API.
+
+## Table Of Contents
+
+- [Introduction](#introduction)`
+  - [Development environment](#development-environment)
+  - [Clone the repository](#clone-the-repository)
+  - [Project structure and files](#project-structure-and-files)
+- [Add a `User` model to the database](#add-a-user-model-to-the-database)
+  - [Update your seed script](#update-your-seed-script)
+  - [Add an `authorId` field to `ArticleEntity`](#add-an-authorid-field-to-articleentity)
+- [Implement CRUD endpoints for Users](#implement-crud-endpoints-for-users)
+  - [Generate new `users` REST resource](#generate-new-users-rest-resource)
+  - [Add `PrismaClient` to the `Users` module](#add-prismaclient-to-the-users-module)
+  - [Define the `User` entity and DTO classes](#define-the-user-entity-and-dto-classes)
+  - [Define the `UsersService` class](#define-the-usersservice-class)
+  - [Define the `UsersController` class](#define-the-userscontroller-class)
+- [Exclude `password` field from the response body](#exclude-password-field-from-the-response-body)
+  - [Use the `ClassSerializerInterceptor` to remove a field from the response](#use-the-classserializerinterceptor-to-remove-a-field-from-the-response)
+- [Returning the author along with an article](#returning-the-author-along-with-an-article)
+- [Summary and final remarks](#summary-and-final-remarks)
+
+## Introduction
+
+In the [first chapter](/nestjs-prisma-rest-api-7D056s1BmOL0) of this series, you created a new NestJS project and integrated it with Prisma, PostgreSQL and Swagger. Then, you built a rudimentary REST API for the backend of a blog application. In the [second chapter](/nestjs-prisma-validation-7D056s1kOla1), you learned how to do input validation and transformation.
+
+In this chapter, you will learn how to handle relational data in your data layer and API layer.
+
+1. First, you will add a `User` model to your database schema which will have a one-to-many relationship `Article` records (i.e. one user can have multiple articles).
+2. Next, you will implement the API routes for the `User` endpoints to perform CRUD (create, read, update and delete) operations on `User` records.
+2. Finally, you will learn how to model the `User-Article` relation in your API layer.
+
+
+In this tutorial, you will use the REST API built in the [second chapter](/nestjs-prisma-validation-7D056s1kOla1).
+
+
+
+### Development environment
+
+To follow along with this tutorial, you will be expected to:
+
+- ... have [Node.js](https://nodejs.org) installed.
+- ... have [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/install/#compose-installation-scenarios) installed. If you are using Linux, please make sure your Docker version is 20.10.0 or higher. You can check your Docker version by running `docker version` in the terminal.
+- ... _optionally_ have the [Prisma VS Code Extension](https://marketplace.visualstudio.com/items?itemName=Prisma.prisma) installed. The Prisma VS Code extension adds some really nice IntelliSense and syntax highlighting for Prisma.
+- ... _optionally_ have access to a Unix shell (like the terminal/shell in Linux and macOS) to run the commands provided in this series.
+
+If you don't have a Unix shell (for example, you are on a Windows machine), you can still follow along, but the shell commands may need to be modified for your machine.
+
+### Clone the repository
+
+The starting point for this tutorial is the ending of [chapter two](/nestjs-prisma-validation-7D056s1kOla1) of this series. It contains a rudimentary REST API built with NestJS.
+
+The starting point for this tutorial is available in the [`end-validation`](https://github.com/prisma/blog-backend-rest-api-nestjs-prisma/tree/end-validation) branch of the [GitHub repository](https://github.com/prisma/blog-backend-rest-api-nestjs-prisma). To get started, clone the repository and checkout the `end-validation` branch:
+
+```shell
+git clone -b end-validation git@github.com:prisma/blog-backend-rest-api-nestjs-prisma.git
+```
+Now, perform the following actions to get started:
+
+1. Navigate to the cloned directory:
+  ```shell   cd blog-backend-rest-api-nestjs-prisma
+  ```
+2. Install dependencies:
+  ```shell   npm install
+  ```
+3. Start the PostgreSQL database with Docker:
+  ```shell   docker-compose up -d
+  ```
+4. Apply database migrations:
+  ```shell   npx prisma migrate dev
+  ```
+5. Start the project:
+  ```shell   npm run start:dev
+  ```
+
+> **Note**: Step 4 will also generate Prisma Client and seed the database.
+
+Now, you should be able to access the API documentation at [`http://localhost:3000/api/`](http://localhost:3000/api/).
+
+### Project structure and files
+
+The repository you cloned should have the following structure:
+```
+median
+  ├── node_modules
+  ├── prisma
+  │   ├── migrations
+  │   ├── schema.prisma
+  │   └── seed.ts
+  ├── src
+  │   ├── app.controller.spec.ts
+  │   ├── app.controller.ts
+  │   ├── app.module.ts
+  │   ├── app.service.ts
+  │   ├── main.ts
+  │   ├── articles
+  │   └── prisma
+  ├── test
+  │   ├── app.e2e-spec.ts
+  │   └── jest-e2e.json
+  ├── README.md
+  ├── .env
+  ├── docker-compose.yml
+  ├── nest-cli.json
+  ├── package-lock.json
+  ├── package.json
+  ├── tsconfig.build.json
+  └── tsconfig.json
+```
+> **Note**: You might notice that this folder comes with a `test` directory as well. Testing won't be covered in this tutorial. However, if you want to learn about how best practices for testing your applications with Prisma, be sure to check out this tutorial series: [The Ultimate Guide to Testing with Prisma](https://www.prisma.io/blog/series/ultimate-guide-to-testing-eTzz0U4wwV)
+
+The notable files and directories in this repository are:
+
+- The `src` directory contains the source code for the application. There are three modules:
+  - The `app` module is situated in the root of the `src` directory and is the entry point of the application. It is responsible for starting the web server.
+  - The `prisma` module contains Prisma Client, your interface to the database.
+  - The `articles` module defines the endpoints for the `/articles` route and accompanying business logic.
+- The `prisma` folder has the following:
+  - The `schema.prisma` file defines the database schema.
+  - The `migrations` directory contains the database migration history.
+  - The `seed.ts` file contains a script to seed your development database with dummy data.
+- The `docker-compose.yml` file defines the Docker image for your PostgreSQL database.
+- The `.env` file contains the database connection string for your PostgreSQL database.
+
+> **Note**: For more information about these components, go through [chapter one](/nestjs-prisma-rest-api-7D056s1BmOL0) of this tutorial series.
+
+
+## Add a `User` model to the database
+
+Currently, your database schema only has a single model: `Article`. An article can be written by a registered user. So, you will add a `User` model to your database schema to reflect this relationship.
+
+Start by updating your Prisma schema:
+
+```prisma
+// prisma/schema.prisma
+
+model Article {
+  id          Int      @id @default(autoincrement())
+  title       String   @unique
+  description String?
+  body        String
+  published   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
++  author      User?    @relation(fields: [authorId], references: [id])
++  authorId    Int?
+}
+
++model User {
++  id        Int       @id @default(autoincrement())
++  name      String?
++  email     String    @unique
++  password  String
++  createdAt DateTime  @default(now())
++  updatedAt DateTime  @updatedAt
++  articles  Article[]
++}
+```
+The `User` model has a few fields that you might expect, like `id`, `email`, `password`, etc. It also has a one to many relationship with the `Article` model. This means that a user can have many articles, but an article can only have one author. For simplicity, the `author` relation is made optional, so it's still possible to create an article without an author.
+
+Now, to apply the changes to your database, run the migration command:
+
+```shell
+npx prisma migrate dev --name "add-user-model"
+```
+If the migration runs successfully, you should see the following output:
+```
+...
+The following migration(s) have been created and applied from new schema changes:
+
+migrations/
+  └─ 20230318100533_add_user_model/
+    └─ migration.sql
+
+Your database is now in sync with your schema.
+...
+```
+### Update your seed script
+
+The seed script is responsible for populating your database with dummy data. You will update the seed script to create a few users in your database.
+
+Open the `prisma/seed.ts` file and update it as follows:
+
+```ts
+async function main() {
+  // create two dummy users
++  const user1 = await prisma.user.upsert({
++    where: { email: 'sabin@adams.com' },
++    update: {},
++    create: {
++      email: 'sabin@adams.com',
++      name: 'Sabin Adams',
++      password: 'password-sabin',
++    },
++  });
+
++  const user2 = await prisma.user.upsert({
++    where: { email: 'alex@ruheni.com' },
++    update: {},
++    create: {
++      email: 'alex@ruheni.com',
++      name: 'Alex Ruheni',
++      password: 'password-alex',
++    },
++  });
+
+  // create three dummy articles
+  const post1 = await prisma.article.upsert({
+    where: { title: 'Prisma Adds Support for MongoDB' },
+    update: {
++      authorId: user1.id,
+    },
+    create: {
+      title: 'Prisma Adds Support for MongoDB',
+      body: 'Support for MongoDB has been one of the most requested features since the initial release of...',
+      description:
+        "We are excited to share that today's Prisma ORM release adds stable support for MongoDB!",
+      published: false,
++      authorId: user1.id,
+    },
+  });
+
+  const post2 = await prisma.article.upsert({
+    where: { title: "What's new in Prisma? (Q1/22)" },
+    update: {
++      authorId: user2.id,
+    },
+    create: {
+      title: "What's new in Prisma? (Q1/22)",
+      body: 'Our engineers have been working hard, issuing new releases with many improvements...',
+      description:
+        'Learn about everything in the Prisma ecosystem and community from January to March 2022.',
+      published: true,
++      authorId: user2.id,
+    },
+  });
+
+  const post3 = await prisma.article.upsert({
+    where: { title: 'Prisma Client Just Became a Lot More Flexible' },
+    update: {},
+    create: {
+      title: 'Prisma Client Just Became a Lot More Flexible',
+      body: 'Prisma Client extensions provide a powerful new way to add functionality to Prisma in a type-safe manner...',
+      description:
+        'This article will explore various ways you can use Prisma Client extensions to add custom functionality to Prisma Client..',
+      published: true,
+    },
+  });
+
+  console.log({ user1, user2, post1, post2, post3 });
+}
+```
+The seed script now creates two users and three articles. The first article is written by the first user, the second article is written by the second user, and the third article is written by no one.
+
+> **Note**: At the moment, you are storing passwords in plain text. You should never do this in a real application. You will learn more about salting passwords and hashing them in the next chapter.
+
+
+To execute the seed script, run the following command:
+
+```shell
+npx prisma db seed
+```
+If the seed script runs successfully, you should see the following output:
+```
+...
+🌱  The seed command has been executed.
+```
+### Add an `authorId` field to `ArticleEntity`
+
+After running the migration, you might have noticed a new TypeScript error. The `ArticleEntity` class `implements` the `Article` type generated by Prisma. The `Article` type has a new `authorId` field, but the `ArticleEntity` class does not have that field defined. TypeScript recognizes this mismatch in types and is raising an error. You will fix this error by adding the `authorId` field to the `ArticleEntity` class.
+
+Inside `ArticleEntity` add a new `authorId` field:
+
+```ts
+// src/articles/entities/article.entity.ts
+
+import { Article } from '@prisma/client';
+import { ApiProperty } from '@nestjs/swagger';
+
+export class ArticleEntity implements Article {
+  @ApiProperty()
+  id: number;
+
+  @ApiProperty()
+  title: string;
+
+  @ApiProperty({ required: false, nullable: true })
+  description: string | null;
+
+  @ApiProperty()
+  body: string;
+
+  @ApiProperty()
+  published: boolean;
+
+  @ApiProperty()
+  createdAt: Date;
+
+  @ApiProperty()
+  updatedAt: Date;
+
++  @ApiProperty({ required: false, nullable: true })
++  authorId: number | null;
+}
+```
+In a weakly typed language like JavaScript, you would have to identify and fix things like this yourself. One of the big advantages of having a strongly typed language like TypeScript is that it can quickly help you catch type-related issues.
+
+## Implement CRUD endpoints for Users
+
+
+In this section, you will implement the `/users` resource in your REST API. This will allow you to perform CRUD operations on the users in your database.
+
+> **Note**: The content of this section will be similar to the contents of [Implement CRUD operations for Article model](nestjs-prisma-rest-api-7D056s1BmOL0#implement-crud-operations-for-article-model) section in the first chapter of this series. That section covers the topic more in-depth, so you can read it for better conceptual understanding.
+
+### Generate new `users` REST resource
+
+To generate a new REST resource for `users` run the following command:
+
+```shell
+npx nest generate resource
+```
+You will be given a few CLI prompts. Answer the questions accordingly:
+
+1. `What name would you like to use for this resource (plural, e.g., "users")?` **users**
+2. `What transport layer do you use?` **REST API**
+3. `Would you like to generate CRUD entry points?` **Yes**
+
+You should now find a new `users` module in the `src/users` directory with all the boilerplate for your REST endpoints.
+
+Inside the `src/users/users.controller.ts` file, you will see the definition of different routes (also called route handlers). The business logic for handling each request is encapsulated in the `src/users/users.service.ts` file.
+
+If you open the Swagger generated [API page](http://localhost:3000/api), you should see something like this:
+
+![Auto-generated "users" endpoints](/nestjs-prisma-relational-data-7D056s1kOabc/imgs/users-crud-1.png)
+
+### Add `PrismaClient` to the `Users` module
+
+To access `PrismaClient` inside the `Users` module, you must add the `PrismaModule` as an import. Add the following `imports` to `UsersModule`:
+
+```ts
+// src/users/users.module.ts
+import { Module } from '@nestjs/common';
+import { UsersService } from './users.service';
+import { UsersController } from './users.controller';
++import { PrismaModule } from 'src/prisma/prisma.module';
+
+@Module({
+  controllers: [UsersController],
++  providers: [UsersService],
++  imports: [PrismaModule],
+})
+export class UsersModule {}
+```
+You can now inject the `PrismaService` inside the `UsersService` and use it to access the database. To do this, add a constructor to `users.service.ts` like this:
+
+```ts
+// src/users/users.service.ts
+
+import { Injectable } from '@nestjs/common';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
++import { PrismaService } from 'src/prisma/prisma.service';
+
+@Injectable()
+export class UsersService {
++  constructor(private prisma: PrismaService) {}
+
+// CRUD operations
+}
+```
+### Define the `User` entity and DTO classes
+
+Just like `ArticleEntity`, you are going to define a `UserEntity` class that will be used to represent the `User` entity in the API layer. Define the `UserEntity` class in the `user.entity.ts` file as follows:
+
+
+```ts
+// src/users/entities/user.entity.ts
+import { ApiProperty } from '@nestjs/swagger';
+import { User } from '@prisma/client';
+
+export class UserEntity implements User {
+  @ApiProperty()
+  id: number;
+
+  @ApiProperty()
+  createdAt: Date;
+
+  @ApiProperty()
+  updatedAt: Date;
+
+  @ApiProperty()
+  name: string;
+
+  @ApiProperty()
+  email: string;
+
+  password: string;
+}
+```
+The `@ApiProperty` decorator is used to make properties visible to Swagger. Notice that you did not add the `@ApiProperty` decorator to the `password` field. This is because this field is sensitive, and you do not want to expose it in your API.
+
+> **Note**: Omitting the `@ApiProperty` decorator will only hide the `password` property from the Swagger documentation. The property will still be visible in the response body. You will handle this issue in a later section.
+
+A DTO (Data Transfer Object) is an object that defines how the data will be sent over the network. You will need to implement the `CreateUserDto` and `UpdateUserDto` classes to define the data that will be sent to the API when creating and updating a user, respectively. Define the `CreateUserDto` class inside the `create-user.dto.ts` file as follows:
+
+```ts
+// src/users/dto/create-user.dto.ts
+
+import { ApiProperty } from '@nestjs/swagger';
+import { IsNotEmpty, IsString, MinLength } from 'class-validator';
+
+export class CreateUserDto {
+  @IsString()
+  @IsNotEmpty()
+  @ApiProperty()
+  name: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @ApiProperty()
+  email: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(6)
+  @ApiProperty()
+  password: string;
+}
+```
+`@IsString`, `@MinLength` and `@IsNotEmpty` are validation decorators that will be used to validate the data sent to the API. Validation is covered in more detail in the [second chapter](/nestjs-prisma-validation-7D056s1kOla1) of this series.
+
+The definition of `UpdateUserDto` is automatically inferred from the `CreateUserDto` definition, so it does not need to be defined explicitly.
+
+### Define the `UsersService` class
+
+The `UsersService` is responsible for modifying and fetching data from the database using Prisma Client and providing it to the `UsersController`. You will implement the `create()`, `findAll()`, `findOne()`, `update()` and `remove()` methods in this class.
+
+```ts
+// src/users/users.service.ts
+
+import { Injectable } from '@nestjs/common';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { PrismaService } from 'src/prisma/prisma.service';
+
+@Injectable()
+export class UsersService {
+  constructor(private prisma: PrismaService) {}
+
+  create(createUserDto: CreateUserDto) {
++    return this.prisma.user.create({ data: createUserDto });
+  }
+
+  findAll() {
++    return this.prisma.user.findMany();
+  }
+
+  findOne(id: number) {
++   return this.prisma.user.findUnique({ where: { id } });
+  }
+
+  update(id: number, updateUserDto: UpdateUserDto) {
++    return this.prisma.user.update({ where: { id }, data: updateUserDto });
+  }
+
+  remove(id: number) {
++    return this.prisma.user.delete({ where: { id } });
+  }
+}
+```
+### Define the `UsersController` class
+
+The `UsersController` is responsible for handling requests and responses to the `users` endpoints. It will leverage the `UsersService` to access the database, the `UserEntity` to define the response body and the `CreateUserDto` and `UpdateUserDto` to define the request body.
+
+The controller consists of different route handlers. You will implement five route handlers in this class that correspond to five endpoints:
+
+- `create()` - `POST /users`
+- `findAll()` - `GET /users`
+- `findOne()` - `GET /users/:id`
+- `update()` - `PATCH /users/:id`
+- `remove()` - `DELETE /users/:id`
+
+Update the implementation of these route handlers in `users.controller.ts` as follows:
+
+```ts
+// src/users/users.controller.ts
+
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
++  ParseIntPipe,
+} from '@nestjs/common';
+import { UsersService } from './users.service';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
++import { ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
++import { UserEntity } from './entities/user.entity';
+
+@Controller('users')
++@ApiTags('users')
+export class UsersController {
+  constructor(private readonly usersService: UsersService) {}
+
+  @Post()
++  @ApiCreatedResponse({ type: UserEntity })
+  create(@Body() createUserDto: CreateUserDto) {
+    return this.usersService.create(createUserDto);
+  }
+
+  @Get()
++  @ApiOkResponse({ type: UserEntity, isArray: true })
+  findAll() {
+    return this.usersService.findAll();
+  }
+
+  @Get(':id')
++  @ApiOkResponse({ type: UserEntity })
++  findOne(@Param('id', ParseIntPipe) id: number) {
++    return this.usersService.findOne(id);
+  }
+
+  @Patch(':id')
++  @ApiCreatedResponse({ type: UserEntity })
++  update(
++    @Param('id', ParseIntPipe) id: number,
++    @Body() updateUserDto: UpdateUserDto,
+  ) {
++    return this.usersService.update(id, updateUserDto);
+  }
+
+  @Delete(':id')
++  @ApiOkResponse({ type: UserEntity })
++  remove(@Param('id', ParseIntPipe) id: number) {
++    return this.usersService.remove(id);
+  }
+}
+```
+The updated controller uses the `@ApiTags` decorator to group the endpoints under the `users` tag. It also uses the `@ApiCreatedResponse` and `@ApiOkResponse` decorators to define the response body for each endpoint.
+
+The updated Swagger [API page](http://localhost:3000/api) should look like this
+
+![Updated swagger page](/nestjs-prisma-relational-data-7D056s1kOabc/imgs/users-crud-2.png)
+
+Feel free to test the different endpoints to verify they behave as expected.
+
+## Exclude `password` field from the response body
+
+While the `users` API works as expected, it has a major security flaw. The `password` field is returned in the response body of the different endpoints.
+
+![`GET /users/:id` reveals password](/nestjs-prisma-relational-data-7D056s1kOabc/imgs/password-revealed.png)
+
+You have two options to fix this issue:
+
+1. Manually remove the password from the response body in the controller route handlers
+2. Use an [interceptor](https://docs.nestjs.com/interceptors) to automatically remove the password from the response body
+
+
+The first option is error prone and results in unnecessary code duplication. So, you will use the second method.
+
+### Use the `ClassSerializerInterceptor` to remove a field from the response
+
+[Interceptors](https://docs.nestjs.com/interceptors) in NestJS allow you to hook into the request-response cycle and allow you to execute extra logic before and after the route handler is executed. In this case, you will use it to remove the `password` field from the response body.
+
+NestJS has a built-in [`ClassSerializerInterceptor`](https://docs.nestjs.com/techniques/serialization) that can be used to transform objects. You will use this interceptor to remove the `password` field from the response object.
+
+First, enable `ClassSerializerInterceptor` globally by updating `main.ts`:
+
+```ts
+// src/main.ts
+
++import { NestFactory, Reflector } from '@nestjs/core';
+import { AppModule } from './app.module';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
++import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
++  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
+
+  const config = new DocumentBuilder()
+    .setTitle('Median')
+    .setDescription('The Median API description')
+    .setVersion('0.1')
+    .build();
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api', app, document);
+
+  await app.listen(3000);
+}
+bootstrap();
+```
+> **Note:** It's also possible to bind an interceptor to a method or controller instead of globally. You can read more about it in the [NestJS documentation](https://docs.nestjs.com/interceptors#binding-interceptors).
+
+The `ClassSerializerInterceptor` uses the `class-transformer` package to define how to transform objects. Use the `@Exclude()` decorator to exclude the `password` field in the `UserEntity` class:
+
+
+```ts
+// src/users/entities/user.entity.ts
+
+import { ApiProperty } from '@nestjs/swagger';
+import { User } from '@prisma/client';
++import { Exclude } from 'class-transformer';
+
+export class UserEntity implements User {
+  @ApiProperty()
+  id: number;
+
+  @ApiProperty()
+  createdAt: Date;
+
+  @ApiProperty()
+  updatedAt: Date;
+
+  @ApiProperty()
+  name: string;
+
+  @ApiProperty()
+  email: string;
+
++  @Exclude()
+  password: string;
+}
+```
+If you try using the `GET /users/:id` endpoint again, you'll notice that the `password` field is still being exposed 🤔. This is because, currently the route handlers in your controller returns the `User` type generated by Prisma Client. The `ClassSerializerInterceptor` only works with classes decorated with the `@Exclude()` decorator. In this case, it's the `UserEntity` class. So, you need to update the route handlers to return the `UserEntity` type instead.
+
+First, you need to create a constructor that will instantiate a `UserEntity` object.
+
+```ts
+// src/users/entities/user.entity.ts
+
+import { ApiProperty } from '@nestjs/swagger';
+import { User } from '@prisma/client';
+import { Exclude } from 'class-transformer';
+
+export class UserEntity implements User {
++  constructor(partial: Partial<UserEntity>) {
++    Object.assign(this, partial);
++  }
+
+  @ApiProperty()
+  id: number;
+
+  @ApiProperty()
+  createdAt: Date;
+
+  @ApiProperty()
+  updatedAt: Date;
+
+  @ApiProperty()
+  name: string;
+
+  @ApiProperty()
+  email: string;
+
+  @Exclude()
+  password: string;
+}
+```
+The constructor takes an object and uses the `Object.assign()` method to copy the properties from the `partial` object to the `UserEntity` instance. The type of `partial` is `Partial<UserEntity>`. This means that the `partial` object can contain any subset of the properties defined in the `UserEntity` class.
+
+Next, update the `UsersController` route handlers to return `UserEntity` instead of `Prisma.User` objects:
+
+
+```ts
+// src/users/users.controller.ts
+
+@Controller('users')
+@ApiTags('users')
+export class UsersController {
+  constructor(private readonly usersService: UsersService) {}
+
+  @Post()
+  @ApiCreatedResponse({ type: UserEntity })
++  async create(@Body() createUserDto: CreateUserDto) {
++    return new UserEntity(await this.usersService.create(createUserDto));
+  }
+
+  @Get()
+  @ApiOkResponse({ type: UserEntity, isArray: true })
++  async findAll() {
++    const users = await this.usersService.findAll();
++    return users.map((user) => new UserEntity(user));
+  }
+
+  @Get(':id')
+  @ApiOkResponse({ type: UserEntity })
++  async findOne(@Param('id', ParseIntPipe) id: number) {
++    return new UserEntity(await this.usersService.findOne(id));
+  }
+
+  @Patch(':id')
+  @ApiCreatedResponse({ type: UserEntity })
++  async update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateUserDto: UpdateUserDto,
+  ) {
++    return new UserEntity(await this.usersService.update(id, updateUserDto));
+  }
+
+  @Delete(':id')
+  @ApiOkResponse({ type: UserEntity })
++  async remove(@Param('id', ParseIntPipe) id: number) {
++    return new UserEntity(await this.usersService.remove(id));
+  }
+}
+```
+Now, the password should be omitted from the response object.
+
+![`GET /users/:id` does not reveal password](/nestjs-prisma-relational-data-7D056s1kOabc/imgs/password-omitted.png)
+
+
+## Returning the author along with an article
+
+In [chapter one](/nestjs-prisma-rest-api-7D056s1BmOL0) you implemented the `GET /articles/:id` endpoint for retrieving a single article. Currently, this endpoint does not return the `author` of an article, only the `authorId`. In order to fetch the `author` you have to make an additional request to the `GET /users/:id` endpoint. This is not ideal if you need both the article and its author because you need to make two API requests. You can improve this by returning the `author` along with the `Article` object.
+
+The data access logic is implemented inside the `ArticlesService`. Update the `findOne()` method to return the `author` along with the `Article` object:
+
+```ts
+// src/articles/articles.service.ts
+
+  findOne(id: number) {
++    return this.prisma.article.findUnique({
++      where: { id },
++      include: {
++        author: true,
++      },
++    });
+  }
+```
+If you test the `GET /articles/:id` endpoint, you'll notice that the author of an article, if present, is included in the response object. However, there's a problem. The `password` field is exposed again 🤦.
+
+![`GET /articles/:id` reveals password](/nestjs-prisma-relational-data-7D056s1kOabc/imgs/password-revealed-get-articles.png)
+
+The reason for this issue is very similar to last time. Currently, the `ArticlesController` returns instances of Prisma generated types, whereas the `ClassSerializerInterceptor` works with the `UserEntity` class. To fix this, you will update the implementation of the `ArticleEntity` class and make sure it initializes the `author` property with an instance of `UserEntity`.
+
+
+
+```ts
+// src/articles/entities/article.entity.ts
+
+import { Article } from '@prisma/client';
+import { ApiProperty } from '@nestjs/swagger';
++import { UserEntity } from 'src/users/entities/user.entity';
+
+export class ArticleEntity implements Article {
+  @ApiProperty()
+  id: number;
+
+  @ApiProperty()
+  title: string;
+
+  @ApiProperty({ required: false, nullable: true })
+  description: string | null;
+
+  @ApiProperty()
+  body: string;
+
+  @ApiProperty()
+  published: boolean;
+
+  @ApiProperty()
+  createdAt: Date;
+
+  @ApiProperty()
+  updatedAt: Date;
+
+  @ApiProperty({ required: false, nullable: true })
+  authorId: number | null;
+
++  @ApiProperty({ required: false, type: UserEntity })
++  author?: UserEntity;
+
++  constructor({ author, ...data }: Partial<ArticleEntity>) {
++    Object.assign(this, data);
+
++    if (author) {
++      this.author = new UserEntity(author);
++    }
++  }
+}
+```
+Once again, you are using the `Object.assign()` method to copy the properties from the `data` object to the `ArticleEntity` instance. The `author` property, if it is present, is initialized as an instance of `UserEntity`.
+
+
+Now update the `ArticlesController` to return instances of `ArticleEntity` objects:
+
+```ts
+// src/articles/articles.controller.ts
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  ParseIntPipe,
+} from '@nestjs/common';
+import { ArticlesService } from './articles.service';
+import { CreateArticleDto } from './dto/create-article.dto';
+import { UpdateArticleDto } from './dto/update-article.dto';
+import { ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { ArticleEntity } from './entities/article.entity';
+
+@Controller('articles')
+@ApiTags('articles')
+export class ArticlesController {
+  constructor(private readonly articlesService: ArticlesService) {}
+
+  @Post()
+  @ApiCreatedResponse({ type: ArticleEntity })
++  async create(@Body() createArticleDto: CreateArticleDto) {
++    return new ArticleEntity(
++      await this.articlesService.create(createArticleDto),
++    );
+  }
+
+  @Get()
+  @ApiOkResponse({ type: ArticleEntity, isArray: true })
++  async findAll() {
++    const articles = await this.articlesService.findAll();
++    return articles.map((article) => new ArticleEntity(article));
+  }
+
+  @Get('drafts')
+  @ApiOkResponse({ type: ArticleEntity, isArray: true })
++  async findDrafts() {
++    const drafts = await this.articlesService.findDrafts();
++    return drafts.map((draft) => new ArticleEntity(draft));
+  }
+
+  @Get(':id')
+  @ApiOkResponse({ type: ArticleEntity })
++  async findOne(@Param('id', ParseIntPipe) id: number) {
++    return new ArticleEntity(await this.articlesService.findOne(id));
+  }
+
+  @Patch(':id')
+  @ApiCreatedResponse({ type: ArticleEntity })
++  async update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateArticleDto: UpdateArticleDto,
+  ) {
++    return new ArticleEntity(
++      await this.articlesService.update(id, updateArticleDto),
++    );
+  }
+
+  @Delete(':id')
+  @ApiOkResponse({ type: ArticleEntity })
++  async remove(@Param('id', ParseIntPipe) id: number) {
++    return new ArticleEntity(await this.articlesService.remove(id));
+  }
+}
+```
+Now, `GET /articles/:id` returns the `author` object without the `password` field:
+
+![`GET /articles/:id` does not reveal password](/nestjs-prisma-relational-data-7D056s1kOabc/imgs/password-omitted-get-articles.png)
+
+
+
+
+
+## Summary and final remarks
+
+
+In this chapter, you learned how to model relational data in a NestJS application using Prisma. You also learned about the `ClassSerializerInterceptor` and how to use entity classes to control the data that is returned to the client.
+
+You can find the finished code for this tutorial in the [`end-relational-data`](https://github.com/prisma/blog-backend-rest-api-nestjs-prisma/tree/end-relational-data) branch of the [GitHub repository](https://github.com/prisma/blog-backend-rest-api-nestjs-prisma). Please feel free to raise an issue in the repository or submit a PR if you notice a problem. You can also reach out to me directly on [Twitter](https://twitter.com/tasinishmam).
+
+

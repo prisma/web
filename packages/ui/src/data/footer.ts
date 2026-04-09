@@ -15,17 +15,6 @@ const footerItems = [
         _type: "footerLinkType",
       },
       {
-        title: "Optimize",
-        url: "/optimize",
-        _type: "footerLinkType",
-        //tag: "Early Access"
-      },
-      {
-        title: "Accelerate",
-        url: "/accelerate",
-        _type: "footerLinkType",
-      },
-      {
         _type: "footerLinkType",
         title: "Pricing",
         url: "/pricing",
@@ -173,13 +162,13 @@ const socialIcons = [
     _type: "iconLink",
     title: "Twitter",
     icon: "x-twitter",
-    url: "https://twitter.com/prisma",
+    url: "https://pris.ly/x",
   },
   {
     _type: "iconLink",
     title: "YouTube",
     icon: "youtube",
-    url: "https://www.youtube.com/c/PrismaData",
+    url: "https://pris.ly/youtube",
   },
   {
     _type: "iconLink",
