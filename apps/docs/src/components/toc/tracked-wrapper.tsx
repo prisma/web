@@ -8,6 +8,8 @@ import posthog from "posthog-js";
 import * as TocClerk from "./clerk";
 import * as TocDefault from "./default";
 
+const TRACKED_PAGES = [{ id: "quickstart", path: "/prisma-orm/quickstart/" }];
+
 export function TrackedTOCWrapper({
   tocStyle = "default",
 }: {
@@ -19,7 +21,8 @@ export function TrackedTOCWrapper({
   const lastEmittedRef = useRef<string>("");
 
   useOnChange(active, () => {
-    if (!pathname.includes("/prisma-orm/quickstart/")) return;
+    const match = TRACKED_PAGES.find((p) => pathname.includes(p.path));
+    if (!match) return;
 
     const anchor = active[0];
     if (!anchor) return;
@@ -29,7 +32,7 @@ export function TrackedTOCWrapper({
 
     clearTimeout(timeoutRef.current);
     timeoutRef.current = setTimeout(() => {
-      posthog.capture("pageview_quickstart", {
+      posthog.capture(`pageview_${match.id}`, {
         page: pathname,
         section: anchor,
       });
