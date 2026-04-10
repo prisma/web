@@ -1,7 +1,7 @@
 import footerData from "../data/footer";
 import { cn } from "../lib/cn";
 import { AnchorHTMLAttributes } from "react";
-import { getRedirectableLink, isAbsoluteUrl } from "../lib/is-absolute-url";
+import { getRedirectableLink } from "../lib/is-absolute-url";
 import {
   Action,
   DropdownMenu,
@@ -139,7 +139,7 @@ const Footer = ({
                       key={idx}
                       color={color}
                       href={getRedirectableLink(link.url, absoluteLinks)}
-                      external={isAbsoluteUrl(link.url)}
+                      external={link.external}
                       referrerPolicy={`${link.url ? "no-referrer" : ""}`}
                     >
                       {link.title}
@@ -163,7 +163,13 @@ const Footer = ({
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
                         {link.links.map(
-                          (dropLink: { title: string; url: string }) => {
+                          (
+                            dropLink: {
+                              title: string;
+                              url: string;
+                              external?: boolean;
+                            },
+                          ) => {
                             const dropdownHoverClass =
                               color === "orm"
                                 ? "hover:bg-background-orm-strong!"
@@ -176,7 +182,12 @@ const Footer = ({
                               >
                                 <a
                                   href={dropLink.url}
-                                  target="_blank"
+                                  target={dropLink.external ? "_blank" : "_self"}
+                                  rel={
+                                    dropLink.external
+                                      ? "noopener noreferrer"
+                                      : undefined
+                                  }
                                   className="text-left capitalize text-foreground-neutral-weak text-md font-semibold"
                                 >
                                   {dropLink.title}

@@ -2,32 +2,32 @@ const footerItems = [
   {
     _type: "footerColumnType",
     title: "Product",
-    url: "/product",
+    url: "https://prisma.io/product",
     links: [
       {
         title: "ORM",
-        url: "/orm",
+        url: "https://prisma.io/orm",
         _type: "footerLinkType",
       },
       {
         title: "Studio",
-        url: "/studio",
+        url: "https://prisma.io/studio",
         _type: "footerLinkType",
       },
       {
         title: "Query Insights",
-        url: "/query-insights",
+        url: "https://prisma.io/query-insights",
         _type: "footerLinkType",
       },
       {
         _type: "footerLinkType",
         title: "Pricing",
-        url: "/pricing",
+        url: "https://prisma.io/pricing",
       },
       {
         _type: "footerLinkType",
         title: "Changelog",
-        url: "/changelog",
+        url: "https://prisma.io/changelog",
       },
       {
         _type: "footerLinkType",
@@ -38,28 +38,28 @@ const footerItems = [
   },
   {
     title: "Resources",
-    url: "/resources",
+    url: "https://prisma.io/resources",
     _type: "footerColumnType",
     links: [
       {
         _type: "footerLinkType",
         title: "Docs",
-        url: "/docs",
+        url: "https://prisma.io/docs",
       },
       {
         _type: "footerLinkType",
         title: "Ecosystem",
-        url: "/ecosystem",
+        url: "https://prisma.io/ecosystem",
       },
       {
         _type: "footerLinkType",
         title: "Customer stories",
-        url: "/showcase",
+        url: "https://prisma.io/showcase",
       },
       {
         _type: "footerLinkType",
         title: "Data guide",
-        url: "/dataguide",
+        url: "https://prisma.io/dataguide",
       },
       {
         _type: "footerLinkType",
@@ -69,51 +69,51 @@ const footerItems = [
     ],
   },
   {
-    url: "/contact",
+    url: "https://prisma.io/contact",
     _type: "footerColumnType",
     title: "Contact",
     links: [
       {
         _type: "footerLinkType",
         title: "Community",
-        url: "/community",
+        url: "https://prisma.io/community",
       },
       {
         _type: "footerLinkType",
         title: "Support",
-        url: "/support",
+        url: "https://prisma.io/support",
       },
       {
         _type: "footerLinkType",
         title: "Partners",
-        url: "/partners",
+        url: "https://prisma.io/partners",
       },
       {
         _type: "footerLinkType",
         title: "Enterprise",
-        url: "/enterprise",
+        url: "https://prisma.io/enterprise",
       },
       {
         _type: "footerLinkType",
         title: "OSS Friends",
-        url: "/oss-friends",
+        url: "https://prisma.io/oss-friends",
       },
     ],
   },
   {
     title: "Company",
-    url: "/company",
+    url: "https://prisma.io/company",
     _type: "footerColumnType",
     links: [
       {
         _type: "footerLinkType",
         title: "About",
-        url: "/about",
+        url: "https://prisma.io/about",
       },
       {
         _type: "footerLinkType",
         title: "Blog",
-        url: "/blog",
+        url: "https://prisma.io/blog",
       },
       {
         _type: "footerLinkType",
@@ -123,7 +123,7 @@ const footerItems = [
       {
         _type: "footerLinkType",
         title: "Careers",
-        url: "/careers",
+        url: "https://prisma.io/careers",
         //tag: "We're hiring"
       },
       {
@@ -132,19 +132,19 @@ const footerItems = [
         links: [
           {
             title: "Terms of Service",
-            url: "/terms",
+            url: "https://prisma.io/terms",
           },
           {
             title: "Service Level Agreement",
-            url: "/sla",
+            url: "https://prisma.io/sla",
           },
           {
             title: "Privacy Policy",
-            url: "/privacy",
+            url: "https://prisma.io/privacy",
           },
           {
             title: "Event Code of Conduct",
-            url: "/event-code-of-conduct",
+            url: "https://prisma.io/event-code-of-conduct",
           },
           {
             title: "Security & Compliance",
