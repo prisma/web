@@ -371,14 +371,11 @@ export default function EnterprisePage() {
             developers can focus on business logic.
           </p>
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
-            <Button
-              variant="orm"
-              href="#contact-us"
-              size="3xl"
-              className="font-sans-display! font-[650]"
-            >
-              <span>Get in touch</span>
-              <i className="fa-regular fa-envelope ml-2" />
+            <Button asChild variant="orm" size="3xl" className="font-sans-display! font-[650]">
+              <a href="#contact-us">
+                Get in touch
+                <i className="fa-regular fa-envelope" />
+              </a>
             </Button>
           </div>
         </div>

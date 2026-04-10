@@ -25,7 +25,7 @@ export function VersionSwitcher({ currentVersion }: VersionSwitcherProps) {
     if (newVersion === currentVersion) return;
 
     const VERSION_SECTIONS: Record<string, Set<string>> = {
-      v7: new Set(['accelerate', 'ai', 'cli', 'console', 'guides', 'management-api', 'optimize', 'orm', 'postgres', 'studio']),
+      v7: new Set(['accelerate', 'ai', 'cli', 'console', 'guides', 'management-api', 'orm', 'postgres', 'studio']),
       v6: new Set(['accelerate', 'ai', 'guides', 'orm', 'platform', 'postgres']),
     };
 

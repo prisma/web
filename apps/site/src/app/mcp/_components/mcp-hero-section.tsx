@@ -80,17 +80,14 @@ export function McpHeroSection({
             </div>
           </div>
 
-          <Button
-            href={docsHref}
-            variant={"ppg"}
-            size={"3xl"}
-            className="gap-3"
-          >
-            Add MCP Server
-            <i
-              className="fa-regular fa-arrow-right shrink-0 text-[16px]"
-              aria-hidden
-            />
+          <Button asChild variant={"ppg"} size={"3xl"} className="gap-3">
+            <a href={docsHref}>
+              Add MCP Server
+              <i
+                className="fa-regular fa-arrow-right shrink-0 text-[16px]"
+                aria-hidden
+              />
+            </a>
           </Button>
         </div>
 

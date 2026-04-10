@@ -1,11 +1,5 @@
 "use client";
-import {
-  Button,
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@prisma/eclipse";
+import { Button, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@prisma/eclipse";
 import { useState } from "react";
 
 export const Technology = ({
@@ -21,12 +15,10 @@ export const Technology = ({
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button
-            variant="default-stronger"
-            href={url}
-            className="font-sans-display! font-normal! text-base! font-mono! w-[75px]! h-[75px]!"
-          >
-            {children}
+          <Button asChild variant="default-strong" className="font-sans-display! font-normal! text-base! font-mono! w-[75px]! h-[75px]!">
+            <a href={url}>
+              {children}
+            </a>
           </Button>
         </TooltipTrigger>
         <TooltipContent>{text}</TooltipContent>

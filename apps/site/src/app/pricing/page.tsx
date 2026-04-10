@@ -51,7 +51,6 @@ export default function PricingPage() {
       </section>
 
       {/* Try Prisma Postgres */}
-
       <section className="bg-radial from-background-ppg from-0% to-background-default to-70% px-4 py-12">
         <div className="mx-auto rounded-2xl bg-[url('/illustrations/homepage/footer_grid.svg')] bg-cover bg-center px-4 py-12">
           <div className="p-4 md:p-8">
@@ -65,17 +64,17 @@ export default function PricingPage() {
                 </p>
               </div>
               <div className="flex flex-col gap-6 md:flex-row">
-                <Button
-                  variant="ppg"
-                  size="2xl"
-                  href="https://console.prisma.io/sign-up?utm_source=website&utm_medium=pricing&utm_campaign=cta"
-                >
-                  <span>Create your first Database</span>
-                  <i className="fa-regular fa-arrow-right ml-2" />
+                <Button asChild variant="ppg" size="2xl">
+                  <a href="https://console.prisma.io/sign-up?utm_source=website&utm_medium=pricing&utm_campaign=cta">
+                    Create your first Database
+                    <i className="fa-regular fa-arrow-right" />
+                  </a>
                 </Button>
-                <Button variant="default-stronger" size="2xl" href="https://www.prisma.io/docs/">
-                  <span>Read the docs</span>
-                  <i className="fa-regular fa-book-open ml-2" />
+                <Button asChild variant="default-strong" size="2xl">
+                  <a href="https://www.prisma.io/docs/">
+                    Read the docs
+                    <i className="fa-regular fa-book-open" />
+                  </a>
                 </Button>
               </div>
               <h6 className="mb-0! -mt-4 text-xs text-foreground-neutral-weaker">

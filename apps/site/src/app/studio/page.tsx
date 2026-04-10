@@ -152,25 +152,17 @@ export default function StudioPage() {
           </p>
 
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
-            <Button
-              variant="orm"
-              size="3xl"
-              href={CONSOLE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-sans-display! font-[650]"
-            >
-              <span>Explore Studio in Prisma Console</span>
-              <i className="fa-regular fa-arrow-up-right ml-2" />
+            <Button asChild variant="ppg" size="2xl">
+              <a href={CONSOLE_URL} target="_blank" rel="noopener noreferrer">
+                Explore Studio in Prisma Console
+                <i className="fa-regular fa-arrow-up-right" />
+              </a>
             </Button>
-            <Button
-              variant="default-stronger"
-              size="3xl"
-              href={STUDIO_DOCS_URL}
-              className="font-sans-display! font-[650]"
-            >
-              <span>Try locally</span>
-              <i className="fa-regular fa-arrow-down ml-2" />
+            <Button asChild variant="default-strong" size="2xl">
+              <a href={STUDIO_DOCS_URL}>
+                Try locally
+                <i className="fa-regular fa-arrow-down" />
+              </a>
             </Button>
           </div>
 
@@ -243,15 +235,11 @@ export default function StudioPage() {
               </p>
             </div>
 
-            <Button
-              variant="orm"
-              size="xl"
-              href={CONSOLE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <span>Explore Studio in Console</span>
-              <i className="fa-regular fa-arrow-right ml-2" />
+            <Button asChild variant="ppg" size="xl">
+              <a href={CONSOLE_URL} target="_blank" rel="noopener noreferrer">
+                Explore Studio in Console
+                <i className="fa-regular fa-arrow-right" />
+              </a>
             </Button>
           </div>
 

@@ -45,22 +45,26 @@ export function Hero({ data }: { data: HeroData }) {
             {parse(data.description)}
           </p>
           <div className="flex gap-4 md:justify-start justify-center">
-            <Button variant="ppg" size="3xl" href={data.btns[0].url}>
-              <span>{data.btns[0].label}</span>
-              {data.btns[0].icon && (
-                <i className={cn("ml-2", data.btns[0].icon)} />
-              )}
+            <Button asChild variant="ppg" size="3xl">
+              <a href={data.btns[0].url}>
+                <span>{data.btns[0].label}</span>
+                {data.btns[0].icon && (
+                  <i className={data.btns[0].icon} />
+                )}
+              </a>
             </Button>
             {secondaryButton && (
               <Button
-                variant="default-stronger"
+                asChild
+                variant="default-strong"
                 size="3xl"
-                href={secondaryButton.url}
               >
-                <span>{secondaryButton.label}</span>
-                {secondaryButton.icon && (
-                  <i className={cn("ml-2", secondaryButton.icon)} />
-                )}
+                <a href={secondaryButton.url}>
+                  <span>{secondaryButton.label}</span>
+                  {secondaryButton.icon && (
+                    <i className={secondaryButton.icon} />
+                  )}
+                </a>
               </Button>
             )}
           </div>

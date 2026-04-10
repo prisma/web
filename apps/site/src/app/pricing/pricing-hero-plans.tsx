@@ -102,23 +102,17 @@ export function PricingHeroPlans({
                       {plan.title}
                     </p>
                     {(planKey === "pro" || planKey === "business") && (
-                      <Button
-                        type="button"
-                        variant="default"
-                        size="lg"
-                        href="https://pris.ly/pay-via-aws"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="gap-2 px-2"
-                      >
-                        <span>Pay via</span>
-                        <Image
-                          src="/icons/companies/aws.svg"
-                          alt="AWS"
-                          width={36}
-                          height={14}
-                          className="w-auto h-auto"
-                        />
+                      <Button asChild variant="default" size="lg" className="gap-2 px-2">
+                        <a href="https://pris.ly/pay-via-aws" target="_blank" rel="noopener noreferrer">
+                          Pay via
+                          <Image
+                            src="/icons/companies/aws.svg"
+                            alt="AWS"
+                            width={36}
+                            height={14}
+                            className="w-auto h-auto"
+                          />
+                        </a>
                       </Button>
                     )}
                   </div>
@@ -127,15 +121,10 @@ export function PricingHeroPlans({
                     {plan.price[currency]}
                     <span className="text-2xl text-foreground-neutral-weak"> / month</span>
                   </p>
-                  <Button
-                    href="https://console.prisma.io/login?utm_source=website&utm_medium=pricing"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    variant={highlighted ? "ppg" : "default-stronger"}
-                    size="xl"
-                    className="mt-4 w-full"
-                  >
-                    {planActions[planKey]}
+                  <Button asChild variant={highlighted ? "ppg" : "default-strong"} size="xl" className="mt-4 w-full">
+                    <a href="https://console.prisma.io/login?utm_source=website&utm_medium=pricing" target="_blank" rel="noopener noreferrer">
+                      {planActions[planKey]}
+                    </a>
                   </Button>
                   <ul className="list-none p-0 m-0 mt-5 space-y-2">
                     {plan.points.map((item, index) => (

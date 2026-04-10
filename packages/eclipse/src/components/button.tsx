@@ -1,22 +1,20 @@
 import * as React from "react";
+import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../lib/cn";
 
 const buttonVariants = cva(
-  "flex flex-row justify-center items-center rounded-square transition-all duration-50 cursor-pointer disabled:bg-background-neutral-weak! disabled:border-none! disabled:text-foreground-neutral-weaker! disabled:cursor-not-allowed disabled:shadow-none",
+  "flex flex-row justify-center items-center rounded-square transition-all duration-50 cursor-pointer no-underline disabled:bg-background-neutral-weak! disabled:border-none! disabled:text-foreground-neutral-weaker! disabled:cursor-not-allowed disabled:shadow-none [&>svg]:pointer-events-none [&>svg]:shrink-0 [&>i]:pointer-events-none [&>i]:shrink-0",
   {
     variants: {
       variant: {
         ppg: "bg-background-ppg-reverse text-foreground-ppg-reverse hover:bg-background-ppg-reverse-strong shadow-box-low",
         orm: "bg-background-orm-reverse text-foreground-orm-reverse hover:bg-background-orm-reverse-strong shadow-box-low",
-        "orm-reverse":
-          "bg-background-orm text-foreground-orm hover:bg-background-orm-strong shadow-box-low",
-        "default-stronger":
-          "bg-background-neutral text-foreground-neutral hover:bg-background-neutral-strong border border-stroke-neutral-strong",
+        "default-strong":
+          "bg-background-neutral text-foreground-neutral hover:bg-background-neutral-strong",
         default:
           "bg-background-default hover:bg-background-neutral border border-stroke-neutral hover:border-stroke-neutral-strong text-foreground-neutral shadow-box-low",
-        "default-weaker":
-          "bg-transparent hover:bg-background-neutral text-foreground-neutral",
+        "default-weak": "bg-transparent hover:bg-background-neutral text-foreground-neutral",
         error:
           "bg-background-error-reverse text-foreground-error-reverse hover:bg-background-error-reverse-strong shadow-box-low",
         success:
@@ -24,11 +22,16 @@ const buttonVariants = cva(
         link: "text-foreground-neutral underline-offset-4 hover:underline focus-visible:ring-foreground-neutral",
       },
       size: {
-        lg: "px-2 h-element-lg type-text-sm-strong",
-        xl: "px-3 h-element-xl type-text-sm-strong",
-        "2xl": "px-3  h-element-2xl type-text-sm-strong",
-        "3xl": "px-3  h-element-3xl type-text-sm-strong",
-        "4xl": "px-4  h-element-4xl type-heading-md",
+        lg: "px-2 h-element-lg gap-2 type-text-sm-strong [&>svg]:size-element-2xs [&>svg:first-child]:-ml-0.5 [&>svg:last-child]:-mr-0.5 [&>i]:size-element-2xs [&>i:first-child]:-ml-0.5 [&>i:last-child]:-mr-0.5",
+        xl: "px-3 h-element-xl gap-2 type-text-sm-strong [&>svg]:size-element-xs [&>svg:first-child]:-ml-1 [&>svg:last-child]:-mr-1 [&>i]:size-element-xs [&>i:first-child]:-ml-1 [&>i:last-child]:-mr-1",
+        "2xl":
+          "px-3 h-element-2xl gap-2 type-text-sm-strong [&>svg]:size-element-xs [&>svg:first-child]:-ml-1 [&>svg:last-child]:-mr-1 [&>i]:size-element-xs [&>i:first-child]:-ml-1 [&>i:last-child]:-mr-1",
+        "3xl":
+          "px-4 h-element-4xl gap-3 type-heading-md [&>svg]:size-element-sm [&>svg:first-child]:-ml-1 [&>svg:last-child]:-mr-1 [&>i]:size-element-sm [&>i:first-child]:-ml-1 [&>i:last-child]:-mr-1",
+        "icon-lg": "size-element-lg [&>svg]:size-element-xs [&>i]:size-element-xs",
+        "icon-xl": "size-element-xl [&>svg]:size-element-xs [&>i]:size-element-xs",
+        "icon-2xl": "size-element-2xl [&>svg]:size-element-sm [&>i]:size-element-sm",
+        "icon-3xl": "size-element-4xl [&>svg]:size-element-md [&>i]:size-element-md",
       },
     },
     defaultVariants: {
@@ -38,45 +41,18 @@ const buttonVariants = cva(
   },
 );
 
-type ButtonBaseProps = VariantProps<typeof buttonVariants>;
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+  asChild?: boolean;
+}
 
-type ButtonAsButtonProps = ButtonBaseProps &
-  React.ButtonHTMLAttributes<HTMLButtonElement> & {
-    href?: undefined;
-  };
-
-type ButtonAsAnchorProps = ButtonBaseProps &
-  React.AnchorHTMLAttributes<HTMLAnchorElement> & {
-    href: string;
-  };
-
-export type ButtonProps = ButtonAsButtonProps | ButtonAsAnchorProps;
-
-const Button = React.forwardRef<
-  HTMLButtonElement | HTMLAnchorElement,
-  ButtonProps
->(({ className, variant, size, href, ...props }, ref) => {
-  const classNames = cn(buttonVariants({ variant, size, className }));
-
-  if (href) {
-    return (
-      <a
-        className={classNames}
-        ref={ref as React.Ref<HTMLAnchorElement>}
-        href={href}
-        {...(props as React.AnchorHTMLAttributes<HTMLAnchorElement>)}
-      />
-    );
-  }
-
-  return (
-    <button
-      className={classNames}
-      ref={ref as React.Ref<HTMLButtonElement>}
-      {...(props as React.ButtonHTMLAttributes<HTMLButtonElement>)}
-    />
-  );
-});
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, asChild = false, ...props }, ref) => {
+    const Comp = asChild ? Slot : "button";
+    return <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />;
+  },
+);
 
 Button.displayName = "Button";
 

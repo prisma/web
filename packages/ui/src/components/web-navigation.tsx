@@ -134,22 +134,16 @@ export function WebNavigation({
             </div>
           </NavigationMenuList>
           <NavigationMenuList>
-            <div
-              className={cn("contents", mobileView && "hidden md:contents!")}
-            >
+            <div className={cn("contents", mobileView && "hidden md:contents!")}>
               <Socials include={["discord"]} />
               <NavigationMenuItem className="ml-2 -mr-2 hidden sm:block">
-                <Button variant="default-stronger" href={loginHref}>
-                  Login
+                <Button asChild variant="default-strong">
+                  <a href={loginHref}>Login</a>
                 </Button>
               </NavigationMenuItem>
               <NavigationMenuItem className="hidden sm:block">
-                <Button
-                  variant={buttonVariant}
-                  className="whitespace-nowrap"
-                  href={signupHref}
-                >
-                  Get started
+                <Button asChild variant={buttonVariant} className="whitespace-nowrap">
+                  <a href={signupHref}>Get started</a>
                 </Button>
               </NavigationMenuItem>
             </div>
@@ -157,12 +151,7 @@ export function WebNavigation({
               className="flex md:hidden"
               onClick={() => setMobileView(!mobileView)}
             >
-              <i
-                className={cn(
-                  "fa-regular",
-                  mobileView ? "fa-xmark" : "fa-bars",
-                )}
-              />
+              <i className={cn("fa-regular", mobileView ? "fa-xmark" : "fa-bars")} />
             </NavigationMenuItem>
             {mobileView && (
               <NavigationMobileMenu

@@ -117,13 +117,10 @@ export const OpenRoles = () => {
                         {job.name}
                       </p>
                     </div>
-                    <Button
-                      href={job.url}
-                      variant="orm"
-                      size="2xl"
-                      className="w-full md:w-auto shrink-0"
-                    >
-                      View job listing
+                    <Button asChild variant="orm" size="2xl" className="w-full md:w-auto shrink-0">
+                      <a href={job.url}>
+                        View job listing
+                      </a>
                     </Button>
                   </div>
                 ))}

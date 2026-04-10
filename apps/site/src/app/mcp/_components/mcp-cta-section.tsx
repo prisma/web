@@ -24,18 +24,17 @@ export function McpCtaSection({
 
             <div className="flex flex-col items-center gap-4">
               <div className="flex w-full flex-col items-center justify-center gap-4 min-[720px]:flex-row min-[720px]:gap-6">
-                <Button href={docsHref} variant={"ppg"} size={"3xl"} className="gap-3">
-                  Add MCP Server
-                  <i className="fa-regular fa-arrow-right shrink-0 text-[16px]" aria-hidden />
+                <Button asChild variant={"ppg"} size={"3xl"} className="gap-3">
+                  <a href={docsHref}>
+                    Add MCP Server
+                    <i className="fa-regular fa-arrow-right shrink-0 text-[16px]" aria-hidden />
+                  </a>
                 </Button>
-                <Button
-                  href={readDocsHref}
-                  variant={"default-stronger"}
-                  size={"3xl"}
-                  className="gap-3"
-                >
-                  Read Docs
-                  <i className="fa-regular fa-book-open shrink-0 text-[16px]" aria-hidden />
+                <Button asChild variant={"default-strong"} size={"3xl"} className="gap-3">
+                  <a href={readDocsHref}>
+                    Read Docs
+                    <i className="fa-regular fa-book-open shrink-0 text-[16px]" aria-hidden />
+                  </a>
                 </Button>
               </div>
 

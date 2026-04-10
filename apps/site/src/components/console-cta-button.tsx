@@ -4,11 +4,11 @@ import { useEffect, useState } from "react";
 import { Button, type ButtonProps } from "@prisma/eclipse";
 import { getUtmParams, hasUtmParams, type UtmParams } from "@/lib/utm";
 
-type ButtonLinkProps = Extract<ButtonProps, { href: string }>;
-
-interface ConsoleCtaButtonProps extends Omit<ButtonLinkProps, "href"> {
+interface ConsoleCtaButtonProps extends Omit<ButtonProps, "asChild"> {
   consolePath: "/login" | "/sign-up";
   defaultUtm: UtmParams;
+  target?: string;
+  rel?: string;
 }
 
 function buildConsoleHref(consolePath: "/login" | "/sign-up", utmParams: UtmParams) {
@@ -27,6 +27,8 @@ export function ConsoleCtaButton({
   consolePath,
   defaultUtm,
   children,
+  target,
+  rel,
   ...props
 }: ConsoleCtaButtonProps) {
   const [href, setHref] = useState(() => buildConsoleHref(consolePath, defaultUtm));
@@ -45,8 +47,10 @@ export function ConsoleCtaButton({
   }, [consolePath, defaultUtm]);
 
   return (
-    <Button {...props} href={href}>
-      {children}
+    <Button asChild {...props}>
+      <a href={href} target={target} rel={rel}>
+        {children}
+      </a>
     </Button>
   );
 }

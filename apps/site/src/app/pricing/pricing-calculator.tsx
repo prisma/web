@@ -74,9 +74,7 @@ const PRESETS: Record<
   },
 };
 
-const CALCULATOR_PLAN_ORDER = Object.keys(
-  usagePricing,
-) as BillablePricingPlanKey[];
+const CALCULATOR_PLAN_ORDER = Object.keys(usagePricing) as BillablePricingPlanKey[];
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat("en-US").format(Math.round(value));
@@ -162,16 +160,11 @@ function calculatePlanBreakdown(
   billingCycle: BillingCycle,
 ): CostBreakdown {
   const details = usagePricing[plan];
-  const billableOperations = Math.max(
-    0,
-    databaseOperations - details.includedOperations,
-  );
+  const billableOperations = Math.max(0, databaseOperations - details.includedOperations);
   const billableStorageGb = Math.max(0, storageGb - details.includedStorageGb);
-  const operationsCost =
-    (billableOperations / 1_000) * details.operationPricePerThousand;
+  const operationsCost = (billableOperations / 1_000) * details.operationPricePerThousand;
   const storageCost = billableStorageGb * details.storagePricePerGb;
-  const yearlyMultiplier =
-    billingCycle === "yearly" ? 1 - details.yearlyDiscount : 1;
+  const yearlyMultiplier = billingCycle === "yearly" ? 1 - details.yearlyDiscount : 1;
 
   return {
     basePlanFee: details.baseMonthlyPrice * yearlyMultiplier,
@@ -209,28 +202,16 @@ function getRecommendedPlan(
   });
 }
 
-function getMatchingPreset(
-  databaseOperations: number,
-  storageGb: number,
-): PresetKey | null {
-  const match = (
-    Object.entries(PRESETS) as Array<[PresetKey, (typeof PRESETS)[PresetKey]]>
-  ).find(
+function getMatchingPreset(databaseOperations: number, storageGb: number): PresetKey | null {
+  const match = (Object.entries(PRESETS) as Array<[PresetKey, (typeof PRESETS)[PresetKey]]>).find(
     ([, preset]) =>
-      preset.databaseOperations === databaseOperations &&
-      preset.storageGb === storageGb,
+      preset.databaseOperations === databaseOperations && preset.storageGb === storageGb,
   );
 
   return match?.[0] ?? null;
 }
 
-function InputShell({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
+function InputShell({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div
       className={cn(
@@ -429,8 +410,7 @@ function SummaryCard({
               <span
                 className={cn(
                   "text-right",
-                  breakdown.operationsCost <= 0 &&
-                    "text-foreground-neutral-weaker",
+                  breakdown.operationsCost <= 0 && "text-foreground-neutral-weaker",
                 )}
               >
                 {formatLineItemCost(breakdown.operationsCost, currency)}
@@ -466,12 +446,9 @@ function SummaryCard({
 }
 
 export function PricingCalculator({ currency }: { currency: Symbol }) {
-  const [lastAppliedPreset, setLastAppliedPreset] =
-    React.useState<PresetKey>("scaleup");
-  const [billingCycle, setBillingCycle] =
-    React.useState<BillingCycle>("monthly");
-  const [expandedPlan, setExpandedPlan] =
-    React.useState<BillablePricingPlanKey | null>(null);
+  const [lastAppliedPreset, setLastAppliedPreset] = React.useState<PresetKey>("scaleup");
+  const [billingCycle, setBillingCycle] = React.useState<BillingCycle>("monthly");
+  const [expandedPlan, setExpandedPlan] = React.useState<BillablePricingPlanKey | null>(null);
   const [databaseOperations, setDatabaseOperations] = React.useState(
     PRESETS.scaleup.databaseOperations,
   );
@@ -524,7 +501,7 @@ export function PricingCalculator({ currency }: { currency: Symbol }) {
                     <Button
                       key={key}
                       type="button"
-                      variant="default-weaker"
+                      variant="default-weak"
                       size="lg"
                       aria-pressed={active}
                       onClick={() => applyPreset(key)}
@@ -554,13 +531,13 @@ export function PricingCalculator({ currency }: { currency: Symbol }) {
               </h3>
               <Button
                 type="button"
-                variant="default-weaker"
+                variant="default-weak"
                 size="lg"
                 onClick={reset}
                 className="ml-auto inline-flex items-center gap-2 rounded-lg px-2 py-1 text-xs text-foreground-neutral-weaker transition-colors hover:bg-background-default-050 hover:text-foreground-neutral"
               >
                 <i className="fa-solid fa-rotate-right text-[10px]" />
-                <span>Reset</span>
+                Reset
               </Button>
             </div>
 
@@ -666,15 +643,12 @@ export function PricingCalculator({ currency }: { currency: Symbol }) {
               </div> */}
 
                 <div className="space-y-2">
-                  <div className="text-sm text-foreground-neutral">
-                    Data Transfer
-                  </div>
+                  <div className="text-sm text-foreground-neutral">Data Transfer</div>
                   <div className="rounded-[12px] border border-stroke-neutral bg-background-neutral px-3 py-3 text-sm text-foreground-neutral-weaker">
                     Unlimited included for free
                   </div>
                   <p className="m-0 text-[10px] leading-4 text-foreground-neutral-weaker">
-                    Ingress, egress, sidewaysgress, it&apos;s all covered. Just
-                    Ship It.
+                    Ingress, egress, sidewaysgress, it&apos;s all covered. Just Ship It.
                   </p>
                 </div>
               </div>
@@ -698,7 +672,7 @@ export function PricingCalculator({ currency }: { currency: Symbol }) {
                     <Button
                       key={cycle}
                       type="button"
-                      variant="default-weaker"
+                      variant="default-weak"
                       onClick={() => setBillingCycle(cycle)}
                       className={cn(
                         "rounded-square whitespace-nowrap flex-1 px-4 py-1.5 text-xs font-sans-display [font-variation-settings:'wght'_700] transition-colors",
@@ -718,8 +692,7 @@ export function PricingCalculator({ currency }: { currency: Symbol }) {
               {isEnterpriseRecommendation && (
                 <Alert variant="ppg">
                   <p className="m-0">
-                    Usage at this scale is best served on an enterprise plan.
-                    Reach out to{" "}
+                    Usage at this scale is best served on an enterprise plan. Reach out to{" "}
                     <a href="mailto:support@prisma.io" className="underline">
                       support@prisma.io
                     </a>{" "}
@@ -740,16 +713,9 @@ export function PricingCalculator({ currency }: { currency: Symbol }) {
                     billingCycle,
                   )}
                   plan={plan}
-                  highlighted={
-                    !isEnterpriseRecommendation &&
-                    plan === recommendedPlanForUsage
-                  }
+                  highlighted={!isEnterpriseRecommendation && plan === recommendedPlanForUsage}
                   expanded={expandedPlan === plan}
-                  onToggle={() =>
-                    setExpandedPlan((current) =>
-                      current === plan ? null : plan,
-                    )
-                  }
+                  onToggle={() => setExpandedPlan((current) => (current === plan ? null : plan))}
                   yearly={billingCycle === "yearly"}
                   price={calculateDisplayedPlanCost(
                     plan,
