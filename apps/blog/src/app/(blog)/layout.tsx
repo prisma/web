@@ -52,7 +52,7 @@ export function baseOptions() {
           },
           {
             text: "Prisma Partners",
-            url: "/partners",
+            url: "https://www.prisma.io/partners",
             icon: "fa-regular fa-lightbulb",
           },
           {
@@ -90,7 +90,7 @@ export function baseOptions() {
         ],
       },
       {
-        url: "/docs",
+        url: "https://www.prisma.io/docs",
         text: "Docs",
       },
       {

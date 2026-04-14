@@ -35,7 +35,7 @@ export default async function ReleaseNotesPage({
   const toc = (page.data.toc as TOCItem[] | undefined) ?? [];
 
   return (
-    <main className="flex-1 w-full max-w-249 mx-auto px-4 py-8 z-1 mt-12">
+    <main className="flex-1 w-full max-w-249 mx-auto px-4 py-8 z-1">
       <div className="w-full px-4 z-1 mx-auto md:grid md:grid-cols-[1fr_180px] mt-4 md:mt-22 gap-12 max-w-257">
         <div className="post-contents w-full">
           {/* Title + meta */}
@@ -46,7 +46,7 @@ export default async function ReleaseNotesPage({
             >
               ← Back to Changelog
             </Link>
-            <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-left mt-0 font-sans-display text-foreground-neutral">
               {page.data.title}
             </h1>
             <div className="text-sm flex gap-2 items-center text-foreground-neutral mb-4">

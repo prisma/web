@@ -28,22 +28,27 @@ export default async function ChangelogPage() {
   );
 
   return (
-    <main className="flex-1 w-full max-w-249 mx-auto px-4 py-8 z-1">
-      <section className="pt-20 pb-12 mt-10">
-        <p className="m-0 flex items-center justify-center gap-2 text-sm font-semibold uppercase tracking-[1.8px] text-foreground-ppg">
-          <i className="fa-regular fa-sparkles" aria-hidden />
-          Changelog
-        </p>
-        <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
-          The Latest News from Prisma
-        </h1>
-        <p className="m-0 max-w-[640px] mx-auto text-center text-base text-foreground-neutral-weak md:text-lg">
-          Here you’ll find all improvements and updates we’ve made to our
-          products.
-        </p>
-      </section>
+    <main className="flex-1 w-full z-1 bg-background-default">
+      <div className="hero -mt-24 pt-40 flex items-end justify-center px-4 relative">
+        <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-ppg)_0%,var(--color-background-default)_100%)] opacity-20" />
+        <section className="content relative z-2 flex flex-col gap-8 pb-12">
+          <div className="flex flex-col gap-4 items-center text-center">
+            <div className="flex items-center gap-2 text-foreground-ppg-weak uppercase tracking-widest text-sm font-sans-display font-black">
+              <i className="fa-regular fa-sparkles" aria-hidden />
+              <span>Changelog</span>
+            </div>
+            <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-4xl mx-auto">
+              The Latest News from Prisma
+            </h1>
+          </div>
+          <p className="m-0 max-w-[640px] mx-auto text-center text-base text-foreground-neutral md:text-lg">
+            Here you’ll find all improvements and updates we’ve made to our
+            products.
+          </p>
+        </section>
+      </div>
 
-      <section>
+      <section className="max-w-249 mx-auto px-4 py-8">
         <div className="grid gap-6 mt-12 grid-cols-1">
           {entriesWithPreview.map(({ entry, summary }) => {
             const tags = entry.data.tags ?? [];
