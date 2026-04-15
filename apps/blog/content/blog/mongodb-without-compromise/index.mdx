@@ -1,0 +1,259 @@
+---
+title: "MongoDB Without Compromise"
+slug: "mongodb-without-compromise"
+date: "2026-04-13"
+authors:
+  - "Will Madden"
+metaTitle: "MongoDB Without Compromise"
+metaDescription: "Prisma Next brings a MongoDB-native experience to TypeScript with type-safe queries, real migrations, polymorphic models, embedded collections, and typed aggregation pipelines."
+heroImagePath: "/mongodb-without-compromise/imgs/hero.svg"
+heroImageAlt: "Prisma Next and MongoDB"
+metaImagePath: "/mongodb-without-compromise/imgs/meta.png"
+tags:
+  - "orm"
+  - "announcement"
+---
+
+For the first time, Prisma Next brings the MongoDB-native experience to TypeScript. Type-safe queries, database migrations, polymorphic models, embedded collections and more. Designed in collaboration with the MongoDB DX team.
+
+## What MongoDB development looks like today
+
+If you've built a MongoDB app with TypeScript recently, you've probably gone through some version of this:
+
+- You define your application types in TypeScript so the compiler understands your data.
+- You set up Mongoose or the native driver and define those shapes again in a different format.
+- You write a query and the types don't fully connect, so you cast, add guards, or accept a little `any`.
+- You need an index, so you drop into the MongoDB shell or a deployment script and hope your database stays in sync with your code.
+
+In Prisma Next, you describe your data model as a contract:
+
+```prisma
+model User {
+  id      ObjectId @id @map("_id")
+  name    String
+  email   String
+  bio     String?
+  address Address?
+  posts   Post[]
+  @@map("users")
+}
+
+type Address {
+  street  String
+  city    String
+  zip     String?
+  country String
+}
+
+model Post {
+  id        ObjectId @id @map("_id")
+  title     String
+  content   String
+  kind      String
+  authorId  ObjectId
+  createdAt DateTime
+  author    User @relation(fields: [authorId], references: [id])
+  @@discriminator(kind)
+
+  @@index([authorId])
+  @@index([createdAt], { sort: -1 })
+
+  @@map("posts")
+}
+
+model Article {
+  summary String
+  @@base(Post, "article")
+}
+
+model Tutorial {
+  difficulty String
+  duration   Int
+  @@base(Post, "tutorial")
+}
+```
+
+From this contract, Prisma Next derives everything: TypeScript types, query validation, migration plans, and discriminated unions for polymorphic collections.
+
+## Type-safe queries
+
+All queries and their results are type checked in Prisma Next. If you miss a required field, TypeScript tells you, and the result types flow through your application logic from database to UI.
+
+```typescript
+const alice = await orm.users.create({
+  name: 'Alice Chen',
+  email: 'alice@example.com',
+  bio: 'Full-stack engineer and tech blogger',
+});
+
+const recentPosts = await orm.posts
+  .where((post) => post.createdAt.gte(lastWeek))
+  .orderBy((post) => post.createdAt.desc())
+  .include('author')
+  .all();
+
+// recentPosts[0].title -> string
+// recentPosts[0].author.name -> string
+// recentPosts[0].author.bio -> string | null
+```
+
+The `.include('author')` compiles to a `$lookup` pipeline stage. Skip the `.include()` and the author isn't loaded and isn't in the type. Your documents are typed all the way down, no matter how far you nest.
+
+## Real migrations for MongoDB
+
+MongoDB is not schema-less. Your deployment has real, persistent, server-side state, and that state directly affects correctness and performance. Yet most tools do not manage it properly.
+
+The `@@index` declarations in the contract above are not just documentation. They are managed by a migration system that versions, diffs, and deploys your database state.
+
+- **Indexes:** unique, compound, TTL, partial, geospatial, text, and wildcard. If an index is wrong, queries slow down. If a unique constraint is missing, duplicate data can slip in.
+- **JSON Schema validators:** document-level validation rules generated from your model definitions. Even writes that bypass the ORM are still validated by the server.
+- **Collection options:** capped collections, time series configuration, and collation settings.
+
+When you update your contract and run `prisma-next migration plan`, the planner compares the current state with the desired state:
+
+```shell
+$ prisma-next migration plan
+
+Migration: 20260409T1200_add_post_indexes
+
+  Create index on posts (authorId)          [additive]
+  Create index on posts (createdAt, desc)   [additive]
+
+2 operations. Run `prisma-next migration apply` to execute.
+```
+
+It includes pre-checks, post-checks, full history, branching, and rollback, following the same structure as Prisma Next's SQL migrations. Your indexes, validators, and collection options are versioned alongside your code and deployed through CI/CD.
+
+The MongoDB Node.js Driver team identified the lack of migration tooling as a key source of friction in their user research. Until now, developers did not have proper tooling to manage MongoDB's server-side state as a versioned deployable artifact.
+
+Data migrations are coming too, and will give MongoDB developers managed tooling for transforming data while performing migrations.
+
+## Polymorphic collections with discriminated unions
+
+The MongoDB Node.js Driver team rated inheritance and polymorphism as the highest-priority gap for TypeScript tools working with MongoDB.
+
+Polymorphic collections are a standard MongoDB pattern, and most tools handle them poorly. Variant-specific fields become optional or `any`, or you split into separate collections and lose the ability to query across all documents.
+
+Look at the `@@discriminator(kind)` on `Post` and the `@@base` declarations on `Article` and `Tutorial` in the contract above. From these, Prisma Next generates TypeScript discriminated union types. When you query all posts, you get the full union. When you query a variant, the return type narrows:
+
+```typescript
+const posts = await orm.posts.all();
+// Each post is Article | Tutorial — a discriminated union on `kind`
+
+const articles = await orm.posts.variant('Article').all();
+// articles[0].summary -> string (not optional, not any)
+```
+
+Standard TypeScript narrowing works on the results. The same `if (post.kind === 'article')` you'd write by hand, but now verified against your contract:
+
+```typescript
+for (const post of posts) {
+  if (post.kind === 'article') {
+    console.log(post.summary);
+  }
+
+  if (post.kind === 'tutorial') {
+    console.log(post.difficulty);
+    console.log(post.duration);
+  }
+}
+```
+
+Polymorphism connects to migrations too. An index on a variant-specific field, `difficulty` on `Tutorial` for example, automatically gets a `partialFilterExpression` derived from the discriminator, scoping the index to only documents where `kind === 'tutorial'`. The contract declares the full relationship between variants, discriminator values, and fields. No manual configuration.
+
+> **A note on versioned documents:** A common MongoDB pattern is versioned documents. A `version` field determines which fields apply. In Prisma Next, this is just a polymorphic model with `version` as the discriminator. Each version is a variant with its own typed fields. No special-case reading logic, no long-running data migration, no downtime.
+
+## Typed aggregation pipelines
+
+When you need MongoDB's aggregation pipeline for grouping, projecting, or faceting, Prisma Next provides a typed pipeline builder:
+
+```typescript
+const { pipeline, runtime } = orm;
+
+const leaderboard = pipeline
+  .from('posts')
+  .group((f) => ({
+    _id: f.authorId,
+    postCount: acc.count(),
+    latestPost: acc.max(f.createdAt),
+  }))
+  .sort({ postCount: -1 })
+  .lookup({
+    from: 'users',
+    localField: '_id',
+    foreignField: '_id',
+    as: 'author',
+  })
+  .build();
+
+const results = await runtime.execute(leaderboard);
+```
+
+Field references like `f.authorId` and `f.createdAt` check against your contract. Misspell a field name and you get a compile-time error, not a runtime `$group` failure:
+
+```typescript
+.group((f) => ({
+  _id: f.authrId,
+  //     ~~~~~~ Property 'authrId' does not exist on type 'PostFields'
+}))
+```
+
+When the pipeline builder doesn't cover what you need, you can drop to raw MongoDB commands:
+
+```typescript
+const raw = orm.raw.collection('posts');
+
+const results = await runtime.execute(
+  raw.aggregate([
+    { $match: { kind: 'article' } },
+    { $sample: { size: 5 } },
+  ]).build()
+);
+```
+
+Full control, same `runtime.execute` entry point. ORM for most queries, typed pipeline builder for aggregation, raw commands as the escape hatch: the same layered approach Prisma Next uses for SQL.
+
+## How Prisma Next compares to other tooling
+
+The ORM ecosystem has plenty of healthy competition, and we wanted to make sure Prisma Next stands out with a clear reason for developers to adopt it.
+
+| Concern | Raw `mongodb` driver | Mongoose | Prisma ORM (current) | Drizzle | **Prisma Next** |
+| --- | --- | --- | --- | --- | --- |
+| Schema definition | ❌ None | 🟡 JS schemas, partial TS | 🟡 Prisma schema (no embedded docs) | ➖ N/A (SQL only) | ✅ Prisma contract (full embedding, polymorphism) |
+| Type safety (queries) | 🟡 Top-level only | 🟡 Partial (`FilterQuery` -> `any`) | 🟡 Generated (no embedding) | ➖ N/A | ✅ Full (filters, operators, nested) |
+| Type safety (mutations) | ❌ None | 🟡 Partial | 🟡 Generated types | ➖ N/A | ✅ Full (including MongoDB operators) |
+| Embedded documents | ✅ Native | ✅ Native | ❌ Not supported | ➖ N/A | ✅ First-class in contract |
+| Polymorphism / unions | 🟡 Native (untyped) | 🟡 Discriminator plugin | ❌ JSON fallback | ➖ N/A | ✅ Discriminated unions (`@@discriminator` / `@@base`) |
+| Referential integrity | ❌ None | 🟡 Manual (middleware) | ❌ None | ➖ N/A | 🔲 Planned (cascade, restrict, setNull) |
+| Aggregation pipelines | 🟡 Untyped arrays | 🟡 Untyped arrays | ❌ Not exposed | ➖ N/A | ✅ Typed pipeline builder |
+| Cross-family support | ➖ N/A | ➖ N/A | 🟡 SQL + Mongo (separate) | ❌ SQL only | ✅ SQL + Mongo (shared patterns) |
+| Schema migrations (indexes, validators) | ❌ Manual scripts | ❌ Manual scripts | ❌ No Mongo migrations | ➖ N/A | ✅ Graph-based migration system |
+| Data migrations | ❌ Manual scripts | ❌ Manual scripts | ❌ No Mongo migrations | ➖ N/A | 🔲 Coming |
+| Middleware | ❌ None | 🟡 Mongoose plugins | 🟡 Limited | ❌ None for Mongo | ✅ Full (shared with SQL) |
+
+`✅` strong / native, `🟡` partial / manual, `❌` missing / none, `🔲` planned, `➖` not applicable
+
+## Where we are, where we're going
+
+Prisma Next is still in its early stages and isn't ready for production use yet. For production applications, Prisma 7 is still the recommended choice. Once Prisma Next is ready for general use, it will become Prisma 8, and upgrading will be a smooth process.
+
+**What works today**:
+
+- Prisma contract for MongoDB with embedded types, cross-collection references, and polymorphism
+- Typed ORM client: CRUD, `$lookup`-based includes, `.variant()` queries, filters, and ordering
+- Schema migrations: indexes, JSON Schema validators, and collection options deployed through CI/CD
+- Typed aggregation pipeline builder
+
+**What's coming:**
+
+- Data migrations for MongoDB
+- Configurable referential integrity: cascade, restrict, and setNull
+- Extension packs for Atlas Search and geospatial queries
+
+The MongoDB Node.js Driver team's input from user-journey research and feature-gap analysis directly shaped this work, from identifying polymorphism as the highest-priority gap to highlighting schema management as a major source of friction.
+
+We believe this raises the bar for what MongoDB developers should expect from their tools.
+
+- **Star + watch the repo:** [github.com/prisma/prisma-next](https://github.com/prisma/prisma-next)
+- **Try the Mongo demo app:** [examples/mongo-demo](https://github.com/prisma/prisma-next/tree/main/examples/mongo-demo)
+- **Join the conversation:** [Discord](http://pris.ly/discord)

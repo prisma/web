@@ -1,0 +1,97 @@
+---
+title: "Prisma ORM v7.4.0: Prisma Client query caching and partial indexes"
+date: "2026-02-11"
+version: "v7.4.0"
+slug: "2026-02-11"
+headline: "Prisma ORM v7.4.0: Prisma Client query caching and partial indexes"
+tags:
+  - "Prisma ORM"
+canonical: "/changelog#log2026-02-11"
+share:
+  active: true
+  content: "Look at this page: "
+source:
+  exportedAt: "2026-04-14T00:00:00.000Z"
+---
+
+## Prisma ORM v7.4.0: Prisma Client query caching and partial indexes
+
+## Highlights
+
+## ORM
+
+### Caching in Prisma Client
+
+Prisma ORM v7.4.0 introduces a new caching layer for Prisma Client. In Prisma 7, the query compiler runs as a WebAssembly module directly on the JavaScript main thread. While that simplified the architecture, it also meant that every query compilation could synchronously block the event loop.
+
+The new cache normalizes query shapes by extracting user-provided values and replacing them with typed placeholders. That lets Prisma reuse compiled plans for repeated queries with the same shape instead of recompiling them every time.
+
+```text
+// These two queries have the same shape:
+const alice = await prisma.user.findUnique({ where: { email: 'alice@prisma.io' } })
+const bob = await prisma.user.findUnique({ where: { email: 'bob@prisma.io' } })
+```
+
+```text
+prisma.user.findUnique({ where: { email: %1 } })   // cache key
+                                         ^
+                              %1 = 'alice@prisma.io'  (or 'bob@prisma.io')
+```
+
+On the first call, the query is compiled as usual and the resulting plan is stored in an LRU cache. On subsequent calls with the same query shape, the cached plan is reused instantly without invoking the compiler again.
+
+### Partial Indexes support
+
+Prisma ORM v7.4.0 also adds support for **Partial Indexes** behind the `partialIndexes` preview feature for PostgreSQL, SQLite, SQL Server, and CockroachDB, with migration and introspection support included.
+
+Enable the preview feature in your schema:
+
+```text
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["partialIndexes"]
+}
+```
+
+For maximum flexibility, you can use `raw()` with a database-specific predicate:
+
+```text
+model User {
+  id     Int    @id
+  email  String
+  status String
+
+  @@unique([email], where: raw("status = 'active'"))
+  @@index([email], where: raw("deletedAt IS NULL"))
+}
+```
+
+For simpler conditions, you can also use the type-safe object syntax:
+
+```text
+model Post {
+  id        Int      @id
+  title     String
+  published Boolean
+
+  @@index([title], where: { published: true })
+  @@unique([title], where: { published: { not: false } })
+}
+```
+
+### Bug fixes
+
+This release also includes a set of fixes from Prisma and community contributors:
+
+- [prisma-engines#5767](https://github.com/prisma/prisma-engines/pull/5767): Fixed PostgreSQL migration scripts to allow `CREATE INDEX CONCURRENTLY`
+- [prisma-engines#5752](https://github.com/prisma/prisma-engines/pull/5752): Fixed BigInt precision loss in JSON aggregation for MySQL and CockroachDB
+- [prisma-engines#5750](https://github.com/prisma/prisma-engines/pull/5750): Fixed connection failures with non-ASCII database names
+- [#29155](https://github.com/prisma/prisma/pull/29155): Fixed silent transaction commit errors in the PlanetScale adapter
+- [#29141](https://github.com/prisma/prisma/pull/29141): Resolved SQL Server adapter race condition errors during commit and rollback
+- [#29158](https://github.com/prisma/prisma/pull/29158): Fixed MSSQL connection string parsing for passwords with curly braces
+
+## Enterprise support
+
+Thousands of teams use Prisma and many of them already tap into our Enterprise & Agency Support Program for hands-on help with everything from schema integrations and performance tuning to security and compliance.
+
+With this program you also get priority issue triage and bug fixes, expert scalability advice, and custom training so that your Prisma-powered apps stay rock-solid at any scale. Learn more or join: [https://prisma.io/enterprise](https://prisma.io/enterprise).
