@@ -51,7 +51,7 @@ function buildHref(base: string, utm?: WebNavigationProps["utm"]) {
       url.searchParams.set(key, value);
     }
   }
-  return isAbsolute ? url.toString() : `${url.pathname}${url.search}`;
+  return isAbsolute ? url.toString() : `${url.pathname}${url.search}${url.hash}`;
 }
 
 function buildConsoleHref(
