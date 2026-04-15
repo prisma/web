@@ -44,13 +44,14 @@ interface WebNavigationProps {
 
 function buildHref(base: string, utm?: WebNavigationProps["utm"]) {
   if (!utm) return base;
-  const url = new URL(base);
+  const isAbsolute = base.startsWith("http");
+  const url = isAbsolute ? new URL(base) : new URL(base, "https://n.co");
   for (const [key, value] of Object.entries(utm)) {
     if (key.startsWith("utm_") && value) {
       url.searchParams.set(key, value);
     }
   }
-  return url.toString();
+  return isAbsolute ? url.toString() : `${url.pathname}${url.search}`;
 }
 
 function buildConsoleHref(
@@ -92,6 +93,16 @@ export function WebNavigation({
   const logoHref = preserveExactUtm
     ? buildHref("https://www.prisma.io", utm)
     : "https://www.prisma.io";
+  const resolvedLinks = preserveExactUtm
+    ? links.map((link) => ({
+        ...link,
+        url: link.url && !link.external ? buildHref(link.url, utm) : link.url,
+        sub: link.sub?.map((sub) => ({
+          ...sub,
+          url: sub.external ? sub.url : buildHref(sub.url, utm),
+        })),
+      }))
+    : links;
 
   useEffect(() => {
     if (mobileView) {
@@ -114,7 +125,7 @@ export function WebNavigation({
               </NavigationMenuLink>
             </NavigationMenuItem>
             <div className="hidden md:contents">
-              {links.map((link) =>
+              {resolvedLinks.map((link) =>
                 link.url ? (
                   <NavigationMenuItem key={link.url}>
                     <NavigationMenuLink href={link.url} variant={buttonVariant}>
@@ -169,7 +180,7 @@ export function WebNavigation({
             </NavigationMenuItem>
             {mobileView && (
               <NavigationMobileMenu
-                links={links}
+                links={resolvedLinks}
                 loginHref={loginHref}
                 signupHref={signupHref}
                 buttonVariant={buttonVariant}
