@@ -1,4 +1,3 @@
-export const UTM_STORAGE_KEY = "blog_utm_params";
 export const CONSOLE_HOST = "console.prisma.io";
 
 export type UtmParams = Record<string, string>;
@@ -52,13 +51,13 @@ export function syncUtmParams(url: URL, utmParams: UtmParams) {
   return updated;
 }
 
-export function readStoredUtmParams() {
+export function readStoredUtmParams(storageKey: string) {
   if (typeof window === "undefined") {
     return {};
   }
 
   try {
-    const storedUtmParams = window.sessionStorage.getItem(UTM_STORAGE_KEY);
+    const storedUtmParams = window.sessionStorage.getItem(storageKey);
 
     if (!storedUtmParams) {
       return {};
@@ -70,7 +69,7 @@ export function readStoredUtmParams() {
   }
 }
 
-export function writeStoredUtmParams(utmParams: UtmParams) {
+export function writeStoredUtmParams(storageKey: string, utmParams: UtmParams) {
   if (typeof window === "undefined") {
     return;
   }
@@ -82,19 +81,19 @@ export function writeStoredUtmParams(utmParams: UtmParams) {
   }
 
   try {
-    window.sessionStorage.setItem(UTM_STORAGE_KEY, JSON.stringify(validUtmParams));
+    window.sessionStorage.setItem(storageKey, JSON.stringify(validUtmParams));
   } catch {
     // Ignore storage failures in restricted environments.
   }
 }
 
-export function clearStoredUtmParams() {
+export function clearStoredUtmParams(storageKey: string) {
   if (typeof window === "undefined") {
     return;
   }
 
   try {
-    window.sessionStorage.removeItem(UTM_STORAGE_KEY);
+    window.sessionStorage.removeItem(storageKey);
   } catch {
     // Ignore storage failures in restricted environments.
   }
