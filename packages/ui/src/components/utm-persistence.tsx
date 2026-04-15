@@ -113,10 +113,9 @@ export function UtmPersistence({
           const internalPathname = basePath
             ? targetUrl.pathname === basePath
               ? "/"
-              : targetUrl.pathname.replace(
-                  new RegExp(`^${basePath}(?:/|$)`),
-                  "/",
-                )
+              : targetUrl.pathname.startsWith(`${basePath}/`)
+                ? targetUrl.pathname.slice(basePath.length)
+                : targetUrl.pathname
             : targetUrl.pathname;
 
           event.preventDefault();
