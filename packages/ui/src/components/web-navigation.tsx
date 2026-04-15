@@ -42,6 +42,17 @@ interface WebNavigationProps {
   buttonVariant?: "ppg" | "orm" | undefined;
 }
 
+function buildHref(base: string, utm?: WebNavigationProps["utm"]) {
+  if (!utm) return base;
+  const url = new URL(base);
+  for (const [key, value] of Object.entries(utm)) {
+    if (key.startsWith("utm_") && value) {
+      url.searchParams.set(key, value);
+    }
+  }
+  return url.toString();
+}
+
 function buildConsoleHref(
   pathname: "/login" | "/sign-up",
   utm?: WebNavigationProps["utm"],
@@ -78,6 +89,9 @@ export function WebNavigation({
   const [mobileView, setMobileView] = useState(false);
   const loginHref = buildConsoleHref("/login", utm, preserveExactUtm);
   const signupHref = buildConsoleHref("/sign-up", utm, preserveExactUtm);
+  const logoHref = preserveExactUtm
+    ? buildHref("https://www.prisma.io", utm)
+    : "https://www.prisma.io";
 
   useEffect(() => {
     if (mobileView) {
@@ -94,7 +108,7 @@ export function WebNavigation({
             <NavigationMenuItem className="outline-none!">
               <NavigationMenuLink
                 className="shrink-0 w-full p-0 hover:bg-transparent focus:bg-transparent focus-visible:outline-none focus-visible:ring-0"
-                href="https://www.prisma.io"
+                href={logoHref}
               >
                 {Logo}
               </NavigationMenuLink>
