@@ -30,6 +30,7 @@ import {
   TableCaption,
   Input,
   Alert,
+  Button
 } from "@prisma/eclipse";
 
 function withDocsBasePathForImageSrc(src: unknown): unknown {
@@ -53,6 +54,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     TabsTrigger,
     ...components,
     // Eclipse CodeBlock tab components - globally available for code blocks
+    Button,
     CodeBlockTabs,
     CodeBlockTabsList,
     CodeBlockTabsTrigger,
