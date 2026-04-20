@@ -35,6 +35,27 @@ export function PricingHeroPlans({
     return `${planKey}-${item.text}-${index}`;
   };
 
+  const renderPlanPointList = (planKey: string, items: PlanPoint[]) => (
+    <ul className="list-none p-0 m-0 mt-3 space-y-2">
+      {items.map((item, index) => (
+        <li
+          key={getPlanPointKey(planKey, item, index)}
+          className="flex items-start gap-2 text-base"
+        >
+          <span className="text-foreground-ppg mt-1">
+            <i className="fa-solid fa-circle-check text-xs" />
+          </span>
+          <span
+            className="[&_b]:font-semibold [&_span]:text-foreground-neutral-weak"
+            dangerouslySetInnerHTML={{
+              __html: renderPlanPoint(item, currency),
+            }}
+          />
+        </li>
+      ))}
+    </ul>
+  );
+
   return (
     <>
       <section className="hero h-full relative -mt-24 flex items-end justify-center px-4 pt-40">
@@ -85,9 +106,7 @@ export function PricingHeroPlans({
                 <article
                   key={planKey}
                   className={`relative rounded-2xl border ${
-                    highlighted
-                      ? "border-stroke-ppg mt-4 md:mt-0"
-                      : "border-stroke-neutral-weak"
+                    highlighted ? "border-stroke-ppg mt-4 md:mt-0" : "border-stroke-neutral-weak"
                   } bg-background-default p-5 text-foreground-neutral shadow-[0px_18px_42px_0px_rgba(23,43,77,0.08)]`}
                 >
                   {highlighted && (
@@ -103,7 +122,11 @@ export function PricingHeroPlans({
                     </p>
                     {(planKey === "pro" || planKey === "business") && (
                       <Button asChild variant="default" size="lg" className="gap-2 px-2">
-                        <a href="https://pris.ly/pay-via-aws" target="_blank" rel="noopener noreferrer">
+                        <a
+                          href="https://pris.ly/pay-via-aws"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
                           Pay via
                           <Image
                             src="/icons/companies/aws.svg"
@@ -121,29 +144,40 @@ export function PricingHeroPlans({
                     {plan.price[currency]}
                     <span className="text-2xl text-foreground-neutral-weak"> / month</span>
                   </p>
-                  <Button asChild variant={highlighted ? "ppg" : "default-strong"} size="xl" className="mt-4 w-full">
-                    <a href="https://console.prisma.io/login?utm_source=website&utm_medium=pricing" target="_blank" rel="noopener noreferrer">
+                  <Button
+                    asChild
+                    variant={highlighted ? "ppg" : "default-strong"}
+                    size="xl"
+                    className="mt-4 w-full"
+                  >
+                    <a
+                      href="https://console.prisma.io/login?utm_source=website&utm_medium=pricing"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       {planActions[planKey]}
                     </a>
                   </Button>
-                  <ul className="list-none p-0 m-0 mt-5 space-y-2">
-                    {plan.points.map((item, index) => (
-                      <li
-                        key={getPlanPointKey(planKey, item, index)}
-                        className="flex items-start gap-2 text-base"
-                      >
-                        <span className="text-foreground-ppg mt-1">
-                          <i className="fa-solid fa-circle-check text-xs" />
-                        </span>
-                        <span
-                          className="[&_b]:font-semibold [&_span]:text-foreground-neutral-weak"
-                          dangerouslySetInnerHTML={{
-                            __html: renderPlanPoint(item, currency),
-                          }}
-                        />
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="mt-5 space-y-5">
+                    <div>
+                      <p className="m-0 text-xs uppercase tracking-[1.2px] text-foreground-neutral-weak">
+                        Prisma Postgres
+                      </p>
+                      {renderPlanPointList(`${planKey}-postgres`, plan.points)}
+                    </div>
+
+                    {plan.acceleratePoints && (
+                      <div className="border-t border-stroke-neutral-weak pt-5">
+                        <p className="m-0 text-xs uppercase tracking-[1.2px] text-foreground-neutral-weak">
+                          Prisma Accelerate
+                        </p>
+                        <p className="m-0 mt-1 text-sm text-foreground-neutral-weak">
+                          Bring your own database
+                        </p>
+                        {renderPlanPointList(`${planKey}-accelerate`, plan.acceleratePoints)}
+                      </div>
+                    )}
+                  </div>
                 </article>
               );
             })}
