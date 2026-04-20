@@ -25,13 +25,6 @@ const logoParade = [
     height: 40,
   },
   {
-    label: "Twiga",
-    imageUrl: `/icons/companies/twiga.svg`,
-    url: "https://twiga.com/",
-    width: 55,
-    height: 61,
-  },
-  {
     label: "Panther",
     imageUrl: `/icons/companies/panther.svg`,
     url: "https://www.panther.co/",
