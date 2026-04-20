@@ -251,14 +251,19 @@ export function CodeBlockTabs({
   const activeTab = controlledValue ?? internalActiveTab;
 
   // ── variant state (only when variants are provided) ──
+  const hasVariants = (variants?.length ?? 0) > 0;
   const [activeVariant, setActiveVariant] = useState<string>(
-    defaultVariant ?? variants?.[0] ?? "",
+    hasVariants
+      ? defaultVariant && variants!.includes(defaultVariant)
+        ? defaultVariant
+        : variants![0]
+      : "",
   );
 
   // Build the set of existing tab+variant combos by inspecting children.
   // We only do this when variants are in use.
   const existingCombos = useMemo<Set<string>>(() => {
-    if (!variants) return new Set();
+    if (!hasVariants) return new Set();
     const s = new Set<string>();
     Children.forEach(children, (child) => {
       const el = child as ReactElement;
@@ -280,9 +285,9 @@ export function CodeBlockTabs({
 
   // Which variants are available for the currently active tab?
   const availableVariants = useMemo<Set<string>>(() => {
-    if (!variants) return new Set();
+    if (!hasVariants) return new Set();
     const available = new Set(
-      variants.filter((v) => existingCombos.has(`${activeTab}__${v}`)),
+      variants!.filter((v) => existingCombos.has(`${activeTab}__${v}`)),
     );
     console.log("availableVariants calculation:", {
       activeTab,
@@ -295,7 +300,7 @@ export function CodeBlockTabs({
 
   // Which tabs are available for the currently selected variant?
   const availableTabs = useMemo<Set<string>>(() => {
-    if (!variants) return new Set();
+    if (!hasVariants) return new Set();
     const allTabs = new Set<string>();
     Children.forEach(children, (child) => {
       const el = child as ReactElement;
@@ -355,46 +360,53 @@ export function CodeBlockTabs({
 
 export function CodeBlockTabsList(props: ComponentProps<typeof TabsList>) {
   const ctx = use(TabsContext);
-  const hasVariants = !!ctx?.variants?.length;
+  const hasVariants = (ctx?.variants?.length ?? 0) > 0;
 
-  return (
+  const tabsList = (
     <TabsList
       {...props}
       className={cn(
         "flex flex-row px-2 overflow-x-auto text-fd-muted-foreground bg-background-default",
-        hasVariants && "items-center justify-between pr-2",
         props.className,
       )}
     >
       {/* Tab pills — left side */}
       <div className="flex items-center overflow-x-auto">{props.children}</div>
-      {/* Variant dropdown — right side, only rendered when variants exist */}
-      {hasVariants && ctx && (
-        <Select value={ctx.activeVariant} onValueChange={ctx.setActiveVariant}>
-          <SelectTrigger
-            className={cn(
-              "h-7 min-w-[7rem] shrink-0 border-none bg-transparent px-2 py-0",
-              "text-fd-muted-foreground type-text-sm focus:ring-0 focus:ring-offset-0",
-              "hover:text-fd-accent-foreground",
-            )}
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent align="end">
-            {ctx.variants!.map((v) => (
-              <SelectItem
-                key={v}
-                value={v}
-                disabled={!ctx.availableVariants?.has(v)}
-                className="type-text-sm"
-              >
-                {v}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
     </TabsList>
+  );
+
+  if (!hasVariants || !ctx) {
+    return tabsList;
+  }
+
+  return (
+    <div className="flex items-center justify-between pr-2">
+      {tabsList}
+      {/* Variant dropdown — right side, sibling of TabsList */}
+      <Select value={ctx.activeVariant} onValueChange={ctx.setActiveVariant}>
+        <SelectTrigger
+          className={cn(
+            "h-7 min-w-[7rem] shrink-0 border-none bg-transparent px-2 py-0",
+            "text-fd-muted-foreground type-text-sm focus:ring-0 focus:ring-offset-0",
+            "hover:text-fd-accent-foreground",
+          )}
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent align="end">
+          {ctx.variants!.map((v) => (
+            <SelectItem
+              key={v}
+              value={v}
+              disabled={!ctx.availableVariants?.has(v)}
+              className="type-text-sm"
+            >
+              {v}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
   );
 }
 
@@ -409,8 +421,9 @@ export function CodeBlockTabsTrigger({
   const ctx = use(TabsContext);
 
   // Check if this tab has content for the currently selected variant
+  const hasVariants = (ctx?.variants?.length ?? 0) > 0;
   const isAvailable =
-    !ctx?.variants ||
+    !hasVariants ||
     !ctx?.availableTabs ||
     ctx.availableTabs.has(props.value as string);
 
@@ -453,8 +466,11 @@ export function CodeBlockTab({
   // If this tab has a variant declared, only render its children when the
   // active variant matches. The TabsContent visibility is still controlled
   // by Radix (active tab), so we only gate the inner content.
+  const hasVariants = (ctx?.variants?.length ?? 0) > 0;
   const variantMatch =
-    !variant || !ctx?.variants || ctx.activeVariant === variant;
+    !variant || !hasVariants || ctx?.activeVariant === variant;
 
-  return <TabsContent {...props}>{variantMatch ? children : null}</TabsContent>;
+  if (!variantMatch) return null;
+
+  return <TabsContent {...props}>{children}</TabsContent>;
 }
