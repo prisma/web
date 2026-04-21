@@ -234,7 +234,7 @@ const config = {
   assetPrefix: "/docs-static",
   allowedDevOrigins,
   reactStrictMode: true,
-  images: { unoptimized: true },
+
   transpilePackages: ["@prisma/eclipse"],
   experimental: {
     globalNotFound: true,

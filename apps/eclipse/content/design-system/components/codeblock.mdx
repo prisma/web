@@ -151,12 +151,14 @@ Pre-formatted text wrapper for code content.
 
 #### CodeBlockTabs
 
-Container for tabbed code blocks.
+Container for tabbed code blocks. Supports both single-axis tabs and multi-axis tabs with variants.
 
 **Props:**
 - `defaultValue` - Default active tab (string, optional)
 - `value` - Controlled active tab (string, optional)
 - `onValueChange` - Tab change callback ((value: string) => void, optional)
+- `variants` - Secondary axis labels for variant dropdown (string[], optional)
+- `defaultVariant` - Default selected variant (string, optional, falls back to variants[0])
 - `className` - Additional CSS classes (optional)
 - All Radix Tabs Root props
 
@@ -180,12 +182,15 @@ Individual tab trigger button.
 
 #### CodeBlockTab
 
-Content panel for a code block tab.
+Content panel for a code block tab. When using multi-axis tabs, specify the `variant` prop.
 
 **Props:**
 - `value` - Tab identifier matching trigger (string, required)
+- `variant` - Variant identifier for multi-axis tabs (string, optional)
 - `className` - Additional CSS classes (optional)
 - All Radix Tabs Content props
+
+**Note:** Content is only rendered when both the parent tab is active AND the variant matches the dropdown selection (if variants are used).
 
 ### Features
 
@@ -213,6 +218,196 @@ Content panel for a code block tab.
 - Test that the copy button works correctly with your code content
 
 ### Common Use Cases
+
+**Multi-Axis Tabs (Package Manager + Language Variants)**
+
+Use the `variants` prop to add a secondary dropdown axis. This is perfect for showing the same action across different tools and languages:
+
+````mdx
+```tsx
+<CodeBlockTabs
+  defaultValue="pnpm"
+  variants={["TypeScript", "JavaScript", "Python"]}
+  defaultVariant="TypeScript"
+>
+  <CodeBlockTabsList>
+    <CodeBlockTabsTrigger value="pnpm">pnpm</CodeBlockTabsTrigger>
+    <CodeBlockTabsTrigger value="npm">npm</CodeBlockTabsTrigger>
+    <CodeBlockTabsTrigger value="yarn">yarn</CodeBlockTabsTrigger>
+  </CodeBlockTabsList>
+
+  {/* ── pnpm ── */}
+  <CodeBlockTab value="pnpm" variant="TypeScript">
+    <CodeBlock title="install.sh">
+      <Pre><code>pnpm add @prisma/client{'\n'}pnpm prisma generate</code></Pre>
+    </CodeBlock>
+  </CodeBlockTab>
+
+  <CodeBlockTab value="pnpm" variant="JavaScript">
+    <CodeBlock title="install.sh">
+      <Pre><code>pnpm add @prisma/client{'\n'}pnpm prisma generate</code></Pre>
+    </CodeBlock>
+  </CodeBlockTab>
+
+  <CodeBlockTab value="pnpm" variant="Python">
+    <CodeBlock title="install.sh">
+      <Pre><code>pip install prisma{'\n'}prisma generate</code></Pre>
+    </CodeBlock>
+  </CodeBlockTab>
+
+  {/* ── npm ── */}
+  <CodeBlockTab value="npm" variant="TypeScript">
+    <CodeBlock title="install.sh">
+      <Pre><code>npm install @prisma/client{'\n'}npx prisma generate</code></Pre>
+    </CodeBlock>
+  </CodeBlockTab>
+
+  <CodeBlockTab value="npm" variant="JavaScript">
+    <CodeBlock title="install.sh">
+      <Pre><code>npm install @prisma/client{'\n'}npx prisma generate</code></Pre>
+    </CodeBlock>
+  </CodeBlockTab>
+
+  {/* npm + Python intentionally omitted — greyed out in dropdown */}
+
+  {/* ── yarn ── */}
+  <CodeBlockTab value="yarn" variant="TypeScript">
+    <CodeBlock title="install.sh">
+      <Pre><code>yarn add @prisma/client{'\n'}yarn prisma generate</code></Pre>
+    </CodeBlock>
+  </CodeBlockTab>
+
+  <CodeBlockTab value="yarn" variant="JavaScript">
+    <CodeBlock title="install.sh">
+      <Pre><code>yarn add @prisma/client{'\n'}yarn prisma generate</code></Pre>
+    </CodeBlock>
+  </CodeBlockTab>
+
+  {/* yarn + Python intentionally omitted — greyed out in dropdown */}
+</CodeBlockTabs>
+```
+````
+
+**Live Example:**
+
+<CodeBlockTabs
+  defaultValue="pnpm"
+  variants={["TypeScript", "JavaScript", "Python"]}
+  defaultVariant="TypeScript"
+>
+  <CodeBlockTabsList>
+    <CodeBlockTabsTrigger value="pnpm">pnpm</CodeBlockTabsTrigger>
+    <CodeBlockTabsTrigger value="npm">npm</CodeBlockTabsTrigger>
+    <CodeBlockTabsTrigger value="yarn">yarn</CodeBlockTabsTrigger>
+  </CodeBlockTabsList>
+
+  <CodeBlockTab value="pnpm" variant="TypeScript">
+
+```bash title="install.sh"
+pnpm add @prisma/client
+pnpm prisma generate
+```
+
+  </CodeBlockTab>
+
+  <CodeBlockTab value="pnpm" variant="JavaScript">
+
+```bash title="install.sh"
+pnpm add @prisma/client
+pnpm prisma generate
+```
+
+  </CodeBlockTab>
+
+  <CodeBlockTab value="pnpm" variant="Python">
+
+```bash title="install.sh"
+pip install prisma
+prisma generate
+```
+
+  </CodeBlockTab>
+
+  <CodeBlockTab value="npm" variant="TypeScript">
+
+```bash title="install.sh"
+npm install @prisma/client
+npx prisma generate
+```
+
+  </CodeBlockTab>
+
+  <CodeBlockTab value="npm" variant="JavaScript">
+
+```bash title="install.sh"
+npm install @prisma/client
+npx prisma generate
+```
+
+  </CodeBlockTab>
+
+  <CodeBlockTab value="yarn" variant="TypeScript">
+
+```bash title="install.sh"
+yarn add @prisma/client
+yarn prisma generate
+```
+
+  </CodeBlockTab>
+
+  <CodeBlockTab value="yarn" variant="JavaScript">
+
+```bash title="install.sh"
+yarn add @prisma/client
+yarn prisma generate
+```
+
+  </CodeBlockTab>
+</CodeBlockTabs>
+
+**Standard Tabs (No Variants)**
+
+For simpler use cases without variants, the component works as before:
+
+````mdx
+```tsx
+<CodeBlockTabs defaultValue="ts">
+  <CodeBlockTabsList>
+    <CodeBlockTabsTrigger value="ts">TypeScript</CodeBlockTabsTrigger>
+    <CodeBlockTabsTrigger value="js">JavaScript</CodeBlockTabsTrigger>
+  </CodeBlockTabsList>
+  <CodeBlockTab value="ts">
+    <CodeBlock title="example.ts">
+      <Pre><code>const greeting: string = "Hello!";</code></Pre>
+    </CodeBlock>
+  </CodeBlockTab>
+  <CodeBlockTab value="js">
+    <CodeBlock title="example.js">
+      <Pre><code>const greeting = "Hello!";</code></Pre>
+    </CodeBlock>
+  </CodeBlockTab>
+</CodeBlockTabs>
+```
+````
+
+**Live Example:**
+
+<CodeBlockTabs defaultValue="ts">
+  <CodeBlockTabsList>
+    <CodeBlockTabsTrigger value="ts">TypeScript</CodeBlockTabsTrigger>
+    <CodeBlockTabsTrigger value="js">JavaScript</CodeBlockTabsTrigger>
+  </CodeBlockTabsList>
+  <CodeBlockTab value="ts">
+    <CodeBlock title="example.ts">
+      <Pre><code>const greeting: string = "Hello!";</code></Pre>
+    </CodeBlock>
+  </CodeBlockTab>
+  <CodeBlockTab value="js">
+    <CodeBlock title="example.js">
+      <Pre><code>const greeting = "Hello!";</code></Pre>
+    </CodeBlock>
+  </CodeBlockTab>
+</CodeBlockTabs>
 
 **API Examples**
 ```tsx

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button, type ButtonProps } from "@prisma/eclipse";
-import { getUtmParams, hasUtmParams, type UtmParams } from "@/lib/utm";
+import { getUtmParams, hasUtmParams, type UtmParams } from "@prisma-docs/ui/lib/utm";
 
 interface ConsoleCtaButtonProps extends Omit<ButtonProps, "asChild"> {
   consolePath: "/login" | "/sign-up";

@@ -1,8 +1,31 @@
 'use client';
-import type { ComponentProps, ReactNode } from 'react';
+import { type ComponentProps, type ReactNode, useEffect, useState } from 'react';
 import { usePathname } from 'fumadocs-core/framework';
 import { isActive, isActiveAny } from '../../lib/urls';
+import { getUtmParams, hasUtmParams } from '@prisma-docs/ui/lib/utm';
 import Link from 'fumadocs-core/link';
+
+function useUtmHref(base: string): string {
+  const [href, setHref] = useState(base);
+  useEffect(() => {
+    const utm = getUtmParams(new URLSearchParams(window.location.search));
+    if (!hasUtmParams(utm)) {
+      setHref(base);
+      return;
+    }
+    try {
+      const isAbsolute = base.startsWith('http');
+      const url = isAbsolute ? new URL(base) : new URL(base, 'https://n.co');
+      for (const [key, value] of Object.entries(utm)) {
+        url.searchParams.set(key, value);
+      }
+      setHref(isAbsolute ? url.toString() : `${url.pathname}${url.search}${url.hash}`);
+    } catch {
+      setHref(base);
+    }
+  }, [base]);
+  return href;
+}
 
 interface Filterable {
   /**
@@ -111,8 +134,10 @@ export function LinkItem({
     ? isActiveAny(item.activePaths, pathname)
     : activeType !== 'none' && isActive(item.url, pathname, activeType === 'nested-url');
 
+  const href = useUtmHref(item.url);
+
   return (
-    <Link ref={ref} href={item.url} external={item.external} {...props} data-active={active}>
+    <Link ref={ref} href={href} external={item.external} {...props} data-active={active}>
       {props.children}
     </Link>
   );

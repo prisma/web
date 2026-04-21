@@ -2,7 +2,7 @@
 
 import { WebNavigation } from "@prisma-docs/ui/components/web-navigation";
 import { useEffect, useState } from "react";
-import { getUtmParams, hasUtmParams, type UtmParams } from "@/lib/utm";
+import { getUtmParams, hasUtmParams, type UtmParams } from "@prisma-docs/ui/lib/utm";
 
 interface Link {
   text: string;

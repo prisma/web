@@ -42,6 +42,18 @@ interface WebNavigationProps {
   buttonVariant?: "ppg" | "orm" | undefined;
 }
 
+function buildHref(base: string, utm?: WebNavigationProps["utm"]) {
+  if (!utm) return base;
+  const isAbsolute = base.startsWith("http");
+  const url = isAbsolute ? new URL(base) : new URL(base, "https://n.co");
+  for (const [key, value] of Object.entries(utm)) {
+    if (key.startsWith("utm_") && value) {
+      url.searchParams.set(key, value);
+    }
+  }
+  return isAbsolute ? url.toString() : `${url.pathname}${url.search}${url.hash}`;
+}
+
 function buildConsoleHref(
   pathname: "/login" | "/sign-up",
   utm?: WebNavigationProps["utm"],
@@ -78,6 +90,19 @@ export function WebNavigation({
   const [mobileView, setMobileView] = useState(false);
   const loginHref = buildConsoleHref("/login", utm, preserveExactUtm);
   const signupHref = buildConsoleHref("/sign-up", utm, preserveExactUtm);
+  const logoHref = preserveExactUtm
+    ? buildHref("https://www.prisma.io", utm)
+    : "https://www.prisma.io";
+  const resolvedLinks = preserveExactUtm
+    ? links.map((link) => ({
+        ...link,
+        url: link.url && !link.external ? buildHref(link.url, utm) : link.url,
+        sub: link.sub?.map((sub) => ({
+          ...sub,
+          url: sub.external ? sub.url : buildHref(sub.url, utm),
+        })),
+      }))
+    : links;
 
   useEffect(() => {
     if (mobileView) {
@@ -94,13 +119,13 @@ export function WebNavigation({
             <NavigationMenuItem className="outline-none!">
               <NavigationMenuLink
                 className="shrink-0 w-full p-0 hover:bg-transparent focus:bg-transparent focus-visible:outline-none focus-visible:ring-0"
-                href="https://www.prisma.io"
+                href={logoHref}
               >
                 {Logo}
               </NavigationMenuLink>
             </NavigationMenuItem>
             <div className="hidden md:contents">
-              {links.map((link) =>
+              {resolvedLinks.map((link) =>
                 link.url ? (
                   <NavigationMenuItem key={link.url}>
                     <NavigationMenuLink href={link.url} variant={buttonVariant}>
@@ -155,7 +180,7 @@ export function WebNavigation({
             </NavigationMenuItem>
             {mobileView && (
               <NavigationMobileMenu
-                links={links}
+                links={resolvedLinks}
                 loginHref={loginHref}
                 signupHref={signupHref}
                 buttonVariant={buttonVariant}

@@ -8,7 +8,7 @@ import {
   getUtmParams,
   hasUtmParams,
   type UtmParams,
-} from "@/lib/utm";
+} from "@prisma-docs/ui/lib/utm";
 
 interface Link {
   text: string;
