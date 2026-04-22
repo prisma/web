@@ -1,13 +1,6 @@
-import React from "react";
-
 import { CardSection } from "@/components/homepage/card-section/card-section";
 import { Metadata } from "next";
-import { Badge, Button, Card } from "@prisma/eclipse";
-import {
-  QueryInsightsBars,
-  QueryInsightsLine,
-  QueryInsightsTable,
-} from "../../components/query-insights";
+import { Button } from "@prisma/eclipse";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
