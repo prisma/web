@@ -23,7 +23,7 @@ export async function generateMetadata(): Promise<Metadata> {
       siteName: "Prisma",
       images: [
         {
-          url: "/og-images/og-query-insights.png",
+          url: "/og/og-query-insights.png",
           width: 1200,
           height: 630,
           alt: "Prisma Query Insights",
@@ -84,6 +84,8 @@ export default async function Page() {
           </i>
         </div>
       </div>
+      {/*
+
       <div className="relative my-12!">
         <div className="section-latency max-w-253 px-4 w-full mx-auto! relative">
           <div className="grid md:grid-cols-2 gap-2">
@@ -125,6 +127,7 @@ export default async function Page() {
           </div>
         </div>
       </div>
+       */}
       <div className="relative my-12!">
         <div className="section-features max-w-308 px-4 mx-auto! w-full">
           <CardSection
