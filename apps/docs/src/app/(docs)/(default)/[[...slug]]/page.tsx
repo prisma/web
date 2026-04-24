@@ -40,6 +40,7 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
         }}
         toc={page.data.toc}
         full={page.data.full}
+        stepTracking={(page.data as { stepTracking?: boolean }).stepTracking}
       >
         <div className="flex flex-col md:flex-row items-start gap-4 pt-2 pb-1 md:justify-between">
           <DocsTitle>{page.data.title}</DocsTitle>

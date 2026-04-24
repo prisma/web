@@ -45,6 +45,7 @@ export const docs = defineDocs({
       metaTitle: z.string(),
       metaDescription: z.string(),
       aiPrompt: z.string().optional(),
+      stepTracking: z.boolean().optional(),
     }),
     postprocess: {
       includeProcessedMarkdown: true,

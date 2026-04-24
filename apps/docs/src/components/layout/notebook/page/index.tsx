@@ -33,6 +33,7 @@ export interface DocsPageProps {
   toc?: TOCItemType[];
   tableOfContent?: Partial<TableOfContentOptions>;
   tableOfContentPopover?: Partial<TableOfContentPopoverOptions>;
+  stepTracking?: boolean;
 
   /**
    * Extend the page to fill all available space
@@ -112,6 +113,7 @@ export function DocsPage({
     ...tocOptions
   } = {},
   toc = [],
+  stepTracking = false,
   children,
   className,
   sidebar: sidebarOpt,
@@ -190,9 +192,10 @@ export function DocsPage({
               <I18nLabel label="toc" />
             </h3>
             <TOCScrollArea>
-              {/* Use TrackedTOCWrapper to track section views on quickstart pages */}
+              {/* Track section views for pages that opt in via frontmatter */}
               <TrackedTOCWrapper
                 tocStyle={tocOptions.style === "clerk" ? "clerk" : "default"}
+                stepTracking={stepTracking}
               />
             </TOCScrollArea>
             {tocOptions.footer}
