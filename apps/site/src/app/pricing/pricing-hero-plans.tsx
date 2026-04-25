@@ -143,7 +143,14 @@ export function PricingHeroPlans({
                             alt="AWS"
                             width={36}
                             height={14}
-                            className="w-auto h-auto"
+                            className="w-auto h-auto hidden dark:block"
+                          />
+                          <Image
+                            src="/icons/companies/aws_light.svg"
+                            alt="AWS"
+                            width={36}
+                            height={14}
+                            className="w-auto h-auto block dark:hidden"
                           />
                         </a>
                       </Button>
