@@ -22,10 +22,7 @@ export function Steps({
 }) {
   return (
     <div
-      className={cn(
-        "fd-steps border-stroke-neutral",
-        variantStyle.steps[variant ?? "horizontal"],
-      )}
+      className={cn("fd-steps border-stroke-neutral", variantStyle.steps[variant ?? "horizontal"])}
     >
       {children}
     </div>
@@ -53,9 +50,7 @@ export function Step({
       )}
     >
       <div className="max-w-full min-w-0">{children}</div>
-      {variant !== "vertical" && (
-        <span className="separator flex mt-4 flex-1 mr min-w-4" />
-      )}
+      {variant !== "vertical" && <span className="separator flex mt-4 flex-1 mr min-w-4" />}
     </div>
   );
 }

@@ -62,10 +62,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     APIPage,
     Youtube,
     img: (props: any) => (
-      <ImageZoom
-        {...(props as any)}
-        src={withDocsBasePathForImageSrc((props as any).src)}
-      />
+      <ImageZoom {...(props as any)} src={withDocsBasePathForImageSrc((props as any).src)} />
     ),
     input: (props: any) => <Input {...props} />,
     pre: ({ ref: _ref, ...props }) => (
@@ -85,10 +82,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     CalloutTitle: ({ children }: any) => <>{children}</>,
     CalloutDescription: ({ children }: any) => <>{children}</>,
     CalloutContainer: ({ type, children, icon, ...props }: any) => {
-      const variantMap: Record<
-        string,
-        "ppg" | "error" | "success" | "warning"
-      > = {
+      const variantMap: Record<string, "ppg" | "error" | "success" | "warning"> = {
         ppg: "ppg",
         error: "error",
         success: "success",

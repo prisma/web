@@ -33,11 +33,7 @@ export function Quotes({
             alt={speakerName || ""}
             width={50}
             height={50}
-            src={
-              speakerImgLink.startsWith("/")
-                ? speakerImgLink
-                : `${speakerImgLink}?w=50&h=50`
-            }
+            src={speakerImgLink.startsWith("/") ? speakerImgLink : `${speakerImgLink}?w=50&h=50`}
           />
         )}
         <span>

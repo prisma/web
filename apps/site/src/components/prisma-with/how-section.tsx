@@ -1,12 +1,6 @@
 import parse from "html-react-parser";
 import { prisma_highlighter } from "../../lib/shiki_prisma";
-import {
-  CodeBlock,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from "@prisma/eclipse";
+import { CodeBlock, Tabs, TabsList, TabsTrigger, TabsContent } from "@prisma/eclipse";
 
 type HowSectionData = {
   title: string;

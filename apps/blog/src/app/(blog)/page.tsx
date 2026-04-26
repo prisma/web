@@ -124,7 +124,6 @@ export default async function BlogHome({
     return authors.length > 0 ? authors[0] : null;
   };
 
-
   const items: BlogCardItem[] = posts.map((post) => {
     const data = post.data as any;
 
@@ -157,15 +156,12 @@ export default async function BlogHome({
 
   const uniqueTags = [
     ...new Set(
-      items
-        .flatMap((item) => item.tags ?? [])
-        .filter((tag): tag is string => Boolean(tag)),
+      items.flatMap((item) => item.tags ?? []).filter((tag): tag is string => Boolean(tag)),
     ),
   ];
   const validTags = new Set(uniqueTags);
   const tagFromQuery = getFirstQueryValue(resolvedSearchParams.tag);
-  const currentCategory =
-    tagFromQuery && validTags.has(tagFromQuery) ? tagFromQuery : SHOW_ALL;
+  const currentCategory = tagFromQuery && validTags.has(tagFromQuery) ? tagFromQuery : SHOW_ALL;
   const filteredItems =
     currentCategory === SHOW_ALL
       ? items
@@ -235,10 +231,7 @@ export default async function BlogHome({
                 ))}
                 <PaginationItem>
                   <PaginationNext
-                    href={buildBlogHref(
-                      currentCategory,
-                      Math.min(totalPages, currentPage + 1),
-                    )}
+                    href={buildBlogHref(currentCategory, Math.min(totalPages, currentPage + 1))}
                     aria-disabled={currentPage === totalPages}
                   />
                 </PaginationItem>

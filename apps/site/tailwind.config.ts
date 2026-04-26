@@ -27,8 +27,7 @@ const config: Config = {
         },
       },
       animation: {
-        "fade-in":
-          "fadein 0.5s cubic-bezier(0.455, 0.03, 0.515, 0.955) forwards",
+        "fade-in": "fadein 0.5s cubic-bezier(0.455, 0.03, 0.515, 0.955) forwards",
       },
     },
   },
@@ -45,7 +44,6 @@ const config: Config = {
         {},
       );
       addUtilities(utilities);
-
     },
   ],
 };

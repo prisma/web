@@ -36,8 +36,7 @@ const HTML_ANCHOR_REGEX = /<a\b[^>]*\bhref=(["'])(.*?)\1/gi;
 const BROWSER_HEADERS: HeadersInit = {
   "user-agent":
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
-  accept:
-    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+  accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
   "accept-language": "en-US,en;q=0.9",
 };
 
@@ -169,10 +168,7 @@ function collectFileLinks(filePath: string): Array<{ url: string; line: number }
   return links;
 }
 
-async function fetchWithTimeout(
-  url: string,
-  init: RequestInit = {},
-): Promise<Response> {
+async function fetchWithTimeout(url: string, init: RequestInit = {}): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 

@@ -38,9 +38,7 @@ export const InfoStats: FunctionComponent<{
           <span style={numberStyle}>{match[1]}</span>
           <span className="-translate-y-1">{match[2]}</span>
         </div>
-        <span className="font-mono text-foreground-neutral-weak text-sm">
-          {text}
-        </span>
+        <span className="font-mono text-foreground-neutral-weak text-sm">{text}</span>
       </div>
     )
   );

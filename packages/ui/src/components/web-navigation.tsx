@@ -72,10 +72,7 @@ function buildConsoleHref(
   }
 
   if (!preserveExactUtm && !href.searchParams.has("utm_campaign")) {
-    href.searchParams.set(
-      "utm_campaign",
-      pathname === "/login" ? "login" : "signup",
-    );
+    href.searchParams.set("utm_campaign", pathname === "/login" ? "login" : "signup");
   }
 
   return href.toString();

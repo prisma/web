@@ -81,14 +81,12 @@ const agents: McpAgent[] = [
   {
     logo: "/mcp/logos/cursor.svg",
     alt: "Add to Cursor",
-    href:
-      "cursor://anysphere.cursor-deeplink/mcp/install?name=Prisma-Remote&config=eyJjb21tYW5kIjoibnB4IC15IG1jcC1yZW1vdGUgaHR0cHM6Ly9tY3AucHJpc21hLmlvL21jcCJ9",
+    href: "cursor://anysphere.cursor-deeplink/mcp/install?name=Prisma-Remote&config=eyJjb21tYW5kIjoibnB4IC15IG1jcC1yZW1vdGUgaHR0cHM6Ly9tY3AucHJpc21hLmlvL21jcCJ9",
   },
   {
     logo: "/mcp/logos/vscode.svg",
     alt: "Install in VS Code",
-    href:
-      "vscode:mcp/install?%7B%22name%22%3A%22prisma-postgres%22%2C%22gallery%22%3Atrue%2C%22url%22%3A%22https%3A%2F%2Fmcp.prisma.io%2Fmcp%22%7D",
+    href: "vscode:mcp/install?%7B%22name%22%3A%22prisma-postgres%22%2C%22gallery%22%3Atrue%2C%22url%22%3A%22https%3A%2F%2Fmcp.prisma.io%2Fmcp%22%7D",
   },
   {
     logo: "/mcp/logos/warp.svg",

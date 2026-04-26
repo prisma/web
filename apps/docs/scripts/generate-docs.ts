@@ -2,10 +2,7 @@ import { generateFiles } from "fumadocs-openapi";
 import matter from "gray-matter";
 import { openapi } from "@/lib/openapi";
 
-function withDescriptionFirst(
-  data: Record<string, unknown>,
-  description: string,
-) {
+function withDescriptionFirst(data: Record<string, unknown>, description: string) {
   const { title, description: _description, ...rest } = data;
 
   return {
@@ -46,12 +43,15 @@ void generateFiles({
     return output.item.name;
   },
   beforeWrite(files) {
-    const operationByFilePath = new Map<string, {
-      path: string;
-      method: string;
-      title: string;
-      description?: string;
-    }>();
+    const operationByFilePath = new Map<
+      string,
+      {
+        path: string;
+        method: string;
+        title: string;
+        description?: string;
+      }
+    >();
 
     for (const entries of Object.values(this.generatedEntries)) {
       for (const entry of entries) {
@@ -136,13 +136,9 @@ void generateFiles({
 
       if (!changed) continue;
 
-      file.content = matter.stringify(
-        parsed.content,
-        withDescriptionFirst(data, description),
-        {
+      file.content = matter.stringify(parsed.content, withDescriptionFirst(data, description), {
         lineWidth: -1,
-        } as Parameters<typeof matter.stringify>[2],
-      );
+      } as Parameters<typeof matter.stringify>[2]);
     }
   },
 });

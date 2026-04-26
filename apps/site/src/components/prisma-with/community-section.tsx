@@ -40,11 +40,7 @@ export function CommunitySection({ data }: { data: CommunitySectionData }) {
             >
               <div className="flex gap-4 items-start">
                 {(card.icon || card.image) && (
-                  <Action
-                    size="4xl"
-                    color="neutral"
-                    className="self-start flex-none"
-                  >
+                  <Action size="4xl" color="neutral" className="self-start flex-none">
                     {card.image ? (
                       <Image
                         src={card.image}
@@ -63,9 +59,7 @@ export function CommunitySection({ data }: { data: CommunitySectionData }) {
                   {parse(card.title)}
                 </h3>
               </div>
-              <p className="text-foreground-neutral-weak text-base">
-                {parse(card.description)}
-              </p>
+              <p className="text-foreground-neutral-weak text-base">{parse(card.description)}</p>
               <div className="flex flex-wrap gap-4 mt-auto">
                 {(card.btns ?? (card.btn ? [card.btn] : [])).map((btn) => (
                   <a

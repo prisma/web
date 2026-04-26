@@ -31,22 +31,11 @@ type AlertProps = React.HTMLAttributes<HTMLDivElement> &
 const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
   ({ className, variant, icon, children, ...props }, ref) => {
     const IconComponent =
-      icon !== undefined ? (
-        icon
-      ) : (
-        <i className="fa-duotone fa-solid fa-circle-exclamation"></i>
-      );
+      icon !== undefined ? icon : <i className="fa-duotone fa-solid fa-circle-exclamation"></i>;
     return (
-      <div
-        ref={ref}
-        role="alert"
-        className={cn(alertVariants({ variant }), className)}
-        {...props}
-      >
+      <div ref={ref} role="alert" className={cn(alertVariants({ variant }), className)} {...props}>
         {IconComponent}
-        <div className="[&>*]:first:mt-0 [&>*]:last:mb-0 [& strong]:text-inherit">
-          {children}
-        </div>
+        <div className="[&>*]:first:mt-0 [&>*]:last:mb-0 [& strong]:text-inherit">{children}</div>
       </div>
     );
   },

@@ -61,10 +61,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     Steps,
     Step,
     img: (props: any) => (
-      <ImageZoom
-        {...(props as any)}
-        src={withBlogBasePathForImageSrc((props as any).src)}
-      />
+      <ImageZoom {...(props as any)} src={withBlogBasePathForImageSrc((props as any).src)} />
     ),
   };
 
@@ -79,10 +76,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     CalloutTitle: ({ children }: any) => <>{children}</>,
     CalloutDescription: ({ children }: any) => <>{children}</>,
     CalloutContainer: ({ type, children, icon, ...props }: any) => {
-      const variantMap: Record<
-        string,
-        "ppg" | "error" | "success" | "warning"
-      > = {
+      const variantMap: Record<string, "ppg" | "error" | "success" | "warning"> = {
         ppg: "ppg",
         error: "error",
         success: "success",

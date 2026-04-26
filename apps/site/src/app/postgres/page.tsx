@@ -145,7 +145,12 @@ export default async function SiteHome() {
                 <i className="fa-regular fa-database" />
               </a>
             </Button>
-            <Button asChild variant="default-strong" size="3xl" className="font-sans-display! font-[650]">
+            <Button
+              asChild
+              variant="default-strong"
+              size="3xl"
+              className="font-sans-display! font-[650]"
+            >
               <a href="https://www.prisma.io/docs/postgres">
                 Read the docs
                 <i className="fa-regular fa-book-open" />

@@ -1,8 +1,5 @@
 import { createPageMetadata } from "@/lib/page-metadata";
-import {
-  partnersTosSections,
-  partnersTosLastUpdated,
-} from "@/data/partners-tos";
+import { partnersTosSections, partnersTosLastUpdated } from "@/data/partners-tos";
 import { LegalAccordion } from "@/components/legal-accordion";
 
 export const metadata = createPageMetadata({

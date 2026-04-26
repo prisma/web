@@ -1,4 +1,4 @@
-'use client';
+"use client";
 import { createContext, use, type FC, type ReactNode } from "react";
 import type * as PageTree from "fumadocs-core/page-tree";
 import { SidebarItem } from "@/components/layout/notebook/sidebar";

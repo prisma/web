@@ -90,27 +90,15 @@ type TableOfContentOptions = Pick<AnchorProviderProps, "single"> & {
 type TableOfContentPopoverOptions = Omit<TableOfContentOptions, "single">;
 
 export function DocsPage({
-  breadcrumb: {
-    enabled: breadcrumbEnabled = true,
-    component: breadcrumb,
-    ...breadcrumbProps
-  } = {},
-  footer: {
-    enabled: footerEnabled,
-    component: footerReplace,
-    ...footerProps
-  } = {},
+  breadcrumb: { enabled: breadcrumbEnabled = true, component: breadcrumb, ...breadcrumbProps } = {},
+  footer: { enabled: footerEnabled, component: footerReplace, ...footerProps } = {},
   full = false,
   tableOfContentPopover: {
     enabled: tocPopoverEnabled,
     component: tocPopover,
     ...tocPopoverOptions
   } = {},
-  tableOfContent: {
-    enabled: tocEnabled,
-    component: tocReplace,
-    ...tocOptions
-  } = {},
+  tableOfContent: { enabled: tocEnabled, component: tocReplace, ...tocOptions } = {},
   toc = [],
   children,
   className,
@@ -118,10 +106,7 @@ export function DocsPage({
 }: DocsPageProps) {
   // disable TOC on full mode, you can still enable it with `enabled` option.
   tocEnabled ??=
-    !full &&
-    (toc.length > 0 ||
-      tocOptions.footer !== undefined ||
-      tocOptions.header !== undefined);
+    !full && (toc.length > 0 || tocOptions.footer !== undefined || tocOptions.header !== undefined);
 
   tocPopoverEnabled ??=
     toc.length > 0 ||
@@ -140,9 +125,7 @@ export function DocsPage({
 
   return wrapper(
     <>
-      {sidebarOpt !== undefined && (
-        <SidebarEnabledSync enabled={sidebarOpt.enabled !== false} />
-      )}
+      {sidebarOpt !== undefined && <SidebarEnabledSync enabled={sidebarOpt.enabled !== false} />}
       {tocPopoverEnabled &&
         (tocPopover ?? (
           <PageTOCPopover>
@@ -169,11 +152,9 @@ export function DocsPage({
           className,
         )}
       >
-        {breadcrumbEnabled &&
-          (breadcrumb ?? <PageBreadcrumb {...breadcrumbProps} />)}
+        {breadcrumbEnabled && (breadcrumb ?? <PageBreadcrumb {...breadcrumbProps} />)}
         {children}
-        {footerEnabled !== false &&
-          (footerReplace ?? <PageFooter {...footerProps} />)}
+        {footerEnabled !== false && (footerReplace ?? <PageFooter {...footerProps} />)}
       </article>
       {tocEnabled &&
         (tocReplace ?? (
@@ -191,9 +172,7 @@ export function DocsPage({
             </h3>
             <TOCScrollArea>
               {/* Use TrackedTOCWrapper to track section views on quickstart pages */}
-              <TrackedTOCWrapper
-                tocStyle={tocOptions.style === "clerk" ? "clerk" : "default"}
-              />
+              <TrackedTOCWrapper tocStyle={tocOptions.style === "clerk" ? "clerk" : "default"} />
             </TOCScrollArea>
             {tocOptions.footer}
           </div>
@@ -230,11 +209,7 @@ export function EditOnGitHub(props: ComponentProps<"a">) {
 /**
  * Add typography styles
  */
-export function DocsBody({
-  children,
-  className,
-  ...props
-}: ComponentProps<"div">) {
+export function DocsBody({ children, className, ...props }: ComponentProps<"div">) {
   return (
     <div {...props} className={cn("prose flex-1", className)}>
       {children}
@@ -242,29 +217,18 @@ export function DocsBody({
   );
 }
 
-export function DocsDescription({
-  children,
-  className,
-  ...props
-}: ComponentProps<"p">) {
+export function DocsDescription({ children, className, ...props }: ComponentProps<"p">) {
   // Don't render if no description provided
   if (children === undefined) return null;
 
   return (
-    <p
-      {...props}
-      className={cn("mb-2 text-lg text-fd-muted-foreground", className)}
-    >
+    <p {...props} className={cn("mb-2 text-lg text-fd-muted-foreground", className)}>
       {children}
     </p>
   );
 }
 
-export function DocsTitle({
-  children,
-  className,
-  ...props
-}: ComponentProps<"h1">) {
+export function DocsTitle({ children, className, ...props }: ComponentProps<"h1">) {
   return (
     <h1 {...props} className={cn("text-[1.75em] font-semibold", className)}>
       {children}

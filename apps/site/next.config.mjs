@@ -239,9 +239,7 @@ const securityHeaders = [
   },
 ];
 
-const allowedDevOrigins = (
-  process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0.1,192.168.1.48"
-)
+const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0.1,192.168.1.48")
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
@@ -352,8 +350,7 @@ const config = {
       {
         permanent: true,
         source: "/blog/comparison-of-database-models-1iz9u29nwn37",
-        destination:
-          "https://www.prisma.io/dataguide/intro/comparing-database-types",
+        destination: "https://www.prisma.io/dataguide/intro/comparing-database-types",
       },
       {
         permanent: true,
@@ -364,14 +361,12 @@ const config = {
       {
         permanent: true,
         source: "/tutorials/postgres-why-choose-postgres-db08",
-        destination:
-          "https://www.prisma.io/dataguide/postgresql/benefits-of-postgresql",
+        destination: "https://www.prisma.io/dataguide/postgresql/benefits-of-postgresql",
       },
       {
         permanent: true,
         source: "/blog/ways-to-host-postgresql-w0xrhqqgp4zp",
-        destination:
-          "https://www.prisma.io/dataguide/postgresql/5-ways-to-host-postgresql",
+        destination: "https://www.prisma.io/dataguide/postgresql/5-ways-to-host-postgresql",
       },
       {
         permanent: true,
@@ -382,8 +377,7 @@ const config = {
       {
         permanent: true,
         source: "/tutorials/postgres-configuring-user-authentication-db06",
-        destination:
-          "https://www.prisma.io/dataguide/postgresql/configuring-user-authentication",
+        destination: "https://www.prisma.io/dataguide/postgresql/configuring-user-authentication",
       },
       {
         permanent: true,
@@ -394,15 +388,12 @@ const config = {
       {
         permanent: true,
         source: "/tutorials/postgres-introduction-to-data-types-db02",
-        destination:
-          "https://www.prisma.io/dataguide/postgresql/introduction-to-data-types",
+        destination: "https://www.prisma.io/dataguide/postgresql/introduction-to-data-types",
       },
       {
         permanent: true,
-        source:
-          "/tutorials/postgres-introduction-to-column-and-table-constraints-db03",
-        destination:
-          "https://www.prisma.io/dataguide/postgresql/column-and-table-constraints",
+        source: "/tutorials/postgres-introduction-to-column-and-table-constraints-db03",
+        destination: "https://www.prisma.io/dataguide/postgresql/column-and-table-constraints",
       },
       {
         permanent: true,
@@ -419,8 +410,7 @@ const config = {
       {
         permanent: false,
         source: "/blog/prisma-the-complete-orm-inw24qjeawmb",
-        destination:
-          "https://www.prisma.io/docs/orm/overview/introduction/why-prisma",
+        destination: "https://www.prisma.io/docs/orm/overview/introduction/why-prisma",
       },
       {
         permanent: true,
@@ -516,20 +506,17 @@ const config = {
       {
         permanent: true,
         source: "/blog/prisma-now-supports-postgres-aad74ba479cb",
-        destination:
-          "https://www.prisma.io/docs/orm/overview/databases/postgresql",
+        destination: "https://www.prisma.io/docs/orm/overview/databases/postgresql",
       },
       {
         permanent: true,
-        source:
-          "/blog/introducing-prisma-cloud-a-graphql-database-platform-ed591baa8737",
+        source: "/blog/introducing-prisma-cloud-a-graphql-database-platform-ed591baa8737",
         destination: "https://www.prisma.io/cloud",
       },
       {
         permanent: true,
         source: "/blog/introducing-prisma-1ff423fd629e",
-        destination:
-          "https://www.prisma.io/blog/announcing-prisma-2-n0v98rzc8br1",
+        destination: "https://www.prisma.io/blog/announcing-prisma-2-n0v98rzc8br1",
       },
       {
         permanent: true,
@@ -682,8 +669,7 @@ const config = {
       },
       {
         permanent: true,
-        source:
-          "/blog/build-real-time-durable-workflows-with-pulse-and-inngest",
+        source: "/blog/build-real-time-durable-workflows-with-pulse-and-inngest",
         destination: "https://www.prisma.io/docs/postgres",
       },
       {
@@ -698,8 +684,7 @@ const config = {
       },
       {
         permanent: true,
-        source:
-          "/blog/prisma-pulse-introducing-delivery-guarantees-for-database-change-events",
+        source: "/blog/prisma-pulse-introducing-delivery-guarantees-for-database-change-events",
         destination: "https://www.prisma.io/docs/postgres",
       },
       {
@@ -709,8 +694,7 @@ const config = {
       },
       {
         permanent: true,
-        source:
-          "/blog/build-a-real-time-app-with-nextjs-socketio-and-prisma-postgres",
+        source: "/blog/build-a-real-time-app-with-nextjs-socketio-and-prisma-postgres",
         destination: "https://www.prisma.io/docs/postgres",
       },
       {

@@ -4,11 +4,7 @@ import { Layers } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
-import {
-  stackCategories,
-  type StackCategory,
-  type StackLinkItem,
-} from "./stack-data";
+import { stackCategories, type StackCategory, type StackLinkItem } from "./stack-data";
 
 const title = "Prisma in your stack | Prisma";
 const description =
@@ -47,9 +43,7 @@ export default function StackPage() {
               <h3 className="m-0 text-foreground-neutral text-3xl font-sans-display [font-variation-settings:'wght'_900]">
                 {category.title}
               </h3>
-              <p className="m-0 text-foreground-neutral-weak">
-                {category.description}
-              </p>
+              <p className="m-0 text-foreground-neutral-weak">{category.description}</p>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {category.items.map((item: StackLinkItem) => (
                   <Link key={item.id} href={item.href} className="group">

@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 type HEXColorProps = {
   color: string;

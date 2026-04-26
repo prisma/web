@@ -24,24 +24,21 @@ export const meetups: Meetup[] = [
     title: "Berlin Prisma Meetup",
     description:
       "Join with other local engineers to discuss the latest database and API developments and learn more about Prisma best practices.",
-    image:
-      "https://secure.meetupstatic.com/photos/event/9/9/b/2/clean_498279346.jpeg",
+    image: "https://secure.meetupstatic.com/photos/event/9/9/b/2/clean_498279346.jpeg",
     link: "https://www.meetup.com/Berlin-Prisma-Meetup/",
   },
   {
     title: "TypeScript Berlin Meetup",
     description:
       "For anyone interested in JavaScript frameworks and TypeScript in particular. A Meetup to share knowledge, use cases and solve real problems using technology.",
-    image:
-      "https://secure.meetupstatic.com/photos/event/8/6/8/b/600_498214443.jpeg",
+    image: "https://secure.meetupstatic.com/photos/event/8/6/8/b/600_498214443.jpeg",
     link: "https://www.meetup.com/TypeScript-Berlin/",
   },
   {
     title: "GraphQL Berlin Meetup",
     description:
       "A regular meetup of people interested in GraphQL and its ecosystem. We have speakers from all around the globe telling us about the latest developments in the GraphQL world.",
-    image:
-      "https://secure.meetupstatic.com/photos/event/d/4/5/c/clean_498234364.jpeg",
+    image: "https://secure.meetupstatic.com/photos/event/d/4/5/c/clean_498234364.jpeg",
     link: "https://www.meetup.com/graphql-berlin/",
   },
 ];

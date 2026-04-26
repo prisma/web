@@ -5,12 +5,8 @@ export const revalidate = false;
 
 export async function GET() {
   const baseUrl = getBaseUrl();
-  const latestPages = source
-    .getPages()
-    .sort((a, b) => a.data.title.localeCompare(b.data.title));
-  const v6Pages = sourceV6
-    .getPages()
-    .sort((a, b) => a.data.title.localeCompare(b.data.title));
+  const latestPages = source.getPages().sort((a, b) => a.data.title.localeCompare(b.data.title));
+  const v6Pages = sourceV6.getPages().sort((a, b) => a.data.title.localeCompare(b.data.title));
 
   const latestDocsList = latestPages
     .map((page) => {

@@ -96,37 +96,31 @@ export const OpenRoles = () => {
       <OpenRolesMenu setFilter={setFilter} filters={Object.keys(jobs)} />
       <div className="w-full flex flex-col gap-15">
         {Object.keys(jobs).length &&
-          (filter === "All" ? Object.keys(jobs) : [filter]).map(
-            (d: any, idx: number) => (
-              <div className="mb-[-10px]" key={idx}>
-                <span className="z-1 mb-2.5 px-4 items-center stretch-display text-foreground-orm-strong relative rounded-full inline-flex font-bold text-base h-8 uppercase font-sans-display">
-                  {d}
-                </span>
-                {jobs[d].map((job: any, jobIdx: number) => (
-                  <div
-                    key={job.id || job.url || `${d}-${jobIdx}`}
-                    className="shadow-[0px_0px_46px_rgba(23,43,77,0.01),0px_4px_26px_rgba(23,43,77,0.05),0px_18px_42px_rgba(23,43,77,0.08)] rounded-lg bg-background-default relative z-1 p-5 md:px-6 gap-5 flex mb-2.5 justify-between flex-col items-start lg:items-center lg:flex-row border border-stroke-neutral"
-                  >
-                    <div className="text-left w-full md:w-auto">
-                      <span className="text-base leading-[140%] text-foreground-neutral-weak mb-1 block">
-                        {job &&
-                          job.workLocation &&
-                          job.workLocation.label.split(" (")[0]}
-                      </span>
-                      <p className="text-foreground-neutral font-bold text-lg leading-[140%] m-0">
-                        {job.name}
-                      </p>
-                    </div>
-                    <Button asChild variant="orm" size="2xl" className="w-full md:w-auto shrink-0">
-                      <a href={job.url}>
-                        View job listing
-                      </a>
-                    </Button>
+          (filter === "All" ? Object.keys(jobs) : [filter]).map((d: any, idx: number) => (
+            <div className="mb-[-10px]" key={idx}>
+              <span className="z-1 mb-2.5 px-4 items-center stretch-display text-foreground-orm-strong relative rounded-full inline-flex font-bold text-base h-8 uppercase font-sans-display">
+                {d}
+              </span>
+              {jobs[d].map((job: any, jobIdx: number) => (
+                <div
+                  key={job.id || job.url || `${d}-${jobIdx}`}
+                  className="shadow-[0px_0px_46px_rgba(23,43,77,0.01),0px_4px_26px_rgba(23,43,77,0.05),0px_18px_42px_rgba(23,43,77,0.08)] rounded-lg bg-background-default relative z-1 p-5 md:px-6 gap-5 flex mb-2.5 justify-between flex-col items-start lg:items-center lg:flex-row border border-stroke-neutral"
+                >
+                  <div className="text-left w-full md:w-auto">
+                    <span className="text-base leading-[140%] text-foreground-neutral-weak mb-1 block">
+                      {job && job.workLocation && job.workLocation.label.split(" (")[0]}
+                    </span>
+                    <p className="text-foreground-neutral font-bold text-lg leading-[140%] m-0">
+                      {job.name}
+                    </p>
                   </div>
-                ))}
-              </div>
-            ),
-          )}
+                  <Button asChild variant="orm" size="2xl" className="w-full md:w-auto shrink-0">
+                    <a href={job.url}>View job listing</a>
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ))}
       </div>
     </>
   );

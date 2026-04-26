@@ -25,8 +25,8 @@ export default function PricingPage() {
           </h3>
           <div className="content flex flex-col lg:flex-row gap-3 lg:gap-12 items-center md:items-start lg:items-center">
             <p className="max-w-94 w-full text-center md:text-left text-foreground-neutral-weak text-md">
-              Scale your project with right plan. Not sure which one you need?{" "}
-              <b>Let's find out</b>.
+              Scale your project with right plan. Not sure which one you need? <b>Let's find out</b>
+              .
             </p>
             <Button asChild variant="ppg" size="2xl">
               <a href="mailto:boch@prisma.io">

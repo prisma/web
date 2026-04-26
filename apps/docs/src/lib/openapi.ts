@@ -6,11 +6,7 @@ import { join } from "node:path";
 let cachedSpec: any = null;
 let fetchPromise: Promise<any> | null = null;
 
-async function fetchWithRetry(
-  url: string,
-  retries = 3,
-  timeout = 30000,
-): Promise<Response> {
+async function fetchWithRetry(url: string, retries = 3, timeout = 30000): Promise<Response> {
   for (let i = 0; i < retries; i++) {
     try {
       const controller = new AbortController();
@@ -38,10 +34,7 @@ async function fetchWithRetry(
 
       // Exponential backoff
       const delay = Math.min(1000 * Math.pow(2, i), 10000);
-      console.warn(
-        `Fetch attempt ${i + 1} failed, retrying in ${delay}ms...`,
-        error,
-      );
+      console.warn(`Fetch attempt ${i + 1} failed, retrying in ${delay}ms...`, error);
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
@@ -83,11 +76,7 @@ async function getOpenAPISpec() {
 
       // If no cache file, fetch from API
       console.log("Fetching OpenAPI spec from https://api.prisma.io/v1/doc");
-      const res = await fetchWithRetry(
-        "https://api.prisma.io/v1/doc",
-        3,
-        30000,
-      );
+      const res = await fetchWithRetry("https://api.prisma.io/v1/doc", 3, 30000);
       const doc = await res.json();
       doc.servers = [{ url: "https://api.prisma.io" }];
       console.log("Successfully fetched OpenAPI spec");
