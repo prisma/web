@@ -31,7 +31,7 @@ export default function PricingPage() {
             <Button asChild variant="ppg" size="2xl">
               <a
                 href={
-                  "mailto:?subject=Prisma%20Custom%20Pricing&body=Hi%2C%0A%0AEvaluating%20XYZ%20at%20scale%20%E2%80%94%20interested%20in%20custom%20pricing.%0A%0ACompany%3A%20%0AExpected%20scale%20(queries%20%2F%20DBs%20%2F%20etc)%3A%0A%0AThanks"
+                  "mailto:boch@prisma.io?cc=neubauer@prisma.io&subject=Prisma%20Custom%20Pricing&body=Hi%2C%0A%0AEvaluating%20XYZ%20at%20scale%20%E2%80%94%20interested%20in%20custom%20pricing.%0A%0ACompany%3A%20%0AExpected%20scale%20(queries%20%2F%20DBs%20%2F%20etc)%3A%0A%0AThanks"
                 }
               >
                 Contact us
