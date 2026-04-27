@@ -732,6 +732,11 @@ const config = {
           destination: "/sitemap-site.xml",
         },
         {
+          source: "/docs/:path*.mdx",
+          destination: `${DOCS_ORIGIN}/docs/:path*.mdx`,
+          missing: [{ type: "host", value: DOCS_ORIGIN_HOST }],
+        },
+        {
           source: "/:path*.mdx",
           destination: "/llms.mdx/:path*",
         },
