@@ -19,8 +19,7 @@ export default function PricingPage() {
       <div className="my-12 bg-[linear-gradient(180deg,var(--color-background-default)_-177.75%,var(--color-background-ppg)_100%)] shadow-[0_1px_2px_0_rgba(0,0,0,0.04)] p-12">
         <div className="web-cta flex gap-3 md:gap-12 items-center mx-auto w-fit lg:p-4 flex-col md:flex-row">
           <h3 className="text-2xl text-foreground-neutral font-sans-display font-bold text-center md:text-left">
-            Running
-            <br className="md:block hidden" />
+            Running <br className="md:block hidden" />
             at scale?
           </h3>
           <div className="content flex flex-col lg:flex-row gap-3 lg:gap-12 items-center md:items-start lg:items-center">
