@@ -44,7 +44,8 @@ ${v6DocsList}
 
 ## Options
 
-- [Full documentation with content](${baseUrl}${withDocsBasePath("/llms-full.txt")})
+- [Full current documentation with content](${baseUrl}${withDocsBasePath("/llms-full.txt")})
+- [Legacy v6 documentation with content](${baseUrl}${withDocsBasePath("/llms-full-v6.txt")})
 `;
 
   return new Response(content, {
