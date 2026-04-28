@@ -17,18 +17,9 @@ const barlow = Barlow({
 
 export default function Layout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="en"
-      className={`${inter.variable} ${barlow.variable}`}
-      suppressHydrationWarning
-    >
+    <html lang="en" className={`${inter.variable} ${barlow.variable}`} suppressHydrationWarning>
       <head>
-        <Script
-          src={EclipseFA}
-          crossOrigin="anonymous"
-          async
-          data-auto-add-css="false"
-        />
+        <Script src={EclipseFA} crossOrigin="anonymous" async data-auto-add-css="false" />
         <Script
           src="https://widget.kapa.ai/kapa-widget.bundle.js"
           data-website-id="1b51bb03-43cc-4ef4-95f1-93288a91b560"

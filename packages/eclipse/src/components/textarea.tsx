@@ -23,8 +23,7 @@ const textareaVariants = cva(
 );
 
 interface TextareaProps
-  extends Omit<React.ComponentProps<"textarea">, "size">,
-    VariantProps<typeof textareaVariants> {
+  extends Omit<React.ComponentProps<"textarea">, "size">, VariantProps<typeof textareaVariants> {
   showCharCount?: boolean;
 }
 
@@ -74,10 +73,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
                   ? "warning"
                   : "neutral"
             }
-            className={cn(
-              "absolute",
-              badgeInset[resolvedSize],
-            )}
+            className={cn("absolute", badgeInset[resolvedSize])}
             label={`${charCount}/${maxLength}`}
           ></Badge>
         )}

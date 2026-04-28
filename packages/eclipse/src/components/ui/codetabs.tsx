@@ -61,10 +61,7 @@ export const TabsList = React.forwardRef<
     <Unstyled.TabsList
       ref={ref}
       {...props}
-      className={cn(
-        "flex flex-row px-2 overflow-x-auto text-fd-muted-foreground",
-        props.className,
-      )}
+      className={cn("flex flex-row px-2 overflow-x-auto text-fd-muted-foreground", props.className)}
     >
       {items && items.length > 0
         ? items.map((item) => (
@@ -124,22 +121,15 @@ export function Tabs({
       }}
       {...props}
     >
-      {items && (
-        <TabsList currentValue={value} onValueChange={setValue} items={items} />
-      )}
-      <TabsContext.Provider
-        value={useMemo(() => ({ items, collection }), [collection, items])}
-      >
+      {items && <TabsList currentValue={value} onValueChange={setValue} items={items} />}
+      <TabsContext.Provider value={useMemo(() => ({ items, collection }), [collection, items])}>
         {props.children}
       </TabsContext.Provider>
     </Unstyled.Tabs>
   );
 }
 
-export interface TabProps extends Omit<
-  ComponentProps<typeof Unstyled.TabsContent>,
-  "value"
-> {
+export interface TabProps extends Omit<ComponentProps<typeof Unstyled.TabsContent>, "value"> {
   /**
    * Value of tab, detect from index if unspecified.
    */

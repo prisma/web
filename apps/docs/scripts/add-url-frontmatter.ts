@@ -12,10 +12,7 @@ import path from "node:path";
 import matter from "gray-matter";
 
 const [dirArg, baseArg] = process.argv.slice(2);
-const DOCS_DIR = path.join(
-  process.cwd(),
-  dirArg ?? "content/docs"
-);
+const DOCS_DIR = path.join(process.cwd(), dirArg ?? "content/docs");
 const URL_BASE = (baseArg ?? "").replace(/\/$/, "") || ""; // "" for /, "/v6" for /v6
 
 function getUrlFromRelativePath(relativePath: string): string {
@@ -36,7 +33,7 @@ function getUrlFromRelativePath(relativePath: string): string {
 function walkMdxFiles(
   dir: string,
   relativeTo: string,
-  files: { absolute: string; relative: string }[] = []
+  files: { absolute: string; relative: string }[] = [],
 ): { absolute: string; relative: string }[] {
   for (const name of fs.readdirSync(dir, { withFileTypes: true })) {
     const absolute = path.join(dir, name.name);

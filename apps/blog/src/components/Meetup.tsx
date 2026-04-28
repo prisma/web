@@ -1,5 +1,4 @@
-
-'use client';
+"use client";
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 
@@ -42,11 +41,9 @@ interface MeetupProps {
   imagePath: string;
 }
 
-export const MeetupList = ({
-  children,
-}: {
-  children: React.ReactNode;
-}) => <div className={meetupListClasses}>{children}</div>;
+export const MeetupList = ({ children }: { children: React.ReactNode }) => (
+  <div className={meetupListClasses}>{children}</div>
+);
 
 export const Meetup: React.FC<MeetupProps> = (props) => {
   return (

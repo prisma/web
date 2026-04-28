@@ -199,9 +199,7 @@ const securityHeaders = [
   },
 ];
 
-const allowedDevOrigins = (
-  process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0.1,192.168.1.48"
-)
+const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0.1,192.168.1.48")
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
@@ -234,7 +232,7 @@ const config = {
   assetPrefix: "/docs-static",
   allowedDevOrigins,
   reactStrictMode: true,
-  images: { unoptimized: true },
+
   transpilePackages: ["@prisma/eclipse"],
   experimental: {
     globalNotFound: true,

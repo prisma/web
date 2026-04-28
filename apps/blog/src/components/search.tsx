@@ -41,9 +41,7 @@ type SearchResultItemProps = Parameters<
 function isBlogSearchResult(value: unknown): value is BlogSearchResult {
   if (!value || typeof value !== "object") return false;
   const candidate = value as Partial<BlogSearchResult>;
-  return (
-    typeof candidate.url === "string" && typeof candidate.content === "string"
-  );
+  return typeof candidate.url === "string" && typeof candidate.content === "string";
 }
 
 function SearchResultItem({ item, onClick }: SearchResultItemProps): ReactNode {
@@ -79,12 +77,7 @@ function SearchResultItem({ item, onClick }: SearchResultItemProps): ReactNode {
         {post.tags?.length ? (
           <div className="flex flex-wrap gap-1 pt-1">
             {post.tags.slice(0, 3).map((tag) => (
-              <Badge
-                key={tag}
-                color="success"
-                label={formatTag(tag)}
-                className="w-fit"
-              />
+              <Badge key={tag} color="success" label={formatTag(tag)} className="w-fit" />
             ))}
           </div>
         ) : null}
@@ -101,12 +94,7 @@ export default function CustomSearchDialog(props: SharedProps) {
   });
 
   return (
-    <SearchDialog
-      search={search}
-      onSearchChange={setSearch}
-      isLoading={query.isLoading}
-      {...props}
-    >
+    <SearchDialog search={search} onSearchChange={setSearch} isLoading={query.isLoading} {...props}>
       <SearchDialogOverlay />
       <SearchDialogContent>
         <SearchDialogHeader>

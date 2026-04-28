@@ -10,11 +10,7 @@ import * as TocDefault from "./default";
 
 const TRACKED_PAGES = [{ id: "quickstart", path: "/prisma-orm/quickstart/" }];
 
-export function TrackedTOCWrapper({
-  tocStyle = "default",
-}: {
-  tocStyle?: "default" | "clerk";
-}) {
+export function TrackedTOCWrapper({ tocStyle = "default" }: { tocStyle?: "default" | "clerk" }) {
   const active = Primitive.useActiveAnchors();
   const pathname = usePathname();
   const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
@@ -40,7 +36,6 @@ export function TrackedTOCWrapper({
     }, 300);
   });
 
-  const TOCComponent =
-    tocStyle === "clerk" ? TocClerk.TOCItems : TocDefault.TOCItems;
+  const TOCComponent = tocStyle === "clerk" ? TocClerk.TOCItems : TocDefault.TOCItems;
   return <TOCComponent />;
 }

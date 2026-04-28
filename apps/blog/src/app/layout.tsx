@@ -26,17 +26,9 @@ export const metadata: Metadata = {
 
 export default function Layout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="en"
-      className={`${inter.variable} ${barlow.variable}`}
-      suppressHydrationWarning
-    >
+    <html lang="en" className={`${inter.variable} ${barlow.variable}`} suppressHydrationWarning>
       <head>
-        <Script
-          src={EclipseFA}
-          crossOrigin="anonymous"
-          data-auto-add-css="false"
-        />
+        <Script src={EclipseFA} crossOrigin="anonymous" data-auto-add-css="false" />
       </head>
       <body className="flex flex-col min-h-screen relative">
         <div className="bg-blog absolute inset-0 -z-1 overflow-hidden" />

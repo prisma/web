@@ -26,12 +26,7 @@ export interface ScrollCarouselProps {
   children: ReactNode;
 }
 
-const NavButton = ({
-  direction,
-  disabled,
-  onClick,
-  className,
-}: NavButtonProps) => (
+const NavButton = ({ direction, disabled, onClick, className }: NavButtonProps) => (
   <button
     type="button"
     aria-label={`Scroll carousel ${direction}`}
@@ -41,10 +36,7 @@ const NavButton = ({
     className={cn(className, disabled && "cursor-not-allowed opacity-40")}
   >
     <i
-      className={cn(
-        "fa-regular",
-        direction === "left" ? "fa-chevron-left" : "fa-chevron-right",
-      )}
+      className={cn("fa-regular", direction === "left" ? "fa-chevron-left" : "fa-chevron-right")}
       aria-hidden="true"
     />
   </button>
@@ -69,10 +61,7 @@ export function ScrollCarousel({
       return;
     }
 
-    const maxScrollLeft = Math.max(
-      0,
-      container.scrollWidth - container.clientWidth,
-    );
+    const maxScrollLeft = Math.max(0, container.scrollWidth - container.clientWidth);
     const tolerance = 8;
 
     setIsAtStart(container.scrollLeft <= tolerance);
@@ -82,9 +71,7 @@ export function ScrollCarousel({
   const scrollByItem = useCallback(
     (direction: -1 | 1) => {
       const container = scrollRef.current;
-      const carouselItems = container?.querySelectorAll<HTMLElement>(
-        "[data-carousel-item]",
-      );
+      const carouselItems = container?.querySelectorAll<HTMLElement>("[data-carousel-item]");
 
       if (!container || !carouselItems?.length) {
         return;
@@ -98,17 +85,12 @@ export function ScrollCarousel({
       const currentScroll = container.scrollLeft;
       const currentIndex = itemList.reduce((closestIndex, item, index) => {
         const currentDistance = Math.abs(item.offsetLeft - currentScroll);
-        const closestDistance = Math.abs(
-          itemList[closestIndex].offsetLeft - currentScroll,
-        );
+        const closestDistance = Math.abs(itemList[closestIndex].offsetLeft - currentScroll);
 
         return currentDistance < closestDistance ? index : closestIndex;
       }, 0);
 
-      const targetIndex = Math.max(
-        0,
-        Math.min(itemList.length - 1, currentIndex + direction),
-      );
+      const targetIndex = Math.max(0, Math.min(itemList.length - 1, currentIndex + direction));
 
       container.scrollTo({
         left: itemList[targetIndex].offsetLeft,
@@ -121,9 +103,7 @@ export function ScrollCarousel({
   useEffect(() => {
     const container = scrollRef.current;
     const resizeObserver =
-      typeof ResizeObserver !== "undefined"
-        ? new ResizeObserver(() => updateScrollBounds())
-        : null;
+      typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => updateScrollBounds()) : null;
 
     if (!container) {
       resizeObserver?.disconnect();
@@ -135,9 +115,7 @@ export function ScrollCarousel({
     container.addEventListener("scroll", updateScrollBounds, { passive: true });
     window.addEventListener("resize", updateScrollBounds);
     resizeObserver?.observe(container);
-    Array.from(container.children).forEach((child) =>
-      resizeObserver?.observe(child),
-    );
+    Array.from(container.children).forEach((child) => resizeObserver?.observe(child));
 
     return () => {
       container.removeEventListener("scroll", updateScrollBounds);
@@ -170,9 +148,7 @@ export function ScrollCarousel({
           <div className={cn("grid grid-flow-col gap-4", gridClassName)}>
             {items.map((item, index) => (
               <div
-                key={
-                  isValidElement(item) && item.key != null ? item.key : index
-                }
+                key={isValidElement(item) && item.key != null ? item.key : index}
                 data-carousel-item
                 className={cn("min-w-0 snap-start", itemClassName)}
               >

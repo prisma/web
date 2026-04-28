@@ -11,8 +11,7 @@ export function getBaseUrl(): string {
 }
 
 export function normalize(urlOrPath: string) {
-  if (urlOrPath.length > 1 && urlOrPath.endsWith("/"))
-    return urlOrPath.slice(0, -1);
+  if (urlOrPath.length > 1 && urlOrPath.endsWith("/")) return urlOrPath.slice(0, -1);
   return urlOrPath;
 }
 
@@ -21,10 +20,7 @@ export const DOCS_PREFIX = "/docs";
 export function withDocsBasePath(path: string): string {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
 
-  if (
-    normalizedPath === DOCS_PREFIX ||
-    normalizedPath.startsWith(`${DOCS_PREFIX}/`)
-  ) {
+  if (normalizedPath === DOCS_PREFIX || normalizedPath.startsWith(`${DOCS_PREFIX}/`)) {
     return normalizedPath;
   }
 
@@ -46,11 +42,7 @@ function withoutDocsPrefix(path: string): string {
 /**
  * @returns if `href` is matching the given pathname
  */
-export function isActive(
-  href: string,
-  pathname: string,
-  nested = true,
-): boolean {
+export function isActive(href: string, pathname: string, nested = true): boolean {
   href = normalize(href);
   pathname = normalize(pathname);
 
@@ -64,8 +56,7 @@ export function isActive(
     nested &&
     pathSegment.startsWith(`${hrefSegment}/`) &&
     // Ensure segment boundary: "orm" must not match "prisma-orm"
-    (pathSegment.length === hrefSegment.length ||
-      pathSegment[hrefSegment.length] === "/")
+    (pathSegment.length === hrefSegment.length || pathSegment[hrefSegment.length] === "/")
   );
 }
 
@@ -83,8 +74,7 @@ export function isActiveAny(paths: string[], pathname: string): boolean {
     if (segment === "") return false;
     return (
       pathSegment.startsWith(`${segment}/`) &&
-      (pathSegment.length === segment.length ||
-        pathSegment[segment.length] === "/")
+      (pathSegment.length === segment.length || pathSegment[segment.length] === "/")
     );
   });
 }

@@ -1,6 +1,6 @@
-'use client';
-import { Spinner } from '@prisma/eclipse';
-import { useDocsSearch } from 'fumadocs-core/search/client';
+"use client";
+import { Spinner } from "@prisma/eclipse";
+import { useDocsSearch } from "fumadocs-core/search/client";
 import {
   SearchDialog,
   SearchDialogClose,
@@ -10,15 +10,13 @@ import {
   SearchDialogList,
   SearchDialogOverlay,
   type SharedProps,
-} from 'fumadocs-ui/components/dialog/search';
-import { SearchIcon, X } from 'lucide-react';
-import { ComponentProps, useEffect, useRef } from 'react';
-import posthog from 'posthog-js';
-import { withDocsBasePath } from '@/lib/urls';
+} from "fumadocs-ui/components/dialog/search";
+import { SearchIcon, X } from "lucide-react";
+import { ComponentProps, useEffect, useRef } from "react";
+import posthog from "posthog-js";
+import { withDocsBasePath } from "@/lib/urls";
 
-export function CustomSearchDialogIcon(
-  props: ComponentProps<'svg'> & { isLoading: boolean },
-) {
+export function CustomSearchDialogIcon(props: ComponentProps<"svg"> & { isLoading: boolean }) {
   return (
     <>
       {props.isLoading ? (
@@ -32,27 +30,27 @@ export function CustomSearchDialogIcon(
 
 export default function CustomSearchDialog(props: SharedProps) {
   const { search, setSearch, query } = useDocsSearch({
-    type: 'fetch',
-    api: withDocsBasePath('/api/search'),
+    type: "fetch",
+    api: withDocsBasePath("/api/search"),
     delayMs: 500,
   });
 
   const lastCapturedQueryRef = useRef<string | null>(null);
   const stabilityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  
+
   useEffect(() => {
     if (
       search.length > 0 &&
       !query.isLoading &&
       query.data !== undefined &&
-      query.data !== 'empty'
+      query.data !== "empty"
     ) {
       if (stabilityTimerRef.current) clearTimeout(stabilityTimerRef.current);
       stabilityTimerRef.current = setTimeout(() => {
         stabilityTimerRef.current = null;
         if (lastCapturedQueryRef.current !== search) {
           lastCapturedQueryRef.current = search;
-          posthog.capture('docs:search', {
+          posthog.capture("docs:search", {
             query: search,
           });
         }
@@ -64,12 +62,7 @@ export default function CustomSearchDialog(props: SharedProps) {
   }, [query.data, query.isLoading, search]);
 
   return (
-    <SearchDialog
-      search={search}
-      onSearchChange={setSearch}
-      isLoading={query.isLoading}
-      {...props}
-    >
+    <SearchDialog search={search} onSearchChange={setSearch} isLoading={query.isLoading} {...props}>
       <SearchDialogOverlay suppressHydrationWarning />
       <SearchDialogContent>
         <SearchDialogHeader>
@@ -79,7 +72,7 @@ export default function CustomSearchDialog(props: SharedProps) {
             <X className="size-4" aria-hidden="true" />
           </SearchDialogClose>
         </SearchDialogHeader>
-        <SearchDialogList items={query.data !== 'empty' ? query.data : null} />
+        <SearchDialogList items={query.data !== "empty" ? query.data : null} />
       </SearchDialogContent>
     </SearchDialog>
   );

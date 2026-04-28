@@ -59,8 +59,7 @@ const sitePages: LlmsPage[] = [
   {
     path: "/ecosystem",
     title: "Prisma ORM Ecosystem",
-    description:
-      "Community-built tools, generators, middleware, and integrations around Prisma.",
+    description: "Community-built tools, generators, middleware, and integrations around Prisma.",
   },
 ];
 
@@ -230,8 +229,6 @@ Ecosystem description: Prisma has a wider ecosystem of community-built tools, ge
 
 ## Key page index
 
-${sitePages
-  .map((page) => `- ${page.title}: ${toAbsoluteUrl(baseUrl, page.path)}`)
-  .join("\n")}
+${sitePages.map((page) => `- ${page.title}: ${toAbsoluteUrl(baseUrl, page.path)}`).join("\n")}
 `;
 }

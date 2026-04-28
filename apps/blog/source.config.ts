@@ -1,14 +1,7 @@
 import remarkDirective from "remark-directive";
-import {
-  remarkDirectiveAdmonition,
-  remarkMdxFiles,
-} from "fumadocs-core/mdx-plugins";
+import { remarkDirectiveAdmonition, remarkMdxFiles } from "fumadocs-core/mdx-plugins";
 import { remarkImage } from "fumadocs-core/mdx-plugins";
-import {
-  defineCollections,
-  defineConfig,
-  frontmatterSchema,
-} from "fumadocs-mdx/config";
+import { defineCollections, defineConfig, frontmatterSchema } from "fumadocs-mdx/config";
 import lastModified from "fumadocs-mdx/plugins/last-modified";
 import { z } from "zod";
 import convert from "npm-to-yarn";
@@ -67,9 +60,18 @@ export default defineConfig({
       persist: { id: "package-manager" },
       // Custom package managers to add --bun flag for bunx commands
       packageManagers: [
-        { command: (cmd: string) => convert(cmd.replace(/^npm init -y$/, "npm init"), "npm"), name: "npm" },
-        { command: (cmd: string) => convert(cmd.replace(/^npm init -y$/, "npm init"), "pnpm"), name: "pnpm" },
-        { command: (cmd: string) => convert(cmd.replace(/^npm init -y$/, "npm init"), "yarn"), name: "yarn" },
+        {
+          command: (cmd: string) => convert(cmd.replace(/^npm init -y$/, "npm init"), "npm"),
+          name: "npm",
+        },
+        {
+          command: (cmd: string) => convert(cmd.replace(/^npm init -y$/, "npm init"), "pnpm"),
+          name: "pnpm",
+        },
+        {
+          command: (cmd: string) => convert(cmd.replace(/^npm init -y$/, "npm init"), "yarn"),
+          name: "yarn",
+        },
         {
           command: (cmd: string) => {
             const converted = convert(cmd.replace(/^npm init -y$/, "npm init"), "bun");

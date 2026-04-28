@@ -1,12 +1,5 @@
 import { TooltipInfo } from "@prisma-docs/ui/components/tooltip-info";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableHead,
-  TableRow,
-  TableCell,
-} from "@prisma/eclipse";
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@prisma/eclipse";
 
 export function PartnersTable() {
   return (
@@ -22,42 +15,28 @@ export function PartnersTable() {
       </TableHeader>
       <TableBody>
         <TableRow>
-          <TableCell className="font-semibold border-r">
-            Max Databases
-          </TableCell>
+          <TableCell className="font-semibold border-r">Max Databases</TableCell>
           <TableCell className="border-r">5,000/month</TableCell>
           <TableCell className="border-r">50,000/month</TableCell>
           <TableCell className="border-r">Custom</TableCell>
           <TableCell>Custom</TableCell>
         </TableRow>
         <TableRow>
-          <TableCell className="font-semibold border-r">
-            Per Database Limits
-          </TableCell>
-          <TableCell className="border-r">
-            100K ops/month, 1GB storage
-          </TableCell>
-          <TableCell className="border-r">
-            100K ops/month, 1GB storage
-          </TableCell>
-          <TableCell className="border-r">
-            100K ops/month, 1GB storage
-          </TableCell>
+          <TableCell className="font-semibold border-r">Per Database Limits</TableCell>
+          <TableCell className="border-r">100K ops/month, 1GB storage</TableCell>
+          <TableCell className="border-r">100K ops/month, 1GB storage</TableCell>
+          <TableCell className="border-r">100K ops/month, 1GB storage</TableCell>
           <TableCell>Custom</TableCell>
         </TableRow>
         <TableRow>
-          <TableCell className="font-semibold border-r">
-            Database Ownership
-          </TableCell>
+          <TableCell className="font-semibold border-r">Database Ownership</TableCell>
           <TableCell className="border-r">Transferable to end user</TableCell>
           <TableCell className="border-r">Transferable to end user</TableCell>
           <TableCell className="border-r">Transferable to end user</TableCell>
           <TableCell>Non-transferable</TableCell>
         </TableRow>
         <TableRow>
-          <TableCell className="font-semibold border-r">
-            Partner Revenue Share
-          </TableCell>
+          <TableCell className="font-semibold border-r">Partner Revenue Share</TableCell>
           <TableCell className="border-r">
             <div className="flex items-center gap-2">
               <span>10%</span>
@@ -79,18 +58,14 @@ export function PartnersTable() {
           <TableCell>-</TableCell>
         </TableRow>
         <TableRow>
-          <TableCell className="font-semibold border-r">
-            Studio White-labeling
-          </TableCell>
+          <TableCell className="font-semibold border-r">Studio White-labeling</TableCell>
           <TableCell className="border-r">Prisma branding</TableCell>
           <TableCell className="border-r">Your branding</TableCell>
           <TableCell className="border-r">Your branding</TableCell>
           <TableCell>Your branding</TableCell>
         </TableRow>
         <TableRow>
-          <TableCell className="font-semibold border-r">
-            Contract Length
-          </TableCell>
+          <TableCell className="font-semibold border-r">Contract Length</TableCell>
           <TableCell className="border-r">-</TableCell>
           <TableCell className="border-r">12 months</TableCell>
           <TableCell className="border-r">12 months</TableCell>

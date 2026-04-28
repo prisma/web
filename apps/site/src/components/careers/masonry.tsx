@@ -8,13 +8,7 @@ const gutterClasses: Record<string, string> = {
   "16px": "[column-gap:16px]",
 };
 
-export const MasonryPict = ({
-  images,
-  gutter,
-}: {
-  images: any[];
-  gutter: string;
-}) => {
+export const MasonryPict = ({ images, gutter }: { images: any[]; gutter: string }) => {
   const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set());
 
   const handleImageLoad = (idx: number) => {

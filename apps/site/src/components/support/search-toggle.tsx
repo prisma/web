@@ -1,16 +1,11 @@
-'use client';
-import type { ComponentProps } from 'react';
-import { Search } from 'lucide-react';
-import { useSearchContext } from '@fumadocs/base-ui/contexts/search';
-import { cn } from '@prisma-docs/ui/lib/cn';
-import { Button } from '@prisma/eclipse';
+"use client";
+import type { ComponentProps } from "react";
+import { Search } from "lucide-react";
+import { useSearchContext } from "@fumadocs/base-ui/contexts/search";
+import { cn } from "@prisma-docs/ui/lib/cn";
+import { Button } from "@prisma/eclipse";
 
-
-export function LargeSearchToggle({
-  className,
-  onClick,
-  ...props
-}: ComponentProps<'button'>) {
+export function LargeSearchToggle({ className, onClick, ...props }: ComponentProps<"button">) {
   const { setOpenSearch } = useSearchContext();
   return (
     <Button
@@ -18,7 +13,7 @@ export function LargeSearchToggle({
       aria-label={props["aria-label"] ?? "Search the blog"}
       variant="default"
       className={cn(
-        'flex items-center justify-center gap-2 hover:cursor-pointer md:justify-between py-2.5 transition-colors hover:bg-background-ppg/50',
+        "flex items-center justify-center gap-2 hover:cursor-pointer md:justify-between py-2.5 transition-colors hover:bg-background-ppg/50",
         className,
       )}
       onClick={(event) => {
@@ -32,7 +27,6 @@ export function LargeSearchToggle({
         Search the blog
       </span>
       <Search className="size-4 justify-end" />
-
     </Button>
   );
 }

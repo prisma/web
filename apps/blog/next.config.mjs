@@ -194,9 +194,7 @@ const securityHeaders = [
   },
 ];
 
-const allowedDevOrigins = (
-  process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0.1,192.168.1.48"
-)
+const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0.1,192.168.1.48")
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
@@ -223,6 +221,11 @@ const config = {
         destination: "/blog",
         permanent: false,
         basePath: false,
+      },
+      {
+        source: "/optimize-now-generally-available",
+        destination: "/",
+        permanent: true,
       },
       ...tagSlugs.map((tag) => ({
         source: `/${tag}`,

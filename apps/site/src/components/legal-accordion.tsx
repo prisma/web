@@ -106,18 +106,14 @@ export function LegalAccordion({
           <span className="text-lg leading-6 font-semibold underline">
             {isAllExpanded ? "Collapse" : "Expand"} all
           </span>
-          <i
-            className={`fa-regular fa-${isAllExpanded ? "minus" : "plus"} ml-2 text-base`}
-          />
+          <i className={`fa-regular fa-${isAllExpanded ? "minus" : "plus"} ml-2 text-base`} />
         </button>
         <button
           type="button"
           className="text-foreground-orm hover:text-foreground-orm-strong transition-all duration-300 cursor-pointer"
           onClick={printPage}
         >
-          <span className="text-lg leading-6 font-semibold underline">
-            Print
-          </span>
+          <span className="text-lg leading-6 font-semibold underline">Print</span>
           <i className="fa-regular fa-print ml-2 text-base" />
         </button>
       </div>

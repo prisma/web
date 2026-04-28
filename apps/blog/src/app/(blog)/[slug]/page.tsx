@@ -3,21 +3,13 @@ import { notFound } from "next/navigation";
 import { getMDXComponents } from "@/mdx-components";
 import { createRelativeLink } from "fumadocs-ui/mdx";
 import { blog } from "@/lib/source";
-import {
-  Badge,
-  InlineTOC,
-  Separator,
-} from "@prisma/eclipse";
+import { Badge, InlineTOC, Separator } from "@prisma/eclipse";
 
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import { FooterNewsletterForm } from "@prisma-docs/ui/components/newsletter";
 import { BlogShare } from "@/components/BlogShare";
 import { AuthorAvatarGroup } from "@/components/AuthorAvatarGroup";
-import {
-  getBaseUrl,
-  withBlogBasePath,
-  withBlogBasePathForImageSrc,
-} from "@/lib/url";
+import { getBaseUrl, withBlogBasePath, withBlogBasePathForImageSrc } from "@/lib/url";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -83,19 +75,18 @@ function getBlogPostingJsonLd(page: ReturnType<typeof blog.getPage>): BlogPostin
   const canonicalPath = withBlogBasePath(page.url);
   const canonicalUrl = toAbsoluteUrl(canonicalPath);
   const imagePath = page.data.metaImagePath ?? page.data.heroImagePath;
-  const imageUrl = imagePath
-    ? toAbsoluteUrl(withBlogBasePathForImageSrc(imagePath))
-    : undefined;
+  const imageUrl = imagePath ? toAbsoluteUrl(withBlogBasePathForImageSrc(imagePath)) : undefined;
 
   const authorNames = Array.isArray(page.data.authors)
     ? page.data.authors
-      .filter((author): author is string => typeof author === "string")
-      .map((author) => author.trim())
-      .filter(Boolean)
+        .filter((author): author is string => typeof author === "string")
+        .map((author) => author.trim())
+        .filter(Boolean)
     : [];
 
   const datePublished = toIsoDate(page.data.date);
-  const dateModified = toIsoDate((page.data as { lastModified?: unknown }).lastModified) ?? datePublished;
+  const dateModified =
+    toIsoDate((page.data as { lastModified?: unknown }).lastModified) ?? datePublished;
 
   const jsonLd: BlogPostingSchema = {
     "@context": "https://schema.org",
@@ -140,9 +131,7 @@ function getBlogPostingJsonLd(page: ReturnType<typeof blog.getPage>): BlogPostin
   return jsonLd;
 }
 
-export default async function Page(props: {
-  params: Promise<{ slug: string }>;
-}) {
+export default async function Page(props: { params: Promise<{ slug: string }> }) {
   const params = await props.params;
   const page = blog.getPage([params.slug]);
 
@@ -159,10 +148,7 @@ export default async function Page(props: {
       <div className="post-contents w-full">
         {/* Title + meta */}
         <header className="w-full relative">
-          <Link
-            href="/"
-            className="text-fd-primary hover:underline text-sm absolute -top-8"
-          >
+          <Link href="/" className="text-fd-primary hover:underline text-sm absolute -top-8">
             ← Back to Blog
           </Link>
           <h1 className="mt-3 mb-8 font-bold max-md:text-3xl md:text-5xl   stretch-display font-sans-display text-foreground-neutral">
@@ -195,10 +181,8 @@ export default async function Page(props: {
                   hover:bg-background-ppg/50
                   hover:border-stroke-ppg/50
                   hover:text-foreground-ppg"
-
                   />
                 </Link>
-
               ))}
             </div>
           )}
@@ -207,7 +191,6 @@ export default async function Page(props: {
         {/* Body */}
         <article className="w-full flex flex-col pb-8 mt-12">
           <div className="prose min-w-0 [&_figure]:w-full [&_figure]:md:max-w-140 [&_figure]:lg:max-w-200">
-
             <p className="font-semibold text-lg">{page.data.excerpt}</p>
 
             <MDX

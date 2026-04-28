@@ -1,8 +1,8 @@
-'use client';
-import type { ComponentProps, ReactNode } from 'react';
-import { usePathname } from 'fumadocs-core/framework';
-import { isActive } from '../../lib/urls';
-import Link from 'fumadocs-core/link';
+"use client";
+import type { ComponentProps, ReactNode } from "react";
+import { usePathname } from "fumadocs-core/framework";
+import { isActive } from "../../lib/urls";
+import Link from "fumadocs-core/link";
 
 interface Filterable {
   /**
@@ -10,7 +10,7 @@ interface Filterable {
    *
    * @defaultValue 'all'
    */
-  on?: 'menu' | 'nav' | 'all';
+  on?: "menu" | "nav" | "all";
 }
 
 interface WithHref {
@@ -20,19 +20,19 @@ interface WithHref {
    *
    * @defaultValue 'url'
    */
-  active?: 'url' | 'nested-url' | 'none';
+  active?: "url" | "nested-url" | "none";
   external?: boolean;
 }
 
 export interface MainItemType extends WithHref, Filterable {
-  type?: 'main';
+  type?: "main";
   icon?: ReactNode;
   text: ReactNode;
   description?: ReactNode;
 }
 
 export interface IconItemType extends WithHref, Filterable {
-  type: 'icon';
+  type: "icon";
   /**
    * `aria-label` of icon button
    */
@@ -46,7 +46,7 @@ export interface IconItemType extends WithHref, Filterable {
 }
 
 export interface ButtonItemType extends WithHref, Filterable {
-  type: 'button';
+  type: "button";
   icon?: ReactNode;
   text: ReactNode;
   /**
@@ -56,7 +56,7 @@ export interface ButtonItemType extends WithHref, Filterable {
 }
 
 export interface MenuItemType extends Partial<WithHref>, Filterable {
-  type: 'menu';
+  type: "menu";
   icon?: ReactNode;
   text: ReactNode;
 
@@ -65,7 +65,7 @@ export interface MenuItemType extends Partial<WithHref>, Filterable {
         /**
          * Options when displayed on navigation menu
          */
-        menu?: ComponentProps<'a'> & {
+        menu?: ComponentProps<"a"> & {
           banner?: ReactNode;
         };
       })
@@ -79,7 +79,7 @@ export interface MenuItemType extends Partial<WithHref>, Filterable {
 }
 
 export interface CustomItemType extends Filterable {
-  type: 'custom';
+  type: "custom";
   /**
    * @defaultValue false
    */
@@ -98,10 +98,10 @@ export function LinkItem({
   ref,
   item,
   ...props
-}: Omit<ComponentProps<'a'>, 'href'> & { item: WithHref }) {
+}: Omit<ComponentProps<"a">, "href"> & { item: WithHref }) {
   const pathname = usePathname();
-  const activeType = item.active ?? 'url';
-  const active = activeType !== 'none' && isActive(item.url, pathname, activeType === 'nested-url');
+  const activeType = item.active ?? "url";
+  const active = activeType !== "none" && isActive(item.url, pathname, activeType === "nested-url");
 
   return (
     <Link ref={ref} href={item.url} external={item.external} {...props} data-active={active}>

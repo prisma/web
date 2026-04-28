@@ -1,11 +1,5 @@
 "use client";
-import {
-  Action,
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-  } from "@prisma/eclipse";
+import { Action, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@prisma/eclipse";
 import { cn } from "@prisma-docs/ui/lib/cn";
 import { shareSocials } from "@prisma-docs/ui/data/footer";
 import { usePathname } from "next/navigation";
@@ -62,9 +56,7 @@ export const BlogShare = ({ desc }: { desc: string }) => {
                       setTimeout(() => {
                         setTooltip(defaultCopyText);
                       }, 500);
-                      navigator.clipboard.writeText(
-                        `https://prisma.io/blog${pathname}`,
-                      );
+                      navigator.clipboard.writeText(`https://prisma.io/blog${pathname}`);
                     }}
                     className="text-[1.375rem] transition-colors hover:bg-background-ppg-strong cursor-pointer"
                   >

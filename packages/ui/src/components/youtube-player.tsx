@@ -25,9 +25,7 @@ export const YouTubePlayer = ({
   const [playing, setPlaying] = useState(false);
   const [shouldAutoplay, setShouldAutoplay] = useState(autoplay);
   const getAutoplayParams = () =>
-    shouldAutoplay
-      ? `${video.includes("?") ? "&" : "?"}autoplay=1&mute=1&rel=0`
-      : "";
+    shouldAutoplay ? `${video.includes("?") ? "&" : "?"}autoplay=1&mute=1&rel=0` : "";
 
   const { ref, inView } = useInView({
     threshold: 0.2,

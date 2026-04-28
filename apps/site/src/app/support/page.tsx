@@ -68,9 +68,7 @@ export default function Support() {
                       {card.title}
                     </h3>
                   </div>
-                  <p className="text-foreground-neutral-weak">
-                    {card.description}
-                  </p>
+                  <p className="text-foreground-neutral-weak">{card.description}</p>
                 </div>
                 <div className="flex flex-col gap-2">
                   {card.links.map((link, idx) => (
@@ -119,9 +117,7 @@ export default function Support() {
                         href={link.url}
                         className="text-sm font-semibold flex items-center gap-2 text-foreground-ppg-strong hover:text-foreground-ppg transition-colors whitespace-nowrap"
                       >
-                        <span className="underline underline-offset-3">
-                          {link.label}
-                        </span>
+                        <span className="underline underline-offset-3">{link.label}</span>
                         <i className="fa-regular fa-arrow-up-right ml-2" />
                       </a>
                     ))}
@@ -148,9 +144,7 @@ export default function Support() {
                       className="text-sm font-semibold flex items-center gap-2 text-foreground-ppg-strong hover:text-foreground-ppg transition-colors w-fit"
                     >
                       {link.icon && <i className={link.icon} />}
-                      <span className="underline underline-offset-3">
-                        {link.label}
-                      </span>
+                      <span className="underline underline-offset-3">{link.label}</span>
                       <i className="fa-regular fa-arrow-up-right ml-auto" />
                     </a>
                   ))}
@@ -176,9 +170,7 @@ export default function Support() {
                     href={cards[5].links[0].url}
                     className="text-sm font-semibold flex items-center gap-2 text-background-orm-reverse-strong hover:text-background-orm-reverse transition-colors"
                   >
-                    <span className="underline underline-offset-3">
-                      {cards[5].links[0].label}
-                    </span>
+                    <span className="underline underline-offset-3">{cards[5].links[0].label}</span>
                     <i className={cards[5].links[0].icon} />
                   </a>
                 </div>

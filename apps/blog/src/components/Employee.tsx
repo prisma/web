@@ -1,4 +1,4 @@
-'use client';
+"use client";
 import Image from "next/image";
 
 const employeeWrapperClasses = [
@@ -40,12 +40,7 @@ const Employee: React.FC<EmployeeProps> = (props) => {
     <div className={employeeWrapperClasses}>
       <div className={employeeHeaderClasses}>
         <div className={employeeNamePlateClasses}>
-          <Image
-            src={props.imgURL}
-            alt={props.name}
-            width={56}
-            height={56}
-          />
+          <Image src={props.imgURL} alt={props.name} width={56} height={56} />
           <div>
             <strong>{props.name}</strong>
             {props.title + " | " + props.joinDate}

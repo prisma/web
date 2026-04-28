@@ -43,10 +43,7 @@ export function McpHeroSection({
                       />
                     </span>
                     <span className="hidden sm:inline">
-                      <McpTypeText
-                        text="Your Database Workflow, Powered by AI"
-                        speed={14}
-                      />
+                      <McpTypeText text="Your Database Workflow, Powered by AI" speed={14} />
                     </span>
                     <span className="mcp-type-cursor text-foreground-neutral-weaker dark:text-foreground-neutral-weak">
                       _
@@ -83,10 +80,7 @@ export function McpHeroSection({
           <Button asChild variant={"ppg"} size={"3xl"} className="gap-3">
             <a href={docsHref}>
               Add MCP Server
-              <i
-                className="fa-regular fa-arrow-right shrink-0 text-[16px]"
-                aria-hidden
-              />
+              <i className="fa-regular fa-arrow-right shrink-0 text-[16px]" aria-hidden />
             </a>
           </Button>
         </div>
@@ -98,9 +92,7 @@ export function McpHeroSection({
                 <i className={`${icon} ${heroFeatureIconClass}`} aria-hidden />
               </div>
               <p className="font-mono text-sm font-medium leading-5 text-foreground-neutral-weak sm:min-w-[175px] dark:text-white/70">
-                <span className="sm:hidden">
-                  {mobileText ?? `${line1} ${line2}`}
-                </span>
+                <span className="sm:hidden">{mobileText ?? `${line1} ${line2}`}</span>
                 <span className="hidden sm:inline">
                   {line1}
                   <br />

@@ -2,8 +2,7 @@ const stories = [
   {
     name: "Bucket",
     id: "bucket",
-    title:
-      "How Bucket Uses Prisma ORM to Make Shipping Feature Releases Faster",
+    title: "How Bucket Uses Prisma ORM to Make Shipping Feature Releases Faster",
     imageSrc: "/photos/showcase/stories/bucket.png",
     imageAlt: "Showcase story",
     technologies: ["prisma"],
@@ -322,8 +321,7 @@ const communityProjects = [
         It's a tangible difference, that the API is specifically designed with type-safety in mind. That's why the comparison with older ORMs is almost unfair. This level of sophistication can't be patched after the fact or with external typings.`,
       },
       {
-        title:
-          "More about the prosperity solutions architecture and tech choices",
+        title: "More about the prosperity solutions architecture and tech choices",
         description: `We are balancing the further development of our existing app that is used by almost 60.000 policy holders (who manage 400.000.000 CHF through it) and extending it with our new embedded insurance product, that we white-label and offer to other companies.
         With a team of less than five engineers we are offering powerful desktop, tablet and mobile web applications written with Next.js. We package it up for the Apple and Android stores with the help of Capacitor.js. Besides the Prisma/PostgreSQL combo, we are using apollo-server and the Redis based bullmq queue on the backend-side.
         This level of productivity wouldn't be possible without tools like TypeScript, Next.js, Vercel and Prisma, who each established a new standard of developer experience in their respective categories.`,
@@ -729,8 +727,7 @@ const communityProjects = [
     id: "stonegiantstudio",
     logo: "/icons/companies/stonegiantstudio.svg",
     technologies: ["graphql", "prisma", "azure"],
-    description:
-      "Stone Giant Studio is a full stack development partner for Enterprises.",
+    description: "Stone Giant Studio is a full stack development partner for Enterprises.",
     link: "https://www.stonegiantstudio.com/",
     externalLink: true,
     quote: {
