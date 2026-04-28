@@ -1,5 +1,5 @@
 import remarkDirective from "remark-directive";
-import { remarkDirectiveAdmonition, remarkMdxFiles } from "fumadocs-core/mdx-plugins";
+import { remarkDirectiveAdmonition, remarkMdxFiles, remarkMdxMermaid } from "fumadocs-core/mdx-plugins";
 import { remarkImage } from "fumadocs-core/mdx-plugins";
 import { defineCollections, defineConfig, frontmatterSchema } from "fumadocs-mdx/config";
 import lastModified from "fumadocs-mdx/plugins/last-modified";
@@ -54,6 +54,7 @@ export default defineConfig({
       remarkDirectiveAdmonition,
       [remarkImage, { useImport: false }],
       remarkMdxFiles,
+      remarkMdxMermaid,
     ],
     remarkCodeTabOptions: { parseMdx: true },
     remarkNpmOptions: {
