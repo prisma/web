@@ -16,7 +16,7 @@ export function AuthorAvatarGroup({ authors = [], className }: AuthorAvatarGroup
   return (
     <span className={className ?? "mt-auto flex items-center gap-2 font-semibold text-sm"}>
       <span className="flex items-center">
-        {profiles.map((profile, index) => (
+        {profiles.map((profile, index) =>
           profile.imageSrc ? (
             <Avatar
               key={profile.name}
@@ -26,8 +26,8 @@ export function AuthorAvatarGroup({ authors = [], className }: AuthorAvatarGroup
               size="lg"
               className={index > 0 ? "-ml-1.5 border border-background-default" : ""}
             />
-          ) : null
-        ))}
+          ) : null,
+        )}
       </span>
       <span>{profiles.map((profile) => profile.name).join(", ")}</span>
     </span>

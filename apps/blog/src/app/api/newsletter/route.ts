@@ -2,19 +2,27 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-// CORS headers configuration
-const corsHeaders = {
-  "Access-Control-Allow-Origin":
-    "https://prisma.io, https://www.prisma.io, https://prisma.io/docs",
-  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
+const allowedOrigins = new Set(["https://prisma.io", "https://www.prisma.io"]);
 
-export async function OPTIONS() {
-  return NextResponse.json({}, { headers: corsHeaders, status: 200 });
+function getCorsHeaders(request: Request) {
+  const origin = request.headers.get("origin") ?? "";
+  const allowOrigin = allowedOrigins.has(origin) ? origin : "https://prisma.io";
+
+  return {
+    "Access-Control-Allow-Origin": allowOrigin,
+    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    Vary: "Origin",
+  };
+}
+
+export async function OPTIONS(request: Request) {
+  return NextResponse.json({}, { headers: getCorsHeaders(request), status: 200 });
 }
 
 export async function POST(request: Request) {
+  const corsHeaders = getCorsHeaders(request);
+
   try {
     const body = await request.json();
     const { email } = body;
@@ -110,10 +118,7 @@ export async function POST(request: Request) {
       });
 
       // Handle specific Brevo errors
-      if (
-        data?.code === "duplicate_parameter" ||
-        data?.message?.includes("already exists")
-      ) {
+      if (data?.code === "duplicate_parameter" || data?.message?.includes("already exists")) {
         return NextResponse.json(
           { message: "Already subscribed", alreadySubscribed: true },
           { status: 200, headers: corsHeaders },
@@ -122,8 +127,7 @@ export async function POST(request: Request) {
 
       return NextResponse.json(
         {
-          error:
-            data?.message || "Failed to subscribe. Please try again later.",
+          error: data?.message || "Failed to subscribe. Please try again later.",
           debug:
             process.env.NODE_ENV === "development"
               ? {
@@ -145,8 +149,7 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     console.error("Newsletter subscription error:", error);
-    const errorMessage =
-      error instanceof Error ? error.message : "An unexpected error occurred";
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
 
     return NextResponse.json(
       {
@@ -154,10 +157,7 @@ export async function POST(request: Request) {
         debug:
           process.env.NODE_ENV === "development"
             ? {
-                errorType:
-                  error instanceof Error
-                    ? error.constructor.name
-                    : typeof error,
+                errorType: error instanceof Error ? error.constructor.name : typeof error,
                 stack: error instanceof Error ? error.stack : undefined,
               }
             : undefined,
@@ -167,9 +167,9 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   return NextResponse.json(
     { error: "Method Not Allowed" },
-    { status: 405, headers: { ...corsHeaders, Allow: "POST" } },
+    { status: 405, headers: { ...getCorsHeaders(request), Allow: "POST, OPTIONS" } },
   );
 }

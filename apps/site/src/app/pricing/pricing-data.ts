@@ -56,6 +56,7 @@ export type PricingPlan = {
   title: string;
   subtitle: string;
   points: PlanPoint[];
+  acceleratePoints?: PlanPoint[];
   price: CurrencyMap;
 };
 
@@ -76,10 +77,9 @@ export function formatAmountForAllCurrencies(amountUsd: number, digits: number):
       const config = currencyConfig[typedCode];
       const isMicroPrice = digits > config.decimals;
       const effectiveDigits = isMicroPrice ? config.microDecimals : digits;
-      const displayValue = isMicroPrice ? converted : Math.round(converted);
       return [
         code,
-        `${symbol}${displayValue.toLocaleString("en-US", {
+        `${symbol}${converted.toLocaleString("en-US", {
           minimumFractionDigits: effectiveDigits,
           maximumFractionDigits: effectiveDigits,
         })}`,
@@ -118,6 +118,11 @@ export const plans: Record<PricingPlanKey, PricingPlan> = {
       "<b>5</b> databases",
       "No credit card required",
     ],
+    acceleratePoints: [
+      "<b>60,000</b> operations<span>*</span> included",
+      "Cache tag invalidations <b>not</b> included",
+      "First <b>1 KiB per query</b> egress",
+    ],
     price: formatAmountForAllCurrencies(0, 0),
   },
   starter: {
@@ -134,6 +139,18 @@ export const plans: Record<PricingPlanKey, PricingPlan> = {
       },
       "<b>10</b> databases",
       "Includes spend limits <br/><b>Daily backups</b> stored for <b>7 days</b>",
+    ],
+    acceleratePoints: [
+      "First <b>60,000</b> operations<span>*</span> <b>free</b>",
+      {
+        text: "<b><price></b> per 1,000 operations",
+        price: formatAmountForAllCurrencies(0.018, 3),
+      },
+      "Cache tag invalidations <b>not</b> included",
+      {
+        text: "First <b>1 KiB per query</b> egress free<br/>then <b><price></b> per GiB",
+        price: formatAmountForAllCurrencies(0.09, 2),
+      },
     ],
     price: formatAmountForAllCurrencies(10, 0),
   },
@@ -152,6 +169,21 @@ export const plans: Record<PricingPlanKey, PricingPlan> = {
       "<b>100</b> databases",
       "Includes spend limits <br/><b>Daily backups</b> stored for <b>7 days</b>",
     ],
+    acceleratePoints: [
+      "First <b>60,000</b> operations<span>*</span> <b>free</b>",
+      {
+        text: "<b><price></b> per 1,000 operations",
+        price: formatAmountForAllCurrencies(0.008, 3),
+      },
+      {
+        text: "<b><price></b> per 1,000 cache tag invalidations",
+        price: formatAmountForAllCurrencies(0.008, 3),
+      },
+      {
+        text: "First <b>1 KiB per query</b> egress free<br/>then <b><price></b> per GiB",
+        price: formatAmountForAllCurrencies(0.09, 2),
+      },
+    ],
     price: formatAmountForAllCurrencies(49, 0),
   },
   business: {
@@ -168,6 +200,21 @@ export const plans: Record<PricingPlanKey, PricingPlan> = {
       },
       "<b>1000</b> databases",
       "Includes spend limits <br/><b>Daily backups</b> stored for <b>30 days</b>",
+    ],
+    acceleratePoints: [
+      "First <b>60,000</b> operations<span>*</span> <b>free</b>",
+      {
+        text: "<b><price></b> per 1,000 operations",
+        price: formatAmountForAllCurrencies(0.006, 3),
+      },
+      {
+        text: "<b><price></b> per 1,000 cache tag invalidations",
+        price: formatAmountForAllCurrencies(0.006, 3),
+      },
+      {
+        text: "First <b>2 KiB per query</b> egress free<br/>then <b><price></b> per GiB",
+        price: formatAmountForAllCurrencies(0.08, 2),
+      },
     ],
     price: formatAmountForAllCurrencies(129, 0),
   },
@@ -298,7 +345,7 @@ export const faqs: Array<{ question: string; answer: string }> = [
   {
     question: "Can I get the power of Prisma with my own database?",
     answer:
-      "<p>You can also connect your own database to Prisma's global caching and connection pooling, also known as Prisma Accelerate.</p><p>Click the &quot;Bring your own database&quot; toggle at the top of this page to see more<br />detail.</p>",
+      "<p>You can also connect your own database to Prisma's global caching and connection pooling, also known as Prisma Accelerate.</p><p>The plan cards on this page include a dedicated Prisma Accelerate section with temporary pricing details for bring-your-own-database setups.</p>",
   },
   {
     question: "I'm an early stage startup, do you offer any discounts?",

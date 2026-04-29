@@ -11,11 +11,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@prisma/eclipse";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@prisma-docs/ui/components/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@prisma-docs/ui/components/popover";
 import {
   plans,
   type BillablePricingPlanKey,
@@ -93,8 +89,7 @@ function formatCurrency(valueUsd: number, currency: Symbol, digits = 2) {
 function formatCompactCurrency(valueUsd: number, currency: Symbol) {
   const converted = convertFromUsd(valueUsd, currency);
   const config = currencyConfig[currency];
-  const maxDigits =
-    Number.isInteger(converted) && converted > 1 ? 0 : config.microDecimals;
+  const maxDigits = Number.isInteger(converted) && converted > 1 ? 0 : config.microDecimals;
   return `${symbols[currency]}${converted.toLocaleString("en-US", {
     minimumFractionDigits: 0,
     maximumFractionDigits: maxDigits,
@@ -121,10 +116,7 @@ function calculateMonthlyPlanCost(
   storageGb: number,
 ) {
   const details = usagePricing[plan];
-  const extraOperations = Math.max(
-    0,
-    databaseOperations - details.includedOperations,
-  );
+  const extraOperations = Math.max(0, databaseOperations - details.includedOperations);
   const extraStorageGb = Math.max(0, storageGb - details.includedStorageGb);
 
   return (
@@ -140,11 +132,7 @@ function calculateDisplayedPlanCost(
   storageGb: number,
   billingCycle: BillingCycle,
 ) {
-  const monthlyCost = calculateMonthlyPlanCost(
-    plan,
-    databaseOperations,
-    storageGb,
-  );
+  const monthlyCost = calculateMonthlyPlanCost(plan, databaseOperations, storageGb);
 
   if (billingCycle === "monthly") {
     return monthlyCost;
@@ -231,15 +219,13 @@ function DatabaseOperationsInfoContent() {
         <b>What are database operations?</b>
       </p>
       <p className="text-foreground-neutral my-2">
-        One database operation equals one SQL query, simple as that. When using
-        Prisma Accelerate, we may bundle multiple queries into a single
-        operation.
+        One database operation equals one SQL query, simple as that. When using Prisma Accelerate,
+        we may bundle multiple queries into a single operation.
       </p>
       <p className="text-foreground-neutral-weak my-2">
-        An operation is any action you perform against your database, like a
-        create, read, update, delete, or even a cached read. If your
-        application makes 10,000 SQL queries in a month, that is exactly 10,000
-        operations.
+        An operation is any action you perform against your database, like a create, read, update,
+        delete, or even a cached read. If your application makes 10,000 SQL queries in a month, that
+        is exactly 10,000 operations.
       </p>
       <p className="text-foreground-neutral-weak my-2">
         To learn more, read our{" "}
@@ -384,8 +370,7 @@ function SummaryCard({
               <span
                 className={cn(
                   "text-right",
-                  breakdown.basePlanFee <= 0 &&
-                    "text-foreground-neutral-weaker",
+                  breakdown.basePlanFee <= 0 && "text-foreground-neutral-weaker",
                 )}
               >
                 {formatLineItemCost(breakdown.basePlanFee, currency)}
@@ -396,14 +381,9 @@ function SummaryCard({
               <div className="flex items-center gap-1.5">
                 <span>Billable database operations</span>
                 <ResponsiveInfoTrigger label="Explain billable database operations">
-                  First {formatNumber(planDetails.includedOperations)} operations
-                  are included in this plan. Remaining{" "}
-                  {formatNumber(breakdown.billableOperations)} operations are
-                  billed at{" "}
-                  {formatCompactCurrency(
-                    planDetails.operationPricePerThousand,
-                    currency,
-                  )}{" "}
+                  First {formatNumber(planDetails.includedOperations)} operations are included in
+                  this plan. Remaining {formatNumber(breakdown.billableOperations)} operations are
+                  billed at {formatCompactCurrency(planDetails.operationPricePerThousand, currency)}{" "}
                   per 1,000.
                 </ResponsiveInfoTrigger>
               </div>
@@ -421,9 +401,8 @@ function SummaryCard({
               <div className="flex items-center gap-1.5">
                 <span>Billable storage</span>
                 <ResponsiveInfoTrigger label="Explain billable storage">
-                  First {formatNumber(planDetails.includedStorageGb)}GB of storage
-                  are included. Remaining{" "}
-                  {formatNumber(breakdown.billableStorageGb)}GB are billed at{" "}
+                  First {formatNumber(planDetails.includedStorageGb)}GB of storage are included.
+                  Remaining {formatNumber(breakdown.billableStorageGb)}GB are billed at{" "}
                   {formatCompactCurrency(planDetails.storagePricePerGb, currency)}
                   /GB.
                 </ResponsiveInfoTrigger>
@@ -431,8 +410,7 @@ function SummaryCard({
               <span
                 className={cn(
                   "text-right",
-                  breakdown.storageCost <= 0 &&
-                    "text-foreground-neutral-weaker",
+                  breakdown.storageCost <= 0 && "text-foreground-neutral-weaker",
                 )}
               >
                 {formatLineItemCost(breakdown.storageCost, currency)}
@@ -490,33 +468,31 @@ export function PricingCalculator({ currency }: { currency: Symbol }) {
                 Quick Start Presets
               </div>
               <div className="flex flex-col gap-2 md:flex-row md:flex-wrap">
-                {(
-                  Object.entries(PRESETS) as Array<
-                    [PresetKey, (typeof PRESETS)[PresetKey]]
-                  >
-                ).map(([key, item]) => {
-                  const active = key === matchingPreset;
+                {(Object.entries(PRESETS) as Array<[PresetKey, (typeof PRESETS)[PresetKey]]>).map(
+                  ([key, item]) => {
+                    const active = key === matchingPreset;
 
-                  return (
-                    <Button
-                      key={key}
-                      type="button"
-                      variant="default-weak"
-                      size="lg"
-                      aria-pressed={active}
-                      onClick={() => applyPreset(key)}
-                      className={cn(
-                        "inline-flex h-9 items-center gap-2 rounded-[12px] border px-4 text-sm font-medium transition-colors",
-                        active
-                          ? "border-stroke-ppg bg-background-ppg-reverse-strong text-foreground-ppg-reverse shadow-box-low"
-                          : "border-stroke-neutral bg-transparent text-foreground-neutral hover:border-stroke-neutral-strong hover:bg-background-default-050",
-                      )}
-                    >
-                      <i className={cn(item.icon, "text-xs")} />
-                      <span>{item.label}</span>
-                    </Button>
-                  );
-                })}
+                    return (
+                      <Button
+                        key={key}
+                        type="button"
+                        variant="default-weak"
+                        size="lg"
+                        aria-pressed={active}
+                        onClick={() => applyPreset(key)}
+                        className={cn(
+                          "inline-flex h-9 items-center gap-2 rounded-[12px] border px-4 text-sm font-medium transition-colors",
+                          active
+                            ? "border-stroke-ppg bg-background-ppg-reverse-strong text-foreground-ppg-reverse shadow-box-low"
+                            : "border-stroke-neutral bg-transparent text-foreground-neutral hover:border-stroke-neutral-strong hover:bg-background-default-050",
+                        )}
+                      >
+                        <i className={cn(item.icon, "text-xs")} />
+                        <span>{item.label}</span>
+                      </Button>
+                    );
+                  },
+                )}
               </div>
             </div>
           </div>
@@ -554,14 +530,9 @@ export function PricingCalculator({ currency }: { currency: Symbol }) {
                         className="inline-flex items-center justify-center text-base text-foreground-neutral-weaker transition-colors hover:text-foreground-neutral"
                       >
                         <i className="fa-solid fa-circle-info" />
-                        <span className="sr-only">
-                          What are database operations?
-                        </span>
+                        <span className="sr-only">What are database operations?</span>
                       </PopoverTrigger>
-                      <PopoverContent
-                        align="start"
-                        className="w-[calc(100vw-2rem)] max-w-88 p-4"
-                      >
+                      <PopoverContent align="start" className="w-[calc(100vw-2rem)] max-w-88 p-4">
                         <DatabaseOperationsInfoContent />
                       </PopoverContent>
                     </Popover>
@@ -577,9 +548,7 @@ export function PricingCalculator({ currency }: { currency: Symbol }) {
                             className="inline-flex items-center justify-center text-base text-foreground-neutral-weaker transition-colors hover:text-foreground-neutral"
                           >
                             <i className="fa-solid fa-circle-info" />
-                            <span className="sr-only">
-                              What are database operations?
-                            </span>
+                            <span className="sr-only">What are database operations?</span>
                           </button>
                         </TooltipTrigger>
                         <TooltipContent className="max-w-88">
@@ -595,9 +564,7 @@ export function PricingCalculator({ currency }: { currency: Symbol }) {
                   min={5_000_000}
                   max={MAX_DATABASE_OPERATIONS}
                   step={1_000_000}
-                  onValueChange={(value) =>
-                    setDatabaseOperations(value[0] ?? databaseOperations)
-                  }
+                  onValueChange={(value) => setDatabaseOperations(value[0] ?? databaseOperations)}
                 />
               </div>
 

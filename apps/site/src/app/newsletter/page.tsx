@@ -1,13 +1,7 @@
 import { createPageMetadata } from "@/lib/page-metadata";
 import Image from "next/image";
 import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@prisma/eclipse";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@prisma/eclipse";
 import { NewsletterSignup } from "./newsletter-signup";
 
 export const metadata = createPageMetadata({
@@ -40,9 +34,7 @@ async function getLatestBlogPosts(count = 3): Promise<RssItem[]> {
     while ((match = itemRegex.exec(xml)) !== null && items.length < count) {
       const block = match[1];
       const get = (tag: string) => {
-        const m = block.match(
-          new RegExp(`<${tag}><!\\[CDATA\\[([\\s\\S]*?)\\]\\]></${tag}>`),
-        );
+        const m = block.match(new RegExp(`<${tag}><!\\[CDATA\\[([\\s\\S]*?)\\]\\]></${tag}>`));
         if (m) return m[1].trim();
         const m2 = block.match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`));
         return m2 ? m2[1].trim() : "";
@@ -111,8 +103,7 @@ export default async function NewsletterPage() {
               Sign up for the Prisma newsletter today
             </CardTitle>
             <CardDescription>
-              Get release updates, tutorials, and more content delivered to your
-              inbox monthly.
+              Get release updates, tutorials, and more content delivered to your inbox monthly.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -143,9 +134,7 @@ export default async function NewsletterPage() {
                       </div>
                     )}
                     <CardContent className="flex flex-1 flex-col gap-2 px-3 pb-3">
-                      <CardTitle className="text-base font-semibold">
-                        {post.title}
-                      </CardTitle>
+                      <CardTitle className="text-base font-semibold">{post.title}</CardTitle>
                       {post.description ? (
                         <CardDescription className="line-clamp-2">
                           {post.description}

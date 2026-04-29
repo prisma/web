@@ -147,8 +147,8 @@ export default function StudioPage() {
           </div>
 
           <p className="text-center text-foreground-neutral max-w-2xl mx-auto">
-            The ultimate tool for exploring and editing data in your Prisma project. Work locally
-            or team up inside the Prisma Console.
+            The ultimate tool for exploring and editing data in your Prisma project. Work locally or
+            team up inside the Prisma Console.
           </p>
 
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">

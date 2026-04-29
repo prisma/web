@@ -2,7 +2,7 @@
 
 import { WebNavigation } from "@prisma-docs/ui/components/web-navigation";
 import { useEffect, useState } from "react";
-import { getUtmParams, hasUtmParams, type UtmParams } from "@/lib/utm";
+import { getUtmParams, hasUtmParams, type UtmParams } from "@prisma-docs/ui/lib/utm";
 
 interface Link {
   text: string;
@@ -39,16 +39,13 @@ export function NavigationWrapper({ links, utm }: NavigationWrapperProps) {
     setMounted(true);
   }, []);
 
-  const currentUtmParams: UtmParams =
-    mounted ? getUtmParams(new URLSearchParams(window.location.search)) : {};
+  const currentUtmParams: UtmParams = mounted
+    ? getUtmParams(new URLSearchParams(window.location.search))
+    : {};
   const preserveExactUtm = hasUtmParams(currentUtmParams);
   const resolvedUtmParams = preserveExactUtm ? currentUtmParams : defaultUtmParams;
 
   return (
-    <WebNavigation
-      links={links}
-      utm={resolvedUtmParams}
-      preserveExactUtm={preserveExactUtm}
-    />
+    <WebNavigation links={links} utm={resolvedUtmParams} preserveExactUtm={preserveExactUtm} />
   );
 }

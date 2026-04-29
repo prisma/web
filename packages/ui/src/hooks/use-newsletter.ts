@@ -18,16 +18,13 @@ interface UseNewsletterReturn extends NewsletterState {
   reset: () => void;
 }
 
-export const useNewsletter = (
-  options: UseNewsletterOptions = {},
-): UseNewsletterReturn => {
+export const useNewsletter = (options: UseNewsletterOptions = {}): UseNewsletterReturn => {
   const { apiUrl = "/api/newsletter" } = options;
 
   const [email, setEmail] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
-  const [isAlreadySubscribed, setIsAlreadySubscribed] =
-    useState<boolean>(false);
+  const [isAlreadySubscribed, setIsAlreadySubscribed] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   const subscribe = async () => {

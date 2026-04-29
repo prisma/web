@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button, type ButtonProps } from "@prisma/eclipse";
-import { getUtmParams, hasUtmParams, type UtmParams } from "@/lib/utm";
+import { getUtmParams, hasUtmParams, type UtmParams } from "@prisma-docs/ui/lib/utm";
 
 interface ConsoleCtaButtonProps extends Omit<ButtonProps, "asChild"> {
   consolePath: "/login" | "/sign-up";
@@ -34,15 +34,10 @@ export function ConsoleCtaButton({
   const [href, setHref] = useState(() => buildConsoleHref(consolePath, defaultUtm));
 
   useEffect(() => {
-    const currentUtmParams = getUtmParams(
-      new URLSearchParams(window.location.search),
-    );
+    const currentUtmParams = getUtmParams(new URLSearchParams(window.location.search));
 
     setHref(
-      buildConsoleHref(
-        consolePath,
-        hasUtmParams(currentUtmParams) ? currentUtmParams : defaultUtm,
-      ),
+      buildConsoleHref(consolePath, hasUtmParams(currentUtmParams) ? currentUtmParams : defaultUtm),
     );
   }, [consolePath, defaultUtm]);
 

@@ -13,7 +13,8 @@ import data from "@/data/showcase";
 import { PostCard } from "@/components/showcase/post-card";
 
 const SHOWCASE_TITLE = "Prisma Showcase | Customer Success stories";
-const SHOWCASE_DESCRIPTION = "Learn how companies are leveraging our powerful, next-generation, type-safe ORM for Node.js.";
+const SHOWCASE_DESCRIPTION =
+  "Learn how companies are leveraging our powerful, next-generation, type-safe ORM for Node.js.";
 
 export const metadata: Metadata = {
   title: SHOWCASE_TITLE,

@@ -27,22 +27,13 @@ export const Quote = ({
       {author && (
         <footer className="flex gap-2 justify-start items-center">
           {author.imageUrl && (
-            <Avatar
-              format="image"
-              src={author.imageUrl}
-              alt={author.name}
-              size="2xl"
-            />
+            <Avatar format="image" src={author.imageUrl} alt={author.name} size="2xl" />
           )}
           <div className="flex flex-col gap-1 text-base text-foreground-neutral-weak">
-            <cite className="[font-style:normal] font-[650]">
-              {author.name}
-            </cite>
+            <cite className="[font-style:normal] font-[650]">{author.name}</cite>
             <div className="title flex items-center">
               {author.title && (
-                <span className="font-[600] text-2xs uppercase">
-                  {author.title}
-                </span>
+                <span className="font-[600] text-2xs uppercase">{author.title}</span>
               )}
               {author.company && (
                 <>
@@ -50,9 +41,7 @@ export const Quote = ({
                   <span
                     className={cn(
                       "font-[400] text-xs uppercase",
-                      color === "orm"
-                        ? "text-foreground-orm"
-                        : "text-foreground-ppg",
+                      color === "orm" ? "text-foreground-orm" : "text-foreground-ppg",
                     )}
                   >
                     {author.company}

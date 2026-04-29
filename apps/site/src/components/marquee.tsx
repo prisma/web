@@ -31,7 +31,7 @@ export function Marquee({
       className={cn(
         "group flex gap-[1rem] overflow-hidden",
         direction === "left" ? "flex-row" : "flex-col",
-        className
+        className,
       )}
       style={{
         ...style,
@@ -59,7 +59,7 @@ export function Marquee({
                 ? "min-w-full flex-row justify-around"
                 : "min-h-full flex-col justify-start",
               pauseOnHover && "group-hover:paused",
-              innerClassName
+              innerClassName,
             )}
             style={
               {

@@ -9,18 +9,12 @@ export function ControlledSwitchExample() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <Switch
-          id="controlled"
-          checked={enabled}
-          onCheckedChange={setEnabled}
-        />
+        <Switch id="controlled" checked={enabled} onCheckedChange={setEnabled} />
         <label htmlFor="controlled" className="text-sm font-medium cursor-pointer">
           Feature enabled
         </label>
       </div>
-      <p className="text-sm text-foreground-neutral-weak">
-        Status: {enabled ? "On" : "Off"}
-      </p>
+      <p className="text-sm text-foreground-neutral-weak">Status: {enabled ? "On" : "Off"}</p>
     </div>
   );
 }
@@ -35,7 +29,9 @@ export function SwitchFormExample() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Settings:", settings);
-    alert(`Settings saved:\nDark Mode: ${settings.darkMode}\nNotifications: ${settings.notifications}\nAnalytics: ${settings.analytics}`);
+    alert(
+      `Settings saved:\nDark Mode: ${settings.darkMode}\nNotifications: ${settings.notifications}\nAnalytics: ${settings.analytics}`,
+    );
   };
 
   return (
@@ -49,9 +45,7 @@ export function SwitchFormExample() {
         <Switch
           id="dark-mode"
           checked={settings.darkMode}
-          onCheckedChange={(checked) =>
-            setSettings({ ...settings, darkMode: checked })
-          }
+          onCheckedChange={(checked) => setSettings({ ...settings, darkMode: checked })}
         />
       </div>
 
@@ -62,9 +56,7 @@ export function SwitchFormExample() {
         <Switch
           id="notifications-form"
           checked={settings.notifications}
-          onCheckedChange={(checked) =>
-            setSettings({ ...settings, notifications: checked })
-          }
+          onCheckedChange={(checked) => setSettings({ ...settings, notifications: checked })}
         />
       </div>
 
@@ -75,9 +67,7 @@ export function SwitchFormExample() {
         <Switch
           id="analytics-form"
           checked={settings.analytics}
-          onCheckedChange={(checked) =>
-            setSettings({ ...settings, analytics: checked })
-          }
+          onCheckedChange={(checked) => setSettings({ ...settings, analytics: checked })}
         />
       </div>
 

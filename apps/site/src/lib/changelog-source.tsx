@@ -25,7 +25,7 @@ function stripMarkdown(value: string) {
     .replace(/`([^`]+)`/g, "$1")
     .replace(/\*\*([^*]+)\*\*/g, "$1")
     .replace(/\*([^*]+)\*/g, "$1")
-    .replace(/\\([#:[\]{}()\-])/g, "$1")
+    .replace(/\\([#:[\]{}()-])/g, "$1")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -37,23 +37,18 @@ function truncatePreview(value: string, maxLength = 180) {
 }
 
 export async function getReleaseNotePreview(slug: string) {
-  const filePath = path.join(
-    process.cwd(),
-    "content",
-    "changelog",
-    `${slug}.mdx`,
-  );
+  const changelogRoot = path.resolve(process.cwd(), "content", "changelog");
+  const filePath = path.resolve(changelogRoot, `${slug}.mdx`);
+  if (!filePath.startsWith(`${changelogRoot}${path.sep}`)) {
+    return null;
+  }
+
   let raw: string;
 
   try {
     raw = await readFile(filePath, "utf8");
   } catch (error) {
-    if (
-      error &&
-      typeof error === "object" &&
-      "code" in error &&
-      error.code === "ENOENT"
-    ) {
+    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
       return null;
     }
 
@@ -106,9 +101,7 @@ export async function getReleaseNotePreview(slug: string) {
     paragraphs.push(currentParagraph.join(" "));
   }
 
-  const preview = paragraphs
-    .map(stripMarkdown)
-    .find((paragraph) => paragraph.length > 0);
+  const preview = paragraphs.map(stripMarkdown).find((paragraph) => paragraph.length > 0);
 
   return preview ? truncatePreview(preview) : null;
 }

@@ -19,18 +19,10 @@ export const Conversation = ({ className, ...props }: ConversationProps) => (
   />
 );
 
-export type ConversationContentProps = ComponentProps<
-  typeof StickToBottom.Content
->;
+export type ConversationContentProps = ComponentProps<typeof StickToBottom.Content>;
 
-export const ConversationContent = ({
-  className,
-  ...props
-}: ConversationContentProps) => (
-  <StickToBottom.Content
-    className={cn("flex flex-col gap-4 p-4", className)}
-    {...props}
-  />
+export const ConversationContent = ({ className, ...props }: ConversationContentProps) => (
+  <StickToBottom.Content className={cn("flex flex-col gap-4 p-4", className)} {...props} />
 );
 
 export type ConversationEmptyStateProps = ComponentProps<"div"> & {
@@ -50,7 +42,7 @@ export const ConversationEmptyState = ({
   <div
     className={cn(
       "flex size-full flex-col items-center justify-center gap-3 p-8 text-center",
-      className
+      className,
     )}
     {...props}
   >
@@ -59,9 +51,7 @@ export const ConversationEmptyState = ({
         {icon && <div className="text-fd-muted-foreground">{icon}</div>}
         <div className="space-y-1">
           <h3 className="font-medium text-sm">{title}</h3>
-          {description && (
-            <p className="text-fd-muted-foreground text-sm">{description}</p>
-          )}
+          {description && <p className="text-fd-muted-foreground text-sm">{description}</p>}
         </div>
       </>
     )}
@@ -86,7 +76,7 @@ export const ConversationScrollButton = ({
         className={cn(
           buttonVariants({ variant: "outline", size: "icon" }),
           "absolute bottom-4 left-[50%] translate-x-[-50%] rounded-full",
-          className
+          className,
         )}
         onClick={handleScrollToBottom}
         type="button"

@@ -4,15 +4,8 @@ import { Button, Input } from "@prisma/eclipse";
 import { useNewsletter } from "@prisma-docs/ui/hooks/use-newsletter";
 
 export function NewsletterSignup() {
-  const {
-    email,
-    setEmail,
-    isSubmitting,
-    isSubmitted,
-    isAlreadySubscribed,
-    error,
-    subscribe,
-  } = useNewsletter({});
+  const { email, setEmail, isSubmitting, isSubmitted, isAlreadySubscribed, error, subscribe } =
+    useNewsletter({});
 
   const disabled = isSubmitting || isSubmitted || isAlreadySubscribed;
 
@@ -51,9 +44,7 @@ export function NewsletterSignup() {
             type="email"
             placeholder="Email Address"
             value={email}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setEmail(e.target.value)
-            }
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
             disabled={disabled}
             size="2xl"
             className="pl-9"
@@ -68,9 +59,7 @@ export function NewsletterSignup() {
         </Button>
       </div>
       {statusMessage ? (
-        <p className={`m-0 text-sm ${statusMessage.className}`}>
-          {statusMessage.text}
-        </p>
+        <p className={`m-0 text-sm ${statusMessage.className}`}>{statusMessage.text}</p>
       ) : null}
     </form>
   );

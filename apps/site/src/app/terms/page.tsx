@@ -4,8 +4,7 @@ import { LegalAccordion } from "@/components/legal-accordion";
 
 export const metadata = createPageMetadata({
   title: "Terms of Service",
-  description:
-    "Read our terms of services and see how they relate to you.",
+  description: "Read our terms of services and see how they relate to you.",
   path: "/terms",
   ogImage: "/og/og-terms.png",
 });

@@ -126,21 +126,9 @@ export { Checkbox } from "./checkbox";
 
 export { RadioGroup, RadioGroupItem } from "./radio-group";
 export { Spinner } from "./spinner";
-export {
-  Card,
-  CardHeader,
-  CardFooter,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "./card";
+export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent } from "./card";
 
-export {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-  TooltipProvider,
-} from "./tooltip";
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "./tooltip";
 
 export { TooltipExample } from "./tooltip-example";
 export {

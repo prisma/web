@@ -30,17 +30,9 @@ export const metadata: Metadata = {
 
 export default function Layout({ children }: { children: ReactNode }) {
   return (
-    <html
-      lang="en"
-      className={`${inter.variable} ${barlow.variable}`}
-      suppressHydrationWarning
-    >
+    <html lang="en" className={`${inter.variable} ${barlow.variable}`} suppressHydrationWarning>
       <head>
-        <Script
-          src={EclipseFA}
-          crossOrigin="anonymous"
-          data-auto-add-css="false"
-        />
+        <Script src={EclipseFA} crossOrigin="anonymous" data-auto-add-css="false" />
         <Script
           src="https://ingest.promptwatch.com/js/client.min.js"
           strategy="afterInteractive"

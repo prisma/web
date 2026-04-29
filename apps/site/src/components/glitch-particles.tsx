@@ -51,9 +51,7 @@ export default function GlitchParticles({
     const canvasHeight = contentHeight + padding * 2;
     canvas.width = canvasWidth;
     canvas.height = canvasHeight;
-    const prefersReducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     const particles: Particle[] = [];
     const mouse = { x: 0, y: 0 };
@@ -170,8 +168,7 @@ export default function GlitchParticles({
       } else {
         particles.forEach((p) => {
           const sliceIndex = Math.floor((p.homeY - padding) / 27);
-          const sliceOffset =
-            glitch.slices[Math.min(Math.max(sliceIndex, 0), 4)];
+          const sliceOffset = glitch.slices[Math.min(Math.max(sliceIndex, 0), 4)];
 
           ctx.globalAlpha = 0.6;
           ctx.fillStyle = "#CCFBF1";

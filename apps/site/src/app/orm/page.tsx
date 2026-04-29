@@ -1,8 +1,7 @@
 import { createSoftwareApplicationStructuredData } from "@/lib/structured-data";
 import { createPageMetadata } from "@/lib/page-metadata";
-import { Action, Button, Card, Separator } from "@prisma/eclipse";
+import { Action, Button, Separator } from "@prisma/eclipse";
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
-import { Bento } from "@/components/homepage/bento";
 import { CardSection } from "@/components/homepage/card-section/card-section";
 import review from "../../data/homepage.json";
 import Testimonials from "../../components/homepage/testimonials";
@@ -298,8 +297,8 @@ export default function ORM() {
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
             <Button asChild variant="orm" size="3xl" className="font-sans-display! font-[650]">
               <a href={prismaPostgresQuickstartUrl}>
-                Create database
-                <i className="fa-regular fa-database" />
+                Read the docs
+                <i className="fa-regular fa-arrow-right" />
               </a>
             </Button>
             {/*<Button
@@ -344,8 +343,15 @@ export default function ORM() {
                 <h4 className="text-2xl text-center md:text-left font-sans-display stretch-display text-foreground-neutral">
                   {stat.title}
                 </h4>
-                <p className="text-center md:text-left text-foreground-neutral-weak">{stat.description}</p>
-                <Button asChild variant="default-strong" size="xl" className="w-fit mx-auto md:mx-0">
+                <p className="text-center md:text-left text-foreground-neutral-weak">
+                  {stat.description}
+                </p>
+                <Button
+                  asChild
+                  variant="default-strong"
+                  size="xl"
+                  className="w-fit mx-auto md:mx-0"
+                >
                   <a href={stat.btn.url}>
                     {stat.btn.label} {stat.btn.icon && <i className={stat.btn.icon} />}
                   </a>

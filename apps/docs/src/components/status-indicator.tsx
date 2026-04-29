@@ -56,9 +56,7 @@ export function StatusIndicator() {
 
         const statusData = statusResult.value;
         const incidents =
-          incidentsResult.status === "fulfilled"
-            ? (incidentsResult.value.incidents ?? [])
-            : [];
+          incidentsResult.status === "fulfilled" ? (incidentsResult.value.incidents ?? []) : [];
         const worstIncidentIndicator = incidents.reduce<StatusIndicator>(
           (worst, incident) =>
             SEVERITY[incident.impact] > SEVERITY[worst] ? incident.impact : worst,

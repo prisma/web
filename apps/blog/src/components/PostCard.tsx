@@ -44,9 +44,7 @@ export function PostCard({
 
   const badge =
     post.tags && post.tags.length > 0
-      ? formatTag(
-          currentCategory !== "show-all" ? currentCategory : post.tags[0],
-        )
+      ? formatTag(currentCategory !== "show-all" ? currentCategory : post.tags[0])
       : null;
 
   const sharedPost: SharedPostCardItem = {

@@ -20,16 +20,11 @@ type TestimonialColProps = {
 const MemoizedTestimonialItem = memo(TestimonialItem);
 
 const getTestimonialKey = (testimonial: TestimonialItemType, idx: number) =>
-  testimonial.key ??
-  `${testimonial.author}-${testimonial.company}-${testimonial.title}-${idx}`;
+  testimonial.key ?? `${testimonial.author}-${testimonial.company}-${testimonial.title}-${idx}`;
 
 const getColumnSlices = (list: TestimonialItemType[]) => {
   const third = Math.ceil(list.length / 3);
-  return [
-    list.slice(0, third),
-    list.slice(third, third * 2),
-    list.slice(third * 2),
-  ];
+  return [list.slice(0, third), list.slice(third, third * 2), list.slice(third * 2)];
 };
 
 const TestimonialCol = ({ color, list, reverse }: TestimonialColProps) => (
