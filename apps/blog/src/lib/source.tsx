@@ -28,8 +28,7 @@ ${processed}`;
 export const getCardImageSrc = (post: any) => {
   const data = post.data as any;
   const rel =
-    (data.heroImagePath as string | undefined) ??
-    (data.metaImagePath as string | undefined);
+    (data.heroImagePath as string | undefined) ?? (data.metaImagePath as string | undefined);
   if (rel) {
     // If frontmatter already provides an absolute path, use it directly
     if (rel.startsWith("/")) {
@@ -41,7 +40,6 @@ export const getCardImageSrc = (post: any) => {
     return `${baseClean}/${relClean}`;
   }
   const absolute =
-    (data.heroImageUrl as string | undefined) ??
-    (data.metaImageUrl as string | undefined);
+    (data.heroImageUrl as string | undefined) ?? (data.metaImageUrl as string | undefined);
   return absolute ?? null;
 };

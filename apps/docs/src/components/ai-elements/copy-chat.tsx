@@ -43,7 +43,7 @@ export const CopyChat = ({ messages }: CopyChatProps) => {
             onClick={handleCopyChat}
             className={cn(
               buttonVariants({ variant: "ghost", size: "icon-sm" }),
-              "disabled:opacity-50"
+              "disabled:opacity-50",
             )}
           >
             <Icon className="size-3.5" />

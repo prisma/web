@@ -1,6 +1,7 @@
-import { WebNavigation } from "@prisma-docs/ui/components/web-navigation";
 import { Footer } from "@prisma-docs/ui/components/footer";
 import { ThemeProvider } from "@prisma-docs/ui/components/theme-provider";
+import { NavigationWrapper } from "@/components/navigation-wrapper";
+import { UtmPersistence } from "@/components/utm-persistence";
 export function baseOptions() {
   return {
     nav: {
@@ -51,7 +52,7 @@ export function baseOptions() {
           },
           {
             text: "Prisma Partners",
-            url: "/partners",
+            url: "https://www.prisma.io/partners",
             icon: "fa-regular fa-lightbulb",
           },
           {
@@ -89,7 +90,7 @@ export function baseOptions() {
         ],
       },
       {
-        url: "/docs",
+        url: "https://www.prisma.io/docs",
         text: "Docs",
       },
       {
@@ -103,10 +104,8 @@ export function baseOptions() {
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider defaultTheme="system" storageKey="theme">
-      <WebNavigation
-        links={baseOptions().links}
-        utm={{ source: "website", medium: "blog" }}
-      />
+      <UtmPersistence />
+      <NavigationWrapper links={baseOptions().links} utm={{ source: "website", medium: "blog" }} />
       {children}
       <Footer />
     </ThemeProvider>

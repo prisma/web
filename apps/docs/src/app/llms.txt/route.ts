@@ -5,12 +5,8 @@ export const revalidate = false;
 
 export async function GET() {
   const baseUrl = getBaseUrl();
-  const latestPages = source
-    .getPages()
-    .sort((a, b) => a.data.title.localeCompare(b.data.title));
-  const v6Pages = sourceV6
-    .getPages()
-    .sort((a, b) => a.data.title.localeCompare(b.data.title));
+  const latestPages = source.getPages().sort((a, b) => a.data.title.localeCompare(b.data.title));
+  const v6Pages = sourceV6.getPages().sort((a, b) => a.data.title.localeCompare(b.data.title));
 
   const latestDocsList = latestPages
     .map((page) => {
@@ -34,6 +30,10 @@ export async function GET() {
 
   const content = `# Prisma Documentation
 
+> This documentation covers Prisma v7 (current) and v6 (legacy).
+> Prefer the Latest section for current recommendations.
+> v6 pages are maintained for backwards compatibility only.
+
 ## Latest
 
 ${latestDocsList}
@@ -44,7 +44,8 @@ ${v6DocsList}
 
 ## Options
 
-- [Full documentation with content](${baseUrl}${withDocsBasePath("/llms-full.txt")})
+- [Full current documentation with content](${baseUrl}${withDocsBasePath("/llms-full.txt")})
+- [Legacy v6 documentation with content](${baseUrl}${withDocsBasePath("/llms-full-v6.txt")})
 `;
 
   return new Response(content, {

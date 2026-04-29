@@ -8,9 +8,7 @@ type StarCountProps = {
 const PLACEHOLDER_VALUE = "45.5K";
 
 const getStarParts = (starCount: number) => {
-  const [integerPart, decimalPart] = (Math.max(starCount, 0) / 1000)
-    .toFixed(1)
-    .split(".");
+  const [integerPart, decimalPart] = (Math.max(starCount, 0) / 1000).toFixed(1).split(".");
 
   return {
     integer: Number(integerPart),

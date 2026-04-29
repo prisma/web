@@ -1,5 +1,7 @@
+import { createSoftwareApplicationStructuredData } from "@/lib/structured-data";
 import type { Metadata } from "next";
 import { Button } from "@prisma/eclipse";
+import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import Image from "next/image";
 import { CopyCode } from "@/components/homepage/copy-btn";
 import { Youtube } from "@prisma-docs/ui/components/youtube";
@@ -39,8 +41,7 @@ const featureRows = [
     description:
       "Access your database anywhere. Work locally for rapid development or use Console for team collaboration. Switch seamlessly between solo and team workflows.",
     imageSrc: "/illustrations/studio/laptop.svg",
-    imageAlt:
-      "Prisma Studio interface showing local and collaborative workflows",
+    imageAlt: "Prisma Studio interface showing local and collaborative workflows",
     imageWidth: 522,
     imageHeight: 295,
   },
@@ -50,8 +51,7 @@ const featureRows = [
     description:
       "Browse your database visually with powerful filters and search. Spot patterns instantly and get insights for debugging or schema changes, no SQL needed.",
     imageSrc: "/illustrations/studio/explore.svg",
-    imageAlt:
-      "Prisma Studio data exploration interface with highlighted filters",
+    imageAlt: "Prisma Studio data exploration interface with highlighted filters",
     imageWidth: 546,
     imageHeight: 275,
   },
@@ -87,17 +87,24 @@ const featureRows = [
   },
 ] as const;
 
-export const metadata: Metadata = {
-  title: "Studio | Prisma",
+const studioStructuredData = createSoftwareApplicationStructuredData({
+  path: "/studio",
+  name: "Prisma Studio",
   description:
-    "Explore and understand your data with Prisma Studio. Browse, filter, edit, and collaborate on your database in Prisma Console or locally.",
+    "Visual database browser and editor for Prisma. Explore and manipulate your data with an intuitive interface, locally or in the Prisma Data Platform.",
+});
+
+export const metadata: Metadata = {
+  title: "Prisma Studio — Visual Database Browser & Editor",
+  description:
+    "The easiest way to explore and manipulate your data in all of your Prisma projects.",
   alternates: {
     canonical: "https://www.prisma.io/studio",
   },
   openGraph: {
-    title: "Studio | Prisma",
+    title: "Prisma Studio — Visual Database Browser & Editor",
     description:
-      "Explore and understand your data with Prisma Studio. Browse, filter, edit, and collaborate on your database in Prisma Console or locally.",
+      "The easiest way to explore and manipulate your data in all of your Prisma projects.",
     url: "https://www.prisma.io/studio",
     images: [
       {
@@ -110,63 +117,57 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Studio | Prisma",
+    title: "Prisma Studio — Visual Database Browser & Editor",
     description:
-      "Explore and understand your data with Prisma Studio. Browse, filter, edit, and collaborate on your database in Prisma Console or locally.",
+      "The easiest way to explore and manipulate your data in all of your Prisma projects.",
     images: ["/og/og-studio.png"],
   },
 };
 
 export default function StudioPage() {
   return (
-    <main className="flex-1 w-full -mt-24 bg-background-default text-foreground-neutral">
+    <main className="flex-1 w-full bg-background-default text-foreground-neutral">
+      <JsonLd id="studio-software-application" data={studioStructuredData} />
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-[linear-gradient(180deg,var(--color-background-orm)_0%,var(--color-background-default)_72%)] px-4 pt-28 pb-12">
+      <section className="hero pt-40 -mt-24 flex items-end justify-center px-4 relative overflow-hidden bg-[linear-gradient(180deg,var(--color-background-orm)_0%,var(--color-background-default)_72%)]">
         <div className="pointer-events-none absolute inset-x-1/2 top-20 h-[780px] w-[1664px] -translate-x-1/2 rounded-full bg-[repeating-radial-gradient(circle_at_top,rgba(99,102,241,0.28)_0,rgba(99,102,241,0.28)_2px,transparent_2px,transparent_42px)] opacity-45 mask-[linear-gradient(to_bottom,rgba(0,0,0,0.9),transparent_78%)]" />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(70%_65%_at_50%_5%,rgba(79,70,229,0.3),transparent_70%)]" />
 
-        <div className="relative mx-auto flex max-w-[1200px] flex-col items-center gap-12">
-          <div className="flex max-w-[766px] flex-col items-center gap-8 text-center">
-            <div className="flex flex-col items-center gap-2">
-              <p className="m-0 flex items-center gap-2 text-base uppercase tracking-[1.6px] text-foreground-orm-strong font-sans-display [font-variation-settings:'wght'_800]">
-                <i className="fa-regular fa-table text-sm" aria-hidden="true" />
-                Prisma Studio
-              </p>
-              <h1 className="m-0 text-5xl leading-none text-foreground-neutral font-sans-display md:text-6xl [font-variation-settings:'wght'_900]">
-                Explore and
-                <br />
-                understand your data
-              </h1>
+        <div className="content relative z-2 flex w-full max-w-[1200px] flex-col gap-8">
+          <div className="flex flex-col gap-4 items-center text-center">
+            <div className="flex items-center gap-2 text-foreground-orm-weak uppercase tracking-widest text-sm font-sans-display font-black">
+              <i className="fa-regular fa-table" aria-hidden="true" />
+              <span>Prisma Studio</span>
             </div>
+            <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
+              Explore and
+              <br />
+              understand your data
+            </h1>
+          </div>
 
-            <p className="m-0 max-w-[650px] text-lg leading-8 text-foreground-neutral md:text-xl">
-              The ultimate tool for exploring and editing data in your Prisma
-              project. Work locally or team up inside the Prisma Console.
-            </p>
+          <p className="text-center text-foreground-neutral max-w-2xl mx-auto">
+            The ultimate tool for exploring and editing data in your Prisma project. Work locally or
+            team up inside the Prisma Console.
+          </p>
 
-            <div className="flex flex-col items-center gap-4 sm:flex-row">
-              <Button
-                variant="ppg"
-                size="2xl"
-                href={CONSOLE_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <span>Explore Studio in Prisma Console</span>
-                <i className="fa-regular fa-arrow-up-right ml-2" />
-              </Button>
-              <Button
-                variant="default-stronger"
-                size="2xl"
-                href={STUDIO_DOCS_URL}
-              >
-                <span>Try locally</span>
-                <i className="fa-regular fa-arrow-down ml-2" />
-              </Button>
-            </div>
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
+            <Button asChild variant="ppg" size="2xl">
+              <a href={CONSOLE_URL} target="_blank" rel="noopener noreferrer">
+                Explore Studio in Prisma Console
+                <i className="fa-regular fa-arrow-up-right" />
+              </a>
+            </Button>
+            <Button asChild variant="default-strong" size="2xl">
+              <a href={STUDIO_DOCS_URL}>
+                Try locally
+                <i className="fa-regular fa-arrow-down" />
+              </a>
+            </Button>
           </div>
 
           <Image
+            className="w-full h-auto"
             src="/illustrations/studio/hero.svg"
             alt="Prisma Studio Hero"
             width={1200}
@@ -185,10 +186,7 @@ export default function StudioPage() {
             >
               <div className="flex items-start gap-4">
                 <div className="flex size-12 items-center justify-center rounded-md bg-background-orm p-3">
-                  <i
-                    className={`${card.icon} text-lg text-foreground-orm`}
-                    aria-hidden="true"
-                  />
+                  <i className={`${card.icon} text-lg text-foreground-orm`} aria-hidden="true" />
                 </div>
                 <div>
                   <h2 className="m-0 text-xl leading-7 text-foreground-neutral font-sans-display [font-variation-settings:'wght'_800]">
@@ -232,21 +230,16 @@ export default function StudioPage() {
                 See how Studio works
               </h2>
               <p className="m-0 mt-4 text-base leading-6 text-foreground-neutral-weak">
-                Access Prisma Studio on your local machine during development,
-                or in the Platform Console to collaborate on data with your
-                team.
+                Access Prisma Studio on your local machine during development, or in the Platform
+                Console to collaborate on data with your team.
               </p>
             </div>
 
-            <Button
-              variant="ppg"
-              size="xl"
-              href={CONSOLE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <span>Explore Studio in Console</span>
-              <i className="fa-regular fa-arrow-right ml-2" />
+            <Button asChild variant="ppg" size="xl">
+              <a href={CONSOLE_URL} target="_blank" rel="noopener noreferrer">
+                Explore Studio in Console
+                <i className="fa-regular fa-arrow-right" />
+              </a>
             </Button>
           </div>
 
@@ -274,8 +267,7 @@ export default function StudioPage() {
                   Try it out!
                 </h2>
                 <p className="m-0 mt-4 text-base leading-6 text-foreground-neutral-weak">
-                  Take Studio for a spin with a local pre-seeded database and
-                  example project.
+                  Take Studio for a spin with a local pre-seeded database and example project.
                 </p>
               </div>
 
@@ -332,17 +324,10 @@ function FeatureRow({
         <h2 className="m-0 mt-2 text-4xl leading-10 text-foreground-neutral font-sans-display [font-variation-settings:'wght'_900]">
           {title}
         </h2>
-        <p className="m-0 mt-4 text-base leading-8 text-foreground-neutral-weak">
-          {description}
-        </p>
+        <p className="m-0 mt-4 text-base leading-8 text-foreground-neutral-weak">{description}</p>
       </div>
 
-      <StudioFeatureImage
-        src={imageSrc}
-        alt={imageAlt}
-        width={imageWidth}
-        height={imageHeight}
-      />
+      <StudioFeatureImage src={imageSrc} alt={imageAlt} width={imageWidth} height={imageHeight} />
     </div>
   );
 }

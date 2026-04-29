@@ -3,11 +3,7 @@ import { getBaseUrl } from "@/lib/url";
 
 export default function robots(): MetadataRoute.Robots {
   const baseUrl = getBaseUrl();
-  const legacyDisallow = [
-    "/dataguide/intro/example",
-    "/dataguide/dummy",
-    "/cloud",
-  ];
+  const legacyDisallow = ["/dataguide/intro/example", "/dataguide/dummy", "/cloud"];
 
   return {
     rules: {

@@ -1,5 +1,4 @@
 import { Provider } from "@/components/provider";
-import { JsonLd } from "@/components/json-ld";
 import { createSiteStructuredData } from "@/lib/structured-data";
 import { getBaseUrl } from "@/lib/url";
 import "./global.css";
@@ -7,14 +6,13 @@ import { Inter } from "next/font/google";
 import type { Metadata } from "next";
 import Script from "next/script";
 import type React from "react";
-import { SITE_HOME_DESCRIPTION, SITE_HOME_TITLE } from "@/lib/blog-metadata";
-import {
-  NavigationWrapper,
-  FooterWrapper,
-} from "@/components/navigation-wrapper";
+import { SITE_HOME_DESCRIPTION, SITE_HOME_TITLE } from "@/lib/site-metadata";
+import { NavigationWrapper, FooterWrapper } from "@/components/navigation-wrapper";
 import { Footer } from "@prisma-docs/ui/components/footer";
+import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import { ThemeProvider } from "@prisma-docs/ui/components/theme-provider";
 import { FontAwesomeScript as WebFA } from "@prisma/eclipse";
+import { UtmPersistence } from "@/components/utm-persistence";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -78,7 +76,6 @@ function baseOptions() {
             url: "/studio",
             desc: "Explore and manipulate your data",
           },
-     
         ],
       },
       {
@@ -150,12 +147,18 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <html lang="en" className={`${inter.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
-        <Script src={WebFA} crossOrigin="anonymous" />
-
+        <Script
+          id="fontawesome"
+          src={WebFA}
+          crossOrigin="anonymous"
+          data-auto-add-css="false"
+          strategy="beforeInteractive"
+        />
         <Script
           id="cookieyes"
           type="text/javascript"
           src="https://cdn-cookieyes.com/client_data/96980f76df67ad5235fc3f0d/script.js"
+          strategy="lazyOnload"
         />
 
         <script
@@ -182,14 +185,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         />
         <JsonLd id="site-structured-data" data={siteStructuredData} />
       </head>
-      <body className="flex flex-col min-h-screen pt-24 relative">
+      <body className="flex flex-col min-h-screen relative">
         <div className="bg-background-default absolute inset-0 -z-1 overflow-hidden" />
         <Provider>
           <ThemeProvider defaultTheme="system" storageKey="theme">
-            <NavigationWrapper
-              links={baseOptions().links}
-              utm={{ source: "website", medium: "blog" }}
-            />
+            <UtmPersistence />
+            <NavigationWrapper links={baseOptions().links} utm={{ source: "website" }} />
             {children}
             <FooterWrapper />
           </ThemeProvider>

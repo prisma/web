@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { cn } from "../lib/cn";
 
 const logoParade = [
   {
@@ -24,13 +25,6 @@ const logoParade = [
     height: 40,
   },
   {
-    label: "Twiga",
-    imageUrl: `/icons/companies/twiga.svg`,
-    url: "https://twiga.com/",
-    width: 55,
-    height: 61,
-  },
-  {
     label: "Panther",
     imageUrl: `/icons/companies/panther.svg`,
     url: "https://www.panther.co/",
@@ -47,6 +41,7 @@ const logoParade = [
   {
     label: "Invisible",
     imageUrl: `/icons/companies/invisible.svg`,
+    imageUrlLight: `/icons/companies/invisible-light.svg`,
     url: "https://inv.tech/",
     width: 182,
     height: 36,
@@ -133,8 +128,11 @@ export default function LogoParade() {
           onMouseLeave={() => setPaused(false)}
         >
           {allItems.map((item, i) => (
-            <div
+            <a
               key={i}
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
               className="relative shrink-0 rounded-lg overflow-hidden cursor-pointer transition-transform duration-200 invert-100 dark:brightness-150 dark:hover:filter-none contrast-75 grayscale hover:filter-none"
             >
               <img
@@ -142,9 +140,21 @@ export default function LogoParade() {
                 width={item.width}
                 height={item.height}
                 alt={item.label}
-                className="w-full h-full object-contain object-center"
+                className={cn(
+                  "w-full h-full object-contain object-center",
+                  item.imageUrlLight && "hidden dark:block",
+                )}
               />
-            </div>
+              {item.imageUrlLight && (
+                <img
+                  src={item.imageUrlLight}
+                  width={item.width}
+                  height={item.height}
+                  alt={item.label}
+                  className="w-full h-full object-contain object-center block dark:hidden"
+                />
+              )}
+            </a>
           ))}
         </div>
       </div>

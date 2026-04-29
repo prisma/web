@@ -9,6 +9,7 @@ import * as icons from "lucide-react";
 import {
   Accordion,
   Accordions,
+  Alert,
   Button,
   CodeBlock,
   CodeBlockTabs,
@@ -60,10 +61,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     Steps,
     Step,
     img: (props: any) => (
-      <ImageZoom
-        {...(props as any)}
-        src={withBlogBasePathForImageSrc((props as any).src)}
-      />
+      <ImageZoom {...(props as any)} src={withBlogBasePathForImageSrc((props as any).src)} />
     ),
   };
 
@@ -74,5 +72,26 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
         <Pre>{props.children}</Pre>
       </CodeBlock>
     ),
+    // Override Fumadocs Callout components with Eclipse Alert for alerts (:::ppg, :::error, :::success, :::warning)
+    CalloutTitle: ({ children }: any) => <>{children}</>,
+    CalloutDescription: ({ children }: any) => <>{children}</>,
+    CalloutContainer: ({ type, children, icon, ...props }: any) => {
+      const variantMap: Record<string, "ppg" | "error" | "success" | "warning"> = {
+        ppg: "ppg",
+        error: "error",
+        success: "success",
+        warning: "warning",
+        info: "ppg",
+        note: "ppg",
+        tip: "success",
+        danger: "error",
+      };
+
+      return (
+        <Alert variant={variantMap[type] || "ppg"} icon={icon} {...props}>
+          {children}
+        </Alert>
+      );
+    },
   };
 }

@@ -1,7 +1,7 @@
 import { createPageMetadata } from "@/lib/page-metadata";
-import { JsonLd } from "@/components/json-ld";
 import { createCollectionPageStructuredData } from "@/lib/structured-data";
 import { Badge, Button, Card, CardContent } from "@prisma/eclipse";
+import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import Image from "next/image";
 import {
   meetups,
@@ -13,9 +13,9 @@ import {
 } from "./events-data";
 
 export const metadata = createPageMetadata({
-  title: "Events | Prisma",
+  title: "Prisma Events",
   description:
-    "Find upcoming Prisma events and Meetups, see where the team will be speaking, and explore recordings and resources from past events.",
+    "Upcoming events or meetups, conferences and and explore the content from previous events.",
   path: "/events",
   ogImage: "/og/og-events.png",
 });
@@ -55,13 +55,12 @@ export default function EventsPage() {
             <i className="fa-regular fa-calendar" aria-hidden />
             Events
           </p>
-          <h1 className="text-5xl font-black! font-sans-display text-foreground-neutral mt-0 mb-0">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
             Prisma Events
           </h1>
           <p className="text-lg text-foreground-neutral-weak max-w-[600px]">
-            Find out when the next event or Meetup is happening, at which
-            conferences you can see Prisma folks, and explore the content from
-            previous events.
+            Find out when the next event or Meetup is happening, at which conferences you can see
+            Prisma folks, and explore the content from previous events.
           </p>
         </div>
       </section>
@@ -147,12 +146,7 @@ export default function EventsPage() {
               >
                 <Card className="flex flex-col overflow-hidden p-0 h-full transition-colors hover:border-stroke-neutral-strong">
                   <div className="relative aspect-square w-full overflow-hidden">
-                    <Image
-                      src={event.image}
-                      alt={event.name}
-                      fill
-                      className="object-cover"
-                    />
+                    <Image src={event.image} alt={event.name} fill className="object-cover" />
                   </div>
                   <CardContent className="flex flex-1 items-center justify-center pb-3">
                     <p className="text-center text-sm font-semibold text-foreground-neutral mt-0 mb-0">
@@ -167,9 +161,11 @@ export default function EventsPage() {
             <p className="text-sm text-foreground-neutral-weak text-center sm:text-left">
               Want to partner on an event? Send us your sponsorship deck.
             </p>
-            <Button variant="ppg" size="lg" href="mailto:events@prisma.io" className="w-fit">
-              <i className="fa-regular fa-envelope mr-2" aria-hidden />
-              Contact us
+            <Button asChild variant="ppg" size="lg" className="w-fit">
+              <a href="mailto:events@prisma.io">
+                <i className="fa-regular fa-envelope mr-2" aria-hidden />
+                Contact us
+              </a>
             </Button>
           </div>
         </div>
@@ -195,9 +191,7 @@ export default function EventsPage() {
                     <h3 className="text-base font-semibold text-foreground-neutral mt-0 mb-0">
                       {event.name}
                     </h3>
-                    {event.virtual && (
-                      <Badge color="neutral" label="Virtual" />
-                    )}
+                    {event.virtual && <Badge color="neutral" label="Virtual" />}
                   </div>
                   <div className="flex items-center gap-1.5 text-xs text-foreground-neutral-weaker">
                     <i className="fa-regular fa-calendar" aria-hidden />

@@ -5,8 +5,9 @@ import { CardSection } from "@/components/homepage/card-section/card-section";
 import { PostgresTabs } from "../../components/postgres";
 import postgresData from "../../data/postgres.json";
 import { LogoGrid } from "@/components/homepage/card-section/logo-grid";
-import { EnterpriseScrollCarousel } from "@/components/enterprise/scroll-carousel";
+import { ScrollCarousel } from "@/components/scroll-carousel";
 import { Youtube } from "@prisma-docs/ui/components/youtube";
+import { CarouselItem } from "@/components/enterprise/carousel-item";
 
 const CONSOLE_URL =
   "https://console.prisma.io/login?utm_source=website&utm_medium=postgres&utm_campaign=cta";
@@ -20,9 +21,9 @@ const twoCol = [
           you already know
         </h2>
         <p className="text-foreground-neutral-weak! text-base">
-          This is the mature, proven, and production-tested PostgreSQL millions
-          of developers already rely on. Standard SQL and wire protocol,
-          Postgres extensions like pgvector, and data import with pg_dump.
+          This is the mature, proven, and production-tested PostgreSQL millions of developers
+          already rely on. Standard SQL and wire protocol, Postgres extensions like pgvector, and
+          data import with pg_dump.
         </p>
       </>
     ),
@@ -46,8 +47,8 @@ const twoCol = [
           zero configuration
         </h2>
         <p className="text-foreground-neutral-weak! text-base">
-          Handles connection pooling automatically, and runs on bare metal and
-          unikernels for maximum performance.
+          Handles connection pooling automatically, and runs on bare metal and unikernels for
+          maximum performance.
         </p>
       </>
     ),
@@ -70,9 +71,9 @@ const twoCol = [
           from day one
         </h2>
         <p className="text-foreground-neutral-weak! text-base">
-          Automated backups, encryption at rest and in transit, full tenant
-          isolation and enterprise-grade compliance. Everything you need to ship
-          with confidence, managed automatically.
+          Automated backups, encryption at rest and in transit, full tenant isolation and
+          enterprise-grade compliance. Everything you need to ship with confidence, managed
+          automatically.
         </p>
       </>
     ),
@@ -121,15 +122,15 @@ export const metadata: Metadata = {
 export default async function SiteHome() {
   return (
     <main className="flex-1 w-full z-1 bg-background-default">
-      <div className="hero -mt-24 pt-24 flex items-end justify-center px-4 relative">
+      <div className="hero -mt-24 pt-40 flex items-end justify-center px-4 relative">
         <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-ppg)_0%,var(--color-background-default)_100%)] opacity-20" />
-        <div className="content relative z-2 my-12 py-12 flex flex-col gap-8">
+        <div className="content relative z-2 flex flex-col gap-8">
           <div className="flex flex-col gap-4 items-center text-center">
             <div className="flex items-center gap-2 text-foreground-ppg-weak uppercase tracking-widest text-sm font-sans-display font-black">
               <i className="fa-solid fa-chart-pyramid" />
               <span>Prisma Postgres</span>
             </div>
-            <h1 className="text-6xl [font-variation-settings:'wght'_900,'wdth'_125] mb-0 mt-0 font-sans-display text-foreground-neutral">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
               The fastest way <br />
               to real Postgres
             </h1>
@@ -138,25 +139,22 @@ export default async function SiteHome() {
             Build, test and ship faster with zero infrastructure to manage.
           </p>
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
-            <Button
-              variant="ppg"
-              href={CONSOLE_URL}
-              size="3xl"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-sans-display! font-[650]"
-            >
-              <span>Create database</span>
-              <i className="fa-regular fa-database ml-2" />
+            <Button asChild variant="ppg" size="3xl" className="font-sans-display! font-[650]">
+              <a href={CONSOLE_URL} target="_blank" rel="noopener noreferrer">
+                Create database
+                <i className="fa-regular fa-database" />
+              </a>
             </Button>
             <Button
-              variant="default-stronger"
-              href="/docs/postgres"
+              asChild
+              variant="default-strong"
               size="3xl"
               className="font-sans-display! font-[650]"
             >
-              <span>Read the docs</span>
-              <i className="fa-regular fa-book-open ml-2" />
+              <a href="https://www.prisma.io/docs/postgres">
+                Read the docs
+                <i className="fa-regular fa-book-open" />
+              </a>
             </Button>
           </div>
         </div>
@@ -184,9 +182,7 @@ export default async function SiteHome() {
                   "first:md:col-span-2 overflow-hidden",
                 )}
               >
-                <div
-                  className={cn("flex flex-col gap-6 justify-between h-full")}
-                >
+                <div className={cn("flex flex-col gap-6 justify-between h-full")}>
                   <div className="flex justify-between items-start flex-col lg:flex-row gap-6">
                     <div className="flex flex-col gap-4 w-full flex-1">
                       <div className="flex flex-col gap-4 items-start">
@@ -201,8 +197,7 @@ export default async function SiteHome() {
                         {card.subtitle}
                       </p>
                     </div>
-                    {typeof card.image === "string" &&
-                    card.image === "logo-grid" ? (
+                    {typeof card.image === "string" && card.image === "logo-grid" ? (
                       <div
                         className={cn(
                           "min-w-0 overflow-visible flex-1 flex items-center relative md:max-w-unset sm:max-w-[60%] max-w-full mx-auto",
@@ -216,15 +211,9 @@ export default async function SiteHome() {
                       </div>
                     ) : null}
                   </div>
-                  {typeof card.image === "string" &&
-                  card.image === "logo-bar" &&
-                  card.logos ? (
+                  {typeof card.image === "string" && card.image === "logo-bar" && card.logos ? (
                     <div className={cn("w-full")}>
-                      <LogoGrid
-                        logos={card.logos}
-                        type="spotlight"
-                        color="ppg"
-                      />
+                      <LogoGrid logos={card.logos} type="spotlight" color="ppg" />
                     </div>
                   ) : null}
                 </div>
@@ -253,12 +242,14 @@ export default async function SiteHome() {
           </h3>
           <div className="content flex flex-col lg:flex-row gap-3 lg:gap-12 items-center md:items-start lg:items-center">
             <p className="max-w-94 w-full text-center md:text-left text-foreground-neutral-weak text-md">
-              Usage-based pricing, with a generous free tier.  Spend limits
-              included, so you never get surprised.
+              Usage-based pricing, with a generous free tier. Spend limits included, so you never
+              get surprised.
             </p>
-            <Button variant="ppg" size="2xl" href="/pricing">
-              <span>Explore Pricing</span>
-              <i className="fa-regular fa-arrow-right ml-2" />
+            <Button asChild variant="ppg" size="2xl">
+              <a href="/pricing">
+                Explore Pricing
+                <i className="fa-regular fa-arrow-right" />
+              </a>
             </Button>
           </div>
         </div>
@@ -268,7 +259,14 @@ export default async function SiteHome() {
           <h2 className="text-foreground-neutral stretch-display text-center text-4xl font-black! font-sans-display ">
             Made for every kind of app
           </h2>
-          <EnterpriseScrollCarousel items={postgresData.made_for} color="ppg" />
+          <ScrollCarousel
+            ariaLabel="Made for every kind of app carousel"
+            gridClassName="auto-cols-[100%] sm:auto-cols-[calc((100%-2rem)/3)]"
+          >
+            {postgresData.made_for.map((item) => (
+              <CarouselItem key={item.title} card={item} color="ppg" />
+            ))}
+          </ScrollCarousel>
         </div>
       </section>
 
@@ -280,20 +278,15 @@ export default async function SiteHome() {
                 See Postgres in action
               </h2>
               <p className="m-0 mt-4 text-base leading-6 text-foreground-neutral-weak">
-                See how to get started in just a couple of minutes, with Prisma
-                Postgres.
+                See how to get started in just a couple of minutes, with Prisma Postgres.
               </p>
             </div>
 
-            <Button
-              variant="ppg"
-              size="xl"
-              href={CONSOLE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <span>Create your first Database</span>
-              <i className="fa-regular fa-arrow-right ml-2" />
+            <Button asChild variant="ppg" size="xl">
+              <a href={CONSOLE_URL} target="_blank" rel="noopener noreferrer">
+                Create your first Database
+                <i className="fa-regular fa-arrow-right" />
+              </a>
             </Button>
           </div>
 
@@ -314,24 +307,20 @@ export default async function SiteHome() {
               <h2 className="text-3xl text-foreground-neutral font-sans-display stretch-display">
                 Try Prisma Postgres
               </h2>
-              <p className="text-foreground-neutral-weak">
-                Deploy a Postgres database instantly.
-              </p>
+              <p className="text-foreground-neutral-weak">Deploy a Postgres database instantly.</p>
             </div>
             <div className="flex flex-col md:flex-row gap-6">
-              <Button
-                variant="ppg"
-                size="2xl"
-                href={CONSOLE_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <span>Create your first Database</span>
-                <i className="fa-regular fa-arrow-right ml-2" />
+              <Button asChild variant="ppg" size="2xl">
+                <a href={CONSOLE_URL} target="_blank" rel="noopener noreferrer">
+                  Create your first Database
+                  <i className="fa-regular fa-arrow-right" />
+                </a>
               </Button>
-              <Button variant="default-stronger" size="2xl" href="/docs">
-                <span>Read the docs</span>
-                <i className="fa-regular fa-arrow-right ml-2" />
+              <Button asChild variant="default-strong" size="2xl">
+                <a href="https://www.prisma.io/docs">
+                  Read the docs
+                  <i className="fa-regular fa-arrow-right" />
+                </a>
               </Button>
             </div>
             <h6 className="mb-0! -mt-4 text-foreground-neutral-weaker text-xs">

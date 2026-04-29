@@ -23,10 +23,7 @@ export function getSource(version: Version) {
   return version === "v6" ? sourceV6 : source;
 }
 
-
-export function getPageImage(
-  page: InferPageType<typeof source> | InferPageType<typeof sourceV6>
-) {
+export function getPageImage(page: InferPageType<typeof source> | InferPageType<typeof sourceV6>) {
   const segments = [...page.slugs, "image.png"];
 
   return {
@@ -35,7 +32,9 @@ export function getPageImage(
   };
 }
 
-export async function getLLMText(page: InferPageType<typeof source> | InferPageType<typeof sourceV6>) {
+export async function getLLMText(
+  page: InferPageType<typeof source> | InferPageType<typeof sourceV6>,
+) {
   const processed = await page.data.getText("processed");
 
   return `# ${page.data.title}

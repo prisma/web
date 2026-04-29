@@ -42,10 +42,7 @@ const avatarContentVariants = cva("", {
 /**
  * Avatar component props
  */
-export interface AvatarProps extends Omit<
-  React.HTMLAttributes<HTMLDivElement>,
-  "children"
-> {
+export interface AvatarProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "children"> {
   /**
    * The format of the avatar content
    */
@@ -66,6 +63,10 @@ export interface AvatarProps extends Omit<
    * Alt text for image format
    */
   alt?: string;
+  /**
+   * Loading behavior for image format
+   */
+  loading?: "lazy" | "eager";
   /**
    * Icon or initials content
    */
@@ -108,27 +109,23 @@ const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
       format = "image",
       src,
       alt,
+      loading,
       children,
       ...props
     },
     ref,
   ) => {
     return (
-      <div
-        ref={ref}
-        className={cn(avatarVariants({ size, disabled, className }))}
-        {...props}
-      >
+      <div ref={ref} className={cn(avatarVariants({ size, disabled, className }))} {...props}>
         {format === "image" && src ? (
           <img
             src={src}
             alt={alt || "Avatar"}
+            loading={loading}
             className={cn(avatarContentVariants({ format }))}
           />
         ) : (
-          <div className={cn(avatarContentVariants({ format }))}>
-            {children}
-          </div>
+          <div className={cn(avatarContentVariants({ format }))}>{children}</div>
         )}
       </div>
     );

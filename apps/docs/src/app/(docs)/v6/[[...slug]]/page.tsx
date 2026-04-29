@@ -17,20 +17,13 @@ import {
   EditOnGitHub,
   PageLastUpdate,
 } from "@/components/layout/notebook/page";
-import {
-  TechArticleSchema,
-  BreadcrumbSchema,
-} from "@/components/structured-data";
+import { TechArticleSchema, BreadcrumbSchema } from "@/components/structured-data";
 
 interface PageParams {
   slug?: string[];
 }
 
-export default async function Page({
-  params,
-}: {
-  params: Promise<PageParams>;
-}) {
+export default async function Page({ params }: { params: Promise<PageParams> }) {
   const { slug } = await params;
   const source = sourceV6;
   const page = source.getPage(slug);
@@ -42,11 +35,7 @@ export default async function Page({
     <>
       <TechArticleSchema page={page} />
       <BreadcrumbSchema page={page} />
-      <DocsPage
-        tableOfContent={{ style: "normal" }}
-        toc={page.data.toc}
-        full={page.data.full}
-      >
+      <DocsPage tableOfContent={{ style: "normal" }} toc={page.data.toc} full={page.data.full}>
         <div className="flex flex-row items-center gap-4 pt-2 pb-6 justify-between">
           <DocsTitle>{page.data.title}</DocsTitle>
           <div className="flex flex-row gap-2 items-center">
@@ -73,9 +62,7 @@ export default async function Page({
             href={`https://github.com/prisma/docs/edit/main/content/docs/${page.path}`}
           />
           {(page.data as { lastModified?: Date }).lastModified && (
-            <PageLastUpdate
-              date={(page.data as { lastModified: Date }).lastModified}
-            />
+            <PageLastUpdate date={(page.data as { lastModified: Date }).lastModified} />
           )}
         </div>
       </DocsPage>

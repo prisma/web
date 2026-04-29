@@ -199,9 +199,7 @@ const securityHeaders = [
   },
 ];
 
-const allowedDevOrigins = (
-  process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0.1,192.168.1.48"
-)
+const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0.1,192.168.1.48")
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
@@ -213,13 +211,17 @@ const config = {
       {
         source: "/",
         destination: "/docs",
-        permanent: false,
+        permanent: true,
         basePath: false,
       },
     ];
   },
   async rewrites() {
     return [
+      {
+        source: "/sitemap",
+        destination: "/sitemap.xml",
+      },
       {
         source: "/:path*.mdx",
         destination: "/llms.mdx/:path*",
@@ -230,7 +232,7 @@ const config = {
   assetPrefix: "/docs-static",
   allowedDevOrigins,
   reactStrictMode: true,
-  images: { unoptimized: true },
+
   transpilePackages: ["@prisma/eclipse"],
   experimental: {
     globalNotFound: true,

@@ -13,14 +13,13 @@ export const slaSections: SlaSection[] = [
     content: (
       <>
         <p>
-          Prisma commits to maintaining 99.95% monthly uptime for paid plan
-          subscribers. The company strives to ensure reliable service access,
-          though this guarantee applies only to Pro, Business, and Enterprise
-          users.
+          Prisma commits to maintaining 99.95% monthly uptime for paid plan subscribers. The company
+          strives to ensure reliable service access, though this guarantee applies only to Pro,
+          Business, and Enterprise users.
         </p>
         <p>
-          Free Tier and Starter Plan participants are excluded from service
-          credits and uptime assurances.
+          Free Tier and Starter Plan participants are excluded from service credits and uptime
+          assurances.
         </p>
       </>
     ),
@@ -32,28 +31,27 @@ export const slaSections: SlaSection[] = [
         <p>Key definitions used throughout this agreement:</p>
         <ul>
           <li>
-            <b>Monthly Uptime Percentage:</b> Continuous 5-minute downtime
-            periods divided by total monthly 5-minute periods.
+            <b>Monthly Uptime Percentage:</b> Continuous 5-minute downtime periods divided by total
+            monthly 5-minute periods.
           </li>
           <li>
             <b>Downtime:</b> Exceeds 5% error rate threshold.
           </li>
           <li>
-            <b>Downtime Period:</b> One or more consecutive minutes of downtime.
-            Intermittent issues under 1 minute are excluded.
+            <b>Downtime Period:</b> One or more consecutive minutes of downtime. Intermittent issues
+            under 1 minute are excluded.
           </li>
           <li>
-            <b>Error Rate:</b> Valid requests returning HTTP 5XX errors divided
-            by total requests (minimum 100 requests).
+            <b>Error Rate:</b> Valid requests returning HTTP 5XX errors divided by total requests
+            (minimum 100 requests).
           </li>
           <li>
-            <b>Back-Off Requirements:</b> Mandatory pauses between
-            error-triggered requests, starting at 1 second, exponentially
-            increasing to 32 seconds maximum.
+            <b>Back-Off Requirements:</b> Mandatory pauses between error-triggered requests,
+            starting at 1 second, exponentially increasing to 32 seconds maximum.
           </li>
           <li>
-            <b>Valid Requests:</b> Requests conforming to documentation that
-            normally produce non-error responses.
+            <b>Valid Requests:</b> Requests conforming to documentation that normally produce
+            non-error responses.
           </li>
         </ul>
       </>
@@ -64,9 +62,8 @@ export const slaSections: SlaSection[] = [
     content: (
       <>
         <p>
-          Compensation credits apply to future payments only. Credits are
-          non-refundable and non-transferable. The minimum credit threshold is $1
-          USD.
+          Compensation credits apply to future payments only. Credits are non-refundable and
+          non-transferable. The minimum credit threshold is $1 USD.
         </p>
         <p>Compensation structure:</p>
         <ul>
@@ -85,8 +82,8 @@ export const slaSections: SlaSection[] = [
     content: (
       <>
         <p>
-          The SLA does not cover unavailability caused by factors outside
-          Prisma&apos;s reasonable control, including but not limited to:
+          The SLA does not cover unavailability caused by factors outside Prisma&apos;s reasonable
+          control, including but not limited to:
         </p>
         <ul>
           <li>Uncontrollable external factors</li>
@@ -96,9 +93,8 @@ export const slaSections: SlaSection[] = [
           <li>Pre-GA (General Availability) features</li>
         </ul>
         <p>
-          Free Tier users receive no uptime guarantees. Starter Plan users lack
-          SLA coverage. Early Access or Preview feature users are excluded from
-          SLA protections.
+          Free Tier users receive no uptime guarantees. Starter Plan users lack SLA coverage. Early
+          Access or Preview feature users are excluded from SLA protections.
         </p>
       </>
     ),
@@ -108,9 +104,8 @@ export const slaSections: SlaSection[] = [
     content: (
       <>
         <p>
-          To submit an SLA credit request, open a support ticket via the Prisma
-          Platform Console with the category &quot;Billing&quot; and the title
-          &quot;SLA Credit Request.&quot;
+          To submit an SLA credit request, open a support ticket via the Prisma Platform Console
+          with the category &quot;Billing&quot; and the title &quot;SLA Credit Request.&quot;
         </p>
         <p>Your request must include:</p>
         <ul>
@@ -119,8 +114,8 @@ export const slaSections: SlaSection[] = [
           <li>Redacted request logs demonstrating the issue</li>
         </ul>
         <p>
-          Claims must be submitted within two billing cycles of the incident.
-          Credits will be issued within one billing cycle after validation.
+          Claims must be submitted within two billing cycles of the incident. Credits will be issued
+          within one billing cycle after validation.
         </p>
       </>
     ),
@@ -129,9 +124,8 @@ export const slaSections: SlaSection[] = [
     title: "6. Exclusions",
     content: (
       <p>
-        SLA terms apply exclusively to Pro, Business, and Enterprise plan
-        subscribers. Free Tier and Starter Plan users are not covered by this
-        Service Level Agreement.
+        SLA terms apply exclusively to Pro, Business, and Enterprise plan subscribers. Free Tier and
+        Starter Plan users are not covered by this Service Level Agreement.
       </p>
     ),
   },

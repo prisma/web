@@ -16,20 +16,14 @@ const twoCol = [
         </h3>
         <p className="text-foreground-neutral-weak! text-base">
           Spin up and manage Prisma Postgres databases on demand with our{" "}
-          <b>database management API</b>. Integration is seamless, so databases
-          feel like a natural extension of your product rather than a bolt-on
-          service, giving your users a smooth, native experience.
+          <b>database management API</b>. Integration is seamless, so databases feel like a natural
+          extension of your product rather than a bolt-on service, giving your users a smooth,
+          native experience.
         </p>
         <p className="text-foreground-neutral-weak! text-base">
-          You can also let your AI agent take full control through our{" "}
-          <b>MCP server</b>, automating database creation and management
-          end-to-end. Choose the approach that works best for your product:
-          provision directly into users’ existing{" "}
-          <a href="https://console.prisma.io/" className="underline">
-            Prisma accounts
-          </a>{" "}
-          for instant ownership, or manage the databases yourself until users
-          are ready to claim them.
+          You can also let your AI agent take full control through our <b>MCP server</b>, automating
+          database creation and management for instant ownership, or manage the databases yourself
+          until users are ready to claim them.
         </p>
         <div className="flex gap-4 items-center justify-start mx-auto md:ml-0">
           <a href="https://create-db.prisma.io/" className="link-btn orm">
@@ -67,15 +61,14 @@ const twoCol = [
           <a href="/studio" className="underline">
             Prisma Studio
           </a>
-          , an embeddable UI built for your provisioned Prisma Postgres
-          databases. Explore tables and relationships, apply powerful filters
-          with ease, and edit data directly in an intuitive interface.
+          , an embeddable UI built for your provisioned Prisma Postgres databases. Explore tables
+          and relationships, apply powerful filters with ease, and edit data directly in an
+          intuitive interface.
         </p>
         <p className="text-foreground-neutral-weak! text-base">
-          Studio blends seamlessly into your product’s design and workflow, with
-          full white-label support and customization to match your platform’s
-          design system. It delivers a native, cohesive experience for your
-          users without extra development effort on your side.
+          Studio blends seamlessly into your product’s design and workflow, with full white-label
+          support and customization to match your platform’s design system. It delivers a native,
+          cohesive experience for your users without extra development effort on your side.
         </p>
         <div className="flex gap-4 items-center justify-start mx-auto md:ml-0">
           <a
@@ -113,17 +106,15 @@ const twoCol = [
           <a href="https://vercel.com/" className="underline">
             Vercel
           </a>{" "}
-          and Prisma! We’ve closely partnered with them to make app deployments
-          as simple as adding a <b>deploy</b> button to your workflow. Every
-          deployment is production-ready, with database connectivity
-          preconfigured and automatic scaling across Vercel’s global edge
+          and Prisma! We’ve closely partnered with them to make app deployments as simple as adding
+          a <b>deploy</b> button to your workflow. Every deployment is production-ready, with
+          database connectivity preconfigured and automatic scaling across Vercel’s global edge
           network.
         </p>
         <p className="text-foreground-neutral-weak! text-base">
-          Seamless user claiming allows entire deployments (database + app) to
-          be transferred into users’ own Vercel and Prisma accounts. Perfect for
-          spinning up complete development environments or handing off live
-          apps.
+          Seamless user claiming allows entire deployments (database + app) to be transferred into
+          users’ own Vercel and Prisma accounts. Perfect for spinning up complete development
+          environments or handing off live apps.
         </p>
         <div className="flex gap-4 items-center justify-start mx-auto md:ml-0">
           <a
@@ -160,9 +151,9 @@ const twoCol = [
 ];
 
 export const metadata = createPageMetadata({
-  title: "Prisma Partners | Postgres provisioning and data infra for platforms",
+  title: "Prisma | Partner network",
   description:
-    "Embed Prisma Postgres, white-label Prisma Studio, and provision data infrastructure faster with partner tooling built for modern platforms.",
+    "Join our partner network designed for affiliates, technology partners, and resellers.",
   path: "/partners",
   ogImage: "/og/og-partners.png",
 });
@@ -170,22 +161,21 @@ export const metadata = createPageMetadata({
 export default function Partners() {
   return (
     <main className="flex-1 w-full z-1 text-prety">
-      <div className="hero pt-36 -mt-24 flex items-center justify-center px-4 relative flex-col gap-8">
-        <div className="absolute inset-0 z-0 bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20"></div>
+      <div className="hero pt-60 -mt-24 flex items-center justify-center px-4 relative flex-col gap-8">
+        <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20"></div>
         <div className="flex flex-col gap-4 z-1 relative">
           <h5 className="font-sans-display text-foreground-orm-strong uppercase stretch-display text-center mx-auto">
             Prisma Partners
           </h5>
-          <h1 className="text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
             Add mission critical infra to your platform in hours, not weeks.
           </h1>
         </div>
         <div className="content relative z-1 flex flex-col gap-8 pb-12">
           <p className="text-center text-foreground-neutral max-w-2xl mx-auto">
-            Focus on shipping, we'll handle the infrastructure complexity. One
-            API call provisions databases in under a second, plus embeddable
-            data editing that feels native to your product. Oh, and app hosting
-            too!
+            Focus on shipping, we'll handle the infrastructure complexity. One API call provisions
+            databases in under a second, plus embeddable data editing that feels native to your
+            product. Oh, and app hosting too!
           </p>
         </div>
       </div>
@@ -194,50 +184,47 @@ export default function Partners() {
       </div>
       <div className="w-screen px-4 ">
         <div className="my-12 flex flex-col gap-8">
-          <h2 className="text-foreground-neutral stretch-display text-4xl font-black! font-sans-display my-0 mx-auto text-center">
+          <h2 className="text-foreground-neutral stretch-display text-3xl md:text-4xl font-black! font-sans-display my-0 mx-auto text-center">
             Everything you need from data to deployment
           </h2>
           <p className="text-center text-base text-foreground-neutral-weak max-w-2xl mx-auto -mb-20">
-            From data to deployment, every piece of infra your users need built
-            to work together or on its own. Optimized for your platform.
+            From data to deployment, every piece of infra your users need built to work together or
+            on its own. Optimized for your platform.
           </p>
           <CardSection cardSection={twoCol} />
         </div>
       </div>
       <div className="w-screen px-4">
         <div className="my-12 flex flex-col gap-8 max-w-200 mx-auto">
-          <h2 className="text-foreground-neutral stretch-display text-4xl font-black! font-sans-display my-0 mx-auto">
+          <h2 className="text-center text-foreground-neutral stretch-display text-4xl font-black! font-sans-display my-0 mx-auto">
             Built for modern platforms
           </h2>
 
           <Accordions type="single">
             <Accordion title="AI Code Generators">
-              Database provisioning matches AI generation speed, keeping users
-              engaged throughout app creation. Scale-to-zero economics handle
-              experimental projects whether they get abandoned or go viral.
-              Perfect for high-volume platforms.
+              Database provisioning matches AI generation speed, keeping users engaged throughout
+              app creation. Scale-to-zero economics handle experimental projects whether they get
+              abandoned or go viral. Perfect for high-volume platforms.
             </Accordion>
             <Accordion title="No-code tools">
-              Enable creating data-driven apps without exposing database
-              complexity. Visual data browsing and editing integrate perfectly,
-              making databases feel like core platform features.
+              Enable creating data-driven apps without exposing database complexity. Visual data
+              browsing and editing integrate perfectly, making databases feel like core platform
+              features.
             </Accordion>
             <Accordion title="Developer Tools & IDE">
-              Instant databases for any development need with no setup or
-              cleanup required. Reliable provisioning keeps developers in flow
-              state instead of context-switching to database administration.
+              Instant databases for any development need with no setup or cleanup required. Reliable
+              provisioning keeps developers in flow state instead of context-switching to database
+              administration.
             </Accordion>
             <Accordion title="CI/CD & Testing">
-              Every pipeline run needs isolated test databases. Fast
-              provisioning and teardown keeps builds moving, complete isolation
-              prevents test conflicts, and scale-to-zero economics make
-              high-volume testing affordable.
+              Every pipeline run needs isolated test databases. Fast provisioning and teardown keeps
+              builds moving, complete isolation prevents test conflicts, and scale-to-zero economics
+              make high-volume testing affordable.
             </Accordion>
             <Accordion title="Infrastructure Providers">
-              Expand hosting services to include databases without building
-              database infrastructure. Revenue sharing creates additional income
-              streams while flexible ownership models integrate with existing
-              platform flows.
+              Expand hosting services to include databases without building database infrastructure.
+              Revenue sharing creates additional income streams while flexible ownership models
+              integrate with existing platform flows.
             </Accordion>
           </Accordions>
         </div>
@@ -254,10 +241,9 @@ export default function Partners() {
             }}
           >
             <p>
-              The provisioning experience was smooth and fast. We want to ensure
-              the development flow isn’t hindered by the platform. With
-              per-branch databases, developers can safely test migrations and
-              isolate changes when using Deno Deploy. Prisma made it easy to
+              The provisioning experience was smooth and fast. We want to ensure the development
+              flow isn’t hindered by the platform. With per-branch databases, developers can safely
+              test migrations and isolate changes when using Deno Deploy. Prisma made it easy to
               support that.
             </p>
           </Quote>
@@ -272,8 +258,8 @@ export default function Partners() {
             }}
           >
             <p>
-              We were so blown away with the speed of their API, we thought our
-              tests were broken. <br />
+              We were so blown away with the speed of their API, we thought our tests were broken.{" "}
+              <br />
               <br /> {"<1s"} to create a database 🤯
             </p>
           </Quote>
@@ -286,14 +272,13 @@ export default function Partners() {
             We're fully GDPR, HIPAA, ISO 27001 and SOC 2 compliant.{" "}
             <a href="https://trust.prisma.io/">Find more details here.</a>
             <br />
-            App hosting partner plans with Vercel are separate, contact us to
-            learn more.
+            App hosting partner plans with Vercel are separate, contact us to learn more.
           </h6>
         </div>
       </div>
       <div className="w-screen px-4">
         <div className="my-12 py-12 w-full gap-8 max-w-[1200px] mx-auto flex flex-col">
-          <h2 className="text-foreground-neutral stretch-display text-4xl font-black! font-sans-display my-0 mx-auto text-center">
+          <h2 className="text-foreground-neutral stretch-display text-3xl md:text-4xl font-black! font-sans-display my-0 mx-auto text-center">
             Get in touch
           </h2>
           <p className="text-center text-base text-foreground-neutral-weak max-w-2xl mx-auto">

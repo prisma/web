@@ -59,7 +59,7 @@ function SearchResultItem({ item, onClick }: SearchResultItemProps): ReactNode {
       <div className="relative aspect-video w-full overflow-hidden rounded-square bg-background-neutral">
         {post.heroImagePath ? (
           <Image
-            src={withSiteBasePathForImageSrc(post.heroImagePath)}
+            src={post.heroImagePath}
             alt={post.content}
             fill
             sizes="(min-width: 640px) 160px, 128px"
@@ -92,12 +92,7 @@ export default function CustomSearchDialog(props: SharedProps) {
   });
 
   return (
-    <SearchDialog
-      search={search}
-      onSearchChange={setSearch}
-      isLoading={query.isLoading}
-      {...props}
-    >
+    <SearchDialog search={search} onSearchChange={setSearch} isLoading={query.isLoading} {...props}>
       <SearchDialogOverlay />
       <SearchDialogContent>
         <SearchDialogHeader>

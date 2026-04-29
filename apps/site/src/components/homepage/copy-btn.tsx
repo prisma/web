@@ -1,11 +1,5 @@
 "use client";
-import {
-  Button,
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@prisma/eclipse";
+import { Button, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@prisma/eclipse";
 import { useState } from "react";
 
 export const CopyCode = ({
@@ -22,17 +16,17 @@ export const CopyCode = ({
   const [tooltip, setTooltip] = useState<string | undefined>(undefined);
   const copyText = async () => {
     navigator.clipboard.writeText(text);
-    setTooltip("copied!");
+    setTooltip("Copied!");
     setTimeout(() => {
       setTooltip(undefined);
     }, 2000);
   };
   return (
     <TooltipProvider>
-      <Tooltip>
+      <Tooltip open={tooltip !== undefined}>
         <TooltipTrigger asChild>
           <Button
-            variant="default-stronger"
+            variant="default-strong"
             size={buttonSize}
             onClick={() => copyText()}
             onMouseEnter={() => setTooltip("Copy")}

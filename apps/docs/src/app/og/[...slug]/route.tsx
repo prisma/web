@@ -100,10 +100,13 @@ function getApiPathSegments(apiPath?: string) {
     return undefined;
   }
 
-  return apiPath.split(API_PATH_SEGMENT_REGEX).filter(Boolean).map((segment) => ({
-    text: segment,
-    color: segment.startsWith("{") && segment.endsWith("}") ? FALLBACK_METHOD_COLOR : "#a0aec0",
-  }));
+  return apiPath
+    .split(API_PATH_SEGMENT_REGEX)
+    .filter(Boolean)
+    .map((segment) => ({
+      text: segment,
+      color: segment.startsWith("{") && segment.endsWith("}") ? FALLBACK_METHOD_COLOR : "#a0aec0",
+    }));
 }
 
 function PrismaOGImage({
@@ -323,14 +326,11 @@ export async function GET(_req: Request, { params }: RouteContext<"/og/[...slug]
     titleFontSize: getTitleFontSize(page.data.title),
   };
 
-  return new ImageResponse(
-    <PrismaOGImage {...imageProps} />,
-    {
-      width: 1200,
-      height: 630,
-      fonts,
-    },
-  );
+  return new ImageResponse(<PrismaOGImage {...imageProps} />, {
+    width: 1200,
+    height: 630,
+    fonts,
+  });
 }
 
 export function generateStaticParams() {

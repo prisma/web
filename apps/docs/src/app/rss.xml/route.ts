@@ -1,4 +1,4 @@
-import { getRSS } from '@/lib/rss';
+import { getRSS } from "@/lib/rss";
 
 export const revalidate = false;
 

@@ -36,9 +36,9 @@ export default function Support() {
 
   return (
     <main className="flex-1 w-screen bg-background-default">
-      <div className="hero relative w-full -mt-33 pt-45 block pb-12 flex flex-col gap-8">
-        <div className="bg-[linear-gradient(180deg,var(--color-foreground-orm-strong)_0%,var(--color-background-default)_100%)] absolute inset-0 z-1 overflow-hidden" />
-        <h1 className="stretch-display text-6xl font-bold mb-4 text-center mt-9 font-sans-display z-2 relative">
+      <div className="hero relative w-full -mt-33 pt-65 block pb-12 flex flex-col gap-8">
+        <div className="absolute inset-0 pointer-events-none z-1 overflow-hidden bg-[linear-gradient(180deg,var(--color-foreground-orm-strong)_0%,var(--color-background-default)_100%)] opacity-20" />
+        <h1 className="relative z-2 text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
           {data.title}
         </h1>
         <LargeSearchToggle className="h-full z-2 max-w-141 mx-auto w-full" />
@@ -68,9 +68,7 @@ export default function Support() {
                       {card.title}
                     </h3>
                   </div>
-                  <p className="text-foreground-neutral-weak">
-                    {card.description}
-                  </p>
+                  <p className="text-foreground-neutral-weak">{card.description}</p>
                 </div>
                 <div className="flex flex-col gap-2">
                   {card.links.map((link, idx) => (
@@ -119,9 +117,7 @@ export default function Support() {
                         href={link.url}
                         className="text-sm font-semibold flex items-center gap-2 text-foreground-ppg-strong hover:text-foreground-ppg transition-colors whitespace-nowrap"
                       >
-                        <span className="underline underline-offset-3">
-                          {link.label}
-                        </span>
+                        <span className="underline underline-offset-3">{link.label}</span>
                         <i className="fa-regular fa-arrow-up-right ml-2" />
                       </a>
                     ))}
@@ -148,9 +144,7 @@ export default function Support() {
                       className="text-sm font-semibold flex items-center gap-2 text-foreground-ppg-strong hover:text-foreground-ppg transition-colors w-fit"
                     >
                       {link.icon && <i className={link.icon} />}
-                      <span className="underline underline-offset-3">
-                        {link.label}
-                      </span>
+                      <span className="underline underline-offset-3">{link.label}</span>
                       <i className="fa-regular fa-arrow-up-right ml-auto" />
                     </a>
                   ))}
@@ -176,9 +170,7 @@ export default function Support() {
                     href={cards[5].links[0].url}
                     className="text-sm font-semibold flex items-center gap-2 text-background-orm-reverse-strong hover:text-background-orm-reverse transition-colors"
                   >
-                    <span className="underline underline-offset-3">
-                      {cards[5].links[0].label}
-                    </span>
+                    <span className="underline underline-offset-3">{cards[5].links[0].label}</span>
                     <i className={cards[5].links[0].icon} />
                   </a>
                 </div>

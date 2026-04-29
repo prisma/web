@@ -1,21 +1,26 @@
-import { Button } from "@prisma/eclipse";
+"use client";
+
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  TooltipProvider,
+} from "@prisma/eclipse";
 
 import { AgentCard } from "./agent-card";
 
 export type McpAgent = {
   logo: string | null;
   alt: string;
-  icon: string | null;
-  href: string;
+  href?: string;
+  copyText?: string;
 };
 
-export function McpAgentsSection({
-  docsHref,
-  agents,
-}: {
-  docsHref: string;
-  agents: readonly McpAgent[];
-}) {
+export function McpAgentsSection({ agents }: { agents: readonly McpAgent[] }) {
+  const tallyHref = "https://tally.so/r/wA1R1N";
+
   return (
     <section className="px-4 py-12 md:px-0">
       <div className="mx-auto flex max-w-[790px] flex-col items-center gap-12 text-center">
@@ -29,19 +34,50 @@ export function McpAgentsSection({
           </p>
         </div>
 
-        <div className="grid w-full max-w-[368px] grid-cols-2 justify-items-center gap-4 min-[400px]:gap-8 md:max-w-[790px] md:grid-cols-4 md:gap-8">
-          {agents.map(({ logo, alt, icon, href }) => (
-            <AgentCard key={alt} logo={logo} alt={alt} icon={icon} href={href} />
-          ))}
-        </div>
+        <TooltipProvider>
+          <div className="grid w-full max-w-[368px] grid-cols-2 justify-items-center gap-4 min-[400px]:gap-8 md:max-w-[790px] md:grid-cols-4 md:gap-8">
+            {agents.map((agent) => (
+              <AgentCard key={agent.alt} {...agent} />
+            ))}
+          </div>
+        </TooltipProvider>
 
-        <Button
-          href={docsHref}
-          variant={"link"}
-          className="text-sm font-semibold text-foreground-ppg underline"
-        >
-          Want to see your tool listed?
-        </Button>
+        <Dialog>
+          <DialogTrigger asChild>
+            <button
+              type="button"
+              className="cursor-pointer text-sm font-semibold text-foreground-ppg underline"
+            >
+              Want to see your tool listed?
+            </button>
+          </DialogTrigger>
+          <DialogContent className="max-w-4xl">
+            <DialogHeader>
+              <DialogTitle>Want to see your favorite AI tool listed on prisma.io/mcp?</DialogTitle>
+            </DialogHeader>
+            <div className="overflow-hidden rounded-xl border border-stroke-neutral bg-background-neutral-weaker shadow-box-low">
+              <iframe
+                src={tallyHref}
+                title="Tool listing request"
+                width="100%"
+                height="640"
+                className="block min-h-[640px] w-full border-0 bg-white"
+              />
+            </div>
+            <p className="text-sm leading-6 text-foreground-neutral-weak">
+              If the form does not load,{" "}
+              <a
+                href={tallyHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-foreground-ppg underline"
+              >
+                open it in a new tab
+              </a>
+              .
+            </p>
+          </DialogContent>
+        </Dialog>
       </div>
     </section>
   );

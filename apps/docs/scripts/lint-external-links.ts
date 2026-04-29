@@ -12,6 +12,10 @@ const TIMEOUT_MS = 10_000;
 const MAX_CONCURRENCY = 15;
 const ACCEPTED_STATUSES = new Set([403, 429]);
 
+// Links that are known to work correctly but cannot be verified by an HTTP
+// checker (e.g. deeplinks that trigger a native app to open).
+const IGNORED_URLS = new Set(["https://pris.ly/cursor-deeplink"]);
+
 const IMAGE_EXTENSIONS = new Set([
   ".png",
   ".jpg",
@@ -32,8 +36,7 @@ const HTML_ANCHOR_REGEX = /<a\b[^>]*\bhref=(["'])(.*?)\1/gi;
 const BROWSER_HEADERS: HeadersInit = {
   "user-agent":
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
-  accept:
-    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+  accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
   "accept-language": "en-US,en;q=0.9",
 };
 
@@ -165,10 +168,7 @@ function collectFileLinks(filePath: string): Array<{ url: string; line: number }
   return links;
 }
 
-async function fetchWithTimeout(
-  url: string,
-  init: RequestInit = {},
-): Promise<Response> {
+async function fetchWithTimeout(url: string, init: RequestInit = {}): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
@@ -263,6 +263,7 @@ async function main(): Promise<void> {
   const failed: FailedResult[] = [];
 
   await runWithConcurrency(uniqueUrls, MAX_CONCURRENCY, async (url) => {
+    if (IGNORED_URLS.has(url)) return;
     const result = await checkUrl(url);
     if (result.ok) return;
 

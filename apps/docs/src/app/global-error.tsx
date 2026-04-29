@@ -3,11 +3,7 @@ import { useEffect } from "react";
 import * as Sentry from "@sentry/nextjs";
 import { DocsLayout } from "@/components/layout/notebook";
 
-export default function GlobalError({
-  error,
-}: {
-  error: Error & { digest?: string };
-}) {
+export default function GlobalError({ error }: { error: Error & { digest?: string } }) {
   useEffect(() => {
     Sentry.captureException(error);
   }, [error]);
@@ -99,7 +95,7 @@ export default function GlobalError({
           Error
         </h1>
         <p className="subtitle">Something went wrong</p>
-        <a href="/docs">Go to docs</a>
+        <a href="https://www.prisma.io/docs">Go to docs</a>
       </body>
     </html>
   );

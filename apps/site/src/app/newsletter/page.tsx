@@ -1,19 +1,13 @@
 import { createPageMetadata } from "@/lib/page-metadata";
 import Image from "next/image";
 import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@prisma/eclipse";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@prisma/eclipse";
 import { NewsletterSignup } from "./newsletter-signup";
 
 export const metadata = createPageMetadata({
-  title: "Newsletter | Prisma",
+  title: "Sign up for Prisma's monthly newsletter",
   description:
-    "Subscribe for monthly Prisma release notes, tutorials, and product updates covering ORM, Postgres, and the developer ecosystem.",
+    "The Prisma newsletter is packed with all the latest releases, updates, blogs, and more. Sign up today to stay up-to-date with Prisma.",
   path: "/newsletter",
   ogImage: "/og/og-newsletter.png",
 });
@@ -40,13 +34,9 @@ async function getLatestBlogPosts(count = 3): Promise<RssItem[]> {
     while ((match = itemRegex.exec(xml)) !== null && items.length < count) {
       const block = match[1];
       const get = (tag: string) => {
-        const m = block.match(
-          new RegExp(`<${tag}><!\\[CDATA\\[([\\s\\S]*?)\\]\\]></${tag}>`),
-        );
+        const m = block.match(new RegExp(`<${tag}><!\\[CDATA\\[([\\s\\S]*?)\\]\\]></${tag}>`));
         if (m) return m[1].trim();
-        const m2 = block.match(
-          new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`),
-        );
+        const m2 = block.match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`));
         return m2 ? m2[1].trim() : "";
       };
 
@@ -55,11 +45,7 @@ async function getLatestBlogPosts(count = 3): Promise<RssItem[]> {
         if (!enc) return null;
         const attrs = enc[1];
         const typeM = attrs.match(/\btype="([^"]*)"/i);
-        if (
-          typeM &&
-          typeM[1] &&
-          !typeM[1].toLowerCase().startsWith("image/")
-        ) {
+        if (typeM && typeM[1] && !typeM[1].toLowerCase().startsWith("image/")) {
           return null;
         }
         const urlM = attrs.match(/\burl="([^"]+)"/i);
@@ -100,13 +86,13 @@ export default async function NewsletterPage() {
 
   return (
     <main className="flex-1 w-full -mt-24 bg-background-default text-foreground-neutral">
-      <section className="px-4 pt-36 pb-16">
+      <section className="px-4 pt-50 pb-16">
         <div className="max-w-[720px] mx-auto flex flex-col items-center gap-6 text-center">
-          <p className="m-0 flex items-center justify-center gap-2 text-base font-semibold uppercase tracking-[1.6px] text-foreground-ppg font-sans">
+          <p className="m-0 flex items-center justify-center gap-2 text-sm stretch-display font-semibold uppercase tracking-[1.6px] text-foreground-ppg font-sans">
             <i className="fa-regular fa-bell" aria-hidden />
             Stay Updated
           </p>
-          <h1 className="m-0 text-foreground-neutral text-5xl font-sans-display [font-variation-settings:'wght'_900]">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
             Get our monthly newsletter
           </h1>
         </div>
@@ -117,8 +103,7 @@ export default async function NewsletterPage() {
               Sign up for the Prisma newsletter today
             </CardTitle>
             <CardDescription>
-              Get release updates, tutorials, and more content delivered to your
-              inbox monthly.
+              Get release updates, tutorials, and more content delivered to your inbox monthly.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -149,9 +134,7 @@ export default async function NewsletterPage() {
                       </div>
                     )}
                     <CardContent className="flex flex-1 flex-col gap-2 px-3 pb-3">
-                      <CardTitle className="text-base font-semibold">
-                        {post.title}
-                      </CardTitle>
+                      <CardTitle className="text-base font-semibold">{post.title}</CardTitle>
                       {post.description ? (
                         <CardDescription className="line-clamp-2">
                           {post.description}

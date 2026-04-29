@@ -17,11 +17,9 @@ export const EcosystemGrid = () => {
         <div className="flex gap-4 items-center justify-start ">
           {filters.map((filter) => (
             <Button
-              variant={
-                activeFilter === filter ? "orm-reverse" : "default-stronger"
-              }
+              variant={activeFilter === filter ? "orm" : "default-strong"}
               size="lg"
-              className="capitalize"
+              className="capitalize whitespace-nowrap"
               onClick={() => setActiveFilter(filter)}
               key={filter}
             >
@@ -33,11 +31,10 @@ export const EcosystemGrid = () => {
       <div>
         {filters.slice(0, -1).map((filter) => (
           <div
+            key={filter}
             className={cn(
               "flex flex-col gap-12 my-12",
-              activeFilter !== filter &&
-                activeFilter !== "show-all" &&
-                "hidden",
+              activeFilter !== filter && activeFilter !== "show-all" && "hidden",
             )}
           >
             <h3 className="text-foreground-neutral font-sans-display text-3xl stretch-display my-0 font-bold capitalize">
@@ -62,14 +59,9 @@ export const EcosystemGrid = () => {
                         {box.description}
                       </p>
                       <div className="flex gap-2 justify-between items-center">
-                        <Badge
-                          className="w-fit"
-                          color="orm"
-                          size="lg"
-                          label={box.type}
-                        ></Badge>
+                        <Badge className="w-fit" color="orm" size="lg" label={box.type}></Badge>
 
-                        <div className="relative after:content-[''] after:absolute after:w-full after:h-full after:z-[10000] after:left-0 after:top-0">
+                        <div className="relative after:content-[''] after:absolute after:w-full after:h-full after:z-10000 after:left-0 after:top-0">
                           <GitHubButton
                             href={`https://github.com/${box.githubRepo}`}
                             data-color-scheme="no-preference: light; light: light; dark: dark;"

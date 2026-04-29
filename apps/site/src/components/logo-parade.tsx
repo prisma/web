@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Image from "next/image";
 
 const logoParade = [
   {
@@ -22,13 +23,6 @@ const logoParade = [
     url: "https://poppy.be/",
     width: 110,
     height: 40,
-  },
-  {
-    label: "Twiga",
-    imageUrl: `/icons/companies/twiga.svg`,
-    url: "https://twiga.com/",
-    width: 55,
-    height: 61,
   },
   {
     label: "Panther",
@@ -133,18 +127,22 @@ export default function LogoParade() {
           onMouseLeave={() => setPaused(false)}
         >
           {allItems.map((item, i) => (
-            <div
+            <a
               key={i}
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
               className="relative shrink-0 rounded-lg overflow-hidden cursor-pointer transition-transform duration-200 invert-100 dark:brightness-150 dark:hover:filter-none contrast-75 grayscale hover:filter-none"
             >
-              <img
+              <Image
                 src={item.imageUrl}
                 width={item.width}
                 height={item.height}
                 alt={item.label}
+                loading="lazy"
                 className="w-full h-full object-contain object-center"
               />
-            </div>
+            </a>
           ))}
         </div>
       </div>

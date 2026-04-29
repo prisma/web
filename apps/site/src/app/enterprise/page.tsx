@@ -1,5 +1,5 @@
 import { EnterpriseForm } from "@/components/enterprise/form";
-import { EnterpriseScrollCarousel } from "@/components/enterprise/scroll-carousel";
+import { CarouselItem } from "@/components/enterprise/carousel-item";
 import Image from "next/image";
 import { FooterAccordion } from "@/components/enterprise/footer-accordion";
 import { SwitchEnterprise } from "@/components/enterprise/switch-enterprise";
@@ -8,6 +8,7 @@ import type { Metadata } from "next";
 import { Button, Card, Action } from "@prisma/eclipse";
 import { CardSection } from "@/components/homepage/card-section/card-section";
 import { cn } from "@/lib/cn";
+import { ScrollCarousel } from "@/components/scroll-carousel";
 import { Technology } from "@/components/technology";
 
 interface DatabaseItem {
@@ -32,16 +33,14 @@ const first = [
           application’s lifecycle
         </h2>
         <p className="text-foreground-neutral-weak! text-base my-4">
-          By integrating Prisma into your development ecosystem, you leverage
-          its capabilities to Build robust, adaptable applications with less
-          code and fewer errors and also Fortify your database interactions for
-          peak performance right from the start.
+          By integrating Prisma into your development ecosystem, you leverage its capabilities to
+          Build robust, adaptable applications with less code and fewer errors and also Fortify your
+          database interactions for peak performance right from the start.
         </p>
         <p className="text-foreground-neutral-weak! text-base my-4">
-          As your application Grows, our platform products Accelerate and Prisma
-          Postgres ensure that your data layer can adapt and scale, supporting
-          increased traffic and requirements without sacrificing performance or
-          security.
+          As your application Grows, our platform products Accelerate and Prisma Postgres ensure
+          that your data layer can adapt and scale, supporting increased traffic and requirements
+          without sacrificing performance or security.
         </p>
       </>
     ),
@@ -79,34 +78,42 @@ const databases: { title: string; list: DatabaseItem[] } = {
   list: [
     {
       name: "PostgreSQL",
+      url: "https://www.prisma.io/docs/prisma-orm/quickstart/postgresql",
       icon: "/icons/companies/postgres.svg",
     },
     {
       name: "MySQL",
+      url: "https://www.prisma.io/docs/prisma-orm/quickstart/mysql",
       icon: "/icons/technologies/mysqlsimple.svg",
     },
     {
       name: "MariaDB",
       icon: "/icons/technologies/mariadb.svg",
+      url: "https://www.prisma.io/docs/prisma-orm/quickstart/mysql",
     },
     {
       name: "SQLite",
+      url: "https://www.prisma.io/docs/prisma-orm/quickstart/sqlite",
       icon: "/icons/companies/sqlite.svg",
     },
     {
       name: "SQL Server",
+      url: "https://www.prisma.io/docs/prisma-orm/quickstart/sqlserver",
       icon: "/icons/companies/sqlserver.svg",
     },
     {
       name: "CockroachDB",
+      url: "https://www.prisma.io/docs/prisma-orm/quickstart/cockroachdb",
       icon: "/icons/companies/cockroachdb.svg",
     },
     {
       name: "PlanetScale",
+      url: "https://www.prisma.io/docs/prisma-orm/quickstart/planetscale",
       icon: "/icons/companies/planetscale.svg",
     },
     {
       name: "MongoDB",
+      url: "https://www.prisma.io/docs/prisma-orm/quickstart/mongodb",
       icon: "/icons/technologies/mongodbsimple.svg",
     },
   ],
@@ -212,14 +219,12 @@ const solution_providers = [
   },
   {
     title: "Advanced updates",
-    description:
-      "Stay ahead in the game with the latest updates and best practices.",
+    description: "Stay ahead in the game with the latest updates and best practices.",
     icon: "fa-regular fa-file-arrow-up", // or "fa-light fa-file-import"
   },
   {
     title: "Expedited and priority support",
-    description:
-      "Benefit from prioritized attention to your inquiries and problems.",
+    description: "Benefit from prioritized attention to your inquiries and problems.",
     icon: "fa-regular fa-phone-volume", // or "fa-light fa-phone-arrow-up-right"
   },
   {
@@ -312,8 +317,7 @@ const abstraction_ease_of_use = [
   },
 ];
 
-const ENTERPRISE_TITLE =
-  "Streamline your enterprise development workflow with Prisma";
+const ENTERPRISE_TITLE = "Streamline your enterprise development workflow with Prisma";
 const ENTERPRISE_DESCRIPTION =
   "Learn how Prisma ORM can improve your team's productivity and explore our tailored ORM support solutions for enterprises and solution providers.";
 
@@ -345,33 +349,27 @@ export default function EnterprisePage() {
   return (
     <main className="flex-1 w-full z-1 bg-background-default">
       {/* Hero */}
-      <section className="hero -mt-24 flex items-end justify-center px-4 relative">
-        <div className="absolute inset-0 z-0 bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20" />
+      <section className="hero -mt-24 flex items-end justify-center px-4 relative pt-24">
+        <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20" />
         <div className="content pt-31 relative z-2 my-12 flex flex-col gap-8">
           <div className="flex flex-col gap-1">
             <h5 className="text-foreground-orm-strong text-center stretch-display font-sans-display text-base uppercase">
               Enterprise & Solution Providers
             </h5>
-            <h1 className="text-[clamp(2.5rem,9vw,3.75rem)] md:text-6xl [font-variation-settings:'wght'_900,'wdth'_125] mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-200 mx-auto">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
               Streamline your <br /> development workflow
             </h1>
           </div>
           <p className="text-center text-foreground-neutral max-w-2xl mx-auto">
-            Prisma acts as your comprehensive enterprise data toolset,
-            simplifying database interactions and reducing complexity so
-            developers can focus on business logic.
+            Prisma acts as your comprehensive enterprise data toolset, simplifying database
+            interactions and reducing complexity so developers can focus on business logic.
           </p>
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
-            <Button
-              variant="orm"
-              href="https://console.prisma.io/sign-up?utm_source=website&utm_medium=index&utm_campaign=cta"
-              size="3xl"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-sans-display! font-[650]"
-            >
-              <span>Get in touch</span>
-              <i className="fa-regular fa-envelope ml-2" />
+            <Button asChild variant="orm" size="3xl" className="font-sans-display! font-[650]">
+              <a href="#contact-us">
+                Get in touch
+                <i className="fa-regular fa-envelope" />
+              </a>
             </Button>
           </div>
         </div>
@@ -397,8 +395,8 @@ export default function EnterprisePage() {
             Leave the database complexities to us
           </h3>
           <p className="text-center text-foreground-neutral max-w-xl mx-auto">
-            Focus on core competencies of your team, rather than building and
-            managing complex infrastructure components.
+            Focus on core competencies of your team, rather than building and managing complex
+            infrastructure components.
           </p>
         </div>
         <div className="grid md:grid-cols-2 gap-6 max-w-230 mx-auto w-full">
@@ -428,15 +426,19 @@ export default function EnterprisePage() {
                     </p>
                     {!last && (
                       <div className="bottom-0 left-0 right-0 px-4 after:content-[''] after:absolute after:inset-0 after:bg-[linear-gradient(0deg,var(--color-background-default)_0%,transparent_62.5%)] after:top-0 absolute after:rounded-square">
-                        <img
+                        <Image
                           src={`${card.image}.svg`}
                           alt="Enterprise"
+                          width={1200}
+                          height={900}
                           className="hidden dark:block mx-auto"
                         />
-                        <img
+                        <Image
                           src={`${card.image}_light.svg`}
-                          className="block dark:hidden mx-auto"
                           alt="Enterprise"
+                          width={1200}
+                          height={900}
+                          className="block dark:hidden mx-auto"
                         />
                       </div>
                     )}
@@ -459,7 +461,13 @@ export default function EnterprisePage() {
                               size="4xl"
                               className="h-[75px]! w-[75px]! hover:bg-background-neutral-strong"
                             >
-                              <img src={db.icon} alt={db.name} />
+                              <Image
+                                src={db.icon}
+                                alt={db.name}
+                                width={40}
+                                height={40}
+                                className="h-auto w-auto"
+                              />
                             </Action>
                           </Technology>
                         ))}
@@ -479,7 +487,14 @@ export default function EnterprisePage() {
           <h2 className="text-foreground-neutral stretch-display text-left text-4xl font-black! font-sans-display ">
             Developer experience
           </h2>
-          <EnterpriseScrollCarousel items={abstraction_ease_of_use} />
+          <ScrollCarousel
+            ariaLabel="Enterprise carousel"
+            gridClassName="auto-cols-[100%] sm:auto-cols-[calc((100%-2rem)/3)]"
+          >
+            {abstraction_ease_of_use.map((item) => (
+              <CarouselItem key={item.title} card={item} className="min-h-full" />
+            ))}
+          </ScrollCarousel>
         </div>
       </section>
       {/* Code quality and safety */}
@@ -506,15 +521,19 @@ export default function EnterprisePage() {
                   "flex-1 min-w-0 overflow-visible w-full lg:max-w-unset max-w-137 lg:w-full",
                 )}
               >
-                <img
+                <Image
                   className="sm:relative w-full h-auto hidden dark:block object-contain"
                   src="/illustrations/enterprise/enterprise_2.svg"
                   alt="Code quality and safety"
+                  width={1200}
+                  height={900}
                 />
-                <img
+                <Image
                   className="sm:relative block w-full h-auto dark:hidden object-contain"
                   src="/illustrations/enterprise/enterprise_2_light.svg"
                   alt="Code quality and safety"
+                  width={1200}
+                  height={900}
                 />
               </div>
             </div>
@@ -528,7 +547,14 @@ export default function EnterprisePage() {
           <h2 className="text-foreground-neutral stretch-display text-left text-4xl font-black! font-sans-display">
             Scalability and portability
           </h2>
-          <EnterpriseScrollCarousel items={scal_port} />
+          <ScrollCarousel
+            ariaLabel="Enterprise carousel"
+            gridClassName="auto-cols-[100%] sm:auto-cols-[calc((100%-2rem)/3)]"
+          >
+            {scal_port.map((item) => (
+              <CarouselItem key={item.title} card={item} className="min-h-full" />
+            ))}
+          </ScrollCarousel>
         </div>
       </section>
 
@@ -539,8 +565,8 @@ export default function EnterprisePage() {
             Dedicated ORM support options
           </h2>
           <p className="text-center text-foreground-neutral max-w-xl mx-auto">
-            Focus on core competencies of your team, rather than building and
-            managing complex infrastructure components.
+            Focus on core competencies of your team, rather than building and managing complex
+            infrastructure components.
           </p>
           <SwitchEnterprise
             content={[enterprises, solution_providers]}
@@ -553,14 +579,14 @@ export default function EnterprisePage() {
       </section>
 
       {/* Connect with us */}
-      <section className="my-12 px-4">
+      <section className="my-12 px-4" id="contact-us">
         <div className="py-12 gap-8 flex flex-col max-w-221 mx-auto">
           <h2 className="text-foreground-neutral stretch-display text-center text-4xl font-black! font-sans-display my-0">
             Connect with us
           </h2>
           <p className="text-center text-foreground-neutral max-w-3xl mx-auto">
-            To explore how our support solutions can revolutionize your agency
-            or enterprise's approach to developing with Prisma ORM.
+            To explore how our support solutions can revolutionize your agency or enterprise's
+            approach to developing with Prisma ORM.
           </p>
           <EnterpriseForm />
         </div>

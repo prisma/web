@@ -1,1 +1,1 @@
-export { default } from '@prisma/eclipse/postcss.config';
+export { default } from "@prisma/eclipse/postcss.config";

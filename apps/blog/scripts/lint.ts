@@ -1,15 +1,10 @@
-import {
-  type FileObject,
-  printErrors,
-  scanURLs,
-  validateFiles,
-} from 'next-validate-link';
-import type { InferPageType } from 'fumadocs-core/source';
+import { type FileObject, printErrors, scanURLs, validateFiles } from "next-validate-link";
+import type { InferPageType } from "fumadocs-core/source";
 
-import { register } from 'node:module';
-register('fumadocs-mdx/node/loader', import.meta.url);
+import { register } from "node:module";
+register("fumadocs-mdx/node/loader", import.meta.url);
 
-const { blog } = await import('@/lib/source');
+const { blog } = await import("@/lib/source");
 const blogPages = blog.getPages().map((page) => {
   return {
     value: { slug: page.slugs },
@@ -17,12 +12,11 @@ const blogPages = blog.getPages().map((page) => {
   };
 });
 
-
 async function checkLinks() {
   const scanned = await scanURLs({
-    preset: 'next',
+    preset: "next",
     populate: {
-      '(blog)/[slug]': blogPages,
+      "(blog)/[slug]": blogPages,
     },
   });
 
@@ -31,11 +25,11 @@ async function checkLinks() {
       scanned,
       markdown: {
         components: {
-          Card: { attributes: ['href'] },
-          Cards: { attributes: ['href'] },
+          Card: { attributes: ["href"] },
+          Cards: { attributes: ["href"] },
         },
       },
-      checkRelativePaths: 'as-url',
+      checkRelativePaths: "as-url",
     }),
     true,
   );
@@ -46,12 +40,12 @@ function getHeadings({ data }: InferPageType<typeof blog>): string[] {
 }
 
 function getFiles() {
-  console.log("Validating Files")
+  console.log("Validating Files");
 
   const blogPromises = blog.getPages().map(
     async (page): Promise<FileObject> => ({
-      path: page.absolutePath ?? '',
-      content: await page.data.getText('raw'),
+      path: page.absolutePath ?? "",
+      content: await page.data.getText("raw"),
       url: page.url,
       data: page.data,
     }),

@@ -1,25 +1,21 @@
-import { source } from '@/lib/source';
-import { notFound } from 'next/navigation';
-import { getMDXComponents } from '@/mdx-components';
-import type { Metadata } from 'next';
-import { createRelativeLink } from 'fumadocs-ui/mdx';
+import { source } from "@/lib/source";
+import { notFound } from "next/navigation";
+import { getMDXComponents } from "@/mdx-components";
+import type { Metadata } from "next";
+import { createRelativeLink } from "fumadocs-ui/mdx";
 import {
   DocsBody,
   DocsDescription,
   DocsPage,
   DocsTitle,
   PageLastUpdate,
-} from '@/components/layout/notebook/page';
+} from "@/components/layout/notebook/page";
 
 interface PageParams {
   slug?: string[];
 }
 
-export default async function Page({
-  params,
-}: {
-  params: Promise<PageParams>;
-}) {
+export default async function Page({ params }: { params: Promise<PageParams> }) {
   const { slug } = await params;
   const page = source.getPage(slug);
   if (!page) notFound();
@@ -29,7 +25,7 @@ export default async function Page({
   return (
     <DocsPage
       tableOfContent={{
-        style: 'normal',
+        style: "normal",
       }}
       toc={page.data.toc}
       full={page.data.full}
@@ -47,9 +43,7 @@ export default async function Page({
       </DocsBody>
       <div className="flex flex-row flex-wrap items-center justify-between gap-4 border-t pt-6 text-sm">
         {(page.data as { lastModified?: Date }).lastModified && (
-          <PageLastUpdate
-            date={(page.data as { lastModified: Date }).lastModified}
-          />
+          <PageLastUpdate date={(page.data as { lastModified: Date }).lastModified} />
         )}
       </div>
     </DocsPage>

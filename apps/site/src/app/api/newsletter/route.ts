@@ -4,8 +4,7 @@ export const dynamic = "force-dynamic";
 
 // CORS headers configuration
 const corsHeaders = {
-  "Access-Control-Allow-Origin":
-    "https://prisma.io, https://www.prisma.io, https://prisma.io/docs",
+  "Access-Control-Allow-Origin": "https://prisma.io, https://www.prisma.io, https://prisma.io/docs",
   "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
@@ -110,10 +109,7 @@ export async function POST(request: Request) {
       });
 
       // Handle specific Brevo errors
-      if (
-        data?.code === "duplicate_parameter" ||
-        data?.message?.includes("already exists")
-      ) {
+      if (data?.code === "duplicate_parameter" || data?.message?.includes("already exists")) {
         return NextResponse.json(
           { message: "Already subscribed", alreadySubscribed: true },
           { status: 200, headers: corsHeaders },
@@ -122,8 +118,7 @@ export async function POST(request: Request) {
 
       return NextResponse.json(
         {
-          error:
-            data?.message || "Failed to subscribe. Please try again later.",
+          error: data?.message || "Failed to subscribe. Please try again later.",
           debug:
             process.env.NODE_ENV === "development"
               ? {
@@ -145,8 +140,7 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     console.error("Newsletter subscription error:", error);
-    const errorMessage =
-      error instanceof Error ? error.message : "An unexpected error occurred";
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
 
     return NextResponse.json(
       {
@@ -154,10 +148,7 @@ export async function POST(request: Request) {
         debug:
           process.env.NODE_ENV === "development"
             ? {
-                errorType:
-                  error instanceof Error
-                    ? error.constructor.name
-                    : typeof error,
+                errorType: error instanceof Error ? error.constructor.name : typeof error,
                 stack: error instanceof Error ? error.stack : undefined,
               }
             : undefined,

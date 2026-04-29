@@ -1,6 +1,7 @@
+import { createSoftwareApplicationStructuredData } from "@/lib/structured-data";
 import { createPageMetadata } from "@/lib/page-metadata";
-import { Action, Button, Card, Separator } from "@prisma/eclipse";
-import { Bento } from "@/components/homepage/bento";
+import { Action, Button, Separator } from "@prisma/eclipse";
+import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import { CardSection } from "@/components/homepage/card-section/card-section";
 import review from "../../data/homepage.json";
 import Testimonials from "../../components/homepage/testimonials";
@@ -8,6 +9,8 @@ import { InfoStats } from "@/components/orm/info-stats";
 import { cn } from "@/lib/cn";
 import { Card as FeatureCard } from "@/components/homepage/bento";
 import { YouTubePlayer } from "@prisma-docs/ui/components/youtube-player";
+import Image from "next/image";
+import Link from "next/link";
 
 const statsSection = [
   {
@@ -41,25 +44,20 @@ const prismaPostgresQuickstartUrl =
 const CardFooter = () => (
   <>
     <Separator className="my-6" />
-    <div className="flex flex-col md:flex-row justify-between w-full gap-8">
+    <div className="flex flex-col items-center md:items-stretch md:flex-row justify-between w-full gap-8">
       {badge_list.map((badge: any) => (
         <div
-          className="flex flex-col md:flex-row gap-2 md:gap-6 md:items-center"
+          className="flex flex-col items-center md:items-center md:flex-row gap-2 md:gap-6"
           key={badge.title}
         >
           <h6 className="font-semibold text-2xs text-foreground-neutral uppercase">
             {badge.title}
           </h6>
-          <div className="flex gap-3">
+          <div className="flex justify-center md:justify-start gap-3">
             {badge.list &&
               badge.list.map((item: any) => (
-                <Button
-                  variant="orm-reverse"
-                  href={item.url}
-                  key={item.label}
-                  className="text-base"
-                >
-                  {item.label}
+                <Button asChild variant="orm" key={item.label} className="text-base">
+                  <a href={item.url}>{item.label}</a>
                 </Button>
               ))}
           </div>
@@ -81,9 +79,9 @@ const twoCol = [
           </h2>
         </div>
         <p className="text-foreground-neutral-weak! text-base">
-          Database workflows can feel brittle and error-prone. Prisma ORM
-          increases productivity and confidence when working with databases and
-          makes workflows like data modeling, migrations and querying easy.
+          Database workflows can feel brittle and error-prone. Prisma ORM increases productivity and
+          confidence when working with databases and makes workflows like data modeling, migrations
+          and querying easy.
         </p>
       </>
     ),
@@ -95,6 +93,7 @@ const twoCol = [
     other: (
       <YouTubePlayer
         autoplay={false}
+        loading="eager"
         video="EEDGwLB55bI"
         thumbnail={"/illustrations/orm/thumbnail.png"}
       />
@@ -111,13 +110,13 @@ const twoCol = [
           Works with your favorite databases and frameworks
         </h2>
         <p className="text-foreground-neutral-weak! text-base">
-          Prisma's compatibility with popular tools ensures no stack lock-in,
-          lower integration costs, and smooth transitions.
+          Prisma's compatibility with popular tools ensures no stack lock-in, lower integration
+          costs, and smooth transitions.
         </p>
-        <a href="/stack" className="link-btn orm">
+        <Link href="/stack" className="link-btn orm w-fit mx-auto lg:mx-0">
           <span>Learn more</span>
           <i className="fa-regular fa-arrow-right ml-2" />
-        </a>
+        </Link>
       </div>
     ),
     imageUrl: null,
@@ -139,14 +138,20 @@ const twoCol_2 = [
           <h5 className="font-sans-display text-foreground-orm uppercase stretch-display">
             Prisma Benchmarks
           </h5>
-          <h2 className="text-foreground-neutral stretch-display text-3xl font-sans-display mt-0 mb-4">
+          <h2 className="text-foreground-neutral stretch-display text-3xl font-sans-display">
             Prisma vs other ORMs
           </h2>
         </div>
         <p className="text-foreground-neutral-weak! text-base">
-          A meaningful comparison of database query latencies across database
-          providers and ORM libraries in the Node.js & TypeScript ecosystem.
+          A meaningful comparison of database query latencies across database providers and ORM
+          libraries in the Node.js & TypeScript ecosystem.
         </p>
+        <Button asChild variant="orm" size="xl" className="w-fit mx-auto lg:w-full">
+          <a href="https://benchmarks.prisma.io">
+            Explore Benchmarks
+            <i className="fa-regular fa-arrow-right" />
+          </a>
+        </Button>
       </div>
     ),
     imageUrl: "/illustrations/orm/orm_1",
@@ -166,20 +171,19 @@ const twoCol_2 = [
           <h5 className="font-sans-display text-foreground-orm uppercase stretch-display">
             Prisma Client
           </h5>
-          <h2 className="text-foreground-neutral stretch-display text-3xl font-sans-display mt-0 mb-4">
+          <h2 className="text-foreground-neutral stretch-display text-3xl font-sans-display">
             Type-safe database client
           </h2>
         </div>
         <p className="text-foreground-neutral-weak! text-base">
-          Prisma Client is a query builder that’s tailored to your schema. We
-          designed its API to be intuitive, both for SQL veterans and developers
-          brand new to databases. The auto-completion helps you figure out your
-          query without the need for documentation.
+          Prisma Client is a query builder that’s tailored to your schema. We designed its API to be
+          intuitive, both for SQL veterans and developers brand new to databases. The
+          auto-completion helps you figure out your query without the need for documentation.
         </p>
-        <a href="/client" className="link-btn orm">
+        <Link href="/client" className="link-btn orm w-fit mx-auto lg:mx-0">
           <span>Learn more</span>
           <i className="fa-regular fa-arrow-right ml-2" />
-        </a>
+        </Link>
       </div>
     ),
     imageUrl: "/illustrations/orm/orm_2",
@@ -243,7 +247,7 @@ const features = [
     image: "/illustrations/orm/collaborative",
     alt: "Collaborative work",
     icon: "fa-light fa-screen-users",
-    link: "https://console.prisma.io",
+    link: "https://console.prisma.io/login?utm_source=website&utm_medium=orm&utm_campaign=cta",
   },
   {
     title: "Browse your data",
@@ -254,6 +258,13 @@ const features = [
     link: "/studio",
   },
 ];
+
+const ormStructuredData = createSoftwareApplicationStructuredData({
+  path: "/orm",
+  name: "Prisma ORM",
+  description:
+    "Next-generation Node.js and TypeScript ORM for PostgreSQL, MySQL, SQL Server, SQLite, MongoDB, and CockroachDB. Provides type-safety, automated migrations, and an intuitive data model.",
+});
 
 export const metadata = createPageMetadata({
   title: "Prisma ORM | Next-generation database toolkit for TypeScript",
@@ -266,28 +277,32 @@ export const metadata = createPageMetadata({
 export default function ORM() {
   return (
     <main className="flex-1 w-full z-1 ">
-      <div className="hero pt-36 -mt-24 flex items-end justify-center px-4 relative">
-        <div className="absolute inset-0 z-0 bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20" />
-        <div className="content relative z-2 flex flex-col gap-8 py-12">
-          <h1 className="text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
-            Next-generation Node.js and TypeScript ORM
-          </h1>
+      <JsonLd id="orm-software-application" data={ormStructuredData} />
+      <div className="hero pt-40 -mt-24 flex items-end justify-center px-4 relative">
+        <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20" />
+        <div className="content relative z-2 flex flex-col gap-8">
+          <div className="flex flex-col gap-4 items-center text-center">
+            <div className="flex items-center gap-2 text-foreground-orm-weak uppercase tracking-widest text-sm font-sans-display font-black">
+              <i className="fa-solid fa-database" />
+              <span>Prisma ORM</span>
+            </div>
+            <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
+              Next-generation Node.js and TypeScript ORM
+            </h1>
+          </div>
           <p className="text-center text-foreground-neutral max-w-2xl mx-auto">
-            Real Postgres with the developer experience and infrastructure to
-            ship faster.
+            Prisma ORM elevates developer experience with intuitive data modeling, automated
+            migrations, and type-safety.
           </p>
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
-            <Button
-              variant="orm"
-              href={prismaPostgresQuickstartUrl}
-              size="3xl"
-              className="font-sans-display! font-[650]"
-            >
-              <span>Create database</span>
-              <i className="fa-regular fa-database ml-2" />
+            <Button asChild variant="orm" size="3xl" className="font-sans-display! font-[650]">
+              <a href={prismaPostgresQuickstartUrl}>
+                Read the docs
+                <i className="fa-regular fa-arrow-right" />
+              </a>
             </Button>
             {/*<Button
-              variant="default-stronger"
+              variant="default-strong"
               href="https://console.prisma.io/sign-up?utm_source=website&utm_medium=index&utm_campaign=cta"
               size="3xl"
               target="_blank"
@@ -300,7 +315,7 @@ export default function ORM() {
           </div>
         </div>
       </div>
-      <div className="my-12 flex gap-30 w-fit mx-auto px-4 md:px-40">
+      <div className="my-12 flex flex-col sm:flex-row gap-30 w-fit mx-auto px-4 sm:px-40">
         {statsSection?.map((stat: any, index: number) => (
           <InfoStats
             key={index}
@@ -322,35 +337,24 @@ export default function ORM() {
           <div className="grid md:grid-cols-2 gap-9">
             {twoCol_3.map((stat, index) => (
               <div key={stat.title} className="flex flex-col gap-4">
-                <Action
-                  size="4xl"
-                  color="orm"
-                  className={cn(index === 0 && "p-0")}
-                >
-                  <img
-                    src={stat.icon}
-                    alt={stat.title}
-                    className="w-full h-full"
-                  />
+                <Action size="4xl" color="orm" className={cn(index === 0 && "p-0", "relative")}>
+                  <Image src={stat.icon} alt={stat.title} fill loading="lazy" />
                 </Action>
-                <h4 className="text-2xl font-sans-display stretch-display text-foreground-neutral">
+                <h4 className="text-2xl text-center md:text-left font-sans-display stretch-display text-foreground-neutral">
                   {stat.title}
                 </h4>
-                <p className="text-foreground-neutral-weak">
+                <p className="text-center md:text-left text-foreground-neutral-weak">
                   {stat.description}
                 </p>
                 <Button
-                  variant="default-stronger"
-                  href={stat.btn.url}
+                  asChild
+                  variant="default-strong"
                   size="xl"
-                  className="w-fit"
+                  className="w-fit mx-auto md:mx-0"
                 >
-                  <span>
-                    {stat.btn.label}{" "}
-                    {stat.btn.icon && (
-                      <i className={cn("ml-2", stat.btn.icon)} />
-                    )}
-                  </span>
+                  <a href={stat.btn.url}>
+                    {stat.btn.label} {stat.btn.icon && <i className={stat.btn.icon} />}
+                  </a>
                 </Button>
               </div>
             ))}
@@ -366,12 +370,14 @@ export default function ORM() {
           </h3>
           <div className="content flex flex-col lg:flex-row gap-3 lg:gap-12 items-center md:items-start lg:items-center">
             <p className="max-w-94 w-full text-center md:text-left text-foreground-neutral-weak text-md">
-              Integrate Prisma into your development ecosystem and focus on your
-              team’s core competencies
+              Integrate Prisma into your development ecosystem and focus on your team’s core
+              competencies
             </p>
-            <Button variant="orm" size="2xl" href="/enterprise">
-              <span>Explore Enterprise</span>
-              <i className="fa-regular fa-arrow-right ml-2" />
+            <Button asChild variant="orm" size="2xl">
+              <a href="/enterprise">
+                Explore Enterprise
+                <i className="fa-regular fa-arrow-right" />
+              </a>
             </Button>
           </div>
         </div>
@@ -412,22 +418,22 @@ export default function ORM() {
                 Ready to get started?
               </h2>
               <p className="text-foreground-neutral-weak max-w-121">
-                Start from scratch, add Prisma ORM to your existing project, or
-                explore how to build an app using your favorite framework.
+                Start from scratch, add Prisma ORM to your existing project, or explore how to build
+                an app using your favorite framework.
               </p>
             </div>
             <div className="flex flex-col md:flex-row gap-6">
-              <Button
-                variant="orm"
-                size="2xl"
-                href={prismaPostgresQuickstartUrl}
-              >
-                <span>Try Prisma ORM</span>
-                <i className="fa-regular fa-arrow-right ml-2" />
+              <Button asChild variant="orm" size="2xl">
+                <a href={prismaPostgresQuickstartUrl}>
+                  Try Prisma ORM
+                  <i className="fa-regular fa-arrow-right" />
+                </a>
               </Button>
-              <Button variant="default-stronger" size="2xl" href="https://www.prisma.io/docs">
-                <span>Read the docs</span>
-                <i className="fa-regular fa-arrow-right ml-2" />
+              <Button asChild variant="default-strong" size="2xl">
+                <a href="https://www.prisma.io/docs">
+                  Read the docs
+                  <i className="fa-regular fa-arrow-right" />
+                </a>
               </Button>
             </div>
             <h6 className="mb-0! -mt-4 text-foreground-neutral-weaker text-xs">

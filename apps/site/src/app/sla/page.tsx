@@ -3,9 +3,9 @@ import { slaSections, slaLastUpdated } from "@/data/sla";
 import { LegalAccordion } from "@/components/legal-accordion";
 
 export const metadata = createPageMetadata({
-  title: "Service Level Agreement | Prisma",
+  title: "Service Level Agreement (SLA) | Prisma",
   description:
-    "Read the Prisma Service Level Agreement covering uptime commitments and service credits.",
+    "Explore our Service Level Agreement (SLA) detailing our monthly uptime percentage, service credits, and any exclusions.",
   path: "/sla",
   ogImage: "/og/og-sla.png",
 });
@@ -14,8 +14,8 @@ export default function SlaPage() {
   return (
     <main className="flex-1 w-full z-1 -mt-24 pt-24 relative legal-hero-gradient">
       {/* Hero */}
-      <div className="text-center py-16">
-        <h1 className="text-5xl md:text-6xl font-bold font-sans-display text-foreground-neutral mb-6">
+      <div className="text-center pb-16 pt-40">
+        <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
           Prisma Service Level Agreement
         </h1>
         <p className="text-lg text-foreground-neutral-weak">

@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import { source } from "@/lib/source";
 import { TreeContextProvider } from "fumadocs-ui/contexts/tree";
 import { TrackingProvider } from "@/components/tracking-provider";
+import { UtmPersistence } from "@/components/utm-persistence";
 
 const KAPA_INTEGRATION_ID = "1b51bb03-43cc-4ef4-95f1-93288a91b560";
 
@@ -29,6 +30,7 @@ export function Provider({ children }: { children: ReactNode }) {
           }}
         >
           <TrackingProvider />
+          <UtmPersistence />
           {children}
         </RootProvider>
       </KapaProvider>

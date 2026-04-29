@@ -1,9 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useEffect, memo } from "react";
+import { memo } from "react";
 import defaultLogosData from "./default-logos.json";
-import { useTheme } from "@prisma-docs/ui/components/theme-provider";
 import GlowCursor from "@/components/homepage/glow-cursor";
 import { cn } from "@/lib/cn";
 
@@ -43,13 +42,11 @@ const LogoBar = ({
   pauseOnHover?: boolean;
   duplicateCount?: number;
 }) => {
-  const duplicatedLogos = Array.from(
-    { length: duplicateCount },
-    (_, setIndex) =>
-      logos.map((logo, logoIndex) => ({
-        logo,
-        key: `${setIndex}-${logoIndex}`,
-      })),
+  const duplicatedLogos = Array.from({ length: duplicateCount }, (_, setIndex) =>
+    logos.map((logo, logoIndex) => ({
+      logo,
+      key: `${setIndex}-${logoIndex}`,
+    })),
   ).flat();
 
   return (
@@ -63,9 +60,7 @@ const LogoBar = ({
             href={item.logo.link}
             className={cn(
               "w-[85px] h-[85px] md:w-[60px] md:h-[60px] flex-shrink-0 rounded-xl z-[1] bg-background-default border flex items-center justify-center p-3 md:p-2 transition-[opacity_0.2s_ease,filter_0.2s_ease,transform_0.2s_ease,background_0.2s_ease,border-color_0.2s_ease] cursor-pointer opacity-80 mr-6 md:mr-2   hover:opacity-100",
-              color === "orm"
-                ? "hover:border-foreground-orm"
-                : "hover:border-foreground-ppg",
+              color === "orm" ? "hover:border-foreground-orm" : "hover:border-foreground-ppg",
             )}
             target="_blank"
             rel="noopener noreferrer"
@@ -101,42 +96,27 @@ interface LogoGridProps {
 // ============================================================================
 
 const LogoImage = memo(({ logo, size }: { logo: Logo; size: number }) => {
-  const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const imageUrl =
-    mounted && resolvedTheme === "light" && logo.mobileImageUrl
-      ? logo.mobileImageUrl
-      : logo.imageUrl;
-
-  const imageUrlLight = logo.imageUrlLight;
-
-  const isSvg = imageUrl.endsWith(".svg");
-  const ImageComponent = isSvg ? Image : "img";
+  const lightImageUrl = logo.mobileImageUrl ?? logo.imageUrl;
+  const darkImageUrl = logo.imageUrlLight ?? logo.imageUrl;
+  const hasThemeVariant = lightImageUrl !== darkImageUrl;
+  const imageClassName = "w-full aspect-square rounded-lg object-contain";
 
   return (
     <>
-      <ImageComponent
-        src={imageUrl}
+      <Image
+        src={lightImageUrl}
         alt={logo.alt}
         width={size}
         height={size}
-        className={cn(
-          "w-full aspect-square rounded-lg object-contain",
-          imageUrlLight && "hidden dark:block",
-        )}
+        className={cn(imageClassName, hasThemeVariant && "block dark:hidden")}
       />
-      {imageUrlLight && (
-        <ImageComponent
-          src={imageUrlLight}
+      {hasThemeVariant && (
+        <Image
+          src={darkImageUrl}
           alt={logo.alt}
           width={size}
           height={size}
-          className="w-full aspect-square rounded-lg object-contain block dark:hidden"
+          className={cn(imageClassName, "hidden dark:block")}
         />
       )}
     </>
@@ -149,40 +129,36 @@ LogoImage.displayName = "LogoImage";
 // SPOTLIGHT MODE COMPONENT
 // ============================================================================
 
-const SpotlightMode = memo(
-  ({ logos, color }: { logos: Logo[]; color?: "orm" | "ppg" }) => {
-    const logoSize = 50;
-    const visibleLogos = logos.slice(0, 21);
+const SpotlightMode = memo(({ logos, color }: { logos: Logo[]; color?: "orm" | "ppg" }) => {
+  const logoSize = 50;
+  const visibleLogos = logos.slice(0, 21);
 
-    return (
-      <GlowCursor color={`var(--color-background-${color ?? "ppg"}-strong)`}>
-        <div className="relative w-full h-full overflow-visible">
-          {/* Logo grid */}
-          <div className="relative z-1 flex justify-center px-2 md:px-4">
-            <div className="flex max-w-[760px] flex-wrap items-center justify-center gap-2 md:gap-3">
-              {visibleLogos.map((logo, index) => (
-                <a
-                  key={`${logo.alt}-${index}`}
-                  href={logo.link}
-                  className={cn(
-                    "w-[85px] md:w-[60px] aspect-square rounded-xl z-1 bg-background-default border flex items-center justify-center p-3 md:p-2 transition-[transform_0.2s_ease,border-color_0.2s_ease] hover:-translate-y-0.5 hover:scale-[1.02] active:translate-y-0 active:scale-100",
-                    color === "orm"
-                      ? "hover:border-foreground-orm"
-                      : "hover:border-foreground-ppg",
-                  )}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <LogoImage logo={logo} size={logoSize} />
-                </a>
-              ))}
-            </div>
+  return (
+    <GlowCursor color={`var(--color-background-${color ?? "ppg"}-strong)`}>
+      <div className="relative w-full h-full overflow-visible">
+        {/* Logo grid */}
+        <div className="relative z-1 flex justify-center px-2 md:px-4">
+          <div className="flex max-w-[760px] flex-wrap items-center justify-center gap-2 md:gap-3">
+            {visibleLogos.map((logo, index) => (
+              <a
+                key={`${logo.alt}-${index}`}
+                href={logo.link}
+                className={cn(
+                  "w-[85px] md:w-[60px] aspect-square rounded-xl z-1 bg-background-default border flex items-center justify-center p-3 md:p-2 transition-[transform_0.2s_ease,border-color_0.2s_ease] hover:-translate-y-0.5 hover:scale-[1.02] active:translate-y-0 active:scale-100",
+                  color === "orm" ? "hover:border-foreground-orm" : "hover:border-foreground-ppg",
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <LogoImage logo={logo} size={logoSize} />
+              </a>
+            ))}
           </div>
         </div>
-      </GlowCursor>
-    );
-  },
-);
+      </div>
+    </GlowCursor>
+  );
+});
 
 SpotlightMode.displayName = "SpotlightMode";
 
@@ -190,49 +166,31 @@ SpotlightMode.displayName = "SpotlightMode";
 // TRACK MODE COMPONENT
 // ============================================================================
 
-const TrackMode = memo(
-  ({ logos, color }: { logos: Logo[]; color?: "orm" | "ppg" }) => {
-    // Split logos into 3 even groups
-    const logosPerBar = Math.ceil(logos.length / 3);
-    const logosBar1 = logos.slice(0, logosPerBar);
-    const logosBar2 = logos.slice(logosPerBar, logosPerBar * 2);
-    const logosBar3 = logos.slice(logosPerBar * 2);
+const TrackMode = memo(({ logos, color }: { logos: Logo[]; color?: "orm" | "ppg" }) => {
+  // Split logos into 3 even groups
+  const logosPerBar = Math.ceil(logos.length / 3);
+  const logosBar1 = logos.slice(0, logosPerBar);
+  const logosBar2 = logos.slice(logosPerBar, logosPerBar * 2);
+  const logosBar3 = logos.slice(logosPerBar * 2);
 
-    return (
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          width: "100%",
-          overflow: "visible",
-          gap: "10px",
-          position: "relative",
-        }}
-      >
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 translate-z-0 w-[350px] h-[350px] md:w-[300px] md:h-[300px] rounded-full bg-[radial-gradient(circle,#E0F2F1_0%,_#F5F7FA_100%)] dark:bg-[radial-gradient(circle,#092A28_0%,#090A15_100%)] blur-[50px] md:blur-[40px] pointer-events-none z-0 will-change-[top,left,transform] [backface-visibility:hidden] [-webkit-backface-visibility:hidden] [perspective:1000px] [-webkit-perspective:1000px] isolate" />
-        <LogoBar
-          logos={logosBar1}
-          color={color}
-          pauseOnHover={false}
-          duplicateCount={2}
-        />
-        <LogoBar
-          logos={logosBar2}
-          color={color}
-          direction="left"
-          pauseOnHover={false}
-          duplicateCount={2}
-        />
-        <LogoBar
-          logos={logosBar3}
-          color={color}
-          pauseOnHover={false}
-          duplicateCount={2}
-        />
-      </div>
-    );
-  },
-);
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        width: "100%",
+        overflow: "visible",
+        gap: "10px",
+        position: "relative",
+      }}
+    >
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 translate-z-0 w-[350px] h-[350px] md:w-[300px] md:h-[300px] rounded-full bg-[radial-gradient(circle,#E0F2F1_0%,_#F5F7FA_100%)] dark:bg-[radial-gradient(circle,#092A28_0%,#090A15_100%)] blur-[50px] md:blur-[40px] pointer-events-none z-0 will-change-[top,left,transform] [backface-visibility:hidden] [-webkit-backface-visibility:hidden] [perspective:1000px] [-webkit-perspective:1000px] isolate" />
+      <LogoBar logos={logosBar1} color={color} />
+      <LogoBar logos={logosBar2} color={color} direction="left" />
+      <LogoBar logos={logosBar3} color={color} />
+    </div>
+  );
+});
 
 TrackMode.displayName = "TrackMode";
 
@@ -240,23 +198,19 @@ TrackMode.displayName = "TrackMode";
 // MAIN COMPONENT
 // ============================================================================
 
-export const LogoGrid = ({
-  logos: propLogos,
-  type = "spotlight",
-  color = undefined,
-}: LogoGridProps) => {
-  const logos =
-    propLogos && propLogos.length > 0 ? propLogos : defaultLogosData;
+export const LogoGrid = ({ logos: propLogos, type = "spotlight", color }: LogoGridProps) => {
+  const logos = propLogos?.length ? propLogos : defaultLogosData;
+  const content =
+    type === "track" ? (
+      <TrackMode logos={logos} color={color} />
+    ) : (
+      <SpotlightMode logos={logos} color={color} />
+    );
 
-  const comps = {
-    track: <TrackMode logos={logos} color={color} />,
-    spotlight: <SpotlightMode logos={logos} color={color} />,
-    wrap: <SpotlightMode logos={logos} color={color} />,
-  };
   return (
     <>
       <AnimationStyles />
-      {comps[type]}
+      {content}
     </>
   );
 };

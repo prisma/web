@@ -71,8 +71,7 @@ const HeroCode: React.FC<HeroCodeProps> = ({ steps }) => {
           /<span class="line">([\s\S]*?)(<\/span>)/g,
           (match, content, closing) => {
             // Check if line starts with + (accounting for any leading spans)
-            const startsWithPlus =
-              /<span[^>]*>\+/.test(content) || content.trim().startsWith("+");
+            const startsWithPlus = /<span[^>]*>\+/.test(content) || content.trim().startsWith("+");
             if (startsWithPlus) {
               return `<span class="line diff-add">${content}${closing}`;
             }
@@ -103,9 +102,7 @@ const HeroCode: React.FC<HeroCodeProps> = ({ steps }) => {
   // cycle across steps and go back to if we're at the end
   const cycleActiveStep = () => {
     if (steps.length === 0) return;
-    activeStep === steps.length - 1
-      ? setActiveStep(0)
-      : setActiveStep(activeStep + 1);
+    activeStep === steps.length - 1 ? setActiveStep(0) : setActiveStep(activeStep + 1);
   };
 
   return (
@@ -123,17 +120,12 @@ const HeroCode: React.FC<HeroCodeProps> = ({ steps }) => {
       >
         {/* Card Header */}
         <CardHeader className="flex justify-between flex-row! items-center">
-          <span className="mb-0 text-foreground-neutral-weak text-xs font-bold">
-            schema.prisma
-          </span>
+          <span className="mb-0 text-foreground-neutral-weak text-xs font-bold">schema.prisma</span>
           <Button
             variant="default"
             size="lg"
             onClick={() => cycleActiveStep()}
-            className={cn(
-              "w-fit transition-all duration-300",
-              activeStep !== 0 && "lg:mr-26",
-            )}
+            className={cn("w-fit transition-all duration-300", activeStep !== 0 && "lg:mr-26")}
             disabled={isLoading}
           >
             {currentStep?.title || "No title"}

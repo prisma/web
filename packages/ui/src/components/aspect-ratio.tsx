@@ -1,4 +1,4 @@
-import { cn } from "@prisma-docs/ui/lib/cn"
+import { cn } from "@prisma-docs/ui/lib/cn";
 
 function AspectRatio({
   ratio,
@@ -16,7 +16,7 @@ function AspectRatio({
       className={cn("relative aspect-(--ratio)", className)}
       {...props}
     />
-  )
+  );
 }
 
-export { AspectRatio }
+export { AspectRatio };

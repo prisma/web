@@ -194,9 +194,7 @@ const securityHeaders = [
   },
 ];
 
-const allowedDevOrigins = (
-  process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0.1,192.168.1.48"
-)
+const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0.1,192.168.1.48")
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
@@ -205,6 +203,18 @@ const allowedDevOrigins = (
 const config = {
   reactCompiler: true,
   async redirects() {
+    const tagSlugs = [
+      "ai",
+      "announcement",
+      "data-platform",
+      "education",
+      "orm",
+      "prisma-postgres",
+      "release",
+      "serverless",
+      "user-success-story",
+    ];
+
     return [
       {
         source: "/",
@@ -212,10 +222,24 @@ const config = {
         permanent: false,
         basePath: false,
       },
+      {
+        source: "/optimize-now-generally-available",
+        destination: "/",
+        permanent: true,
+      },
+      ...tagSlugs.map((tag) => ({
+        source: `/${tag}`,
+        destination: `/?tag=${tag}`,
+        permanent: true,
+      })),
     ];
   },
   async rewrites() {
     return [
+      {
+        source: "/sitemap",
+        destination: "/sitemap.xml",
+      },
       {
         source: "/:path*.mdx",
         destination: "/llms.mdx/:path*",

@@ -1,4 +1,4 @@
-import { Feed } from 'feed';
+import { Feed } from "feed";
 
 export interface RSSConfig {
   /**
@@ -97,12 +97,10 @@ export function generateRSS(config: RSSConfig, items: RSSItem[]): string {
     title: config.title,
     id: config.baseUrl,
     link: config.baseUrl,
-    language: config.language || 'en',
+    language: config.language || "en",
     description: config.description,
     favicon: `${config.baseUrl}/favicon.ico`,
-    copyright:
-      config.copyright ||
-      `All rights reserved ${new Date().getFullYear()}`,
+    copyright: config.copyright || `All rights reserved ${new Date().getFullYear()}`,
     author: config.author,
   });
 
