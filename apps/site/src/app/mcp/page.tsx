@@ -25,9 +25,9 @@ const mcpStructuredData = createSoftwareApplicationStructuredData({
 });
 
 export const metadata = createPageMetadata({
-  title: "Prisma MCP Server — AI-Powered Database Management",
+  title: "Prisma MCP Server | Manage Databases with AI Agents",
   description:
-    "Manage your databases with natural language via MCP in Claude, Codex, Cursor, Warp, ChatGPT and other AI agents. Works great with Prisma Postgres.",
+    "Use Model Context Protocol to create databases, run queries, manage schema changes, and work with Prisma Postgres from Claude, Codex, Cursor, ChatGPT, and more.",
   path: "/mcp",
   ogImage: "/og/og-mcp.png",
 });

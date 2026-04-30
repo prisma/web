@@ -282,9 +282,9 @@ const ormStructuredData = createSoftwareApplicationStructuredData({
 });
 
 export const metadata = createPageMetadata({
-  title: "Prisma ORM | Next-generation database toolkit for TypeScript",
+  title: "Prisma ORM | Type-Safe ORM for Node.js and TypeScript",
   description:
-    "Prisma ORM combines a clean schema, type-safe queries, and developer-friendly workflows for building with Postgres and other databases in TypeScript.",
+    "Model data, run migrations, and query PostgreSQL, MySQL, SQLite, SQL Server, MongoDB, and CockroachDB with a type-safe ORM built for developer productivity.",
   path: "/orm",
   ogImage: "/og/og-orm.png",
 });

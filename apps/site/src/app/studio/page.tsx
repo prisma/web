@@ -97,9 +97,9 @@ const studioStructuredData = createSoftwareApplicationStructuredData({
 });
 
 export const metadata = createPageMetadata({
-  title: "Prisma Studio — Visual Database Browser & Editor",
+  title: "Prisma Studio | Visual Database Browser and Editor",
   description:
-    "The easiest way to explore and manipulate your data in all of your Prisma projects.",
+    "Explore, edit, and understand your data with a visual database browser for Prisma, locally or in Prisma Console.",
   path: "/studio",
   ogImage: "/og/og-studio.png",
 });

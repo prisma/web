@@ -109,9 +109,9 @@ const twoCol = [
   },
 ];
 export const metadata = createPageMetadata({
-  title: "Prisma Postgres | Instant Global Databases",
+  title: "Prisma Postgres | Serverless PostgreSQL with Instant Setup",
   description:
-    "Free to start, no setup, no commitments. Easily grow your database as your app scales.",
+    "Create a serverless PostgreSQL database in seconds with built-in connection pooling, global availability, automated backups, and usage-based pricing.",
   path: "/postgres",
   ogImage: "/og/og-postgres.png",
 });

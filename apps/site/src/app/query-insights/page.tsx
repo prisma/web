@@ -3,9 +3,9 @@ import { createPageMetadata } from "@/lib/page-metadata";
 import { Button } from "@prisma/eclipse";
 
 export const metadata = createPageMetadata({
-  title: "Prisma Query Insights",
+  title: "Prisma Query Insights | Find and Fix Slow Database Queries",
   description:
-    "Understand why your database queries are slow, see their real impact in production, and generate a structured AI prompt to improve them.",
+    "Monitor slow queries in Prisma Postgres, understand their production impact, and generate AI-ready optimization prompts to fix performance issues faster.",
   path: "/query-insights",
   ogImage: "/og/og-query-insights.png",
 });
