@@ -46,7 +46,9 @@ export function PostCard({
 
   const titleClassName = cn(
     "text-foreground-neutral font-mona-sans mt-4 mb-2",
-    isFeatured ? "text-2xl font-bold" : "text-md md:text-lg font-[650] sm:font-bold",
+    isFeatured
+      ? "text-2xl font-bold"
+      : "text-md md:text-lg font-[650] sm:font-bold",
   );
   const excerptClassName = cn(
     "text-sm text-foreground-neutral-weak line-clamp-2",
@@ -61,13 +63,28 @@ export function PostCard({
     <>
       <div>
         <div className="eyebrow flex gap-2 items-center">
-          {post.badge && <Badge color="success" label={post.badge} className="w-fit text-xs" />}
-          {post.date && <span className="text-xs text-foreground-neutral-weak">{post.date}</span>}
+          {post.badge && (
+            <Badge
+              color="success"
+              label={post.badge}
+              className="w-fit text-xs"
+            />
+          )}
+          {post.date && (
+            <span className="text-xs text-foreground-neutral-weak">
+              {post.date}
+            </span>
+          )}
         </div>
         {post.title && <h2 className={titleClassName}>{post.title}</h2>}
         {post.excerpt && <p className={excerptClassName}>{post.excerpt}</p>}
       </div>
-      {post.author && <AuthorAvatarGroup authors={[post.author]} className={authorClassName} />}
+      {post.author && (
+        <AuthorAvatarGroup
+          authors={[post.author]}
+          className={authorClassName}
+        />
+      )}
     </>
   );
 
@@ -78,7 +95,7 @@ export function PostCard({
           <img
             src={post.imageSrc}
             alt={post.imageAlt ?? post.title}
-            className={imageClassName}
+            className={cn(imageClassName, "absolute inset-0 w-full h-full")}
             loading={isFeatured ? "eager" : "lazy"}
           />
         </div>
@@ -93,7 +110,12 @@ export function PostCard({
           {postBody}
         </Card>
       ) : (
-        <div className={cn("flex flex-col justify-between", !vertical && "order-1")}>
+        <div
+          className={cn(
+            "flex flex-col justify-between",
+            !vertical && "order-1",
+          )}
+        >
           {postBody}
         </div>
       )}
