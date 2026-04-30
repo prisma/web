@@ -71,7 +71,7 @@ export const authLinks: LinkItemType[] = [
   {
     type: "button",
     text: "Login",
-    url: "https://console.prisma.io/login?utm_source=docs&utm_medium=navbar&utm_campaign=login",
+    url: "https://console.prisma.io/login?utm_source=docs&utm_medium=login",
     active: "none",
     on: "nav",
     secondary: true,
