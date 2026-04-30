@@ -322,9 +322,9 @@ const abstraction_ease_of_use = [
 ];
 
 const ENTERPRISE_TITLE =
-  "Streamline your enterprise development workflow with Prisma";
+  "Prisma Enterprise | ORM Support and Database Workflows for Teams";
 const ENTERPRISE_DESCRIPTION =
-  "Learn how Prisma ORM can improve your team's productivity and explore our tailored ORM support solutions for enterprises and solution providers.";
+  "See how Prisma helps engineering teams ship faster with better database workflows, enterprise support, and tailored solutions for large organizations.";
 
 export const metadata = createPageMetadata({
   title: ENTERPRISE_TITLE,
