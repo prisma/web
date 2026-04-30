@@ -8,7 +8,7 @@ import { useSidebar } from "../base";
 import { Popover, PopoverContent, PopoverTrigger } from "../../../ui/popover";
 import type { SidebarTab } from "./index";
 import type { LinkItemType } from "../../link-item";
-import { LinkItem } from "../../link-item";
+import { isLinkItemVisibleOn, LinkItem } from "../../link-item";
 
 export interface SidebarTabWithProps extends SidebarTab {
   props?: ComponentProps<"a">;
@@ -33,7 +33,13 @@ export function SidebarTabsDropdown({
   }
 
   const options = useMemo(() => {
-    return links.filter((item) => item.type !== "icon" && (hasUrl(item) || isMenu(item)));
+    return links.filter(
+      (item) =>
+        item.type !== "icon" &&
+        item.type !== "button" &&
+        isLinkItemVisibleOn(item, "menu") &&
+        (hasUrl(item) || isMenu(item)),
+    );
   }, [links]);
 
   const isLinkActive = (item: LinkItemType & { url: string }) => {
