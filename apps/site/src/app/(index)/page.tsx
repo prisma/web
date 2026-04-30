@@ -1,4 +1,3 @@
-import Antigravity from "../../components/homepage/antigravity";
 import { createPageMetadata } from "@/lib/page-metadata";
 import { SITE_HOME_DESCRIPTION, SITE_HOME_TITLE } from "@/lib/site-metadata";
 import { Button } from "@prisma/eclipse";
@@ -8,6 +7,11 @@ import { CardSection } from "@/components/homepage/card-section/card-section";
 import { ConsoleCtaButton } from "@/components/console-cta-button";
 import review from "../../data/homepage.json";
 import Testimonials from "../../components/homepage/testimonials";
+// Antigravity is a purely decorative particle animation — skip SSR to keep
+// the 300 inline <g> elements out of the initial HTML payload (~36 KB).
+// The actual next/dynamic({ ssr: false }) call lives in the client wrapper
+// because ssr:false is only valid inside Client Components in the App Router.
+import Antigravity from "../../components/homepage/antigravity-client";
 
 const INDEX_CTA_DEFAULT_UTM = {
   utm_source: "website",
