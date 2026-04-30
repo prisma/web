@@ -36,13 +36,6 @@ interface Filterable {
   on?: "menu" | "nav" | "all";
 }
 
-export function isLinkItemVisibleOn(
-  item: { on?: Filterable['on'] },
-  target: Exclude<Filterable['on'], 'all'>,
-) {
-  return item.on === undefined || item.on === 'all' || item.on === target;
-}
-
 interface WithHref {
   url: string;
   /**

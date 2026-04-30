@@ -8,7 +8,8 @@ import { useSidebar } from "../base";
 import { Popover, PopoverContent, PopoverTrigger } from "../../../ui/popover";
 import type { SidebarTab } from "./index";
 import type { LinkItemType } from "../../link-item";
-import { isLinkItemVisibleOn, LinkItem } from "../../link-item";
+import { isLinkItemVisibleOn } from "../../link-item-visibility";
+import { LinkItem } from "../../link-item";
 
 export interface SidebarTabWithProps extends SidebarTab {
   props?: ComponentProps<"a">;

@@ -26,8 +26,8 @@ import {
   SidebarEnabledGate,
 } from "./client";
 import { LargeSearchToggle, SearchToggle } from "../search-toggle";
+import { isLinkItemVisibleOn } from "../link-item-visibility";
 import {
-  isLinkItemVisibleOn,
   LinkItem,
   type ButtonItemType,
   type LinkItemType,

@@ -17,7 +17,8 @@ import { ChevronDown } from "lucide-react";
 import Link from "fumadocs-core/link";
 import { usePathname } from "fumadocs-core/framework";
 import { useIsScrollTop } from "@fumadocs/base-ui/utils/use-is-scroll-top";
-import { LinkItem, isLinkItemVisibleOn, type LinkItemType, type MenuItemType } from "../link-item";
+import { isLinkItemVisibleOn } from "../link-item-visibility";
+import { LinkItem, type LinkItemType, type MenuItemType } from "../link-item";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
 
 export const LayoutContext = createContext<{
