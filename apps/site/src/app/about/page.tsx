@@ -1,5 +1,5 @@
 import Image from "next/image";
-import Antigravity from "../../components/homepage/antigravity";
+
 import { createPageMetadata } from "@/lib/page-metadata";
 import {
   Action,
@@ -14,7 +14,7 @@ import { CardSection } from "@/components/homepage/card-section/card-section";
 import review from "../../data/homepage.json";
 import { cn } from "@/lib/cn";
 
-import { MasonryPict } from "@/components/careers/masonry";
+import MasonryPict from "@/components/careers/masonry-client";
 
 const what_we_care_about = [
   {

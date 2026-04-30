@@ -9,7 +9,7 @@ import { Challenges } from "@/components/careers/Challenges";
 import { WorldMap } from "@/components/careers/WorldMap";
 import { OpenRoles } from "@/components/careers/open-roles";
 
-import { MasonryPict } from "@/components/careers/masonry";
+import MasonryPict from "@/components/careers/masonry-client";
 
 const masonryImages = [
   {
