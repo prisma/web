@@ -6,6 +6,14 @@ type LLMsLink = {
   description: string;
 };
 
+type LLMsPage = {
+  data: {
+    title: string;
+    description?: string;
+  };
+  url: string;
+};
+
 type LLMsFullPage = {
   data: {
     title: string;
@@ -18,6 +26,27 @@ type LLMsSection = {
   description: string;
   prefixes: string[];
 };
+
+type LLMsExcludedProduct = {
+  prefixes: string[];
+  urlPatterns?: RegExp[];
+  titlePatterns?: RegExp[];
+  descriptionPatterns?: RegExp[];
+};
+
+const excludedLLMsProducts: LLMsExcludedProduct[] = [
+  {
+    prefixes: ["/accelerate"],
+    urlPatterns: [/(^|\/)accelerate($|[/-])/i],
+    titlePatterns: [/\bAccelerate\b/i],
+    descriptionPatterns: [/\bAccelerate\b/i],
+  },
+  {
+    prefixes: ["/optimize"],
+    titlePatterns: [/\bPrisma Optimize\b/i],
+    descriptionPatterns: [/\bPrisma Optimize\b/i],
+  },
+];
 
 export const commonQueries: LLMsLink[] = [
   {
@@ -52,6 +81,11 @@ export const commonQueries: LLMsLink[] = [
     title: "Deploy migrations safely",
     href: "/orm/prisma-client/deployment/deploy-database-changes-with-prisma-migrate",
     description: "Apply schema changes in production with Prisma Migrate.",
+  },
+  {
+    title: "Use Query Insights",
+    href: "/query-insights",
+    description: "Inspect slow queries, connect Prisma calls to SQL, and apply focused fixes.",
   },
   {
     title: "Set up the Prisma MCP server",
@@ -103,6 +137,16 @@ export const llmsSections: LLMsSection[] = [
     prefixes: ["/postgres", "/prisma-postgres"],
   },
   {
+    slug: "query-insights",
+    title: "Query Insights",
+    description: "Query performance analysis, slow query inspection, and Prisma SQL comment setup.",
+    prefixes: [
+      "/query-insights",
+      "/postgres/database/query-insights",
+      "/orm/prisma-client/queries/advanced/query-optimization-performance",
+    ],
+  },
+  {
     slug: "mcp",
     title: "Prisma MCP",
     description: "MCP server setup for Prisma Postgres and Prisma CLI workflows.",
@@ -115,14 +159,52 @@ function resolveLLMsHref(href: string, baseUrl: string) {
   return `${baseUrl}${withDocsBasePath(href)}`;
 }
 
+function normalizeInternalHref(href: string) {
+  if (/^[a-z][a-z\d+.-]*:\/\//i.test(href)) return undefined;
+
+  const pathname = href.split(/[?#]/, 1)[0];
+  if (pathname === "/docs") return "/";
+  if (pathname.startsWith("/docs/")) return pathname.slice("/docs".length);
+  return pathname;
+}
+
+function hasPageForHref(href: string, pages: LLMsPage[]) {
+  const pathname = normalizeInternalHref(href);
+  if (!pathname) return true;
+  return pages.some((page) => page.url === pathname);
+}
+
+function matchesLLMsPagePrefix(page: LLMsPage, prefixes: string[]) {
+  return prefixes.some((prefix) => page.url === prefix || page.url.startsWith(`${prefix}/`));
+}
+
+function matchesAnyPattern(value: string, patterns: RegExp[] | undefined) {
+  return patterns?.some((pattern) => pattern.test(value)) ?? false;
+}
+
+function isExcludedLLMsPage(page: LLMsPage) {
+  return excludedLLMsProducts.some(
+    (product) =>
+      matchesLLMsPagePrefix(page, product.prefixes) ||
+      matchesAnyPattern(page.url, product.urlPatterns) ||
+      matchesAnyPattern(page.data.title, product.titlePatterns) ||
+      matchesAnyPattern(page.data.description ?? "", product.descriptionPatterns),
+  );
+}
+
+export function filterPagesForLLMsIndex<T extends LLMsPage>(pages: T[]) {
+  return pages.filter((page) => !isExcludedLLMsPage(page));
+}
+
 export function formatLLMsLink(link: LLMsLink, baseUrl: string) {
   return `- [\`${link.title}\`](${resolveLLMsHref(link.href, baseUrl)}): ${link.description}`;
 }
 
-export function formatLLMsPageLink(
-  page: { data: { title: string; description?: string }; url: string },
-  baseUrl: string,
-) {
+export function filterAvailableLLMsLinks(links: LLMsLink[], pages: LLMsPage[]) {
+  return links.filter((link) => hasPageForHref(link.href, pages));
+}
+
+export function formatLLMsPageLink(page: LLMsPage, baseUrl: string) {
   const title = page.data.title;
   const description = page.data.description || "";
   const path = `${baseUrl}${withDocsBasePath(page.url)}`;
@@ -136,10 +218,6 @@ export function formatLLMsSectionLink(section: LLMsSection, baseUrl: string) {
   return `- [\`${section.title}\`](${href}): ${section.description}`;
 }
 
-export function getLLMsSection(slug: string) {
-  return llmsSections.find((section) => section.slug === slug);
-}
-
 export function filterPagesForLLMsSection<T extends { url: string }>(
   pages: T[],
   section: LLMsSection,
@@ -147,6 +225,15 @@ export function filterPagesForLLMsSection<T extends { url: string }>(
   return pages.filter((page) =>
     section.prefixes.some((prefix) => page.url === prefix || page.url.startsWith(`${prefix}/`)),
   );
+}
+
+export function filterAvailableLLMsSections(sections: LLMsSection[], pages: LLMsPage[]) {
+  return sections.filter((section) => filterPagesForLLMsSection(pages, section).length > 0);
+}
+
+export function getLLMsSection(slug: string, pages?: LLMsPage[]) {
+  const sections = pages ? filterAvailableLLMsSections(llmsSections, pages) : llmsSections;
+  return sections.find((section) => section.slug === slug);
 }
 
 export function createLLMsFullResponse<TPage extends LLMsFullPage>(
@@ -175,10 +262,13 @@ export function createLLMsFullResponse<TPage extends LLMsFullPage>(
       try {
         controller.enqueue(encoder.encode(`${await renderPage(page)}\n\n`));
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Unknown error";
+        console.error("docs:llms_full_page_render_error", {
+          title: page.data.title,
+          error,
+        });
         controller.enqueue(
           encoder.encode(
-            `# ${page.data.title}\n\nThis page could not be rendered for the full documentation feed.\n\n${message}\n\n`,
+            `# ${page.data.title}\n\nThis page could not be rendered for the full documentation feed.\n\nAn internal error occurred while rendering this page.\n\n`,
           ),
         );
       }

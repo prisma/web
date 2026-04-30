@@ -4,6 +4,9 @@ import { getBaseUrl, withDocsBasePath } from "@/lib/urls";
 
 export const revalidate = false;
 
+const MAX_NEAREST_MATCH_SEGMENTS = 12;
+const MAX_NEAREST_MATCH_PATH_LENGTH = 240;
+
 function resolvePage(slug: string[] | undefined) {
   const slugs = slug ?? [];
 
@@ -36,8 +39,19 @@ function getDistance(a: string, b: string) {
   return previous[b.length];
 }
 
+function getBoundedRequestedPath(slug: string[] | undefined) {
+  const slugs = slug ?? [];
+  if (slugs.length > MAX_NEAREST_MATCH_SEGMENTS) return undefined;
+
+  const requestedPath = `/${slugs.join("/")}`;
+  if (requestedPath.length > MAX_NEAREST_MATCH_PATH_LENGTH) return undefined;
+
+  return normalizePath(requestedPath);
+}
+
 function getNearestPages(slug: string[] | undefined) {
-  const requestedPath = normalizePath(`/${(slug ?? []).join("/")}`);
+  const requestedPath = getBoundedRequestedPath(slug);
+  if (!requestedPath) return [];
 
   return [...source.getPages(), ...sourceV6.getPages()]
     .map((page) => ({

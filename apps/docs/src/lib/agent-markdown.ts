@@ -7,9 +7,6 @@ const AGENT_USER_AGENT_PATTERNS = [
   /claude-user/i,
   /perplexitybot/i,
   /cursor/i,
-  /axios(?:\/|\s|$)/i,
-  /node-fetch/i,
-  /(?:^|[\s;/])got(?:$|[\s;/])/i,
 ];
 
 const SKIPPED_DOCS_PREFIXES = ["/api", "/llms", "/llms.mdx", "/og"];

@@ -186,10 +186,14 @@ function trimComponentContent(value: string) {
 
 function cleanCalloutContent(value: string) {
   return trimComponentContent(value)
+    .replace(
+      /<Callout(?:Title|Description)>([\s\S]*?)<\/Callout(?:Title|Description)>/g,
+      (_match, content: string) => trimComponentContent(content),
+    )
     .replace(/<\/?(?:CalloutTitle|CalloutDescription)>/g, "")
+    .replace(/^(?:[ \t]*\n)+|(?:\n[ \t]*)+$/g, "")
     .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
+    .map((line) => line.replace(/[ \t]+$/g, ""))
     .join("\n");
 }
 
