@@ -42,7 +42,7 @@ export function createSiteStructuredData() {
         name: "Prisma",
         url: baseUrl,
         description,
-        logo: absoluteUrl("/icons/technologies/prisma.svg"),
+        logo: absoluteUrl("/images/logo.svg"),
         sameAs: [
           "https://github.com/prisma",
           "https://twitter.com/prisma",
@@ -65,7 +65,11 @@ export function createSiteStructuredData() {
   };
 }
 
-export function createFaqStructuredData(pagePath: string, faqs: FaqEntry[], name: string) {
+export function createFaqStructuredData(
+  pagePath: string,
+  faqs: FaqEntry[],
+  name: string,
+) {
   return {
     "@context": "https://schema.org",
     "@type": "FAQPage",
