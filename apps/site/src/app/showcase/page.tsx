@@ -36,6 +36,14 @@ export default function EnterprisePage() {
           <p className="text-center text-foreground-neutral max-w-2xl mx-auto text-xl">
             Learn how companies use Prisma in Production
           </p>
+          <div className="flex justify-center">
+            <Button asChild variant="orm" size="2xl">
+              <a href="/case-studies">
+                Browse case studies
+                <i className="fa-regular fa-arrow-right" />
+              </a>
+            </Button>
+          </div>
           <h5 className="text-foreground-neutral-weak text-xs font-normal text-center -mt-4 inline-flex items-center justify-center">
             Building with Prisma? Show it off with{" "}
             <a

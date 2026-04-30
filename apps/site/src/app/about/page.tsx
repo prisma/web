@@ -378,7 +378,7 @@ const investors = {
 };
 
 export const metadata = createPageMetadata({
-  title: "About | Prisma",
+  title: "About Prisma | Company, mission, and careers",
   description:
     "At Prisma, our mission is to provide the best experience for teams to work and interact with databases. Learn more about Prisma.",
   path: "/about",
@@ -408,7 +408,7 @@ export default function About() {
         </div>
         <div className="content relative z-2 my-12 flex flex-col gap-8 mt-30 py-12">
           <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
-            Join Prisma
+            About Prisma
           </h1>
           <p className="text-center text-foreground-neutral max-w-2xl mx-auto mb-12">
             Our mission is to unlock productivity for developers by bringing

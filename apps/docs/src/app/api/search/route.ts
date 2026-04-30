@@ -1,6 +1,7 @@
 import { createMixedbreadSearchAPI } from "fumadocs-core/search/mixedbread";
 import Mixedbread from "@mixedbread/sdk";
 import { SortedResult } from "fumadocs-core/search";
+import { formatSlugDisplayName } from "@/lib/breadcrumb-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -14,12 +15,7 @@ function getBreadcrumbsFromUrl(url: string): string[] {
   if (normalized.length === 0) return [];
   // Ancestors only (exclude last = current page), or full path for section roots
   const breadcrumbSegments = normalized.length > 1 ? normalized.slice(0, -1) : normalized;
-  return breadcrumbSegments.map((s) =>
-    s
-      .split(/[-_]/)
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-      .join(" "),
-  );
+  return breadcrumbSegments.map((s) => formatSlugDisplayName(s));
 }
 
 function slugger(value: string): string {

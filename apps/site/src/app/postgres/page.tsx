@@ -1,3 +1,4 @@
+import { createSoftwareApplicationStructuredData } from "@/lib/structured-data";
 import { createPageMetadata } from "@/lib/page-metadata";
 import { Button, Card, Action } from "@prisma/eclipse";
 import { cn } from "@/lib/cn";
@@ -8,9 +9,27 @@ import { LogoGrid } from "@/components/homepage/card-section/logo-grid";
 import { ScrollCarousel } from "@/components/scroll-carousel";
 import { Youtube } from "@prisma-docs/ui/components/youtube";
 import { CarouselItem } from "@/components/enterprise/carousel-item";
+import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 
 const CONSOLE_URL =
   "https://console.prisma.io/login?utm_source=website&utm_medium=postgres&utm_campaign=cta";
+
+const postgresStructuredData = createSoftwareApplicationStructuredData({
+  path: "/postgres",
+  name: "Prisma Postgres",
+  description:
+    "Managed serverless PostgreSQL database built for modern applications. Instant provisioning, zero configuration, global availability, connection pooling, automated backups, and encryption at rest and in transit.",
+  applicationCategory: "DeveloperApplication",
+  operatingSystem: "Web",
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD",
+    name: "Free tier",
+    description:
+      "Free to start with usage-based pricing as your database scales.",
+  },
+});
 
 const twoCol = [
   {
@@ -100,6 +119,7 @@ export const metadata = createPageMetadata({
 export default async function SiteHome() {
   return (
     <main className="flex-1 w-full z-1 bg-background-default">
+      <JsonLd id="postgres-software-application" data={postgresStructuredData} />
       <div className="hero -mt-24 pt-40 flex items-end justify-center px-4 relative">
         <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-ppg)_0%,var(--color-background-default)_100%)] opacity-20" />
         <div className="content relative z-2 flex flex-col gap-8">

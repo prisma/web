@@ -93,12 +93,24 @@ export function createSoftwareApplicationStructuredData({
   description,
   applicationCategory = "DeveloperApplication",
   operatingSystem = "Cross-platform",
+  license,
+  downloadUrl,
+  offers,
 }: {
   path: string;
   name: string;
   description: string;
   applicationCategory?: string;
   operatingSystem?: string;
+  license?: string;
+  downloadUrl?: string;
+  offers?: {
+    "@type": "Offer";
+    price: string;
+    priceCurrency: string;
+    name?: string;
+    description?: string;
+  };
 }) {
   const url = absoluteUrl(path);
   const baseUrl = getBaseUrl();
@@ -112,7 +124,9 @@ export function createSoftwareApplicationStructuredData({
     url,
     applicationCategory,
     operatingSystem,
-    offers: {
+    ...(license && { license }),
+    ...(downloadUrl && { downloadUrl }),
+    offers: offers ?? {
       "@type": "Offer",
       price: "0",
       priceCurrency: "USD",

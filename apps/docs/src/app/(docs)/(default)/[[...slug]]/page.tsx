@@ -91,10 +91,12 @@ export async function generateMetadata({
 
   const title = page.data.metaTitle ?? page.data.title;
   const description = page.data.metaDescription ?? page.data.description;
+  const noindex = (page.data as { noindex?: boolean }).noindex;
 
   return {
     title,
     description,
+    ...(noindex && { robots: { index: false, follow: true } }),
     alternates: {
       canonical: withDocsBasePath(page.url),
     },

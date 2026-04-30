@@ -1,4 +1,5 @@
 import { getBaseUrl, withDocsBasePath } from "@/lib/urls";
+import { formatSlugDisplayName } from "@/lib/breadcrumb-utils";
 import type { InferPageType } from "fumadocs-core/source";
 import type { source, sourceV6 } from "@/lib/source";
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
@@ -61,7 +62,7 @@ function getBreadcrumbName(page: DocsPage, slugs: string[], index: number) {
 
   return (
     getSectionTitle(page, slugs.slice(0, index + 1)) ??
-    slugs[index].charAt(0).toUpperCase() + slugs[index].slice(1).replace(/-/g, " ")
+    formatSlugDisplayName(slugs[index])
   );
 }
 
