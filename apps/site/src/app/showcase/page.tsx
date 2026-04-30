@@ -3,7 +3,7 @@ import Image from "next/image";
 import { FooterAccordion } from "@/components/enterprise/footer-accordion";
 import { SwitchEnterprise } from "@/components/enterprise/switch-enterprise";
 import LogoParade from "@/components/logo-parade";
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { Button, Card, Action, Avatar } from "@prisma/eclipse";
 import { CardSection } from "@/components/homepage/card-section/card-section";
 import { cn } from "@/lib/cn";
@@ -16,29 +16,12 @@ const SHOWCASE_TITLE = "Prisma Showcase | Customer Success stories";
 const SHOWCASE_DESCRIPTION =
   "Learn how companies are leveraging our powerful, next-generation, type-safe ORM for Node.js.";
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: SHOWCASE_TITLE,
   description: SHOWCASE_DESCRIPTION,
-  alternates: {
-    canonical: "https://www.prisma.io/showcase",
-  },
-  openGraph: {
-    title: SHOWCASE_TITLE,
-    description: SHOWCASE_DESCRIPTION,
-    url: "https://www.prisma.io/showcase",
-    images: [
-      {
-        url: "/og/og-showcase.png",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: SHOWCASE_TITLE,
-    description: SHOWCASE_DESCRIPTION,
-    images: ["/og/og-showcase.png"],
-  },
-};
+  path: "/showcase",
+  ogImage: "/og/og-showcase.png",
+});
 
 export default function EnterprisePage() {
   return (

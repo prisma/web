@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import Image from "next/image";
 import { Action, Button } from "@prisma/eclipse";
 import { CardSection } from "@/components/homepage/card-section/card-section";
@@ -79,9 +79,9 @@ const twoCol = [
           Solve challenging <br /> technical problems
         </h2>
         <p className="text-foreground-neutral-weak! text-base">
-          Prisma is building the data access layer for modern applications. If you're drawn to the
-          technology powering large companies but desire the challenges and freedom of a startup,
-          then consider joining us.
+          Prisma is building the data access layer for modern applications. If
+          you're drawn to the technology powering large companies but desire the
+          challenges and freedom of a startup, then consider joining us.
         </p>
       </>
     ),
@@ -102,9 +102,10 @@ const twoCol = [
           Flexible work environment
         </h2>
         <p className="text-foreground-neutral-weak! text-base">
-          We offer flexible working hours and generous paid time off to accommodate different
-          lifestyles and responsibilities. As long as it suits your team, you have the freedom to
-          build your work schedule around your life.
+          We offer flexible working hours and generous paid time off to
+          accommodate different lifestyles and responsibilities. As long as it
+          suits your team, you have the freedom to build your work schedule
+          around your life.
         </p>
       </>
     ),
@@ -125,8 +126,9 @@ const twoCol = [
           Flexible remote organization
         </h2>
         <p className="text-foreground-neutral-weak! text-base">
-          Our team is globally distributed and everyone can work from any location within the UTC -5
-          to UTC +3 timezones. We want you to choose wherever you are happiest and most productive.
+          Our team is globally distributed and everyone can work from any
+          location within the UTC -5 to UTC +3 timezones. We want you to choose
+          wherever you are happiest and most productive.
         </p>
       </>
     ),
@@ -148,35 +150,13 @@ const statsList = [
   { head: "100", sub: "Remote" },
 ];
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: "Careers | Prisma",
   description:
     "See open positions at Prisma. Join us to empower developers to build data-intensive applications.",
-  alternates: {
-    canonical: "https://www.prisma.io/careers",
-  },
-  openGraph: {
-    title: "Careers | Prisma",
-    description:
-      "See open positions at Prisma. Join us to empower developers to build data-intensive applications.",
-    url: "https://www.prisma.io/careers",
-    images: [
-      {
-        url: "/og/og-careers.png",
-        width: 1200,
-        height: 630,
-        alt: "Database tools for modern developers",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Careers | Prisma",
-    description:
-      "See open positions at Prisma. Join us to empower developers to build data-intensive applications.",
-    images: ["/og/og-careers.png"],
-  },
-};
+  path: "/careers",
+  ogImage: "/og/og-careers.png",
+});
 
 export default function Careers() {
   return (
@@ -206,7 +186,12 @@ export default function Careers() {
             Help us empower developers to build data-driven applications.
           </p>
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
-            <Button asChild variant="orm" size="3xl" className="font-sans-display! font-[650]">
+            <Button
+              asChild
+              variant="orm"
+              size="3xl"
+              className="font-sans-display! font-[650]"
+            >
               <a href="#open-positions">
                 View open positions
                 <i className="fa-solid fa-arrow-down" />
@@ -245,9 +230,10 @@ export default function Careers() {
                 Our Values
               </h2>
               <p className="text-base text-foreground-neutral-weak text-center max-w-[844px] mx-auto mb-4">
-                At Prisma, we believe that our company values are essential to our success. They
-                guide us in our daily work, helping us to thrive and creating an environment where
-                team members can grow and collaborate effectively.
+                At Prisma, we believe that our company values are essential to
+                our success. They guide us in our daily work, helping us to
+                thrive and creating an environment where team members can grow
+                and collaborate effectively.
               </p>
 
               {/* Values Grid */}
@@ -257,7 +243,9 @@ export default function Careers() {
                   <Action color="orm" size="5xl">
                     <i className="fa-regular fa-eye text-3xl" />
                   </Action>
-                  <h3 className="text-2xl font-bold font-sans-display">Transparency</h3>
+                  <h3 className="text-2xl font-bold font-sans-display">
+                    Transparency
+                  </h3>
                 </div>
 
                 {/* Curiosity */}
@@ -265,7 +253,9 @@ export default function Careers() {
                   <Action color="orm" size="5xl">
                     <i className="fa-regular fa-face-raised-eyebrow text-3xl" />
                   </Action>
-                  <h3 className="text-2xl font-bold font-sans-display">Curiosity</h3>
+                  <h3 className="text-2xl font-bold font-sans-display">
+                    Curiosity
+                  </h3>
                 </div>
 
                 {/* Solidarity */}
@@ -296,8 +286,13 @@ export default function Careers() {
           <div className="grid md:grid-cols-2 gap-10">
             {benefits.map((benefit, index) => (
               <div key={index} className="flex items-start gap-4">
-                <i className={`fa-regular ${benefit.icon} text-3xl text-foreground-orm`} />
-                <p className="text-lg" dangerouslySetInnerHTML={{ __html: benefit.text }} />
+                <i
+                  className={`fa-regular ${benefit.icon} text-3xl text-foreground-orm`}
+                />
+                <p
+                  className="text-lg"
+                  dangerouslySetInnerHTML={{ __html: benefit.text }}
+                />
               </div>
             ))}
           </div>

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import * as data from "../../../data/prisma-with/fastify.json";
 import { PrismaWithLayout } from "../../../components/prisma-with/layout";
 
@@ -100,33 +100,13 @@ model Post {
 }`,
 };
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: "Easy, type-safe database Access in Fastify servers",
   description:
     "Query data from MySQL, PostgreSQL & SQL Server databases in Fastify apps with Prisma – a better ORM for JavaScript and TypeScript.",
-  alternates: {
-    canonical: "https://www.prisma.io/fastify",
-  },
-  openGraph: {
-    title: "Easy, type-safe database Access in Fastify servers",
-    description:
-      "Query data from MySQL, PostgreSQL & SQL Server databases in Fastify apps with Prisma – a better ORM for JavaScript and TypeScript.",
-    url: "https://www.prisma.io/fastify",
-    siteName: "Prisma",
-    locale: "en_US",
-    type: "website",
-    images: [{ url: "/og/prisma-with/fastify.png" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    site: "@prisma",
-    creator: "@prisma",
-    title: "Easy, type-safe database Access in Fastify servers",
-    description:
-      "Query data from MySQL, PostgreSQL & SQL Server databases in Fastify apps with Prisma – a better ORM for JavaScript and TypeScript.",
-    images: ["/og/prisma-with/fastify.png"],
-  },
-};
+  path: "/fastify",
+  ogImage: "/og/prisma-with/fastify.png",
+});
 
 export default async function FastifyPage() {
   return <PrismaWithLayout data={data} codeExamples={codeExamples} />;

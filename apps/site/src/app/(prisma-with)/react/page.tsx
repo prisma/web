@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import * as data from "../../../data/prisma-with/react.json";
 import { PrismaWithLayout } from "../../../components/prisma-with/layout";
 
@@ -140,33 +140,13 @@ export default function Users() {
 }`,
 };
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: "Access your Database from React Apps with Ease",
   description:
     "Build high-performance and type-safe React apps with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and the first serverless database without cold starts.",
-  alternates: {
-    canonical: "https://www.prisma.io/react",
-  },
-  openGraph: {
-    title: "Access your Database from React Apps with Ease",
-    description:
-      "Build high-performance and type-safe React apps with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and the first serverless database without cold starts.",
-    url: "https://www.prisma.io/react",
-    siteName: "Prisma",
-    locale: "en_US",
-    type: "website",
-    images: [{ url: "/og/prisma-with/react.png" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    site: "@prisma",
-    creator: "@prisma",
-    title: "Access your Database from React Apps with Ease",
-    description:
-      "Build high-performance and type-safe React apps with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and the first serverless database without cold starts.",
-    images: ["/og/prisma-with/react.png"],
-  },
-};
+  path: "/react",
+  ogImage: "/og/prisma-with/react.png",
+});
 
 export default async function ReactPage() {
   return <PrismaWithLayout data={data} codeExamples={codeExamples} />;
