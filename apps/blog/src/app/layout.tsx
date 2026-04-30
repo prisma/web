@@ -26,9 +26,25 @@ export const metadata: Metadata = {
 
 export default function Layout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${inter.variable} ${barlow.variable}`} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${inter.variable} ${barlow.variable}`}
+      suppressHydrationWarning
+    >
       <head>
-        <Script src={EclipseFA} crossOrigin="anonymous" data-auto-add-css="false" />
+        {/* FontAwesome — not render-critical; explicit strategy prevents accidental beforeInteractive promotion */}
+        <Script
+          src={EclipseFA}
+          crossOrigin="anonymous"
+          data-auto-add-css="false"
+          strategy="afterInteractive"
+        />
+        {/* CookieYes CMP — must be present on every public-facing app for GDPR/ePrivacy compliance */}
+        <Script
+          id="cookieyes"
+          src="https://cdn-cookieyes.com/client_data/96980f76df67ad5235fc3f0d/script.js"
+          strategy="afterInteractive"
+        />
       </head>
       <body className="flex flex-col min-h-screen relative">
         <div className="bg-blog absolute inset-0 -z-1 overflow-hidden" />

@@ -7,7 +7,10 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import type React from "react";
 import { SITE_HOME_DESCRIPTION, SITE_HOME_TITLE } from "@/lib/site-metadata";
-import { NavigationWrapper, FooterWrapper } from "@/components/navigation-wrapper";
+import {
+  NavigationWrapper,
+  FooterWrapper,
+} from "@/components/navigation-wrapper";
 import { Footer } from "@prisma-docs/ui/components/footer";
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import { ThemeProvider } from "@prisma-docs/ui/components/theme-provider";
@@ -152,7 +155,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           src={WebFA}
           crossOrigin="anonymous"
           data-auto-add-css="false"
-          strategy="beforeInteractive"
+          strategy="afterInteractive"
         />
         <Script
           id="cookieyes"
@@ -190,7 +193,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <Provider>
           <ThemeProvider defaultTheme="system" storageKey="theme">
             <UtmPersistence />
-            <NavigationWrapper links={baseOptions().links} utm={{ source: "website" }} />
+            <NavigationWrapper
+              links={baseOptions().links}
+              utm={{ source: "website" }}
+            />
             {children}
             <FooterWrapper />
           </ThemeProvider>
