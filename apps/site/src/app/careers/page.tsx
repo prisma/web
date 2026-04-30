@@ -12,20 +12,69 @@ import { OpenRoles } from "@/components/careers/open-roles";
 import { MasonryPict } from "@/components/careers/masonry";
 
 const masonryImages = [
-  { imageUrl: "/photos/careers/masonry_1.webp", imageAlt: "Masonry 1" },
-  { imageUrl: "/photos/careers/masonry_2.webp", imageAlt: "Masonry 2" },
-  { imageUrl: "/photos/careers/masonry_3.webp", imageAlt: "Masonry 3" },
-  { imageUrl: "/photos/careers/masonry_4.webp", imageAlt: "Masonry 4" },
-  { imageUrl: "/photos/careers/masonry_5.webp", imageAlt: "Masonry 5" },
-  { imageUrl: "/photos/careers/masonry_10.webp", imageAlt: "Masonry 10" },
-  { imageUrl: "/photos/careers/masonry_6.webp", imageAlt: "Masonry 6" },
-  { imageUrl: "/photos/careers/masonry_7.webp", imageAlt: "Masonry 7" },
-  { imageUrl: "/photos/careers/masonry_8.webp", imageAlt: "Masonry 8" },
-  { imageUrl: "/photos/careers/masonry_9.webp", imageAlt: "Masonry 9" },
-  { imageUrl: "/photos/careers/masonry_14.webp", imageAlt: "Masonry 14" },
-  { imageUrl: "/photos/careers/masonry_11.webp", imageAlt: "Masonry 11" },
-  { imageUrl: "/photos/careers/masonry_12.webp", imageAlt: "Masonry 12" },
-  { imageUrl: "/photos/careers/masonry_13.webp", imageAlt: "Masonry 13" },
+  {
+    imageUrl: "/photos/careers/masonry_1.webp",
+    imageAlt:
+      "A Prisma team member presenting at a conference in front of a Prisma banner",
+  },
+  {
+    imageUrl: "/photos/careers/masonry_2.webp",
+    imageAlt:
+      "Prisma team members walking outdoors together during a company offsite",
+  },
+  {
+    imageUrl: "/photos/careers/masonry_3.webp",
+    imageAlt:
+      "A large group of Prisma team members gathered on a beach during a company retreat",
+  },
+  {
+    imageUrl: "/photos/careers/masonry_4.webp",
+    imageAlt: "Two Prisma team members high-fiving on a sunny beach",
+  },
+  {
+    imageUrl: "/photos/careers/masonry_5.webp",
+    imageAlt:
+      "The Prisma team celebrating together on a beach, holding a Prisma flag",
+  },
+  {
+    imageUrl: "/photos/careers/masonry_10.webp",
+    imageAlt: "Prisma team group photo in front of a coastal waterfront",
+  },
+  {
+    imageUrl: "/photos/careers/masonry_6.webp",
+    imageAlt: "Large Prisma team group photo with a mountain backdrop",
+  },
+  {
+    imageUrl: "/photos/careers/masonry_7.webp",
+    imageAlt:
+      "Prisma team members smiling and engaged during an indoor workshop",
+  },
+  {
+    imageUrl: "/photos/careers/masonry_8.webp",
+    imageAlt:
+      "Prisma team members posing in front of illuminated PRISMA lettering",
+  },
+  {
+    imageUrl: "/photos/careers/masonry_9.webp",
+    imageAlt: "A Prisma team member presenting on stage at a conference",
+  },
+  {
+    imageUrl: "/photos/careers/masonry_14.webp",
+    imageAlt: "Prisma team members high-fiving during a group beach activity",
+  },
+  {
+    imageUrl: "/photos/careers/masonry_11.webp",
+    imageAlt:
+      "Three Prisma team members receiving a Values Award at a company event",
+  },
+  {
+    imageUrl: "/photos/careers/masonry_12.webp",
+    imageAlt: "Three Prisma team members chatting at an outdoor company event",
+  },
+  {
+    imageUrl: "/photos/careers/masonry_13.webp",
+    imageAlt: "Two Prisma team members smiling together at a company offsite",
+  },
 ];
 
 const benefits = [
@@ -165,14 +214,14 @@ export default function Careers() {
         <div className="w-screen absolute inset-0 opacity-20">
           <Image
             src="/illustrations/careers/hero_lines.svg"
-            alt="Hero lines"
+            alt=""
             fill
             priority={true}
             className="object-cover object-bottom hidden dark:block"
           />
           <Image
             src="/illustrations/careers/hero_lines_light.svg"
-            alt="Hero lines"
+            alt=""
             fill
             priority={true}
             className="object-cover object-bottom block dark:hidden"

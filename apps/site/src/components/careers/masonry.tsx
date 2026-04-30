@@ -8,7 +8,13 @@ const gutterClasses: Record<string, string> = {
   "16px": "[column-gap:16px]",
 };
 
-export const MasonryPict = ({ images, gutter }: { images: any[]; gutter: string }) => {
+export const MasonryPict = ({
+  images,
+  gutter,
+}: {
+  images: any[];
+  gutter: string;
+}) => {
   const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set());
 
   const handleImageLoad = (idx: number) => {
@@ -27,7 +33,7 @@ export const MasonryPict = ({ images, gutter }: { images: any[]; gutter: string 
                 src={e.imageUrl}
                 width={400}
                 height={400}
-                alt={`img-${idx}`}
+                alt={e.imageAlt ?? `img-${idx}`}
                 className={`mx-auto h-auto w-full rounded-lg shadow-[0px_18px_42px_0px_rgba(23,43,77,0.08),0px_4px_26px_0px_rgba(23,43,77,0.05),0px_0px_46px_0px_rgba(23,43,77,0.01)] transition-opacity duration-500 ${
                   loadedImages.has(idx) ? "opacity-100" : "opacity-0"
                 }`}

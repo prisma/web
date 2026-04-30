@@ -422,14 +422,14 @@ export default function EnterprisePage() {
                       <div className="bottom-0 left-0 right-0 px-4 after:content-[''] after:absolute after:inset-0 after:bg-[linear-gradient(0deg,var(--color-background-default)_0%,transparent_62.5%)] after:top-0 absolute after:rounded-square">
                         <Image
                           src={`${card.image}.svg`}
-                          alt="Enterprise"
+                          alt="Diagram illustrating Prisma's enterprise-grade architecture and tooling"
                           width={1200}
                           height={900}
                           className="hidden dark:block mx-auto"
                         />
                         <Image
                           src={`${card.image}_light.svg`}
-                          alt="Enterprise"
+                          alt="Diagram illustrating Prisma's enterprise-grade architecture and tooling"
                           width={1200}
                           height={900}
                           className="block dark:hidden mx-auto"

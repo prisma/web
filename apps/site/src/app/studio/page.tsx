@@ -149,7 +149,7 @@ export default function StudioPage() {
           <Image
             className="w-full h-auto"
             src="/illustrations/studio/hero.svg"
-            alt="Prisma Studio Hero"
+            alt="Prisma Studio interface showing a filterable table view of database records"
             width={1200}
             height={630}
           />
