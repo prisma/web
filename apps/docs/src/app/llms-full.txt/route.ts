@@ -1,5 +1,6 @@
 import { source } from "@/lib/source";
 import { getLLMText } from "@/lib/get-llm-text";
+import { createLLMsFullResponse } from "@/lib/llms";
 
 export const revalidate = false;
 
@@ -13,12 +14,5 @@ Includes v7 documentation only.
 
 `;
 
-  const scan = source.getPages().map(getLLMText);
-  const scanned = await Promise.all(scan);
-
-  return new Response(description + scanned.join("\n\n"), {
-    headers: {
-      "Content-Type": "text/plain; charset=utf-8",
-    },
-  });
+  return createLLMsFullResponse(description, source.getPages(), getLLMText);
 }
