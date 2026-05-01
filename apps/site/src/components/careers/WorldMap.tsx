@@ -130,16 +130,8 @@ export const WorldMap = () => (
           ></path>
         </g>
         <defs>
-          <pattern
-            id="pattern0"
-            patternContentUnits="objectBoundingBox"
-            width="1"
-            height="1"
-          >
-            <use
-              xlinkHref="#image0_10603_84927"
-              transform="scale(0.00109051 0.00114286)"
-            />
+          <pattern id="pattern0" patternContentUnits="objectBoundingBox" width="1" height="1">
+            <use xlinkHref="#image0_10603_84927" transform="scale(0.00109051 0.00114286)" />
           </pattern>
           <clipPath id="clip0_10603_84927">
             <rect

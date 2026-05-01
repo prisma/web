@@ -4,8 +4,7 @@ import { ImageResponse } from "next/og";
 export const revalidate = false;
 
 const SECTION_BADGE_COLOR = "#71e8df";
-const GOOGLE_FONT_RESOURCE_REGEX =
-  /src: url\((.+)\) format\('(opentype|truetype)'\)/;
+const GOOGLE_FONT_RESOURCE_REGEX = /src: url\((.+)\) format\('(opentype|truetype)'\)/;
 const BADGE_HORIZONTAL_PADDING = 24;
 const BADGE_VERTICAL_PADDING = 12;
 const BADGE_FONT_SIZE = 24;
@@ -40,13 +39,7 @@ type LoadedFont = {
 
 let fontCache: Promise<LoadedFont[]> | undefined;
 
-function PrismaOGImage({
-  title,
-  description,
-}: {
-  title: string;
-  description: string;
-}) {
+function PrismaOGImage({ title, description }: { title: string; description: string }) {
   return (
     <div
       style={{

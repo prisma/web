@@ -34,15 +34,10 @@ export function ConsoleCtaButton({
   const [href, setHref] = useState(() => buildConsoleHref(consolePath, defaultUtm));
 
   useEffect(() => {
-    const currentUtmParams = getUtmParams(
-      new URLSearchParams(window.location.search),
-    );
+    const currentUtmParams = getUtmParams(new URLSearchParams(window.location.search));
 
     setHref(
-      buildConsoleHref(
-        consolePath,
-        hasUtmParams(currentUtmParams) ? currentUtmParams : defaultUtm,
-      ),
+      buildConsoleHref(consolePath, hasUtmParams(currentUtmParams) ? currentUtmParams : defaultUtm),
     );
   }, [consolePath, defaultUtm]);
 

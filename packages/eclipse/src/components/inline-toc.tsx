@@ -20,13 +20,7 @@ function flattenItems(items: TOCItem[]): TOCItem[] {
   return items.flatMap((item) => [item, ...flattenItems(item.items ?? [])]);
 }
 
-function TOCItemComponent({
-  item,
-  activeId,
-}: {
-  item: TOCItem;
-  activeId: string | null;
-}) {
+function TOCItemComponent({ item, activeId }: { item: TOCItem; activeId: string | null }) {
   const id = item.url.slice(1);
   const isActive = id === activeId;
 
@@ -58,9 +52,7 @@ export function InlineTOC({ items, className, ...props }: InlineTocProps) {
   useEffect(() => {
     const flat = flattenItems(items);
     const ids = flat.map((item) => item.url.slice(1));
-    const elements = ids
-      .map((id) => document.getElementById(id))
-      .filter(Boolean) as HTMLElement[];
+    const elements = ids.map((id) => document.getElementById(id)).filter(Boolean) as HTMLElement[];
 
     observerRef.current?.disconnect();
 

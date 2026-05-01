@@ -17,13 +17,7 @@
  * ```
  */
 
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useLayoutEffect,
-  useState,
-} from "react";
+import React, { createContext, useContext, useEffect, useLayoutEffect, useState } from "react";
 
 type Theme = "light" | "dark" | "system";
 type ResolvedTheme = "light" | "dark";
@@ -52,9 +46,7 @@ export function ThemeProvider({
   // Get system theme preference
   const getSystemTheme = (): ResolvedTheme => {
     if (typeof window === "undefined") return "light";
-    return window.matchMedia("(prefers-color-scheme: dark)").matches
-      ? "dark"
-      : "light";
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   };
 
   // Resolve theme (convert 'system' to actual theme)
@@ -83,9 +75,7 @@ export function ThemeProvider({
   };
 
   const [theme, setThemeState] = useState<Theme>(getInitialTheme);
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() =>
-    resolveTheme(theme),
-  );
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => resolveTheme(theme));
 
   // Apply theme to document
   const applyTheme = (themeValue: ResolvedTheme) => {

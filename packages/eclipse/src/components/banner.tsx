@@ -9,44 +9,32 @@ import { buttonVariants } from "./ui/button";
 /**
  * Banner variants based on color prop
  */
-const bannerVariants = cva(
-  "py-3 px-6 flex items-center justify-center type-text-sm",
-  {
-    variants: {
-      color: {
-        default: "bg-background-neutral-reverse text-foreground-neutral-reverse",
-        ppg: "bg-background-ppg-reverse-strong text-foreground-ppg-reverse",
-        orm: "bg-background-orm-reverse-strong text-foreground-orm-reverse",
-        error: "bg-background-error-reverse-strong text-foreground-error-reverse",
-        success: "bg-background-success-reverse-strong text-foreground-success-reverse",
-        warning: "bg-background-warning-reverse-strong text-foreground-warning-reverse",
-        gradient: "bg-gradient-ppg-orm text-foreground-neutral",
-      },
-    },
-    defaultVariants: {
-      color: "default",
+const bannerVariants = cva("py-3 px-6 flex items-center justify-center type-text-sm", {
+  variants: {
+    color: {
+      default: "bg-background-neutral-reverse text-foreground-neutral-reverse",
+      ppg: "bg-background-ppg-reverse-strong text-foreground-ppg-reverse",
+      orm: "bg-background-orm-reverse-strong text-foreground-orm-reverse",
+      error: "bg-background-error-reverse-strong text-foreground-error-reverse",
+      success: "bg-background-success-reverse-strong text-foreground-success-reverse",
+      warning: "bg-background-warning-reverse-strong text-foreground-warning-reverse",
+      gradient: "bg-gradient-ppg-orm text-foreground-neutral",
     },
   },
-);
+  defaultVariants: {
+    color: "default",
+  },
+});
 
 /**
  * Banner props
  */
 export interface BannerProps
-  extends
-    Omit<React.HTMLAttributes<HTMLDivElement>, "color">,
-    VariantProps<typeof bannerVariants> {
+  extends Omit<React.HTMLAttributes<HTMLDivElement>, "color">, VariantProps<typeof bannerVariants> {
   /**
    * The color variant of the banner
    */
-  color?:
-    | "default"
-    | "ppg"
-    | "orm"
-    | "error"
-    | "success"
-    | "warning"
-    | "gradient";
+  color?: "default" | "ppg" | "orm" | "error" | "success" | "warning" | "gradient";
   /**
    * The description text to display in the banner
    */
@@ -98,16 +86,7 @@ export interface BannerProps
  */
 export const Banner = React.forwardRef<HTMLDivElement, BannerProps>(
   (
-    {
-      className,
-      color,
-      description,
-      showIcon = false,
-      id,
-      changeLayout = true,
-      height,
-      ...props
-    },
+    { className, color, description, showIcon = false, id, changeLayout = true, height, ...props },
     ref,
   ) => {
     const [open, setOpen] = React.useState(true);
@@ -157,13 +136,7 @@ export const Banner = React.forwardRef<HTMLDivElement, BannerProps>(
               className="flex-shrink-0"
               aria-hidden="true"
             >
-              <circle
-                cx="10"
-                cy="10"
-                r="9"
-                stroke="currentColor"
-                strokeWidth="2"
-              />
+              <circle cx="10" cy="10" r="9" stroke="currentColor" strokeWidth="2" />
               <path
                 d="M10 6V10M10 14H10.01"
                 stroke="currentColor"
@@ -185,8 +158,7 @@ export const Banner = React.forwardRef<HTMLDivElement, BannerProps>(
             className={cn(
               buttonVariants({
                 variant: "ghost",
-                className:
-                  "absolute end-2 top-1/2 -translate-y-1/2 text-foreground-neutral-weaker",
+                className: "absolute end-2 top-1/2 -translate-y-1/2 text-foreground-neutral-weaker",
                 size: "icon-sm",
               }),
             )}

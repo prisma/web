@@ -1,14 +1,7 @@
 "use client";
 
 import { Check, Link as LinkIcon } from "lucide-react";
-import {
-  ComponentProps,
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { ComponentProps, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "../lib/cn";
 import { buttonVariants } from "./ui/button";
 import { mergeRefs } from "../lib/merge-refs";
@@ -44,7 +37,7 @@ export function Accordions({
   const rootRef = useRef<HTMLDivElement>(null);
   const composedRef = mergeRefs(ref, rootRef);
   const [value, setValue] = useState<string | string[]>(() =>
-    type === "single" ? defaultValue ?? "" : defaultValue ?? [],
+    type === "single" ? (defaultValue ?? "") : (defaultValue ?? []),
   );
 
   useEffect(() => {
@@ -56,8 +49,7 @@ export function Accordions({
     if (!selected || !element.contains(selected)) return;
     const value = selected.getAttribute("data-accordion-value");
 
-    if (value)
-      setValue((prev) => (typeof prev === "string" ? value : [value, ...prev]));
+    if (value) setValue((prev) => (typeof prev === "string" ? value : [value, ...prev]));
   }, []);
 
   return (
@@ -94,9 +86,7 @@ export function Accordion({
         {id ? <CopyButton id={id} /> : null}
       </AccordionHeader>
       <AccordionContent>
-        <div className="ps-9 pr-4 pb-2 text-[0.9375rem] prose-no-margin">
-          {children}
-        </div>
+        <div className="ps-9 pr-4 pb-2 text-[0.9375rem] prose-no-margin">{children}</div>
       </AccordionContent>
     </AccordionItem>
   );
@@ -123,11 +113,7 @@ function CopyButton({ id }: { id: string }) {
       )}
       onClick={onClick}
     >
-      {checked ? (
-        <Check className="size-3.5" />
-      ) : (
-        <LinkIcon className="size-3.5" />
-      )}
+      {checked ? <Check className="size-3.5" /> : <LinkIcon className="size-3.5" />}
     </button>
   );
 }

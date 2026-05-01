@@ -57,9 +57,7 @@ const renderItem = (item: any) => {
 };
 
 const API = () => {
-  const [funcSelected, setFuncSelected]: any = useState(
-    apiItems[0].functions[0],
-  );
+  const [funcSelected, setFuncSelected]: any = useState(apiItems[0].functions[0]);
 
   const [selectedAPIItem, setSelectedAPIItem] = useState(apiItems[0]);
 
@@ -71,8 +69,7 @@ const API = () => {
     setSelectedLang(item);
   };
 
-  const blockType =
-    selectedLang.value === "js" ? "jsCodeBlocks" : "tsCodeBlocks";
+  const blockType = selectedLang.value === "js" ? "jsCodeBlocks" : "tsCodeBlocks";
 
   const codeBlockSelected = funcSelected[blockType];
 
@@ -87,25 +84,19 @@ const API = () => {
         const codeBlocks: string[] = [];
 
         if ("prismaCodeBlock" in funcSelected) {
-          const html = await highlighter.codeToHtml(
-            funcSelected["prismaCodeBlock"],
-            {
-              lang: "prisma",
-              theme: "prisma-dark",
-            },
-          );
+          const html = await highlighter.codeToHtml(funcSelected["prismaCodeBlock"], {
+            lang: "prisma",
+            theme: "prisma-dark",
+          });
           codeBlocks.push(html);
         }
 
         if (codeBlockSelected && !("prismaCodeBlock" in funcSelected)) {
           for (let index = 0; index < codeBlockSelected.length; index++) {
-            const html = await highlighter.codeToHtml(
-              codeBlockSelected[index],
-              {
-                lang: "typescript",
-                theme: "prisma-dark",
-              },
-            );
+            const html = await highlighter.codeToHtml(codeBlockSelected[index], {
+              lang: "typescript",
+              theme: "prisma-dark",
+            });
             codeBlocks.push(html);
           }
         }
@@ -158,8 +149,7 @@ const API = () => {
               <div
                 className={cn(
                   "rounded-full px-3 py-2 bg-background-default border border-stroke-neutral text-base uppercase font-sans-display font-bold tracking-wide leading-4 cursor-pointer transition-colors duration-300 ease-in-out hover:bg-foreground-orm text-foreground-neutral hover:text-foreground-neutral-reverse",
-                  funcSelected === func &&
-                    "bg-foreground-orm text-foreground-reverse-neutral",
+                  funcSelected === func && "bg-foreground-orm text-foreground-reverse-neutral",
                 )}
                 onClick={() => setNewBlocks()}
               >
@@ -187,8 +177,8 @@ const API = () => {
           Explore the <br /> Prisma Client API
         </h2>
         <p className="mt-6 text-foreground-neutral-weak text-base">
-          From simple reads to complex nested writes, the Prisma Client supports
-          a wide range of operations to help you make the most of your data.
+          From simple reads to complex nested writes, the Prisma Client supports a wide range of
+          operations to help you make the most of your data.
         </p>
         <div className="my-6 mb-4 flex items-center flex-wrap relative gap-4">
           <div className="min-w-50 relative w-full sm:w-auto">
@@ -196,16 +186,12 @@ const API = () => {
               value={selectedLang.value}
               onValueChange={(value: string | null) => {
                 if (value) {
-                  handleChange(
-                    langOptions.find((lang: any) => lang.value === value),
-                  );
+                  handleChange(langOptions.find((lang: any) => lang.value === value));
                 }
               }}
             >
               <SelectTrigger className="bg-border-primary text-foreground-neutral hover:border-surface-brand-darker w-full h-[unset]! p-1.5">
-                <SelectValue>
-                  {selectedLang.label && renderItem(selectedLang)}
-                </SelectValue>
+                <SelectValue>{selectedLang.label && renderItem(selectedLang)}</SelectValue>
               </SelectTrigger>
               <SelectContent alignItemWithTrigger={false}>
                 {langOptions.map((lang: any) => (
@@ -217,9 +203,7 @@ const API = () => {
             </Select>
           </div>
           <Button asChild size="2xl" variant="orm" className="w-full sm:w-auto">
-            <a href={"https://www.prisma.io/docs/orm/prisma-client"}>
-              Get Started
-            </a>
+            <a href={"https://www.prisma.io/docs/orm/prisma-client"}>Get Started</a>
           </Button>
         </div>
         <div className="min-w-50 relative mt-0.5">
@@ -227,9 +211,7 @@ const API = () => {
             value={selectedAPIItem.value}
             onValueChange={(value: string | null) => {
               if (value) {
-                handleCodeBlockChange(
-                  apiItems.find((item: any) => item.value === value),
-                );
+                handleCodeBlockChange(apiItems.find((item: any) => item.value === value));
               }
             }}
           >

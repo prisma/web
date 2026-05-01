@@ -5,11 +5,7 @@ import { ArrowUpIcon, BrainIcon, SquareIcon } from "lucide-react";
 import type { ComponentProps, FormEvent, KeyboardEvent } from "react";
 import { forwardRef, useRef, useCallback, useImperativeHandle } from "react";
 import { buttonVariants } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@prisma-docs/ui/components/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@prisma-docs/ui/components/tooltip";
 import {
   InputGroup,
   InputGroupAddon,
@@ -83,11 +79,7 @@ export const PromptInput = forwardRef<HTMLTextAreaElement, PromptInputProps>(
     const maxLength = 10000;
 
     return (
-      <form
-        onSubmit={handleSubmit}
-        className={cn("relative", className)}
-        {...props}
-      >
+      <form onSubmit={handleSubmit} className={cn("relative", className)} {...props}>
         <InputGroup className="bg-fd-card">
           <InputGroupTextarea
             ref={textareaRef}
@@ -124,9 +116,7 @@ export const PromptInput = forwardRef<HTMLTextAreaElement, PromptInputProps>(
                       >
                         <BrainIcon className="size-4" />
                         <span className="sr-only">
-                          {deepThinking.active
-                            ? "Disable deep thinking"
-                            : "Enable deep thinking"}
+                          {deepThinking.active ? "Disable deep thinking" : "Enable deep thinking"}
                         </span>
                       </button>
                     )}
@@ -148,11 +138,7 @@ export const PromptInput = forwardRef<HTMLTextAreaElement, PromptInputProps>(
                     onClick={loading && onStop ? onStop : undefined}
                     size="icon-sm"
                     variant="primary"
-                    disabled={
-                      loading && onStop
-                        ? false
-                        : !value.trim() || disabled || loading
-                    }
+                    disabled={loading && onStop ? false : !value.trim() || disabled || loading}
                     className="h-8 w-8 rounded-full disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {loading && onStop ? (
@@ -193,13 +179,7 @@ export const PromptInputFooter = ({
   className,
   ...props
 }: PromptInputFooterProps) => (
-  <div
-    className={cn(
-      "text-xs text-center text-fd-muted-foreground pt-2",
-      className,
-    )}
-    {...props}
-  >
+  <div className={cn("text-xs text-center text-fd-muted-foreground pt-2", className)} {...props}>
     Powered by{" "}
     <a
       href={attributionUrl}

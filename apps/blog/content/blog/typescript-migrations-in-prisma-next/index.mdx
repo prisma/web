@@ -1,0 +1,299 @@
+---
+title: "TypeScript Migrations in Prisma Next"
+slug: "typescript-migrations-in-prisma-next"
+date: "2026-04-27"
+authors:
+  - "Will Madden"
+  - "Ankur Datta"
+metaTitle: "TypeScript Migrations in Prisma Next"
+metaDescription: "In Prisma Next, migrations are TypeScript files you can read, edit, and re-run with confidence. Every step is verified before it runs and again after, and every failure points directly at the operation that caused it."
+heroImagePath: "/typescript-migrations-in-prisma-next/imgs/typescript-migrations-in-prisma-next.png"
+metaImagePath: "/typescript-migrations-in-prisma-next/imgs/typescript-migrations-in-prisma-next.png"
+heroImageAlt: "TypeScript Migrations In Prisma Next"
+tags:
+  - "orm"
+  - "education"
+---
+
+Migrations shouldn't be the scariest part of your deploy. In Prisma Next, migrations are TypeScript files you can read, edit, and re-run with confidence. Every step is verified before it runs and again after. Every failure points directly at the operation that caused it.
+
+## This is a SQL migration
+
+If you've used a migration tool before, this will look familiar:
+
+```sql
+-- 20260423115400_add_users_and_posts/migration.sql
+
+CREATE TABLE "public"."user" (
+  "id" SERIAL NOT NULL,
+  "email" text NOT NULL,
+  "name" text,
+  "createdAt" timestamptz DEFAULT (now()) NOT NULL,
+  PRIMARY KEY ("id")
+);
+
+CREATE TABLE "public"."post" (
+  "id" SERIAL NOT NULL,
+  "title" text NOT NULL,
+  "body" text,
+  "published" bool NOT NULL DEFAULT false,
+  "authorId" int4 NOT NULL,
+  "createdAt" timestamptz DEFAULT (now()) NOT NULL,
+  PRIMARY KEY ("id")
+);
+
+ALTER TABLE "public"."user"
+ADD CONSTRAINT "user_email_key" UNIQUE ("email");
+
+CREATE INDEX "post_authorId_idx" ON "public"."post" ("authorId");
+
+ALTER TABLE "public"."post"
+ADD CONSTRAINT "post_authorId_fkey"
+FOREIGN KEY ("authorId")
+REFERENCES "public"."user" ("id");
+```
+
+You can read this and understand what it does. But could you write it from scratch? And could you confidently edit it (say, by adding a column or changing a constraint) and know you got the syntax right?
+
+When this file runs against your database and fails on statement four of five, you're left with a half-applied migration and no good way to rerun it. Your options aren't great. You can comment out the first three statements and try again, or you can manually fix the database and hope the migration state stays consistent.
+
+That's the workflow today. You generate a SQL file, hand-edit it when you need to, try it, get a cryptic error, fix it, and try again. Eventually you deploy to production, discover that it fails for a reason that didn't show up in development, and scramble to recover.
+
+## This is a Prisma Next migration
+
+Here are the same tables, the same constraint, the same index, and the same foreign key, written in TypeScript:
+
+```typescript
+// 20260423T1154_add_users_and_posts/migration.ts
+
+import {
+  Migration,
+  runMigration,
+} from "@prisma-next/target-postgres/migration";
+
+export default class M extends Migration {
+  override describe() {
+    return {
+      from: "sha256:empty",
+      to: "sha256:5335a855...a784ef9a",
+    };
+  }
+
+  override get operations() {
+    return [
+      createTable(
+        "public",
+        "user",
+        [
+          { name: "id", typeSql: "SERIAL" },
+          { name: "email", typeSql: "text" },
+          { name: "name", typeSql: "text", nullable: true },
+          {
+            name: "createdAt",
+            typeSql: "timestamptz",
+            defaultSql: "DEFAULT (now())",
+          },
+        ],
+        { columns: ["id"] },
+      ),
+
+      createTable(
+        "public",
+        "post",
+        [
+          { name: "id", typeSql: "SERIAL" },
+          { name: "title", typeSql: "text" },
+          { name: "body", typeSql: "text", nullable: true },
+          { name: "published", typeSql: "bool", defaultSql: "DEFAULT false" },
+          { name: "authorId", typeSql: "int4" },
+          {
+            name: "createdAt",
+            typeSql: "timestamptz",
+            defaultSql: "DEFAULT (now())",
+          },
+        ],
+        { columns: ["id"] },
+      ),
+
+      addUnique("public", "user", "user_email_key", ["email"]),
+      createIndex("public", "post", "post_authorId_idx", ["authorId"]),
+      addForeignKey("public", "post", {
+        name: "post_authorId_fkey",
+        columns: ["authorId"],
+        references: { table: "user", columns: ["id"] },
+      }),
+    ];
+  }
+}
+
+runMigration(import.meta.url, M);
+```
+
+Every step is a function call. Your editor gives you autocomplete on every argument, type checks the column specs, and catches mistakes before you run anything. You don't need to remember SQL syntax for constraints or indexes, because the operation factories handle that for you.
+
+The real difference shows up when you run this file:
+
+```text
+$ ./migration.ts
+Wrote ops.json + migration.json to migrations/20260423T1154_add_users_and_posts/
+```
+
+## Every operation is verified before and after it runs
+
+Each factory function (`createTable`, `addUnique`, `createIndex`, and so on) returns an operation made up of three parts: a **precheck** that runs before the change, the **execute** step that makes the change, and a **postcheck** that runs after ([see how `createTable` is built](https://github.com/prisma/prisma-next/blob/main/packages/3-targets/3-targets/postgres/src/core/migrations/operations/tables.ts)). When you run `migration.ts`, those operations are written out to `ops.json`. Here's one operation from the output:
+
+```json
+{
+  "id": "table.user",
+  "label": "Create table \"user\"",
+  "precheck": [
+    {
+      "description": "ensure table \"user\" does not exist",
+      "sql": "SELECT to_regclass('\"public\".\"user\"') IS NULL"
+    }
+  ],
+  "execute": [
+    {
+      "description": "create table \"user\"",
+      "sql": "CREATE TABLE \"public\".\"user\" (\n  \"id\" SERIAL NOT NULL,\n  \"email\" text NOT NULL,\n  \"name\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  PRIMARY KEY (\"id\")\n)"
+    }
+  ],
+  "postcheck": [
+    {
+      "description": "verify table \"user\" exists",
+      "sql": "SELECT to_regclass('\"public\".\"user\"') IS NOT NULL"
+    }
+  ]
+}
+```
+
+Before the table is created, the precheck queries whether it already exists. After the table is created, the postcheck confirms it worked. Every operation in the migration follows this same structure. Whether it's `createIndex`, `addForeignKey`, or `addUnique`, they all produce the same precheck/execute/postcheck shape.
+
+You edit the TypeScript. The system runs the JSON. Both get committed, much like `package.json` and `package-lock.json`.
+
+## The workflow
+
+Most migrations don't get written from scratch. They get planned from changes to your Prisma contract (the `.prisma` file that describes your database schema). Say you add a `displayName String` field to your `User` model. Then:
+
+```text
+$ npx prisma-next migration plan
+✔ Planned 2 operation(s)
+│
+├─ Add column "displayName" to "user" [additive]
+└─ Set NOT NULL on "user"."displayName" [destructive]
+
+$ npx prisma-next migration apply --verbose
+✔ Applied 1 migration(s)
+
+└─ 20260424T0930_add_user_displayname [2 op(s)]
+   ├─ Add column "displayName" to "user" [additive]
+   └─ Set NOT NULL on "user"."displayName" [destructive]
+```
+
+The planner reads your contract, compares it to the current database, and writes both `migration.ts` and `ops.json`. For most changes (adding a model, adding a field, creating an index), that's all you need.
+
+When you do need to edit a migration, for example to backfill data before a constraint, reorder operations, or drop in a custom check, you open `migration.ts`, edit it like any other TypeScript file, and re-run it to regenerate `ops.json`. Your editor handles autocomplete, type checking, and inline docs for every operation. There's no SQL syntax to remember and no second-guessing whether you got the constraint definition right.
+
+Where it gets interesting is when something goes wrong. The runner doesn't just bail with a database error. It names the operation that failed and the check inside it that the database refused to satisfy:
+
+```text
+$ npx prisma-next migration apply
+✖ Operation alterNullability.setNotNull.user.displayName failed during precheck: ensure no NULL values in "displayName" (PN-RUN-5001)
+  Why: Migration runner halted before destructive ALTER
+  Fix: Fix the issue and re-run `prisma-next migration apply`. Previously applied migrations are preserved.
+```
+
+You know which operation failed (`alterNullability.setNotNull.user.displayName`) and which check failed inside it (`ensure no NULL values in "displayName"`). Both come straight from `ops.json`, and both tell you exactly where to look. From here, you fix it. You might backfill the nulls, drop and re-add the column with a default, or edit the migration to add a backfill step before the `setNotNull`. Then you re-run.
+
+**Re-running is safe.** Before running each operation, the migration runner first evaluates that operation's postcheck. If the postcheck is already true, the runner skips the operation (which makes each operation idempotent). The migration then continues at the first step that hasn't succeeded yet. There's no commenting out lines, no manually unwinding state, and no guessing what's been applied. The single most uncomfortable problem with SQL migrations is solved.
+
+**Your development workflow becomes:**
+
+1. Edit your `contract.prisma`
+2. Plan a migration: `migration plan`
+3. Edit the TypeScript and run `./migration.ts`
+4. Apply the migration: `migration apply`
+5. Read the output, iterate
+
+The contract describes the database schema you want. `migration.ts` lets you edit the migration easily. The JSON is what runs. The feedback is granular enough to act on.
+
+## When migrations go wrong
+
+### Half-applied migration
+
+Remember the opening pain, where a `migration.sql` fails on statement four of five? You comment out the first three to retry, then pray that the fourth doesn't depend on whatever the third half-did. That just doesn't happen here, for the reason described in the previous section. The runner checks each operation's postcheck before running it, sees that the first three already succeeded, and skips them. You re-run, and it picks up at the failed step. That's the whole story.
+
+### Works in dev, breaks in production
+
+The `setNotNull` example above is the textbook case. Your dev database is empty (or your seed data has no nulls), so the constraint is added cleanly. You ship it. In production, real users have skipped the optional field for years, so there are nulls.
+
+A SQL migration runs `ALTER TABLE ... SET NOT NULL`, hits the first NULL row, and aborts with a generic error. A Prisma Next migration's precheck catches the same condition before the destructive ALTER touches anything. It then points you at the exact operation and check, so you know what to fix.
+
+### Conflicting topic branches
+
+Two developers write migrations independently. Each one applies fine on its own. After merge, the second one is built against a contract that the first one no longer leaves behind.
+
+To prevent this, each migration declares the contract it expects to start from. That's the `from` hash in `describe()`. Before any SQL runs, the system checks that the database actually matches. If it doesn't, the migration won't run at all. You find out at the start, not halfway through.
+
+## You can still just write SQL
+
+If you'd rather not give up writing SQL by hand, you don't have to. You can author any operation as raw SQL using `rawSql()`. Wrap it in prechecks and postchecks to keep re-runnability and structured failure reporting:
+
+```typescript
+operations = [
+  rawSql({
+    label: "Enable pgcrypto",
+    precheck: [
+      {
+        sql: "SELECT NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pgcrypto')",
+      },
+    ],
+    execute: [{ sql: "CREATE EXTENSION IF NOT EXISTS pgcrypto" }],
+    postcheck: [
+      {
+        sql: "SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pgcrypto')",
+      },
+    ],
+  }),
+];
+```
+
+Or you can skip the checks entirely. The label, precheck, and postcheck are all optional:
+
+```typescript
+operations = [
+  rawSql({
+    execute: [{ sql: "CREATE EXTENSION IF NOT EXISTS pgcrypto" }],
+  }),
+];
+```
+
+We don't recommend it. When you opt out of the safety nets, your team's conventions and review rigor are all that's left between a typo and production. The contract verification at the end of the migration will still catch state-level mistakes, but you lose the per-operation diagnostics that make the rest of this article worth reading. The door is open if you want it; just know what you're trading off.
+
+If you find yourself writing the same `rawSql` over and over, lift it into a function (your own `enableExtension` or `createIndexConcurrently`, for instance) that returns the same `{ precheck, execute, postcheck }` shape the built-ins do. There's nothing magic about `createTable` or `addUnique`. They're [plain functions](https://github.com/prisma/prisma-next/tree/main/packages/3-targets/3-targets/postgres/src/core/migrations/operations) that you can read, copy, and adapt. Teams can even publish these as packages.
+
+## Migrations and AI agents
+
+You would probably never trust an agent to write a migration. Review one, maybe. But write and execute something this dangerous? With an ordinary migration system (a linear sequence of `.sql` files held together with discipline and hope), neither would we.
+
+Prisma Next migrations were designed to support agent-assisted workflows. Every step is checked against its expected result, and the final database state is verified against your contract. Agents don't write SQL directly either. Instead, they assemble simple factory functions in TypeScript, which minimizes the chances for mistakes (or overenthusiastic expressions of creativity).
+
+You can let an agent write a migration in Prisma Next with confidence that the system will catch a lot of mistakes. When something does go wrong, the agent gets the same feedback you do (which operation failed, which check returned what), and it can iterate in a dev environment until it works.
+
+Most importantly, `migration.ts` combined with `ops.json` is _really_ easy to review. You can see intent, execution, and verifications in one place. That makes it even easier for automated systems to inspect than for humans.
+
+## Try it yourself
+
+Prisma Next is not production-ready yet. Prisma 7 is still the right choice for production today. When Prisma Next is ready for general use, it becomes Prisma 8.
+
+But you can try it now:
+
+```bash
+pnpx prisma-next init
+```
+
+Start a project, write a contract, plan a migration, and see what `migration.ts` and `ops.json` look like for yourself. We'd love your feedback. Join us on [Discord](https://pris.ly/discord) and tell us what works and what doesn't.
+
+**Star and watch [prisma/prisma-next](https://pris.ly/pn-gh) on GitHub** to follow development.
+
+P.S. Everything in this article works for MongoDB too. The same TypeScript, the same operations, and the same prechecks and postchecks all apply, just to collections, indexes, and JSON Schema validators instead of tables and constraints. We'll cover that in detail next week.

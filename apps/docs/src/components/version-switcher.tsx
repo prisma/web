@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { usePathname, useRouter } from 'next/navigation';
-import { ChevronDownIcon } from 'lucide-react';
+import { usePathname, useRouter } from "next/navigation";
+import { ChevronDownIcon } from "lucide-react";
 
-import { VERSIONS, LATEST_VERSION, type Version } from '@/lib/version';
+import { VERSIONS, LATEST_VERSION, type Version } from "@/lib/version";
 
 import {
   DropdownMenu,
@@ -11,7 +11,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
-} from '@prisma/eclipse';
+} from "@prisma/eclipse";
 
 interface VersionSwitcherProps {
   currentVersion: Version;
@@ -25,17 +25,27 @@ export function VersionSwitcher({ currentVersion }: VersionSwitcherProps) {
     if (newVersion === currentVersion) return;
 
     const VERSION_SECTIONS: Record<string, Set<string>> = {
-      v7: new Set(['accelerate', 'ai', 'cli', 'console', 'guides', 'management-api', 'orm', 'postgres', 'studio']),
-      v6: new Set(['accelerate', 'ai', 'guides', 'orm', 'platform', 'postgres']),
+      v7: new Set([
+        "accelerate",
+        "ai",
+        "cli",
+        "console",
+        "guides",
+        "management-api",
+        "orm",
+        "postgres",
+        "studio",
+      ]),
+      v6: new Set(["accelerate", "ai", "guides", "orm", "platform", "postgres"]),
     };
 
-    const rawPath = pathname.replace(/^\/v\d+(?=\/|$)/, '') || '/';
-    const topSection = rawPath.split('/').filter(Boolean)[0] ?? '';
+    const rawPath = pathname.replace(/^\/v\d+(?=\/|$)/, "") || "/";
+    const topSection = rawPath.split("/").filter(Boolean)[0] ?? "";
     const sectionExists = VERSION_SECTIONS[newVersion]?.has(topSection);
 
     let newPath: string;
     if (newVersion === LATEST_VERSION) {
-      newPath = sectionExists ? `/${topSection}` : '/';
+      newPath = sectionExists ? `/${topSection}` : "/";
     } else {
       newPath = sectionExists ? `/${newVersion}/${topSection}` : `/${newVersion}`;
     }
@@ -50,10 +60,7 @@ export function VersionSwitcher({ currentVersion }: VersionSwitcherProps) {
         <ChevronDownIcon className="size-4 text-fd-muted-foreground" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
-        <DropdownMenuRadioGroup
-          value={currentVersion}
-          onValueChange={handleVersionChange}
-        >
+        <DropdownMenuRadioGroup value={currentVersion} onValueChange={handleVersionChange}>
           {VERSIONS.map((v) => (
             <DropdownMenuRadioItem
               key={v}

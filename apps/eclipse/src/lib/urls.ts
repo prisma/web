@@ -1,5 +1,5 @@
 export function normalize(urlOrPath: string) {
-  if (urlOrPath.length > 1 && urlOrPath.endsWith('/')) return urlOrPath.slice(0, -1);
+  if (urlOrPath.length > 1 && urlOrPath.endsWith("/")) return urlOrPath.slice(0, -1);
   return urlOrPath;
 }
 

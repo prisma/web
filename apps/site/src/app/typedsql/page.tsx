@@ -17,7 +17,11 @@ const twoCol = [
           significantly improves ergonomics while developing.
         </p>
         <div className="mt-4">
-          <Button asChild variant="link" className="w-full justify-center lg:justify-start text-center lg:text-left text-foreground-orm! p-0!">
+          <Button
+            asChild
+            variant="link"
+            className="w-full justify-center lg:justify-start text-center lg:text-left text-foreground-orm! p-0!"
+          >
             <a href="https://www.prisma.io/docs/orm/prisma-client/using-raw-sql/typedsql">
               Learn more about type-safety with TypedSQL
               <i className="fa-regular fa-arrow-right" />
@@ -49,7 +53,11 @@ const twoCol = [
           safety.
         </p>
         <div className="mt-4">
-          <Button asChild variant="link" className="w-full justify-center lg:justify-start text-center lg:text-left text-foreground-orm! p-0!">
+          <Button
+            asChild
+            variant="link"
+            className="w-full justify-center lg:justify-start text-center lg:text-left text-foreground-orm! p-0!"
+          >
             <a href="https://www.prisma.io/docs/orm/prisma-client/using-raw-sql/typedsql">
               Write queries using TypedSQL
               <i className="fa-regular fa-arrow-right" />
@@ -127,7 +135,12 @@ export default function TypedSQLPage() {
                 <i className="fa-regular fa-arrow-right" />
               </a>
             </Button>
-            <Button asChild variant="default-strong" size="3xl" className="font-sans-display! font-[650]">
+            <Button
+              asChild
+              variant="default-strong"
+              size="3xl"
+              className="font-sans-display! font-[650]"
+            >
               <a href="https://www.prisma.io/blog/announcing-typedsql-make-your-raw-sql-queries-type-safe-with-prisma-orm">
                 Read the announcement
                 <i className="fa-regular fa-arrow-right" />

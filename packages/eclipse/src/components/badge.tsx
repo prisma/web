@@ -40,14 +40,7 @@ export interface BadgeProps
   /**
    * The color variant of the badge
    */
-  color?:
-    | "neutral"
-    | "ppg"
-    | "orm"
-    | "error"
-    | "success"
-    | "warning"
-    | "orm-reverse";
+  color?: "neutral" | "ppg" | "orm" | "error" | "success" | "warning" | "orm-reverse";
   /**
    * The size variant of the badge
    */
@@ -74,11 +67,7 @@ export interface BadgeProps
 const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
   ({ className, color, size, label, ...props }, ref) => {
     return (
-      <span
-        ref={ref}
-        className={cn(badgeVariants({ color, size, className }))}
-        {...props}
-      >
+      <span ref={ref} className={cn(badgeVariants({ color, size, className }))} {...props}>
         <span className="flex-grow-1">{label}</span>
       </span>
     );

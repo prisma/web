@@ -4,11 +4,7 @@ import { ChevronDown } from "lucide-react";
 import { cva } from "class-variance-authority";
 import { cn } from "../lib/cn";
 import { type ReactNode, useState } from "react";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "./ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible";
 
 export interface ParameterNode {
   name: string;
@@ -138,9 +134,7 @@ function Item({
           {defaultValue && (
             <>
               <p className={cn(fieldVariants())}>Default</p>
-              <p className="my-auto not-prose text-foreground-neutral">
-                {defaultValue}
-              </p>
+              <p className="my-auto not-prose text-foreground-neutral">{defaultValue}</p>
             </>
           )}
           {parameters.length > 0 && (
@@ -148,16 +142,9 @@ function Item({
               <p className={cn(fieldVariants())}>Parameters</p>
               <div className="flex flex-col gap-2">
                 {parameters.map((param) => (
-                  <div
-                    key={param.name}
-                    className="inline-flex items-center flex-wrap gap-1"
-                  >
-                    <p className="type-text-sm-strong not-prose text-nowrap">
-                      {param.name} -
-                    </p>
-                    <div className="type-text-sm prose prose-no-margin">
-                      {param.description}
-                    </div>
+                  <div key={param.name} className="inline-flex items-center flex-wrap gap-1">
+                    <p className="type-text-sm-strong not-prose text-nowrap">{param.name} -</p>
+                    <div className="type-text-sm prose prose-no-margin">{param.description}</div>
                   </div>
                 ))}
               </div>
@@ -166,9 +153,7 @@ function Item({
           {returns && (
             <>
               <p className={cn(fieldVariants())}>Returns</p>
-              <div className="my-auto type-text-sm prose prose-no-margin">
-                {returns}
-              </div>
+              <div className="my-auto type-text-sm prose prose-no-margin">{returns}</div>
             </>
           )}
         </div>

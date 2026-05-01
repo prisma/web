@@ -38,9 +38,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     } as MetadataRoute.Sitemap[number];
   });
 
-  return [
-    ...items.filter((v) => v !== undefined),
-    ...v6Items.filter((v) => v !== undefined),
-  ];
+  return [...items.filter((v) => v !== undefined), ...v6Items.filter((v) => v !== undefined)];
 }
-

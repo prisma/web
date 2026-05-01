@@ -4,7 +4,8 @@ import HeroCode, { HeroCodeStep } from "@/components/migrate/hero-code";
 
 export const metadata = createPageMetadata({
   title: "Prisma Migrate | Hassle-free Database Migrations",
-  description: "Automatically generate fully customizable database schema migrations for PostgreSQL, MySQL, MariaDB or SQLite.",
+  description:
+    "Automatically generate fully customizable database schema migrations for PostgreSQL, MySQL, MariaDB or SQLite.",
   path: "/migrate",
   ogImage: "/og/og-migrate.png",
 });

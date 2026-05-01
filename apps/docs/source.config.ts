@@ -22,10 +22,14 @@ function convertLine(cmd: string, pm: "npm" | "pnpm" | "yarn" | "bun"): string {
         const flags = m[2].replace(/^\s+--\s*/, " ").trim(); // strip -- separator
         const f = flags ? ` ${flags}` : "";
         switch (pm) {
-          case "npm":  return line;
-          case "pnpm": return `pnpm create ${pkg}${f}`;
-          case "yarn": return `yarn create ${pkg}${f}`;
-          case "bun":  return `bun create ${pkg}${f}`;
+          case "npm":
+            return line;
+          case "pnpm":
+            return `pnpm create ${pkg}${f}`;
+          case "yarn":
+            return `yarn create ${pkg}${f}`;
+          case "bun":
+            return `bun create ${pkg}${f}`;
         }
       }
       return convert(line.replace(/^npm init -y$/, "npm init"), pm);

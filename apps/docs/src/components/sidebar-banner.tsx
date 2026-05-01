@@ -91,9 +91,7 @@ export function SidebarBannerCarousel({ slides }: SidebarBannerCarouselProps) {
       onMouseLeave={() => setHovered(false)}
     >
       {/* Peek cards above — each one narrower, creating depth perspective */}
-      {peekCount > 0 && (
-        <div className="flex flex-col -mb-px">{peekCards}</div>
-      )}
+      {peekCount > 0 && <div className="flex flex-col -mb-px">{peekCards}</div>}
 
       {/* Front card */}
       <div

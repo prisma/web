@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@prisma/eclipse";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@prisma/eclipse";
 
 interface TooltipInfoProps {
   text: string;

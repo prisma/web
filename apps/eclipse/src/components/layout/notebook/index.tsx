@@ -1,15 +1,5 @@
-import {
-  type ComponentProps,
-  type FC,
-  type HTMLAttributes,
-  type ReactNode,
-  useMemo,
-} from "react";
-import {
-  type BaseLayoutProps,
-  renderTitleNav,
-  resolveLinkItems,
-} from "../shared";
+import { type ComponentProps, type FC, type HTMLAttributes, type ReactNode, useMemo } from "react";
+import { type BaseLayoutProps, renderTitleNav, resolveLinkItems } from "../shared";
 import {
   Sidebar,
   SidebarCollapseTrigger,
@@ -38,10 +28,7 @@ import { LargeSearchToggle, SearchToggle } from "../search-toggle";
 import { LinkItem, type LinkItemType } from "../link-item";
 import type { SidebarPageTreeComponents } from "../sidebar/page-tree";
 import { getSidebarTabs } from "../sidebar/tabs";
-import {
-  SidebarTabsDropdown,
-  type SidebarTabWithProps,
-} from "../sidebar/tabs/dropdown";
+import { SidebarTabsDropdown, type SidebarTabWithProps } from "../sidebar/tabs/dropdown";
 
 export interface DocsLayoutProps extends BaseLayoutProps {
   tree: PageTree.Root;
@@ -77,12 +64,7 @@ interface SidebarOptions
 export function DocsLayout(props: DocsLayoutProps) {
   const {
     nav = {},
-    sidebar: {
-      tabs: tabOptions,
-      defaultOpenLevel,
-      prefetch,
-      ...sidebarProps
-    } = {},
+    sidebar: { tabs: tabOptions, defaultOpenLevel, prefetch, ...sidebarProps } = {},
     i18n = false,
     themeSwitch = {},
     tree,
@@ -94,26 +76,14 @@ export function DocsLayout(props: DocsLayoutProps) {
   }, [tabOptions, tree]);
 
   function sidebar() {
-    const {
-      banner,
-      footer,
-      components,
-      collapsible = true,
-      ...rest
-    } = sidebarProps;
+    const { banner, footer, components, collapsible = true, ...rest } = sidebarProps;
 
     const iconLinks = links.filter((item) => item.type === "icon");
     const Header =
       typeof banner === "function"
         ? banner
         : ({ className, ...props }: ComponentProps<"div">) => (
-            <div
-              className={cn(
-                "flex flex-col gap-3 p-4 pb-2 empty:hidden",
-                className,
-              )}
-              {...props}
-            >
+            <div className={cn("flex flex-col gap-3 p-4 pb-2 empty:hidden", className)} {...props}>
               {props.children}
               {banner}
             </div>
@@ -185,9 +155,7 @@ export function DocsLayout(props: DocsLayoutProps) {
               <X />
             </SidebarTrigger>
             {links.length > 0 && (
-              <SidebarTabsDropdown
-                links={links.filter((item) => item.type !== "icon")}
-              />
+              <SidebarTabsDropdown links={links.filter((item) => item.type !== "icon")} />
             )}
           </Header>
           {viewport}
@@ -267,10 +235,7 @@ function DocsNavbar({
         showLayoutTabs && "lg:layout:[--fd-header-height:--spacing(24)]",
       )}
     >
-      <div
-        data-header-body=""
-        className="flex border-b px-4 gap-2 h-14 md:px-6"
-      >
+      <div data-header-body="" className="flex border-b px-4 gap-2 h-14 md:px-6">
         <div className={cn("items-center", "flex flex-1")}>
           {renderTitleNav(nav, {
             className: cn("inline-flex items-center gap-2.5 font-semibold"),
@@ -279,21 +244,13 @@ function DocsNavbar({
         </div>
         {searchToggle.enabled !== false &&
           (searchToggle.components?.lg ? (
-            <div
-              className={cn(
-                "w-full my-auto max-md:hidden",
-                "rounded-xl max-w-sm",
-              )}
-            >
+            <div className={cn("w-full my-auto max-md:hidden", "rounded-xl max-w-sm")}>
               {searchToggle.components.lg}
             </div>
           ) : (
             <LargeSearchToggle
               hideIfDisabled
-              className={cn(
-                "w-full my-auto max-md:hidden",
-                "rounded-xl max-w-sm ps-2.5",
-              )}
+              className={cn("w-full my-auto max-md:hidden", "rounded-xl max-w-sm ps-2.5")}
             />
           ))}
         <div className="flex flex-1 items-center justify-end md:gap-2">
@@ -322,9 +279,7 @@ function DocsNavbar({
 
           <div className="flex items-center md:hidden">
             {searchToggle.enabled !== false &&
-              (searchToggle.components?.sm ?? (
-                <SearchToggle hideIfDisabled className="p-2" />
-              ))}
+              (searchToggle.components?.sm ?? <SearchToggle hideIfDisabled className="p-2" />)}
             <SidebarTrigger
               className={cn(
                 buttonVariants({

@@ -8,8 +8,7 @@ export function getBaseUrl(): string {
   if (configuredBaseUrl) {
     try {
       const normalized = new URL(
-        configuredBaseUrl.startsWith("http://") ||
-          configuredBaseUrl.startsWith("https://")
+        configuredBaseUrl.startsWith("http://") || configuredBaseUrl.startsWith("https://")
           ? configuredBaseUrl
           : `https://${configuredBaseUrl}`,
       );
@@ -25,14 +24,12 @@ export function getBaseUrl(): string {
   }
 
   return (
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ??
-    "http://localhost:3000"
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ?? "http://localhost:3000"
   );
 }
 
 export function normalize(urlOrPath: string) {
-  if (urlOrPath.length > 1 && urlOrPath.endsWith("/"))
-    return urlOrPath.slice(0, -1);
+  if (urlOrPath.length > 1 && urlOrPath.endsWith("/")) return urlOrPath.slice(0, -1);
   return urlOrPath;
 }
 
@@ -41,10 +38,7 @@ export const SITE_PREFIX = "/";
 export function withBlogBasePath(path: string): string {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
 
-  if (
-    normalizedPath === SITE_PREFIX ||
-    normalizedPath.startsWith(`${SITE_PREFIX}/`)
-  ) {
+  if (normalizedPath === SITE_PREFIX || normalizedPath.startsWith(`${SITE_PREFIX}/`)) {
     return normalizedPath;
   }
 
@@ -72,11 +66,7 @@ function withoutBlogPrefix(path: string): string {
 /**
  * @returns if `href` is matching the given pathname
  */
-export function isActive(
-  href: string,
-  pathname: string,
-  nested = true,
-): boolean {
+export function isActive(href: string, pathname: string, nested = true): boolean {
   href = normalize(href);
   pathname = normalize(pathname);
 
@@ -90,8 +80,7 @@ export function isActive(
     nested &&
     pathSegment.startsWith(`${hrefSegment}/`) &&
     // Ensure segment boundary: "orm" must not match "prisma-orm"
-    (pathSegment.length === hrefSegment.length ||
-      pathSegment[hrefSegment.length] === "/")
+    (pathSegment.length === hrefSegment.length || pathSegment[hrefSegment.length] === "/")
   );
 }
 
@@ -109,8 +98,7 @@ export function isActiveAny(paths: string[], pathname: string): boolean {
     if (segment === "") return false;
     return (
       pathSegment.startsWith(`${segment}/`) &&
-      (pathSegment.length === segment.length ||
-        pathSegment[segment.length] === "/")
+      (pathSegment.length === segment.length || pathSegment[segment.length] === "/")
     );
   });
 }
