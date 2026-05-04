@@ -26,7 +26,12 @@ import {
   SidebarEnabledGate,
 } from "./client";
 import { LargeSearchToggle, SearchToggle } from "../search-toggle";
-import { LinkItem, type LinkItemType } from "../link-item";
+import { isLinkItemVisibleOn } from "../link-item-visibility";
+import {
+  LinkItem,
+  type ButtonItemType,
+  type LinkItemType,
+} from "../link-item";
 import type { SidebarPageTreeComponents } from "../sidebar/page-tree";
 import { getSidebarTabs } from "../sidebar/tabs";
 import { SidebarTabsDropdown, type SidebarTabWithProps } from "../sidebar/tabs/dropdown";
@@ -94,7 +99,20 @@ export function DocsLayout(props: DocsLayoutProps) {
   function sidebar() {
     const { banner, footer, components, collapsible = true, ...rest } = sidebarProps;
 
-    const iconLinks = links.filter((item) => item.type === "icon");
+    const menuLinks = links.filter(
+      (item) =>
+        item.type !== "icon" &&
+        item.type !== "button" &&
+        isLinkItemVisibleOn(item, "menu"),
+    );
+    const iconLinks = links.filter(
+      (item): item is Extract<LinkItemType, { type: "icon" }> =>
+        item.type === "icon" && isLinkItemVisibleOn(item, "nav"),
+    );
+    const navButtons = links.filter(
+      (item): item is ButtonItemType =>
+        item.type === "button" && isLinkItemVisibleOn(item, "nav"),
+    );
     const Header =
       typeof banner === "function"
         ? banner
@@ -131,7 +149,7 @@ export function DocsLayout(props: DocsLayoutProps) {
         <SidebarContent {...rest}>
           <Header>
             <SidebarTabsDropdown
-              links={links.filter((item) => item.type !== "icon")}
+              links={menuLinks}
               className={cn("lg:hidden")}
             />
           </Header>
@@ -168,10 +186,26 @@ export function DocsLayout(props: DocsLayoutProps) {
             >
               <X />
             </SidebarTrigger>
-            {links.length > 0 && (
-              <SidebarTabsDropdown links={links.filter((item) => item.type !== "icon")} />
-            )}
+            {menuLinks.length > 0 && <SidebarTabsDropdown links={menuLinks} />}
           </Header>
+          {navButtons.length > 0 && (
+            <div className="flex flex-col gap-2 px-4 pb-3">
+              {navButtons.map((item, i) => (
+                <LinkItem
+                  key={i}
+                  item={item}
+                  className={cn(
+                    buttonVariants({
+                      variant: item.secondary ? "secondary" : "primary",
+                    }),
+                    "w-full justify-center px-3 py-2",
+                  )}
+                >
+                  {item.text}
+                </LinkItem>
+              ))}
+            </div>
+          )}
           {viewport}
           <Footer
             className={cn(
@@ -241,7 +275,27 @@ function DocsNavbar({
   links: LinkItemType[];
   tabs: SidebarTabWithProps[];
 }) {
-  const showLayoutTabs = links.some((item) => item.type !== "icon");
+  const menuLinks = links.filter(
+    (item) =>
+      item.type !== "icon" &&
+      item.type !== "custom" &&
+      item.type !== "button" &&
+      isLinkItemVisibleOn(item, "menu"),
+  );
+  const customLinks = links.filter(
+    (item) => item.type === "custom" && isLinkItemVisibleOn(item, "nav"),
+  );
+  const iconLinks = links
+    .filter(
+      (item): item is Extract<LinkItemType, { type: "icon" }> =>
+        item.type === "icon" && isLinkItemVisibleOn(item, "nav"),
+    )
+    .reverse();
+  const navButtons = links.filter(
+      (item): item is ButtonItemType =>
+        item.type === "button" && isLinkItemVisibleOn(item, "nav"),
+  );
+  const showLayoutTabs = menuLinks.length > 0;
 
   return (
     <LayoutHeader
@@ -273,33 +327,42 @@ function DocsNavbar({
         <div className="flex flex-1 items-center justify-end gap-2">
           <AIChatSidebar />
           <div className="flex items-center gap-2 max-md:hidden">
-            {links
-              .filter((item) => item.type === "custom")
-              .map((item, i) => (
-                <NavbarLinkItem key={i} item={item} />
-              ))}
+            {customLinks.map((item, i) => (
+              <NavbarLinkItem key={i} item={item} />
+            ))}
             {/* {i18n && ( */}
             {/*   <LanguageToggle> */}
             {/*     <Languages className="size-4.5 text-fd-muted-foreground" /> */}
             {/*   </LanguageToggle> */}
             {/* )} */}
             <div className="flex items-center gap-2 max-md:hidden">
-              {links
-                .filter((item) => item.type === "icon")
-                .reverse()
-                .map((item, i) => (
-                  <LinkItem
-                    key={i}
-                    item={item}
-                    className={cn(
-                      buttonVariants({ size: "icon-sm", variant: "ghost" }),
-                      "text-fd-muted-foreground",
-                    )}
-                    aria-label={item.label}
-                  >
-                    {item.icon}
-                  </LinkItem>
-                ))}
+              {iconLinks.map((item, i) => (
+                <LinkItem
+                  key={i}
+                  item={item}
+                  className={cn(
+                    buttonVariants({ size: "icon-sm", variant: "ghost" }),
+                    "text-fd-muted-foreground",
+                  )}
+                  aria-label={item.label}
+                >
+                  {item.icon}
+                </LinkItem>
+              ))}
+              {navButtons.map((item, i) => (
+                <LinkItem
+                  key={`button-${i}`}
+                  item={item}
+                  className={cn(
+                    buttonVariants({
+                      variant: item.secondary ? "secondary" : "primary",
+                    }),
+                    "px-3 py-2 whitespace-nowrap",
+                  )}
+                >
+                  {item.text}
+                </LinkItem>
+              ))}
             </div>
 
             {themeSwitch.enabled !== false && (
@@ -343,7 +406,7 @@ function DocsNavbar({
         <LayoutHeaderTabs
           data-header-tabs=""
           className="overflow-x-auto border-b px-6 h-10 max-lg:hidden"
-          links={links}
+          links={menuLinks}
         />
       )}
     </LayoutHeader>

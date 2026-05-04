@@ -1,8 +1,7 @@
 import type { ComponentProps } from "react";
 import { source } from "@/lib/source";
-import { baseOptions, links } from "@/lib/layout.shared";
-import { VersionSwitcher } from "@/components/version-switcher";
-import type { LinkItemType } from "fumadocs-ui/layouts/shared";
+import { authLinks, baseOptions, links } from "@/lib/layout.shared";
+import type { LinkItemType } from "@/components/layout/link-item";
 import { DocsLayout } from "@/components/layout/notebook";
 import { StatusIndicator } from "@/components/status-indicator";
 import { SidebarBannerCarousel } from "@/components/sidebar-banner";
@@ -11,6 +10,7 @@ import { cn } from "@prisma-docs/ui/lib/cn";
 import { getPageBadges } from "@/lib/page-badges";
 import { BadgeProvider, SidebarBadgeItem } from "@/components/sidebar-badge-provider";
 import { getOrmVersions } from "@/lib/version";
+import { VersionSwitcher } from "@/components/version-switcher";
 
 // Sidebar announcement slides — set to [] to hide the banner
 const SIDEBAR_SLIDES = [
@@ -32,9 +32,7 @@ export default async function Layout({
 }) {
   const { nav, ...base } = baseOptions();
 
-  const navbarLinks: LinkItemType[] = [
-    ...links,
-  ];
+  const navbarLinks: LinkItemType[] = [...links, ...authLinks];
 
   // Resolve OG images server-side for slides that don't have a hardcoded image
   const slides = await Promise.all(

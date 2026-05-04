@@ -1,6 +1,6 @@
 import { source } from "@/lib/source";
-import { baseOptions, links } from "@/lib/layout.shared";
-import type { LinkItemType } from "fumadocs-ui/layouts/shared";
+import { authLinks, baseOptions, links } from "@/lib/layout.shared";
+import type { LinkItemType } from "@/components/layout/link-item";
 import { DocsLayout } from "@/components/layout/notebook";
 import { DocsBody, DocsPage } from "@/components/layout/notebook/page";
 import { NotFoundTracker } from "@/components/not-found-tracker";
@@ -14,9 +14,7 @@ export const metadata: Metadata = {
 export default function NotFound() {
   const { nav, ...base } = baseOptions();
 
-  const navbarLinks: LinkItemType[] = [
-    ...links,
-  ];
+  const navbarLinks: LinkItemType[] = [...links, ...authLinks];
 
   return (
     <DocsLayout

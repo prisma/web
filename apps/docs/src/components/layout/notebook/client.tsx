@@ -17,6 +17,7 @@ import { ChevronDown } from "lucide-react";
 import Link from "fumadocs-core/link";
 import { usePathname } from "fumadocs-core/framework";
 import { useIsScrollTop } from "@fumadocs/base-ui/utils/use-is-scroll-top";
+import { isLinkItemVisibleOn } from "../link-item-visibility";
 import { LinkItem, type LinkItemType, type MainItemType, type MenuItemType } from "../link-item";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
 
@@ -137,10 +138,14 @@ export function LayoutHeaderTabs({
   links: LinkItemType[];
 }) {
   const items = useMemo(() => {
-    const visibleItems = links.filter((l) => l.type !== "icon" && l.type !== "custom");
+    const visibleItems = links.filter(
+      (item) =>
+        item.type !== "icon" &&
+        item.type !== "custom" &&
+        item.type !== "button" &&
+        isLinkItemVisibleOn(item, "menu"),
+    );
 
-    // Keep the default nav shape stable by overflowing extra top-level links
-    // into a generated "More" menu when a layout does not define one.
     if (
       visibleItems.length <= 6 ||
       visibleItems.some((item): item is Extract<LinkItemType, { type: "menu" }> => item.type === "menu")
@@ -239,69 +244,67 @@ function NavbarLinkItemMenu({
   const freezeUntil = useRef<number>(null);
 
   const delaySetOpen = (value: boolean) => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-
+    window.clearTimeout(timeoutRef.current ?? undefined);
     timeoutRef.current = window.setTimeout(() => {
       setOpen(value);
-      freezeUntil.current = Date.now() + 300;
     }, hoverDelay);
   };
-  const onPointerEnter = (e: PointerEvent) => {
-    if (e.pointerType === "touch") return;
+
+  const handlePointerEnter = () => {
+    if (freezeUntil.current && performance.now() < freezeUntil.current) return;
     delaySetOpen(true);
   };
-  const onPointerLeave = (e: PointerEvent) => {
-    if (e.pointerType === "touch") return;
+
+  const handlePointerLeave = () => {
     delaySetOpen(false);
   };
-  function isTouchDevice() {
-    return "ontouchstart" in window || navigator.maxTouchPoints > 0;
-  }
+
+  const handlePointerDown = (event: PointerEvent<HTMLElement>) => {
+    if (event.pointerType === "touch") {
+      freezeUntil.current = performance.now() + 500;
+    }
+  };
+
+  const pathname = usePathname();
+  const active =
+    item.items.some((child) => child.url === pathname || pathname.startsWith(`${child.url}/`)) ||
+    pathname === item.url ||
+    pathname.startsWith(`${item.url}/`);
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={(value) => {
-        if (freezeUntil.current === null || Date.now() >= freezeUntil.current) setOpen(value);
-      }}
-    >
-      <PopoverTrigger
-        className={cn(
-          "inline-flex items-center gap-1.5 p-1 text-sm text-fd-muted-foreground transition-colors has-data-[active=true]:text-fd-primary data-[state=open]:text-fd-accent-foreground focus-visible:outline-none",
-          className,
-        )}
-        onPointerEnter={onPointerEnter}
-        onPointerLeave={onPointerLeave}
-        {...props}
-      >
-        {item.url ? <LinkItem item={item as { url: string }}>{item.text}</LinkItem> : item.text}
-        <ChevronDown className="size-3" />
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          className={cn(
+            "inline-flex items-center gap-1 text-sm text-fd-muted-foreground transition-colors hover:text-fd-accent-foreground data-[active=true]:text-fd-primary",
+            active && "text-fd-primary",
+            className,
+          )}
+          onPointerEnter={handlePointerEnter}
+          onPointerLeave={handlePointerLeave}
+          onPointerDown={handlePointerDown}
+          {...props}
+        >
+          {item.text}
+          <ChevronDown className="size-4" />
+        </button>
       </PopoverTrigger>
       <PopoverContent
-        className="flex flex-col p-1 text-fd-muted-foreground text-start"
-        onPointerEnter={onPointerEnter}
-        onPointerLeave={onPointerLeave}
+        align="start"
+        className="min-w-52 p-1"
+        onPointerEnter={handlePointerEnter}
+        onPointerLeave={handlePointerLeave}
       >
-        {item.items.map((child, i) => {
-          if (child.type === "custom") return <Fragment key={i}>{child.children}</Fragment>;
-
-          return (
-            <LinkItem
-              key={i}
-              item={child}
-              className="inline-flex items-center gap-2 rounded-md p-2 transition-colors hover:bg-fd-accent hover:text-fd-accent-foreground data-[active=true]:text-fd-primary [&_svg]:size-4"
-              onClick={() => {
-                if (isTouchDevice()) setOpen(false);
-              }}
-            >
-              {child.icon}
-              {child.text}
-            </LinkItem>
-          );
-        })}
+        <div className="flex flex-col">
+          {item.items.map((child, index) => (
+            <Fragment key={`${child.text}-${index}`}>
+              <NavbarLinkItem
+                item={child}
+                className="rounded-md px-3 py-2 hover:bg-fd-accent data-[active=true]:bg-fd-accent"
+              />
+            </Fragment>
+          ))}
+        </div>
       </PopoverContent>
     </Popover>
   );
