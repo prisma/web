@@ -9,6 +9,7 @@ import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import { FooterNewsletterForm } from "@prisma-docs/ui/components/newsletter";
 import { BlogShare } from "@/components/BlogShare";
 import { AuthorAvatarGroup } from "@/components/AuthorAvatarGroup";
+import { getAuthorProfiles } from "@/lib/authors";
 import {
   getBaseUrl,
   withBlogBasePath,
@@ -31,6 +32,10 @@ interface PageParams {
 interface PersonSchema {
   "@type": "Person";
   name: string;
+  image?: ImageObjectSchema;
+  worksFor?: {
+    "@id": string;
+  };
 }
 
 interface ImageObjectSchema {
@@ -43,21 +48,42 @@ interface BlogPostingSchema {
   "@type": "BlogPosting";
   headline: string;
   description: string;
-  mainEntityOfPage: string;
+  mainEntityOfPage: {
+    "@type": "WebPage";
+    "@id": string;
+  };
   url: string;
   image?: string | ImageObjectSchema;
   author?: PersonSchema | PersonSchema[];
   datePublished?: string;
   dateModified?: string;
+  inLanguage: string;
+  isPartOf: {
+    "@id": string;
+  };
+  keywords?: string[];
+  articleSection?: string[];
+  wordCount?: number;
   publisher: {
     "@type": "Organization";
+    "@id": string;
     name: string;
+    url: string;
     logo: {
       "@type": "ImageObject";
       url: string;
     };
+    sameAs: string[];
   };
 }
+
+const PRISMA_SOCIAL_PROFILES = [
+  "https://github.com/prisma",
+  "https://twitter.com/prisma",
+  "https://www.linkedin.com/company/prisma-io",
+  "https://www.youtube.com/prismadata",
+  "https://www.facebook.com/prisma.io/",
+] as const;
 
 const isAbsoluteUrl = (value: string) => /^https?:\/\//i.test(value);
 
@@ -73,9 +99,21 @@ function toIsoDate(value: unknown): string | undefined {
   return date.toISOString();
 }
 
-function getBlogPostingJsonLd(
+function countWords(text: string): number | undefined {
+  const words = text
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`[^`]+`/g, " ")
+    .replace(/\[[^\]]+\]\([^)]+\)/g, " ")
+    .replace(/<[^>]+>/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+
+  return words.length > 0 ? words.length : undefined;
+}
+
+async function getBlogPostingJsonLd(
   page: ReturnType<typeof blog.getPage>,
-): BlogPostingSchema | null {
+): Promise<BlogPostingSchema | null> {
   if (!page) return null;
 
   const title = (page.data.metaTitle ?? page.data.title)?.trim();
@@ -92,33 +130,50 @@ function getBlogPostingJsonLd(
   const imageUrl = imagePath
     ? toAbsoluteUrl(withBlogBasePathForImageSrc(imagePath))
     : undefined;
+  const baseUrl = getBaseUrl();
+  const organizationId = `${baseUrl}#organization`;
+  const websiteId = `${toAbsoluteUrl(withBlogBasePath("/"))}#website`;
 
-  const authorNames = Array.isArray(page.data.authors)
-    ? page.data.authors
-        .filter((author): author is string => typeof author === "string")
-        .map((author) => author.trim())
-        .filter(Boolean)
+  const authorProfiles = Array.isArray(page.data.authors)
+    ? getAuthorProfiles(
+        page.data.authors.filter((author): author is string => typeof author === "string"),
+      )
     : [];
 
   const datePublished = toIsoDate(page.data.date);
   const dateModified =
     toIsoDate((page.data as { lastModified?: unknown }).lastModified) ??
     datePublished;
+  const processedText = await page.data.getText("processed");
+  const wordCount = countWords(processedText);
+  const tags = Array.isArray(page.data.tags)
+    ? page.data.tags.filter((tag): tag is string => typeof tag === "string")
+    : [];
 
   const jsonLd: BlogPostingSchema = {
     "@context": "https://schema.org",
     "@type": "BlogPosting",
     headline: title,
     description,
-    mainEntityOfPage: canonicalUrl,
+    mainEntityOfPage: {
+      "@type": "WebPage",
+      "@id": canonicalUrl,
+    },
     url: canonicalUrl,
+    inLanguage: "en",
+    isPartOf: {
+      "@id": websiteId,
+    },
     publisher: {
       "@type": "Organization",
+      "@id": organizationId,
       name: "Prisma",
+      url: baseUrl,
       logo: {
         "@type": "ImageObject",
-        url: "https://www.prisma.io/logo.png",
+        url: toAbsoluteUrl("/images/logo.svg"),
       },
+      sameAs: [...PRISMA_SOCIAL_PROFILES],
     },
   };
 
@@ -129,15 +184,37 @@ function getBlogPostingJsonLd(
     };
   }
 
-  if (authorNames.length === 1) {
+  if (authorProfiles.length === 1) {
     jsonLd.author = {
       "@type": "Person",
-      name: authorNames[0],
+      name: authorProfiles[0].name,
+      ...(authorProfiles[0].imageSrc
+        ? {
+            image: {
+              "@type": "ImageObject" as const,
+              url: toAbsoluteUrl(withBlogBasePathForImageSrc(authorProfiles[0].imageSrc)),
+            },
+          }
+        : {}),
+      worksFor: {
+        "@id": organizationId,
+      },
     };
-  } else if (authorNames.length > 1) {
-    jsonLd.author = authorNames.map((name) => ({
+  } else if (authorProfiles.length > 1) {
+    jsonLd.author = authorProfiles.map((author) => ({
       "@type": "Person" as const,
-      name,
+      name: author.name,
+      ...(author.imageSrc
+        ? {
+            image: {
+              "@type": "ImageObject" as const,
+              url: toAbsoluteUrl(withBlogBasePathForImageSrc(author.imageSrc)),
+            },
+          }
+        : {}),
+      worksFor: {
+        "@id": organizationId,
+      },
     }));
   }
 
@@ -147,6 +224,15 @@ function getBlogPostingJsonLd(
 
   if (dateModified) {
     jsonLd.dateModified = dateModified;
+  }
+
+  if (tags.length > 0) {
+    jsonLd.keywords = tags;
+    jsonLd.articleSection = tags;
+  }
+
+  if (wordCount) {
+    jsonLd.wordCount = wordCount;
   }
 
   return jsonLd;
@@ -160,7 +246,7 @@ export default async function Page(props: {
 
   if (!page) notFound();
   const MDX = page.data.body;
-  const blogPostingJsonLd = getBlogPostingJsonLd(page);
+  const blogPostingJsonLd = await getBlogPostingJsonLd(page);
 
   const newsletterApiUrl = withBlogBasePath("/api/newsletter");
   return (
