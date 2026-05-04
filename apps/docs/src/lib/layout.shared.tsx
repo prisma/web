@@ -1,4 +1,5 @@
-import type { BaseLayoutProps, LinkItemType } from "fumadocs-ui/layouts/shared";
+import type { LinkItemType } from "@/components/layout/link-item";
+import type { BaseLayoutProps } from "@/components/layout/shared";
 import Image from "next/image";
 import logoDark from "../../public/img/logo-dark.svg";
 import logoWhite from "../../public/img/logo-white.svg";
@@ -65,6 +66,17 @@ export const links: LinkItemTypeWithActivePaths[] = [
 ];
 
 export const docsLinks: LinkItemType[] = [];
+
+export const authLinks: LinkItemType[] = [
+  {
+    type: "button",
+    text: "Login",
+    url: "https://console.prisma.io/login?utm_source=docs&utm_medium=login",
+    active: "none",
+    on: "nav",
+    secondary: true,
+  },
+];
 
 export function baseOptions(): BaseLayoutProps {
   return {

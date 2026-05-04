@@ -17,6 +17,7 @@ import { ChevronDown } from "lucide-react";
 import Link from "fumadocs-core/link";
 import { usePathname } from "fumadocs-core/framework";
 import { useIsScrollTop } from "@fumadocs/base-ui/utils/use-is-scroll-top";
+import { isLinkItemVisibleOn } from "../link-item-visibility";
 import { LinkItem, type LinkItemType, type MenuItemType } from "../link-item";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
 
@@ -137,7 +138,14 @@ export function LayoutHeaderTabs({
   links: LinkItemType[];
 }) {
   const items = useMemo(
-    () => links.filter((l) => l.type !== "icon" && l.type !== "custom"),
+    () =>
+      links.filter(
+        (item) =>
+          item.type !== "icon" &&
+          item.type !== "custom" &&
+          item.type !== "button" &&
+          isLinkItemVisibleOn(item, "menu"),
+      ),
     [links],
   );
 
