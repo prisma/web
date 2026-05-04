@@ -199,6 +199,26 @@ const securityHeaders = [
   },
 ];
 
+const llmsTxtHeader = {
+  key: "Link",
+  value: '</docs/llms.txt>; rel="llms-txt"',
+};
+
+const docsMarkdownHeaders = [
+  {
+    key: "Link",
+    value:
+      '</docs/:path.md>; rel="alternate"; type="text/markdown", </docs/llms.txt>; rel="llms-txt"',
+  },
+];
+
+const docsRootMarkdownHeaders = [
+  {
+    key: "Link",
+    value: '</docs.md>; rel="alternate"; type="text/markdown", </docs/llms.txt>; rel="llms-txt"',
+  },
+];
+
 const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0.1,192.168.1.48")
   .split(",")
   .map((origin) => origin.trim())
@@ -226,6 +246,10 @@ const config = {
         source: "/:path*.mdx",
         destination: "/llms.mdx/:path*",
       },
+      {
+        source: "/:path*.md",
+        destination: "/llms.mdx/:path*",
+      },
     ];
   },
   basePath: "/docs",
@@ -241,7 +265,16 @@ const config = {
     return [
       {
         source: "/:path*",
-        headers: securityHeaders,
+        headers: [...securityHeaders, llmsTxtHeader],
+      },
+      {
+        source: "/",
+        headers: docsRootMarkdownHeaders,
+      },
+      {
+        source:
+          "/:path((?!api(?:/|$)|llms(?:\\.|/|$)|og(?:/|$)|rss\\.xml$|sitemap(?:\\.xml)?$|favicon\\.ico$|.*\\.[^/]+$).+)",
+        headers: docsMarkdownHeaders,
       },
     ];
   },

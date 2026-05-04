@@ -1,5 +1,6 @@
 import { sourceV6 } from "@/lib/source";
 import { getLLMText } from "@/lib/get-llm-text";
+import { createLLMsFullResponse } from "@/lib/llms";
 
 export const revalidate = false;
 
@@ -13,12 +14,5 @@ Use this legacy feed only for projects that are intentionally staying on Prisma 
 
 `;
 
-  const scan = sourceV6.getPages().map(getLLMText);
-  const scanned = await Promise.all(scan);
-
-  return new Response(description + scanned.join("\n\n"), {
-    headers: {
-      "Content-Type": "text/plain; charset=utf-8",
-    },
-  });
+  return createLLMsFullResponse(description, sourceV6.getPages(), getLLMText);
 }
