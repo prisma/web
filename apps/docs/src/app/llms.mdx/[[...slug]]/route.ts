@@ -1,17 +1,12 @@
 import { getLLMText } from "@/lib/get-llm-text";
-import { source, sourceV6 } from "@/lib/source";
+import { source } from "@/lib/source";
 import { notFound } from "next/navigation";
 
 export const revalidate = false;
 
 function resolvePage(slug: string[] | undefined) {
   const slugs = slug ?? [];
-
-  return (
-    source.getPage(slugs) ||
-    sourceV6.getPage(slugs) ||
-    (slugs[0] === "v6" ? sourceV6.getPage(slugs.slice(1)) : undefined)
-  );
+  return source.getPage(slugs);
 }
 
 export async function GET(_req: Request, { params }: RouteContext<"/llms.mdx/[[...slug]]">) {
@@ -32,13 +27,10 @@ export function generateStaticParams() {
   // Only pre-render leaf pages to avoid file/dir conflicts during static export.
   // A slug is considered non-leaf if it is a prefix of any other slug.
   const v7Params = source.generateParams();
-  const v6Params = sourceV6
-    .generateParams()
-    .map((p) => ({ ...p, slug: ["v6", ...(p.slug ?? [])] }));
 
-  // Deduplicate identical slugs from v7 and v6
+  // Deduplicate identical slugs from v7
   const seen = new Set<string>();
-  const allParams = [...v7Params, ...v6Params].filter((p) => {
+  const allParams = v7Params.filter((p) => {
     const key = JSON.stringify(p.slug ?? []);
     if (seen.has(key)) return false;
     seen.add(key);

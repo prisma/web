@@ -1,0 +1,203 @@
+---
+title: Working with compound IDs and unique constraints
+description: 'How to read, write, and filter by compound IDs and unique constraints.'
+url: /orm/v6/prisma-client/special-fields-and-types/working-with-composite-ids-and-constraints
+metaTitle: Working with compound IDs and unique constraints (Concepts)
+metaDescription: 'How to read, write, and filter by compound IDs and unique constraints.'
+---
+
+Composite IDs and compound unique constraints can be defined in your Prisma schema using the [`@@id`](/orm/v6/reference/prisma-schema-reference#id-1) and [`@@unique`](/orm/v6/reference/prisma-schema-reference#unique-1) attributes.
+
+:::warning
+
+**MongoDB does not support `@@id`**<br />
+MongoDB does not support composite IDs, which means you cannot identify a model with a `@@id` attribute.
+
+:::
+
+A composite ID or compound unique constraint uses the combined values of two fields as a primary key or identifier in your database table. In the following example, the `postId` field and `userId` field are used as a composite ID for a `Like` table:
+
+```prisma highlight=22;normal
+model User {
+  id    Int    @id @default(autoincrement())
+  name  String
+  post  Post[]
+  likes Like[]
+}
+
+model Post {
+  id      Int    @id @default(autoincrement())
+  content String
+  User    User?  @relation(fields: [userId], references: [id])
+  userId  Int?
+  likes   Like[]
+}
+
+model Like {
+  postId Int
+  userId Int
+  User   User @relation(fields: [userId], references: [id])
+  Post   Post @relation(fields: [postId], references: [id])
+
+  @@id([postId, userId]) // [!code highlight]
+}
+```
+
+Querying for records from the `Like` table (e.g. using `prisma.like.findMany()`) would return objects that look as follows:
+
+```json
+{
+  "postId": 1,
+  "userId": 1
+}
+```
+
+Although there are only two fields in the response, those two fields make up a compound ID named `postId_userId`.
+
+You can also create a named compound ID or compound unique constraint by using the `@@id` or `@@unique` attributes' `name` field. For example:
+
+```prisma highlight=7;normal
+model Like {
+  postId Int
+  userId Int
+  User   User @relation(fields: [userId], references: [id])
+  Post   Post @relation(fields: [postId], references: [id])
+
+  @@id(name: "likeId", [postId, userId]) // [!code highlight]
+}
+```
+
+## Where you can use compound IDs and unique constraints
+
+Compound IDs and compound unique constraints can be used when working with _unique_ data.
+
+Below is a list of Prisma Client functions that accept a compound ID or compound unique constraint in the `where` filter of the query:
+
+- `findUnique()`
+- `findUniqueOrThrow`
+- `delete`
+- `update`
+- `upsert`
+
+A composite ID and a composite unique constraint is also usable when creating relational data with `connect` and `connectOrCreate`.
+
+## Filtering records by a compound ID or unique constraint
+
+Although your query results will not display a compound ID or unique constraint as a field, you can use these compound values to filter your queries for unique records:
+
+```ts highlight=3-6;normal
+const like = await prisma.like.findUnique({
+  where: {
+    likeId: {
+      userId: 1,
+      postId: 1,
+    },
+  },
+});
+```
+
+:::info
+
+Note composite ID and compound unique constraint keys are only available as filter options for _unique_ queries such as `findUnique()` and `findUniqueOrThrow`. See the [section](/orm/v6/prisma-client/special-fields-and-types/working-with-composite-ids-and-constraints#where-you-can-use-compound-ids-and-unique-constraints) above for a list of places these fields may be used.
+
+:::
+
+## Deleting records by a compound ID or unique constraint
+
+A compound ID or compound unique constraint may be used in the `where` filter of a `delete` query:
+
+```ts highlight=3-6;normal
+const like = await prisma.like.delete({
+  where: {
+    likeId: {
+      userId: 1,
+      postId: 1,
+    },
+  },
+});
+```
+
+## Updating and upserting records by a compound ID or unique constraint
+
+A compound ID or compound unique constraint may be used in the `where` filter of an `update` query:
+
+```ts highlight=3-6;normal
+const like = await prisma.like.update({
+  where: {
+    likeId: {
+      userId: 1,
+      postId: 1,
+    },
+  },
+  data: {
+    postId: 2,
+  },
+});
+```
+
+They may also be used in the `where` filter of an `upsert` query:
+
+```ts highlight=3-6;normal
+await prisma.like.upsert({
+  where: {
+    likeId: {
+      userId: 1,
+      postId: 1,
+    },
+  },
+  update: {
+    userId: 2,
+  },
+  create: {
+    userId: 2,
+    postId: 1,
+  },
+});
+```
+
+## Filtering relation queries by a compound ID or unique constraint
+
+Compound IDs and compound unique constraint can also be used in the `connect` and `connectOrCreate` keys used when connecting records to create a relationship.
+
+For example, consider this query:
+
+```ts highlight=6-9;normal
+await prisma.user.create({
+  data: {
+    name: "Alice",
+    likes: {
+      connect: {
+        likeId: {
+          postId: 1,
+          userId: 2,
+        },
+      },
+    },
+  },
+});
+```
+
+The `likeId` compound ID is used as the identifier in the `connect` object that is used to locate the `Like` table's record that will be linked to the new user: `"Alice"`.
+
+Similarly, the `likeId` can be used in `connectOrCreate`'s `where` filter to attempt to locate an existing record in the `Like` table:
+
+```ts highlight=10-13;normal
+await prisma.user.create({
+  data: {
+    name: "Alice",
+    likes: {
+      connectOrCreate: {
+        create: {
+          postId: 1,
+        },
+        where: {
+          likeId: {
+            postId: 1,
+            userId: 1,
+          },
+        },
+      },
+    },
+  },
+});
+```

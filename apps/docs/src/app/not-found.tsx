@@ -1,10 +1,8 @@
 import { source } from "@/lib/source";
 import { baseOptions, links } from "@/lib/layout.shared";
-import { VersionSwitcher } from "@/components/version-switcher";
 import type { LinkItemType } from "fumadocs-ui/layouts/shared";
 import { DocsLayout } from "@/components/layout/notebook";
 import { DocsBody, DocsPage } from "@/components/layout/notebook/page";
-import { LATEST_VERSION } from "@/lib/version";
 import { NotFoundTracker } from "@/components/not-found-tracker";
 import type { Metadata } from "next";
 
@@ -18,10 +16,6 @@ export default function NotFound() {
 
   const navbarLinks: LinkItemType[] = [
     ...links,
-    {
-      type: "custom",
-      children: <VersionSwitcher currentVersion={LATEST_VERSION} />,
-    },
   ];
 
   return (

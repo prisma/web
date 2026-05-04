@@ -6,7 +6,7 @@ const CONSOLE_HOST = "console.prisma.io";
 
 const remarkConsoleUtm: Plugin<[], Root> = () => (tree, vfile) => {
   const filePath = vfile.path ?? "";
-  const isV6 = filePath.includes("content/docs.v6/");
+  const isV6 = filePath.includes("content/docs.v6/") || filePath.includes("content/docs/orm/v6/");
   const utmSource = isV6 ? "docs-v6" : "docs";
 
   const sectionMatch = filePath.match(/content\/docs(?:\.v6)?\/([^/]+)/);

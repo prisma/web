@@ -1,0 +1,316 @@
+---
+title: Custom model and field names
+description: Learn how you can decouple the naming of Prisma models from database tables to improve the ergonomics of the generated Prisma Client API.
+url: /orm/v6/prisma-client/setup-and-configuration/custom-model-and-field-names
+metaTitle: Custom model and field names
+metaDescription: Learn how you can decouple the naming of Prisma models from database tables to improve the ergonomics of the generated Prisma Client API.
+---
+
+The Prisma Client API is generated based on the models in your [Prisma schema](/orm/v6/prisma-schema/overview). Models are _typically_ 1:1 mappings of your database tables.
+
+In some cases, especially when using [introspection](/orm/v6/prisma-schema/introspection), it might be useful to _decouple_ the naming of database tables and columns from the names that are used in your Prisma Client API. This can be done via the [`@map` and `@@map`](/orm/v6/prisma-schema/data-model/models#mapping-model-names-to-tables-or-collections) attributes in your Prisma schema.
+
+You can use `@map` and `@@map` to rename MongoDB fields and collections respectively. This page uses a relational database example.
+
+## Example: Relational database
+
+Assume you have a PostgreSQL relational database schema looking similar to this:
+
+```sql
+CREATE TABLE users (
+	user_id SERIAL PRIMARY KEY NOT NULL,
+	name VARCHAR(256),
+	email VARCHAR(256) UNIQUE NOT NULL
+);
+CREATE TABLE posts (
+	post_id SERIAL PRIMARY KEY NOT NULL,
+	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	title VARCHAR(256) NOT NULL,
+	content TEXT,
+	author_id INTEGER REFERENCES users(user_id)
+);
+CREATE TABLE profiles (
+	profile_id SERIAL PRIMARY KEY NOT NULL,
+	bio TEXT,
+	user_id INTEGER NOT NULL UNIQUE REFERENCES users(user_id)
+);
+CREATE TABLE categories (
+	category_id SERIAL PRIMARY KEY NOT NULL,
+	name VARCHAR(256)
+);
+CREATE TABLE post_in_categories (
+	post_id INTEGER NOT NULL REFERENCES posts(post_id),
+	category_id INTEGER NOT NULL REFERENCES categories(category_id)
+);
+CREATE UNIQUE INDEX post_id_category_id_unique ON post_in_categories(post_id int4_ops,category_id int4_ops);
+```
+
+When introspecting a database with that schema, you'll get a Prisma schema looking similar to this:
+
+```prisma
+model categories {
+  category_id        Int                  @id @default(autoincrement())
+  name               String?              @db.VarChar(256)
+  post_in_categories post_in_categories[]
+}
+
+model post_in_categories {
+  post_id     Int
+  category_id Int
+  categories  categories @relation(fields: [category_id], references: [category_id], onDelete: NoAction, onUpdate: NoAction)
+  posts       posts      @relation(fields: [post_id], references: [post_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([post_id, category_id], map: "post_id_category_id_unique")
+}
+
+model posts {
+  post_id            Int                  @id @default(autoincrement())
+  created_at         DateTime?            @default(now()) @db.Timestamptz(6)
+  title              String               @db.VarChar(256)
+  content            String?
+  author_id          Int?
+  users              users?               @relation(fields: [author_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  post_in_categories post_in_categories[]
+}
+
+model profiles {
+  profile_id Int     @id @default(autoincrement())
+  bio        String?
+  user_id    Int     @unique
+  users      users   @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model users {
+  user_id  Int       @id @default(autoincrement())
+  name     String?   @db.VarChar(256)
+  email    String    @unique @db.VarChar(256)
+  posts    posts[]
+  profiles profiles?
+}
+```
+
+There are a few "issues" with this Prisma schema when the Prisma Client API is generated:
+
+**Adhering to Prisma ORM's naming conventions**
+
+Prisma ORM has a [naming convention](/orm/v6/reference/prisma-schema-reference#naming-conventions) of **camelCasing** and using the **singular form** for Prisma models. If these naming conventions are not met, the Prisma schema can become harder to interpret and the generated Prisma Client API will feel less natural. Consider the following, generated model:
+
+```prisma
+model users {
+  user_id  Int       @id @default(autoincrement())
+  name     String?   @db.VarChar(256)
+  email    String    @unique @db.VarChar(256)
+  posts    posts[]
+  profiles profiles?
+}
+```
+
+Although `profiles` refers to a 1:1 relation, its type is currently called `profiles` in plural, suggesting that there might be many `profiles` in this relation. With Prisma ORM conventions, the models and fields were _ideally_ named as follows:
+
+```prisma
+model User {
+  user_id Int      @id @default(autoincrement())
+  name    String?  @db.VarChar(256)
+  email   String   @unique @db.VarChar(256)
+  posts   Post[]
+  profile Profile?
+}
+```
+
+Because these fields are "Prisma ORM-level" [relation fields](/orm/v6/prisma-schema/data-model/relations#relation-fields) that do not manifest you can manually rename them in your Prisma schema.
+
+**Naming of annotated relation fields**
+
+Foreign keys are represented as a combination of a [annotated relation fields](/orm/v6/prisma-schema/data-model/relations#relation-fields) and its corresponding relation scalar field in the Prisma schema. Here's how all the relations from the SQL schema are currently represented:
+
+```prisma
+model categories {
+  category_id        Int                  @id @default(autoincrement())
+  name               String?              @db.VarChar(256)
+  post_in_categories post_in_categories[] // virtual relation field
+}
+
+model post_in_categories {
+  post_id     Int // relation scalar field
+  category_id Int // relation scalar field
+  categories  categories @relation(fields: [category_id], references: [category_id], onDelete: NoAction, onUpdate: NoAction) // virtual relation field
+  posts       posts      @relation(fields: [post_id], references: [post_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([post_id, category_id], map: "post_id_category_id_unique")
+}
+
+model posts {
+  post_id            Int                  @id @default(autoincrement())
+  created_at         DateTime?            @default(now()) @db.Timestamptz(6)
+  title              String               @db.VarChar(256)
+  content            String?
+  author_id          Int?
+  users              users?               @relation(fields: [author_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  post_in_categories post_in_categories[]
+}
+
+model profiles {
+  profile_id Int     @id @default(autoincrement())
+  bio        String?
+  user_id    Int     @unique
+  users      users   @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model users {
+  user_id  Int       @id @default(autoincrement())
+  name     String?   @db.VarChar(256)
+  email    String    @unique @db.VarChar(256)
+  posts    posts[]
+  profiles profiles?
+}
+```
+
+## Using `@map` and `@@map` to rename fields and models in the Prisma Client API
+
+You can "rename" fields and models that are used in Prisma Client by mapping them to the "original" names in the database using the `@map` and `@@map` attributes. For the example above, you could e.g. annotate your models as follows.
+
+_After_ you introspected your database with `prisma db pull`, you can manually adjust the resulting Prisma schema as follows:
+
+```prisma
+model Category {
+  id                 Int                @id @default(autoincrement()) @map("category_id")
+  name               String?            @db.VarChar(256)
+  post_in_categories PostInCategories[]
+
+  @@map("categories")
+}
+
+model PostInCategories {
+  post_id     Int
+  category_id Int
+  categories  Category @relation(fields: [category_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  posts       Post     @relation(fields: [post_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([post_id, category_id], map: "post_id_category_id_unique")
+  @@map("post_in_categories")
+}
+
+model Post {
+  id                 Int                @id @default(autoincrement()) @map("post_id")
+  created_at         DateTime?          @default(now()) @db.Timestamptz(6)
+  title              String             @db.VarChar(256)
+  content            String?
+  author_id          Int?
+  users              User?              @relation(fields: [author_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  post_in_categories PostInCategories[]
+
+  @@map("posts")
+}
+
+model Profile {
+  id      Int     @id @default(autoincrement()) @map("profile_id")
+  bio     String?
+  user_id Int     @unique
+  users   User    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("profiles")
+}
+
+model User {
+  id       Int      @id @default(autoincrement()) @map("user_id")
+  name     String?  @db.VarChar(256)
+  email    String   @unique @db.VarChar(256)
+  posts    Post[]
+  profiles Profile?
+
+  @@map("users")
+}
+```
+
+With these changes, you're now adhering to Prisma ORM's naming conventions and the generated Prisma Client API feels more "natural":
+
+```ts
+// Nested writes
+const profile = await prisma.profile.create({
+  data: {
+    bio: "Hello World",
+    users: {
+      create: {
+        name: "Alice",
+        email: "alice@prisma.io",
+      },
+    },
+  },
+});
+
+// Fluent API
+const userByProfile = await prisma.profile
+  .findUnique({
+    where: { id: 1 },
+  })
+  .users();
+```
+
+:::info
+
+`prisma db pull` preserves the custom names you defined via `@map` and `@@map` in your Prisma schema on re-introspecting your database.
+
+:::
+
+## Renaming relation fields
+
+Prisma ORM-level [relation fields](/orm/v6/prisma-schema/data-model/relations#relation-fields) (sometimes referred to as "virtual relation fields") only exist in the Prisma schema, but do not actually manifest in the underlying database. You can therefore name these fields whatever you want.
+
+Consider the following example of an ambiguous relation in a SQL database:
+
+```sql
+CREATE TABLE "User" (
+    id SERIAL PRIMARY KEY
+);
+CREATE TABLE "Post" (
+    id SERIAL PRIMARY KEY,
+    "author" integer NOT NULL,
+    "favoritedBy" INTEGER,
+    FOREIGN KEY ("author") REFERENCES "User"(id),
+    FOREIGN KEY ("favoritedBy") REFERENCES "User"(id)
+);
+```
+
+Prisma ORM's introspection will output the following Prisma schema:
+
+```prisma
+model Post {
+  id                          Int   @id @default(autoincrement())
+  author                      Int
+  favoritedBy                 Int?
+  User_Post_authorToUser      User  @relation("Post_authorToUser", fields: [author], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  User_Post_favoritedByToUser User? @relation("Post_favoritedByToUser", fields: [favoritedBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model User {
+  id                          Int    @id @default(autoincrement())
+  Post_Post_authorToUser      Post[] @relation("Post_authorToUser")
+  Post_Post_favoritedByToUser Post[] @relation("Post_favoritedByToUser")
+}
+```
+
+Because the names of the virtual relation fields `Post_Post_authorToUser` and `Post_Post_favoritedByToUser` are based on the generated relation names, they don't look very friendly in the Prisma Client API. In that case, you can rename the relation fields. For example:
+
+```prisma highlight=11-12;edit
+model Post {
+  id                          Int   @id @default(autoincrement())
+  author                      Int
+  favoritedBy                 Int?
+  User_Post_authorToUser      User  @relation("Post_authorToUser", fields: [author], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  User_Post_favoritedByToUser User? @relation("Post_favoritedByToUser", fields: [favoritedBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model User {
+  id             Int    @id @default(autoincrement())
+  //edit-start
+  writtenPosts   Post[] @relation("Post_authorToUser")
+  favoritedPosts Post[] @relation("Post_favoritedByToUser")
+  //edit-end
+}
+```
+
+:::info
+
+`prisma db pull` preserves custom relation fields defined in your Prisma schema on re-introspecting your database.
+
+:::

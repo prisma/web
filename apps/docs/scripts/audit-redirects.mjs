@@ -1,4 +1,4 @@
-import { readFile, readdir } from "node:fs/promises";
+import { readFile, readdir, access } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -22,6 +22,10 @@ function normalizeRoute(route) {
 function toDocsRoute(url) {
   const normalized = normalizeRoute(url);
   if (normalized === "/") return "/docs";
+  if (normalized === "/orm/latest") return "/docs/orm";
+  if (normalized.startsWith("/orm/latest/")) {
+    return `/docs${normalized.replace("/orm/latest/", "/orm/")}`;
+  }
   return `/docs${normalized}`;
 }
 
@@ -79,18 +83,18 @@ function extractFrontmatterUrl(raw) {
 }
 
 async function collectDocsRoutes() {
-  const roots = [
-    path.join(docsRoot, "content", "docs"),
-    path.join(docsRoot, "content", "docs.v6"),
-  ];
+  const roots = [path.join(docsRoot, "content", "docs")];
 
   const routes = new Set();
-  const extraRoutes = new Set([
-    "/docs/llms-full.txt",
-    "/docs/llms-full-v6.txt",
-  ]);
+  const extraRoutes = new Set(["/docs/llms-full.txt"]);
 
   for (const root of roots) {
+    try {
+      await access(root);
+    } catch {
+      continue;
+    }
+
     const files = await walk(root);
 
     for (const file of files) {

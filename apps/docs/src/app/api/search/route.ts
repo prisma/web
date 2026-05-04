@@ -2,20 +2,25 @@ import { createMixedbreadSearchAPI } from "fumadocs-core/search/mixedbread";
 import Mixedbread from "@mixedbread/sdk";
 import { SortedResult } from "fumadocs-core/search";
 import { formatSlugDisplayName } from "@/lib/breadcrumb-utils";
+import { isVersionSegment } from "@/lib/version";
 
 export const dynamic = "force-dynamic";
 
-/** Derive breadcrumbs from URL path segments (e.g. /docs/console/concepts → ['Docs', 'Console']) */
 function getBreadcrumbsFromUrl(url: string): string[] {
   const path = url.replace(/#.*$/, "").trim().replace(/\/$/, "") || "/";
   const segments = path.split("/").filter(Boolean);
   if (segments.length === 0) return [];
-  // Strip version prefix (e.g. v6)
-  const normalized = segments[0] === "v6" ? segments.slice(1) : segments;
+
+  const normalized =
+    isVersionSegment(segments[0]) && segments[1] === "orm"
+      ? ["orm", ...segments.slice(2)]
+      : segments[0] === "orm" && (segments[1] === "latest" || isVersionSegment(segments[1]))
+        ? ["orm", ...segments.slice(2)]
+        : segments;
+
   if (normalized.length === 0) return [];
-  // Ancestors only (exclude last = current page), or full path for section roots
   const breadcrumbSegments = normalized.length > 1 ? normalized.slice(0, -1) : normalized;
-  return breadcrumbSegments.map((s) => formatSlugDisplayName(s));
+  return breadcrumbSegments.map((segment) => formatSlugDisplayName(segment));
 }
 
 function slugger(value: string): string {

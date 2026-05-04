@@ -17,7 +17,7 @@ import { ChevronDown } from "lucide-react";
 import Link from "fumadocs-core/link";
 import { usePathname } from "fumadocs-core/framework";
 import { useIsScrollTop } from "@fumadocs/base-ui/utils/use-is-scroll-top";
-import { LinkItem, type LinkItemType, type MenuItemType } from "../link-item";
+import { LinkItem, type LinkItemType, type MainItemType, type MenuItemType } from "../link-item";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
 
 export const LayoutContext = createContext<{
@@ -136,10 +136,32 @@ export function LayoutHeaderTabs({
 }: ComponentProps<"div"> & {
   links: LinkItemType[];
 }) {
-  const items = useMemo(
-    () => links.filter((l) => l.type !== "icon" && l.type !== "custom"),
-    [links],
-  );
+  const items = useMemo(() => {
+    const visibleItems = links.filter((l) => l.type !== "icon" && l.type !== "custom");
+
+    // Keep the default nav shape stable by overflowing extra top-level links
+    // into a generated "More" menu when a layout does not define one.
+    if (
+      visibleItems.length <= 6 ||
+      visibleItems.some((item): item is Extract<LinkItemType, { type: "menu" }> => item.type === "menu")
+    ) {
+      return visibleItems;
+    }
+
+    const primaryItems = visibleItems.slice(0, 5);
+    const overflowItems = visibleItems
+      .slice(5)
+      .filter((item): item is MainItemType => "url" in item && item.type !== "menu" && item.type !== "button");
+
+    return [
+      ...primaryItems,
+      {
+        type: "menu",
+        text: "More",
+        items: overflowItems,
+      } satisfies MenuItemType,
+    ];
+  }, [links]);
 
   return (
     <div className={cn("flex flex-row items-end gap-6", className)} {...props}>

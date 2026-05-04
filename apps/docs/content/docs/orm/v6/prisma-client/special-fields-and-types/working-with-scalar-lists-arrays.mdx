@@ -1,0 +1,206 @@
+---
+title: Working with scalar lists
+description: 'How to read, write, and filter by scalar lists / arrays.'
+url: /orm/v6/prisma-client/special-fields-and-types/working-with-scalar-lists-arrays
+metaTitle: Working with scalar lists/arrays (Concepts)
+metaDescription: 'How to read, write, and filter by scalar lists / arrays.'
+---
+
+[Scalar lists](/orm/v6/reference/prisma-schema-reference#-modifier) are represented by the `[]` modifier and are only available if the underlying database supports scalar lists. The following example has one scalar `String` list named `pets`:
+
+```prisma highlight=4;normal tab="Relational databases"
+model User {
+  id   Int      @id @default(autoincrement())
+  name String
+  pets String[] // [!code highlight]
+}
+```
+
+```prisma highlight=4;normal tab="MongoDB"
+model User {
+  id   String   @id @default(auto()) @map("_id") @db.ObjectId
+  name String
+  pets String[] // [!code highlight]
+}
+```
+
+Example field value:
+
+```json5
+["Fido", "Snoopy", "Brian"]
+```
+
+## Setting the value of a scalar list
+
+The following example demonstrates how to [`set`](/orm/v6/reference/prisma-client-reference#set-1) the value of a scalar list (`coinflips`) when you create a model:
+
+```ts
+const createdUser = await prisma.user.create({
+  data: {
+    email: "eloise@prisma.io",
+    coinflips: [true, true, true, false, true],
+  },
+});
+```
+
+## Unsetting the value of a scalar list
+
+:::warning
+
+This method is available on MongoDB only in versions
+[3.11.1](https://github.com/prisma/prisma/releases/tag/3.11.1) and later.
+
+:::
+
+The following example demonstrates how to [`unset`](/orm/v6/reference/prisma-client-reference#unset) the value of a scalar list (`coinflips`):
+
+```ts
+const createdUser = await prisma.user.create({
+  data: {
+    email: "eloise@prisma.io",
+    coinflips: {
+      unset: true,
+    },
+  },
+});
+```
+
+Unlike `set: null`, `unset` removes the list entirely.
+
+## Adding items to a scalar list
+
+:::warning
+
+Available for:
+
+- PostgreSQL in versions [2.15.0](https://github.com/prisma/prisma/releases/tag/2.15.0) and later
+- CockroachDB in versions [3.9.0](https://github.com/prisma/prisma/releases/tag/3.9.0) and later
+- MongoDB in versions [3.11.0](https://github.com/prisma/prisma/releases/tag/3.11.0) and later
+
+:::
+
+Use the [`push`](/orm/v6/reference/prisma-client-reference#push) method to add a single value to a scalar list:
+
+```ts
+const userUpdate = await prisma.user.update({
+  where: {
+    id: 9,
+  },
+  data: {
+    coinflips: {
+      push: true,
+    },
+  },
+});
+```
+
+In earlier versions, you have to overwrite the entire value. The following example retrieves user, uses `push()` to add three new coin flips, and overwrites the `coinflips` field in an `update`:
+
+```ts
+const user = await prisma.user.findUnique({
+  where: {
+    email: "eloise@prisma.io",
+  },
+});
+
+if (user) {
+  console.log(user.coinflips);
+
+  user.coinflips.push(true, true, false);
+
+  const updatedUser = await prisma.user.update({
+    where: {
+      email: "eloise@prisma.io",
+    },
+    data: {
+      coinflips: user.coinflips,
+    },
+  });
+
+  console.log(updatedUser.coinflips);
+}
+```
+
+## Filtering scalar lists
+
+:::warning
+
+Available for:
+
+- PostgreSQL in versions [2.15.0](https://github.com/prisma/prisma/releases/tag/2.15.0) and later
+- CockroachDB in versions [3.9.0](https://github.com/prisma/prisma/releases/tag/3.9.0) and later
+- MongoDB in versions [3.11.0](https://github.com/prisma/prisma/releases/tag/3.11.0) and later
+
+:::
+
+Use [scalar list filters](/orm/v6/reference/prisma-client-reference#scalar-list-filters) to filter for records with scalar lists that match a specific condition. The following example returns all posts where the tags list includes `databases` _and_ `typescript`:
+
+```ts
+const posts = await prisma.post.findMany({
+  where: {
+    tags: {
+      hasEvery: ["databases", "typescript"],
+    },
+  },
+});
+```
+
+### `NULL` values in arrays
+
+:::warning
+
+This section applies to:
+
+- PostgreSQL in versions [2.15.0](https://github.com/prisma/prisma/releases/tag/2.15.0) and later
+- CockroachDB in versions [3.9.0](https://github.com/prisma/prisma/releases/tag/3.9.0) and later
+
+:::
+
+When using scalar list filters with a relational database connector, array fields with a `NULL` value are not considered by the following conditions:
+
+- `NOT` (array does not contain X)
+- `isEmpty` (array is empty)
+
+This means that records you might expect to see are not returned. Consider the following examples:
+
+- The following query returns all posts where the `tags` **do not** include `databases`:
+
+  ```ts
+  const posts = await prisma.post.findMany({
+    where: {
+      NOT: {
+        tags: {
+          has: "databases",
+        },
+      },
+    },
+  });
+  ```
+
+  - ✔ Arrays that do not contain `"databases"`, such as `{"typescript", "graphql"}`
+  - ✔ Empty arrays, such as `[]`
+
+  The query does not return:
+  - ✘ `NULL` arrays, even though they do not contain `"databases"`
+
+The following query returns all posts where `tags` is empty:
+
+```ts
+const posts = await prisma.post.findMany({
+  where: {
+    tags: {
+      isEmpty: true,
+    },
+  },
+});
+```
+
+The query returns:
+
+- ✔ Empty arrays, such as `[]`
+
+The query does not return:
+
+- ✘ `NULL` arrays, even though they could be considered empty
+
+To work around this issue, you can set the default value of array fields to `[]`.

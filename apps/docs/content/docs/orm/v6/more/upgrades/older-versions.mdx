@@ -1,0 +1,170 @@
+---
+title: Older versions
+description: 'Upgrade guides for Prisma ORM versions 3, 4, 5, and 6'
+url: /orm/v6/more/upgrades/older-versions
+metaTitle: Older versions
+metaDescription: 'Upgrade guides for Prisma ORM versions 3, 4, 5, and 6'
+---
+
+This page provides upgrade guidance for older Prisma ORM versions. For upgrading to the current version, see [Upgrade to v7](/orm/v6/more/upgrades/to-v7).
+
+## Upgrading to v6
+
+Prisma ORM v6 introduced breaking changes related to Node.js versions, TypeScript versions, and schema changes for PostgreSQL.
+
+### Key breaking changes
+
+- **Minimum Node.js**: 18.18.0, 20.9.0, or 22.11.0
+- **Minimum TypeScript**: 5.1.0
+- **PostgreSQL implicit m-n relations**: Changed from unique index to primary key
+- **Full-text search on PostgreSQL**: Now requires `fullTextSearchPostgres` preview feature
+- **`Buffer` replaced with `Uint8Array`**: For `Bytes` fields
+- **`NotFoundError` removed**: Use `PrismaClientKnownRequestError` with code `P2025` instead
+
+### Upgrade command
+
+```npm
+npm install prisma@6 @prisma/client@6
+```
+
+After upgrading, run `prisma migrate dev --name upgrade-to-v6` to apply schema changes for implicit m-n relations.
+
+---
+
+## Upgrading to v5
+
+Prisma ORM v5 introduced the JSON Protocol for improved performance and removed deprecated APIs.
+
+### Key breaking changes
+
+- **Minimum Node.js**: 16.13.0
+- **Minimum TypeScript**: 4.7
+- **Minimum PostgreSQL**: 9.6
+- **`rejectOnNotFound` removed**: Use `findFirstOrThrow()` or `findUniqueOrThrow()` instead
+- **Array shortcuts removed**: `OR`, `in`, `notIn`, and `path` now require array values
+- **CockroachDB**: Requires `cockroachdb` provider (not `postgresql`)
+
+### Example: Replacing `rejectOnNotFound`
+
+```js
+// Before (v4 and earlier)
+prisma.user.findFirst({
+  where: { name: "Alice" },
+  rejectOnNotFound: true,
+});
+
+// After (v5+)
+prisma.user.findFirstOrThrow({
+  where: { name: "Alice" },
+});
+```
+
+### Example: Array values required
+
+```js
+// Before (v4 and earlier)
+prisma.user.findMany({
+  where: { OR: { email: "foo@example.com" } },
+});
+
+// After (v5+)
+prisma.user.findMany({
+  where: { OR: [{ email: "foo@example.com" }] },
+});
+```
+
+### Upgrade command
+
+```npm
+npm install prisma@5 @prisma/client@5
+```
+
+---
+
+## Upgrading to v4
+
+Prisma ORM v4 made extended indexes generally available and introduced changes to raw queries and JSON null handling.
+
+### Key breaking changes
+
+- **Minimum Node.js**: 14.17.x
+- **Extended indexes GA**: `extendedIndexes` preview feature removed
+- **Explicit `@unique` required**: For 1:1 relations
+- **Raw query type mapping**: `DateTime` returns `Date`, `Numeric` returns `Decimal`
+- **`DbNull`, `JsonNull`, `AnyNull`**: Now objects instead of strings
+
+### Example: JSON null values
+
+```js
+// Before (v3 and earlier)
+prisma.log.findMany({
+  where: { data: { meta: { equals: null } } },
+});
+
+// After (v4+)
+import { Prisma } from "@prisma/client";
+prisma.log.findMany({
+  where: { data: { meta: { equals: Prisma.AnyNull } } },
+});
+```
+
+### Upgrade command
+
+```npm
+npm install prisma@4 @prisma/client@4
+```
+
+After upgrading, run `npx prisma db pull` to retrieve existing index configurations before creating new migrations.
+
+---
+
+## Upgrading to v3
+
+Prisma ORM v3 introduced referential actions and named constraints, with significant changes to cascade delete behavior.
+
+### Key breaking changes
+
+- **Referential actions**: Runtime cascade prevention removed; now handled at database level
+- **Named constraints**: New naming convention for constraints and indexes
+- **`$queryRaw` changes**: Only supports template literals (use `$queryRawUnsafe` for strings)
+- **JSON null types**: Introduced `Prisma.DbNull`, `Prisma.JsonNull`, `Prisma.AnyNull`
+
+### Referential actions
+
+In v2.x, Prisma Client prevented cascading deletes at runtime. In v3+, this is handled by the database. Review your schema's `onDelete` settings:
+
+```prisma
+model Post {
+  id       Int  @id
+  author   User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId Int
+}
+```
+
+### Named constraints
+
+After upgrading, run `npx prisma db pull` to sync constraint names, or run `npx prisma migrate dev` to update to Prisma's default naming convention.
+
+### Upgrade command
+
+```npm
+npm install prisma@3 @prisma/client@3
+```
+
+---
+
+## Codemods
+
+The `@prisma/codemods` package helps automate code changes when upgrading:
+
+```npm
+npx @prisma/codemods <transform> <path>
+```
+
+Available transforms:
+- `namespace` - Update `@prisma/client` namespace changes
+- `findUnique` - Convert `findOne` to `findUnique`
+- `to$` - Convert deprecated methods to `$` prefixed versions
+- `update-2.12` - Apply all transforms for 2.12 upgrade
+
+See the [codemods repository](https://github.com/prisma/codemods) for more details.

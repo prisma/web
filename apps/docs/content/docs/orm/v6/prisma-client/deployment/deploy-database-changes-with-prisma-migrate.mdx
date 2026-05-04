@@ -1,0 +1,69 @@
+---
+title: Deploying database changes with Prisma Migrate
+description: Learn how to deploy database changes with Prisma Migrate.
+url: /orm/v6/prisma-client/deployment/deploy-database-changes-with-prisma-migrate
+metaTitle: Deploying database changes with Prisma Migrate
+metaDescription: Learn how to deploy database changes with Prisma Migrate.
+---
+
+To apply pending migrations to staging, testing, or production environments, run the `migrate deploy` command as part of your CI/CD pipeline:
+
+```npm
+npx prisma migrate deploy
+```
+
+:::info
+
+This guide **does not apply for MongoDB**.<br />
+Instead of `migrate deploy`, [`db push`](/orm/v6/prisma-migrate/workflows/prototyping-your-schema) is used for [MongoDB](/orm/v6/overview/databases/mongodb).
+
+:::
+
+Exactly when to run `prisma migrate deploy` depends on your platform. For example, a simplified [Heroku](/orm/v6/prisma-client/deployment/traditional/deploy-to-heroku) workflow includes:
+
+1. Ensuring the `./prisma/migration` folder is in source control
+2. Running `prisma migrate deploy` during the [release phase](https://devcenter.heroku.com/articles/release-phase)
+
+Ideally, `migrate deploy` should be part of an automated CI/CD pipeline, and we do not generally recommend running this command locally to deploy changes to a production database (for example, by temporarily changing the `DATABASE_URL` environment variable). It is not generally considered good practice to store the production database URL locally.
+
+Beware that in order to run the `prisma migrate deploy` command, you need access to the `prisma` dependency that is typically added to the `devDependencies`. Some platforms like Vercel, prune development dependencies during the build, thereby preventing you from calling the command. This can be worked around by making the `prisma` a production dependency, by moving it to `dependencies` in your `package.json`.
+For more information about the `migrate deploy` command, see:
+
+- [`migrate deploy` reference](/orm/v6/reference/prisma-cli-reference#migrate-deploy)
+- [How `migrate deploy` works](/orm/v6/prisma-migrate/workflows/development-and-production#production-and-testing-environments)
+- [Production troubleshooting](/orm/v6/prisma-migrate/workflows/patching-and-hotfixing)
+
+## Deploying database changes using GitHub Actions
+
+As part of your CI/CD, you can run `prisma migrate deploy` as part of your pipeline to apply pending migrations to your production database.
+
+Here is an example action that will run your migrations against your database:
+
+```yaml title="deploy.yml" highlight=17-20 showLineNumbers
+name: Deploy
+on:
+  push:
+    paths:
+      - prisma/migrations/** # [!code highlight]
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+      - name: Setup Node
+        uses: actions/setup-node@v3
+      - name: Install dependencies
+        run: npm install
+      - name: Apply all pending migrations to the database
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+```
+
+The highlighted line shows that this action will only run if there is a change in the `prisma/migrations` directory, so `npx prisma migrate deploy` will only run when migrations are updated.
+
+Ensure you have the `DATABASE_URL` variable [set as a secret in your repository](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions), without quotes around the connection string.
