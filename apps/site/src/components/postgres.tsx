@@ -63,7 +63,8 @@ export function PostgresTabs({ data }: { data: HowSectionData }) {
                             alt={body.title}
                             width={1200}
                             height={800}
-                            loading="eager"
+                            loading="lazy"
+                            sizes="(min-width: 1024px) 520px, (min-width: 768px) 50vw, 100vw"
                             className="hidden lg:dark:block md:max-h-83"
                           />
                           <Image
@@ -71,7 +72,8 @@ export function PostgresTabs({ data }: { data: HowSectionData }) {
                             alt={body.title}
                             width={1200}
                             height={800}
-                            loading="eager"
+                            loading="lazy"
+                            sizes="(min-width: 640px) 50vw, 100vw"
                             className="hidden sm:dark:block lg:dark:hidden md:max-h-83"
                           />
                           <Image
@@ -79,7 +81,8 @@ export function PostgresTabs({ data }: { data: HowSectionData }) {
                             alt={body.title}
                             width={1200}
                             height={800}
-                            loading="eager"
+                            loading="lazy"
+                            sizes="100vw"
                             className="hidden dark:block sm:dark:hidden md:max-h-83"
                           />
 
@@ -89,7 +92,8 @@ export function PostgresTabs({ data }: { data: HowSectionData }) {
                             alt={body.title}
                             width={1200}
                             height={800}
-                            loading="eager"
+                            loading="lazy"
+                            sizes="(min-width: 1024px) 520px, (min-width: 768px) 50vw, 100vw"
                             className="hidden lg:block dark:hidden md:max-h-83"
                           />
                           <Image
@@ -97,7 +101,8 @@ export function PostgresTabs({ data }: { data: HowSectionData }) {
                             alt={body.title}
                             width={1200}
                             height={800}
-                            loading="eager"
+                            loading="lazy"
+                            sizes="(min-width: 640px) 50vw, 100vw"
                             className="hidden sm:block lg:hidden dark:hidden md:max-h-83"
                           />
                           <Image
@@ -105,7 +110,8 @@ export function PostgresTabs({ data }: { data: HowSectionData }) {
                             alt={body.title}
                             width={1200}
                             height={800}
-                            loading="eager"
+                            loading="lazy"
+                            sizes="100vw"
                             className="block sm:hidden dark:hidden md:max-h-83"
                           />
                         </>
