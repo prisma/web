@@ -49,7 +49,7 @@ export const metadata: Metadata = {
     images: ["/og/og-mcp.png"],
   },
 };
-const DOCS_MCP = "https://www.prisma.io/docs/postgres/integrations/mcp-server";
+const DOCS_MCP = "https://www.prisma.io/docs/ai/tools/mcp-server";
 
 const heroFeatures: McpHeroFeature[] = [
   {
@@ -81,24 +81,22 @@ const agents: McpAgent[] = [
   {
     logo: "/mcp/logos/cursor.svg",
     alt: "Add to Cursor",
-    href: "cursor://anysphere.cursor-deeplink/mcp/install?name=Prisma-Remote&config=eyJjb21tYW5kIjoibnB4IC15IG1jcC1yZW1vdGUgaHR0cHM6Ly9tY3AucHJpc21hLmlvL21jcCJ9",
+    href: "cursor://anysphere.cursor-deeplink/mcp/install?name=Prisma&config=eyJ1cmwiOiJodHRwczovL21jcC5wcmlzbWEuaW8vbWNwIn0%3D",
   },
   {
     logo: "/mcp/logos/vscode.svg",
     alt: "Install in VS Code",
-    href: "vscode:mcp/install?%7B%22name%22%3A%22prisma-postgres%22%2C%22gallery%22%3Atrue%2C%22url%22%3A%22https%3A%2F%2Fmcp.prisma.io%2Fmcp%22%7D",
+    href: "vscode:mcp/install?%7B%22name%22%3A%22Prisma%22%2C%22gallery%22%3Atrue%2C%22url%22%3A%22https%3A%2F%2Fmcp.prisma.io%2Fmcp%22%7D",
   },
   {
     logo: "/mcp/logos/warp.svg",
     alt: "Copy JSON configuration",
     copyText: JSON.stringify(
       {
-        "Prisma-Postgres": {
-          command: "npx",
-          args: ["-y", "mcp-remote", "https://mcp.prisma.io/mcp"],
-          env: {},
-          working_directory: null,
-          start_on_launch: true,
+        mcpServers: {
+          Prisma: {
+            url: "https://mcp.prisma.io/mcp",
+          },
         },
       },
       null,
@@ -107,7 +105,7 @@ const agents: McpAgent[] = [
   },
   {
     logo: "/mcp/logos/chatgpt.svg",
-    alt: "See how to add the remote Prisma MCP server to ChatGPT",
+    alt: "See how to add the Prisma MCP server to ChatGPT",
     href: "https://pris.ly/gpt-prisma-mcp",
   },
   {
@@ -123,8 +121,7 @@ const agents: McpAgent[] = [
   {
     logo: "/mcp/logos/gemini.svg",
     alt: "Copy command to add to Gemini CLI",
-    copyText:
-      "gemini mcp add Prisma-Remote npx --args -y mcp-remote https://mcp.prisma.io/mcp --scope user",
+    copyText: "gemini mcp add --transport http Prisma https://mcp.prisma.io/mcp --scope user",
   },
   {
     logo: null,
@@ -150,23 +147,23 @@ const capabilities: McpCapability[] = [
   },
   {
     icon: "fa-light fa-code-compare",
-    title: "Schema Operations",
-    description: "Manage migrations and database structure changes",
-    prompt: "Check my migration status and create a new user preferences table",
+    title: "Schema Insight",
+    description: "Inspect database structure and understand relationships",
+    prompt: "Introspect my product database and summarize the user tables",
     mobileTall: false,
   },
   {
     icon: "fa-light fa-folder-gear",
     title: "Database Administration",
-    description: "Handle backups, connection strings, and multi-database workflows",
+    description: "Handle backups, restores, and multi-database workflows",
     prompt: "Create a new database from the most recent backup to my product db",
     mobileTall: false,
   },
   {
     icon: "fa-light fa-arrow-progress",
-    title: "Development Workflow",
-    description: "Integrate database operations seamlessly into coding workflow",
-    prompt: "Open Prisma Studio and show me the data in my users table",
+    title: "Connection Management",
+    description: "Create, list, and revoke database connection strings",
+    prompt: "Create a connection string for my staging database",
     mobileTall: false,
   },
 ];
