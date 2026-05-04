@@ -267,27 +267,27 @@ function NavbarLinkItemMenu({
 
   const pathname = usePathname();
   const active =
-    item.items.some((child) => child.url === pathname || pathname.startsWith(`${child.url}/`)) ||
-    pathname === item.url ||
-    pathname.startsWith(`${item.url}/`);
+    item.items.some(
+      (child) => "url" in child && (child.url === pathname || pathname.startsWith(`${child.url}/`)),
+    ) ||
+    (typeof item.url === "string" &&
+      (pathname === item.url || pathname.startsWith(`${item.url}/`)));
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          className={cn(
-            "inline-flex items-center gap-1 text-sm text-fd-muted-foreground transition-colors hover:text-fd-accent-foreground data-[active=true]:text-fd-primary",
-            active && "text-fd-primary",
-            className,
-          )}
-          onPointerEnter={handlePointerEnter}
-          onPointerLeave={handlePointerLeave}
-          onPointerDown={handlePointerDown}
-          {...props}
-        >
-          {item.text}
-          <ChevronDown className="size-4" />
-        </button>
+      <PopoverTrigger
+        className={cn(
+          "inline-flex items-center gap-1 text-sm text-fd-muted-foreground transition-colors hover:text-fd-accent-foreground data-[active=true]:text-fd-primary",
+          active && "text-fd-primary",
+          className,
+        )}
+        onPointerEnter={handlePointerEnter}
+        onPointerLeave={handlePointerLeave}
+        onPointerDown={handlePointerDown}
+        {...props}
+      >
+        {item.text}
+        <ChevronDown className="size-4" />
       </PopoverTrigger>
       <PopoverContent
         align="start"
@@ -297,7 +297,9 @@ function NavbarLinkItemMenu({
       >
         <div className="flex flex-col">
           {item.items.map((child, index) => (
-            <Fragment key={`${child.text}-${index}`}>
+            <Fragment
+              key={`${"text" in child && typeof child.text === "string" ? child.text : "item"}-${index}`}
+            >
               <NavbarLinkItem
                 item={child}
                 className="rounded-md px-3 py-2 hover:bg-fd-accent data-[active=true]:bg-fd-accent"
