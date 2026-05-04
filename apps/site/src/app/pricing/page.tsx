@@ -16,28 +16,6 @@ export default function PricingPage() {
     <main className="flex-1 w-full -mt-24 bg-background-default text-background-neutral-weak pt-24">
       <PricingPageContent />
 
-      <div className="my-12 bg-[linear-gradient(180deg,var(--color-background-default)_-177.75%,var(--color-background-ppg)_100%)] shadow-[0_1px_2px_0_rgba(0,0,0,0.04)] p-12">
-        <div className="web-cta flex gap-3 md:gap-12 items-center mx-auto w-fit lg:p-4 flex-col md:flex-row">
-          <h3 className="text-2xl text-foreground-neutral font-sans-display font-bold text-center md:text-left">
-            Have questions
-            <br />
-            about Pricing?
-          </h3>
-          <div className="content flex flex-col lg:flex-row gap-3 lg:gap-12 items-center md:items-start lg:items-center">
-            <p className="max-w-94 w-full text-center md:text-left text-foreground-neutral-weak text-md">
-              Scale your project with right plan. Not sure which one you need? <b>Let's find out</b>
-              .
-            </p>
-            <Button asChild variant="ppg" size="2xl">
-              <a href="mailto:boch@prisma.io">
-                Contact us
-                <i className="fa-regular fa-arrow-right" />
-              </a>
-            </Button>
-          </div>
-        </div>
-      </div>
-
       {/* FAQ */}
       <section className="px-4 py-16">
         <div className="max-w-[996px] mx-auto">
