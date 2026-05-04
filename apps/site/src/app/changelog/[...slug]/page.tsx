@@ -19,11 +19,7 @@ interface TOCItem {
   items?: TOCItem[];
 }
 
-export default async function ReleaseNotesPage({
-  params,
-}: {
-  params: Promise<PageParams>;
-}) {
+export default async function ReleaseNotesPage({ params }: { params: Promise<PageParams> }) {
   const { slug } = await params;
   const page = changelogSource.getPage(slug);
 
@@ -81,9 +77,7 @@ export default async function ReleaseNotesPage({
           {/* Body */}
           <article className="w-full flex flex-col pb-8 mt-12">
             <div className="prose min-w-0 [&_figure]:w-full [&_figure]:md:max-w-140 [&_figure]:lg:max-w-200">
-              {description ? (
-                <p className="font-semibold text-lg">{description}</p>
-              ) : null}
+              {description ? <p className="font-semibold text-lg">{description}</p> : null}
 
               <MDX
                 components={getMDXComponents({

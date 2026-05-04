@@ -61,7 +61,8 @@ export const stackCategories: StackCategory[] = [
   {
     id: "frameworks",
     title: "Frameworks",
-    description: "Here is a non-exhaustive list of libraries and frameworks you can use with Prisma.",
+    description:
+      "Here is a non-exhaustive list of libraries and frameworks you can use with Prisma.",
     items: [
       { id: "nextjs", name: "Next.js", href: "/nextjs", icon: "/icons/technologies/nextjs.svg" },
       { id: "nestjs", name: "NestJS", href: "/nestjs", icon: "/icons/technologies/nestjs.svg" },

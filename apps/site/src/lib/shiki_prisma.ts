@@ -27,11 +27,7 @@ const prismaTheme: ThemeRegistration = {
       },
     },
     {
-      scope: [
-        "variable.other.constant",
-        "variable.language.this",
-        "variable.language.super",
-      ],
+      scope: ["variable.other.constant", "variable.language.this", "variable.language.super"],
       settings: {
         foreground: "var(--color-background-ppg-reverse-strong)",
       },
@@ -104,11 +100,7 @@ const prismaTheme: ThemeRegistration = {
       },
     },
     {
-      scope: [
-        "constant.language.boolean",
-        "constant.language.null",
-        "constant.language.undefined",
-      ],
+      scope: ["constant.language.boolean", "constant.language.null", "constant.language.undefined"],
       settings: {
         foreground: "var(--color-background-orm-reverse-strong)",
       },
@@ -166,10 +158,7 @@ const prismaTheme: ThemeRegistration = {
       },
     },
     {
-      scope: [
-        "punctuation.definition.template-expression",
-        "punctuation.section.embedded",
-      ],
+      scope: ["punctuation.definition.template-expression", "punctuation.section.embedded"],
       settings: {
         foreground: "var(--color-foreground-neutral-weak)",
       },
@@ -219,8 +208,7 @@ const prismaTheme: ThemeRegistration = {
   ],
 };
 
-let prisma_highlighter: Awaited<ReturnType<typeof createHighlighter>> | null =
-  null;
+let prisma_highlighter: Awaited<ReturnType<typeof createHighlighter>> | null = null;
 
 async function getHighlighter() {
   if (!prisma_highlighter) {

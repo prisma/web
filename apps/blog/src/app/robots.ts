@@ -12,11 +12,7 @@ export default function robots(): MetadataRoute.Robots {
     "/*&tag=*",
     "/*&page=*",
   ].map(withBlogBasePath);
-  const legacyDisallow = [
-    "/dataguide/intro/example",
-    "/dataguide/dummy",
-    "/cloud",
-  ];
+  const legacyDisallow = ["/dataguide/intro/example", "/dataguide/dummy", "/cloud"];
 
   return {
     rules: {

@@ -202,10 +202,7 @@ export function PieChartExample() {
   };
 
   return (
-    <ChartContainer
-      config={chartConfig}
-      className="mx-auto aspect-square max-h-[300px]"
-    >
+    <ChartContainer config={chartConfig} className="mx-auto aspect-square max-h-[300px]">
       <PieChart>
         <Pie data={chartData} dataKey="visitors" nameKey="browser" />
         <ChartTooltip content={<ChartTooltipContent />} />

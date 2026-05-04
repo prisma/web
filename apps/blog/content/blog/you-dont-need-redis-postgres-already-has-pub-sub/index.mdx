@@ -1,0 +1,400 @@
+---
+title: "You Don't Need Redis, Postgres Already Has Pub/Sub"
+slug: "you-dont-need-redis-postgres-already-has-pub-sub"
+date: "2026-05-04"
+authors:
+  - "Ankur Datta"
+metaTitle: "You Don't Need Redis, Postgres Already Has Pub/Sub"
+metaDescription: "Postgres includes a lightweight Pub/Sub mechanism through LISTEN and NOTIFY. In this post, you'll build a small real-time Pub/Sub app with Bun, pg, and Prisma Postgres."
+heroImagePath: "/you-dont-need-redis-postgres-already-has-pub-sub/imgs/you-dont-need-redis-postgres-already-has-pub-sub.png"
+metaImagePath: "/you-dont-need-redis-postgres-already-has-pub-sub/imgs/you-dont-need-redis-postgres-already-has-pub-sub.png"
+heroImageAlt: "You Don't Need Redis, Postgres Already Has Pub/Sub"
+tags:
+  - "education"
+---
+
+Postgres includes a lightweight Pub/Sub mechanism through `LISTEN` and `NOTIFY`. In this post, you'll build a small real-time Pub/Sub app with Bun, `pg`, and Prisma Postgres.
+
+Adding real-time behavior often starts with a familiar question: do you need Redis, Kafka, RabbitMQ, or another message broker?
+
+If your app already uses Postgres, the answer is often no. For lightweight workflows like refreshing dashboards, invalidating caches, notifying workers, or reacting when something changes in your app, Postgres Pub/Sub can be enough.
+
+## What Pub/Sub means
+
+Pub/Sub means **publish and subscribe**.
+
+One part of your app publishes an event. Another part subscribes to that event and reacts when it happens.
+
+For example, when a user signs up, your app might need to send a welcome email, refresh an admin dashboard, track an analytics event, or notify another service.
+
+You could put all of that work inside the signup request, but that couples everything to one flow.
+
+Instead, the signup flow can publish an event:
+
+```json
+{
+  "type": "user.created",
+  "userId": "user_123"
+}
+```
+
+Then other parts of the app can listen for that event and react separately.
+
+This keeps the signup flow focused, and it also makes it easier to add more behavior later without changing the original signup logic.
+
+## Postgres Pub/Sub with `LISTEN` and `NOTIFY`
+
+Postgres supports Pub/Sub through two SQL commands:
+
+```sql
+LISTEN app_events;
+```
+
+and:
+
+```sql
+NOTIFY app_events, '{"type":"user.created","userId":"user_123"}';
+```
+
+`LISTEN` _subscribes_ a database connection to a channel. `NOTIFY` _publishes_ a message to that channel.
+
+A channel is just a name. In this example, the channel is called `app_events`.
+
+When one connection runs:
+
+```sql
+LISTEN app_events;
+```
+
+It starts waiting for messages on that channel. When another connection runs:
+
+```sql
+NOTIFY app_events, '{"type":"user.created"}';
+```
+
+Postgres sends that message to every active connection currently listening on `app_events`.
+
+This gives you real-time notifications without running a separate broker.
+
+## Build the demo
+
+We'll build a script that does four things:
+
+1. Creates a temporary Prisma Postgres database
+2. Opens a subscriber connection
+3. Opens a publisher connection
+4. Sends an event from the publisher to the subscriber
+
+We'll use:
+
+- Bun to run the TypeScript script
+- `pg` to connect to Postgres
+- `create-db` to create a temporary Prisma Postgres database
+
+The [`create-db`](https://www.prisma.io/docs/postgres/npx-create-db?utm_source=blog) CLI creates a temporary Prisma Postgres database and supports JSON output, which makes it useful from scripts. Prisma Postgres also works with PostgreSQL-compatible clients like `pg`.
+
+## Step 1: Create a new Bun project
+
+Create a new folder:
+
+```bash
+mkdir postgres-pubsub-demo
+cd postgres-pubsub-demo
+```
+
+Initialize the project:
+
+```bash
+bun init -y
+```
+
+Install `pg`:
+
+```bash
+bun add pg
+bun add -d @types/pg
+```
+
+## Step 2: Add the script
+
+Create a file called `index.ts`:
+
+```typescript
+import { $ } from "bun";
+import { Client } from "pg";
+
+const CHANNEL_NAME = "app_events";
+
+async function createDatabase() {
+  console.log("Creating a temporary Prisma Postgres database...");
+
+  const output = await $`bunx create-db@latest --region eu-central-1 --json`
+    .quiet()
+    .json();
+
+  const connectionString = output.connectionString;
+
+  if (!connectionString) {
+    throw new Error("Could not find a connection string.");
+  }
+
+  const url = new URL(connectionString);
+  url.searchParams.set("sslmode", "verify-full");
+
+  console.log("Database created.");
+
+  return url.toString();
+}
+
+async function startSubscriber(connectionString: string) {
+  const subscriber = new Client({ connectionString });
+
+  await subscriber.connect();
+
+  subscriber.on("notification", (message) => {
+    console.log("\nEvent received");
+    console.log("Channel:", message.channel);
+    console.log("Payload:", JSON.parse(message.payload ?? "{}"));
+  });
+
+  await subscriber.query(`LISTEN ${CHANNEL_NAME}`);
+
+  console.log(`Listening for events on "${CHANNEL_NAME}"...`);
+
+  return subscriber;
+}
+
+async function publishEvent(connectionString: string) {
+  const publisher = new Client({ connectionString });
+
+  await publisher.connect();
+
+  const event = {
+    type: "user.created",
+    user: {
+      id: crypto.randomUUID(),
+      email: "sarah@example.com",
+    },
+    createdAt: new Date().toISOString(),
+  };
+
+  console.log("\nPublishing event");
+  console.log(event);
+
+  await publisher.query("SELECT pg_notify($1, $2)", [
+    CHANNEL_NAME,
+    JSON.stringify(event),
+  ]);
+
+  await publisher.end();
+}
+
+async function main() {
+  const connectionString = await createDatabase();
+
+  const subscriber = await startSubscriber(connectionString);
+
+  await new Promise((resolve) => setTimeout(resolve, 500));
+
+  await publishEvent(connectionString);
+
+  await new Promise((resolve) => setTimeout(resolve, 500));
+
+  await subscriber.end();
+
+  console.log("\nDone.");
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
+```
+
+Run it:
+
+```bash
+bun index.ts
+```
+
+You should see output similar to this:
+
+```text
+Creating a temporary Prisma Postgres database...
+Database created.
+Listening for events on "app_events"...
+
+Publishing event
+{
+  type: "user.created",
+  user: {
+    id: "f01fb053-34da-4ddf-9495-91188685a967",
+    email: "sarah@example.com",
+  },
+  createdAt: "2026-04-30T08:23:17.605Z",
+}
+
+Event received
+Channel: app_events
+Payload: {
+  type: "user.created",
+  user: {
+    id: "f01fb053-34da-4ddf-9495-91188685a967",
+    email: "sarah@example.com",
+  },
+  createdAt: "2026-04-30T08:23:17.605Z",
+}
+
+Done.
+```
+
+## How the script works
+
+The script has three main parts:
+
+1. Create a temporary Prisma Postgres database
+2. Start a subscriber that listens for events
+3. Publish an event from a second database connection
+
+First, the script creates a temporary Prisma Postgres database:
+
+```typescript
+const output = await $`bunx create-db@latest --region eu-central-1 --json`
+  .quiet()
+  .json();
+
+const connectionString = output.connectionString;
+```
+
+The `--json` flag makes `create-db` return structured output. From that output, we read the `connectionString` and use it to connect with `pg`.
+
+```typescript
+const url = new URL(connectionString);
+url.searchParams.set("sslmode", "verify-full");
+
+return url.toString();
+```
+
+> This updates the SSL mode to `verify-full`, which avoids the `pg` warning you may see with `sslmode=require`.
+
+Next, the script starts the subscriber:
+
+```typescript
+const subscriber = new Client({ connectionString });
+
+await subscriber.connect();
+
+await subscriber.query(`LISTEN ${CHANNEL_NAME}`);
+```
+
+This opens a Postgres connection and subscribes it to the `app_events` channel.
+
+The subscriber also registers a handler for incoming notifications:
+
+```typescript
+subscriber.on("notification", (message) => {
+  console.log("\nEvent received");
+  console.log("Channel:", message.channel);
+  console.log("Payload:", JSON.parse(message.payload ?? "{}"));
+});
+```
+
+When Postgres sends a message to this connection, the handler prints the channel and payload.
+
+Then the script creates a second Postgres connection:
+
+```typescript
+const publisher = new Client({ connectionString });
+
+await publisher.connect();
+```
+
+This second connection publishes an event:
+
+```typescript
+await publisher.query("SELECT pg_notify($1, $2)", [
+  CHANNEL_NAME,
+  JSON.stringify(event),
+]);
+```
+
+`pg_notify` is the function form of `NOTIFY`. The first argument is the channel name and the second argument is the message payload.
+
+The event payload is a small JSON object:
+
+```typescript
+const event = {
+  type: "user.created",
+  user: {
+    id: crypto.randomUUID(),
+    email: "sarah@example.com",
+  },
+  createdAt: new Date().toISOString(),
+};
+```
+
+After the publisher sends the event, Postgres delivers it to every active connection listening on `app_events`.
+
+In this demo, the subscriber and publisher live in the same script. In a real app, they are usually separate processes:
+
+```text
+Web app  -> publishes user.created
+Worker   -> listens and sends a welcome email
+Admin UI -> listens and refreshes a dashboard
+```
+
+## When to use it
+
+Use `LISTEN` and `NOTIFY` when you need a lightweight real-time signal inside an app that already uses Postgres.
+
+Good use cases include:
+
+- Refresh a dashboard after data changes
+- Tell a worker to check for new rows
+- Invalidate an in-memory cache
+- Notify another process that something happened
+- Prototype an event-driven flow without adding a queue
+
+This is useful when you want to avoid adding Redis, Kafka, RabbitMQ, or another broker before you actually need one.
+
+## When not to use it
+
+`LISTEN` and `NOTIFY` are not a job queue.
+
+A job queue stores work until a worker processes it. If the worker is offline, the job waits. If the job fails, it can usually be retried.
+
+`LISTEN` and `NOTIFY` do not provide that behavior by themselves.
+
+A notification is only delivered to clients that are actively connected and listening at the time the notification is sent. If no listener is connected, the notification is not saved for later.
+
+Avoid using only `LISTEN` and `NOTIFY` when you need:
+
+- Guaranteed delivery
+- Retries
+- Delayed jobs
+- A history of all events
+- Long-running background jobs
+- Exactly-once processing
+- High-volume event streaming
+
+For more reliable workflows, store the event first and use `NOTIFY` as the signal:
+
+1. Insert a row into an events table
+2. Send a notification with the event ID
+3. A worker receives the notification
+4. The worker reads the event from the table
+5. The worker processes it
+
+The table keeps the durable record. `NOTIFY` tells the worker there is something new to process.
+
+## Recap
+
+Postgres includes a lightweight Pub/Sub mechanism through `LISTEN` and `NOTIFY`.
+
+`LISTEN` subscribes a database connection to a channel. `NOTIFY` publishes a message to that channel.
+
+This works well for real-time signals, such as refreshing a dashboard, invalidating a cache, or telling a worker to check for new rows.
+
+It is not a durable job queue. If a notification is sent while no listener is connected, the notification is not saved.
+
+For workflows that must not lose work, store the event in a table first and use `NOTIFY` only as the signal.

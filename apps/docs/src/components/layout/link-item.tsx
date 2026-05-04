@@ -1,9 +1,9 @@
-'use client';
-import { type ComponentProps, type ReactNode, useEffect, useState } from 'react';
-import { usePathname } from 'fumadocs-core/framework';
-import { isActive, isActiveAny } from '../../lib/urls';
-import { getUtmParams, hasUtmParams } from '@prisma-docs/ui/lib/utm';
-import Link from 'fumadocs-core/link';
+"use client";
+import { type ComponentProps, type ReactNode, useEffect, useState } from "react";
+import { usePathname } from "fumadocs-core/framework";
+import { isActive, isActiveAny } from "../../lib/urls";
+import { getUtmParams, hasUtmParams } from "@prisma-docs/ui/lib/utm";
+import Link from "fumadocs-core/link";
 
 function useUtmHref(base: string): string {
   const [href, setHref] = useState(base);
@@ -14,8 +14,8 @@ function useUtmHref(base: string): string {
       return;
     }
     try {
-      const isAbsolute = base.startsWith('http');
-      const url = isAbsolute ? new URL(base) : new URL(base, 'https://n.co');
+      const isAbsolute = base.startsWith("http");
+      const url = isAbsolute ? new URL(base) : new URL(base, "https://n.co");
       for (const [key, value] of Object.entries(utm)) {
         url.searchParams.set(key, value);
       }
@@ -33,7 +33,7 @@ interface Filterable {
    *
    * @defaultValue 'all'
    */
-  on?: 'menu' | 'nav' | 'all';
+  on?: "menu" | "nav" | "all";
 }
 
 interface WithHref {
@@ -43,7 +43,7 @@ interface WithHref {
    *
    * @defaultValue 'url'
    */
-  active?: 'url' | 'nested-url' | 'none';
+  active?: "url" | "nested-url" | "none";
   /**
    * Optional list of paths that make this link active (exact or nested).
    * Use for catch-all links that should be active on e.g. `/`, `/prisma-orm/*`, `/prisma-postgres/*`.
@@ -54,14 +54,14 @@ interface WithHref {
 }
 
 export interface MainItemType extends WithHref, Filterable {
-  type?: 'main';
+  type?: "main";
   icon?: ReactNode;
   text: ReactNode;
   description?: ReactNode;
 }
 
 export interface IconItemType extends WithHref, Filterable {
-  type: 'icon';
+  type: "icon";
   /**
    * `aria-label` of icon button
    */
@@ -75,7 +75,7 @@ export interface IconItemType extends WithHref, Filterable {
 }
 
 export interface ButtonItemType extends WithHref, Filterable {
-  type: 'button';
+  type: "button";
   icon?: ReactNode;
   text: ReactNode;
   /**
@@ -85,7 +85,7 @@ export interface ButtonItemType extends WithHref, Filterable {
 }
 
 export interface MenuItemType extends Partial<WithHref>, Filterable {
-  type: 'menu';
+  type: "menu";
   icon?: ReactNode;
   text: ReactNode;
 
@@ -94,7 +94,7 @@ export interface MenuItemType extends Partial<WithHref>, Filterable {
         /**
          * Options when displayed on navigation menu
          */
-        menu?: ComponentProps<'a'> & {
+        menu?: ComponentProps<"a"> & {
           banner?: ReactNode;
         };
       })
@@ -108,7 +108,7 @@ export interface MenuItemType extends Partial<WithHref>, Filterable {
 }
 
 export interface CustomItemType extends Filterable {
-  type: 'custom';
+  type: "custom";
   /**
    * @defaultValue false
    */
@@ -127,12 +127,12 @@ export function LinkItem({
   ref,
   item,
   ...props
-}: Omit<ComponentProps<'a'>, 'href'> & { item: WithHref }) {
+}: Omit<ComponentProps<"a">, "href"> & { item: WithHref }) {
   const pathname = usePathname();
-  const activeType = item.active ?? 'url';
+  const activeType = item.active ?? "url";
   const active = item.activePaths
     ? isActiveAny(item.activePaths, pathname)
-    : activeType !== 'none' && isActive(item.url, pathname, activeType === 'nested-url');
+    : activeType !== "none" && isActive(item.url, pathname, activeType === "nested-url");
 
   const href = useUtmHref(item.url);
 

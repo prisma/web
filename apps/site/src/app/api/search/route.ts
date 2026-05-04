@@ -18,9 +18,7 @@ export const dynamic = "force-dynamic";
 
 const mixedbreadApiKey = process.env.MIXEDBREAD_API_KEY;
 const storeIdentifiers = ["blog-search", "web-search"] as const;
-const client = mixedbreadApiKey
-  ? new Mixedbread({ apiKey: mixedbreadApiKey })
-  : null;
+const client = mixedbreadApiKey ? new Mixedbread({ apiKey: mixedbreadApiKey }) : null;
 const websiteBaseUrl = "https://www.prisma.io";
 const blogPrefix = "/blog";
 const docsPrefix = "/docs";
@@ -33,10 +31,7 @@ type MixedbreadSearchChunk = {
   generated_metadata?: GeneratedMetadata;
 };
 
-function withPrefixedPath(
-  path: string | undefined,
-  prefix: string,
-): string {
+function withPrefixedPath(path: string | undefined, prefix: string): string {
   const normalizedPath = (path ?? "")
     .replace(/^\/+/, "")
     .replace(new RegExp(`^${prefix.replace("/", "")}/`), "");
@@ -44,14 +39,9 @@ function withPrefixedPath(
   return normalizedPath ? `${prefix}/${normalizedPath}` : "#";
 }
 
-function withBaseAndPrefixedPath(
-  path: string | undefined,
-  prefix: string,
-): string {
+function withBaseAndPrefixedPath(path: string | undefined, prefix: string): string {
   const prefixedPath = withPrefixedPath(path, prefix);
-  return prefixedPath === "#"
-    ? prefixedPath
-    : new URL(prefixedPath, websiteBaseUrl).toString();
+  return prefixedPath === "#" ? prefixedPath : new URL(prefixedPath, websiteBaseUrl).toString();
 }
 
 function normalizeBlogUrl(slug?: string): string {
@@ -87,13 +77,10 @@ function transformResult(item: MixedbreadSearchChunk): SiteSearchResult | null {
       : null;
   if (!source) return null;
 
-  const base =
-    item.id ?? `${item.file_id ?? "unknown"}-${item.chunk_index ?? "0"}`;
+  const base = item.id ?? `${item.file_id ?? "unknown"}-${item.chunk_index ?? "0"}`;
 
   const normalizedUrl =
-    source === "blog"
-      ? normalizeBlogUrl(metadata.slug)
-      : normalizeDocsUrl(metadata.url);
+    source === "blog" ? normalizeBlogUrl(metadata.slug) : normalizeDocsUrl(metadata.url);
 
   return {
     id: `${base}-page`,
@@ -101,27 +88,23 @@ function transformResult(item: MixedbreadSearchChunk): SiteSearchResult | null {
     source,
     content:
       source === "blog"
-        ? metadata.metaTitle ?? metadata.title ?? item.text ?? "Untitled"
-        : metadata.title ?? item.text ?? "Untitled",
+        ? (metadata.metaTitle ?? metadata.title ?? item.text ?? "Untitled")
+        : (metadata.title ?? item.text ?? "Untitled"),
     url: normalizedUrl,
     description:
       source === "blog"
-        ? metadata.metaDescription ?? metadata.excerpt ?? item.text ?? ""
-        : metadata.metaDescription ?? item.text ?? "",
+        ? (metadata.metaDescription ?? metadata.excerpt ?? item.text ?? "")
+        : (metadata.metaDescription ?? item.text ?? ""),
     heroImagePath:
       source === "blog"
-        ? normalizeBlogImagePath(
-            metadata.heroImagePath ?? metadata.metaImagePath,
-          )
+        ? normalizeBlogImagePath(metadata.heroImagePath ?? metadata.metaImagePath)
         : getDocsImagePath(normalizedUrl),
-    tags: source === "blog" ? metadata.tags ?? [] : [],
+    tags: source === "blog" ? (metadata.tags ?? []) : [],
   };
 }
 
 function transformResults(results: MixedbreadSearchChunk[]): SiteSearchResult[] {
-  return results
-    .map(transformResult)
-    .filter((item): item is SiteSearchResult => item !== null);
+  return results.map(transformResult).filter((item): item is SiteSearchResult => item !== null);
 }
 
 export async function GET(request: NextRequest) {
@@ -148,9 +131,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(
-      transformResults(response.data as MixedbreadSearchChunk[]),
-    );
+    return NextResponse.json(transformResults(response.data as MixedbreadSearchChunk[]));
   } catch (error) {
     console.error("Mixedbread search failed:", error);
     return NextResponse.json([]);

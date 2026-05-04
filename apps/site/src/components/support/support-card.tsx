@@ -40,11 +40,7 @@ export function SupportCard({
             {title}
           </h3>
         )}
-        {description && (
-          <p className="text-foreground-neutral-weak text-base">
-            {description}
-          </p>
-        )}
+        {description && <p className="text-foreground-neutral-weak text-base">{description}</p>}
         <div className="flex flex-col gap-3 mt-auto">
           {links.map((link, idx) => (
             <a

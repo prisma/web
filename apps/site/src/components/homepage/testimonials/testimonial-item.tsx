@@ -40,9 +40,7 @@ export const TestimonialItem = ({
       <Avatar
         format="image"
         size="lg"
-        src={
-          imageUrl || "https://avatar.vercel.sh/" + encodeURIComponent(author)
-        }
+        src={imageUrl || "https://avatar.vercel.sh/" + encodeURIComponent(author)}
         alt={imageAlt || `Profile photo of ${author}`}
         loading="lazy"
       ></Avatar>
@@ -68,22 +66,16 @@ export const TestimonialItem = ({
               : " text-foreground-neutral-weak text-2xs uppercase flex gap-1 items-start",
           )}
         >
-          <span className="max-w-[185px] overflow-hidden">
-            {startups ? author : title}
-          </span>
+          <span className="max-w-[185px] overflow-hidden">{startups ? author : title}</span>
           <Separator orientation="vertical" className="bg-current h-3 mt-0.5" />
           {startups ? (
-            <span className="relative text-foreground-neutral-weak leading-[22px]">
-              {title}
-            </span>
+            <span className="relative text-foreground-neutral-weak leading-[22px]">{title}</span>
           ) : (
             company && (
               <span
                 className={cn(
                   "text-xs [text-transform:none]",
-                  color === "orm"
-                    ? "text-foreground-orm"
-                    : "text-foreground-ppg",
+                  color === "orm" ? "text-foreground-orm" : "text-foreground-ppg",
                 )}
               >
                 {company}

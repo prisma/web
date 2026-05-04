@@ -25,7 +25,9 @@ export function getAuthorImageSrc(name: string): string | null {
   return `/authors/${slug}.png`;
 }
 
-export function getAuthorProfiles(names: string[]): Array<{ name: string; imageSrc: string | null }> {
+export function getAuthorProfiles(
+  names: string[],
+): Array<{ name: string; imageSrc: string | null }> {
   const seen = new Set<string>();
   return names
     .filter(Boolean)

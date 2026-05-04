@@ -18,9 +18,7 @@ const Checkbox = React.forwardRef<
     )}
     {...props}
   >
-    <CheckboxPrimitive.Indicator
-      className={cn("grid place-content-center text-current")}
-    >
+    <CheckboxPrimitive.Indicator className={cn("grid place-content-center text-current")}>
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="11"

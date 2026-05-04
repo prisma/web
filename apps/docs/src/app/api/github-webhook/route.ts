@@ -7,7 +7,9 @@ export async function POST(req: Request) {
   const payload = await req.text();
 
   const sig = req.headers.get("x-hub-signature-256") ?? "";
-  const expectedBuf = createHmac("sha256", process.env.GITHUB_WEBHOOK_SECRET!).update(payload).digest();
+  const expectedBuf = createHmac("sha256", process.env.GITHUB_WEBHOOK_SECRET!)
+    .update(payload)
+    .digest();
   const sigBuf = Buffer.from(sig.replace("sha256=", ""), "hex");
   if (expectedBuf.length !== sigBuf.length || !timingSafeEqual(expectedBuf, sigBuf)) {
     return new Response("Unauthorized", { status: 401 });
@@ -42,12 +44,12 @@ export async function POST(req: Request) {
     teamSlugs.map((slug) =>
       fetch(
         `https://api.github.com/orgs/prisma/teams/${encodeURIComponent(slug)}/memberships/${encodeURIComponent(pr.user.login)}`,
-        { headers: authHeaders }
-      )
-    )
+        { headers: authHeaders },
+      ),
+    ),
   );
   const isTeamMember = membershipResults.some((r) => r.status === 200);
-  
+
   if (isMember || isTeamMember) {
     return new Response("Internal contributor, skipping", { status: 200 });
   }
@@ -97,7 +99,9 @@ export async function POST(req: Request) {
     return new Response("Failed to create Linear issue", { status: 500 });
   }
 
-  const result = data as { data?: { issueCreate?: { success: boolean; issue?: { identifier: string; url: string } } } };
+  const result = data as {
+    data?: { issueCreate?: { success: boolean; issue?: { identifier: string; url: string } } };
+  };
 
   if (!result.data?.issueCreate?.success) {
     console.error(`[${delivery}] Linear error:`, JSON.stringify(data));

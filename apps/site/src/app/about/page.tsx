@@ -1,15 +1,7 @@
 import Image from "next/image";
 import Antigravity from "../../components/homepage/antigravity";
 import { createPageMetadata } from "@/lib/page-metadata";
-import {
-  Action,
-  Accordion,
-  Button,
-  Card,
-  Separator,
-  Avatar,
-  Accordions,
-} from "@prisma/eclipse";
+import { Action, Accordion, Button, Card, Separator, Avatar, Accordions } from "@prisma/eclipse";
 import { CardSection } from "@/components/homepage/card-section/card-section";
 import review from "../../data/homepage.json";
 import { cn } from "@/lib/cn";
@@ -24,10 +16,9 @@ const what_we_care_about = [
           Open-Source
         </h3>
         <p className="text-foreground-neutral-weak! text-base">
-          To support the OSS community and help fund the ecosystem around
-          Prisma, we started our Free and Open Source Software (FOSS) Fund in
-          April 2022. Each month Prisma donates a one-off amount of $500 to a
-          selected open-source project.
+          To support the OSS community and help fund the ecosystem around Prisma, we started our
+          Free and Open Source Software (FOSS) Fund in April 2022. Each month Prisma donates a
+          one-off amount of $500 to a selected open-source project.
         </p>
 
         <Accordions type="single" className="border-none">
@@ -36,16 +27,15 @@ const what_we_care_about = [
               <Separator className="-ml-[36px] -mr-[16px] w-[calc(100%+36px+16px)]" />
               <ul className="list-disc text-left flex flex-col items-start">
                 <li className="my-1 md:my-1.5">
-                  The Prisma team nominates projects they believe deserve
-                  support.
+                  The Prisma team nominates projects they believe deserve support.
                 </li>
                 <li className="my-1 md:my-1.5">
-                  The Developer Connections team and representatives from the
-                  engineering teams review the nominations.
+                  The Developer Connections team and representatives from the engineering teams
+                  review the nominations.
                 </li>
                 <li className="my-1 md:my-1.5">
-                  The entire company votes to select three recipients each
-                  quarter to receive the one-time stipend of $500.
+                  The entire company votes to select three recipients each quarter to receive the
+                  one-time stipend of $500.
                 </li>
                 <li className="my-1 md:my-1.5">
                   Recipient projects are announced each month on social media.
@@ -55,19 +45,14 @@ const what_we_care_about = [
                 To qualify, nominees need to meet the following criteria:
               </p>
               <ul className="list-disc text-left flex flex-col items-start">
-                <li className="my-1 md:my-1.5">
-                  Usage within Prisma or the Prisma ecosystem
-                </li>
+                <li className="my-1 md:my-1.5">Usage within Prisma or the Prisma ecosystem</li>
                 <li className="my-1 md:my-1.5">
                   Overall project health and aligned with Prisma company values
                 </li>
-                <li className="my-1 md:my-1.5">
-                  Ability to receive and distribute funds
-                </li>
+                <li className="my-1 md:my-1.5">Ability to receive and distribute funds</li>
               </ul>
               <h6 className="mt-6 mb-4  text-foreground-neutral-weaker text-xs">
-                Projects owned or managed by Prisma employees cannot be
-                nominated.
+                Projects owned or managed by Prisma employees cannot be nominated.
               </h6>
             </>
           </Accordion>
@@ -91,11 +76,10 @@ const what_we_care_about = [
           Climate change
         </h3>
         <p className="text-foreground-neutral-weak! text-base">
-          Prisma is committed to supporting initiatives that raise awareness
-          about and combat the effects of climate change. We will all be
-          affected by this, and we owe it to the places, people, and wildlife of
-          this planet to make substantial changes and reduce our impact on the
-          climate.
+          Prisma is committed to supporting initiatives that raise awareness about and combat the
+          effects of climate change. We will all be affected by this, and we owe it to the places,
+          people, and wildlife of this planet to make substantial changes and reduce our impact on
+          the climate.
         </p>
 
         <Accordions type="single" className="border-none">
@@ -103,16 +87,14 @@ const what_we_care_about = [
             <Separator className="-ml-[36px] -mr-[16px] w-[calc(100%+36px+16px)]" />
             <ul className="list-disc text-left flex flex-col items-start">
               <li className="my-1 md:my-1.5">
-                Matches all employee donations for climate change-related
-                charities and fundraising
+                Matches all employee donations for climate change-related charities and fundraising
               </li>
               <li className="my-1 md:my-1.5">
-                Maintains sustainable practices—i.e. utilizing green energy,
-                recycling, and reducing waste—in the Prisma office space
+                Maintains sustainable practices—i.e. utilizing green energy, recycling, and reducing
+                waste—in the Prisma office space
               </li>
               <li className="my-1 md:my-1.5">
-                Encourages all employees to participate in local climate
-                strikes/events
+                Encourages all employees to participate in local climate strikes/events
               </li>
               <li className="my-1 md:my-1.5">
                 <a
@@ -191,12 +173,9 @@ const boxes = [
     title: "Throughout the development lifecycle",
     description: (
       <p className="text-foreground-neutral text-foreground-neutral-weak text-sm font-normal m-0 leading-6">
-        We equip developers with the right tools at every stage, whether they
-        are{" "}
-        <a href="https://www.prisma.io/blog/bfg">
-          building, fortifying, or growing
-        </a>{" "}
-        their applications.
+        We equip developers with the right tools at every stage, whether they are{" "}
+        <a href="https://www.prisma.io/blog/bfg">building, fortifying, or growing</a> their
+        applications.
       </p>
     ),
   },
@@ -205,9 +184,9 @@ const boxes = [
     title: "Built on open source",
     description: (
       <p className="text-foreground-neutral text-foreground-neutral-weak text-sm font-normal m-0 leading-6">
-        Applying <a href="https://www.datadx.io/">Data DX</a> principles to all
-        our products, we create simple solutions for complex problems, making
-        building with data more accessible, regardless of team size.
+        Applying <a href="https://www.datadx.io/">Data DX</a> principles to all our products, we
+        create simple solutions for complex problems, making building with data more accessible,
+        regardless of team size.
       </p>
     ),
   },
@@ -359,9 +338,8 @@ export default function About() {
             Join Prisma
           </h1>
           <p className="text-center text-foreground-neutral max-w-2xl mx-auto mb-12">
-            Our mission is to unlock productivity for developers by bringing
-            delightful ways to build with data. Data DX is at the core of all
-            our products.
+            Our mission is to unlock productivity for developers by bringing delightful ways to
+            build with data. Data DX is at the core of all our products.
           </p>
           <Card className="grid! md:grid-cols-3 gap-6 max-w-[1200px] mx-auto bg-background-default p-12 border-none -mb-80 gap-y-8">
             {boxes.map((box: any, idx: number) => (
@@ -429,9 +407,7 @@ export default function About() {
                 </Avatar>
                 <div className="flex flex-col gap-1">
                   <h4 className="text-foreground-neutral">{investor.name}</h4>
-                  <p className="text-foreground-neutral-weak">
-                    {investor.title}
-                  </p>
+                  <p className="text-foreground-neutral-weak">{investor.title}</p>
                 </div>
               </div>
             ))}
@@ -473,9 +449,7 @@ export default function About() {
               className="text-foreground-neutral hover:text-foreground-orm-strong transition-colors font-bold"
             >
               <i className="fa-kit fa-prisma mr-2 text-foreground-orm-strong text-xl" />
-              <span className="underline underline-offset-3  font-sans-display">
-                Press kit
-              </span>
+              <span className="underline underline-offset-3  font-sans-display">Press kit</span>
               <i className="fa-regular fa-arrow-up-right ml-2" />
             </a>
           </Card>
@@ -500,8 +474,8 @@ export default function About() {
             </h3>
             <div className="content flex flex-col lg:flex-row gap-3 lg:gap-12 items-center md:items-start lg:items-center">
               <p className="max-w-94 w-full text-center md:text-left text-foreground-neutral-weak text-md">
-                We’re always excited to talk to more people who share our vision
-                to empower developers to build data-driven applications.
+                We’re always excited to talk to more people who share our vision to empower
+                developers to build data-driven applications.
               </p>
               <Button asChild variant="orm" size="3xl">
                 <a href="/careers">

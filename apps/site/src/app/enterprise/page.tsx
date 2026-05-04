@@ -33,16 +33,14 @@ const first = [
           application’s lifecycle
         </h2>
         <p className="text-foreground-neutral-weak! text-base my-4">
-          By integrating Prisma into your development ecosystem, you leverage
-          its capabilities to Build robust, adaptable applications with less
-          code and fewer errors and also Fortify your database interactions for
-          peak performance right from the start.
+          By integrating Prisma into your development ecosystem, you leverage its capabilities to
+          Build robust, adaptable applications with less code and fewer errors and also Fortify your
+          database interactions for peak performance right from the start.
         </p>
         <p className="text-foreground-neutral-weak! text-base my-4">
-          As your application Grows, our platform products Accelerate and Prisma
-          Postgres ensure that your data layer can adapt and scale, supporting
-          increased traffic and requirements without sacrificing performance or
-          security.
+          As your application Grows, our platform products Accelerate and Prisma Postgres ensure
+          that your data layer can adapt and scale, supporting increased traffic and requirements
+          without sacrificing performance or security.
         </p>
       </>
     ),
@@ -221,14 +219,12 @@ const solution_providers = [
   },
   {
     title: "Advanced updates",
-    description:
-      "Stay ahead in the game with the latest updates and best practices.",
+    description: "Stay ahead in the game with the latest updates and best practices.",
     icon: "fa-regular fa-file-arrow-up", // or "fa-light fa-file-import"
   },
   {
     title: "Expedited and priority support",
-    description:
-      "Benefit from prioritized attention to your inquiries and problems.",
+    description: "Benefit from prioritized attention to your inquiries and problems.",
     icon: "fa-regular fa-phone-volume", // or "fa-light fa-phone-arrow-up-right"
   },
   {
@@ -321,8 +317,7 @@ const abstraction_ease_of_use = [
   },
 ];
 
-const ENTERPRISE_TITLE =
-  "Streamline your enterprise development workflow with Prisma";
+const ENTERPRISE_TITLE = "Streamline your enterprise development workflow with Prisma";
 const ENTERPRISE_DESCRIPTION =
   "Learn how Prisma ORM can improve your team's productivity and explore our tailored ORM support solutions for enterprises and solution providers.";
 
@@ -366,9 +361,8 @@ export default function EnterprisePage() {
             </h1>
           </div>
           <p className="text-center text-foreground-neutral max-w-2xl mx-auto">
-            Prisma acts as your comprehensive enterprise data toolset,
-            simplifying database interactions and reducing complexity so
-            developers can focus on business logic.
+            Prisma acts as your comprehensive enterprise data toolset, simplifying database
+            interactions and reducing complexity so developers can focus on business logic.
           </p>
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
             <Button asChild variant="orm" size="3xl" className="font-sans-display! font-[650]">
@@ -401,8 +395,8 @@ export default function EnterprisePage() {
             Leave the database complexities to us
           </h3>
           <p className="text-center text-foreground-neutral max-w-xl mx-auto">
-            Focus on core competencies of your team, rather than building and
-            managing complex infrastructure components.
+            Focus on core competencies of your team, rather than building and managing complex
+            infrastructure components.
           </p>
         </div>
         <div className="grid md:grid-cols-2 gap-6 max-w-230 mx-auto w-full">
@@ -498,11 +492,7 @@ export default function EnterprisePage() {
             gridClassName="auto-cols-[100%] sm:auto-cols-[calc((100%-2rem)/3)]"
           >
             {abstraction_ease_of_use.map((item) => (
-              <CarouselItem
-                key={item.title}
-                card={item}
-                className="min-h-full"
-              />
+              <CarouselItem key={item.title} card={item} className="min-h-full" />
             ))}
           </ScrollCarousel>
         </div>
@@ -562,11 +552,7 @@ export default function EnterprisePage() {
             gridClassName="auto-cols-[100%] sm:auto-cols-[calc((100%-2rem)/3)]"
           >
             {scal_port.map((item) => (
-              <CarouselItem
-                key={item.title}
-                card={item}
-                className="min-h-full"
-              />
+              <CarouselItem key={item.title} card={item} className="min-h-full" />
             ))}
           </ScrollCarousel>
         </div>
@@ -579,8 +565,8 @@ export default function EnterprisePage() {
             Dedicated ORM support options
           </h2>
           <p className="text-center text-foreground-neutral max-w-xl mx-auto">
-            Focus on core competencies of your team, rather than building and
-            managing complex infrastructure components.
+            Focus on core competencies of your team, rather than building and managing complex
+            infrastructure components.
           </p>
           <SwitchEnterprise
             content={[enterprises, solution_providers]}
@@ -595,12 +581,12 @@ export default function EnterprisePage() {
       {/* Connect with us */}
       <section className="my-12 px-4" id="contact-us">
         <div className="py-12 gap-8 flex flex-col max-w-221 mx-auto">
-          <h2  className="text-foreground-neutral stretch-display text-center text-4xl font-black! font-sans-display my-0">
+          <h2 className="text-foreground-neutral stretch-display text-center text-4xl font-black! font-sans-display my-0">
             Connect with us
           </h2>
           <p className="text-center text-foreground-neutral max-w-3xl mx-auto">
-            To explore how our support solutions can revolutionize your agency
-            or enterprise's approach to developing with Prisma ORM.
+            To explore how our support solutions can revolutionize your agency or enterprise's
+            approach to developing with Prisma ORM.
           </p>
           <EnterpriseForm />
         </div>

@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
-import posthog from 'posthog-js';
-import { useEffect } from 'react';
+import posthog from "posthog-js";
+import { useEffect } from "react";
 
 export function NotFoundTracker() {
   useEffect(() => {
-    posthog.capture('docs:404_not_found', {
+    posthog.capture("docs:404_not_found", {
       $current_url: window.location.href,
-      pathname: window.location.pathname
+      pathname: window.location.pathname,
     });
   }, []);
 

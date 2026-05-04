@@ -17,13 +17,7 @@ import {
 } from "react";
 import { cn } from "../lib/cn";
 import { buttonVariants } from "./ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./select"; // adjust to your actual path
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./select"; // adjust to your actual path
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { mergeRefs } from "../lib/merge-refs";
 
@@ -81,10 +75,7 @@ export interface CodeBlockProps extends ComponentProps<"figure"> {
 
 export function Pre(props: ComponentProps<"pre">) {
   return (
-    <pre
-      {...props}
-      className={cn("min-w-full w-max *:flex *:flex-col", props.className)}
-    >
+    <pre {...props} className={cn("min-w-full w-max *:flex *:flex-col", props.className)}>
       {props.children}
     </pre>
   );
@@ -102,9 +93,7 @@ export function CodeBlock({
   icon,
   viewportProps = {},
   children,
-  Actions = (props) => (
-    <div {...props} className={cn("empty:hidden", props.className)} />
-  ),
+  Actions = (props) => <div {...props} className={cn("empty:hidden", props.className)} />,
   ...props
 }: CodeBlockProps) {
   const inTab = use(TabsContext) !== null;
@@ -117,9 +106,7 @@ export function CodeBlock({
       {...props}
       tabIndex={-1}
       className={cn(
-        inTab
-          ? "bg-fd-secondary -mx-px -mb-px"
-          : "my-4 bg-fd-card rounded-square",
+        inTab ? "bg-fd-secondary -mx-px -mb-px" : "my-4 bg-fd-card rounded-square",
         keepBackground && "bg-(--shiki-light-bg) dark:bg-(--shiki-dark-bg)",
         "shiki relative border border-stroke-neutral not-prose overflow-hidden type-code-sm",
         props.className,
@@ -128,10 +115,7 @@ export function CodeBlock({
       {title ? (
         <div className="flex text-fd-muted-foreground items-center gap-2 h-9.5 border-b px-4">
           {typeof icon === "string" ? (
-            <div
-              className="[&_svg]:size-3.5"
-              dangerouslySetInnerHTML={{ __html: icon }}
-            />
+            <div className="[&_svg]:size-3.5" dangerouslySetInnerHTML={{ __html: icon }} />
           ) : (
             icon
           )}
@@ -200,8 +184,7 @@ function CopyButton({
       data-checked={checked || undefined}
       className={cn(
         buttonVariants({
-          className:
-            "hover:text-fd-accent-foreground data-checked:text-fd-accent-foreground",
+          className: "hover:text-fd-accent-foreground data-checked:text-fd-accent-foreground",
           size: "icon-xs",
         }),
         className,
@@ -286,9 +269,7 @@ export function CodeBlockTabs({
   // Which variants are available for the currently active tab?
   const availableVariants = useMemo<Set<string>>(() => {
     if (!hasVariants) return new Set();
-    const available = new Set(
-      variants!.filter((v) => existingCombos.has(`${activeTab}__${v}`)),
-    );
+    const available = new Set(variants!.filter((v) => existingCombos.has(`${activeTab}__${v}`)));
     console.log("availableVariants calculation:", {
       activeTab,
       variants,
@@ -326,14 +307,7 @@ export function CodeBlockTabs({
       availableTabs,
       existingCombos,
     }),
-    [
-      nested,
-      variants,
-      activeVariant,
-      availableVariants,
-      availableTabs,
-      existingCombos,
-    ],
+    [nested, variants, activeVariant, availableVariants, availableTabs, existingCombos],
   );
 
   return (
@@ -414,18 +388,13 @@ export function CodeBlockTabsList(props: ComponentProps<typeof TabsList>) {
 // CodeBlockTabsTrigger
 // ---------------------------------------------------------------------------
 
-export function CodeBlockTabsTrigger({
-  children,
-  ...props
-}: ComponentProps<typeof TabsTrigger>) {
+export function CodeBlockTabsTrigger({ children, ...props }: ComponentProps<typeof TabsTrigger>) {
   const ctx = use(TabsContext);
 
   // Check if this tab has content for the currently selected variant
   const hasVariants = (ctx?.variants?.length ?? 0) > 0;
   const isAvailable =
-    !hasVariants ||
-    !ctx?.availableTabs ||
-    ctx.availableTabs.has(props.value as string);
+    !hasVariants || !ctx?.availableTabs || ctx.availableTabs.has(props.value as string);
 
   return (
     <TabsTrigger
@@ -456,19 +425,14 @@ export interface CodeBlockTabProps extends ComponentProps<typeof TabsContent> {
   variant?: string;
 }
 
-export function CodeBlockTab({
-  variant,
-  children,
-  ...props
-}: CodeBlockTabProps) {
+export function CodeBlockTab({ variant, children, ...props }: CodeBlockTabProps) {
   const ctx = use(TabsContext);
 
   // If this tab has a variant declared, only render its children when the
   // active variant matches. The TabsContent visibility is still controlled
   // by Radix (active tab), so we only gate the inner content.
   const hasVariants = (ctx?.variants?.length ?? 0) > 0;
-  const variantMatch =
-    !variant || !hasVariants || ctx?.activeVariant === variant;
+  const variantMatch = !variant || !hasVariants || ctx?.activeVariant === variant;
 
   if (!variantMatch) return null;
 

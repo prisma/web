@@ -37,16 +37,10 @@ export function PostCard({
   const imageClassName = cn(
     "object-cover transition-transform duration-300 group-hover:scale-[1.02] h-[216px]! w-auto",
   );
-  const imageWrapperClassName = cn(
-    "relative aspect-video w-full h-full order-1 overflow-hidden",
-  );
+  const imageWrapperClassName = cn("relative aspect-video w-full h-full order-1 overflow-hidden");
 
-  const titleClassName = cn(
-    "text-foreground-neutral font-mona-sans text-xl font-bold",
-  );
-  const excerptClassName = cn(
-    "text-sm leading-[20px]! text-foreground-neutral-weak text-pretty",
-  );
+  const titleClassName = cn("text-foreground-neutral font-mona-sans text-xl font-bold");
+  const excerptClassName = cn("text-sm leading-[20px]! text-foreground-neutral-weak text-pretty");
 
   const postBody = (
     <>

@@ -104,27 +104,17 @@ function SelectContent({
   );
 }
 
-function SelectLabel({
-  className,
-  ...props
-}: SelectPrimitive.GroupLabel.Props) {
+function SelectLabel({ className, ...props }: SelectPrimitive.GroupLabel.Props) {
   return (
     <SelectPrimitive.GroupLabel
       data-slot="select-label"
-      className={handleClassName(
-        className,
-        "text-foreground-neutral-weak px-1.5 py-1 text-xs",
-      )}
+      className={handleClassName(className, "text-foreground-neutral-weak px-1.5 py-1 text-xs")}
       {...props}
     />
   );
 }
 
-function SelectItem({
-  className,
-  children,
-  ...props
-}: SelectPrimitive.Item.Props) {
+function SelectItem({ className, children, ...props }: SelectPrimitive.Item.Props) {
   return (
     <SelectPrimitive.Item
       data-slot="select-item"
@@ -148,17 +138,11 @@ function SelectItem({
   );
 }
 
-function SelectSeparator({
-  className,
-  ...props
-}: SelectPrimitive.Separator.Props) {
+function SelectSeparator({ className, ...props }: SelectPrimitive.Separator.Props) {
   return (
     <SelectPrimitive.Separator
       data-slot="select-separator"
-      className={handleClassName(
-        className,
-        "bg-border -mx-1 my-1 h-px pointer-events-none",
-      )}
+      className={handleClassName(className, "bg-border -mx-1 my-1 h-px pointer-events-none")}
       {...props}
     />
   );

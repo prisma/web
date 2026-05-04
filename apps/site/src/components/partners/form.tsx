@@ -11,9 +11,6 @@ export const Form = () => (
       allow="autoplay; clipboard-write; encrypted-media"
       title="Partners - Contact form"
     />
-    <Script
-      src="https://tally.so/widgets/embed.js"
-      onLoad={() => window.Tally?.loadEmbeds()}
-    />
+    <Script src="https://tally.so/widgets/embed.js" onLoad={() => window.Tally?.loadEmbeds()} />
   </div>
 );

@@ -16,7 +16,8 @@ import { BadgeProvider, SidebarBadgeItem } from "@/components/sidebar-badge-prov
 const SIDEBAR_SLIDES = [
   {
     title: "The Next Evolution of Prisma ORM",
-    description: "Prisma Next: a full TypeScript rewrite with a new query API, SQL builder, and extensible architecture.",
+    description:
+      "Prisma Next: a full TypeScript rewrite with a new query API, SQL builder, and extensible architecture.",
     href: "https://pris.ly/pn-anouncement",
     gradient: "orm" as const,
     badge: "New",

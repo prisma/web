@@ -32,9 +32,7 @@ export function Hero({ data }: { data: HeroData }) {
             {data.eyebrow && (
               <h5 className="uppercase text-foreground-ppg-weak my-0!">
                 {data.icon && <i className={cn("mr-2", data.icon)} />}
-                <span className="stretch-display font-sans-display">
-                  {data.eyebrow}
-                </span>
+                <span className="stretch-display font-sans-display">{data.eyebrow}</span>
               </h5>
             )}
             <h1 className="stretch-display text-[40px] lg:text-[60px] font-bold my-0! font-sans-display max-w-184 leading-10 lg:leading-16 md:text-left text-center">
@@ -48,22 +46,14 @@ export function Hero({ data }: { data: HeroData }) {
             <Button asChild variant="ppg" size="3xl">
               <a href={data.btns[0].url}>
                 <span>{data.btns[0].label}</span>
-                {data.btns[0].icon && (
-                  <i className={data.btns[0].icon} />
-                )}
+                {data.btns[0].icon && <i className={data.btns[0].icon} />}
               </a>
             </Button>
             {secondaryButton && (
-              <Button
-                asChild
-                variant="default-strong"
-                size="3xl"
-              >
+              <Button asChild variant="default-strong" size="3xl">
                 <a href={secondaryButton.url}>
                   <span>{secondaryButton.label}</span>
-                  {secondaryButton.icon && (
-                    <i className={secondaryButton.icon} />
-                  )}
+                  {secondaryButton.icon && <i className={secondaryButton.icon} />}
                 </a>
               </Button>
             )}
@@ -71,12 +61,7 @@ export function Hero({ data }: { data: HeroData }) {
         </div>
         <div className="logos relative max-h-78 hidden md:block">
           <div className="absolute left-0 top-0 w-57 h-44 object-cover bg-background-default flex items-center justify-center p-9 border border-stroke-ppg-weak rounded-2xl">
-            <div
-              className={cn(
-                "dark:hidden h-full w-full relative",
-                data.imageClassName,
-              )}
-            >
+            <div className={cn("dark:hidden h-full w-full relative", data.imageClassName)}>
               <Image
                 src={data.imageUrl}
                 fill
@@ -87,10 +72,7 @@ export function Hero({ data }: { data: HeroData }) {
             </div>
             {data.imageUrlLight && (
               <div
-                className={cn(
-                  "hidden dark:block h-full w-full relative",
-                  data.imageClassNameLight,
-                )}
+                className={cn("hidden dark:block h-full w-full relative", data.imageClassNameLight)}
               >
                 <Image
                   src={data.imageUrlLight}

@@ -28,18 +28,12 @@ interface UtmPersistenceProps {
   storageKey: string;
 }
 
-export function UtmPersistence({
-  basePath,
-  proxiedPaths = [],
-  storageKey,
-}: UtmPersistenceProps) {
+export function UtmPersistence({ basePath, proxiedPaths = [], storageKey }: UtmPersistenceProps) {
   const pathname = usePathname();
   const router = useRouter();
 
   useEffect(() => {
-    const currentUtmParams = getUtmParams(
-      new URLSearchParams(window.location.search),
-    );
+    const currentUtmParams = getUtmParams(new URLSearchParams(window.location.search));
 
     if (hasUtmParams(currentUtmParams)) {
       writeStoredUtmParams(storageKey, currentUtmParams);
@@ -55,9 +49,7 @@ export function UtmPersistence({
         return;
       }
 
-      const anchor = (event.target as HTMLElement).closest<HTMLAnchorElement>(
-        "a[href]",
-      );
+      const anchor = (event.target as HTMLElement).closest<HTMLAnchorElement>("a[href]");
 
       if (!anchor) {
         return;
@@ -75,9 +67,7 @@ export function UtmPersistence({
         return;
       }
 
-      const activeUtmParams = getUtmParams(
-        new URLSearchParams(window.location.search),
-      );
+      const activeUtmParams = getUtmParams(new URLSearchParams(window.location.search));
 
       if (!hasUtmParams(activeUtmParams)) {
         return;
@@ -96,17 +86,13 @@ export function UtmPersistence({
       }
 
       const nextHref = `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`;
-      const isModifiedClick =
-        event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
+      const isModifiedClick = event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
 
       if (isInternalLink && anchor.target !== "_blank" && !isModifiedClick) {
         const canClientRoute = basePath
-          ? targetUrl.pathname === basePath ||
-            targetUrl.pathname.startsWith(`${basePath}/`)
+          ? targetUrl.pathname === basePath || targetUrl.pathname.startsWith(`${basePath}/`)
           : !proxiedPaths.some(
-              (p) =>
-                targetUrl.pathname === p ||
-                targetUrl.pathname.startsWith(`${p}/`),
+              (p) => targetUrl.pathname === p || targetUrl.pathname.startsWith(`${p}/`),
             );
 
         if (canClientRoute) {
@@ -119,17 +105,12 @@ export function UtmPersistence({
             : targetUrl.pathname;
 
           event.preventDefault();
-          router.push(
-            `${internalPathname}${targetUrl.search}${targetUrl.hash}`,
-          );
+          router.push(`${internalPathname}${targetUrl.search}${targetUrl.hash}`);
           return;
         }
       }
 
-      anchor.setAttribute(
-        "href",
-        isInternalLink ? nextHref : targetUrl.toString(),
-      );
+      anchor.setAttribute("href", isInternalLink ? nextHref : targetUrl.toString());
     }
 
     document.addEventListener("click", handleClick, true);

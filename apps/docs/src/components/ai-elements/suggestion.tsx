@@ -6,15 +6,9 @@ import { buttonVariants } from "@/components/ui/button";
 
 export type SuggestionsProps = ComponentProps<"div">;
 
-export const Suggestions = ({
-  className,
-  children,
-  ...props
-}: SuggestionsProps) => (
+export const Suggestions = ({ className, children, ...props }: SuggestionsProps) => (
   <div className="w-full" {...props}>
-    <div className={cn("flex flex-col items-start gap-2", className)}>
-      {children}
-    </div>
+    <div className={cn("flex flex-col items-start gap-2", className)}>{children}</div>
   </div>
 );
 
@@ -41,7 +35,7 @@ export const Suggestion = ({
       <button
         className={cn(
           "rounded-none p-0 text-left text-sm text-fd-muted-foreground hover:text-fd-foreground hover:underline transition-colors",
-          className
+          className,
         )}
         onClick={handleClick}
         type="button"
@@ -58,7 +52,7 @@ export const Suggestion = ({
         className={cn(
           buttonVariants({ variant: "outline", size: "sm" }),
           "cursor-pointer rounded-full px-4",
-          className
+          className,
         )}
         onClick={handleClick}
         type="button"
@@ -71,10 +65,7 @@ export const Suggestion = ({
 
   return (
     <button
-      className={cn(
-        buttonVariants({ variant: "outline", size: "sm" }),
-        className
-      )}
+      className={cn(buttonVariants({ variant: "outline", size: "sm" }), className)}
       onClick={handleClick}
       type="button"
       {...props}

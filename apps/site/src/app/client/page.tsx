@@ -233,13 +233,7 @@ export default function Client() {
                       size="4xl"
                       className="h-[75px]! w-[75px]! hover:bg-background-neutral-strong"
                     >
-                      <Image
-                        src={db.icon}
-                        alt={db.name}
-                        width={48}
-                        height={48}
-                        loading="lazy"
-                      />
+                      <Image src={db.icon} alt={db.name} width={48} height={48} loading="lazy" />
                     </Action>
                   </Technology>
                 ))}
@@ -260,13 +254,7 @@ export default function Client() {
                       size="4xl"
                       className="h-[75px]! w-[75px]! hover:bg-background-neutral-strong"
                     >
-                      <Image
-                        src={fw.icon}
-                        alt={fw.name}
-                        width={48}
-                        height={48}
-                        loading="lazy"
-                      />
+                      <Image src={fw.icon} alt={fw.name} width={48} height={48} loading="lazy" />
                     </Action>
                   </Technology>
                 ))}

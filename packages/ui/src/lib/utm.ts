@@ -9,8 +9,7 @@ function sanitizeUtmParams(input: unknown): UtmParams {
 
   return Object.fromEntries(
     Object.entries(input).filter(
-      ([key, value]) =>
-        key.startsWith("utm_") && typeof value === "string" && value.length > 0,
+      ([key, value]) => key.startsWith("utm_") && typeof value === "string" && value.length > 0,
     ),
   );
 }

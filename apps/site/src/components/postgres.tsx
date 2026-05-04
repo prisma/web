@@ -2,13 +2,7 @@
 
 import Image from "next/image";
 import parse from "html-react-parser";
-import {
-  CodeBlock,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from "@prisma/eclipse";
+import { CodeBlock, Tabs, TabsList, TabsTrigger, TabsContent } from "@prisma/eclipse";
 
 type HowSectionData = {
   tabs?: {

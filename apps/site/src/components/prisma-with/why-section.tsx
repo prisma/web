@@ -31,9 +31,7 @@ export function WhySection({ data }: { data: WhySectionData }) {
                 <h3 className="stretch-display text-xl font-bold font-sans-display">
                   {parse(card.title)}
                 </h3>
-                <p className="text-foreground-neutral-weak text-base">
-                  {parse(card.description)}
-                </p>
+                <p className="text-foreground-neutral-weak text-base">{parse(card.description)}</p>
               </Card>
             ))}
           </div>

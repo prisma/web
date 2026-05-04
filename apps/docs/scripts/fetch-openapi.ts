@@ -1,11 +1,7 @@
 import { writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 
-async function fetchWithRetry(
-  url: string,
-  retries = 3,
-  timeout = 30000,
-): Promise<Response> {
+async function fetchWithRetry(url: string, retries = 3, timeout = 30000): Promise<Response> {
   for (let i = 0; i < retries; i++) {
     try {
       const controller = new AbortController();
@@ -33,10 +29,7 @@ async function fetchWithRetry(
 
       // Exponential backoff
       const delay = Math.min(1000 * Math.pow(2, i), 10000);
-      console.warn(
-        `Fetch attempt ${i + 1} failed, retrying in ${delay}ms...`,
-        error,
-      );
+      console.warn(`Fetch attempt ${i + 1} failed, retrying in ${delay}ms...`, error);
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }

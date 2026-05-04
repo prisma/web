@@ -72,11 +72,7 @@ function NavigationMenu({
 
   return (
     <Fragment>
-      <div
-        aria-hidden="true"
-        ref={sentinelRef}
-        className="pointer-events-none h-px -mb-px"
-      />
+      <div aria-hidden="true" ref={sentinelRef} className="pointer-events-none h-px -mb-px" />
       <NavigationMenuPrimitive.Root
         data-slot="navigation-menu"
         data-stuck={isStuck ? "true" : "false"}
@@ -104,8 +100,7 @@ function NavigationWrapper({
       data-slot="navigation-wrapper"
       className={cn(
         "max-w-7xl w-full mx-auto py-3 px-6 shadow-box-high bg-background-default/50 [backdrop-filter:blur(3)] rounded-square-high flex justify-between align-center transition-[max-width] duration-500 ease-[cubic-bezier(0.075,0.82,0.165,1)] group-data-[stuck=true]/navigation-menu:max-w-235",
-        mobileOpen &&
-          "py-7 px-10 rounded-none md:py-3! md:px-6! md:rounded-square-high",
+        mobileOpen && "py-7 px-10 rounded-none md:py-3! md:px-6! md:rounded-square-high",
         className,
       )}
       {...props}
@@ -465,12 +460,7 @@ function NavigationMobileMenu({
             </Button>
           </NavigationMenuItem>
           <NavigationMenuItem className="w-full">
-            <Button
-              asChild
-              size="xl"
-              variant={buttonVariant}
-              className="whitespace-nowrap w-full"
-            >
+            <Button asChild size="xl" variant={buttonVariant} className="whitespace-nowrap w-full">
               <a href={signupHref}>Get started</a>
             </Button>
           </NavigationMenuItem>

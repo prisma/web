@@ -14,7 +14,7 @@ export type GeneratedMetadata = {
   heroImageAlt: string;
   tags: string[];
   excerpt: string;
-}
+};
 export const dynamic = "force-dynamic";
 const mixedbreadApiKey = process.env.MIXEDBREAD_API_KEY;
 if (!mixedbreadApiKey) {

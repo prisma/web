@@ -118,10 +118,12 @@ async function collectPageRoutes(directory: string, segments: string[] = []): Pr
         return [];
       }
 
-      return [{
-        pathname: routeSegments.length === 0 ? "/" : `/${routeSegments.join("/")}`,
-        filePath: entryPath,
-      }];
+      return [
+        {
+          pathname: routeSegments.length === 0 ? "/" : `/${routeSegments.join("/")}`,
+          filePath: entryPath,
+        },
+      ];
     }),
   );
 
@@ -156,9 +158,10 @@ export async function getSiteSitemapEntries(baseUrl = getBaseUrl()): Promise<Sit
   // Changelog entries use their frontmatter date as lastmod
   const changelogLastModMap = new Map<string, string>();
   for (const page of changelogPages) {
-    const date = page.data.date instanceof Date
-      ? page.data.date.toISOString().split("T")[0]
-      : String(page.data.date).split("T")[0];
+    const date =
+      page.data.date instanceof Date
+        ? page.data.date.toISOString().split("T")[0]
+        : String(page.data.date).split("T")[0];
     changelogLastModMap.set(page.url, date);
   }
 
@@ -199,15 +202,9 @@ export function renderSitemapXml(entries: SitemapEntry[]): string {
   const items = entries
     .map(({ url, lastModified, changeFrequency, priority }) => {
       const metadata = [
-        lastModified
-          ? `    <lastmod>${escapeXml(lastModified)}</lastmod>`
-          : null,
-        changeFrequency
-          ? `    <changefreq>${escapeXml(changeFrequency)}</changefreq>`
-          : null,
-        typeof priority === "number"
-          ? `    <priority>${priority.toFixed(1)}</priority>`
-          : null,
+        lastModified ? `    <lastmod>${escapeXml(lastModified)}</lastmod>` : null,
+        changeFrequency ? `    <changefreq>${escapeXml(changeFrequency)}</changefreq>` : null,
+        typeof priority === "number" ? `    <priority>${priority.toFixed(1)}</priority>` : null,
       ]
         .filter(Boolean)
         .join("\n");
