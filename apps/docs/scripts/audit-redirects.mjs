@@ -8,8 +8,6 @@ const broadDestinations = new Set([
   "/docs",
   "/docs/orm",
   "/docs/orm/reference/supported-databases",
-  "/docs/orm/prisma-client/queries/crud",
-  "/docs/orm/prisma-client/setup-and-configuration/introduction",
 ]);
 
 function normalizeRoute(route) {
@@ -37,9 +35,17 @@ function segmentCount(route) {
   return route.split("/").filter(Boolean).length;
 }
 
-function shouldWarnForBroadRedirect(source, destination) {
+function getLastSegment(route) {
+  const segments = normalizeRoute(route).split("/").filter(Boolean);
+  return segments.at(-1) ?? "";
+}
+
+function shouldWarnForBroadRedirect(source, destination, rawDestination) {
   if (hasPattern(source)) return false;
+  if (rawDestination.includes("#")) return false;
   if (broadDestinations.has(destination)) return true;
+
+  if (getLastSegment(source) === getLastSegment(destination)) return false;
 
   const sourceDepth = segmentCount(source);
   const destinationDepth = segmentCount(destination);
@@ -134,7 +140,7 @@ async function main() {
       continue;
     }
 
-    if (shouldWarnForBroadRedirect(rule.source, destination)) {
+    if (shouldWarnForBroadRedirect(rule.source, destination, rule.destination)) {
       broad.push(`${rule.source} -> ${destination}`);
     }
   }
