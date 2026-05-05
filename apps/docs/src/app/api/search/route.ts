@@ -55,7 +55,10 @@ function removeMd(md: string): string {
       .replace(/(^|\W)([_]+)(\S)(.*?\S)??\2($|\W)/g, "$1$3$4$5")
       .replace(/(`{3,})(.*?)\1/gm, "$2")
       .replace(/`(.+?)`/g, "$1")
-      .replace(/~(.*?)~/g, "$1");
+      .replace(/~(.*?)~/g, "$1")
+      // Remove any remaining angle brackets so malformed HTML-like input
+      // cannot survive as executable-looking text in search results.
+      .replace(/[<>]/g, "");
   } catch {
     return md;
   }
