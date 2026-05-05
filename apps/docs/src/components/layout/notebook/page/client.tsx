@@ -4,6 +4,7 @@ import {
   type ComponentProps,
   createContext,
   Fragment,
+  type ReactNode,
   use,
   useEffect,
   useEffectEvent,
@@ -20,6 +21,7 @@ import type * as PageTree from "fumadocs-core/page-tree";
 import { usePathname } from "fumadocs-core/framework";
 import { type BreadcrumbOptions, getBreadcrumbItemsFromPath } from "fumadocs-core/breadcrumb";
 import { formatSlugDisplayName } from "@/lib/breadcrumb-utils";
+import { getPageTitleText } from "@/lib/page-title";
 import { isActive } from "../../../../lib/urls";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../../ui/collapsible";
 import { useTOCItems } from "../../../toc";
@@ -32,12 +34,14 @@ const TocPopoverContext = createContext<{
   setOpen: (open: boolean) => void;
 } | null>(null);
 
-function formatBreadcrumbName(name: string) {
-  if (name.includes("-") || name.includes("_") || name === name.toLowerCase()) {
-    return formatSlugDisplayName(name);
+function formatBreadcrumbName(name: ReactNode) {
+  const text = getPageTitleText(name);
+
+  if (text.includes("-") || text.includes("_") || text === text.toLowerCase()) {
+    return formatSlugDisplayName(text);
   }
 
-  return name;
+  return text;
 }
 
 /**
