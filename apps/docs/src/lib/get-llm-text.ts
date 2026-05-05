@@ -1,4 +1,5 @@
 import { source } from "@/lib/source";
+import { getPageTitleText } from "@/lib/page-title";
 import { getBaseUrl, withDocsBasePath } from "@/lib/urls";
 import type { InferPageType } from "fumadocs-core/source";
 import { readFileSync } from "node:fs";
@@ -65,7 +66,7 @@ function getSectionTitle(page: DocsPage, slugs: string[]) {
 }
 
 function getBreadcrumbName(page: DocsPage, slugs: string[], index: number) {
-  if (index === slugs.length - 1) return page.data.title;
+  if (index === slugs.length - 1) return getPageTitleText(page.data.title, slugs[index] ?? "Docs");
 
   return getSectionTitle(page, slugs.slice(0, index + 1)) ?? humanizeSlug(slugs[index]);
 }
@@ -101,7 +102,7 @@ function getExplicitRelatedPages(page: DocsPage, baseUrl: string) {
 
       return [
         {
-          title: resolved?.page.data.title ?? entry,
+          title: resolved ? getPageTitleText(resolved.page.data.title, entry) : entry,
           href,
           description: resolved?.page.data.description,
         },
@@ -147,10 +148,12 @@ function getSiblingRelatedPages(page: DocsPage, baseUrl: string) {
         parentSegments.every((segment, index) => candidateSegments[index] === segment)
       );
     })
-    .sort((a, b) => a.data.title.localeCompare(b.data.title))
+    .sort((a, b) =>
+      getPageTitleText(a.data.title, a.url).localeCompare(getPageTitleText(b.data.title, b.url)),
+    )
     .slice(0, 5)
     .map((candidate) => ({
-      title: candidate.data.title,
+      title: getPageTitleText(candidate.data.title, candidate.url),
       href: `${baseUrl}${withDocsBasePath(candidate.url)}`,
       description: candidate.data.description,
     }));
@@ -240,7 +243,7 @@ export async function getLLMText(page: DocsPage) {
   const context = breadcrumbLine ? `${breadcrumbLine}\n\n` : "";
   const related = formatRelatedPages(relatedPages);
 
-  return `# ${page.data.title} (${withDocsBasePath(page.url)})
+  return `# ${getPageTitleText(page.data.title, page.url)} (${withDocsBasePath(page.url)})
 
 ${context}${processed}${related}`;
 }

@@ -1,5 +1,6 @@
 import { getBaseUrl, withDocsBasePath } from "@/lib/urls";
 import { formatSlugDisplayName } from "@/lib/breadcrumb-utils";
+import { getPageTitleText } from "@/lib/page-title";
 import type { InferPageType } from "fumadocs-core/source";
 import type { source } from "@/lib/source";
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
@@ -57,7 +58,7 @@ function getSectionTitle(page: DocsPage, slugs: string[]) {
 
 function getBreadcrumbName(page: DocsPage, slugs: string[], index: number) {
   if (index === slugs.length - 1) {
-    return page.data.title;
+    return getPageTitleText(page.data.title, slugs[index] ?? "Docs");
   }
 
   return (
@@ -74,7 +75,7 @@ export function TechArticleSchema({ page }: StructuredDataProps) {
   const schema = {
     "@context": "https://schema.org",
     "@type": "TechArticle",
-    headline: (page.data as any).metaTitle ?? page.data.title,
+    headline: (page.data as any).metaTitle ?? getPageTitleText(page.data.title, page.url),
     description: (page.data as any).metaDescription ?? page.data.description,
     url: `${baseUrl}${withDocsBasePath(page.url)}`,
     datePublished: toIsoDate(datePublished) ?? toIsoDate(lastModified),

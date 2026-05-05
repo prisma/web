@@ -1,4 +1,5 @@
 import { generateRSS } from "@prisma-docs/ui/lib/rss";
+import { getPageTitleText } from "@/lib/page-title";
 import { source } from "@/lib/source";
 import { getBaseUrl, withDocsBasePath } from "./urls";
 
@@ -19,7 +20,7 @@ export function getRSS() {
     allPages.map((page: any) => ({
       id: `${withDocsBasePath(page.url)}`,
       url: `${withDocsBasePath(page.url)}`,
-      title: page.data.title,
+      title: getPageTitleText(page.data.title, page.url),
       description: page.data.description,
       date: page.data.lastModified ? new Date(page.data.lastModified) : new Date(),
     })),

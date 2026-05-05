@@ -1,3 +1,4 @@
+import { getPageTitleText } from "@/lib/page-title";
 import { source } from "@/lib/source";
 import { getBaseUrl, withDocsBasePath } from "@/lib/urls";
 import {
@@ -16,7 +17,7 @@ export const revalidate = false;
 export async function GET() {
   const baseUrl = getBaseUrl();
   const latestPages = filterPagesForLLMsIndex(source.getPages()).sort((a, b) =>
-    a.data.title.localeCompare(b.data.title),
+    getPageTitleText(a.data.title, a.url).localeCompare(getPageTitleText(b.data.title, b.url)),
   );
 
   const commonQueriesList = filterAvailableLLMsLinks(commonQueries, latestPages)

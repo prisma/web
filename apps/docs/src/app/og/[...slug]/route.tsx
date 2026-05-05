@@ -1,4 +1,5 @@
 import { getPageImage, source } from "@/lib/source";
+import { getPageTitleText } from "@/lib/page-title";
 import { notFound } from "next/navigation";
 import { ImageResponse } from "next/og";
 
@@ -315,14 +316,15 @@ export async function GET(_req: Request, { params }: RouteContext<"/og/[...slug]
   const openApiMetadata = (page.data as PageFrontmatter)._openapi;
   const method = openApiMetadata?.method;
   const fonts = await getFonts();
+  const title = getPageTitleText(page.data.title, page.slugs.at(-1) ?? "Prisma Docs");
   const imageProps = {
-    title: page.data.title,
+    title,
     description: page.data.description,
     method,
     methodColor: getMethodColor(method),
     apiPathSegments: getApiPathSegments(openApiMetadata?.path),
     badgeLabel: getSectionLabel(page.slugs[0]),
-    titleFontSize: getTitleFontSize(page.data.title),
+    titleFontSize: getTitleFontSize(title),
   };
 
   return new ImageResponse(<PrismaOGImage {...imageProps} />, {

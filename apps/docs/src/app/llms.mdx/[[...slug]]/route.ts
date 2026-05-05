@@ -1,4 +1,5 @@
 import { getLLMText } from "@/lib/get-llm-text";
+import { getPageTitleText } from "@/lib/page-title";
 import { source } from "@/lib/source";
 import { getBaseUrl, withDocsBasePath } from "@/lib/urls";
 
@@ -65,7 +66,7 @@ function getMarkdownNotFoundResponse(slug: string[] | undefined) {
   const nearestLinks = nearestPages
     .map((page) => {
       const description = page.data.description ? `: ${page.data.description}` : "";
-      return `- [\`${page.data.title}\`](${baseUrl}${withDocsBasePath(page.url)})${description}`;
+      return `- [\`${getPageTitleText(page.data.title, page.url)}\`](${baseUrl}${withDocsBasePath(page.url)})${description}`;
     })
     .join("\n");
 

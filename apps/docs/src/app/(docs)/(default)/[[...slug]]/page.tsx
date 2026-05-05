@@ -1,4 +1,5 @@
 import { getPageImage, source } from "@/lib/source";
+import { getPageTitleText } from "@/lib/page-title";
 import { withDocsBasePath } from "@/lib/urls";
 import { notFound } from "next/navigation";
 import { getMDXComponents } from "@/mdx-components";
@@ -89,7 +90,7 @@ export async function generateMetadata({
   const page = source.getPage(slug);
   if (!page) notFound();
 
-  const title = page.data.metaTitle ?? page.data.title;
+  const title = page.data.metaTitle ?? getPageTitleText(page.data.title, page.url);
   const description = page.data.metaDescription ?? page.data.description;
   const noindex = (page.data as { noindex?: boolean }).noindex;
 

@@ -6,6 +6,7 @@ import {
   getLLMsSection,
   llmsSections,
 } from "@/lib/llms";
+import { getPageTitleText } from "@/lib/page-title";
 import { source } from "@/lib/source";
 import { getBaseUrl } from "@/lib/urls";
 import { notFound } from "next/navigation";
@@ -25,7 +26,7 @@ export async function GET(_req: Request, { params }: RouteContext<"/llms/[...slu
 
   const baseUrl = getBaseUrl();
   const pages = filterPagesForLLMsSection(sourcePages, section).sort((a, b) =>
-    a.data.title.localeCompare(b.data.title),
+    getPageTitleText(a.data.title, a.url).localeCompare(getPageTitleText(b.data.title, b.url)),
   );
   const docsList =
     pages.map((page) => formatLLMsPageLink(page, baseUrl)).join("\n") ||
