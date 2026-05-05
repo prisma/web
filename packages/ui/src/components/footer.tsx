@@ -36,7 +36,12 @@ const Link = ({ external, color, children, href, ...rest }: LinkProps) => {
 
   if (external || !href || href.startsWith("http") || href.startsWith("#")) {
     return (
-      <a {...rest} href={href} className={className} target={external ? "_blank" : "_self"}>
+      <a
+        {...rest}
+        href={href}
+        className={className}
+        target={external ? "_blank" : "_self"}
+      >
         {children}
         {external && (
           <i className="fa-regular fa-arrow-up-right text-foreground-neutral-weaker text-xs ml-1" />
@@ -63,7 +68,12 @@ interface FooterProps {
   newsletterComponent?: any;
 }
 
-const Footer = ({ style, darker = false, absoluteLinks = false, color = "ppg" }: FooterProps) => {
+const Footer = ({
+  style,
+  darker = false,
+  absoluteLinks = false,
+  color = "ppg",
+}: FooterProps) => {
   return (
     <footer className="z-1 bg-background-default w-screen overflow-x-hidden overflow-y-visible max-w-full">
       <div
@@ -77,7 +87,9 @@ const Footer = ({ style, darker = false, absoluteLinks = false, color = "ppg" }:
           {/* Logo and Social Links Column */}
           <div className="mb-8 flex-1 lg:mb-0 w-full top-0 flex justify-between items-center lg:flex-col lg:items-start lg:absolute lg:max-w-fit lg:h-[217px]">
             <div className="flex flex-col justify-center">
-              <div className="text-stroke-neutral-stronger [&>svg]:h-10!">{Logo}</div>
+              <div className="text-stroke-neutral-stronger [&>svg]:h-10!">
+                {Logo}
+              </div>
             </div>
             <div className="flex justify-start gap-2 md:max-w-[190px]">
               {footerData.socialIcons.map((socialLink: any, idx: number) => {
@@ -95,7 +107,10 @@ const Footer = ({ style, darker = false, absoluteLinks = false, color = "ppg" }:
                     rel="noopener"
                     key={idx}
                     aria-label={socialLink.title}
-                    className={cn("text-[1.375rem] transition-colors", socialHoverClass)}
+                    className={cn(
+                      "text-[1.375rem] transition-colors",
+                      socialHoverClass,
+                    )}
                   >
                     <Action color="neutral" size="2xl">
                       <i
@@ -111,7 +126,10 @@ const Footer = ({ style, darker = false, absoluteLinks = false, color = "ppg" }:
           <div className="grid max-md:gap-8 max-md:grid-cols-2 grid-cols-[repeat(4,auto)] lg:gap-8 xl:gap-12 relative lg:w-fit ml-auto">
             {/* Footer Columns */}
             {footerData.footerItems.map((footerItem: any, idx: number) => (
-              <div className="flex-1 lg:mb-0 lg:px-2 min-w-40" key={`footer-${idx}`}>
+              <div
+                className="flex-1 lg:mb-0 lg:px-2 min-w-40"
+                key={`footer-${idx}`}
+              >
                 <span className="uppercase stretch-display font-sans-display inline-block font-bold text-base text-foreground-neutral tracking-[0.1em] mt-0 mb-2.5 lg:mb-3">
                   {footerItem.title}
                 </span>
@@ -145,18 +163,31 @@ const Footer = ({ style, darker = false, absoluteLinks = false, color = "ppg" }:
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
                         {link.links.map(
-                          (dropLink: { title: string; url: string; external?: boolean }) => {
+                          (dropLink: {
+                            title: string;
+                            url: string;
+                            external?: boolean;
+                          }) => {
                             const dropdownHoverClass =
                               color === "orm"
                                 ? "hover:bg-background-orm-strong!"
                                 : "hover:bg-background-ppg-strong!";
 
                             return (
-                              <DropdownMenuItem key={dropLink.title} className={dropdownHoverClass}>
+                              <DropdownMenuItem
+                                key={dropLink.title}
+                                className={dropdownHoverClass}
+                              >
                                 <a
                                   href={dropLink.url}
-                                  target={dropLink.external ? "_blank" : "_self"}
-                                  rel={dropLink.external ? "noopener noreferrer" : undefined}
+                                  target={
+                                    dropLink.external ? "_blank" : "_self"
+                                  }
+                                  rel={
+                                    dropLink.external
+                                      ? "noopener noreferrer"
+                                      : undefined
+                                  }
                                   className="text-left capitalize text-foreground-neutral-weak text-md font-semibold"
                                 >
                                   {dropLink.title}
@@ -182,7 +213,7 @@ const Footer = ({ style, darker = false, absoluteLinks = false, color = "ppg" }:
                 href="https://trust.prisma.io/"
                 target="__blank"
                 rel="noopener noreferrer"
-                aria-label="Prisma Trust"
+                aria-label="GDPR Compliance – Prisma Trust"
               >
                 {gdpr}
               </a>
@@ -190,7 +221,7 @@ const Footer = ({ style, darker = false, absoluteLinks = false, color = "ppg" }:
                 href="https://trust.prisma.io/"
                 target="__blank"
                 rel="noopener noreferrer"
-                aria-label="Prisma Trust"
+                aria-label="HIPAA Compliance – Prisma Trust"
               >
                 {hipaa}
               </a>
@@ -198,7 +229,7 @@ const Footer = ({ style, darker = false, absoluteLinks = false, color = "ppg" }:
                 href="https://trust.prisma.io/"
                 target="__blank"
                 rel="noopener noreferrer"
-                aria-label="Prisma Trust"
+                aria-label="ISO 27001 – Prisma Trust"
               >
                 {iso27}
               </a>
@@ -206,12 +237,16 @@ const Footer = ({ style, darker = false, absoluteLinks = false, color = "ppg" }:
                 href="https://trust.prisma.io/"
                 target="__blank"
                 rel="noopener noreferrer"
-                aria-label="Prisma Trust"
+                aria-label="SOC 2 – Prisma Trust"
               >
                 {soc2}
               </a>
             </div>
-            <ThemeToggle color={color} mode="light-dark-system" className="md:order-3 order-2" />
+            <ThemeToggle
+              color={color}
+              mode="light-dark-system"
+              className="md:order-3 order-2"
+            />
           </div>
         </div>
       </div>

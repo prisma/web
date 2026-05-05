@@ -1,0 +1,363 @@
+---
+title: Metrics
+description: Diagnose application performance with insights into Prisma Client database activity.
+badge: preview
+url: /orm/v6/prisma-client/observability-and-logging/metrics
+metaTitle: Metrics
+metaDescription: Diagnose application performance with insights into Prisma Client database activity.
+---
+
+Prisma Client metrics give you a detailed insight into how Prisma Client interacts with your database. You can use this insight to help diagnose performance issues with your application.
+
+:::danger[`metrics` preview feature has been removed ]
+
+The `metrics` preview feature has been **removed** as of [Prisma ORM v7.0.0](https://github.com/prisma/prisma/releases/tag/7.0.0).
+
+If you need visibility into query or connection pool behavior, we recommend using the _native metrics provided by your database driver_ (for example, pool statistics) or setting up _OpenTelemetry_ for a more complete observability solution.
+
+:::
+
+## About metrics
+
+You can export metrics in JSON or Prometheus formats and view them in a console log, or integrate them into an external metrics system, such as [StatsD](https://github.com/statsd/statsd) or [Prometheus](https://prometheus.io/). If you integrate them into an external metrics system, then you can view the metrics data over time. For example, you can use metrics to help diagnose how your application's number of idle and active connections changes.
+
+Prisma Client provides the following metrics:
+
+- Counters (always increase):
+  - `prisma_client_queries_total`: The total number of Prisma Client queries executed.
+  - `prisma_datasource_queries_total`: The total number of datasource queries executed (SQL queries in relational databases, and commands in MongoDB).
+    - The value returned by `prisma_datasource_queries_total` can be greater than `prisma_client_queries_total`, because some Prisma Client operations create multiple queries.
+  - `prisma_pool_connections_closed_total`: The total number of pool connections closed.
+  - `prisma_pool_connections_opened_total`: The number of currently open pool connections.
+
+- Gauges (can increase or decrease):
+  - `prisma_client_queries_active`: The number of currently active Prisma Client queries.
+  - `prisma_client_queries_wait`: The number of Prisma Client queries currently waiting for a connection because all connections are in use.
+  - `prisma_pool_connections_busy`: The number of currently busy pool connections. These pool connections are currently executing a datasource query.
+    /_ Lines 53-55 omitted _/
+
+- Histograms (metrics data divided into a collection of values; we call each container in the collection a "bucket"):
+  /_ Lines 57-61 omitted _/
+
+You can [add global labels to your metrics data](#global-labels) to help you group and separate your metrics, for example by infrastructure region or server.
+
+## Prerequisites
+
+To use Prisma Client metrics, you must do the following:
+
+1. [Install compatible Prisma ORM dependencies](#1-install-up-to-date-prisma-orm-dependencies).
+1. [Enable the `metrics` feature flag in your Prisma schema file](#2-enable-the-feature-flag-in-the-prisma-schema-file).
+
+### 1. Install up-to-date Prisma ORM dependencies
+
+You must use a version between `3.15.0` and `6.13.x` of the `prisma` and `@prisma/client` npm packages.
+
+**Install a compatible version:**
+
+```npm
+npm install prisma@6.13.0 --save-dev
+```
+
+```npm
+npm install @prisma/client@6.13.0
+```
+
+**Or use a version range that stays within the compatible range:**
+
+```npm
+npm install prisma@">=3.15.0 <6.14.0" --save-dev
+```
+
+```npm
+npm install @prisma/client@">=3.15.0 <6.14.0"
+```
+
+### 2. Enable the feature flag in the Prisma schema file
+
+In the `generator` block of your `schema.prisma` file, enable the `metrics` feature flag:
+
+```prisma
+generator client {
+  provider        = "prisma-client"
+  output          = "./generated"
+  previewFeatures = ["metrics"]
+}
+```
+
+## Retrieve metrics in JSON format
+
+When you retrieve metrics in JSON format, you can use them in the format they are returned, or [send them to StatSD](#use-prisma-client-metrics-with-statsd) to visualize how they change over time.
+
+To retrieve metrics in JSON format, add the following lines to your application code:
+
+```ts
+const metrics = await prisma.$metrics.json();
+console.log(metrics);
+```
+
+This returns metrics as follows:
+
+```json
+{
+  /* Lines 121-154 omitted */
+}
+```
+
+<details>
+
+<summary>Expand to view the full output</summary>
+
+```json no-copy
+{
+  /* Lines 163-280 omitted */
+}
+```
+
+</details>
+
+### Histograms in JSON data
+
+Each histogram "bucket" has two values. The first one is the upper bound of the bucket, and the second one is the count (the number of data values that fall into that bucket). In the following example, there are two instances of values between 11 and 20, and five instances of values between 21 and 30:
+
+```json
+...
+[20, 2],
+[30, 5],
+...
+```
+
+### Use Prisma Client metrics with StatsD
+
+You can send JSON-formatted metrics to [StatsD](https://github.com/statsd/statsd) to visualize your metrics data over time.
+
+:::info
+
+Note: You must provide counter metrics to StatsD as a series of values that are incremented or decremented from a previous retrieval of the metrics. However, Prisma Client's counter
+metrics return absolute values. Therefore, you must convert your counter metrics to a series of incremented and decremented values and send them to StatsD as gauge data. In the code example below, we convert counter metrics into incremented and decremented gauge data in `diffHistograms`.
+
+:::
+
+In the following example, we send metrics to StatsD every 10 seconds. This timing aligns with the default 10s flush rate of StatsD.
+
+```ts
+import StatsD from "hot-shots";
+let statsd = new StatsD({
+  port: 8125,
+});
+
+const diffMetrics = (metrics: Metric<MetricHistogram>[]) => {
+  /* Lines 316-331 omitted */
+};
+
+let previousHistograms: Metric<MetricHistogram>[] = [];
+
+const statsdSender = async () => {
+  /* Lines 337-369 omitted */
+};
+
+setInterval(async () => await statsdSender(), 10000);
+```
+
+## Retrieve metrics in Prometheus format
+
+When you retrieve Prisma Client metrics in Prometheus format, you can use them in the format they are returned, or [send them to the Prometheus metrics system](#use-prisma-client-metrics-with-the-prometheus-metrics-system) to visualize how they change over time.
+
+To retrieve metrics in Prometheus format, add the following lines to your application code:
+
+```ts
+const metrics = await prisma.$metrics.prometheus();
+console.log(metrics);
+```
+
+This returns metrics as follows:
+
+```c
+# HELP prisma_client_queries_total Total number of Prisma Client queries executed
+# TYPE prisma_client_queries_total counter
+prisma_client_queries_total 14
+
+...
+# HELP prisma_pool_connections_busy The number of active connections in use.
+# TYPE prisma_pool_connections_busy gauge
+prisma_pool_connections_busy 0
+
+...
+# HELP prisma_client_queries_wait_histogram_ms The wait time for a worker to get a connection.
+# TYPE prisma_client_queries_wait_histogram_ms histogram
+prisma_client_queries_wait_histogram_ms_bucket{le="0"} 0
+prisma_client_queries_wait_histogram_ms_bucket{le="1"} 3
+```
+
+<details>
+
+<summary>Expand to view the full output</summary>
+
+```c
+# HELP query_total_operations
+# TYPE query_total_operations counter
+query_total_operations 2
+
+# HELP prisma_datasource_queries_total
+# TYPE prisma_datasource_queries_total counter
+prisma_datasource_queries_total 28
+
+# HELP prisma_pool_connections_closed_total Total number of Pool Connections closed
+# TYPE prisma_pool_connections_closed_total counter
+prisma_pool_connections_closed_total 0
+
+# HELP prisma_pool_connections_opened_total Total number of Pool Connections opened
+# TYPE prisma_pool_connections_opened_total counter
+prisma_pool_connections_opened_total 0
+
+# HELP prisma_client_queries_active Number of currently active Prisma Client queries
+# TYPE prisma_client_queries_active gauge
+prisma_client_queries_active 0
+
+# HELP prisma_client_queries_wait Number of queries currently waiting for a connection
+# TYPE prisma_client_queries_wait gauge
+prisma_client_queries_wait 0
+
+# HELP prisma_pool_connections_busy Number of currently busy Pool Connections (executing a datasource query)
+# TYPE prisma_pool_connections_busy gauge
+prisma_pool_connections_busy 0
+
+# HELP prisma_pool_connections_idle Number of currently unused Pool Connections (waiting for the next pool query to run)
+# TYPE prisma_pool_connections_idle gauge
+prisma_pool_connections_idle 21
+
+# HELP prisma_pool_connections_open Number of currently open Pool Connections
+# TYPE prisma_pool_connections_open gauge
+prisma_pool_connections_open 1
+
+# HELP prisma_pool_connections_open Number of currently open Pool Connections (able to execute a datasource query)
+# TYPE prisma_pool_connections_open gauge
+prisma_pool_connections_open 0
+
+# HELP prisma_client_queries_wait_histogram_ms The wait time for a worker to get a connection.
+# TYPE prisma_client_queries_wait_histogram_ms histogram
+prisma_client_queries_wait_histogram_ms_bucket{le="0"} 0
+prisma_client_queries_wait_histogram_ms_bucket{le="1"} 3
+prisma_client_queries_wait_histogram_ms_bucket{le="5"} 3
+prisma_client_queries_wait_histogram_ms_bucket{le="10"} 3
+prisma_client_queries_wait_histogram_ms_bucket{le="50"} 3
+prisma_client_queries_wait_histogram_ms_bucket{le="100"} 3
+prisma_client_queries_wait_histogram_ms_bucket{le="500"} 3
+prisma_client_queries_wait_histogram_ms_bucket{le="1000"} 3
+prisma_client_queries_wait_histogram_ms_bucket{le="5000"} 3
+prisma_client_queries_wait_histogram_ms_bucket{le="50000"} 3
+prisma_client_queries_wait_histogram_ms_bucket{le="+Inf"} 3
+prisma_client_queries_wait_histogram_ms_sum 0.023208
+prisma_client_queries_wait_histogram_ms_count 3
+
+# HELP prisma_client_queries_duration_histogram_ms Histogram of the duration of all executed Prisma Client queries in ms
+# TYPE prisma_client_queries_duration_histogram_ms histogram
+prisma_client_queries_duration_histogram_ms_bucket{le="0"} 0
+prisma_client_queries_duration_histogram_ms_bucket{le="1"} 1
+prisma_client_queries_duration_histogram_ms_bucket{le="5"} 2
+prisma_client_queries_duration_histogram_ms_bucket{le="10"} 2
+prisma_client_queries_duration_histogram_ms_bucket{le="50"} 2
+prisma_client_queries_duration_histogram_ms_bucket{le="100"} 2
+prisma_client_queries_duration_histogram_ms_bucket{le="500"} 2
+prisma_client_queries_duration_histogram_ms_bucket{le="1000"} 2
+prisma_client_queries_duration_histogram_ms_bucket{le="5000"} 2
+prisma_client_queries_duration_histogram_ms_bucket{le="50000"} 2
+prisma_client_queries_duration_histogram_ms_bucket{le="+Inf"} 2
+prisma_client_queries_duration_histogram_ms_sum 3.197624
+prisma_client_queries_duration_histogram_ms_count 2
+
+# HELP prisma_datasource_queries_duration_histogram_ms Histogram of the duration of all executed Datasource Queries in ms
+# TYPE prisma_datasource_queries_duration_histogram_ms histogram
+prisma_datasource_queries_duration_histogram_ms_bucket{le="0"} 0
+prisma_datasource_queries_duration_histogram_ms_bucket{le="1"} 5
+prisma_datasource_queries_duration_histogram_ms_bucket{le="5"} 5
+prisma_datasource_queries_duration_histogram_ms_bucket{le="10"} 5
+prisma_datasource_queries_duration_histogram_ms_bucket{le="50"} 5
+prisma_datasource_queries_duration_histogram_ms_bucket{le="100"} 5
+prisma_datasource_queries_duration_histogram_ms_bucket{le="500"} 5
+prisma_datasource_queries_duration_histogram_ms_bucket{le="1000"} 5
+prisma_datasource_queries_duration_histogram_ms_bucket{le="5000"} 5
+prisma_datasource_queries_duration_histogram_ms_bucket{le="50000"} 5
+prisma_datasource_queries_duration_histogram_ms_bucket{le="+Inf"} 5
+prisma_datasource_queries_duration_histogram_ms_sum 1.8407059999999997
+prisma_datasource_queries_duration_histogram_ms_count 5
+```
+
+</details>
+Metrics of type `histogram` expose three different class of values in the Prometheus format:
+
+1. Multiple cumulative counters for observation buckets. These counters are suffixed with `_bucket{le="<upper inclusive bound>"}`. For example, `prisma_datasource_queries_duration_histogram_ms` has a counter exposed as `prisma_datasource_queries_duration_histogram_ms_bucket{le="1"}`
+   /_ Lines 502-504 omitted _/
+
+2. A single **total sum** for all observed values. This counter is suffixed with `_sum`. For example the total sum of `prisma_datasource_queries_duration_histogram_ms` is exposed as `prisma_datasource_queries_duration_histogram_ms_sum`.
+3. The **count** of the number of events that have been observed. This counter is suffixed with `_count`. For example the total count of `prisma_datasource_queries_duration_histogram_ms` events is exposed as `prisma_datasource_queries_duration_histogram_ms_count`.
+
+For more information, read the Prometheus documentation on [metric types](https://prometheus.io/docs/concepts/metric_types/#histogram).
+
+### Use Prisma Client metrics with the Prometheus metrics system
+
+In the majority of cases, Prometheus must scrape an endpoint to retrieve metrics. The following example shows how to send data with `Express.js`:
+
+```js
+import { PrismaClient } from "../prisma/generated/client";
+import express, { Request, Response } from "express";
+
+const app = express();
+const port = 4000;
+const prisma = new PrismaClient();
+
+app.get("/metrics", async (_req, res: Response) => {
+    /* Lines 523-524 omitted */
+    res.end(metrics);
+});
+
+app.listen(port, () => {
+    console.log(`Example app listening on port ${port}`);
+});
+```
+
+The following example shows how to combine Prisma Client metrics with other Prometheus client libraries that are also served with a REST API endpoint in conjunction with `Express.js`:
+
+```js
+import { PrismaClient } from "../prisma/generated/client";
+import express, { Request, Response } from "express";
+import prom from "prom-client";
+
+const app = express();
+const port = 4000;
+const prisma = new PrismaClient();
+
+const register = new prom.Registry();
+prom.collectDefaultMetrics({ register });
+
+app.get("/metrics", async (_req, res: Response) => {
+    /* Lines 547-549 omitted */
+    res.end(prismaMetrics + appMetrics);
+});
+
+app.listen(port, () => {
+    console.log(`Example app listening on port ${port}`);
+});
+```
+
+## Global labels
+
+You can add global labels to your metrics to help you group and separate your metrics. Each instance of Prisma Client adds these labels to the metrics that it generates. For example, you can group your metrics by infrastructure region, or by server, with a label like `{ server: us_server1', 'app_version': 'one' }`.
+
+Global labels work with JSON and Prometheus-formatted metrics.
+
+For example, to add global labels to JSON-format metrics, add the following code to your application:
+
+```ts
+const metrics = prisma.$metrics.json({
+  globalLabels: { server: "us_server1", app_version: "one" },
+});
+console.log(metrics);
+```
+
+This returns information in the following format:
+
+```json highlight=5,11;add
+{
+  /* Lines 576-599 omitted */
+}
+```

@@ -4,9 +4,9 @@ import { faqs } from "./pricing-data";
 import { PricingPageContent } from "./pricing-page-content";
 
 export const metadata = createPageMetadata({
-  title: "Pricing — Prisma Postgres Plans & Features",
+  title: "Prisma Pricing | Prisma Postgres Plans and Usage-Based Pricing",
   description:
-    "Get started for free with Prisma Postgres. Choose the right plan for your workspace based on your project requirements.",
+    "Compare Prisma Postgres plans, usage-based pricing, included features, and workspace options. Start free and scale as your product grows.",
   path: "/pricing",
   ogImage: "/og/og-pricing.png",
 });

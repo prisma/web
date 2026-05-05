@@ -1,11 +1,20 @@
 import { createSoftwareApplicationStructuredData } from "@/lib/structured-data";
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 
-import { type McpAgent, McpAgentsSection } from "./_components/mcp-agents-section";
-import { type McpCapability, McpCapabilitiesSection } from "./_components/mcp-capabilities-section";
+import {
+  type McpAgent,
+  McpAgentsSection,
+} from "./_components/mcp-agents-section";
+import {
+  type McpCapability,
+  McpCapabilitiesSection,
+} from "./_components/mcp-capabilities-section";
 import { McpCtaSection } from "./_components/mcp-cta-section";
-import { type McpHeroFeature, McpHeroSection } from "./_components/mcp-hero-section";
+import {
+  type McpHeroFeature,
+  McpHeroSection,
+} from "./_components/mcp-hero-section";
 import { McpVideoSection } from "./_components/mcp-video-section";
 
 const mcpStructuredData = createSoftwareApplicationStructuredData({
@@ -15,40 +24,13 @@ const mcpStructuredData = createSoftwareApplicationStructuredData({
     "AI-powered database management via Model Context Protocol. Manage databases with natural language in Claude, Codex, Cursor, Warp, ChatGPT and other AI agents.",
 });
 
-export const metadata: Metadata = {
-  title: "Prisma MCP Server — AI-Powered Database Management",
+export const metadata = createPageMetadata({
+  title: "Prisma MCP Server | Manage Databases with AI Agents",
   description:
     "Manage your databases with natural language via MCP in Claude, Codex, Cursor, Warp, ChatGPT and other AI agents. Works great with Prisma Postgres.",
-  alternates: {
-    canonical: "https://www.prisma.io/mcp",
-  },
-  openGraph: {
-    title: "Prisma MCP Server — AI-Powered Database Management",
-    description:
-      "Manage your databases with natural language via MCP in Claude, Codex, Cursor, Warp, ChatGPT and other AI agents. Works great with Prisma Postgres.",
-    url: "https://www.prisma.io/mcp",
-    siteName: "Prisma",
-    locale: "en_US",
-    type: "website",
-    images: [
-      {
-        url: "/og/og-mcp.png",
-        width: 1200,
-        height: 630,
-        alt: "Prisma MCP Server Web Page Open Graph Image",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    site: "@prisma",
-    creator: "@prisma",
-    title: "Prisma MCP Server — AI-Powered Database Management",
-    description:
-      "Manage your databases with natural language via MCP in Claude, Codex, Cursor, Warp, ChatGPT and other AI agents. Works great with Prisma Postgres.",
-    images: ["/og/og-mcp.png"],
-  },
-};
+  path: "/mcp",
+  ogImage: "/og/og-mcp.png",
+});
 const DOCS_MCP = "https://www.prisma.io/docs/ai/tools/mcp-server";
 
 const heroFeatures: McpHeroFeature[] = [
@@ -111,7 +93,8 @@ const agents: McpAgent[] = [
   {
     logo: "/mcp/logos/claude-code.svg",
     alt: "Copy command to add to Claude Code",
-    copyText: "claude mcp add --transport http prisma https://mcp.prisma.io/mcp",
+    copyText:
+      "claude mcp add --transport http prisma https://mcp.prisma.io/mcp",
   },
   {
     logo: "/mcp/logos/windsurf.svg",
@@ -134,7 +117,8 @@ const capabilities: McpCapability[] = [
   {
     icon: "fa-light fa-database",
     title: "Database Management",
-    description: "Create projects, databases, or clean them up via natural language",
+    description:
+      "Create projects, databases, or clean them up via natural language",
     prompt: "Set up this project with a new database in us-east-1",
     mobileTall: false,
   },
@@ -142,7 +126,8 @@ const capabilities: McpCapability[] = [
     icon: "fa-light fa-magnifying-glass-arrow-right",
     title: "Data Analysis",
     description: "Execute queries and analyze data through conversation",
-    prompt: "Show me all users who signed up this week and their activity levels",
+    prompt:
+      "Show me all users who signed up this week and their activity levels",
     mobileTall: true,
   },
   {
@@ -177,7 +162,10 @@ export default function McpPage() {
         <McpVideoSection />
         <McpAgentsSection agents={agents} />
         <McpCapabilitiesSection capabilities={capabilities} />
-        <McpCtaSection docsHref={DOCS_MCP} readDocsHref="https://www.prisma.io/docs/ai" />
+        <McpCtaSection
+          docsHref={DOCS_MCP}
+          readDocsHref="https://www.prisma.io/docs/ai"
+        />
       </div>
     </main>
   );

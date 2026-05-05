@@ -1,10 +1,11 @@
-import { source, sourceV6 } from "@/lib/source";
+import { source } from "@/lib/source";
+import { getPageTitleText } from "@/lib/page-title";
 import { getBaseUrl, withDocsBasePath } from "@/lib/urls";
 import type { InferPageType } from "fumadocs-core/source";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-type DocsPage = InferPageType<typeof source> | InferPageType<typeof sourceV6>;
+type DocsPage = InferPageType<typeof source>;
 
 type RelatedPageLink = {
   title: string;
@@ -14,12 +15,12 @@ type RelatedPageLink = {
 
 const sectionTitleCache = new Map<string, string | null>();
 
-function getContentDirectory(page: DocsPage) {
-  return page.url.startsWith("/v6") ? "content/docs.v6" : "content/docs";
+function getContentDirectory() {
+  return "content/docs";
 }
 
-function getPageSource(page: DocsPage) {
-  return page.url.startsWith("/v6") ? sourceV6 : source;
+function getPageSource() {
+  return source;
 }
 
 function humanizeSlug(slug: string) {
@@ -31,14 +32,13 @@ function humanizeSlug(slug: string) {
 }
 
 function getPageUrlSegments(page: DocsPage) {
-  const url = page.url.startsWith("/v6") ? page.url.slice("/v6".length) : page.url;
-  return url.split("/").filter(Boolean);
+  return page.url.split("/").filter(Boolean);
 }
 
 function getSectionTitle(page: DocsPage, slugs: string[]) {
   if (slugs.length === 0) return undefined;
 
-  const contentDirectory = getContentDirectory(page);
+  const contentDirectory = getContentDirectory();
   const cacheKey = `${contentDirectory}:${slugs.join("/")}`;
   const cached = sectionTitleCache.get(cacheKey);
 
@@ -66,7 +66,7 @@ function getSectionTitle(page: DocsPage, slugs: string[]) {
 }
 
 function getBreadcrumbName(page: DocsPage, slugs: string[], index: number) {
-  if (index === slugs.length - 1) return page.data.title;
+  if (index === slugs.length - 1) return getPageTitleText(page.data.title, slugs[index] ?? "Docs");
 
   return getSectionTitle(page, slugs.slice(0, index + 1)) ?? humanizeSlug(slugs[index]);
 }
@@ -74,14 +74,12 @@ function getBreadcrumbName(page: DocsPage, slugs: string[], index: number) {
 function getBreadcrumbLine(page: DocsPage) {
   const segments = getPageUrlSegments(page);
   const names = segments.map((_, index) => getBreadcrumbName(page, segments, index));
-
-  if (page.url.startsWith("/v6")) names.unshift("v6");
   return names.length > 0 ? `Location: ${names.join(" > ")}` : undefined;
 }
 
 function resolveHref(href: string, page: DocsPage, baseUrl: string) {
   if (/^[a-z][a-z\d+.-]*:\/\//i.test(href)) return href;
-  const resolved = getPageSource(page).getPageByHref(href, { dir: dirname(page.path) });
+  const resolved = getPageSource().getPageByHref(href, { dir: dirname(page.path) });
   if (resolved) return `${baseUrl}${withDocsBasePath(resolved.page.url)}`;
   if (href.startsWith("/")) return `${baseUrl}${withDocsBasePath(href)}`;
   return undefined;
@@ -98,13 +96,13 @@ function getExplicitRelatedPages(page: DocsPage, baseUrl: string) {
 
   return related.flatMap((entry): RelatedPageLink[] => {
     if (typeof entry === "string") {
-      const resolved = getPageSource(page).getPageByHref(entry, { dir: dirname(page.path) });
+      const resolved = getPageSource().getPageByHref(entry, { dir: dirname(page.path) });
       const href = resolveHref(entry, page, baseUrl);
       if (!href) return [];
 
       return [
         {
-          title: resolved?.page.data.title ?? entry,
+          title: resolved ? getPageTitleText(resolved.page.data.title, entry) : entry,
           href,
           description: resolved?.page.data.description,
         },
@@ -140,7 +138,7 @@ function getSiblingRelatedPages(page: DocsPage, baseUrl: string) {
   const pageSegments = getPageUrlSegments(page);
   const parentSegments = pageSegments.slice(0, -1);
 
-  return getPageSource(page)
+  return getPageSource()
     .getPages()
     .filter((candidate) => {
       const candidateSegments = getPageUrlSegments(candidate);
@@ -150,10 +148,12 @@ function getSiblingRelatedPages(page: DocsPage, baseUrl: string) {
         parentSegments.every((segment, index) => candidateSegments[index] === segment)
       );
     })
-    .sort((a, b) => a.data.title.localeCompare(b.data.title))
+    .sort((a, b) =>
+      getPageTitleText(a.data.title, a.url).localeCompare(getPageTitleText(b.data.title, b.url)),
+    )
     .slice(0, 5)
     .map((candidate) => ({
-      title: candidate.data.title,
+      title: getPageTitleText(candidate.data.title, candidate.url),
       href: `${baseUrl}${withDocsBasePath(candidate.url)}`,
       description: candidate.data.description,
     }));
@@ -243,7 +243,7 @@ export async function getLLMText(page: DocsPage) {
   const context = breadcrumbLine ? `${breadcrumbLine}\n\n` : "";
   const related = formatRelatedPages(relatedPages);
 
-  return `# ${page.data.title} (${withDocsBasePath(page.url)})
+  return `# ${getPageTitleText(page.data.title, page.url)} (${withDocsBasePath(page.url)})
 
 ${context}${processed}${related}`;
 }

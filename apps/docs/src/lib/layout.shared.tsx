@@ -28,6 +28,7 @@ export const links: LinkItemTypeWithActivePaths[] = [
     text: "ORM",
     url: "/orm",
     active: "nested-url",
+    activePaths: ["/orm", "/orm/v6"],
   },
   {
     text: "Postgres",

@@ -1,16 +1,16 @@
 import type { ComponentProps } from "react";
 import { source } from "@/lib/source";
 import { authLinks, baseOptions, links } from "@/lib/layout.shared";
-import { VersionSwitcher } from "@/components/version-switcher";
 import type { LinkItemType } from "@/components/layout/link-item";
 import { DocsLayout } from "@/components/layout/notebook";
-import { LATEST_VERSION } from "@/lib/version";
 import { StatusIndicator } from "@/components/status-indicator";
 import { SidebarBannerCarousel } from "@/components/sidebar-banner";
 import { fetchOgImage } from "@/lib/og-image";
 import { cn } from "@prisma-docs/ui/lib/cn";
 import { getPageBadges } from "@/lib/page-badges";
 import { BadgeProvider, SidebarBadgeItem } from "@/components/sidebar-badge-provider";
+import { getOrmVersions } from "@/lib/version";
+import { VersionSwitcher } from "@/components/version-switcher";
 
 // Sidebar announcement slides — set to [] to hide the banner
 const SIDEBAR_SLIDES = [
@@ -25,17 +25,14 @@ const SIDEBAR_SLIDES = [
   },
 ];
 
-export default async function Layout({ children }: { children: React.ReactNode }) {
+export default async function Layout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const { nav, ...base } = baseOptions();
 
-  const navbarLinks: LinkItemType[] = [
-    ...links,
-    ...authLinks,
-    {
-      type: "custom",
-      children: <VersionSwitcher currentVersion={LATEST_VERSION} />,
-    },
-  ];
+  const navbarLinks: LinkItemType[] = [...links, ...authLinks];
 
   // Resolve OG images server-side for slides that don't have a hardcoded image
   const slides = await Promise.all(
@@ -49,6 +46,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
   );
 
   const badges = Object.fromEntries(getPageBadges());
+  const ormVersions = getOrmVersions(source.pageTree);
 
   return (
     <BadgeProvider badges={badges}>
@@ -58,6 +56,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
         nav={{ ...nav }}
         sidebar={{
           collapsible: false,
+          banner: <VersionSwitcher versions={ormVersions} />,
           components: { Item: SidebarBadgeItem },
           footer: ({ className, ...props }: ComponentProps<"div">) => (
             <div className={cn("flex flex-col p-4 pt-2 gap-3", className)} {...props}>

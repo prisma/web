@@ -1,0 +1,383 @@
+---
+title: What is introspection?
+description: Learn how you can introspect your database to generate a data model into your Prisma schema.
+url: /orm/v6/prisma-schema/introspection
+metaTitle: What is introspection? (Reference)
+metaDescription: Learn how you can introspect your database to generate a data model into your Prisma schema.
+---
+
+You can introspect your database using the Prisma CLI in order to generate the [data model](/orm/v6/prisma-schema/data-model/models) in your [Prisma schema](/orm/v6/prisma-schema/overview). The data model is needed to [generate Prisma Client](/orm/v6/prisma-client/setup-and-configuration/custom-model-and-field-names).
+
+Introspection is often used to generate an _initial_ version of the data model when [adding Prisma ORM to an existing project](/prisma-orm/add-to-existing-project/postgresql).
+
+However, it can also be [used _repeatedly_ in an application](#introspection-with-an-existing-schema). This is most commonly the case when you're _not_ using [Prisma Migrate](/orm/v6/prisma-migrate/getting-started) but perform schema migrations using plain SQL or another migration tool. In that case, you also need to re-introspect your database and subsequently re-generate Prisma Client to reflect the schema changes in your [Prisma Client API](/orm/v6/prisma-client/setup-and-configuration/introduction).
+
+## What does introspection do?
+
+Introspection has one main function: Populate your Prisma schema with a data model that reflects the current database schema.
+
+![Introspect your database with Prisma](/img/orm/prisma-db-pull-generate-schema.png)
+
+Here's an overview of its main functions on SQL databases:
+
+- Map _tables_ in the database to [Prisma models](/orm/v6/prisma-schema/data-model/models#defining-models)
+- Map _columns_ in the database to the [fields](/orm/v6/prisma-schema/data-model/models#defining-fields) of Prisma models
+- Map _indexes_ in the database to [indexes](/orm/v6/prisma-schema/data-model/models#defining-an-index) in the Prisma schema
+- Map _database constraints_ to [attributes](/orm/v6/prisma-schema/data-model/models#defining-attributes) or [type modifiers](/orm/v6/prisma-schema/data-model/models#type-modifiers) in the Prisma schema
+
+On MongoDB, the main functions are the following:
+
+- Map _collections_ in the database to [Prisma models](/orm/v6/prisma-schema/data-model/models#defining-models). Because a _collection_ in MongoDB doesn't have a predefined structure, Prisma ORM _samples_ the _documents_ in the collection and derives the model structure accordingly (i.e. it maps the fields of the _document_ to the [fields](/orm/v6/prisma-schema/data-model/models#defining-fields) of the Prisma model). If _embedded types_ are detected in a collection, these will be mapped to [composite types](/orm/v6/prisma-schema/data-model/models#defining-composite-types) in the Prisma schema.
+- Map _indexes_ in the database to [indexes](/orm/v6/prisma-schema/data-model/models#defining-an-index) in the Prisma schema, if the collection contains at least one document contains a field included in the index
+
+You can learn more about how Prisma ORM maps types from the database to the types available in the Prisma schema on the respective docs page for the data source connector:
+
+- [PostgreSQL](/orm/v6/overview/databases/postgresql#type-mapping-between-postgresql-and-prisma-schema)
+- [MySQL](/orm/v6/overview/databases/mysql#type-mapping-between-mysql-to-prisma-schema)
+- [SQLite](/orm/v6/overview/databases/sqlite#type-mapping-between-sqlite-to-prisma-schema)
+- [Microsoft SQL Server](/orm/v6/overview/databases/sql-server#type-mapping-between-microsoft-sql-server-to-prisma-schema)
+
+## The `prisma db pull` command
+
+You can introspect your database using the `prisma db pull` command of the [Prisma CLI](/orm/v6/tools/prisma-cli#installation). Note that using this command requires your [connection URL](/orm/v6/reference/connection-urls) to be set in your Prisma config [`datasource`](/orm/v6/reference/prisma-config-reference#datasourceurl).
+
+Here's a high-level overview of the steps that `prisma db pull` performs internally:
+
+1. Read the [connection URL](/orm/v6/reference/connection-urls) from the `datasource` configuration in the Prisma config
+1. Open a connection to the database
+1. Introspect database schema (i.e. read tables, columns and other structures ...)
+1. Transform database schema into Prisma schema data model
+1. Write data model into Prisma schema or [update existing schema](#introspection-with-an-existing-schema)
+
+## Introspection workflow
+
+The typical workflow for projects that are not using Prisma Migrate, but instead use plain SQL or another migration tool looks as follows:
+
+1. Change the database schema (e.g. using plain SQL)
+1. Run `prisma db pull` to update the Prisma schema
+1. Run `prisma generate` to update Prisma Client
+1. Use the updated Prisma Client in your application
+
+Note that as you evolve the application, [this process can be repeated for an indefinite number of times](#introspection-with-an-existing-schema).
+
+![Introspect workflow](/img/orm/prisma-evolve-app-workflow.png)
+
+## Rules and conventions
+
+Prisma ORM employs a number of conventions for translating a database schema into a data model in the Prisma schema:
+
+### Model, field and enum names
+
+Field, model and enum names (identifiers) must start with a letter and generally must only contain underscores, letters and digits. You can find the naming rules and conventions for each of these identifiers on the respective docs page:
+
+- [Naming models](/orm/v6/reference/prisma-schema-reference#naming-conventions)
+- [Naming fields](/orm/v6/reference/prisma-schema-reference#naming-conventions-1)
+- [Naming enums](/orm/v6/reference/prisma-schema-reference#naming-conventions-2)
+
+The general rule for identifiers is that they need to adhere to this regular expression:
+
+```
+[A-Za-z][A-Za-z0-9_]*
+```
+
+#### Sanitization of invalid characters
+
+**Invalid characters** are being sanitized during introspection:
+
+- If they appear _before_ a letter in an identifier, they get dropped.
+- If they appear _after_ the first letter, they get replaced by an underscore.
+
+Additionally, the transformed name is mapped to the database using `@map` or `@@map` to retain the original name.
+
+Consider the following table as an example:
+
+```sql
+CREATE TABLE "42User" (
+  _id SERIAL PRIMARY KEY,
+  _name VARCHAR(255),
+  two$two INTEGER
+);
+```
+
+Because the leading `42` in the table name as well as the leading underscores and the `$` on the columns are forbidden in Prisma ORM, introspection adds the `@map` and `@@map` attributes so that these names adhere to Prisma ORM's naming conventions:
+
+```prisma
+model User {
+  id      Int     @id @default(autoincrement()) @map("_id")
+  name    String? @map("_name")
+  two_two Int?    @map("two$two")
+
+  @@map("42User")
+}
+```
+
+#### Duplicate Identifiers after Sanitization
+
+If sanitization results in duplicate identifiers, no immediate error handling is in place. You get the error later and can manually fix it.
+
+Consider the case of the following two tables:
+
+```sql
+CREATE TABLE "42User" (
+  _id SERIAL PRIMARY KEY
+);
+
+CREATE TABLE "24User" (
+  _id SERIAL PRIMARY KEY
+);
+```
+
+This would result in the following introspection result:
+
+```prisma
+model User {
+  id Int @id @default(autoincrement()) @map("_id")
+
+  @@map("42User")
+}
+
+model User {
+  id Int @id @default(autoincrement()) @map("_id")
+
+  @@map("24User")
+}
+```
+
+Trying to generate your Prisma Client with `prisma generate` you would get the following error:
+
+```npm
+npx prisma generate
+```
+
+```text no-copy
+$ npx prisma generate
+Error: Schema parsing
+error: The model "User" cannot be defined because a model with that name already exists.
+  */}  schema.prisma:17
+   |
+16 | }
+17 | model User {
+   |
+
+Validation Error Count: 1
+```
+
+In this case, you must manually change the name of one of the two generated `User` models because duplicate model names are not allowed in the Prisma schema.
+
+### Order of fields
+
+Introspection lists model fields in the same order as the corresponding table columns in the database.
+
+### Order of attributes
+
+Introspection adds attributes in the following order (this order is mirrored by `prisma format`):
+
+- Block level: `@@id`, `@@unique`, `@@index`, `@@map`
+- Field level : `@id`, `@unique`, `@default`, `@updatedAt`, `@map`, `@relation`
+
+### Relations
+
+Prisma ORM translates foreign keys that are defined on your database tables into [relations](/orm/v6/prisma-schema/data-model/relations).
+
+#### One-to-one relations
+
+Prisma ORM adds a [one-to-one](/orm/v6/prisma-schema/data-model/relations/one-to-one-relations) relation to your data model when the foreign key on a table has a `UNIQUE` constraint, e.g.:
+
+```sql
+CREATE TABLE "User" (
+    id SERIAL PRIMARY KEY
+);
+CREATE TABLE "Profile" (
+    id SERIAL PRIMARY KEY,
+    "user" integer NOT NULL UNIQUE,
+    FOREIGN KEY ("user") REFERENCES "User"(id)
+);
+```
+
+Prisma ORM translates this into the following data model:
+
+```prisma
+model User {
+  id      Int      @id @default(autoincrement())
+  Profile Profile?
+}
+
+model Profile {
+  id   Int  @id @default(autoincrement())
+  user Int  @unique
+  User User @relation(fields: [user], references: [id])
+}
+```
+
+#### One-to-many relations
+
+By default, Prisma ORM adds a [one-to-many](/orm/v6/prisma-schema/data-model/relations/one-to-many-relations) relation to your data model for a foreign key it finds in your database schema:
+
+```sql
+CREATE TABLE "User" (
+    id SERIAL PRIMARY KEY
+);
+CREATE TABLE "Post" (
+    id SERIAL PRIMARY KEY,
+    "author" integer NOT NULL,
+    FOREIGN KEY ("author") REFERENCES "User"(id)
+);
+```
+
+These tables are transformed into the following models:
+
+```prisma
+model User {
+  id   Int    @id @default(autoincrement())
+  Post Post[]
+}
+
+model Post {
+  id     Int  @id @default(autoincrement())
+  author Int
+  User   User @relation(fields: [author], references: [id])
+}
+```
+
+#### Many-to-many relations
+
+[Many-to-many](/orm/v6/prisma-schema/data-model/relations/many-to-many-relations) relations are commonly represented as [relation tables](/orm/v6/prisma-schema/data-model/relations/many-to-many-relations#relation-tables) in relational databases.
+
+Prisma ORM supports two ways for defining many-to-many relations in the Prisma schema:
+
+- [Implicit many-to-many relations](/orm/v6/prisma-schema/data-model/relations/many-to-many-relations#implicit-many-to-many-relations) (Prisma ORM manages the relation table under the hood)
+- [Explicit many-to-many relations](/orm/v6/prisma-schema/data-model/relations/many-to-many-relations#explicit-many-to-many-relations) (the relation table is present as a [model](/orm/v6/prisma-schema/data-model/models#defining-models))
+
+_Implicit_ many-to-many relations are recognized if they adhere to Prisma ORM's [conventions for relation tables](/orm/v6/prisma-schema/data-model/relations/many-to-many-relations#conventions-for-relation-tables-in-implicit-m-n-relations). Otherwise the relation table is rendered in the Prisma schema as a model (therefore making it an _explicit_ many-to-many relation).
+
+This topic is covered extensively on the docs page about [Relations](/orm/v6/prisma-schema/data-model/relations).
+
+#### Disambiguating relations
+
+Prisma ORM generally omits the `name` argument on the [`@relation`](/orm/v6/prisma-schema/data-model/relations#the-relation-attribute) attribute if it's not needed. Consider the `User` ↔ `Post` example from the previous section. The `@relation` attribute only has the `references` argument, `name` is omitted because it's not needed in this case:
+
+```prisma
+model Post {
+  id     Int  @id @default(autoincrement())
+  author Int
+  User   User @relation(fields: [author], references: [id])
+}
+```
+
+It would be needed if there were _two_ foreign keys defined on the `Post` table:
+
+```sql
+CREATE TABLE "User" (
+    id SERIAL PRIMARY KEY
+);
+CREATE TABLE "Post" (
+    id SERIAL PRIMARY KEY,
+    "author" integer NOT NULL,
+    "favoritedBy" INTEGER,
+    FOREIGN KEY ("author") REFERENCES "User"(id),
+    FOREIGN KEY ("favoritedBy") REFERENCES "User"(id)
+);
+```
+
+In this case, Prisma ORM needs to [disambiguate the relation](/orm/v6/prisma-schema/data-model/relations#disambiguating-relations) using a dedicated relation name:
+
+```prisma
+model Post {
+  id                          Int   @id @default(autoincrement())
+  author                      Int
+  favoritedBy                 Int?
+  User_Post_authorToUser      User  @relation("Post_authorToUser", fields: [author], references: [id])
+  User_Post_favoritedByToUser User? @relation("Post_favoritedByToUser", fields: [favoritedBy], references: [id])
+}
+
+model User {
+  id                          Int    @id @default(autoincrement())
+  Post_Post_authorToUser      Post[] @relation("Post_authorToUser")
+  Post_Post_favoritedByToUser Post[] @relation("Post_favoritedByToUser")
+}
+```
+
+Note that you can rename the [Prisma-ORM level](/orm/v6/prisma-schema/data-model/relations#relation-fields) relation field to anything you like so that it looks friendlier in the generated Prisma Client API.
+
+## Introspection with an existing schema
+
+Running `prisma db pull` for relational databases with an existing Prisma Schema merges manual changes made to the schema, with changes made in the database. (This functionality has been added for the first time with version 2.6.0.) For MongoDB, Introspection for now is meant to be done only once for the initial data model. Running it repeatedly will lead to loss of custom changes, as the ones listed below.
+
+Introspection for relational databases maintains the following manual changes:
+
+- Order of `model` blocks
+- Order of `enum` blocks
+- Comments
+- `@map` and `@@map` attributes
+- `@updatedAt`
+- `@default(cuid())` (`cuid()` is a Prisma-ORM level function)
+- `@default(uuid())` (`uuid()` is a Prisma-ORM level function)
+- Custom `@relation` names
+
+> **Note**: Only relations between models on the database level will be picked up. This means that there **must be a foreign key set**.
+
+The following properties of the schema are determined by the database:
+
+- Order of fields within `model` blocks
+- Order of values within `enum` blocks
+
+> **Note**: All `enum` blocks are listed below `model` blocks.
+
+### Force overwrite
+
+To overwrite manual changes, and generate a schema based solely on the introspected database and ignore any existing Prisma Schema, add the `--force` flag to the `db pull` command:
+
+```npm
+npx prisma db pull --force
+```
+
+Use cases include:
+
+- You want to start from scratch with a schema generated from the underlying database
+- You have an invalid schema and must use `--force` to make introspection succeed
+
+## Introspecting only a subset of your database schema
+
+Introspecting only a subset of your database schema is [not yet officially supported](https://github.com/prisma/prisma/issues/807) by Prisma ORM.
+
+However, you can achieve this by creating a new database user that only has access to the tables which you'd like to see represented in your Prisma schema, and then perform the introspection using that user. The introspection will then only include the tables the new user has access to.
+
+If your goal is to exclude certain models from the [Prisma Client generation](/orm/v6/prisma-client/setup-and-configuration/generating-prisma-client), you can add the [`@@ignore` attribute](/orm/v6/reference/prisma-schema-reference#ignore-1) to the model definition in your Prisma schema. Ignored models are excluded from the generated Prisma Client.
+
+## Introspection warnings for unsupported features
+
+The Prisma Schema Language (PSL) can express a majority of the database features of the [target databases](/orm/v6/reference/supported-databases) Prisma ORM supports. However, there are features and functionality the Prisma Schema Language still needs to express.
+
+For these features, the Prisma CLI will surface detect usage of the feature in your database and return a warning. The Prisma CLI will also add a comment in the models and fields the features are in use in the Prisma schema. The warnings will also contain a workaround suggestion.
+
+The `prisma db pull` command will surface the following unsupported features:
+
+- From version [4.13.0](https://github.com/prisma/prisma/releases/tag/4.13.0):
+  - [Partitioned tables](https://github.com/prisma/prisma/issues/1708)
+  - [PostgreSQL Row Level Security](https://github.com/prisma/prisma/issues/12735)
+  - [Index sort order, `NULLS FIRST` / `NULLS LAST`](https://github.com/prisma/prisma/issues/15466)
+  - [CockroachDB row-level TTL](https://github.com/prisma/prisma/issues/13982)
+  - [Comments](https://github.com/prisma/prisma/issues/8703)
+  - [PostgreSQL deferred constraints](https://github.com/prisma/prisma/issues/8807)
+- From version [4.14.0](https://github.com/prisma/prisma/releases/tag/4.14.0):
+  - [Check Constraints](https://github.com/prisma/prisma/issues/3388) (MySQL + PostgreSQL)
+  - [Exclusion Constraints](https://github.com/prisma/prisma/issues/17514)
+  - [MongoDB $jsonSchema](https://github.com/prisma/prisma/issues/8135)
+- From version [4.16.0](https://github.com/prisma/prisma/releases/tag/4.16.0):
+  - [Expression indexes](https://github.com/prisma/prisma/issues/2504)
+
+You can find the list of features we intend to support on [GitHub (labeled with `topic:database-functionality`)](https://github.com/prisma/prisma/issues?q=is%3Aopen+label%3A%22topic%3A+database-functionality%22+label%3Ateam%2Fschema+sort%3Aupdated-desc+).
+
+### Workaround for introspection warnings for unsupported features
+
+If you are using a relational database and either one of the above features listed in the previous section:
+
+1. Create a draft migration:
+   ```npm
+   npx prisma migrate dev --create-only
+   ```
+2. Add the SQL that adds the feature surfaced in the warnings.
+3. Apply the draft migration to your database:
+   ```npm
+   npx prisma migrate dev
+   ```

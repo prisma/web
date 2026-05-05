@@ -1,0 +1,92 @@
+---
+title: Raw SQL comparisons
+description: Compare columns of the same table with raw queries in Prisma ORM
+url: /orm/v6/more/troubleshooting/raw-sql-comparisons
+metaTitle: Compare columns of the same table with raw queries
+metaDescription: Compare columns with inbuilt raw query methods in Prisma
+---
+
+Comparing different columns from the same table is a common scenario. This page shows how to achieve this using raw queries for Prisma ORM versions prior to 4.3.0.
+
+:::warning
+
+From version 4.3.0, you do not need to use raw queries to compare columns in the same table. You can use the `<model>.fields` property to [compare the columns](/orm/reference/prisma-client-reference#compare-columns-in-the-same-table).
+
+:::
+
+## Comparing numeric values
+
+Example: retrieving posts that have more comments than likes.
+
+```prisma
+model Post {
+  id            Int      @id @default(autoincrement())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  title         String
+  content       String?
+  published     Boolean  @default(false)
+  author        User     @relation(fields: [authorId], references: [id])
+  authorId      Int
+  likesCount    Int
+  commentsCount Int
+}
+```
+
+### PostgreSQL / CockroachDB
+
+```js
+const response =
+  await prisma.$queryRaw`SELECT * FROM "public"."Post" WHERE "likesCount" < "commentsCount";`;
+```
+
+### MySQL
+
+```js
+const response =
+  await prisma.$queryRaw`SELECT * FROM \`public\`.\`Post\` WHERE \`likesCount\` < \`commentsCount\`;`;
+```
+
+### SQLite
+
+```js
+const response =
+  await prisma.$queryRaw`SELECT * FROM "Post" WHERE "likesCount" < "commentsCount";`;
+```
+
+## Comparing date values
+
+Example: get all projects completed after the due date.
+
+```prisma
+model Project {
+  id            Int      @id @default(autoincrement())
+  title         String
+  author        User     @relation(fields: [authorId], references: [id])
+  authorId      Int
+  dueDate       DateTime
+  completedDate DateTime
+  createdAt     DateTime @default(now())
+}
+```
+
+### PostgreSQL / CockroachDB
+
+```js
+const response =
+  await prisma.$queryRaw`SELECT * FROM "public"."Project" WHERE "completedDate" > "dueDate";`;
+```
+
+### MySQL
+
+```js
+const response =
+  await prisma.$queryRaw`SELECT * FROM \`public\`.\`Project\` WHERE \`completedDate\` > \`dueDate\`;`;
+```
+
+### SQLite
+
+```js
+const response =
+  await prisma.$queryRaw`SELECT * FROM "Project" WHERE "completedDate" > "dueDate";`;
+```

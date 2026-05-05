@@ -1,0 +1,282 @@
+---
+title: Microsoft SQL Server
+description: This page explains how Prisma can connect to a Microsoft SQL Server database using the Microsoft SQL Server database connector.
+url: /orm/v6/overview/databases/sql-server
+metaTitle: Microsoft SQL Server
+metaDescription: This page explains how Prisma can connect to a Microsoft SQL Server database using the Microsoft SQL Server database connector.
+---
+
+The Microsoft SQL Server data source connector connects Prisma ORM to a [Microsoft SQL Server](https://learn.microsoft.com/en-us/sql/sql-server/?view=sql-server-ver15) database server.
+
+## Example
+
+To connect to a Microsoft SQL Server database, you need to configure a [`datasource`](/orm/v6/prisma-schema/overview/data-sources) block in your [Prisma schema](/orm/v6/prisma-schema/overview):
+
+```prisma title="schema.prisma" showLineNumbers
+datasource db {
+  provider = "sqlserver"
+}
+```
+
+The database connection URL is configured in `prisma.config.ts`:
+
+```ts title="prisma.config.ts"
+import "dotenv/config";
+import { defineConfig, env } from "prisma/config";
+
+export default defineConfig({
+  schema: "prisma/schema.prisma",
+  datasource: {
+    url: env("DATABASE_URL"),
+  },
+});
+```
+
+:::info
+
+When using Prisma CLI commands, environment variables are not automatically loaded. You'll need to use a package like `dotenv` to load environment variables from a `.env` file, or ensure your environment variables are set in your shell.
+
+:::
+
+The fields passed to the `datasource` block are:
+
+- `provider`: Specifies the `sqlserver` data source connector.
+- The `url` field is configured in `prisma.config.ts` and specifies the [connection URL](#connection-details) for the Microsoft SQL Server database.
+
+## Using the `node-mssql` driver
+
+As of [`v5.4.0`](https://github.com/prisma/prisma/releases/tag/5.4.0), you can use Prisma ORM with database drivers from the JavaScript ecosystem (instead of using Prisma ORM's built-in drivers). You can do this by using a [driver adapter](/orm/v6/overview/databases/database-drivers).
+
+For SQLite, [`node-mssql`](https://github.com/tediousjs/node-mssql) is one of the most popular drivers in the JavaScript ecosystem.
+
+This section explains how you can use it with Prisma ORM and the `@prisma/adapter-mssql` driver adapter.
+
+### 1. Install the dependencies
+
+First, install Prisma ORM's driver adapter for `node-mssql`:
+
+```npm
+npm install @prisma/adapter-mssql
+```
+
+### 2. Instantiate Prisma Client using the driver adapter
+
+Now, when you instantiate Prisma Client, you need to pass an instance of Prisma ORM's driver adapter to the `PrismaClient` constructor:
+
+```ts
+import "dotenv/config";
+import { PrismaMssql } from "@prisma/adapter-mssql";
+import { PrismaClient } from "../prisma/generated/client";
+
+const config = {
+  server: "localhost",
+  port: 1433,
+  database: "mydb",
+  user: "sa",
+  password: "mypassword",
+  options: {
+    encrypt: true, // Use this if you're on Windows Azure
+    trustServerCertificate: true, // Use this if you're using self-signed certificates
+  },
+};
+
+const adapter = new PrismaMssql(config);
+const prisma = new PrismaClient({ adapter });
+```
+
+## Connection details
+
+The connection URL used to connect to an Microsoft SQL Server database follows the [JDBC standard](https://learn.microsoft.com/en-us/sql/connect/jdbc/building-the-connection-url?view=sql-server-ver15).
+
+The following example uses SQL authentication (username and password) with an enabled TLS encrypted connection:
+
+```
+sqlserver://HOST[:PORT];database=DATABASE;user=USER;password=PASSWORD;encrypt=true
+```
+
+:::warning
+
+Note: If you are using any of the following characters in your connection string, [you will need to escape them](https://learn.microsoft.com/en-us/sql/connect/jdbc/building-the-connection-url?view=sql-server-ver16#escaping-values-in-the-connection-url).
+
+```bash
+:\=;/[]{}  # these are characters that will need to be escaped
+```
+
+To escape these characters, use curly braces `{}` around values that contain special characters. As an example:
+
+```bash
+sqlserver://HOST[:PORT];database=DATABASE;user={MyServer/MyUser};password={ThisIsA:SecurePassword;};encrypt=true
+```
+
+:::
+
+### Arguments
+
+| Argument name                                                                         | Required          | Default            | Comments                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| :------------------------------------------------------------------------------------ | :---------------- | :----------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| <ul><li>`database`</li><li>`initial catalog`</li></ul>                                | No                | `master`           | The database to connect to.                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| <ul><li>`username`</li><li>`user`</li><li>`uid`</li><li>`userid`</li></ul>            | No - see Comments |                    | SQL Server login (such as `sa`) _or_ a valid Windows (Active Directory) username if `integratedSecurity` is set to `true` (Windows only).                                                                                                                                                                                                                                                                                                                                     |
+| <ul><li>`password`</li><li>`pwd`</li></ul>                                            | No - see Comments |                    | Password for SQL Server login _or_ Windows (Active Directory) username if `integratedSecurity` is set to `true` (Windows only).                                                                                                                                                                                                                                                                                                                                               |
+| `encrypt`                                                                             | No                | `true`             | Configures whether to use TLS all the time, or only for the login procedure, possible values: `true` (use always), `false` (only for login credentials).                                                                                                                                                                                                                                                                                                                      |
+| `integratedSecurity`                                                                  | No                |                    | Enables [Windows authentication (integrated security)](https://learn.microsoft.com/en-us/previous-versions/dotnet/framework/data/adonet/sql/authentication-in-sql-server), possible values: `true`, `false`, `yes`, `no`. If set to `true` or `yes` and `username` and `password` are present, login is performed through Windows Active Directory. If login details are not given via separate arguments, the current logged in Windows user is used to login to the server. |
+| `connectionLimit`                                                                     | No                | `num_cpus * 2 + 1` | Maximum size of the [connection pool](/orm/v6/prisma-client/setup-and-configuration/databases-connections/connection-pool) (Prisma ORM v6 and before)                                                                                                                                                                                                                                                                                                                    |
+| `connectTimeout`                                                                      | No                | `5`                | Maximum number of seconds to wait for a new connection                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `schema`                                                                              | No                | `dbo`              | Added as a prefix to all the queries if schema name is not the default.                                                                                                                                                                                                                                                                                                                                                                                                       |
+| <ul><li>`loginTimeout`</li><li>`connectTimeout`</li><li>`connectionTimeout`</li></ul> | No                |                    | Number of seconds to wait for login to succeed.                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `socketTimeout`                                                                       | No                |                    | Number of seconds to wait for each query to succeed.                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `isolationLevel`                                                                      | No                |                    | Sets [transaction isolation level](https://learn.microsoft.com/en-us/sql/t-sql/statements/set-transaction-isolation-level-transact-sql?view=sql-server-ver15).                                                                                                                                                                                                                                                                                                                |
+| `poolTimeout`                                                                         | No                | `10`               | Maximum number of seconds to wait for a new connection from the pool. If all connections are in use, the database will return a `PoolTimeout` error after waiting for the given time.                                                                                                                                                                                                                                                                                         |
+| <ul><li>`ApplicationName`</li><li>`Application Name`</li></ul>(case insensitive)      | No                |                    | Sets the application name for the connection. Since version 2.28.0.                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `trustServerCertificate`                                                              | No                | `false`            | Configures whether to trust the server certificate.                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `trustServerCertificateCA`                                                            | No                |                    | A path to a certificate authority file to be used instead of the system certificates to authorize the server certificate. Must be either in `pem`, `crt` or `der` format. Cannot be used together with `trustServerCertificate` parameter.                                                                                                                                                                                                                                    |
+
+:::warning[Prisma ORM v7: Connection pool defaults have changed]
+
+In Prisma ORM v7, [driver adapters](/orm/v6/overview/databases/database-drivers) are the default for relational databases. Connection pooling is now handled by the `mssql` driver, which has **different defaults** than Prisma ORM v6:
+
+- **Connection timeout**: `15s` vs. v6's `5s`
+- **Idle timeout**: `30s` vs. v6's `300s`
+
+If you experience timeout issues after upgrading, you may need to configure your driver adapter to match v6 behavior. See the [connection pool guide](/orm/v6/prisma-client/setup-and-configuration/databases-connections/connection-pool#sql-server-using-the-mssql-driver) for detailed configuration examples.
+
+:::
+
+### Using integrated security (Windows only)
+
+The following example uses the currently logged in Windows user to log in to Microsoft SQL Server using [integrated security](https://learn.microsoft.com/en-us/previous-versions/dotnet/framework/data/adonet/sql/authentication-in-sql-server):
+
+```
+sqlserver://localhost:1433;database=sample;integratedSecurity=true;trustServerCertificate=true;
+```
+
+The following example uses a specific Active Directory user to log in to Microsoft SQL Server:
+
+```
+sqlserver://localhost:1433;database=sample;integratedSecurity=true;username=prisma;password=aBcD1234;trustServerCertificate=true;
+```
+
+#### Connect to a named instance
+
+The following example connects to a named instance of Microsoft SQL Server (`mycomputer\sql2019`) using integrated security:
+
+```
+sqlserver://mycomputer\sql2019;database=sample;integratedSecurity=true;trustServerCertificate=true;
+```
+
+## Type mapping between Microsoft SQL Server to Prisma schema
+
+For type mappings organized by Prisma ORM type, refer to the [Prisma schema reference](/orm/v6/reference/prisma-schema-reference#model-field-scalar-types) documentation.
+
+## Supported versions
+
+See [Supported databases](/orm/v6/reference/supported-databases).
+
+## Limitations and known issues
+
+### Prisma Migrate caveats
+
+Prisma Migrate is supported in [2.13.0](https://github.com/prisma/prisma/releases/tag/2.13.0) and later with the following caveats:
+
+#### Database schema names
+
+SQL Server does not have an equivalent to the PostgreSQL `SET search_path` command familiar from PostgreSQL. This means that when you create migrations, you must define the same schema name in the connection URL that is used by the production database. For most of the users this is `dbo` (the default value). However, if the production database uses another schema name, all the migration SQL must be either edited by hand to reflect the production _or_ the connection URL must be changed before creating migrations (for example: `schema=name`).
+
+#### Cyclic references
+
+Circular references can occur between models when each model references another, creating a closed loop. When using a Microsoft SQL Server database, Prisma ORM will show a validation error if the [referential action](/orm/v6/prisma-schema/data-model/relations/referential-actions) on a relation is set to something other than [`NoAction`](/orm/v6/prisma-schema/data-model/relations/referential-actions#noaction).
+
+See [Special rules for referential actions in SQL Server](/orm/v6/prisma-schema/data-model/relations/referential-actions/special-rules-for-referential-actions) for more information.
+
+#### Destructive changes
+
+Certain migrations will cause more changes than you might expect. For example:
+
+- Adding or removing `autoincrement()`. This cannot be achieved by modifying the column, but requires recreating the table (including all constraints, indices, and foreign keys) and moving all data between the tables.
+- Additionally, it is not possible to delete all the columns from a table (possible with PostgreSQL or MySQL). If a migration needs to recreate all table columns, it will also re-create the table.
+
+#### Shared default values are not supported
+
+In some cases, user might want to define default values as shared objects:
+
+```sql title="default_objects.sql"
+CREATE DEFAULT catcat AS 'musti';
+
+CREATE TABLE cats (
+    id INT IDENTITY PRIMARY KEY,
+    name NVARCHAR(1000)
+);
+
+sp_bindefault 'catcat', 'dbo.cats.name';
+```
+
+Using the stored procedure `sp_bindefault`, the default value `catcat` can be used in more than one table. The way Prisma ORM manages default values is per table:
+
+```sql title="default_per_table.sql" showLineNumbers
+CREATE TABLE cats (
+    id INT IDENTITY PRIMARY KEY,
+    name NVARCHAR(1000) CONSTRAINT DF_cat_name DEFAULT 'musti'
+);
+```
+
+The last example, when introspected, leads to the following model:
+
+```prisma title="schema.prisma" showLineNumbers
+model cats {
+  id   Int     @id @default(autoincrement())
+  name String? @default("musti")
+}
+```
+
+And the first doesn't get the default value introspected:
+
+```prisma title="schema.prisma" showLineNumbers
+model cats {
+  id   Int     @id @default(autoincrement())
+  name String?
+}
+```
+
+If using Prisma Migrate together with shared default objects, changes to them must be done manually to the SQL.
+
+### Data model limitations
+
+#### Cannot use column with `UNIQUE` constraint and filtered index as foreign key
+
+Microsoft SQL Server [only allows one `NULL` value in a column that has a `UNIQUE` constraint](https://learn.microsoft.com/en-us/sql/relational-databases/tables/unique-constraints-and-check-constraints?view=sql-server-ver15). For example:
+
+- A table of users has a column named `license_number`
+- The `license_number` field has a `UNIQUE` constraint
+- The `license_number` field only allows **one** `NULL` value
+
+The standard way to get around this issue is to create a filtered unique index that excludes `NULL` values. This allows you to insert multiple `NULL` values. If you do not create an index in the database, you will get an error if you try to insert more than one `null` value into a column with Prisma Client.
+
+_However_, creating an index makes it impossible to use `license_number` as a foreign key in the database (or a relation scalar field in corresponding Prisma Schema)
+
+### Raw query considerations
+
+#### Raw queries with `String @db.VarChar(n)` fields / `VARCHAR(N)` columns
+
+`String` query parameters in [raw queries](/orm/v6/prisma-client/using-raw-sql/raw-queries) are always encoded to SQL Server as `NVARCHAR(4000)` (if your `String` length is \<= 4000) or `NVARCHAR(MAX)`. If you compare a `String` query parameter to a column of type `String @db.VarChar(N)`/`VARCHAR(N)`, this can lead to implicit conversion on SQL Server which affects your index performance and can lead to high CPU usage.
+
+Here is an example:
+
+```prisma
+model user {
+  id Int @id
+  name String @db.VarChar(40)
+}
+```
+
+This query would be affected:
+
+```ts
+await prisma.$queryRaw`SELECT * FROM user WHERE name = ${"John"}`;
+```
+
+To avoid the problem, we recommend you always manually cast your `String` query parameters to `VARCHAR(N)` in the raw query:
+
+```ts
+await prisma.$queryRaw`SELECT * FROM user WHERE name = CAST(${"John"} AS VARCHAR(40))`;
+```
+
+This enables SQL Server to perform a Clustered Index Seek instead of a Clustered Index Scan.

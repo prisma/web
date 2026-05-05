@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import * as data from "../../../data/prisma-with/nestjs.json";
 import { PrismaWithLayout } from "../../../components/prisma-with/layout";
 
@@ -165,33 +165,13 @@ model User {
 }`,
 };
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: "Enterprise-ready database for NestJS apps",
   description:
     "Build high-performance and type-safe NestJS apps with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and the first serverless database without cold starts.",
-  alternates: {
-    canonical: "https://www.prisma.io/nestjs",
-  },
-  openGraph: {
-    title: "Enterprise-ready database for NestJS apps",
-    description:
-      "Build high-performance and type-safe NestJS apps with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and the first serverless database without cold starts.",
-    url: "https://www.prisma.io/nestjs",
-    siteName: "Prisma",
-    locale: "en_US",
-    type: "website",
-    images: [{ url: "/og/prisma-with/nestjs.png" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    site: "@prisma",
-    creator: "@prisma",
-    title: "Enterprise-ready database for NestJS apps",
-    description:
-      "Build high-performance and type-safe NestJS apps with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and the first serverless database without cold starts.",
-    images: ["/og/prisma-with/nestjs.png"],
-  },
-};
+  path: "/nestjs",
+  ogImage: "/og/prisma-with/nestjs.png",
+});
 
 export default async function NestJsPage() {
   return <PrismaWithLayout data={data} codeExamples={codeExamples} />;

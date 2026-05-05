@@ -20,11 +20,22 @@ type TestimonialColProps = {
 const MemoizedTestimonialItem = memo(TestimonialItem);
 
 const getTestimonialKey = (testimonial: TestimonialItemType, idx: number) =>
-  testimonial.key ?? `${testimonial.author}-${testimonial.company}-${testimonial.title}-${idx}`;
+  testimonial.key ??
+  `${testimonial.author}-${testimonial.company}-${testimonial.title}-${idx}`;
+
+/** Maximum testimonials rendered per column. Keeps the DOM small. */
+const MAX_PER_COL = 8;
 
 const getColumnSlices = (list: TestimonialItemType[]) => {
-  const third = Math.ceil(list.length / 3);
-  return [list.slice(0, third), list.slice(third, third * 2), list.slice(third * 2)];
+  // Cap the total pool to MAX_PER_COL * 3 before splitting so each column
+  // has at most MAX_PER_COL items regardless of list length.
+  const pool = list.slice(0, MAX_PER_COL * 3);
+  const third = Math.ceil(pool.length / 3);
+  return [
+    pool.slice(0, third),
+    pool.slice(third, third * 2),
+    pool.slice(third * 2),
+  ];
 };
 
 const TestimonialCol = ({ color, list, reverse }: TestimonialColProps) => (
@@ -50,14 +61,8 @@ const TestimonialCol = ({ color, list, reverse }: TestimonialColProps) => (
   </Marquee>
 );
 
-const getTabletSlices = (list: TestimonialItemType[]) => {
-  const half = Math.ceil(list.length / 2);
-  return [list.slice(0, half), list.slice(half)];
-};
-
 const Testimonials = ({ color, list, noShadow, mask }: TestimonialsType) => {
   const [col1, col2, col3] = getColumnSlices(list);
-  const [tabletCol1, tabletCol2] = getTabletSlices(list);
 
   const gridClasses = cn(
     "grid max-w-full gap-4 relative",
@@ -69,34 +74,31 @@ const Testimonials = ({ color, list, noShadow, mask }: TestimonialsType) => {
 
   return (
     <div style={mask ? { maskImage: mask } : {}} data-testid="testimonials">
-      {/* Mobile */}
-      <div className={cn(gridClasses, "grid-cols-1 md:hidden")}>
-        <TestimonialCol color={color} reverse list={list} />
-      </div>
-
-      {/* Tablet */}
+      {/*
+       * Single unified grid — one DOM tree for all breakpoints.
+       *
+       * Previously the component duplicated all testimonials across three
+       * separate responsive trees (mobile / tablet / desktop), resulting in
+       * 144 TestimonialItem renders in the HTML.  Now we render one 3-column
+       * grid and use `display:contents` wrappers to reveal col-2 on md+ and
+       * col-3 on lg+ screens without extra wrapper boxes in the layout.
+       *
+       * Result: 3 cols × MAX_PER_COL items × 2 Marquee copies = 48 renders
+       * (down from 144 — a 67 % reduction).
+       */}
       <div
-        className={cn(
-          gridClasses,
-          "hidden md:grid lg:hidden grid-cols-2",
-          "[&>*:nth-child(2)]:flex *:flex-1",
-        )}
-      >
-        <TestimonialCol color={color} reverse list={tabletCol1} />
-        <TestimonialCol color={color} list={tabletCol2} />
-      </div>
-
-      {/* Desktop */}
-      <div
-        className={cn(
-          gridClasses,
-          "hidden lg:grid grid-cols-3",
-          "[&>*:nth-child(2)]:flex [&>*:nth-child(3)]:flex *:flex-1",
-        )}
+        className={cn(gridClasses, "grid-cols-1 md:grid-cols-2 lg:grid-cols-3")}
       >
         <TestimonialCol color={color} reverse list={col1} />
-        <TestimonialCol color={color} list={col2} />
-        <TestimonialCol color={color} reverse list={col3} />
+        {/* `display:contents` makes the div transparent to the grid so the
+            Marquee column participates directly; `hidden` removes it entirely
+            (including its children) on mobile to avoid hidden layout work. */}
+        <div className="hidden md:contents">
+          <TestimonialCol color={color} list={col2} />
+        </div>
+        <div className="hidden lg:contents">
+          <TestimonialCol color={color} reverse list={col3} />
+        </div>
       </div>
     </div>
   );

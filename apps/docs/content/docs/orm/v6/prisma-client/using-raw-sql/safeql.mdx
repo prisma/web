@@ -1,0 +1,367 @@
+---
+title: SafeQL & Prisma Client
+description: 'Learn how to use SafeQL and Prisma Client extensions to work around features not natively supported by Prisma, such as PostGIS.'
+url: /orm/v6/prisma-client/using-raw-sql/safeql
+metaTitle: Integrate SafeQL with Prisma Client
+metaDescription: 'Learn how to use SafeQL and Prisma Client extensions to work around features not natively supported by Prisma, such as PostGIS.'
+---
+
+## Overview
+
+This page explains how to improve the experience of writing raw SQL in Prisma ORM. It uses [Prisma Client extensions](/orm/v6/prisma-client/client-extensions) and [SafeQL](https://safeql.dev) to create custom, type-safe Prisma Client queries which abstract custom SQL that your app might need (using `$queryRaw`).
+
+The example will be using [PostGIS](https://postgis.net/) and PostgreSQL, but is applicable to any raw SQL queries that you might need in your application.
+
+:::note
+
+This page builds on the [legacy raw query methods](/orm/v6/prisma-client/using-raw-sql/raw-queries) available in Prisma Client. While many use cases for raw SQL in Prisma Client are covered by [TypedSQL](/orm/v6/prisma-client/using-raw-sql/typedsql), using these legacy methods is still the recommended approach for working with `Unsupported` fields.
+
+:::
+
+## What is SafeQL?
+
+[SafeQL](https://safeql.dev/) allows for advanced linting and type safety within raw SQL queries. After setup, SafeQL works with Prisma Client `$queryRaw` and `$executeRaw` to provide type safety when raw queries are required.
+
+SafeQL runs as an [ESLint](https://eslint.org/) plugin and is configured using ESLint rules. This guide doesn't cover setting up ESLint and we will assume that you already having it running in your project.
+
+## Prerequisites
+
+To follow along, you will be expected to have:
+
+- A [PostgreSQL](https://www.postgresql.org/) database with PostGIS installed
+- Prisma ORM set up in your project
+- ESLint set up in your project
+
+## Geographic data support in Prisma ORM
+
+At the time of writing, Prisma ORM does not support working with geographic data, specifically using [PostGIS](https://github.com/prisma/prisma/issues/2789).
+
+A model that has geographic data columns will be stored using the [`Unsupported`](/orm/v6/reference/prisma-schema-reference#unsupported) data type. Fields with `Unsupported` types are present in the generated Prisma Client and will be typed as `any`. A model with a required `Unsupported` type does not expose write operations such as `create`, and `update`.
+
+Prisma Client supports write operations on models with a required `Unsupported` field using `$queryRaw` and `$executeRaw`. You can use Prisma Client extensions and SafeQL to improve the type-safety when working with geographical data in raw queries.
+
+## 1. Set up Prisma ORM for use with PostGIS
+
+If you haven't already, enable the `postgresqlExtensions` Preview feature and add the `postgis` PostgreSQL extension in your Prisma schema:
+
+```prisma
+generator client {
+  provider        = "prisma-client"
+  output          = "./generated"
+  previewFeatures = ["postgresqlExtensions"] // [!code ++]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [postgis] // [!code ++]
+}
+```
+
+:::warning
+
+If you are not using a hosted database provider, you will likely need to install the `postgis` extension. Refer to [PostGIS's docs](http://postgis.net/documentation/getting_started/#installing-postgis) to learn more about how to get started with PostGIS. If you're using Docker Compose, you can use the following snippet to set up a PostgreSQL database that has PostGIS installed:
+
+```yaml
+version: "3.6"
+services:
+  pgDB:
+    image: postgis/postgis:13-3.1-alpine
+    restart: always
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: geoexample
+volumes:
+  db_data:
+```
+
+:::
+
+Next, create a migration and execute a migration to enable the extension:
+
+```npm
+npx prisma migrate dev --name add-postgis
+```
+
+For reference, the output of the migration file should look like the following:
+
+```sql title="migrations/TIMESTAMP_add_postgis/migration.sql"
+-- CreateExtension
+CREATE EXTENSION IF NOT EXISTS "postgis";
+```
+
+You can double-check that the migration has been applied by running `prisma migrate status`.
+
+## 2. Create a new model that uses a geographic data column
+
+Add a new model with a column with a `geography` data type once the migration is applied. For this guide, we'll use a model called `PointOfInterest`.
+
+```prisma
+model PointOfInterest {
+  id       Int                                   @id @default(autoincrement())
+  name     String
+  location Unsupported("geography(Point, 4326)")
+}
+```
+
+You'll notice that the `location` field uses an [`Unsupported`](/orm/v6/reference/prisma-schema-reference#unsupported) type. This means that we lose a lot of the benefits of Prisma ORM when working with `PointOfInterest`. We'll be using [SafeQL](https://safeql.dev/) to fix this.
+
+Like before, create and execute a migration using the `prisma migrate dev` command to create the `PointOfInterest` table in your database:
+
+```npm
+npx prisma migrate dev --name add-poi
+```
+
+For reference, here is the output of the SQL migration file generated by Prisma Migrate:
+
+```sql title="migrations/TIMESTAMP_add_poi/migration.sql"
+-- CreateTable
+CREATE TABLE "PointOfInterest" (
+    "id" SERIAL NOT NULL,
+    "name" TEXT NOT NULL,
+    "location" geography(Point, 4326) NOT NULL,
+
+    CONSTRAINT "PointOfInterest_pkey" PRIMARY KEY ("id")
+);
+```
+
+## 3. Integrate SafeQL
+
+SafeQL is easily integrated with Prisma ORM in order to lint `$queryRaw` and `$executeRaw` Prisma operations. You can reference [SafeQL's integration guide](https://safeql.dev/compatibility/prisma.html) or follow the steps below.
+
+### 3.1. Install the `@ts-safeql/eslint-plugin` npm package
+
+```npm
+npm install -D @ts-safeql/eslint-plugin libpg-query
+```
+
+This ESLint plugin is what will allow for queries to be linted.
+
+### 3.2. Add `@ts-safeql/eslint-plugin` to your ESLint plugins
+
+Next, add `@ts-safeql/eslint-plugin` to your list of ESLint plugins. In our example we are using an `.eslintrc.js` file, but this can be applied to any way that you [configure ESLint](https://eslint.org/docs/latest/use/configure/).
+
+```js title=".eslintrc.js" highlight=3
+/** @type {import('eslint').Linter.Config} */
+module.exports = {
+  "plugins": [..., "@ts-safeql/eslint-plugin"],
+  ...
+}
+```
+
+### 3.3 Add `@ts-safeql/check-sql` rules
+
+Now, setup the rules that will enable SafeQL to mark invalid SQL queries as ESLint errors.
+
+```js title=".eslintrc.js" highlight=4-22;add
+/** @type {import('eslint').Linter.Config} */
+module.exports = {
+  plugins: [..., '@ts-safeql/eslint-plugin'],
+  rules: { // [!code ++]
+    '@ts-safeql/check-sql': [ // [!code ++]
+      'error', // [!code ++]
+      { // [!code ++]
+        connections: [ // [!code ++]
+          { // [!code ++]
+            // The migrations path: // [!code ++]
+            migrationsDir: './prisma/migrations', // [!code ++]
+            targets: [ // [!code ++]
+              // This makes `prisma.$queryRaw` and `prisma.$executeRaw` commands linted // [!code ++]
+              { tag: 'prisma.+($queryRaw|$executeRaw)', transform: '{type}[]' }, // [!code ++]
+            ], // [!code ++]
+          }, // [!code ++]
+        ], // [!code ++]
+      }, // [!code ++]
+    ], // [!code ++]
+  }, // [!code ++]
+} // [!code ++]
+```
+
+> **Note**: If your `PrismaClient` instance is called something different than `prisma`, you need to adjust the value for `tag` accordingly. For example, if it is called `db`, the value for `tag` should be `'db.+($queryRaw|$executeRaw)'`.
+
+### 3.4. Connect to your database
+
+Finally, set up a `connectionUrl` for SafeQL so that it can introspect your database and retrieve the table and column names you use in your schema. SafeQL then uses this information for linting and highlighting problems in your raw SQL statements.
+
+Our example relies on the [`dotenv`](https://github.com/motdotla/dotenv) package to get the same connection string that is used by Prisma ORM. We recommend this in order to keep your database URL out of version control.
+
+If you haven't installed `dotenv` yet, you can install it as follows:
+
+```npm
+npm install dotenv
+```
+
+Then update your ESLint config as follows:
+
+```js title=".eslintrc.js" highlight=1,6-9,16;add
+require("dotenv").config(); // [!code ++]
+
+/** @type {import('eslint').Linter.Config} */
+module.exports = {
+  plugins: ["@ts-safeql/eslint-plugin"],
+  // exclude `parserOptions` if you are not using TypeScript // [!code ++]
+  parserOptions: {
+    // [!code ++]
+    project: "./tsconfig.json", // [!code ++]
+  }, // [!code ++]
+  rules: {
+    "@ts-safeql/check-sql": [
+      "error",
+      {
+        connections: [
+          {
+            connectionUrl: process.env.DATABASE_URL, // [!code ++]
+            // The migrations path:
+            migrationsDir: "./prisma/migrations",
+            targets: [
+              // what you would like SafeQL to lint. This makes `prisma.$queryRaw` and `prisma.$executeRaw`
+              // commands linted
+              { tag: "prisma.+($queryRaw|$executeRaw)", transform: "{type}[]" },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+};
+```
+
+SafeQL is now fully configured to help you write better raw SQL using Prisma Client.
+
+## 4. Creating extensions to make raw SQL queries type-safe
+
+In this section, we'll create two [`model`](/orm/v6/prisma-client/client-extensions/model) extensions with custom queries to be able to work conveniently with the `PointOfInterest` model:
+
+1. A `create` query that allows us to create new `PointOfInterest` records in the database
+1. A `findClosestPoints` query that returns the `PointOfInterest` records that are closest to a given coordinate
+
+### 4.1. Adding an extension to create `PointOfInterest` records
+
+The `PointOfInterest` model in the Prisma schema uses an `Unsupported` type. As a consequence, the generated `PointOfInterest` type in Prisma Client can't be used to carry values for latitude and longitude.
+
+We will resolve this by defining two custom types that better represent our model in TypeScript:
+
+```ts
+type MyPoint = {
+  latitude: number;
+  longitude: number;
+};
+
+type MyPointOfInterest = {
+  name: string;
+  location: MyPoint;
+};
+```
+
+Next, you can add a `create` query to the `pointOfInterest` property of your Prisma Client:
+
+```ts highlight=19;normal
+const prisma = new PrismaClient().$extends({
+  model: {
+    pointOfInterest: {
+      async create(data: { name: string; latitude: number; longitude: number }) {
+        // Create an object using the custom types from above
+        const poi: MyPointOfInterest = {
+          name: data.name,
+          location: {
+            latitude: data.latitude,
+            longitude: data.longitude,
+          },
+        };
+
+        // Insert the object into the database
+        const point = `POINT(${poi.location.longitude} ${poi.location.latitude})`;
+        await prisma.$queryRaw`
+          INSERT INTO "PointOfInterest" (name, location) VALUES (${poi.name}, ST_GeomFromText(${point}, 4326));
+        `;
+
+        // Return the object
+        return poi;
+      },
+    },
+  },
+});
+```
+
+Notice that the SQL in the line that's highlighted in the code snippet gets checked by SafeQL! For example, if you change the name of the table from `"PointOfInterest"` to `"PointOfInterest2"`, the following error appears:
+
+```
+error  Invalid Query: relation "PointOfInterest2" does not exist  @ts-safeql/check-sql
+```
+
+This also works with the column names `name` and `location`.
+
+You can now create new `PointOfInterest` records in your code as follows:
+
+```ts
+const poi = await prisma.pointOfInterest.create({
+  name: "Berlin",
+  latitude: 52.52,
+  longitude: 13.405,
+});
+```
+
+### 4.2. Adding an extension to query for closest to `PointOfInterest` records
+
+Now let's make a Prisma Client extension in order to query this model. We will be making an extension that finds the closest points of interest to a given longitude and latitude.
+
+```ts
+const prisma = new PrismaClient().$extends({
+  model: {
+    pointOfInterest: {
+      async create(data: { name: string; latitude: number; longitude: number }) {
+        // ... same code as before
+      },
+
+      async findClosestPoints(latitude: number, longitude: number) {
+        // Query for clostest points of interests
+        const result = await prisma.$queryRaw<
+          {
+            id: number | null;
+            name: string | null;
+            st_x: number | null;
+            st_y: number | null;
+          }[]
+        >`SELECT id, name, ST_X(location::geometry), ST_Y(location::geometry)
+            FROM "PointOfInterest"
+            ORDER BY ST_DistanceSphere(location::geometry, ST_MakePoint(${longitude}, ${latitude})) DESC`;
+
+        // Transform to our custom type
+        const pois: MyPointOfInterest[] = result.map((data) => {
+          return {
+            name: data.name,
+            location: {
+              latitude: data.st_x || 0,
+              longitude: data.st_y || 0,
+            },
+          };
+        });
+
+        // Return data
+        return pois;
+      },
+    },
+  },
+});
+```
+
+Now, you can use our Prisma Client as normal to find close points of interest to a given longitude and latitude using the custom method created on the `PointOfInterest` model.
+
+```ts
+const closestPointOfInterest = await prisma.pointOfInterest.findClosestPoints(53.5488, 9.9872);
+```
+
+Similar to before, we again have the benefit of SafeQL to add extra type safety to our raw queries. For example, if we removed the cast to `geometry` for `location` by changing `location::geometry` to just `location`, we would get linting errors in the `ST_X`, `ST_Y` or `ST_DistanceSphere` functions respectively.
+
+```bash
+error  Invalid Query: function st_distancesphere(geography, geometry) does not exist  @ts-safeql/check-sql
+```
+
+## Conclusion
+
+While you may sometimes need to drop down to raw SQL when using Prisma ORM, you can use various techniques to make the experience of writing raw SQL queries with Prisma ORM better.
+
+In this article, you have used SafeQL and Prisma Client extensions to create custom, type-safe Prisma Client queries to abstract PostGIS operations which are currently not natively supported in Prisma ORM.

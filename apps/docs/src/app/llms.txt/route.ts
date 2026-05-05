@@ -1,4 +1,5 @@
-import { source, sourceV6 } from "@/lib/source";
+import { getPageTitleText } from "@/lib/page-title";
+import { source } from "@/lib/source";
 import { getBaseUrl, withDocsBasePath } from "@/lib/urls";
 import {
   commonQueries,
@@ -16,9 +17,8 @@ export const revalidate = false;
 export async function GET() {
   const baseUrl = getBaseUrl();
   const latestPages = filterPagesForLLMsIndex(source.getPages()).sort((a, b) =>
-    a.data.title.localeCompare(b.data.title),
+    getPageTitleText(a.data.title, a.url).localeCompare(getPageTitleText(b.data.title, b.url)),
   );
-  const v6Pages = sourceV6.getPages().sort((a, b) => a.data.title.localeCompare(b.data.title));
 
   const commonQueriesList = filterAvailableLLMsLinks(commonQueries, latestPages)
     .map((link) => formatLLMsLink(link, baseUrl))
@@ -27,12 +27,11 @@ export async function GET() {
     .map((section) => formatLLMsSectionLink(section, baseUrl))
     .join("\n");
   const latestDocsList = latestPages.map((page) => formatLLMsPageLink(page, baseUrl)).join("\n");
-  const v6DocsList = v6Pages.map((page) => formatLLMsPageLink(page, baseUrl)).join("\n");
 
   const content = `# Prisma Documentation
 
-> This documentation covers Prisma v7 (current) and v6 (legacy).
-> Prefer the Latest section for current recommendations.
+> This documentation covers the current docs plus legacy v6 pages.
+> Prefer the Latest ORM section for current recommendations.
 > v6 pages are maintained for backwards compatibility only.
 
 ## Common Queries
@@ -47,14 +46,9 @@ ${subIndexList}
 
 ${latestDocsList}
 
-## v6
-
-${v6DocsList}
-
 ## Options
 
-- [Full current documentation with content](${baseUrl}${withDocsBasePath("/llms-full.txt")})
-- [Legacy v6 documentation with content](${baseUrl}${withDocsBasePath("/llms-full-v6.txt")})
+- [Full documentation with content](${baseUrl}${withDocsBasePath("/llms-full.txt")})
 `;
 
   return new Response(content, {

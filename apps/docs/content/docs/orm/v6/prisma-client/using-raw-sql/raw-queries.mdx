@@ -1,0 +1,856 @@
+---
+title: Raw queries
+description: Learn how you can send raw SQL and MongoDB queries to your database using the raw() methods from the Prisma Client API.
+url: /orm/v6/prisma-client/using-raw-sql/raw-queries
+metaTitle: Raw queries
+metaDescription: Learn how you can send raw SQL and MongoDB queries to your database using the raw() methods from the Prisma Client API.
+---
+
+:::warning
+
+With Prisma ORM `5.19.0`, we have released [TypedSQL](/orm/v6/prisma-client/using-raw-sql). TypedSQL is a new way to write SQL queries that are type-safe and even easier to add to your workflow.
+
+We strongly recommend using TypedSQL queries over the legacy raw queries described below whenever possible.
+
+:::
+
+Prisma Client supports the option of sending raw queries to your database. You may wish to use raw queries if:
+
+- you want to run a heavily optimized query
+- you require a feature that Prisma Client does not yet support (please [consider raising an issue](https://github.com/prisma/prisma/issues/new/choose))
+
+Raw queries are available for all relational databases Prisma ORM supports. In addition, from version `3.9.0` raw queries are supported in MongoDB. For more details, see the relevant sections:
+
+- [Raw queries with relational databases](#raw-queries-with-relational-databases)
+- [Raw queries with MongoDB](#raw-queries-with-mongodb)
+
+## Raw queries with relational databases
+
+For relational databases, Prisma Client exposes four methods that allow you to send raw queries. You can use:
+
+- `$queryRaw` to return actual records (for example, using `SELECT`).
+- `$executeRaw` to return a count of affected rows (for example, after an `UPDATE` or `DELETE`).
+- `$queryRawUnsafe` to return actual records (for example, using `SELECT`) using a raw string.
+- `$executeRawUnsafe` to return a count of affected rows (for example, after an `UPDATE` or `DELETE`) using a raw string.
+
+The methods with "Unsafe" in the name are a lot more flexible but are at **significant risk of making your code vulnerable to SQL injection**.
+
+The other two methods are safe to use with a simple template tag, no string building, and no concatenation. **However**, caution is required for more complex use cases as it is still possible to introduce SQL injection if these methods are used in certain ways. For more details, see the [SQL injection prevention](#sql-injection-prevention) section below.
+
+> **Note**: All methods in the above list can only run **one** query at a time. You cannot append a second query - for example, calling any of them with `select 1; select 2;` will not work.
+
+### `$queryRaw`
+
+`$queryRaw` returns actual database records. For example, the following `SELECT` query returns all fields for each record in the `User` table:
+
+```ts no-lines
+const result = await prisma.$queryRaw`SELECT * FROM User`;
+```
+
+The method is implemented as a [tagged template](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals#tagged_templates), which allows you to pass a template literal where you can easily insert your [variables](#using-variables). In turn, Prisma Client creates prepared statements that are safe from SQL injections:
+
+```ts no-lines
+const email = "emelie@prisma.io";
+const result = await prisma.$queryRaw`SELECT * FROM User WHERE email = ${email}`;
+```
+
+You can also use the [`Prisma.sql`](#tagged-template-helpers) helper, in fact, the `$queryRaw` method will **only accept** a template string or the `Prisma.sql` helper:
+
+```ts no-lines
+const email = "emelie@prisma.io";
+const result = await prisma.$queryRaw(Prisma.sql`SELECT * FROM User WHERE email = ${email}`);
+```
+
+:::warning
+
+If you use string building to incorporate untrusted input into queries passed to this method, then you open up the possibility for SQL injection attacks. SQL injection attacks can expose your data to modification or deletion. The preferred mechanism would be to include the text of the query at the point that you run this method. For more information on this risk and also examples of how to prevent it, see the [SQL injection prevention](#sql-injection-prevention) section below.
+
+:::
+
+#### Considerations
+
+Be aware that:
+
+- Template variables cannot be used inside SQL string literals. For example, the following query would **not** work:
+
+  ```ts no-lines
+  const name = "Bob";
+  await prisma.$queryRaw`SELECT 'My name is ${name}';`;
+  ```
+
+  Instead, you can either pass the whole string as a variable, or use string concatenation:
+
+  ```ts no-lines
+  const name = "My name is Bob";
+  await prisma.$queryRaw`SELECT ${name};`;
+  ```
+
+  ```ts no-lines
+  const name = "Bob";
+  await prisma.$queryRaw`SELECT 'My name is ' || ${name};`;
+  ```
+
+- Template variables can only be used for data values (such as `email` in the example above). Variables cannot be used for identifiers such as column names, table names or database names, or for SQL keywords. For example, the following two queries would **not** work:
+
+  ```ts no-lines
+  const myTable = "user";
+  await prisma.$queryRaw`SELECT * FROM ${myTable};`;
+  ```
+
+  ```ts no-lines
+  const ordering = "desc";
+  await prisma.$queryRaw`SELECT * FROM Table ORDER BY ${ordering};`;
+  ```
+
+- Prisma maps any database values returned by `$queryRaw` and `$queryRawUnsafe` to their corresponding JavaScript types. [Learn more](#raw-query-type-mapping).
+
+- `$queryRaw` does not support dynamic table names in PostgreSQL databases. [Learn more](#dynamic-table-names-in-postgresql)
+
+#### Return type
+
+`$queryRaw` returns an array. Each object corresponds to a database record:
+
+```json5
+[
+  { id: 1, email: "emelie@prisma.io", name: "Emelie" },
+  { id: 2, email: "yin@prisma.io", name: "Yin" },
+]
+```
+
+You can also [type the results of `$queryRaw`](#typing-queryraw-results).
+
+#### Signature
+
+```ts no-lines
+$queryRaw<T = unknown>(query: TemplateStringsArray | Prisma.Sql, ...values: any[]): PrismaPromise<T>;
+```
+
+#### Typing `$queryRaw` results
+
+`PrismaPromise<T>` uses a [generic type parameter `T`](https://www.typescriptlang.org/docs/handbook/generics.html). You can determine the type of `T` when you invoke the `$queryRaw` method. In the following example, `$queryRaw` returns `User[]`:
+
+```ts
+// import the generated `User` type from the `@prisma/client` module
+import { User } from "@prisma/client";
+
+const result = await prisma.$queryRaw<User[]>`SELECT * FROM User`;
+// result is of type: `User[]`
+```
+
+> **Note**: If you do not provide a type, `$queryRaw` defaults to `unknown`.
+
+If you are selecting **specific fields** of the model or want to include relations, refer to the documentation about [leveraging Prisma Client's generated types](/orm/v6/prisma-client/type-safety/operating-against-partial-structures-of-model-types#problem-using-variations-of-the-generated-model-type) if you want to make sure that the results are properly typed.
+
+#### Type caveats when using raw SQL
+
+When you type the results of `$queryRaw`, the raw data might not always match the suggested TypeScript type. For example, the following Prisma model includes a `Boolean` field named `published`:
+
+```prisma highlight=3;normal
+model Post {
+  id        Int     @id @default(autoincrement())
+  published Boolean @default(false) // [!code highlight]
+  title     String
+  content   String?
+}
+```
+
+The following query returns all posts. It then prints out the value of the `published` field for each `Post`:
+
+```ts
+const result = await prisma.$queryRaw<Post[]>`SELECT * FROM Post`;
+
+result.forEach((x) => {
+  console.log(x.published);
+});
+```
+
+For regular CRUD queries, the Prisma Client query engine standardizes the return type for all databases. **Using the raw queries does not**. If the database provider is MySQL, the returned values are `1` or `0`. However, if the database provider is PostgreSQL, the values are `true` or `false`.
+
+> **Note**: Prisma sends JavaScript integers to PostgreSQL as `INT8`. This might conflict with your user-defined functions that accept only `INT4` as input. If you use `$queryRaw` in conjunction with a PostgreSQL database, update the input types to `INT8`, or cast your query parameters to `INT4`.
+
+#### Dynamic table names in PostgreSQL
+
+[It is not possible to interpolate table names](#considerations). This means that you cannot use dynamic table names with `$queryRaw`. Instead, you must use [`$queryRawUnsafe`](#queryrawunsafe), as follows:
+
+```ts
+let userTable = "User";
+let result = await prisma.$queryRawUnsafe(`SELECT * FROM ${userTable}`);
+```
+
+Note that if you use `$queryRawUnsafe` in conjunction with user inputs, you risk SQL injection attacks. [Learn more](#queryrawunsafe).
+
+### `$queryRawUnsafe()`
+
+The `$queryRawUnsafe()` method allows you to pass a raw string (or template string) to the database.
+
+:::warning
+
+If you use this method with user inputs (in other words, `SELECT * FROM table WHERE columnx = ${userInput}`), then you open up the possibility for SQL injection attacks. SQL injection attacks can expose your data to modification or deletion.<br /><br />
+
+Wherever possible you should use the `$queryRaw` method instead. When used correctly `$queryRaw` method is significantly safer but note that the `$queryRaw` method can also be made vulnerable in certain circumstances. For more information, see the [SQL injection prevention](#sql-injection-prevention) section below.
+
+:::
+
+The following query returns all fields for each record in the `User` table:
+
+```ts
+// import the generated `User` type from the `@prisma/client` module
+import { User } from "@prisma/client";
+
+const result = await prisma.$queryRawUnsafe("SELECT * FROM User");
+```
+
+You can also run a parameterized query. The following example returns all users whose email contains the string `emelie@prisma.io`:
+
+```ts
+prisma.$queryRawUnsafe("SELECT * FROM users WHERE email = $1", "emelie@prisma.io");
+```
+
+> **Note**: Prisma sends JavaScript integers to PostgreSQL as `INT8`. This might conflict with your user-defined functions that accept only `INT4` as input. If you use a parameterized `$queryRawUnsafe` query in conjunction with a PostgreSQL database, update the input types to `INT8`, or cast your query parameters to `INT4`.
+
+For more details on using parameterized queries, see the [parameterized queries](#parameterized-queries) section below.
+
+#### Signature
+
+```ts no-lines
+$queryRawUnsafe<T = unknown>(query: string, ...values: any[]): PrismaPromise<T>;
+```
+
+### `$executeRaw`
+
+`$executeRaw` returns the _number of rows affected by a database operation_, such as `UPDATE` or `DELETE`. This function does **not** return database records. The following query updates records in the database and returns a count of the number of records that were updated:
+
+```ts
+const result: number =
+  await prisma.$executeRaw`UPDATE User SET active = true WHERE emailValidated = true`;
+```
+
+The method is implemented as a [tagged template](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals#tagged_templates), which allows you to pass a template literal where you can easily insert your [variables](#using-variables). In turn, Prisma Client creates prepared statements that are safe from SQL injections:
+
+```ts
+const emailValidated = true;
+const active = true;
+
+const result: number =
+  await prisma.$executeRaw`UPDATE User SET active = ${active} WHERE emailValidated = ${emailValidated};`;
+```
+
+:::warning
+
+If you use string building to incorporate untrusted input into queries passed to this method, then you open up the possibility for SQL injection attacks. SQL injection attacks can expose your data to modification or deletion. The preferred mechanism would be to include the text of the query at the point that you run this method. For more information on this risk and also examples of how to prevent it, see the [SQL injection prevention](#sql-injection-prevention) section below.
+
+:::
+
+#### Considerations
+
+Be aware that:
+
+- `$executeRaw` does not support multiple queries in a single string (for example, `ALTER TABLE` and `CREATE TABLE` together).
+- Prisma Client submits prepared statements, and prepared statements only allow a subset of SQL statements. For example, `START TRANSACTION` is not permitted. You can learn more about [the syntax that MySQL allows in Prepared Statements here](https://dev.mysql.com/doc/refman/8.0/en/sql-prepared-statements.html).
+- [`PREPARE` does not support `ALTER`](https://www.postgresql.org/docs/current/sql-prepare.html) - see the [workaround](#alter-limitation-postgresql).
+- Template variables cannot be used inside SQL string literals. For example, the following query would **not** work:
+
+  ```ts no-lines
+  const name = "Bob";
+  await prisma.$executeRaw`UPDATE user SET greeting = 'My name is ${name}';`;
+  ```
+
+  Instead, you can either pass the whole string as a variable, or use string concatenation:
+
+  ```ts no-lines
+  const name = "My name is Bob";
+  await prisma.$executeRaw`UPDATE user SET greeting = ${name};`;
+  ```
+
+  ```ts no-lines
+  const name = "Bob";
+  await prisma.$executeRaw`UPDATE user SET greeting = 'My name is ' || ${name};`;
+  ```
+
+- Template variables can only be used for data values (such as `email` in the example above). Variables cannot be used for identifiers such as column names, table names or database names, or for SQL keywords. For example, the following two queries would **not** work:
+
+  ```ts no-lines
+  const myTable = "user";
+  await prisma.$executeRaw`UPDATE ${myTable} SET active = true;`;
+  ```
+
+  ```ts no-lines
+  const ordering = "desc";
+  await prisma.$executeRaw`UPDATE User SET active = true ORDER BY ${desc};`;
+  ```
+
+#### Return type
+
+`$executeRaw` returns a `number`.
+
+#### Signature
+
+```ts
+$executeRaw<T = unknown>(query: TemplateStringsArray | Prisma.Sql, ...values: any[]): PrismaPromise<number>;
+```
+
+### `$executeRawUnsafe()`
+
+The `$executeRawUnsafe()` method allows you to pass a raw string (or template string) to the database. Like `$executeRaw`, it does **not** return database records, but returns the number of rows affected.
+
+:::warning
+
+If you use this method with user inputs (in other words, `SELECT * FROM table WHERE columnx = ${userInput}`), then you open up the possibility for SQL injection attacks. SQL injection attacks can expose your data to modification or deletion.<br /><br />
+
+Wherever possible you should use the `$executeRaw` method instead. When used correctly `$executeRaw` method is significantly safer but note that the `$executeRaw` method can also be made vulnerable in certain circumstances. For more information, see the [SQL injection prevention](#sql-injection-prevention) section below.
+
+:::
+
+The following example uses a template string to update records in the database. It then returns a count of the number of records that were updated:
+
+```ts
+const emailValidated = true;
+const active = true;
+
+const result = await prisma.$executeRawUnsafe(
+  `UPDATE User SET active = ${active} WHERE emailValidated = ${emailValidated}`,
+);
+```
+
+The same can be written as a parameterized query:
+
+```ts
+const result = prisma.$executeRawUnsafe(
+  "UPDATE User SET active = $1 WHERE emailValidated = $2",
+  "yin@prisma.io",
+  true,
+);
+```
+
+For more details on using parameterized queries, see the [parameterized queries](#parameterized-queries) section below.
+
+#### Signature
+
+```ts no-lines
+$executeRawUnsafe<T = unknown>(query: string, ...values: any[]): PrismaPromise<number>;
+```
+
+### Raw query type mapping
+
+Prisma maps any database values returned by `$queryRaw` and `$queryRawUnsafe`to their corresponding [JavaScript types](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures). This behavior is the same as for regular Prisma query methods like `findMany()`.
+
+:::info
+
+**Feature availability:**
+
+- In v3.14.x and v3.15.x, raw query type mapping was available with the preview feature `improvedQueryRaw`. We made raw query type mapping [Generally Available](/orm/v6/more/releases#generally-available-ga) in version 4.0.0, so you do not need to use `improvedQueryRaw` in version 4.0.0 or later.
+- Before version 4.0.0, raw query type mapping was not available for SQLite.
+
+:::
+
+As an example, take a raw query that selects columns with `BigInt`, `Bytes`, `Decimal` and `Date` types from a table:
+
+```ts
+const result = await prisma.$queryRaw`SELECT bigint, bytes, decimal, date FROM "Table";`;
+
+console.log(result);
+```
+
+```bash no-copy wrap
+{ bigint: BigInt("123"), bytes: <Buffer 01 02>), decimal: Decimal("12.34"), date: Date("<some_date>") }
+```
+
+In the `result` object, the database values have been mapped to the corresponding JavaScript types.
+
+The following table shows the conversion between types used in the database and the JavaScript type returned by the raw query:
+
+| Database type           | JavaScript type                                                                                                                 |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Text                    | `String`                                                                                                                        |
+| 32-bit integer          | `Number`                                                                                                                        |
+| 32-bit unsigned integer | `BigInt`                                                                                                                        |
+| Floating point number   | `Number`                                                                                                                        |
+| Double precision number | `Number`                                                                                                                        |
+| 64-bit integer          | `BigInt`                                                                                                                        |
+| Decimal / numeric       | `Decimal`                                                                                                                       |
+| Bytes                   | `Uint8Array` (before v6, `Buffer`)                                                                                              |
+| Json                    | `Object`                                                                                                                        |
+| DateTime                | `Date`                                                                                                                          |
+| Date                    | `Date`                                                                                                                          |
+| Time                    | `Date`                                                                                                                          |
+| Uuid                    | `String`                                                                                                                        |
+| Xml                     | `String`                                                                                                                        |
+
+Note that the exact name for each database type will vary between databases – for example, the boolean type is known as `boolean` in PostgreSQL and `STRING` in CockroachDB. See the [Scalar types reference](/orm/v6/reference/prisma-schema-reference#model-field-scalar-types) for full details of type names for each database.
+
+### Raw query typecasting behavior
+
+Raw queries with Prisma Client might require parameters to be in the expected types of the SQL function or query. Prisma Client does not do subtle, implicit casts.
+
+As an example, take the following query using PostgreSQL's `LENGTH` function, which only accepts the `text` type as an input:
+
+```ts
+await prisma.$queryRaw`SELECT LENGTH(${42});`;
+```
+
+This query returns an error:
+
+```bash wrap
+// ERROR: function length(integer) does not exist
+// HINT: No function matches the given name and argument types. You might need to add explicit type casts.
+```
+
+The solution in this case is to explicitly cast `42` to the `text` type:
+
+```ts
+await prisma.$queryRaw`SELECT LENGTH(${42}::text);`;
+```
+
+:::info
+
+**Feature availability:** This funtionality is [Generally Available](/orm/v6/more/releases#generally-available-ga) since version 4.0.0. In v3.14.x and v3.15.x, it was available with the preview feature `improvedQueryRaw`.
+
+For the example above before version 4.0.0, Prisma ORM silently coerces `42` to `text` and does not require the explicit cast.
+
+On the other hand the following raw query now works correctly, returning an integer result, and failed before:
+
+```ts
+await prisma.$queryRaw`SELECT ${1.5}::int as int`;
+
+// Now: [{ int: 2 }]
+// Before: db error: ERROR: incorrect binary data format in bind parameter 1
+```
+
+:::
+
+### Transactions
+
+In 2.10.0 and later, you can use `.$executeRaw()` and `.$queryRaw()` inside a [transaction](/orm/v6/prisma-client/queries/transactions).
+
+### Using variables
+
+`$executeRaw` and `$queryRaw` are implemented as [**tagged templates**](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals#tagged_templates). Tagged templates are the recommended way to use variables with raw SQL in the Prisma Client.
+
+The following example includes a placeholder named `${userId}`:
+
+```ts
+const userId = 42;
+const result = await prisma.$queryRaw`SELECT * FROM User WHERE id = ${userId};`;
+```
+
+✔ Benefits of using the tagged template versions of `$queryRaw` and `$executeRaw` include:
+
+- Prisma Client escapes all variables.
+- Tagged templates are database-agnostic - you do not need to remember if variables should be written as `$1` (PostgreSQL) or `?` (MySQL).
+- [SQL Template Tag](https://github.com/blakeembrey/sql-template-tag) give you access to [useful helpers](#tagged-template-helpers).
+- Embedded, named variables are easier to read.
+
+> **Note**: You cannot pass a table or column name into a tagged template placeholder. For example, you cannot `SELECT ?` and pass in `*` or `id, name` based on some condition.
+
+#### Tagged template helpers
+
+Prisma Client specifically uses [SQL Template Tag](https://github.com/blakeembrey/sql-template-tag), which exposes a number of helpers. For example, the following query uses `join()` to pass in a list of IDs:
+
+```ts
+import { Prisma } from "@prisma/client";
+
+const ids = [1, 3, 5, 10, 20];
+const result = await prisma.$queryRaw`SELECT * FROM User WHERE id IN (${Prisma.join(ids)})`;
+```
+
+The following example uses the `empty` and `sql` helpers to change the query depending on whether `userName` is empty:
+
+```ts
+import { Prisma } from "@prisma/client";
+
+const userName = "";
+const result = await prisma.$queryRaw`SELECT * FROM User ${
+  userName ? Prisma.sql`WHERE name = ${userName}` : Prisma.empty // Cannot use "" or NULL here!
+}`;
+```
+
+#### `ALTER` limitation (PostgreSQL)
+
+PostgreSQL [does not support using `ALTER` in a prepared statement](https://www.postgresql.org/docs/current/sql-prepare.html), which means that the following queries **will not work**:
+
+```ts
+await prisma.$executeRaw`ALTER USER prisma WITH PASSWORD "${password}"`;
+await prisma.$executeRaw(Prisma.sql`ALTER USER prisma WITH PASSWORD "${password}"`);
+```
+
+You can use the following query, but be aware that this is potentially **unsafe** as `${password}` is not escaped:
+
+```ts
+await prisma.$executeRawUnsafe('ALTER USER prisma WITH PASSWORD "$1"', password})
+```
+
+### Unsupported types
+
+[`Unsupported` types](/orm/v6/reference/prisma-schema-reference#unsupported) need to be cast to Prisma Client supported types before using them in `$queryRaw` or `$queryRawUnsafe`. For example, take the following model, which has a `location` field with an `Unsupported` type:
+
+```tsx
+model Country {
+  location  Unsupported("point")?
+}
+```
+
+The following query on the unsupported field will **not** work:
+
+```tsx
+await prisma.$queryRaw`SELECT location FROM Country;`;
+```
+
+Instead, cast `Unsupported` fields to any supported Prisma Client type, **if your `Unsupported` column supports the cast**.
+
+The most common type you may want to cast your `Unsupported` column to is `String`. For example, on PostgreSQL, this would map to the `text` type:
+
+```tsx
+await prisma.$queryRaw`SELECT location::text FROM Country;`;
+```
+
+The database will thus provide a `String` representation of your data which Prisma Client supports.
+
+For details of supported Prisma types, see the [Prisma connector overview](/orm/v6/overview/databases/database-drivers) for the relevant database.
+
+## SQL injection prevention
+
+The ideal way to avoid SQL injection in Prisma Client is to use the ORM models to perform queries wherever possible.
+
+Where this is not possible and raw queries are required, Prisma Client provides various raw methods, but it is important to use these methods safely.
+
+This section will provide various examples of using these methods safely and unsafely. You can test these examples in the [Prisma Playground](https://playground.prisma.io/examples).
+
+### In `$queryRaw` and `$executeRaw`
+
+#### Simple, safe use of `$queryRaw` and `$executeRaw`
+
+These methods can mitigate the risk of SQL injection by escaping all variables when you use tagged templates and sends all queries as prepared statements.
+
+```ts
+$queryRaw`...`; // Tagged template
+$executeRaw`...`; // Tagged template
+```
+
+The following example is safe ✅ from SQL Injection:
+
+```ts
+const inputString = `'Sarah' UNION SELECT id, title FROM "Post"`;
+const result = await prisma.$queryRaw`SELECT id, name FROM "User" WHERE name = ${inputString}`;
+
+console.log(result);
+```
+
+#### Unsafe use of `$queryRaw` and `$executeRaw`
+
+However, it is also possible to use these methods in unsafe ways.
+
+One way is by artificially generating a tagged template that unsafely concatenates user input.
+
+The following example is vulnerable ❌ to SQL Injection:
+
+```ts
+// Unsafely generate query text
+const inputString = `'Sarah' UNION SELECT id, title FROM "Post"`; // SQL Injection
+const query = `SELECT id, name FROM "User" WHERE name = ${inputString}`;
+
+// Version for Typescript
+const stringsArray: any = [...[query]];
+
+// Version for Javascript
+const stringsArray = [...[query]];
+
+// Use the `raw` property to impersonate a tagged template
+stringsArray.raw = [query];
+
+// Use queryRaw
+const result = await prisma.$queryRaw(stringsArray);
+console.log(result);
+```
+
+Another way to make these methods vulnerable is misuse of the `Prisma.raw` function.
+
+The following examples are all vulnerable ❌ to SQL Injection:
+
+```ts
+const inputString = `'Sarah' UNION SELECT id, title FROM "Post"`;
+const result = await prisma.$queryRaw`SELECT id, name FROM "User" WHERE name = ${Prisma.raw(
+  inputString,
+)}`;
+console.log(result);
+```
+
+```ts
+const inputString = `'Sarah' UNION SELECT id, title FROM "Post"`;
+const result = await prisma.$queryRaw(
+  Prisma.raw(`SELECT id, name FROM "User" WHERE name = ${inputString}`),
+);
+console.log(result);
+```
+
+```ts
+const inputString = `'Sarah' UNION SELECT id, title FROM "Post"`;
+const query = Prisma.raw(`SELECT id, name FROM "User" WHERE name = ${inputString}`);
+const result = await prisma.$queryRaw(query);
+console.log(result);
+```
+
+#### Safely using `$queryRaw` and `$executeRaw` in more complex scenarios
+
+##### Building raw queries separate to query execution
+
+If you want to build your raw queries elsewhere or separate to your parameters you will need to use one of the following methods.
+
+In this example, the `sql` helper method is used to build the query text by safely including the variable. It is safe ✅ from SQL Injection:
+
+```ts
+// inputString can be untrusted input
+const inputString = `'Sarah' UNION SELECT id, title FROM "Post"`;
+
+// Safe if the text query below is completely trusted content
+const query = Prisma.sql`SELECT id, name FROM "User" WHERE name = ${inputString}`;
+
+const result = await prisma.$queryRaw(query);
+console.log(result);
+```
+
+In this example which is safe ✅ from SQL Injection, the `sql` helper method is used to build the query text including a parameter marker for the input value. Each variable is represented by a marker symbol (`?` for MySQL, `$1`, `$2`, and so on for PostgreSQL). Note that the examples just show PostgreSQL queries.
+
+```ts
+// Version for Typescript
+const query: any;
+
+// Version for Javascript
+const query;
+
+// Safe if the text query below is completely trusted content
+query = Prisma.sql`SELECT id, name FROM "User" WHERE name = $1`;
+
+// inputString can be untrusted input
+const inputString = `'Sarah' UNION SELECT id, title FROM "Post"`;
+query.values = [inputString];
+
+const result = await prisma.$queryRaw(query);
+console.log(result);
+```
+
+> **Note**: PostgreSQL variables are represented by `$1`, etc
+
+##### Building raw queries elsewhere or in stages
+
+If you want to build your raw queries somewhere other than where the query is executed, the ideal way to do this is to create an `Sql` object from the segments of your query and pass it the parameter value.
+
+In the following example we have two variables to parameterize. The example is safe ✅ from SQL Injection as long as the query strings being passed to `Prisma.sql` only contain trusted content:
+
+```ts
+// Example is safe if the text query below is completely trusted content
+const query1 = `SELECT id, name FROM "User" WHERE name = `; // The first parameter would be inserted after this string
+const query2 = ` OR name = `; // The second parameter would be inserted after this string
+
+const inputString1 = "Fred";
+const inputString2 = `'Sarah' UNION SELECT id, title FROM "Post"`;
+
+const query = Prisma.sql([query1, query2, ""], inputString1, inputString2);
+const result = await prisma.$queryRaw(query);
+console.log(result);
+```
+
+> Note: Notice that the string array being passed as the first parameter `Prisma.sql` needs to have an empty string at the end as the `sql` function expects one more query segment than the number of parameters.
+
+If you want to build your raw queries into one large string, this is still possible but requires some care as it is uses the potentially dangerous `Prisma.raw` method. You also need to build your query using the correct parameter markers for your database as Prisma won't be able to provide markers for the relevant database as it usually is.
+
+The following example is safe ✅ from SQL Injection as long as the query strings being passed to `Prisma.raw` only contain trusted content:
+
+```ts
+// Version for Typescript
+const query: any;
+
+// Version for Javascript
+const query;
+
+// Example is safe if the text query below is completely trusted content
+const query1 = `SELECT id, name FROM "User" `;
+const query2 = `WHERE name = $1 `;
+
+query = Prisma.raw(`${query1}${query2}`);
+
+// inputString can be untrusted input
+const inputString = `'Sarah' UNION SELECT id, title FROM "Post"`;
+query.values = [inputString];
+
+const result = await prisma.$queryRaw(query);
+console.log(result);
+```
+
+### In `$queryRawUnsafe` and `$executeRawUnsafe`
+
+#### Using `$queryRawUnsafe` and `$executeRawUnsafe` unsafely
+
+If you cannot use tagged templates, you can instead use [`$queryRawUnsafe`](/orm/v6/prisma-client/using-raw-sql/raw-queries#queryrawunsafe) or [`$executeRawUnsafe`](/orm/v6/prisma-client/using-raw-sql/raw-queries#executerawunsafe). However, **be aware that these functions significantly increase the risk of SQL injection vulnerabilities in your code**.
+
+The following example concatenates `query` and `inputString`. Prisma Client ❌ **cannot** escape `inputString` in this example, which makes it vulnerable to SQL injection:
+
+```ts
+const inputString = '"Sarah" UNION SELECT id, title, content FROM Post'; // SQL Injection
+const query = "SELECT id, name, email FROM User WHERE name = " + inputString;
+const result = await prisma.$queryRawUnsafe(query);
+
+console.log(result);
+```
+
+#### Parameterized queries
+
+As an alternative to tagged templates, `$queryRawUnsafe` supports standard parameterized queries where each variable is represented by a symbol (`?` for MySQL, `$1`, `$2`, and so on for PostgreSQL). Note that the examples just show PostgreSQL queries.
+
+The following example is safe ✅ from SQL Injection:
+
+```ts
+const userName = "Sarah";
+const email = "sarah@prisma.io";
+const result = await prisma.$queryRawUnsafe(
+  "SELECT * FROM User WHERE (name = $1 OR email = $2)",
+  userName,
+  email,
+);
+```
+
+> **Note**: PostgreSQL variables are represented by `$1` and `$2`
+
+As with tagged templates, Prisma Client escapes all variables when they are provided in this way.
+
+> **Note**: You cannot pass a table or column name as a variable into a parameterized query. For example, you cannot `SELECT ?` and pass in `*` or `id, name` based on some condition.
+
+##### Parameterized PostgreSQL `ILIKE` query
+
+When you use `ILIKE`, the `%` wildcard character(s) should be included in the variable itself, not the query (`string`). This example is safe ✅ from SQL Injection.
+
+```ts
+const userName = "Sarah";
+const emailFragment = "prisma.io";
+const result = await prisma.$queryRawUnsafe(
+  'SELECT * FROM "User" WHERE (name = $1 OR email ILIKE $2)',
+  userName,
+  `%${emailFragment}`,
+);
+```
+
+> **Note**: Using `%$2` as an argument would not work
+
+## Raw queries with MongoDB
+
+For MongoDB in versions `3.9.0` and later, Prisma Client exposes three methods that allow you to send raw queries. You can use:
+
+- `$runCommandRaw` to run a command against the database
+- `<model>.findRaw` to find zero or more documents that match the filter.
+- `<model>.aggregateRaw` to perform aggregation operations on a collection.
+
+### `$runCommandRaw()`
+
+`$runCommandRaw()` runs a raw MongoDB command against the database. As input, it accepts all [MongoDB database commands](https://www.mongodb.com/docs/manual/reference/command/), with the following exceptions:
+
+- `find` (use [`findRaw()`](#findraw) instead)
+- `aggregate` (use [`aggregateRaw()`](#aggregateraw) instead)
+
+When you use `$runCommandRaw()` to run a MongoDB database command, note the following:
+
+- The object that you pass when you invoke `$runCommandRaw()` must follow the syntax of the MongoDB database command.
+- You must connect to the database with an appropriate role for the MongoDB database command.
+
+In the following example, a query inserts two records with the same `_id`. This bypasses normal document validation.
+
+```ts no-lines
+prisma.$runCommandRaw({
+  insert: "Pets",
+  bypassDocumentValidation: true,
+  documents: [
+    {
+      _id: 1,
+      name: "Felinecitas",
+      type: "Cat",
+      breed: "Russian Blue",
+      age: 12,
+    },
+    {
+      _id: 1,
+      name: "Nao Nao",
+      type: "Dog",
+      breed: "Chow Chow",
+      age: 2,
+    },
+  ],
+});
+```
+
+:::warning
+
+Do not use `$runCommandRaw()` for queries which contain the `"find"` or `"aggregate"` commands, because you might be unable to fetch all data. This is because MongoDB returns a [cursor](https://www.mongodb.com/docs/manual/tutorial/iterate-a-cursor/) that is attached to your MongoDB session, and you might not hit the same MongoDB session every time. For these queries, you should use the specialised [`findRaw()`](#findraw) and [`aggregateRaw()`](#aggregateraw) methods instead.
+
+:::
+
+#### Return type
+
+`$runCommandRaw()` returns a `JSON` object whose shape depends on the inputs.
+
+#### Signature
+
+```ts no-lines
+$runCommandRaw(command: InputJsonObject): PrismaPromise<JsonObject>;
+```
+
+### `findRaw()`
+
+`<model>.findRaw()` returns actual database records. It will find zero or more documents that match the filter on the `User` collection:
+
+```ts no-lines
+const result = await prisma.user.findRaw({
+  filter: { age: { $gt: 25 } },
+  options: { projection: { _id: false } },
+});
+```
+
+#### Return type
+
+`<model>.findRaw()` returns a `JSON` object whose shape depends on the inputs.
+
+#### Signature
+
+```ts no-lines
+<model>.findRaw(args?: {filter?: InputJsonObject, options?: InputJsonObject}): PrismaPromise<JsonObject>;
+```
+
+- `filter`: The query predicate filter. If unspecified, then all documents in the collection will match the [predicate](https://www.mongodb.com/docs/manual/reference/mql/query-predicates/).
+- `options`: Additional options to pass to the [`find` command](https://www.mongodb.com/docs/manual/reference/command/find/#command-fields).
+
+### `aggregateRaw()`
+
+`<model>.aggregateRaw()` returns aggregated database records. It will perform aggregation operations on the `User` collection:
+
+```ts no-lines
+const result = await prisma.user.aggregateRaw({
+  pipeline: [
+    { $match: { status: "registered" } },
+    { $group: { _id: "$country", total: { $sum: 1 } } },
+  ],
+});
+```
+
+#### Return type
+
+`<model>.aggregateRaw()` returns a `JSON` object whose shape depends on the inputs.
+
+#### Signature
+
+```ts no-lines
+<model>.aggregateRaw(args?: {pipeline?: InputJsonObject[], options?: InputJsonObject}): PrismaPromise<JsonObject>;
+```
+
+- `pipeline`: An array of aggregation stages to process and transform the document stream via the [aggregation pipeline](https://www.mongodb.com/docs/atlas/data-federation/supported-unsupported/supported-aggregation/).
+- `options`: Additional options to pass to the [`aggregate` command](https://www.mongodb.com/docs/manual/reference/command/aggregate/#command-fields).
+
+#### Caveats
+
+When working with custom objects like `ObjectId` or `Date,` you will have to pass them according to the [MongoDB extended JSON Spec](https://www.mongodb.com/docs/manual/reference/mongodb-extended-json/#type-representations).
+Example:
+
+```ts no-lines
+const result = await prisma.user.aggregateRaw({
+  pipeline: [
+    { $match: { _id: { $oid: id } } },
+    //                     ^ notice the $oid convention here
+  ],
+});
+```

@@ -1,0 +1,114 @@
+---
+title: Fullstack
+description: This page gives explains how to build fullstack applications with Prisma. It shows how Prisma fits in with fullstack frameworks and provides practical examples
+url: /orm/v6/overview/prisma-in-your-stack/fullstack
+metaTitle: Building fullstack applications with Prisma ORM
+metaDescription: This page gives explains how to build fullstack applications with Prisma. It shows how Prisma fits in with fullstack frameworks and provides practical examples
+---
+
+Fullstack frameworks, such as Next.js, Remix or SvelteKit, blur the lines between the server and the client. These frameworks also provide different patterns for fetching and mutating data on the server.
+
+You can query your database using Prisma Client, using your framework of choice, from the server-side part of your application.
+
+## Supported frameworks
+
+Here's a non-exhaustive list of frameworks and libraries you can use with Prisma ORM:
+
+- [Next.js](https://nextjs.org/)
+- [Remix](https://remix.run)
+- [SvelteKit](https://svelte.dev/)
+- [Nuxt](https://nuxt.com/)
+- [Redwood](https://rwsdk.com/)
+- [t3 stack — using tRPC](https://create.t3.gg/)
+- [Wasp](https://wasp-lang.dev/)
+
+## Fullstack app example (e.g. Next.js)
+
+:::tip
+
+If you want to learn how to build an app with Next.js and Prisma ORM, check out this comprehensive [video tutorial](https://www.youtube.com/watch?v=QXxy8Uv1LnQ&ab_channel=ByteGrad).
+
+:::
+
+Assume you have a Prisma schema that looks similar to this:
+
+```prisma
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client"
+  output   = "./generated"
+}
+
+model Post {
+  id        Int     @id @default(autoincrement())
+  title     String
+  content   String?
+  published Boolean @default(false)
+  author    User?   @relation(fields: [authorId], references: [id])
+  authorId  Int?
+}
+
+model User {
+  id    Int     @id @default(autoincrement())
+  email String  @unique
+  name  String?
+  posts Post[]
+}
+```
+
+You can now implement the logic for querying your database using [Prisma Client API](/orm/v6/prisma-client/setup-and-configuration/introduction) inside `getServerSideProps`, `getStaticProps`, API routes, or using API libraries such as [tRPC](https://trpc.io/) and [GraphQL](https://graphql.org/).
+
+### `getServerSideProps`
+
+```ts
+// (in /pages/index.tsx)
+
+// Alternatively, you can use `getStaticProps`
+// in place of `getServerSideProps`.
+export const getServerSideProps = async () => {
+  const feed = await prisma.post.findMany({
+    where: {
+      published: true,
+    },
+  });
+  return { props: { feed } };
+};
+```
+
+Next.js will pass the props to your React component where you can display the data from your database.
+
+### API Routes
+
+```ts
+// Fetch all posts (in /pages/api/posts.ts)
+const prisma = new PrismaClient();
+
+export default async function handle(req, res) {
+  const posts = await prisma.post.findMany({
+    where: {
+      published: true,
+    },
+  });
+  res.json(posts);
+}
+```
+
+Note that you can use Prisma ORM inside of Next.js API routes to send queries to your database – with REST, GraphQL, and tRPC.
+
+You can then fetch data and display it in your frontend.
+
+## Ready-to-run fullstack example projects
+
+You can find several ready-to-run examples that show how to fullstack apps with Prisma Client in the [`prisma-examples`](https://github.com/prisma/prisma-examples/) repository.
+
+| **Example**                                              | **Description**                                                   |
+| :------------------------------------------------------- | :---------------------------------------------------------------- |
+| [Next.js](https://pris.ly/e/orm/nextjs)                  | Fullstack Next.js 15 app                                          |
+| [Next.js (GraphQL)](https://pris.ly/e/ts/graphql-nextjs) | Fullstack Next.js app using GraphQL Yoga, Pothos, & Apollo Client |
+| [Remix](https://pris.ly/e/ts/remix)                      | Fullstack Remix app using actions and loaders                     |
+| [SvelteKit](https://pris.ly/e/ts/sveltekit)              | Fullstack Sveltekit app using actions and loaders                 |
+| [Nuxt](https://pris.ly/e/ts/rest-nuxtjs)                 | Fullstack Nuxt app using API routes                               |

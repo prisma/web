@@ -1,35 +1,14 @@
 import { CardSection } from "@/components/homepage/card-section/card-section";
-import { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { Button } from "@prisma/eclipse";
 
-export async function generateMetadata(): Promise<Metadata> {
-  return {
-    title: "Prisma Query Insights",
-    description:
-      "Understand why your database queries are slow, see their real impact in production, and generate a structured AI prompt to improve them.",
-    openGraph: {
-      title: "Prisma Query Insights",
-      description:
-        "Understand why your database queries are slow, see their real impact in production, and generate a structured AI prompt to improve them.",
-      url: "https://www.prisma.io/query-insights",
-      type: "website",
-      siteName: "Prisma",
-      images: [
-        {
-          url: "/og/og-query-insights.png",
-          width: 1200,
-          height: 630,
-          alt: "Prisma Query Insights",
-        },
-      ],
-    },
-    twitter: {
-      card: "summary_large_image",
-      site: "@prisma",
-      creator: "@prisma",
-    },
-  };
-}
+export const metadata = createPageMetadata({
+  title: "Prisma Query Insights | Find and Fix Slow Database Queries",
+  description:
+    "Monitor slow queries in Prisma Postgres, understand their production impact, and generate AI-ready optimization prompts to fix performance issues faster.",
+  path: "/query-insights",
+  ogImage: "/og/og-query-insights.png",
+});
 
 export default async function Page() {
   return (
@@ -48,26 +27,32 @@ export default async function Page() {
             </h1>
           </div>
           <p className="text-center text-foreground-neutral max-w-2xl mx-auto text-xl">
-            Understand why your database queries are slow, see their real impact in production, and
-            generate a structured AI prompt to improve them.
+            Understand why your database queries are slow, see their real impact
+            in production, and generate a structured AI prompt to improve them.
           </p>
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
             <Button asChild variant="ppg" size="2xl">
               <a href="/postgres">
                 <span>Get Started</span>
-                <i className="fa-regular fa-arrow-right ml-2" aria-hidden="true" />
+                <i
+                  className="fa-regular fa-arrow-right ml-2"
+                  aria-hidden="true"
+                />
               </a>
             </Button>
             <Button asChild variant="default-strong" size="2xl">
               <a href="/docs/postgres/faq#query-insights">
                 <span>Read the docs</span>
-                <i className="fa-regular fa-book-open ml-2" aria-hidden="true" />
+                <i
+                  className="fa-regular fa-book-open ml-2"
+                  aria-hidden="true"
+                />
               </a>
             </Button>
           </div>
           <i className="text-xs text-foreground-neutral-weaker text-center mx-auto!">
-            Query Insights is <span className="underline">included</span> with Prisma Postgres at no
-            additional cost.
+            Query Insights is <span className="underline">included</span> with
+            Prisma Postgres at no additional cost.
           </i>
         </div>
       </div>
@@ -121,9 +106,12 @@ export default async function Page() {
             cardSection={[
               {
                 imageUrl: "/illustrations/query-insights/features_1",
-                imageAlt: "Query insights features",
-                mobileImageUrl: "/illustrations/query-insights/features_1_mobile",
-                mobileImageAlt: "Query insights features",
+                imageAlt:
+                  "Dashboard view showing query groups with execution times, read counts, and last seen timestamps",
+                mobileImageUrl:
+                  "/illustrations/query-insights/features_1_mobile",
+                mobileImageAlt:
+                  "Dashboard view showing query groups with execution times, read counts, and last seen timestamps",
                 logos: null,
                 useDefaultLogos: false,
                 visualPosition: "left" as const,
@@ -134,18 +122,21 @@ export default async function Page() {
                       Actionable query visibility
                     </h3>
                     <p className="mb-0 mt-4! text-foreground-neutral-weak text-base!">
-                      Query Insights groups your queries, tracks execution time and read volume, and
-                      shows you which query shapes are driving performance issues, in one single
-                      overview page.
+                      Query Insights groups your queries, tracks execution time
+                      and read volume, and shows you which query shapes are
+                      driving performance issues, in one single overview page.
                     </p>
                   </div>
                 ),
               },
               {
                 imageUrl: "/illustrations/query-insights/features_2",
-                imageAlt: "Query insights features",
-                mobileImageUrl: "/illustrations/query-insights/features_2_mobile",
-                mobileImageAlt: "Query insights features",
+                imageAlt:
+                  "Split view linking a Prisma ORM query to its corresponding SQL statement and performance metrics",
+                mobileImageUrl:
+                  "/illustrations/query-insights/features_2_mobile",
+                mobileImageAlt:
+                  "Split view linking a Prisma ORM query to its corresponding SQL statement and performance metrics",
                 logos: null,
                 useDefaultLogos: false,
                 visualPosition: "right" as const,
@@ -156,17 +147,21 @@ export default async function Page() {
                       From application query to SQL impact
                     </h3>
                     <p className="mb-0 mt-4! text-foreground-neutral-weak text-base!">
-                      See which code-level query is causing slow responses or increased load. Prisma
-                      ORM queries get exclusive attribution. All other SQL queries are visible too.
+                      See which code-level query is causing slow responses or
+                      increased load. Prisma ORM queries get exclusive
+                      attribution. All other SQL queries are visible too.
                     </p>
                   </div>
                 ),
               },
               {
                 imageUrl: "/illustrations/query-insights/features_3",
-                imageAlt: "Query insights features",
-                mobileImageUrl: "/illustrations/query-insights/features_3_mobile",
-                mobileImageAlt: "Query insights features",
+                imageAlt:
+                  "AI optimization prompt generated by Prisma Query Insights for a slow query, ready to paste into an AI coding assistant",
+                mobileImageUrl:
+                  "/illustrations/query-insights/features_3_mobile",
+                mobileImageAlt:
+                  "AI optimization prompt generated by Prisma Query Insights for a slow query, ready to paste into an AI coding assistant",
                 logos: null,
                 useDefaultLogos: false,
                 visualPosition: "left" as const,
@@ -177,9 +172,9 @@ export default async function Page() {
                       Generate an AI prompt to fix it
                     </h3>
                     <p className="mb-0 mt-4! text-foreground-neutral-weak text-base!">
-                      Query Insights generates an optimization prompt for each query group, covering
-                      likely causes like missing indexes or excessive reads. Works with any AI
-                      coding assistant.
+                      Query Insights generates an optimization prompt for each
+                      query group, covering likely causes like missing indexes
+                      or excessive reads. Works with any AI coding assistant.
                     </p>
                   </div>
                 ),
@@ -196,21 +191,27 @@ export default async function Page() {
                 Built in and free
               </h2>
               <p className="text-foreground-neutral-weak">
-                Already built into Prisma Postgres. No setup, no extra cost. Open the Queries tab
-                and start analyzing.
+                Already built into Prisma Postgres. No setup, no extra cost.
+                Open the Queries tab and start analyzing.
               </p>
             </div>
             <div className="flex flex-col md:flex-row gap-6">
               <Button asChild variant="ppg" size="2xl">
                 <a href="/postgres">
                   <span>Get Started</span>
-                  <i className="fa-regular fa-arrow-right ml-2" aria-hidden="true" />
+                  <i
+                    className="fa-regular fa-arrow-right ml-2"
+                    aria-hidden="true"
+                  />
                 </a>
               </Button>
               <Button asChild variant="default-strong" size="2xl">
                 <a href="/docs/postgres/faq#query-insights">
                   <span>Read the docs</span>
-                  <i className="fa-regular fa-book-open ml-2" aria-hidden="true" />
+                  <i
+                    className="fa-regular fa-book-open ml-2"
+                    aria-hidden="true"
+                  />
                 </a>
               </Button>
             </div>

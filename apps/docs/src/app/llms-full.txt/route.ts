@@ -8,7 +8,7 @@ export async function GET() {
   const description = `# Prisma Documentation - Full Content Feed
 
 This file contains the complete Prisma documentation in machine-readable format.
-Includes v7 documentation only.
+Includes the current docs plus legacy v6 ORM pages.
 
 ---
 

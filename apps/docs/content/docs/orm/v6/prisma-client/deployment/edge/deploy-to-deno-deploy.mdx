@@ -1,0 +1,296 @@
+---
+title: Deploy to Deno Deploy
+description: Learn how to deploy a TypeScript application to Deno Deploy.
+url: /orm/v6/prisma-client/deployment/edge/deploy-to-deno-deploy
+metaTitle: Deploy to Deno Deploy
+metaDescription: Learn how to deploy a TypeScript application using Prisma ORM to Deno Deploy.
+---
+
+With this guide, you can learn how to build and deploy a simple application to [Deno Deploy](https://deno.com/deploy). The application uses Prisma ORM to save a log of each request to a [Prisma Postgres](/postgres) database.
+
+This guide covers the use of Prisma CLI with Deno CLI, Deno Deploy, Prisma Client, and Prisma Postgres.
+
+:::tip[Use Prisma ORM without Rust binaries]
+
+If Prisma ORM's Rust engine binaries cause large bundle sizes, slow builds, or deployment issues (for example, in serverless or edge environments), you can use it without them using this configuration of your `generator` block:
+
+```prisma
+generator client {
+  provider   = "prisma-client-js" // or "prisma-client"
+  engineType = "client"
+}
+```
+
+Prisma ORM without Rust binaries has been [Generally Available](/orm/v6/more/releases#generally-available-ga) since [v6.16.0](https://pris.ly/release/6.16.0).
+
+Note that you need to use a [driver adapter](/orm/v6/overview/databases/database-drivers#driver-adapters) in this case.
+
+When using this architecture:
+
+- No Rust query engine binary is downloaded or shipped.
+- The database connection pool is maintained by the native JS database driver you install (e.g., `@prisma/adapter-pg` for PostgreSQL).
+
+This setup can simplify deployments in serverless or edge runtimes. Learn more in the [docs here](/orm/v6/prisma-client/setup-and-configuration/no-rust-engine).
+
+Curious why we moved away from the Rust engine? Take a look at why we transitioned from Rust binary engines to an all-TypeScript approach for a faster, lighter Prisma ORM in this [blog post](https://www.prisma.io/blog/prisma-orm-without-rust-latest-performance-benchmarks).
+
+:::
+
+## Prerequisites
+
+- a free [Prisma Data Platform](https://console.prisma.io/login) account
+- a free [Deno Deploy](https://deno.com/deploy) account
+- Node.js & npm installed
+- Deno v1.29.4 or later installed. [Learn more](https://docs.deno.com/runtime/#install-deno).
+- (Recommended) Latest version of Prisma ORM.
+- (Recommended) Deno extension for VS Code. [Learn more](https://docs.deno.com/runtime/reference/vscode/).
+
+## 1. Set up your application and database
+
+To start, you create a directory for your project, and then use `deno run` to initialize your application with `prisma init` as an [npm package with npm specifiers](https://docs.deno.com/runtime/fundamentals/node/).
+
+To set up your application, open your terminal and navigate to a location of your choice. Then, run the following commands to set up your application:
+
+```npm
+mkdir prisma-deno-deploy
+cd prisma-deno-deploy
+npx prisma@latest init --db
+```
+
+Enter a name for your project and choose a database region.
+
+This command:
+
+- Connects your CLI to your [Prisma Data Platform](https://console.prisma.io) account. If you're not logged in or don't have an account, your browser will open to guide you through creating a new account or signing into your existing one.
+- Creates a `prisma` directory containing a `schema.prisma` file for your database models.
+- Creates a `.env` file with your `DATABASE_URL` (e.g., `DATABASE_URL="postgresql://user:password@host:5432/database"`).
+
+Edit the `prisma/schema.prisma` file to define a `Log` model, add a custom `output` path and [the `prisma-client` generator](/orm/v6/prisma-schema/overview/generators#prisma-client) with `deno` as the `runtime`:
+
+```prisma title="schema.prisma" highlight=3-4,12-23;add showLineNumbers
+generator client {
+  provider        = "prisma-client-js" // [!code --]
+  provider        = "prisma-client" // [!code ++]
+  output          = "../generated/prisma" // [!code ++]
+  runtime = "deno" // [!code ++]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Log { // [!code ++]
+  id      Int    @id @default(autoincrement()) // [!code ++]
+  level   Level // [!code ++]
+  message String // [!code ++]
+  meta    Json // [!code ++]
+} // [!code ++]
+
+enum Level { // [!code ++]
+  Info // [!code ++]
+  Warn // [!code ++]
+  Error // [!code ++]
+} // [!code ++]
+```
+
+Then, install Prisma Client and the Postgres adapter:
+
+```bash
+deno install npm:@prisma/client
+deno install npm:@prisma/adapter-pg
+```
+
+Prisma Client does not read `.env` files by default on Deno, so you must also install `dotenv-cli` locally:
+
+```bash
+deno install npm:dotenv-cli
+```
+
+## 2. Create the database schema
+
+With the data model in place and your database connection configured, you can now apply the data model to your database.
+
+```bash
+deno run -A npm:prisma migrate dev --name init
+```
+
+The command does two things:
+
+1. It creates a new SQL migration file for this migration
+1. It runs the SQL migration file against the database
+
+At this point, the command has an additional side effects. The command installs Prisma Client and creates the `package.json` file for the project.
+
+## 3. Create your application
+
+You can now create a local Deno application. Create `index.ts` in the root folder of your project and add the content below:
+
+```ts title="index.ts"
+import { serve } from "https://deno.land/std@0.140.0/http/server.ts";
+import { PrismaPg } from "npm:@prisma/adapter-pg";
+import { PrismaClient } from "../generated/prisma/client.ts";
+
+const connectionString = `${Deno.env.get("DATABASE_URL")}`;
+const adapter = new PrismaPg({ connectionString });
+const prisma = new PrismaClient({ adapter });
+
+async function handler(request: Request) {
+  // Ignore /favicon.ico requests:
+  const url = new URL(request.url);
+  if (url.pathname === "/favicon.ico") {
+    return new Response(null, { status: 204 });
+  }
+
+  const log = await prisma.log.create({
+    data: {
+      level: "Info",
+      message: `${request.method} ${request.url}`,
+      meta: {
+        headers: JSON.stringify(request.headers),
+      },
+    },
+  });
+  const body = JSON.stringify(log, null, 2);
+  return new Response(body, {
+    headers: { "content-type": "application/json; charset=utf-8" },
+  });
+}
+
+serve(handler);
+```
+
+:::info
+
+**VS Code error: `An import path cannot end with a '.ts' extension`**<br /><br />
+
+If you use VS Code and see the error `An import path cannot end with a '.ts' extension` for the `import` statements at the beginning of `index.ts`, you need to install the [Deno extension for VS Code](https://docs.deno.com/runtime/reference/vscode/), select **View** > **Command Palette** and run the command **Deno: Initialize Workspace Configuration**. This tells VS Code that the TypeScript files in the current project need to run with Deno, which then triggers the correct validations.
+
+:::
+
+## 4. Test your application locally
+
+You can now start your application locally and test the creation of log entries.
+
+```npm
+npx dotenv -- deno run -A ./index.ts
+```
+
+In a web browser, open `http://localhost:8000/`. This page writes your request to the database.
+
+```
+{
+  "id": 1,
+  "level": "Info",
+  "message": "GET http://localhost:8000/",
+  "meta": {
+    "headers": "{}"
+  }
+}
+```
+
+Reload the page a few times.<br /><br />Every time you reload, the script generates a new log entry and the `id` of the current log entry increments.
+
+This confirms that your application works when you run it from your local environment.
+
+## 5. Create a repository and push to GitHub
+
+You need a GitHub repository to add your project to Deno Deploy and enable automated deployments whenever you push changes.
+
+To set up a GitHub repository:
+
+1. [Create a private GitHub repository](https://github.com/new).
+
+2. Initialize your repository locally and push your changes to GitHub, with the following commands:
+
+   ```bash
+   git init -b main
+   git remote add origin https://github.com/<username>/prisma-deno-deploy
+   git add .
+   git commit -m "initial commit"
+   git push -u origin main
+   ```
+
+## 6. Deploy to Deno Deploy
+
+Use the GitHub repository to add your application to Deno Deploy:
+
+1. Go to [https://dash.deno.com/](https://dash.deno.com/).
+1. Select a GitHub organization or user and then select a repository.
+1. Select a production branch and select **Fresh (Automatic)** mode so that Deno Deploy can deploy every time you push a change to the repository.
+1. In the **Build Step** add `deno run -A npm:prisma generate` to generate the Prisma Client.
+1. Select `index.ts` as the entry point to your project.
+1. Click `Create & Deploy`.
+
+The deployment should fail as you have to add the `DATABASE_URL` environment variable.
+
+Locate and navigate to the settings for the project.
+
+1. To define the database connection string, click **Add Variable** in the **Environment Variables** section.
+   1. For **KEY**, enter `DATABASE_URL`.
+   1. For **VALUE**, paste the database connection string.
+1. Click **Save**.<br />
+
+You have to add some code and create another commit to trigger a re-dployment.
+
+Add the following code in your `index.ts` file:
+
+```ts title="index.ts"
+import { serve } from "https://deno.land/std@0.140.0/http/server.ts";
+import { PrismaPg } from "npm:@prisma/adapter-pg";
+import { PrismaClient } from "../generated/prisma/client.ts";
+
+const connectionString = `${Deno.env.get("DATABASE_URL")}`;
+const adapter = new PrismaPg({ connectionString });
+const prisma = new PrismaClient({ adapter });
+
+async function handler(request: Request) {
+  // Ignore /favicon.ico requests:
+  const url = new URL(request.url);
+  if (url.pathname === "/favicon.ico") {
+    return new Response(null, { status: 204 });
+  }
+
+  console.log("Request received."); // [!code ++]
+
+  const log = await prisma.log.create({
+    data: {
+      level: "Info",
+      message: `${request.method} ${request.url}`,
+      meta: {
+        headers: JSON.stringify(request.headers),
+      },
+    },
+  });
+  const body = JSON.stringify(log, null, 2);
+  return new Response(body, {
+    headers: { "content-type": "application/json; charset=utf-8" },
+  });
+}
+
+serve(handler);
+```
+
+Commit the new changes:
+
+```bash
+git add .
+git commit -m "add log"
+git push origin main
+```
+
+This rebuilds the deployment, which now works because the environment variable has been added. After it completes, follow the URL in the deployment output. The application should show the same result as before, with a new, incremented log record ID:
+
+```text
+{
+  "id": 5,
+  "level": "Info",
+  "message": "GET https://prisma-deno-deploy.deno.dev/",
+  "meta": {
+    "headers": "{}"
+  }
+}
+```
+
+## Summary
+
+You successfully deployed a Deno application that you created in TypeScript, which uses Prisma Client with the Postgres adapter to connect to a Postgres database.

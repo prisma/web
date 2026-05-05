@@ -1,0 +1,162 @@
+---
+title: Custom models
+description: This page explains how to wrap Prisma Client in custom models
+url: /orm/v6/prisma-client/queries/custom-models
+metaTitle: Custom models
+metaDescription: This page explains how to wrap Prisma Client in custom models
+---
+
+As your application grows, you may find the need to group related logic together. We suggest either:
+
+- Creating static methods using a [Prisma Client extension](/orm/v6/prisma-client/client-extensions)
+- Wrapping a model in a class
+- Extending Prisma Client model object
+
+## Static methods with Prisma Client extensions
+
+The following example demonstrates how to create a Prisma Client extension that adds a `signUp` and `findManyByDomain` methods to a User model.
+
+```tsx tab="Prisma Client extension"
+import bcrypt from "bcryptjs";
+import { PrismaClient } from "../prisma/generated/client";
+
+const prisma = new PrismaClient().$extends({
+  model: {
+    user: {
+      async signUp(email: string, password: string) {
+        const hash = await bcrypt.hash(password, 10);
+        return prisma.user.create({
+          data: {
+            email,
+            password: {
+              create: {
+                hash,
+              },
+            },
+          },
+        });
+      },
+
+      async findManyByDomain(domain: string) {
+        return prisma.user.findMany({
+          where: { email: { endsWith: `@${domain}` } },
+        });
+      },
+    },
+  },
+});
+
+async function main() {
+  // Example usage
+  await prisma.user.signUp("user2@example2.com", "s3cret");
+
+  await prisma.user.findManyByDomain("example2.com");
+}
+```
+
+```prisma title="prisma/schema.prisma" copy tab="Prisma schema"
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client"
+  output   = "./generated"
+}
+
+model User {
+  id       String    @id @default(cuid())
+  email    String
+  password Password?
+}
+
+model Password {
+  hash   String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @unique
+}
+```
+
+## Wrap a model in a class
+
+In the example below, you'll see how you can wrap the `user` model in the Prisma Client within a `Users` class.
+
+```tsx
+import { PrismaClient, User } from "@prisma/client";
+
+type Signup = {
+  email: string;
+  firstName: string;
+  lastName: string;
+};
+
+class Users {
+  constructor(private readonly prismaUser: PrismaClient["user"]) {}
+
+  // Signup a new user
+  async signup(data: Signup): Promise<User> {
+    // do some custom validation...
+    return this.prismaUser.create({ data });
+  }
+}
+
+async function main() {
+  const prisma = new PrismaClient();
+  const users = new Users(prisma.user);
+  const user = await users.signup({
+    email: "alice@prisma.io",
+    firstName: "Alice",
+    lastName: "Prisma",
+  });
+}
+```
+
+With this new `Users` class, you can define custom functions like `signup`:
+
+Note that in the example above, you're only exposing a `signup` method from Prisma Client. The Prisma Client is hidden within the `Users` class, so you're no longer be able to call methods like `findMany` and `upsert`.
+
+This approach works well when you have a large application and you want to intentionally limit what your models can do.
+
+## Extending Prisma Client model object
+
+But what if you don't want to hide existing functionality but still want to group custom functions together? In this case, you can use `Object.assign` to extend Prisma Client without limiting its functionality:
+
+```tsx
+import { PrismaClient, User } from "@prisma/client";
+
+type Signup = {
+  email: string;
+  firstName: string;
+  lastName: string;
+};
+
+function Users(prismaUser: PrismaClient["user"]) {
+  return Object.assign(prismaUser, {
+    /**
+     * Signup the first user and create a new team of one. Return the User with
+     * a full name and without a password
+     */
+    async signup(data: Signup): Promise<User> {
+      return prismaUser.create({ data });
+    },
+  });
+}
+
+async function main() {
+  const prisma = new PrismaClient();
+  const users = Users(prisma.user);
+  const user = await users.signup({
+    email: "alice@prisma.io",
+    firstName: "Alice",
+    lastName: "Prisma",
+  });
+  const numUsers = await users.count();
+  console.log(user, numUsers);
+}
+```
+
+Now you can use your custom `signup` method alongside `count`, `updateMany`, `groupBy()` and all of the other wonderful methods that Prisma Client provides. Best of all, it's all type-safe!
+
+## Going further
+
+We recommend using [Prisma Client extensions](/orm/v6/prisma-client/client-extensions) to extend your models with [custom model methods](https://github.com/prisma/prisma-client-extensions/tree/main/instance-methods).

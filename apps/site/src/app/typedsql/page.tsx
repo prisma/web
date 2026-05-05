@@ -102,9 +102,9 @@ const twoCol = [
 ];
 
 export const metadata = createPageMetadata({
-  title: "TypedSQL: Fully type-safe raw SQL in Prisma ORM ",
+  title: "TypedSQL | Type-Safe Raw SQL in Prisma ORM",
   description:
-    "Write raw sql queries with fully type-safety and auto-completion in Prisma ORM. Get type-safe database queries without sacrificing the power and flexibility of raw SQL.",
+    "Write raw SQL with autocomplete and end-to-end type safety in Prisma ORM. Keep the power of SQL while generating typed results from your schema.",
   path: "/typedsql",
   ogImage: "/og/og-typedsql.png",
 });

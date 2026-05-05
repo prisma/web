@@ -25,7 +25,10 @@ export function ResourcesSection({ data }: { data: ResourcesSectionData }) {
         </h2>
         <div className="cards grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3! gap-6">
           {data.cards.map((card, idx: number) => (
-            <div key={idx} className="border rounded-square border-stroke-neutral">
+            <div
+              key={idx}
+              className="border rounded-square border-stroke-neutral"
+            >
               <PostCard
                 vertical
                 featured
@@ -41,7 +44,7 @@ export function ResourcesSection({ data }: { data: ResourcesSectionData }) {
                       }
                     : undefined,
                   imageSrc: card.image,
-                  imageAlt: "Post image",
+                  imageAlt: card.title ?? "Post image",
                   badge: card.badge,
                 }}
               />

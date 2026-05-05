@@ -1,0 +1,246 @@
+---
+title: Getting started with Prisma Migrate
+description: Learn how to migrate your schema in a development environment using Prisma Migrate.
+url: /orm/v6/prisma-migrate/getting-started
+metaTitle: Getting started with Prisma Migrate
+metaDescription: Learn how to migrate your schema in a development environment using Prisma Migrate.
+---
+
+This page explains how to get started with migrating your schema in a development environment using Prisma Migrate.
+
+## Get started with Prisma Migrate from scratch
+
+To get started with Prisma Migrate in a development environment:
+
+Create a Prisma schema:
+
+```prisma title="schema.prisma" showLineNumbers tab="Prisma 7"
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id    Int    @id @default(autoincrement())
+  name  String
+  posts Post[]
+}
+
+model Post {
+  id        Int     @id @default(autoincrement())
+  title     String
+  published Boolean @default(true)
+  authorId  Int
+  author    User    @relation(fields: [authorId], references: [id])
+}
+```
+
+```prisma title="schema.prisma" showLineNumbers tab="Prisma 6"
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id    Int    @id @default(autoincrement())
+  name  String
+  posts Post[]
+}
+
+model Post {
+  id        Int     @id @default(autoincrement())
+  title     String
+  published Boolean @default(true)
+  authorId  Int
+  author    User    @relation(fields: [authorId], references: [id])
+}
+```
+
+    :::tip
+
+    You can use [native type mapping attributes](/orm/v6/prisma-migrate/workflows/native-database-types) in your schema to decide which exact database type to create (for example, `String` can map to `varchar(100)` or `text`).
+
+    :::
+
+    For Prisma 7, be sure to have a `prisma.config.ts` in the root of your project:
+
+    ```ts title="prisma.config.ts" showLineNumbers
+    import 'dotenv/config'
+    import { defineConfig, env } from "prisma/config";
+    export default defineConfig({
+      schema: "prisma/schema.prisma",
+      migrations: {
+        path: "prisma/migrations",
+      },
+      datasource: {
+        url: env("DATABASE_URL"),
+      },
+    });
+    ```
+
+1.  Create the first migration:
+
+    ```bash
+    prisma migrate dev --name init
+    ```
+
+    ```sql no-copy
+      -- CreateTable
+    CREATE TABLE "User" (
+        "id" SERIAL,
+        "name" TEXT NOT NULL,
+
+        PRIMARY KEY ("id")
+    );
+      -- CreateTable
+    CREATE TABLE "Post" (
+        "id" SERIAL,
+        "title" TEXT NOT NULL,
+        "published" BOOLEAN NOT NULL DEFAULT true,
+        "authorId" INTEGER NOT NULL,
+
+        PRIMARY KEY ("id")
+    );
+
+      -- AddForeignKey
+    ALTER TABLE "Post" ADD FOREIGN KEY("authorId")REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    ```
+
+    > **Note**: If you do not provide a `--name`, Prisma CLI will prompt you for a name.
+
+    Your Prisma schema is now in sync with your database schema and you have initialized a migration history:
+
+    ```
+    migrations/
+      └─ 20210313140442_init/
+        └─ migration.sql
+    ```
+
+    > **Note**: The folder name will be different for you. Folder naming is in the format of YYYYMMDDHHMMSS_your_text_from_name_flag.
+
+1.  Add additional fields to your schema:
+
+    ```prisma highlight=3;add
+    model User {
+      id       Int    @id @default(autoincrement())
+      jobTitle String // [!code ++]
+      name     String
+      posts    Post[]
+    }
+    ```
+
+1.  Create the second migration:
+
+    ```bash
+    prisma migrate dev --name added_job_title
+    ```
+
+    ```sql no-copy
+      -- AlterTable
+    ALTER TABLE "User" ADD COLUMN     "jobTitle" TEXT NOT NULL;
+    ```
+
+    Your Prisma schema is once again in sync with your database schema, and your migration history contains two migrations:
+
+    ```
+    migrations/
+      └─ 20210313140442_init/
+        └─ migration.sql
+      └─ 20210313140442_added_job_title/
+        └─ migration.sql
+    ```
+
+You now have a migration history that you can [source control](/orm/v6/prisma-migrate/understanding-prisma-migrate/migration-histories#committing-the-migration-history-to-source-control) and use to [deploy changes to test environments and production](/orm/v6/prisma-migrate/workflows/development-and-production#production-and-testing-environments).
+
+## Adding Prisma Migrate to an existing project
+
+The steps involved in **adding Prisma Migrate to your existing project** are:
+
+1. Introspect your database to update your Prisma schema
+1. Create a baseline migration
+1. Update your schema or migration to workaround features not supported by Prisma Schema Language
+1. Apply the baseline migration
+1. Commit the migration history and Prisma schema
+
+### Introspect to create or update your Prisma schema
+
+Make sure your Prisma schema is in sync with your database schema. This should already be true if you are using a previous version of Prisma Migrate.
+
+1. Introspect the database to make sure that your Prisma schema is up-to-date:
+   ```bash
+   prisma db pull
+   ```
+
+### Create a baseline migration
+
+Baselining is the process of initializing a migration history for a database that:
+
+- Existed before you started using Prisma Migrate
+- Contains data that must be maintained (like production), which means that the database cannot be reset
+
+Baselining tells Prisma Migrate to assume that one or more migrations have **already been applied**. This prevents generated migrations from failing when they try to create tables and fields that already exist.
+
+To create a baseline migration:
+
+1. If you have a `prisma/migrations` folder, delete, move, rename, or archive this folder.
+1. Run the following command to create a `migrations` directory inside with your preferred name. This example will use `0_init` for the migration name:
+   ```bash
+   mkdir -p prisma/migrations/0_init
+   ```
+   :::note
+   The `0_` is important because Prisma Migrate applies migrations in a [lexicographic order](https://en.wikipedia.org/wiki/Lexicographic_order). You can use a different value such as the current timestamp.
+   ::::
+1. Generate a migration and save it to a file using `prisma migrate diff`:
+   ```bash no-lines
+   npx prisma migrate diff \
+   --from-empty \
+   --to-schema prisma/schema.prisma \
+   --script > prisma/migrations/0_init/migration.sql
+   ```
+1. Review the generated migration.
+
+### Work around features not supported by Prisma Schema Language
+
+To include [unsupported database features](/orm/v6/prisma-migrate/workflows/unsupported-database-features) that already exist in the database, you must replace or modify the initial migration SQL:
+
+1. Open the `migration.sql` file generated in the [Create a baseline migration](#create-a-baseline-migration) section.
+1. Modify the generated SQL. For example:
+
+- If the changes are minor, you can append additional custom SQL to the generated migration. The following example creates a partial index:
+
+  ```sql
+  /* Generated migration SQL */
+
+  CREATE UNIQUE INDEX tests_success_constraint ON posts (subject, target) -- [!code ++]
+    WHERE success; -- [!code ++]
+  ```
+
+- If the changes are significant, it can be easier to replace the entire migration file with the result of a database dump ([`mysqldump`](https://dev.mysql.com/doc/refman/8.0/en/mysqldump.html), [`pg_dump`](https://www.postgresql.org/docs/12/app-pgdump.html)). When using `pg_dump` for this, you'll need to update the `search_path` as follows with this command: `SELECT pg_catalog.set_config('search_path', '', false);`; otherwise you'll run into the following error: `The underlying table for model '_prisma_migrations' does not exist.`
+  `    :::info
+Note that the order of the tables matters when creating all of them at once, since foreign keys are created at the same step. Therefore, either re-order them or move constraint creation to the last step after all tables are created, so you won't face`can't create constraint` errors
+  :::
+
+### Apply the initial migrations
+
+To apply your initial migration(s):
+
+1. Run the following command against your database:
+
+   ```npm
+   npx prisma migrate resolve --applied 0_init
+   ```
+
+1. Review the database schema to ensure the migration leads to the desired end-state (for example, by comparing the schema to the production database).
+
+The new migration history and the database schema should now be in sync with your Prisma schema.
+
+### Commit the migration history and Prisma schema
+
+Commit the following to source control:
+
+- The entire migration history folder
+- The `schema.prisma` file
+
+## Going further
+
+- Refer to the [Deploying database changes with Prisma Migrate](/orm/v6/prisma-client/deployment/deploy-database-changes-with-prisma-migrate) guide for more on deploying migrations to production.
+- Refer to the [Production Troubleshooting](/orm/v6/prisma-migrate/workflows/patching-and-hotfixing#fixing-failed-migrations-with-migrate-diff-and-db-execute) guide to learn how to debug and resolve failed migrations in production using `prisma migrate diff`, `prisma db execute` and/ or `prisma migrate resolve`.
