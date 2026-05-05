@@ -254,12 +254,12 @@ const boxes = [
   },
   {
     icon: "fa-regular fa-cubes-stacked",
-    title: "Built on open source",
+    title: "Great developer experience",
     description: (
       <p className="text-foreground-neutral text-foreground-neutral-weak text-sm font-normal m-0 leading-6">
-        Applying <a href="https://www.datadx.io/">Data DX</a> principles to all
-        our products, we create simple solutions for complex problems, making
-        building with data more accessible, regardless of team size.
+        We build products that make working with databases easier, turning
+        complex data problems into approachable workflows for teams of any
+        size.
       </p>
     ),
   },
@@ -411,9 +411,8 @@ export default function About() {
             About Prisma
           </h1>
           <p className="text-center text-foreground-neutral max-w-2xl mx-auto mb-12">
-            Our mission is to unlock productivity for developers by bringing
-            delightful ways to build with data. Data DX is at the core of all
-            our products.
+            Our mission is to make working with databases easy, with a great
+            developer experience at the core of every product we build.
           </p>
           <Card className="grid! md:grid-cols-3 gap-6 max-w-[1200px] mx-auto bg-background-default p-12 border-none -mb-80 gap-y-8">
             {boxes.map((box: any, idx: number) => (
