@@ -43,7 +43,6 @@ function removeMd(md: string): string {
       .replace(/~{3}.*\n/g, "")
       .replace(/```[^\n]*\n([\s\S]*?)```/g, (_: string, c: string) => c.trim())
       .replace(/~~/g, "")
-      .replace(/<[^>]*>/g, "")
       .replace(/\[\^.+?\](: .*?$)?/g, "")
       .replace(/\s{0,2}\[.*?\]: .*?$/g, "")
       .replace(/^\s{1,2}\[(.*?)\]: (\S+)( ".*?")?\s*$/gm, "")
