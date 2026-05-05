@@ -19,6 +19,7 @@ import { useTreeContext, useTreePath } from "@fumadocs/base-ui/contexts/tree";
 import type * as PageTree from "fumadocs-core/page-tree";
 import { usePathname } from "fumadocs-core/framework";
 import { type BreadcrumbOptions, getBreadcrumbItemsFromPath } from "fumadocs-core/breadcrumb";
+import { formatSlugDisplayName } from "@/lib/breadcrumb-utils";
 import { isActive } from "../../../../lib/urls";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../../ui/collapsible";
 import { useTOCItems } from "../../../toc";
@@ -30,6 +31,14 @@ const TocPopoverContext = createContext<{
   open: boolean;
   setOpen: (open: boolean) => void;
 } | null>(null);
+
+function formatBreadcrumbName(name: string) {
+  if (name.includes("-") || name.includes("_") || name === name.toLowerCase()) {
+    return formatSlugDisplayName(name);
+  }
+
+  return name;
+}
 
 /**
  * Syncs DocsPage sidebar.enabled to the layout so the page can hide the sidebar.
@@ -344,10 +353,10 @@ export function PageBreadcrumb({
                 href={item.url}
                 className={cn(className, "transition-opacity hover:opacity-80")}
               >
-                {item.name}
+                {formatBreadcrumbName(item.name)}
               </Link>
             ) : (
-              <span className={className}>{item.name}</span>
+              <span className={className}>{formatBreadcrumbName(item.name)}</span>
             )}
           </Fragment>
         );

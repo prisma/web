@@ -1,4 +1,5 @@
 import { Provider } from "@/components/provider";
+import { createBlogStructuredData } from "@/lib/structured-data";
 import { getBaseUrl } from "@/lib/url";
 import "./global.css";
 import { Inter, Barlow } from "next/font/google";
@@ -6,6 +7,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { BLOG_HOME_DESCRIPTION, BLOG_HOME_TITLE } from "@/lib/blog-metadata";
 import { FontAwesomeScript as EclipseFA } from "@prisma/eclipse";
+import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -24,6 +26,8 @@ export const metadata: Metadata = {
   description: BLOG_HOME_DESCRIPTION,
 };
 
+const blogStructuredData = createBlogStructuredData();
+
 export default function Layout({ children }: LayoutProps<"/">) {
   return (
     <html
@@ -32,6 +36,7 @@ export default function Layout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
     >
       <head>
+        <JsonLd id="blog-structured-data" data={blogStructuredData} />
         {/* FontAwesome — not render-critical; explicit strategy prevents accidental beforeInteractive promotion */}
         <Script
           src={EclipseFA}
