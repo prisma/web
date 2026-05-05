@@ -9,6 +9,10 @@ const broadDestinations = new Set([
   "/docs/orm",
   "/docs/orm/reference/supported-databases",
 ]);
+const acceptableBroadRedirects = new Set([
+  "/docs/orm/more/upgrade-guides/upgrading-versions/codemods -> /docs/guides/upgrade-prisma-orm/v7",
+  "/docs/orm/accelerate/getting-started/connection-pooler/client-extensions -> /docs/postgres/database/connection-pooling",
+]);
 
 function normalizeRoute(route) {
   const cleanRoute = route.split(/[?#]/, 1)[0];
@@ -40,10 +44,35 @@ function getLastSegment(route) {
   return segments.at(-1) ?? "";
 }
 
+function normalizeComparisonRoute(route) {
+  return normalizeRoute(route).replace(/\/page\/\d+$/, "");
+}
+
+function getUpgradeGuideVersion(route) {
+  const normalized = normalizeRoute(route);
+  const destinationMatch = normalized.match(/\/docs\/guides\/upgrade-prisma-orm\/(v\d+)$/);
+  if (destinationMatch) return destinationMatch[1];
+
+  if (normalized.includes("prisma-1")) return "v1";
+  if (normalized.includes("prisma-3")) return "v3";
+  if (normalized.includes("prisma-4")) return "v4";
+  if (normalized.includes("prisma-5")) return "v5";
+  if (normalized.includes("prisma-6")) return "v6";
+  if (normalized.includes("prisma-7") || normalized.endsWith("/upgrading-to-pris")) return "v7";
+
+  return null;
+}
+
 function shouldWarnForBroadRedirect(source, destination, rawDestination) {
+  if (acceptableBroadRedirects.has(`${source} -> ${destination}`)) return false;
   if (hasPattern(source)) return false;
   if (rawDestination.includes("#")) return false;
   if (broadDestinations.has(destination)) return true;
+  if (normalizeComparisonRoute(source) === normalizeComparisonRoute(destination)) return false;
+
+  const sourceUpgradeVersion = getUpgradeGuideVersion(source);
+  const destinationUpgradeVersion = getUpgradeGuideVersion(destination);
+  if (sourceUpgradeVersion && sourceUpgradeVersion === destinationUpgradeVersion) return false;
 
   if (getLastSegment(source) === getLastSegment(destination)) return false;
 
