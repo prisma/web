@@ -187,7 +187,7 @@ export default function SiteHome() {
       </section>
 
       {/* Pricing CTA Section */}
-      <section className="my-12 bg-[linear-gradient(180deg,var(--color-background-default)-177.75%,var(--color-background-ppg-str)100%)] p-12 shadow-[0_1px_2px_0_rgba(0,0,0,0.04)]">
+      <section className="my-12  bg-[linear-gradient(180deg,var(--color-background-default)_-177.75%,var(--color-background-ppg)_100%)] shadow-[0_1px_2px_0_rgba(0,0,0,0.04)] p-12">
         <div className="web-cta mx-auto flex w-fit flex-col items-center gap-3 md:flex-row md:gap-12 lg:p-4">
           <h3 className="text-2xl text-center font-sans-display font-bold text-foreground-neutral md:text-left">
             Build anything.
@@ -241,7 +241,7 @@ export default function SiteHome() {
                   Deploy a Postgres database instantly.
                 </p>
               </div>
-              <div className="flex flex-col gap-6 md:flex-row">
+              <div className="flex flex-col gap-3 md:gap-6 md:flex-row">
                 <ConsoleCtaButton
                   variant="ppg"
                   size="2xl"

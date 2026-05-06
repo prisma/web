@@ -1,5 +1,11 @@
 "use client";
-import { Button, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@prisma/eclipse";
+import {
+  Button,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@prisma/eclipse";
 import { useState } from "react";
 
 export const CopyCode = ({
@@ -30,6 +36,7 @@ export const CopyCode = ({
             size={buttonSize}
             onClick={() => copyText()}
             onMouseEnter={() => setTooltip("Copy")}
+            onMouseLeave={() => tooltip === "Copy" && setTooltip(undefined)}
             className={buttonClassName}
           >
             {children}
