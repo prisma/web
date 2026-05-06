@@ -1,4 +1,5 @@
 import { source } from "@/lib/source";
+import { normalizeProcessedMarkdown } from "@/lib/llm-markdown";
 import { getPageTitleText } from "@/lib/page-title";
 import { getBaseUrl, withDocsBasePath } from "@/lib/urls";
 import type { InferPageType } from "fumadocs-core/source";
@@ -170,65 +171,6 @@ function formatRelatedPages(relatedPages: RelatedPageLink[]) {
     .join("\n");
 
   return `\n\n## Related pages\n\n${links}`;
-}
-
-function trimComponentContent(value: string) {
-  const lines = value.replace(/^\n+|\n+$/g, "").split("\n");
-  const indent = lines
-    .filter((line) => line.trim().length > 0)
-    .reduce((minimum, line) => Math.min(minimum, line.match(/^ */)?.[0].length ?? 0), Infinity);
-
-  return lines
-    .map((line) => (Number.isFinite(indent) ? line.slice(indent) : line))
-    .join("\n")
-    .trim();
-}
-
-function cleanCalloutContent(value: string) {
-  return trimComponentContent(value)
-    .replace(
-      /<Callout(?:Title|Description)>([\s\S]*?)<\/Callout(?:Title|Description)>/g,
-      (_match, content: string) => trimComponentContent(content),
-    )
-    .replace(/<\/?(?:CalloutTitle|CalloutDescription)>/g, "")
-    .replace(/^(?:[ \t]*\n)+|(?:\n[ \t]*)+$/g, "")
-    .split("\n")
-    .map((line) => line.replace(/[ \t]+$/g, ""))
-    .join("\n");
-}
-
-function formatCallout(type: string, content: string) {
-  const label = type.trim().toUpperCase() || "NOTE";
-  const text = cleanCalloutContent(content);
-  if (!text) return "";
-
-  return `> [!${label}]\n${text
-    .split("\n")
-    .map((line) => `> ${line}`)
-    .join("\n")}`;
-}
-
-function formatCodeBlockTab(value: string, content: string) {
-  const text = trimComponentContent(content);
-  if (!text) return "";
-
-  return `#### ${value.trim()}\n\n${text}`;
-}
-
-function normalizeProcessedMarkdown(markdown: string) {
-  return markdown
-    .replace(
-      /<CalloutContainer\s+type="([^"]+)"[^>]*>([\s\S]*?)<\/CalloutContainer>/g,
-      (_match, type: string, content: string) => formatCallout(type, content),
-    )
-    .replace(/<CodeBlockTabsList>[\s\S]*?<\/CodeBlockTabsList>/g, "")
-    .replace(
-      /<CodeBlockTab\s+value="([^"]+)"[^>]*>([\s\S]*?)<\/CodeBlockTab>/g,
-      (_match, value: string, content: string) => formatCodeBlockTab(value, content),
-    )
-    .replace(/<\/?CodeBlockTabs[^>]*>/g, "")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
 }
 
 export async function getLLMText(page: DocsPage) {
