@@ -80,7 +80,7 @@ ALTER TABLE "Post" ADD FOREIGN KEY ("authorId") REFERENCES
 export default function Migrate() {
   return (
     <main className="flex-1 w-screen bg-background-default">
-      <div className="hero relative w-full -mt-33 pt-70 pb-8 flex flex-col gap-8">
+      <div className="hero relative w-full -mt-33 pt-48 pb-8 flex flex-col gap-8">
         <div className="absolute inset-0 pointer-events-none z-1 overflow-hidden bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20" />
         <div className="flex flex-col gap-4 relative z-1">
           <h5 className="stretch-display font-sans-display mx-auto w-fit my-0 text-foreground-orm-strong uppercase">
@@ -93,8 +93,8 @@ export default function Migrate() {
           </h1>
         </div>
         <p className="max-w-200 w-full mx-auto text-center relative z-1">
-          Prisma Migrate uses Prisma schema changes to automatically generate fully customizable
-          database schema migrations
+          Prisma Migrate uses Prisma schema changes to automatically generate
+          fully customizable database schema migrations
         </p>
         <div className="flex gap-4 mx-auto relative z-1">
           <Button asChild variant="orm" size="3xl">
@@ -131,7 +131,8 @@ export default function Migrate() {
                 </h4>
               </div>
               <p className="text-foreground-neutral-weak">
-                Migrations are automatically generated so you don't have to write the SQL by hand.
+                Migrations are automatically generated so you don't have to
+                write the SQL by hand.
               </p>
             </Card>
             <Card className="bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-orm)_262.5%)]">
@@ -144,8 +145,8 @@ export default function Migrate() {
                 </h4>
               </div>
               <p className="text-foreground-neutral-weak">
-                Migrate generates SQL migrations, ensuring migrations will always result in the same
-                database schema across environments.
+                Migrate generates SQL migrations, ensuring migrations will
+                always result in the same database schema across environments.
               </p>
             </Card>
             <Card className="bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-orm)_262.5%)]">
@@ -158,8 +159,8 @@ export default function Migrate() {
                 </h4>
               </div>
               <p className="text-foreground-neutral-weak">
-                Generated SQL migrations can be fully customized giving you full control over the
-                exact changes.
+                Generated SQL migrations can be fully customized giving you full
+                control over the exact changes.
               </p>
             </Card>
           </div>
@@ -183,8 +184,9 @@ export default function Migrate() {
                       Prototype fast without migrations
                     </h4>
                     <p className="text-base text-foreground-neutral-weak">
-                      While prototyping you can create the database schema quickly using the prisma
-                      db push command without creating migrations.
+                      While prototyping you can create the database schema
+                      quickly using the prisma db push command without creating
+                      migrations.
                     </p>
                   </div>
                 </li>
@@ -196,8 +198,8 @@ export default function Migrate() {
                       Integrated seeding
                     </h4>
                     <p className="text-base text-foreground-neutral-weak">
-                      Quickly seed your database with data by defining a seed script in JavaScript,
-                      TypeScript or Shell.
+                      Quickly seed your database with data by defining a seed
+                      script in JavaScript, TypeScript or Shell.
                     </p>
                   </div>
                 </li>
@@ -208,7 +210,8 @@ export default function Migrate() {
                       Smart problem resolution
                     </h4>
                     <p className="text-base text-foreground-neutral-weak">
-                      Migrate detects database schema drift and assists you in resolving them.
+                      Migrate detects database schema drift and assists you in
+                      resolving them.
                     </p>
                   </div>
                 </li>
@@ -229,8 +232,8 @@ export default function Migrate() {
                       Dedicated production workflows
                     </h4>
                     <p className="text-base text-foreground-neutral-weak">
-                      Migrate supports dedicated workflows for carrying out migrations safely in
-                      production.
+                      Migrate supports dedicated workflows for carrying out
+                      migrations safely in production.
                     </p>
                   </div>
                 </li>
@@ -241,8 +244,9 @@ export default function Migrate() {
                       CI/CD Integration
                     </h4>
                     <p className="text-base text-foreground-neutral-weak">
-                      Migrate can be integrated into CI/CD pipelines, e.g. GitHub Actions, to
-                      automate applying migrations before deployment.
+                      Migrate can be integrated into CI/CD pipelines, e.g.
+                      GitHub Actions, to automate applying migrations before
+                      deployment.
                     </p>
                   </div>
                 </li>
@@ -253,8 +257,9 @@ export default function Migrate() {
                       Conflict detection and resolution
                     </h4>
                     <p className="text-base text-foreground-neutral-weak">
-                      Migrate keeps track of applied migrations and provides tools to detect and
-                      resolve conflicts and drifts between migrations and the database schema.
+                      Migrate keeps track of applied migrations and provides
+                      tools to detect and resolve conflicts and drifts between
+                      migrations and the database schema.
                     </p>
                   </div>
                 </li>
@@ -277,9 +282,10 @@ export default function Migrate() {
                 </h3>
               </div>
               <p className="text-foreground-neutral-weak">
-                When using Prisma Migrate with Prisma Client, schema changes are type checked in
-                your application code. This eliminates errors that arise when database schema
-                changes require changes to the application code.
+                When using Prisma Migrate with Prisma Client, schema changes are
+                type checked in your application code. This eliminates errors
+                that arise when database schema changes require changes to the
+                application code.
               </p>
             </Card>
 
@@ -294,9 +300,10 @@ export default function Migrate() {
                 </h3>
               </div>
               <p className="text-foreground-neutral-weak">
-                Prisma Migrate generates migrations based on changes in the Prisma schema – a
-                human-readable declarative definition of your database schema. This allows you to
-                focus on your desired database schema rather than the steps to get there.
+                Prisma Migrate generates migrations based on changes in the
+                Prisma schema – a human-readable declarative definition of your
+                database schema. This allows you to focus on your desired
+                database schema rather than the steps to get there.
               </p>
             </Card>
 
@@ -311,9 +318,9 @@ export default function Migrate() {
                 </h3>
               </div>
               <p className="text-foreground-neutral-weak">
-                With Prisma Migrate, generated migrations are tracked in your Git repository,
-                allowing you to make changes to your database schema in tandem with your application
-                code.
+                With Prisma Migrate, generated migrations are tracked in your
+                Git repository, allowing you to make changes to your database
+                schema in tandem with your application code.
               </p>
             </Card>
 
@@ -328,9 +335,9 @@ export default function Migrate() {
                 </h3>
               </div>
               <p className="text-foreground-neutral-weak">
-                With Prisma Migrate, generated migrations are tracked in your Git repository,
-                allowing you to make changes to your database schema in tandem with your application
-                code.
+                With Prisma Migrate, generated migrations are tracked in your
+                Git repository, allowing you to make changes to your database
+                schema in tandem with your application code.
               </p>
             </Card>
 
@@ -345,8 +352,8 @@ export default function Migrate() {
                 </h3>
               </div>
               <p className="text-foreground-neutral-weak">
-                Prisma Migrate can be adopted in any existing project that uses PostgreSQL, MySQL,
-                MariaDB, SQL Server, CockroachDB or SQLite.
+                Prisma Migrate can be adopted in any existing project that uses
+                PostgreSQL, MySQL, MariaDB, SQL Server, CockroachDB or SQLite.
               </p>
             </Card>
           </div>

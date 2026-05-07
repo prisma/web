@@ -102,10 +102,10 @@ export default function CommunityPage() {
       <section className="relative overflow-hidden px-4 pt-36 pb-12 md:pb-16">
         <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20" />
         <div className="relative z-1 mx-auto flex w-full max-w-[720px] flex-col items-center gap-6 text-center">
-          <p className="m-0 flex items-center justify-center gap-2 text-base font-semibold uppercase tracking-[1.6px] text-foreground-orm-strong font-sans">
+          <div className="flex items-center gap-2 text-foreground-orm-weak uppercase tracking-widest text-sm font-sans-display font-black">
             <i className="fa-regular fa-users" aria-hidden />
-            Community
-          </p>
+            <span>Community</span>
+          </div>
           <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
             Join the Prisma Community
           </h1>
@@ -153,7 +153,10 @@ export default function CommunityPage() {
                   rel="noopener noreferrer"
                 >
                   Join Discord
-                  <i className="fa-regular fa-arrow-up-right" aria-hidden />
+                  <i
+                    className="fa-regular fa-arrow-up-right ml-2"
+                    aria-hidden
+                  />
                 </a>
               </Button>
             </Card>
@@ -285,7 +288,7 @@ export default function CommunityPage() {
               </a>
             ))}
           </div>
-          <div className="mt-6">
+          <div className="mt-6 w-fit">
             <Button asChild variant="orm" size="lg">
               <a href="/events">
                 See all events
@@ -365,13 +368,13 @@ export default function CommunityPage() {
                   rel="noopener noreferrer"
                 >
                   Join Discord
-                  <i className="fa-brands fa-discord" aria-hidden />
+                  <i className="fa-brands fa-discord ml-2" aria-hidden />
                 </a>
               </Button>
               <Button asChild variant="default-strong" size="2xl">
                 <a href="/newsletter">
                   Subscribe to newsletter
-                  <i className="fa-regular fa-arrow-right" aria-hidden />
+                  <i className="fa-regular fa-arrow-right ml-2" aria-hidden />
                 </a>
               </Button>
             </div>

@@ -5,6 +5,7 @@ import { CopyCode } from "@/components/homepage/copy-btn";
 import { Bento } from "@/components/homepage/bento";
 import { CardSection } from "@/components/homepage/card-section/card-section";
 import { ConsoleCtaButton } from "@/components/console-cta-button";
+import { PageFooterCta } from "@/components/page-footer-cta";
 import review from "../../data/homepage.json";
 import Testimonials from "../../components/homepage/testimonials";
 // Antigravity is a purely decorative particle animation — skip SSR to keep
@@ -229,42 +230,20 @@ export default function SiteHome() {
       )}
 
       {/* Footer CTA Section */}
-      <section className="bg-radial from-background-ppg/50 from-0% to-background-default to-70% px-4 py-12">
-        <div className="mx-auto rounded-2xl bg-[url('/illustrations/homepage/footer_grid.svg')] bg-cover bg-center px-4 py-12">
-          <div className="p-4 md:p-8">
-            <div className="mx-auto flex max-w-[580px] flex-col items-center gap-8 text-center">
-              <div className="flex flex-col items-center gap-4">
-                <h2 className="text-3xl text-foreground-neutral font-sans-display stretch-display">
-                  Ready to try Prisma?
-                </h2>
-                <p className="text-foreground-neutral-weak">
-                  Deploy a Postgres database instantly.
-                </p>
-              </div>
-              <div className="flex flex-col gap-6 md:flex-row">
-                <ConsoleCtaButton
-                  variant="ppg"
-                  size="2xl"
-                  consolePath="/sign-up"
-                  defaultUtm={INDEX_CTA_DEFAULT_UTM}
-                >
-                  <span>Create your first Database</span>
-                  <i className="fa-regular fa-arrow-right ml-2" />
-                </ConsoleCtaButton>
-                <Button asChild variant="default-strong" size="2xl">
-                  <a href="/pricing">
-                    Explore Pricing
-                    <i className="fa-regular fa-arrow-right" />
-                  </a>
-                </Button>
-              </div>
-              <h6 className="mb-0! -mt-4 text-xs text-foreground-neutral-weaker">
-                Free to get started, no credit card needed.
-              </h6>
-            </div>
-          </div>
-        </div>
-      </section>
+      <PageFooterCta
+        title="Ready to try Prisma?"
+        description="Deploy a Postgres database instantly."
+        footer="Free to get started, no credit card needed."
+        btns={[
+          {
+            url: "https://www.prisma.io/sign-up",
+            text: "Create your first Database",
+            consolePath: "/sign-up",
+            defaultUtm: INDEX_CTA_DEFAULT_UTM,
+          },
+          { url: "https://www.prisma.io/pricing", text: "Explore Pricing" },
+        ]}
+      />
     </main>
   );
 }

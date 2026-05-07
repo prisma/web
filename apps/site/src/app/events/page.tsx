@@ -51,7 +51,7 @@ export default function EventsPage() {
       {/* Hero */}
       <section className="px-4 pt-36 pb-12 md:pb-16">
         <div className="mx-auto flex max-w-[720px] flex-col items-center gap-6 text-center">
-          <p className="flex items-center gap-2 text-base font-semibold uppercase tracking-[1.6px] text-foreground-ppg font-sans">
+          <p className="items-center type-title-sm mx-auto w-fit my-0 text-foreground-ppg-strong flex gap-2">
             <i className="fa-regular fa-calendar" aria-hidden />
             Events
           </p>
@@ -59,8 +59,9 @@ export default function EventsPage() {
             Prisma Events
           </h1>
           <p className="text-lg text-foreground-neutral-weak max-w-[600px]">
-            Find out when the next event or Meetup is happening, at which conferences you can see
-            Prisma folks, and explore the content from previous events.
+            Find out when the next event or Meetup is happening, at which
+            conferences you can see Prisma folks, and explore the content from
+            previous events.
           </p>
         </div>
       </section>
@@ -146,7 +147,12 @@ export default function EventsPage() {
               >
                 <Card className="flex flex-col overflow-hidden p-0 h-full transition-colors hover:border-stroke-neutral-strong">
                   <div className="relative aspect-square w-full overflow-hidden">
-                    <Image src={event.image} alt={event.name} fill className="object-cover" />
+                    <Image
+                      src={event.image}
+                      alt={event.name}
+                      fill
+                      className="object-cover"
+                    />
                   </div>
                   <CardContent className="flex flex-1 items-center justify-center pb-3">
                     <p className="text-center text-sm font-semibold text-foreground-neutral mt-0 mb-0">

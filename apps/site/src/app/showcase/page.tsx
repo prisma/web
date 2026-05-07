@@ -29,7 +29,7 @@ export default function EnterprisePage() {
       {/* Hero */}
       <section className="hero -mt-24 flex items-end justify-center px-4 relative pt-24">
         <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20" />
-        <div className="content pt-40 relative z-2 my-12 flex flex-col gap-8">
+        <div className="content pt-24 relative z-2 my-12 flex flex-col gap-8">
           <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
             Made with Prisma
           </h1>
@@ -90,7 +90,7 @@ export default function EnterprisePage() {
       </section>
       <section className="my-12 px-4 relative">
         <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20" />
-        <div className="content pt-40 relative z-2 my-12 flex flex-col gap-8 max-w-[1200px] mx-auto">
+        <div className="content pt-24 relative z-2 my-12 flex flex-col gap-8 max-w-[1200px] mx-auto">
           <h3 className="text-center text-foreground-neutral stretch-display text-3xl stretch-display font-sans-display my-0">
             Built with Prisma
           </h3>

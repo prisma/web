@@ -337,13 +337,13 @@ export default function EnterprisePage() {
   return (
     <main className="flex-1 w-full z-1 bg-background-default">
       {/* Hero */}
-      <section className="hero -mt-24 flex items-end justify-center px-4 relative pt-24">
+      <section className="hero -mt-24 flex items-end justify-center px-4 relative pt-12">
         <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20" />
-        <div className="content pt-31 relative z-2 my-12 flex flex-col gap-8">
+        <div className="content pt-24 relative z-2 my-12 flex flex-col gap-8">
           <div className="flex flex-col gap-1">
-            <h5 className="text-foreground-orm-strong text-center stretch-display font-sans-display text-base uppercase">
+            <p className="stretch-display items-center font-sans-display mx-auto w-fit my-0 text-foreground-orm-strong uppercase flex gap-2">
               Enterprise & Solution Providers
-            </h5>
+            </p>
             <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
               Streamline your <br /> development workflow
             </h1>
@@ -448,7 +448,7 @@ export default function EnterprisePage() {
                             key={db.name}
                             text={db.name}
                             url={db.url}
-                            className="bg-transparent! [&>div]:bg-transparent! hover:bg-background-default!"
+                            className="bg-transparent! [&>div]:bg-transparent! hover:bg-background-default! border stroke-border-neutral"
                           >
                             <Action
                               color="neutral"

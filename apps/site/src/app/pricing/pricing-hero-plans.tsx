@@ -67,7 +67,7 @@ export function PricingHeroPlans({
             className="rounded-md gap-2"
             label={
               <>
-                <i className="fa-regular fa-message-code text-xs" />
+                <i className="fa-regular fa-message-code text-xs mr-2" />
                 Prisma ORM will always be free
               </>
             }

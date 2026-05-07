@@ -36,7 +36,7 @@ export default function Support() {
 
   return (
     <main className="flex-1 w-screen bg-background-default">
-      <div className="hero relative w-full -mt-33 pt-65 block pb-12 flex flex-col gap-8">
+      <div className="hero relative w-full -mt-33 pt-54 block pb-12 flex flex-col gap-8 px-4">
         <div className="absolute inset-0 pointer-events-none z-1 overflow-hidden bg-[linear-gradient(180deg,var(--color-foreground-orm-strong)_0%,var(--color-background-default)_100%)] opacity-20" />
         <h1 className="relative z-2 text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
           {data.title}

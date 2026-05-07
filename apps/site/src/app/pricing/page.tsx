@@ -2,6 +2,7 @@ import { createPageMetadata } from "@/lib/page-metadata";
 import { Accordion, Accordions, Button } from "@prisma/eclipse";
 import { faqs } from "./pricing-data";
 import { PricingPageContent } from "./pricing-page-content";
+import { PageFooterCta } from "@/components/page-footer-cta";
 
 export const metadata = createPageMetadata({
   title: "Prisma Pricing | Prisma Postgres Plans and Usage-Based Pricing",
@@ -50,40 +51,19 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* Try Prisma Postgres */}
-      <section className="bg-radial from-background-ppg from-0% to-background-default to-70% px-4 py-12">
-        <div className="mx-auto rounded-2xl bg-[url('/illustrations/homepage/footer_grid.svg')] bg-cover bg-center px-4 py-12">
-          <div className="p-4 md:p-8">
-            <div className="mx-auto flex max-w-[580px] flex-col items-center gap-8 text-center">
-              <div className="flex flex-col items-center gap-4">
-                <h2 className="text-3xl text-foreground-neutral font-sans-display stretch-display">
-                  Try Prisma Postgres
-                </h2>
-                <p className="text-foreground-neutral-weak">
-                  Deploy a Postgres database instantly.
-                </p>
-              </div>
-              <div className="flex flex-col gap-6 md:flex-row">
-                <Button asChild variant="ppg" size="2xl">
-                  <a href="https://console.prisma.io/sign-up?utm_source=website&utm_medium=pricing&utm_campaign=cta">
-                    Create your first Database
-                    <i className="fa-regular fa-arrow-right" />
-                  </a>
-                </Button>
-                <Button asChild variant="default-strong" size="2xl">
-                  <a href="https://www.prisma.io/docs/">
-                    Read the docs
-                    <i className="fa-regular fa-book-open" />
-                  </a>
-                </Button>
-              </div>
-              <h6 className="mb-0! -mt-4 text-xs text-foreground-neutral-weaker">
-                Free to get started, no credit card needed.
-              </h6>
-            </div>
-          </div>
-        </div>
-      </section>
+      <PageFooterCta
+        title="Try Prisma Postgres"
+        description="Deploy a Postgres database instantly."
+        btns={[
+          {
+            url: `https://console.prisma.io/sign-up?utm_source=website&utm_medium=pricing&utm_campaign=cta`,
+            text: "Create your first Database",
+            external: true,
+          },
+          { url: "https://www.prisma.io/docs", text: "Read the docs" },
+        ]}
+        footer="Free to get started, no credit card needed."
+      />
     </main>
   );
 }

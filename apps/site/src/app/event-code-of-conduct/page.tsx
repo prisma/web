@@ -13,7 +13,7 @@ export default function EventCodeOfConductPage() {
   return (
     <main className="flex-1 w-full z-1 -mt-24 pt-24 relative legal-hero-gradient">
       {/* Hero */}
-      <div className="text-center pb-16 pt-40">
+      <div className="text-center pb-16 pt-24">
         <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
           Event Code of Conduct
         </h1>

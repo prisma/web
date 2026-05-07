@@ -19,7 +19,7 @@ import MasonryPict from "@/components/careers/masonry-client";
 const what_we_care_about = [
   {
     content: (
-      <div className="flex flex-col gap-6 self-start">
+      <div className="flex flex-col gap-6 self-start w-full">
         <h3 className="text-foreground-neutral stretch-display text-2xl font-black! font-sans-display">
           Open-Source
         </h3>
@@ -82,7 +82,7 @@ const what_we_care_about = [
       "Illustration representing open-source contributions and the Prisma FOSS Fund",
     logos: null,
     useDefaultLogos: true,
-    alignItems: "items-start" as const,
+    alignItems: "items-center" as const,
     visualPosition: "left" as const,
     visualType: "image" as const,
   },
@@ -148,7 +148,7 @@ const what_we_care_about = [
       "Illustration representing Prisma's climate change commitments",
     logos: null,
     useDefaultLogos: true,
-    alignItems: "items-start" as const,
+    alignItems: "items-center" as const,
     visualPosition: "right" as const,
     visualType: "image" as const,
   },
@@ -388,7 +388,7 @@ export const metadata = createPageMetadata({
 export default function About() {
   return (
     <main className="flex-1 w-full z-1 bg-background-default">
-      <div className="hero -mt-24 relative flex items-end justify-center px-4 pb-40 pt-30">
+      <div className="hero -mt-24 relative flex items-end justify-center px-4 pb-40 pt-10">
         <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,transparent_0%,var(--color-background-default)_150%)]" />
         <div className="w-screen absolute inset-0 z-0">
           <Image

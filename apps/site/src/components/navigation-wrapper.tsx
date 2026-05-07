@@ -40,6 +40,7 @@ const orm = [
   "/orm",
   "/showcase",
   "/ecosystem",
+  "/startups",
 ];
 type ColorType = "orm" | "ppg" | undefined;
 
@@ -65,7 +66,9 @@ export function NavigationWrapper({ links, utm }: NavigationWrapperProps) {
     ? getUtmParams(new URLSearchParams(window.location.search))
     : {};
   const preserveExactUtm = hasUtmParams(currentUtmParams);
-  const resolvedUtmParams = preserveExactUtm ? currentUtmParams : defaultUtmParams;
+  const resolvedUtmParams = preserveExactUtm
+    ? currentUtmParams
+    : defaultUtmParams;
 
   // Determine button variant based on pathname
   const getButtonVariant = (): ColorType => {

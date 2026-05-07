@@ -11,7 +11,10 @@ interface ConsoleCtaButtonProps extends Omit<ButtonProps, "asChild"> {
   rel?: string;
 }
 
-function buildConsoleHref(consolePath: "/login" | "/sign-up", utmParams: UtmParams) {
+function buildConsoleHref(
+  consolePath: "/login" | "/sign-up",
+  utmParams: UtmParams,
+) {
   const href = new URL(`https://console.prisma.io${consolePath}`);
 
   for (const [key, value] of Object.entries(utmParams)) {
@@ -31,7 +34,9 @@ export function ConsoleCtaButton({
   rel,
   ...props
 }: ConsoleCtaButtonProps) {
-  const [href, setHref] = useState(() => buildConsoleHref(consolePath, defaultUtm));
+  const [href, setHref] = useState(() =>
+    buildConsoleHref(consolePath, defaultUtm),
+  );
 
   useEffect(() => {
     const currentUtmParams = getUtmParams(new URLSearchParams(window.location.search));

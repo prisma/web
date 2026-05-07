@@ -29,7 +29,8 @@ const databases = {
     },
     {
       name: "MariaDB",
-      icon: "/icons/technologies/mariadb.svg",
+      icon: "/icons/technologies/mariadbdark.svg",
+      icon_light: "/icons/technologies/mariadb.svg",
       url: "/",
     },
     {
@@ -49,7 +50,8 @@ const databases = {
     },
     {
       name: "PlanetScale",
-      icon: "/icons/companies/planetscale.svg",
+      icon: "/icons/technologies/planetscale.svg",
+      icon_light: "/icons/companies/planetscale.svg",
       url: "/",
     },
     {
@@ -71,7 +73,8 @@ const frameworks = {
     },
     {
       name: "Next.js",
-      icon: "/icons/technologies/nextjs.svg",
+      icon: "/icons/technologies/nextjs-light.svg",
+      icon_light: "/icons/technologies/nextjs.svg",
       url: "/nextjs",
     },
     {
@@ -82,6 +85,7 @@ const frameworks = {
     {
       name: "Apollo",
       icon: "/icons/technologies/apollo.svg",
+      icon_light: "/icons/technologies/apollo_light.svg",
       url: "/apollo",
     },
     {
@@ -97,6 +101,7 @@ const frameworks = {
     {
       name: "ExpressJS",
       icon: "/icons/technologies/express.svg",
+      icon_light: "/icons/technologies/express_light.svg",
       url: "/express",
     },
     {
@@ -109,7 +114,7 @@ const frameworks = {
 const twoCol = [
   {
     content: (
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4 items-center lg:items-start mb-12 lg:mb-0">
         <div className="flex flex-col gap-1">
           <h5 className="text-base uppercase font-sans-display stretch-display font-bold text-foreground-orm-strong mb-1">
             Editor Integration
@@ -119,13 +124,14 @@ const twoCol = [
           </h2>
         </div>
         <p className="text-foreground-neutral-weak! text-base">
-          The best code is the code that writes itself. Prisma Client gives you a fantastic
-          autocomplete experience so you can move quickly and be sure you don't write an invalid
-          query. Our obsession with type safety means you can rest assured that your code works as
-          expected, every time.
+          The best code is the code that writes itself. Prisma Client gives you
+          a fantastic autocomplete experience so you can move quickly and be
+          sure you don't write an invalid query. Our obsession with type safety
+          means you can rest assured that your code works as expected, every
+          time.
         </p>
         <Button asChild variant="orm" size="3xl" className="w-fit">
-          <a href="/studio">Get started in 5 minutes</a>
+          <a href="https://www.prisma.io/studio">Get started in 5 minutes</a>
         </Button>
       </div>
     ),
@@ -140,7 +146,7 @@ const twoCol = [
   },
   {
     content: (
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4 items-center md:items-start md:text-left text-center mb-12 md:mb-0">
         <div className="flex flex-col gap-1">
           <h5 className="text-base uppercase font-sans-display stretch-display font-bold text-foreground-orm-strong mb-1">
             TypedSQL
@@ -150,12 +156,13 @@ const twoCol = [
           </h2>
         </div>
         <p className="text-foreground-neutral-weak! text-base">
-          Execute SQL queries directly against your database without losing the benefits of Prisma’s
-          type-checking and auto-completion. TypedSQL leverages the capabilities of Prisma Client to
-          write raw SQL queries that are type-checked at compile time.
+          Execute SQL queries directly against your database without losing the
+          benefits of Prisma’s type-checking and auto-completion. TypedSQL
+          leverages the capabilities of Prisma Client to write raw SQL queries
+          that are type-checked at compile time.
         </p>
         <Button asChild variant="orm" size="3xl" className="w-fit">
-          <a href="/typedsql">Learn more about TypedSQL</a>
+          <a href="https://www.prisma.io/typedsql">Learn more about TypedSQL</a>
         </Button>
       </div>
     ),
@@ -174,21 +181,22 @@ const twoCol = [
 export default function Client() {
   return (
     <main className="flex-1 w-screen bg-background-default">
-      <div className="hero relative w-full -mt-33 pt-70 pb-8 flex flex-col gap-8 px-4">
+      <div className="hero relative w-full -mt-33 pt-48 pb-8 flex flex-col gap-8 px-4">
         <div className="absolute inset-0 pointer-events-none z-1 overflow-hidden bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20" />
         <div className="flex flex-col gap-4 relative z-1">
           <h5 className="stretch-display font-sans-display mx-auto w-fit my-0 text-foreground-orm-strong uppercase">
             Prisma Client
           </h5>
-          <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
+          <h1 className="text-4xl md:text-5xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-300 mx-auto">
             Intuitive database client for TypeScript and Node.js
             <br />
             Database Migrations
           </h1>
         </div>
         <p className="max-w-200 w-full mx-auto text-center relative z-1">
-          The Prisma Client works seamlessly across languages and databases. Ship faster by writing
-          less SQL. Avoid mistakes with a fully type-safe API tailored specifically for your app.
+          The Prisma Client works seamlessly across languages and databases.
+          Ship faster by writing less SQL. Avoid mistakes with a fully type-safe
+          API tailored specifically for your app.
         </p>
       </div>
       <div className="px-4 relative z-1">
@@ -198,7 +206,7 @@ export default function Client() {
       </div>
       <div
         className={cn(
-          "-mb-12 px-4 relative",
+          "-mb-6 md:-mb-8 lg:-mb-12 px-4 relative",
           "before:absolute before:content-[''] before:inset-0 before:opacity-20",
           "before:bg-[linear-gradient(0deg,var(--color-foreground-orm-weak)_0%,var(--color-background-default)_100%)]",
         )}
@@ -233,7 +241,30 @@ export default function Client() {
                       size="4xl"
                       className="h-[75px]! w-[75px]! hover:bg-background-neutral-strong"
                     >
-                      <Image src={db.icon} alt={db.name} width={48} height={48} loading="lazy" />
+                      <div className="relative w-full h-full flex items-center justify-center">
+                        <Image
+                          src={db.icon}
+                          alt={db.name}
+                          fill
+                          className={cn(
+                            "contain",
+                            db.icon_light && "hidden dark:block",
+                          )}
+                          loading="lazy"
+                        />
+                        {db.icon_light && (
+                          <Image
+                            src={db.icon_light}
+                            alt={db.name}
+                            fill
+                            className={cn(
+                              "contain",
+                              db.icon_light && "block dark:hidden",
+                            )}
+                            loading="lazy"
+                          />
+                        )}
+                      </div>
                     </Action>
                   </Technology>
                 ))}
@@ -244,7 +275,9 @@ export default function Client() {
                 <h5 className="text-xl font-sans-display stretch-display font-bold md:w-min text-foreground-neutral">
                   {frameworks.title}
                 </h5>
-                <p className="text-base text-foreground-neutral-weak">{frameworks.description}</p>
+                <p className="text-base text-foreground-neutral-weak">
+                  {frameworks.description}
+                </p>
               </div>
               <div className="flex gap-1 flex-wrap">
                 {frameworks.list.map((fw) => (
@@ -254,7 +287,32 @@ export default function Client() {
                       size="4xl"
                       className="h-[75px]! w-[75px]! hover:bg-background-neutral-strong"
                     >
-                      <Image src={fw.icon} alt={fw.name} width={48} height={48} loading="lazy" />
+                      <div className="relative w-full h-full flex items-center justify-center">
+                        <Image
+                          src={fw.icon}
+                          alt={fw.name}
+                          width={48}
+                          height={48}
+                          className={cn(
+                            "contain",
+                            fw.icon_light && "hidden dark:block",
+                          )}
+                          loading="lazy"
+                        />
+                        {fw.icon_light && (
+                          <Image
+                            src={fw.icon_light}
+                            alt={fw.name}
+                            width={48}
+                            height={48}
+                            className={cn(
+                              "contain",
+                              fw.icon_light && "block dark:hidden",
+                            )}
+                            loading="lazy"
+                          />
+                        )}
+                      </div>
                     </Action>
                   </Technology>
                 ))}
@@ -263,11 +321,11 @@ export default function Client() {
             <div className="flex gap-4 mx-auto w-fit flex-wrap justify-center">
               <Button variant="default-strong" size="3xl">
                 Browse examples on GitHub
-                <i className="fa-brands fa-github" />
+                <i className="fa-brands fa-github ml-2" />
               </Button>
               <Button variant="orm" size="3xl">
                 Prisma in your stack
-                <i className="fa-regular fa-arrow-right" />
+                <i className="fa-regular fa-arrow-right ml-2" />
               </Button>
             </div>
           </div>
@@ -280,14 +338,15 @@ export default function Client() {
                 Visual database browser
               </h3>
               <p className="text-foreground-neutral-weak text-md mb-8">
-                Prisma Studio is the easiest way to explore and manipulate data in your Prisma
-                projects. Understand your data by browsing across tables, filter, paginate, traverse
-                relations and edit your data with safety.
+                Prisma Studio is the easiest way to explore and manipulate data
+                in your Prisma projects. Understand your data by browsing across
+                tables, filter, paginate, traverse relations and edit your data
+                with safety.
               </p>
               <Button asChild variant="orm" size="3xl" className="w-fit">
-                <a href="/studio">
+                <a href="https://www.prisma.io/studio">
                   Learn more about Prisma Studio
-                  <i className="fa-regular fa-arrow-right" />
+                  <i className="fa-regular fa-arrow-right ml-2" />
                 </a>
               </Button>
             </div>
@@ -299,14 +358,15 @@ export default function Client() {
                 Hassle-free migrations
               </h3>
               <p className="text-foreground-neutral-weak text-md mb-8">
-                Prisma Migrate auto-generates SQL migrations from your Prisma schema. These
-                migration files are fully customizable, giving you full control and ultimate
-                flexibility — from local development to production environments.
+                Prisma Migrate auto-generates SQL migrations from your Prisma
+                schema. These migration files are fully customizable, giving you
+                full control and ultimate flexibility — from local development
+                to production environments.
               </p>
               <Button asChild variant="orm" size="3xl" className="w-fit">
-                <a href="/migrate">
+                <a href="https://www.prisma.io/migrate">
                   Learn more about Prisma Migrate
-                  <i className="fa-regular fa-arrow-right" />
+                  <i className="fa-regular fa-arrow-right ml-2" />
                 </a>
               </Button>
             </div>

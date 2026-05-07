@@ -98,7 +98,10 @@ const ThemeImagePair = ({
 }: ThemeImagePairProps) => (
   <div className={wrapperClassName}>
     <Image
-      className={cn("hidden dark:block w-full h-auto", !noShadow && imageShadowClass)}
+      className={cn(
+        "hidden dark:block w-full h-auto",
+        !noShadow && imageShadowClass,
+      )}
       src={`${imageUrl}.svg`}
       alt={alt}
       width={width}
@@ -108,7 +111,10 @@ const ThemeImagePair = ({
       loading={loading}
     />
     <Image
-      className={cn("block dark:hidden w-full h-auto", !noShadow && imageShadowClass)}
+      className={cn(
+        "block dark:hidden w-full h-auto",
+        !noShadow && imageShadowClass,
+      )}
       src={`${imageUrl}_light.svg`}
       alt={alt}
       width={width}

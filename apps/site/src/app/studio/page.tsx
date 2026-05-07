@@ -132,7 +132,7 @@ export default function StudioPage() {
           </p>
 
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
-            <Button asChild variant="ppg" size="2xl">
+            <Button asChild variant="orm" size="2xl">
               <a href={CONSOLE_URL} target="_blank" rel="noopener noreferrer">
                 Explore Studio in Prisma Console
                 <i className="fa-regular fa-arrow-up-right" />
@@ -219,7 +219,7 @@ export default function StudioPage() {
               </p>
             </div>
 
-            <Button asChild variant="ppg" size="xl">
+            <Button asChild variant="orm" size="xl">
               <a href={CONSOLE_URL} target="_blank" rel="noopener noreferrer">
                 Explore Studio in Console
                 <i className="fa-regular fa-arrow-right" />

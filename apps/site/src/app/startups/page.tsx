@@ -72,8 +72,8 @@ export default function StartupsPage() {
   return (
     <main className="flex-1 w-full z-1 -mt-24 pt-24 relative legal-hero-gradient">
       {/* Hero */}
-      <div className="text-center px-4 pb-20 pt-44">
-        <div className="max-w-[748px] mx-auto">
+      <div className="text-center px-4 pb-20 pt-24">
+        <div className="max-w-[748px] mx-auto flex flex-col gap-4">
           <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
             Fuel your startup&apos;s success with Prisma
           </h1>
@@ -82,7 +82,7 @@ export default function StartupsPage() {
             experts, and have your database bill covered for a year and up to
             $10,000.
           </p>
-          <Button asChild variant="orm" size="3xl">
+          <Button asChild variant="orm" size="3xl" className="w-fit mx-auto">
             <a href="#contact-us">
               Join the program
               <i className="fa-regular fa-arrow-down" aria-hidden="true" />

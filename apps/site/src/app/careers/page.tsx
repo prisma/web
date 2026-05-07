@@ -227,7 +227,7 @@ export default function Careers() {
             className="object-cover object-bottom block dark:hidden"
           />
         </div>
-        <div className="content relative z-2 my-12 flex flex-col gap-8 mt-30 py-12">
+        <div className="content relative z-2 my-12 flex flex-col gap-8 mt-30 pb-12">
           <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
             Join Prisma
           </h1>

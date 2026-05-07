@@ -1,6 +1,7 @@
 import { createSoftwareApplicationStructuredData } from "@/lib/structured-data";
 import { createPageMetadata } from "@/lib/page-metadata";
 import { Action, Button, Separator } from "@prisma/eclipse";
+import { PageFooterCta } from "@/components/page-footer-cta";
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import { CardSection } from "@/components/homepage/card-section/card-section";
 import review from "../../data/homepage.json";
@@ -155,7 +156,7 @@ const twoCol_2 = [
           asChild
           variant="orm"
           size="xl"
-          className="w-fit mx-auto lg:w-full"
+          className="w-fit mx-auto md:mx-0"
         >
           <a href="https://benchmarks.prisma.io">
             Explore Benchmarks
@@ -364,17 +365,17 @@ export default function ORM() {
                 >
                   <Image src={stat.icon} alt={stat.title} fill loading="lazy" />
                 </Action>
-                <h4 className="text-2xl text-center md:text-left font-sans-display stretch-display text-foreground-neutral">
+                <h4 className="text-2xl text-left font-sans-display stretch-display text-foreground-neutral">
                   {stat.title}
                 </h4>
-                <p className="text-center md:text-left text-foreground-neutral-weak">
+                <p className="text-left text-foreground-neutral-weak">
                   {stat.description}
                 </p>
                 <Button
                   asChild
                   variant="default-strong"
                   size="xl"
-                  className="w-fit mx-auto md:mx-0"
+                  className="w-fit"
                 >
                   <a href={stat.btn.url}>
                     {stat.btn.label}{" "}
@@ -435,38 +436,16 @@ export default function ORM() {
           </div>
         </div>
       )}
-      <div className="bg-[url('/illustrations/homepage/footer_grid.svg')] bg-contain bg-center before:inset-x-30 before:inset-y-[45%] before:absolute relative before:content-[''] before:pointer-events-none before:-z-1 rounded-full before:bg-background-orm-reverse before:blur-[100px]">
-        <div className="my-12 p-12">
-          <div className="flex flex-col mx-auto w-fit items-center justify-center gap-8">
-            <div className="flex flex-col items-center text-center gap-4">
-              <h2 className="text-3xl text-foreground-neutral font-sans-display stretch-display">
-                Ready to get started?
-              </h2>
-              <p className="text-foreground-neutral-weak max-w-121">
-                Start from scratch, add Prisma ORM to your existing project, or
-                explore how to build an app using your favorite framework.
-              </p>
-            </div>
-            <div className="flex flex-col md:flex-row gap-6">
-              <Button asChild variant="orm" size="2xl">
-                <a href={prismaPostgresQuickstartUrl}>
-                  Try Prisma ORM
-                  <i className="fa-regular fa-arrow-right" />
-                </a>
-              </Button>
-              <Button asChild variant="default-strong" size="2xl">
-                <a href="https://www.prisma.io/docs">
-                  Read the docs
-                  <i className="fa-regular fa-arrow-right" />
-                </a>
-              </Button>
-            </div>
-            <h6 className="mb-0! -mt-4 text-foreground-neutral-weaker text-xs">
-              Free to get started, no credit card needed.
-            </h6>
-          </div>
-        </div>
-      </div>
+      <PageFooterCta
+        color="orm"
+        title="Ready to get started?"
+        description="Start from scratch, add Prisma ORM to your existing project, or explore how to build an app using your favorite framework."
+        btns={[
+          { url: prismaPostgresQuickstartUrl, text: "Try Prisma ORM" },
+          { url: "https://www.prisma.io/docs", text: "Read the docs" },
+        ]}
+        footer="Free to get started, no credit card needed."
+      />
     </main>
   );
 }

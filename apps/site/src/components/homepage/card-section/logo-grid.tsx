@@ -96,29 +96,29 @@ interface LogoGridProps {
 // ============================================================================
 
 const LogoImage = memo(({ logo, size }: { logo: Logo; size: number }) => {
-  const lightImageUrl = logo.mobileImageUrl ?? logo.imageUrl;
-  const darkImageUrl = logo.imageUrlLight ?? logo.imageUrl;
+  const lightImageUrl = logo.mobileImageUrl ?? logo.imageUrlLight;
+  const darkImageUrl = logo.imageUrl;
   const hasThemeVariant = lightImageUrl !== darkImageUrl;
   const imageClassName = "w-full aspect-square rounded-lg object-contain";
 
   return (
     <>
-      <Image
-        src={lightImageUrl}
-        alt={logo.alt}
-        width={size}
-        height={size}
-        className={cn(imageClassName, hasThemeVariant && "block dark:hidden")}
-      />
-      {hasThemeVariant && (
+      {lightImageUrl && (
         <Image
-          src={darkImageUrl}
+          src={lightImageUrl}
           alt={logo.alt}
           width={size}
           height={size}
-          className={cn(imageClassName, "hidden dark:block")}
+          className={cn(imageClassName, "block dark:hidden")}
         />
       )}
+      <Image
+        src={darkImageUrl}
+        alt={logo.alt}
+        width={size}
+        height={size}
+        className={cn(imageClassName, lightImageUrl && "hidden dark:block")}
+      />
     </>
   );
 });

@@ -1,6 +1,11 @@
 "use client";
-import { Button, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@prisma/eclipse";
-import { useState } from "react";
+import {
+  Button,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@prisma/eclipse";
 
 export const Technology = ({
   children,
