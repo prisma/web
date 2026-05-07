@@ -24,10 +24,10 @@ export function McpHeroSection({
   return (
     <section className="relative overflow-hidden px-4 pb-12 pt-20 md:pb-16 md:pt-30">
       <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-ppg)_0%,var(--color-background-default)_100%)] opacity-20" />
-      <div className="relative mx-auto flex w-full max-w-5xl flex-col items-center gap-10 md:gap-16 my-36">
+      <div className="relative mx-auto flex w-full max-w-5xl flex-col items-center gap-10 md:gap-16 my-10">
         <div className="flex w-full flex-col items-center gap-8 md:gap-15">
           <div className="flex w-full flex-col items-center gap-8 md:gap-10">
-            <p className="flex items-center justify-center gap-2 stretch-display font-sans-display text-base font-black uppercase tracking-[1.6px] text-foreground-ppg">
+            <p className="flex items-center justify-center gap-2 type-title-sm text-foreground-ppg">
               <i className="fa-solid fa-message-code text-[16px]" aria-hidden />
               Prisma MCP Server
             </p>
@@ -43,7 +43,10 @@ export function McpHeroSection({
                       />
                     </span>
                     <span className="hidden sm:inline">
-                      <McpTypeText text="Your Database Workflow, Powered by AI" speed={14} />
+                      <McpTypeText
+                        text="Your Database Workflow, Powered by AI"
+                        speed={14}
+                      />
                     </span>
                     <span className="mcp-type-cursor text-foreground-neutral-weaker dark:text-foreground-neutral-weak">
                       _
@@ -80,7 +83,10 @@ export function McpHeroSection({
           <Button asChild variant={"ppg"} size={"3xl"} className="gap-3">
             <a href={docsHref}>
               Add MCP Server
-              <i className="fa-regular fa-arrow-right shrink-0 text-[16px]" aria-hidden />
+              <i
+                className="fa-regular fa-arrow-right shrink-0 text-[16px]"
+                aria-hidden
+              />
             </a>
           </Button>
         </div>
@@ -92,7 +98,9 @@ export function McpHeroSection({
                 <i className={`${icon} ${heroFeatureIconClass}`} aria-hidden />
               </div>
               <p className="font-mono text-sm font-medium leading-5 text-foreground-neutral-weak sm:min-w-[175px] dark:text-white/70">
-                <span className="sm:hidden">{mobileText ?? `${line1} ${line2}`}</span>
+                <span className="sm:hidden">
+                  {mobileText ?? `${line1} ${line2}`}
+                </span>
                 <span className="hidden sm:inline">
                   {line1}
                   <br />
