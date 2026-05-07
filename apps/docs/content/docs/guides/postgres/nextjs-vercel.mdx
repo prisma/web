@@ -1,0 +1,254 @@
+---
+title: Next.js on Vercel
+description: Add Prisma Postgres to a Next.js project and deploy it to Vercel with no pgBouncer setup or connection string juggling.
+url: /guides/postgres/nextjs-vercel
+metaTitle: How to use Prisma Postgres with Next.js on Vercel
+metaDescription: Learn how to add Prisma Postgres to a Next.js app and deploy it to Vercel. Prisma Postgres includes built-in connection pooling — no pgBouncer setup, no cold-start connection issues.
+---
+
+## Introduction
+
+This guide walks you through adding Prisma Postgres to a Next.js app and deploying it to Vercel.
+
+The main reason Prisma Postgres works well here: it includes connection pooling out of the box. Vercel scales your serverless functions automatically, and each new function instance opens a database connection. With a traditional Postgres setup, that's how you hit connection limits in production. Prisma Postgres handles the pooling for you, so you don't need to configure pgBouncer or maintain a separate pooler.
+
+You get a single `DATABASE_URL` that works in local dev, in preview deployments, and in production.
+
+If you'd rather not manage the connection string at all, the [Vercel Marketplace integration](/guides/postgres/vercel) sets `DATABASE_URL` automatically across all your environments.
+
+## Prerequisites
+
+- [Node.js](https://nodejs.org) v20.19+, v22.12+, or v24.0+
+- A [Vercel](https://vercel.com) account
+
+## 1. Create a Next.js app
+
+Run `create-next-app` to scaffold a new project:
+
+```npm
+npx create-next-app@latest my-app
+```
+
+When prompted, select the defaults (TypeScript, ESLint, Tailwind CSS, App Router, Turbopack). Then navigate into the project:
+
+```bash
+cd my-app
+```
+
+## 2. Add Prisma Postgres
+
+### Option A: Quickstart with a template
+
+The fastest way to get started is to scaffold a new project with Prisma ORM and Prisma Postgres already wired up:
+
+```npm
+npm create prisma@latest -- --template next
+```
+
+This sets up your schema, generates the client, and creates a Prisma Postgres database in one command. Skip to [step 5](#5-query-from-a-server-component) if you use this path.
+
+### Option B: Add to an existing project
+
+Install the Prisma CLI and client:
+
+```npm
+npm install prisma tsx --save-dev
+```
+
+```npm
+npm install @prisma/client @prisma/adapter-pg dotenv pg
+```
+
+Initialize Prisma:
+
+```npm
+npx prisma init --output ../app/generated/prisma
+```
+
+This creates a `prisma/schema.prisma` file, a `prisma.config.ts` file, and a `.env` file with a placeholder `DATABASE_URL`.
+
+Now create a Prisma Postgres database and replace the `DATABASE_URL` in your `.env` file with the connection string from the output:
+
+```npm
+npx create-db
+```
+
+:::info
+
+The `DATABASE_URL` from Prisma Postgres already includes connection pooling. You do not need to add a separate pooler URL or configure pgBouncer.
+
+:::
+
+## 3. Define your Prisma schema
+
+Open `prisma/schema.prisma` and add a `User` model:
+
+```prisma title="prisma/schema.prisma"
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User { // [!code ++]
+  id    Int     @id @default(autoincrement()) // [!code ++]
+  email String  @unique // [!code ++]
+  name  String? // [!code ++]
+} // [!code ++]
+```
+
+## 4. Run migrations and generate Prisma Client
+
+### 4.1. Configure `prisma.config.ts`
+
+Update `prisma.config.ts` to load your `.env` file:
+
+```typescript title="prisma.config.ts"
+import "dotenv/config"; // [!code ++]
+import { defineConfig, env } from "prisma/config";
+
+export default defineConfig({
+  schema: "prisma/schema.prisma",
+  migrations: {
+    path: "prisma/migrations",
+  },
+  datasource: {
+    url: env("DATABASE_URL"),
+  },
+});
+```
+
+### 4.2. Run migrations
+
+Create the database tables:
+
+```npm
+npx prisma migrate dev --name init
+```
+
+### 4.3. Generate Prisma Client
+
+```npm
+npx prisma generate
+```
+
+## 5. Query from a Server Component
+
+### 5.1. Create a shared Prisma Client instance
+
+Create `lib/prisma.ts` with the global singleton pattern to prevent multiple client instances during Next.js hot reloads:
+
+```typescript title="lib/prisma.ts"
+import { PrismaClient } from "../app/generated/prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+
+const globalForPrisma = global as unknown as { prisma: PrismaClient };
+
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL!,
+});
+
+const prisma =
+  globalForPrisma.prisma || new PrismaClient({ adapter });
+
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+
+export default prisma;
+```
+
+### 5.2. Use it in a Server Component
+
+Replace the contents of `app/page.tsx`:
+
+```tsx title="app/page.tsx"
+import prisma from "@/lib/prisma";
+
+export default async function Home() {
+  const users = await prisma.user.findMany();
+
+  return (
+    <main>
+      <h1>Users</h1>
+      <ul>
+        {users.map((user) => (
+          <li key={user.id}>{user.name ?? user.email}</li>
+        ))}
+      </ul>
+    </main>
+  );
+}
+```
+
+You can query from a Route Handler in the same way:
+
+```typescript title="app/api/users/route.ts"
+import { NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
+
+export async function GET() {
+  const users = await prisma.user.findMany();
+  return NextResponse.json(users);
+}
+```
+
+## 6. Deploy to Vercel
+
+### 6.1. Add a `postinstall` script
+
+Vercel runs `npm install` (or the equivalent) on every deploy. Add a `postinstall` script to ensure Prisma Client is generated after dependencies are installed:
+
+```json title="package.json"
+{
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "postinstall": "prisma generate", // [!code ++]
+    "start": "next start",
+    "lint": "next lint"
+  }
+}
+```
+
+### 6.2. Deploy
+
+Install the Vercel CLI and log in:
+
+```npm
+npm install -g vercel
+```
+
+```bash
+vercel login
+```
+
+Then deploy:
+
+```bash
+vercel --prod
+```
+
+### 6.3. Set the `DATABASE_URL` environment variable
+
+After deploying, add your `DATABASE_URL` to the Vercel project's environment variables:
+
+1. Open your project in the [Vercel dashboard](https://vercel.com/dashboard)
+2. Go to **Settings → Environment Variables**
+3. Add `DATABASE_URL` with your Prisma Postgres connection string
+
+Redeploy after saving for the variable to take effect.
+
+:::info
+
+If you use the [Vercel Marketplace integration for Prisma Postgres](/guides/postgres/vercel), the `DATABASE_URL` is set automatically for all environments — no manual copy-paste required.
+
+:::
+
+## Next steps
+
+- [Vercel Marketplace integration](/guides/postgres/vercel) — create and connect Prisma Postgres databases without leaving the Vercel dashboard
+- [Connection pooling](/postgres/database/connection-pooling) — learn how Prisma Postgres handles pooling internally
+- [Prisma Studio](/studio) — inspect and edit your data visually
+- [Next.js guide](/guides/frameworks/nextjs) — covers seeding, detail pages, forms, and more
