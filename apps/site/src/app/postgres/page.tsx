@@ -35,7 +35,7 @@ const twoCol = [
   {
     content: (
       <>
-        <h2 className="text-foreground-neutral text-xl font-black! font-sans-display mt-0 mb-4">
+        <h2 className="text-foreground-neutral type-title-xl mt-0 mb-4">
           The database <br />
           you already know
         </h2>
@@ -60,7 +60,7 @@ const twoCol = [
   {
     content: (
       <>
-        <h2 className="text-foreground-neutral text-xl font-black! font-sans-display mt-0 mb-4">
+        <h2 className="text-foreground-neutral type-title-xl mt-0 mb-4">
           Instant provisioning with
           <br />
           zero configuration
@@ -85,7 +85,7 @@ const twoCol = [
   {
     content: (
       <>
-        <h2 className="text-foreground-neutral text-xl font-black! font-sans-display mt-0 mb-4">
+        <h2 className="text-foreground-neutral type-title-xl mt-0 mb-4">
           Production-ready <br />
           from day one
         </h2>
@@ -119,12 +119,15 @@ export const metadata = createPageMetadata({
 export default async function SiteHome() {
   return (
     <main className="flex-1 w-full z-1 bg-background-default">
-      <JsonLd id="postgres-software-application" data={postgresStructuredData} />
+      <JsonLd
+        id="postgres-software-application"
+        data={postgresStructuredData}
+      />
       <div className="hero -mt-24 pt-40 flex items-end justify-center px-4 relative">
         <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-ppg)_0%,var(--color-background-default)_100%)] opacity-20" />
         <div className="content relative z-2 flex flex-col gap-8">
           <div className="flex flex-col gap-4 items-center text-center">
-            <div className="flex items-center gap-2 text-foreground-ppg-weak uppercase tracking-widest text-sm font-sans-display font-black">
+            <div className="flex items-center gap-2 text-foreground-ppg-weak type-title-sm">
               <i className="fa-solid fa-chart-pyramid" />
               <span>Prisma Postgres</span>
             </div>
