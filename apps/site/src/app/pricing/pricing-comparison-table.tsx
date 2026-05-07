@@ -9,7 +9,11 @@ import {
   TableHeader,
   TableRow,
 } from "@prisma/eclipse";
-import { type ComparisonCell, type Symbol, comparisonSections } from "./pricing-data";
+import {
+  type ComparisonCell,
+  type Symbol,
+  comparisonSections,
+} from "./pricing-data";
 
 function renderCell(cell: ComparisonCell, currency: Symbol): string {
   if (typeof cell === "string") return cell;
@@ -22,13 +26,11 @@ export function PricingComparisonTable({ currency }: { currency: Symbol }) {
       <Table className="table-fixed min-w-[700px]">
         <TableHeader className="[&_tr]:border-b-0">
           <TableRow className="hover:bg-transparent border-b border-background-neutral-reverse bg-background-neutral-weak">
-            <TableHead className="bg-background-neutral-weak text-base uppercase tracking-[1.6px] font-sans-display [font-variation-settings:'wght'_800] text-background-neutral-weak">
-              {comparisonSections[0]?.title}
-            </TableHead>
+            <TableHead className="bg-background-neutral-weak"></TableHead>
             {["Free", "Starter", "Pro", "Business"].map((label) => (
               <TableHead
                 key={label}
-                className="bg-background-neutral-weak text-left text-background-neutral-weak"
+                className="bg-background-neutral-weak text-left text-background-neutral-weak py-3!"
               >
                 <Badge
                   size="lg"
@@ -53,7 +55,7 @@ export function PricingComparisonTable({ currency }: { currency: Symbol }) {
             <TableRow className="hover:bg-transparent border-t border-b border-background-neutral-reverse-weak bg-background-neutral-weak">
               <TableCell
                 colSpan={5}
-                className="bg-background-neutral-weak text-base uppercase tracking-[1.6px] font-sans-display [font-variation-settings:'wght'_800] text-foreground-neutral"
+                className="bg-background-neutral-weak type-title-sm text-foreground-neutral"
               >
                 {section.title}
               </TableCell>
@@ -66,7 +68,7 @@ export function PricingComparisonTable({ currency }: { currency: Symbol }) {
                   key={label}
                   className="hover:bg-transparent border-b border-background-neutral-reverse-weak"
                 >
-                  <TableCell className="font-semibold text-sm text-foreground-neutral">
+                  <TableCell className="type-text-sm text-foreground-neutral">
                     {label}
                   </TableCell>
                   {row.slice(1).map((cell, valueIndex) => (

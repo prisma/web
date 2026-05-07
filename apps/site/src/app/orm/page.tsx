@@ -76,9 +76,7 @@ const twoCol = [
     content: (
       <>
         <div className="flex flex-col gap-1">
-          <h5 className="font-sans-display text-foreground-orm uppercase stretch-display">
-            Why Prisma ORM
-          </h5>
+          <h5 className="text-foreground-orm type-title-sm">Why Prisma ORM</h5>
           <h2 className="text-foreground-neutral stretch-display text-3xl font-sans-display mt-0 mb-4">
             Delightful DB workflows
           </h2>
@@ -140,7 +138,7 @@ const twoCol_2 = [
     content: (
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
-          <h5 className="font-sans-display text-foreground-orm uppercase stretch-display">
+          <h5 className="text-foreground-orm type-title-sm">
             Prisma Benchmarks
           </h5>
           <h2 className="text-foreground-neutral stretch-display text-3xl font-sans-display">
@@ -180,9 +178,7 @@ const twoCol_2 = [
     content: (
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
-          <h5 className="font-sans-display text-foreground-orm uppercase stretch-display">
-            Prisma Client
-          </h5>
+          <h5 className="text-foreground-orm type-title-sm">Prisma Client</h5>
           <h2 className="text-foreground-neutral stretch-display text-3xl font-sans-display">
             Type-safe database client
           </h2>
@@ -297,7 +293,7 @@ export default function ORM() {
         <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20" />
         <div className="content relative z-2 flex flex-col gap-8">
           <div className="flex flex-col gap-4 items-center text-center">
-            <div className="flex items-center gap-2 text-foreground-orm-weak uppercase tracking-widest text-sm font-sans-display font-black">
+            <div className="flex items-center gap-2 text-foreground-orm-weak type-title-sm">
               <i className="fa-solid fa-database" />
               <span>Prisma ORM</span>
             </div>

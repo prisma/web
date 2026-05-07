@@ -17,7 +17,7 @@ export default async function Page() {
         <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-ppg)_0%,var(--color-background-default)_100%)] opacity-20" />
         <div className="content relative z-2 flex flex-col gap-8 max-w-308 w-full">
           <div className="flex flex-col gap-4 items-center text-center">
-            <div className="flex items-center gap-2 text-foreground-ppg-weak uppercase tracking-widest text-sm font-sans-display font-black">
+            <div className="flex items-center gap-2 text-foreground-ppg-weak type-title-sm">
               <span>Query insights</span>
               <i className="fa-solid fa-brain-circuit" aria-hidden="true"></i>
             </div>

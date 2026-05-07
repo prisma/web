@@ -4,7 +4,11 @@ import { Layers } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
-import { stackCategories, type StackCategory, type StackLinkItem } from "./stack-data";
+import {
+  stackCategories,
+  type StackCategory,
+  type StackLinkItem,
+} from "./stack-data";
 
 const title = "Prisma in your stack | Prisma";
 const description =
@@ -24,7 +28,7 @@ export default function StackPage() {
         <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-ppg)_0%,var(--color-background-default)_100%)] opacity-20" />
         <div className="content relative z-2 my-12 py-12 flex flex-col gap-8">
           <div className="flex flex-col gap-4 items-center text-center">
-            <div className="flex items-center gap-2 text-foreground-ppg-weak uppercase tracking-widest text-sm font-sans-display font-black">
+            <div className="flex items-center gap-2 text-foreground-ppg-weak type-title-sm">
               <i className="fa-regular fa-layer-group" />
               <span>Prisma Stack</span>
             </div>
@@ -43,7 +47,9 @@ export default function StackPage() {
               <h3 className="m-0 text-foreground-neutral text-3xl font-sans-display [font-variation-settings:'wght'_900]">
                 {category.title}
               </h3>
-              <p className="m-0 text-foreground-neutral-weak">{category.description}</p>
+              <p className="m-0 text-foreground-neutral-weak">
+                {category.description}
+              </p>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {category.items.map((item: StackLinkItem) => (
                   <Link key={item.id} href={item.href} className="group">

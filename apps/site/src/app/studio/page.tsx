@@ -115,7 +115,7 @@ export default function StudioPage() {
 
         <div className="content relative z-2 flex w-full max-w-[1200px] flex-col gap-8">
           <div className="flex flex-col gap-4 items-center text-center">
-            <div className="flex items-center gap-2 text-foreground-orm-weak uppercase tracking-widest text-sm font-sans-display font-black">
+            <div className="flex items-center gap-2 text-foreground-orm-weak type-title-sm">
               <i className="fa-regular fa-table" aria-hidden="true" />
               <span>Prisma Studio</span>
             </div>
@@ -132,7 +132,7 @@ export default function StudioPage() {
           </p>
 
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
-            <Button asChild variant="ppg" size="2xl">
+            <Button asChild variant="orm" size="2xl">
               <a href={CONSOLE_URL} target="_blank" rel="noopener noreferrer">
                 Explore Studio in Prisma Console
                 <i className="fa-regular fa-arrow-up-right" />
@@ -172,7 +172,7 @@ export default function StudioPage() {
                   />
                 </div>
                 <div>
-                  <h2 className="m-0 text-xl leading-7 text-foreground-neutral font-sans-display [font-variation-settings:'wght'_800]">
+                  <h2 className="m-0 text-foreground-neutral type-title-lg">
                     {card.title}
                   </h2>
                   <p className="m-0 mt-3 text-base leading-6 text-foreground-neutral-weak">
@@ -209,7 +209,7 @@ export default function StudioPage() {
         <div className="mx-auto flex max-w-[683px] flex-col gap-12">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div className="max-w-[420px]">
-              <h2 className="m-0 text-4xl text-foreground-neutral font-sans-display [font-variation-settings:'wght'_900]">
+              <h2 className="m-0 text-foreground-neutral type-title-3xl">
                 See how Studio works
               </h2>
               <p className="m-0 mt-4 text-base leading-6 text-foreground-neutral-weak">
@@ -219,7 +219,7 @@ export default function StudioPage() {
               </p>
             </div>
 
-            <Button asChild variant="ppg" size="xl">
+            <Button asChild variant="orm" size="xl">
               <a href={CONSOLE_URL} target="_blank" rel="noopener noreferrer">
                 Explore Studio in Console
                 <i className="fa-regular fa-arrow-right" />
@@ -247,7 +247,7 @@ export default function StudioPage() {
           <div className="p-4 md:p-8">
             <div className="mx-auto flex max-w-[580px] flex-col items-center gap-8 text-center">
               <div>
-                <h2 className="m-0 text-4xl text-foreground-neutral font-sans-display [font-variation-settings:'wght'_900]">
+                <h2 className="m-0 text-foreground-neutral type-title-3xl">
                   Try it out!
                 </h2>
                 <p className="m-0 mt-4 text-base leading-6 text-foreground-neutral-weak">
@@ -306,7 +306,7 @@ function FeatureRow({
     >
       <div className="max-w-[546px]">
         <SectionEyebrow>{eyebrow}</SectionEyebrow>
-        <h2 className="m-0 mt-2 text-4xl leading-10 text-foreground-neutral font-sans-display [font-variation-settings:'wght'_900]">
+        <h2 className="m-0 mt-2 text-foreground-neutral type-title-3xl">
           {title}
         </h2>
         <p className="m-0 mt-4 text-base leading-8 text-foreground-neutral-weak">
@@ -350,7 +350,7 @@ function StudioFeatureImage({
 
 function SectionEyebrow({ children }: { children: React.ReactNode }) {
   return (
-    <p className="m-0 text-base uppercase tracking-[1.6px] text-foreground-orm-strong font-sans-display [font-variation-settings:'wght'_800]">
+    <p className="m-0 text-base text-foreground-orm type-title-sm">
       {children}
     </p>
   );
