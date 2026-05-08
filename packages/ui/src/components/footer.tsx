@@ -66,6 +66,7 @@ interface FooterProps {
   lightTheme?: boolean;
   absoluteLinks?: boolean;
   newsletterComponent?: any;
+  basePath?: string;
 }
 
 const Footer = ({
@@ -73,6 +74,7 @@ const Footer = ({
   darker = false,
   absoluteLinks = false,
   color = "ppg",
+  basePath = "",
 }: FooterProps) => {
   return (
     <footer className="z-1 bg-background-default w-screen overflow-x-hidden overflow-y-visible max-w-full">
@@ -215,7 +217,7 @@ const Footer = ({
                 rel="noopener noreferrer"
                 aria-label="GDPR Compliance – Prisma Trust"
               >
-                {gdpr}
+                {gdpr(basePath)}
               </a>
               <a
                 href="https://trust.prisma.io/"
@@ -223,7 +225,7 @@ const Footer = ({
                 rel="noopener noreferrer"
                 aria-label="HIPAA Compliance – Prisma Trust"
               >
-                {hipaa}
+                {hipaa(basePath)}
               </a>
               <a
                 href="https://trust.prisma.io/"
@@ -231,7 +233,7 @@ const Footer = ({
                 rel="noopener noreferrer"
                 aria-label="ISO 27001 – Prisma Trust"
               >
-                {iso27}
+                {iso27(basePath)}
               </a>
               <a
                 href="https://trust.prisma.io/"
@@ -239,7 +241,7 @@ const Footer = ({
                 rel="noopener noreferrer"
                 aria-label="SOC 2 – Prisma Trust"
               >
-                {soc2}
+                {soc2(basePath)}
               </a>
             </div>
             <ThemeToggle
