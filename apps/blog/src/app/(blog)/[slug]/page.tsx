@@ -16,6 +16,7 @@ import {
 } from "@/lib/url";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { cn } from "@prisma-docs/ui/lib/cn";
 
 interface TOCItem {
   title: string;
@@ -118,7 +119,7 @@ function getBlogPostingJsonLd(
       logo: {
         "@type": "ImageObject",
         url: "https://www.prisma.io/logo.png",
-      }
+      },
     },
   };
 
@@ -177,7 +178,7 @@ export default async function Page(props: {
           >
             ← Back to Blog
           </Link>
-          <h1 className="mt-3 mb-8 font-bold max-md:text-3xl md:text-5xl   stretch-display font-sans-display text-foreground-neutral">
+          <h1 className="mt-3 mb-8 type-title-5xl text-foreground-neutral">
             {page.data.title}
           </h1>
           <div className="text-sm flex gap-2 items-center text-foreground-neutral mb-4">
@@ -222,6 +223,20 @@ export default async function Page(props: {
             <MDX
               components={getMDXComponents({
                 a: createRelativeLink(blog, page),
+                h2: (props) => (
+                  <h2
+                    className="type-title-2xl flex scroll-m-28 flex-row items-center gap-2 hover:[&>i]:opacity-100"
+                    id={props.children.toLowerCase().replaceAll(" ", "-")}
+                  >
+                    <a
+                      data-card
+                      href={`#${props.children.toLowerCase().replaceAll(" ", "-")}`}
+                    >
+                      {props.children}
+                    </a>
+                    <i className="fa-regular text-lg! fa-link shrink-0 text-fd-muted-foreground opacity-0 transition-opacity" />
+                  </h2>
+                ),
               })}
             />
           </div>

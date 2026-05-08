@@ -198,7 +198,9 @@ const securityHeaders = [
   },
 ];
 
-const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0.1,192.168.1.48")
+const allowedDevOrigins = (
+  process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0.1,192.168.1.48"
+)
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
@@ -210,13 +212,11 @@ const config = {
     const tagSlugs = [
       "ai",
       "announcement",
-      "data-platform",
+      "platform",
       "education",
       "orm",
       "prisma-postgres",
-      "release",
-      "serverless",
-      "user-success-story",
+      "case-study",
     ];
 
     return [

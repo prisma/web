@@ -1,7 +1,14 @@
 import remarkDirective from "remark-directive";
-import { remarkDirectiveAdmonition, remarkMdxFiles } from "fumadocs-core/mdx-plugins";
+import {
+  remarkDirectiveAdmonition,
+  remarkMdxFiles,
+} from "fumadocs-core/mdx-plugins";
 import { remarkImage } from "fumadocs-core/mdx-plugins";
-import { defineCollections, defineConfig, frontmatterSchema } from "fumadocs-mdx/config";
+import {
+  defineCollections,
+  defineConfig,
+  frontmatterSchema,
+} from "fumadocs-mdx/config";
 import lastModified from "fumadocs-mdx/plugins/last-modified";
 import { z } from "zod";
 import convert from "npm-to-yarn";
@@ -28,12 +35,10 @@ export const blogPosts = defineCollections({
           "ai",
           "studio",
           "announcement",
-          "data-platform",
+          "platform",
           "orm",
-          "serverless",
-          "release",
           "education",
-          "user-success-story",
+          "case-study",
         ]),
       )
       .optional(),
@@ -61,20 +66,26 @@ export default defineConfig({
       // Custom package managers to add --bun flag for bunx commands
       packageManagers: [
         {
-          command: (cmd: string) => convert(cmd.replace(/^npm init -y$/, "npm init"), "npm"),
+          command: (cmd: string) =>
+            convert(cmd.replace(/^npm init -y$/, "npm init"), "npm"),
           name: "npm",
         },
         {
-          command: (cmd: string) => convert(cmd.replace(/^npm init -y$/, "npm init"), "pnpm"),
+          command: (cmd: string) =>
+            convert(cmd.replace(/^npm init -y$/, "npm init"), "pnpm"),
           name: "pnpm",
         },
         {
-          command: (cmd: string) => convert(cmd.replace(/^npm init -y$/, "npm init"), "yarn"),
+          command: (cmd: string) =>
+            convert(cmd.replace(/^npm init -y$/, "npm init"), "yarn"),
           name: "yarn",
         },
         {
           command: (cmd: string) => {
-            const converted = convert(cmd.replace(/^npm init -y$/, "npm init"), "bun");
+            const converted = convert(
+              cmd.replace(/^npm init -y$/, "npm init"),
+              "bun",
+            );
             if (!converted) return undefined;
             return converted.replace(/^bun x /, "bunx --bun ");
           },
