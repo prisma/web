@@ -234,10 +234,19 @@ export default async function Page(props: {
               components={getMDXComponents({
                 a: createRelativeLink(blog, page),
                 h2: (props) => {
-                  const final_id = extractText(props.children)
-                    .toLowerCase()
-                    .replaceAll(" ", "-")
-                    .replace(/[^a-z0-9-]/g, "");
+                  const providedId =
+                    typeof (props as { id?: unknown }).id === "string"
+                      ? ((props as { id?: string }).id ?? "")
+                      : "";
+                  const final_id =
+                    providedId ||
+                    extractText(props.children)
+                      .trim()
+                      .toLowerCase()
+                      .replace(/\s+/g, "-")
+                      .replace(/[^a-z0-9-]/g, "")
+                      .replace(/-+/g, "-")
+                      .replace(/^-|-$/g, "");
                   return (
                     <h2
                       className="type-title-2xl flex scroll-m-28 flex-row items-center gap-2 hover:[&>i]:opacity-100"

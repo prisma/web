@@ -116,7 +116,6 @@ const LogoImage = memo(({ logo, size }: { logo: Logo; size: number }) => {
           className={cn(imageClassName, "block dark:hidden")}
         />
       )}
-      {console.log(lightImageUrl, darkImageUrl, logo)}
       <Image
         src={darkImageUrl}
         alt={logo.alt}
