@@ -293,7 +293,7 @@ export default function ORM() {
         <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20" />
         <div className="content relative z-2 flex flex-col gap-8">
           <div className="flex flex-col gap-4 items-center text-center">
-            <div className="flex items-center gap-2 text-foreground-orm-weak type-title-sm">
+            <div className="flex items-center gap-2 text-foreground-orm type-title-sm">
               <i className="fa-solid fa-database" />
               <span>Prisma ORM</span>
             </div>
