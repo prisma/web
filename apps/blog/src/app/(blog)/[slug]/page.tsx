@@ -223,20 +223,23 @@ export default async function Page(props: {
             <MDX
               components={getMDXComponents({
                 a: createRelativeLink(blog, page),
-                h2: (props) => (
-                  <h2
-                    className="type-title-2xl flex scroll-m-28 flex-row items-center gap-2 hover:[&>i]:opacity-100"
-                    id={props.children.toLowerCase().replaceAll(" ", "-")}
-                  >
-                    <a
-                      data-card
-                      href={`#${props.children.toLowerCase().replaceAll(" ", "-")}`}
+                h2: (props) => {
+                  const final_id = props.children
+                    .toLowerCase()
+                    .replaceAll(" ", "-")
+                    .replace(/[^a-z0-9-]/g, "");
+                  return (
+                    <h2
+                      className="type-title-2xl flex scroll-m-28 flex-row items-center gap-2 hover:[&>i]:opacity-100"
+                      id={final_id}
                     >
-                      {props.children}
-                    </a>
-                    <i className="fa-regular text-lg! fa-link shrink-0 text-fd-muted-foreground opacity-0 transition-opacity" />
-                  </h2>
-                ),
+                      <a data-card href={`#${final_id}`}>
+                        {props.children}
+                      </a>
+                      <i className="fa-regular text-lg! fa-link shrink-0 text-fd-muted-foreground opacity-0 transition-opacity" />
+                    </h2>
+                  );
+                },
               })}
             />
           </div>
