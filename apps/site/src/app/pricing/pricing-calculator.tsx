@@ -512,7 +512,7 @@ export function PricingCalculator({ currency }: { currency: Symbol }) {
               Pricing Calculator
             </h2>
 
-            <div className="flex flex-col gap-3 lg:items-end">
+            <div className="flex flex-col sm:flex-row gap-3 lg:items-end">
               <div className="text-base font-semibold text-foreground-neutral">
                 Quick Start Presets
               </div>
