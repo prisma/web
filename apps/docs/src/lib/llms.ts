@@ -121,6 +121,26 @@ export const commonQueries: LLMsLink[] = [
     description:
       "Compare Prisma plans and pricing for Prisma Postgres and Prisma platform features.",
   },
+  {
+    title: "Use Prisma Postgres with Next.js",
+    href: "/guides/frameworks/nextjs",
+    description: "Set up Prisma ORM and Prisma Postgres in a Next.js app with App Router.",
+  },
+  {
+    title: "Use Prisma Postgres with SvelteKit",
+    href: "/guides/frameworks/sveltekit",
+    description: "Set up Prisma ORM and Prisma Postgres in a SvelteKit application.",
+  },
+  {
+    title: "Use Prisma Postgres with Nuxt",
+    href: "/guides/frameworks/nuxt",
+    description: "Set up Prisma ORM and Prisma Postgres in a Nuxt application.",
+  },
+  {
+    title: "Use Prisma Postgres with Hono on Cloudflare Workers",
+    href: "/guides/frameworks/hono",
+    description: "Set up Prisma ORM and Prisma Postgres in a Hono app deployed to Cloudflare Workers.",
+  },
 ];
 
 export const llmsSections: LLMsSection[] = [
