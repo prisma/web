@@ -1,3 +1,4 @@
+import React from "react";
 import { formatTag, formatDate } from "@/lib/format";
 import { notFound } from "next/navigation";
 import { getMDXComponents } from "@/mdx-components";
@@ -153,6 +154,15 @@ function getBlogPostingJsonLd(
   return jsonLd;
 }
 
+function extractText(node: React.ReactNode): string {
+  if (typeof node === "string") return node;
+  if (typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(extractText).join("");
+  if (React.isValidElement(node))
+    return extractText((node.props as { children?: React.ReactNode }).children);
+  return "";
+}
+
 export default async function Page(props: {
   params: Promise<{ slug: string }>;
 }) {
@@ -224,7 +234,7 @@ export default async function Page(props: {
               components={getMDXComponents({
                 a: createRelativeLink(blog, page),
                 h2: (props) => {
-                  const final_id = props.children
+                  const final_id = extractText(props.children)
                     .toLowerCase()
                     .replaceAll(" ", "-")
                     .replace(/[^a-z0-9-]/g, "");
