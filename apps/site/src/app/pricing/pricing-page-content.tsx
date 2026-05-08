@@ -44,7 +44,7 @@ export function PricingPageContent() {
 
       <section className="px-4 py-16">
         <div className="max-w-[1200px] mx-auto flex flex-col items-center gap-6">
-          <h3 className="m-0 text-center text-foreground-neutral text-5xl font-sans-display [font-variation-settings:'wght'_900]">
+          <h3 className="m-0 text-center text-foreground-neutral type-title-4xl">
             Compare plans
           </h3>
           <p className="m-0 text-center text-foreground-neutral-weak">
