@@ -115,7 +115,7 @@ export default function StudioPage() {
 
         <div className="content relative z-2 flex w-full max-w-[1200px] flex-col gap-8">
           <div className="flex flex-col gap-4 items-center text-center">
-            <div className="flex items-center gap-2 text-foreground-orm-weak type-title-sm">
+            <div className="flex items-center gap-2 text-foreground-orm type-title-sm">
               <i className="fa-regular fa-table" aria-hidden="true" />
               <span>Prisma Studio</span>
             </div>
