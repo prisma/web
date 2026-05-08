@@ -461,7 +461,7 @@ function NavigationMobileMenu({
   buttonVariant?: "ppg" | "orm";
 }) {
   return (
-    <div className="fixed px-0 md:hidden w-screen h-screen pt-22 top-0 left-0 -z-1 bg-background-default flex flex-col justify-between">
+    <div className="fixed px-0 md:hidden w-screen h-dvh pt-22 top-0 left-0 -z-1 bg-background-default flex flex-col justify-between">
       <div className="list pb-[130px] overflow-scroll">
         {links.map((link) =>
           link.url ? (
@@ -482,7 +482,7 @@ function NavigationMobileMenu({
           ) : null,
         )}
       </div>
-      <div className="h-min-content mx-auto w-full absolute bottom-0 left-0 py-6 px-4 bg-background-default justify-center items-center gap-6 flex flex-col">
+      <div className="h-min-content mx-auto w-full absolute bottom-0 left-0 pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] px-4 bg-background-default justify-center items-center gap-6 flex flex-col">
         <Socials className="flex items-center justify-center" include="all" />
         <div className="grid gap-2 grid-cols-2 w-full">
           <NavigationMenuItem className="w-full">
