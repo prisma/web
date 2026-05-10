@@ -62,12 +62,16 @@ type FontWeight = (typeof FONT_DEFINITIONS)[number]["weight"];
 
 type LoadedFont = {
   name: string;
-  data: Buffer;
+  data: ArrayBuffer;
   weight: FontWeight;
   style: "normal";
 };
 
 let fontCache: Promise<LoadedFont[]> | undefined;
+
+function bufferToArrayBuffer(buffer: Buffer) {
+  return Uint8Array.from(buffer).buffer;
+}
 
 function getMethodColor(method?: string) {
   if (!method) {
@@ -279,12 +283,16 @@ function PrismaOGImage({
 
 function getFonts() {
   fontCache ??= Promise.all(
-    FONT_DEFINITIONS.map(async ({ name, file, weight }) => ({
-      name,
-      data: await readFile(path.join(process.cwd(), "public", "fonts", file)),
-      weight,
-      style: "normal" as const,
-    })),
+    FONT_DEFINITIONS.map(async ({ name, file, weight }) => {
+      const fontBuffer = await readFile(path.join(process.cwd(), "public", "fonts", file));
+
+      return {
+        name,
+        data: bufferToArrayBuffer(fontBuffer),
+        weight,
+        style: "normal" as const,
+      };
+    }),
   ).catch((err) => {
     fontCache = undefined;
     throw err;
