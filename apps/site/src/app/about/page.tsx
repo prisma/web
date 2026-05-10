@@ -1,12 +1,20 @@
 import Image from "next/image";
-import Antigravity from "../../components/homepage/antigravity";
+
 import { createPageMetadata } from "@/lib/page-metadata";
-import { Action, Accordion, Button, Card, Separator, Avatar, Accordions } from "@prisma/eclipse";
+import {
+  Action,
+  Accordion,
+  Button,
+  Card,
+  Separator,
+  Avatar,
+  Accordions,
+} from "@prisma/eclipse";
 import { CardSection } from "@/components/homepage/card-section/card-section";
 import review from "../../data/homepage.json";
 import { cn } from "@/lib/cn";
 
-import { MasonryPict } from "@/components/careers/masonry";
+import MasonryPict from "@/components/careers/masonry-client";
 
 const what_we_care_about = [
   {
@@ -16,9 +24,10 @@ const what_we_care_about = [
           Open-Source
         </h3>
         <p className="text-foreground-neutral-weak! text-base">
-          To support the OSS community and help fund the ecosystem around Prisma, we started our
-          Free and Open Source Software (FOSS) Fund in April 2022. Each month Prisma donates a
-          one-off amount of $500 to a selected open-source project.
+          To support the OSS community and help fund the ecosystem around
+          Prisma, we started our Free and Open Source Software (FOSS) Fund in
+          April 2022. Each month Prisma donates a one-off amount of $500 to a
+          selected open-source project.
         </p>
 
         <Accordions type="single" className="border-none">
@@ -27,15 +36,16 @@ const what_we_care_about = [
               <Separator className="-ml-[36px] -mr-[16px] w-[calc(100%+36px+16px)]" />
               <ul className="list-disc text-left flex flex-col items-start">
                 <li className="my-1 md:my-1.5">
-                  The Prisma team nominates projects they believe deserve support.
+                  The Prisma team nominates projects they believe deserve
+                  support.
                 </li>
                 <li className="my-1 md:my-1.5">
-                  The Developer Connections team and representatives from the engineering teams
-                  review the nominations.
+                  The Developer Connections team and representatives from the
+                  engineering teams review the nominations.
                 </li>
                 <li className="my-1 md:my-1.5">
-                  The entire company votes to select three recipients each quarter to receive the
-                  one-time stipend of $500.
+                  The entire company votes to select three recipients each
+                  quarter to receive the one-time stipend of $500.
                 </li>
                 <li className="my-1 md:my-1.5">
                   Recipient projects are announced each month on social media.
@@ -45,14 +55,19 @@ const what_we_care_about = [
                 To qualify, nominees need to meet the following criteria:
               </p>
               <ul className="list-disc text-left flex flex-col items-start">
-                <li className="my-1 md:my-1.5">Usage within Prisma or the Prisma ecosystem</li>
+                <li className="my-1 md:my-1.5">
+                  Usage within Prisma or the Prisma ecosystem
+                </li>
                 <li className="my-1 md:my-1.5">
                   Overall project health and aligned with Prisma company values
                 </li>
-                <li className="my-1 md:my-1.5">Ability to receive and distribute funds</li>
+                <li className="my-1 md:my-1.5">
+                  Ability to receive and distribute funds
+                </li>
               </ul>
               <h6 className="mt-6 mb-4  text-foreground-neutral-weaker text-xs">
-                Projects owned or managed by Prisma employees cannot be nominated.
+                Projects owned or managed by Prisma employees cannot be
+                nominated.
               </h6>
             </>
           </Accordion>
@@ -60,9 +75,11 @@ const what_we_care_about = [
       </div>
     ),
     imageUrl: "/illustrations/about/about_0",
-    imageAlt: "About",
+    imageAlt:
+      "Illustration representing open-source contributions and the Prisma FOSS Fund",
     mobileImageUrl: "/illustrations/about/about_0",
-    mobileImageAlt: "About",
+    mobileImageAlt:
+      "Illustration representing open-source contributions and the Prisma FOSS Fund",
     logos: null,
     useDefaultLogos: true,
     alignItems: "items-start" as const,
@@ -76,10 +93,11 @@ const what_we_care_about = [
           Climate change
         </h3>
         <p className="text-foreground-neutral-weak! text-base">
-          Prisma is committed to supporting initiatives that raise awareness about and combat the
-          effects of climate change. We will all be affected by this, and we owe it to the places,
-          people, and wildlife of this planet to make substantial changes and reduce our impact on
-          the climate.
+          Prisma is committed to supporting initiatives that raise awareness
+          about and combat the effects of climate change. We will all be
+          affected by this, and we owe it to the places, people, and wildlife of
+          this planet to make substantial changes and reduce our impact on the
+          climate.
         </p>
 
         <Accordions type="single" className="border-none">
@@ -87,14 +105,16 @@ const what_we_care_about = [
             <Separator className="-ml-[36px] -mr-[16px] w-[calc(100%+36px+16px)]" />
             <ul className="list-disc text-left flex flex-col items-start">
               <li className="my-1 md:my-1.5">
-                Matches all employee donations for climate change-related charities and fundraising
+                Matches all employee donations for climate change-related
+                charities and fundraising
               </li>
               <li className="my-1 md:my-1.5">
-                Maintains sustainable practices—i.e. utilizing green energy, recycling, and reducing
-                waste—in the Prisma office space
+                Maintains sustainable practices—i.e. utilizing green energy,
+                recycling, and reducing waste—in the Prisma office space
               </li>
               <li className="my-1 md:my-1.5">
-                Encourages all employees to participate in local climate strikes/events
+                Encourages all employees to participate in local climate
+                strikes/events
               </li>
               <li className="my-1 md:my-1.5">
                 <a
@@ -122,9 +142,10 @@ const what_we_care_about = [
       </div>
     ),
     imageUrl: "/illustrations/about/about_1",
-    imageAlt: "About",
+    imageAlt: "Illustration representing Prisma's climate change commitments",
     mobileImageUrl: "/illustrations/about/about_1",
-    mobileImageAlt: "About",
+    mobileImageAlt:
+      "Illustration representing Prisma's climate change commitments",
     logos: null,
     useDefaultLogos: true,
     alignItems: "items-start" as const,
@@ -134,20 +155,69 @@ const what_we_care_about = [
 ];
 
 const masonryImages = [
-  { imageUrl: "/photos/careers/masonry_1.webp", imageAlt: "Masonry 1" },
-  { imageUrl: "/photos/careers/masonry_2.webp", imageAlt: "Masonry 2" },
-  { imageUrl: "/photos/careers/masonry_3.webp", imageAlt: "Masonry 3" },
-  { imageUrl: "/photos/careers/masonry_4.webp", imageAlt: "Masonry 4" },
-  { imageUrl: "/photos/careers/masonry_5.webp", imageAlt: "Masonry 5" },
-  { imageUrl: "/photos/careers/masonry_10.webp", imageAlt: "Masonry 10" },
-  { imageUrl: "/photos/careers/masonry_6.webp", imageAlt: "Masonry 6" },
-  { imageUrl: "/photos/careers/masonry_7.webp", imageAlt: "Masonry 7" },
-  { imageUrl: "/photos/careers/masonry_8.webp", imageAlt: "Masonry 8" },
-  { imageUrl: "/photos/careers/masonry_9.webp", imageAlt: "Masonry 9" },
-  { imageUrl: "/photos/careers/masonry_14.webp", imageAlt: "Masonry 14" },
-  { imageUrl: "/photos/careers/masonry_11.webp", imageAlt: "Masonry 11" },
-  { imageUrl: "/photos/careers/masonry_12.webp", imageAlt: "Masonry 12" },
-  { imageUrl: "/photos/careers/masonry_13.webp", imageAlt: "Masonry 13" },
+  {
+    imageUrl: "/photos/careers/masonry_1.webp",
+    imageAlt:
+      "A Prisma team member presenting at a conference in front of a Prisma banner",
+  },
+  {
+    imageUrl: "/photos/careers/masonry_2.webp",
+    imageAlt:
+      "Prisma team members walking outdoors together during a company offsite",
+  },
+  {
+    imageUrl: "/photos/careers/masonry_3.webp",
+    imageAlt:
+      "A large group of Prisma team members gathered on a beach during a company retreat",
+  },
+  {
+    imageUrl: "/photos/careers/masonry_4.webp",
+    imageAlt: "Two Prisma team members high-fiving on a sunny beach",
+  },
+  {
+    imageUrl: "/photos/careers/masonry_5.webp",
+    imageAlt:
+      "The Prisma team celebrating together on a beach, holding a Prisma flag",
+  },
+  {
+    imageUrl: "/photos/careers/masonry_10.webp",
+    imageAlt: "Prisma team group photo in front of a coastal waterfront",
+  },
+  {
+    imageUrl: "/photos/careers/masonry_6.webp",
+    imageAlt: "Large Prisma team group photo with a mountain backdrop",
+  },
+  {
+    imageUrl: "/photos/careers/masonry_7.webp",
+    imageAlt:
+      "Prisma team members smiling and engaged during an indoor workshop",
+  },
+  {
+    imageUrl: "/photos/careers/masonry_8.webp",
+    imageAlt:
+      "Prisma team members posing in front of illuminated PRISMA lettering",
+  },
+  {
+    imageUrl: "/photos/careers/masonry_9.webp",
+    imageAlt: "A Prisma team member presenting on stage at a conference",
+  },
+  {
+    imageUrl: "/photos/careers/masonry_14.webp",
+    imageAlt: "Prisma team members high-fiving during a group beach activity",
+  },
+  {
+    imageUrl: "/photos/careers/masonry_11.webp",
+    imageAlt:
+      "Three Prisma team members receiving a Values Award at a company event",
+  },
+  {
+    imageUrl: "/photos/careers/masonry_12.webp",
+    imageAlt: "Three Prisma team members chatting at an outdoor company event",
+  },
+  {
+    imageUrl: "/photos/careers/masonry_13.webp",
+    imageAlt: "Two Prisma team members smiling together at a company offsite",
+  },
 ];
 
 const boxes = [
@@ -173,20 +243,23 @@ const boxes = [
     title: "Throughout the development lifecycle",
     description: (
       <p className="text-foreground-neutral text-foreground-neutral-weak text-sm font-normal m-0 leading-6">
-        We equip developers with the right tools at every stage, whether they are{" "}
-        <a href="https://www.prisma.io/blog/bfg">building, fortifying, or growing</a> their
-        applications.
+        We equip developers with the right tools at every stage, whether they
+        are{" "}
+        <a href="https://www.prisma.io/blog/bfg">
+          building, fortifying, or growing
+        </a>{" "}
+        their applications.
       </p>
     ),
   },
   {
     icon: "fa-regular fa-cubes-stacked",
-    title: "Built on open source",
+    title: "Great developer experience",
     description: (
       <p className="text-foreground-neutral text-foreground-neutral-weak text-sm font-normal m-0 leading-6">
-        Applying <a href="https://www.datadx.io/">Data DX</a> principles to all our products, we
-        create simple solutions for complex problems, making building with data more accessible,
-        regardless of team size.
+        We build products that make working with databases easier, turning
+        complex data problems into approachable workflows for teams of any
+        size.
       </p>
     ),
   },
@@ -305,7 +378,7 @@ const investors = {
 };
 
 export const metadata = createPageMetadata({
-  title: "About | Prisma",
+  title: "About Prisma | Company, mission, and careers",
   description:
     "At Prisma, our mission is to provide the best experience for teams to work and interact with databases. Learn more about Prisma.",
   path: "/about",
@@ -320,14 +393,14 @@ export default function About() {
         <div className="w-screen absolute inset-0 z-0">
           <Image
             src="/illustrations/about/hero_bg.svg"
-            alt="Hero lines"
+            alt=""
             fill
             className="object-cover object-bottom hidden dark:block"
             priority
           />
           <Image
             src="/illustrations/about/hero_bg_light.svg"
-            alt="Hero lines"
+            alt=""
             fill
             className="object-cover object-bottom block dark:hidden"
             priority
@@ -335,11 +408,11 @@ export default function About() {
         </div>
         <div className="content relative z-2 my-12 flex flex-col gap-8 mt-30 py-12">
           <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
-            Join Prisma
+            About Prisma
           </h1>
           <p className="text-center text-foreground-neutral max-w-2xl mx-auto mb-12">
-            Our mission is to unlock productivity for developers by bringing delightful ways to
-            build with data. Data DX is at the core of all our products.
+            Our mission is to make working with databases easy, with a great
+            developer experience at the core of every product we build.
           </p>
           <Card className="grid! md:grid-cols-3 gap-6 max-w-[1200px] mx-auto bg-background-default p-12 border-none -mb-80 gap-y-8">
             {boxes.map((box: any, idx: number) => (
@@ -407,7 +480,9 @@ export default function About() {
                 </Avatar>
                 <div className="flex flex-col gap-1">
                   <h4 className="text-foreground-neutral">{investor.name}</h4>
-                  <p className="text-foreground-neutral-weak">{investor.title}</p>
+                  <p className="text-foreground-neutral-weak">
+                    {investor.title}
+                  </p>
                 </div>
               </div>
             ))}
@@ -449,7 +524,9 @@ export default function About() {
               className="text-foreground-neutral hover:text-foreground-orm-strong transition-colors font-bold"
             >
               <i className="fa-kit fa-prisma mr-2 text-foreground-orm-strong text-xl" />
-              <span className="underline underline-offset-3  font-sans-display">Press kit</span>
+              <span className="underline underline-offset-3  font-sans-display">
+                Press kit
+              </span>
               <i className="fa-regular fa-arrow-up-right ml-2" />
             </a>
           </Card>
@@ -474,8 +551,8 @@ export default function About() {
             </h3>
             <div className="content flex flex-col lg:flex-row gap-3 lg:gap-12 items-center md:items-start lg:items-center">
               <p className="max-w-94 w-full text-center md:text-left text-foreground-neutral-weak text-md">
-                We’re always excited to talk to more people who share our vision to empower
-                developers to build data-driven applications.
+                We’re always excited to talk to more people who share our vision
+                to empower developers to build data-driven applications.
               </p>
               <Button asChild variant="orm" size="3xl">
                 <a href="/careers">

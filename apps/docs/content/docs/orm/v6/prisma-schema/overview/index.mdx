@@ -1,0 +1,250 @@
+---
+title: Overview on Prisma Schema
+description: The Prisma schema is the main method of configuration when using Prisma. It is typically called schema.prisma and contains your database connection and data model.
+url: /orm/v6/prisma-schema/overview
+metaTitle: Prisma schema
+metaDescription: Learn everything you need to know about the Prisma schema.
+---
+
+The Prisma Schema (or _schema_ for short) is the main method of configuration for your Prisma ORM setup. It consists of the following parts:
+
+- [**Data sources**](/orm/v6/prisma-schema/overview/data-sources): Specify the details of the data sources Prisma ORM should connect to (e.g. a PostgreSQL database)
+- [**Generators**](/orm/v6/prisma-schema/overview/generators): Specifies what clients should be generated based on the data model (e.g. Prisma Client)
+- [**Data model definition**](/orm/v6/prisma-schema/data-model/models): Specifies your application [models](/orm/v6/prisma-schema/data-model/models#defining-models) (the shape of the data per data source) and their [relations](/orm/v6/prisma-schema/data-model/relations)
+
+It is typically a single file called `schema.prisma` (or multiple files with `.prisma` file extension) that is stored in a defined but customizable [location](/orm/v6/prisma-schema/overview/location). You can also [organize your Prisma schema in multiple files](/orm/v6/prisma-schema/overview/location#multi-file-prisma-schema) if you prefer that.
+
+See the [Prisma schema API reference](/orm/v6/reference/prisma-schema-reference) <span class="api"></span> for detailed information about each section of the schema.
+
+Whenever a `prisma` command is invoked, the CLI typically reads some information from the schema, e.g.:
+
+- `prisma generate`: Reads _all_ above mentioned information from the Prisma schema to generate the correct data source client code (e.g. Prisma Client).
+- `prisma migrate dev`: Reads the data sources and data model definition to create a new migration.
+
+You can also [use environment variables](#accessing-environment-variables-from-the-schema) inside the schema to provide configuration options when a CLI command is invoked.
+
+## Example
+
+The following is an example of a Prisma Schema that specifies:
+
+- A data source (PostgreSQL or MongoDB)
+- A generator (Prisma Client)
+- A data model definition with two models (with one relation) and one `enum`
+- Several [native data type attributes](/orm/v6/prisma-schema/data-model/models#native-types-mapping) (`@db.VarChar(255)`, `@db.ObjectId`)
+
+```prisma tab="Relational databases"
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client"
+  output   = "./generated"
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  email     String   @unique
+  name      String?
+  role      Role     @default(USER)
+  posts     Post[]
+}
+
+model Post {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  published Boolean  @default(false)
+  title     String   @db.VarChar(255)
+  author    User?    @relation(fields: [authorId], references: [id])
+  authorId  Int?
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+```
+
+```prisma tab="MongoDB"
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  createdAt DateTime @default(now())
+  email     String   @unique
+  name      String?
+  role      Role     @default(USER)
+  posts     Post[]
+}
+
+model Post {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  published Boolean  @default(false)
+  title     String
+  author    User?    @relation(fields: [authorId], references: [id])
+  authorId  String   @db.ObjectId
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+```
+
+## Syntax
+
+Prisma Schema files are written in Prisma Schema Language (PSL). See the [data sources](/orm/v6/prisma-schema/overview/data-sources), [generators](/orm/v6/prisma-schema/overview/generators), [data model definition](/orm/v6/prisma-schema/data-model/models) and of course [Prisma Schema API reference](/orm/v6/reference/prisma-schema-reference) pages for details and examples.
+
+### VS Code
+
+Syntax highlighting for PSL is available via a [VS Code extension](https://marketplace.visualstudio.com/items?itemName=Prisma.prisma) (which also lets you auto-format the contents of your Prisma schema and indicates syntax errors with red squiggly lines). Learn more about [setting up Prisma ORM in your editor](/orm/v6/more/dev-environment/editor-setup).
+
+### GitHub
+
+PSL code snippets on GitHub can be rendered with syntax highlighting as well by using the `.prisma` file extension or annotating fenced code blocks in Markdown with `prisma`:
+
+````
+```prisma
+model User {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  email     String   @unique
+  name      String?
+}
+```
+````
+
+## Accessing environment variables from the schema
+
+You can use environment variables to provide configuration options when a CLI command is invoked, or a Prisma Client query is run.
+
+Hardcoding URLs directly in your schema is possible but is discouraged because it poses a security risk. Using environment variables in the schema allows you to **keep secrets out of the schema** which in turn **improves the portability of the schema** by allowing you to use it in different environments.
+
+Environment variables can be accessed using the `env()` function:
+
+```prisma
+datasource db {
+  provider = "postgresql"
+}
+```
+
+You can use the `env()` function in the following places:
+
+- A datasource url
+- Generator binary targets
+
+See [Environment variables](/orm/v6/more/dev-environment/environment-variables) for more information about how to use an `.env` file during development.
+
+## Comments
+
+There are three types of comments that are supported in Prisma Schema Language:
+
+- `// comment`: This comment is for the reader's clarity and is not present in the abstract syntax tree (AST) of the schema.
+- `/// comment`: These comments will show up in the abstract syntax tree (AST) of the schema as descriptions to AST nodes. Tools can then use these comments to provide additional information. All comments are attached to the next available node - [free-floating comments](https://github.com/prisma/prisma/issues/3544) are not supported and are not included in the AST.
+- `/* block comment */`: These comments will show up in the abstract syntax tree, similarly to `///` comments.
+
+Here are some different examples:
+
+```prisma
+/// This comment will get attached to the `User` node in the AST
+model User {
+  /// This comment will get attached to the `id` node in the AST
+  id     Int   @default(autoincrement())
+  // This comment is just for you
+  weight Float /// This comment gets attached to the `weight` node
+}
+
+// This comment is just for you. It will not
+// show up in the AST.
+
+/// This comment will get attached to the
+/// Customer node.
+model Customer {
+  /**
+   * ...and so will this comment
+   */
+}
+```
+
+## Auto formatting
+
+Prisma ORM supports formatting `.prisma` files automatically. There are two ways to format `.prisma` files:
+
+- Run the [`prisma format`](/orm/v6/reference/prisma-cli-reference#format) <span class="api"></span> command.
+- Install the [Prisma VS Code extension](https://marketplace.visualstudio.com/items?itemName=Prisma.prisma) and invoke the [VS Code format action](https://code.visualstudio.com/docs/editor/codebasics#_formatting) - manually or on save.
+
+There are no configuration options - [formatting rules](#formatting-rules) are fixed (similar to Golang's `gofmt` but unlike Javascript's `prettier`):
+
+### Formatting rules
+
+#### Configuration blocks are aligned by their `=` sign
+
+```
+block _ {
+  key      = "value"
+  key2     = 1
+  long_key = true
+}
+```
+
+#### Field definitions are aligned into columns separated by 2 or more spaces
+
+```
+block _ {
+  id          String       @id
+  first_name  LongNumeric  @default
+}
+```
+
+#### Empty lines resets block alignment and formatting rules
+
+```
+block _ {
+  key   = "value"
+  key2  = 1
+  key10 = true
+
+  long_key   = true
+  long_key_2 = true
+}
+```
+
+```
+block _ {
+  id  String  @id
+              @default
+
+  first_name  LongNumeric  @default
+}
+```
+
+#### Multiline field attributes are properly aligned with the rest of the field attributes
+
+```
+block _ {
+  id          String       @id
+                           @default
+  first_name  LongNumeric  @default
+}
+```
+
+#### Block attributes are sorted to the end of the block
+
+```
+block _ {
+  key   = "value"
+
+  @@attribute
+}
+```

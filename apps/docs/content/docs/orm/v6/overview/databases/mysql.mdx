@@ -1,0 +1,288 @@
+---
+title: MySQL/MariaDB
+description: This page explains how Prisma can connect to a MySQL or MariaDB database using the MySQL database connector.
+url: /orm/v6/overview/databases/mysql
+metaTitle: MySQL database connector
+metaDescription: This page explains how Prisma can connect to a MySQL or MariaDB database using the MySQL database connector.
+---
+
+The MySQL data source connector connects Prisma ORM to a [MySQL](https://www.mysql.com/) or [MariaDB](https://mariadb.org/) database server.
+
+By default, the MySQL connector contains a database driver responsible for connecting to your database. You can use a [driver adapter](/orm/v6/overview/databases/database-drivers#driver-adapters) (Preview) to connect to your database using a JavaScript database driver from Prisma Client.
+
+## Example
+
+To connect to a MySQL database server, you need to configure a [`datasource`](/orm/v6/prisma-schema/overview/data-sources) block in your [Prisma schema](/orm/v6/prisma-schema/overview):
+
+```prisma title="schema.prisma" showLineNumbers
+datasource db {
+  provider = "mysql"
+}
+```
+
+The `datasource` block specifies the `mysql` data source connector, which is used for both MySQL and MariaDB.
+
+In Prisma ORM 7, the database connection URL is configured in [`prisma.config.ts`](/orm/v6/reference/prisma-config-reference):
+
+```typescript title="prisma.config.ts"
+import { defineConfig, env } from "prisma/config";
+import "dotenv/config";
+
+export default defineConfig({
+  schema: "prisma/schema.prisma",
+  datasource: {
+    url: env("DATABASE_URL"),
+  },
+});
+```
+
+This configuration uses an [environment variable](/orm/v6/prisma-schema/overview#accessing-environment-variables-from-the-schema) to provide the database connection URL.
+
+## Using the `mariadb` driver
+
+As of [`v5.4.0`](https://github.com/prisma/prisma/releases/tag/5.4.0), you can use Prisma ORM with database drivers from the JavaScript ecosystem (instead of using Prisma ORM's built-in drivers). You can do this by using a [driver adapter](/orm/v6/overview/databases/database-drivers).
+
+For MySQL and MariaDB, [`mariadb`](https://github.com/mariadb-corporation/mariadb-connector-nodejs) is one of the most popular drivers in the JavaScript ecosystem.
+
+This section explains how you can use it with Prisma ORM and the `@prisma/adapter-mariadb` driver adapter.
+
+### 1. Install the dependencies
+
+First, install Prisma ORM's driver adapter for `mariadb`:
+
+```npm
+npm install @prisma/adapter-mariadb
+```
+
+### 2. Instantiate Prisma Client using the driver adapter
+
+Now, when you instantiate Prisma Client, you need to pass an instance of Prisma ORM's driver adapter to the `PrismaClient` constructor:
+
+```ts
+import "dotenv/config";
+import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import { PrismaClient } from "../generated/prisma/client";
+
+const adapter = new PrismaMariaDb({
+  host: "localhost",
+  port: 3306,
+  connectionLimit: 5,
+});
+const prisma = new PrismaClient({ adapter });
+```
+
+## Connection details
+
+### Connection URL
+
+Here's an overview of the components needed for a MySQL connection URL:
+
+![Structure of the MySQL connection URL](/img/v6/orm/overview/databases/mysql-connection-string.png)
+
+#### Base URL and path
+
+Here is an example of the structure of the _base URL_ and the _path_ using placeholder values in uppercase letters:
+
+```
+mysql://USER:PASSWORD@HOST:PORT/DATABASE
+```
+
+The following components make up the _base URL_ of your database, they are always required:
+
+| Name     | Placeholder | Description                                                                                                         |
+| :------- | :---------- | :------------------------------------------------------------------------------------------------------------------ |
+| Host     | `HOST`      | IP address/domain of your database server, e.g. `localhost`                                                         |
+| Port     | `PORT`      | Port on which your database server is running, e.g. `5432` (default is `3306`, or no port when using Unix socket)   |
+| User     | `USER`      | Name of your database user, e.g. `janedoe`                                                                          |
+| Password | `PASSWORD`  | Password for your database user                                                                                     |
+| Database | `DATABASE`  | Name of the [database](https://dev.mysql.com/doc/refman/8.0/en/creating-database.html) you want to use, e.g. `mydb` |
+
+:::info
+
+You must [percentage-encode special characters](/orm/v6/reference/connection-urls#special-characters).
+
+:::
+
+#### Arguments
+
+A connection URL can also take arguments. Here is the same example from above with placeholder values in uppercase letters for three _arguments_:
+
+```
+mysql://USER:PASSWORD@HOST:PORT/DATABASE?KEY1=VALUE&KEY2=VALUE&KEY3=VALUE
+```
+
+The following arguments can be used:
+
+| Argument name      | Required | Default                | Description                                                                                                                                                                        |
+| :----------------- | :------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `connection_limit` | No       | `num_cpus * 2 + 1`     | Maximum size of the [connection pool](/orm/v6/prisma-client/setup-and-configuration/databases-connections/connection-pool) (Prisma ORM v6 and before)                         |
+| `connect_timeout`  | No       | `5`                    | Maximum number of seconds to wait for a new connection to be opened, `0` means no timeout                                                                                          |
+| `pool_timeout`     | No       | `10`                   | Maximum number of seconds to wait for a new connection from the pool, `0` means no timeout                                                                                         |
+| `sslcert`          | No       |                        | Path to the server certificate. Certificate paths are [resolved relative to the `./prisma folder`](/orm/v6/prisma-schema/overview/data-sources#securing-database-connections) |
+| `sslidentity`      | No       |                        | Path to the PKCS12 certificate                                                                                                                                                     |
+| `sslpassword`      | No       |                        | Password that was used to secure the PKCS12 file                                                                                                                                   |
+| `sslaccept`        | No       | `accept_invalid_certs` | Configures whether to check for missing values in the certificate. Possible values: `accept_invalid_certs`, `strict`                                                               |
+| `socket`           | No       |                        | Points to a directory that contains a socket to be used for the connection                                                                                                         |
+| `socket_timeout`   | No       |                        | Number of seconds to wait until a single query terminates                                                                                                                          |
+
+As an example, if you want to set the connection pool size to `5` and configure a timeout for queries of `3` seconds, you can use the following arguments:
+
+```
+mysql://USER:PASSWORD@HOST:PORT/DATABASE?connection_limit=5&socket_timeout=3
+```
+
+:::warning[Prisma ORM v7: Connection pool defaults have changed]
+
+In Prisma ORM v7, [driver adapters](/orm/v6/overview/databases/database-drivers) are the default for relational databases. Connection pooling is now handled by the `mariadb` driver, which has **different defaults** than Prisma ORM v6:
+
+- **Connection timeout**: `1s` vs. v6's `5s`
+- **Idle timeout**: `1800s` vs. v6's `300s`
+
+If you experience timeout issues after upgrading, you may need to configure your driver adapter to match v6 behavior. See the [connection pool guide](/orm/v6/prisma-client/setup-and-configuration/databases-connections/connection-pool#mysql-or-mariadb-using-the-mariadb-driver) for detailed configuration examples.
+
+:::
+
+### Configuring an SSL connection
+
+You can add various parameters to the connection URL if your database server uses SSL. Here's an overview of the possible parameters:
+
+- `sslcert=<PATH>`: Path to the server certificate. This is the root certificate used by the database server to sign the client certificate. You need to provide this if the certificate doesn't exist in the trusted certificate store of your system. For Google Cloud this likely is `server-ca.pem`. Certificate paths are [resolved relative to the `./prisma folder`](/orm/v6/prisma-schema/overview/data-sources#securing-database-connections)
+
+- `sslidentity=<PATH>`: Path to the PKCS12 certificate database created from client cert and key. This is the SSL identity file in PKCS12 format which you will generate using the client key and client certificate. It combines these two files in a single file and secures them via a password (see next parameter). You can create this file using your client key and client certificate by using the following command (using `openssl`):
+  ```
+  openssl pkcs12 -export -out client-identity.p12 -inkey client-key.pem -in client-cert.pem
+  ```
+- `sslpassword=<PASSWORD>`: Password that was used to secure the PKCS12 file. The `openssl` command listed in the previous step will ask for a password while creating the PKCS12 file, you will need to provide that same exact password here.
+- `sslaccept=(strict|accept_invalid_certs)`:
+  - `strict`: Any missing value in the certificate will lead to an error. For Google Cloud, especially if the database doesn't have a domain name, the certificate might miss the domain/IP address, causing an error when connecting.
+  - `accept_invalid_certs` (default): Bypass this check. Be aware of the security consequences of this setting.
+
+Your database connection URL will look similar to this:
+
+```
+mysql://USER:PASSWORD@HOST:PORT/DATABASE?sslidentity=client-identity.p12&sslpassword=mypassword&sslcert=rootca.cert
+```
+
+### Connecting via sockets
+
+To connect to your MySQL/MariaDB database via a socket, you must add a `socket` field as a _query parameter_ to the connection URL (instead of setting it as the `host` part of the URI).
+The value of this parameter then must point to the directory that contains the socket, e.g. on a default installation of MySQL/MariaDB on Ubuntu or Debian use: `mysql://USER:PASSWORD@HOST/DATABASE?socket=/run/mysqld/mysqld.sock`
+
+Note that `localhost` is required, the value itself is ignored and can be anything.
+
+> **Note**: You can find additional context in this [GitHub issue](https://github.com/prisma/prisma-client-js/issues/437#issuecomment-592436707).
+
+## Type mapping between MySQL to Prisma schema
+
+The MySQL connector maps the [scalar types](/orm/v6/prisma-schema/data-model/models#scalar-fields) from the Prisma ORM [data model](/orm/v6/prisma-schema/data-model/models) as follows to native column types:
+
+> Alternatively, see [Prisma schema reference](/orm/v6/reference/prisma-schema-reference#model-field-scalar-types) for type mappings organized by Prisma ORM type.
+
+### Native type mapping from Prisma ORM to MySQL
+
+| Prisma ORM | MySQL            | Notes                                                                                 |
+| ---------- | ---------------- | ------------------------------------------------------------------------------------- |
+| `String`   | `VARCHAR(191)`   |                                                                                       |
+| `Boolean`  | `BOOLEAN`        | In MySQL `BOOLEAN` is a synonym for `TINYINT(1)`                                      |
+| `Int`      | `INT`            |                                                                                       |
+| `BigInt`   | `BIGINT`         |                                                                                       |
+| `Float`    | `DOUBLE`         |                                                                                       |
+| `Decimal`  | `DECIMAL(65,30)` |                                                                                       |
+| `DateTime` | `DATETIME(3)`    | Currently, Prisma ORM does not support zero dates (`0000-00-00`, `00:00:00`) in MySQL |
+| `Json`     | `JSON`           | Supported in MySQL 5.7+ only                                                          |
+| `Bytes`    | `LONGBLOB`       |                                                                                       |
+
+### Native type mapping from Prisma ORM to MariaDB
+
+| Prisma ORM | MariaDB          | Notes                                              |
+| ---------- | ---------------- | -------------------------------------------------- |
+| `String`   | `VARCHAR(191)`   |                                                    |
+| `Boolean`  | `BOOLEAN`        | In MariaDB `BOOLEAN` is a synonym for `TINYINT(1)` |
+| `Int`      | `INT`            |                                                    |
+| `BigInt`   | `BIGINT`         |                                                    |
+| `Float`    | `DOUBLE`         |                                                    |
+| `Decimal`  | `DECIMAL(65,30)` |                                                    |
+| `DateTime` | `DATETIME(3)`    |                                                    |
+| `Json`     | `LONGTEXT`       | See https://mariadb.com/kb/en/json-data-type/      |
+| `Bytes`    | `LONGBLOB`       |                                                    |
+
+### Native type mappings
+
+When introspecting a MySQL database, the database types are mapped to Prisma ORM according to the following table:
+
+| MySQL                     | Prisma ORM    | Supported | Native database type attribute                 | Notes                                                              |
+| ------------------------- | ------------- | --------- | ---------------------------------------------- | ------------------------------------------------------------------ |
+| `serial`                  | `BigInt`      | ✔️        | `@db.UnsignedBigInt @default(autoincrement())` |
+| `bigint`                  | `BigInt`      | ✔️        | `@db.BigInt`                                   |
+| `bigint unsigned`         | `BigInt`      | ✔️        | `@db.UnsignedBigInt`                           |
+| `bit`                     | `Bytes`       | ✔️        | `@db.Bit(x)`                                   | `bit(1)` maps to `Boolean` - all other `bit(x)` map to `Bytes`     |
+| `boolean` \| `tinyint(1)` | `Boolean`     | ✔️        | `@db.TinyInt(1)`                               |
+| `varbinary`               | `Bytes`       | ✔️        | `@db.VarBinary`                                |
+| `longblob`                | `Bytes`       | ✔️        | `@db.LongBlob`                                 |
+| `tinyblob`                | `Bytes`       | ✔️        | `@db.TinyBlob`                                 |
+| `mediumblob`              | `Bytes`       | ✔️        | `@db.MediumBlob`                               |
+| `blob`                    | `Bytes`       | ✔️        | `@db.Blob`                                     |
+| `binary`                  | `Bytes`       | ✔️        | `@db.Binary`                                   |
+| `date`                    | `DateTime`    | ✔️        | `@db.Date`                                     |
+| `datetime`                | `DateTime`    | ✔️        | `@db.DateTime`                                 |
+| `timestamp`               | `DateTime`    | ✔️        | `@db.TimeStamp`                                |
+| `time`                    | `DateTime`    | ✔️        | `@db.Time`                                     |
+| `decimal(a,b)`            | `Decimal`     | ✔️        | `@db.Decimal(x,y)`                             |
+| `numeric(a,b)`            | `Decimal`     | ✔️        | `@db.Decimal(x,y)`                             |
+| `enum`                    | `Enum`        | ✔️        | N/A                                            |
+| `float`                   | `Float`       | ✔️        | `@db.Float`                                    |
+| `double`                  | `Float`       | ✔️        | `@db.Double`                                   |
+| `smallint`                | `Int`         | ✔️        | `@db.SmallInt`                                 |
+| `smallint unsigned`       | `Int`         | ✔️        | `@db.UnsignedSmallInt`                         |
+| `mediumint`               | `Int`         | ✔️        | `@db.MediumInt`                                |
+| `mediumint unsigned`      | `Int`         | ✔️        | `@db.UnsignedMediumInt`                        |
+| `int`                     | `Int`         | ✔️        | `@db.Int`                                      |
+| `int unsigned`            | `Int`         | ✔️        | `@db.UnsignedInt`                              |
+| `tinyint`                 | `Int`         | ✔️        | `@db.TinyInt(x)`                               | `tinyint(1)` maps to `Boolean` all other `tinyint(x)` map to `Int` |
+| `tinyint unsigned`        | `Int`         | ✔️        | `@db.UnsignedTinyInt(x)`                       | `tinyint(1) unsigned` **does not** map to `Boolean`                |
+| `year`                    | `Int`         | ✔️        | `@db.Year`                                     |
+| `json`                    | `Json`        | ✔️        | `@db.Json`                                     | Supported in MySQL 5.7+ only                                       |
+| `char`                    | `String`      | ✔️        | `@db.Char(x)`                                  |
+| `varchar`                 | `String`      | ✔️        | `@db.VarChar(x)`                               |
+| `tinytext`                | `String`      | ✔️        | `@db.TinyText`                                 |
+| `text`                    | `String`      | ✔️        | `@db.Text`                                     |
+| `mediumtext`              | `String`      | ✔️        | `@db.MediumText`                               |
+| `longtext`                | `String`      | ✔️        | `@db.LongText`                                 |
+| `set`                     | `Unsupported` | Not yet   |                                                |
+| `geometry`                | `Unsupported` | Not yet   |                                                |
+| `point`                   | `Unsupported` | Not yet   |                                                |
+| `linestring`              | `Unsupported` | Not yet   |                                                |
+| `polygon`                 | `Unsupported` | Not yet   |                                                |
+| `multipoint`              | `Unsupported` | Not yet   |                                                |
+| `multilinestring`         | `Unsupported` | Not yet   |                                                |
+| `multipolygon`            | `Unsupported` | Not yet   |                                                |
+| `geometrycollection`      | `Unsupported` | Not yet   |                                                |
+
+[Introspection](/orm/v6/prisma-schema/introspection) adds native database types that are **not yet supported** as [`Unsupported`](/orm/v6/reference/prisma-schema-reference#unsupported) fields:
+
+```prisma title="schema.prisma" showLineNumbers
+model Device {
+  id   Int                   @id @default(autoincrement())
+  name String
+  data Unsupported("circle")
+}
+```
+
+## Engine
+
+If you are using a version of MySQL where MyISAM is the default engine, you must specify `ENGINE = InnoDB;` when you create a table. If you introspect a database that uses a different engine, relations in the Prisma Schema are not created (or lost, if the relation already existed).
+
+## Permissions
+
+A fresh new installation of MySQL/MariaDB has by default only a `root` database user. Do not use `root` user in your Prisma configuration, but instead create a database and database user for each application. On most Linux hosts (e.g. Ubuntu) you can simply run this as the Linux `root` user (which automatically has database `root` access as well):
+
+```
+mysql -e "CREATE DATABASE IF NOT EXISTS $DB_PRISMA;"
+mysql -e "GRANT ALL PRIVILEGES ON $DB_PRISMA.* TO $DB_USER@'%' IDENTIFIED BY '$DB_PASSWORD';"
+```
+
+The above is enough to run the `prisma db pull` and `prisma db push` commands. In order to also run `prisma migrate` commands these permissions need to be granted:
+
+```
+mysql -e "GRANT CREATE, DROP, REFERENCES, ALTER ON *.* TO $DB_USER@'%';"
+```

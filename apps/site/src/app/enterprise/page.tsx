@@ -4,7 +4,7 @@ import Image from "next/image";
 import { FooterAccordion } from "@/components/enterprise/footer-accordion";
 import { SwitchEnterprise } from "@/components/enterprise/switch-enterprise";
 import LogoParade from "@/components/logo-parade";
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { Button, Card, Action } from "@prisma/eclipse";
 import { CardSection } from "@/components/homepage/card-section/card-section";
 import { cn } from "@/lib/cn";
@@ -33,14 +33,16 @@ const first = [
           application’s lifecycle
         </h2>
         <p className="text-foreground-neutral-weak! text-base my-4">
-          By integrating Prisma into your development ecosystem, you leverage its capabilities to
-          Build robust, adaptable applications with less code and fewer errors and also Fortify your
-          database interactions for peak performance right from the start.
+          By integrating Prisma into your development ecosystem, you leverage
+          its capabilities to Build robust, adaptable applications with less
+          code and fewer errors and also Fortify your database interactions for
+          peak performance right from the start.
         </p>
         <p className="text-foreground-neutral-weak! text-base my-4">
-          As your application Grows, our platform products Accelerate and Prisma Postgres ensure
-          that your data layer can adapt and scale, supporting increased traffic and requirements
-          without sacrificing performance or security.
+          As your application Grows, our platform products Accelerate and Prisma
+          Postgres ensure that your data layer can adapt and scale, supporting
+          increased traffic and requirements without sacrificing performance or
+          security.
         </p>
       </>
     ),
@@ -219,12 +221,14 @@ const solution_providers = [
   },
   {
     title: "Advanced updates",
-    description: "Stay ahead in the game with the latest updates and best practices.",
+    description:
+      "Stay ahead in the game with the latest updates and best practices.",
     icon: "fa-regular fa-file-arrow-up", // or "fa-light fa-file-import"
   },
   {
     title: "Expedited and priority support",
-    description: "Benefit from prioritized attention to your inquiries and problems.",
+    description:
+      "Benefit from prioritized attention to your inquiries and problems.",
     icon: "fa-regular fa-phone-volume", // or "fa-light fa-phone-arrow-up-right"
   },
   {
@@ -317,33 +321,17 @@ const abstraction_ease_of_use = [
   },
 ];
 
-const ENTERPRISE_TITLE = "Streamline your enterprise development workflow with Prisma";
+const ENTERPRISE_TITLE =
+  "Prisma Enterprise | ORM Support and Database Workflows for Teams";
 const ENTERPRISE_DESCRIPTION =
-  "Learn how Prisma ORM can improve your team's productivity and explore our tailored ORM support solutions for enterprises and solution providers.";
+  "See how Prisma helps engineering teams ship faster with better database workflows, enterprise support, and tailored solutions for large organizations.";
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: ENTERPRISE_TITLE,
   description: ENTERPRISE_DESCRIPTION,
-  alternates: {
-    canonical: "https://www.prisma.io/enterprise",
-  },
-  openGraph: {
-    title: ENTERPRISE_TITLE,
-    description: ENTERPRISE_DESCRIPTION,
-    url: "https://www.prisma.io/enterprise",
-    images: [
-      {
-        url: "/og/og-enterprise.png",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: ENTERPRISE_TITLE,
-    description: ENTERPRISE_DESCRIPTION,
-    images: ["/og/og-enterprise.png"],
-  },
-};
+  path: "/enterprise",
+  ogImage: "/og/og-enterprise.png",
+});
 
 export default function EnterprisePage() {
   return (
@@ -361,11 +349,17 @@ export default function EnterprisePage() {
             </h1>
           </div>
           <p className="text-center text-foreground-neutral max-w-2xl mx-auto">
-            Prisma acts as your comprehensive enterprise data toolset, simplifying database
-            interactions and reducing complexity so developers can focus on business logic.
+            Prisma acts as your comprehensive enterprise data toolset,
+            simplifying database interactions and reducing complexity so
+            developers can focus on business logic.
           </p>
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
-            <Button asChild variant="orm" size="3xl" className="font-sans-display! font-[650]">
+            <Button
+              asChild
+              variant="orm"
+              size="3xl"
+              className="font-sans-display! font-[650]"
+            >
               <a href="#contact-us">
                 Get in touch
                 <i className="fa-regular fa-envelope" />
@@ -395,8 +389,8 @@ export default function EnterprisePage() {
             Leave the database complexities to us
           </h3>
           <p className="text-center text-foreground-neutral max-w-xl mx-auto">
-            Focus on core competencies of your team, rather than building and managing complex
-            infrastructure components.
+            Focus on core competencies of your team, rather than building and
+            managing complex infrastructure components.
           </p>
         </div>
         <div className="grid md:grid-cols-2 gap-6 max-w-230 mx-auto w-full">
@@ -428,14 +422,14 @@ export default function EnterprisePage() {
                       <div className="bottom-0 left-0 right-0 px-4 after:content-[''] after:absolute after:inset-0 after:bg-[linear-gradient(0deg,var(--color-background-default)_0%,transparent_62.5%)] after:top-0 absolute after:rounded-square">
                         <Image
                           src={`${card.image}.svg`}
-                          alt="Enterprise"
+                          alt="Diagram illustrating Prisma's enterprise-grade architecture and tooling"
                           width={1200}
                           height={900}
                           className="hidden dark:block mx-auto"
                         />
                         <Image
                           src={`${card.image}_light.svg`}
-                          alt="Enterprise"
+                          alt="Diagram illustrating Prisma's enterprise-grade architecture and tooling"
                           width={1200}
                           height={900}
                           className="block dark:hidden mx-auto"
@@ -492,7 +486,11 @@ export default function EnterprisePage() {
             gridClassName="auto-cols-[100%] sm:auto-cols-[calc((100%-2rem)/3)]"
           >
             {abstraction_ease_of_use.map((item) => (
-              <CarouselItem key={item.title} card={item} className="min-h-full" />
+              <CarouselItem
+                key={item.title}
+                card={item}
+                className="min-h-full"
+              />
             ))}
           </ScrollCarousel>
         </div>
@@ -552,7 +550,11 @@ export default function EnterprisePage() {
             gridClassName="auto-cols-[100%] sm:auto-cols-[calc((100%-2rem)/3)]"
           >
             {scal_port.map((item) => (
-              <CarouselItem key={item.title} card={item} className="min-h-full" />
+              <CarouselItem
+                key={item.title}
+                card={item}
+                className="min-h-full"
+              />
             ))}
           </ScrollCarousel>
         </div>
@@ -565,8 +567,8 @@ export default function EnterprisePage() {
             Dedicated ORM support options
           </h2>
           <p className="text-center text-foreground-neutral max-w-xl mx-auto">
-            Focus on core competencies of your team, rather than building and managing complex
-            infrastructure components.
+            Focus on core competencies of your team, rather than building and
+            managing complex infrastructure components.
           </p>
           <SwitchEnterprise
             content={[enterprises, solution_providers]}
@@ -585,8 +587,8 @@ export default function EnterprisePage() {
             Connect with us
           </h2>
           <p className="text-center text-foreground-neutral max-w-3xl mx-auto">
-            To explore how our support solutions can revolutionize your agency or enterprise's
-            approach to developing with Prisma ORM.
+            To explore how our support solutions can revolutionize your agency
+            or enterprise's approach to developing with Prisma ORM.
           </p>
           <EnterpriseForm />
         </div>

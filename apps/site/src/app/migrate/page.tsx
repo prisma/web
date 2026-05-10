@@ -3,9 +3,9 @@ import { Action, Button, Card } from "@prisma/eclipse";
 import HeroCode, { HeroCodeStep } from "@/components/migrate/hero-code";
 
 export const metadata = createPageMetadata({
-  title: "Prisma Migrate | Hassle-free Database Migrations",
+  title: "Prisma Migrate | Database Migrations for Prisma ORM",
   description:
-    "Automatically generate fully customizable database schema migrations for PostgreSQL, MySQL, MariaDB or SQLite.",
+    "Generate and customize SQL migrations for PostgreSQL, MySQL, MariaDB, SQLite, and SQL Server with a migration workflow built for development and production.",
   path: "/migrate",
   ogImage: "/og/og-migrate.png",
 });

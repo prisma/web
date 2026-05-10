@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import * as data from "../../../data/prisma-with/hapi.json";
 import { PrismaWithLayout } from "../../../components/prisma-with/layout";
 
@@ -73,33 +73,13 @@ model Post {
 }`,
 };
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: "The perfect ORM for hapi developers",
   description:
     "Query data from MySQL, PostgreSQL & SQL Server databases in hapi apps with Prisma – a better ORM for JavaScript and TypeScript.",
-  alternates: {
-    canonical: "https://www.prisma.io/hapi",
-  },
-  openGraph: {
-    title: "The perfect ORM for hapi developers",
-    description:
-      "Query data from MySQL, PostgreSQL & SQL Server databases in hapi apps with Prisma – a better ORM for JavaScript and TypeScript.",
-    url: "https://www.prisma.io/hapi",
-    siteName: "Prisma",
-    locale: "en_US",
-    type: "website",
-    images: [{ url: "/og/prisma-with/hapi.png" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    site: "@prisma",
-    creator: "@prisma",
-    title: "The perfect ORM for hapi developers",
-    description:
-      "Query data from MySQL, PostgreSQL & SQL Server databases in hapi apps with Prisma – a better ORM for JavaScript and TypeScript.",
-    images: ["/og/prisma-with/hapi.png"],
-  },
-};
+  path: "/hapi",
+  ogImage: "/og/prisma-with/hapi.png",
+});
 
 export default async function HapiPage() {
   return <PrismaWithLayout data={data} codeExamples={codeExamples} />;

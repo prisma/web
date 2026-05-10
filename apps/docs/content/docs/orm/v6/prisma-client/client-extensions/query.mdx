@@ -1,0 +1,271 @@
+---
+title: '`query`: Create custom Prisma Client queries'
+description: 'Extend the functionality of Prisma Client, query component'
+url: /orm/v6/prisma-client/client-extensions/query
+metaTitle: 'Prisma Client extensions: query component'
+metaDescription: 'Extend the functionality of Prisma Client, query component'
+---
+
+:::info
+
+Prisma Client extensions are Generally Available from versions 4.16.0 and later. They were introduced in Preview in version 4.7.0. Make sure you enable the `clientExtensions` Preview feature flag if you are running on a version earlier than 4.16.0.
+
+:::
+
+You can use the `query` [Prisma Client extensions](/orm/v6/prisma-client/client-extensions) component type to hook into the query life-cycle and modify an incoming query or its result.
+
+You can use Prisma Client extensions `query` component to create independent clients with customized behavior. You can bind one client to a specific filter or user, and another client to another filter or user. For example, you might do this to get [user isolation](/orm/v6/prisma-client/client-extensions#extended-clients) in a row-level security (RLS) extension. The `query` extension component provides end-to-end type safety for all your custom queries.
+
+## Extend Prisma Client query operations
+
+Use the `$extends` [client-level method](/orm/v6/reference/prisma-client-reference#client-methods) to create an [extended client](/orm/v6/prisma-client/client-extensions#about-prisma-client-extensions). An extended client is a variant of the standard Prisma Client that is wrapped by one or more extensions.
+
+Use the `query` extension component to modify queries. You can modify a custom query in the following:
+
+- [A specific operation in a specific model](#modify-a-specific-operation-in-a-specific-model)
+- [A specific operation in all models of your schema](#modify-a-specific-operation-in-all-models-of-your-schema)
+- [All Prisma Client operations](#modify-all-prisma-client-operations)
+- [All operations in a specific model](#modify-all-operations-in-a-specific-model)
+- [All operations in all models of your schema](#modify-all-operations-in-all-models-of-your-schema)
+- [A specific top-level raw query operation](#modify-a-top-level-raw-query-operation)
+
+To create a custom query, use the following structure:
+
+```ts
+const prisma = new PrismaClient().$extends({
+  name?: 'name',
+  query?: {
+    user: { ... } // in this case, we add a query to the `user` model
+  },
+});
+```
+
+The properties are as follows:
+
+- `name`: (optional) specifies a name for the extension that appears in error logs.
+- `query`: defines a custom query.
+
+### Modify a specific operation in a specific model
+
+The `query` object can contain functions that map to the names of the [Prisma Client operations](/orm/v6/reference/prisma-client-reference#model-queries), such as `findUnique()`, `findFirst`, `findMany`, `count`, and `create`. The following example modifies `user.findMany` to a use a customized query that finds only users who are older than 18 years:
+
+```ts
+const prisma = new PrismaClient().$extends({
+  query: {
+    user: {
+      async findMany({ model, operation, args, query }) {
+        // take incoming `where` and set `age`
+        args.where = { ...args.where, age: { gt: 18 } };
+
+        return query(args);
+      },
+    },
+  },
+});
+
+await prisma.user.findMany(); // returns users whose age is greater than 18
+```
+
+In the above example, a call to `prisma.user.findMany` triggers `query.user.findMany`. Each callback receives a type-safe `{ model, operation, args, query }` object that describes the query. This object has the following properties:
+
+- `model`: the name of the containing model for the query that we want to extend.
+
+  In the above example, the `model` is a string of type `"User"`.
+
+- `operation`: the name of the operation being extended and executed.
+
+  In the above example, the `operation` is a string of type `"findMany"`.
+
+- `args`: the specific query input information to be extended.
+
+  This is a type-safe object that you can mutate before the query happens. You can mutate any of the properties in `args`. Exception: you cannot mutate `include` or `select` because that would change the expected output type and break type safety.
+
+- `query`: a promise for the result of the query.
+  - You can use `await` and then mutate the result of this promise, because its value is type-safe. TypeScript catches any unsafe mutations on the object.
+
+### Modify a specific operation in all models of your schema
+
+To extend the queries in all the models of your schema, use `$allModels` instead of a specific model name. For example:
+
+```ts
+const prisma = new PrismaClient().$extends({
+  query: {
+    $allModels: {
+      async findMany({ model, operation, args, query }) {
+        // set `take` and fill with the rest of `args`
+        args = { ...args, take: 100 };
+
+        return query(args);
+      },
+    },
+  },
+});
+```
+
+### Modify all operations in a specific model
+
+Use `$allOperations` to extend all operations in a specific model.
+
+For example, the following code applies a custom query to all operations on the `user` model:
+
+```ts
+const prisma = new PrismaClient().$extends({
+  query: {
+    user: {
+      $allOperations({ model, operation, args, query }) {
+        /* your custom logic here */
+        return query(args);
+      },
+    },
+  },
+});
+```
+
+### Modify all Prisma Client operations
+
+Use the `$allOperations` method to modify all query methods present in Prisma Client. The `$allOperations` can be used on both model operations and raw queries.
+
+You can modify all methods as follows:
+
+```ts
+const prisma = new PrismaClient().$extends({
+  query: {
+    $allOperations({ model, operation, args, query }) {
+      /* your custom logic for modifying all Prisma Client operations here */
+      return query(args);
+    },
+  },
+});
+```
+
+In the event a [raw query](/orm/v6/prisma-client/using-raw-sql/raw-queries) is invoked, the `model` argument passed to the callback will be `undefined`.
+
+For example, you can use the `$allOperations` method to log queries as follows:
+
+```ts
+const prisma = new PrismaClient().$extends({
+  query: {
+    async $allOperations({ operation, model, args, query }) {
+      const start = performance.now();
+      const result = await query(args);
+      const end = performance.now();
+      const time = end - start;
+      console.log(
+        util.inspect(
+          { model, operation, args, time },
+          { showHidden: false, depth: null, colors: true },
+        ),
+      );
+      return result;
+    },
+  },
+});
+```
+
+### Modify all operations in all models of your schema
+
+Use `$allModels` and `$allOperations` to extend all operations in all models of your schema.
+
+To apply a custom query to all operations on all models of your schema:
+
+```ts
+const prisma = new PrismaClient().$extends({
+  query: {
+    $allModels: {
+      $allOperations({ model, operation, args, query }) {
+        /* your custom logic for modifying all operations on all models here */
+        return query(args);
+      },
+    },
+  },
+});
+```
+
+### Modify a top-level raw query operation
+
+To apply custom behavior to a specific top-level raw query operation, use the name of a top-level raw query function instead of a model name:
+
+```ts copy tab="Relational databases"
+const prisma = new PrismaClient().$extends({
+  query: {
+    $queryRaw({ args, query, operation }) {
+      // handle $queryRaw operation
+      return query(args);
+    },
+    $executeRaw({ args, query, operation }) {
+      // handle $executeRaw operation
+      return query(args);
+    },
+    $queryRawUnsafe({ args, query, operation }) {
+      // handle $queryRawUnsafe operation
+      return query(args);
+    },
+    $executeRawUnsafe({ args, query, operation }) {
+      // handle $executeRawUnsafe operation
+      return query(args);
+    },
+  },
+});
+```
+
+```ts copy tab="MongoDB"
+const prisma = new PrismaClient().$extends({
+  query: {
+    $runCommandRaw({ args, query, operation }) {
+      // handle $runCommandRaw operation
+      return query(args);
+    },
+  },
+});
+```
+
+### Mutate the result of a query
+
+You can use `await` and then mutate the result of the `query` promise.
+
+```ts
+const prisma = new PrismaClient().$extends({
+  query: {
+    user: {
+      async findFirst({ model, operation, args, query }) {
+        const user = await query(args);
+
+        if (user.password !== undefined) {
+          user.password = "******";
+        }
+
+        return user;
+      },
+    },
+  },
+});
+```
+
+:::info
+
+We include the above example to show that this is possible. However, for performance reasons we recommend that you use the [`result` component type](/orm/v6/prisma-client/client-extensions/result) to override existing fields. The `result` component type usually gives better performance in this situation because it computes only on access. The `query` component type computes after query execution.
+
+:::
+
+## Wrap a query into a batch transaction
+
+You can wrap your extended queries into a [batch transaction](/orm/v6/prisma-client/queries/transactions). For example, you can use this to enact row-level security (RLS).
+
+The following example extends `findFirst` so that it runs in a batch transaction.
+
+```ts
+const transactionExtension = Prisma.defineExtension((prisma) =>
+  prisma.$extends({
+    query: {
+      user: {
+        // Get the input `args` and a callback to `query`
+        async findFirst({ args, query, operation }) {
+          const [result] = await prisma.$transaction([query(args)]); // wrap the query in a batch transaction, and destructure the result to return an array
+          return result; // return the first result found in the array
+        },
+      },
+    },
+  }),
+);
+const prisma = new PrismaClient().$extends(transactionExtension);
+```

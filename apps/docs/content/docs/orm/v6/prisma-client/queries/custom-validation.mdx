@@ -1,0 +1,176 @@
+---
+title: Custom validation
+description: This page explains how to add custom validation to Prisma Client
+url: /orm/v6/prisma-client/queries/custom-validation
+metaTitle: Custom validation
+metaDescription: This page explains how to add custom validation to Prisma Client
+---
+
+You can add runtime validation for your user input for Prisma Client queries in one of the following ways:
+
+- [Prisma Client extensions](/orm/v6/prisma-client/client-extensions)
+- A custom function
+
+You can use any validation library you'd like. The Node.js ecosystem offers a number of high-quality, easy-to-use validation libraries to choose from including: [joi](https://github.com/sideway/joi), [validator.js](https://github.com/validatorjs/validator.js), [Yup](https://github.com/jquense/yup), [Zod](https://github.com/colinhacks/zod) and [Superstruct](https://github.com/ianstormtaylor/superstruct).
+
+## Input validation with Prisma Client extensions
+
+This example adds runtime validation when creating and updating values using a Zod schema to check that the data passed to Prisma Client is valid.
+
+:::warning
+
+Query extensions do not currently work for nested operations. In this example, validations are only run on the top level data object passed to methods such as `prisma.product.create()`. Validations implemented this way do not automatically run for [nested writes](/orm/v6/prisma-client/queries/relation-queries#nested-writes).
+
+:::
+
+```ts copy tab="Prisma Client extension"
+import { PrismaClient, Prisma } from "../prisma/generated/client";
+import { z } from "zod";
+
+/**
+ * Zod schema
+ */
+export const ProductCreateInput = z.object({
+  slug: z
+    .string()
+    .max(100)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+  name: z.string().max(100),
+  description: z.string().max(1000),
+  price: z
+    .instanceof(Prisma.Decimal)
+    .refine((price) => price.gte("0.01") && price.lt("1000000.00")),
+}) satisfies z.Schema<Prisma.ProductUncheckedCreateInput>;
+
+/**
+ * Prisma Client Extension
+ */
+const prisma = new PrismaClient().$extends({
+  query: {
+    product: {
+      create({ args, query }) {
+        args.data = ProductCreateInput.parse(args.data);
+        return query(args);
+      },
+      update({ args, query }) {
+        args.data = ProductCreateInput.partial().parse(args.data);
+        return query(args);
+      },
+      updateMany({ args, query }) {
+        args.data = ProductCreateInput.partial().parse(args.data);
+        return query(args);
+      },
+      upsert({ args, query }) {
+        args.create = ProductCreateInput.parse(args.create);
+        args.update = ProductCreateInput.partial().parse(args.update);
+        return query(args);
+      },
+    },
+  },
+});
+
+async function main() {
+  /**
+   * Example usage
+   */
+  // Valid product
+  const product = await prisma.product.create({
+    data: {
+      slug: "example-product",
+      name: "Example Product",
+      description: "Lorem ipsum dolor sit amet",
+      price: new Prisma.Decimal("10.95"),
+    },
+  });
+
+  // Invalid product
+  try {
+    await prisma.product.create({
+      data: {
+        slug: "invalid-product",
+        name: "Invalid Product",
+        description: "Lorem ipsum dolor sit amet",
+        price: new Prisma.Decimal("-1.00"),
+      },
+    });
+  } catch (err: any) {
+    console.log(err?.cause?.issues);
+  }
+}
+
+main();
+```
+
+```prisma copy tab="Prisma schema"
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client"
+  output   = "./generated"
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  slug        String
+  name        String
+  description String
+  price       Decimal
+  reviews     Review[]
+}
+
+model Review {
+  id        String  @id @default(cuid())
+  body      String
+  stars     Int
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String
+}
+```
+
+The above example uses a Zod schema to validate and parse data provided in a query at runtime before a record is written to the database.
+
+## Input validation with a custom validation function
+
+Here's an example using [Superstruct](https://github.com/ianstormtaylor/superstruct) to validate that the data needed to signup a new user is correct:
+
+```tsx
+import { PrismaClient, Prisma, User } from "@prisma/client";
+import { assert, object, string, size, refine } from "superstruct";
+import isEmail from "isemail";
+
+const prisma = new PrismaClient();
+
+// Runtime validation
+const Signup = object({
+  // string and a valid email address
+  email: refine(string(), "email", (v) => isEmail.validate(v)),
+  // password is between 7 and 30 characters long
+  password: size(string(), 7, 30),
+  // first name is between 2 and 50 characters long
+  firstName: size(string(), 2, 50),
+  // last name is between 2 and 50 characters long
+  lastName: size(string(), 2, 50),
+});
+
+type Signup = Omit<Prisma.UserCreateArgs["data"], "id">;
+
+// Signup function
+async function signup(input: Signup): Promise<User> {
+  // Assert that input conforms to Signup, throwing with a helpful
+  // error message if input is invalid.
+  assert(input, Signup);
+  return prisma.user.create({
+    data: input.user,
+  });
+}
+```
+
+The example above shows how you can create a custom type-safe `signup` function that ensures the input is valid before creating a user.
+
+## Going further
+
+- Learn how you can use [Prisma Client extensions](/orm/v6/prisma-client/client-extensions) to add input validation for your queries — [example](https://github.com/prisma/prisma-client-extensions/tree/main/input-validation).
+- Learn how you can organize your code better by moving the `signup` function into [a custom model](/orm/v6/prisma-client/queries/custom-models).
+- There's an [outstanding feature request](https://github.com/prisma/prisma/issues/3528) to bake user validation into Prisma Client. If you'd like to see that happen, make sure to upvote that issue and share your use case!

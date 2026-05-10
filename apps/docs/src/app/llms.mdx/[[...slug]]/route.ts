@@ -1,5 +1,6 @@
 import { getLLMText } from "@/lib/get-llm-text";
-import { source, sourceV6 } from "@/lib/source";
+import { getPageTitleText } from "@/lib/page-title";
+import { source } from "@/lib/source";
 import { getBaseUrl, withDocsBasePath } from "@/lib/urls";
 
 export const revalidate = false;
@@ -9,12 +10,7 @@ const MAX_NEAREST_MATCH_PATH_LENGTH = 240;
 
 function resolvePage(slug: string[] | undefined) {
   const slugs = slug ?? [];
-
-  return (
-    source.getPage(slugs) ||
-    sourceV6.getPage(slugs) ||
-    (slugs[0] === "v6" ? sourceV6.getPage(slugs.slice(1)) : undefined)
-  );
+  return source.getPage(slugs);
 }
 
 function normalizePath(path: string) {
@@ -53,7 +49,8 @@ function getNearestPages(slug: string[] | undefined) {
   const requestedPath = getBoundedRequestedPath(slug);
   if (!requestedPath) return [];
 
-  return [...source.getPages(), ...sourceV6.getPages()]
+  return source
+    .getPages()
     .map((page) => ({
       page,
       distance: getDistance(requestedPath, normalizePath(page.url)),
@@ -69,7 +66,7 @@ function getMarkdownNotFoundResponse(slug: string[] | undefined) {
   const nearestLinks = nearestPages
     .map((page) => {
       const description = page.data.description ? `: ${page.data.description}` : "";
-      return `- [\`${page.data.title}\`](${baseUrl}${withDocsBasePath(page.url)})${description}`;
+      return `- [\`${getPageTitleText(page.data.title, page.url)}\`](${baseUrl}${withDocsBasePath(page.url)})${description}`;
     })
     .join("\n");
 
@@ -110,14 +107,10 @@ export async function GET(_req: Request, { params }: RouteContext<"/llms.mdx/[[.
 export function generateStaticParams() {
   // Only pre-render leaf pages to avoid file/dir conflicts during static export.
   // A slug is considered non-leaf if it is a prefix of any other slug.
-  const v7Params = source.generateParams();
-  const v6Params = sourceV6
-    .generateParams()
-    .map((p) => ({ ...p, slug: ["v6", ...(p.slug ?? [])] }));
+  const params = source.generateParams();
 
-  // Deduplicate identical slugs from v7 and v6
   const seen = new Set<string>();
-  const allParams = [...v7Params, ...v6Params].filter((p) => {
+  const allParams = params.filter((p) => {
     const key = JSON.stringify(p.slug ?? []);
     if (seen.has(key)) return false;
     seen.add(key);
