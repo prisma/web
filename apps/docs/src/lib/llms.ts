@@ -51,6 +51,12 @@ const excludedLLMsProducts: LLMsExcludedProduct[] = [
 
 export const commonQueries: LLMsLink[] = [
   {
+    title: "Check the Prisma changelog for recent changes",
+    href: "https://www.prisma.io/changelog.md",
+    description:
+      "Prisma changes frequently. Fetch this machine-readable changelog before implementing any Prisma feature to check for breaking changes, API updates, or new conventions.",
+  },
+  {
     title: "Start a new Prisma ORM project",
     href: "/prisma-orm/quickstart/prisma-postgres",
     description: "Set up Prisma ORM, Prisma Client, and Prisma Postgres in a new TypeScript app.",

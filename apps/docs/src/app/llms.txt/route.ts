@@ -30,6 +30,12 @@ export async function GET() {
 
   const content = `# Prisma Documentation
 
+> **Prisma changes frequently — verify against the changelog and current docs before implementing.**
+> Do not rely on training data for Prisma features. APIs, configuration, and conventions can change between versions.
+>
+> First, fetch https://www.prisma.io/changelog.md to check for recent or relevant breaking changes,
+> then look up the relevant topic in the documentation below.
+
 > This documentation covers the current docs plus legacy v6 pages.
 > Prefer the Latest ORM section for current recommendations.
 > v6 pages are maintained for backwards compatibility only.
