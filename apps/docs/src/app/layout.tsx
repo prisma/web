@@ -36,6 +36,26 @@ export default function Layout({ children }: { children: ReactNode }) {
       suppressHydrationWarning
     >
       <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              name: "Prisma Documentation",
+              url: "https://www.prisma.io/docs",
+              potentialAction: {
+                "@type": "SearchAction",
+                target: {
+                  "@type": "EntryPoint",
+                  urlTemplate:
+                    "https://www.prisma.io/docs?q={search_term_string}",
+                },
+                "query-input": "required name=search_term_string",
+              },
+            }),
+          }}
+        />
         {/* CookieYes CMP — declared first so its consent hooks are in place
             before any other consent-gated script can execute */}
         <Script
