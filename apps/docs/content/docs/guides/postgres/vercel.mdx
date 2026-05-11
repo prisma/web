@@ -1,16 +1,20 @@
 ---
 title: Vercel
-description: Learn how to create Prisma Postgres databases via the Vercel Marketplace and deploy your applications with it
+description: Learn how to create Prisma Postgres databases via the Vercel Marketplace and deploy your Next.js, Nuxt, and SvelteKit applications.
 url: /guides/postgres/vercel
-metaTitle: Prisma Postgres via Vercel Marketplace
-metaDescription: Learn how to create Prisma Postgres databases via the Vercel Marketplace and deploy your applications with it.
+metaTitle: Prisma Postgres on Vercel — Marketplace integration and Next.js setup
+metaDescription: Create Prisma Postgres databases via the Vercel Marketplace and deploy Next.js apps with built-in connection pooling. No pgBouncer setup required.
 ---
 
-The [Vercel Marketplace integration for Prisma Postgres](https://www.vercel.com/marketplace/prisma) connects your Vercel projects with Prisma Postgres instances. Once connected, the integration will automatically set the following environment variable on your deployed Vercel app:
+The [Vercel Marketplace integration for Prisma Postgres](https://www.vercel.com/marketplace/prisma) connects your Vercel projects with Prisma Postgres instances. Once connected, the integration automatically sets the following environment variable on your deployed Vercel app:
 
 - `DATABASE_URL`: A Prisma Postgres [connection string](/postgres/database/connecting-to-your-database) starting with `postgres://...`
 
 These enable you to connect to the Prisma Postgres instances via any ORM or database library you want to use (Prisma ORM, Drizzle, Kysely, ...).
+
+## Why Prisma Postgres works well on Vercel
+
+Vercel scales serverless functions automatically. Each new function instance opens a database connection — and with a traditional Postgres setup, that's how you hit connection limits under load. Prisma Postgres includes connection pooling by default, so you don't need to configure pgBouncer or maintain a separate pooler. The `DATABASE_URL` the Marketplace sets works in local dev, preview deployments, and production.
 
 ## Features
 
@@ -61,17 +65,15 @@ In the local version of your project where you have your `DATABASE_URL` set, run
 npx prisma studio
 ```
 
-## Billing and pricing
+## Using with Next.js
 
-Prisma Postgres uses [usage-based pricing](https://www.prisma.io/pricing) based on operations and storage. The same plans and rates apply when you create a database via the Vercel Marketplace, and your Prisma Postgres usage is billed through your Vercel account.
+If you're building a Next.js app and want a step-by-step walkthrough — schema, migrations, querying from Server Components, and deploying — see the [Next.js guide](/guides/frameworks/nextjs).
 
-To change your plan, see [How do I upgrade my plan if I am using Prisma Postgres via Vercel?](/postgres/faq#how-do-i-upgrade-my-plan-if-i-am-using-prisma-postgres-via-vercel) in the Prisma Postgres FAQ.
-
-## Additional considerations when using with Prisma ORM
+The key things to set up on the Vercel side:
 
 ### Ensure your project uses the correct environment variable
 
-Ensure that the data source in your `prisma.config.ts` file is configured to use the `DATABASE_URL` environment variable:
+Make sure your `prisma.config.ts` reads from `DATABASE_URL`:
 
 ```ts
 import "dotenv/config";
@@ -84,20 +86,23 @@ export default defineConfig({
 });
 ```
 
-### Generate Prisma Client in a `postinstall` script in `package.json`
+### Generate Prisma Client on every deploy
 
-To ensure the generated Prisma Client library is available on your deployed Vercel project, you should add a `postinstall` script to the `scripts` section of your `package.json` file:
+Add a `postinstall` script so Prisma Client is generated after Vercel installs dependencies:
 
-```js title="package.json"
+```json title="package.json"
 {
-  // ...
   "scripts": {
-    // ...
     "postinstall": "prisma generate" // [!code ++]
   }
-  //
 }
 ```
+
+## Billing and pricing
+
+Prisma Postgres uses [usage-based pricing](https://www.prisma.io/pricing) based on operations and storage. The same plans and rates apply when you create a database via the Vercel Marketplace, and your Prisma Postgres usage is billed through your Vercel account.
+
+To change your plan, see [How do I upgrade my plan if I am using Prisma Postgres via Vercel?](/postgres/faq#how-do-i-upgrade-my-plan-if-i-am-using-prisma-postgres-via-vercel) in the Prisma Postgres FAQ.
 
 ## Security
 

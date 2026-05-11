@@ -1,14 +1,126 @@
 ---
 title: Neon
-description: Learn how to migrate from Neon to Prisma Postgres
+description: How Prisma Postgres compares to Neon, and how to migrate your data if you decide to switch.
 url: /guides/switch-to-prisma-postgres/from-neon
-metaTitle: How to migrate from Neon to Prisma Postgres
-metaDescription: Learn how to migrate from Neon to Prisma Postgres.
+metaTitle: Prisma Postgres vs Neon — and how to migrate
+metaDescription: Compare Prisma Postgres and Neon on connection pooling, query caching, branching, edge support, and pricing. Includes a step-by-step migration guide using pg_dump and pg_restore.
 ---
 
-This guide walks you through migrating data from Neon to Prisma Postgres using `pg_dump` and `pg_restore`.
+Both Prisma Postgres and Neon are serverless Postgres services built for modern app development. This page covers where they differ and, if you decide to switch, how to move your data.
 
-## Prerequisites
+## At a glance
+
+| Feature | Prisma Postgres | Neon |
+| ---------------------------------- | ----------------------------------- | --------------------------------------- |
+| **Connection pooling** | Built-in PgBouncer (tenant-isolated) | Built-in PgBouncer (per user-database pool) |
+| **Query caching** | Yes — query-level cache policies via Prisma ORM | No native query cache |
+| **Database branching** | No | Yes — full database branching |
+| **Edge / serverless support** | Yes — HTTP-based serverless driver | Yes — HTTP driver (`@neondatabase/serverless`) |
+| **Prisma ORM integration** | First-class — driver adapter built in | Supported via Neon serverless driver adapter |
+| **MCP / agent tooling** | Yes — Prisma MCP server | Yes — Neon MCP server |
+| **Free tier** | Yes — operations-based | Yes — generous compute hours |
+| **Pricing model** | Operations + storage | Compute hours + storage |
+| **Postgres version** | 17 | 16, 17 |
+| **Available regions** | 6 regions | 11 regions (8 AWS, 3 Azure) |
+
+## Connection pooling
+
+Both services use PgBouncer in transactional mode. A backend connection is checked out for the duration of a transaction and returned to the pool when it completes. Session state does not persist between transactions on either platform.
+
+The operational difference is how the pooler is deployed. Prisma Postgres runs a tenant-isolated PgBouncer instance per database. Neon uses PgBouncer on shared infrastructure, but pools are logically isolated per user-database pair — each distinct combination of database user and database name gets its own pool.
+
+Prisma Postgres pooled connection limits by plan:
+
+| Plan | Pooled connections | Direct connections |
+| -------- | ------------------ | ------------------ |
+| Free | 50 | 10 |
+| Starter | 50 | 10 |
+| Pro | 250 | 50 |
+| Business | 500 | 100 |
+
+Neon's limits are comparable at the free tier and scale differently depending on whether you're on the shared or dedicated pooler. Review [Neon's connection limits documentation](https://neon.tech/docs/connect/connection-pooling) alongside the [Prisma Postgres connection pooling docs](/postgres/database/connection-pooling) to compare against your expected concurrency.
+
+## Query caching
+
+Prisma Postgres includes built-in query caching via Prisma Accelerate. You control caching at the query level directly in your code:
+
+```ts
+const posts = await prisma.post.findMany({
+  cacheStrategy: {
+    ttl: 300,     // cache for 5 minutes
+    swr: 60,      // serve stale while revalidating for 1 minute
+  },
+})
+```
+
+The cache is globally distributed, so responses are served from an edge node close to your application rather than from the database region. This reduces read latency for repeated queries and cuts load on the database for read-heavy workloads.
+
+Neon does not have a native query cache. Caching on Neon requires a separate service like Redis, Upstash, or a CDN-level cache. Most database services work this way, so this isn't unique to Neon. But it does mean more setup and one more thing to operate.
+
+## Database branching
+
+Neon's database branching is genuinely good. Neon uses a copy-on-write storage model that makes branching nearly instant and storage-efficient. You can create a branch from your production database in seconds and get a full, isolated copy of your data for preview environments, pull request workflows, or integration testing.
+
+Prisma Postgres does not have database branching. There's no equivalent feature today. If your workflow depends on per-PR database branches or instant environment cloning, Neon has a real advantage here.
+
+For teams that manage environments differently — using separate databases per environment or relying on seed scripts for test data — the absence of branching in Prisma Postgres isn't a blocker. But teams that have built branching into their CI/CD pipeline will need to account for this gap.
+
+## Edge and serverless support
+
+Both services support serverless and edge runtimes, though the implementation differs.
+
+Prisma Postgres ships a serverless driver (`@prisma/ppg`) that communicates over HTTP rather than TCP. This works in any JavaScript runtime including Node.js, Cloudflare Workers, Vercel Edge Functions, and AWS Lambda. The driver is used automatically when you configure Prisma Client with the driver adapter for Prisma Postgres.
+
+Neon provides `@neondatabase/serverless`, an HTTP/WebSocket-based driver for the same class of environments. Both approaches solve the same problem: standard Postgres wire protocol requires a persistent TCP connection, which is incompatible with serverless environments that close connections between requests.
+
+For Prisma ORM users, the Prisma Postgres integration is tighter — the driver adapter is configured once and the rest of your application code is unchanged. For users of other query builders, both services require explicit driver configuration.
+
+## Pricing
+
+The pricing models are structured differently, which makes direct comparison harder than it looks.
+
+Prisma Postgres bills on operations and storage. An operation is any query — read or write, simple or complex — counted once regardless of execution time. Storage is billed per GB. This model is predictable if you have a clear sense of query volume, but harder to estimate for new projects.
+
+Neon bills on compute time and storage. You pay for the time your compute endpoint is active, measured in compute-hours. Neon's autosuspend feature suspends the database after 5 minutes of inactivity, which keeps costs low for development databases but adds cold-start latency on the first connection after a suspend. Free plan users can't disable this; paid plans can turn it off entirely.
+
+Both services have free tiers usable for real development work:
+
+- Prisma Postgres free tier includes a fixed operations budget per month and 0.5 GB storage.
+- Neon free tier includes 100 CU-hours per project per month and 0.5 GB storage.
+
+Neon's free tier is well-regarded and generous for side projects. For production workloads, the right model depends on your query patterns. High-frequency, short-lived queries tend to favor Neon's compute model; infrequent but expensive queries tend to favor Prisma Postgres's flat-per-operation model. Run each service's pricing estimator against your actual workload before committing.
+
+## Prisma ORM integration
+
+Prisma Postgres is built and maintained by the same team that builds Prisma ORM. Connection pooling, query caching, and the serverless driver are all configured through a single driver adapter with no additional services to provision.
+
+```ts
+import { PrismaClient } from '../generated/client'
+import { PrismaPpg } from '@prisma/adapter-ppg'
+import { withAccelerate } from '@prisma/extension-accelerate'
+
+const adapter = new PrismaPpg(process.env.DATABASE_URL)
+const prisma = new PrismaClient({ adapter }).$extends(withAccelerate())
+```
+
+Neon works well with Prisma ORM. Neon provides a driver adapter (`@prisma/adapter-neon`) that enables Prisma to use the serverless HTTP driver instead of TCP. The setup is documented and works reliably.
+
+The practical difference: with Prisma Postgres, caching, pooling, and edge support come from the same service. With Neon, you assemble these capabilities from separate pieces. Both work, but the Prisma Postgres path has fewer decisions.
+
+## What Neon does well
+
+Neon is a well-regarded service that's been around longer. A few things it does better than Prisma Postgres today:
+
+- **Database branching**: Neon's branching is fast, storage-efficient, and well-integrated with CI/CD workflows. It's a genuine differentiator.
+- **Ecosystem maturity**: Neon has been available longer, has broader third-party integrations, and has more community content — tutorials, examples, production postmortems.
+- **Free tier**: 100 CU-hours per project per month with 0.5 GB storage. Reasonable for side projects and prototyping.
+- **Region availability**: More regions, with AWS-native infrastructure.
+
+## Migrating from Neon to Prisma Postgres
+
+The migration uses `pg_dump` and `pg_restore` — standard PostgreSQL tooling. Both services run Postgres, so there's no schema conversion needed.
+
+### Prerequisites
 
 - A Neon database connection URL
 - A [Prisma Data Platform](https://console.prisma.io) account
@@ -35,7 +147,7 @@ Prisma Postgres runs PostgreSQL 17. Run `pg_dump --version` or `pg_restore --ver
 
 :::
 
-## 1. Create a new Prisma Postgres database
+### Step 1: Create a new Prisma Postgres database
 
 1. Log in to [Prisma Data Platform](https://console.prisma.io/) and open the Console.
 1. In a [workspace](/console/concepts#workspace) of your choice, click **New project**.
@@ -48,21 +160,21 @@ Once provisioned, get your direct connection string:
 1. Click **Create API key**, give it a name, and click **Create**.
 1. Copy the connection string starting with `postgres://` — you'll need this in step 3.
 
-## 2. Export data from Neon
+### Step 2: Export data from Neon
 
-Copy a **non-pooled** connection string from Neon (disable **Connection pooling**) and ensure it includes `sslmode=require`:
+Copy a non-pooled connection string from Neon (disable **Connection pooling**) and ensure it includes `sslmode=require`:
 
 ```text
 postgresql://USER:PASSWORD@YOUR-NEON-HOST/DATABASE?sslmode=require
 ```
 
-Export the connection string as an environment variable. Use single quotes so that special characters in your password (like `!`, `$`, or `#`) are not interpreted by the shell:
+Export it as an environment variable. Use single quotes so special characters in your password (`!`, `$`, `#`) aren't interpreted by the shell:
 
 ```bash
 export NEON_DATABASE_URL='postgresql://USER:PASSWORD@YOUR-NEON-HOST/DATABASE?sslmode=require'
 ```
 
-Then run:
+Then dump:
 
 ```bash
 pg_dump \
@@ -72,9 +184,9 @@ pg_dump \
   -f neon_dump.bak
 ```
 
-## 3. Import data into Prisma Postgres
+### Step 3: Import data into Prisma Postgres
 
-Export your [direct connection string](/postgres/database/connecting-to-your-database) from step 1 as an environment variable:
+Export your [direct connection string](/postgres/database/connecting-to-your-database) from step 1:
 
 ```bash
 export PRISMA_POSTGRES_DATABASE_URL='postgres://...'
@@ -104,9 +216,7 @@ To validate the import, open [Prisma Studio](/studio) from the **Studio** tab in
 npx prisma studio
 ```
 
-## 4. Update your application
-
-### Already using Prisma ORM
+### Step 4: Update your application
 
 Update `DATABASE_URL` in your `.env` file:
 
@@ -122,10 +232,10 @@ npx prisma generate
 
 :::tip
 
-See the [Prisma ORM with Prisma Postgres quickstart](/prisma-orm/quickstart/prisma-postgres) for driver adapter configuration and best practices.
+See the [Prisma ORM with Prisma Postgres quickstart](/prisma-orm/quickstart/prisma-postgres) for driver adapter configuration and best practices for serverless environments.
 
 :::
 
-### Not yet using Prisma ORM
-
-Follow [Add Prisma ORM to an existing project](/prisma-orm/add-to-existing-project/prisma-postgres) to introspect your database, generate a schema, and migrate your queries.
+:::info[Postgres, PostgreSQL, and the Slonik Logo]
+Postgres, PostgreSQL, and the Slonik Logo are trademarks or registered trademarks of the PostgreSQL Community Association of Canada and are used with permission.
+:::
