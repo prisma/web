@@ -29,6 +29,7 @@ import { Youtube } from "@prisma-docs/ui/components/youtube";
 import { TweetEmbedComp } from "@/components/TweetEmbed";
 import { Meetup, MeetupList } from "@/components/Meetup";
 import { Employee } from "@/components/Employee";
+import { AutoplayYoutubeEmbed } from "@/components/AutoplayYoutubeEmbed";
 import { withBlogBasePath, withBlogBasePathForImageSrc } from "@/lib/url";
 export function getMDXComponents(components?: MDXComponents): MDXComponents {
   const mdxComponents = {
@@ -58,6 +59,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     Meetup,
     MeetupList,
     Employee,
+    AutoplayYoutubeEmbed,
     Steps,
     Step,
     img: (props: any) => (
