@@ -63,6 +63,9 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     img: (props: any) => (
       <ImageZoom {...(props as any)} src={withBlogBasePathForImageSrc((props as any).src)} />
     ),
+    video: (props: any) => (
+      <video {...(props as any)} src={withBlogBasePathForImageSrc((props as any).src)} />
+    ),
   };
 
   return {
