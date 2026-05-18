@@ -42,7 +42,7 @@ export function createSiteStructuredData() {
         name: "Prisma",
         url: baseUrl,
         description,
-        logo: absoluteUrl("/icons/technologies/prisma.svg"),
+        logo: absoluteUrl("/images/logo.svg"),
         sameAs: [
           "https://github.com/prisma",
           "https://twitter.com/prisma",
@@ -65,7 +65,11 @@ export function createSiteStructuredData() {
   };
 }
 
-export function createFaqStructuredData(pagePath: string, faqs: FaqEntry[], name: string) {
+export function createFaqStructuredData(
+  pagePath: string,
+  faqs: FaqEntry[],
+  name: string,
+) {
   return {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -89,12 +93,24 @@ export function createSoftwareApplicationStructuredData({
   description,
   applicationCategory = "DeveloperApplication",
   operatingSystem = "Cross-platform",
+  license,
+  downloadUrl,
+  offers,
 }: {
   path: string;
   name: string;
   description: string;
   applicationCategory?: string;
   operatingSystem?: string;
+  license?: string;
+  downloadUrl?: string;
+  offers?: {
+    "@type": "Offer";
+    price: string;
+    priceCurrency: string;
+    name?: string;
+    description?: string;
+  };
 }) {
   const url = absoluteUrl(path);
   const baseUrl = getBaseUrl();
@@ -108,7 +124,9 @@ export function createSoftwareApplicationStructuredData({
     url,
     applicationCategory,
     operatingSystem,
-    offers: {
+    ...(license && { license }),
+    ...(downloadUrl && { downloadUrl }),
+    offers: offers ?? {
       "@type": "Offer",
       price: "0",
       priceCurrency: "USD",

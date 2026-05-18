@@ -3,7 +3,12 @@
 import { usePathname, useRouter } from "next/navigation";
 import { ChevronDownIcon } from "lucide-react";
 
-import { VERSIONS, LATEST_VERSION, type Version } from "@/lib/version";
+import {
+  getOrmVersionFromPathname,
+  getVersionLabel,
+  getVersionRoot,
+  type Version,
+} from "@/lib/version";
 
 import {
   DropdownMenu,
@@ -13,61 +18,39 @@ import {
   DropdownMenuTrigger,
 } from "@prisma/eclipse";
 
-interface VersionSwitcherProps {
-  currentVersion: Version;
-}
-
-export function VersionSwitcher({ currentVersion }: VersionSwitcherProps) {
+export function VersionSwitcher({ versions }: { versions: Version[] }) {
   const pathname = usePathname();
   const router = useRouter();
+  const currentVersion = getOrmVersionFromPathname(pathname);
 
-  const handleVersionChange = (newVersion: string) => {
+  if (!currentVersion || !versions.includes(currentVersion)) {
+    return null;
+  }
+
+  const handleVersionChange = (newVersion: Version) => {
     if (newVersion === currentVersion) return;
 
-    const VERSION_SECTIONS: Record<string, Set<string>> = {
-      v7: new Set([
-        "accelerate",
-        "ai",
-        "cli",
-        "console",
-        "guides",
-        "management-api",
-        "orm",
-        "postgres",
-        "studio",
-      ]),
-      v6: new Set(["accelerate", "ai", "guides", "orm", "platform", "postgres"]),
-    };
-
-    const rawPath = pathname.replace(/^\/v\d+(?=\/|$)/, "") || "/";
-    const topSection = rawPath.split("/").filter(Boolean)[0] ?? "";
-    const sectionExists = VERSION_SECTIONS[newVersion]?.has(topSection);
-
-    let newPath: string;
-    if (newVersion === LATEST_VERSION) {
-      newPath = sectionExists ? `/${topSection}` : "/";
-    } else {
-      newPath = sectionExists ? `/${newVersion}/${topSection}` : `/${newVersion}`;
-    }
-
-    router.push(newPath);
+    router.push(getVersionRoot(newVersion));
   };
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-md border bg-fd-background px-3 py-1.5 text-sm font-medium text-fd-foreground hover:bg-fd-accent transition-colors cursor-pointer">
-        {currentVersion}
+      <DropdownMenuTrigger className="flex items-center rounded-md border background bg-fd-background px-3 py-1.5 text-sm font-medium text-fd-foreground hover:bg-fd-accent transition-colors cursor-pointer justify-between">
+        <p>{getVersionLabel(currentVersion)}</p>
         <ChevronDownIcon className="size-4 text-fd-muted-foreground" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
-        <DropdownMenuRadioGroup value={currentVersion} onValueChange={handleVersionChange}>
-          {VERSIONS.map((v) => (
+        <DropdownMenuRadioGroup
+          value={currentVersion}
+          onValueChange={handleVersionChange}
+        >
+          {versions.map((v) => (
             <DropdownMenuRadioItem
               key={v}
               value={v}
               className="cursor-pointer transition-colors hover:bg-fd-accent"
             >
-              {v}
+              {getVersionLabel(v)}
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>

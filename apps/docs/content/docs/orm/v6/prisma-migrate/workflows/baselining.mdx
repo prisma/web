@@ -1,0 +1,87 @@
+---
+title: Baselining a database
+description: How to initialize a migration history for an existing database that contains important data.
+url: /orm/v6/prisma-migrate/workflows/baselining
+metaTitle: Baselining a database
+metaDescription: How to initialize a migration history for an existing database that contains important data.
+---
+
+Baselining is the process of initializing a migration history for a database that:
+
+- ✔ Existed before you started using Prisma Migrate
+- ✔ Contains data that must be maintained (like production), which means that the database cannot be reset
+
+Baselining tells Prisma Migrate to assume that one or more migrations have **already been applied**. This prevents generated migrations from failing when they try to create tables and fields that already exist.
+
+> **Note**: We assume it is acceptable to reset and seed development databases.
+
+Baselining is part of [adding Prisma Migrate to a project with an existing database](/orm/v6/prisma-migrate/getting-started#adding-prisma-migrate-to-an-existing-project).
+
+:::warning
+
+This guide **does not apply for MongoDB**.<br />
+Instead of `migrate deploy`, [`db push`](/orm/v6/prisma-migrate/workflows/prototyping-your-schema) is used for [MongoDB](/orm/v6/overview/databases/mongodb).
+
+:::
+
+## Why you need to baseline
+
+When you add Prisma Migrate to an existing project, your initial migration contains all the SQL required to recreate the state of the database **before you started using Prisma Migrate**:
+
+![The image shows a database labelled 'Existing database', and a list of existing database features next to it - 24 tables, 13 relationships, 92 fields, 3 indexes. An arrow labelled 'represented by' connects the database features list to a box that represents a migration. The existing databases's features are represented by a single migration.](/img/v6/orm/prisma-migrate/workflows/existing-database.png)
+
+:::tip
+
+You can edit the initial migration to include schema elements that cannot be represented in the Prisma schema - such as stored procedures or triggers.
+
+:::
+
+You need this initial migration to create and reset **development environments**:
+
+![The image shows a migration history with three migrations. Each migration is represented by a file icon and a name, and all migrations are surrounded by a box labelled 'migration history'. The first migration has an additional label: "State of database before Prisma Migrate", and the two remaining migrations are labelled "Generated as part of the Prisma Migrate workflow". An arrow labelled "prisma migrate dev" connects the migration history box to a database labelled "new development database", signifying that all three migrations are applied to the development database - none are skipped.](/img/v6/orm/prisma-migrate/workflows/new-dev-db.png)
+
+However, when you `prisma migrate deploy` your migrations to databases that already exist and _cannot_ be reset - such as production - you **do not want to include the initial migrations**.
+
+The target database already contains the tables and columns created by the initial migration, and attempting to create these elements again will most likely result in an error.
+
+![A migration history represented by three migration files (file icon and name), surrounded by a a box labelled 'migration history'. The first migration is marked 'do not apply', and the second two migrations are marked 'apply'. An arrow labelled with the command 'prisma migrate deploy' points from the migration history to a database labelled 'production'.](/img/v6/orm/prisma-migrate/workflows/deploy-db.png)
+
+Baselining solves this problem by telling Prisma Migrate to pretend that the initial migration(s) **have already been applied**.
+
+## Baselining a database
+
+To create a baseline migration:
+
+1. If you have a `prisma/migrations` folder, delete, move, rename, or archive this folder.
+
+1. Run the following command to create a `migrations` directory inside with your preferred name. This example will use `0_init` for the migration name:
+
+   ```bash
+   mkdir -p prisma/migrations/0_init
+   ```
+
+   :::info
+
+   Then `0_` is important because Prisma Migrate applies migrations in a [lexicographic order](https://en.wikipedia.org/wiki/Lexicographic_order). You can use a different value such as the current timestamp.
+
+   :::
+
+1. Generate a migration and save it to a file using `prisma migrate diff`
+
+   ```bash no-lines
+   npx prisma migrate diff \
+   --from-empty \
+   --to-schema prisma/schema.prisma \
+   --script > prisma/migrations/0_init/migration.sql
+   ```
+
+1. Run the `prisma migrate resolve` command for each migration that should be ignored:
+
+   ```npm
+   npx prisma migrate resolve --applied 0_init
+   ```
+
+This command adds the target migration to the `_prisma_migrations` table and marks it as applied. When you run `prisma migrate deploy` to apply new migrations, Prisma Migrate:
+
+1. Skips all migrations marked as 'applied', including the baseline migration
+1. Applies any new migrations that come _after_ the baseline migration

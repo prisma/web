@@ -30,10 +30,14 @@ export function Quotes({
       <div className="flex items-center justify-center [&_img]:size-8 [&_img]:shrink-0 [&_img]:rounded-full [&_img]:object-cover [&_img]:bg-gray-400 [&_img]:my-0! [&_img]:mr-4 [&_span]:font-bold [&_span]:not-italic [&_span]:text-lg [&_span]:leading-[29px] [&_span_a]:underline [&_span_a]:text-lg">
         {speakerImgLink && (
           <Image
-            alt={speakerName || ""}
+            alt={speakerName || "Speaker photo"}
             width={50}
             height={50}
-            src={speakerImgLink.startsWith("/") ? speakerImgLink : `${speakerImgLink}?w=50&h=50`}
+            src={
+              speakerImgLink.startsWith("/")
+                ? speakerImgLink
+                : `${speakerImgLink}?w=50&h=50`
+            }
           />
         )}
         <span>

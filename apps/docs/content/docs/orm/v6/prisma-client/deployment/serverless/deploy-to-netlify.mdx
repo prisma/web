@@ -1,0 +1,117 @@
+---
+title: Deploy to Netlify
+description: Learn how to deploy Node.js and TypeScript applications that are using Prisma Client to Netlify.
+url: /orm/v6/prisma-client/deployment/serverless/deploy-to-netlify
+metaTitle: Deploy to Netlify
+metaDescription: Learn how to deploy Node.js and TypeScript applications that are using Prisma Client to Netlify.
+---
+
+This guide covers the steps you will need to take in order to deploy your application that uses Prisma ORM to [Netlify](https://www.netlify.com/).
+
+Netlify is a cloud platform for continuous deployment, static sites, and serverless functions. Netlify integrates seamlessly with GitHub for automatic deployments upon commits. When you follow the steps below, you will use that approach to create a CI/CD pipeline that deploys your application from a GitHub repository.
+
+:::tip[Use Prisma ORM without Rust binaries]
+
+If Prisma ORM's Rust engine binaries cause large bundle sizes, slow builds, or deployment issues (for example, in serverless or edge environments), you can use it without them using this configuration of your `generator` block:
+
+```prisma
+generator client {
+  provider   = "prisma-client-js" // or "prisma-client"
+  engineType = "client"
+}
+```
+
+Prisma ORM without Rust binaries has been [Generally Available](/orm/v6/more/releases#generally-available-ga) since [v6.16.0](https://pris.ly/release/6.16.0).
+
+Note that you need to use a [driver adapter](/orm/v6/overview/databases/database-drivers#driver-adapters) in this case.
+
+When using this architecture:
+
+- No Rust query engine binary is downloaded or shipped.
+- The database connection pool is maintained by the native JS database driver you install (e.g., `@prisma/adapter-pg` for PostgreSQL).
+
+This setup can simplify deployments in serverless or edge runtimes. Learn more in the [docs here](/orm/v6/prisma-client/setup-and-configuration/no-rust-engine).
+
+Curious why we moved away from the Rust engine? Take a look at why we transitioned from Rust binary engines to an all-TypeScript approach for a faster, lighter Prisma ORM in this [blog post](https://www.prisma.io/blog/prisma-orm-without-rust-latest-performance-benchmarks).
+
+:::
+
+## Prerequisites
+
+Before you can follow this guide, you will need to set up your application to begin deploying to Netlify. We recommend the ["Get started with Netlify"](https://docs.netlify.com/get-started/) guide for a quick overview and ["Deploy functions"](https://docs.netlify.com/functions/deploy/?fn-language=ts) for an in-depth look at your deployment options.
+
+## Binary targets in `schema.prisma`
+
+Since your code is being deployed to Netlify's environment, which isn't necessarily the same as your development environment, you will need to set [`binaryTargets`](/orm/v6/reference/prisma-schema-reference#binarytargets-options) in order to download the query engine that is compatible with the Netlify runtime during your build step. If you do not set this option, your deployed code will have an incorrect query engine deployed with it and will not function.
+
+Depending on the version of Node.js, your Prisma schema should contain either `rhel-openssl-1.0.x` or `rhel-openssl-3.0.x` in the `generator` block:
+
+```prisma tab="Node.js 16 and 18"
+binaryTargets = ["native", "rhel-openssl-1.0.x"]
+```
+
+```prisma tab="Node.js 20+"
+binaryTargets = ["native", "rhel-openssl-3.0.x"]
+```
+
+## Store environment variables in Netlify
+
+We recommend keeping `.env` files in your `.gitignore` in order to prevent leakage of sensitive connection strings. Instead, you can use the Netlify CLI to [import values into netlify directly](https://docs.netlify.com/environment-variables/get-started/#import-variables-with-the-netlify-cli).
+
+Assuming you have a file like the following:
+
+```bash title=".env"
+# Connect to DB
+DATABASE_URL="postgresql://postgres:__PASSWORD__@__HOST__:__PORT__/__DB_NAME__"
+```
+
+You can upload the file as environment variables using the `env:import` command:
+
+```bash no-break-terminal
+netlify env:import .env
+```
+
+```bash
+site: my-very-very-cool-site
+---------------------------------------------------------------------------------.
+                         Imported environment variables                          |
+---------------------------------------------------------------------------------|
+     Key      |                              Value                               |
+--------------|------------------------------------------------------------------|
+ DATABASE_URL | postgresql://postgres:__PASSWORD__@__HOST__:__PORT__/__DB_NAME__ |
+---------------------------------------------------------------------------------'
+```
+
+<details>
+<summary>If you are not using an `.env` file</summary>
+
+If you are storing your database connection string and other environment variables in a different method, you will need to manually upload your environment variables to Netlify. These options are [discussed in Netlify's documentation](https://docs.netlify.com/environment-variables/get-started/) and one method, uploading via the UI, is described below.
+
+1. Open the Netlify admin UI for the site. You can use Netlify CLI as follows:
+   ```bash
+   netlify open --admin
+   ```
+2. Click **Site settings**:
+   ![Netlify admin UI](/img/v6/orm/prisma-client/deployment/serverless/images/500-06-deploy-to-netlify-site-settings.png)
+3. Navigate to **Build & deploy** in the sidebar on the left and select **Environment**.
+4. Click **Edit variables** and create a variable with the key `DATABASE_URL` and set its value to your database connection string.
+   ![Netlify environment variables](/img/v6/orm/prisma-client/deployment/serverless/images/500-07-deploy-to-netlify-environment-variables-settings.png)
+5. Click **Save**.
+
+</details>
+
+Now start a new Netlify build and deployment so that the new build can use the newly uploaded environment variables.
+
+```bash
+netlify deploy
+```
+
+You can now test the deployed application.
+
+## Connection pooling
+
+When you use a Function-as-a-Service provider, like Netlify, it is beneficial to pool database connections for performance reasons. This is because every function invocation may result in a new connection to your database which can quickly run out of open connections.
+
+You can use [Accelerate](/accelerate) for connection pooling or [Prisma Postgres](/postgres), which has built-in connection pooling, to reduce your Prisma Client bundle size, and to avoid cold starts.
+
+For more information on connection management for serverless environments, refer to our [connection management guide](/orm/v6/prisma-client/setup-and-configuration/databases-connections#serverless-environments-faas).

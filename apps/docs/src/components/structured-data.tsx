@@ -1,11 +1,13 @@
 import { getBaseUrl, withDocsBasePath } from "@/lib/urls";
+import { formatSlugDisplayName } from "@/lib/breadcrumb-utils";
+import { getPageTitleText } from "@/lib/page-title";
 import type { InferPageType } from "fumadocs-core/source";
-import type { source, sourceV6 } from "@/lib/source";
+import type { source } from "@/lib/source";
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-type DocsPage = InferPageType<typeof source> | InferPageType<typeof sourceV6>;
+type DocsPage = InferPageType<typeof source>;
 
 interface StructuredDataProps {
   page: DocsPage;
@@ -20,8 +22,8 @@ function toIsoDate(value: Date | string | undefined) {
   return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
 }
 
-function getContentDirectory(page: DocsPage) {
-  return page.url.startsWith("/v6") ? "content/docs.v6" : "content/docs";
+function getContentDirectory(_page: DocsPage) {
+  return "content/docs";
 }
 
 function getSectionTitle(page: DocsPage, slugs: string[]) {
@@ -56,12 +58,12 @@ function getSectionTitle(page: DocsPage, slugs: string[]) {
 
 function getBreadcrumbName(page: DocsPage, slugs: string[], index: number) {
   if (index === slugs.length - 1) {
-    return page.data.title;
+    return getPageTitleText(page.data.title, slugs[index] ?? "Docs");
   }
 
   return (
     getSectionTitle(page, slugs.slice(0, index + 1)) ??
-    slugs[index].charAt(0).toUpperCase() + slugs[index].slice(1).replace(/-/g, " ")
+    formatSlugDisplayName(slugs[index])
   );
 }
 
@@ -73,7 +75,7 @@ export function TechArticleSchema({ page }: StructuredDataProps) {
   const schema = {
     "@context": "https://schema.org",
     "@type": "TechArticle",
-    headline: (page.data as any).metaTitle ?? page.data.title,
+    headline: (page.data as any).metaTitle ?? getPageTitleText(page.data.title, page.url),
     description: (page.data as any).metaDescription ?? page.data.description,
     url: `${baseUrl}${withDocsBasePath(page.url)}`,
     datePublished: toIsoDate(datePublished) ?? toIsoDate(lastModified),

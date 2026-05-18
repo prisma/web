@@ -24,7 +24,6 @@ export function getSidebarTabs(tree: PageTree.Root): SidebarTab[] {
   function scanOptions(node: PageTree.Root | PageTree.Folder, unlisted?: boolean) {
     if ("root" in node && node.root) {
       const urls = getFolderUrls(node);
-
       if (urls.size > 0) {
         const option: SidebarTab = {
           url: urls.values().next().value ?? "",

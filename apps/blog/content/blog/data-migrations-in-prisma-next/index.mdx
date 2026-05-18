@@ -1,0 +1,217 @@
+---
+title: "Data Migrations in Prisma Next"
+slug: "data-migrations-in-prisma-next"
+date: "2026-05-06"
+authors:
+  - "Will Madden"
+  - "Ankur Datta"
+metaTitle: "Data migrations in Prisma Next"
+metaDescription: "Write data migrations in TypeScript with Prisma Next. Backfill columns and transform data alongside schema changes using a type-safe query builder."
+heroImagePath: "/data-migrations-in-prisma-next/imgs/hero.svg"
+heroImageAlt: "Data migrations in Prisma Next"
+metaImagePath: "/data-migrations-in-prisma-next/imgs/meta.png"
+tags:
+  - "orm"
+  - "education"
+---
+
+Sooner or later, you need a migration to change data as well as schema. In Prisma Next, that happens inside your migration in TypeScript, with the same query builder you use in your app.
+
+In the [previous post](https://pris.ly/ts-migrations-pn) we covered how migrations change the database schema: a TypeScript migration file with a list of operations, compiled to JSON, applied by the migration runner. Start there if any of those terms are unfamiliar.
+
+Take a common example. You've added a `displayName` column to `User` in `contract.prisma` and you want to make it `NOT NULL`. There's a snag: there are already rows in the table, and they don't have a `displayName` yet, so setting the column `NOT NULL` fails, every existing row violates the constraint.
+
+A simple approach to solve this problem is to:
+
+1. Add the column nullable
+2. Fill in the existing rows with `"Anonymous"`
+3. Set `NOT NULL`
+
+Step 2 is what we call a _data transformation_ because it changes data, not structure. It has to happen in the right order: after the column exists and before it's required.
+
+## Today, you have two options to update your data
+
+Either you write the `UPDATE` in raw SQL inside the migration file:
+
+```sql
+-- prisma/migrations/20260422120000_add_user_display_name/migration.sql
+
+ALTER TABLE "User" ADD COLUMN "displayName" TEXT;
+
+UPDATE "User" SET "displayName" = 'Anonymous' WHERE "displayName" IS NULL;
+
+ALTER TABLE "User" ALTER COLUMN "displayName" SET NOT NULL;
+```
+
+This solves the immediate problem. The schema change won't fail any more, because every row gets a `displayName` before the `NOT NULL` constraint is applied. But you need to write this SQL by hand, with no editor assistance: no autocomplete, no type checking, no access to application code (not even simple constants). The only thing standing between a typo and real data is a code review from a teammate who _also_ has to read raw SQL.
+
+Of course this is a trivial example, but even here it's easy for you or your agent to make a mistake and there are no guardrails to catch it.
+
+Your other option is to write it as a one-off TypeScript script using the Prisma client:
+
+```typescript
+// scripts/backfill-display-name.ts
+
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
+
+const result = await prisma.user.updateMany({
+  where: { displayName: null },
+  data: { displayName: "Anonymous" },
+});
+
+console.log(`Updated ${result.count} users`);
+```
+
+This gives you the tools you're used to, the same Prisma query interface you use in your application logic with full type checking and autocomplete. But the script lives outside the migration history. You have to remember to run it at the right point, after the column is added but before `NOT NULL` is set. Forget, and the `NOT NULL` step fails on a database that's missing the backfill. If it dies halfway through, you must patch the database by hand.
+
+There's also a quieter problem. The script uses your _current_ Prisma client, which is typed against your _current_ contract. If you rename `displayName` to `name`, your script will fail type-checking. If your _migration_ changes the name of a column, your script can't compile at all.
+
+Whichever path you pick, your data transformation doesn't have access to the same tools, verifications or editor assistance as the rest of your application logic.
+
+People have asked for the obvious fix, being able to use the Prisma client _inside_ a migration, for years (the [docs](https://www.prisma.io/docs/orm/prisma-migrate/workflows/customizing-migrations) point at the SQL or out-of-band script as the official answers; and there are many open issues with suggestions for how to integrate the TypeScript client and migrations: [#11194](https://github.com/prisma/prisma/issues/11194), [#4688](https://github.com/prisma/prisma/issues/4688), [#6345](https://github.com/prisma/prisma/issues/6345), [#10050](https://github.com/prisma/prisma/issues/10050)).
+
+## In Prisma Next, you write the data step in TypeScript
+
+Here is the same example, written as a Prisma Next migration. The initial file is written for you by `migration plan` when you change your `contract.prisma`. The `dataTransform()` line you'd add by hand:
+
+```typescript
+// migrations/20260422T0748_add_user_display_name/migration.ts
+
+override get operations() {
+  return [
+    addColumn("public", "user", {
+      name: "displayName",
+      typeSql: "text",
+      nullable: true,
+    }),
+
+    this.dataTransform(endContract, "handle-nulls-user-displayName", {
+      check: () =>
+        // Do any users exist whose displayName is null?
+        db.sql.user
+          .select("id")
+          .where((f, fns) => fns.eq(f.displayName, null))
+          .limit(1),
+      run: () =>
+        // For any users whose displayName is null, set it to "Anonymous"
+        db.sql.user
+          .where((f, fns) => fns.eq(f.displayName, null))
+          .update({ displayName: "Anonymous" }),
+    }),
+
+    setNotNull("public", "user", "displayName"),
+  ];
+}
+```
+
+`addColumn` and `setNotNull` are the same operation factories introduced in the [last post](https://pris.ly/ts-migrations-pn). They emit `ALTER TABLE` statements for you, so you don't have to write them by hand. The new piece, `dataTransform`, works the same way.
+
+It takes two callbacks: a `check` that asks "does this still need to run?" and a `run` that performs the change. In both callbacks, you have access to the Prisma Next query builder. Its types come from your data contract and provide the same autocomplete and type checking you'd expect anywhere else in your application code. And since it's just TypeScript, you can also import constants and shared code, rather than duplicating them in your migrations.
+
+To Prisma Next, a data transformation is just another kind of migration operation. It boils down to the same data structure: a simple object with a `precheck`, `execute` statement and `postcheck`.
+
+## What `dataTransform` compiles to
+
+When you run the `migration.ts` file, it outputs a JSON file: `ops.json`. `migration.ts` is what you edit; `ops.json` is what Prisma Next produces from it, and what the migration runner will read. Both are committed to your repo, side by side.
+
+Here's what the `dataTransform` above compiles to in `ops.json`:
+
+```json
+{
+  "id": "data.handle-nulls-user-displayName",
+  "label": "Backfill nulls in \"user\".\"displayName\"",
+  "precheck": [
+    {
+      "description": "check whether any rows still need the backfill",
+      "sql": "SELECT \"id\" FROM \"public\".\"user\" WHERE \"displayName\" IS NULL LIMIT 1"
+    }
+  ],
+  "execute": [
+    {
+      "description": "set \"displayName\" to 'Anonymous' for matching rows",
+      "sql": "UPDATE \"public\".\"user\" SET \"displayName\" = 'Anonymous' WHERE \"displayName\" IS NULL"
+    }
+  ],
+  "postcheck": [
+    {
+      "description": "verify no rows still need the backfill",
+      "sql": "SELECT NOT EXISTS (SELECT 1 FROM \"public\".\"user\" WHERE \"displayName\" IS NULL)"
+    }
+  ]
+}
+```
+
+Same `precheck` / `execute` / `postcheck` shape as every other operation. The `check` callback drives both the precheck (which decides whether `run` needs to execute) and the postcheck (which verifies the change had its intended effect). The `run` callback becomes the execute statement.
+
+## In practice, and with agents
+
+A few things follow from this:
+
+- **You know the SQL is correct when you write it:** Your `dataTransform` is type-checked against your contract, so a typo or a column that didn't exist won't compile.
+- **Your team can review the SQL too:** `ops.json` shows up in the PR alongside `migration.ts`. A reviewer can read your typed query in `migration.ts` to understand your intention and the SQL it compiled to in `ops.json` to see exactly what will be executed on the database.
+- **Your CD pipeline never runs your TypeScript:** The Prisma Next migration runner only ever reads `ops.json`; the `migration.ts` file is never executed again. Which means there's no way to accidentally execute TypeScript code the `migration.ts` file pulls in with production credentials.
+- **Your migration operations are checked when they run:** Every operation's precheck prevents running it if the database isn't in the expected state, and its postcheck ensures it had the intended effect. Unlike raw SQL files, mistakes are caught early and the error tells you precisely which operation failed and why.
+
+Together, these tools also make it safe to delegate to an agent to write a migration. Their work is type checked, the resulting SQL is available for review, `ops.json` is signed against the `migration.ts` it came from so an agent can't tweak the SQL behind your back, and the migration, when it runs, has guard rails on every operation.
+
+## Each migration has its own contract
+
+Look at the top of any Prisma Next migration file:
+
+```typescript
+import endContractJson from "./end-contract.json" with { type: "json" };
+import type { Contract } from "./end-contract";
+
+const db = postgres<Contract>({
+  contractJson: endContractJson,
+  extensions: [pgvector],
+});
+```
+
+`Contract` comes from `./end-contract`, not from your live `contract.prisma`. `end-contract.json` is a snapshot of what your contract looks like _after_ this migration runs. Each migration folder also has a `start-contract.json` for what it looks like before.
+
+These snapshots aren't just documentation. They're what the migration runner enforces. Before the migration starts, the runner verifies that the database matches the start contract. By the time the migration finishes, the database must match the end contract.
+
+That's what makes the type check inside `dataTransform` real. When you write `db.sql.user.update(...)`, you're not type-checking against an aspirational schema. You're type-checking against a state the migration runner guarantees the database will be in when the `UPDATE` runs.
+
+The same mechanism works for any point in the migration. If you need to read or write data partway through, say, after `addColumn` but before `setNotNull`, you can build a typed query against an intermediate contract. Same code, just a different snapshot.
+
+This is what lets a data transformation reference columns the same migration is about to drop or rename. The typed query compiles against the schema as it was; the runner runs the data transformation first; the schema change happens after. The script approach from earlier can't do this. Its types come from your live client, which only knows one version of the schema at a time.
+
+## MongoDB gets data transformations too
+
+Here's a `dataTransform` against a Mongo collection, backfilling a `status` field on a `products` collection so it can be made required:
+
+```typescript
+import { dataTransform } from "@prisma-next/target-mongo/migration";
+
+dataTransform(endContract, "backfill-product-status", {
+  check: () =>
+    query
+      .from("products")
+      .match((f) => f.rawPath("status").exists(false))
+      .limit(1),
+  run: () =>
+    query
+      .from("products")
+      .updateMany((f) => [f.rawPath("status").set("active")]),
+});
+```
+
+Same `check` and `run` callbacks. Same compilation to a JSON file. Same kind of typed query against a contract snapshot specific to this migration. The query language is Mongo's, `.match(...).updateMany(...)` instead of `.where(...).update(...)`, but everything else carries over. There's a fully working example [in the prisma-next repo](https://github.com/prisma/prisma-next/blob/main/examples/retail-store/migrations/20260416_backfill-product-status/migration.ts), and we'll cover Mongo data migrations in more depth in a follow-up post.
+
+## Try it yourself
+
+If you're as excited about this as we are, go ahead and try it out!
+
+```bash
+pnpx prisma-next init
+```
+
+This command will set up Prisma Next in a new or existing project with a simple example contract. Write a schema change with a data step in the same file, plan it, read the JSON it compiled to, and apply it.
+
+Tell us what worked and what didn't on [Discord](https://pris.ly/discord) in the `#prisma-next` channel, and **star and watch [prisma/prisma-next](https://pris.ly/pn-gh) on GitHub** to follow development. We'd love to hear your feedback!
+
+Be aware that Prisma Next is not production-ready yet. Prisma 7 is still the right choice for production today. When Prisma Next is ready for general use, it becomes Prisma 8.

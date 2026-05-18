@@ -4,9 +4,9 @@ import { faqs } from "./pricing-data";
 import { PricingPageContent } from "./pricing-page-content";
 
 export const metadata = createPageMetadata({
-  title: "Pricing — Prisma Postgres Plans & Features",
+  title: "Prisma Pricing | Prisma Postgres Plans and Usage-Based Pricing",
   description:
-    "Get started for free with Prisma Postgres. Choose the right plan for your workspace based on your project requirements.",
+    "Compare Prisma Postgres plans, usage-based pricing, included features, and workspace options. Start free and scale as your product grows.",
   path: "/pricing",
   ogImage: "/og/og-pricing.png",
 });
@@ -19,7 +19,7 @@ export default function PricingPage() {
       {/* FAQ */}
       <section className="px-4 py-16">
         <div className="max-w-[996px] mx-auto">
-          <h4 className="m-0 text-center text-foreground-neutral text-5xl font-sans-display [font-variation-settings:'wght'_900]">
+          <h4 className="m-0 text-center text-foreground-neutral type-title-4xl">
             FAQ
           </h4>
           <Accordions

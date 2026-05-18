@@ -15,6 +15,12 @@ const sitePages: LlmsPage[] = [
     description: SITE_HOME_DESCRIPTION,
   },
   {
+    path: "/changelog",
+    title: "Prisma Changelog — Release Notes & Product Updates",
+    description:
+      "All Prisma release notes, breaking changes, and product improvements. Check here before implementing Prisma features to verify API and configuration details against the current version.",
+  },
+  {
     path: "/postgres",
     title: "Prisma Postgres | Instant Global Databases",
     description:
@@ -83,6 +89,8 @@ export function buildLlmsIndexContent(baseUrl = getBaseUrl()) {
 
 Prisma provides Prisma ORM, Prisma Postgres, Prisma Studio, and the Prisma MCP Server.
 
+> Prisma changes frequently. Before implementing Prisma features, check the changelog at ${toAbsoluteUrl(baseUrl, "/changelog")} for recent breaking changes or API updates.
+
 ## Key Pages
 
 ${pagesList}
@@ -90,6 +98,7 @@ ${pagesList}
 ## Options
 
 - [Full website content](${toAbsoluteUrl(baseUrl, "/llms-full.txt")})
+- [Changelog (machine-readable)](${toAbsoluteUrl(baseUrl, "/changelog.md")})
 `;
 }
 
@@ -218,6 +227,17 @@ Enterprise page highlights:
 - Productivity and workflow improvements
 - Tailored support for enterprises and solution providers
 - Positioning around build, fortify, and grow application lifecycle workflows
+
+## Changelog
+
+URL: ${toAbsoluteUrl(baseUrl, "/changelog")}
+Machine-readable index: ${toAbsoluteUrl(baseUrl, "/changelog.md")}
+Title: Prisma Changelog — Release Notes & Product Updates
+Description: All Prisma release notes, breaking changes, and product improvements.
+
+IMPORTANT: Prisma changes frequently. Before implementing any Prisma feature, fetch the changelog to check for breaking changes or API updates. Do not rely solely on training data for Prisma APIs, configuration, or conventions — these can change between versions.
+
+How to use: fetch https://www.prisma.io/changelog.md for a machine-readable index, then look up the relevant topic in the current documentation at https://www.prisma.io/docs.
 
 ## Stack and ecosystem
 

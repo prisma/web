@@ -1,3 +1,4 @@
+import { getPageTitleText } from "./page-title";
 import { withDocsBasePath } from "./urls";
 
 type LLMsLink = {
@@ -49,6 +50,12 @@ const excludedLLMsProducts: LLMsExcludedProduct[] = [
 ];
 
 export const commonQueries: LLMsLink[] = [
+  {
+    title: "Check the Prisma changelog for recent changes",
+    href: "https://www.prisma.io/changelog.md",
+    description:
+      "Prisma changes frequently. Fetch this machine-readable changelog before implementing any Prisma feature to check for breaking changes, API updates, or new conventions.",
+  },
   {
     title: "Start a new Prisma ORM project",
     href: "/prisma-orm/quickstart/prisma-postgres",
@@ -120,6 +127,26 @@ export const commonQueries: LLMsLink[] = [
     description:
       "Compare Prisma plans and pricing for Prisma Postgres and Prisma platform features.",
   },
+  {
+    title: "Use Prisma Postgres with Next.js",
+    href: "/guides/frameworks/nextjs",
+    description: "Set up Prisma ORM and Prisma Postgres in a Next.js app with App Router.",
+  },
+  {
+    title: "Use Prisma Postgres with SvelteKit",
+    href: "/guides/frameworks/sveltekit",
+    description: "Set up Prisma ORM and Prisma Postgres in a SvelteKit application.",
+  },
+  {
+    title: "Use Prisma Postgres with Nuxt",
+    href: "/guides/frameworks/nuxt",
+    description: "Set up Prisma ORM and Prisma Postgres in a Nuxt application.",
+  },
+  {
+    title: "Use Prisma Postgres with Hono on Cloudflare Workers",
+    href: "/guides/frameworks/hono",
+    description: "Set up Prisma ORM and Prisma Postgres in a Hono app deployed to Cloudflare Workers.",
+  },
 ];
 
 export const llmsSections: LLMsSection[] = [
@@ -187,7 +214,7 @@ function isExcludedLLMsPage(page: LLMsPage) {
     (product) =>
       matchesLLMsPagePrefix(page, product.prefixes) ||
       matchesAnyPattern(page.url, product.urlPatterns) ||
-      matchesAnyPattern(page.data.title, product.titlePatterns) ||
+      matchesAnyPattern(getPageTitleText(page.data.title, page.url), product.titlePatterns) ||
       matchesAnyPattern(page.data.description ?? "", product.descriptionPatterns),
   );
 }
@@ -205,7 +232,7 @@ export function filterAvailableLLMsLinks(links: LLMsLink[], pages: LLMsPage[]) {
 }
 
 export function formatLLMsPageLink(page: LLMsPage, baseUrl: string) {
-  const title = page.data.title;
+  const title = getPageTitleText(page.data.title, page.url);
   const description = page.data.description || "";
   const path = `${baseUrl}${withDocsBasePath(page.url)}`;
 
@@ -263,12 +290,12 @@ export function createLLMsFullResponse<TPage extends LLMsFullPage>(
         controller.enqueue(encoder.encode(`${await renderPage(page)}\n\n`));
       } catch (error) {
         console.error("docs:llms_full_page_render_error", {
-          title: page.data.title,
+          title: getPageTitleText(page.data.title, "Unknown page"),
           error,
         });
         controller.enqueue(
           encoder.encode(
-            `# ${page.data.title}\n\nThis page could not be rendered for the full documentation feed.\n\nAn internal error occurred while rendering this page.\n\n`,
+            `# ${getPageTitleText(page.data.title, "Unknown page")}\n\nThis page could not be rendered for the full documentation feed.\n\nAn internal error occurred while rendering this page.\n\n`,
           ),
         );
       }

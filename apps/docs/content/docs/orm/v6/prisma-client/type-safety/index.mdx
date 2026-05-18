@@ -1,0 +1,227 @@
+---
+title: Type safety
+description: 'Prisma Client provides full type safety for queries, even for partial queries or included relations. This page explains how to leverage the generated types and utilities.'
+url: /orm/v6/prisma-client/type-safety
+metaTitle: Type safety
+metaDescription: 'Prisma Client provides full type safety for queries, even for partial queries or included relations. This page explains how to leverage the generated types and utilities.'
+---
+
+The generated code for Prisma Client contains several helpful types and utilities that you can use to make your application more type-safe. This page describes patterns for leveraging them.
+
+> **Note**: If you're interested in advanced type safety topics with Prisma ORM, be sure to check out this [blog post](https://www.prisma.io/blog/satisfies-operator-ur8ys8ccq7zb) about improving your Prisma Client workflows with the new TypeScript `satisfies` keyword.
+
+## Importing generated types
+
+You can import the `Prisma` namespace and use dot notation to access types and utilities. The following example shows how to import the `Prisma` namespace and use it to access and use the `Prisma.UserSelect` [generated type](#what-are-generated-types):
+
+```ts
+import { Prisma } from "@prisma/client";
+
+// Build 'select' object
+const userEmail: Prisma.UserSelect = {
+  email: true,
+};
+
+// Use select object
+const createUser = await prisma.user.create({
+  data: {
+    email: "bob@prisma.io",
+  },
+  select: userEmail,
+});
+```
+
+See also: [Using the `Prisma.UserCreateInput` generated type](/orm/v6/prisma-client/queries/crud#create-a-single-record-using-generated-types)
+
+## What are generated types?
+
+Generated types are TypeScript types that are derived from your models. You can use them to create typed objects that you pass into top-level methods like `prisma.user.create(...)` or `prisma.user.update(...)`, or options such as `select` or `include`.
+
+For example, `select` accepts an object of type `UserSelect`. Its object properties match those that are supported by `select` statements according to the model.
+
+The first tab below shows the `UserSelect` generated type and how each property on the object has a type annotation. The second tab shows the original schema from which the type was generated.
+
+```ts tab="Generated type"
+type Prisma.UserSelect = {
+    id?: boolean | undefined;
+    email?: boolean | undefined;
+    name?: boolean | undefined;
+    posts?: boolean | Prisma.PostFindManyArgs | undefined;
+    profile?: boolean | Prisma.ProfileArgs | undefined;
+}
+```
+
+```prisma tab="Model"
+model User {
+  id      Int      @id @default(autoincrement())
+  email   String   @unique
+  name    String?
+  posts   Post[]
+  profile Profile?
+}
+```
+
+In TypeScript the concept of [type annotations](https://www.typescriptlang.org/docs/handbook/2/everyday-types.html#type-annotations-on-variables) is when you declare a variable and add a type annotation to describe the type of the variable. See the below example.
+
+```ts
+const myAge: number = 37;
+const myName: string = "Rich";
+```
+
+Both of these variable declarations have been given a type annotation to specify what primitive type they are, `number` and `string` respectively. Most of the time this kind of annotation is not needed as TypeScript will infer the type of the variable based on how its initialized. In the above example `myAge` was initialized with a number so TypeScript guesses that it should be typed as a number.
+
+Going back to the `UserSelect` type, if you were to use dot notation on the created object `userEmail`, you would have access to all of the fields on the `User` model that can be interacted with using a `select` statement.
+
+```prisma
+model User {
+  id      Int      @id @default(autoincrement())
+  email   String   @unique
+  name    String?
+  posts   Post[]
+  profile Profile?
+}
+```
+
+```ts
+import { Prisma } from "@prisma/client";
+
+const userEmail: Prisma.UserSelect = {
+  email: true,
+};
+
+// properties available on the typed object
+userEmail.id;
+userEmail.email;
+userEmail.name;
+userEmail.posts;
+userEmail.profile;
+```
+
+In the same mould, you can type an object with an `include` generated type then your object would have access to those properties on which you can use an `include` statement.
+
+```ts
+import { Prisma } from "@prisma/client";
+
+const userPosts: Prisma.UserInclude = {
+  posts: true,
+};
+
+// properties available on the typed object
+userPosts.posts;
+userPosts.profile;
+```
+
+> See the [model query options](/orm/v6/reference/prisma-client-reference#model-query-options) reference for more information about the different types available.
+
+### Generated `UncheckedInput` types
+
+The `UncheckedInput` types are a special set of generated types that allow you to perform some operations that Prisma Client considers "unsafe", like directly writing [relation scalar fields](/orm/v6/prisma-schema/data-model/relations). You can choose either the "safe" `Input` types or the "unsafe" `UncheckedInput` type when doing operations like `create`, `update`, or `upsert`.
+
+For example, this Prisma schema has a one-to-many relation between `User` and `Post`:
+
+```prisma
+model Post {
+  id       Int     @id @default(autoincrement())
+  title    String  @db.VarChar(255)
+  content  String?
+  author   User    @relation(fields: [authorId], references: [id])
+  authorId Int
+}
+
+model User {
+  id    Int     @id @default(autoincrement())
+  email String  @unique
+  name  String?
+  posts Post[]
+}
+```
+
+The first tab shows the `PostUncheckedCreateInput` generated type. It contains the `authorId` property, which is a relation scalar field. The second tab shows an example query that uses the `PostUncheckedCreateInput` type. This query will result in an error if a user with an `id` of `1` does not exist.
+
+```ts tab="Generated type"
+type PostUncheckedCreateInput = {
+  id?: number;
+  title: string;
+  content?: string | null;
+  authorId: number;
+};
+```
+
+```ts tab="Example query"
+prisma.post.create({
+  data: {
+    title: "First post",
+    content: "Welcome to the first post in my blog...",
+    authorId: 1,
+  },
+});
+```
+
+The same query can be rewritten using the "safer" `PostCreateInput` type. This type does not contain the `authorId` field but instead contains the `author` relation field.
+
+```ts tab="Generated type"
+type PostCreateInput = {
+  title: string;
+  content?: string | null;
+  author: UserCreateNestedOneWithoutPostsInput;
+};
+
+type UserCreateNestedOneWithoutPostsInput = {
+  create?: XOR<UserCreateWithoutPostsInput, UserUncheckedCreateWithoutPostsInput>;
+  connectOrCreate?: UserCreateOrConnectWithoutPostsInput;
+  connect?: UserWhereUniqueInput;
+};
+```
+
+```ts tab="Example query"
+prisma.post.create({
+  data: {
+    title: "First post",
+    content: "Welcome to the first post in my blog...",
+    author: {
+      connect: {
+        id: 1,
+      },
+    },
+  },
+});
+```
+
+This query will also result in an error if an author with an `id` of `1` does not exist. In this case, Prisma Client will give a more descriptive error message. You can also use the [`connectOrCreate`](/orm/v6/reference/prisma-client-reference#connectorcreate) API to safely create a new user if one does not already exist with the given `id`.
+
+We recommend using the "safe" `Input` types whenever possible.
+
+## Type utilities
+
+:::info
+
+This feature is available from Prisma ORM version 4.9.0 upwards.
+
+:::
+
+To help you create highly type-safe applications, Prisma Client provides a set of type utilities that tap into input and output types. These types are fully dynamic, which means that they adapt to any given model and schema. You can use them to improve the auto-completion and developer experience of your projects.
+
+This is especially useful in [validating inputs](/orm/v6/prisma-client/type-safety/prisma-validator) and [shared Prisma Client extensions](/orm/v6/prisma-client/client-extensions/shared-extensions).
+
+The following type utilities are available in Prisma Client:
+
+- `Exact<Input, Shape>`: Enforces strict type safety on `Input`. `Exact` makes sure that a generic type `Input` strictly complies with the type that you specify in `Shape`. It [narrows](https://www.typescriptlang.org/docs/handbook/2/narrowing.html) `Input` down to the most precise types.
+- `Args<Type, Operation>`: Retrieves the input arguments for any given model and operation. This is particularly useful for extension authors who want to do the following:
+  - Re-use existing types to extend or modify them.
+  - Benefit from the same auto-completion experience as on existing operations.
+- `Result<Type, Arguments, Operation>`: Takes the input arguments and provides the result for a given model and operation. You would usually use this in conjunction with `Args`. As with `Args`, `Result` helps you to re-use existing types to extend or modify them.
+- `Payload<Type, Operation>`: Retrieves the entire structure of the result, as scalars and relations objects for a given model and operation. For example, you can use this to determine which keys are scalars or objects at a type level.
+
+As an example, here's a quick way you can enforce that the arguments to a function matches what you will pass to a `post.create`:
+
+```ts
+type PostCreateBody = Prisma.Args<typeof prisma.post, "create">["data"];
+
+const addPost = async (postBody: PostCreateBody) => {
+  const post = await prisma.post.create({ data: postBody });
+  return post;
+};
+
+await addPost(myData);
+//              ^ guaranteed to match the input of `post.create`
+```

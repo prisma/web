@@ -11,6 +11,10 @@ export const EnterpriseForm = () => (
       title="Enterprise - Contact form"
       allow="autoplay; clipboard-write; encrypted-media"
     />
-    <Script src="https://tally.so/widgets/embed.js" onLoad={() => window.Tally?.loadEmbeds()} />
+    <Script
+      src="https://tally.so/widgets/embed.js"
+      strategy="lazyOnload"
+      onLoad={() => window.Tally?.loadEmbeds()}
+    />
   </>
 );
