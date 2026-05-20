@@ -199,10 +199,10 @@ Title: Pricing — Prisma Postgres Plans & Features
 Description: Get started for free with Prisma Postgres. Choose the right plan for your workspace based on your project requirements.
 
 Pricing summary:
-- Free plan: ${plans.free.price.USD}/month, 100,000 operations included, 500 MB storage, 5 databases, no credit card required
-- Starter plan: ${plans.starter.price.USD}/month, 1,000,000 operations included, then $0.008 per 1,000 operations, 10 GB storage included, then $2 per GB, 10 databases, daily backups stored for 7 days
-- Pro plan: ${plans.pro.price.USD}/month, 10,000,000 operations included, then $0.002 per 1,000 operations, 50 GB storage included, then $1.50 per GB, 100 databases, daily backups stored for 7 days
-- Business plan: ${plans.business.price.USD}/month, 50,000,000 operations included, then $0.001 per 1,000 operations, 100 GB storage included, then $1 per GB, 1000 databases, daily backups stored for 30 days
+- Free plan: ${plans.free.price.USD}/month, 100,000 operations included, 500 MB storage, 50 databases, no credit card required
+- Starter plan: ${plans.starter.price.USD}/month, 1,000,000 operations included, then $0.008 per 1,000 operations, 10 GB storage included, then $2 per GB, 1,000 databases, daily backups stored for 7 days
+- Pro plan: ${plans.pro.price.USD}/month, 10,000,000 operations included, then $0.002 per 1,000 operations, 50 GB storage included, then $1.50 per GB, 1,000 databases, daily backups stored for 7 days
+- Business plan: ${plans.business.price.USD}/month, 50,000,000 operations included, then $0.001 per 1,000 operations, 100 GB storage included, then $1 per GB, 1,000 databases, daily backups stored for 30 days
 
 Annual billing note:
 - Paid plans include a 25% yearly discount based on the current pricing data
