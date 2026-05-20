@@ -98,7 +98,10 @@ const ThemeImagePair = ({
 }: ThemeImagePairProps) => (
   <div className={wrapperClassName}>
     <Image
-      className={cn("hidden dark:block w-full h-auto", !noShadow && imageShadowClass)}
+      className={cn(
+        "hidden dark:block w-full h-auto",
+        !noShadow && imageShadowClass,
+      )}
       src={`${imageUrl}.svg`}
       alt={alt}
       width={width}
@@ -108,7 +111,10 @@ const ThemeImagePair = ({
       loading={loading}
     />
     <Image
-      className={cn("block dark:hidden w-full h-auto", !noShadow && imageShadowClass)}
+      className={cn(
+        "block dark:hidden w-full h-auto",
+        !noShadow && imageShadowClass,
+      )}
       src={`${imageUrl}_light.svg`}
       alt={alt}
       width={width}
@@ -164,7 +170,13 @@ const ImageVisual = ({ item, isLcpImage }: ImageVisualProps) => {
   );
 };
 
-const SectionVisual = ({ item, isLcpImage }: { item: TwoColumnItem; isLcpImage: boolean }) => {
+const SectionVisual = ({
+  item,
+  isLcpImage,
+}: {
+  item: TwoColumnItem;
+  isLcpImage: boolean;
+}) => {
   if (item.visualType === "other") {
     return item.other ? <>{item.other}</> : null;
   }
@@ -247,7 +259,8 @@ export const CardSection = ({ cardSection }: CardSectionProps) => {
         if (!containerRef.current) return;
 
         const container = containerRef.current;
-        const position = container.getBoundingClientRect().y * -1 + window.innerHeight * 0.8;
+        const position =
+          container.getBoundingClientRect().y * -1 + window.innerHeight * 0.8;
 
         setProgressHeight(position);
 

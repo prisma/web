@@ -117,11 +117,6 @@ const footerItems = [
       },
       {
         _type: "footerLinkType",
-        title: "Data DX",
-        url: "https://www.datadx.io/",
-      },
-      {
-        _type: "footerLinkType",
         title: "Careers",
         url: "https://prisma.io/careers",
         //tag: "We're hiring"

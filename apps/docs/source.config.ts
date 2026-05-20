@@ -18,8 +18,8 @@ function convertLine(cmd: string, pm: "npm" | "pnpm" | "yarn" | "bun"): string {
       // pattern directly instead of fighting the library's output.
       const m = line.match(/^npm create ([^\s]+@latest)((?:\s+--\s*.*)?)$/);
       if (m) {
-        const pkg = m[1]; // e.g. "prisma@latest"
-        const flags = m[2].replace(/^\s+--\s*/, " ").trim(); // strip -- separator
+        const pkg = m[1];
+        const flags = m[2].replace(/^\s+--\s*/, " ").trim();
         const f = flags ? ` ${flags}` : "";
         switch (pm) {
           case "npm":
@@ -37,8 +37,6 @@ function convertLine(cmd: string, pm: "npm" | "pnpm" | "yarn" | "bun"): string {
     .join("\n");
 }
 
-// You can customise Zod schemas for frontmatter and `meta.json` here
-// see https://fumadocs.dev/docs/mdx/collections
 export const docs = defineDocs({
   dir: "content/docs",
   docs: {
@@ -49,27 +47,7 @@ export const docs = defineDocs({
       metaTitle: z.string(),
       metaDescription: z.string(),
       aiPrompt: z.string().optional(),
-    }),
-    postprocess: {
-      includeProcessedMarkdown: true,
-    },
-  },
-  meta: {
-    schema: metaSchema,
-  },
-});
-
-// v6 docs collection
-export const docsV6 = defineDocs({
-  dir: "content/docs.v6",
-  docs: {
-    schema: frontmatterSchema.extend({
-      image: z.string().optional(),
-      badge: z.enum(["early-access", "deprecated", "preview"]).optional(),
-      url: z.string().optional(),
-      metaTitle: z.string().optional(),
-      metaDescription: z.string().optional(),
-      aiPrompt: z.string().optional(),
+      noindex: z.boolean().optional(),
     }),
     postprocess: {
       includeProcessedMarkdown: true,

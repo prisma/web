@@ -1,0 +1,70 @@
+---
+title: TypeScript performance
+description: Optimize TypeScript compilation performance when working with large Prisma schemas
+url: /orm/v6/more/troubleshooting/typescript-performance
+metaTitle: Optimizing TypeScript performance with large Prisma schemas
+metaDescription: Learn how to dramatically improve TypeScript compilation performance when working with large Prisma schemas using type optimization strategies
+---
+
+When working with large database schemas, a simple change in type definition strategy can deliver massive performance improvements:
+
+| Approach             | Types                     | Instantiations            | Memory                    | Compile Time              |
+| -------------------- | ------------------------- | ------------------------- | ------------------------- | ------------------------- |
+| **Direct Reference** | 269,597                   | 2,772,929                 | 395MB                     | 1.86s                     |
+| **typeof technique** | 222 (**99.9% reduction**) | 152 (**99.9% reduction**) | 147MB (**62% reduction**) | 0.41s (**78% reduction**) |
+
+## Problem
+
+In enterprise applications with extensive database schemas, Prisma's generated types can become enormous. A schema with 50+ tables and deep relationships can lead to:
+
+- Compilation times exceeding several minutes
+- High memory usage during type checking
+- IDE responsiveness degrading significantly
+- CI/CD pipelines timing out on type checks
+
+## Solution
+
+Use TypeScript's `typeof` operator instead of direct type references when defining function parameters that accept PrismaClient instances.
+
+### Problematic approach for large schemas
+
+```typescript
+import { PrismaClient } from "../prisma/generated/client";
+
+const saveFn = async (prismaClient: PrismaClient) => {
+  // Function implementation
+};
+
+const client = new PrismaClient();
+await saveFn(client);
+```
+
+### Optimized approach with `typeof`
+
+```typescript
+import { PrismaClient } from "../prisma/generated/client";
+
+const saveFn = async (prismaClient: typeof client) => {
+  // Function implementation
+};
+
+const client = new PrismaClient();
+await saveFn(client);
+```
+
+## Why `typeof` is more efficient
+
+The `typeof` operator creates a more efficient type resolution path:
+
+1. **Type Query Reference**: `typeof client` performs a type query that obtains the widened type of the identifier expression, avoiding the need to re-expand the complex `PrismaClient` type definition
+2. **Reduced Type Instantiation**: The compiler avoids expanding the entire Prisma type hierarchy for each type check (resulting in a 99.9% reduction in instantiations)
+3. **Memory Efficiency**: Referencing an existing instance's inferred type requires significantly less memory than expanding complex conditional types and generics
+
+## Conclusion
+
+When working with large Prisma schemas, the choice between direct type references and type queries becomes crucial for maintaining development velocity. The 78% compilation time reduction demonstrated here scales exponentially with schema complexity.
+
+## Benchmark
+
+The complete benchmark code is available at:
+https://github.com/ToyB0x/ts-bench/pull/211

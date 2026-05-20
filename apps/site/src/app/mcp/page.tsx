@@ -1,11 +1,20 @@
 import { createSoftwareApplicationStructuredData } from "@/lib/structured-data";
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 
-import { type McpAgent, McpAgentsSection } from "./_components/mcp-agents-section";
-import { type McpCapability, McpCapabilitiesSection } from "./_components/mcp-capabilities-section";
+import {
+  type McpAgent,
+  McpAgentsSection,
+} from "./_components/mcp-agents-section";
+import {
+  type McpCapability,
+  McpCapabilitiesSection,
+} from "./_components/mcp-capabilities-section";
 import { McpCtaSection } from "./_components/mcp-cta-section";
-import { type McpHeroFeature, McpHeroSection } from "./_components/mcp-hero-section";
+import {
+  type McpHeroFeature,
+  McpHeroSection,
+} from "./_components/mcp-hero-section";
 import { McpVideoSection } from "./_components/mcp-video-section";
 
 const mcpStructuredData = createSoftwareApplicationStructuredData({
@@ -15,41 +24,14 @@ const mcpStructuredData = createSoftwareApplicationStructuredData({
     "AI-powered database management via Model Context Protocol. Manage databases with natural language in Claude, Codex, Cursor, Warp, ChatGPT and other AI agents.",
 });
 
-export const metadata: Metadata = {
-  title: "Prisma MCP Server — AI-Powered Database Management",
+export const metadata = createPageMetadata({
+  title: "Prisma MCP Server | Manage Databases with AI Agents",
   description:
     "Manage your databases with natural language via MCP in Claude, Codex, Cursor, Warp, ChatGPT and other AI agents. Works great with Prisma Postgres.",
-  alternates: {
-    canonical: "https://www.prisma.io/mcp",
-  },
-  openGraph: {
-    title: "Prisma MCP Server — AI-Powered Database Management",
-    description:
-      "Manage your databases with natural language via MCP in Claude, Codex, Cursor, Warp, ChatGPT and other AI agents. Works great with Prisma Postgres.",
-    url: "https://www.prisma.io/mcp",
-    siteName: "Prisma",
-    locale: "en_US",
-    type: "website",
-    images: [
-      {
-        url: "/og/og-mcp.png",
-        width: 1200,
-        height: 630,
-        alt: "Prisma MCP Server Web Page Open Graph Image",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    site: "@prisma",
-    creator: "@prisma",
-    title: "Prisma MCP Server — AI-Powered Database Management",
-    description:
-      "Manage your databases with natural language via MCP in Claude, Codex, Cursor, Warp, ChatGPT and other AI agents. Works great with Prisma Postgres.",
-    images: ["/og/og-mcp.png"],
-  },
-};
-const DOCS_MCP = "https://www.prisma.io/docs/postgres/integrations/mcp-server";
+  path: "/mcp",
+  ogImage: "/og/og-mcp.png",
+});
+const DOCS_MCP = "https://www.prisma.io/docs/ai/tools/mcp-server";
 
 const heroFeatures: McpHeroFeature[] = [
   {
@@ -81,24 +63,22 @@ const agents: McpAgent[] = [
   {
     logo: "/mcp/logos/cursor.svg",
     alt: "Add to Cursor",
-    href: "cursor://anysphere.cursor-deeplink/mcp/install?name=Prisma-Remote&config=eyJjb21tYW5kIjoibnB4IC15IG1jcC1yZW1vdGUgaHR0cHM6Ly9tY3AucHJpc21hLmlvL21jcCJ9",
+    href: "cursor://anysphere.cursor-deeplink/mcp/install?name=Prisma&config=eyJ1cmwiOiJodHRwczovL21jcC5wcmlzbWEuaW8vbWNwIn0%3D",
   },
   {
     logo: "/mcp/logos/vscode.svg",
     alt: "Install in VS Code",
-    href: "vscode:mcp/install?%7B%22name%22%3A%22prisma-postgres%22%2C%22gallery%22%3Atrue%2C%22url%22%3A%22https%3A%2F%2Fmcp.prisma.io%2Fmcp%22%7D",
+    href: "vscode:mcp/install?%7B%22name%22%3A%22Prisma%22%2C%22gallery%22%3Atrue%2C%22url%22%3A%22https%3A%2F%2Fmcp.prisma.io%2Fmcp%22%7D",
   },
   {
     logo: "/mcp/logos/warp.svg",
     alt: "Copy JSON configuration",
     copyText: JSON.stringify(
       {
-        "Prisma-Postgres": {
-          command: "npx",
-          args: ["-y", "mcp-remote", "https://mcp.prisma.io/mcp"],
-          env: {},
-          working_directory: null,
-          start_on_launch: true,
+        mcpServers: {
+          Prisma: {
+            url: "https://mcp.prisma.io/mcp",
+          },
         },
       },
       null,
@@ -107,13 +87,14 @@ const agents: McpAgent[] = [
   },
   {
     logo: "/mcp/logos/chatgpt.svg",
-    alt: "See how to add the remote Prisma MCP server to ChatGPT",
+    alt: "See how to add the Prisma MCP server to ChatGPT",
     href: "https://pris.ly/gpt-prisma-mcp",
   },
   {
     logo: "/mcp/logos/claude-code.svg",
     alt: "Copy command to add to Claude Code",
-    copyText: "claude mcp add --transport http prisma https://mcp.prisma.io/mcp",
+    copyText:
+      "claude mcp add --transport http prisma https://mcp.prisma.io/mcp",
   },
   {
     logo: "/mcp/logos/windsurf.svg",
@@ -123,8 +104,7 @@ const agents: McpAgent[] = [
   {
     logo: "/mcp/logos/gemini.svg",
     alt: "Copy command to add to Gemini CLI",
-    copyText:
-      "gemini mcp add Prisma-Remote npx --args -y mcp-remote https://mcp.prisma.io/mcp --scope user",
+    copyText: "gemini mcp add --transport http Prisma https://mcp.prisma.io/mcp --scope user",
   },
   {
     logo: null,
@@ -137,7 +117,8 @@ const capabilities: McpCapability[] = [
   {
     icon: "fa-light fa-database",
     title: "Database Management",
-    description: "Create projects, databases, or clean them up via natural language",
+    description:
+      "Create projects, databases, or clean them up via natural language",
     prompt: "Set up this project with a new database in us-east-1",
     mobileTall: false,
   },
@@ -145,28 +126,29 @@ const capabilities: McpCapability[] = [
     icon: "fa-light fa-magnifying-glass-arrow-right",
     title: "Data Analysis",
     description: "Execute queries and analyze data through conversation",
-    prompt: "Show me all users who signed up this week and their activity levels",
+    prompt:
+      "Show me all users who signed up this week and their activity levels",
     mobileTall: true,
   },
   {
     icon: "fa-light fa-code-compare",
-    title: "Schema Operations",
-    description: "Manage migrations and database structure changes",
-    prompt: "Check my migration status and create a new user preferences table",
+    title: "Schema Insight",
+    description: "Inspect database structure and understand relationships",
+    prompt: "Introspect my product database and summarize the user tables",
     mobileTall: false,
   },
   {
     icon: "fa-light fa-folder-gear",
     title: "Database Administration",
-    description: "Handle backups, connection strings, and multi-database workflows",
+    description: "Handle backups, restores, and multi-database workflows",
     prompt: "Create a new database from the most recent backup to my product db",
     mobileTall: false,
   },
   {
     icon: "fa-light fa-arrow-progress",
-    title: "Development Workflow",
-    description: "Integrate database operations seamlessly into coding workflow",
-    prompt: "Open Prisma Studio and show me the data in my users table",
+    title: "Connection Management",
+    description: "Create, list, and revoke database connection strings",
+    prompt: "Create a connection string for my staging database",
     mobileTall: false,
   },
 ];
@@ -180,7 +162,10 @@ export default function McpPage() {
         <McpVideoSection />
         <McpAgentsSection agents={agents} />
         <McpCapabilitiesSection capabilities={capabilities} />
-        <McpCtaSection docsHref={DOCS_MCP} readDocsHref="https://www.prisma.io/docs/ai" />
+        <McpCtaSection
+          docsHref={DOCS_MCP}
+          readDocsHref="https://www.prisma.io/docs/ai"
+        />
       </div>
     </main>
   );

@@ -1,0 +1,76 @@
+---
+title: Best Postgres for AI apps
+description: Why Prisma Postgres works well for AI and LLM workloads — built-in pooling, query caching, edge connectivity, pgvector, and MCP support.
+url: /postgres/best-postgres-for-ai-apps
+metaTitle: Best managed Postgres for AI apps | Prisma Postgres
+metaDescription: Prisma Postgres for AI apps — built-in connection pooling, query caching for RAG pipelines, edge-native connectivity, pgvector support, and a first-party MCP server for agent workflows.
+---
+
+AI apps have a different database profile than traditional web apps. Requests burst unpredictably, the same embeddings get retrieved repeatedly, inference runs at the edge, and agents increasingly need direct database access. Most managed Postgres services weren't designed with those patterns in mind.
+
+Here's how Prisma Postgres handles them.
+
+## Built-in connection pooling
+
+Serverless inference endpoints open a new database connection per invocation. At any meaningful load, that exhausts your Postgres connection limit fast. Prisma Postgres includes connection pooling by default — no pgBouncer to configure, no sidecar to run.
+
+Your connection string already points to the pooler. Nothing extra to set up.
+
+## Query caching for RAG pipelines
+
+Users asking similar questions trigger semantically similar retrievals. Without caching, every request is a full round-trip to the database. Prisma Postgres includes globally distributed query caching via Prisma Accelerate — opt in per query:
+
+```ts title="app.ts"
+const chunks = await prisma.documentChunk.findMany({
+  where: { documentId, similarity: { gte: 0.8 } },
+  cacheStrategy: { ttl: 60, swr: 30 },
+})
+```
+
+Repeated retrievals are served from edge nodes close to your users instead of from the database region.
+
+## Edge-native connectivity
+
+Standard Postgres TCP drivers don't work in Cloudflare Workers, Vercel Edge Functions, or Deno Deploy. Prisma Postgres ships `@prisma/ppg`, a serverless driver that connects over HTTP — no workarounds needed.
+
+See [Serverless driver](/postgres/database/serverless-driver) for setup.
+
+## pgvector for embeddings
+
+Prisma Postgres supports the `pgvector` extension for storing and querying vector embeddings natively in Postgres. You can keep your embeddings alongside your application data without a separate vector store.
+
+See [Postgres extensions](/postgres/database/postgres-extensions) for how to enable it.
+
+## MCP server for agent workflows
+
+AI agents (Claude, Cursor, or custom) can connect to Prisma Postgres via the Prisma MCP server to introspect schemas, run queries, apply migrations, and manage environments — without raw SQL access.
+
+See [Prisma MCP server](/ai/tools/mcp-server) for setup.
+
+## At a glance
+
+| | Prisma Postgres | Neon | Supabase |
+|---|---|---|---|
+| **Built-in connection pooling** | Yes, included by default | Yes, PgBouncer-compatible | Yes, Supavisor pooler |
+| **Query-level caching** | Yes — global via Accelerate | No native query cache | No native query cache |
+| **Serverless / edge driver** | Yes — `@prisma/ppg` | Yes — `@neondatabase/serverless` | Partial, requires configuration |
+| **pgvector support** | Yes | Yes | Yes |
+| **MCP server** | Yes — official first-party | Yes — Neon MCP server | Yes — Supabase MCP server |
+| **Database branching** | No | Yes | Limited |
+| **Free tier** | Yes | Yes | Yes |
+
+The query caching row is the differentiator for AI workloads. If you're building RAG pipelines or anything with repeated retrieval patterns, that column matters.
+
+## Get started
+
+```npm
+npm create prisma@latest
+```
+
+Or provision from the [Prisma Console](https://console.prisma.io) and grab your connection string.
+
+- [Connect to Prisma Postgres](/postgres/database/connecting-to-your-database)
+- [Enable query caching](/accelerate/caching)
+- [Use the serverless driver at the edge](/postgres/database/serverless-driver)
+- [Enable pgvector](/postgres/database/postgres-extensions)
+- [Set up the Prisma MCP server](/ai/tools/mcp-server)

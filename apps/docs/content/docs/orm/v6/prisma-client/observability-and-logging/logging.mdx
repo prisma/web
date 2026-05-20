@@ -1,0 +1,142 @@
+---
+title: Logging
+description: Learn how to configure Prisma Client to log the raw SQL queries it sends to the database and other information.
+url: /orm/v6/prisma-client/observability-and-logging/logging
+metaTitle: Logging
+metaDescription: Learn how to configure Prisma Client to log the raw SQL queries it sends to the database and other information.
+---
+
+Use the `PrismaClient` [`log`](/orm/v6/reference/prisma-client-reference#log) parameter to configure [log levels](/orm/v6/reference/prisma-client-reference#log-levels) , including warnings, errors, and information about the queries sent to the database.
+
+Prisma Client supports two types of logging:
+
+- Logging to [stdout](https://en.wikipedia.org/wiki/Standard_streams) (default)
+- Event-based logging (use [`$on()`](/orm/v6/reference/prisma-client-reference#on) method to [subscribe to events](#event-based-logging))
+
+:::info
+
+You can also use the `DEBUG` environment variable to enable debugging output in Prisma Client. See [Debugging](/orm/v6/prisma-client/debugging-and-troubleshooting/debugging) for more information.
+
+:::
+
+:::info
+
+If you want a detailed insight into your Prisma Client's performance at the level of individual operations, see [Tracing](/orm/v6/prisma-client/observability-and-logging/opentelemetry-tracing).
+
+:::
+
+## Log to stdout
+
+The simplest way to print _all_ log levels to stdout is to pass in an array `LogLevel` objects:
+
+```ts
+const prisma = new PrismaClient({
+  log: ["query", "info", "warn", "error"],
+});
+```
+
+This is the short form of passing in an array of `LogDefinition` objects where the value of `emit` is always `stdout`:
+
+```ts
+const prisma = new PrismaClient({
+  log: [
+    {
+      emit: "stdout",
+      level: "query",
+    },
+    {
+      emit: "stdout",
+      level: "error",
+    },
+    {
+      emit: "stdout",
+      level: "info",
+    },
+    {
+      emit: "stdout",
+      level: "warn",
+    },
+  ],
+});
+```
+
+## Event-based logging
+
+To use event-based logging:
+
+1. Set `emit` to `event` for a specific log level, such as query
+2. Use the `$on()` method to subscribe to the event
+
+The following example subscribes to all `query` events and write the `duration` and `query` to console:
+
+```ts highlight=4,5,22-26;normal tab="Relational databases"
+const prisma = new PrismaClient({
+  log: [
+    {
+      emit: "event",
+      level: "query",
+    },
+    {
+      emit: "stdout",
+      level: "error",
+    },
+    {
+      emit: "stdout",
+      level: "info",
+    },
+    {
+      emit: "stdout",
+      level: "warn",
+    },
+  ],
+});
+
+prisma.$on("query", (e) => {
+  console.log("Query: " + e.query);
+  console.log("Params: " + e.params);
+  console.log("Duration: " + e.duration + "ms");
+});
+```
+
+```sql no-copy
+Query: SELECT "public"."User"."id", "public"."User"."email", "public"."User"."name" FROM "public"."User" WHERE 1=1 OFFSET $1
+Params: [0]
+Duration: 3ms
+Query: SELECT "public"."Post"."id", "public"."Post"."title", "public"."Post"."authorId" FROM "public"."Post" WHERE "public"."Post"."authorId" IN ($1,$2,$3,$4) OFFSET $5
+Params: [2, 7, 18, 29]
+Duration: 2ms
+```
+
+```ts highlight=4,5,22-25;normal tab="MongoDB"
+const prisma = new PrismaClient({
+  log: [
+    {
+      emit: "event",
+      level: "query",
+    },
+    {
+      emit: "stdout",
+      level: "error",
+    },
+    {
+      emit: "stdout",
+      level: "info",
+    },
+    {
+      emit: "stdout",
+      level: "warn",
+    },
+  ],
+});
+
+prisma.$on("query", (e) => {
+  console.log("Query: " + e.query);
+});
+```
+
+```bash no-copy
+Query: db.User.aggregate([ { $project: { _id: 1, email: 1, name: 1, }, }, ])
+Query: db.Post.aggregate([ { $match: { userId: { $in: [ "622f0bbbdf635a42016ee325", ], }, }, }, { $project: { _id: 1, slug: 1, title: 1, body: 1, userId: 1, }, }, ])
+```
+
+The exact [event (`e`) type and the properties available](/orm/v6/reference/prisma-client-reference#event-types) depends on the log level.

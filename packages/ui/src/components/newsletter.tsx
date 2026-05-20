@@ -5,7 +5,9 @@ import { Button, Input } from "@prisma/eclipse";
 import { cn } from "@prisma-docs/ui/lib/cn";
 import { useNewsletter } from "../hooks/use-newsletter";
 
-const icon = (name: string) => <i color="currentColor" className={cn("text-[1.125rem]", name)} />;
+const icon = (name: string) => (
+  <i color="currentColor" className={cn("text-[1.125rem]", name)} />
+);
 
 type ColorType = "orm" | "ppg" | undefined;
 
@@ -16,9 +18,19 @@ type FooterNewsletterFormProps = {
   apiUrl?: string;
 };
 
-export const FooterNewsletterForm = ({ blog = false, apiUrl }: FooterNewsletterFormProps) => {
-  const { email, setEmail, isSubmitting, isSubmitted, isAlreadySubscribed, error, subscribe } =
-    useNewsletter({ apiUrl });
+export const FooterNewsletterForm = ({
+  blog = false,
+  apiUrl,
+}: FooterNewsletterFormProps) => {
+  const {
+    email,
+    setEmail,
+    isSubmitting,
+    isSubmitted,
+    isAlreadySubscribed,
+    error,
+    subscribe,
+  } = useNewsletter({ apiUrl });
 
   const buttonText = blog ? "Sign up" : "Subscribe";
 
@@ -86,7 +98,7 @@ export const FooterNewsletterForm = ({ blog = false, apiUrl }: FooterNewsletterF
               />
             </Button>
           </div>
-          <div className="mt-2 min-h-5">
+          <div className="mt-2 min-h-5 absolute">
             {statusMessage ? (
               <p
                 className={cn("text-sm self-start", statusMessage.className)}

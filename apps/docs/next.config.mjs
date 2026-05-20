@@ -197,6 +197,30 @@ const securityHeaders = [
     key: "Referrer-Policy",
     value: "strict-origin-when-cross-origin",
   },
+  {
+    key: "Strict-Transport-Security",
+    value: "max-age=63072000; includeSubDomains; preload",
+  },
+];
+
+const llmsTxtHeader = {
+  key: "Link",
+  value: '</docs/llms.txt>; rel="llms-txt"',
+};
+
+const docsMarkdownHeaders = [
+  {
+    key: "Link",
+    value:
+      '</docs/:path.md>; rel="alternate"; type="text/markdown", </docs/llms.txt>; rel="llms-txt"',
+  },
+];
+
+const docsRootMarkdownHeaders = [
+  {
+    key: "Link",
+    value: '</docs.md>; rel="alternate"; type="text/markdown", </docs/llms.txt>; rel="llms-txt"',
+  },
 ];
 
 const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0.1,192.168.1.48")
@@ -214,16 +238,45 @@ const config = {
         permanent: true,
         basePath: false,
       },
+      // {
+      //   source: "/orm/latest",
+      //   destination: "/orm",
+      //   permanent: true,
+      // },
+      // {
+      //   source: "/orm/latest/:path*",
+      //   destination: "/orm/:path*",
+      //   permanent: true,
+      // },
+      {
+        source: "/v6/orm",
+        destination: "/orm/v6",
+        permanent: true,
+      },
+      {
+        source: "/v6/orm/:path*",
+        destination: "/orm/v6/:path*",
+        permanent: true,
+      },
     ];
   },
   async rewrites() {
     return [
+    
+      // {
+      //   source: "/orm/:path((?!latest(?:/|$)|v6(?:/|$)).*)",
+      //   destination: "/orm/latest/:path",
+      // },
       {
         source: "/sitemap",
         destination: "/sitemap.xml",
       },
       {
         source: "/:path*.mdx",
+        destination: "/llms.mdx/:path*",
+      },
+      {
+        source: "/:path*.md",
         destination: "/llms.mdx/:path*",
       },
     ];
@@ -241,7 +294,16 @@ const config = {
     return [
       {
         source: "/:path*",
-        headers: securityHeaders,
+        headers: [...securityHeaders, llmsTxtHeader],
+      },
+      {
+        source: "/",
+        headers: docsRootMarkdownHeaders,
+      },
+      {
+        source:
+          "/:path((?!api(?:/|$)|llms(?:\\.|/|$)|og(?:/|$)|rss\\.xml$|sitemap(?:\\.xml)?$|favicon\\.ico$|.*\\.[^/]+$).+)",
+        headers: docsMarkdownHeaders,
       },
     ];
   },

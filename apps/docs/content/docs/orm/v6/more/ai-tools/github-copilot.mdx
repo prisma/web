@@ -1,0 +1,233 @@
+---
+title: GitHub Copilot
+description: 'Learn about the features available with GitHub Copilot and Prisma ORM, plus best practices and tips.'
+url: /orm/v6/more/ai-tools/github-copilot
+metaTitle: Prisma ORM with GitHub Copilot
+metaDescription: 'Learn about the features available with GitHub Copilot and Prisma ORM, plus best practices and tips.'
+---
+
+GitHub Copilot is an AI coding assistant that speeds up your Prisma ORM workflows, so you spend less time on boilerplate and more on data modeling, querying, and collaboration. With the GitHub Copilot extension in your editor, you can:
+
+- Get Prisma-aware code suggestions as you edit your schema or invoke the client.
+- Chat with Copilot about modeling patterns, troubleshoot queries, or explore migration strategies.
+- Run common Prisma CLI commands (e.g. `prisma migrate dev`, `prisma db push`) via Copilot's command-palette interface.
+- Scaffold Prisma schema models and generate Prisma Client code and run migrations directly from the Copilot chat interface.
+
+GitHub Copilot allows you to query the official docs via the [**Prisma for GitHub Copilot** extension](https://github.com/apps/prisma-for-github-copilot) and also perform automated [actions in VS Code agent mode](/guides/postgres/vscode#agent-mode), such as scaffolding a Prisma schema, running seed scripts, and creating a production-ready Prisma Postgres database.
+
+## Query Prisma docs with the Prisma for GitHub Copilot extension
+
+The [Prisma for GitHub Copilot extension](https://github.com/apps/prisma-for-github-copilot) lets you fetch Prisma documentation directly in GitHub Copilot Chat. You can look up schema syntax, client methods, migration commands, and more from your editor.
+
+### How to enable the extension
+
+1. Install the **Prisma for Copilot** from the GitHub Marketplace.
+2. Ensure [GitHub Copilot Chat is installed](https://docs.github.com/en/copilot/using-github-copilot/copilot-chat/asking-github-copilot-questions-in-your-ide) and active in your code editor.
+3. Open a file in your workspace and launch Copilot Chat.
+4. In chat, prefix your question with the `@prisma-for-copilot` keyword:
+
+```
+@prisma-for-copilot How do I define a one-to-many relation?
+```
+
+1. Install the [Prisma for GitHub Copilot](https://github.com/apps/prisma-for-github-copilot) extension.
+2. Open your IDE.
+3. Install the [GitHub Copilot Chat extension](https://docs.github.com/en/copilot/managing-copilot/configure-personal-settings/installing-the-github-copilot-extension-in-your-environment).
+4. Open Copilot Chat and switch to [**Ask** mode](https://code.visualstudio.com/docs/copilot/chat/chat-ask-mode).
+5. Ask: "`@prisma-for-github-copilot` How do I define a one-to-many relation?" (If the `@prisma-for-github-copilot` namespace doesn't show up after a few seconds, reload the chat.)
+6. When prompted, authorize the Prisma app in your browser, then return to the chat.
+7. After returning to the chat, resend the question.
+8. Copilot returns the answer pulled straight from the Prisma docs.
+
+## Use GitHub Copilot's agent features
+
+GitHub Copilot Chat offers an **Agent** mode in VS Code that can run Prisma commands. You can use the agent chat to:
+
+- Run and inspect migrations.
+- Generate Prisma Client code.
+- Create a new Prisma Postgres database and update your `.env` file.
+
+You can type `Create a database named test-db and add its connection string to the .env file.` in the Copilot chat, and it will automatically create a new database named `test-db` and add the connection string to your `.env` file. To learn more about this, visit our [VS Code agent mode documentation](/guides/postgres/vscode#agent-mode).
+
+## Customize GitHub Copilot with `copilot-instructions.md`
+
+You can tailor Copilot Chat's behavior in your repository by [adding a `.github/copilot-instructions.md` file](https://docs.github.com/en/copilot/customizing-copilot/adding-repository-custom-instructions-for-github-copilot). This file injects your guidelines into every Copilot Chat session.
+
+<details>
+<summary>Example `.github/copilot-instructions.md` for Prisma</summary>
+
+````text
+# GitHub Copilot Instructions for Prisma Workspace
+
+## General Guidelines
+
+1. **Language**: English only.
+2. **Types**: Declare explicit types; avoid `any`.
+3. **Comments**: Use JSDoc for public methods and classes.
+4. **Exports**: One export per file.
+5. **Naming**:
+
+   * **Classes/interfaces** → `PascalCase`
+   * **Variables/functions** → `camelCase`
+   * **Files/directories** → `kebab-case`
+   * **Constants** → `UPPERCASE`
+   * **Boolean flags** → verb-based (e.g., `isLoading`)
+
+---
+
+## Prisma-Specific Guidelines
+
+### 1. Data Modeling
+
+* **Domain-driven model names**: keep them singular (e.g. `User`, `OrderItem`).
+* **Field naming**: use `camelCase` for fields (e.g. `createdAt`, `deletedAt`).
+* **IDs & keys**:
+
+  ```prisma
+  model Post {
+    id    Int    @id @default(autoincrement())
+    uuid  String @unique @default(uuid())
+  }
+  /```
+* **Composite keys & uniques**:
+
+  ```prisma
+  @@id([userId, role])
+  @@unique([email, tenantId])
+  /```
+* **Enums & constrained values**: leverage `enum` for fixed domains.
+* **Soft deletes & audit**:
+
+  ```prisma
+  model Base {
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    deletedAt DateTime?
+  }
+  /```
+
+### 2. Indexing & Constraints
+
+* **Single-column indexes** for frequent lookups:
+
+  ```prisma
+  @@index([email])
+  /```
+* **Compound indexes** for multi-field filters/sorts:
+
+  ```prisma
+  @@index([status, createdAt])
+  /```
+* **Full-text search** (Postgres-only):
+
+  ```prisma
+  @@index([title, content], type: Brin)  // or Gin for JSONB
+  /```
+
+### 3. Migrations
+
+* **Descriptive names**: `npx prisma migrate dev --name add-order-totals`
+* **Idempotent steps**: avoid imperative SQL in migrations.
+* **Shadow database**: enable in CI to catch drift.
+* **Never edit** migration SQL after it’s applied to any environment.
+
+### 4. Client Instantiation & Connection Management
+
+* **Singleton pattern**
+
+  ```ts
+  // prisma.ts
+  import { PrismaClient } from '../prisma/generated/client';
+  export const prisma = global.prisma || new PrismaClient();
+  if (process.env.NODE_ENV !== 'production') global.prisma = prisma;
+  /```
+
+### 5. Transactions & Batch Operations
+
+* **Multi-step atomicity**:
+
+  ```ts
+  const result = await prisma.$transaction([
+    prisma.user.create({ data: { /*…*/ } }),
+    prisma.order.create({ data: { /*…*/ } }),
+  ]);
+  /```
+* **Interactive transactions** for long-running flows.
+* **Bulk writes**: chunk large inserts/updates to avoid timeouts.
+
+### 6. Precise Queries & Performance
+
+* **Select only needed fields**:
+
+  ```ts
+  await prisma.user.findUnique({
+    where: { id },
+    select: { id: true, email: true },
+  });
+  /```
+* **Avoid N+1**: use `include` or batch `findMany` with `where: { id: { in: [...] } }` or use database joins in prisma.
+* Use **Cursor-based pagination**
+
+### 7. Raw Queries & Client Extensions
+
+* **Raw SQL** when necessary, safely:
+
+  ```ts
+  const users = await prisma.$queryRaw`SELECT * FROM "User" WHERE email = ${email}`;
+  /```
+* **Sanitize inputs** with `Prisma.sql` for complex interpolations.
+* **Client extensions**: use preview feature `clientExtensions` to add common helper methods.
+
+### 8. Error Handling
+
+* **Catch specific errors**:
+
+  ```ts
+  try {
+    // …
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError) {
+      // P2002: Unique constraint
+    }
+  }
+  /```
+* **Wrap in service-level errors** to add context before bubbling up.
+
+### 9. Testing
+
+* **In-memory DB** (SQLite) or **Testcontainers** for integration tests.
+* **Mock Prisma Client** for pure unit tests via `jest.mock()` or similar.
+
+### 10. Logging, Monitoring & Metrics
+
+* **Enable query logging** in dev:
+
+  ```ts
+  new PrismaClient({ log: ['query', 'warn', 'error'] });
+  /```
+* **APM integration** (Datadog, Sentry) – capture latency, errors.
+
+### 11. Security & Best Practices
+
+* **Never expose** raw Prisma client in HTTP controllers—wrap in a service layer.
+* **Validate inputs** (e.g. with Zod) before any DB operation.
+* **Least privilege** DB users: use separate roles for migrations vs. runtime.
+* **Rotate credentials** and load from secure vault (AWS Secrets Manager, etc.).
+
+### 12. Environment & Configuration
+
+* **Centralize `DATABASE_URL`** and connection settings in `.env`.
+* **Pin preview features** in `schema.prisma`:
+
+  ```prisma
+  generator client {
+    previewFeatures = ["clientExtensions", "interactiveTransactions"]
+  }
+  /```
+* **Version pinning**: match CLI and client versions in `package.json`.
+
+````
+
+</details>
+
+Place this file at the root of your repository under `.github/`. Copilot Chat automatically applies these rules to every conversation in your project.

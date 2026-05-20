@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import * as data from "../../../data/prisma-with/express.json";
 import { PrismaWithLayout } from "../../../components/prisma-with/layout";
 
@@ -93,33 +93,13 @@ model User {
 }`,
 };
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: "Easy database access in Express servers",
   description:
     "Build high-performance and type-safe Express servers with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and the first serverless database without cold starts.",
-  alternates: {
-    canonical: "https://www.prisma.io/express",
-  },
-  openGraph: {
-    title: "Easy database access in Express servers",
-    description:
-      "Build high-performance and type-safe Express servers with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and the first serverless database without cold starts.",
-    url: "https://www.prisma.io/express",
-    siteName: "Prisma",
-    locale: "en_US",
-    type: "website",
-    images: [{ url: "/og/prisma-with/express.png" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    site: "@prisma",
-    creator: "@prisma",
-    title: "Easy database access in Express servers",
-    description:
-      "Build high-performance and type-safe Express servers with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and the first serverless database without cold starts.",
-    images: ["/og/prisma-with/express.png"],
-  },
-};
+  path: "/express",
+  ogImage: "/og/prisma-with/express.png",
+});
 
 export default async function ExpressPage() {
   return <PrismaWithLayout data={data} codeExamples={codeExamples} />;

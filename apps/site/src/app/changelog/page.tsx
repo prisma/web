@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { Badge } from "@prisma/eclipse";
-import { getReleaseNotePreview, getSortedReleaseNotes } from "@/lib/changelog-source";
+import {
+  getReleaseNotePreview,
+  getSortedReleaseNotes,
+} from "@/lib/changelog-source";
 import { createPageMetadata } from "@/lib/page-metadata";
 import { formatDate, formatTag } from "@/lib/format";
 
@@ -30,7 +33,7 @@ export default async function ChangelogPage() {
         <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-ppg)_0%,var(--color-background-default)_100%)] opacity-20" />
         <section className="content relative z-2 flex flex-col gap-8 pb-12">
           <div className="flex flex-col gap-4 items-center text-center">
-            <div className="flex items-center gap-2 text-foreground-ppg-weak uppercase tracking-widest text-sm font-sans-display font-black">
+            <div className="flex items-center gap-2 text-foreground-ppg-weak type-title-sm">
               <i className="fa-regular fa-sparkles" aria-hidden />
               <span>Changelog</span>
             </div>
@@ -39,7 +42,8 @@ export default async function ChangelogPage() {
             </h1>
           </div>
           <p className="m-0 max-w-[640px] mx-auto text-center text-base text-foreground-neutral md:text-lg">
-            Here you’ll find all improvements and updates we’ve made to our products.
+            Here you’ll find all improvements and updates we’ve made to our
+            products.
           </p>
         </section>
       </div>
@@ -58,9 +62,17 @@ export default async function ChangelogPage() {
                 <div className="order-1 flex flex-col justify-between">
                   <div>
                     <div className="eyebrow flex gap-2 items-center flex-wrap">
-                      <Badge color="neutral" label={entry.data.version} className="w-fit" />
+                      <Badge
+                        color="neutral"
+                        label={entry.data.version}
+                        className="w-fit"
+                      />
                       {tags.length > 0 ? (
-                        <Badge color="success" label={formatTag(tags[0])} className="w-fit" />
+                        <Badge
+                          color="success"
+                          label={formatTag(tags[0])}
+                          className="w-fit"
+                        />
                       ) : null}
                       <span className="text-xs text-foreground-neutral-weak">
                         {formatDate(new Date(entry.data.date).toISOString())}
@@ -70,7 +82,9 @@ export default async function ChangelogPage() {
                       {entry.data.title}
                     </h2>
                     {summary ? (
-                      <p className="text-sm text-foreground-neutral-weak line-clamp-2">{summary}</p>
+                      <p className="text-sm text-foreground-neutral-weak line-clamp-2">
+                        {summary}
+                      </p>
                     ) : null}
                   </div>
                 </div>

@@ -1,25 +1,26 @@
 import { createMixedbreadSearchAPI } from "fumadocs-core/search/mixedbread";
 import Mixedbread from "@mixedbread/sdk";
 import { SortedResult } from "fumadocs-core/search";
+import { formatSlugDisplayName } from "@/lib/breadcrumb-utils";
+import { isVersionSegment } from "@/lib/version";
 
 export const dynamic = "force-dynamic";
 
-/** Derive breadcrumbs from URL path segments (e.g. /docs/console/concepts → ['Docs', 'Console']) */
 function getBreadcrumbsFromUrl(url: string): string[] {
   const path = url.replace(/#.*$/, "").trim().replace(/\/$/, "") || "/";
   const segments = path.split("/").filter(Boolean);
   if (segments.length === 0) return [];
-  // Strip version prefix (e.g. v6)
-  const normalized = segments[0] === "v6" ? segments.slice(1) : segments;
+
+  const normalized =
+    isVersionSegment(segments[0]) && segments[1] === "orm"
+      ? ["orm", ...segments.slice(2)]
+      : segments[0] === "orm" && (segments[1] === "latest" || isVersionSegment(segments[1]))
+        ? ["orm", ...segments.slice(2)]
+        : segments;
+
   if (normalized.length === 0) return [];
-  // Ancestors only (exclude last = current page), or full path for section roots
   const breadcrumbSegments = normalized.length > 1 ? normalized.slice(0, -1) : normalized;
-  return breadcrumbSegments.map((s) =>
-    s
-      .split(/[-_]/)
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-      .join(" "),
-  );
+  return breadcrumbSegments.map((segment) => formatSlugDisplayName(segment));
 }
 
 function slugger(value: string): string {
@@ -42,7 +43,6 @@ function removeMd(md: string): string {
       .replace(/~{3}.*\n/g, "")
       .replace(/```[^\n]*\n([\s\S]*?)```/g, (_: string, c: string) => c.trim())
       .replace(/~~/g, "")
-      .replace(/<[^>]*>/g, "")
       .replace(/\[\^.+?\](: .*?$)?/g, "")
       .replace(/\s{0,2}\[.*?\]: .*?$/g, "")
       .replace(/^\s{1,2}\[(.*?)\]: (\S+)( ".*?")?\s*$/gm, "")
@@ -54,7 +54,10 @@ function removeMd(md: string): string {
       .replace(/(^|\W)([_]+)(\S)(.*?\S)??\2($|\W)/g, "$1$3$4$5")
       .replace(/(`{3,})(.*?)\1/gm, "$2")
       .replace(/`(.+?)`/g, "$1")
-      .replace(/~(.*?)~/g, "$1");
+      .replace(/~(.*?)~/g, "$1")
+      // Remove any remaining angle brackets so malformed HTML-like input
+      // cannot survive as executable-looking text in search results.
+      .replace(/[<>]/g, "");
   } catch {
     return md;
   }

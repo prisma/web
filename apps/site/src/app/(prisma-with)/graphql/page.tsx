@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import * as data from "../../../data/prisma-with/graphql.json";
 import { PrismaWithLayout } from "../../../components/prisma-with/layout";
 
@@ -91,33 +91,13 @@ app.use('/graphql', graphqlHTTP({ schema }));
 app.listen(4000);`,
 };
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: "Simple Database Access in GraphQL servers",
   description:
     "Query data from MySQL, PostgreSQL & SQL Server databases in GraphQL with Prisma – a better ORM for JavaScript and TypeScript.",
-  alternates: {
-    canonical: "https://www.prisma.io/graphql",
-  },
-  openGraph: {
-    title: "Simple Database Access in GraphQL servers",
-    description:
-      "Query data from MySQL, PostgreSQL & SQL Server databases in GraphQL with Prisma – a better ORM for JavaScript and TypeScript.",
-    url: "https://www.prisma.io/graphql",
-    siteName: "Prisma",
-    locale: "en_US",
-    type: "website",
-    images: [{ url: "/og/prisma-with/graphql.png" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    site: "@prisma",
-    creator: "@prisma",
-    title: "Simple Database Access in GraphQL servers",
-    description:
-      "Query data from MySQL, PostgreSQL & SQL Server databases in GraphQL with Prisma – a better ORM for JavaScript and TypeScript.",
-    images: ["/og/prisma-with/graphql.png"],
-  },
-};
+  path: "/graphql",
+  ogImage: "/og/prisma-with/graphql.png",
+});
 
 export default async function GraphQlPage() {
   return <PrismaWithLayout data={data} codeExamples={codeExamples} />;

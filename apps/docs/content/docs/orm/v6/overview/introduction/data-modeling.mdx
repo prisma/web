@@ -1,0 +1,243 @@
+---
+title: Data modeling
+description: Learn how data modeling with Prisma differs from data modeling with SQL or ORMs. Prisma uses a declarative data modeling language to describe a database schema.
+url: /orm/v6/overview/introduction/data-modeling
+metaTitle: Data modeling with Prisma
+metaDescription: Learn how data modeling with Prisma differs from data modeling with SQL or ORMs. Prisma uses a declarative data modeling language to describe a database schema.
+---
+
+## What is data modeling?
+
+The term _data modeling_ refers to the **process of defining the shape and structure of the objects in an application**, these objects are often called "application models". In relational databases (like PostgreSQL), they are stored in _tables_ . When using document databases (like MongoDB), they are stored in _collections_.
+
+Depending on the domain of your application, the models will be different. For example, if you're writing a blogging application, you might have models such as _blog_, _author_, _article_. When writing a car-sharing app, you probably have models like _driver_, _car_, _route_. Application models enable you to represent these different entities in your code by creating respective _data structures_.
+
+When modeling data, you typically ask questions like:
+
+- What are the main entities/concepts in my application?
+- How do they relate to each other?
+- What are their main characteristics/properties?
+- How can they be represented with my technology stack?
+
+## Data modeling without Prisma ORM
+
+Data modeling typically needs to happen on (at least) two levels:
+
+- On the **database** level
+- On the **application** level (i.e., in your programming language)
+
+The way that the application models are represented on both levels might differ due to a few reasons:
+
+- Databases and programming languages use different data types
+- Relations are represented differently in a database than in a programming language
+- Databases typically have more powerful data modeling capabilities, like indexes, cascading deletes, or a variety of additional constraints (e.g. unique, not null, ...)
+- Databases and programming languages have different technical constraints
+
+### Data modeling on the database level
+
+#### Relational databases
+
+In relational databases, models are represented by _tables_. For example, you might define a `users` table to store information about the users of your application. Using PostgreSQL, you'd define it as follows:
+
+```sql
+CREATE TABLE users (
+  user_id SERIAL PRIMARY KEY NOT NULL,
+  name VARCHAR(255),
+  email VARCHAR(255) UNIQUE NOT NULL,
+  isAdmin BOOLEAN NOT NULL DEFAULT false
+);
+```
+
+A visual representation of the `users` table with some random data might look as follows:
+
+| `user_id` | `name`  | `email`           | `isAdmin` |
+| :-------- | :------ | :---------------- | :-------- |
+| `1`       | `Alice` | `alice@prisma.io` | `false`   |
+| `2`       | `Bob`   | `bob@prisma.io`   | `false`   |
+| `3`       | `Sarah` | `sarah@prisma.io` | `true`    |
+
+It has the following columns:
+
+- `user_id`: An integer that increments with every new record in the `users` table. It also represents the [primary key](https://en.wikipedia.org/wiki/Primary_key) for each record.
+- `name`: A string with at most 255 characters.
+- `email`: A string with at most 255 characters. Additionally, the added constraints express that no two records can have duplicate values for the `email` column, and that _every_ record needs to have a value for it.
+- `isAdmin`: A boolean that indicates whether the user has admin rights (default value: `false`)
+
+#### MongoDB
+
+In MongoDB databases, models are represented by _collections_ and contain _documents_ that can have any structure:
+
+```js
+{
+  _id: '607ee94800bbe41f001fd568',
+  slug: 'prisma-loves-mongodb',
+  title: 'Prisma <3 MongoDB',
+  body: "This is my first post. Isn't MongoDB + Prisma awesome?!"
+}
+```
+
+Prisma Client currently expects a consistent model and [normalized model design](https://www.mongodb.com/docs/manual/data-modeling/best-practices/#std-label-data-modeling-best-practices). This means that:
+
+- If a model or field is not present in the Prisma schema, it is ignored
+- If a field is mandatory but not present in the MongoDB dataset, you will get an error
+
+### Data modeling on the application level
+
+In addition to creating the tables that represent the entities from your application domain, you also need to create application models in your programming language. In object-oriented languages, this is often done by creating _classes_ to represent your models. Depending on the programming language, this might also be done with _interfaces_ or _structs_.
+
+There often is a strong correlation between the tables in your database and the models you define in your code. For example, to represent records from the aforementioned `users` table in your application, you might define a JavaScript (ES6) class looking similar to this:
+
+```js
+class User {
+  constructor(user_id, name, email, isAdmin) {
+    this.user_id = user_id;
+    this.name = name;
+    this.email = email;
+    this.isAdmin = isAdmin;
+  }
+}
+```
+
+When using TypeScript, you might define an interface instead:
+
+```js
+interface User {
+  user_id: number
+  name: string
+  email: string
+  isAdmin: boolean
+}
+```
+
+Notice how the `User` model in both cases has the same properties as the `users` table in the previous example. While it's often the case that there's a 1:1 mapping between database tables and application models, it can also happen that models are represented completely differently in the database and your application.
+
+With this setup, you can retrieve records from the `users` table and store them as instances of your `User` type. The following example code snippet uses [`pg`](https://node-postgres.com/) as the driver for PostgreSQL and creates a `User` instance based on the above defined JavaScript class:
+
+```js
+const resultRows = await client.query("SELECT * FROM users WHERE user_id = 1");
+const userData = resultRows[0];
+const user = new User(userData.user_id, userData.name, userData.email, userData.isAdmin);
+// user = {
+//   user_id: 1,
+//   name: "Alice",
+//   email: "alice@prisma.io",
+//   isAdmin: false
+// }
+```
+
+Notice that in these examples, the application models are "dumb", meaning they don't implement any logic but their sole purpose is to carry data as _plain old JavaScript objects_.
+
+### Data modeling with ORMs
+
+ORMs are commonly used in object-oriented languages to make it easier for developers to work with a database. The key characteristic of an ORM is that it lets you model your application data in terms of _classes_ which are mapped to _tables_ in the underlying database.
+
+The main difference compared to the approaches explained above is these classes not only carry data but also implement a substantial amount of logic. Mostly for storage, retrieval, serialization, and deserialization, but sometimes they also implement business logic that's specific to your application.
+
+This means, you don't write SQL statements to read and write data in the database, but instead the instances of your model classes provide an API to store and retrieve data.
+
+[Sequelize](https://sequelize.org/) is a popular ORM in the Node.js ecosystem, this is how you'd define the same `User` model from the sections before using Sequelize's modeling approach:
+
+```js
+class User extends Model {}
+User.init(
+  {
+    user_id: {
+      type: Sequelize.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    name: Sequelize.STRING(255),
+    email: {
+      type: Sequelize.STRING(255),
+      unique: true,
+    },
+    isAdmin: Sequelize.BOOLEAN,
+  },
+  { sequelize, modelName: "user" },
+);
+```
+
+To get an example with this `User` class to work, you still need to create the corresponding table in the database. With Sequelize, you have two ways of doing this:
+
+- Run `User.sync()` (typically not recommended for production)
+- Use [Sequelize migrations](https://sequelize.org/v5/manual/migrations.html) to change your database schema
+
+Note that you'll never instantiate the `User` class manually (using `new User(...)`) as was shown in the previous section, but rather call _static_ methods on the `User` class which then return the `User` model instances:
+
+```js
+const user = await User.findByPk(42);
+```
+
+The call to `findByPk` creates a SQL statement to retrieve the `User` record that's identified by the ID value `42`.
+
+The resulting `user` object is an instance of Sequelize's `Model` class (because `User` inherits from `Model`). It's not a POJO, but an object that implements additional behavior from Sequelize.
+
+## Data modeling with Prisma ORM
+
+Depending on which parts of Prisma ORM you want to use in your application, the data modeling flow looks slightly different. The following two sections explain the workflows for using [**only Prisma Client**](#using-only-prisma-client) and using [**Prisma Client and Prisma Migrate**](#using-prisma-client-and-prisma-migrate).
+
+No matter which approach though, with Prisma ORM you never create application models in your programming language by manually defining classes, interfaces, or structs. Instead, the application models are defined in your [Prisma schema](/orm/v6/prisma-schema/overview):
+
+- **Only Prisma Client**: Application models in the Prisma schema are _generated based on the introspection of your database schema_. Data modeling happens primarily on the database-level.
+- **Prisma Client and Prisma Migrate**: Data modeling happens in the Prisma schema by _manually adding application models_ to it. Prisma Migrate maps these application models to tables in the underlying database (currently only supported for relational databases).
+
+As an example, the `User` model from the previous example would be represented as follows in the Prisma schema:
+
+```prisma
+model User {
+  user_id Int     @id @default(autoincrement())
+  name    String?
+  email   String  @unique
+  isAdmin Boolean @default(false)
+}
+```
+
+Once the application models are in your Prisma schema (whether they were added through introspection or manually by you), the next step typically is to generate Prisma Client which provides a programmatic and type-safe API to read and write data in the shape of your application models.
+
+Prisma Client uses TypeScript [type aliases](https://www.typescriptlang.org/docs/handbook/2/everyday-types.html#type-aliases) to represent your application models in your code. For example, the `User` model would be represented as follows in the generated Prisma Client library:
+
+```ts
+export type User = {
+  id: number;
+  name: string | null;
+  email: string;
+  isAdmin: boolean;
+};
+```
+
+In addition to the generated types, Prisma Client also provides a data access API that you can use once you've installed the `@prisma/client` package:
+
+```js
+import { PrismaClient } from '../prisma/generated/client'
+// or
+// const { PrismaClient } = require('../prisma/generated/client')
+
+const prisma = new PrismaClient()
+
+// use inside an `async` function to `await` the result
+await prisma.user.findUnique(...)
+await prisma.user.findMany(...)
+await prisma.user.create(...)
+await prisma.user.update(...)
+await prisma.user.delete(...)
+await prisma.user.upsert(...)
+```
+
+### Using only Prisma Client
+
+When using only Prisma Client and _not_ using Prisma Migrate in your application, data modeling needs to happen on the database level via SQL. Once your SQL schema is ready, you use Prisma's introspection feature to add the application models to your Prisma schema. Finally, you generate Prisma Client which creates the types as well as the programmatic API for you to read and write data in your database.
+
+Here is an overview of the main workflow:
+
+1. Change your database schema using SQL (e.g. `CREATE TABLE`, `ALTER TABLE`, ...)
+1. Run `prisma db pull` to introspect the database and add application models to the Prisma schema
+1. Run `prisma generate` to update your Prisma Client API
+
+### Using Prisma Client and Prisma Migrate
+
+When using [Prisma Migrate](/orm/v6/prisma-migrate/getting-started), you define your application model in the Prisma schema and with relational databases use the `prisma migrate` subcommand to generate plain SQL migration files, which you can edit before applying. With MongoDB, you use `prisma db push` instead which applies the changes to your database directly.
+
+Here is an overview of the main workflow:
+
+1. Manually change your application models in the Prisma schema (e.g. add a new model, remove an existing one, ...)
+1. Run `prisma migrate dev` to create and apply a migration or run `prisma db push` to apply the changes directly (in both cases Prisma Client is automatically generated)
