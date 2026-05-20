@@ -6,6 +6,7 @@ import { Hex } from "@/components/Hex";
 import type { MDXComponents } from "mdx/types";
 import { ImageZoom } from "fumadocs-ui/components/image-zoom";
 import * as icons from "lucide-react";
+import { Mermaid } from "@/components/Mermaid";
 import {
   Accordion,
   Accordions,
@@ -63,6 +64,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     img: (props: any) => (
       <ImageZoom {...(props as any)} src={withBlogBasePathForImageSrc((props as any).src)} />
     ),
+    Mermaid,
   };
 
   return {
