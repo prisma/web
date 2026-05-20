@@ -1,0 +1,251 @@
+---
+title: Database mapping
+description: Database mapping in Prisma schema
+url: /orm/v6/prisma-schema/data-model/database-mapping
+metaTitle: Database mapping
+metaDescription: Database mapping in Prisma schema
+---
+
+The [Prisma schema](/orm/v6/prisma-schema/overview) includes mechanisms that allow you to define names of certain database objects. You can:
+
+- [Map model and field names to different collection/table and field/column names](#mapping-collectiontable-and-fieldcolumn-names)
+- [Define constraint and index names](#constraint-and-index-names)
+
+## Mapping collection/table and field/column names
+
+Sometimes the names used to describe entities in your database might not match the names you would prefer in your generated API. Mapping names in the Prisma schema allows you to influence the naming in your Client API without having to change the underlying database names.
+
+A common approach for naming tables/collections in databases for example is to use plural form and [snake_case](https://en.wikipedia.org/wiki/Snake_case) notation. However, we recommended a different [naming convention (singular form, PascalCase)](/orm/v6/reference/prisma-schema-reference#naming-conventions).
+
+`@map` and `@@map` allow you to [tune the shape of your Prisma Client API](/orm/v6/prisma-client/setup-and-configuration/custom-model-and-field-names) by decoupling model and field names from table and column names in the underlying database.
+
+### Map collection / table names
+
+As an example, when you [introspect](/orm/v6/prisma-schema/introspection) a database with a table named `comments`, the resulting Prisma model will look like this:
+
+```prisma
+model comments {
+  // Fields
+}
+```
+
+However, you can still choose `Comment` as the name of the model (e.g. to follow the naming convention) without renaming the underlying `comments` table in the database by using the [`@@map`](/orm/v6/reference/prisma-schema-reference#map-1) attribute:
+
+```prisma highlight=4;normal
+model Comment {
+  // Fields
+
+  @@map("comments") // [!code highlight]
+}
+```
+
+With this modified model definition, Prisma Client automatically maps the `Comment` model to the `comments` table in the underlying database.
+
+### Map field / column names
+
+You can also [`@map`](/orm/v6/reference/prisma-schema-reference#map) a column/field name:
+
+```prisma highlight=2-4;normal
+model Comment {
+  content String @map("comment_text") // [!code highlight]
+  email   String @map("commenter_email") // [!code highlight]
+  type    Enum   @map("comment_type") // [!code highlight]
+
+  @@map("comments")
+}
+```
+
+This way the `comment_text` column is not available under `prisma.comment.comment_text` in the Prisma Client API, but can be accessed via `prisma.comment.content`.
+
+### Map enum names and values
+
+You can also `@map` an enum value, or `@@map` an enum:
+
+```prisma highlight=3,5;normal
+enum Type {
+  Blog,
+  Twitter @map("comment_twitter") // [!code highlight]
+
+  @@map("comment_source_enum") // [!code highlight]
+}
+```
+
+In this example:
+
+- `@@map("comment_source_enum")` maps the enum name `Type` to `comment_source_enum` in the database
+- `@map("comment_twitter")` maps the enum value `Twitter` to `comment_twitter` in the database
+
+#### Effect on generated TypeScript (Prisma ORM v7+)
+
+In Prisma ORM v7 and later, when you use `@map` on enum values, the generated TypeScript enum uses the **mapped values** instead of the schema names:
+
+```prisma
+enum Status {
+  PENDING  @map("pending")
+  APPROVED @map("approved")
+}
+```
+
+This generates the following TypeScript:
+
+```ts
+export const Status = {
+  PENDING: "pending",
+  APPROVED: "approved",
+} as const;
+```
+
+This means `Status.PENDING` evaluates to `"pending"`, not `"PENDING"`.
+
+:::warning
+
+There is currently a known bug in Prisma ORM v7 where using mapped enum values with Prisma Client operations causes runtime errors. See the [Prisma 7 upgrade guide](/orm/v6/more/upgrades/to-v7#mapped-enum-values-in-generated-typescript) for workarounds and details.
+
+:::
+
+## Constraint and index names
+
+You can optionally use the `map` argument to explicitly define the **underlying constraint and index names** in the Prisma schema for the attributes [`@id`](/orm/v6/reference/prisma-schema-reference#id), [`@@id`](/orm/v6/reference/prisma-schema-reference#id-1), [`@unique`](/orm/v6/reference/prisma-schema-reference#unique), [`@@unique`](/orm/v6/reference/prisma-schema-reference#unique-1), [`@@index`](/orm/v6/reference/prisma-schema-reference#index) and [`@relation`](/orm/v6/reference/prisma-schema-reference#relation). (This is available in Prisma ORM version [2.29.0](https://github.com/prisma/prisma/releases/tag/2.29.0) and later.)
+
+When introspecting a database, the `map` argument will _only_ be rendered in the schema if the name _differs_ from Prisma ORM's [default constraint naming convention for indexes and constraints](#prisma-orms-default-naming-conventions-for-indexes-and-constraints).
+
+:::danger
+
+If you use Prisma Migrate in a version earlier than 2.29.0 and want to maintain your existing constraint and index names after upgrading to a newer version, **do not** immediately run `prisma migrate` or `prisma db push`. This will **change any underlying constraint name that does not follow Prisma ORM's convention**. Follow the [upgrade path that allows you to maintain existing constraint and index names](/orm/v6/more/upgrades/older-versions#named-constraints).
+
+:::
+
+### Use cases for named constraints
+
+Some use cases for explicitly named constraints include:
+
+- Company policy
+- Conventions of other tools
+
+### Prisma ORM's default naming conventions for indexes and constraints
+
+Prisma ORM naming convention was chosen to align with PostgreSQL since it is deterministic. It also helps to maximize the amount of times where names do not need to be rendered because many databases out there they already align with the convention.
+
+Prisma ORM always uses the database names of entities when generating the default index and constraint names. If a model is remapped to a different name in the data model via `@@map` or `@map`, the default name generation will still take the name of the _table_ in the database as input. The same is true for fields and _columns_.
+
+| Entity            | Convention                          | Example                        |
+| ----------------- | ----------------------------------- | ------------------------------ |
+| Primary Key       | \{tablename}\_pkey                  | `User_pkey`                    |
+| Unique Constraint | \{tablename}\_\{column_names}\_key  | `User_firstName_last_Name_key` |
+| Non-Unique Index  | \{tablename}\_\{column_names}\_idx  | `User_age_idx`                 |
+| Foreign Key       | \{tablename}\_\{column_names}\_fkey | `User_childName_fkey`          |
+
+Since most databases have a length limit for entity names, the names will be trimmed if necessary to not violate the database limits. We will shorten the part before the `_suffix` as necessary so that the full name is at most the maximum length permitted.
+
+### Using default constraint names
+
+When no explicit names are provided via `map` arguments Prisma ORM will generate index and constraint names following the [default naming convention](#prisma-orms-default-naming-conventions-for-indexes-and-constraints).
+
+If you introspect a database the names for indexes and constraints will be added to your schema unless they follow Prisma ORM's naming convention. If they do, the names are not rendered to keep the schema more readable. When you migrate such a schema Prisma will infer the default names and persist them in the database.
+
+#### Example
+
+The following schema defines three constraints (`@id`, `@unique`, and `@relation`) and one index (`@@index`):
+
+```prisma highlight=2,8,11,13;normal
+model User {
+  id    Int    @id @default(autoincrement()) // [!code highlight]
+  name  String @unique
+  posts Post[]
+}
+
+model Post {
+  id         Int    @id @default(autoincrement()) // [!code highlight]
+  title      String
+  authorName String @default("Anonymous")
+  author     User?  @relation(fields: [authorName], references: [name]) // [!code highlight]
+
+  @@index([title, authorName]) // [!code highlight]
+}
+```
+
+Since no explicit names are provided via `map` arguments Prisma will assume they follow our default naming convention.
+
+The following table lists the name of each constraint and index in the underlying database:
+| Constraint or index | Follows convention | Underlying constraint or index names |
+| ---------------------------------- | ------------------ | ------------------------------------ |
+| `@id` (on `User` > `id` field) | Yes | `User_pk` |
+| `@@index` (on `Post`) | Yes | `Post_title_authorName_idx` |
+| `@id` (on `Post` > `id` field) | Yes | `Post_pk` |
+| `@relation` (on `Post` > `author`) | Yes | `Post_authorName_fkey` |
+
+### Using custom constraint / index names
+
+You can use the `map` argument to define **custom constraint and index names** in the underlying database.
+
+#### Example
+
+The following example adds custom names to one `@id` and the `@@index`:
+
+```prisma highlight=2,13;normal
+model User {
+  id    Int    @id(map: "Custom_Primary_Key_Constraint_Name") @default(autoincrement()) // [!code highlight]
+  name  String @unique
+  posts Post[]
+}
+
+model Post {
+  id         Int    @id @default(autoincrement()) // [!code highlight]
+  title      String
+  authorName String @default("Anonymous")
+  author     User?  @relation(fields: [authorName], references: [name]) // [!code highlight]
+
+  @@index([title, authorName], map: "My_Custom_Index_Name") // [!code highlight]
+}
+```
+
+The following table lists the name of each constraint and index in the underlying database:
+
+| Constraint or index                | Follows convention | Underlying constraint or index names |
+| ---------------------------------- | ------------------ | ------------------------------------ |
+| `@id` (on `User` > `id` field)     | No                 | `Custom_Primary_Key_Constraint_Name` |
+| `@@index` (on `Post`)              | No                 | `My_Custom_Index_Name`               |
+| `@id` (on `Post` > `id` field)     | Yes                | `Post_pk`                            |
+| `@relation` (on `Post` > `author`) | Yes                | `Post_authorName_fkey`               |
+
+### Related: Naming indexes and primary keys for Prisma Client
+
+Additionally to `map`, the `@@id` and `@@unique` attributes take an optional `name` argument that allows you to customize your Prisma Client API.
+
+On a model like:
+
+```prisma
+model User {
+  firstName String
+  lastName  String
+
+  @@id([firstName, lastName])
+}
+```
+
+the default API for selecting on that primary key uses a generated combination of the fields:
+
+```ts
+const user = await prisma.user.findUnique({
+  where: {
+    firstName_lastName: {
+      firstName: "Paul",
+      lastName: "Panther",
+    },
+  },
+});
+```
+
+Specifying `@@id([firstName, lastName], name: "fullName")` will change the Prisma Client API to this instead:
+
+```ts highlight=3;edit
+const user = await prisma.user.findUnique({
+  where: {
+    fullName: {
+      // [!code highlight]
+      firstName: "Paul",
+      lastName: "Panther",
+    },
+  },
+});
+```

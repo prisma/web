@@ -1,0 +1,114 @@
+---
+title: "Agentic Engineering at Prisma"
+slug: "agentic-engineering-at-prisma"
+date: "2026-05-20"
+authors:
+  - "Tyler Hogarth"
+metaTitle: "Agentic Engineering at Prisma"
+metaDescription: "Part 1 of a two-part series on how Prisma ships software with AI agents, covering the process, roles, and documentation layer that make cross-repo agent work possible."
+heroImagePath: "/agentic-engineering-at-prisma/imgs/hero.svg"
+metaImagePath: "/agentic-engineering-at-prisma/imgs/meta.png"
+tags: ["ai"]
+---
+
+*This is Part 1 of a two-part series about how Prisma ships software with AI agents. This post covers what we found, what we changed, and how we structured a documentation layer that gives agents the context they need to work across repositories. [Drive and the Maker](/drive-and-the-maker) goes deep on the process and the role.*
+
+---
+
+When we started using AI agents beyond autocomplete and chat, we expected the hard part to be agent capability. Could they write good code? Handle complex logic? Navigate large codebases?
+
+Turns out, the models are pretty good at all of that. A well-prompted agent can pick up a codebase, understand the patterns, and ship working code. We've watched agents resolve issues that would have taken an engineer half a day in under an hour.
+
+The hard part was everything around the code.
+
+Our development process assumed people execute every task. Our role definitions reflected that same assumption, and our codebases, split across dozens of repositories, kept critical context locked in the heads of the people who built them. Agents could write code in any single repo, but they couldn't know how services connected, what conventions a team followed, or what the product strategy demanded. None of that was written down in a way agents could access.
+
+Three things needed to change: our process, our roles, and how we structured knowledge across codebases.
+
+## Agentic engineering, not vibe coding
+
+Simon Willison [draws a useful distinction](https://simonwillison.net/2026/Feb/23/agentic-engineering-patterns/) between vibe coding, where you pay no attention to the code and let AI generate everything, and agentic engineering, where professional engineers use coding agents to amplify their existing expertise. We're firmly in the latter.
+
+Engineers are part of every stage: defining the project, making architectural decisions, reviewing agent output, and validating outcomes. The process, role, and documentation changes described in this series are all designed around that feedback loop. Engineers direct, agents execute, engineers validate.
+
+## What we changed
+
+### Drive: a development process for agent-first teams
+
+Drive is our development process. It shifts the unit of managed work from individual tasks to projects. A project is led by a single engineer and delivers a concrete outcome. Tasks still exist, but they're an implementation detail. Agents decompose projects into tasks and execute them. Engineers make the architectural and design decisions that shape systems.
+
+Drive replaces sprint ceremonies with a project lifecycle: Plan, Execute, Review, Ship, Delivery Review. Planning and review are tied to the work itself, not to a calendar. There are no sprints, no story points, and no velocity tracking. We trade schedule predictability for speed, scope discipline, and autonomy.
+
+The process isn't just documented. It's implemented as a set of [agent skills](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview) that automate lifecycle stages: spec creation, plan generation, code review, and deployment planning. Skills are agent instruction sets that encode how we work so that agents can participate in the process, not just execute code.
+
+### The Maker: a product engineer who owns outcomes
+
+We introduced the idea of a "Maker," a product engineer who owns outcomes end-to-end. The title isn't a replacement for engineering skill. It reflects a shift: when routine implementation is cheap, coordination and ritual become the expensive things. The Maker title pushes toward ownership and autonomy as the way to keep those things helpful rather than letting them become bottlenecks.
+
+Makers operate at the system design and architecture level. They own lanes, consistent streams of work or bounded slices of the system, and lead projects from spec to delivery. The allocation model is one engineer, many agents. Product, domain, and system ownership stay with the team. What changes is how execution gets distributed.
+
+### Ignite: a documentation monorepo for agents and people
+
+We built a documentation monorepo that serves as the single source of truth for everything that isn't specific to one repository.
+
+Agents working across repositories need the context that connects those repositories: shared standards, system architecture, product domain knowledge, and project plans. Teams with monorepos get this for free. All the context lives in one place. Our codebase spans multiple repositories, services, and deployment targets. Each repo carries its own local context, but none of them capture how they fit together, how the system runs in production, or what problems we're solving for users. People fill these gaps through tribal knowledge. Agents can't.
+
+The documentation monorepo is how we give every repository the equivalent of monorepo-level context. It's what enables agents and people to work effectively across repositories they didn't build and raise PRs to other teams.
+
+## Structuring knowledge for agents and people
+
+### What belongs where
+
+Repository-specific context, such as build instructions, contribution guides, and `AGENTS.md`, stays in the repository. Everything else, the knowledge that connects repositories and teams, lives in the documentation monorepo:
+
+- Standards and conventions that apply across the team or organization
+- System architecture and service dependencies
+- Product domain knowledge and user problems
+- Project specs and plans
+
+### Four context layers
+
+We organize cross-cutting documentation into four layers. Each team owns a section structured around these:
+
+| Layer | Purpose | What goes here |
+| --- | --- | --- |
+| **Standards** | How we build. Prescriptive. | Conventions, patterns, and rules the team follows. Things you'd enforce in code review or reference when making a decision. |
+| **Technology** | What exists and how it works. Descriptive. | Architecture, service dependencies, deployment topology, infrastructure. The technical reality of the systems the team owns. |
+| **Domain** | What we're building and why. Contextual. | Business context, user problems, product definitions. The knowledge an engineer needs beyond the code to make good decisions. |
+| **Plans** | What we're doing next. Temporal. | Specs, decision records, project plans. |
+
+The layers serve different audiences at different times. An agent generating a spec pulls from Domain to understand the problem space. An agent reviewing a PR reads Standards to know what conventions to enforce. An agent making changes across services reads Technology to understand how systems interact.
+
+### How Drive uses the documentation monorepo
+
+Drive's skills reference the documentation monorepo for domain, standards, and technology context. This connection is what makes the process aware of organizational knowledge:
+
+**Spec creation:** When an engineer and agent draft a spec together using the `drive-create-spec` skill, it checks the documentation monorepo for existing standards, conventions, and architecture docs relevant to the feature area. API design principles, analytics naming conventions, and observability patterns inform the spec so engineers don't have to re-derive them every time.
+
+**Plan generation:** `drive-create-plan` structures milestones and tasks that respect architectural constraints and team conventions documented in the monorepo.
+
+**Code review:** We use multiple tools depending on the size and complexity of the review. `drive-pr-local-review` reviews the PR locally before creating a peer review. `drive-pr-walkthrough` breaks PRs into a narrative structure, walking an engineer through changes in a cohesive flow rather than by file change. This is on top of GitHub integrations that also review code.
+
+**Closing out a project:** The `drive-close-project` skill closes out tasks and publishes a project update. `drive-create-deployment-plan` helps plan deployment of large or sequential rollouts.
+
+Standards that are documented are standards that agents can enforce. Undocumented standards are invisible.
+
+### Agent-first contribution
+
+The documentation monorepo expects contributions through agents. This keeps references, formatting, and cross-links consistent. The documentation itself is maintained the same way we maintain code: through PRs, with linting and review.
+
+## Early results
+
+Some early signals from running this system:
+
+**Milestones that previously took a week are completing in a day.** The combination of well-scoped specs, agent task execution, and accessible cross-repo context compresses the implementation phase. This is also where the concept of lanes came from. Multiple engineers on a single project or lane ended up moving slower because they would step on each other's toes or spend time coordinating work.
+
+**We have more projects currently in progress than we completed in the previous two months.** This isn't just faster execution. It's a structural change in how much work a team can carry simultaneously.
+
+**Quality is built into the process, not bolted on after.** Tests are designed upfront during planning, with every acceptance criterion mapped to test coverage in the plan. Projects are validated at completion against acceptance criteria in the spec and the tests defined in the plan.
+
+These are early data points, not conclusions. The process is still evolving, and we expect these numbers to shift as we learn what works and what doesn't.
+
+## What's next
+
+[Drive and the Maker](/drive-and-the-maker) goes deep on the process and the role. It covers Drive's principles and concepts, the full project lifecycle, how skills implement each stage, why we dropped estimates and sprints, and what the Maker role looks like in practice.

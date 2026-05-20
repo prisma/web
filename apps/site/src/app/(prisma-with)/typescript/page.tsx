@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import * as data from "../../../data/prisma-with/typescript.json";
 import { PrismaWithLayout } from "../../../components/prisma-with/layout";
 
@@ -39,33 +39,13 @@ export type Post = {
 }`,
 };
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: "TypeScript ORM with zero-cost type-safety for your database",
   description:
     "Query data from MySQL, PostgreSQL & SQL Server databases with Prisma – a type-safe TypeScript ORM for Node.js",
-  alternates: {
-    canonical: "https://www.prisma.io/typescript",
-  },
-  openGraph: {
-    title: "TypeScript ORM with zero-cost type-safety for your database",
-    description:
-      "Query data from MySQL, PostgreSQL & SQL Server databases with Prisma – a type-safe TypeScript ORM for Node.js",
-    url: "https://www.prisma.io/typescript",
-    siteName: "Prisma",
-    locale: "en_US",
-    type: "website",
-    images: [{ url: "/og/prisma-with/typescript.png" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    site: "@prisma",
-    creator: "@prisma",
-    title: "TypeScript ORM with zero-cost type-safety for your database",
-    description:
-      "Query data from MySQL, PostgreSQL & SQL Server databases with Prisma – a type-safe TypeScript ORM for Node.js",
-    images: ["/og/prisma-with/typescript.png"],
-  },
-};
+  path: "/typescript",
+  ogImage: "/og/prisma-with/typescript.png",
+});
 
 export default async function TypeScriptPage() {
   return <PrismaWithLayout data={data} codeExamples={codeExamples} />;

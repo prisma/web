@@ -1,17 +1,24 @@
 ---
 title: Cloudflare Workers
-description: Learn how to use Prisma ORM in a Cloudflare Workers project
+description: Learn how to use Prisma ORM and Prisma Postgres in a Cloudflare Workers project
 image: /img/guides/prisma-cloudflare-workers-cover.png
 url: /guides/deployment/cloudflare-workers
 metaTitle: How to use Prisma ORM and Prisma Postgres with Cloudflare Workers
-metaDescription: Learn how to use Prisma ORM in a Cloudflare Workers project
+metaDescription: Prisma Postgres works on Cloudflare Workers. Standard PostgreSQL clients use TCP which Cloudflare Workers doesn't support, but Prisma Postgres solves this via Node.js compatibility mode. This guide shows how to set it up.
 ---
 
 ## Introduction
 
-Prisma ORM provides type-safe database access, and [Cloudflare Workers](https://workers.cloudflare.com/) enables you to deploy serverless code at the edge. Together with [Prisma Postgres](https://www.prisma.io/postgres), you get a globally distributed backend with low-latency database access.
+**Yes, Prisma Postgres works on Cloudflare Workers.**
 
-In this guide, you'll learn to integrate Prisma ORM with a Prisma Postgres database in a Cloudflare Workers project. You can find a complete example of this guide on [GitHub](https://github.com/prisma/prisma-examples/tree/latest/orm/cloudflare-workers).
+Standard PostgreSQL clients (like `pg` or `postgres.js`) use TCP connections, and Cloudflare Workers doesn't support TCP by default. That's why most Postgres databases can't be accessed directly from Workers. There are two ways around it with Prisma Postgres:
+
+1. **Node.js compatibility mode** — add the `nodejs_compat` flag to your `wrangler.jsonc` and Prisma ORM can use TCP via Cloudflare's Node.js TCP API. That's what this guide does.
+2. **Serverless HTTP driver** — the [`@prisma/ppg` driver](/postgres/database/serverless-driver) connects over HTTP instead of TCP. No compatibility flag needed.
+
+This guide uses the `nodejs_compat` approach. Prisma Postgres handles connection pooling, so you don't have to worry about Workers spinning up a new connection per request.
+
+You can find a complete example on [GitHub](https://github.com/prisma/prisma-examples/tree/latest/orm/cloudflare-workers).
 
 ## Prerequisites
 
@@ -399,10 +406,6 @@ Once deployed, Cloudflare will provide you with a URL where your Worker is live 
 
 Visit the URL in your browser, and you'll see your Worker creating users in production!
 
-## Summary
-
-You've successfully created a Cloudflare Workers application with Prisma ORM connected to a Prisma Postgres database. Your Worker is now running at the edge with low-latency database access.
-
 ## Next steps
 
 Now that you have a working Cloudflare Workers app connected to a Prisma Postgres database, you can:
@@ -411,9 +414,7 @@ Now that you have a working Cloudflare Workers app connected to a Prisma Postgre
 - Extend your Prisma schema with more models and relationships
 - Implement authentication and authorization
 - Use [Hono](https://hono.dev/) for a more robust routing framework with Cloudflare Workers (see our [Hono guide](/guides/frameworks/hono))
-
-### More info
-
-- [Prisma Documentation](/orm)
-- [Cloudflare Workers Documentation](https://developers.cloudflare.com/workers/)
-- [Deploy to Cloudflare](/orm/prisma-client/deployment/edge/deploy-to-cloudflare)
+- Use the [`@prisma/ppg` serverless driver](/postgres/database/serverless-driver) to connect over HTTP instead of TCP — no `nodejs_compat` flag needed
+- [Deploy to Cloudflare](/orm/prisma-client/deployment/edge/deploy-to-cloudflare) — deeper reference on edge deployment options
+- [Cloudflare Workers documentation](https://developers.cloudflare.com/workers/)
+- [Prisma ORM documentation](/orm)

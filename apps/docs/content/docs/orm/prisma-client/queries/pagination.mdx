@@ -1,0 +1,61 @@
+---
+title: Pagination
+description: Learn how to paginate Prisma Client query results with offset pagination and cursor-based pagination.
+url: /orm/prisma-client/queries/pagination
+metaTitle: Pagination
+metaDescription: Learn how to use offset pagination and cursor-based pagination with Prisma Client.
+---
+
+Prisma Client supports both offset pagination and cursor-based pagination.
+
+## Offset pagination
+
+Use `skip` and `take` when you need page numbers or shallow navigation through a result set:
+
+```ts
+const posts = await prisma.post.findMany({
+  skip: 20,
+  take: 10,
+});
+```
+
+Offset pagination is straightforward, but it becomes more expensive as the offset grows.
+
+## Cursor-based pagination
+
+Use `cursor` and `take` when you want stable, scalable pagination for feeds, timelines, or large datasets:
+
+```ts
+const firstPage = await prisma.post.findMany({
+  take: 10,
+  orderBy: {
+    id: "asc",
+  },
+});
+
+const lastPost = firstPage[firstPage.length - 1];
+
+const nextPage = lastPost
+  ? await prisma.post.findMany({
+      take: 10,
+      skip: 1,
+      cursor: {
+        id: lastPost.id,
+      },
+      orderBy: {
+        id: "asc",
+      },
+    })
+  : [];
+```
+
+## Which approach to choose
+
+- Use offset pagination when users need to jump directly to a numbered page.
+- Use cursor-based pagination when you care more about performance and consistency as the dataset grows.
+
+## Related pages
+
+- [Filtering and sorting](/orm/prisma-client/queries/filtering-and-sorting)
+- [Query Insights](/query-insights)
+- [Prisma Client API reference](/orm/reference/prisma-client-reference)

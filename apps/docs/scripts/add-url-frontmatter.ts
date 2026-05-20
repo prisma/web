@@ -5,7 +5,7 @@
  *
  * Usage:
  *   tsx scripts/add-url-frontmatter.ts                    # content/docs, base /
- *   tsx scripts/add-url-frontmatter.ts content/docs.v6 /v6  # content/docs.v6, base /v6
+ *   tsx scripts/add-url-frontmatter.ts content/docs/orm/v6 /orm/v6  # versioned ORM docs, base /orm/v6
  */
 import fs from "node:fs";
 import path from "node:path";

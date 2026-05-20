@@ -1,5 +1,5 @@
 import { createSoftwareApplicationStructuredData } from "@/lib/structured-data";
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { Button } from "@prisma/eclipse";
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import Image from "next/image";
@@ -41,7 +41,8 @@ const featureRows = [
     description:
       "Access your database anywhere. Work locally for rapid development or use Console for team collaboration. Switch seamlessly between solo and team workflows.",
     imageSrc: "/illustrations/studio/laptop.svg",
-    imageAlt: "Prisma Studio interface showing local and collaborative workflows",
+    imageAlt:
+      "Prisma Studio interface showing local and collaborative workflows",
     imageWidth: 522,
     imageHeight: 295,
   },
@@ -51,7 +52,8 @@ const featureRows = [
     description:
       "Browse your database visually with powerful filters and search. Spot patterns instantly and get insights for debugging or schema changes, no SQL needed.",
     imageSrc: "/illustrations/studio/explore.svg",
-    imageAlt: "Prisma Studio data exploration interface with highlighted filters",
+    imageAlt:
+      "Prisma Studio data exploration interface with highlighted filters",
     imageWidth: 546,
     imageHeight: 275,
   },
@@ -94,35 +96,13 @@ const studioStructuredData = createSoftwareApplicationStructuredData({
     "Visual database browser and editor for Prisma. Explore and manipulate your data with an intuitive interface, locally or in the Prisma Data Platform.",
 });
 
-export const metadata: Metadata = {
-  title: "Prisma Studio — Visual Database Browser & Editor",
+export const metadata = createPageMetadata({
+  title: "Prisma Studio | Visual Database Browser and Editor",
   description:
-    "The easiest way to explore and manipulate your data in all of your Prisma projects.",
-  alternates: {
-    canonical: "https://www.prisma.io/studio",
-  },
-  openGraph: {
-    title: "Prisma Studio — Visual Database Browser & Editor",
-    description:
-      "The easiest way to explore and manipulate your data in all of your Prisma projects.",
-    url: "https://www.prisma.io/studio",
-    images: [
-      {
-        url: "/og/og-studio.png",
-        width: 1200,
-        height: 630,
-        alt: "Prisma Studio Open Graph image",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Prisma Studio — Visual Database Browser & Editor",
-    description:
-      "The easiest way to explore and manipulate your data in all of your Prisma projects.",
-    images: ["/og/og-studio.png"],
-  },
-};
+    "Explore, edit, and understand your data with a visual database browser for Prisma, locally or in Prisma Console.",
+  path: "/studio",
+  ogImage: "/og/og-studio.png",
+});
 
 export default function StudioPage() {
   return (
@@ -135,7 +115,7 @@ export default function StudioPage() {
 
         <div className="content relative z-2 flex w-full max-w-[1200px] flex-col gap-8">
           <div className="flex flex-col gap-4 items-center text-center">
-            <div className="flex items-center gap-2 text-foreground-orm-weak uppercase tracking-widest text-sm font-sans-display font-black">
+            <div className="flex items-center gap-2 text-foreground-orm type-title-sm">
               <i className="fa-regular fa-table" aria-hidden="true" />
               <span>Prisma Studio</span>
             </div>
@@ -147,12 +127,12 @@ export default function StudioPage() {
           </div>
 
           <p className="text-center text-foreground-neutral max-w-2xl mx-auto">
-            The ultimate tool for exploring and editing data in your Prisma project. Work locally or
-            team up inside the Prisma Console.
+            The ultimate tool for exploring and editing data in your Prisma
+            project. Work locally or team up inside the Prisma Console.
           </p>
 
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
-            <Button asChild variant="ppg" size="2xl">
+            <Button asChild variant="orm" size="2xl">
               <a href={CONSOLE_URL} target="_blank" rel="noopener noreferrer">
                 Explore Studio in Prisma Console
                 <i className="fa-regular fa-arrow-up-right" />
@@ -169,7 +149,7 @@ export default function StudioPage() {
           <Image
             className="w-full h-auto"
             src="/illustrations/studio/hero.svg"
-            alt="Prisma Studio Hero"
+            alt="Prisma Studio interface showing a filterable table view of database records"
             width={1200}
             height={630}
           />
@@ -186,10 +166,13 @@ export default function StudioPage() {
             >
               <div className="flex items-start gap-4">
                 <div className="flex size-12 items-center justify-center rounded-md bg-background-orm p-3">
-                  <i className={`${card.icon} text-lg text-foreground-orm`} aria-hidden="true" />
+                  <i
+                    className={`${card.icon} text-lg text-foreground-orm`}
+                    aria-hidden="true"
+                  />
                 </div>
                 <div>
-                  <h2 className="m-0 text-xl leading-7 text-foreground-neutral font-sans-display [font-variation-settings:'wght'_800]">
+                  <h2 className="m-0 text-foreground-neutral type-title-lg">
                     {card.title}
                   </h2>
                   <p className="m-0 mt-3 text-base leading-6 text-foreground-neutral-weak">
@@ -226,16 +209,17 @@ export default function StudioPage() {
         <div className="mx-auto flex max-w-[683px] flex-col gap-12">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div className="max-w-[420px]">
-              <h2 className="m-0 text-4xl text-foreground-neutral font-sans-display [font-variation-settings:'wght'_900]">
+              <h2 className="m-0 text-foreground-neutral type-title-3xl">
                 See how Studio works
               </h2>
               <p className="m-0 mt-4 text-base leading-6 text-foreground-neutral-weak">
-                Access Prisma Studio on your local machine during development, or in the Platform
-                Console to collaborate on data with your team.
+                Access Prisma Studio on your local machine during development,
+                or in the Platform Console to collaborate on data with your
+                team.
               </p>
             </div>
 
-            <Button asChild variant="ppg" size="xl">
+            <Button asChild variant="orm" size="xl">
               <a href={CONSOLE_URL} target="_blank" rel="noopener noreferrer">
                 Explore Studio in Console
                 <i className="fa-regular fa-arrow-right" />
@@ -263,11 +247,12 @@ export default function StudioPage() {
           <div className="p-4 md:p-8">
             <div className="mx-auto flex max-w-[580px] flex-col items-center gap-8 text-center">
               <div>
-                <h2 className="m-0 text-4xl text-foreground-neutral font-sans-display [font-variation-settings:'wght'_900]">
+                <h2 className="m-0 text-foreground-neutral type-title-3xl">
                   Try it out!
                 </h2>
                 <p className="m-0 mt-4 text-base leading-6 text-foreground-neutral-weak">
-                  Take Studio for a spin with a local pre-seeded database and example project.
+                  Take Studio for a spin with a local pre-seeded database and
+                  example project.
                 </p>
               </div>
 
@@ -321,13 +306,20 @@ function FeatureRow({
     >
       <div className="max-w-[546px]">
         <SectionEyebrow>{eyebrow}</SectionEyebrow>
-        <h2 className="m-0 mt-2 text-4xl leading-10 text-foreground-neutral font-sans-display [font-variation-settings:'wght'_900]">
+        <h2 className="m-0 mt-2 text-foreground-neutral type-title-3xl">
           {title}
         </h2>
-        <p className="m-0 mt-4 text-base leading-8 text-foreground-neutral-weak">{description}</p>
+        <p className="m-0 mt-4 text-base leading-8 text-foreground-neutral-weak">
+          {description}
+        </p>
       </div>
 
-      <StudioFeatureImage src={imageSrc} alt={imageAlt} width={imageWidth} height={imageHeight} />
+      <StudioFeatureImage
+        src={imageSrc}
+        alt={imageAlt}
+        width={imageWidth}
+        height={imageHeight}
+      />
     </div>
   );
 }
@@ -358,7 +350,7 @@ function StudioFeatureImage({
 
 function SectionEyebrow({ children }: { children: React.ReactNode }) {
   return (
-    <p className="m-0 text-base uppercase tracking-[1.6px] text-foreground-orm-strong font-sans-display [font-variation-settings:'wght'_800]">
+    <p className="m-0 text-base text-foreground-orm type-title-sm">
       {children}
     </p>
   );

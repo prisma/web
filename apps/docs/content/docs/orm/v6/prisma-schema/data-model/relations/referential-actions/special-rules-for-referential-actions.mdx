@@ -1,0 +1,251 @@
+---
+title: Special rules for referential actions in SQL Server and MongoDB
+description: 'Circular references or multiple cascade paths can cause validation errors on Microsoft SQL Server and MongoDB. Since the database does not handle these situations out of the box, learn how to solve this problem.'
+url: /orm/v6/prisma-schema/data-model/relations/referential-actions/special-rules-for-referential-actions
+metaTitle: Special rules for referential actions in SQL Server and MongoDB
+metaDescription: 'Circular references or multiple cascade paths can cause validation errors on Microsoft SQL Server and MongoDB. Since the database does not handle these situations out of the box, learn how to solve this problem.'
+---
+
+:::info[Quick summary]
+This page explains special rules and common issues when using referential actions with SQL Server and MongoDB, including how to avoid cycles and multiple cascade paths.
+:::
+
+Some databases have specific requirements that you should consider if you are using referential actions.
+
+- Microsoft SQL Server doesn't allow cascading referential actions on a foreign key, if the relation chain causes a cycle or multiple cascade paths. If the referential actions on the foreign key are set to something other than `NO ACTION` (or `NoAction` if Prisma ORM is managing referential integrity), the server will check for cycles or multiple cascade paths and return an error when executing the SQL.
+
+- With MongoDB, using referential actions in Prisma ORM requires that for any data model with self-referential relations or cycles between three models, you must set the referential action of `NoAction` to prevent the referential action emulations from looping infinitely. Be aware that by default, the `relationMode = "prisma"` mode is used for MongoDB, which means that Prisma ORM manages [referential integrity](/orm/v6/prisma-schema/data-model/relations/relation-mode).
+
+Given the SQL:
+
+```sql
+CREATE TABLE [dbo].[Employee] (
+  [id] INT NOT NULL IDENTITY(1,1),
+  [managerId] INT,
+  CONSTRAINT [PK__Employee__id] PRIMARY KEY ([id])
+);
+
+ALTER TABLE [dbo].[Employee]
+  ADD CONSTRAINT [FK__Employee__managerId]
+    FOREIGN KEY ([managerId]) REFERENCES [dbo].[Employee]([id])
+    ON DELETE CASCADE ON UPDATE CASCADE;
+```
+
+When the SQL is run, the database would throw the following error:
+
+```bash wrap
+Introducing FOREIGN KEY constraint 'FK__Employee__managerId' on table 'Employee' may cause cycles or multiple cascade paths. Specify ON DELETE NO ACTION or ON UPDATE NO ACTION, or modify other FOREIGN KEY constraints.
+```
+
+In more complicated data models, finding the cascade paths can get complex. Therefore in Prisma ORM, the data model is validated _before_ generating any SQL to be run during any migrations, highlighting relations that are part of the paths. This makes it much easier to find and break these action chains.
+
+<details>
+<summary>Questions answered in this page</summary>
+
+- How do I fix cascade cycles on SQL Server?
+- Do MongoDB self-relations require NoAction?
+- How do I handle multiple cascade paths?
+
+</details>
+
+## Self-relation (SQL Server and MongoDB)
+
+The following model describes a self-relation where an `Employee` can have a manager and managees, referencing entries of the same model.
+
+```prisma
+model Employee {
+  id        Int        @id @default(autoincrement())
+  manager   Employee?  @relation(name: "management", fields: [managerId], references: [id])
+  managees  Employee[] @relation(name: "management")
+  managerId Int?
+}
+```
+
+This will result in the following error:
+
+```bash wrap
+Error parsing attribute "@relation": A self-relation must have `onDelete` and `onUpdate` referential actions set to `NoAction` in one of the @relation attributes. (Implicit default `onDelete`: `SetNull`, and `onUpdate`: `Cascade`)
+```
+
+By not defining any actions, Prisma ORM will use the following default values depending if the underlying [scalar fields](/orm/v6/prisma-schema/data-model/models#scalar-fields) are set to be optional or required.
+
+| Clause     | All of the scalar fields are optional | At least one scalar field is required |
+| :--------- | :------------------------------------ | :------------------------------------ |
+| `onDelete` | `SetNull`                             | `NoAction`                            |
+| `onUpdate` | `Cascade`                             | `Cascade`                             |
+
+Since the default referential action for `onUpdate` in the above relation would be `Cascade` and for `onDelete` it would be `SetNull`, it creates a cycle and the solution is to explicitly set the `onUpdate` and `onDelete` values to `NoAction`.
+
+```prisma highlight=3;delete|4;add
+model Employee {
+  id        Int        @id @default(autoincrement())
+  manager   Employee   @relation(name: "management", fields: [managerId], references: [id]) // [!code --]
+  manager   Employee   @relation(name: "management", fields: [managerId], references: [id], onDelete: NoAction, onUpdate: NoAction) // [!code ++]
+  managees  Employee[] @relation(name: "management")
+  managerId Int
+}
+```
+
+## Cyclic relation between three tables (SQL Server and MongoDB)
+
+The following models describe a cyclic relation between a `Chicken`, an `Egg` and a `Fox`, where each model references the other.
+
+```prisma
+model Chicken {
+  id        Int   @id @default(autoincrement())
+  egg       Egg   @relation(fields: [eggId], references: [id])
+  eggId     Int
+  predators Fox[]
+}
+
+model Egg {
+  id         Int       @id @default(autoincrement())
+  predator   Fox       @relation(fields: [predatorId], references: [id])
+  predatorId Int
+  parents    Chicken[]
+}
+
+model Fox {
+  id        Int     @id @default(autoincrement())
+  meal      Chicken @relation(fields: [mealId], references: [id])
+  mealId    Int
+  foodStore Egg[]
+}
+```
+
+This will result in three validation errors in every relation field that is part of the cycle.
+
+The first one is in the relation `egg` in the `Chicken` model:
+
+```bash wrap
+Error parsing attribute "@relation": Reference causes a cycle. One of the @relation attributes in this cycle must have `onDelete` and `onUpdate` referential actions set to `NoAction`. Cycle path: Chicken.egg → Egg.predator → Fox.meal. (Implicit default `onUpdate`: `Cascade`)
+```
+
+The second one is in the relation `predator` in the `Egg` model:
+
+```bash wrap
+Error parsing attribute "@relation": Reference causes a cycle. One of the @relation attributes in this cycle must have `onDelete` and `onUpdate` referential actions set to `NoAction`. Cycle path: Egg.predator → Fox.meal → Chicken.egg. (Implicit default `onUpdate`: `Cascade`)
+```
+
+And the third one is in the relation `meal` in the `Fox` model:
+
+```bash wrap
+Error parsing attribute "@relation": Reference causes a cycle. One of the @relation attributes in this cycle must have `onDelete` and `onUpdate` referential actions set to `NoAction`. Cycle path: Fox.meal → Chicken.egg → Egg.predator. (Implicit default `onUpdate`: `Cascade`)
+```
+
+As the relation fields are required, the default referential action for `onDelete` is `NoAction` but for `onUpdate` it is `Cascade`, which causes a referential action cycle. The solution is to set the `onUpdate` value to `NoAction` in any one of the relations.
+
+```prisma highlight=3;delete|4;add
+model Chicken {
+  id        Int   @id @default(autoincrement())
+  egg       Egg   @relation(fields: [eggId], references: [id]) // [!code --]
+  egg       Egg   @relation(fields: [eggId], references: [id], onUpdate: NoAction) // [!code ++]
+  eggId     Int
+  predators Fox[]
+}
+```
+
+or
+
+```prisma highlight=3;delete|4;add
+model Egg {
+  id         Int       @id @default(autoincrement())
+  predator   Fox       @relation(fields: [predatorId], references: [id]) // [!code --]
+  predator   Fox       @relation(fields: [predatorId], references: [id], onUpdate: NoAction) // [!code ++]
+  predatorId Int
+  parents    Chicken[]
+}
+```
+
+or
+
+```prisma highlight=3;delete|4;add
+model Fox {
+  id        Int     @id @default(autoincrement())
+  meal      Chicken @relation(fields: [mealId], references: [id]) // [!code --]
+  meal      Chicken @relation(fields: [mealId], references: [id], onUpdate: NoAction) // [!code ++]
+  mealId    Int
+  foodStore Egg[]
+}
+```
+
+## Multiple cascade paths between two models (SQL Server only)
+
+The data model describes two different paths between same models, with both relations triggering cascading referential actions.
+
+```prisma
+model User {
+  id       Int       @id @default(autoincrement())
+  comments Comment[]
+  posts    Post[]
+}
+
+model Post {
+  id       Int       @id @default(autoincrement())
+  authorId Int
+  author   User      @relation(fields: [authorId], references: [id])
+  comments Comment[]
+}
+
+model Comment {
+  id          Int  @id @default(autoincrement())
+  writtenById Int
+  postId      Int
+  writtenBy   User @relation(fields: [writtenById], references: [id])
+  post        Post @relation(fields: [postId], references: [id])
+}
+```
+
+The problem in this data model is how there are two paths from `Comment` to the `User`, and how the default `onUpdate` action in both relations is `Cascade`. This leads into two validation errors:
+
+The first one is in the relation `writtenBy`:
+
+```bash wrap
+Error parsing attribute "@relation": When any of the records in model `User` is updated or deleted, the referential actions on the relations cascade to model `Comment` through multiple paths. Please break one of these paths by setting the `onUpdate` and `onDelete` to `NoAction`. (Implicit default `onUpdate`: `Cascade`)
+```
+
+The second one is in the relation `post`:
+
+```bash wrap
+Error parsing attribute "@relation": When any of the records in model `User` is updated or deleted, the referential actions on the relations cascade to model `Comment` through multiple paths. Please break one of these paths by setting the `onUpdate` and `onDelete` to `NoAction`. (Implicit default `onUpdate`: `Cascade`)
+```
+
+The error means that by updating a primary key in a record in the `User` model, the update will cascade once between the `Comment` and `User` through the `writtenBy` relation, and again through the `Post` model from the `post` relation due to `Post` being related with the `Comment` model.
+
+The fix is to set the `onUpdate` referential action to `NoAction` in the `writtenBy` or `post` relation fields, or from the `Post` model by changing the actions in the `author` relation:
+
+```prisma highlight=5;delete|6;add
+model Comment {
+  id          Int  @id @default(autoincrement())
+  writtenById Int
+  postId      Int
+  writtenBy   User @relation(fields: [writtenById], references: [id]) // [!code --]
+  writtenBy   User @relation(fields: [writtenById], references: [id], onUpdate: NoAction) // [!code ++]
+  post        Post @relation(fields: [postId], references: [id])
+}
+```
+
+or
+
+```prisma highlight=6;delete|7;add
+model Comment {
+  id          Int  @id @default(autoincrement())
+  writtenById Int
+  postId      Int
+  writtenBy   User @relation(fields: [writtenById], references: [id])
+  post        Post @relation(fields: [postId], references: [id]) // [!code --]
+  post        Post @relation(fields: [postId], references: [id], onUpdate: NoAction) // [!code ++]
+}
+```
+
+or
+
+```prisma highlight=4;delete|5;add
+model Post {
+  id       Int       @id @default(autoincrement())
+  authorId Int
+  author   User      @relation(fields: [authorId], references: [id]) // [!code --]
+  author   User      @relation(fields: [authorId], references: [id], onUpdate: NoAction) // [!code ++]
+  comments Comment[]
+}
+```

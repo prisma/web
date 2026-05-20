@@ -4,7 +4,8 @@ import { Button, Card, Badge } from "@prisma/eclipse";
 import ecosystem from "../../data/ecosystem.json";
 import { cn } from "@/lib/cn";
 
-import GitHubButton from "react-github-btn";
+import dynamic from "next/dynamic";
+const GitHubButton = dynamic(() => import("react-github-btn"), { ssr: false });
 export const EcosystemGrid = () => {
   const filters = ["generator", "middleware", "other", "show-all"];
   const [activeFilter, setActiveFilter] = useState("show-all");
@@ -34,7 +35,9 @@ export const EcosystemGrid = () => {
             key={filter}
             className={cn(
               "flex flex-col gap-12 my-12",
-              activeFilter !== filter && activeFilter !== "show-all" && "hidden",
+              activeFilter !== filter &&
+                activeFilter !== "show-all" &&
+                "hidden",
             )}
           >
             <h3 className="text-foreground-neutral font-sans-display text-3xl stretch-display my-0 font-bold capitalize">
@@ -59,7 +62,12 @@ export const EcosystemGrid = () => {
                         {box.description}
                       </p>
                       <div className="flex gap-2 justify-between items-center">
-                        <Badge className="w-fit" color="orm" size="lg" label={box.type}></Badge>
+                        <Badge
+                          className="w-fit"
+                          color="orm"
+                          size="lg"
+                          label={box.type}
+                        ></Badge>
 
                         <div className="relative after:content-[''] after:absolute after:w-full after:h-full after:z-10000 after:left-0 after:top-0">
                           <GitHubButton

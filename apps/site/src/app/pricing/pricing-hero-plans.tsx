@@ -20,6 +20,9 @@ import {
   symbols,
 } from "./pricing-data";
 
+// Banner runs for one week after the limit increase shipped.
+const DATABASE_LIMITS_BANNER_EXPIRES_AT = new Date("2026-05-27T00:00:00Z");
+
 export function PricingHeroPlans({
   currency,
   onCurrencyChange,
@@ -56,6 +59,23 @@ export function PricingHeroPlans({
     </ul>
   );
 
+  const databaseLimitUpdates = [
+    {
+      label: "Free",
+      value: "50",
+      previous: "5",
+      current: "50 databases",
+    },
+    {
+      label: "Paid plans",
+      value: "1,000",
+      previous: "10-100",
+      current: "1,000 databases",
+    },
+  ];
+
+  const showDatabaseLimitsBanner = Date.now() < DATABASE_LIMITS_BANNER_EXPIRES_AT.getTime();
+
   return (
     <>
       <section className="hero h-full relative -mt-24 flex items-end justify-center px-4 pt-40">
@@ -64,12 +84,14 @@ export function PricingHeroPlans({
           <Badge
             color="ppg"
             size="lg"
-            className="rounded-md gap-2"
+            className="rounded-md"
             label={
-              <>
-                <i className="fa-regular fa-message-code text-xs" />
-                Prisma ORM will always be free
-              </>
+              <div className="flex gap-2 items-center">
+                <i className="fa-regular fa-message-code text-sm" />
+                <span>
+                  Prisma ORM will <u>always be free</u>
+                </span>
+              </div>
             }
           />
           <h1 className="stretch-display m-0 text-center text-foreground-neutral text-3xl md:text-7xl leading-tight font-sans-display [font-variation-settings:'wght'_900]">
@@ -83,8 +105,54 @@ export function PricingHeroPlans({
 
       <section className="px-4 py-6 md:py-12">
         <div className="max-w-[1288px] mx-auto">
+          {showDatabaseLimitsBanner && (
+            <div className="mb-6 rounded-2xl border border-stroke-ppg bg-[linear-gradient(90deg,var(--color-background-ppg)_0%,var(--color-background-default)_100%)] px-5 py-6 text-foreground-neutral shadow-[0px_18px_42px_0px_rgba(23,43,77,0.08)] md:px-8">
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                <div className="max-w-[620px]">
+                  <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[1.6px] text-foreground-ppg">
+                    <i className="fa-solid fa-sparkles text-[10px]" />
+                    <span>What&apos;s new</span>
+                  </div>
+                  <h2 className="m-0 text-3xl font-sans-display font-bold leading-tight text-foreground-neutral md:text-4xl">
+                    More room to build.
+                  </h2>
+                  <p className="m-0 mt-3 max-w-[570px] text-base leading-6 text-foreground-neutral-weak md:text-lg">
+                    We&apos;ve increased database limits across every plan - spin up environments
+                    per branch, per preview, per teammate, without rationing.
+                  </p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2 lg:min-w-[360px] lg:border-l lg:border-stroke-ppg lg:pl-8">
+                  {databaseLimitUpdates.map((update, index) => (
+                    <div
+                      key={update.label}
+                      className={`text-left sm:text-center ${
+                        index > 0
+                          ? "border-t border-stroke-ppg pt-4 sm:border-l sm:border-t-0 sm:pt-0 sm:pl-4"
+                          : ""
+                      }`}
+                    >
+                      <p className="m-0 text-xs font-bold uppercase tracking-[1.6px] text-foreground-neutral-weaker">
+                        {update.label}
+                      </p>
+                      <p className="m-0 mt-1 font-sans-display text-5xl font-bold leading-none text-foreground-ppg slashed-zero tabular-nums">
+                        {update.value}
+                      </p>
+                      <p className="m-0 mt-2 text-sm font-semibold text-foreground-neutral-weak">
+                        <span className="line-through opacity-60">{update.previous}</span>{" "}
+                        <span className="sr-only">to</span>
+                        <span aria-hidden="true">-&gt;</span> {update.current}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
           <div className="mb-6 flex justify-end">
-            <Select value={currency} onValueChange={(value) => onCurrencyChange(value as Symbol)}>
+            <Select
+              value={currency}
+              onValueChange={(value) => onCurrencyChange(value as Symbol)}
+            >
               <SelectTrigger className="h-10 min-w-[90px] border-stroke-neutral bg-background-default text-sm text-foreground-neutral-weak">
                 <SelectValue />
               </SelectTrigger>
@@ -106,7 +174,9 @@ export function PricingHeroPlans({
                 <article
                   key={planKey}
                   className={`relative rounded-2xl border ${
-                    highlighted ? "border-stroke-ppg mt-4 md:mt-0" : "border-stroke-neutral-weak"
+                    highlighted
+                      ? "border-stroke-ppg mt-4 md:mt-0"
+                      : "border-stroke-neutral-weak"
                   } bg-background-default p-5 text-foreground-neutral shadow-[0px_18px_42px_0px_rgba(23,43,77,0.08)]`}
                 >
                   {highlighted && (
@@ -117,11 +187,14 @@ export function PricingHeroPlans({
                     />
                   )}
                   <div className="flex items-center justify-between gap-4">
-                    <p className="m-0 text-base stretch-display uppercase tracking-[1.6px] font-sans-display [font-variation-settings:'wght'_800]">
-                      {plan.title}
-                    </p>
+                    <p className="m-0 type-title-sm">{plan.title}</p>
                     {(planKey === "pro" || planKey === "business") && (
-                      <Button asChild variant="default" size="lg" className="gap-2 px-2">
+                      <Button
+                        asChild
+                        variant="default"
+                        size="lg"
+                        className="gap-2 px-2"
+                      >
                         <a
                           href="https://pris.ly/pay-via-aws"
                           target="_blank"
@@ -146,10 +219,15 @@ export function PricingHeroPlans({
                       </Button>
                     )}
                   </div>
-                  <p className="m-0 mt-1 text-sm text-foreground-neutral-weak">{plan.subtitle}</p>
+                  <p className="m-0 mt-1 text-sm text-foreground-neutral-weak">
+                    {plan.subtitle}
+                  </p>
                   <p className="m-0 mt-3 text-4xl leading-tight font-sans-display slashed-zero tabular-nums [font-variation-settings:'wght'_800] text-foreground-neutral">
                     {plan.price[currency]}
-                    <span className="text-2xl text-foreground-neutral-weak"> / month</span>
+                    <span className="text-2xl text-foreground-neutral-weak">
+                      {" "}
+                      / month
+                    </span>
                   </p>
                   <Button
                     asChild
@@ -181,7 +259,10 @@ export function PricingHeroPlans({
                         <p className="m-0 mt-1 text-sm text-foreground-neutral-weak">
                           Bring your own database
                         </p>
-                        {renderPlanPointList(`${planKey}-accelerate`, plan.acceleratePoints)}
+                        {renderPlanPointList(
+                          `${planKey}-accelerate`,
+                          plan.acceleratePoints,
+                        )}
                       </div>
                     )}
                   </div>
@@ -190,9 +271,11 @@ export function PricingHeroPlans({
             })}
           </div>
           <div className="mt-8 text-center text-xs text-foreground-ppg-weak">
-            *An operation is each time you interact with your database, no matter the compute time.
+            *An operation is each time you interact with your database, no
+            matter the compute time.
             <br />
-            We count the Prisma ORM queries you make, not the SQL statements you run.{" "}
+            We count the Prisma ORM queries you make, not the SQL statements you
+            run.{" "}
             <a
               href="https://www.prisma.io/blog/operations-based-billing"
               target="_blank"
@@ -204,7 +287,8 @@ export function PricingHeroPlans({
             about our pricing model.
           </div>
           <p className="mt-2 mb-0 text-center text-xs text-foreground-neutral-weak">
-            All quotas and limits are shared across all databases in your account.
+            All quotas and limits are shared across all databases in your
+            account.
           </p>
         </div>
       </section>

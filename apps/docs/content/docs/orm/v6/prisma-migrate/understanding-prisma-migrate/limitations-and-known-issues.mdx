@@ -1,0 +1,75 @@
+---
+title: Limitations and known issues
+description: 'Learn about current limitations and known issues with Prisma Migrate, including database provider constraints and migration file compatibility.'
+url: /orm/v6/prisma-migrate/understanding-prisma-migrate/limitations-and-known-issues
+metaTitle: Limitations and known issues
+metaDescription: Limitations and known issues
+---
+
+The following limitations apply to Prisma Migrate.
+
+## MongoDB connector not supported
+
+Prisma Migrate does not currently support the MongoDB connector.
+
+## You cannot automatically switch database providers
+
+Prisma Migrate generates SQL files that are specific to your provider. This means that you cannot use the same migration files for PostgreSQL in production and SQLite in development, because the syntax in the migrations will be incompatible.
+
+In [2.15.0](https://github.com/prisma/prisma/releases/2.15.0) and later, Prisma Migrate detects when the migrations do not match the configured provider and prints a helpful error message. For example, if your migrations are for a PostgreSQL database but your `provider` is set to `mysql`:
+
+```
+Error: P3014
+
+The datasource provider `postgresql` specified in your schema does not match the one specified in the migration_lock.toml, mysql. Please remove your current migration directory and start a new migration history with prisma migrate dev.
+```
+
+In order to manually switch the database provider, you must:
+
+- Change the `provider` and `url` parameters in the `datasource` block in your schema
+- Archive or remove your existing migration history - there must not be a `./prisma/migrations` folder
+- Run `prisma migrate dev` to start a new migration history
+
+The last step creates a new initial migration that goes from an empty database to your current `schema.prisma`. Be aware that:
+
+- This migration will _only_ contain what is reflected in your `schema.prisma`. If you manually edited your previous migration files to add custom SQL you will need to again add this yourself.
+- The newly created database using the new provider will not contain any data.
+
+## Data loss when resetting database
+
+In a development environment, Prisma Migrate sometimes prompts you to reset the database. Resetting drops and recreates the database, which results in data loss. The database is reset when:
+
+- You call `prisma migrate reset` explicitly
+- You call `prisma migrate dev` and Prisma Migrate detects drift in the database or a migration history conflict
+
+The `prisma migrate dev` and `prisma migrate reset` commands are designed to be used **in development only**, and should not affect production data.
+
+When the database is reset, if Prisma Migrate detects a seed script in `package.json`, it will trigger seeding.
+
+> **Note**: For a simple and integrated way to re-create data when the database is reset, check out our [seeding guide](/orm/v6/prisma-migrate/workflows/seeding).
+
+## Prisma Migrate and PgBouncer
+
+You might see the following error if you attempt to run Prisma Migrate commands in an environment that uses PgBouncer for connection pooling:
+
+```bash
+Error: undefined: Database error
+Error querying the database: db error: ERROR: prepared statement "s0" already exists
+```
+
+See [Prisma Migrate and PgBouncer workaround](/orm/v6/prisma-client/setup-and-configuration/databases-connections/pgbouncer) for further information and a workaround. Follow [GitHub issue #6485](https://github.com/prisma/prisma/issues/6485) for updates.
+
+## Prisma Migrate in non-interactive environments
+
+Prisma ORM detects when you run CLI commands in non-interactive environments, such as Docker, from Node scripts or in bash shells. When this happens a warning displays, indicating that the environment is non-interactive and the `migrate dev` command is not supported.
+
+To ensure the Docker environment picks up the command, run the image in `interactive` mode so that it reacts to the `migrate dev` command.
+
+```bash
+docker run --interactive --tty <image name>
+# or
+docker -it <image name>
+
+# Example usage
+docker run -it node
+```

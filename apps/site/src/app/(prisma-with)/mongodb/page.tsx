@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import * as data from "../../../data/prisma-with/mongodb.json";
 import { PrismaWithLayout } from "../../../components/prisma-with/layout";
 
@@ -108,33 +108,13 @@ enum Department {
 }`,
 };
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: "Be More Productive with MongoDB & Prisma",
   description:
     "Bring your developer experience to the next level. Prisma makes it easier than ever to work with your MongoDB database and enables you to query data with confidence.",
-  alternates: {
-    canonical: "https://www.prisma.io/mongodb",
-  },
-  openGraph: {
-    title: "Be More Productive with MongoDB & Prisma",
-    description:
-      "Bring your developer experience to the next level. Prisma makes it easier than ever to work with your MongoDB database and enables you to query data with confidence.",
-    url: "https://www.prisma.io/mongodb",
-    siteName: "Prisma",
-    locale: "en_US",
-    type: "website",
-    images: [{ url: "/og/prisma-with/mongodb.png" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    site: "@prisma",
-    creator: "@prisma",
-    title: "Be More Productive with MongoDB & Prisma",
-    description:
-      "Bring your developer experience to the next level. Prisma makes it easier than ever to work with your MongoDB database and enables you to query data with confidence.",
-    images: ["/og/prisma-with/mongodb.png"],
-  },
-};
+  path: "/mongodb",
+  ogImage: "/og/prisma-with/mongodb.png",
+});
 
 export default async function MongoDbPage() {
   return <PrismaWithLayout data={data} codeExamples={codeExamples} />;

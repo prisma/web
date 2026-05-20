@@ -1,4 +1,7 @@
-import { getPageImage, source, sourceV6 } from "@/lib/source";
+import { getPageImage, source } from "@/lib/source";
+import { getPageTitleText } from "@/lib/page-title";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { notFound } from "next/navigation";
 import { ImageResponse } from "next/og";
 
@@ -9,7 +12,6 @@ const SECTION_BADGE_COLOR = "#71e8df";
 const LONG_TITLE_FONT_SIZE = "3.5rem";
 const DEFAULT_TITLE_FONT_SIZE = "5rem";
 const API_PATH_SEGMENT_REGEX = /(\{[^}]+\})/;
-const GOOGLE_FONT_RESOURCE_REGEX = /src: url\((.+)\) format\('(opentype|truetype)'\)/;
 const BADGE_HORIZONTAL_PADDING = 24;
 const BADGE_VERTICAL_PADDING = 12;
 const BADGE_FONT_SIZE = 24;
@@ -51,9 +53,9 @@ type ApiPathSegment = {
 };
 
 const FONT_DEFINITIONS = [
-  { name: "Barlow", family: "Barlow", weight: 700 },
-  { name: "Inter", family: "Inter", weight: 400 },
-  { name: "JetBrains Mono", family: "JetBrains+Mono", weight: 400 },
+  { name: "Barlow", file: "Barlow-Bold.ttf", weight: 700 },
+  { name: "Inter", file: "Inter-Regular.ttf", weight: 400 },
+  { name: "JetBrains Mono", file: "JetBrainsMono-Regular.ttf", weight: 400 },
 ] as const;
 
 type FontWeight = (typeof FONT_DEFINITIONS)[number]["weight"];
@@ -66,6 +68,10 @@ type LoadedFont = {
 };
 
 let fontCache: Promise<LoadedFont[]> | undefined;
+
+function bufferToArrayBuffer(buffer: Buffer) {
+  return Uint8Array.from(buffer).buffer;
+}
 
 function getMethodColor(method?: string) {
   if (!method) {
@@ -275,29 +281,18 @@ function PrismaOGImage({
   );
 }
 
-async function loadGoogleFont(font: string, weight: number) {
-  const url = `https://fonts.googleapis.com/css2?family=${font}:wght@${weight}`;
-  const css = await (await fetch(url, { cache: "force-cache" })).text();
-  const resource = css.match(GOOGLE_FONT_RESOURCE_REGEX);
-
-  if (resource) {
-    const response = await fetch(resource[1], { cache: "force-cache" });
-    if (response.status == 200) {
-      return await response.arrayBuffer();
-    }
-  }
-
-  throw new Error(`failed to load font data for ${font}:${weight}`);
-}
-
 function getFonts() {
   fontCache ??= Promise.all(
-    FONT_DEFINITIONS.map(async ({ name, family, weight }) => ({
-      name,
-      data: await loadGoogleFont(family, weight),
-      weight,
-      style: "normal" as const,
-    })),
+    FONT_DEFINITIONS.map(async ({ name, file, weight }) => {
+      const fontBuffer = await readFile(path.join(process.cwd(), "public", "fonts", file));
+
+      return {
+        name,
+        data: bufferToArrayBuffer(fontBuffer),
+        weight,
+        style: "normal" as const,
+      };
+    }),
   ).catch((err) => {
     fontCache = undefined;
     throw err;
@@ -309,21 +304,21 @@ function getFonts() {
 export async function GET(_req: Request, { params }: RouteContext<"/og/[...slug]">) {
   const { slug } = await params;
   const pageSlug = slug.slice(0, -1);
-  // Check v7 first, then v6
-  const page = source.getPage(pageSlug) ?? sourceV6.getPage(pageSlug);
+  const page = source.getPage(pageSlug);
   if (!page) notFound();
 
   const openApiMetadata = (page.data as PageFrontmatter)._openapi;
   const method = openApiMetadata?.method;
   const fonts = await getFonts();
+  const title = getPageTitleText(page.data.title, page.slugs.at(-1) ?? "Prisma Docs");
   const imageProps = {
-    title: page.data.title,
+    title,
     description: page.data.description,
     method,
     methodColor: getMethodColor(method),
     apiPathSegments: getApiPathSegments(openApiMetadata?.path),
     badgeLabel: getSectionLabel(page.slugs[0]),
-    titleFontSize: getTitleFontSize(page.data.title),
+    titleFontSize: getTitleFontSize(title),
   };
 
   return new ImageResponse(<PrismaOGImage {...imageProps} />, {
@@ -334,16 +329,8 @@ export async function GET(_req: Request, { params }: RouteContext<"/og/[...slug]
 }
 
 export function generateStaticParams() {
-  // Generate OG images for both v7 and v6 pages
-  const v7Pages = source.getPages().map((page) => ({
+  return source.getPages().map((page) => ({
     lang: page.locale,
     slug: getPageImage(page).segments,
   }));
-
-  const v6Pages = sourceV6.getPages().map((page) => ({
-    lang: page.locale,
-    slug: getPageImage(page).segments,
-  }));
-
-  return [...v7Pages, ...v6Pages];
 }

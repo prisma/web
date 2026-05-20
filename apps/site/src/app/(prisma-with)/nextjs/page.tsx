@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import * as data from "../../../data/prisma-with/nextjs.json";
 import { PrismaWithLayout } from "../../../components/prisma-with/layout";
 
@@ -103,33 +103,13 @@ export default async function BlogPage() {
 }`,
 };
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: "The easiest way to work with a database in Next.js",
   description:
     "Build high-performance and type-safe Next.js apps with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and the first serverless database without cold starts.",
-  alternates: {
-    canonical: "https://www.prisma.io/nextjs",
-  },
-  openGraph: {
-    title: "The easiest way to work with a database in Next.js",
-    description:
-      "Build high-performance and type-safe Next.js apps with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and the first serverless database without cold starts.",
-    url: "https://www.prisma.io/nextjs",
-    siteName: "Prisma",
-    locale: "en_US",
-    type: "website",
-    images: [{ url: "/og/prisma-with/nextjs.png" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    site: "@prisma",
-    creator: "@prisma",
-    title: "The easiest way to work with a database in Next.js",
-    description:
-      "Build high-performance and type-safe Next.js apps with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and the first serverless database without cold starts.",
-    images: ["/og/prisma-with/nextjs.png"],
-  },
-};
+  path: "/nextjs",
+  ogImage: "/og/prisma-with/nextjs.png",
+});
 
 export default async function NextJsPage() {
   return <PrismaWithLayout data={data} codeExamples={codeExamples} />;

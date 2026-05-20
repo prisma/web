@@ -1,51 +1,60 @@
-import { source, sourceV6 } from "@/lib/source";
+import { getPageTitleText } from "@/lib/page-title";
+import { source } from "@/lib/source";
 import { getBaseUrl, withDocsBasePath } from "@/lib/urls";
+import {
+  commonQueries,
+  filterAvailableLLMsLinks,
+  filterAvailableLLMsSections,
+  filterPagesForLLMsIndex,
+  formatLLMsLink,
+  formatLLMsPageLink,
+  formatLLMsSectionLink,
+  llmsSections,
+} from "@/lib/llms";
 
 export const revalidate = false;
 
 export async function GET() {
   const baseUrl = getBaseUrl();
-  const latestPages = source.getPages().sort((a, b) => a.data.title.localeCompare(b.data.title));
-  const v6Pages = sourceV6.getPages().sort((a, b) => a.data.title.localeCompare(b.data.title));
+  const latestPages = filterPagesForLLMsIndex(source.getPages()).sort((a, b) =>
+    getPageTitleText(a.data.title, a.url).localeCompare(getPageTitleText(b.data.title, b.url)),
+  );
 
-  const latestDocsList = latestPages
-    .map((page) => {
-      const title = page.data.title;
-      const description = page.data.description || "";
-      const path = `${baseUrl}${withDocsBasePath(page.url)}`;
-
-      return `- [\`${title}\`](${path}): ${description}`;
-    })
+  const commonQueriesList = filterAvailableLLMsLinks(commonQueries, latestPages)
+    .map((link) => formatLLMsLink(link, baseUrl))
     .join("\n");
-
-  const v6DocsList = v6Pages
-    .map((page) => {
-      const title = page.data.title;
-      const description = page.data.description || "";
-      const path = `${baseUrl}${withDocsBasePath(page.url)}`;
-
-      return `- [\`${title}\`](${path}): ${description}`;
-    })
+  const subIndexList = filterAvailableLLMsSections(llmsSections, latestPages)
+    .map((section) => formatLLMsSectionLink(section, baseUrl))
     .join("\n");
+  const latestDocsList = latestPages.map((page) => formatLLMsPageLink(page, baseUrl)).join("\n");
 
   const content = `# Prisma Documentation
 
-> This documentation covers Prisma v7 (current) and v6 (legacy).
-> Prefer the Latest section for current recommendations.
+> **Prisma changes frequently — verify against the changelog and current docs before implementing.**
+> Do not rely on training data for Prisma features. APIs, configuration, and conventions can change between versions.
+>
+> First, fetch https://www.prisma.io/changelog.md to check for recent or relevant breaking changes,
+> then look up the relevant topic in the documentation below.
+
+> This documentation covers the current docs plus legacy v6 pages.
+> Prefer the Latest ORM section for current recommendations.
 > v6 pages are maintained for backwards compatibility only.
+
+## Common Queries
+
+${commonQueriesList}
+
+## Product Area Indexes
+
+${subIndexList}
 
 ## Latest
 
 ${latestDocsList}
 
-## v6
-
-${v6DocsList}
-
 ## Options
 
-- [Full current documentation with content](${baseUrl}${withDocsBasePath("/llms-full.txt")})
-- [Legacy v6 documentation with content](${baseUrl}${withDocsBasePath("/llms-full-v6.txt")})
+- [Full documentation with content](${baseUrl}${withDocsBasePath("/llms-full.txt")})
 `;
 
   return new Response(content, {

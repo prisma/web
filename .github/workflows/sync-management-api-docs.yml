@@ -31,24 +31,20 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Fetch OpenAPI spec
-        working-directory: apps/docs
-        run: pnpm fetch-openapi
-
-      - name: Generate docs
+      - name: Generate docs and Postman collection
         working-directory: apps/docs
         run: pnpm run generate:management-api-docs
 
       - name: Check for changes
         id: changes
         run: |
-          if [[ -z "$(git status --porcelain --untracked-files=all -- apps/docs/content/docs/management-api/)" ]]; then
+          if [[ -z "$(git status --porcelain --untracked-files=all -- apps/docs/content/docs/management-api/ apps/docs/public/prisma-management-api.postman_collection.json apps/docs/vercel.json)" ]]; then
             echo "changed=false" >> $GITHUB_OUTPUT
-            echo "No MDX changes detected"
+            echo "No changes detected"
           else
             echo "changed=true" >> $GITHUB_OUTPUT
-            echo "MDX changes detected:"
-            git status --short -- apps/docs/content/docs/management-api/
+            echo "Changes detected:"
+            git status --short -- apps/docs/content/docs/management-api/ apps/docs/public/prisma-management-api.postman_collection.json apps/docs/vercel.json
           fi
 
       - name: Commit and push
@@ -56,7 +52,7 @@ jobs:
         run: |
           git config user.email "prismabots@gmail.com"
           git config user.name "Prismo"
-          git add apps/docs/content/docs/management-api/
+          git add apps/docs/content/docs/management-api/ apps/docs/public/prisma-management-api.postman_collection.json apps/docs/vercel.json
           git commit -m "chore(docs): sync management API documentation"
           git push "https://x-access-token:${{ secrets.BOT_TOKEN_DOCS_COMMIT }}@github.com/${{ github.repository }}.git" HEAD:${{ github.ref_name }}
 

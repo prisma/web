@@ -115,7 +115,7 @@ export const plans: Record<PricingPlanKey, PricingPlan> = {
     points: [
       "<b>100,000</b> operations<span>*</span> included",
       "<b>500 MB</b> storage",
-      "<b>5</b> databases",
+      "<b>50</b> databases",
       "No credit card required",
     ],
     acceleratePoints: [
@@ -137,7 +137,7 @@ export const plans: Record<PricingPlanKey, PricingPlan> = {
         text: "<b>10 GB</b> storage included<br/>then <b><price></b> per <b>GB</b>",
         price: formatAmountForAllCurrencies(2, 2),
       },
-      "<b>10</b> databases",
+      "<b>1,000</b> databases included",
       "Includes spend limits <br/><b>Daily backups</b> stored for <b>7 days</b>",
     ],
     acceleratePoints: [
@@ -166,7 +166,7 @@ export const plans: Record<PricingPlanKey, PricingPlan> = {
         text: "<b>50 GB</b> storage included<br/>then <b><price></b> per <b>GB</b>",
         price: formatAmountForAllCurrencies(1.5, 2),
       },
-      "<b>100</b> databases",
+      "<b>1,000</b> databases included",
       "Includes spend limits <br/><b>Daily backups</b> stored for <b>7 days</b>",
     ],
     acceleratePoints: [
@@ -198,7 +198,7 @@ export const plans: Record<PricingPlanKey, PricingPlan> = {
         text: "<b>100 GB</b> storage included<br/>then <b><price></b> per <b>GB</b>",
         price: formatAmountForAllCurrencies(1, 2),
       },
-      "<b>1000</b> databases",
+      "<b>1,000</b> databases included",
       "Includes spend limits <br/><b>Daily backups</b> stored for <b>30 days</b>",
     ],
     acceleratePoints: [
