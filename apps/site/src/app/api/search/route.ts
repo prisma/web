@@ -44,6 +44,10 @@ function withBaseAndPrefixedPath(path: string | undefined, prefix: string): stri
   return prefixedPath === "#" ? prefixedPath : new URL(prefixedPath, websiteBaseUrl).toString();
 }
 
+function normalizeLatestOrmPath(path: string | undefined): string | undefined {
+  return path?.replace(/^(\/docs)?\/orm\/latest(?=\/|$|[?#])/, "$1/orm");
+}
+
 function normalizeBlogUrl(slug?: string): string {
   return withBaseAndPrefixedPath(slug, blogPrefix);
 }
@@ -56,7 +60,7 @@ function normalizeBlogImagePath(imagePath?: string): string {
 }
 
 function normalizeDocsUrl(url?: string): string {
-  return withBaseAndPrefixedPath(url, docsPrefix);
+  return withBaseAndPrefixedPath(normalizeLatestOrmPath(url), docsPrefix);
 }
 
 function getDocsImagePath(normalizedDocsUrl: string): string {
