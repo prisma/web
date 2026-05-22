@@ -294,7 +294,7 @@ export function AgentPromptClient({
             style={terminalBodyStyle}
           >
             {hasTerminalCommand ? (
-              <div className="agent-prompt-terminal-line agent-prompt-terminal-cmd">
+              <div className="agent-prompt-terminal-line agent-prompt-terminal-cmd agent-prompt-terminal-cmd-leading">
                 <span className="agent-prompt-terminal-prefix">$</span>
                 <span>
                   {terminalCmdTyped ||
