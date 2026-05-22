@@ -188,7 +188,7 @@ export default async function Page(props: {
           >
             ← Back to Blog
           </Link>
-          <h1 className="mt-3 mb-8 type-title-5xl text-foreground-neutral">
+          <h1 className="mt-3 mb-8 type-title-3xl md:type-title-4xl lg:type-title-5xl text-foreground-neutral break-words hyphens-auto">
             {page.data.title}
           </h1>
           <div className="text-sm flex gap-2 items-center text-foreground-neutral mb-4">
