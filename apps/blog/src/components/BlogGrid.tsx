@@ -6,6 +6,7 @@ export type BlogCardItem = {
   date: string; // ISO string
   excerpt?: string | null;
   author?: string | null;
+  authors?: string[] | null;
   authorSrc?: string | null;
   imageSrc?: string | null;
   imageAlt?: string | null;

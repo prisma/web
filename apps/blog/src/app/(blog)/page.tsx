@@ -59,10 +59,10 @@ export default async function BlogHome() {
     return bTime - aTime;
   });
 
-  const getPrimaryAuthor = (post: (typeof posts)[number]) => {
+  const getAllAuthors = (post: (typeof posts)[number]): string[] => {
     const data = post.data as any;
-    const authors = Array.isArray(data?.authors) ? data?.authors : [];
-    return authors.length > 0 ? authors[0] : null;
+    const authors = Array.isArray(data?.authors) ? data.authors : [];
+    return authors.filter((name: unknown): name is string => typeof name === "string");
   };
 
   const items: BlogCardItem[] = posts.map((post) => {
@@ -80,12 +80,15 @@ export default async function BlogHome() {
       }
     }
 
+    const authors = getAllAuthors(post);
+
     return {
       url: withBlogBasePath(post.url),
       title: data.title as string,
       date: dateISO,
       excerpt: data.metaDescription as string,
-      author: getPrimaryAuthor(post),
+      author: authors[0] ?? null,
+      authors,
       imageSrc: withBlogBasePathForImageSrc(post.data.heroImagePath ?? ""),
       imageAlt: (data.heroImageAlt as string) ?? (data.title as string),
       seriesTitle: data.series?.title ?? null,

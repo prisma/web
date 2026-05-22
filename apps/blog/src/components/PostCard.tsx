@@ -15,6 +15,7 @@ type PostCardItem = {
   date: string;
   excerpt?: string | null;
   author?: string | null;
+  authors?: string[] | null;
   authorSrc?: string | null;
   imageSrc?: string | null;
   imageAlt?: string | null;
@@ -30,17 +31,21 @@ export function PostCard({
   currentCategory: string;
   featured?: boolean;
 }) {
-  // Transform blog-specific post data to shared component format
-  const authorProfiles = post.author ? getAuthorProfiles([post.author]) : [];
-  const author: AuthorProfile | null =
-    authorProfiles.length > 0
-      ? {
-          name: authorProfiles[0].name,
-          imageSrc: authorProfiles[0].imageSrc
-            ? withBlogBasePathForImageSrc(authorProfiles[0].imageSrc)
-            : null,
-        }
-      : null;
+  const sourceAuthorNames =
+    post.authors && post.authors.length > 0
+      ? post.authors
+      : post.author
+        ? [post.author]
+        : [];
+  const authorProfiles: AuthorProfile[] = getAuthorProfiles(sourceAuthorNames).map(
+    (profile) => ({
+      name: profile.name,
+      imageSrc: profile.imageSrc
+        ? withBlogBasePathForImageSrc(profile.imageSrc)
+        : null,
+    }),
+  );
+  const author: AuthorProfile | null = authorProfiles[0] ?? null;
 
   const badge =
     post.tags && post.tags.length > 0
@@ -53,6 +58,7 @@ export function PostCard({
     date: formatDate(new Date(post.date).toISOString()),
     excerpt: post.excerpt,
     author,
+    authors: authorProfiles,
     imageSrc: post.imageSrc ? withBlogBasePathForImageSrc(post.imageSrc) : null,
     imageAlt: post.imageAlt,
     badge,
