@@ -116,8 +116,8 @@ export function AgentPromptClient({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const hasCode = before != null && after != null;
-  const hasTerminal =
-    terminalLines != null && terminalLines.length > 0 && terminalCommand != null;
+  const hasTerminal = terminalLines != null && terminalLines.length > 0;
+  const hasTerminalCommand = terminalCommand != null;
 
   useEffect(() => {
     const el = containerRef.current;
@@ -172,8 +172,10 @@ export function AgentPromptClient({
 
       if (hasTerminal) {
         schedule(t, () => setPhase("running"));
-        schedule(t + TERMINAL_PROMPT_MS, () => setTerminalCmdTyped(true));
-        t += TERMINAL_PROMPT_MS + 200;
+        if (hasTerminalCommand) {
+          schedule(t + TERMINAL_PROMPT_MS, () => setTerminalCmdTyped(true));
+          t += TERMINAL_PROMPT_MS + 200;
+        }
         const lineCount = terminalLines!.length;
         for (let i = 1; i <= lineCount; i += 1) {
           schedule(t, () => setTerminalVisibleLines(i));
@@ -291,28 +293,45 @@ export function AgentPromptClient({
             className="agent-prompt-terminal-body"
             style={terminalBodyStyle}
           >
-            <div className="agent-prompt-terminal-line agent-prompt-terminal-cmd">
-              <span className="agent-prompt-terminal-prefix">$</span>
-              <span>
-                {terminalCmdTyped ||
-                phase === "settled" ||
-                terminalVisibleLines > 0
-                  ? terminalCommand
-                  : ""}
-                {phase === "running" && !terminalCmdTyped ? (
-                  <span className="agent-prompt-caret" aria-hidden="true" />
-                ) : null}
-              </span>
-            </div>
-            {terminalLines!.map((line, i) => (
-              <div
-                key={i}
-                className="agent-prompt-terminal-line"
-                data-visible={i < terminalVisibleLines}
-              >
-                {line}
+            {hasTerminalCommand ? (
+              <div className="agent-prompt-terminal-line agent-prompt-terminal-cmd">
+                <span className="agent-prompt-terminal-prefix">$</span>
+                <span>
+                  {terminalCmdTyped ||
+                  phase === "settled" ||
+                  terminalVisibleLines > 0
+                    ? terminalCommand
+                    : ""}
+                  {phase === "running" && !terminalCmdTyped ? (
+                    <span className="agent-prompt-caret" aria-hidden="true" />
+                  ) : null}
+                </span>
               </div>
-            ))}
+            ) : null}
+            {terminalLines!.map((line, i) => {
+              const isCmd = line.startsWith("$ ");
+              const text = isCmd ? line.slice(2) : line;
+              return (
+                <div
+                  key={i}
+                  className={
+                    isCmd
+                      ? "agent-prompt-terminal-line agent-prompt-terminal-cmd"
+                      : "agent-prompt-terminal-line"
+                  }
+                  data-visible={i < terminalVisibleLines}
+                >
+                  {isCmd ? (
+                    <>
+                      <span className="agent-prompt-terminal-prefix">$</span>
+                      <span>{text}</span>
+                    </>
+                  ) : (
+                    text
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       ) : null}

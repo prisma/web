@@ -28,12 +28,16 @@ model Author {
   // !mark
 }`;
 
-export const queryBefore = `const books = await db.orm.Book.all();`;
+export const queryBefore = `const books = await db.orm.Book
+  .where({ addedThisWeek: true })
+  .all();`;
 
 export const queryAfter = `// !mark
-const books = await db.orm.Book.where((b) => b.addedAt.gte(oneWeekAgo))
+const books = await db.orm.Book
   // !mark
-  .include("author", (author) => author)
+  .where((b) => b.addedAt.gte(oneWeekAgo))
+  // !mark
+  .include("author")
   // !mark
   .orderBy((b) => b.addedAt.desc())
   // !mark
@@ -64,11 +68,14 @@ export const migrationTerminalLines = [
 ];
 
 export const upgradeTerminalLines = [
-  "→ Loading recipe: prisma-next 0.10 → 0.11",
-  "→ Applying codemod: wrap single-object .insert({}) calls as array inserts",
+  "→ Detected current: 0.10.0    target: 0.11.0",
+  "→ Bumping @prisma-next/* to 0.11.0 in package.json",
+  "$ pnpm install",
+  "✓ Lockfile updated",
+  "→ Reading upgrades/0.10-to-0.11/instructions.md",
+  "→ Applying: wrap single-row .insert({...}) calls in arrays",
   "✓ Updated 3 files in src/",
-  "→ Running: pnpm install prisma-next@0.11.0",
-  "✓ Re-emitted contract",
-  "✓ Verified: contract still type-checks",
-  "✓ Upgraded to prisma-next@0.11.0",
+  "$ pnpm typecheck && pnpm test",
+  "✓ Type check passed, tests green",
+  "$ git commit -am 'chore: prisma-next 0.10 → 0.11'",
 ];
