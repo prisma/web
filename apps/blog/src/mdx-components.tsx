@@ -30,6 +30,7 @@ import { TweetEmbedComp } from "@/components/TweetEmbed";
 import { Meetup, MeetupList } from "@/components/Meetup";
 import { Employee } from "@/components/Employee";
 import { AutoplayYoutubeEmbed } from "@/components/AutoplayYoutubeEmbed";
+import { AgentPrompt } from "@/components/AgentPrompt";
 import { withBlogBasePath, withBlogBasePathForImageSrc } from "@/lib/url";
 export function getMDXComponents(components?: MDXComponents): MDXComponents {
   const mdxComponents = {
@@ -60,6 +61,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     MeetupList,
     Employee,
     AutoplayYoutubeEmbed,
+    AgentPrompt,
     Steps,
     Step,
     img: (props: any) => (

@@ -60,26 +60,56 @@ Your agent runs the same loop, only its feedback comes from the contract, the ty
 
 Considering the book table in the contract above, you can ask the agent for a feature _"add an author table with a name and bio, and link authors to books"_ and it updates the contract:
 
-<AutoplayYoutubeEmbed
-  videoId="0pvlcmFnWSI"
-  title="Agent updates the contract to add an author table linked to books"
+<AgentPrompt
+  prompt="add an author table with a name and bio, and link authors to books"
+  language="prisma"
+  fileName="contract.prisma"
+  before={`model Book {
+  id       String   @id @default(uuid())
+  title    String
+  author   String
+  addedAt  DateTime @default(now())
+}`}
+  after={`model Book {
+  id        String   @id @default(uuid())
+  title     String
+  // !mark
+  author    Author   @relation(fields: [authorId], references: [id])
+  // !mark
+  authorId  String
+  addedAt   DateTime @default(now())
+}
+
+// !mark
+model Author {
+  // !mark
+  id    String  @id @default(uuid())
+  // !mark
+  name  String
+  // !mark
+  bio   String?
+  // !mark
+  books Book[]
+  // !mark
+}`}
 />
 
 Then, when you ask the agent to write a query, it iterates against those guardrails inside its own tool calls until the query type-checks. Here's what that looks like in practice:
 
-<AutoplayYoutubeEmbed
-  videoId="C6exOjUIgBo"
-  title="Agent iterates a query against the contract until it type-checks"
-/>
-
-The agent produces the correct query based on the contract:
-
-```typescript
+<AgentPrompt
+  prompt="query all the books from the last week and also include the author"
+  language="typescript"
+  fileName="src/queries.ts"
+  before={`const books = await db.orm.Book.find();`}
+  after={`// !mark
 const books = await db.orm.Book.where((b) => b.addedAt.gte(oneWeekAgo))
+  // !mark
   .include("author", (author) => author)
+  // !mark
   .orderBy((b) => b.addedAt.desc())
-  .all();
-```
+  // !mark
+  .all();`}
+/>
 
 You don't need to read every query the agent writes as the type checker already did.
 
@@ -91,9 +121,33 @@ You spend time getting the syntax right. Then you spend more time debugging when
 
 In Prisma Next, instead of asking your agent to write a SQL migration (where it has all the power and a language that lends itself to simple, catastrophic mistakes) you ask it for a feature: _"Add a `published_at` field to the Book model so I can sort by when each book was published."_
 
-<AutoplayYoutubeEmbed
-  videoId="2hPXEmALezI"
-  title="Agent edits the contract and the framework plans the migration"
+<AgentPrompt
+  prompt="Add a published_at field to the Book model so I can sort by when each book was published."
+  language="prisma"
+  fileName="contract.prisma"
+  skill="@prisma-next/migration-skill"
+  before={`model Book {
+  id           String    @id @default(uuid())
+  title        String
+  author       Author    @relation(fields: [authorId], references: [id])
+  authorId     String
+  addedAt      DateTime  @default(now())
+}`}
+  after={`model Book {
+  id           String    @id @default(uuid())
+  title        String
+  author       Author    @relation(fields: [authorId], references: [id])
+  authorId     String
+  addedAt      DateTime  @default(now())
+  // !mark
+  publishedAt  DateTime?
+}`}
+  terminalCommand="prisma-next migrate plan"
+  terminalLines={[
+    "→ Detected contract change: Book.publishedAt added (timestamptz, nullable)",
+    "→ Planned 1 operation",
+    "✓ Wrote migrations/20260515T0900_add_book_published_at/migration.ts",
+  ]}
 />
 
 The agent edits the contract to add one field. Then it asks the framework to plan the migration using:
@@ -180,9 +234,19 @@ The contract lets you be explicit about what each version of your app depends on
 
 When a new version lands, tell your agent to _"upgrade prisma next"_.
 
-<AutoplayYoutubeEmbed
-  videoId="znI2RiXJtRc"
-  title="Continuous upgrades via per-release recipes for your agent"
+<AgentPrompt
+  prompt="upgrade prisma next"
+  skill="@prisma-next/upgrade-skill"
+  terminalCommand="pnpm prisma-next upgrade"
+  terminalLines={[
+    "→ Reading recipe for prisma-next 0.10 → 0.11",
+    "→ Applying codemod: rename .find() → .findFirst()",
+    "✓ Updated 3 files in src/",
+    "→ Running: pnpm install prisma-next@0.11.0",
+    "✓ Re-emitted contract",
+    "✓ Verified: contract still type-checks",
+    "✓ Upgraded to prisma-next@0.11.0",
+  ]}
 />
 
 Prisma Next is in Early Access and we're shipping every day, including breaking changes. To stay up to date, we ship a dedicated skill to your agent with instructions for every breaking change.
