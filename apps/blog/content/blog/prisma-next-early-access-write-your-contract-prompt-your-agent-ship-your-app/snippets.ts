@@ -68,13 +68,15 @@ export const migrationTerminalLines = [
 ];
 
 export const upgradeTerminalLines = [
+  "→ Loaded prisma-next-upgrade skill",
   "→ Detected current: 0.10.0    target: 0.11.0",
+  "→ Reading upgrades/0.10-to-0.11/instructions.md",
+  "→ Plan: wrap single-row .insert({...}) calls in arrays",
   "→ Bumping @prisma-next/* to 0.11.0 in package.json",
   "$ pnpm install",
   "✓ Lockfile updated",
-  "→ Reading upgrades/0.10-to-0.11/instructions.md",
-  "→ Applying: wrap single-row .insert({...}) calls in arrays",
-  "✓ Updated 3 files in src/",
+  "→ Applying codemod across src/",
+  "✓ Updated 3 files",
   "$ pnpm typecheck && pnpm test",
   "✓ Type check passed, tests green",
   "$ git commit -am 'chore: prisma-next 0.10 → 0.11'",
