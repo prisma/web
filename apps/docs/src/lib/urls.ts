@@ -15,6 +15,13 @@ export function normalize(urlOrPath: string) {
   return urlOrPath;
 }
 
+export function normalizeLatestOrmPath(urlOrPath: string): string {
+  return urlOrPath.replace(
+    /^(https?:\/\/[^/?#]+)?(\/docs)?\/orm\/latest(?=\/|$|[?#])/,
+    "$1$2/orm",
+  );
+}
+
 export const DOCS_PREFIX = "/docs";
 
 export function withDocsBasePath(path: string): string {

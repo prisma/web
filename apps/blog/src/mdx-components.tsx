@@ -6,6 +6,7 @@ import { Hex } from "@/components/Hex";
 import type { MDXComponents } from "mdx/types";
 import { ImageZoom } from "fumadocs-ui/components/image-zoom";
 import * as icons from "lucide-react";
+import { Mermaid } from "@/components/Mermaid";
 import {
   Accordion,
   Accordions,
@@ -70,6 +71,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     video: (props: any) => (
       <video {...(props as any)} src={withBlogBasePathForImageSrc((props as any).src)} />
     ),
+    Mermaid,
   };
 
   return {

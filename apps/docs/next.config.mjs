@@ -238,16 +238,16 @@ const config = {
         permanent: true,
         basePath: false,
       },
-      // {
-      //   source: "/orm/latest",
-      //   destination: "/orm",
-      //   permanent: true,
-      // },
-      // {
-      //   source: "/orm/latest/:path*",
-      //   destination: "/orm/:path*",
-      //   permanent: true,
-      // },
+      {
+        source: "/orm/latest",
+        destination: "/orm",
+        permanent: true,
+      },
+      {
+        source: "/orm/latest/:path*",
+        destination: "/orm/:path*",
+        permanent: true,
+      },
       {
         source: "/v6/orm",
         destination: "/orm/v6",

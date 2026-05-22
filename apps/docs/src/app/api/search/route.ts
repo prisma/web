@@ -3,6 +3,7 @@ import Mixedbread from "@mixedbread/sdk";
 import { SortedResult } from "fumadocs-core/search";
 import { formatSlugDisplayName } from "@/lib/breadcrumb-utils";
 import { isVersionSegment } from "@/lib/version";
+import { normalizeLatestOrmPath } from "@/lib/urls";
 
 export const dynamic = "force-dynamic";
 
@@ -79,7 +80,7 @@ export const { GET } = createMixedbreadSearchAPI({
     return results.flatMap((item) => {
       const { url = "#", title = "Untitled" } = item.generated_metadata ?? {};
 
-      const formattedUrl = url.startsWith("/docs") ? url.slice(5) : url;
+      const formattedUrl = normalizeLatestOrmPath(url.startsWith("/docs") ? url.slice(5) : url);
       const base = `${item.file_id}-${item.chunk_index}`;
       const breadcrumbs = getBreadcrumbsFromUrl(formattedUrl);
       const chunkResults: SortedResult[] = [
