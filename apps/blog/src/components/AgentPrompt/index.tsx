@@ -70,6 +70,12 @@ export async function AgentPrompt({
         highlightWithMarks(after, language),
       ])
     : [undefined, undefined];
+  const maxCodeLines = hasCode
+    ? Math.max(
+        countLines(before as string),
+        countLines(after as string),
+      )
+    : undefined;
 
   return (
     <AgentPromptClient
@@ -80,6 +86,12 @@ export async function AgentPrompt({
       skill={skill}
       terminalCommand={terminalCommand}
       terminalLines={terminalLines}
+      maxCodeLines={maxCodeLines}
     />
   );
+}
+
+function countLines(value: string): number {
+  const stripped = extractMarks(value).value;
+  return stripped.split("\n").length;
 }

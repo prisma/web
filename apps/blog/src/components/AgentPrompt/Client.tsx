@@ -93,6 +93,7 @@ type Props = {
   skill?: string;
   terminalCommand?: string;
   terminalLines?: string[];
+  maxCodeLines?: number;
 };
 
 export function AgentPromptClient({
@@ -103,6 +104,7 @@ export function AgentPromptClient({
   skill,
   terminalCommand,
   terminalLines,
+  maxCodeLines,
 }: Props) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [typed, setTyped] = useState("");
@@ -194,6 +196,17 @@ export function AgentPromptClient({
 
   const showSkillBadge = !!skill;
 
+  const codeStyle =
+    maxCodeLines != null
+      ? ({ "--agent-prompt-min-lines": String(maxCodeLines) } as React.CSSProperties)
+      : undefined;
+  const terminalBodyStyle =
+    terminalLines != null
+      ? ({
+          "--agent-prompt-terminal-lines": String(terminalLines.length + 1),
+        } as React.CSSProperties)
+      : undefined;
+
   return (
     <div
       ref={containerRef}
@@ -203,10 +216,15 @@ export function AgentPromptClient({
       <div className="agent-prompt-bubble">
         <span className="agent-prompt-tag">You</span>
         <p className="agent-prompt-text">
-          {typed}
-          {phase === "typing" ? (
-            <span className="agent-prompt-caret" aria-hidden="true" />
-          ) : null}
+          <span className="agent-prompt-text-visible">
+            {typed}
+            {phase === "typing" ? (
+              <span className="agent-prompt-caret" aria-hidden="true" />
+            ) : null}
+          </span>
+          <span className="agent-prompt-text-ghost" aria-hidden="true">
+            {prompt}
+          </span>
         </p>
       </div>
       {showSkillBadge ? (
@@ -241,7 +259,7 @@ export function AgentPromptClient({
                 </span>
               </span>
             ) : null}
-            <div className="agent-prompt-code">
+            <div className="agent-prompt-code" style={codeStyle}>
               <SmoothPre code={showAfter ? after! : before!} />
             </div>
           </div>
@@ -269,7 +287,10 @@ export function AgentPromptClient({
               </button>
             ) : null}
           </div>
-          <div className="agent-prompt-terminal-body">
+          <div
+            className="agent-prompt-terminal-body"
+            style={terminalBodyStyle}
+          >
             <div className="agent-prompt-terminal-line agent-prompt-terminal-cmd">
               <span className="agent-prompt-terminal-prefix">$</span>
               <span>
