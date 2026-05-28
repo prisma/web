@@ -10,11 +10,11 @@ import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import { FooterNewsletterForm } from "@prisma-docs/ui/components/newsletter";
 import { BlogShare } from "@/components/BlogShare";
 import { AuthorAvatarGroup } from "@/components/AuthorAvatarGroup";
-import {
-  getBaseUrl,
-  withBlogBasePath,
-  withBlogBasePathForImageSrc,
-} from "@/lib/url";
+import { SeriesBanner } from "@/components/SeriesBanner";
+import { SeriesMarker } from "@/components/SeriesMarker";
+import { SeriesNavigation } from "@/components/SeriesNavigation";
+import { getSeriesContext } from "@/lib/series";
+import { getBaseUrl, withBlogBasePath, withBlogBasePathForImageSrc } from "@/lib/url";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { cn } from "@prisma-docs/ui/lib/cn";
@@ -75,25 +75,17 @@ function toIsoDate(value: unknown): string | undefined {
   return date.toISOString();
 }
 
-function getBlogPostingJsonLd(
-  page: ReturnType<typeof blog.getPage>,
-): BlogPostingSchema | null {
+function getBlogPostingJsonLd(page: ReturnType<typeof blog.getPage>): BlogPostingSchema | null {
   if (!page) return null;
 
   const title = (page.data.metaTitle ?? page.data.title)?.trim();
-  const description = (
-    page.data.metaDescription ??
-    page.data.description ??
-    ""
-  ).trim();
+  const description = (page.data.metaDescription ?? page.data.description ?? "").trim();
   if (!title || !description) return null;
 
   const canonicalPath = withBlogBasePath(page.url);
   const canonicalUrl = toAbsoluteUrl(canonicalPath);
   const imagePath = page.data.metaImagePath ?? page.data.heroImagePath;
-  const imageUrl = imagePath
-    ? toAbsoluteUrl(withBlogBasePathForImageSrc(imagePath))
-    : undefined;
+  const imageUrl = imagePath ? toAbsoluteUrl(withBlogBasePathForImageSrc(imagePath)) : undefined;
 
   const authorNames = Array.isArray(page.data.authors)
     ? page.data.authors
@@ -104,8 +96,7 @@ function getBlogPostingJsonLd(
 
   const datePublished = toIsoDate(page.data.date);
   const dateModified =
-    toIsoDate((page.data as { lastModified?: unknown }).lastModified) ??
-    datePublished;
+    toIsoDate((page.data as { lastModified?: unknown }).lastModified) ?? datePublished;
 
   const jsonLd: BlogPostingSchema = {
     "@context": "https://schema.org",
@@ -163,15 +154,14 @@ function extractText(node: React.ReactNode): string {
   return "";
 }
 
-export default async function Page(props: {
-  params: Promise<{ slug: string }>;
-}) {
+export default async function Page(props: { params: Promise<{ slug: string }> }) {
   const params = await props.params;
   const page = blog.getPage([params.slug]);
 
   if (!page) notFound();
   const MDX = page.data.body;
   const blogPostingJsonLd = getBlogPostingJsonLd(page);
+  const seriesContext = getSeriesContext(page);
 
   const newsletterApiUrl = withBlogBasePath("/api/newsletter");
   return (
@@ -182,10 +172,7 @@ export default async function Page(props: {
       <div className="post-contents w-full">
         {/* Title + meta */}
         <header className="w-full relative">
-          <Link
-            href="/"
-            className="text-fd-primary hover:underline text-sm absolute -top-8"
-          >
+          <Link href="/" className="text-fd-primary hover:underline text-sm absolute -top-8">
             ← Back to Blog
           </Link>
           <h1 className="mt-3 mb-8 type-title-3xl md:type-title-4xl lg:type-title-5xl text-foreground-neutral break-words hyphens-auto">
@@ -223,6 +210,7 @@ export default async function Page(props: {
               ))}
             </div>
           )}
+          {seriesContext ? <SeriesMarker series={seriesContext} /> : null}
         </header>
 
         {/* Body */}
@@ -263,6 +251,12 @@ export default async function Page(props: {
             />
           </div>
         </article>
+        {seriesContext ? (
+          <>
+            <SeriesBanner series={seriesContext} />
+            <SeriesNavigation series={seriesContext} />
+          </>
+        ) : null}
         <Separator className="my-12" />
 
         {/* Share Container */}
