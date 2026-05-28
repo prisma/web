@@ -13,7 +13,7 @@ excerpt: "Postgres has shipped a bloom index since 9.6. It can replace a stack o
 ---
 
 import { BloomFilterDemo } from "./BloomFilterDemo";
-import { indexesBefore, indexesAfter, demoTerminalLines } from "./snippets";
+import { BloomDemoRunner } from "./BloomDemoRunner";
 
 Postgres has shipped a [`bloom` index](https://www.postgresql.org/docs/current/bloom.html) since 9.6. It can replace a stack of btrees with a single, much smaller index, and almost nobody uses it. This post is a short tour: what it is, when it wins, and a benchmark on a realistic cache table.
 
@@ -68,13 +68,15 @@ When you run an equality query, Postgres hashes your filter values, scans the si
 
 The shape of the change is small: drop the stack of btrees, enable the `bloom` extension once, and create a single index that covers every column you might filter on.
 
-<AgentPrompt
-  prompt="replace the per-column btrees with one bloom index over the wide cache table"
-  language="sql"
-  fileName="migrations/001_indexes.sql"
-  before={indexesBefore}
-  after={indexesAfter}
-/>
+```sql
+CREATE EXTENSION IF NOT EXISTS bloom;
+
+CREATE INDEX cache_bloom_idx ON cache_entries
+  USING bloom (
+    tenant_id, user_id, endpoint,
+    locale, region, api_version
+  );
+```
 
 One index, and any subset of those six columns can use it for equality lookups. You don't have to anticipate every combination up front. False positives just mean a few extra heap fetches on the way to the right answer.
 
@@ -97,87 +99,11 @@ bun add -d @types/pg
 
 The whole demo is a single `index.ts`. It provisions a temporary [Prisma Postgres](https://www.prisma.io/docs/postgres/introduction/npx-create-db) database via the programmatic [`create-db`](https://create-db.prisma.io/) API (no signup required), seeds the table, then builds each index strategy in turn and times the same three lookups against both.
 
-```ts
-// index.ts
-import { create, isDatabaseSuccess } from "create-db";
-import { Client } from "pg";
-
-const db = await create({ ttl: "1h" });
-if (!isDatabaseSuccess(db)) throw new Error(db.message);
-console.log(`claim URL: ${db.claimUrl}`);
-
-const client = new Client({ connectionString: db.connectionString! });
-await client.connect();
-
-await client.query(`CREATE EXTENSION IF NOT EXISTS bloom`);
-await client.query(`
-  DROP TABLE IF EXISTS cache_entries;
-  CREATE TABLE cache_entries (
-    id           BIGSERIAL PRIMARY KEY,
-    tenant_id    TEXT NOT NULL,
-    user_id      TEXT NOT NULL,
-    endpoint     TEXT NOT NULL,
-    locale       TEXT NOT NULL,
-    region       TEXT NOT NULL,
-    api_version  INT  NOT NULL,
-    payload      JSONB NOT NULL,
-    cached_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
-  );
-`);
-
-// Insert 10,000 rows of mixed tenants, users, endpoints, locales,
-// regions and api versions. See the full file in the repo.
-
-const COLS = [
-  "tenant_id",
-  "user_id",
-  "endpoint",
-  "locale",
-  "region",
-  "api_version",
-];
-const sample = (await client.query(`SELECT * FROM cache_entries LIMIT 1`))
-  .rows[0];
-
-const lookups: [string, unknown[]][] = [
-  ["tenant_id = $1 AND endpoint = $2", [sample.tenant_id, sample.endpoint]],
-  ["user_id = $1 AND locale = $2", [sample.user_id, sample.locale]],
-  [
-    "tenant_id = $1 AND region = $2 AND api_version = $3",
-    [sample.tenant_id, sample.region, sample.api_version],
-  ],
-];
-
-async function totalIndexMB() {
-  const { rows } = await client.query(`
-    SELECT COALESCE(SUM(pg_relation_size(indexrelid)), 0)::bigint AS bytes
-    FROM pg_index
-    WHERE indrelid = 'cache_entries'::regclass
-      AND indexrelid <> 'cache_entries_pkey'::regclass
-  `);
-  return Number(rows[0].bytes) / 1024 / 1024;
-}
-
-async function runLookups() {
-  let ms = 0;
-  for (const [where, params] of lookups) {
-    const t = performance.now();
-    await client.query(`SELECT id FROM cache_entries WHERE ${where}`, params);
-    ms += performance.now() - t;
-  }
-  return ms;
-}
-```
-
-Wrap that with a small helper that drops every non-primary-key index, builds one strategy at a time, and prints the size and lookup time. The full version is in the repo as `index.ts`.
-
 ### Run it
 
-<AgentPrompt
-  prompt="run the demo and time both index strategies on the same lookups"
-  terminalCommand="bun run index.ts"
-  terminalLines={demoTerminalLines}
-/>
+Step through what the script does. The left panel highlights the code currently running. The right panel shows the cumulative terminal output. Click any step to jump.
+
+<BloomDemoRunner />
 
 Same queries, same answers. One bloom index, roughly 2.5x smaller, supports any equality combination on the listed columns. Every write only updates one index instead of six.
 

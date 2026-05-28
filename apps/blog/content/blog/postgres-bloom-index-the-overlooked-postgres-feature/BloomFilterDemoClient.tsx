@@ -7,13 +7,14 @@ import {
   getStartingSnapshot,
   type TokenTransitionsSnapshot,
 } from "codehike/utils/token-transitions";
-import { Pause, Play } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
 
 type Verdict = "idle" | "present" | "absent" | "false-positive";
 
 type Phase = {
   step: number;
   label: string;
+  shortLabel: string;
   caption: string;
   bits: boolean[];
   flipping: number[];
@@ -23,7 +24,7 @@ type Phase = {
 };
 
 const SIZE = 16;
-const STEP_HOLD_MS = 2600;
+const STEP_HOLD_MS = 5200;
 
 function makeBits(positions: number[]): boolean[] {
   const out: boolean[] = Array.from({ length: SIZE }, () => false);
@@ -40,6 +41,7 @@ const PHASES: Phase[] = [
   {
     step: 0,
     label: "Empty filter",
+    shortLabel: "Empty",
     caption: "A 16-bit array, all zeros. Nothing has been added yet.",
     bits: makeBits([]),
     flipping: [],
@@ -49,6 +51,7 @@ const PHASES: Phase[] = [
   {
     step: 1,
     label: 'add("alice")',
+    shortLabel: "Add alice",
     caption: "Three hash functions map alice to positions 2, 7 and 11. Flip those bits to 1.",
     bits: makeBits(ALICE),
     flipping: ALICE,
@@ -59,6 +62,7 @@ const PHASES: Phase[] = [
   {
     step: 2,
     label: 'add("bob")',
+    shortLabel: "Add bob",
     caption:
       "Bob hashes to 4, 7 and 13. Position 7 was already 1 from alice, so it stays 1. No way to tell who set it.",
     bits: makeBits([...ALICE, ...BOB]),
@@ -70,6 +74,7 @@ const PHASES: Phase[] = [
   {
     step: 3,
     label: 'check("alice")',
+    shortLabel: "Check alice",
     caption:
       "Hash alice again, look at the same positions. All three are 1, so alice is probably present.",
     bits: makeBits([...ALICE, ...BOB]),
@@ -81,8 +86,8 @@ const PHASES: Phase[] = [
   {
     step: 4,
     label: 'check("carol")',
-    caption:
-      "Carol hashes to 0, 5 and 9. Position 0 is still 0, so carol was never added. Hard no.",
+    shortLabel: "Check carol",
+    caption: "Carol hashes to 0, 5 and 9. Position 0 is still 0, so carol was never added. Hard no.",
     bits: makeBits([...ALICE, ...BOB]),
     flipping: [],
     probe: CAROL,
@@ -92,6 +97,7 @@ const PHASES: Phase[] = [
   {
     step: 5,
     label: 'check("dave")',
+    shortLabel: "Check dave",
     caption:
       "Dave hashes to 4, 11 and 13. All three happen to be 1 from alice and bob, even though dave was never added. That is a false positive: tolerable because the database rechecks against the row.",
     bits: makeBits([...ALICE, ...BOB]),
@@ -166,6 +172,11 @@ export function BloomFilterDemoClient({ snippets }: Props) {
   const phase = PHASES[phaseIndex];
   const code = snippets[phaseIndex];
 
+  function goTo(index: number) {
+    setPlaying(false);
+    setPhaseIndex(((index % PHASES.length) + PHASES.length) % PHASES.length);
+  }
+
   return (
     <div ref={containerRef} className="bloom-demo not-prose" data-verdict={phase.verdict}>
       <div className="bloom-demo-header">
@@ -173,14 +184,49 @@ export function BloomFilterDemoClient({ snippets }: Props) {
           {phase.step + 1} / {PHASES.length}
         </span>
         <span className="bloom-demo-label">{phase.label}</span>
-        <button
-          type="button"
-          className="bloom-demo-toggle"
-          onClick={() => setPlaying((p) => !p)}
-          aria-label={playing ? "Pause demo" : "Play demo"}
-        >
-          {playing ? <Pause size={14} /> : <Play size={14} />}
-        </button>
+        <div className="bloom-demo-nav">
+          <button
+            type="button"
+            className="bloom-demo-toggle"
+            onClick={() => goTo(phaseIndex - 1)}
+            aria-label="Previous step"
+          >
+            <ChevronLeft size={14} />
+          </button>
+          <button
+            type="button"
+            className="bloom-demo-toggle"
+            onClick={() => setPlaying((p) => !p)}
+            aria-label={playing ? "Pause demo" : "Play demo"}
+          >
+            {playing ? <Pause size={14} /> : <Play size={14} />}
+          </button>
+          <button
+            type="button"
+            className="bloom-demo-toggle"
+            onClick={() => goTo(phaseIndex + 1)}
+            aria-label="Next step"
+          >
+            <ChevronRight size={14} />
+          </button>
+        </div>
+      </div>
+
+      <div className="bloom-demo-steps" role="tablist" aria-label="Bloom filter walkthrough steps">
+        {PHASES.map((p, i) => (
+          <button
+            key={p.step}
+            type="button"
+            role="tab"
+            aria-selected={i === phaseIndex}
+            data-active={i === phaseIndex ? "true" : undefined}
+            className="bloom-demo-step-pill"
+            onClick={() => goTo(i)}
+          >
+            <span className="bloom-demo-step-pill-num">{i + 1}</span>
+            <span className="bloom-demo-step-pill-label">{p.shortLabel}</span>
+          </button>
+        ))}
       </div>
 
       <div className="bloom-demo-body">
