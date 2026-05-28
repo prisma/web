@@ -1,0 +1,210 @@
+---
+title: "Bloom Filters in Postgres: The Index Type Most Developers Overlook"
+slug: "postgres-bloom-index-the-overlooked-postgres-feature"
+date: "2026-05-28"
+authors:
+  - "Ankur Datta"
+metaTitle: "Bloom Filters in Postgres: The Index Type Most Developers Overlook"
+metaDescription: "One bloom index can replace a stack of btrees on wide tables with many filter combinations. A tour of the concept, the Postgres extension, and a benchmark you can run yourself."
+tags:
+  - "prisma-postgres"
+  - "education"
+excerpt: "Postgres has shipped a bloom index since 9.6. It can replace a stack of btrees with a single, much smaller index, and almost nobody uses it."
+---
+
+import { BloomFilterDemo } from "./BloomFilterDemo";
+import { indexesBefore, indexesAfter, demoTerminalLines } from "./snippets";
+
+Postgres has shipped a [`bloom` index](https://www.postgresql.org/docs/current/bloom.html) since 9.6. It can replace a stack of btrees with a single, much smaller index, and almost nobody uses it. This post is a short tour: what it is, when it wins, and a benchmark on a realistic cache table.
+
+## The problem it solves
+
+Plenty of tables get queried by many different filter combinations. A response cache is a clean example:
+
+```sql
+CREATE TABLE cache_entries (
+  id          BIGSERIAL PRIMARY KEY,
+  tenant_id   TEXT,
+  user_id     TEXT,
+  endpoint    TEXT,
+  locale      TEXT,
+  region      TEXT,
+  api_version INT,
+  payload     JSONB
+);
+```
+
+Different code paths look up entries differently:
+
+- `WHERE tenant_id = $1 AND endpoint = $2`
+- `WHERE user_id = $1 AND locale = $2`
+- `WHERE tenant_id = $1 AND region = $2 AND api_version = $3`
+
+The default move is one btree per column, plus a few composite indexes for hot paths. That works, but:
+
+- Six btrees on six columns add up. They take disk space and slow every write.
+- A new query that mixes columns differently might still miss the indexes you have.
+- You end up maintaining indexes for combinations you never knew the app would ask for.
+
+## What a bloom filter is
+
+Picture a tiny cache for usernames you've already seen. The naive version is a `Set<string>`: every username is stored in full, so a million users means a million strings in memory.
+
+A bloom filter is the cheap version of that set. Instead of storing usernames, it keeps a fixed-size array of bits, all starting at zero. To remember a name, hash it a few times, flip the bits at each hash position. To check whether a name was added, hash it again and look at the same positions. If any bit is 0, the name was never added. If all bits are 1, it was probably added.
+
+The demo below walks through the whole idea: adding two names, then three lookups that show the three possible outcomes (probably present, definitely absent, and the false positive that gives bloom filters their reputation).
+
+<BloomFilterDemo />
+
+You traded exactness for size. A few hundred KB of bits can stand in for millions of items. False positives are tolerable because they just trigger a recheck against the real data. False negatives never happen, because we never clear bits we set.
+
+That's the whole idea. Burton Bloom's [1970 paper](https://dl.acm.org/doi/10.1145/362686.362692) has the math.
+
+## How Postgres turns this into an index
+
+For each row, Postgres computes a small bloom signature over the indexed columns and stores it.
+
+When you run an equality query, Postgres hashes your filter values, scans the signatures for matches, and rechecks each candidate against the heap.
+
+The shape of the change is small: drop the stack of btrees, enable the `bloom` extension once, and create a single index that covers every column you might filter on.
+
+<AgentPrompt
+  prompt="replace the per-column btrees with one bloom index over the wide cache table"
+  language="sql"
+  fileName="migrations/001_indexes.sql"
+  before={indexesBefore}
+  after={indexesAfter}
+/>
+
+One index, and any subset of those six columns can use it for equality lookups. You don't have to anticipate every combination up front. False positives just mean a few extra heap fetches on the way to the right answer.
+
+The reads do not have to change. A `SELECT id FROM cache_entries WHERE tenant_id = $1 AND region = $2 AND api_version = $3` still works the same; the planner just uses the bloom index instead of one or two of the btrees.
+
+## Demo: cache lookups
+
+We'll seed a `cache_entries` table with 10,000 rows, run three realistic lookup queries, and compare:
+
+- **A.** Six btree indexes, one per column.
+- **B.** One bloom index covering all six columns.
+
+### Setup
+
+```bash
+bun init -y
+bun add pg create-db
+bun add -d @types/pg
+```
+
+The whole demo is a single `index.ts`. It provisions a temporary [Prisma Postgres](https://www.prisma.io/docs/postgres/introduction/npx-create-db) database via the programmatic [`create-db`](https://create-db.prisma.io/) API (no signup required), seeds the table, then builds each index strategy in turn and times the same three lookups against both.
+
+```ts
+// index.ts
+import { create, isDatabaseSuccess } from "create-db";
+import { Client } from "pg";
+
+const db = await create({ ttl: "1h" });
+if (!isDatabaseSuccess(db)) throw new Error(db.message);
+console.log(`claim URL: ${db.claimUrl}`);
+
+const client = new Client({ connectionString: db.connectionString! });
+await client.connect();
+
+await client.query(`CREATE EXTENSION IF NOT EXISTS bloom`);
+await client.query(`
+  DROP TABLE IF EXISTS cache_entries;
+  CREATE TABLE cache_entries (
+    id           BIGSERIAL PRIMARY KEY,
+    tenant_id    TEXT NOT NULL,
+    user_id      TEXT NOT NULL,
+    endpoint     TEXT NOT NULL,
+    locale       TEXT NOT NULL,
+    region       TEXT NOT NULL,
+    api_version  INT  NOT NULL,
+    payload      JSONB NOT NULL,
+    cached_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+`);
+
+// Insert 10,000 rows of mixed tenants, users, endpoints, locales,
+// regions and api versions. See the full file in the repo.
+
+const COLS = [
+  "tenant_id",
+  "user_id",
+  "endpoint",
+  "locale",
+  "region",
+  "api_version",
+];
+const sample = (await client.query(`SELECT * FROM cache_entries LIMIT 1`))
+  .rows[0];
+
+const lookups: [string, unknown[]][] = [
+  ["tenant_id = $1 AND endpoint = $2", [sample.tenant_id, sample.endpoint]],
+  ["user_id = $1 AND locale = $2", [sample.user_id, sample.locale]],
+  [
+    "tenant_id = $1 AND region = $2 AND api_version = $3",
+    [sample.tenant_id, sample.region, sample.api_version],
+  ],
+];
+
+async function totalIndexMB() {
+  const { rows } = await client.query(`
+    SELECT COALESCE(SUM(pg_relation_size(indexrelid)), 0)::bigint AS bytes
+    FROM pg_index
+    WHERE indrelid = 'cache_entries'::regclass
+      AND indexrelid <> 'cache_entries_pkey'::regclass
+  `);
+  return Number(rows[0].bytes) / 1024 / 1024;
+}
+
+async function runLookups() {
+  let ms = 0;
+  for (const [where, params] of lookups) {
+    const t = performance.now();
+    await client.query(`SELECT id FROM cache_entries WHERE ${where}`, params);
+    ms += performance.now() - t;
+  }
+  return ms;
+}
+```
+
+Wrap that with a small helper that drops every non-primary-key index, builds one strategy at a time, and prints the size and lookup time. The full version is in the repo as `index.ts`.
+
+### Run it
+
+<AgentPrompt
+  prompt="run the demo and time both index strategies on the same lookups"
+  terminalCommand="bun run index.ts"
+  terminalLines={demoTerminalLines}
+/>
+
+Same queries, same answers. One bloom index, roughly 2.5x smaller, supports any equality combination on the listed columns. Every write only updates one index instead of six.
+
+The bloom index is a touch slower per lookup because Postgres rechecks each candidate row against the heap. That's the price for the size and flexibility. For a cache table where any column might be a filter and disk is not free, it's a good trade.
+
+## When to use it
+
+Reach for a bloom index when:
+
+- A table has many columns that get filtered on equality.
+- Different code paths filter by different subsets of those columns.
+- Storage and write amplification from many btrees is becoming a problem.
+- A small recheck overhead on reads is acceptable.
+
+## When not to use it
+
+Skip the bloom index when:
+
+- You only ever filter on one or two known columns. A single btree is faster and cheaper.
+- You need range, prefix, sort or `LIKE` queries. Bloom is equality-only.
+- Your columns are highly selective and you want index-only scans. Btree wins there.
+- Your table is small enough that sequential scans are already fast.
+
+## Recap
+
+- Postgres ships a [`bloom` extension](https://www.postgresql.org/docs/current/bloom.html), [supported on Prisma Postgres](https://www.prisma.io/docs/postgres/database/postgres-extensions). It's been in core since 9.6.
+- One bloom index covers equality lookups on any subset of its columns.
+- It's much smaller than a stack of btrees and faster on writes.
+- The trade-off is recheck on read and no support for ranges or sorts.
+- It's a good fit for wide tables with many possible filter combinations: caches, lookup tables, audit logs, anything where you can't predict the query shape.
