@@ -85,13 +85,21 @@ export function getSeriesContext(page: BlogPage): SeriesContext | null {
 
   const explicitPrev = data.prev ? findBySlug(data.prev) : undefined;
   const explicitNext = data.next ? findBySlug(data.next) : undefined;
+  const explicitPrevInSeries =
+    explicitPrev && (explicitPrev.data as { series?: string }).series === key
+      ? explicitPrev
+      : undefined;
+  const explicitNextInSeries =
+    explicitNext && (explicitNext.data as { series?: string }).series === key
+      ? explicitNext
+      : undefined;
 
   const positionalPrev = currentIndex > 0 ? posts[currentIndex - 1] : undefined;
   const positionalNext =
     currentIndex >= 0 && currentIndex < posts.length - 1 ? posts[currentIndex + 1] : undefined;
 
-  const prevPage = explicitPrev ?? positionalPrev;
-  const nextPage = explicitNext ?? positionalNext;
+  const prevPage = explicitPrevInSeries ?? positionalPrev;
+  const nextPage = explicitNextInSeries ?? positionalNext;
 
   return {
     key,

@@ -107,10 +107,7 @@ export function FeaturedSeriesShelf({ series }: { series: SeriesShelfItem[] }) {
   const featured = series.filter((s) => s.featured);
   const nonFeatured = series.filter((s) => !s.featured);
 
-  const chips: SeriesShelfItem[] = [
-    ...featured,
-    ...nonFeatured.slice(0, Math.max(0, CHIP_LIMIT - featured.length)),
-  ];
+  const chips: SeriesShelfItem[] = [...featured, ...nonFeatured].slice(0, CHIP_LIMIT);
 
   const highlight = featured[0] ?? null;
 

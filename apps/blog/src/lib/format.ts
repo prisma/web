@@ -16,6 +16,6 @@ const TAG_ACRONYMS: Record<string, string> = {
 };
 
 export const formatTag = (tag: string) => {
-  if (tag in TAG_ACRONYMS) return TAG_ACRONYMS[tag];
+  if (Object.prototype.hasOwnProperty.call(TAG_ACRONYMS, tag)) return TAG_ACRONYMS[tag];
   return tag.replace(/-/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 };

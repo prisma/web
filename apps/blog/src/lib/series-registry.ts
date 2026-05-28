@@ -72,19 +72,23 @@ export type SeriesMetadata = {
   featured?: boolean;
 };
 
+function hasSeriesKey(key: string): key is SeriesKey {
+  return Object.prototype.hasOwnProperty.call(seriesRegistry, key);
+}
+
 /**
  * Resolves series metadata for a given key. Falls back to a synthetic entry
  * using the key as the title if it isn't in the registry, so missing keys
  * never break the page — they just look unstyled until added to the registry.
  */
 export function getSeriesMetadata(key: string): SeriesMetadata {
-  if (key in seriesRegistry) {
-    const entry = seriesRegistry[key as SeriesKey] as SeriesMetadata;
+  if (hasSeriesKey(key)) {
+    const entry = seriesRegistry[key] as SeriesMetadata;
     return entry;
   }
   return { title: key };
 }
 
 export function isKnownSeriesKey(key: string): key is SeriesKey {
-  return key in seriesRegistry;
+  return hasSeriesKey(key);
 }
