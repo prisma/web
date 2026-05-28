@@ -10,7 +10,7 @@ export type SeriesShelfItem = {
 };
 
 // Total chips shown in the home shelf (featured + popular non-featured).
-const CHIP_LIMIT = 3;
+const CHIP_LIMIT = 2;
 
 function SeriesCard({ item, variant }: { item: SeriesShelfItem; variant: "compact" | "full" }) {
   const featured = item.featured;
@@ -129,9 +129,9 @@ export function FeaturedSeriesShelf({ series }: { series: SeriesShelfItem[] }) {
         </ul>
         <Link
           href="/series"
-          className="ml-auto shrink-0 text-xs text-foreground-ppg hover:underline"
+          className="shrink-0 text-xs text-foreground-ppg hover:underline"
         >
-          View all →
+          View all series →
         </Link>
       </div>
       {highlight ? <FeaturedHighlight item={highlight} /> : null}
