@@ -39,10 +39,7 @@ function codeForStep(base: HighlightedCode, step: RunnerStep): HighlightedCode {
   }
   return {
     ...base,
-    annotations: [
-      ...base.annotations.filter((a) => a.name !== "mark"),
-      ...lineMarks,
-    ],
+    annotations: [...base.annotations.filter((a) => a.name !== "mark"), ...lineMarks],
   };
 }
 
@@ -81,14 +78,20 @@ export function BloomDemoRunnerClient({ baseCode, steps }: Props) {
   useEffect(() => {
     const codeEl = codeScrollRef.current;
     if (codeEl) {
-      const highlighted = codeEl.querySelector<HTMLElement>('[data-mark]');
+      const highlighted = codeEl.querySelector<HTMLElement>('[data-mark="active"]');
       if (highlighted) {
-        highlighted.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        const parent = codeEl;
+        const top = highlighted.offsetTop - parent.offsetTop;
+        parent.scrollTo({ top: Math.max(0, top - 20), behavior: "smooth" });
       }
     }
     const termEl = terminalRef.current;
     if (termEl) {
-      termEl.scrollTop = termEl.scrollHeight;
+      const active = termEl.querySelector<HTMLElement>('[data-step-state="active"]');
+      if (active) {
+        const top = active.offsetTop - termEl.offsetTop;
+        termEl.scrollTo({ top: Math.max(0, top - 20), behavior: "smooth" });
+      }
     }
   }, [stepIndex]);
 
@@ -97,9 +100,7 @@ export function BloomDemoRunnerClient({ baseCode, steps }: Props) {
     setStepIndex(((index % steps.length) + steps.length) % steps.length);
   }
 
-  const cumulativeOutput = steps
-    .slice(0, stepIndex + 1)
-    .flatMap((s, i) => s.output.map((line) => ({ line, stepIdx: i })));
+  const allOutput = steps.flatMap((s, i) => s.output.map((line) => ({ line, stepIdx: i })));
 
   return (
     <div ref={containerRef} className="runner not-prose">
@@ -112,8 +113,9 @@ export function BloomDemoRunnerClient({ baseCode, steps }: Props) {
           </span>
           index.ts
         </span>
-        <span className="runner-step-counter" aria-hidden="true">
+        <span className="runner-step-counter">
           Step {stepIndex + 1} of {steps.length}
+          <span className="runner-step-counter-label"> &middot; {step.title}</span>
         </span>
         <div className="runner-nav">
           <button
@@ -122,7 +124,7 @@ export function BloomDemoRunnerClient({ baseCode, steps }: Props) {
             onClick={() => goTo(stepIndex - 1)}
             aria-label="Previous step"
           >
-            <ChevronLeft size={14} />
+            <ChevronLeft size={16} />
           </button>
           <button
             type="button"
@@ -130,7 +132,7 @@ export function BloomDemoRunnerClient({ baseCode, steps }: Props) {
             onClick={() => setPlaying((p) => !p)}
             aria-label={playing ? "Pause demo" : "Play demo"}
           >
-            {playing ? <Pause size={14} /> : <Play size={14} />}
+            {playing ? <Pause size={16} /> : <Play size={16} />}
           </button>
           <button
             type="button"
@@ -138,7 +140,7 @@ export function BloomDemoRunnerClient({ baseCode, steps }: Props) {
             onClick={() => goTo(stepIndex + 1)}
             aria-label="Next step"
           >
-            <ChevronRight size={14} />
+            <ChevronRight size={16} />
           </button>
         </div>
       </div>
@@ -163,32 +165,28 @@ export function BloomDemoRunnerClient({ baseCode, steps }: Props) {
       <div className="runner-caption">{step.caption}</div>
 
       <div className="runner-body">
-        <div className="runner-code" ref={codeScrollRef}>
-          <Pre code={code} handlers={handlers} />
-        </div>
-        <div className="runner-terminal">
-          <div className="runner-terminal-header">
-            <span className="runner-terminal-dots" aria-hidden="true">
-              <span />
-              <span />
-              <span />
-            </span>
-            <span className="runner-terminal-title">bun run index.ts</span>
+        <div className="runner-pane runner-pane-code">
+          <div className="runner-pane-label">index.ts</div>
+          <div className="runner-code" ref={codeScrollRef}>
+            <Pre code={code} handlers={handlers} />
           </div>
+        </div>
+        <div className="runner-pane runner-pane-terminal">
+          <div className="runner-pane-label runner-pane-label-terminal">terminal output</div>
           <div className="runner-terminal-body" ref={terminalRef}>
-            {cumulativeOutput.length === 0 ? (
-              <span className="runner-terminal-placeholder">Waiting...</span>
-            ) : (
-              cumulativeOutput.map((entry, i) => (
-                <div
-                  key={i}
-                  className="runner-terminal-line"
-                  data-step-active={entry.stepIdx === stepIndex ? "true" : undefined}
-                >
-                  {entry.line || " "}
+            {allOutput.map((entry, i) => {
+              const state =
+                entry.stepIdx === stepIndex
+                  ? "active"
+                  : entry.stepIdx < stepIndex
+                    ? "past"
+                    : "future";
+              return (
+                <div key={i} className="runner-terminal-line" data-step-state={state}>
+                  {entry.line || " "}
                 </div>
-              ))
-            )}
+              );
+            })}
           </div>
         </div>
       </div>
