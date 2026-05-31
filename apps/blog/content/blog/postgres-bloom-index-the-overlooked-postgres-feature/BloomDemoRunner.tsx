@@ -30,7 +30,7 @@ for (let start = 0; start < N; start += BATCH) {
 }
 await client.query(\`ANALYZE cache_entries\`);
 
-// A. Six btree indexes (one per column)
+// A. Six B-tree indexes (one per column)
 for (const c of COLS) {
   await client.query(\`CREATE INDEX btree_\${c} ON cache_entries (\${c})\`);
 }
@@ -77,13 +77,13 @@ const STEPS: RunnerStep[] = [
     output: ["Seeding 10,000 rows...", "   seeded in 1.2s"],
   },
   {
-    title: "A: Six btree indexes",
+    title: "A: Six B-tree indexes",
     caption:
-      "One btree per filterable column. Measure the total index size and the time for three lookups.",
+      "One B-tree per filterable column. Measure the total index size and the time for three lookups.",
     lines: { from: 30, to: 35 },
     output: [
       "",
-      "A. Six btree indexes (one per column)...",
+      "A. Six B-tree indexes (one per column)...",
       "   index size: 0.5 MB",
       "   3 lookups:  306.5 ms",
     ],
@@ -91,7 +91,7 @@ const STEPS: RunnerStep[] = [
   {
     title: "B: One bloom index",
     caption:
-      "Drop the btrees and create a single bloom index spanning all six columns. Same three lookups.",
+      "Drop the B-trees and create a single bloom index spanning all six columns. Same three lookups.",
     lines: { from: 37, to: 43 },
     output: [
       "",
