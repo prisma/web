@@ -1,0 +1,227 @@
+---
+title: "Prisma Next Early Access: Write Your Contract, Prompt Your Agent, Ship Your App"
+slug: "prisma-next-early-access-write-your-contract-prompt-your-agent-ship-your-app"
+date: "2026-05-22"
+authors:
+  - "Ankur Datta"
+  - "Will Madden"
+metaTitle: "Prisma Next Early Access: Write Your Contract, Prompt Your Agent, Ship Your App"
+metaDescription: "Prisma Next is open for Early Access. Define your data layer as a contract and the framework handles migrations, type-safe queries, and continuous upgrades, safe to delegate to your agent."
+heroImagePath: "/prisma-next-early-access-write-your-contract-prompt-your-agent-ship-your-app/imgs/meta.png"
+heroImageAlt: "Prisma Next Early Access"
+metaImagePath: "/prisma-next-early-access-write-your-contract-prompt-your-agent-ship-your-app/imgs/meta.png"
+tags:
+  - "orm"
+  - "announcement"
+  - "ai"
+series: prisma-next
+seriesIndex: 8
+---
+
+import {
+  contractBeforeAuthor,
+  contractAfterAuthor,
+  queryBefore,
+  queryAfter,
+  contractBeforePublished,
+  contractAfterPublished,
+  migrationTerminalLines,
+  upgradeTerminalLines,
+} from "./snippets";
+
+**Prisma Next gives you superpowers and makes it safe to delegate them to your agent, leaving you to focus on what matters: your app.** Define your data layer as a contract and the framework handles everything else for you: migrating your DB, type-checking your queries, and meaningful errors when something goes wrong.
+
+Agents are here to stay. They don't replace you, they multiply your capabilities. From your first touch to your first paying user, Prisma Next's _agent DX_ keeps your agent in the loop and on track. Instant onboarding, guardrails, verifiable type-checked work, and continuous upgrades.
+
+Today, **Prisma Next is open for Early Access for Postgres and [MongoDB](https://www.prisma.io/blog/mongodb-without-compromise).**
+
+## One-line setup and onboarding without any learning curve
+
+If you've ever picked up a new framework, you know how long it takes to climb a steep learning curve. You read the docs, build a toy project and make mistakes the docs warned you about. It takes weeks to absorb the framework's idioms until you're confident enough to actually build.
+
+One command scaffolds a new project with Prisma Next, including a family of skills which make your agent an instant expert.
+
+```bash
+npm create prisma@next
+```
+
+The learning curve disappears and you can start working on something meaningful straight away. Like sitting beside someone who knows their stuff, learn the framework by watching your agent execute your instructions. When you have a question, ask your agent. It knows the answer.
+
+## Write your contract, we handle the rest
+
+If you've used Prisma before you'll recognize this:
+
+```prisma
+// contract.prisma
+model Book {
+  id       String   @id @default(uuid())
+  title    String
+  author   String
+  addedAt  DateTime @default(now())
+}
+```
+
+This is the contract between your application and your database. The models are what your application depends on, and your database promises to store them in the shapes described in the contract.
+
+It's easy to read, easy to update, and it's the single source of truth for everything in Prisma Next. Queries are type-checked against it, autocomplete reads from it, and when you change it, Prisma Next plans the migrations to match, so your database continues to satisfy the contract.
+
+That leaves you and your agent free to focus on your application.
+
+## Build fast with type-safe queries and tight feedback loops
+
+When you're building, you know what you want, you try something, see if it works, and repeat. How fast you iterate determines how fast you ship.
+
+Your agent runs the same loop, only its feedback comes from the contract, the type checker, structured errors, and the query builder.
+
+Considering the book table in the contract above, you can ask the agent for a feature _"add an author table with a name and bio, and link authors to books"_ and it updates the contract:
+
+<AgentPrompt
+  prompt="add an author table with a name and bio, and link authors to books"
+  language="prisma"
+  fileName="contract.prisma"
+  skill="prisma-next-contract"
+  before={contractBeforeAuthor}
+  after={contractAfterAuthor}
+/>
+
+Then, when you ask the agent to write a query, it iterates inside its own tool calls until the query type-checks, or until it resolves any errors. Here's what that looks like in practice:
+
+<AgentPrompt
+  prompt="query all the books from the last week and also include the author"
+  language="typescript"
+  fileName="src/queries.ts"
+  skill="prisma-next-queries"
+  before={queryBefore}
+  after={queryAfter}
+/>
+
+You can be confident that if the agent's query typechecks, it matches the contract and the database will support it.
+
+## Never write a migration again
+
+If you've ever deployed an app, you've worked with migrations. Migrations are _one of the most painful parts_ of working with a database.
+
+You spend time getting the syntax right. Then you spend more time debugging when things go sideways. And _when_ - not if - a migration breaks during deployment, you spend even more time fixing it while your production app is down.
+
+In Prisma Next, instead of asking your agent to write a SQL migration (where it has all the power and a language that lends itself to simple, catastrophic mistakes) you ask it for a feature: _"Add a `published_at` field to the Book model so I can sort by when each book was published."_
+
+<AgentPrompt
+  prompt="Add a published_at field to the Book model so I can sort by when each book was published."
+  language="prisma"
+  fileName="contract.prisma"
+  skill="prisma-next-migrations"
+  before={contractBeforePublished}
+  after={contractAfterPublished}
+  terminalCommand="prisma-next migration plan"
+  terminalLines={migrationTerminalLines}
+/>
+
+The agent edits the contract to add one field. Then it asks the framework to plan the migration using:
+
+```bash
+prisma-next migration plan
+```
+
+The framework produces a real, reviewable [TypeScript migration file](https://www.prisma.io/blog/typescript-migrations-in-prisma-next) alongside an authoritative `ops.json`. The `migration.ts` is reviewable authoring sugar; the framework applies the operations from the JSON.
+
+```typescript
+// migrations/app/20260515T0900_add_book_published_at/migration.ts
+export default class M extends Migration {
+  override describe() {
+    return { from: "sha256:…prev", to: "sha256:…next" };
+  }
+
+  override get operations() {
+    return [
+      addColumn("public", "book", {
+        name: "publishedAt",
+        typeSql: "timestamptz",
+        defaultSql: "",
+        nullable: true,
+      }),
+    ];
+  }
+}
+```
+
+Your agent didn't write this; the framework did. You know you can trust it because it's deterministically generated, not a creative application of SQL by your agent. Then you apply it to the database:
+
+```bash
+prisma-next migrate --db "$DATABASE_URL"
+```
+
+Each operation is verified before and after it executes. On Postgres, the whole migration runs in a single transaction so that if any step fails, it rolls back and the database stays exactly as it was. (MongoDB doesn't offer the same all-or-nothing DDL guarantee, so Prisma Next plans MongoDB migrations conservatively in steps that are individually safe to re-run.) Those guardrails make migrations safe for you, and that's what makes them safe to delegate to your agent.
+
+When you need to transform data as well as change your schema, write a [data migration](https://www.prisma.io/blog/data-migrations-in-prisma-next) using the same type-safe SQL query builder available in your application, with the same type-checking and safeguards.
+
+The agent's job is to translate your intent into a contract edit. Everything else is the framework's job. **You never write a migration and neither does your agent.**
+
+## No more migration conflicts on parallel branches
+
+Have you ever written a migration on one branch only to have someone else's migration merge to `main` while you're still working?
+
+Now the migrations are out of order, your migration can't be applied, and you have to redo it before you can merge. Or disable safety checks and hope.
+
+[Prisma Next rethinks migration history](https://blog.prisma.io/blog/rethinking-database-migrations), the same way git treats code history: each migration moves your contract from one state to the next, just like each commit moves your code from one state to the next.
+
+When two branches add migrations from the same starting point, you get the same diamond shape git shows you in `git log --graph`. The CLI can render that graph for you, and the framework knows how to walk it.
+
+Whenever you work with people on multiple branches, this is bound to happen. When you have multiple agents working in multiple worktrees or branches, it happens even more often.
+
+![prisma-next migration graph rendering a diamond migration graph](/prisma-next-early-access-write-your-contract-prompt-your-agent-ship-your-app/imgs/migration-graph.png)
+
+> `prisma-next migration graph` rendering a diamond. Two branches each added a migration from the same starting point; both got merged back into `main`; the framework knows what order they need to apply in.
+
+The `prisma-next-migration-review` skill teaches your agents to understand this graph. When a new migration reaches `main` while your agent's mid-feature, the agent reads the graph, rebases its branch, and re-runs `migration plan`. The framework re-plans the migration against the new `main`.
+
+That's the same flow the agent ran the first time, just against the updated `main`. The migration that comes out fits on top cleanly. No special procedure to learn, no human in the middle, no `--force` with fingers crossed. Run as many features in parallel as you have agents for them.
+
+## We're shipping every day so we made upgrades easy
+
+When a new version lands, simply tell your agent to _"upgrade prisma next"_.
+
+<AgentPrompt
+  prompt="upgrade prisma next"
+  skill="prisma-next-upgrade"
+  terminalLines={upgradeTerminalLines}
+/>
+
+And **we want your feedback, and your agent knows how to get it to us**.
+
+If you find a bug, or something you feel is missing, ask your agent to tell us about it: _"this is a bug"_ or _"this should be a feature"_ or _"how should I do X?"_. It will pick the right channel, draft a structured, public-safe report, and file it on your behalf with your confirmation.
+
+## Try it out
+
+Prisma Next brings **Prisma's world-class DX to your agent**, so you can focus on building your app. Stay hands-on, let your agent take over, or switch mid-flow. With Prisma Next, you can delegate with confidence.
+
+To try it today in a fresh project, run:
+
+```bash
+npm create prisma@next
+```
+
+To add Prisma Next to an existing project, run:
+
+```bash
+npx prisma-next@latest init
+```
+
+From there, just ask your agent to build something:
+
+> _"Build me a small app that tracks the books I'm reading. Add a few records, and show me the list."_
+
+Or ask your agent _anything_ about Prisma Next:
+
+> _"How do I add a new field to my model?"_
+> _"What happens if a migration fails during deployment?"_
+> _"How do I handle breaking changes in my code?"_
+
+Once you've got something running, tag [us on X](https://pris.ly/x) and tell us what you built. The best community builds get a shout-out from the Prisma account and a link in the [Prisma Next README](https://github.com/prisma/prisma-next).
+
+And when you're ready to ship it, our hosted database [Prisma Postgres](https://www.prisma.io/postgres) comes with a generous free tier.
+
+Star and watch [prisma/prisma-next](https://github.com/prisma/prisma-next) on GitHub to follow what ships next. And if you hit a snag, start a thread in [#prisma-next](https://pris.ly/discord) on [our Discord](https://pris.ly/discord).
+
+We can't wait to see what you build.
+
+> _Note that Prisma Next is not production-ready yet. Prisma 7 is still the right choice for production applications today. When Prisma Next is ready for general use, it will become Prisma 8._

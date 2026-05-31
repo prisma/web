@@ -1,5 +1,7 @@
 import { blog, getPageImage } from "@/lib/source";
+import { getSeriesMetadata, seriesRegistry } from "@/lib/series-registry";
 import { type BlogCardItem } from "@/components/BlogGrid";
+import { FeaturedSeriesShelf, type SeriesShelfItem } from "@/components/SeriesShelf";
 import { BLOG_HOME_DESCRIPTION, BLOG_HOME_TITLE } from "@/lib/blog-metadata";
 import type { Metadata } from "next";
 import { withBlogBasePath, withBlogBasePathForImageSrc } from "@/lib/url";
@@ -59,10 +61,10 @@ export default async function BlogHome() {
     return bTime - aTime;
   });
 
-  const getPrimaryAuthor = (post: (typeof posts)[number]) => {
+  const getAllAuthors = (post: (typeof posts)[number]): string[] => {
     const data = post.data as any;
-    const authors = Array.isArray(data?.authors) ? data?.authors : [];
-    return authors.length > 0 ? authors[0] : null;
+    const authors = Array.isArray(data?.authors) ? data.authors : [];
+    return authors.filter((name: unknown): name is string => typeof name === "string");
   };
 
   const items: BlogCardItem[] = posts.map((post) => {
@@ -80,26 +82,52 @@ export default async function BlogHome() {
       }
     }
 
+    const authors = getAllAuthors(post);
+
     return {
       url: withBlogBasePath(post.url),
       title: data.title as string,
       date: dateISO,
       excerpt: data.metaDescription as string,
-      author: getPrimaryAuthor(post),
+      author: authors[0] ?? null,
+      authors,
       imageSrc: withBlogBasePathForImageSrc(post.data.heroImagePath ?? ""),
       imageAlt: (data.heroImageAlt as string) ?? (data.title as string),
-      seriesTitle: data.series?.title ?? null,
+      seriesTitle: typeof data.series === "string" ? getSeriesMetadata(data.series).title : null,
       tags: data.tags,
     };
   });
 
   const uniqueTags = [
     ...new Set(
-      items
-        .flatMap((item) => item.tags ?? [])
-        .filter((tag): tag is string => Boolean(tag)),
+      items.flatMap((item) => item.tags ?? []).filter((tag): tag is string => Boolean(tag)),
     ),
   ];
+
+  const seriesCounts = new Map<string, number>();
+  for (const post of posts) {
+    const seriesKey = (post.data as { series?: string }).series;
+    if (typeof seriesKey === "string") {
+      seriesCounts.set(seriesKey, (seriesCounts.get(seriesKey) ?? 0) + 1);
+    }
+  }
+
+  const seriesItems: SeriesShelfItem[] = Object.keys(seriesRegistry)
+    .map((key) => {
+      const meta = getSeriesMetadata(key);
+      return {
+        key,
+        title: meta.title,
+        description: meta.description,
+        featured: meta.featured ?? false,
+        count: seriesCounts.get(key) ?? 0,
+      };
+    })
+    .filter((item) => item.count > 0)
+    .sort((a, b) => {
+      if (a.featured !== b.featured) return a.featured ? -1 : 1;
+      return b.count - a.count;
+    });
 
   return (
     <main className="flex-1 w-full max-w-249 mx-auto px-4 py-8 z-1">
@@ -113,7 +141,11 @@ export default async function BlogHome() {
        * since all post data is already present in the RSC payload.
        */}
       <Suspense fallback={<div className="pt-6 pb-12 mt-10 min-h-96" />}>
-        <BlogHomeClient items={items} uniqueTags={uniqueTags} />
+        <BlogHomeClient
+          items={items}
+          uniqueTags={uniqueTags}
+          seriesShelf={<FeaturedSeriesShelf series={seriesItems} />}
+        />
       </Suspense>
     </main>
   );
