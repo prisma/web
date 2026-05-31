@@ -14,6 +14,7 @@ import {
 } from "@prisma/eclipse";
 import { LargeSearchToggle } from "@/components/search-toggle";
 import { withBlogBasePath } from "@/lib/url";
+import type { ReactNode } from "react";
 
 const SHOW_ALL = "show-all";
 const PAGE_SIZE = 12;
@@ -67,15 +68,15 @@ function getPaginationSequence(totalPages: number, currentPage: number) {
 interface BlogHomeClientProps {
   items: BlogCardItem[];
   uniqueTags: string[];
+  seriesShelf?: ReactNode;
 }
 
-export function BlogHomeClient({ items, uniqueTags }: BlogHomeClientProps) {
+export function BlogHomeClient({ items, uniqueTags, seriesShelf }: BlogHomeClientProps) {
   const searchParams = useSearchParams();
 
   const tagFromQuery = searchParams.get("tag") ?? undefined;
   const validTags = new Set(uniqueTags);
-  const currentCategory =
-    tagFromQuery && validTags.has(tagFromQuery) ? tagFromQuery : SHOW_ALL;
+  const currentCategory = tagFromQuery && validTags.has(tagFromQuery) ? tagFromQuery : SHOW_ALL;
 
   const filteredItems =
     currentCategory === SHOW_ALL
@@ -83,25 +84,19 @@ export function BlogHomeClient({ items, uniqueTags }: BlogHomeClientProps) {
       : items.filter((item) => item.tags?.includes(currentCategory));
 
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / PAGE_SIZE));
-  const currentPage = Math.max(
-    1,
-    Math.min(parsePage(searchParams.get("page")), totalPages),
-  );
+  const currentPage = Math.max(1, Math.min(parsePage(searchParams.get("page")), totalPages));
 
   const shouldShowFeatured = currentCategory === SHOW_ALL && currentPage === 1;
   const featuredPost = shouldShowFeatured ? filteredItems[0] : undefined;
   const postsToRender = shouldShowFeatured
     ? filteredItems.slice(1, PAGE_SIZE)
-    : filteredItems.slice(
-        (currentPage - 1) * PAGE_SIZE,
-        currentPage * PAGE_SIZE,
-      );
+    : filteredItems.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const paginationSequence = getPaginationSequence(totalPages, currentPage);
 
   return (
     <div className="pt-6 pb-12 mt-10">
-      <div className="flex justify-between items-center gap-4 mb-8">
+      <div className="flex justify-between items-center gap-4 mb-4">
         <CategoryTagFilter
           uniqueTags={uniqueTags}
           currentCategory={currentCategory}
@@ -109,6 +104,8 @@ export function BlogHomeClient({ items, uniqueTags }: BlogHomeClientProps) {
         />
         <LargeSearchToggle className="w-20 h-full md:w-52" />
       </div>
+
+      {seriesShelf}
 
       <BlogGrid
         items={postsToRender}
@@ -122,10 +119,7 @@ export function BlogHomeClient({ items, uniqueTags }: BlogHomeClientProps) {
             <PaginationContent>
               <PaginationItem>
                 <PaginationPrevious
-                  href={buildBlogHref(
-                    currentCategory,
-                    Math.max(1, currentPage - 1),
-                  )}
+                  href={buildBlogHref(currentCategory, Math.max(1, currentPage - 1))}
                   aria-disabled={currentPage === 1}
                 />
               </PaginationItem>
@@ -150,10 +144,7 @@ export function BlogHomeClient({ items, uniqueTags }: BlogHomeClientProps) {
               ))}
               <PaginationItem>
                 <PaginationNext
-                  href={buildBlogHref(
-                    currentCategory,
-                    Math.min(totalPages, currentPage + 1),
-                  )}
+                  href={buildBlogHref(currentCategory, Math.min(totalPages, currentPage + 1))}
                   aria-disabled={currentPage === totalPages}
                 />
               </PaginationItem>
