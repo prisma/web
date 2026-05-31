@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { InnerLine, Pre, type AnnotationHandler, type HighlightedCode } from "codehike/code";
-import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Copy, Pause, Play } from "lucide-react";
 
 export type RunnerStep = {
   title: string;
@@ -47,9 +47,11 @@ export function BloomDemoRunnerClient({ baseCode, steps }: Props) {
   const [stepIndex, setStepIndex] = useState(0);
   const [playing, setPlaying] = useState(true);
   const [inView, setInView] = useState(false);
+  const [copied, setCopied] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const codeScrollRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<HTMLDivElement>(null);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -101,6 +103,22 @@ export function BloomDemoRunnerClient({ baseCode, steps }: Props) {
   }
 
   const allOutput = steps.flatMap((s, i) => s.output.map((line) => ({ line, stepIdx: i })));
+
+  function copyOutput() {
+    const text = allOutput.map((e) => e.line).join("\n");
+    if (!navigator.clipboard) return;
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+      copyTimeoutRef.current = setTimeout(() => setCopied(false), 1600);
+    });
+  }
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    };
+  }, []);
 
   return (
     <div ref={containerRef} className="runner not-prose">
@@ -166,13 +184,26 @@ export function BloomDemoRunnerClient({ baseCode, steps }: Props) {
 
       <div className="runner-body">
         <div className="runner-pane runner-pane-code">
-          <div className="runner-pane-label">index.ts</div>
+          <div className="runner-pane-label">
+            <span>index.ts</span>
+          </div>
           <div className="runner-code" ref={codeScrollRef}>
             <Pre code={code} handlers={handlers} />
           </div>
         </div>
         <div className="runner-pane runner-pane-terminal">
-          <div className="runner-pane-label runner-pane-label-terminal">terminal output</div>
+          <div className="runner-pane-label runner-pane-label-terminal">
+            <span>terminal output</span>
+            <button
+              type="button"
+              className="runner-copy"
+              onClick={copyOutput}
+              aria-label={copied ? "Copied terminal output" : "Copy terminal output"}
+            >
+              {copied ? <Check size={12} /> : <Copy size={12} />}
+              <span>{copied ? "Copied" : "Copy"}</span>
+            </button>
+          </div>
           <div className="runner-terminal-body" ref={terminalRef}>
             {allOutput.map((entry, i) => {
               const state =
