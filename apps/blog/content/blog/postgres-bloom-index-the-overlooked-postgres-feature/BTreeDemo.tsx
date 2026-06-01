@@ -26,7 +26,7 @@ const PHASES: BTreePhase[] = [
   {
     label: 'lookup("t42")',
     caption: "We want to find the row for tenant t42. Compare against the root keys.",
-    lines: { from: 11, to: 11 },
+    lines: { from: 10, to: 10 },
     activeRoot: true,
     activeLeaf: null,
     matchedKey: null,
@@ -45,7 +45,7 @@ const PHASES: BTreePhase[] = [
   {
     label: "Search the leaf",
     caption: "The middle leaf is sorted. Scan it for the exact key.",
-    lines: { from: 6, to: 6 },
+    lines: { from: 7, to: 7 },
     activeRoot: false,
     activeLeaf: 1,
     matchedKey: "t42",
@@ -54,7 +54,7 @@ const PHASES: BTreePhase[] = [
   {
     label: "Return the row pointer",
     caption: "The leaf entry holds a pointer to row 142 on disk. Follow it to read the row.",
-    lines: { from: 6, to: 6 },
+    lines: { from: 7, to: 7 },
     activeRoot: false,
     activeLeaf: 1,
     matchedKey: "t42",

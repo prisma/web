@@ -28,8 +28,11 @@ const markHandler: AnnotationHandler = {
 const handlers = [markHandler];
 
 function codeForStep(base: HighlightedCode, step: RunnerStep): HighlightedCode {
+  const totalLines = (base.code ?? "").split("\n").length;
+  const from = Math.max(1, Math.min(step.lines.from, totalLines));
+  const to = Math.max(from, Math.min(step.lines.to, totalLines));
   const lineMarks = [];
-  for (let n = step.lines.from; n <= step.lines.to; n += 1) {
+  for (let n = from; n <= to; n += 1) {
     lineMarks.push({
       name: "mark",
       query: "active",

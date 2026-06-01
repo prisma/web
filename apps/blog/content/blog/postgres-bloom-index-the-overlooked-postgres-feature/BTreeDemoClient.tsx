@@ -39,8 +39,11 @@ const markHandler: AnnotationHandler = {
 const handlers = [markHandler];
 
 function codeForPhase(base: HighlightedCode, phase: BTreePhase): HighlightedCode {
+  const totalLines = (base.code ?? "").split("\n").length;
+  const from = Math.max(1, Math.min(phase.lines.from, totalLines));
+  const to = Math.max(from, Math.min(phase.lines.to, totalLines));
   const lineMarks = [];
-  for (let n = phase.lines.from; n <= phase.lines.to; n += 1) {
+  for (let n = from; n <= to; n += 1) {
     lineMarks.push({ name: "mark", query: "active", fromLineNumber: n, toLineNumber: n });
   }
   return {
