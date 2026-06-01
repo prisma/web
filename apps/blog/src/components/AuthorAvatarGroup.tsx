@@ -1,12 +1,18 @@
+import Link from "next/link";
 import { Avatar } from "@prisma/eclipse";
-import { getAuthorProfiles } from "@/lib/authors";
+import { getAuthorProfiles, toAuthorSlug } from "@/lib/authors";
 import { withBlogBasePathForImageSrc } from "@/lib/url";
 
 type AuthorAvatarGroupProps = {
   authors?: string[];
   className?: string;
+  linkAuthors?: boolean;
 };
-export function AuthorAvatarGroup({ authors = [], className }: AuthorAvatarGroupProps) {
+export function AuthorAvatarGroup({
+  authors = [],
+  className,
+  linkAuthors = true,
+}: AuthorAvatarGroupProps) {
   const profiles = getAuthorProfiles(authors);
 
   if (profiles.length === 0) {
@@ -29,7 +35,31 @@ export function AuthorAvatarGroup({ authors = [], className }: AuthorAvatarGroup
           ) : null,
         )}
       </span>
-      <span>{profiles.map((profile) => profile.name).join(", ")}</span>
+      <span>
+        {profiles.map((profile, i) => {
+          const slug = toAuthorSlug(profile.name);
+          const sep = i < profiles.length - 1 ? ", " : "";
+          if (linkAuthors && slug) {
+            return (
+              <span key={profile.name}>
+                <Link
+                  href={`/author/${slug}`}
+                  className="hover:text-fd-primary hover:underline"
+                >
+                  {profile.name}
+                </Link>
+                {sep}
+              </span>
+            );
+          }
+          return (
+            <span key={profile.name}>
+              {profile.name}
+              {sep}
+            </span>
+          );
+        })}
+      </span>
     </span>
   );
 }

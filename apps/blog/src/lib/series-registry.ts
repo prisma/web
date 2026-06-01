@@ -62,6 +62,12 @@ export const seriesRegistry = {
     description:
       "Build code-first GraphQL servers with Nexus, from the problems of schema-first to using Nexus with a database.",
   },
+  "postgres-features": {
+    title: "Postgres features you can reach for instead of more infrastructure",
+    description:
+      "A short series on Postgres features that quietly replace pieces of your stack. Pub/Sub via LISTEN and NOTIFY, the bloom index for wide tables, and more.",
+    featured: true,
+  },
 } as const satisfies Record<string, { title: string; description?: string; featured?: boolean }>;
 
 export type SeriesKey = keyof typeof seriesRegistry;
