@@ -14,52 +14,7 @@ tags:
 import { BloomFilterDemo } from "./BloomFilterDemo";
 import { BloomDemoRunner } from "./BloomDemoRunner";
 
-Postgres has shipped a [`bloom` index](https://www.postgresql.org/docs/current/bloom.html) since 9.6. It can replace a stack of B-trees with a single, much smaller index, and almost nobody uses it. This post is a short tour: what it is, when it wins, and a benchmark on a realistic cache table.
-
-## A quick refresher on B-trees
-
-When you write `CREATE INDEX … ON cache_entries (tenant_id)` without specifying a type, Postgres builds a B-tree. A B-tree is a sorted tree of `(column_value, row_pointer)` entries. To answer `WHERE tenant_id = 't42'`, Postgres descends the tree from the root, finds the leaf page that holds `'t42'`, and follows the pointers to the matching rows.
-
-That shape is why B-trees do so much:
-
-- Exact lookups are O(log n).
-- Range and prefix queries (`<`, `BETWEEN`, `LIKE 'foo%'`) work because entries are kept sorted.
-- The result can flow straight into `ORDER BY` without an extra sort.
-
-But the cost grows with the number of indexes:
-
-- Each B-tree stores its own copy of the column value plus a row pointer, so disk usage scales with rows × indexes.
-- Every `INSERT` and `UPDATE` has to update every relevant B-tree.
-- A single B-tree only helps if your `WHERE` clause hits its leading columns, so wide tables end up with many B-trees to cover many query shapes.
-
-## The problem it solves
-
-Plenty of tables get queried by many different filter combinations. A response cache is a clean example:
-
-```sql
-CREATE TABLE cache_entries (
-  id          BIGSERIAL PRIMARY KEY,
-  tenant_id   TEXT,
-  user_id     TEXT,
-  endpoint    TEXT,
-  locale      TEXT,
-  region      TEXT,
-  api_version INT,
-  payload     JSONB
-);
-```
-
-Different code paths look up entries differently:
-
-- `WHERE tenant_id = $1 AND endpoint = $2`
-- `WHERE user_id = $1 AND locale = $2`
-- `WHERE tenant_id = $1 AND region = $2 AND api_version = $3`
-
-The default move is one B-tree per column, plus a few composite indexes for hot paths. That works, but:
-
-- Six B-trees on six columns add up in disk usage and write amplification.
-- A new query that mixes columns differently might still miss the indexes you have.
-- You end up maintaining indexes for combinations you never knew the app would ask for.
+Postgres has shipped a [`bloom` index](https://www.postgresql.org/docs/current/bloom.html) since 9.6. It can replace a stack of B-trees with a single, much smaller index, and almost nobody uses it. This post is a short tour: what a bloom filter is, how Postgres turns it into an index, when that index wins, and a benchmark on a realistic cache table.
 
 ## What a bloom filter is
 
@@ -92,6 +47,53 @@ CREATE INDEX cache_bloom_idx ON cache_entries
 ```
 
 Any subset of those six columns can use the index for equality lookups. You don't have to anticipate every combination up front, and your `SELECT` statements stay exactly the same. The planner just reaches for the bloom index instead of one or two of the B-trees.
+
+## The wide-table problem
+
+The shape of table where a bloom index pays off is the wide one: many columns, queried by many different filter combinations. A response cache is a clean example:
+
+```sql
+CREATE TABLE cache_entries (
+  id          BIGSERIAL PRIMARY KEY,
+  tenant_id   TEXT,
+  user_id     TEXT,
+  endpoint    TEXT,
+  locale      TEXT,
+  region      TEXT,
+  api_version INT,
+  payload     JSONB
+);
+```
+
+Different code paths look up entries differently:
+
+- `WHERE tenant_id = $1 AND endpoint = $2`
+- `WHERE user_id = $1 AND locale = $2`
+- `WHERE tenant_id = $1 AND region = $2 AND api_version = $3`
+
+The default move is one B-tree per column, plus a few composite indexes for hot paths. That works, but:
+
+- Six B-trees on six columns add up in disk usage and write amplification.
+- A new query that mixes columns differently might still miss the indexes you have.
+- You end up maintaining indexes for combinations you never knew the app would ask for.
+
+## A quick refresher on B-trees
+
+The demo in the next section compares one bloom index against six B-trees on the same table, so it helps to know what the baseline is doing.
+
+When you write `CREATE INDEX … ON cache_entries (tenant_id)` without specifying a type, Postgres builds a B-tree. A B-tree is a sorted tree of `(column_value, row_pointer)` entries. To answer `WHERE tenant_id = 't42'`, Postgres descends the tree from the root, finds the leaf page that holds `'t42'`, and follows the pointers to the matching rows.
+
+That shape is why B-trees do so much:
+
+- Exact lookups are O(log n).
+- Range and prefix queries (`<`, `BETWEEN`, `LIKE 'foo%'`) work because entries are kept sorted.
+- The result can flow straight into `ORDER BY` without an extra sort.
+
+But the cost grows with the number of indexes:
+
+- Each B-tree stores its own copy of the column value plus a row pointer, so disk usage scales with rows × indexes.
+- Every `INSERT` and `UPDATE` has to update every relevant B-tree.
+- A single B-tree only helps if your `WHERE` clause hits its leading columns, so wide tables end up with many B-trees to cover many query shapes.
 
 ## Demo: cache lookups
 
