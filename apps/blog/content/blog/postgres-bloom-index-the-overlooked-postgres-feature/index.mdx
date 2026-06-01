@@ -6,15 +6,27 @@ authors:
   - "Ankur Datta"
 metaTitle: "Bloom Filters in Postgres: The Index Type Most Developers Overlook"
 metaDescription: "One bloom index can replace a stack of B-trees on wide tables with many filter combinations. A tour of the concept, the Postgres extension, and a benchmark you can run yourself."
+heroImagePath: "/postgres-bloom-index-the-overlooked-postgres-feature/imgs/bloom-filters-in-postgres.png"
+metaImagePath: "/postgres-bloom-index-the-overlooked-postgres-feature/imgs/bloom-filters-in-postgres.png"
+heroImageAlt: "Bloom Filters in Postgres"
 tags:
   - "prisma-postgres"
   - "education"
+series: postgres-features
+seriesIndex: 2
+prev: you-dont-need-redis-postgres-already-has-pub-sub
 ---
 
 import { BloomFilterDemo } from "./BloomFilterDemo";
 import { BloomDemoRunner } from "./BloomDemoRunner";
+import { BTreeDemo } from "./BTreeDemo";
+import { HashDemo } from "./HashDemo";
+
+This is the second post in a short series on Postgres features you can reach for instead of bolting on another piece of infrastructure. The first one, [You Don't Need Redis, Postgres Already Has Pub/Sub](/you-dont-need-redis-postgres-already-has-pub-sub), built a real-time app on `LISTEN` and `NOTIFY`. This one is about the `bloom` index.
 
 Postgres has shipped a [`bloom` index](https://www.postgresql.org/docs/current/bloom.html) since 9.6. It can replace a stack of B-trees with a single, much smaller index, and almost nobody uses it. This post is a short tour: what a bloom filter is, how Postgres turns it into an index, when that index wins, and a benchmark on a realistic cache table.
+
+Bloom filters are everywhere outside Postgres too. Google uses them inside Chrome's safe browsing list, Cassandra and HBase use them to skip SSTable lookups on the read path, Akamai uses them in CDN cache hints, Medium uses them to dedupe recommendations, and Bitcoin SPV clients use them to filter relevant transactions. The Postgres `bloom` extension is the same idea, just turned into an index type.
 
 ## What a bloom filter is
 
@@ -27,6 +39,12 @@ The demo below walks through the idea: adding two names, then three lookups that
 <BloomFilterDemo />
 
 You traded exactness for size, so a few hundred KB of bits can stand in for millions of items. False positives are tolerable because they just trigger a recheck against the real data. False negatives never happen, because we never clear bits we set. Burton Bloom's [1970 paper](https://dl.acm.org/doi/10.1145/362686.362692) has the math.
+
+### What the hash function actually does
+
+The "hash it a few times" part is small. Pick three independent hash functions, feed them the item, take each result mod the bit-array size. Those three numbers are the bit positions to flip. The same three positions get probed on lookup, which is why the operation is symmetric.
+
+<HashDemo />
 
 ## From a bloom filter to a bloom index
 
@@ -82,6 +100,8 @@ The default move is one B-tree per column, plus a few composite indexes for hot 
 The demo in the next section compares one bloom index against six B-trees on the same table, so it helps to know what the baseline is doing.
 
 When you write `CREATE INDEX … ON cache_entries (tenant_id)` without specifying a type, Postgres builds a B-tree. A B-tree is a sorted tree of `(column_value, row_pointer)` entries. To answer `WHERE tenant_id = 't42'`, Postgres descends the tree from the root, finds the leaf page that holds `'t42'`, and follows the pointers to the matching rows.
+
+<BTreeDemo />
 
 That shape is why B-trees do so much:
 
