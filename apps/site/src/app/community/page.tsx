@@ -6,7 +6,7 @@ import { meetups, type Meetup } from "../events/events-data";
 export const metadata = createPageMetadata({
   title: "Community | Prisma",
   description:
-    "Have a question, idea, or contribution for the Prisma ORM? You are not alone! Join hundreds of thousands of Prisma developers.",
+    "Have a question, idea, or contribution for Prisma ORM? You are not alone. Join hundreds of thousands of Prisma developers.",
   path: "/community",
   ogImage: "/og/og-community.png",
 });

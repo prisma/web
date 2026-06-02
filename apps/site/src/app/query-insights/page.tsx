@@ -116,7 +116,7 @@ export default async function Page() {
                     </h3>
                     <p className="mb-0 mt-4! text-foreground-neutral-weak text-base!">
                       Query Insights groups your queries, tracks execution time and read volume, and
-                      shows you which query shapes are driving performance issues, in one single
+                      shows you which query shapes are driving performance issues, all in one
                       overview page.
                     </p>
                   </div>
@@ -140,7 +140,8 @@ export default async function Page() {
                     </h3>
                     <p className="mb-0 mt-4! text-foreground-neutral-weak text-base!">
                       See which code-level query is causing slow responses or increased load. Prisma
-                      ORM queries get exclusive attribution. All other SQL queries are visible too.
+                      ORM queries are attributed to the code that ran them. All other SQL queries
+                      are visible too.
                     </p>
                   </div>
                 ),

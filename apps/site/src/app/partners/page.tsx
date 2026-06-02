@@ -15,10 +15,9 @@ const twoCol = [
           Provision & Manage Postgres
         </h3>
         <p className="text-foreground-neutral-weak! text-base">
-          Spin up and manage Prisma Postgres databases on demand with our{" "}
-          <b>database management API</b>. Integration is seamless, so databases feel like a natural
-          extension of your product rather than a bolt-on service, giving your users a smooth,
-          native experience.
+          Spin up and manage Prisma Postgres databases on demand with our <b>Management API</b>.
+          Databases feel like a natural extension of your product rather than a separate service,
+          giving your users a native experience.
         </p>
         <p className="text-foreground-neutral-weak! text-base">
           You can also let your AI agent take full control through our <b>MCP server</b>, automating
@@ -64,13 +63,11 @@ const twoCol = [
             Prisma Studio
           </a>
           , an embeddable UI built for your provisioned Prisma Postgres databases. Explore tables
-          and relationships, apply powerful filters with ease, and edit data directly in an
-          intuitive interface.
+          and relationships, filter records, and edit data directly in the interface.
         </p>
         <p className="text-foreground-neutral-weak! text-base">
-          Studio blends seamlessly into your product’s design and workflow, with full white-label
-          support and customization to match your platform’s design system. It delivers a native,
-          cohesive experience for your users without extra development effort on your side.
+          Prisma Studio fits into your product’s design and workflow, with white-label support and
+          customization to match your platform’s design system, so it looks native to your users.
         </p>
         <div className="flex gap-4 items-center justify-start mx-auto md:ml-0">
           <a
@@ -116,9 +113,9 @@ const twoCol = [
           network.
         </p>
         <p className="text-foreground-neutral-weak! text-base">
-          Seamless user claiming allows entire deployments (database + app) to be transferred into
-          users’ own Vercel and Prisma accounts. Perfect for spinning up complete development
-          environments or handing off live apps.
+          User claiming lets entire deployments (database and app) transfer into users’ own Vercel
+          and Prisma accounts, useful for spinning up complete development environments or handing
+          off live apps.
         </p>
         <div className="flex gap-4 items-center justify-start mx-auto md:ml-0">
           <a
@@ -179,9 +176,9 @@ export default function Partners() {
         </div>
         <div className="content relative z-1 flex flex-col gap-8 pb-12">
           <p className="text-center text-foreground-neutral max-w-2xl mx-auto">
-            Focus on shipping, we'll handle the infrastructure complexity. One API call provisions
-            databases in under a second, plus embeddable data editing that feels native to your
-            product. Oh, and app hosting too!
+            Focus on shipping while we handle the infrastructure. One API call provisions databases
+            in under a second, plus embeddable data editing that feels native to your product and
+            app hosting.
           </p>
         </div>
       </div>
@@ -194,8 +191,8 @@ export default function Partners() {
             Everything you need from data to deployment
           </h2>
           <p className="text-center text-base text-foreground-neutral-weak max-w-2xl mx-auto -mb-20">
-            From data to deployment, every piece of infra your users need built to work together or
-            on its own. Optimized for your platform.
+            Every piece of infrastructure your users need, built to work together or on its own, and
+            optimized for your platform.
           </p>
           <CardSection cardSection={twoCol} />
         </div>
@@ -210,16 +207,16 @@ export default function Partners() {
             <Accordion title="AI Code Generators">
               Database provisioning matches AI generation speed, keeping users engaged throughout
               app creation. Scale-to-zero economics handle experimental projects whether they get
-              abandoned or go viral. Perfect for high-volume platforms.
+              abandoned or go viral, which suits high-volume platforms.
             </Accordion>
             <Accordion title="No-code tools">
               Enable creating data-driven apps without exposing database complexity. Visual data
-              browsing and editing integrate perfectly, making databases feel like core platform
+              browsing and editing integrate directly, making databases feel like core platform
               features.
             </Accordion>
             <Accordion title="Developer Tools & IDE">
-              Instant databases for any development need with no setup or cleanup required. Reliable
-              provisioning keeps developers in flow state instead of context-switching to database
+              Instant databases for any development need with no setup or cleanup required.
+              Provisioning keeps developers focused instead of context-switching to database
               administration.
             </Accordion>
             <Accordion title="CI/CD & Testing">

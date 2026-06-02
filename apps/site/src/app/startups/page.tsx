@@ -55,7 +55,7 @@ const testimonials = [
   {
     quote: (
       <>
-        Entire SaaS businesses have been built on top of the Prisma ecosystem— including OSS ones
+        Entire SaaS businesses have been built on top of the Prisma ecosystem, including OSS ones
         like Dub.co. Have been loving the recent performance improvements as well
       </>
     ),
@@ -101,8 +101,8 @@ export default function StartupsPage() {
                 for Startups?
               </h2>
               <p className="text-foreground-neutral-weak mb-4">
-                Building a startup is hard – your tools shouldn&apos;t be. You need infra that grows
-                with you: flexible, powerful, and built to scale.
+                Building a startup is hard. Your tools shouldn&apos;t be. You need infrastructure
+                that grows with you: flexible and built to scale.
               </p>
               <p className="text-foreground-neutral-weak">
                 Apply if you&apos;re building a software product or service with an active website
@@ -128,7 +128,7 @@ export default function StartupsPage() {
                     <div>
                       <span className="font-bold text-foreground-neutral">{b.title}</span>
                       <br />
-                      <span className="text-foreground-neutral-weak italic">– {b.description}</span>
+                      <span className="text-foreground-neutral-weak italic">{b.description}</span>
                     </div>
                   </div>
                 ))}
@@ -201,10 +201,8 @@ export default function StartupsPage() {
           {/* Info box */}
           <div className="mt-20 max-w-[671px] mx-auto text-center rounded-lg border border-stroke-orm bg-background-orm p-8">
             <p className="text-foreground-neutral mb-8 text-balance">
-              Prisma empowers you to innovate faster with the most reliable and developer-friendly
-              database infrastructure. Build with confidence, scale without limits, and deliver
-              exceptional experiences to your global audience—all while staying focused on what
-              matters: your product.
+              Prisma gives you developer-friendly database infrastructure so you can build and scale
+              your product while staying focused on what matters: shipping to your users.
             </p>
             <div className="flex items-center justify-center gap-4 flex-wrap">
               <i className="fa-solid fa-message text-foreground-orm text-2xl" aria-hidden="true" />

@@ -75,7 +75,7 @@ const twoCol = [
             Why Prisma ORM
           </h5>
           <h2 className="text-foreground-neutral stretch-display text-3xl font-sans-display mt-0 mb-4">
-            Delightful DB workflows
+            Database workflows without the friction
           </h2>
         </div>
         <p className="text-foreground-neutral-weak! text-base">
@@ -110,8 +110,8 @@ const twoCol = [
           Works with your favorite databases and frameworks
         </h2>
         <p className="text-foreground-neutral-weak! text-base">
-          Prisma's compatibility with popular tools ensures no stack lock-in, lower integration
-          costs, and smooth transitions.
+          Prisma ORM works with popular databases and tools, so you avoid stack lock-in and reduce
+          integration costs.
         </p>
         <Link href="/stack" className="link-btn orm w-fit mx-auto lg:mx-0">
           <span>Learn more</span>
@@ -202,12 +202,12 @@ const twoCol_2 = [
 const twoCol_3 = [
   {
     icon: "/icons/technologies/vscode.svg",
-    title: "Extra ergonomy in VS Code",
+    title: "Built for VS Code",
     description:
-      "Auto-completion, linting, formatting and more help Prisma developers in VSCode stay confident and productive.",
+      "Auto-completion, linting, and formatting help Prisma developers in VS Code catch errors early and stay productive.",
     btn: {
       url: "https://marketplace.visualstudio.com/items?itemName=Prisma.prisma",
-      label: "Download Prisma VSCode Extension",
+      label: "Download Prisma VS Code Extension",
       icon: "fa-regular fa-arrow-up-right",
     },
   },
@@ -243,7 +243,7 @@ const features = [
   },
   {
     title: "Data model you can read",
-    subtitle: "The Prisma schema is intuitive and easy to use",
+    subtitle: "The Prisma schema is intuitive and easy to read.",
     image: "/illustrations/orm/collaborative",
     alt: "Collaborative work",
     icon: "fa-light fa-screen-users",
@@ -291,8 +291,8 @@ export default function ORM() {
             </h1>
           </div>
           <p className="text-center text-foreground-neutral max-w-2xl mx-auto">
-            Prisma ORM elevates developer experience with intuitive data modeling, automated
-            migrations, and type-safety.
+            Prisma ORM gives you intuitive data modeling, automated migrations, and type-safety
+            across PostgreSQL, MySQL, SQLite, MongoDB, and more.
           </p>
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
             <Button asChild variant="orm" size="3xl" className="font-sans-display! font-[650]">
@@ -370,8 +370,8 @@ export default function ORM() {
           </h3>
           <div className="content flex flex-col lg:flex-row gap-3 lg:gap-12 items-center md:items-start lg:items-center">
             <p className="max-w-94 w-full text-center md:text-left text-foreground-neutral-weak text-md">
-              Integrate Prisma into your development ecosystem and focus on your team’s core
-              competencies
+              Integrate Prisma into your development workflow and spend less time managing database
+              tooling.
             </p>
             <Button asChild variant="orm" size="2xl">
               <a href="/enterprise">

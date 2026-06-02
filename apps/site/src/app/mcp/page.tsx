@@ -42,7 +42,7 @@ const heroFeatures: McpHeroFeature[] = [
     line1: "Works with any",
     line2: "AI agent",
   },
-  { icon: "fa-light fa-bolt", line1: "Super quick", line2: "2-minute setup" },
+  { icon: "fa-light fa-bolt", line1: "Quick", line2: "2-minute setup" },
   {
     icon: "fa-light fa-lock",
     line1: "Enterprise-grade",

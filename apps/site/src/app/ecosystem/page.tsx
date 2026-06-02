@@ -18,8 +18,8 @@ const twoCol = [
           Postgres that <br /> fits your stack.
         </h2>
         <p className="text-foreground-neutral-weak! text-base">
-          Works with your existing stack, wherever you deploy.Your choice of ORM, frameworks, and
-          tools, they all just connect.
+          Works with your existing stack, wherever you deploy. Connect your choice of ORM,
+          frameworks, and tools.
         </p>
       </>
     ),
@@ -39,8 +39,8 @@ const twoCol = [
           Real Postgres. <br /> Better experience.
         </h2>
         <p className="text-foreground-neutral-weak! text-base">
-          The PostgreSQL millions know and trust in production, ready in seconds with zero
-          configuration. Automatic backups, observability and compliance.
+          The PostgreSQL millions know and trust in production, ready quickly without manual
+          configuration. Includes automatic backups, observability, and compliance.
         </p>
       </>
     ),
@@ -72,7 +72,7 @@ export default function SiteHome() {
             Prisma Ecosystem
           </h1>
           <p className="text-center text-foreground-neutral max-w-2xl mx-auto">
-            Explore the wide variety of tools created by our amazing community.
+            Explore the wide variety of tools created by the Prisma community.
           </p>
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
             <Button asChild variant="orm" size="3xl" className="font-sans-display! font-[650]">

@@ -65,8 +65,7 @@ const twoCol = [
           zero configuration
         </h2>
         <p className="text-foreground-neutral-weak! text-base">
-          Handles connection pooling automatically, and runs on bare metal and unikernels for
-          maximum performance.
+          Handles connection pooling automatically, and runs on bare metal and unikernels.
         </p>
       </>
     ),
@@ -89,9 +88,8 @@ const twoCol = [
           from day one
         </h2>
         <p className="text-foreground-neutral-weak! text-base">
-          Automated backups, encryption at rest and in transit, full tenant isolation and
-          enterprise-grade compliance. Everything you need to ship with confidence, managed
-          automatically.
+          Automated backups, encryption at rest and in transit, full tenant isolation, and
+          enterprise-grade compliance, all managed for you.
         </p>
       </>
     ),
@@ -244,7 +242,7 @@ export default async function SiteHome() {
             </p>
             <Button asChild variant="ppg" size="2xl">
               <a href="/pricing">
-                Explore Pricing
+                Explore pricing
                 <i className="fa-regular fa-arrow-right" />
               </a>
             </Button>
@@ -275,13 +273,13 @@ export default async function SiteHome() {
                 See Postgres in action
               </h2>
               <p className="m-0 mt-4 text-base leading-6 text-foreground-neutral-weak">
-                See how to get started in just a couple of minutes, with Prisma Postgres.
+                See how to get started with Prisma Postgres in a couple of minutes.
               </p>
             </div>
 
             <Button asChild variant="ppg" size="xl">
               <a href={CONSOLE_URL} target="_blank" rel="noopener noreferrer">
-                Create your first Database
+                Create your first database
                 <i className="fa-regular fa-arrow-right" />
               </a>
             </Button>
@@ -309,7 +307,7 @@ export default async function SiteHome() {
             <div className="flex flex-col md:flex-row gap-6">
               <Button asChild variant="ppg" size="2xl">
                 <a href={CONSOLE_URL} target="_blank" rel="noopener noreferrer">
-                  Create your first Database
+                  Create your first database
                   <i className="fa-regular fa-arrow-right" />
                 </a>
               </Button>
