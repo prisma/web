@@ -120,7 +120,7 @@ const twoCol = [
         <div className="relative z-10">
           <Button asChild variant="ppg" size="lg">
             <a href="/compute">
-              Explore Compute
+              Explore Prisma Compute
               <i className="fa-regular fa-arrow-right ml-2" />
             </a>
           </Button>
@@ -260,7 +260,8 @@ export default function SiteHome() {
           </div>
           <p className="text-center text-foreground-neutral-weak max-w-4xl mx-auto text-xl">
             Prisma gives TypeScript and Node.js teams a type-safe ORM, managed Postgres, and
-            production-ready compute for modern applications from schema to production.
+            production-ready compute. Prisma ORM, Prisma Postgres, and Prisma Compute take you from
+            schema to production.
           </p>
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
             <Button asChild variant="ppg" size="3xl" className="font-sans-display! font-[650]">
@@ -270,8 +271,14 @@ export default function SiteHome() {
               </a>
             </Button>
             <Button asChild variant="default-strong" size="3xl">
+              <a href="/postgres">
+                <span>Explore Prisma Postgres</span>
+                <i className="fa-regular fa-arrow-right ml-2" />
+              </a>
+            </Button>
+            <Button asChild variant="default-strong" size="3xl">
               <a href="/compute">
-                <span>Explore Compute</span>
+                <span>Explore Prisma Compute</span>
                 <i className="fa-regular fa-arrow-right ml-2" />
               </a>
             </Button>
@@ -479,6 +486,12 @@ export default function SiteHome() {
                 <Button asChild variant="default-strong" size="2xl">
                   <a href="/postgres">
                     Explore Prisma Postgres
+                    <i className="fa-regular fa-arrow-right" />
+                  </a>
+                </Button>
+                <Button asChild variant="default-strong" size="2xl">
+                  <a href="/compute">
+                    Explore Prisma Compute
                     <i className="fa-regular fa-arrow-right" />
                   </a>
                 </Button>
