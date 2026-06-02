@@ -1256,7 +1256,7 @@ const TABS = [
     value: "co-located",
     label: "Co-Located",
     icon: "fa-regular fa-database",
-    title: "Database right next to your code. (Coming soon)",
+    title: "Database right next to your code.",
     Visual: ZeroConfigBYO,
     description: (
       <>

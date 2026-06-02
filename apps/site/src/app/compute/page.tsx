@@ -87,7 +87,7 @@ const FEATURES = [
           Any TypeScript workload
         </h2>
         <p className="text-foreground-neutral-weak text-base mb-4 text-pretty">
-          Standard TypeScript on Bun. No V8 isolate limits. No runtime constraints.
+          Standard TypeScript on Bun, not a constrained edge runtime. No V8 isolate limits.
         </p>
         <ul className="text-foreground-neutral text-sm space-y-2 m-0 pl-4 list-disc">
           <li>Backend APIs and full-stack apps</li>
@@ -114,9 +114,8 @@ const FEATURES = [
   {
     content: (
       <>
-        <h2 className="text-foreground-neutral type-title-2xl mt-0 mb-4 text-pretty flex flex-wrap items-center gap-3">
+        <h2 className="text-foreground-neutral type-title-2xl mt-0 mb-4 text-pretty">
           Co-located database
-          <Badge color="ppg" size="md" label="Coming soon" />
         </h2>
         <p className="text-foreground-neutral-weak text-base mb-4 text-pretty">
           Pair with Prisma Postgres so compute and database run in the same region, connected
@@ -239,9 +238,8 @@ const WHY_FEATURES = [
     id: "db-connected",
     title: "DB connected by default",
     children: (
-      <div className="px-4 pb-4 text-sm text-foreground-neutral-weak flex flex-col gap-2 items-start">
+      <div className="px-4 pb-4 text-sm text-foreground-neutral-weak">
         Co-located with Prisma Postgres for low-latency access. Works with any database.
-        <Badge color="ppg" size="md" label="Coming soon" />
       </div>
     ),
     icon: "fa-regular fa-database",
@@ -251,9 +249,8 @@ const WHY_FEATURES = [
     id: "reliable",
     title: "Reliable by design",
     children: (
-      <div className="px-4 pb-4 text-sm text-foreground-neutral-weak flex flex-col gap-2 items-start">
+      <div className="px-4 pb-4 text-sm text-foreground-neutral-weak">
         Automatic scaling, recovery, and OOM handling.
-        <Badge color="ppg" size="md" label="Coming soon" />
       </div>
     ),
     icon: "fa-regular fa-shield-check",
@@ -263,13 +260,13 @@ const WHY_FEATURES = [
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: "Prisma Compute",
+    title: "Prisma Compute: Deploy TypeScript apps to production",
     description:
-      "Deploy TypeScript to production from your repo. APIs, background jobs, and AI agents run as long-lived processes on Bun, with no cold starts or execution timeouts.",
+      "Deploy TypeScript apps from your repo. APIs, background jobs, and AI agents run as long-lived processes on Bun, with no cold starts or timeouts.",
     openGraph: {
-      title: "Prisma Compute",
+      title: "Prisma Compute: Deploy TypeScript apps to production",
       description:
-        "Deploy TypeScript to production from your repo. APIs, background jobs, and AI agents run as long-lived processes on Bun, with no cold starts or execution timeouts.",
+        "Deploy TypeScript apps from your repo. APIs, background jobs, and AI agents run as long-lived processes on Bun, with no cold starts or timeouts.",
       url: "https://www.prisma.io/compute",
       type: "website",
       siteName: "Prisma",
@@ -278,7 +275,7 @@ export async function generateMetadata(): Promise<Metadata> {
           url: "/og/og-compute.png",
           width: 1200,
           height: 630,
-          alt: "Prisma Compute",
+          alt: "Prisma Compute: Deploy TypeScript apps to production",
         },
       ],
     },
@@ -413,7 +410,7 @@ export default async function Page() {
             04 / WHAT MAKES IT UNIQUE
           </span>
           <h2 className="type-title-4xl text-foreground-neutral m-0 text-left">
-            Compute keeps it all together.
+            One service for your app, assets, and jobs.
           </h2>
         </div>
         <div className="flex flex-col lg:flex-row items-center gap-6 max-w-296 w-full">
