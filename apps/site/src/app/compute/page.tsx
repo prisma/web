@@ -169,7 +169,7 @@ const DOES_IT_WORK = [
   {
     title: "Building an AI agent?",
     description:
-      "Per-session sandboxes, long-lived runtimes, and co-located memory, on the same runtime that serves your API.",
+      "Per-session sandboxes, long-lived runtimes, and in-process memory, on the same runtime that serves your API.",
     icon: "fa-regular fa-stars",
     badgeColor: "ppg" as const,
   },
