@@ -1256,7 +1256,7 @@ const TABS = [
     value: "co-located",
     label: "Co-Located",
     icon: "fa-regular fa-database",
-    title: "Database right next to your code.",
+    title: "Database right next to your code. (Coming soon)",
     Visual: ZeroConfigBYO,
     description: (
       <>
@@ -1265,7 +1265,7 @@ const TABS = [
         processes.
         <br />
         <br />
-        Works with any database — no lock-in.
+        Works with any database, no lock-in.
       </>
     ),
   },

@@ -111,7 +111,7 @@ const TEMPLATES = [
   },
   {
     title: "Hono API",
-    subtitle: "Lightweight API backend. A good starting point that grows into jobs.",
+    subtitle: "Lightweight API backend. A good starting point for APIs and background jobs.",
     command: "npx create-hono-api",
     href: "#",
   },
@@ -284,7 +284,7 @@ const US_SERVICES: ServiceRow[] = [
 
 const US_BENEFITS = [
   "No cold starts, no timeouts, no connection limits",
-  "Self-hosting — without the painful parts",
+  "Self-hosting, without the painful parts",
 ];
 
 // ---------------------------------------------------------------------------
