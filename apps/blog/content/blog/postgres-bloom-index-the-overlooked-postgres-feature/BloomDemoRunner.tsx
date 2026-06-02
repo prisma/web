@@ -107,7 +107,7 @@ const STEPS: RunnerStep[] = [
     lines: { from: 45, to: 49 },
     output: [
       "",
-      "   Bloom index is 70% smaller (0.2 MB vs 0.5 MB),",
+      "   Bloom index is 60% smaller (0.2 MB vs 0.5 MB),",
       "   and one index covers any subset of those six columns.",
     ],
   },
