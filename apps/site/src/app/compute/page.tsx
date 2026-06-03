@@ -317,15 +317,12 @@ export default async function Page() {
           </p>
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
             <Button asChild variant="ppg" size="2xl">
-              <a href="https://prisma.io/apps" className="flex items-center gap-2">
-                <span>Deploy a template</span>
+              <a
+                href="https://pris.ly/pdp?utm_source=site&utm_campaign=compute&utm_term=devrel"
+                className="flex items-center gap-2"
+              >
+                <span>Try Prisma Compute</span>
                 <i className="flex items-center fa-regular fa-arrow-up-right" aria-hidden="true" />
-              </a>
-            </Button>
-            <Button asChild variant="default-strong" size="2xl">
-              <a href="https://prisma.io/docs/compute" className="flex items-center gap-2">
-                <span>Read the docs</span>
-                <i className="flex items-center fa-regular fa-book-open" aria-hidden="true" />
               </a>
             </Button>
           </div>

@@ -260,28 +260,33 @@ export default function SiteHome() {
           </div>
           <p className="text-center text-foreground-neutral-weak max-w-4xl mx-auto text-xl">
             Prisma gives TypeScript and Node.js teams a type-safe ORM, managed Postgres, and
-            production-ready compute. Prisma ORM, Prisma Postgres, and Prisma Compute take you from
-            schema to production.
+            serverless TypeScript compute. Prisma ORM, Prisma Postgres, and Prisma Compute take you
+            from schema to production.
           </p>
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
+          <div className="flex flex-col gap-6 items-center justify-center">
             <Button asChild variant="ppg" size="3xl" className="font-sans-display! font-[650]">
-              <a href="/orm">
-                <span>Explore Prisma ORM</span>
+              <a href="https://pris.ly/pdp?utm_source=site&utm_campaign=home&utm_term=devrel">
+                <span>Try Prisma</span>
                 <i className="fa-regular fa-arrow-right ml-2" />
               </a>
             </Button>
-            <Button asChild variant="default-strong" size="3xl">
-              <a href="/postgres">
-                <span>Explore Prisma Postgres</span>
-                <i className="fa-regular fa-arrow-right ml-2" />
+            <div className="flex flex-col md:flex-row gap-4 md:gap-8 items-center justify-center text-foreground-neutral-weak">
+              <a href="/orm" className="hover:text-foreground-neutral underline underline-offset-2">
+                Prisma ORM
               </a>
-            </Button>
-            <Button asChild variant="default-strong" size="3xl">
-              <a href="/compute">
-                <span>Explore Prisma Compute</span>
-                <i className="fa-regular fa-arrow-right ml-2" />
+              <a
+                href="/postgres"
+                className="hover:text-foreground-neutral underline underline-offset-2"
+              >
+                Prisma Postgres
               </a>
-            </Button>
+              <a
+                href="/compute"
+                className="hover:text-foreground-neutral underline underline-offset-2"
+              >
+                Prisma Compute
+              </a>
+            </div>
           </div>
         </div>
       </section>
