@@ -10,8 +10,12 @@ export const formatDate = (iso: string) => {
   });
 };
 
+const TAG_ACRONYMS: Record<string, string> = {
+  orm: "ORM",
+  ai: "AI",
+};
+
 export const formatTag = (tag: string) => {
-  return tag === "orm"
-    ? "ORM"
-    : tag.replace(/-/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+  if (Object.prototype.hasOwnProperty.call(TAG_ACRONYMS, tag)) return TAG_ACRONYMS[tag];
+  return tag.replace(/-/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 };

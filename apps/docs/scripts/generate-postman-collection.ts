@@ -2,6 +2,9 @@ import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createRequire } from "node:module";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const SYNTHETIC_KEY_RE = /^key_\d+$/;
+
 // openapi-to-postmanv2 is a CommonJS package; load it via createRequire in this ESM context
 // @ts-ignore
 const require = createRequire(import.meta.url);
@@ -11,9 +14,81 @@ const Converter = require("openapi-to-postmanv2") as {
   convert: (
     input: { type: "json"; data: unknown },
     options: Record<string, unknown>,
-    cb: (err: Error | null, result: { result: boolean; reason?: string; output: Array<{ data: Record<string, unknown> }> }) => void,
+    cb: (
+      err: Error | null,
+      result: {
+        result: boolean;
+        reason?: string;
+        output: Array<{ data: Record<string, unknown> }>;
+      },
+    ) => void,
   ) => void;
 };
+
+function normalizeSyntheticSampleObjects(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(normalizeSyntheticSampleObjects);
+  }
+
+  if (typeof value !== "object" || value === null) {
+    return value;
+  }
+
+  const entries = Object.entries(value);
+  if (entries.length > 1 && entries.every(([key]) => SYNTHETIC_KEY_RE.test(key))) {
+    const keyZero = entries.find(([key]) => key === "key_0") ?? entries[0];
+    return { key_0: normalizeSyntheticSampleObjects(keyZero[1]) };
+  }
+
+  return Object.fromEntries(
+    entries.map(([key, nestedValue]) => [key, normalizeSyntheticSampleObjects(nestedValue)]),
+  );
+}
+
+function normalizeJsonSampleString(value: string): string {
+  const trimmed = value.trimStart();
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+    return value;
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    const normalized = normalizeSyntheticSampleObjects(parsed);
+    const formatted = JSON.stringify(normalized, null, 2);
+    return formatted === value ? value : formatted;
+  } catch {
+    return value;
+  }
+}
+
+function normalizeGeneratedCollection(value: unknown, key?: string): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeGeneratedCollection(item));
+  }
+
+  if (typeof value === "string" && (key === "raw" || key === "body")) {
+    return normalizeJsonSampleString(value);
+  }
+
+  if (typeof value !== "object" || value === null) {
+    return value;
+  }
+
+  const normalized: Record<string, unknown> = {};
+  for (const [objectKey, nestedValue] of Object.entries(value)) {
+    if (objectKey === "_postman_id") {
+      continue;
+    }
+
+    if (objectKey === "id" && typeof nestedValue === "string" && UUID_RE.test(nestedValue)) {
+      continue;
+    }
+
+    normalized[objectKey] = normalizeGeneratedCollection(nestedValue, objectKey);
+  }
+
+  return normalized;
+}
 
 async function main() {
   const cwd = process.cwd();
@@ -72,7 +147,8 @@ async function main() {
       for (const r of item.item) {
         if (!r.name || (nameCounts.get(r.name) ?? 0) <= 1) continue;
         const path = r.request?.url?.path ?? [];
-        const pathStr = "/" + path.map((s) => (s.startsWith(":") ? `{${s.slice(1)}}` : s)).join("/");
+        const pathStr =
+          "/" + path.map((s) => (s.startsWith(":") ? `{${s.slice(1)}}` : s)).join("/");
         r.name = `${r.name} ${pathStr}`;
       }
     }
@@ -103,8 +179,10 @@ async function main() {
     ],
   };
 
+  const normalizedCollection = normalizeGeneratedCollection(collection);
+
   const outputPath = join(cwd, "public/prisma-management-api.postman_collection.json");
-  await writeFile(outputPath, JSON.stringify(collection, null, 2), "utf-8");
+  await writeFile(outputPath, JSON.stringify(normalizedCollection, null, 2), "utf-8");
   console.log(`Generated Postman collection: ${outputPath}`);
 }
 

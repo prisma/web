@@ -1,0 +1,195 @@
+---
+title: "Bloom Filters in Postgres: The Index Type Most Developers Overlook"
+slug: "postgres-bloom-index-the-overlooked-postgres-feature"
+date: "2026-05-28"
+authors:
+  - "Ankur Datta"
+metaTitle: "Bloom Filters in Postgres: The Index Type Most Developers Overlook"
+metaDescription: "One bloom index can replace a stack of B-trees on wide tables with many filter combinations. A tour of the concept, the Postgres extension, and a benchmark you can run yourself."
+heroImagePath: "/postgres-bloom-index-the-overlooked-postgres-feature/imgs/bloom-filters-in-postgres.png"
+metaImagePath: "/postgres-bloom-index-the-overlooked-postgres-feature/imgs/bloom-filters-in-postgres.png"
+heroImageAlt: "Bloom Filters in Postgres"
+tags:
+  - "prisma-postgres"
+  - "education"
+series: postgres-features
+seriesIndex: 2
+prev: you-dont-need-redis-postgres-already-has-pub-sub
+---
+
+import { BloomFilterDemo } from "./BloomFilterDemo";
+import { BloomDemoRunner } from "./BloomDemoRunner";
+import { BTreeDemo } from "./BTreeDemo";
+import { HashDemo } from "./HashDemo";
+
+This is the second post in a short series on Postgres features you can reach for instead of bolting on another piece of infrastructure. The first one, [You Don't Need Redis, Postgres Already Has Pub/Sub](/you-dont-need-redis-postgres-already-has-pub-sub), built a real-time app on `LISTEN` and `NOTIFY`. This one is about the `bloom` index.
+
+Postgres has shipped a [`bloom` index](https://www.postgresql.org/docs/current/bloom.html) since 9.6. It can replace a stack of B-trees with a single, much smaller index, and almost nobody uses it. This post is a short tour: what a bloom filter is, how Postgres turns it into an index, when that index wins, and a benchmark on a realistic cache table.
+
+Bloom filters are everywhere outside Postgres too. Google uses them inside Chrome's safe browsing list, Cassandra and HBase use them to skip SSTable lookups on the read path, Akamai uses them in CDN cache hints, Medium uses them to dedupe recommendations, and Bitcoin SPV clients use them to filter relevant transactions. The Postgres `bloom` extension is the same idea, just turned into an index type.
+
+## What a bloom filter is
+
+Picture a tiny cache for usernames you've already seen. The naive version is a `Set<string>`: every username is stored in full, so a million users means a million strings in memory. A bloom filter is the cheap version of that set.
+
+Instead of storing usernames, a bloom filter keeps a fixed-size array of bits, all starting at zero. To remember a name, hash it a few times, flip the bits at each hash position. To check whether a name was added, hash it again and look at the same positions. If any bit is 0, the name was never added. If all bits are 1, it was probably added.
+
+The demo below walks through the idea: adding two names, then three lookups that show the three possible outcomes (probably present, definitely absent, and the false positive that gives bloom filters their reputation).
+
+<BloomFilterDemo />
+
+You traded exactness for size, so a few hundred KB of bits can stand in for millions of items. False positives are tolerable because they just trigger a recheck against the real data. False negatives never happen, because we never clear bits we set. Burton Bloom's [1970 paper](https://dl.acm.org/doi/10.1145/362686.362692) has the math.
+
+### What the hash function actually does
+
+The "hash it a few times" part is small. Pick three independent hash functions, feed them the item, take each result mod the bit-array size. Those three numbers are the bit positions to flip. The same three positions get probed on lookup, which is why the operation is symmetric.
+
+<HashDemo />
+
+## From a bloom filter to a bloom index
+
+The visualization above is one bloom filter over a set of names. A Postgres bloom index applies the same trick row by row: for each row in the table, Postgres computes one small bloom signature over the indexed columns and stores it. The index is a stack of those per-row signatures, the same way a B-tree is a stack of `(value, pointer)` entries, except each entry here is a bit signature instead of an exact value.
+
+When you query `WHERE tenant_id = $1 AND region = $2`, Postgres hashes the filter values, scans the signatures looking for ones whose bits cover those hashes, then rechecks each candidate against the heap to drop false positives.
+
+The shape of the change in your schema is small: enable the `bloom` extension once, and create a single index that covers every column you might filter on.
+
+```sql
+CREATE EXTENSION IF NOT EXISTS bloom;
+
+CREATE INDEX cache_bloom_idx ON cache_entries
+  USING bloom (
+    tenant_id, user_id, endpoint,
+    locale, region, api_version
+  );
+```
+
+Any subset of those six columns can use the index for equality lookups. You don't have to anticipate every combination up front, and your `SELECT` statements stay exactly the same. The planner just reaches for the bloom index instead of one or two of the B-trees.
+
+## The wide-table problem
+
+The shape of table where a bloom index pays off is the wide one: many columns, queried by many different filter combinations. A response cache is a clean example:
+
+```sql
+CREATE TABLE cache_entries (
+  id          BIGSERIAL PRIMARY KEY,
+  tenant_id   TEXT,
+  user_id     TEXT,
+  endpoint    TEXT,
+  locale      TEXT,
+  region      TEXT,
+  api_version INT,
+  payload     JSONB
+);
+```
+
+Different code paths look up entries differently:
+
+- `WHERE tenant_id = $1 AND endpoint = $2`
+- `WHERE user_id = $1 AND locale = $2`
+- `WHERE tenant_id = $1 AND region = $2 AND api_version = $3`
+
+The default move is one B-tree per column, plus a few composite indexes for hot paths. That works, but:
+
+- Six B-trees on six columns add up in disk usage and write amplification.
+- A new query that mixes columns differently might still miss the indexes you have.
+- You end up maintaining indexes for combinations you never knew the app would ask for.
+
+## A quick refresher on B-trees
+
+The demo in the next section compares one bloom index against six B-trees on the same table, so it helps to know what the baseline is doing.
+
+When you write `CREATE INDEX … ON cache_entries (tenant_id)` without specifying a type, Postgres builds a B-tree. A B-tree is a sorted tree of `(column_value, row_pointer)` entries. To answer `WHERE tenant_id = 't42'`, Postgres descends the tree from the root, finds the leaf page that holds `'t42'`, and follows the pointers to the matching rows.
+
+<BTreeDemo />
+
+That shape is why B-trees do so much:
+
+- Exact lookups are O(log n).
+- Range and prefix queries (`<`, `BETWEEN`, `LIKE 'foo%'`) work because entries are kept sorted.
+- The result can flow straight into `ORDER BY` without an extra sort.
+
+But the cost grows with the number of indexes:
+
+- Each B-tree stores its own copy of the column value plus a row pointer, so disk usage scales with rows × indexes.
+- Every `INSERT` and `UPDATE` has to update every relevant B-tree.
+- A single B-tree only helps if your `WHERE` clause hits its leading columns, so wide tables end up with many B-trees to cover many query shapes.
+
+## Demo: cache lookups
+
+We'll seed a `cache_entries` table with 10,000 rows, run three realistic lookup queries, and compare:
+
+- **A.** Six B-tree indexes, one per column.
+- **B.** One bloom index covering all six columns.
+
+### Setup
+
+```bash
+bun init -y
+bun add pg create-db
+bun add -d @types/pg
+```
+
+The whole demo is a single `index.ts`. It provisions a temporary [Prisma Postgres](https://www.prisma.io/docs/postgres/introduction/npx-create-db) database via the programmatic [`create-db`](https://create-db.prisma.io/) API, seeds the table, then builds each index strategy in turn and times the same three lookups against both.
+
+### Run it
+
+Step through what the script does. The left panel highlights the code currently running. The right panel shows the cumulative terminal output and you can click any step to jump between steps.
+
+<BloomDemoRunner />
+
+The bloom index covers the same three lookups with one index that is roughly 2.5x smaller than the stack of six B-trees. Every write updates one index instead of six.
+
+The bloom index is a touch slower per lookup because Postgres rechecks each candidate row against the heap. For a wide table where any column might be a filter and disk is not free, that is usually a good trade.
+
+## When to use it
+
+Use the bloom index when:
+
+**A table has many columns that get filtered on equality.** Wide tables that store one row per resource and get queried by different attributes are the canonical fit.
+
+```sql
+CREATE TABLE events (
+  id           BIGSERIAL PRIMARY KEY,
+  tenant_id    TEXT,
+  user_id      TEXT,
+  device_id    TEXT,
+  action       TEXT,
+  feature_flag TEXT,
+  -- ...
+);
+```
+
+**Different code paths filter by different subsets of those columns.** No single composite index covers them all; a bloom index covers any subset on equality.
+
+```sql
+SELECT * FROM events WHERE tenant_id = $1 AND action = $2;
+SELECT * FROM events WHERE user_id = $1 AND feature_flag = $2;
+SELECT * FROM events WHERE tenant_id = $1 AND device_id = $2 AND action = $3;
+```
+
+**Storage or write amplification from many B-trees is becoming a problem.** Six B-trees on a 10M-row table are not free.
+
+```sql
+SELECT pg_size_pretty(SUM(pg_relation_size(indexrelid)))
+FROM pg_index
+WHERE indrelid = 'events'::regclass;
+```
+
+**A small recheck overhead on reads is acceptable.** Bloom indexes fetch a candidate set and re-verify; that costs a few extra heap touches per query.
+
+## When not to use it
+
+Skip the bloom index when:
+
+- **You only ever filter on one or two known columns.** A single B-tree on those columns is faster and cheaper.
+- **You need range, prefix, sort, or `LIKE` queries.** Bloom indexes only support equality (`=`, `IN`).
+- **Your columns are highly selective and you want index-only scans.** B-trees keep the value, so they can answer some queries without touching the heap. Bloom indexes always recheck.
+- **Your table is small enough that sequential scans are already fast.** No index pays for itself until the table is big.
+
+## Recap
+
+- Postgres ships a [`bloom` extension](https://www.postgresql.org/docs/current/bloom.html) (in core since 9.6, [available on Prisma Postgres](https://www.prisma.io/docs/postgres/database/postgres-extensions)).
+- A bloom index stores one bloom signature per row, so one index covers equality lookups on any subset of its columns.
+- It trades a recheck against the heap and no support for ranges or sorts for a much smaller footprint and a single write per row.
+- The fit is wide tables with unpredictable filter combinations: caches, lookup tables, audit logs, event streams.

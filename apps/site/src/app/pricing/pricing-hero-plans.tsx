@@ -20,6 +20,9 @@ import {
   symbols,
 } from "./pricing-data";
 
+// Banner runs for one week after the limit increase shipped.
+const DATABASE_LIMITS_BANNER_EXPIRES_AT = new Date("2026-05-27T00:00:00Z");
+
 export function PricingHeroPlans({
   currency,
   onCurrencyChange,
@@ -56,6 +59,23 @@ export function PricingHeroPlans({
     </ul>
   );
 
+  const databaseLimitUpdates = [
+    {
+      label: "Free",
+      value: "50",
+      previous: "5",
+      current: "50 databases",
+    },
+    {
+      label: "Paid plans",
+      value: "1,000",
+      previous: "10-100",
+      current: "1,000 databases",
+    },
+  ];
+
+  const showDatabaseLimitsBanner = Date.now() < DATABASE_LIMITS_BANNER_EXPIRES_AT.getTime();
+
   return (
     <>
       <section className="hero h-full relative -mt-24 flex items-end justify-center px-4 pt-40">
@@ -85,6 +105,49 @@ export function PricingHeroPlans({
 
       <section className="px-4 py-6 md:py-12">
         <div className="max-w-[1288px] mx-auto">
+          {showDatabaseLimitsBanner && (
+            <div className="mb-6 rounded-2xl border border-stroke-ppg bg-[linear-gradient(90deg,var(--color-background-ppg)_0%,var(--color-background-default)_100%)] px-5 py-6 text-foreground-neutral shadow-[0px_18px_42px_0px_rgba(23,43,77,0.08)] md:px-8">
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                <div className="max-w-[620px]">
+                  <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[1.6px] text-foreground-ppg">
+                    <i className="fa-solid fa-sparkles text-[10px]" />
+                    <span>What&apos;s new</span>
+                  </div>
+                  <h2 className="m-0 text-3xl font-sans-display font-bold leading-tight text-foreground-neutral md:text-4xl">
+                    More room to build.
+                  </h2>
+                  <p className="m-0 mt-3 max-w-[570px] text-base leading-6 text-foreground-neutral-weak md:text-lg">
+                    We&apos;ve increased database limits across every plan - spin up environments
+                    per branch, per preview, per teammate, without rationing.
+                  </p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2 lg:min-w-[360px] lg:border-l lg:border-stroke-ppg lg:pl-8">
+                  {databaseLimitUpdates.map((update, index) => (
+                    <div
+                      key={update.label}
+                      className={`text-left sm:text-center ${
+                        index > 0
+                          ? "border-t border-stroke-ppg pt-4 sm:border-l sm:border-t-0 sm:pt-0 sm:pl-4"
+                          : ""
+                      }`}
+                    >
+                      <p className="m-0 text-xs font-bold uppercase tracking-[1.6px] text-foreground-neutral-weaker">
+                        {update.label}
+                      </p>
+                      <p className="m-0 mt-1 font-sans-display text-5xl font-bold leading-none text-foreground-ppg slashed-zero tabular-nums">
+                        {update.value}
+                      </p>
+                      <p className="m-0 mt-2 text-sm font-semibold text-foreground-neutral-weak">
+                        <span className="line-through opacity-60">{update.previous}</span>{" "}
+                        <span className="sr-only">to</span>
+                        <span aria-hidden="true">-&gt;</span> {update.current}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
           <div className="mb-6 flex justify-end">
             <Select
               value={currency}
