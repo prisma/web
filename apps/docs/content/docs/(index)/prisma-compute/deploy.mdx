@@ -1,0 +1,187 @@
+---
+title: Deploy your first app
+description: Take a TypeScript app from your terminal to a live URL on Prisma Compute, either by scaffolding a new one or deploying a project you already have.
+url: /prisma-compute/deploy
+metaTitle: "Quickstart: Deploy your first app on Prisma Compute"
+metaDescription: Deploy a TypeScript app to Prisma Compute with the @prisma/cli beta package. Scaffold a new app with create-prisma or deploy an existing project, then verify it at a live URL.
+---
+
+[Prisma Compute](/compute) is serverless hosting for TypeScript apps. It runs your app right next to your Prisma Postgres database, so the trip from app to data stays short.
+
+This is a quickstart: sign in, then deploy. There are two ways in:
+
+- **To start fresh**, scaffold a new app and deploy it in one step with `create-prisma`. Follow [Option A](#option-a-scaffold-a-new-app-with-create-prisma).
+- **To deploy an app you already have**, run a deploy from its directory. Follow [Option B](#option-b-deploy-a-project-you-already-have).
+
+To learn more about how Compute works, see the [resource model](/compute#the-model) for a mental model.
+
+## Prerequisites
+
+Before you start, make sure you have:
+
+- **A JavaScript runtime.** Node.js 22.12 or newer for `npx`/`pnpm dlx`, or Bun for `bunx`.
+- **A [Prisma Data Platform account](https://pris.ly/pdp).** Free to create, and it holds your workspace.
+- **An app, if you are bringing your own.** Compute deploys **Next.js**, **Hono**, **TanStack Start**, and plain **Bun** servers today, including **Elysia** (which runs on Bun). Skip this if you are scaffolding a new app below.
+
+:::info
+
+Next.js apps must set `output: "standalone"` in their Next.js config before deploying. The `create-prisma` template already does this for you.
+
+```ts title="next.config.ts"
+export default { output: "standalone" };
+```
+
+:::
+
+## 1. Sign in
+
+Sign in once. This is the only step that needs a human, because it opens your browser:
+
+```npm
+npx @prisma/cli@latest auth login
+```
+
+It stores a session on your machine that every later command reads automatically, including a coding agent working in your directory. Confirm it any time with `auth whoami`.
+
+Two shortcuts from here:
+
+- In CI or a headless environment where no browser can open, use a [service token](/compute/getting-started#automation-and-ci) instead.
+- To let an agent do the deploying for you, jump to [Hand it to your agent](#hand-it-to-your-agent).
+
+## 2. Deploy your app
+
+Both options finish in the same place: a live URL and a project you can deploy to again.
+
+### Option A: Scaffold a new app with create-prisma
+
+`create-prisma` builds a TypeScript app from a template, wires up Prisma, and can deploy it to Compute in the same run. Run it and answer the prompts:
+
+```npm
+npx create-prisma@latest
+```
+
+It asks for a template, a database provider, and a few options, then asks **"Deploy to Prisma Compute now?"**. Say yes, and the deploy step:
+
+- signs you in, if you have not already
+- creates a Prisma project for the app
+- builds and deploys it, then prints the live URL
+- provisions a Prisma Postgres database and wires it in, when you pick PostgreSQL and don't bring your own connection string
+
+So your deployed app has a database from its first request.
+
+To skip the prompts, pass your choices as flags. Compute deploys are available for the `hono`, `elysia`, `next`, and `tanstack-start` templates:
+
+```npm
+npx create-prisma@latest --name my-api --template hono --provider postgresql --deploy
+```
+
+When it finishes, it prints your live URL and adds a `compute:deploy` script so you can redeploy later. Then [verify the deployment](#3-verify-the-deployment).
+
+### Option B: Deploy a project you already have
+
+From your app's directory, run:
+
+```npm
+npx @prisma/cli@latest app deploy
+```
+
+In one pass, the CLI:
+
+1. **Detects your framework** from your project files, whether that is Next.js, Hono, TanStack Start, or a plain Bun server. To choose it yourself, pass `--framework` (use `--framework bun` for a Bun or Elysia server).
+2. **Sets up a project** the first time you deploy from this directory, then writes [`.prisma/local.json`](/compute/getting-started#link-an-existing-project) to pin the directory to that project. That file is a gitignored local cache, not committed config. If your team already has a project, [link it first](/compute/getting-started#link-an-existing-project).
+3. **Resolves the target branch.** Inside a Git repository, the CLI uses your current Git branch name; otherwise it falls back to `main`. Pass `--branch <name>` to choose explicitly. Because each branch is its own isolated environment, this decides where the deploy lands.
+4. **Builds and uploads your app**, provisions it, and prints a live URL.
+
+Your first deploy is promoted to production automatically, so the URL you get back is your production URL.
+
+Need a database too? Add `--db`, and the deploy provisions a Prisma Postgres database and wires its connection string into this deploy target:
+
+```npm
+npx @prisma/cli@latest app deploy --db
+```
+
+## 3. Verify the deployment
+
+You have a URL. Confirm the app responds by opening it:
+
+```npm
+npx @prisma/cli@latest app open
+```
+
+If it does not behave the way you expect, stream its logs:
+
+```npm
+npx @prisma/cli@latest app logs
+```
+
+Logs cover both the build and the running app, so a failed build and a runtime error both surface in the same place.
+
+You can also inspect everything you have deployed in the [Console](https://pris.ly/pdp) instead of the terminal:
+
+- projects, branches, and apps
+- deployments, integrations, and domains
+
+## 4. Deploy again
+
+Run `app deploy` whenever you want to ship a change. After your first deploy, production is protected: deploying to your production branch again needs an explicit `--prod` flag, so you never ship to production by accident.
+
+```npm
+npx @prisma/cli@latest app deploy --prod
+```
+
+Deploying from a Git feature branch behaves differently. Instead of touching production, the CLI:
+
+- resolves the branch name and creates a matching platform branch if one does not exist yet
+- gives you an isolated [preview deployment](/compute/branching) with its own app, database, and URL
+
+Preview deploys never ask for confirmation, so run them as often as you like. In scripts and CI, add `--yes` to accept the production confirmation up front:
+
+```npm
+npx @prisma/cli@latest app deploy --prod --yes
+```
+
+## 5. Set up deploy on push (optional)
+
+Connect your project to a GitHub repository once, and Prisma deploys every push for you:
+
+- every commit you push is built and deployed on its own
+- each branch gets its own preview, with its own URL
+- you stop running `app deploy` by hand
+
+Make sure your project directory is a Git repository with a GitHub remote, then connect it:
+
+```npm
+npx @prisma/cli@latest git connect
+```
+
+`git connect` wires up the project this directory is linked to, which exists once you have deployed at least once. For monorepos and CI, see the [GitHub integration docs](/compute/github).
+
+## Hand it to your agent
+
+You can let a coding agent do the deploying. Sign in once yourself ([step 1](#1-sign-in)), because the browser step needs a human. After that, anything running in your environment inherits the session, including your agent. Paste this into your agent and fill in the blanks:
+
+```text
+Build [what you want] in [framework] and deploy it to Prisma Compute using `npx @prisma/cli@latest`.
+```
+
+For example:
+
+```text
+Build a Hono API with a /todos endpoint backed by an in-memory list. Deploy it to Prisma Compute using `npx @prisma/cli@latest`.
+```
+
+Notes for your agent:
+
+- Run every CLI command as `npx @prisma/cli@latest <command>`, and add `--json` for structured output.
+- Check login state with `npx @prisma/cli@latest auth whoami`.
+- On the first deploy, the CLI creates the project and prints a live URL. Open it and confirm the app responds. The first deploy is promoted to production automatically.
+- To give the app a database, add `--db` to the deploy so Compute provisions and wires a Prisma Postgres database.
+- If the app needs config or secrets, scope them to the environment you're deploying. Use `--role production` for production deploys and `--role preview` for preview branches, then redeploy: `npx @prisma/cli@latest project env add KEY=value --role production` (or `--role preview`). Don't write production config to the preview scope. For the full scoping rules, see [Environment variables](/compute/environment-variables).
+
+## What's next
+
+- [Branching](/compute/branching): how preview branches isolate work and map to your Git branches.
+- [Add environment variables](/compute/environment-variables) for configuration, secrets, and your database connection string.
+- [Deployments](/compute/deployments): promote, roll back, and inspect what you ship.
+- [GitHub integration](/compute/github): the full picture on deploy-on-push, monorepos, and cleanup.
+- [Read the full CLI getting-started guide](/compute/getting-started) for frameworks, project linking, and CI.

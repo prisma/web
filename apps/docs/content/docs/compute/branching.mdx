@@ -1,0 +1,69 @@
+---
+title: Branching
+description: Branches are isolated environments that map to your Git branches, so preview work never touches production.
+url: /compute/branching
+metaTitle: Branching | Prisma Compute
+metaDescription: How production and preview branches work in Prisma Compute, how the CLI picks a branch, and how branches are created and cleaned up.
+---
+
+A branch is an isolated environment for one line of work. Every branch in a project gets its own apps, databases, and deployments, so work on a preview never touches production.
+
+A platform branch usually matches a Git branch name, but in Prisma it is a real resource that owns its own apps and databases:
+
+<ConceptAnimation name="compute-model" />
+
+## Production and preview
+
+Every branch has a role:
+
+- The **first branch** in a project is your production branch, usually `main`. It's protected and durable: after the first deploy, deploys to it need an explicit `--prod` flag, and automated cleanup never touches it.
+- **Every other branch** is a preview by default: disposable resources for testing changes before they merge. Preview deploys never ask for confirmation.
+
+To learn more, see the [Deployments docs](/compute/deployments).
+
+## How the CLI picks a branch
+
+When you deploy, the CLI resolves the branch in this order:
+
+1. `--branch <name>`, if you pass it.
+2. Your active Git branch.
+3. `main`.
+
+Inside a Git repo, deploying from `feature/search` targets the `feature/search` branch automatically. To target a branch explicitly:
+
+```npm
+npx @prisma/cli@latest app deploy --branch feature/search
+```
+
+Inspect platform branches:
+
+```npm
+npx @prisma/cli@latest branch list
+npx @prisma/cli@latest branch show
+```
+
+`branch use` changes which branch your later commands target, without creating anything remote:
+
+```npm
+npx @prisma/cli@latest branch use feature/search
+```
+
+Listing a branch doesn't expand the apps and databases inside it. Use the `app` commands to inspect those.
+
+## Creating branches
+
+You rarely create branches manually. They appear when work needs them:
+
+- **On deploy**: `app deploy --branch feature/search` creates the branch if it doesn't exist.
+- **From GitHub**: when a repo is connected, branch and push events create or update the matching platform branch automatically. To set this up, see the [GitHub integration docs](/compute/github).
+
+Connecting GitHub doesn't create branches retroactively; it wires up automation for future events.
+
+## Cleaning up
+
+When GitHub is connected, deleting a Git branch tears down the matching platform branch, as long as it isn't your production or default branch. Those are always left alone.
+
+## Next steps
+
+- [Environment variables](/compute/environment-variables): preview values and per-branch overrides.
+- [GitHub integration](/compute/github): keep platform branches in sync with your repo.

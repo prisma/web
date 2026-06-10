@@ -22,7 +22,7 @@ export const links: LinkItemTypeWithActivePaths[] = [
     text: "Getting Started",
     url: "/",
     active: "nested-url",
-    activePaths: ["/", "/prisma-orm", "/prisma-postgres"],
+    activePaths: ["/", "/prisma-orm", "/prisma-postgres", "/prisma-compute"],
   },
   {
     text: "ORM",
