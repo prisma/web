@@ -12,6 +12,12 @@ export function baseOptions() {
         text: "Products",
         sub: [
           {
+            text: "Compute",
+            url: "https://www.prisma.io/compute",
+            desc: "Deploy TypeScript to production",
+            icon: "fa-regular fa-microchip",
+          },
+          {
             text: "Postgres",
             url: "https://www.prisma.io/postgres",
             desc: "Managed Postgres for global workloads",
@@ -20,7 +26,7 @@ export function baseOptions() {
           {
             text: "ORM",
             url: "https://www.prisma.io/orm",
-            desc: "Managed Postgres for global workloads",
+            desc: "Type-safe ORM for TypeScript and Node.js",
             icon: "fa-regular fa-database",
           },
           {
@@ -28,12 +34,6 @@ export function baseOptions() {
             icon: "fa-regular fa-table",
             url: "https://www.prisma.io/studio",
             desc: "Explore and manipulate your data",
-          },
-          {
-            icon: "fa-regular fa-bolt",
-            text: "Accelerate",
-            desc: "Make your database global",
-            url: "https://www.prisma.io/accelerate",
           },
         ],
       },
@@ -105,10 +105,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider defaultTheme="system" storageKey="theme">
       <UtmPersistence />
-      <NavigationWrapper
-        links={baseOptions().links}
-        utm={{ source: "website", medium: "blog" }}
-      />
+      <NavigationWrapper links={baseOptions().links} utm={{ source: "website", medium: "blog" }} />
       {children}
       <Footer basePath="/blog" />
     </ThemeProvider>

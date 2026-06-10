@@ -6,6 +6,7 @@ import lastModified from "fumadocs-mdx/plugins/last-modified";
 import { z } from "zod";
 import convert from "npm-to-yarn";
 import remarkConsoleUtm from "@/lib/remark-console-utm";
+import { BADGE_TYPES } from "@/lib/badge-types";
 
 // npm-to-yarn only converts the last line of multi-line strings,
 // so we split, convert each line, and rejoin.
@@ -42,7 +43,7 @@ export const docs = defineDocs({
   docs: {
     schema: frontmatterSchema.extend({
       image: z.string().optional(),
-      badge: z.enum(["early-access", "deprecated", "preview"]).optional(),
+      badge: z.enum(BADGE_TYPES).optional(),
       url: z.string(),
       metaTitle: z.string(),
       metaDescription: z.string(),
@@ -95,7 +96,7 @@ export default defineConfig({
           command: (cmd: string) => {
             const converted = convertLine(cmd, "bun");
             if (!converted) return undefined;
-            return converted.replace(/^bun x /, "bunx --bun ");
+            return converted.replace(/^bun x /gm, "bunx --bun ");
           },
           name: "bun",
         },

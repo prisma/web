@@ -1,5 +1,5 @@
 export const SITE_HOME_TITLE =
-  "Prisma | Serverless Postgres, Type-Safe ORM, and Database Tools";
+  "Prisma | Integrated TypeScript Infrastructure for Agentic Software Development";
 
 export const SITE_HOME_DESCRIPTION =
-  "Build with serverless PostgreSQL, a type-safe ORM for Node.js and TypeScript, visual database tools, and AI-ready workflows from Prisma.";
+  "Prisma gives TypeScript and Node.js teams Prisma ORM, Prisma Postgres, and Prisma Compute: a type-safe ORM, managed Postgres, and Compute for deploying TypeScript apps, from schema to deployed app.";

@@ -22,7 +22,7 @@ export function PricingPageContent() {
           </h3>
           <div className="content flex flex-col lg:flex-row gap-3 lg:gap-12 items-center md:items-start lg:items-center">
             <p className="max-w-94 w-full text-center md:text-left text-foreground-neutral-weak text-md">
-              We do custom terms for high-volume teams —{" "}
+              We do custom terms for high-volume teams:{" "}
               <b>volume discounts, dedicated support, better terms</b>.
             </p>
             <Button asChild variant="ppg" size="2xl">
@@ -39,14 +39,34 @@ export function PricingPageContent() {
         </div>
       </div>
       <section className="px-4 py-12">
+        <div className="mx-auto flex max-w-[1000px] flex-col gap-4 rounded-xl border border-stroke-ppg/40 bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-ppg)_262.5%)] p-8 md:flex-row md:items-center md:justify-between md:gap-12">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2 text-foreground-ppg type-title-sm">
+              <i className="fa-solid fa-microchip" aria-hidden="true" />
+              <span>Prisma Compute</span>
+            </div>
+            <h3 className="m-0 text-2xl font-sans-display font-bold text-foreground-neutral">
+              Deploy TypeScript apps on Prisma Compute
+            </h3>
+            <p className="m-0 max-w-[560px] text-foreground-neutral-weak text-md">
+              Prisma Compute is in Public Beta. We&apos;ll share pricing soon. 
+            </p>
+          </div>
+          <Button asChild variant="ppg" size="2xl">
+            <a href="/compute">
+              Explore Prisma Compute
+              <i className="fa-regular fa-arrow-right" />
+            </a>
+          </Button>
+        </div>
+      </section>
+      <section className="px-4 py-12">
         <PricingCalculator currency={currency} />
       </section>
 
       <section className="px-4 py-16">
         <div className="max-w-[1200px] mx-auto flex flex-col items-center gap-6">
-          <h3 className="m-0 text-center text-foreground-neutral type-title-4xl">
-            Compare plans
-          </h3>
+          <h3 className="m-0 text-center text-foreground-neutral type-title-4xl">Compare plans</h3>
           <p className="m-0 text-center text-foreground-neutral-weak">
             All of the features below are included with Prisma Postgres.
           </p>

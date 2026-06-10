@@ -2,6 +2,7 @@ import { Provider } from "@/components/provider";
 import { getBaseUrl } from "@/lib/urls";
 import "./global.css";
 import { Inter, Barlow } from "next/font/google";
+import localFont from "next/font/local";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Script from "next/script";
@@ -16,6 +17,30 @@ const barlow = Barlow({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   variable: "--font-barlow",
+});
+
+const monaSans = localFont({
+  src: [
+    {
+      path: "../../../../packages/eclipse/src/static/fonts/MonaSansVF[wdth,wght,opsz,ital].woff2",
+      weight: "200 900",
+      style: "normal",
+    },
+    {
+      path: "../../../../packages/eclipse/src/static/fonts/MonaSansVF[wdth,wght,opsz,ital].woff2",
+      weight: "200 900",
+      style: "italic",
+    },
+  ],
+  variable: "--font-mona-sans",
+  display: "swap",
+});
+
+const monaSansMono = localFont({
+  src: "../../../../packages/eclipse/src/static/fonts/MonaSansMonoVF[wght].woff2",
+  variable: "--font-mona-mono",
+  display: "swap",
+  weight: "200 900",
 });
 
 export const metadata: Metadata = {

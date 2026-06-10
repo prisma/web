@@ -1,15 +1,9 @@
 "use client";
-import { useState } from "react";
+import type { CSSProperties } from "react";
 import Image from "next/image";
+import { Marquee } from "@/components/marquee";
 
 const logoParade = [
-  {
-    label: "Gatsby",
-    imageUrl: `/icons/companies/gatsby.svg`,
-    url: "https://www.gatsbyjs.com",
-    width: 107,
-    height: 29,
-  },
   {
     label: "Rapha",
     imageUrl: `/icons/companies/rapha.svg`,
@@ -64,28 +58,28 @@ const logoParade = [
     imageUrl: `/icons/companies/ihi.svg`,
     url: "https://www.ihiterrasun.com/",
     width: 225,
-    height: 55,
+    height: 26,
   },
   {
     label: "Insta",
     imageUrl: `/icons/companies/insta.svg`,
     url: "",
-    width: 225,
-    height: 55,
+    width: 150,
+    height: 46,
   },
   {
     label: "Outrider",
     imageUrl: `/icons/companies/outrider.svg`,
     url: "https://outrider.org/",
-    width: 225,
-    height: 55,
+    width: 201,
+    height: 40,
   },
   {
     label: "Oxio",
     imageUrl: `/icons/companies/oxio.svg`,
     url: "https://oxio.com/",
-    width: 225,
-    height: 55,
+    width: 200,
+    height: 37,
   },
   {
     label: "Southpole",
@@ -96,44 +90,37 @@ const logoParade = [
   },
 ];
 
-const keyframes = `
-  @keyframes scroll-left {
-    0%   { transform: translateX(0); }
-    100% { transform: translateX(-50%); }
-  }
-`;
-
 export default function LogoParade() {
-  const [paused, setPaused] = useState(false);
-  const allItems = [...logoParade, ...logoParade];
-
   return (
     <div className="flex flex-col items-center justify-center gap-10 p-6 overflow-hidden">
-      <style>{keyframes}</style>
-      {/* Ticker wrapper */}
-      <div className="relative overflow-hidden max-w-[1200px] mx-auto">
-        {/* Fade edges */}
-        <div className="pointer-events-none absolute inset-y-0 left-0 w-100 z-10 bg-linear-to-r from-background-default to-transparent" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-100 z-10 bg-linear-to-l from-background-default to-transparent" />
-
-        {/* Track */}
-        <div
-          className="flex gap-24 w-max"
-          style={{
-            animation: `scroll-left 110s linear infinite`,
-            animationPlayState: paused ? "paused" : "running",
-          }}
-          onMouseEnter={() => setPaused(true)}
-          onMouseLeave={() => setPaused(false)}
+      <div className="relative max-w-[1200px] mx-auto">
+        <Marquee
+          pauseOnHover
+          fade
+          fillContainer={false}
+          className="max-w-full"
+          innerClassName="w-max items-center"
+          style={{ "--duration": "110s", "--gap": "6rem" } as CSSProperties}
         >
-          {allItems.map((item, i) => (
-            <a
-              key={i}
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="relative shrink-0 rounded-lg overflow-hidden cursor-pointer transition-transform duration-200 invert-100 dark:brightness-150 dark:hover:filter-none contrast-75 grayscale hover:filter-none"
-            >
+          {logoParade.map((item) => {
+            const className = `relative 
+              shrink-0 
+              rounded-lg 
+              overflow-hidden 
+              transition-[transform,filter] 
+              duration-200
+              
+              grayscale  
+              invert-84
+              sepia-5
+              saturate-625
+              hue-rotate-179
+              brightness-77
+              contrast-88
+            
+              hover:filter-none`;
+
+            const logo = (
               <Image
                 src={item.imageUrl}
                 width={item.width}
@@ -142,9 +129,25 @@ export default function LogoParade() {
                 loading="lazy"
                 className="w-full h-full object-contain object-center"
               />
-            </a>
-          ))}
-        </div>
+            );
+
+            return item.url ? (
+              <a
+                key={item.label}
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`${className} cursor-pointer`}
+              >
+                {logo}
+              </a>
+            ) : (
+              <div key={item.label} className={className}>
+                {logo}
+              </div>
+            );
+          })}
+        </Marquee>
       </div>
     </div>
   );

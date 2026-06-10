@@ -29,8 +29,8 @@ const testimonials = [
   {
     quote: (
       <>
-        We <b>adopted Prisma conventions as our standard</b>, and it saves lots
-        of time from having to reinvent things ourselves.
+        We <b>adopted Prisma conventions as our standard</b>, and it saves lots of time from having
+        to reinvent things ourselves.
       </>
     ),
     author: "Yuval Hazaz",
@@ -42,8 +42,8 @@ const testimonials = [
   {
     quote: (
       <>
-        Thanks to Prisma, we can seamlessly <b>scale our applications</b>{" "}
-        without concerns about data layer performance.
+        Thanks to Prisma, we can seamlessly <b>scale our applications</b> without concerns about
+        data layer performance.
       </>
     ),
     author: "Matti Nannt",
@@ -55,9 +55,8 @@ const testimonials = [
   {
     quote: (
       <>
-        Entire SaaS businesses have been built on top of the Prisma ecosystem—
-        including OSS ones like Dub.co. Have been loving the recent performance
-        improvements as well
+        Entire SaaS businesses have been built on top of the Prisma ecosystem, including OSS ones
+        like Dub.co. Have been loving the recent performance improvements as well
       </>
     ),
     author: "Steven Tey",
@@ -78,9 +77,8 @@ export default function StartupsPage() {
             Fuel your startup&apos;s success with Prisma
           </h1>
           <p className="text-xl text-foreground-neutral-weak mb-10 max-w-[700px] mx-auto">
-            <b>Get exclusive 1:1 guidance</b> from Prisma&apos;s database
-            experts, and have your database bill covered for a year and up to
-            $10,000.
+            <b>Get exclusive 1:1 guidance</b> from Prisma&apos;s database experts, and have your
+            database bill covered for a year and up to $10,000.
           </p>
           <Button asChild variant="orm" size="3xl">
             <a href="#contact-us">
@@ -103,13 +101,12 @@ export default function StartupsPage() {
                 for Startups?
               </h2>
               <p className="text-foreground-neutral-weak mb-4">
-                Building a startup is hard – your tools shouldn&apos;t be. You
-                need infra that grows with you: flexible, powerful, and built to
-                scale.
+                Building a startup is hard. Your tools shouldn&apos;t be. You need infrastructure
+                that grows with you: flexible and built to scale.
               </p>
               <p className="text-foreground-neutral-weak">
-                Apply if you&apos;re building a software product or service with
-                an active website and meet the criteria below.
+                Apply if you&apos;re building a software product or service with an active website
+                and meet the criteria below.
               </p>
             </div>
 
@@ -129,13 +126,9 @@ export default function StartupsPage() {
                       aria-hidden="true"
                     />
                     <div>
-                      <span className="font-bold text-foreground-neutral">
-                        {b.title}
-                      </span>
+                      <span className="font-bold text-foreground-neutral">{b.title}</span>
                       <br />
-                      <span className="text-foreground-neutral-weak italic">
-                        – {b.description}
-                      </span>
+                      <span className="text-foreground-neutral-weak italic">{b.description}</span>
                     </div>
                   </div>
                 ))}
@@ -155,9 +148,7 @@ export default function StartupsPage() {
                     className="fa-solid fa-arrow-right text-foreground-orm mt-1 shrink-0"
                     aria-hidden="true"
                   />
-                  <span className="font-semibold">
-                    Pre-seed, seed, or series-A
-                  </span>
+                  <span className="font-semibold">Pre-seed, seed, or series-A</span>
                 </li>
                 <li className="flex items-start gap-3 text-foreground-neutral">
                   <i
@@ -173,9 +164,7 @@ export default function StartupsPage() {
                     className="fa-solid fa-arrow-right text-foreground-orm mt-1 shrink-0"
                     aria-hidden="true"
                   />
-                  <span className="font-semibold">
-                    Founded in the last 5 years
-                  </span>
+                  <span className="font-semibold">Founded in the last 5 years</span>
                 </li>
               </ul>
             </div>
@@ -189,18 +178,14 @@ export default function StartupsPage() {
                     className="fa-solid fa-arrow-right text-foreground-orm mt-1 shrink-0"
                     aria-hidden="true"
                   />
-                  <span className="font-semibold">
-                    At least 5k MRR for the last 6 months
-                  </span>
+                  <span className="font-semibold">At least 5k MRR for the last 6 months</span>
                 </li>
                 <li className="flex items-start gap-3 text-foreground-neutral">
                   <i
                     className="fa-solid fa-arrow-right text-foreground-orm mt-1 shrink-0"
                     aria-hidden="true"
                   />
-                  <span className="font-semibold">
-                    Two full-time team members
-                  </span>
+                  <span className="font-semibold">Two full-time team members</span>
                 </li>
                 <li className="flex items-start gap-3 text-foreground-neutral">
                   <i
@@ -216,17 +201,11 @@ export default function StartupsPage() {
           {/* Info box */}
           <div className="mt-20 max-w-[671px] mx-auto text-center rounded-lg border border-stroke-orm bg-background-orm p-8">
             <p className="text-foreground-neutral mb-8 text-balance">
-              Prisma empowers you to innovate faster with the most reliable and
-              developer-friendly database infrastructure. Build with confidence,
-              scale without limits, and deliver exceptional experiences to your
-              global audience—all while staying focused on what matters: your
-              product.
+              Prisma gives you developer-friendly database infrastructure so you can build and scale
+              your product while staying focused on what matters: shipping to your users.
             </p>
             <div className="flex items-center justify-center gap-4 flex-wrap">
-              <i
-                className="fa-solid fa-message text-foreground-orm text-2xl"
-                aria-hidden="true"
-              />
+              <i className="fa-solid fa-message text-foreground-orm text-2xl" aria-hidden="true" />
               <span className="font-bold text-foreground-neutral text-lg">
                 Startups blog announcement
               </span>
@@ -263,15 +242,10 @@ export default function StartupsPage() {
                     loading="lazy"
                   />
                   <div>
-                    <p className="font-bold text-foreground-orm text-lg">
-                      {t.company}
-                    </p>
+                    <p className="font-bold text-foreground-orm text-lg">{t.company}</p>
                     <p className="text-foreground-neutral text-base">
                       {t.author}
-                      <span className="text-foreground-neutral-weaker">
-                        {" "}
-                        / {t.title}
-                      </span>
+                      <span className="text-foreground-neutral-weaker"> / {t.title}</span>
                     </p>
                   </div>
                 </div>

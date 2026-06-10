@@ -33,16 +33,14 @@ const first = [
           application’s lifecycle
         </h2>
         <p className="text-foreground-neutral-weak! text-base my-4">
-          By integrating Prisma into your development ecosystem, you leverage
-          its capabilities to Build robust, adaptable applications with less
-          code and fewer errors and also Fortify your database interactions for
-          peak performance right from the start.
+          By integrating Prisma into your development workflow, you build adaptable applications
+          with less code and fewer errors, and you keep your database interactions reliable from the
+          start.
         </p>
         <p className="text-foreground-neutral-weak! text-base my-4">
-          As your application Grows, our platform products Accelerate and Prisma
-          Postgres ensure that your data layer can adapt and scale, supporting
-          increased traffic and requirements without sacrificing performance or
-          security.
+          As your application grows, Prisma Accelerate and Prisma Postgres help your data layer
+          adapt and scale, supporting increased traffic and requirements without sacrificing
+          performance or security.
         </p>
       </>
     ),
@@ -188,7 +186,7 @@ const enterprises = [
     icon: "fa-regular fa-up-right-and-down-left-from-center", // or "fa-light fa-arrow-trend-up"
   },
   {
-    title: "Comprehensive team training",
+    title: "Team training",
     description:
       "Upskill developers with hands-on enablement tailored to your codebase, workflows, and Prisma adoption goals.",
     icon: "fa-regular fa-screen-users", // or "fa-light fa-people-group"
@@ -204,7 +202,7 @@ const solution_providers = [
   {
     title: "Direct access to product experts",
     description:
-      "Engage with the brains behind the Prisma ORM for in-depth problem-solving and specialized insights.",
+      "Work directly with the team behind Prisma ORM for in-depth problem-solving and specialized insights.",
     icon: "fa-regular fa-person-chalkboard", // or "fa-light fa-person-chalkboard"
   },
   {
@@ -221,14 +219,12 @@ const solution_providers = [
   },
   {
     title: "Advanced updates",
-    description:
-      "Stay ahead in the game with the latest updates and best practices.",
+    description: "Get the latest updates and best practices as they ship.",
     icon: "fa-regular fa-file-arrow-up", // or "fa-light fa-file-import"
   },
   {
     title: "Expedited and priority support",
-    description:
-      "Benefit from prioritized attention to your inquiries and problems.",
+    description: "Benefit from prioritized attention to your inquiries and problems.",
     icon: "fa-regular fa-phone-volume", // or "fa-light fa-phone-arrow-up-right"
   },
   {
@@ -238,14 +234,14 @@ const solution_providers = [
     icon: "fa-regular fa-screen-users", // or "fa-light fa-people-group"
   },
   {
-    title: "Optimization for peak performance",
-    description: "Ensure your software solutions run smoothly and efficiently.",
+    title: "Performance optimization",
+    description: "Tune your queries and schema so your software runs efficiently under load.",
     icon: "fa-regular fa-arrow-up-right-dots", // or "fa-light fa-chart-mixed"
   },
   {
     title: "Proactive risk management",
     description:
-      "Help you to anticipate and mitigate risks, ensuring a seamless development process and uninterrupted service to your clients.",
+      "Help you anticipate and mitigate risks, keeping your development process and your service to clients uninterrupted.",
     icon: "fa-regular fa-triangle-exclamation", // or "fa-light fa-triangle-exclamation"
   },
 ];
@@ -321,8 +317,7 @@ const abstraction_ease_of_use = [
   },
 ];
 
-const ENTERPRISE_TITLE =
-  "Prisma Enterprise | ORM Support and Database Workflows for Teams";
+const ENTERPRISE_TITLE = "Prisma Enterprise | ORM Support and Database Workflows for Teams";
 const ENTERPRISE_DESCRIPTION =
   "See how Prisma helps engineering teams ship faster with better database workflows, enterprise support, and tailored solutions for large organizations.";
 
@@ -349,17 +344,11 @@ export default function EnterprisePage() {
             </h1>
           </div>
           <p className="text-center text-foreground-neutral max-w-2xl mx-auto">
-            Prisma acts as your comprehensive enterprise data toolset,
-            simplifying database interactions and reducing complexity so
-            developers can focus on business logic.
+            Prisma simplifies database interactions and reduces complexity, so developers can focus
+            on business logic instead of infrastructure plumbing.
           </p>
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
-            <Button
-              asChild
-              variant="orm"
-              size="3xl"
-              className="font-sans-display! font-[650]"
-            >
+            <Button asChild variant="orm" size="3xl" className="font-sans-display! font-[650]">
               <a href="#contact-us">
                 Get in touch
                 <i className="fa-regular fa-envelope" />
@@ -389,8 +378,8 @@ export default function EnterprisePage() {
             Leave the database complexities to us
           </h3>
           <p className="text-center text-foreground-neutral max-w-xl mx-auto">
-            Focus on core competencies of your team, rather than building and
-            managing complex infrastructure components.
+            Focus on core competencies of your team, rather than building and managing complex
+            infrastructure components.
           </p>
         </div>
         <div className="grid md:grid-cols-2 gap-6 max-w-230 mx-auto w-full">
@@ -486,11 +475,7 @@ export default function EnterprisePage() {
             gridClassName="auto-cols-[100%] sm:auto-cols-[calc((100%-2rem)/3)]"
           >
             {abstraction_ease_of_use.map((item) => (
-              <CarouselItem
-                key={item.title}
-                card={item}
-                className="min-h-full"
-              />
+              <CarouselItem key={item.title} card={item} className="min-h-full" />
             ))}
           </ScrollCarousel>
         </div>
@@ -550,11 +535,7 @@ export default function EnterprisePage() {
             gridClassName="auto-cols-[100%] sm:auto-cols-[calc((100%-2rem)/3)]"
           >
             {scal_port.map((item) => (
-              <CarouselItem
-                key={item.title}
-                card={item}
-                className="min-h-full"
-              />
+              <CarouselItem key={item.title} card={item} className="min-h-full" />
             ))}
           </ScrollCarousel>
         </div>
@@ -567,8 +548,8 @@ export default function EnterprisePage() {
             Dedicated ORM support options
           </h2>
           <p className="text-center text-foreground-neutral max-w-xl mx-auto">
-            Focus on core competencies of your team, rather than building and
-            managing complex infrastructure components.
+            Focus on core competencies of your team, rather than building and managing complex
+            infrastructure components.
           </p>
           <SwitchEnterprise
             content={[enterprises, solution_providers]}
@@ -587,8 +568,8 @@ export default function EnterprisePage() {
             Connect with us
           </h2>
           <p className="text-center text-foreground-neutral max-w-3xl mx-auto">
-            To explore how our support solutions can revolutionize your agency
-            or enterprise's approach to developing with Prisma ORM.
+            Tell us about your team, and we&apos;ll show you how our support options fit your agency
+            or enterprise&apos;s work with Prisma ORM.
           </p>
           <EnterpriseForm />
         </div>

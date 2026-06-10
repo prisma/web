@@ -231,7 +231,7 @@ export function AgentPromptClient({
       </div>
       {showSkillBadge ? (
         <div className="agent-prompt-skill">
-          <span className="agent-prompt-skill-label">Agent</span>
+          <span className="agent-prompt-skill-label">Skill</span>
           <span className="agent-prompt-skill-name">{skill}</span>
         </div>
       ) : null}
@@ -276,7 +276,7 @@ export function AgentPromptClient({
               <span />
             </span>
             <span className="agent-prompt-terminal-title">
-              {skill ? `Running ${skill}` : "Terminal"}
+              {skill ? `Agent running ${skill}` : "Terminal"}
             </span>
             {!hasCode ? (
               <button

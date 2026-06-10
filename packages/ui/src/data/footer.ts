@@ -5,8 +5,18 @@ const footerItems = [
     url: "https://prisma.io/product",
     links: [
       {
-        title: "ORM",
+        title: "Prisma ORM",
         url: "https://prisma.io/orm",
+        _type: "footerLinkType",
+      },
+      {
+        title: "Prisma Postgres",
+        url: "https://prisma.io/postgres",
+        _type: "footerLinkType",
+      },
+      {
+        title: "Prisma Compute",
+        url: "https://prisma.io/compute",
         _type: "footerLinkType",
       },
       {

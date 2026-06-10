@@ -2,19 +2,10 @@ import { createSoftwareApplicationStructuredData } from "@/lib/structured-data";
 import { createPageMetadata } from "@/lib/page-metadata";
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 
-import {
-  type McpAgent,
-  McpAgentsSection,
-} from "./_components/mcp-agents-section";
-import {
-  type McpCapability,
-  McpCapabilitiesSection,
-} from "./_components/mcp-capabilities-section";
+import { type McpAgent, McpAgentsSection } from "./_components/mcp-agents-section";
+import { type McpCapability, McpCapabilitiesSection } from "./_components/mcp-capabilities-section";
 import { McpCtaSection } from "./_components/mcp-cta-section";
-import {
-  type McpHeroFeature,
-  McpHeroSection,
-} from "./_components/mcp-hero-section";
+import { type McpHeroFeature, McpHeroSection } from "./_components/mcp-hero-section";
 import { McpVideoSection } from "./_components/mcp-video-section";
 
 const mcpStructuredData = createSoftwareApplicationStructuredData({
@@ -51,7 +42,7 @@ const heroFeatures: McpHeroFeature[] = [
     line1: "Works with any",
     line2: "AI agent",
   },
-  { icon: "fa-light fa-bolt", line1: "Super quick", line2: "2-minute setup" },
+  { icon: "fa-light fa-bolt", line1: "Quick", line2: "2-minute setup" },
   {
     icon: "fa-light fa-lock",
     line1: "Enterprise-grade",
@@ -93,8 +84,7 @@ const agents: McpAgent[] = [
   {
     logo: "/mcp/logos/claude-code.svg",
     alt: "Copy command to add to Claude Code",
-    copyText:
-      "claude mcp add --transport http prisma https://mcp.prisma.io/mcp",
+    copyText: "claude mcp add --transport http prisma https://mcp.prisma.io/mcp",
   },
   {
     logo: "/mcp/logos/windsurf.svg",
@@ -117,8 +107,7 @@ const capabilities: McpCapability[] = [
   {
     icon: "fa-light fa-database",
     title: "Database Management",
-    description:
-      "Create projects, databases, or clean them up via natural language",
+    description: "Create projects, databases, or clean them up via natural language",
     prompt: "Set up this project with a new database in us-east-1",
     mobileTall: false,
   },
@@ -126,8 +115,7 @@ const capabilities: McpCapability[] = [
     icon: "fa-light fa-magnifying-glass-arrow-right",
     title: "Data Analysis",
     description: "Execute queries and analyze data through conversation",
-    prompt:
-      "Show me all users who signed up this week and their activity levels",
+    prompt: "Show me all users who signed up this week and their activity levels",
     mobileTall: true,
   },
   {
@@ -162,10 +150,7 @@ export default function McpPage() {
         <McpVideoSection />
         <McpAgentsSection agents={agents} />
         <McpCapabilitiesSection capabilities={capabilities} />
-        <McpCtaSection
-          docsHref={DOCS_MCP}
-          readDocsHref="https://www.prisma.io/docs/ai"
-        />
+        <McpCtaSection docsHref={DOCS_MCP} readDocsHref="https://www.prisma.io/docs/ai" />
       </div>
     </main>
   );
