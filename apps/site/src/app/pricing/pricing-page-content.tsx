@@ -49,8 +49,7 @@ export function PricingPageContent() {
               Deploy TypeScript apps on Prisma Compute
             </h3>
             <p className="m-0 max-w-[560px] text-foreground-neutral-weak text-md">
-              Prisma Compute is in Public Beta. We&apos;ll share pricing soon. It won&apos;t change
-              while Compute is in beta.
+              Prisma Compute is in Public Beta. We&apos;ll share pricing soon. 
             </p>
           </div>
           <Button asChild variant="ppg" size="2xl">
