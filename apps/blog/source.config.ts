@@ -21,6 +21,7 @@ export const blogPosts = defineCollections({
     metaImagePath: z.string().optional(),
     series: z.string().optional(),
     seriesIndex: z.number().int().positive().optional(),
+    pinned: z.boolean().optional(),
     prev: z.string().optional(),
     next: z.string().optional(),
     tags: z

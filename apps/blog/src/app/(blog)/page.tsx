@@ -49,7 +49,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function BlogHome() {
-  const posts = blog.getPages().sort((a, b) => {
+  const sortedByDate = blog.getPages().sort((a, b) => {
     const aTime =
       a.data.date instanceof Date
         ? a.data.date.getTime()
@@ -60,6 +60,14 @@ export default async function BlogHome() {
         : new Date((b.data.date as unknown as string) ?? "").getTime();
     return bTime - aTime;
   });
+
+  // Pinned posts are surfaced ahead of the chronological feed so the latest
+  // pinned post takes the featured slot (and the top of the list) instead of
+  // the most recent post by date. The date sort above is stable, so pinned
+  // posts keep their newest-first order among themselves.
+  const isPinned = (post: (typeof sortedByDate)[number]): boolean =>
+    (post.data as { pinned?: boolean }).pinned === true;
+  const posts = [...sortedByDate.filter(isPinned), ...sortedByDate.filter((p) => !isPinned(p))];
 
   const getAllAuthors = (post: (typeof posts)[number]): string[] => {
     const data = post.data as any;
