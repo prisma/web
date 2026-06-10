@@ -6,8 +6,9 @@ authors:
   - "Tyler Hogarth"
 metaTitle: "Gremlin: turning open tasks into pull requests"
 metaDescription: "Gremlin is an autonomous engineering agent for small, well-scoped tasks. It uses Mastra for orchestration and OpenCode in a sandbox to turn Sentry issues, Linear tasks, and Slack instructions into reviewable pull requests."
-heroImagePath: "/gremlin-turning-open-tasks-into-pull-requests/imgs/hero.svg"
-metaImagePath: "/gremlin-turning-open-tasks-into-pull-requests/imgs/hero.svg"
+heroImagePath: "/gremlin-turning-open-tasks-into-pull-requests/imgs/hero.png"
+metaImagePath: "/gremlin-turning-open-tasks-into-pull-requests/imgs/meta.png"
+heroImageAlt: "Gremlin Cloud Agent illustration with infrastructure icons, terminal output, and deployment status panels"
 tags: ["ai"]
 ---
 
@@ -153,19 +154,21 @@ That matters because engineers are already hitting local machine resource limits
 
 This is a different problem from fixing a Sentry issue or a Slack instruction. It requires tracking state across multiple PRs, respecting dependencies between milestones, and knowing when not to proceed. But the path starts with reliable execution on smaller tasks. Gremlin's current architecture is designed with that progression in mind. Mastra provides the orchestration layer needed to move from one-off task execution towards longer-running workflows.
 
-## Product integration
+## Fix with AI
 
-A natural future direction is connecting Gremlin to products that already detect problems, rather than asking engineers to find them in a console.
+The most interesting product direction for Gremlin is not a separate agent console. It is **Fix with AI**: a button in the places where Prisma already surfaces a problem, wired to orchestration that returns a pull request instead of a prompt to paste elsewhere.
 
-[Query Insights](https://www.prisma.io/docs/query-insights) is an existing example. It is built into Prisma Postgres and already surfaces slow queries, expensive reads, and repeated statement shapes. Today it helps engineers understand what to change next: AI-generated analysis, copyable prompts, investigation in the Prisma Console.
+That pattern only works if something like Gremlin sits behind it. Detection alone is not enough. The product has to gather context, spin up a sandbox, attempt a bounded fix, validate what it can, and route the result back into normal review workflows. Without that layer, "Fix with AI" is just another copyable prompt and the friction moves, it does not disappear.
 
-That analysis step is useful, but it is still a separate surface. The engineer opens the console, reads the suggestion, switches to their editor, applies the fix, opens a PR. Gremlin closes that gap. Query Insights detects the issue; Gremlin receives the context and produces a pull request. The engineer's interface becomes the PR, not the console.
+Prisma is already moving in this direction. With the [launch of Prisma Compute in public beta](https://www.prisma.io/blog/launching-prisma-compute-public-beta), the platform is built around an agentic loop: build, deploy, read logs, fix, and redeploy, with app and database on the same infrastructure. The hard part is no longer only writing code. It is everything after: chasing build output, feeding log context back into the agent, and keeping that loop inside one place instead of jumping between dashboards.
 
-The same pattern applies elsewhere: detect a failure or degradation, evaluate whether it is in scope, hand it to Gremlin, review the result in the workflow teams already use. For Prisma Compute, Gremlin could operate as an always-on assistant for operational quality: watch for recurring issues, convert them into candidate tasks, and raise PRs before those issues become persistent sources of engineering noise.
+Gremlin is how we extend that loop outward, into the repositories and review processes teams already use.
 
-Over time, with consistent results and explicit user approval, fixes in well-understood categories could merge automatically. That is a longer path. The near-term goal is reliable detection, sandboxed execution, and a reviewable PR, with selectivity at every step.
+### Query Insights today
 
-A proactive agent should not attempt everything. It should be conservative about what it chooses to fix, explicit about why a task is in scope, and transparent about its confidence. The more proactive the system becomes, the more important those boundaries become.
+[Query Insights](https://www.prisma.io/docs/query-insights) is the clearest existing example. It is built into Prisma Postgres and surfaces slow queries, expensive reads, and repeated statement shapes. When a query group is hurting performance, the console already answers a useful question: what should change next?
+
+Today that answer often arrives as AI-generated analysis and a copyable prompt. The engineer still switches to an editor, applies the fix, runs checks, and opens a PR. **Fix with AI** closes that gap. Query Insights detects the issue and passes structured context to Gremlin; Gremlin returns a reviewable pull request. The engineer's interface becomes the PR, not another surface to babysit.
 
 ## What comes next
 
@@ -173,4 +176,4 @@ Autonomous engineering systems do not need to start by replacing large parts of 
 
 Gremlin starts with the long tail of well-scoped work: Sentry noise, Slack and Linear instructions, and the fixes nobody picks up because the interrupt cost is too high. By combining Mastra's orchestration layer with OpenCode, Gremlin turns that work into reviewable pull requests while preserving clear boundaries and leaving the merge decision where it belongs: with the engineer reviewing the PR.
 
-The current focus is small to medium-sized tasks. The longer-term direction is larger project execution, deeper product integration, and more proactive operational quality. The core principle remains the same: agents are most useful when they are embedded into real workflows, constrained by clear boundaries, and evaluated by the amount of friction they remove.
+The current focus is small to medium-sized tasks. The longer-term direction is larger project execution, **Fix with AI** wired into more Prisma surfaces, and proactive operational quality across [Compute](https://www.prisma.io/blog/launching-prisma-compute-public-beta) and Postgres. The core principle remains the same: agents are most useful when they are embedded into real workflows, constrained by clear boundaries, and evaluated by the amount of friction they remove.
