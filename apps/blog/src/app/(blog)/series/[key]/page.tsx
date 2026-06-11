@@ -77,6 +77,14 @@ export default async function SeriesPage(props: { params: Promise<SeriesPagePara
         {meta.description ? (
           <p className="mt-3 text-foreground-neutral-weak">{meta.description}</p>
         ) : null}
+        {meta.docsUrl ? (
+          <a
+            href={meta.docsUrl}
+            className="mt-3 inline-block text-sm font-medium text-foreground-ppg hover:underline"
+          >
+            {meta.docsLabel ?? "Read the docs"} →
+          </a>
+        ) : null}
       </header>
 
       <BlogGrid items={items} currentCategory="show-all" />
