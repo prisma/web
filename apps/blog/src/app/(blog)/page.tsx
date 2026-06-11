@@ -134,6 +134,9 @@ export default async function BlogHome() {
     .filter((item) => item.count > 0)
     .sort((a, b) => {
       if (a.featured !== b.featured) return a.featured ? -1 : 1;
+      // Featured series keep their registry order (the first one becomes the
+      // home highlight card); the rest rank by part count.
+      if (a.featured && b.featured) return 0;
       return b.count - a.count;
     });
 

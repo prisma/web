@@ -1,0 +1,114 @@
+---
+title: "We put Bun's Rust rewrite in production on Prisma Compute"
+slug: "bun-rust-rewrite-prisma-compute"
+date: "2026-06-11"
+authors:
+  - "Alexey Orlenko"
+metaTitle: "We put Bun's Rust rewrite in production on Prisma Compute"
+metaDescription: "Why Prisma Compute's public beta runs on Bun's Rust rewrite canary: the memory and connection-pool failures we hit on stable Bun, and what changed."
+heroImagePath: "/bun-rust-rewrite-prisma-compute/imgs/hero.svg"
+heroImageAlt: "Bun, Rust, and Prisma Compute"
+metaImagePath: "/bun-rust-rewrite-prisma-compute/imgs/meta.png"
+tags:
+  - "platform"
+series: prisma-compute
+seriesIndex: 2
+---
+
+
+Prisma Compute runs TypeScript apps on Bun. When we launched the public beta, we launched it on Bun canary, specifically on the Rust rewrite that is expected to ship as Bun 1.4.
+
+That decision had nothing to do with how we feel about rewrites in general. It came down to test results.
+
+We picked Bun early because it matched what we wanted Compute to be: a batteries included and Node.js compatible TypeScript runtime that runs customer apps next to their database, scales to zero when idle, and wakes up when traffic returns. Then we started running it under real load, and the picture got more complicated. We ran into memory leaks and a connection pool that couldn't recover after a VM was paused and resumed. We fixed what we could in Bun's own codebase. When the Rust rewrite appeared, we tested it against the same failure modes. It handled them perfectly.
+
+This post is the report behind that decision: what Compute demands from a runtime, what broke on Bun 1.3, what changed on the canary, and why launching the beta there beat the alternative of carrying an ever-growing private fork.
+
+## Why Compute is a hard runtime test
+
+[Prisma Compute](https://www.prisma.io/blog/launching-prisma-compute-public-beta) hosts TypeScript apps on the same infrastructure as your database. You point an agent at a project. It provisions a branch database, applies your schema, builds and deploys the app, reads the logs, fixes what failed, and deploys again.
+
+Underneath, every app runs on Bun. Instances scale to zero when nothing is happening. Each deploy becomes an immutable version with its own preview URL, and every database branch can carry its own app deployment.
+
+That lifecycle stresses a runtime in ways a benchmark never will. A Compute app isn't a script that handles one request and exits. It's a long-lived service. It might sit idle, get paused with a memory snapshot, then resume and have to serve traffic immediately. Its connection pool may be holding sockets that were healthy before the pause and are dead after it. Its native resources have to be released even when the JavaScript abstractions are still alive.
+
+So when we talk about runtime reliability, we mean things that have to keep working for months: memory that stays bounded no matter how many request and object bodies pass through, pools that notice dead connections and reconnect, paused instances that come back in a usable state, and requests that fail loudly instead of hanging forever.
+
+Those were the conditions we tested Bun under.
+
+## What failed before the rewrite
+
+The memory problems came first.
+
+The clearest public example is [Bun issue #29083](https://github.com/oven-sh/bun/issues/29083). The repro is small: read the same S3 object into an `ArrayBuffer` over and over with `Bun.S3File.arrayBuffer()` inside a 1 GiB Linux container, forcing garbage collection with `Bun.gc(true)` after every iteration. On stable Bun, RSS climbed anyway, past the 900 MiB threshold the report set, and far enough to get the container OOM-killed.
+
+What worried us wasn't the S3 API in particular. It was what the bug implied about ordinary server code: you can read a body into memory, drop every reference to it, force a full GC, and still watch the process grow well beyond anything the JavaScript heap can account for. A long-lived service has nowhere to hide from that.
+
+The connection pool was the second problem, and in some ways the worse one.
+
+If a VM is paused and resumed much later, or when the network kills a socket without warning, a database pool has to notice that its idle connections are gone. In our testing, Bun's SQL pool didn't. After an instance was restored from scale-to-zero, the pool still counted its dead connections as live. New queries queued up waiting for a slot that would never open. No errors, no reconnection attempts; just a pool that had quietly stopped working.
+
+For most processes, that's an edge case. For Compute, it's the main path. Scale-to-zero is part of the product, and standby and resume happen constantly. If a customer's app wakes from idle and its first query hangs forever, the platform is broken, no matter how well everything behaved before the pause.
+
+## What changed on the Rust canary
+
+The S3 repro gave us a clean comparison, because the follow-up on issue #29083 ran the same script against both runtimes.
+
+On the stable release, `1.3.14+0d9b296af`, the leak reproduced exactly as reported: the default run crossed the 900 MiB threshold around iteration 96. The longer verification run kept growing until the container was killed.
+
+On the canary build, `1.3.14-canary.1+172afa532`, it didn't. The default run finished without crossing the threshold. Even the long 4096-iteration run stayed flat, peaking at roughly 118 MiB of sampled RSS.
+
+The pool results pointed the same way. The Bun versions we had been running before the rewrite would reliably deadlock the SQL pool after a restore from scale-to-zero. On the Rust rewrite, in our testing, the pool recovered.
+
+We want to be careful with the size of that claim. We're not saying every possible pool failure is fixed. We're saying that the specific failure we kept hitting in Compute, dead idle connections after standby leaving the pool permanently stuck, went away on the canary.
+
+Between the two results, the question stopped being whether canary was risky and became which risk we preferred.
+
+## Why we launched on canary
+
+There were really only three options on the table.
+
+We could launch the beta on stable Bun, knowing it carried failure modes our customers would run into. We weren't willing to do that.
+
+We could keep maintaining our own patched Bun. We had already fixed some of the memory leaks directly in Bun's codebase. But every patch we carried made the fork heavier to maintain and did nothing for anyone outside Prisma. A private runtime fork is a bad foundation for a platform you intend to grow.
+
+Or we could launch on the canary that had fixed the problems we could reproduce, keep testing it under Compute's workload, and contribute upstream where we could. That's what we did.
+
+It helps that Compute is a public beta rather than a quiet migration of a mature product. We're still polishing the experience, and we expect rough edges. We want the feedback loop to stay short: hit a symptom in production, reduce it to a minimal repro, take it upstream, retest on canary, and ship when the evidence changes.
+
+Launching on canary was never a bet that new code is inherently safer than old code, even if the empirical evidence demonstrates that it likely is. It was based on a simple ground truth: the build which passed our tests made a better foundation than the build which failed them.
+
+We are excited for the future of Bun and we are confident that it was the right choice for us and our users.
+
+## What the rewrite taught us
+
+There has been plenty of debate about whether an automatically translated runtime can be trusted. We didn't try to settle it. We had a narrower question: how does this runtime behave under Compute's workload? That one we could answer with tests.
+
+From where we sit, the rewrite helped in concrete ways. Rust's ownership model and RAII pattern takes a class of manual resource-cleanup mistakes off the table. The compiler flagged real problems even in code that was nowhere near idiomatic Rust yet. And we found the new codebase easier to contribute to than the one we had been patching.
+
+None of that means the work was finished the moment the rewrite was merged. The unsafe code needs auditing, the translated code needs review, and the non-idiomatic parts need to be reworked in pieces small enough for a human to reason about. The full story of how the translation was done, and how the team is reviewing it, belongs in Bun's own writeup rather than ours.
+
+Our conclusion is deliberately modest: under the conditions Prisma Compute cares about, the Rust rewrite behaved better than the stable release we had been testing. That was enough to change what we shipped.
+
+## Production feedback loops
+
+Runtime bugs become real when they meet real workloads.
+
+A benchmark tells you one kind of truth, and a minimal repro isolates another. But a platform like Compute lives in the territory between them: memory behavior over days of service, pools surviving standby and resume, deploys and logs flowing through an agent loop, customer apps that have to keep working after the infrastructure has gone idle and come back. That territory is where we found these bugs, and it's where the fixes proved themselves.
+
+This is the feedback loop open-source runtimes need. We hit failures in production, reduced them to reports someone could act on, and watched the Rust rewrite resolve several of them. We launched on the build that behaved better, and we'll keep sending what we learn upstream.
+
+
+[Prisma Compute is in public beta](https://pris.ly/compute-blog-pb) now. To try it out, sign in once:
+
+```bash
+bunx @prisma/cli@latest auth login
+```
+
+Then point your agent at your project and tell it:
+
+```text
+Deploy your app with @prisma/cli@latest.
+```
+
+The agent builds the app, provisions a branch database, applies your schema, deploys to an immutable preview URL, reads the logs, fixes what failed, and redeploys. If something breaks along the way, whether in your app, in Compute, or in Bun itself, tell us in the [`prisma-compute` channel on Discord](https://pris.ly/discord-compute). The best runtime feedback starts with a real workload and ends with a repro someone can fix.

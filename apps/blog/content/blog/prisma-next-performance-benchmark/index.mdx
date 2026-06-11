@@ -1,0 +1,98 @@
+---
+title: "Prisma Next is 50% faster than Prisma 7: a performance deep dive"
+slug: "prisma-next-performance-benchmark"
+date: "2026-06-11"
+authors:
+  - "Serhii Tatarintsev"
+metaTitle: "Prisma Next is 50% faster than Prisma 7 | Benchmark"
+metaDescription: "Prisma Next reaches about 50% higher peak throughput than Prisma 7 and holds latency low under load, closing most of the gap to the raw pg driver while keeping Prisma's type-safe, model-first workflow."
+heroImagePath: "/prisma-next-performance-benchmark/imgs/hero.svg"
+heroImageAlt: "Bar chart showing Prisma Next outperforming Prisma 7 in throughput benchmarks"
+metaImagePath: "/prisma-next-performance-benchmark/imgs/meta.png"
+tags:
+  - "orm"
+  - "education"
+series: prisma-next
+seriesIndex: 9
+---
+
+Every ORM does work on every query: it turns your query into SQL, sends it, and turns the rows that come back into objects. That work has a cost, and in Prisma 7 it sits deep in the architecture, so reducing it meant rebuilding the layers underneath.
+
+That rebuild is [Prisma Next](https://pris.ly/pn-series), the new foundation for Prisma ORM. It's written in TypeScript end to end and runs on a much lighter core, while keeping the same model-first, type-safe workflow you already use.
+
+To see where it stands, we ran the same Postgres workload through three setups: Prisma 7, Prisma Next, and the raw `pg` driver. We pushed traffic up until each one reached its limit.
+
+- Prisma 7 tops out around **8,300 requests/second**, and Prisma Next keeps scaling to about **12,500**, roughly **50% more**.
+- At 6,000 to 7,000 requests/second, a level both can serve, Prisma Next's p95 latency stays around 4 ms while Prisma 7's has already climbed past 40 ms.
+- Prisma Next reaches about **87%** of the raw `pg` driver's peak, while Prisma 7 reaches about **58%**.
+
+It's also about **9× smaller** to ship, which matters for serverless and edge deployments where bundle size drives cold starts. We look at that below.
+
+One note before the numbers: **Prisma 7 is still the version to use in production today.** [Prisma Next is in Early Access](https://pris.ly/pn-ea), and once it's Generally Available you'll be able to run it in production too.
+
+## How we ran the benchmark
+
+The benchmark is a fork of the open-source [`drizzle-team/drizzle-benchmarks`](https://github.com/drizzle-team/drizzle-benchmarks) suite. We kept its setup and workload and added Prisma Next alongside the existing setups, so the methodology comes from outside Prisma rather than from us.
+
+It points a load generator at a small HTTP service backed by a single Postgres database, runs the identical workload against each setup on the same machine, and ramps traffic from light all the way up to its limit while recording throughput and latency at each step.
+
+The raw `pg` driver is our baseline: the fastest this machine can talk to the database, with none of an ORM's higher-level work, since you write the SQL and handle the rows yourself. Prisma Next isn't trying to beat it. The question is how much overhead is left once Prisma's workflow sits on top.
+
+[Here's our benchmark fork with setup, raw data, versions, and methodology.](https://pris.ly/pn-benchmarks)
+
+## Peak throughput: Prisma Next keeps climbing
+
+This is the main result. As traffic rises, all three lines climb together at first; then Prisma 7 flattens out, while Prisma Next and `pg` keep climbing for thousands more requests per second.
+
+![Throughput over the load test: Prisma 7 flattens out just under 8,000 req/s while Prisma Next and pg keep climbing](/prisma-next-performance-benchmark/imgs/throughput-ramp.svg)
+
+That flat line is the overhead the new foundation was built to reduce. The peak each setup sustains, measured as the average of its busiest 10% of the run, lands here:
+
+![Peak sustained throughput: pg ~14,350 req/s, Prisma Next ~12,534 (87% of pg), Prisma 7 ~8,260 (58% of pg)](/prisma-next-performance-benchmark/imgs/peak-throughput.svg)
+
+| Setup             | Peak throughput (req/s) | vs Prisma 7 | % of `pg` |
+| ----------------- | ----------------------- | ----------- | --------- |
+| `pg` (raw driver) | ~14,350                 | —           | 100%      |
+| Prisma Next       | ~12,500                 | +52%        | 87%       |
+| Prisma 7          | ~8,300                  | —           | 58%       |
+
+## Latency at the same load
+
+Peak throughput shows how far each setup scales, and latency shows how it feels along the way. To compare fairly we look at the same traffic going into each, rather than a fully loaded Prisma 7 against a Prisma Next with room to spare.
+
+Below about 5,000 requests/second all three sit within a few milliseconds of each other, and the gap opens as traffic climbs toward the top of Prisma 7's range. Here's 6,000 to 7,000 requests/second, where all three keep up but the differences start to show (p95 and p99 are the slowest 5% and 1% of requests):
+
+| Setup             | Avg latency | p95 latency | p99 latency |
+| ----------------- | ----------- | ----------- | ----------- |
+| `pg` (raw driver) | 0.7 ms      | 1.9 ms      | 4.3 ms      |
+| Prisma Next       | 1.2 ms      | 4.4 ms      | 8.9 ms      |
+| Prisma 7          | 8.1 ms      | 41.8 ms     | 116.7 ms    |
+
+Prisma Next stays within a few milliseconds of the raw driver here, and that holds well past the load where Prisma 7 hits its ceiling. Every setup eventually slows down as it approaches its own limit; Prisma Next simply reaches that point much later.
+
+Tracking p95 latency across the run shows the same split: Prisma 7's line turns upward early and climbs steeply as it nears its limit, reaching roughly 400 milliseconds, while the Prisma Next and `pg` lines stay flat and low far longer.
+
+![p95 latency over the load test: Prisma Next stays low well up the range and pg stays lowest, while Prisma 7 rises earlier as it nears its peak](/prisma-next-performance-benchmark/imgs/latency-over-time.svg)
+
+## A smaller bundle, especially for serverless
+
+The lighter core makes Prisma Next far smaller to ship: about **148.5 KB** gzipped, compared to **1.32 MB** for Prisma 7, roughly **9× smaller**.
+
+This matters most for serverless and edge. A smaller bundle means faster cold starts, smaller deployment artifacts, and more headroom under the size limits that platforms like Cloudflare Workers and Vercel enforce. If you've ever fought Prisma's footprint in an edge or serverless function, this is the part of Prisma Next to try first.
+
+## What this means for your app
+
+Benchmarks are direction, not a promise. A few things to keep in mind:
+
+- Less work per query is what raises the ceiling and steadies latency.
+- Most apps run well below these peaks, where all three setups are close. The gap matters under spikes.
+- Your schema, indexes, and query shape usually affect performance more than the ORM does.
+- If you ruled Prisma out on performance, it's worth another look.
+
+## Limitations and what's next
+
+A few caveats. This is one benchmark, on one workload and one machine, so results will shift with different queries, data volumes, and hardware.
+
+We've shared [our benchmark repo](https://pris.ly/pn-benchmarks), so you can run it yourself and tell us where we're wrong. We'll keep testing more workloads and tuning as Prisma Next moves toward Prisma 8.
+
+To try Prisma Next today, start with the [Early Access blog post](https://pris.ly/pn-ea). Star and watch [prisma/prisma-next](https://github.com/prisma/prisma-next) on GitHub to follow what ships next, and if you hit a snag, start a thread in [#prisma-next on our Discord](https://pris.ly/discord).

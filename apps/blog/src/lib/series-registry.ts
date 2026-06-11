@@ -11,6 +11,14 @@
  * cards take prime real estate.
  */
 export const seriesRegistry = {
+  "prisma-compute": {
+    title: "Prisma Compute",
+    description:
+      "The story of Prisma Compute: TypeScript app hosting that runs on the same infrastructure as your database. From the public beta launch to the runtime engineering underneath.",
+    featured: true,
+    docsUrl: "https://docs.prisma.io/docs/prisma-compute",
+    docsLabel: "Read the Prisma Compute docs",
+  },
   "prisma-next": {
     title: "Prisma Next",
     description:
@@ -66,9 +74,17 @@ export const seriesRegistry = {
     title: "Postgres features you can reach for instead of more infrastructure",
     description:
       "A short series on Postgres features that quietly replace pieces of your stack. Pub/Sub via LISTEN and NOTIFY, the bloom index for wide tables, and more.",
-    featured: true,
   },
-} as const satisfies Record<string, { title: string; description?: string; featured?: boolean }>;
+} as const satisfies Record<
+  string,
+  {
+    title: string;
+    description?: string;
+    featured?: boolean;
+    docsUrl?: string;
+    docsLabel?: string;
+  }
+>;
 
 export type SeriesKey = keyof typeof seriesRegistry;
 
@@ -76,6 +92,8 @@ export type SeriesMetadata = {
   title: string;
   description?: string;
   featured?: boolean;
+  docsUrl?: string;
+  docsLabel?: string;
 };
 
 function hasSeriesKey(key: string): key is SeriesKey {
