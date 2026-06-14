@@ -1,11 +1,11 @@
 ---
-title: "Your billing already lives in Stripe — now your database can too"
+title: "Your billing already lives in Stripe. Now your database can too"
 slug: "prisma-postgres-on-stripe-projects"
 date: "2026-06-12"
 authors:
   - "Sampo Lahtinen"
 metaTitle: "Prisma Postgres on Stripe Projects"
-metaDescription: "Add a Prisma Postgres database to your Stripe project with one command — spending limits out of the box, plan changes from the CLI you already use."
+metaDescription: "Add a Prisma Postgres database to your Stripe project with one command: spending limits out of the box, plan changes from the CLI you already use."
 heroImagePath: "/prisma-postgres-on-stripe-projects/imgs/hero.png"
 heroImageAlt: "Prisma Postgres on Stripe Projects"
 metaImagePath: "/prisma-postgres-on-stripe-projects/imgs/meta.png"
@@ -14,68 +14,148 @@ tags:
   - "prisma-postgres"
 ---
 
-If your billing already runs through Stripe, you don't need a new vendor relationship to get a production Postgres database. Stripe Projects lets you add Prisma Postgres to your project with one command — spending limits included, no new bill.
+If your billing already runs through Stripe, you don't need a new vendor relationship to get a production Postgres database. Stripe Projects lets you add Prisma Postgres to your project with one command. Because the whole flow runs in your terminal, you can let your agent do it.
 
 ## Why this exists
 
-Here's the situation I keep seeing: you're building on Stripe. Your billing is integrated, your account is verified, your payment setup is done. Then you need a database, and suddenly you're off signing up for another service, verifying another email, adding another card, and managing another bill.
+Coding agents have gotten good at building software. What they can't do is provision the paid infrastructure that software needs: a database, a host, anything with a card behind it. That's the wall every agentic workflow hits: it can write the app, then it has to stop and wait for a human to go sign up, verify an email, and enter a credit card.
 
-That never made sense to me. You've already done the hard part — Stripe knows who you are and how you pay. So we made Prisma Postgres a provider on Stripe Projects: one command in the Stripe CLI you already use, and you have a database. No browser, no signup form, no new payment method.
+Stripe Projects is Stripe's answer to that wall. It's their entry into the agent-tooling race, with a distinct angle: instead of just helping agents _make_ things, it lets them _pay_ for them, safely, through a new primitive called Shared Payment Tokens (SPTs). Run `stripe projects init` and Stripe scaffolds a project for your agent: skills, a readme, and commands, plus a vault that fills with secrets as you add services. That's the starting point.
 
-The part I like most is the spending limits. The payment credential Stripe hands us carries a monthly spending limit that *you* control from the Stripe side. If a Prisma plan costs more than your limit allows, the upgrade simply doesn't go through. Cost control isn't something you bolt on later — it's there before your first query.
+Prisma Postgres is now a provider on it. Which means an agent can go from "I need a database" to a live connection string without a human in the loop, and without a second vendor relationship, since the payment and identity you already have with Stripe carry over. And soon, full applications too, via Prisma Compute. More on that below.
 
 ## Getting started
 
-Two commands. From your project directory:
+From your project directory, set up Stripe Projects:
 
 ```bash
-# Set up Stripe Projects in your repo
 stripe projects init
-
-# Add a Prisma Postgres database
-stripe projects add prisma/project
 ```
 
-Behind that second command, a few things happen on our side:
+```text
+✓ Authenticated with Stripe
+
+  Project    demo
+  Account    Prisma Testing
+  Email      example@prisma.io ✓ Verified
+  Providers  ✓ Prisma
+
+  ✓ Created .projects/
+  ✓ Created .agents/skills/stripe-projects-cli/
+  ✓ Created .claude/skills/stripe-projects-cli
+  ✓ Created .cursor/rules/
+  ✓ Created AGENTS.md
+  ✓ Created CLAUDE.md
+
+  Your project is ready.
+```
+
+That leaves a small scaffold in your repo, the workspace your agent operates in:
+
+```text
+.
+├── .agents/skills/stripe-projects-cli/SKILL.md
+├── .claude/skills/stripe-projects-cli → ../../.agents/skills/stripe-projects-cli
+├── .cursor/rules/stripe-projects-cli.mdc
+├── .projects/
+│   ├── cache/catalog.json    # cached catalog of providers and plans
+│   ├── state.json
+│   └── state.local.json
+├── AGENTS.md
+└── CLAUDE.md
+```
+
+The skills and editor rules (`.agents`, `.claude`, `.cursor`) are what teach your coding agent to drive Stripe Projects; `.projects/` holds local state. Then add a database, the step you'll usually just hand to your agent:
 
 ```bash
-stripe projects add prisma/project
-# ✓ Prisma workspace created for your Stripe account
-#   (named stripe-projects-<your-account-id> — yours, dedicated)
-# ✓ Project + Prisma Postgres database provisioned on the Free plan
-# ✓ Connection string written to your .env
-
-DATABASE_URL="postgres://..."
+stripe projects add prisma/database
 ```
 
-Notice what *didn't* happen: no browser opened, no email verification loop, no credit card form. Stripe has already verified your email, so we trust it and create your Prisma account from it directly in the CLI. If you already have a Prisma account under that email, we link to it — your existing workspaces are untouched.
+```text
+✓ Prisma already linked (example@prisma.io)
+✓ Setting up prisma/free...
+✓ Provisioning prisma/database...
+    ✓ Resource provisioned
+    ✓ Credentials synced
+    ✓ Project updated
 
-You start on the Free plan: 100k queries and 0.5 GiB of storage per month. The limits are hard — when you hit them, the database tells you, it doesn't bill you. There is no way to accidentally spend money on the free tier.
+● prisma/database ready
+  ✓ Injected 4 environment variables
+  ~ Modified .projects/vault/vault.json
+  ~ Modified .env
+  ✓ 4 credentials created for Prisma:
+      PRISMA_DATABASE_URL=post••••••••
+      PRISMA_ACCELERATE_URL=pris••••••••
+      PRISMA_DATABASE_ID=cmq••••••••
+      PRISMA_REGION=us••••••••
+```
+
+Your `.env` now has everything you need to connect:
+
+```bash
+PRISMA_DATABASE_URL="postgres://••••••••"                                  # direct connection
+PRISMA_ACCELERATE_URL="prisma+postgres://accelerate.prisma-data.net/?api_key=••••••••"  # pooled, via Prisma Accelerate
+PRISMA_DATABASE_ID=cmq••••••••
+PRISMA_REGION=us-east-1
+```
+
+Those credentials live in two places: the canonical copy stays server-side in [Stripe's Secret Store](https://docs.stripe.com/stripe-apps/store-secrets), and locally Stripe Projects keeps an **encrypted** copy in the project vault (`.projects/vault/vault.json`), with your `.env` as the plaintext output for local dev. Both the vault and `.env` are `600`-permissioned and git-ignored by `stripe projects init`, so neither is ever committed. To onboard a teammate you don't pass secrets around: they run `stripe projects env --pull` and fetch their own from the Secret Store.
+
+Notice what _didn't_ happen: no browser opened, no signup form, no credit card. Because you have a Stripe business account, your email is already KYC-verified and tied to a real person, so we create or link your Prisma account right in the CLI (here, `✓ Prisma already linked`). If you don't have a Prisma account yet, we create a claimable one from that email; if you already do, we link it and never touch your existing workspaces. Either way we spin up a new dedicated workspace for the link, and if a teammate on the same Stripe account adds Prisma too, we add them to that workspace automatically, no invites to manage.
+
+## Spending limits, the Stripe way
+
+This is where SPTs earn their keep. An SPT is a payment credential, backed by a real payment method like a card, that carries a spending limit _you_ set. The first time you upgrade a plan, your agent will ask you to confirm a payment method and create one for you, backed by that method. You instantiate the underlying method through Stripe's UI (the flow hands you a link), and from there you set a monthly limit, either per provider or a single global cap across everything in your project.
+
+Here's the shape of it: your agent issues the token, hands it to the seller, and Stripe settles the charge against your limit.
+
+```mermaid
+sequenceDiagram
+    participant Customer
+    participant Agent
+    participant Stripe
+    participant Seller as Seller (Prisma)
+    Customer->>Agent: Submits payment method
+    Agent->>Stripe: Issues SharedPaymentToken
+    Agent->>Seller: Sends SharedPaymentToken
+    Seller->>Stripe: Creates PaymentIntent with SharedPaymentToken
+    Stripe->>Customer: Processes transaction
+```
+
+The payoff: cost control isn't something each provider implements on its own, leaving you to find out it didn't work when the invoice shows up. The limit lives with Stripe and is enforced at the token, and it covers everything billed against it: both the plan subscription and any usage overages on top of it. If a plan upgrade costs more than your limit allows, it's rejected before anything changes. And as usage runs through the cycle, overage charges count against the same cap, so your total spend can't quietly climb past the number you set.
 
 ## Managing your plan
 
-When the free tier gets tight, upgrade from the same CLI:
+There are four plans. You can see them any time with `stripe projects catalog prisma`:
+
+| Plan       | Price   | Included per billing cycle          | Overages           |
+| ---------- | ------- | ----------------------------------- | ------------------ |
+| `free`     | Free    | 100k queries, 0.5 GiB-month storage | None (hard limits) |
+| `starter`  | $10/mo  | 1M queries, 10 GiB-month storage    | Metered            |
+| `pro`      | $49/mo  | 10M queries, 50 GiB-month storage   | Metered            |
+| `business` | $129/mo | 50M queries, 100 GiB-month storage  | Metered            |
+
+When the free tier gets tight, upgrade from the same CLI, or ask your agent to:
 
 ```bash
 # Upgrade to the Pro plan
 stripe projects upgrade prisma-plan pro
-# ✓ Spending limit checked against the plan price first
-# ✓ Workspace subscription created — billed through Stripe
+# ✓ Plan price checked against your SPT spending limit first
+# ✓ Workspace subscription created, billed through Stripe
 # ✓ Plan applies immediately
 ```
 
-Upgrades are immediate. Before anything is charged, we check the plan price against your Stripe spending limit — if the limit doesn't cover it, the upgrade is rejected and nothing changes. There are four plans: `free`, `starter`, `pro`, and `business`, and the plan applies to your whole Stripe Projects workspace, so every database you've added shares it.
+Upgrades are immediate. Before anything is charged, the plan price is checked against your SPT spending limit. If it doesn't cover the price, the upgrade is rejected and nothing changes. Because the new plan takes effect right away, Stripe bills a prorated amount for the rest of the current cycle on the spot, then the full price from the next one. The plan applies to your whole Stripe Projects workspace, so every database you've added shares it.
 
 Downgrading is the same command pointed at a smaller plan:
 
 ```bash
 # Downgrade back to the free plan
 stripe projects upgrade prisma-plan free
-# ✓ Cancellation scheduled for the end of your billing cycle
-# ✓ You keep paid entitlements until then — you paid for them
+# ✓ Plan changed immediately
 ```
 
-One thing to be upfront about: downgrades to free take effect at the end of your billing cycle, not immediately. You've paid for the month, so you keep the paid limits for the month. Moving between paid plans (say `starter` → `pro`) is immediate, with the proration billed right away.
+Plan changes through Stripe Projects are immediate in both directions: downgrades take effect right away, not at the end of your billing cycle, just like upgrades.
 
 ## Day-to-day
 
@@ -89,7 +169,7 @@ stripe projects status
 stripe projects open prisma
 ```
 
-`status` shows what's provisioned and on which plan. `open` is the one I use constantly — it mints a short-lived link (five minutes, single use) that drops you straight into your workspace dashboard in the Prisma Console, already authenticated as the right account. If you're signed into the Console as someone else, it tells you instead of silently mixing accounts.
+`status` shows what's provisioned and on which plan. `open` mints a short-lived link (five minutes, single use) that drops you straight into your workspace dashboard in the Prisma Console, already authenticated as the right account. If you're signed into the Console as someone else, it tells you instead of silently mixing accounts. You never _have_ to open the Console, but it's there when you want it.
 
 ## Cleaning up
 
@@ -98,14 +178,14 @@ Tearing down is just as direct:
 ```bash
 # Remove the database
 stripe projects remove prisma-database
-# ✓ Database deprovisioned immediately
-# ✗ Your plan is NOT changed — downgrade separately if you want that
+# ✓ Database deprovisioned immediately, access credentials invalidated
+# ✗ Your plan is NOT changed. Downgrade separately if you want that
 
 # Disconnect Prisma from this project entirely
 stripe projects unlink prisma
 ```
 
-Removing a database and changing your plan are deliberately decoupled — deleting a database never silently touches your billing. If you're removing your last database and want to stop paying, downgrade the plan too:
+Removing a database and changing your plan are deliberately decoupled: deleting a database never silently touches your billing. If you're removing your last database and want to stop paying, downgrade the plan too:
 
 ```bash
 stripe projects upgrade prisma-plan free
@@ -113,6 +193,6 @@ stripe projects upgrade prisma-plan free
 
 ## What's next
 
-The database is the first piece. Prisma Compute — our TypeScript app hosting, currently in public beta — is coming to Stripe Projects next. Once it lands, the same flow gets you a deployed app *next to* that database: spin something up to show your colleagues, or stand up an ad-hoc revenue app with billing already wired in, because you started from Stripe in the first place.
+The database is the first piece. [Prisma Compute](https://www.prisma.io/blog/launching-prisma-compute-public-beta), our TypeScript app hosting that runs on the same infrastructure as your database without sending traffic through a separate hosting vendor, recently launched in public beta and is coming to Stripe Projects next. Once it lands, the same flow gets you a deployed app right next to that database: describe an idea to your agent, and it stands up a running app with a permanent URL and a database already wired in. Then hand that URL to a colleague to try, comment on, and build on with you, all without leaving the CLI you started from. Quick revenue dashboard, internal tool, throwaway demo: it's a prompt away.
 
-If your billing already lives in Stripe, try it: `stripe projects add prisma/project` and you're a connection string away from a real Postgres database — with a spending limit you set before we could ever bill you.
+If your billing already lives in Stripe, try it: `stripe projects add prisma/database` and you're a connection string away from a real Postgres database, with a spending limit you set before we could ever bill you.
