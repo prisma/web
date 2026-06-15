@@ -1,0 +1,131 @@
+---
+title: "We Launched Prisma Compute with Custom Domains"
+slug: "prisma-compute-custom-domains"
+date: "2026-06-12"
+authors:
+  - "Tyler Benfield"
+metaTitle: "We Launched Prisma Compute with Custom Domains"
+metaDescription: "Prisma Compute launched with custom domain support. Here's how we made the setup one DNS record while handling TLS certificate provisioning, storage, and routing behind the scenes."
+heroImagePath: "/prisma-compute-custom-domains/imgs/hero.png"
+heroImageAlt: "Custom domain in browser address bar"
+tags:
+  - "platform"
+series: prisma-compute
+seriesIndex: 3
+---
+
+We launched Prisma Compute with custom domain support. You can add a domain to a Compute service, point one DNS record at Prisma, and let Prisma Compute handle certificate provisioning and routing behind the scenes.
+
+This is a small but incredibly important feature. Custom domains give you a stable, public URL that you own for sharing and integrating. In this post, we'll get into the behind-the-scenes work that handles DNS, certificate provisioning, certificate storage, and request routing correctly. Let's get into how we approached it.
+
+## Prelude
+
+We should start with the user-facing requirement: adding a custom domain should be as simple as possible.
+
+[Prisma Compute](/blog/launching-prisma-compute-public-beta) is one part of the larger Prisma platform: ORM, Postgres, and hosting designed to work together for TypeScript applications. Generated URLs are useful for quick testing and some personal app scenarios, but they have limits. Once an app needs to receive webhooks, be shared with a friend or teammate, or fit into the same workflow as the rest of a project, the URL starts to matter.
+
+Using a custom domain brings an additional requirement though. TLS certificates must be provisioned for that domain, which involves working with a certificate provider and serving a challenge to verify ownership. Prisma Compute handles all of that on your behalf, which we'll talk about below.
+
+## The setup
+
+From the user's perspective, the flow is intentionally short:
+
+1. Start with a production app with a promoted, live deployment.
+2. Add a custom domain to the app through the API, CLI, or Prisma Console.
+3. Create the CNAME record Prisma Compute gives you.
+4. Wait for the domain to become active while DNS verification and TLS provisioning happen automatically.
+
+The Prisma CLI can also monitor the domain status, check for provisioning failures, and retry when needed.
+
+That is the whole user-facing flow. No certificate upload. No private key handling. No messing around.
+
+Behind the scenes, the domain assignment tells the Compute backend that the domain should route to a specific service. Compute then gives back the DNS target for that domain.
+
+Today, that target is a regional routing endpoint for the region where the service runs. In the future, it will point at our global routing layer. Either way, the shape of the setup stays the same: one domain, one CNAME, one Compute service. After the assignment is created, Compute starts certificate provisioning in the background.
+
+## Automatic TLS with ACME
+
+Before Prisma Compute can serve HTTPS traffic for a custom domain, it needs a valid TLS certificate for that domain. To issue certificates automatically, Compute uses [ACME](https://datatracker.ietf.org/doc/html/rfc8555).
+
+ACME is the standard protocol used to automate certificate issuance. A client requests a certificate order from a certificate authority, proves that it controls the domain, and then receives a certificate.
+
+The proof step is where things get interesting. ACME supports several challenge types, and we chose `http-01` for our beta launch because it keeps the user setup simple. With `http-01`, the certificate authority checks a specific HTTP path on the domain and expects to find a challenge response there.
+
+That maps well to Compute's custom domain flow. Once the user creates the CNAME and DNS starts resolving to Compute, HTTP traffic for the domain reaches Prisma's routing layer. Even though we do not have the final certificate yet, we can serve the ACME challenge response for the certificate authority. The challenge is used only for certificate issuance; the user does not need to see it, configure it, or respond to it.
+
+```mermaid
+sequenceDiagram
+    participant User as User
+    participant DNS as DNS provider
+    participant Compute as Prisma Compute
+    participant ACME as Certificate authority
+
+    User->>Compute: Add custom domain
+    Compute-->>User: Return CNAME target
+    User->>DNS: Create CNAME record
+    Compute->>ACME: Request certificate
+    ACME-->>Compute: Return http-01 challenge
+    ACME->>Compute: Check HTTP challenge path
+    Compute-->>ACME: Serve challenge response
+    ACME-->>Compute: Issue TLS certificate
+    Compute->>Compute: Encrypt and store certificate material
+```
+
+In this flow, the user handles the domain assignment and DNS record. Compute handles the certificate request, challenge response, certificate retrieval, encryption, and storage. The user experience stays focused on the single DNS step, and automatic provisioning can complete quickly once DNS resolves.
+
+## Trade-offs
+
+The one-record setup is the right starting point for Prisma Compute because it keeps the experience simple. Still, there are a couple of trade-offs worth calling out.
+
+The first is a consequence of choosing `http-01`. Because the certificate authority validates the domain by making an HTTP request to that domain, traffic has to resolve to Prisma Compute before the certificate can be issued. If you are moving an existing app to Compute, that can create a small blip while DNS switches over and the certificate is provisioned.
+
+We chose this for the beta launch because the alternative adds more user involvement. ACME also supports `dns-01`, where the certificate authority validates ownership through a DNS record instead of an HTTP request. That can be better for migrations where live traffic should not move until the certificate is ready, but it usually requires creating a challenge-specific DNS record, waiting for it to propagate, and keeping the user in the loop during the challenge process.
+
+We expect `dns-01` to become important for more advanced migration flows. The long-term goal is to support both paths: `http-01` for the simplest setup, and `dns-01` when avoiding even a short traffic handoff matters more than minimizing DNS steps.
+
+The second trade-off is apex domains. A CNAME works well for subdomains like `app.example.com`, but apex domains like `example.com` are more complicated because CNAME records are not valid at the zone apex in standard DNS.
+
+Some DNS providers support CNAME flattening. With CNAME flattening, the provider lets you configure something that behaves like a CNAME at the apex, then resolves it and returns the underlying `A` or `AAAA` records. Prisma Compute's validation supports this by accepting either the expected CNAME target or the underlying regional records associated with that target.
+
+That means apex domains can work today if your DNS provider supports CNAME flattening. If your provider does not, CNAME-only setup is not a great fit for apex domains yet. We are evaluating ways to keep DNS management simple while supporting apex domains more broadly, including providers that do not offer CNAME flattening.
+
+## Certificate storage
+
+Issuing a certificate also means handling private key material for that particular domain. That private key is sensitive, so it needs to be stored and accessed carefully.
+
+For Prisma Compute, each service has its own data encryption key. After Compute receives a certificate, it uses the service's data encryption key to encrypt the certificate material before storing it in blob storage. That blob storage is encrypted at rest as well, and data encryption keys are encrypted with a master key at rest.
+
+This gives us multiple layers of protection:
+
+1. Accessing the physical drives that store the certificates only exposes encrypted data.
+2. Accessing the blob storage only exposes encrypted private keys, each protected by a unique decryption key.
+3. Accessing the storage layer of data encryption keys only exposes encrypted key values, which are useless without the master key and access to blob storage.
+
+That separation matters. Accessing a private key is not a matter of reading one object from one system. Keeping those pieces separate mitigates the blast radius of a single compromised system.
+
+Private keys are treated as high-value secrets, and we even wrap them and other sensitive values in an envelope data structure while in application memory to mitigate unintentional exposure of the raw values. Accessing sensitive values in the application code always requires an explicit access request at the point of use.
+
+> We use this wrapper pattern so sensitive values cannot be treated like ordinary strings in application code, even at the type level. That becomes even more useful as more code is authored by agents. Secrets should not be easy to stumble into or pass around accidentally. Requiring an explicit access request forces the code path to make that decision deliberately. We recommend using this pattern for applications that handle sensitive values.
+
+## Request routing
+
+When a request comes in for a custom domain, Prisma Compute needs to answer two questions quickly:
+
+1. Where should this request go?
+2. Which certificate should be used for the TLS connection?
+
+The routing layer already needs to map the incoming domain to the correct Compute service and deployment. We can use that same path to identify the data encryption key and certificate material needed for the domain.
+
+If the certificate is not already available locally, Compute can retrieve the encrypted certificate, decrypt it using the service's data encryption key, and use it for the connection.
+
+Doing that lookup and decryption on every request would add unnecessary overhead, so Compute maintains an encrypted certificate cache. That lets the routing layer serve repeated traffic for the same domain without repeatedly fetching and decoding the certificate material.
+
+The result is a flow that keeps the first setup automatic while keeping steady-state traffic efficient.
+
+## Wrapping up
+
+Custom domains were part of the Prisma Compute launch because they are one of those features that should feel uneventful. You add the domain, create the CNAME record, and Compute handles the certificate and routing work in the background.
+
+That simplicity depends on a fair amount of infrastructure: ACME certificate orders, `http-01` challenges, encrypted certificate storage, per-service encryption keys, routing lookups, and certificate caching. The point is that most of that should stay invisible.
+
+You bring the domain and Prisma Compute handles the pieces needed to make that domain usable with your deployment.
