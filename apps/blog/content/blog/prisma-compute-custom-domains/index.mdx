@@ -53,23 +53,17 @@ The proof step is where things get interesting. ACME supports several challenge 
 
 That maps well to Compute's custom domain flow. Once the user creates the CNAME and DNS starts resolving to Compute, HTTP traffic for the domain reaches Prisma's routing layer. Even though we do not have the final certificate yet, we can serve the ACME challenge response for the certificate authority. The challenge is used only for certificate issuance; the user does not need to see it, configure it, or respond to it.
 
-```mermaid
-sequenceDiagram
-    participant User as User
-    participant DNS as DNS provider
-    participant Compute as Prisma Compute
-    participant ACME as Certificate authority
-
-    User->>Compute: Add custom domain
-    Compute-->>User: Return CNAME target
-    User->>DNS: Create CNAME record
-    Compute->>ACME: Request certificate
-    ACME-->>Compute: Return http-01 challenge
-    ACME->>Compute: Check HTTP challenge path
-    Compute-->>ACME: Serve challenge response
-    ACME-->>Compute: Issue TLS certificate
-    Compute->>Compute: Encrypt and store certificate material
-```
+| Step | From | To | Action |
+|------|------|----|--------|
+| 1 | User | Prisma Compute | Add custom domain |
+| 2 | Prisma Compute | User | Return CNAME target |
+| 3 | User | DNS provider | Create CNAME record |
+| 4 | Prisma Compute | Certificate authority | Request certificate |
+| 5 | Certificate authority | Prisma Compute | Return `http-01` challenge |
+| 6 | Certificate authority | Prisma Compute | Check HTTP challenge path |
+| 7 | Prisma Compute | Certificate authority | Serve challenge response |
+| 8 | Certificate authority | Prisma Compute | Issue TLS certificate |
+| 9 | Prisma Compute | — | Encrypt and store certificate material |
 
 In this flow, the user handles the domain assignment and DNS record. Compute handles the certificate request, challenge response, certificate retrieval, encryption, and storage. The user experience stays focused on the single DNS step, and automatic provisioning can complete quickly once DNS resolves.
 
