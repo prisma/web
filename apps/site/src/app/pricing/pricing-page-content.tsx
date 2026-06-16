@@ -52,7 +52,7 @@ export function PricingPageContent() {
               Prisma Compute is free during Public Beta. See the{" "}
               <a
                 className="underline underline-offset-2 decoration-[var(--color-foreground-ppg)] hover:text-foreground-neutral"
-                href="/compute/pricing"
+                href="https://pris.ly/pricing-compute"
               >
                 expected pricing
               </a>{" "}

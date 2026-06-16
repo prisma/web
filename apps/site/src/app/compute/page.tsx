@@ -317,16 +317,30 @@ export default async function Page() {
             to your database. A good fit for APIs and AI agents that hold state, stream responses,
             and keep connections open.
           </p>
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
-            <Button asChild variant="ppg" size="2xl">
-              <a
-                href="https://pris.ly/pdp?utm_source=site&utm_campaign=compute&utm_term=devrel"
-                className="flex items-center gap-2"
-              >
-                <span>Try Prisma Compute</span>
-                <i className="flex items-center fa-regular fa-arrow-up-right" aria-hidden="true" />
-              </a>
-            </Button>
+          <div className="flex flex-col gap-3 items-center">
+            <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
+              <Button asChild variant="ppg" size="2xl">
+                <a
+                  href="https://pris.ly/pdp?utm_source=site&utm_campaign=compute&utm_term=devrel"
+                  className="flex items-center gap-2"
+                >
+                  <span>Try Prisma Compute</span>
+                  <i className="flex items-center fa-regular fa-arrow-up-right" aria-hidden="true" />
+                </a>
+              </Button>
+              <Button asChild variant="default-strong" size="2xl">
+                <a
+                  href="https://pris.ly/pricing-compute?utm_source=site&utm_campaign=compute&utm_term=devrel"
+                  className="flex items-center gap-2"
+                >
+                  <span>See pricing</span>
+                  <i className="flex items-center fa-regular fa-tag" aria-hidden="true" />
+                </a>
+              </Button>
+            </div>
+            <p className="text-sm text-foreground-neutral-weaker m-0">
+              Free while in public beta.
+            </p>
           </div>
         </div>
       </div>
