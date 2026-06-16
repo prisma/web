@@ -1,0 +1,127 @@
+---
+title: Pricing
+description: How Prisma Compute pricing works, with the expected production rates and worked examples.
+url: /compute/pricing
+metaTitle: Pricing | Prisma Compute
+metaDescription: How Prisma Compute pricing works, including the expected per-meter rates, worked cost examples, the billing formula, and what is not billed.
+---
+
+Compute is free during public beta. The rates below are what we expect to charge once we enable production billing. We are publishing them now so you can understand the model, estimate future usage, and tell us where real workloads don't fit.
+
+:::info[Public Beta]
+
+Prisma Compute is in [Public Beta](/console/more/feature-maturity#public-beta), so rates, limits, and included usage may change before billing begins. If something has to change, we will change it and say so clearly.
+
+This pricing isn't final, and your feedback shapes it. If a rate or meter doesn't fit how your app runs, tell us in the `prisma-compute` channel on our [Discord](https://pris.ly/discord).
+
+:::
+
+## Expected usage rates
+
+Each meter measures a different resource: how often your app runs (requests), how much memory it holds and CPU it uses while running (provisioned memory and active CPU), and how much data it sends back (outbound bandwidth).
+
+| Meter              | Price                 | What it means                                                                         |
+| ------------------ | --------------------- | ------------------------------------------------------------------------------------- |
+| Requests           | `$1.00 / 1M requests` | Every inbound request your app handles.                                               |
+| Provisioned memory | `$0.006 / GB-hour`    | Memory allocated while your app is running or intentionally kept awake.               |
+| Active CPU         | `$0.064 / vCPU-hour`  | CPU time your app actually consumes.                                                  |
+| Outbound bandwidth | `$0.025 / GB`         | Data your app sends out to the internet. Incoming requests do not count as bandwidth. |
+
+## Example costs by workload
+
+The three examples below show how the same rates add up for different kinds of apps, from a short-lived preview to a bandwidth-heavy service.
+
+These examples are estimates, not benchmarks. The inputs are round numbers so the math is easy to follow. Each total is what the usage would cost under the expected rates, once billing starts.
+
+### Preview workflow
+
+A pull request might deploy a preview several times as an agent fixes and tests a change.
+
+Assume the preview gets `10,000` requests, stays running for `3,000s` at `1 GB`, uses `600 vCPU-seconds` of active CPU, and sends `0.25 GB` of data out.
+
+| Meter              | Estimate                                                 |
+| ------------------ | -------------------------------------------------------- |
+| Requests           | `10,000 * $1.00 / 1M = $0.0100`                          |
+| Provisioned memory | `3,000s at 1 GB = 0.833 GB-hours * $0.006 = $0.0050`     |
+| Active CPU         | `600 vCPU-seconds = 0.167 vCPU-hours * $0.064 = $0.0107` |
+| Outbound bandwidth | `0.25 GB * $0.025 = $0.0063`                             |
+| Total              | `$0.0320`, about `$0.03`                                 |
+
+The usage is the bill, not the deploys or the [preview branch](/compute/branching).
+
+### Agent workflow
+
+Agent work often spends more time waiting on other services than running on the CPU.
+
+Assume an app runs `10,000` agent tasks in a month. Each task takes `30s` wall-clock time, mostly waiting on a model API or another service. Together, the tasks stay running for `300,000s` at `1 GB`, use `30,000 vCPU-seconds` of active CPU, and send `5 GB` of data out.
+
+| Meter              | Estimate                                                   |
+| ------------------ | ---------------------------------------------------------- |
+| Requests           | `10,000 * $1.00 / 1M = $0.0100`                            |
+| Provisioned memory | `300,000s at 1 GB = 83.33 GB-hours * $0.006 = $0.5000`     |
+| Active CPU         | `30,000 vCPU-seconds = 8.33 vCPU-hours * $0.064 = $0.5333` |
+| Outbound bandwidth | `5 GB * $0.025 = $0.1250`                                  |
+| Total              | `$1.1683`, about `$1.17`                                   |
+
+While a task waits it uses almost no CPU, so active CPU stays low. But the app keeps running the whole time, so it holds its memory and you pay for that. This is why Compute bills provisioned memory separately from active CPU.
+
+### High-transfer workflow
+
+If your app streams responses, returns large results, or serves file downloads, bandwidth can make up most of the bill instead of compute. It is worth estimating this before you ship.
+
+Assume an app serves `50,000` requests in a month, stays running for `15,000s` at `1 GB`, uses `1,500 vCPU-seconds` of active CPU, and sends `200 GB` of data out.
+
+| Meter              | Estimate                                                   |
+| ------------------ | ---------------------------------------------------------- |
+| Requests           | `50,000 * $1.00 / 1M = $0.0500`                            |
+| Provisioned memory | `15,000s at 1 GB = 4.167 GB-hours * $0.006 = $0.0250`      |
+| Active CPU         | `1,500 vCPU-seconds = 0.417 vCPU-hours * $0.064 = $0.0267` |
+| Outbound bandwidth | `200 GB * $0.025 = $5.0000`                                |
+| Total              | `$5.1017`, about `$5.10`                                   |
+
+Here compute is almost free and bandwidth is nearly the whole bill. If your app moves a lot of data, estimate bandwidth first.
+
+## Formula to estimate your bill
+
+To estimate any month yourself, add up the four meters at their rates:
+
+```text
+bill =
+  requests * 1.00 / 1_000_000
+  + provisioned_memory_gb_hours * 0.006
+  + active_vcpu_hours * 0.064
+  + outbound_bandwidth_gb * 0.025
+```
+
+## What is not billed separately
+
+You pay for the work your app does, not for resources sitting idle. These are not billed on their own:
+
+- Deployments
+- Preview branch creation
+- Inactive apps
+- Apps that have scaled to zero
+- A Prisma-specific compute unit
+
+A preview branch only costs money when it does work, such as serving traffic or running a background task. Creating one is free.
+
+## Usage data for humans and agents
+
+The usage data shown in the [Console](https://pris.ly/pdp) is also available from the [CLI](/compute/cli-reference) and API, including as JSON. An agent can read it to estimate a cost, explain a change, or suggest a fix.
+
+## Beta and bandwidth
+
+Compute is free during public beta. The rates above are estimates and may change as we learn from real usage. If anything changes before we enable production billing, we will say so clearly.
+
+Outbound bandwidth is the data your app sends from Compute to the public internet; inbound requests don't count. Small JSON or API responses use little of it, while streaming, file downloads, and media use much more. During beta we are measuring real traffic to confirm the rate, included usage, and edge cases before billing starts.
+
+## Share your pricing feedback
+
+This pricing is still taking shape during the beta, and your input shapes where it lands. If a rate, meter, or included amount doesn't match how your app actually runs, tell us in the `prisma-compute` channel on our [Discord](https://pris.ly/discord). That feedback is exactly what we are measuring against before billing turns on.
+
+## What to read next
+
+- [Get started](/compute/getting-started): the quickstart, deploy your first app to a live URL in two commands.
+- [Known limitations](/compute/limitations): what the beta can and can't do.
+- [FAQ](/compute/faq): quick answers to common questions.
+- [Branching](/compute/branching): how preview branches isolate work and when they cost money.

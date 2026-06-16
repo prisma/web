@@ -49,7 +49,14 @@ export function PricingPageContent() {
               Deploy TypeScript apps on Prisma Compute
             </h3>
             <p className="m-0 max-w-[560px] text-foreground-neutral-weak text-md">
-              Prisma Compute is in Public Beta. We&apos;ll share pricing soon. 
+              Prisma Compute is free during Public Beta. See the{" "}
+              <a
+                className="underline underline-offset-2 decoration-[var(--color-foreground-ppg)] hover:text-foreground-neutral"
+                href="https://pris.ly/pricing-compute"
+              >
+                expected pricing
+              </a>{" "}
+              for when production billing turns on.
             </p>
           </div>
           <Button asChild variant="ppg" size="2xl">
