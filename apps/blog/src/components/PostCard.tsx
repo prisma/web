@@ -26,25 +26,19 @@ export function PostCard({
   post,
   currentCategory,
   featured = false,
+  vertical = false,
 }: {
   post: PostCardItem;
   currentCategory: string;
   featured?: boolean;
+  vertical?: boolean;
 }) {
   const sourceAuthorNames =
-    post.authors && post.authors.length > 0
-      ? post.authors
-      : post.author
-        ? [post.author]
-        : [];
-  const authorProfiles: AuthorProfile[] = getAuthorProfiles(sourceAuthorNames).map(
-    (profile) => ({
-      name: profile.name,
-      imageSrc: profile.imageSrc
-        ? withBlogBasePathForImageSrc(profile.imageSrc)
-        : null,
-    }),
-  );
+    post.authors && post.authors.length > 0 ? post.authors : post.author ? [post.author] : [];
+  const authorProfiles: AuthorProfile[] = getAuthorProfiles(sourceAuthorNames).map((profile) => ({
+    name: profile.name,
+    imageSrc: profile.imageSrc ? withBlogBasePathForImageSrc(profile.imageSrc) : null,
+  }));
   const author: AuthorProfile | null = authorProfiles[0] ?? null;
 
   const badge =
@@ -64,5 +58,5 @@ export function PostCard({
     badge,
   };
 
-  return <SharedPostCard post={sharedPost} featured={featured} />;
+  return <SharedPostCard post={sharedPost} featured={featured} vertical={vertical} />;
 }

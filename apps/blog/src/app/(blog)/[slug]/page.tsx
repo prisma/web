@@ -14,7 +14,9 @@ import { AuthorAvatarGroup } from "@/components/AuthorAvatarGroup";
 import { SeriesBanner } from "@/components/SeriesBanner";
 import { SeriesMarker } from "@/components/SeriesMarker";
 import { SeriesNavigation } from "@/components/SeriesNavigation";
+import { KeepReading } from "@/components/KeepReading";
 import { getSeriesContext } from "@/lib/series";
+import { getRelatedPosts } from "@/lib/related-posts";
 import { getBaseUrl, withBlogBasePath, withBlogBasePathForImageSrc } from "@/lib/url";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -163,6 +165,7 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
   const MDX = page.data.body;
   const blogPostingJsonLd = getBlogPostingJsonLd(page);
   const seriesContext = getSeriesContext(page);
+  const relatedPosts = seriesContext ? [] : getRelatedPosts(page, 2);
 
   const newsletterApiUrl = withBlogBasePath("/api/newsletter");
   return (
@@ -257,7 +260,9 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
             <SeriesBanner series={seriesContext} />
             <SeriesNavigation series={seriesContext} />
           </>
-        ) : null}
+        ) : (
+          <KeepReading posts={relatedPosts} />
+        )}
         <Separator className="my-12" />
 
         {/* Conversion CTA */}
