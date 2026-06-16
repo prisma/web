@@ -9,6 +9,7 @@ import { Badge, InlineTOC, Separator } from "@prisma/eclipse";
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import { FooterNewsletterForm } from "@prisma-docs/ui/components/newsletter";
 import { BlogShare } from "@/components/BlogShare";
+import { BlogCTA } from "@/components/BlogCTA";
 import { AuthorAvatarGroup } from "@/components/AuthorAvatarGroup";
 import { SeriesBanner } from "@/components/SeriesBanner";
 import { SeriesMarker } from "@/components/SeriesMarker";
@@ -258,6 +259,9 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
           </>
         ) : null}
         <Separator className="my-12" />
+
+        {/* Conversion CTA */}
+        <BlogCTA />
 
         {/* Share Container */}
         <BlogShare desc={page.data.metaDescription as string} />
