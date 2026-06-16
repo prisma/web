@@ -36,12 +36,7 @@ const Link = ({ external, color, children, href, ...rest }: LinkProps) => {
 
   if (external || !href || href.startsWith("http") || href.startsWith("#")) {
     return (
-      <a
-        {...rest}
-        href={href}
-        className={className}
-        target={external ? "_blank" : "_self"}
-      >
+      <a {...rest} href={href} className={className} target={external ? "_blank" : "_self"}>
         {children}
         {external && (
           <i className="fa-regular fa-arrow-up-right text-foreground-neutral-weaker text-xs ml-1" />
@@ -75,6 +70,8 @@ const Footer = ({
   absoluteLinks = false,
   color = "ppg",
   basePath = "",
+  hideNewsletter = false,
+  newsletterComponent,
 }: FooterProps) => {
   return (
     <footer className="z-1 bg-background-default w-screen overflow-x-hidden overflow-y-visible max-w-full">
@@ -86,52 +83,49 @@ const Footer = ({
         style={style}
       >
         <div className="font-inter print:hidden relative">
-          {/* Logo and Social Links Column */}
-          <div className="mb-8 flex-1 lg:mb-0 w-full top-0 flex justify-between items-center lg:flex-col lg:items-start lg:absolute lg:max-w-fit lg:h-[217px]">
-            <div className="flex flex-col justify-center">
-              <div className="text-stroke-neutral-stronger [&>svg]:h-10!">
-                {Logo}
+          {/* Logo, Social Links, and Newsletter Column */}
+          <div className="mb-8 lg:mb-0 w-full top-0 flex flex-col gap-8 lg:absolute lg:max-w-fit">
+            <div className="flex w-full justify-between items-center lg:flex-col lg:items-start lg:gap-8">
+              <div className="flex flex-col justify-center">
+                <div className="text-stroke-neutral-stronger [&>svg]:h-10!">{Logo}</div>
+              </div>
+              <div className="flex justify-start gap-2 md:max-w-[190px]">
+                {footerData.socialIcons.map((socialLink: any, idx: number) => {
+                  const socialHoverClass =
+                    color === "orm"
+                      ? "hover:[&>div]:bg-background-orm-strong"
+                      : color === "ppg"
+                        ? "hover:[&>div]:bg-background-ppg-strong"
+                        : "";
+
+                  return (
+                    <a
+                      href={socialLink.url}
+                      target="_blank"
+                      rel="noopener"
+                      key={idx}
+                      aria-label={socialLink.title}
+                      className={cn("text-[1.375rem] transition-colors", socialHoverClass)}
+                    >
+                      <Action color="neutral" size="2xl">
+                        <i
+                          className={`fa-brands fa-${socialLink.icon} text-current text-foreground-neutral-weak transition-colors`}
+                        />
+                      </Action>
+                    </a>
+                  );
+                })}
               </div>
             </div>
-            <div className="flex justify-start gap-2 md:max-w-[190px]">
-              {footerData.socialIcons.map((socialLink: any, idx: number) => {
-                const socialHoverClass =
-                  color === "orm"
-                    ? "hover:[&>div]:bg-background-orm-strong"
-                    : color === "ppg"
-                      ? "hover:[&>div]:bg-background-ppg-strong"
-                      : "";
-
-                return (
-                  <a
-                    href={socialLink.url}
-                    target="_blank"
-                    rel="noopener"
-                    key={idx}
-                    aria-label={socialLink.title}
-                    className={cn(
-                      "text-[1.375rem] transition-colors",
-                      socialHoverClass,
-                    )}
-                  >
-                    <Action color="neutral" size="2xl">
-                      <i
-                        className={`fa-brands fa-${socialLink.icon} text-current text-foreground-neutral-weak transition-colors`}
-                      />
-                    </Action>
-                  </a>
-                );
-              })}
-            </div>
+            {!hideNewsletter && newsletterComponent ? (
+              <div className="w-full max-w-sm lg:max-w-[280px]">{newsletterComponent}</div>
+            ) : null}
           </div>
           {/* Main Grid Row */}
           <div className="grid max-md:gap-8 max-md:grid-cols-2 grid-cols-[repeat(4,auto)] lg:gap-8 xl:gap-12 relative lg:w-fit ml-auto">
             {/* Footer Columns */}
             {footerData.footerItems.map((footerItem: any, idx: number) => (
-              <div
-                className="flex-1 lg:mb-0 lg:px-2 min-w-40"
-                key={`footer-${idx}`}
-              >
+              <div className="flex-1 lg:mb-0 lg:px-2 min-w-40" key={`footer-${idx}`}>
                 <span className="uppercase stretch-display font-sans-display inline-block font-bold text-base text-foreground-neutral tracking-[0.1em] mt-0 mb-2.5 lg:mb-3">
                   {footerItem.title}
                 </span>
@@ -165,31 +159,18 @@ const Footer = ({
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
                         {link.links.map(
-                          (dropLink: {
-                            title: string;
-                            url: string;
-                            external?: boolean;
-                          }) => {
+                          (dropLink: { title: string; url: string; external?: boolean }) => {
                             const dropdownHoverClass =
                               color === "orm"
                                 ? "hover:bg-background-orm-strong!"
                                 : "hover:bg-background-ppg-strong!";
 
                             return (
-                              <DropdownMenuItem
-                                key={dropLink.title}
-                                className={dropdownHoverClass}
-                              >
+                              <DropdownMenuItem key={dropLink.title} className={dropdownHoverClass}>
                                 <a
                                   href={dropLink.url}
-                                  target={
-                                    dropLink.external ? "_blank" : "_self"
-                                  }
-                                  rel={
-                                    dropLink.external
-                                      ? "noopener noreferrer"
-                                      : undefined
-                                  }
+                                  target={dropLink.external ? "_blank" : "_self"}
+                                  rel={dropLink.external ? "noopener noreferrer" : undefined}
                                   className="text-left capitalize text-foreground-neutral-weak text-md font-semibold"
                                 >
                                   {dropLink.title}
@@ -244,11 +225,7 @@ const Footer = ({
                 {soc2(basePath)}
               </a>
             </div>
-            <ThemeToggle
-              color={color}
-              mode="light-dark-system"
-              className="md:order-3 order-2"
-            />
+            <ThemeToggle color={color} mode="light-dark-system" className="md:order-3 order-2" />
           </div>
         </div>
       </div>

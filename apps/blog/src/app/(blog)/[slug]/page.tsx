@@ -7,7 +7,6 @@ import { blog } from "@/lib/source";
 import { Badge, InlineTOC, Separator } from "@prisma/eclipse";
 
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
-import { FooterNewsletterForm } from "@prisma-docs/ui/components/newsletter";
 import { BlogShare } from "@/components/BlogShare";
 import { BlogCTA } from "@/components/BlogCTA";
 import { AuthorAvatarGroup } from "@/components/AuthorAvatarGroup";
@@ -167,7 +166,6 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
   const seriesContext = getSeriesContext(page);
   const relatedPosts = seriesContext ? [] : getRelatedPosts(page, 2);
 
-  const newsletterApiUrl = withBlogBasePath("/api/newsletter");
   return (
     <div className="w-full px-4 z-1 mx-auto md:grid md:grid-cols-[1fr_180px] mt-4 md:mt-22 gap-12 max-w-257">
       {blogPostingJsonLd ? (
@@ -263,18 +261,12 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
         ) : (
           <KeepReading posts={relatedPosts} />
         )}
-        <Separator className="my-12" />
 
         {/* Conversion CTA */}
         <BlogCTA />
 
         {/* Share Container */}
         <BlogShare desc={page.data.metaDescription as string} />
-
-        {/* Newsletter CTA */}
-        <div className="w-full px-8 py-12 shadow-box-low newsletter-bg rounded-square border border-background-neutral flex max-sm:flex-col wrap items-start gap-4 sm:items-center justify-between my-12">
-          <FooterNewsletterForm apiUrl={newsletterApiUrl} />
-        </div>
       </div>
       <div className="max-md:hidden toc">
         <div className="sticky top-24 max-h-[calc(100vh-6rem)] overflow-y-auto [&_a[data-state=inactive]]:text-foreground-neutral-weak! [&_a[data-state=active]]:text-foreground-neutral!">
