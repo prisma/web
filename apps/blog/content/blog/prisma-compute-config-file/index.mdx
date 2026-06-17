@@ -16,15 +16,13 @@ tags:
   - "compute"
 ---
 
-[Prisma Compute](https://docs.prisma.io/docs/compute) deploys a TypeScript app from your terminal with zero configuration. Run `app deploy`, and the CLI detects your framework, builds it, and hands back a live URL. That is the right default to start from.
+[Prisma Compute](https://docs.prisma.io/docs/compute) can deploy a TypeScript app without config: `app deploy` detects the framework, builds the app, and returns a live URL.
 
-As projects grow, two needs show up: repeatable deploys and more than one app in a repository. Both need the same thing: a place to write down what you deploy.
-
-That place is now `prisma.compute.ts`, a typed, committed config file that Compute reads on every deploy.
+For repeatable deploys and monorepos, Compute now reads `prisma.compute.ts`: a typed, committed config file for app targets and deploy defaults.
 
 ## One file, fully typed
 
-Here is the smallest useful config. It pins the framework, the entrypoint, and the port for a single app:
+Here is the smallest useful config for a single app:
 
 ```ts title="prisma.compute.ts"
 import { defineComputeConfig } from "@prisma/compute-sdk/config";
@@ -38,9 +36,9 @@ export default defineComputeConfig({
 });
 ```
 
-Every field is optional. Whatever you set becomes the default for `app deploy`, and explicit flags still win over it. The file is not all-or-nothing: pin only what you care about and let detection handle the rest.
+Fields you set become defaults for `app deploy`; explicit flags still override them.
 
-`defineComputeConfig` is the reason this is worth committing. It is a typed helper, so a misspelled field or an invalid framework is a red squiggle in your editor instead of a surprise mid-deploy:
+`defineComputeConfig` gives the file editor validation:
 
 ```ts title="prisma.compute.ts"
 export default defineComputeConfig({
@@ -51,7 +49,7 @@ export default defineComputeConfig({
 });
 ```
 
-The CLI resolves that import for you when it reads the file, so it works without a local install. Add `@prisma/compute-sdk` as a dev dependency if you want the types in your editor.
+The CLI resolves that import when it reads the file, so deploys work without a local install. Add `@prisma/compute-sdk` as a dev dependency for editor types.
 
 ## Monorepos, declared
 
@@ -100,7 +98,7 @@ $ bunx @prisma/cli@latest app deploy
   web   https://web.fra.prisma.build
 ```
 
-When you want one app, name its target or run from inside its directory. The deepest matching `root` wins, so the right app is selected automatically:
+To deploy one app, name its target or run from inside its directory. The deepest matching `root` wins:
 
 ```bash
 bunx @prisma/cli@latest app deploy api
@@ -108,11 +106,11 @@ bunx @prisma/cli@latest app deploy api
 cd apps/api && bunx @prisma/cli@latest app deploy
 ```
 
-A monorepo deploy should match your local build. Compute detects your workspace's package manager, finds the framework binaries wherever they live, and packages the dependencies each app needs. If an app builds locally in your monorepo, it should build the same way on deploy. Compute deploys Next.js, Nuxt, Astro, Hono, TanStack Start, and plain Bun servers today.
+Compute uses your workspace package manager, resolves framework binaries in the workspace, and packages each app's dependencies. Supported targets today include Next.js, Nuxt, Astro, Hono, TanStack Start, and plain Bun servers.
 
 ## Built for agents first
 
-Agents are increasingly part of the deploy path. `prisma.compute.ts` gives them a committed, typed deploy contract: framework, port, env file, roots, and targets.
+Agents are increasingly part of the deploy path. `prisma.compute.ts` keeps framework, port, env file, roots, and targets in the repo instead of only in a prompt.
 
 Install the Compute-specific skill from `prisma/skills` alongside the repo:
 
@@ -126,23 +124,21 @@ Then the prompt can stay short:
 Deploy this monorepo to Prisma Compute.
 ```
 
-The `prisma-compute` Agent Skill gives the agent the CLI workflow for deploys, logs, domains, and explicit target choices. The app graph stays in the repo, so the agent uses the same deploy defaults you do.
+The `prisma-compute` Agent Skill gives the agent the CLI workflow for deploys, logs, domains, and explicit target choices.
 
 ## What it does not do
 
-The config declares your apps. It does not select the Prisma project, branch, or production intent. Project context comes from explicit input, environment, or the local `.prisma/local.json` pin/cache; branch context comes from explicit targeting, Git, or the `main` fallback. That keeps committed deploy defaults separate from local resolution state, so sharing the file cannot quietly retarget a deploy.
+The config declares app targets and deploy defaults. It does not select the Prisma project, branch, or production intent. Project context comes from explicit input, environment, or the local `.prisma/local.json` pin/cache. Branch context comes from explicit targeting, Git, or the `main` fallback.
 
-Settings that did come from the file are labeled `set by prisma.compute.ts` in the deploy output, so you can always see where a value came from.
+Deploy output labels config-sourced settings as `set by prisma.compute.ts`.
 
 ## This is a step, not the destination
 
-`prisma.compute.ts` is deliberately scoped, and it is temporary by design.
+`prisma.compute.ts` is deliberately scoped and temporary by design.
 
-Prisma already ships `prisma.config.ts` for the ORM. The long-term plan is one config file for everything: ORM, Postgres, and Compute together, with `defineConfig` and a `compute` key for your deploys.
+Prisma already ships `prisma.config.ts` for the ORM. The long-term plan is one config file for ORM, Postgres, and Compute, with Compute living under a `compute` key.
 
-The shape you write today is intended to move into that file as the `compute` key. It is the same configuration, just in its own file until the unified one is ready.
-
-We shipped the smaller, focused file first because it solves the real problems, reproducible deploys and monorepos, today, without waiting on the larger unification. When the single file lands, moving over will be mechanical.
+The shape you write today is intended to move there mechanically once the unified file is ready.
 
 ## Try it
 
