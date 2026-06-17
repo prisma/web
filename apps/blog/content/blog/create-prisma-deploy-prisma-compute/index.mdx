@@ -1,0 +1,106 @@
+---
+title: "Deploy Prisma Apps with create-prisma"
+slug: "create-prisma-deploy-prisma-compute"
+date: "2026-06-15"
+authors:
+  - "Aman Varshney"
+metaTitle: "Deploy Prisma Apps with create-prisma"
+metaDescription: "create-prisma can now scaffold Prisma apps, install Prisma Skills and other add-ons, and deploy Compute-ready templates with Prisma Postgres setup."
+excerpt: "create-prisma can now scaffold Prisma apps, install Prisma Skills and other add-ons, and deploy Compute-ready templates with Prisma Postgres setup."
+tags:
+  - "announcement"
+  - "compute"
+  - "prisma-postgres"
+---
+
+Starting a new app should not begin with a stack assembly project.
+
+You know what you want to build. Before the first useful feature, you still need a starter, Prisma, a schema, `DATABASE_URL`, Prisma Client, a migration, seed data, and somewhere to run the app.
+
+That is the problem `create-prisma` is built to solve. It gives you a Prisma-ready app from the first command.
+
+Now it can keep going. For Compute-ready templates, `create-prisma` can scaffold the app, generate Prisma Compute defaults in a TypeScript config file, set up Prisma Postgres, and deploy to Prisma Compute. It leaves you with a project that can be redeployed later with a generated script.
+
+```bash
+bun create prisma@latest
+```
+
+## From scaffold to deployed app
+
+`create-prisma` already handles the initial setup for Prisma apps. It scaffolds a framework starter with Prisma wired in: schema, client helper, seed file, database scripts, and an env file with your `DATABASE_URL` already set.
+
+For Compute-ready templates, it also drops in `prisma.compute.ts`.
+
+That gets you a working local starting point. When you choose to deploy during setup, the flow can also create the infrastructure path for a hosted app.
+
+If your app needs a database, `create-prisma` can provision a Prisma Postgres instance, wire its connection string into your env file, run your Prisma setup, and deploy, all in the same run.
+
+## Add-ons for the rest of the workflow
+
+`create-prisma` can also set up the tools around the app. During setup, you can choose add-ons for Prisma Skills, the Prisma MCP server, and the Prisma extension for supported editors.
+
+The Skills add-on is the one to reach for when an agent will keep working in the repo after setup. It installs Prisma Agent Skills from [`prisma/skills`](https://github.com/prisma/skills), including the `prisma-compute` skill for deploys, logs, domains, and the Compute workflow.
+
+The agent does not only inherit a working project structure; it also gets Prisma-specific instructions it can use while changing and redeploying the app.
+
+## Why deploy belongs in the starter
+
+Scaffolding and deployment are often treated as separate jobs. That works, but it leaves a gap at the exact moment where developers are trying to validate whether a new project is real.
+
+A starter can create files. A deploy flow can run an app. Connecting the two means the project already knows how to build, where its database lives, and how to ship again after the first change.
+
+That is what the deploy step in `create-prisma` adds: a generated `prisma.compute.ts` that captures how your app deploys.
+
+For a Hono app, the config looks like this:
+
+```typescript
+import { defineComputeConfig } from "@prisma/compute-sdk/config";
+
+export default defineComputeConfig({
+  app: {
+    name: "my-api",
+    framework: "hono",
+    httpPort: 8080,
+    env: ".env",
+  },
+});
+```
+
+The generated app is not just "Prisma installed." It is a project that already knows how to build, run, and redeploy itself, with every piece agreeing on the same defaults.
+
+For a closer look at the TypeScript deploy config it generates, including how it scales to monorepos, see [Configure Prisma Compute deploys in TypeScript](/prisma-compute-config-file).
+
+A coding agent can write code quickly, but backend work gets harder when schema, database provisioning, environment variables, and deployment all live behind separate tools. A generated Prisma app gives both you and the agent one set of project conventions to follow.
+
+## Redeploying after setup
+
+When you deploy through `create-prisma`, the generated project includes `prisma.compute.ts` and a `compute:deploy` script.
+
+After making changes, redeploy from the project:
+
+```bash
+cd my-api
+bun run compute:deploy
+```
+
+It redeploys your app code using the defaults in `prisma.compute.ts`. It does not re-provision your database or rerun migrations, those belong to setup, not to every deploy.
+
+If you need to deploy an existing app that was not created with `create-prisma`, use the Prisma CLI directly:
+
+```bash
+bunx @prisma/cli@latest app deploy
+```
+
+## Start from one command
+
+The goal is not to hide how your app works. The goal is to start from a project where the pieces already agree with each other.
+
+`create-prisma` is the new-project path: a Prisma-ready app and, for supported templates, its first Compute deploy, from one command.
+
+Start interactively:
+
+```bash
+bun create prisma@latest
+```
+
+From there, you can change the schema, build the app, and redeploy from the same project.

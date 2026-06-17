@@ -32,6 +32,7 @@ export const blogPosts = defineCollections({
           "studio",
           "announcement",
           "platform",
+          "compute",
           "orm",
           "education",
           "case-study",
