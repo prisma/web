@@ -218,7 +218,7 @@ export const metadata = createPageMetadata({
 
 const homeStructuredData = createCollectionPageStructuredData({
   path: "/",
-  name: "Prisma is The Agent Infrastructure for TypeScript",
+  name: "Agent Infrastructure for TypeScript",
   description: SITE_HOME_DESCRIPTION,
   items: [
     {
@@ -275,7 +275,7 @@ export default function SiteHome() {
               className="mb-0 text-center mt-0 type-title-6xl text-foreground-neutral max-w-4xl mx-auto text-balance"
               style={{ fontSize: "clamp(2rem, 6vw, 3.25rem)", lineHeight: 1.12 }}
             >
-              Prisma is The Agent Infrastructure for TypeScript
+              Agent Infrastructure for TypeScript
             </h1>
           </div>
           <p className="text-center text-foreground-neutral-weak max-w-2xl mx-auto text-lg leading-relaxed text-balance">
