@@ -1,28 +1,6 @@
-/**
- * Google Tag Manager loader with Google Consent Mode v2.
- *
- * GTM loads normally — it is NOT gated as a `type="text/plain"` script (CookieYes
- * does not re-activate blocked scripts in this account, so gating left GTM inert
- * and GA4 got no data). Compliance is handled by Consent Mode instead:
- *
- *  - All consent types default to "denied", inline and synchronously, BEFORE GTM
- *    runs. GA4 sets no cookies and only sends anonymous cookieless pings until the
- *    visitor consents — no device storage pre-consent (ePrivacy satisfied).
- *  - A small bridge maps CookieYes consent to Google's consent signal via
- *    CookieYes's JS API (`cookieyes_consent_update` event + `getCkyConsent()`),
- *    firing `gtag('consent','update',...)` on accept. This needs NO CookieYes
- *    dashboard configuration — it works purely from the consent events CookieYes
- *    already emits. See
- *    https://www.cookieyes.com/documentation/implementing-google-consent-mode-using-cookieyes/
- *
- * One container serves the whole prisma.io domain; each zone passes its `section`
- * so every hit carries a `site_section` dimension (website/blog/docs).
- */
-
 import type { SiteSection } from "../lib/analytics";
 
-// Public, client-side container ID (Prisma Main › prisma.io). Ships in the HTML
-// to every visitor by design, so it is intentionally hardcoded, not an env var.
+// Public, client-side container ID (Prisma Main › prisma.io).
 const GTM_CONTAINER_ID = "GTM-KRTRXXQ6";
 
 type GoogleTagManagerProps = {
@@ -42,7 +20,7 @@ gtag('consent', 'default', {
 });
 window.dataLayer.push({ site_section: ${JSON.stringify(section)} });
 
-// Bridge CookieYes consent -> Google Consent Mode (no dashboard config required).
+// Bridge CookieYes consent
 (function(){
   function update(accepted){
     accepted = accepted || [];
