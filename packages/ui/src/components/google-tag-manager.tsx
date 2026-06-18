@@ -16,8 +16,13 @@ gtag('consent', 'default', {
   ad_user_data: 'denied',
   ad_personalization: 'denied',
   analytics_storage: 'denied',
-  wait_for_update: 500
+  functionality_storage: 'denied',
+  personalization_storage: 'denied',
+  security_storage: 'granted',
+  wait_for_update: 2000
 });
+gtag('set', 'ads_data_redaction', true);
+gtag('set', 'url_passthrough', true);
 window.dataLayer.push({ site_section: ${JSON.stringify(section)} });
 
 // Bridge CookieYes consent
