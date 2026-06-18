@@ -15,11 +15,11 @@
  * would load GTM regardless of consent and break the consent gate.
  */
 
+import type { SiteSection } from "../lib/analytics";
+
 // Public, client-side container ID (Prisma Main › prisma.io). Ships in the HTML
 // to every visitor by design, so it is intentionally hardcoded, not an env var.
 const GTM_CONTAINER_ID = "GTM-KRTRXXQ6";
-
-export type SiteSection = "website" | "blog" | "docs";
 
 type GoogleTagManagerProps = {
   section: SiteSection;

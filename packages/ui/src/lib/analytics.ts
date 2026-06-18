@@ -7,6 +7,9 @@
  * are inert — nothing leaves the browser.
  */
 
+/** The public prisma.io zones tracked under one GA4 property. */
+export type SiteSection = "website" | "blog" | "docs";
+
 export type CtaClickPayload = {
   /** Visible label of the CTA, e.g. "Try Prisma". */
   cta_text: string;
@@ -15,7 +18,7 @@ export type CtaClickPayload = {
   /** Resolved destination href. */
   cta_destination: string;
   /** Overrides the page-level `site_section` for this event if provided. */
-  section?: string;
+  section?: SiteSection;
 };
 
 type DataLayerObject = Record<string, unknown>;
