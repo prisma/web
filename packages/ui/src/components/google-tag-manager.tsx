@@ -1,18 +1,26 @@
 /**
  * Consent-gated Google Tag Manager loader.
  *
- * Renders the GTM bootstrap as an inert `type="text/plain"` script tagged for
- * CookieYes' analytics category. CookieYes activates it only after the visitor
- * grants analytics consent — mirroring the pattern already used across the apps
- * for Tolt and the previous GTM container. Before activation nothing loads, so
- * no Google network calls happen without consent (GDPR/ePrivacy compliant).
+ * Split into two parts on purpose:
  *
- * The same container (one per the prisma.io domain) is used by every zone; each
- * zone passes its `section` so all hits carry a `site_section` dimension and can
- * be segmented (website vs blog vs docs) in GA4.
+ *  1. An inline bootstrap that always runs. It only initialises `dataLayer`
+ *     (a plain in-memory array) and pushes the page section + GTM start event.
+ *     This sets no cookies and makes no network requests, so it is safe to run
+ *     before consent.
+ *  2. The GTM library itself, loaded as an EXTERNAL `src` script tagged for
+ *     CookieYes' analytics category. CookieYes only reliably re-activates
+ *     external `src` scripts after consent — an inline `type="text/plain"` GTM
+ *     bootstrap is left inert and never executes, so it must NOT be used here.
+ *     This mirrors the working external-`src` pattern used for Tolt/PromptWatch.
+ *     See https://www.cookieyes.com/documentation/implement-prior-consent-using-cookieyes/
  *
- * Note: no `<noscript>` iframe fallback is rendered on purpose — a plain iframe
- * would load GTM regardless of consent and break the consent gate.
+ * Nothing contacts Google until CookieYes activates the external script once the
+ * visitor grants analytics consent (GDPR/ePrivacy compliant). No `<noscript>`
+ * iframe fallback is rendered, as it would load GTM regardless of consent.
+ *
+ * One container serves the whole prisma.io domain; each zone passes its
+ * `section` so every hit carries a `site_section` dimension and can be segmented
+ * (website vs blog vs docs) in GA4.
  */
 
 import type { SiteSection } from "../lib/analytics";
@@ -26,22 +34,25 @@ type GoogleTagManagerProps = {
 };
 
 export function GoogleTagManager({ section }: GoogleTagManagerProps) {
-  const html = `
+  const bootstrap = `
 window.dataLayer = window.dataLayer || [];
 window.dataLayer.push({ site_section: ${JSON.stringify(section)} });
-(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-})(window,document,'script','dataLayer','${GTM_CONTAINER_ID}');`.trim();
+window.dataLayer.push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });`.trim();
 
   return (
-    <script
-      id="gtm-loader"
-      type="text/plain"
-      data-cookieyes="cookieyes-analytics"
-      data-cookieyes-category="analytics"
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
+    <>
+      {/* Always runs: dataLayer setup only — no cookies, no network requests. */}
+      <script id="gtm-datalayer" dangerouslySetInnerHTML={{ __html: bootstrap }} />
+      {/* Consent-gated: CookieYes activates this external script after analytics
+          consent, which then loads the container and starts firing tags. */}
+      <script
+        id="gtm-loader"
+        type="text/plain"
+        data-cookieyes="cookieyes-analytics"
+        data-cookieyes-category="analytics"
+        async
+        src={`https://www.googletagmanager.com/gtm.js?id=${GTM_CONTAINER_ID}`}
+      />
+    </>
   );
 }
