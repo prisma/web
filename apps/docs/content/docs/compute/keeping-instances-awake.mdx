@@ -33,7 +33,7 @@ import { waitUntil } from "@prisma/compute";
 export default {
   fetch(req: Request) {
     waitUntil(processInBackground(req), {
-      // Optional. Prevents a hanging Promise from indefinitely preventing sleep
+      // Optional. Prevents a hanging promise from keeping the instance awake indefinitely.
       signal: AbortSignal.timeout(30_000),
     });
 
@@ -42,7 +42,7 @@ export default {
 };
 ```
 
-`waitUntil` follows the same pattern as [Cloudflare Workers](https://developers.cloudflare.com/workers/runtime-apis/context/#waituntil) and the [Service Workers API](https://developer.mozilla.org/en-US/docs/Web/API/ExtendableEvent/waitUntil): the instance stays awake until the promise settles. Prisma Compute adds an optional caller-owned `signal` value so you can bound the keep-awake lifetime if a promise hangs or never settles.
+`waitUntil` follows the same pattern as [Cloudflare Workers](https://developers.cloudflare.com/workers/runtime-apis/context/#waituntil) and the [Service Worker API](https://developer.mozilla.org/en-US/docs/Web/API/ExtendableEvent/waitUntil): the instance stays awake until the promise settles. Prisma Compute adds an optional caller-owned `signal` value so you can stop the keep-awake effect if a promise hangs or never settles. The signal does not cancel the promise or the work it started.
 
 ## Use `KeepAwakeGuard` for block-scoped or manual lifetimes
 
@@ -85,20 +85,20 @@ Calling `guard.release()` signals that the work is done and the instance can res
 
 ## The `signal` option
 
-`KeepAwakeGuard` accepts a caller-owned `signal` option. Use it as a safety fallback to release the guard if your code does not reach `release()`.
+`KeepAwakeGuard` accepts a caller-owned `signal` option. Use it as a safety fallback to release the guard if your code does not reach `release()`. The signal releases the keep-awake guard; it does not cancel the work protected by the guard.
 
 ```ts title="src/index.ts"
 import { KeepAwakeGuard } from "@prisma/compute";
 
 const guard = new KeepAwakeGuard({
-  // Optional. Prevents a leaked guard from indefinitely preventing sleep
+  // Optional. Prevents a leaked guard from keeping the instance awake indefinitely.
   signal: AbortSignal.timeout(30_000),
 });
 ```
 
 :::warning
 
-The `signal` option is a fallback, not the primary way to control your work. Prefer `using` or `try`/`finally` for normal guard lifetimes. Use `signal` to cap the maximum lifetime of a guard and avoid dangling guards.
+The `signal` option is a fallback, not the primary way to control your work. Prefer `using` or `try`/`finally` for normal guard lifetimes. Use `signal` to cap the maximum keep-awake lifetime and avoid dangling guards.
 
 :::
 
@@ -109,7 +109,7 @@ import { KeepAwakeGuard } from "@prisma/compute";
 
 async function processBatch() {
   const guard = new KeepAwakeGuard({
-    // Optional. Prevents a leaked guard from indefinitely preventing sleep
+    // Optional. Prevents a leaked guard from keeping the instance awake indefinitely.
     signal: AbortSignal.timeout(30_000),
   });
 
@@ -133,7 +133,7 @@ The `signal` follows the standard `AbortSignal` pattern, so you can pass any sig
 waitUntil(promise: Promise<unknown>, options?: { signal?: AbortSignal }): void;
 ```
 
-Keeps the instance awake until `promise` settles. Pass `options.signal` as a caller-owned fallback to release the keep-awake lifetime if the promise hangs or never settles.
+Keeps the instance awake until `promise` settles. Pass `options.signal` as a caller-owned fallback to stop keeping the instance awake if the promise hangs or never settles. The signal does not cancel the promise.
 
 ### `KeepAwakeGuard`
 
@@ -141,7 +141,7 @@ Keeps the instance awake until `promise` settles. Pass `options.signal` as a cal
 new KeepAwakeGuard(options?: { signal?: AbortSignal });
 ```
 
-Creates a guard that keeps the instance awake until the guard is disposed, released, or its optional caller-owned `signal` aborts.
+Creates a guard that keeps the instance awake until the guard is disposed, released, or its optional caller-owned `signal` aborts. The signal releases the guard; it does not cancel the work protected by the guard.
 
 | Member       | Type             | Description                                                                 |
 | ------------ | ---------------- | --------------------------------------------------------------------------- |
