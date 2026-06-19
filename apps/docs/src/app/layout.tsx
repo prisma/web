@@ -7,6 +7,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Script from "next/script";
 import { FontAwesomeScript as EclipseFA } from "@prisma/eclipse";
+import { GoogleTagManager } from "@prisma-docs/ui/components/google-tag-manager";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -55,11 +56,7 @@ export const metadata: Metadata = {
 
 export default function Layout({ children }: { children: ReactNode }) {
   return (
-    <html
-      lang="en"
-      className={`${inter.variable} ${barlow.variable}`}
-      suppressHydrationWarning
-    >
+    <html lang="en" className={`${inter.variable} ${barlow.variable}`} suppressHydrationWarning>
       <head>
         <script
           type="application/ld+json"
@@ -73,8 +70,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                 "@type": "SearchAction",
                 target: {
                   "@type": "EntryPoint",
-                  urlTemplate:
-                    "https://www.prisma.io/docs?q={search_term_string}",
+                  urlTemplate: "https://www.prisma.io/docs?q={search_term_string}",
                 },
                 "query-input": "required name=search_term_string",
               },
@@ -88,6 +84,8 @@ export default function Layout({ children }: { children: ReactNode }) {
           src="https://cdn-cookieyes.com/client_data/96980f76df67ad5235fc3f0d/script.js"
           strategy="afterInteractive"
         />
+        {/* Google Tag Manager — consent-gated; activates only after CookieYes analytics consent */}
+        <GoogleTagManager section="docs" />
         {/* FontAwesome — icons are non-critical; explicit strategy avoids
             Next.js silently defaulting to afterInteractive without a source hint */}
         <Script
