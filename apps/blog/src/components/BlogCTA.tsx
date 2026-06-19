@@ -1,4 +1,7 @@
+"use client";
+
 import { Button } from "@prisma/eclipse";
+import { trackCTA } from "@prisma-docs/ui/lib/analytics";
 
 const CTA_HREF = "https://pris.ly/pdp?utm_source=blog&utm_medium=blog_cta&utm_campaign=blog_post";
 
@@ -16,7 +19,17 @@ export const BlogCTA = () => {
           </p>
         </div>
         <Button asChild variant="ppg" size="2xl">
-          <a href={CTA_HREF}>
+          <a
+            href={CTA_HREF}
+            onClick={() =>
+              trackCTA({
+                cta_text: "Try Prisma",
+                cta_location: "blog_post_footer",
+                cta_destination: CTA_HREF,
+                section: "blog",
+              })
+            }
+          >
             <span>Try Prisma</span>
             <i className="fa-regular fa-arrow-right" aria-hidden />
           </a>
