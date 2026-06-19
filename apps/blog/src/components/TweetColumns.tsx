@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { getTweet, type Tweet } from "react-tweet/api";
 import { EmbeddedTweet } from "react-tweet";
 import { TweetBoundary } from "./TweetBoundary";
@@ -59,7 +59,9 @@ async function TweetCard({ tweetId }: { tweetId: string }) {
 // DOM order is always prose-then-tweet so the mobile (single-column) stack
 // reads prose first; `md:flex-row-reverse` flips the visual order on desktop
 // when the tweet should sit on the left.
-const wrapperBase = "flex flex-col gap-6 md:gap-10 my-10 md:items-center";
+// `md:items-start` top-aligns the prose with the tweet header rather than
+// vertically centering it against the (usually taller) embed.
+const wrapperBase = "flex flex-col gap-6 md:gap-10 my-10 md:items-start";
 
 export async function TweetColumns({
   tweetId,
@@ -77,7 +79,10 @@ export async function TweetColumns({
       <div className="flex-1 min-w-0 [&>p:first-child]:mt-0 [&>p:last-child]:mb-0">
         {children}
       </div>
-      <div className="w-full md:w-[360px] md:shrink-0 flex justify-center">
+      <div
+        className="w-full md:w-[360px] md:shrink-0 flex justify-center [&_.react-tweet-theme]:!my-0"
+        style={{ "--tweet-container-margin": "0" } as CSSProperties}
+      >
         {isTweetId(tweetId) ? (
           <TweetCard tweetId={tweetId} />
         ) : (
