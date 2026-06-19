@@ -1,0 +1,139 @@
+---
+title: Long-running servers
+description: "Keep a Prisma Compute instance awake for long-running work, background tasks, and WebSocket connections so it does not scale to zero, using the KeepAwakeGuard primitive from @prisma/compute."
+url: /compute/long-running-servers
+metaTitle: "Long-running servers and background work | Prisma Compute"
+metaDescription: Keep a Prisma Compute instance awake to run long-running jobs, background tasks, and WebSocket connections. Use the KeepAwakeGuard primitive from @prisma/compute to prevent scale-to-zero, with a signal fallback and a waitUntil-style API.
+---
+
+By default, Prisma Compute [scales idle instances to zero](/compute/pricing) to save cost: an instance only needs to run while it is handling a request. Some workloads need more than that. Long-running jobs, background processing, and open WebSocket connections all need the instance to keep running even when no request is in flight.
+
+`KeepAwakeGuard`, a primitive from `@prisma/compute`, keeps the current instance awake for exactly those cases. While a guard is active, the instance does not scale to zero. When you release the guard, normal scaling resumes.
+
+## When to use it
+
+Reach for `KeepAwakeGuard` when your app must keep running between requests, for example:
+
+- A long-running job that outlives the request that started it.
+- Background processing you kick off after returning a response.
+- A WebSocket connection that must stay open.
+
+If your work always finishes inside a single request, you do not need a guard. Let the instance scale to zero as usual.
+
+### Renamed from ScaleToZeroGuard
+
+`KeepAwakeGuard` was previously named `ScaleToZeroGuard`. The rename happened in `@prisma/compute@0.1.0-dev.4.1`. The old name still works but is deprecated, so update your imports to use `KeepAwakeGuard`.
+
+:::note
+
+`ScaleToZeroGuard` is a deprecated alias for `KeepAwakeGuard` and will be removed in a future release. Migrate to `KeepAwakeGuard` when you update to `@prisma/compute@0.1.0-dev.4.1` or later.
+
+:::
+
+## Usage
+
+Import `KeepAwakeGuard` from `@prisma/compute` and instantiate it to keep the current compute instance awake:
+
+```ts title="src/index.ts"
+import { KeepAwakeGuard } from "@prisma/compute";
+
+const guard = new KeepAwakeGuard();
+
+// The compute instance stays awake as long as this guard is active.
+```
+
+The guard keeps the instance alive until you release it. Wrap it around any block of work that must finish without the instance being suspended:
+
+```ts title="src/index.ts"
+import { KeepAwakeGuard } from "@prisma/compute";
+
+async function processBatch() {
+  const guard = new KeepAwakeGuard();
+  try {
+    await fetchAllRecords();
+    await transformData();
+    await writeResults();
+  } finally {
+    guard.release();
+  }
+}
+```
+
+Calling `guard.release()` signals that the work is done and the instance can resume normal scaling behavior.
+
+### Using with `waitUntil`
+
+The `KeepAwakeGuard` API follows the `waitUntil`-style pattern from [Cloudflare Workers](https://developers.cloudflare.com/workers/) and the [Service Worker API](https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerGlobalScope/waitUntil), so it reads naturally if you have built on edge or worker runtimes:
+
+```ts title="src/index.ts"
+import { KeepAwakeGuard } from "@prisma/compute";
+
+export default {
+  fetch(req: Request, env: Env, ctx: ExecutionContext) {
+    const guard = new KeepAwakeGuard();
+
+    ctx.waitUntil(
+      processInBackground(req).finally(() => guard.release())
+    );
+
+    return new Response("Accepted");
+  },
+};
+```
+
+Passing the guard's lifetime to `waitUntil` tells the runtime the instance must stay alive until the background work finishes, even though the response has already been sent.
+
+## The `signal` option
+
+`KeepAwakeGuard` accepts a `signal` option that acts as a fallback for the rare case where the instance might still be shut down while a guard is active:
+
+```ts title="src/index.ts"
+import { KeepAwakeGuard } from "@prisma/compute";
+
+const controller = new AbortController();
+
+const guard = new KeepAwakeGuard({
+  signal: controller.signal,
+});
+```
+
+:::warning
+
+The `signal` option is a fallback, not the primary way to cancel your work. It is meant for rare cases where the platform cannot honor the keep-awake guarantee, such as infrastructure maintenance or a forced shutdown. Keep your own cancellation logic independent of this signal.
+
+:::
+
+When the fallback `signal` fires, the platform is about to shut the instance down despite the guard. Use it only for emergency cleanup, not for normal workflow control:
+
+```ts title="src/index.ts"
+import { KeepAwakeGuard } from "@prisma/compute";
+
+const controller = new AbortController();
+
+const guard = new KeepAwakeGuard({
+  signal: controller.signal,
+});
+
+controller.signal.addEventListener("abort", () => {
+  // Emergency cleanup only. This is a fallback, not normal flow.
+  flushBuffersSync();
+});
+```
+
+The `signal` follows the `AbortSignal` pattern used in Cloudflare Workers and the Service Worker API, so the interface is familiar if you have worked with those platforms.
+
+## API reference
+
+| Property    | Type          | Description                                                                                                     |
+| ----------- | ------------- | --------------------------------------------------------------------------------------------------------------- |
+| `signal`    | `AbortSignal` | Fallback signal that fires if the platform cannot honor the keep-awake guarantee. Not for cancelling your work. |
+| `release()` | `() => void`  | Releases the guard, allowing the instance to resume normal scaling behavior.                                    |
+
+## Next steps
+
+- [Get started with Prisma Compute](/compute/getting-started): deploy your first app.
+- [Pricing](/compute/pricing): how scale-to-zero billing works.
+- [Deployments](/compute/deployments): build, deploy, logs, promote, and roll back.
+- [Environment variables](/compute/environment-variables): scoped configuration and secrets.
+- [Configuration](/compute/configuration): the `prisma.compute.ts` file reference.
+- [Known limitations](/compute/limitations): what the beta can and can't do.
