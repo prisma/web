@@ -235,7 +235,10 @@ const MAX_BYTES = 512 * 1024 * 1024; // leave headroom for the app itself
 await mkdir(CACHE_DIR, { recursive: true });
 
 function pathFor(key: string) {
-  return `${CACHE_DIR}/${Bun.hash(key).toString(16)}`;
+  // Pass a fixed seed so the filename is stable across restarts and instances.
+  // Without one, Bun.hash uses a random per-process seed and warm instances
+  // would never find each other's cached files.
+  return `${CACHE_DIR}/${Bun.hash(key, 0).toString(16)}`;
 }
 
 export async function readCache(key: string) {
