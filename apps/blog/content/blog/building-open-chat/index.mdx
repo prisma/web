@@ -5,8 +5,8 @@ date: "2026-06-19"
 authors:
   - "Søren Bramer Schmidt"
 metaTitle: "How I Built a Chat App That Never Drops a Token"
-metaDescription: "A personal walkthrough of building Open Chat (oss.chat) — durable, resumable AI chat on Durable Streams, Prisma Streams, TanStack DB, and Prisma Compute. How each piece works and what it enables."
-excerpt: "How I built Open Chat — durable, resumable AI chat where the answer is safe the instant it exists — on Durable Streams, Prisma Streams, TanStack DB, and Prisma Compute."
+metaDescription: "A personal walkthrough of building Open Chat (oss.chat): durable, resumable AI chat on Durable Streams, Prisma Streams, TanStack DB, and Prisma Compute. How each piece works and what it enables."
+excerpt: "How I built Open Chat, durable and resumable AI chat where the answer is safe the instant it exists, on Durable Streams, Prisma Streams, TanStack DB, and Prisma Compute."
 heroImagePath: "/building-open-chat/imgs/hero.svg"
 heroImageAlt: "Open Chat: tokens streaming into a durable append-only log, built on Durable Streams, Prisma Streams, TanStack DB, and Prisma Compute"
 tags:
@@ -22,18 +22,18 @@ I wanted the opposite: a chat app where the answer is safe the instant it exists
 
 This is how it works. Four pieces of technology make "never drop a token" the easy path instead of the hard one:
 
-- **Durable Streams** — an append-only log that survives the machine.
-- **Prisma Streams** — one stream per user, one routing key per chat.
-- **TanStack DB** — the UI is a live query over that log.
-- **Prisma Compute** — the app and its log deploy side by side, next to the database.
+- **Durable Streams**: an append-only log that survives the machine.
+- **Prisma Streams**: one stream per user, one routing key per chat.
+- **TanStack DB**: the UI is a live query over that log.
+- **Prisma Compute**: the app and its log deploy side by side, next to the database.
 
 Prefer to scroll through it? There's an animated [guided tour at oss.chat/tour](https://oss.chat/tour). This post is the longer, more personal version.
 
-![Open Chat running locally: a streaming markdown answer, a chat sidebar, and a guest session — no sign-up required](/building-open-chat/imgs/app.png)
+![Open Chat running locally: a streaming markdown answer, a chat sidebar, and a guest session with no sign-up required](/building-open-chat/imgs/app.png)
 
 ## The one rule: nothing on screen that isn't already durable
 
-Most chat apps stream tokens to the browser and save the finished message afterwards. That ordering is the whole bug. If the message only becomes real _after_ the stream ends, then anything that interrupts the stream loses data.
+Most chat apps stream tokens to the browser and save the finished message afterwards. That ordering is the bug. If the message only becomes real _after_ the stream ends, then anything that interrupts the stream loses data.
 
 Open Chat inverts it. Every event is appended to a durable log _first_, and everything you see is a replay of that log. The chat history isn't a row that gets written at the end. It _is_ the sequence of events, stored as they happen:
 
@@ -52,7 +52,7 @@ Once you commit to that rule, a dropped connection stops being a data-loss bug a
 
 The interesting part is what makes that rule cheap to follow. That's where the four technologies come in.
 
-## The whole thing in one picture
+## The system in one picture
 
 Six moving parts, one invariant: nothing reaches your screen that isn't already durable. Watch the tokens: the model's deltas (amber) only travel on to the browser _after_ they're appended to the log (green).
 
@@ -78,12 +78,12 @@ That inversion is the point. The local disk is disposable; the bucket is the sou
 The runtime behind all of this is `@prisma/streams-server`. Running it as a real service is almost entirely configuration. The deployable entrypoint is about 30 lines, and most of those are comments explaining the trade-offs:
 
 ```ts title="src/streams-app/index.ts (trimmed)"
-// @prisma/streams-server is the full runtime — SQLite WAL, segmenting,
+// @prisma/streams-server is the full runtime: SQLite WAL, segmenting,
 // R2 upload, recovery, bearer-key auth. This entry just sets defaults.
 import { existsSync } from "node:fs";
 
 process.env.DS_HOST ??= "0.0.0.0";
-// Keep the hot tier on /tmp — R2 is the durable tier, so losing /tmp is fine.
+// Keep the hot tier on /tmp; R2 is the durable tier, so losing /tmp is fine.
 process.env.DS_ROOT ??= "/tmp/ds-data";
 // Seal a segment at least every 5s, so an abrupt instance death can lose
 // almost nothing rather than waiting to hit a size threshold.
@@ -110,7 +110,7 @@ The model is: **each user owns a single append-only stream, and each chat is a r
 
 A key-filtered read picks one chat out of the interleaved log and resumes from any offset. It stays fast as the log grows because Streams keeps a tiered routing-key index on the side, without ever touching the single-log write path ([how the tiered index works](https://github.com/prisma/streams/blob/main/docs/tiered-index.md)). The API is just HTTP:
 
-```http title="The whole interface"
+```http title="The HTTP interface"
 # append: durable before the UI ever sees it
 POST /v1/stream/u_3f9c…_messages
 stream-key: chat:chat_38eb…
