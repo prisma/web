@@ -16,24 +16,24 @@ series: prisma-compute
 seriesIndex: 7
 ---
 
-One small thing has annoyed me in every AI chat app I've used. You ask a long question, the answer starts streaming, and then you close the tab, or your wifi blips, or the phone locks. The tail is gone. Reopen the chat and the message is truncated or missing. The tokens were on screen and nowhere else, so when the screen went away, so did they.
+One small thing has annoyed me in every AI chat app I've used. You ask a long question, the answer starts streaming, and then you close the tab, or your wifi blips, or the phone locks, and the tail is gone. Reopen the chat and the message is truncated or missing. The tokens were on screen and nowhere else, so when the screen went away, so did they.
 
 I wanted the opposite: a chat app where the answer is safe the instant it exists, and the screen is only a view of it. So I built one. It's called **Open Chat**, it's live at [oss.chat](https://oss.chat), and it's open source at [prisma/open-chat](https://github.com/prisma/open-chat).
 
-This is how it works. Four pieces of technology make "never drop a token" the easy path instead of the hard one:
+Four pieces of technology make "never drop a token" the easy path instead of the hard one:
 
 - **Durable Streams**: an append-only log that survives the machine.
 - **Prisma Streams**: one stream per user, one routing key per chat.
 - **TanStack DB**: the UI is a live query over that log.
 - **Prisma Compute**: the app and its log deploy side by side, next to the database.
 
-Prefer to scroll through it? There's an animated [guided tour at oss.chat/tour](https://oss.chat/tour). This post is the longer, more personal version.
+There's an animated [guided tour at oss.chat/tour](https://oss.chat/tour) if you'd rather scroll through it, and this post is the longer, more personal version.
 
 ![Open Chat running locally: a streaming markdown answer, a chat sidebar, and a guest session with no sign-up required](/building-open-chat/imgs/app.png)
 
 ## The one rule: nothing on screen that isn't already durable
 
-Most chat apps stream tokens to the browser and save the finished message afterwards. That ordering is the bug. If the message only becomes real _after_ the stream ends, then anything that interrupts the stream loses data.
+Most chat apps stream tokens to the browser and save the finished message afterwards, and that ordering is the bug: if the message only becomes real _after_ the stream ends, anything that interrupts the stream loses data.
 
 Open Chat inverts it. Every event is appended to a durable log _first_, and everything you see is a replay of that log. The chat history isn't a row that gets written at the end. It _is_ the sequence of events, stored as they happen:
 
@@ -48,9 +48,9 @@ Open Chat inverts it. Every event is appended to a durable log _first_, and ever
 
 A single pure function folds that log into the messages you see on screen. The same function runs on the server (to replay history) and in the browser (to follow the live feed), so the two can never disagree about what a conversation contains ([`src/shared/messages.ts`](https://github.com/prisma/open-chat/blob/main/src/shared/messages.ts)).
 
-Once you commit to that rule, a dropped connection stops being a data-loss bug and becomes a non-event. Reconnect, replay from your last offset, catch up. A refresh, a flaky network, even the server restarting underneath you: none of it changes what's in the log.
+Once you commit to that rule, a dropped connection stops being a data-loss bug and becomes a non-event: the client reconnects and replays from its last offset to catch up. A refresh, a flaky network, even the server restarting underneath you, none of it changes what's in the log.
 
-The interesting part is what makes that rule cheap to follow. That's where the four technologies come in.
+What makes that rule cheap to follow is the four technologies underneath it.
 
 ## The system in one picture
 
@@ -64,8 +64,6 @@ Six moving parts, one invariant: nothing reaches your screen that isn't already 
 4. **Every delta is appended first.** Before the browser sees a token, it's written to your durable stream. The log is the chat, not a cache of it.
 5. **The browser tails the log** over Server-Sent Events: replay from any offset, then follow live. It never touches the stream directly; the Bun server proxies the tail and checks your session first.
 6. **Metadata stays relational.** Chat titles, accounts, and credits live in Prisma Postgres. In the browser, TanStack DB joins both worlds, relational data and the live event stream, into one set of live queries.
-
-Now the pieces, one at a time.
 
 ## Durable Streams: a log that survives the machine
 
@@ -145,7 +143,7 @@ That typed Postgres data comes from [Prisma Next](https://www.prisma.io/blog/pri
 
 ## Prisma Compute: two apps, one project, one command each
 
-Here's the part that surprised me. Production is this exact repo, deployed twice (the chat server and the Durable Streams service) side by side in one [Prisma Compute](/blog/launching-prisma-compute-public-beta) project, next to the [Prisma Postgres](https://www.prisma.io/postgres) database they share.
+The part that surprised me: production is this exact repo, deployed twice (the chat server and the Durable Streams service) side by side in one [Prisma Compute](/blog/launching-prisma-compute-public-beta) project, next to the [Prisma Postgres](https://www.prisma.io/postgres) database they share.
 
 ![The whole production setup in the Prisma Console: the open-chat project on its main branch, with the Streams app, the open-chat app, and the primary database](/building-open-chat/imgs/tour-console.webp)
 
