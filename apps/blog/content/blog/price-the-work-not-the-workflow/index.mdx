@@ -5,8 +5,7 @@ date: "2026-06-22"
 authors:
   - "Luan van der Westhuizen"
 metaTitle: "Price the Work, Not the Workflow"
-metaDescription: "Prisma Compute pricing should charge for observable application work, not the development workflow around deploys, previews, retries, and agent loops."
-excerpt: "Prisma Compute pricing should charge for observable application work, not the development workflow around deploys, previews, retries, and agent loops."
+metaDescription: "Prisma Compute pricing should charge for observable work like requests, memory, CPU, and outbound data, not the workflow around deploys, previews, retries, and agent loops."
 series: prisma-compute
 seriesIndex: 8
 tags:
@@ -14,7 +13,7 @@ tags:
   - "ai"
 ---
 
-# Price the Work, Not the Workflow
+import { WorkPricingDiagram } from "./WorkPricingDiagram";
 
 The way software gets built is changing faster than the way infrastructure gets
 priced.
@@ -30,12 +29,15 @@ human workflow was a decent proxy for the work being done.
 
 That proxy is breaking.
 
-A single developer can now work with agents that open branches, deploy previews,
-retry fixes, test their own work, wait on models and databases, and keep
-background work alive after a request returns. More software activity is becoming
-automated, looped, and started by something other than a human clicking a button.
+The next shape is looped. Some people call this loop engineering: a human sets
+intent, then agents keep the cycle moving through changes, checks, previews,
+retries, and handoffs back to human judgment. A single developer can now keep far
+more of these loops in motion than a human-only workflow ever allowed.
 
 Pricing has to survive that shift.
+
+The practical promise is simple: builders should be able to ship, preview, test,
+retry, and use agents without the workflow itself becoming the bill.
 
 Our position is simple:
 
@@ -48,6 +50,12 @@ loops, and the number of humans with access.
 
 Charge for the first. Do not tax the second.
 
+In practice, that means avoiding deploy-based pricing, preview charges, opaque
+credits, provider-specific compute units, and seats as the primary proxy for
+infrastructure work.
+
+<WorkPricingDiagram />
+
 That can sound like ordinary usage-based pricing. It is not the same thing.
 Usage-based pricing often means "we found a meter and charge for it." Pricing
 the work means the meter maps to something the builder can understand, predict,
@@ -57,9 +65,8 @@ the provider's business model.
 ## The Problem Is Not More Activity
 
 When agents participate in development, the number of software actions goes up.
-That is the point. An agent can try more fixes, run more checks, create more
-preview environments, and keep iterating while the human reviews the result. This
-should make builders feel more capable, not more exposed.
+That is the point. More attempts, more checks, and more environments should make
+builders feel more capable, not more exposed.
 
 The problem is not that agents create more activity. The problem is pricing that
 charges for the activity around the work instead of the work itself.
@@ -144,8 +151,8 @@ spikes. If that changes, the same system should show what changed while the work
 is happening.
 
 This is the psychological contract that matters. A builder should feel free to
-ship, preview, test, and let agents do more of the mechanical work without
-treating every iteration as a financial risk.
+let agents do more of the mechanical iteration without treating every loop as a
+financial risk.
 
 Work has cost. Shipping should feel safe.
 
@@ -154,7 +161,8 @@ Work has cost. Shipping should feel safe.
 Prisma Compute is in public beta, and Compute is free during beta. But pricing is
 part of the product model, so we are publishing how we expect it to work.
 
-Our current approach is a concrete expression of the principles above:
+If this thesis is real, it has to show up in the pricing table. Our current
+approach is a concrete expression of the principles above:
 
 | Meter | Expected price | What it represents |
 |---|---:|---|
@@ -163,20 +171,24 @@ Our current approach is a concrete expression of the principles above:
 | Active CPU | `$0.064 / vCPU-hour` | CPU your code actually consumes, not wall-clock waiting |
 | Outbound bandwidth | `$0.025 / GB` | Data your app sends to the public internet |
 
-No separate charge for deployments. No separate charge for preview branch
-creation. No charge for idle apps that have scaled to zero. No Prisma-specific
-compute unit to decode.
+This is the practical shape of "price the work": no separate charge for
+deployments, no separate charge for preview branch creation, no charge for idle
+apps that have scaled to zero, and no Prisma-specific compute unit to decode.
 
 Under simple illustrative assumptions, this makes the model easy to inspect. A
-busy preview workflow with several deploys and smoke tests is roughly `10k
-requests + 0.833 GB-hours + 0.167 vCPU-hours + 0.25 GB out -> about $0.03`.
+busy preview workflow with several deploys and smoke tests could be: 10k
+requests, a 1 GB preview kept warm for about 50 minutes (`0.833 GB-hours`),
+about 10 active CPU minutes (`0.167 vCPU-hours`), and 0.25 GB out. At the rates
+above, that is about `$0.03`.
 
 The deploys are not the bill. The work is.
 
-An app running ten thousand agent tasks in a month, each mostly waiting on a
-model or another service, is roughly `10k requests + 83.33 GB-hours + 8.33
-vCPU-hours + 5 GB out -> about $1.17`. The bill separates the memory needed to
-stay alive from the CPU actually consumed while work runs.
+A month of ten thousand agent tasks, each mostly waiting on a model or another
+service, could be: 10k requests, each task alive for about 30 seconds on 1 GB
+memory (`83.33 GB-hours` total), plus about 3 active CPU seconds per task
+(`8.33 vCPU-hours` total), and 5 GB out. At the rates above, that is about
+`$1.17`. The bill separates the memory needed to stay alive from the CPU
+actually consumed while work runs.
 
 There is one line worth watching before you ship: outbound bandwidth. For
 streaming, media, exports, file-heavy apps, and high-transfer APIs, transfer can
