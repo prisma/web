@@ -98,7 +98,9 @@ function getBlogPostingJsonLd(page: ReturnType<typeof blog.getPage>): BlogPostin
 
   const datePublished = toIsoDate(page.data.date);
   const dateModified =
-    toIsoDate((page.data as { lastModified?: unknown }).lastModified) ?? datePublished;
+    toIsoDate(page.data.updatedAt) ??
+    toIsoDate((page.data as { lastModified?: unknown }).lastModified) ??
+    datePublished;
 
   const jsonLd: BlogPostingSchema = {
     "@context": "https://schema.org",
