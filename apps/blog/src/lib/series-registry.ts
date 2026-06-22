@@ -15,7 +15,7 @@ export const seriesRegistry = {
     title: "Agentic software development at Prisma",
     description:
       "How Prisma builds software with AI agents: introducing the practice, the process and documentation layer that make cross-repo agent work possible, the Drive process and the Maker role, and how the approach keeps evolving as models and harnesses improve.",
-    featured: true,
+    featured: false,
     relatedSeries: ["prisma-next", "prisma-compute"],
   },
   "prisma-compute": {
