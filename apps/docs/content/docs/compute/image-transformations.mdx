@@ -1,0 +1,411 @@
+---
+title: Image Transformations
+description: Resize, encode, cache, and serve images from a Prisma Compute app using Bun's native image pipeline and ordinary HTTP routes.
+url: /compute/image-transformations
+metaTitle: Image Transformations | Prisma Compute
+metaDescription: Learn how to build image transformation routes on Prisma Compute with Bun.Image, including resizing, format conversion, caching, source validation, and Cloudflare/Vercel feature equivalents.
+---
+
+[Prisma Compute](/compute) apps run on Bun, and Bun ships [`Bun.Image`](https://bun.com/docs/runtime/image): a native pipeline for decoding, resizing, rotating, flipping, adjusting, and re-encoding images. So you build image transformations as part of your app, not as a separate image service.
+
+A transformation route is an ordinary [Compute deployment](/compute/deployments). It handles a request, uses CPU and memory, and returns bytes, and it is billed and operated like every other route in your app.
+
+## What Bun handles natively
+
+`Bun.Image` supports the common image optimization path:
+
+| Need | Bun API |
+| --- | --- |
+| Read image dimensions and format | `metadata()` |
+| Resize by width or width and height | `resize(width)` or `resize(width, height)` |
+| Preserve aspect ratio inside a box | `resize(width, height, { fit: "inside" })` |
+| Prevent upscaling | `resize(width, height, { withoutEnlargement: true })` |
+| Choose resize filter | `filter: "lanczos3"`, `"mitchell"`, `"box"`, `"nearest"`, and others |
+| Rotate | `rotate(90)`, `rotate(180)`, `rotate(270)` |
+| Flip | `flip()` for vertical, `flop()` for horizontal |
+| Adjust brightness and saturation | `modulate({ brightness, saturation })` |
+| Encode JPEG | `jpeg({ quality, progressive })` |
+| Encode PNG | `png({ compressionLevel })` or `png({ palette, colors, dither })` |
+| Encode WebP | `webp({ quality })` or `webp({ lossless: true })` |
+| Generate a placeholder | `placeholder()` |
+| Return HTTP response body | `blob()`, `bytes()`, or `buffer()` |
+| Write a transformed file | `write(path)`, `write(Bun.file(...))`, or `write(Bun.s3(...))` |
+
+Stick to JPEG, PNG, and WebP for portable Compute routes. Bun's HEIC and AVIF support depends on operating-system image backends, so treat those formats as unavailable unless you add and test your own encoder path.
+
+## Minimal service
+
+Build the route in a Hono or plain Bun HTTP app. The example below uses Hono to match the other [Compute examples](/compute/getting-started); the `Bun.Image` code is identical in any framework.
+
+```bash title="Install Hono"
+bun add hono
+```
+
+```ts title="src/index.ts"
+import { Hono } from "hono";
+
+const app = new Hono();
+
+const IMAGE_ORIGIN = "https://assets.example.com/";
+const MAX_DIMENSION = 2400;
+const MAX_PIXELS = 4096 * 4096;
+
+function parseDimension(value: string | undefined) {
+  if (!value) return undefined;
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return undefined;
+  return Math.min(parsed, MAX_DIMENSION);
+}
+
+function parseQuality(value: string | undefined) {
+  if (!value) return 80;
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed)) return 80;
+  return Math.min(Math.max(parsed, 1), 100);
+}
+
+function negotiateFormat(request: Request, requested: string | undefined) {
+  if (requested === "jpeg" || requested === "png" || requested === "webp") {
+    return requested;
+  }
+
+  const accept = request.headers.get("accept") ?? "";
+  return accept.includes("image/webp") ? "webp" : "jpeg";
+}
+
+async function applyResize(image: Bun.Image, width?: number, height?: number, fit: "fill" | "inside" = "inside") {
+  const options = {
+    fit,
+    withoutEnlargement: true,
+    filter: "lanczos3" as const,
+  };
+
+  if (width && height) return image.resize(width, height, options);
+  if (width) return image.resize(width, undefined, options);
+
+  if (height) {
+    const metadata = await image.metadata();
+    const computedWidth = Math.max(1, Math.round((metadata.width * height) / metadata.height));
+    return image.resize(computedWidth, height, options);
+  }
+
+  return image;
+}
+
+function assertImagePath(path: string) {
+  if (!/^[a-zA-Z0-9/_ .-]+\.(jpe?g|png|webp)$/i.test(path)) {
+    throw new Error("Invalid image path");
+  }
+}
+
+app.get("/images/*", async (c) => {
+  const path = c.req.path.replace(/^\/images\//, "");
+
+  try {
+    assertImagePath(path);
+  } catch {
+    return c.text("Invalid image path", 400);
+  }
+
+  const sourceUrl = new URL(path, IMAGE_ORIGIN);
+  const source = await fetch(sourceUrl);
+
+  if (!source.ok) {
+    return c.text("Source image not found", 404);
+  }
+
+  const input = await source.arrayBuffer();
+  const width = parseDimension(c.req.query("w"));
+  const height = parseDimension(c.req.query("h"));
+  const quality = parseQuality(c.req.query("q"));
+  const fit = c.req.query("fit") === "fill" ? "fill" : "inside";
+  const format = negotiateFormat(c.req.raw, c.req.query("format"));
+
+  let image = new Bun.Image(input, {
+    maxPixels: MAX_PIXELS,
+    autoOrient: true,
+  });
+
+  image = await applyResize(image, width, height, fit);
+
+  if (format === "webp") {
+    image = image.webp({ quality });
+  } else if (format === "png") {
+    image = image.png({ compressionLevel: 6 });
+  } else {
+    image = image.jpeg({ quality, progressive: true });
+  }
+
+  const body = await image.blob();
+
+  return new Response(body, {
+    headers: {
+      "Cache-Control": "public, max-age=31536000, immutable",
+      "Content-Type": body.type,
+      "Vary": "Accept",
+    },
+  });
+});
+
+export default app;
+```
+
+Deploy it:
+
+```bash title="Deploy"
+bunx @prisma/cli@latest app deploy --framework hono --entry src/index.ts
+```
+
+Request variants:
+
+```text title="Requests"
+/images/products/chair.jpg?w=640&q=75
+/images/products/chair.jpg?w=1280&format=webp
+/images/products/chair.jpg?w=512&h=512&fit=inside
+```
+
+This example sends `Cache-Control: immutable`, which is only safe when the source path is versioned (a content hash or version segment). If `chair.jpg` can change in place, drop `immutable` and use a shorter `max-age` with an `ETag`. See [Caching](#caching) for the full rules.
+
+## Source images
+
+`Bun.Image` accepts a path, bytes, or a `Blob`. On Compute, prefer bytes or trusted storage handles over raw user-controlled paths.
+
+### Remote source
+
+```ts title="Remote source"
+const response = await fetch(sourceUrl);
+if (!response.ok) throw new Error("Image not found");
+
+const image = new Bun.Image(await response.arrayBuffer(), {
+  maxPixels: 4096 * 4096,
+  autoOrient: true,
+});
+```
+
+Validate remote sources before fetching them:
+
+- Allow only trusted hostnames or storage prefixes.
+- Reject private network addresses if users can submit URLs.
+- Cap redirects or disable them when you do not need them.
+- Set a maximum decoded pixel count with `maxPixels`.
+- Cap requested dimensions and quality.
+
+### Local file
+
+```ts title="Local file"
+const image = Bun.file("public/avatars/alice.png").image();
+```
+
+Do not pass a user-controlled string directly to `new Bun.Image(path)`. If the source is user-selected, resolve it through your own database or object store first, then read the trusted object.
+
+### S3-compatible object
+
+```ts title="S3 source"
+const image = Bun.s3("uploads/photo.jpg").image();
+```
+
+You can also write generated variants back to S3:
+
+```ts title="Write variant"
+await Bun.s3("uploads/photo.jpg")
+  .image()
+  .resize(640, undefined, { withoutEnlargement: true })
+  .webp({ quality: 80 })
+  .write(Bun.s3("variants/photo-640.webp"));
+```
+
+## Transform options
+
+### Resize
+
+```ts title="Resize"
+image.resize(800);
+image.resize(800, 600);
+image.resize(800, 600, { fit: "inside" });
+image.resize(800, 600, { withoutEnlargement: true });
+image.resize(800, 600, { filter: "mitchell" });
+```
+
+Use `fit: "inside"` for the common thumbnail behavior: preserve aspect ratio and fit within a box. Without `fit: "inside"`, width and height produce an exact output size, which can stretch the image.
+
+Use `withoutEnlargement: true` when handling user uploads or product assets so small source images are not upscaled.
+
+### Rotate and flip
+
+```ts title="Rotate and flip"
+image.rotate(90);
+image.flip();
+image.flop();
+```
+
+`rotate()` accepts multiples of 90 degrees.
+
+### Brightness, saturation, and grayscale
+
+```ts title="Adjust color"
+image.modulate({
+  brightness: 1.1,
+  saturation: 0,
+});
+```
+
+`saturation: 0` creates a grayscale output.
+
+### Output formats
+
+```ts title="Output formats"
+image.jpeg({ quality: 82, progressive: true });
+image.png({ compressionLevel: 6 });
+image.png({ palette: true, colors: 64, dither: true });
+image.webp({ quality: 80 });
+image.webp({ lossless: true });
+```
+
+If you do not choose an output format, Bun reuses the source format.
+
+### Placeholders
+
+```ts title="Placeholder"
+const placeholder = await Bun.file("hero.jpg").image().placeholder();
+```
+
+Inline the result as a low-quality placeholder in HTML or React components while the full image loads.
+
+## Content negotiation
+
+To implement `format=auto`, inspect the `Accept` header.
+
+```ts title="Format negotiation"
+function autoFormat(request: Request) {
+  const accept = request.headers.get("accept") ?? "";
+  if (accept.includes("image/webp")) return "webp";
+  return "jpeg";
+}
+```
+
+Return `Vary: Accept` when the same URL can produce different formats:
+
+```ts title="Response headers"
+return new Response(body, {
+  headers: {
+    "Content-Type": body.type,
+    "Vary": "Accept",
+  },
+});
+```
+
+## Caching
+
+Every unique URL should map to one deterministic output. Keep query parameters normalized and bounded.
+
+Recommended cache rules:
+
+- Include all transformation parameters in the URL or path.
+- Sort query parameters when generating URLs from code.
+- Use immutable cache headers for versioned source paths.
+- Use shorter cache headers or ETags when the source can change in place.
+- Return `Vary: Accept` when format negotiation depends on request headers.
+- Add a source version, hash, or updated timestamp to the URL when invalidating.
+
+Example:
+
+```ts title="Cache headers"
+headers.set("Cache-Control", "public, max-age=31536000, immutable");
+headers.set("Vary", "Accept");
+```
+
+## Vercel Image Optimization equivalents
+
+Vercel Image Optimization supports framework image components, width and quality parameters, automatic format selection, source allowlists, caching, and fixed source limits. On Prisma Compute, implement those pieces in the app route.
+
+| Vercel behavior | Prisma Compute approach |
+| --- | --- |
+| `url` source parameter | Resolve a trusted object key or allowlisted source URL. Do not fetch arbitrary user URLs. |
+| `w` width parameter | Parse and cap `w`, then call `resize(w, ...)`. |
+| `q` quality parameter | Parse and cap `q`, then pass it to `jpeg()` or `webp()`. |
+| Automatic WebP or AVIF | Inspect `Accept`. Use WebP natively. Add and test a separate AVIF encoder if you require AVIF. |
+| Local and remote source patterns | Keep allowlists in code or config. Reject anything else before fetching. |
+| Cache optimized variants | Make the URL the cache key and return appropriate `Cache-Control` and `Vary` headers. |
+| Framework image component integration | Point your framework loader or image component at your Compute image route. |
+| Source size limits | Use `maxPixels`, cap response body size, and reject dimensions above your product limit. |
+
+## Cloudflare Images equivalents
+
+Cloudflare Images exposes many URL and Worker options. The table below maps each option to the Compute implementation path.
+
+| Cloudflare option | Prisma Compute approach |
+| --- | --- |
+| `anim` | Bun's native output path is best for static variants. Preserve animated originals separately, or use an animation-aware library when you need animated output. |
+| `background` | Use CSS for display backgrounds, or add an image library that supports canvas extension/padding. |
+| `blur` | Add an image library with blur support. Do not rely on URL blur for access control. |
+| `border` | Prefer CSS borders for display. Use an image library if the border must be encoded into the asset. |
+| `brightness` | Use `modulate({ brightness })`. |
+| `compression` | Choose faster formats/settings in your route, usually JPEG or WebP with a lower quality, and cache the result. |
+| `contrast` | Add an image library with contrast adjustment. |
+| `dpr` | Multiply requested width and height by the DPR value before resizing, and cap the result. |
+| `fit=scale-down` | Use `fit: "inside"` with `withoutEnlargement: true`. |
+| `fit=contain` | Use `fit: "inside"`; omit `withoutEnlargement` if you allow upscaling. |
+| `fit=cover`, `fit=crop`, `fit=aspect-crop` | Add a library with crop/extract support, or pre-generate cropped variants. Current `Bun.Image` does not expose crop coordinates. |
+| `fit=pad` | Use CSS object-fit where possible, or add a library that can extend the canvas with a background color. |
+| `fit=squeeze` | Use `resize(width, height)` without `fit: "inside"` when distortion is acceptable. |
+| `fit=scale-up` | Use `fit: "inside"` and allow upscaling; cap dimensions. |
+| `flip` | Use `flip()` for vertical or `flop()` for horizontal. |
+| `format` / `f` | Choose `.jpeg()`, `.png()`, or `.webp()`. Implement `auto` with the `Accept` header. |
+| `gamma` | Add an image library with gamma adjustment. |
+| `gravity` / `g` | For fixed focal points, store focal metadata and use a crop-capable library. For `auto` or `face`, use a vision model or external service to choose the crop. |
+| `height` / `h` | Parse and cap `h`, then pass it to `resize()`. |
+| `metadata` | Bun can apply EXIF orientation with `autoOrient`. Use an additional library if you need explicit EXIF preservation or removal policy. |
+| `onerror=redirect` | Catch transform errors and redirect to the original source when that is safe for your app. |
+| `quality` / `q` | Pass a capped quality to `jpeg()` or `webp()`. For PNG, use `compressionLevel` or palette output. |
+| `rotate` | Use `rotate(90)`, `rotate(180)`, or `rotate(270)`. |
+| `saturation` | Use `modulate({ saturation })`; `0` creates grayscale. |
+| `segment` | Use a background-removal model or API, then composite the result with an image library. |
+| `sharpen` | Add an image library with sharpen support. |
+| `slow-connection-quality` / `scq` | Read client hints such as `Save-Data`, `RTT`, `ECT`, or `Downlink`, then lower quality in route logic. |
+| `trim` | Add a library that supports edge trimming or explicit crop/extract. |
+| `upscale` | Use native resize for interpolation. Use a super-resolution model or API for AI upscaling. |
+| `width` / `w` | Parse and cap `w`, then pass it to `resize()`. |
+| `width=auto` | Choose a breakpoint from client hints, user agent, or your own layout metadata. |
+| `zoom` / `face-zoom` | Use face detection plus a crop-capable library. |
+
+## Adding advanced image libraries
+
+If you need operations that `Bun.Image` does not expose, add a library and keep the same route shape:
+
+1. Validate source, dimensions, format, and quality.
+2. Fetch or read the trusted source.
+3. Run native Bun transformations for the common path when possible.
+4. Route advanced presets through the library.
+5. Return the same cache headers and error behavior.
+
+Keep advanced transformations behind named presets instead of exposing every option directly. For example:
+
+```text title="Preset URLs"
+/images/products/chair.jpg?p=thumb
+/images/products/chair.jpg?p=hero
+/images/products/chair.jpg?p=square
+```
+
+Presets make cache keys stable and prevent users from creating unbounded transformation combinations.
+
+## Security checklist
+
+- Do not pass user-controlled filesystem paths to `new Bun.Image(path)`.
+- Allowlist remote origins before fetching.
+- Reject private IP ranges for user-submitted URLs.
+- Cap width, height, quality, DPR, and decoded pixels.
+- Prefer named presets for public image URLs.
+- Return clear `400` responses for invalid parameters.
+- Return `404` for missing source images.
+- Set `Vary: Accept` when negotiating formats.
+- Use `maxPixels` to reject decompression bombs before pixel allocation.
+- Do not use reversible transformations such as blur as an access-control mechanism.
+
+## What to read next
+
+- [Deploy your first app](/prisma-compute/deploy): take a route like this one to a live URL.
+- [Deployments](/compute/deployments): build, deploy, logs, promote, and roll back.
+- [Configuration](/compute/configuration): pin the framework, entry, and port in `prisma.compute.ts`.
+- [Environment variables](/compute/environment-variables): point a preview at a staging bucket and production at a production one.
+- [Branching](/compute/branching): give every image route its own isolated preview.
+- [Pricing](/compute/pricing): how request, CPU, memory, and bandwidth metering works.

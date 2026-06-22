@@ -1,0 +1,156 @@
+---
+title: "Configure Prisma Compute deploys in TypeScript"
+slug: "prisma-compute-config-file"
+date: "2026-06-19"
+authors:
+  - "Aman Varshney"
+metaTitle: "Configure Prisma Compute deploys in TypeScript"
+metaDescription: "Prisma Compute now reads a typed TypeScript config file, so deploys are reproducible and monorepos work: declare one app or several, then ship the whole system with one command."
+heroImagePath: "/prisma-compute-config-file/imgs/hero.svg"
+heroImageAlt: "One typed file for every app target: a prisma.compute.ts declaring an api app on Hono and a web app on Next.js"
+metaImagePath: "/prisma-compute-config-file/imgs/meta.png"
+excerpt: "Prisma Compute now reads a typed prisma.compute.ts, so deploys are reproducible and monorepos work: declare one app or several, then ship the whole system with one command."
+series: prisma-compute
+seriesIndex: 5
+tags:
+  - "announcement"
+  - "platform"
+---
+
+[Prisma Compute](https://docs.prisma.io/docs/compute) can deploy a TypeScript app without config: `app deploy` detects the framework, builds the app, and returns a live URL.
+
+For repeatable deploys and monorepos, Compute now reads `prisma.compute.ts`: a typed, committed config file for app targets and deploy defaults.
+
+## One file, fully typed
+
+Here is the smallest useful config for a single app:
+
+```ts title="prisma.compute.ts"
+import { defineComputeConfig } from "@prisma/compute-sdk/config";
+
+export default defineComputeConfig({
+  app: {
+    framework: "hono",
+    entry: "src/index.ts",
+    httpPort: 8080,
+  },
+});
+```
+
+Fields you set become defaults for `app deploy`; explicit flags still override them.
+
+`defineComputeConfig` gives the file editor validation:
+
+```ts title="prisma.compute.ts"
+export default defineComputeConfig({
+  app: {
+    framework: "hono",
+    htpPort: 8080, // Type error: did you mean httpPort?
+  },
+});
+```
+
+The CLI resolves that import when it reads the file, so deploys work without a local install. Add `@prisma/compute-sdk` as a dev dependency for editor types.
+
+## Declare every app in a monorepo
+
+For a multi-app repo, use `apps` and key each deploy target by name:
+
+```ts title="prisma.compute.ts"
+import { defineComputeConfig } from "@prisma/compute-sdk/config";
+
+export default defineComputeConfig({
+  apps: {
+    api: {
+      root: "apps/api",
+      framework: "hono",
+      entry: "src/index.ts",
+    },
+    web: {
+      root: "apps/web",
+      framework: "nextjs",
+    },
+  },
+});
+```
+
+A bare `app deploy` deploys every app in declaration order:
+
+```bash
+bunx @prisma/cli@latest app deploy
+```
+
+The output stays grouped by target:
+
+```bash
+$ bunx @prisma/cli@latest app deploy
+
+── api (1/2) ──
+  Built      0.1 MB
+  Live in    5.9s
+  https://api.fra.prisma.build
+
+── web (2/2) ──
+  Built      15.3 MB
+  Live in    16.7s
+  https://web.fra.prisma.build
+
+  api   https://api.fra.prisma.build
+  web   https://web.fra.prisma.build
+```
+
+To deploy one app, name its target or run from inside its directory. The deepest matching `root` wins:
+
+```bash
+bunx @prisma/cli@latest app deploy api
+# or
+cd apps/api && bunx @prisma/cli@latest app deploy
+```
+
+Compute uses your workspace package manager, resolves framework binaries in the workspace, and packages each app's dependencies. Supported targets today include Next.js, Nuxt, Astro, Hono, TanStack Start, and plain Bun servers.
+
+## Built for agents first
+
+Agents are increasingly part of the deploy path. `prisma.compute.ts` keeps framework, port, env file, roots, and targets in the repo instead of only in a prompt.
+
+Install the Compute-specific skill from `prisma/skills` alongside the repo:
+
+```bash
+bunx skills add prisma/skills --skill prisma-compute
+```
+
+Then the prompt can stay short:
+
+```text
+Deploy this monorepo to Prisma Compute.
+```
+
+The `prisma-compute` Agent Skill gives the agent the CLI workflow for deploys, logs, domains, and explicit target choices.
+
+## What it does not do
+
+The config declares app targets and deploy defaults. It does not select the Prisma project, branch, or production intent. Project context comes from explicit input, environment, or the local `.prisma/local.json` pin/cache. Branch context comes from explicit targeting, Git, or the `main` fallback.
+
+Deploy output labels config-sourced settings as `set by prisma.compute.ts`.
+
+## A step toward one Prisma config
+
+`prisma.compute.ts` is deliberately scoped, and temporary by design.
+
+Prisma already ships `prisma.config.ts` for the ORM. The long-term plan is one config file for ORM, Postgres, and Compute, with Compute living under a `compute` key.
+
+The shape you write today is intended to move there mechanically once the unified file is ready.
+
+## Try it
+
+Drop a `prisma.compute.ts` next to your app, or one at your monorepo root, and deploy:
+
+```bash
+bunx @prisma/cli@latest app deploy
+```
+
+Starting fresh? [`create-prisma`](/blog/create-prisma-deploy-prisma-compute) scaffolds a Compute-ready app with `prisma.compute.ts` already wired up.
+
+For the full field reference, see the [configuration docs](https://docs.prisma.io/docs/compute/configuration). For everything else about deploying on Compute, start with the [quickstart](https://docs.prisma.io/docs/prisma-compute/deploy).
+
+One config file is the point: the same repo describes your data with [Prisma Postgres](https://www.prisma.io/postgres), your app with [Prisma Compute](https://docs.prisma.io/docs/compute), and your deploys with `prisma.compute.ts`, so a person or an agent can reason about the whole system in one place. Compute is in public beta and free while the beta lasts. Tell us what you ship in [#prisma-compute](https://pris.ly/discord-compute) on Discord.

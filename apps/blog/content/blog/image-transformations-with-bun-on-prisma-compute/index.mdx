@@ -1,0 +1,409 @@
+---
+title: "Image Transformations with Bun on Prisma Compute"
+slug: "image-transformations-with-bun-on-prisma-compute"
+date: "2026-06-19"
+authors:
+  - "Søren Bramer Schmidt"
+metaTitle: "Image Transformations with Bun on Prisma Compute"
+metaDescription: "Bun includes native image transformations, and Prisma Compute runs on Bun. Build image resize and format routes as ordinary app requests instead of paying for a separate image transformation service."
+heroImagePath: "/image-transformations-with-bun-on-prisma-compute/imgs/hero.svg"
+heroImageAlt: "Request-time image pipeline on Prisma Compute: source to Bun.Image to webp. Image transforms as app logic."
+metaImagePath: "/image-transformations-with-bun-on-prisma-compute/imgs/meta.png"
+excerpt: "Bun ships native image transformations, and Prisma Compute runs on Bun, so you build image resize and format routes as ordinary app requests, with no separate image service to pay for or manage."
+tags:
+  - "platform"
+series: prisma-compute
+seriesIndex: 6
+---
+
+Image optimization almost always turns into its own vendor.
+
+You host the app in one place and store the images in another. Then every thumbnail, avatar, product shot, and social card goes through a third service, each with its own URL format, cache rules, limits, and bill.
+
+Prisma Compute runs on Bun, so Bun's [native image transformations](https://bun.com/docs/runtime/image) come with the runtime, at no extra charge, with no external service to manage.
+
+There is no Prisma image product to switch on, no transformation quota to track, and no second dashboard. You write a route, deploy it to [Prisma Compute](/blog/launching-prisma-compute-public-beta) next to everything else, and pay for the ordinary work your app does: requests, CPU, memory while it runs, and bytes on the way out.
+
+## Most of it is just app logic
+
+Most image optimization is a handful of predictable operations:
+
+- Resize a source image to a width.
+- Keep the original aspect ratio.
+- Don't upscale small images.
+- Convert big JPEGs and PNGs to WebP.
+- Drop the quality for thumbnails.
+- Emit a tiny placeholder for the first paint.
+- Cache the result by URL.
+
+What makes these interesting is that the _decisions_ are yours. The right width depends on your layout. The right quality depends on the image. The allowed source URLs depend on your product. The cache key depends on how you version your assets.
+
+Those are app-level calls, so they belong with the rest of your app. Keep your presets in source control. Validate query parameters the way you validate any other API input. Test the route locally. When an agent needs to change it, it edits the route, deploys it, reads the logs, and fixes it, in the same loop it already uses for everything else.
+
+The hot path still runs native. The decode, transform, and encode happen in Bun's native code, off the JavaScript thread, the moment you await a terminal like `.blob()` or `.bytes()`.
+
+## A route that resizes images
+
+Here is a small [Hono](https://hono.dev) route that fetches an allowlisted source image, applies the usual query parameters, and returns an optimized response.
+
+```ts title="src/index.ts"
+import { Hono } from "hono";
+
+const app = new Hono();
+
+const IMAGE_ORIGIN = "https://assets.example.com/";
+const MAX_DIMENSION = 2400;
+const MAX_PIXELS = 4096 * 4096;
+
+function intParam(value: string | null, fallback?: number) {
+  if (!value) return fallback;
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return Math.min(parsed, MAX_DIMENSION);
+}
+
+function qualityParam(value: string | null) {
+  if (!value) return 80;
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed)) return 80;
+  return Math.min(Math.max(parsed, 1), 100);
+}
+
+function outputFormat(request: Request, requested: string | null) {
+  if (requested === "jpeg" || requested === "png" || requested === "webp") {
+    return requested;
+  }
+
+  const accept = request.headers.get("accept") ?? "";
+  return accept.includes("image/webp") ? "webp" : "jpeg";
+}
+
+async function applyResize(image: Bun.Image, width?: number, height?: number, fit: "fill" | "inside" = "inside") {
+  const options = {
+    fit,
+    withoutEnlargement: true,
+    filter: "lanczos3" as const,
+  };
+
+  if (width && height) return image.resize(width, height, options);
+  if (width) return image.resize(width, undefined, options);
+
+  if (height) {
+    const metadata = await image.metadata();
+    const computedWidth = Math.max(1, Math.round((metadata.width * height) / metadata.height));
+    return image.resize(computedWidth, height, options);
+  }
+
+  return image;
+}
+
+app.get("/images/*", async (c) => {
+  const path = c.req.path.replace(/^\/images\//, "");
+  if (!/^[a-zA-Z0-9/_ .-]+\.(jpe?g|png|webp)$/i.test(path)) {
+    return c.text("Invalid image path", 400);
+  }
+
+  const url = new URL(path, IMAGE_ORIGIN);
+  const source = await fetch(url);
+  if (!source.ok) return c.text("Source image not found", 404);
+
+  const input = await source.arrayBuffer();
+  const width = intParam(c.req.query("w") ?? null);
+  const height = intParam(c.req.query("h") ?? null);
+  const fit = c.req.query("fit") === "fill" ? "fill" : "inside";
+  const quality = qualityParam(c.req.query("q") ?? null);
+  const format = outputFormat(c.req.raw, c.req.query("format") ?? null);
+
+  let image = new Bun.Image(input, {
+    maxPixels: MAX_PIXELS,
+    autoOrient: true,
+  });
+
+  image = await applyResize(image, width, height, fit);
+
+  if (format === "webp") {
+    image = image.webp({ quality });
+  } else if (format === "png") {
+    image = image.png({ compressionLevel: 6 });
+  } else {
+    image = image.jpeg({ quality, progressive: true });
+  }
+
+  const body = await image.blob();
+
+  return new Response(body, {
+    headers: {
+      "Cache-Control": "public, max-age=31536000, immutable",
+      "Content-Type": body.type,
+      "Vary": "Accept",
+    },
+  });
+});
+
+export default app;
+```
+
+Deploy it like any other Compute app:
+
+```bash title="Deploy"
+bunx @prisma/cli@latest app deploy --framework hono --entry src/index.ts
+```
+
+Then request variants by URL:
+
+```text title="Requests"
+/images/products/chair.jpg?w=640&q=75
+/images/products/chair.jpg?w=1280&format=webp
+/images/products/chair.jpg?w=512&h=512&fit=inside
+```
+
+You can deploy this as a separate Compute App, or include it on the /images/ path of your existing app.
+
+This route already handles:
+
+- The source is allowlisted.
+- Width, height, and quality are capped.
+- `maxPixels` guards the decode step against oversized images.
+- `Accept` drives automatic WebP delivery.
+- Cache headers turn every parameterized URL into a stable variant.
+
+## Setting cache headers
+
+The fastest transform is the one you never run: a response a browser or CDN serves without ever reaching your app. Cache headers make that happen, and the route above already sends the important ones:
+
+```ts title="Response headers"
+return new Response(body, {
+  headers: {
+    "Content-Type": body.type,
+    "Cache-Control": "public, max-age=31536000, immutable",
+    "Vary": "Accept",
+  },
+});
+```
+
+Each one earns its place:
+
+- **`public`** lets shared caches (a CDN in front of Compute, a corporate proxy) store the bytes, not just the end user's browser.
+- **`max-age=31536000, immutable`** means keep it for a year and never revalidate. On a reload, the browser serves straight from disk instead of sending a conditional request.
+- **`Vary: Accept`** tells those caches that the same URL can return WebP or JPEG depending on the request's `Accept` header, so a WebP is never handed to a client that asked for JPEG.
+
+`immutable` is a promise: this URL will always return these exact bytes. That holds only if the URL fully identifies the output, meaning the source identity plus every transform parameter. Two rules keep it true:
+
+- Put every parameter that changes the result in the URL (`w`, `h`, `q`, `fit`, `format`), and sort them when you generate links so the same variant always has the same URL.
+- Version the source path. If `chair.jpg` can be replaced in place, a year-long immutable cache will happily keep serving the old one. Add a content hash or version segment (`chair.v2.jpg`, or `?v=2`) whenever the underlying image changes.
+
+When a source can change under a stable URL, drop `immutable`, shorten `max-age`, and let caches revalidate with an `ETag`. A matching `If-None-Match` returns a `304` with no body, and no transform:
+
+```ts title="Conditional requests"
+// In the route, build a validator from the source's own ETag and the transform parameters.
+const sourceTag = source.headers.get("etag")?.replace(/"/g, "");
+const etag = sourceTag ? `"${sourceTag}-${width ?? ""}x${height ?? ""}-q${quality}-${format}"` : undefined;
+
+if (etag && c.req.header("if-none-match") === etag) {
+  return new Response(null, { status: 304, headers: { ETag: etag } });
+}
+```
+
+One trade-off: `Vary: Accept` lowers hit rates on shared caches, because `Accept` headers differ between clients. To maximize CDN hits instead, put the format in the URL (`?format=webp`) and skip negotiation, so each URL is a single cacheable variant. Either way works; it's a route-level choice.
+
+Pull the headers into one helper so every response, freshly transformed or served from cache, sends the same policy:
+
+```ts title="src/headers.ts"
+const MIME = { jpeg: "image/jpeg", png: "image/png", webp: "image/webp" } as const;
+
+export function imageHeaders(format: keyof typeof MIME) {
+  return {
+    "Content-Type": MIME[format],
+    "Cache-Control": "public, max-age=31536000, immutable",
+    "Vary": "Accept",
+  };
+}
+```
+
+## Caching on the Compute filesystem
+
+Browser and CDN caching handles repeat requests for the _same_ URL. But the first request for each variant, and any request that misses the CDN, still reaches your app and re-runs the fetch, decode, resize, and encode.
+
+Compute gives each app a small ephemeral filesystem, around 1 GB, which makes a good second-tier cache: write each transformed image to disk, then serve it from disk the next time the same variant hits a warm instance. Reading a small WebP off local disk is far cheaper than decoding and re-encoding the source.
+
+Read through the cache before transforming, and write to it after:
+
+```ts title="src/cache.ts"
+import { mkdir, readdir, rm, stat } from "node:fs/promises";
+
+const CACHE_DIR = "/tmp/image-cache";
+const MAX_BYTES = 512 * 1024 * 1024; // leave headroom for the app itself
+
+await mkdir(CACHE_DIR, { recursive: true });
+
+function pathFor(key: string) {
+  // Pass a fixed seed so the filename is stable across restarts and instances.
+  // Without one, Bun.hash uses a random per-process seed and warm instances
+  // would never find each other's cached files.
+  return `${CACHE_DIR}/${Bun.hash(key, 0).toString(16)}`;
+}
+
+export async function readCache(key: string) {
+  const file = Bun.file(pathFor(key));
+  return (await file.exists()) ? file : null;
+}
+
+export async function writeCache(key: string, body: Blob) {
+  await Bun.write(pathFor(key), body);
+  void prune(); // keep the cache under budget without blocking the response
+}
+```
+
+Then wire it into the route around the transform:
+
+```ts title="src/index.ts"
+import { readCache, writeCache } from "./cache";
+import { imageHeaders } from "./headers";
+
+app.get("/images/*", async (c) => {
+  const path = c.req.path.replace(/^\/images\//, "");
+  // Reuse the path validation and w / h / q / fit / format parsing from
+  // the route example above so a cache hit can skip the fetch and decode.
+
+  const key = `${path}|w=${width ?? ""}|h=${height ?? ""}|q=${quality}|fit=${fit}|${format}`;
+
+  const hit = await readCache(key);
+  if (hit) return new Response(hit, { headers: imageHeaders(format) });
+
+  // Miss: fetch the source and run the Bun.Image pipeline as before.
+  const body = await image.blob();
+
+  await writeCache(key, body);
+  return new Response(body, { headers: imageHeaders(format) });
+});
+```
+
+Because the disk is small, the cache has to stay bounded. A short prune evicts the oldest entries whenever the total grows past its budget, and swallows its own errors so cache maintenance can never break a request:
+
+```ts title="src/cache.ts (continued)"
+let pruning = false;
+
+async function prune() {
+  if (pruning) return;
+  pruning = true;
+  try {
+    const entries = await Promise.all(
+      (await readdir(CACHE_DIR)).map(async (name) => {
+        const path = `${CACHE_DIR}/${name}`;
+        const info = await stat(path);
+        return { path, size: info.size, mtimeMs: info.mtimeMs };
+      }),
+    );
+
+    let total = entries.reduce((sum, e) => sum + e.size, 0);
+    if (total <= MAX_BYTES) return;
+
+    for (const entry of entries.sort((a, b) => a.mtimeMs - b.mtimeMs)) {
+      if (total <= MAX_BYTES) break;
+      await rm(entry.path, { force: true });
+      total -= entry.size;
+    }
+  } catch {
+    // Cache maintenance is best-effort.
+  } finally {
+    pruning = false;
+  }
+}
+```
+
+This cache is ephemeral and per-instance. A new deployment starts with an empty disk, a freshly woken instance has its own, and instances don't share files, so never write anything here you can't regenerate from the source. Treat the browser and CDN layers as the durable, shared cache, and the filesystem as a local tier that absorbs repeated misses on a warm instance.
+
+When you need a durable variant cache shared across instances, write the output to object storage instead, for example with `Bun.s3()`, and keep the filesystem for the hot local path.
+
+## Beyond thumbnails
+
+`Bun.Image` is a chainable pipeline, and it is flexible at both ends. A source can be a path, bytes, a `Blob`, a `Bun.file()`, or a `Bun.s3()` object. The output can be bytes, a `Buffer`, a `Blob`, a data URL, a file, or an S3 object.
+
+So the same API covers request-time transforms and background generation. Precompute a social card:
+
+```ts title="Generate a variant"
+await Bun.file("hero.jpg")
+  .image()
+  .resize(1200, 630, { fit: "inside", withoutEnlargement: true })
+  .webp({ quality: 82 })
+  .write("public/hero.webp");
+```
+
+Emit a tiny placeholder for progressive loading:
+
+```ts title="Placeholder"
+const placeholder = await Bun.file("hero.jpg").image().placeholder();
+```
+
+Or make a quick visual adjustment:
+
+```ts title="Avatar adjustment"
+const avatar = await Bun.file("avatar.png")
+  .image()
+  .resize(160, 160, { fit: "inside" })
+  .modulate({ brightness: 1.05, saturation: 0 })
+  .webp({ quality: 80 })
+  .blob();
+```
+
+For the common path, that is the whole toolbox.
+
+## Comparing Bun.Image to Cloudflare and Vercel
+
+Cloudflare Images and Vercel Image Optimization are good products. They bundle transformations, caching, source validation, content negotiation, and framework integration into one service. On Compute, those pieces become application code, and much of it is a single line.
+
+Some of it is native in Bun:
+
+- `w`, `h`, and `q` map to `resize()` and encoder quality.
+- Format conversion maps to `.jpeg()`, `.png()`, and `.webp()`.
+- Progressive JPEG, lossless WebP, and PNG palette output are encoder options.
+- EXIF orientation is applied automatically with `autoOrient`.
+- Low-quality placeholders are built in.
+- Resize filters are explicit: `lanczos3`, `mitchell`, `box`, `nearest`, and more.
+
+Some of it is just route logic:
+
+- `format=auto` is `Accept` header negotiation.
+- `dpr=2` is multiplying the requested dimensions before you resize.
+- `width=auto` is picking a breakpoint from client hints, the user agent, or your own layout rules.
+- `onerror=redirect` is a `try`/`catch` that falls back to the original source URL.
+- Slow-connection quality is reading client hints like `Save-Data`, `RTT`, or `ECT`.
+- Source allowlists are ordinary URL validation.
+
+Some functionality is not available in Bun.Image today, and requires additional libraries:
+
+- Cover and gravity-based crops, padding backgrounds, borders, trim, blur, sharpen, contrast, and gamma are not exposed by the current `Bun.Image` API.
+- Face-aware crops, saliency crops, background segmentation, and AI upscaling need computer vision beyond Bun's native pipeline.
+- AVIF and HEIC are platform-dependent in Bun. For portable Compute routes, stick to JPEG, PNG, and WebP unless you add and test your own encoder.
+
+You don't need a separate image service for the common path, which is most of it. And when you reach the advanced cases, you add the code to the _same_ route, behind the _same_ validation, cache key, logging, and deploy. Nothing leaves your app.
+
+## The bill is just your app
+
+The real difference is not the API. It is how you have to think about the work.
+
+With a standalone image service, transformations are metered as their own product. A cache miss might cost a transformation unit, a cache write, and a CDN read. Those are reasonable meters, and they are one more billing model to keep in your head.
+
+On Prisma Compute, an image transform is regular application work. A request comes in, your app runs, Bun transforms the image, your app returns bytes. The same meters apply as for any other response: request count, active CPU, memory while the app is running, and outbound bandwidth. (Compute is in public beta and [free while the beta lasts](https://pris.ly/pricing-compute).)
+
+That helps most for small products, internal tools, agent-built apps, and media-light workloads. You no longer have to decide whether an image pipeline deserves its own vendor. Start with a route. If it ever takes real traffic, harden it like any other hot path: tighter presets, better cache keys, precomputed variants, a CDN in front, specialized processing exactly where you need it.
+
+## It ships with everything else
+
+`Bun.Image` runs the same on your laptop as in production. It's just code.
+
+Your image route deploys with your app. Each preview branch gets its own version. Logs land in the same place as every other request. Environment variables can point a preview at a staging bucket and production at a production one. If an agent reworks the layout and needs a new image size, it updates the preset and ships it with the same change: build, deploy, read logs, fix, redeploy.
+
+That is the Compute model: app, data, and the operational loop in one place.
+
+Image transformations show why that matters, because they are not magic. They are code, CPU, memory, bytes, and a cache policy. Bun gives the runtime a native image pipeline, and Prisma Compute gives you somewhere to run it, as part of the app you were already going to deploy, right next to its data in [Prisma Postgres](https://www.prisma.io/postgres).
+
+Prisma Compute is in public beta and free while the beta lasts. Sign in once, the one step that needs a human:
+
+```bash
+bunx @prisma/cli@latest auth login
+```
+
+Then point your agent at your project and let it write the route, deploy it, and watch the logs in the same loop it uses for the rest of your app.
+
+The [Image Transformations docs](https://docs.prisma.io/docs/compute/image-transformations) have the full feature mapping, the security checklist, and the deployment steps. For the bigger picture, see how we [launched Compute in public beta](/blog/launching-prisma-compute-public-beta), why it [runs on Bun's Rust rewrite](/blog/bun-rust-rewrite-prisma-compute), and how an [agent deploys to it from `create-prisma`](/blog/create-prisma-deploy-prisma-compute). Tell us what you build, or what breaks, in [`#prisma-compute`](https://pris.ly/discord-compute) channel on Discord.
