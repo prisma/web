@@ -190,6 +190,14 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
                 </span>
               </>
             ) : null}
+            {page.data.updatedAt ? (
+              <>
+                <Separator orientation="vertical" className="h-4" />
+                <span className="text-foreground-neutral-weak">
+                  Updated {formatDate(new Date(page.data.updatedAt).toISOString())}
+                </span>
+              </>
+            ) : null}
           </div>
           {page.data.tags && page.data.tags.length > 0 && (
             <div className="filter-badge flex gap-2">
