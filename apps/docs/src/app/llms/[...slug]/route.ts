@@ -13,6 +13,8 @@ import { notFound } from "next/navigation";
 
 export const revalidate = false;
 
+const isPrismaComputeDeploy = process.env.PRISMA_COMPUTE_DEPLOY === "true";
+
 function parseSectionSlug(slug: string[] | undefined) {
   if (!slug || slug.length !== 1 || !slug[0].endsWith(".txt")) notFound();
   return slug[0].slice(0, -".txt".length);
@@ -47,6 +49,8 @@ ${docsList}
 }
 
 export function generateStaticParams() {
+  if (isPrismaComputeDeploy) return [];
+
   return filterAvailableLLMsSections(llmsSections, filterPagesForLLMsIndex(source.getPages())).map(
     (section) => ({
       slug: [`${section.slug}.txt`],

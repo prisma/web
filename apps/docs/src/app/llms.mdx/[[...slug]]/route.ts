@@ -5,6 +5,8 @@ import { getBaseUrl, withDocsBasePath } from "@/lib/urls";
 
 export const revalidate = false;
 
+const isPrismaComputeDeploy = process.env.PRISMA_COMPUTE_DEPLOY === "true";
+
 const MAX_NEAREST_MATCH_SEGMENTS = 12;
 const MAX_NEAREST_MATCH_PATH_LENGTH = 240;
 
@@ -105,6 +107,8 @@ export async function GET(_req: Request, { params }: RouteContext<"/llms.mdx/[[.
 }
 
 export function generateStaticParams() {
+  if (isPrismaComputeDeploy) return [];
+
   // Only pre-render leaf pages to avoid file/dir conflicts during static export.
   // A slug is considered non-leaf if it is a prefix of any other slug.
   const params = source.generateParams();

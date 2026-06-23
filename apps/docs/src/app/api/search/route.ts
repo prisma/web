@@ -4,6 +4,7 @@ import { SortedResult } from "fumadocs-core/search";
 import { formatSlugDisplayName } from "@/lib/breadcrumb-utils";
 import { isVersionSegment } from "@/lib/version";
 import { normalizeLatestOrmPath } from "@/lib/urls";
+import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
@@ -69,38 +70,54 @@ function extractHeadingTitle(text: string): string {
   return t.startsWith("#") ? removeMd(t.split("\n")[0]?.trim() ?? "") : "";
 }
 
-const client = new Mixedbread({ apiKey: process.env.MIXEDBREAD_API_KEY! });
+type SearchApi = ReturnType<typeof createMixedbreadSearchAPI>;
 
-export const { GET } = createMixedbreadSearchAPI({
-  client,
-  storeIdentifier: "web-search",
-  topK: 20,
-  rerank: true,
-  transform: (results, _query) => {
-    return results.flatMap((item) => {
-      const { url = "#", title = "Untitled" } = item.generated_metadata ?? {};
+let searchApi: SearchApi | undefined;
 
-      const formattedUrl = normalizeLatestOrmPath(url.startsWith("/docs") ? url.slice(5) : url);
-      const base = `${item.file_id}-${item.chunk_index}`;
-      const breadcrumbs = getBreadcrumbsFromUrl(formattedUrl);
-      const chunkResults: SortedResult[] = [
-        {
-          id: `${base}-page`,
-          type: "page",
-          content: title,
-          url: formattedUrl,
-          breadcrumbs,
-        },
-      ];
-      const heading = item.type === "text" ? extractHeadingTitle(item.text) : "";
-      if (heading)
-        chunkResults.push({
-          id: `${base}-heading`,
-          type: "heading",
-          content: heading,
-          url: `${formattedUrl}#${slugger(heading)}`,
-        });
-      return chunkResults;
-    });
-  },
-});
+function getSearchApi(): SearchApi | null {
+  const mixedbreadApiKey = process.env.MIXEDBREAD_API_KEY;
+  if (!mixedbreadApiKey) return null;
+
+  searchApi ??= createMixedbreadSearchAPI({
+    client: new Mixedbread({ apiKey: mixedbreadApiKey }),
+    storeIdentifier: "web-search",
+    topK: 20,
+    rerank: true,
+    transform: (results, _query) => {
+      return results.flatMap((item) => {
+        const { url = "#", title = "Untitled" } = item.generated_metadata ?? {};
+
+        const formattedUrl = normalizeLatestOrmPath(url.startsWith("/docs") ? url.slice(5) : url);
+        const base = `${item.file_id}-${item.chunk_index}`;
+        const breadcrumbs = getBreadcrumbsFromUrl(formattedUrl);
+        const chunkResults: SortedResult[] = [
+          {
+            id: `${base}-page`,
+            type: "page",
+            content: title,
+            url: formattedUrl,
+            breadcrumbs,
+          },
+        ];
+        const heading = item.type === "text" ? extractHeadingTitle(item.text) : "";
+        if (heading)
+          chunkResults.push({
+            id: `${base}-heading`,
+            type: "heading",
+            content: heading,
+            url: `${formattedUrl}#${slugger(heading)}`,
+          });
+        return chunkResults;
+      });
+    },
+  });
+
+  return searchApi;
+}
+
+export function GET(...args: Parameters<SearchApi["GET"]>) {
+  const api = getSearchApi();
+  if (!api) return NextResponse.json([]);
+
+  return api.GET(...args);
+}

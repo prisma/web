@@ -1,6 +1,8 @@
 import { createMDX } from "fumadocs-mdx/next";
+import { fileURLToPath } from "node:url";
 
 const withMDX = createMDX();
+const workspaceRoot = fileURLToPath(new URL("../..", import.meta.url));
 
 const DOCS_ORIGIN = process.env.NEXT_DOCS_ORIGIN || "https://docs.prisma.io";
 const DOCS_ORIGIN_HOST = (() => {
@@ -20,6 +22,8 @@ const BLOG_ORIGIN_HOST = (() => {
   }
 })();
 
+const isPrismaComputeDeploy = process.env.PRISMA_COMPUTE_DEPLOY === "true";
+
 const imageRemoteHostnames = [
   "cdn.sanity.io",
   "prisma.io",
@@ -30,6 +34,7 @@ const imageRemoteHostnames = [
 
 if (
   process.env.NODE_ENV === "production" &&
+  !isPrismaComputeDeploy &&
   (!process.env.NEXT_DOCS_ORIGIN || !process.env.NEXT_BLOG_ORIGIN)
 ) {
   throw new Error(
@@ -250,8 +255,11 @@ const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0
 
 /** @type {import('next').NextConfig} */
 const config = {
+  ...(isPrismaComputeDeploy ? { output: "standalone" } : {}),
+  outputFileTracingRoot: workspaceRoot,
+  turbopack: { root: workspaceRoot },
   reactCompiler: true,
-  assetPrefix: "/site-static",
+  ...(isPrismaComputeDeploy ? {} : { assetPrefix: "/site-static" }),
   allowedDevOrigins,
   reactStrictMode: true,
   images: {

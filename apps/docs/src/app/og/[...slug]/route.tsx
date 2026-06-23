@@ -7,6 +7,8 @@ import { ImageResponse } from "next/og";
 
 export const revalidate = false;
 
+const isPrismaComputeDeploy = process.env.PRISMA_COMPUTE_DEPLOY === "true";
+
 const FALLBACK_METHOD_COLOR = "#71e8df";
 const SECTION_BADGE_COLOR = "#71e8df";
 const LONG_TITLE_FONT_SIZE = "3.5rem";
@@ -329,6 +331,8 @@ export async function GET(_req: Request, { params }: RouteContext<"/og/[...slug]
 }
 
 export function generateStaticParams() {
+  if (isPrismaComputeDeploy) return [];
+
   return source.getPages().map((page) => ({
     lang: page.locale,
     slug: getPageImage(page).segments,

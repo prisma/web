@@ -1,7 +1,11 @@
 import { withSentryConfig } from "@sentry/nextjs";
 import { createMDX } from "fumadocs-mdx/next";
+import { fileURLToPath } from "node:url";
 
 const withMDX = createMDX();
+const workspaceRoot = fileURLToPath(new URL("../..", import.meta.url));
+
+const isPrismaComputeDeploy = process.env.PRISMA_COMPUTE_DEPLOY === "true";
 
 const ContentSecurityPolicy = `
   default-src 'self';
@@ -230,6 +234,9 @@ const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0
 
 /** @type {import('next').NextConfig} */
 const config = {
+  ...(isPrismaComputeDeploy ? { output: "standalone" } : {}),
+  outputFileTracingRoot: workspaceRoot,
+  turbopack: { root: workspaceRoot },
   async redirects() {
     return [
       {
@@ -282,7 +289,7 @@ const config = {
     ];
   },
   basePath: "/docs",
-  assetPrefix: "/docs-static",
+  ...(isPrismaComputeDeploy ? {} : { assetPrefix: "/docs-static" }),
   allowedDevOrigins,
   reactStrictMode: true,
 

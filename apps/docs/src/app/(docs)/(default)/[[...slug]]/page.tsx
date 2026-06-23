@@ -21,6 +21,8 @@ interface PageParams {
   slug?: string[];
 }
 
+const isPrismaComputeDeploy = process.env.PRISMA_COMPUTE_DEPLOY === "true";
+
 export default async function Page({ params }: { params: Promise<PageParams> }) {
   const { slug } = await params;
   const page = source.getPage(slug);
@@ -78,6 +80,8 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
 }
 
 export async function generateStaticParams() {
+  if (isPrismaComputeDeploy) return [];
+
   return source.generateParams();
 }
 

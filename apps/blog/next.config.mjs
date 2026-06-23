@@ -1,6 +1,10 @@
 import { createMDX } from "fumadocs-mdx/next";
+import { fileURLToPath } from "node:url";
 
 const withMDX = createMDX();
+const workspaceRoot = fileURLToPath(new URL("../..", import.meta.url));
+
+const isPrismaComputeDeploy = process.env.PRISMA_COMPUTE_DEPLOY === "true";
 
 const ContentSecurityPolicy = `
   default-src 'self';
@@ -207,6 +211,9 @@ const allowedDevOrigins = (
 
 /** @type {import('next').NextConfig} */
 const config = {
+  ...(isPrismaComputeDeploy ? { output: "standalone" } : {}),
+  outputFileTracingRoot: workspaceRoot,
+  turbopack: { root: workspaceRoot },
   reactCompiler: true,
   async redirects() {
     const tagSlugs = [
@@ -251,7 +258,7 @@ const config = {
     ];
   },
   basePath: "/blog",
-  assetPrefix: "/blog-static",
+  ...(isPrismaComputeDeploy ? {} : { assetPrefix: "/blog-static" }),
   allowedDevOrigins,
   reactStrictMode: true,
   images: { unoptimized: true },
