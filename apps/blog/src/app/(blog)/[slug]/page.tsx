@@ -98,7 +98,9 @@ function getBlogPostingJsonLd(page: ReturnType<typeof blog.getPage>): BlogPostin
 
   const datePublished = toIsoDate(page.data.date);
   const dateModified =
-    toIsoDate((page.data as { lastModified?: unknown }).lastModified) ?? datePublished;
+    toIsoDate(page.data.updatedAt) ??
+    toIsoDate((page.data as { lastModified?: unknown }).lastModified) ??
+    datePublished;
 
   const jsonLd: BlogPostingSchema = {
     "@context": "https://schema.org",
@@ -190,6 +192,14 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
                 </span>
               </>
             ) : null}
+            {page.data.updatedAt ? (
+              <>
+                <Separator orientation="vertical" className="h-4" />
+                <span className="text-foreground-neutral-weak">
+                  Updated {formatDate(new Date(page.data.updatedAt).toISOString())}
+                </span>
+              </>
+            ) : null}
           </div>
           {page.data.tags && page.data.tags.length > 0 && (
             <div className="filter-badge flex gap-2">
@@ -218,7 +228,9 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
         {/* Body */}
         <article className="w-full flex flex-col pb-8 mt-12">
           <div className="prose min-w-0 [&_figure]:w-full [&_figure]:md:max-w-140 [&_figure]:lg:max-w-200">
-            <p className="font-semibold text-lg">{page.data.excerpt}</p>
+            {page.data.excerpt ? (
+              <p className="font-semibold text-lg">{page.data.excerpt}</p>
+            ) : null}
 
             <MDX
               components={getMDXComponents({

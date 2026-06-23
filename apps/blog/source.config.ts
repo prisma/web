@@ -17,6 +17,7 @@ export const blogPosts = defineCollections({
     authors: z.array(z.string()),
     authorSrc: z.string().optional(),
     date: z.coerce.date(),
+    updatedAt: z.coerce.date().optional(),
     heroImagePath: z.string().optional(),
     metaImagePath: z.string().optional(),
     series: z.string().optional(),
