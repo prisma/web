@@ -286,8 +286,8 @@ Report the saved SVG and PNG paths and 2–3 sentences on the design direction (
 product, why the metaphor fits). Example:
 
 ```text
-hero: spaces/web/apps/blog/public/query-insights-ga/imgs/hero.svg
-meta: spaces/web/apps/blog/public/query-insights-ga/imgs/meta.png
+hero: apps/blog/public/query-insights-ga/imgs/hero.svg
+meta: apps/blog/public/query-insights-ga/imgs/meta.png
 Direction: Dark Eclipse surface with the Postgres teal accent; Query Insights framed as a GA
 launch via the pill eyebrow; restraint keeps it premium and thumbnail-legible.
 ```

@@ -17,9 +17,9 @@ source of truth; this document explains intent.
 | Blog cover conventions      | `apps/blog/content/blog/<slug>/index.mdx` + `apps/blog/public/<slug>/imgs/`                                                                       |
 | Hand-designed cover library | `SOCIALS.fig` (see [`figma-source.md`](./figma-source.md))                                                                                        |
 
-The skill bundles its brand fonts in `assets/fonts/`, so it renders on-brand without a
-`prisma/web` checkout. A checkout under `spaces/web/` (gitignored) still gives live token
-values to reconcile against.
+The skill bundles its brand fonts in `assets/fonts/`, so it renders on-brand without extra setup.
+This skill lives in the `prisma/web` repo, so the live Eclipse tokens in `packages/eclipse/` are
+available to reconcile against.
 
 ## The look in one paragraph
 

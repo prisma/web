@@ -8,10 +8,9 @@
 #   export-png.sh hero.svg meta.png 1200 630
 #
 # Fonts: covers use Mona Sans (display/headings), Inter (body) and Geist Mono (data/code).
-# If those families are not installed system-wide, set FONT_DIR to a folder of
-# .ttf files and this script points fontconfig at it for the render. The Prisma
-# web repo ships them at apps/docs/public/fonts; this script auto-detects a
-# spaces/web checkout relative to the repo root.
+# This skill bundles those families in assets/fonts, and the script points
+# fontconfig at them for the render. To render with a different set, point
+# FONT_DIR at a folder of font files.
 set -euo pipefail
 
 IN="${1:?input svg required}"
@@ -22,15 +21,11 @@ H="${4:?height required}"
 [ -f "$IN" ] || { echo "error: input not found: $IN" >&2; exit 1; }
 
 # --- resolve a fonts directory --------------------------------------------
-# Prefer the skill's bundled brand fonts (Mona Sans, Inter, Geist Mono); fall back
-# to a spaces/web checkout. Override with FONT_DIR.
+# Use the skill's bundled brand fonts (Mona Sans, Inter, Geist Mono). Override with FONT_DIR.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")"
 : "${FONT_DIR:=}"
 if [ -z "$FONT_DIR" ] && [ -d "$SCRIPT_DIR/../assets/fonts" ]; then
   FONT_DIR="$SCRIPT_DIR/../assets/fonts"
-elif [ -z "$FONT_DIR" ] && [ -d "$REPO_ROOT/spaces/web/apps/blog/public/fonts" ]; then
-  FONT_DIR="$REPO_ROOT/spaces/web/apps/blog/public/fonts"
 fi
 
 FC_CONF=""
@@ -53,7 +48,7 @@ fi
 # (fc-list does not reliably list .woff2 from a temp config, so per-family
 # checks give false negatives; instead trust a resolved FONT_DIR.)
 if [ -z "$FONT_DIR" ] || [ ! -d "$FONT_DIR" ]; then
-  echo "warning: no brand-fonts directory found — Mona Sans/Inter/Geist Mono will fall back to a generic sans. Set FONT_DIR or add a spaces/web checkout." >&2
+  echo "warning: no brand-fonts directory found; Mona Sans/Inter/Geist Mono will fall back to a generic sans. Set FONT_DIR to a folder of font files." >&2
 fi
 
 # --- render -----------------------------------------------------------------
