@@ -98,7 +98,9 @@ function getBlogPostingJsonLd(page: ReturnType<typeof blog.getPage>): BlogPostin
 
   const datePublished = toIsoDate(page.data.date);
   const dateModified =
-    toIsoDate((page.data as { lastModified?: unknown }).lastModified) ?? datePublished;
+    toIsoDate(page.data.updatedAt) ??
+    toIsoDate((page.data as { lastModified?: unknown }).lastModified) ??
+    datePublished;
 
   const jsonLd: BlogPostingSchema = {
     "@context": "https://schema.org",
@@ -187,6 +189,14 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
                 <Separator orientation="vertical" className="h-4" />
                 <span className="text-foreground-neutral-weak">
                   {formatDate(new Date(page.data.date).toISOString())}
+                </span>
+              </>
+            ) : null}
+            {page.data.updatedAt ? (
+              <>
+                <Separator orientation="vertical" className="h-4" />
+                <span className="text-foreground-neutral-weak">
+                  Updated {formatDate(new Date(page.data.updatedAt).toISOString())}
                 </span>
               </>
             ) : null}

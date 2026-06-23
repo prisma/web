@@ -85,6 +85,26 @@ export default async function SeriesPage(props: { params: Promise<SeriesPagePara
             {meta.docsLabel ?? "Read the docs"} →
           </a>
         ) : null}
+        {(() => {
+          const related = (meta.relatedSeries ?? []).filter(isKnownSeriesKey);
+          if (related.length === 0) return null;
+          return (
+            <div className="mt-4 text-sm text-foreground-neutral-weak">
+              Related series:{" "}
+              {related.map((relKey, i) => (
+                <span key={relKey}>
+                  {i > 0 ? ", " : ""}
+                  <Link
+                    href={withBlogBasePath(`/series/${relKey}`)}
+                    className="text-fd-primary hover:underline"
+                  >
+                    {getSeriesMetadata(relKey).title}
+                  </Link>
+                </span>
+              ))}
+            </div>
+          );
+        })()}
       </header>
 
       <BlogGrid items={items} currentCategory="show-all" />
