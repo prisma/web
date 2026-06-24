@@ -65,28 +65,28 @@ const logoParade = [
     imageUrl: `/icons/companies/ihi.svg`,
     url: "https://www.ihiterrasun.com/",
     width: 225,
-    height: 55,
+    height: 26,
   },
   {
     label: "Insta",
     imageUrl: `/icons/companies/insta.svg`,
     url: "",
-    width: 225,
-    height: 55,
+    width: 150,
+    height: 46,
   },
   {
     label: "Outrider",
     imageUrl: `/icons/companies/outrider.svg`,
     url: "https://outrider.org/",
-    width: 225,
-    height: 55,
+    width: 201,
+    height: 40,
   },
   {
     label: "Oxio",
     imageUrl: `/icons/companies/oxio.svg`,
     url: "https://oxio.com/",
-    width: 225,
-    height: 55,
+    width: 200,
+    height: 37,
   },
   {
     label: "Southpole",
@@ -127,9 +127,12 @@ export default function LogoParade() {
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
         >
-          {allItems.map((item, i) => (
+          {allItems.map((item, i) => {
+            const duplicateSet = i < logoParade.length ? "primary" : "clone";
+
+            return (
             <a
-              key={i}
+              key={`${item.label}-${duplicateSet}`}
               href={item.url}
               target="_blank"
               rel="noopener noreferrer"
@@ -155,7 +158,8 @@ export default function LogoParade() {
                 />
               )}
             </a>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

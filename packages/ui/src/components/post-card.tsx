@@ -41,13 +41,14 @@ export function PostCard({
   );
   const imageWrapperClassName = cn(
     "relative aspect-video w-full h-full",
-    isFeatured ? "order-1" : "order-2 max-w-96 hidden sm:block",
+    isFeatured && "order-1",
+    // Horizontal (non-vertical) feed cards hide the image on mobile by design.
+    // Vertical cards (e.g. "Keep reading") must keep the image visible on all widths.
+    !isFeatured && !vertical && "order-2 max-w-96 hidden sm:block",
     vertical && "order-none! h-52 cover",
   );
 
-  const titleClassName = cn(
-    "text-foreground-neutral mt-4 mb-2 type-heading-xl",
-  );
+  const titleClassName = cn("text-foreground-neutral mt-4 mb-2 type-heading-xl");
   const excerptClassName = cn(
     "text-sm text-foreground-neutral-weak line-clamp-2",
     isFeatured && "leading-[20px]!",
@@ -61,29 +62,15 @@ export function PostCard({
     <>
       <div>
         <div className="eyebrow flex gap-2 items-center">
-          {post.badge && (
-            <Badge
-              color="success"
-              label={post.badge}
-              className="w-fit text-xs"
-            />
-          )}
-          {post.date && (
-            <span className="text-xs text-foreground-neutral-weak">
-              {post.date}
-            </span>
-          )}
+          {post.badge && <Badge color="success" label={post.badge} className="w-fit text-xs" />}
+          {post.date && <span className="text-xs text-foreground-neutral-weak">{post.date}</span>}
         </div>
         {post.title && <h2 className={titleClassName}>{post.title}</h2>}
         {post.excerpt && <p className={excerptClassName}>{post.excerpt}</p>}
       </div>
       {(() => {
         const authors =
-          post.authors && post.authors.length > 0
-            ? post.authors
-            : post.author
-              ? [post.author]
-              : [];
+          post.authors && post.authors.length > 0 ? post.authors : post.author ? [post.author] : [];
         return authors.length > 0 ? (
           <AuthorAvatarGroup authors={authors} className={authorClassName} />
         ) : null;
@@ -113,12 +100,7 @@ export function PostCard({
           {postBody}
         </Card>
       ) : (
-        <div
-          className={cn(
-            "flex flex-col justify-between",
-            !vertical && "order-1",
-          )}
-        >
+        <div className={cn("flex flex-col justify-between", !vertical && "order-1")}>
           {postBody}
         </div>
       )}

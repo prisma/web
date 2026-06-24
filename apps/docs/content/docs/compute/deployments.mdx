@@ -1,0 +1,116 @@
+---
+title: Deployments
+description: Build, deploy, inspect, promote, and roll back app deployments on Prisma Compute.
+url: /compute/deployments
+metaTitle: Deployments | Prisma Compute
+metaDescription: How deployments work in Prisma Compute, including local builds, production deploys, logs, promotion, and rollback.
+---
+
+A deployment is one built version of your app. Deployments live inside a [branch](/compute/branching), and the live deployment is the one currently serving traffic.
+
+## Deploy
+
+From your app directory:
+
+```npm
+npx @prisma/cli@latest app deploy
+```
+
+The CLI resolves your project, branch, and app, builds the code, and returns a live URL. What it resolves:
+
+- **Project**: from your linked directory, or `--project` / `--create-project`.
+- **Branch**: `--branch`, then your active Git branch, then `main`.
+- **App**: `--app`, or inferred from your `package.json` name or directory. If more than one app matches in non-interactive mode, the deploy fails with `APP_AMBIGUOUS`; pass `--app`.
+
+You can pass values straight into a deploy:
+
+```npm
+npx @prisma/cli@latest app deploy --framework hono --entry src/index.ts --http-port 3000
+npx @prisma/cli@latest app deploy --env DATABASE_URL=postgresql://example
+```
+
+`--env` is for one-off values at deploy time. For variables that should persist across deploys, set them on the project. To learn more, see the [Environment variables docs](/compute/environment-variables).
+
+## Build and run locally
+
+Check your app builds before you ship it:
+
+```npm
+npx @prisma/cli@latest app build
+npx @prisma/cli@latest app run --port 3000
+```
+
+`app build` supports the build types `auto`, `bun`, `nextjs`, `nuxt`, `astro`, and `tanstack-start`. `app run` currently supports `auto`, `bun`, and `nextjs`.
+
+## Deploy to production
+
+Your first deployment is promoted to production automatically. After that, every production deploy needs an explicit `--prod` flag, so you don't ship to production by accident:
+
+```npm
+npx @prisma/cli@latest app deploy --prod
+```
+
+Without `--prod`, a deploy that resolves to the production branch and already has a live production deployment fails with `PROD_DEPLOY_REQUIRES_FLAG`. With `--prod`, the CLI shows the current live deployment and asks you to confirm before replacing it.
+
+For scripts and CI, pass both flags so nothing waits on a prompt:
+
+```npm
+npx @prisma/cli@latest app deploy --prod --yes
+```
+
+In non-interactive mode, a `--prod` deploy without `--yes` fails with `CONFIRMATION_REQUIRED`. Preview deploys never need `--prod` and never ask.
+
+## Inspect deployments
+
+```npm
+npx @prisma/cli@latest app show --app web
+npx @prisma/cli@latest app open --app web
+npx @prisma/cli@latest app list-deploys --app web
+npx @prisma/cli@latest app show-deploy dep_123
+```
+
+`app show` describes the live app, `app open` opens its URL, `app list-deploys` lists the deployment history, and `app show-deploy` shows one deployment in detail.
+
+## Logs
+
+Stream logs for the live deployment, or for a specific one:
+
+```npm
+npx @prisma/cli@latest app logs --app web
+npx @prisma/cli@latest app logs --app web --deployment dep_123
+```
+
+Your app's log lines go to stdout; the CLI's own status and errors go to stderr, so you can pipe them apart. If the platform can't serve logs for the resolved deployment, the command fails with `FEATURE_UNAVAILABLE`.
+
+## Promote and roll back
+
+Promote an earlier deployment to production:
+
+```npm
+npx @prisma/cli@latest app promote dep_123 --app web
+```
+
+Promotion rebuilds the deployment with your production environment variables. The rebuild is necessary because values are baked in at deploy time: a preview build still carries preview config, so it can't serve production as-is.
+
+Roll back to the previous deployment, or a specific one. Unlike `promote`, rollback reuses an existing build, so there is no rebuild step between you and a known-good state:
+
+```npm
+npx @prisma/cli@latest app rollback --app web
+npx @prisma/cli@latest app rollback --app web --to dep_123
+```
+
+If there's nothing to roll back to, you get `NO_PREVIOUS_DEPLOYMENT`.
+
+## Remove an app
+
+```npm
+npx @prisma/cli@latest app remove --app web
+```
+
+This removes the app from the current branch. Pass `--yes` to skip the confirmation prompt.
+
+## Next steps
+
+- [Environment variables](/compute/environment-variables): persist config across deploys.
+- [GitHub integration](/compute/github): deploy on push instead of manually.
+- [Domains](/compute/domains): point a custom domain at production.

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@prisma/eclipse";
 import { Line, LineChart, XAxis, YAxis, CartesianGrid } from "recharts";
 import { CodeBlock, Pre } from "@prisma/eclipse";
@@ -155,6 +156,9 @@ const chartConfig = {
 };
 
 export function QueryInsightsLine() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return <div className="h-25 w-full" />;
   return (
     <ChartContainer config={chartConfig} className="h-25 w-full">
       <LineChart data={chartData} responsive>
@@ -202,6 +206,9 @@ const chartConfigBars = {
 };
 
 export function QueryInsightsBars() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return <div className="h-25 w-full" />;
   return (
     <ChartContainer config={chartConfigBars} className="h-25 w-full">
       <BarChart data={chartDataBars}>

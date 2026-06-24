@@ -2,17 +2,16 @@ import { Provider } from "@/components/provider";
 import { createSiteStructuredData } from "@/lib/structured-data";
 import { getBaseUrl } from "@/lib/url";
 import "./global.css";
+import localFont from "next/font/local";
 import { Inter } from "next/font/google";
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import type React from "react";
 import { SITE_HOME_DESCRIPTION, SITE_HOME_TITLE } from "@/lib/site-metadata";
-import {
-  NavigationWrapper,
-  FooterWrapper,
-} from "@/components/navigation-wrapper";
+import { NavigationWrapper, FooterWrapper } from "@/components/navigation-wrapper";
 import { Footer } from "@prisma-docs/ui/components/footer";
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
+import { GoogleTagManager } from "@prisma-docs/ui/components/google-tag-manager";
 import { ThemeProvider } from "@prisma-docs/ui/components/theme-provider";
 import { FontAwesomeScript as WebFA } from "@prisma/eclipse";
 import { UtmPersistence } from "@/components/utm-persistence";
@@ -20,6 +19,30 @@ import { UtmPersistence } from "@/components/utm-persistence";
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
+});
+
+const monaSans = localFont({
+  src: [
+    {
+      path: "../../../../packages/eclipse/src/static/fonts/MonaSansVF[wdth,wght,opsz,ital].woff2",
+      weight: "200 900",
+      style: "normal",
+    },
+    {
+      path: "../../../../packages/eclipse/src/static/fonts/MonaSansVF[wdth,wght,opsz,ital].woff2",
+      weight: "200 900",
+      style: "italic",
+    },
+  ],
+  variable: "--font-mona-sans",
+  display: "swap",
+});
+
+const monaSansMono = localFont({
+  src: "../../../../packages/eclipse/src/static/fonts/MonaSansMonoVF[wght].woff2",
+  variable: "--font-mona-mono",
+  display: "swap",
+  weight: "200 900",
 });
 
 export const viewport: Viewport = {
@@ -68,6 +91,12 @@ function baseOptions() {
         text: "Products",
         sub: [
           {
+            text: "Compute",
+            url: "/compute",
+            desc: "Deploy TypeScript to production",
+            icon: "fa-regular fa-microchip",
+          },
+          {
             text: "Postgres",
             url: "/postgres",
             desc: "Managed Postgres for global workloads",
@@ -76,7 +105,7 @@ function baseOptions() {
           {
             text: "ORM",
             url: "/orm",
-            desc: "Managed Postgres for global workloads",
+            desc: "Type-safe ORM for TypeScript and Node.js",
             icon: "fa-regular fa-database",
           },
           {
@@ -153,7 +182,11 @@ function baseOptions() {
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable}`} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${inter.variable} ${monaSans.variable} ${monaSansMono.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <Script
@@ -178,20 +211,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           data-cookieyes="cookieyes-analytics"
           data-cookieyes-category="analytics"
         />
-        <script
-          id="gmanager"
-          type="text/plain"
-          data-cookieyes="cookieyes-analytics"
-          data-cookieyes-category="analytics"
-          dangerouslySetInnerHTML={{
-            __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-            new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-            j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-            'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-          })(window,document,'script','dataLayer','GTM-KCGZPWB');
-          `,
-          }}
-        />
+        <GoogleTagManager section="website" />
         <JsonLd id="site-structured-data" data={siteStructuredData} />
       </head>
       <body className="flex flex-col min-h-screen relative">
@@ -199,10 +219,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <Provider>
           <ThemeProvider defaultTheme="system" storageKey="theme">
             <UtmPersistence />
-            <NavigationWrapper
-              links={baseOptions().links}
-              utm={{ source: "website" }}
-            />
+            <NavigationWrapper links={baseOptions().links} utm={{ source: "website" }} />
             {children}
             <FooterWrapper />
           </ThemeProvider>

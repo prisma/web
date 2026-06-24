@@ -3,8 +3,9 @@ import { createContext, use, type FC, type ReactNode } from "react";
 import type * as PageTree from "fumadocs-core/page-tree";
 import { SidebarItem } from "@/components/layout/notebook/sidebar";
 import { Badge } from "@prisma/eclipse";
+import type { BadgeType } from "@/lib/badge-types";
 
-export type BadgeType = "early-access" | "deprecated" | "preview";
+export type { BadgeType };
 
 const BadgeContext = createContext<Record<string, BadgeType>>({});
 
@@ -20,12 +21,14 @@ export function BadgeProvider({
 
 const BADGE_LABEL: Record<BadgeType, string> = {
   "early-access": "Early Access",
+  beta: "Beta",
   preview: "Preview",
   deprecated: "Deprecated",
 };
 
 const BADGE_COLOR: Record<BadgeType, "ppg" | "warning" | "neutral"> = {
   "early-access": "ppg",
+  beta: "neutral",
   preview: "neutral",
   deprecated: "warning",
 };

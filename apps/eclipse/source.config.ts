@@ -31,11 +31,16 @@ export default defineConfig({
       persist: {
         id: "package-manager",
       },
-      // Custom package managers to add --bun flag for bunx commands
       packageManagers: [
         {
-          command: (cmd: string) => convert(cmd.replace(/^npm init -y$/, "npm init"), "npm"),
-          name: "npm",
+          command: (cmd: string) => {
+            const converted = convert(cmd.replace(/^npm init -y$/, "npm init"), "bun");
+            if (!converted) return undefined;
+            return converted
+              .replace(/^bun x (prisma(?:@\S+)? init\b)/gm, "bunx --bun $1")
+              .replace(/^bun x /gm, "bunx ");
+          },
+          name: "bun",
         },
         {
           command: (cmd: string) => convert(cmd.replace(/^npm init -y$/, "npm init"), "pnpm"),
@@ -46,12 +51,8 @@ export default defineConfig({
           name: "yarn",
         },
         {
-          command: (cmd: string) => {
-            const converted = convert(cmd.replace(/^npm init -y$/, "npm init"), "bun");
-            if (!converted) return undefined;
-            return converted.replace(/^bun x /, "bunx --bun ");
-          },
-          name: "bun",
+          command: (cmd: string) => convert(cmd.replace(/^npm init -y$/, "npm init"), "npm"),
+          name: "npm",
         },
       ],
     },

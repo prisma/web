@@ -117,9 +117,9 @@ export function FeaturedSeriesShelf({ series }: { series: SeriesShelfItem[] }) {
         <span className="shrink-0 text-xs uppercase tracking-wide font-semibold text-foreground-neutral-weak">
           Series
         </span>
-        <ul className="flex flex-wrap items-center gap-2">
+        <ul className="flex min-w-0 flex-wrap items-center gap-2">
           {chips.map((item) => (
-            <li key={item.key} className="min-w-0">
+            <li key={item.key} className="min-w-0 max-w-full">
               <SeriesChip item={item} />
             </li>
           ))}

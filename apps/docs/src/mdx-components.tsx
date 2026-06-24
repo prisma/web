@@ -1,6 +1,7 @@
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import { Youtube } from "@prisma-docs/ui/components/youtube";
 import { APIPage } from "@/components/api-page";
+import { ConceptAnimation } from "@/components/concept-animation";
 import { withDocsBasePath } from "@/lib/urls";
 
 import type { MDXComponents } from "mdx/types";
@@ -30,7 +31,7 @@ import {
   TableCaption,
   Input,
   Alert,
-  Button
+  Button,
 } from "@prisma/eclipse";
 
 function withDocsBasePathForImageSrc(src: unknown): unknown {
@@ -62,6 +63,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     Accordion,
     Accordions,
     APIPage,
+    ConceptAnimation,
     Youtube,
     img: (props: any) => (
       <ImageZoom {...(props as any)} src={withDocsBasePathForImageSrc((props as any).src)} />

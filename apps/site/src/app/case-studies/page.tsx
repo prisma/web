@@ -30,10 +30,7 @@ const caseStudiesStructuredData = createCollectionPageStructuredData({
 export default function CaseStudiesPage() {
   return (
     <main className="flex-1 w-full -mt-24 bg-background-default text-foreground-neutral">
-      <JsonLd
-        id="case-studies-structured-data"
-        data={caseStudiesStructuredData}
-      />
+      <JsonLd id="case-studies-structured-data" data={caseStudiesStructuredData} />
       <section className="px-4 pt-36 pb-12 md:pb-16">
         <div className="mx-auto flex max-w-[760px] flex-col items-center gap-6 text-center">
           <p className="flex items-center gap-2 text-base font-semibold uppercase tracking-[1.6px] text-foreground-orm font-sans">
@@ -44,9 +41,8 @@ export default function CaseStudiesPage() {
             Prisma Case Studies
           </h1>
           <p className="text-lg text-foreground-neutral-weak max-w-[640px]">
-            Learn how teams use Prisma in production to speed up delivery,
-            simplify database workflows, and scale without slowing down
-            engineering.
+            Learn how teams use Prisma in production to speed up delivery, simplify database
+            workflows, and scale without slowing down engineering.
           </p>
           <div className="flex flex-col gap-4 sm:flex-row">
             <Button asChild variant="orm" size="2xl">
@@ -73,9 +69,8 @@ export default function CaseStudiesPage() {
                 Production stories from the Prisma ecosystem
               </h2>
               <p className="mb-0 mt-3 text-base text-foreground-neutral-weak">
-                These teams span B2B SaaS, developer tooling, AI products, and
-                high-scale platforms. Each story shows how Prisma helps teams
-                move faster with less database friction.
+                These teams span B2B SaaS, developer tooling, AI products, and high-scale platforms.
+                Each story shows how Prisma helps teams move faster with less database friction.
               </p>
             </div>
           </div>

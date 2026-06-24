@@ -18,7 +18,7 @@ type CollectionKey = string | symbol;
 
 export interface TabsProps extends Omit<
   ComponentProps<typeof Unstyled.Tabs>,
-  "value" | "onValueChange"
+  "value"
 > {
   /**
    * Use simple mode instead of advanced usage as documented in https://radix-ui.com/primitives/docs/components/tabs.
@@ -103,6 +103,9 @@ export function Tabs({
   label,
   defaultIndex = 0,
   defaultValue = items ? escapeValue(items[defaultIndex]) : undefined,
+  // Extract onValueChange so it isn't forwarded via ...props (which would
+  // override the internal handler). We call it ourselves after updating state.
+  onValueChange,
   ...props
 }: TabsProps) {
   const [value, setValue] = useState(defaultValue);
@@ -116,15 +119,23 @@ export function Tabs({
       onValueChange={(v: string) => {
         if (items && !items.some((item) => escapeValue(item) === v)) return;
         setValue(v);
+        onValueChange?.(v);
       }}
       {...props}
     >
       <TabsContext.Provider
-        value={useMemo(() => ({ items, collection, color }), [collection, items, color])}
+        value={useMemo(
+          () => ({ items, collection, color }),
+          [collection, items, color],
+        )}
       >
         {items && (
           <TabsList>
-            {label && <span className="type-text-sm-strong my-auto me-auto">{label}</span>}
+            {label && (
+              <span className="type-text-sm-strong my-auto me-auto">
+                {label}
+              </span>
+            )}
             {items.map((item) => (
               <TabsTrigger key={item} value={escapeValue(item)}>
                 {item}
@@ -138,7 +149,10 @@ export function Tabs({
   );
 }
 
-export interface TabProps extends Omit<ComponentProps<typeof Unstyled.TabsContent>, "value"> {
+export interface TabProps extends Omit<
+  ComponentProps<typeof Unstyled.TabsContent>,
+  "value"
+> {
   /**
    * Value of tab, detect from index if unspecified.
    */

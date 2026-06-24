@@ -14,15 +14,11 @@ export function createPageMetadata({
   path,
   ogImage = "/og/og-index.png",
 }: PageMetadataOptions): Metadata {
-  const pathname =
-    path === "/" ? "/" : path.startsWith("/") ? path : `/${path}`;
+  const pathname = path === "/" ? "/" : path.startsWith("/") ? path : `/${path}`;
   const baseUrl = getBaseUrl();
   const url = new URL(pathname, baseUrl).toString();
   const ogImageUrl = ogImage
-    ? new URL(
-        ogImage.startsWith("/") ? ogImage : `/${ogImage}`,
-        baseUrl,
-      ).toString()
+    ? new URL(ogImage.startsWith("/") ? ogImage : `/${ogImage}`, baseUrl).toString()
     : undefined;
 
   return {

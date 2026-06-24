@@ -1,0 +1,197 @@
+---
+title: "Your Database Might Not Be the Bottleneck"
+slug: "your-database-might-not-be-the-bottleneck"
+date: "2026-05-12"
+authors:
+  - "Mike Hartington"
+metaTitle: "Your Database Might Not Be the Bottleneck"
+metaDescription: "Slow APIs are not always a database problem. Here’s how request parsing, middleware, and repeated object work can become the real bottleneck before Postgres is even involved."
+metaImagePath: "/your-database-might-not-be-the-bottleneck/imgs/meta.png"
+heroImagePath: "/your-database-might-not-be-the-bottleneck/imgs/hero.jpg"
+---
+
+When an API feels slow, the database is usually the first thing people blame. That makes sense because databases often do the most expensive work in the stack: filtering, joins, sorting, counts, pagination, and serialization. If a route suddenly takes 400ms, most people immediately start looking for missing indexes.
+
+But sometimes the request is already slow before the database even gets involved.
+
+I started thinking about this while building two versions of the same [Hono](https://hono.dev/) app. Same framework, same routes, same database, same ORM. One version felt noticeably slower under load, even though the database queries were basically identical. Most of the difference came from everything happening before the query ever ran.
+
+## Two versions of the same app
+
+Both apps expose the same routes:
+
+```text
+GET /health
+GET /app/static
+GET /app/db
+GET /users
+GET /projects/:id
+GET /tasks
+GET /dashboard/:orgId
+```
+
+Some of these routes are intentionally cheap. `/health` returns a tiny response, `/app/static` returns some JSON without touching the database, and `/app/db` does one small lookup.
+
+Those cheap routes matter more than people think because they tell you how much work your app is doing before the real work even starts. If a health check feels slow, Postgres is probably not your problem.
+
+## The slow version
+
+This is not a Hono problem. You could build this kind of app in basically any framework.
+
+The issue is that the slow version keeps rebuilding request state over and over again for no real reason.
+
+Middleware parses URLs repeatedly:
+
+```typescript
+app.use(async (c, next) => {
+  const url = new URL(c.req.url);
+  const queryEntries = Array.from(url.searchParams.entries());
+  const headerEntries = Array.from(c.req.raw.headers.entries());
+
+  JSON.parse(JSON.stringify(queryEntries));
+  JSON.parse(JSON.stringify(headerEntries));
+
+  await next();
+  c.header("X-Slow-Path", url.pathname);
+});
+```
+
+Then another middleware clones request data again:
+
+```typescript
+app.use(async (c, next) => {
+  const clonedRequest = {
+    method: c.req.method,
+    path: c.req.path,
+    query: c.req.query(),
+  };
+
+  JSON.parse(JSON.stringify(clonedRequest));
+
+  await next();
+});
+```
+
+And it keeps going from there.
+
+Some routes create multiple `URL` objects. Others parse query params through two or three different APIs, sort headers, normalize values, serialize objects, deserialize them again, and build giant request context objects that immediately get thrown away.
+
+None of this changes the response. It is just extra work the request never needed to do in the first place, and while one extra allocation is not a huge deal, hundreds of tiny allocations on every request absolutely add up.
+
+This gets especially noticeable in middleware-heavy apps because middleware runs on every matching request and executes in registration order, which means small amounts of work compound surprisingly fast across the request lifecycle.
+
+[Hono’s own middleware docs](https://hono.dev/docs/guides/middleware) are actually pretty good at illustrating how this execution flow works.
+
+## The fast version
+
+The fast version is not doing anything particularly clever. That is kind of the point. It mostly just stops doing unnecessary work.
+
+Routes are split into smaller modules:
+
+```text
+routes/health.ts
+routes/app.ts
+routes/users.ts
+routes/projects.ts
+routes/tasks.ts
+routes/dashboard.ts
+```
+
+Startup is separate from app composition, shared parsing logic lives in helpers instead of middleware chains that run for everything, and handlers read the request once instead of rebuilding it repeatedly.
+
+The top-level app mostly becomes composition:
+
+```typescript
+const app = new Hono();
+
+app.get("/", (c) => {
+  return c.json({
+    app: "fast-hono",
+    mode: "optimized",
+  });
+});
+
+app.route("/", healthRoutes);
+app.route("/", appRoutes);
+app.route("/", usersRoutes);
+app.route("/", projectRoutes);
+app.route("/", tasksRoutes);
+app.route("/", dashboardRoutes);
+```
+
+A simple route stays simple:
+
+```typescript
+appRoutes.get("/app/static", (c) => {
+  const view = c.req.query("view");
+  const section = c.req.query("section");
+
+  return c.json(getStaticData({ view, section }));
+});
+```
+
+That route reads two query params and returns JSON. No cloning, no serialization gymnastics, and no rebuilding request state for the fifth time.
+
+## Request parsing is part of your hot path
+
+This stuff looks harmless when you see it in isolation.
+
+You end up with a `new URL()` here, a `JSON.stringify()` there, a helper that clones headers, another that sorts query params, and logging middleware building giant debug objects for every request.
+
+None of that feels especially expensive on its own, which is exactly why this stuff slips into production so easily.
+
+Then suddenly your health check is doing way more work than it should.
+
+That is the trap. Per-request overhead compounds fast, especially on routes that are supposed to be cheap.
+
+A health endpoint should not pay for generic request introspection. A static JSON route should not parse the same query string three different ways. And a route that needs one query param should not allocate an entire request context object just to throw it away 5ms later.
+
+## The database can hide application overhead
+
+Once a route starts doing real database work, this gets harder to spot.
+
+A dashboard route might hit several tables. A project detail page might fetch activity, users, counts, tasks, and relations. A list endpoint might do pagination plus aggregate queries.
+
+At that point the database gets loud enough to hide everything else.
+
+The app overhead is still there, you just stop noticing it.
+
+That is why cheap routes are useful. They expose the baseline cost of your application before query planning, indexes, joins, and network latency enter the picture. If your cheap routes are doing unnecessary work, your expensive routes probably are too. The database is just masking it.
+
+## None of this means the database does not matter
+
+Databases absolutely become bottlenecks. Bad indexes, over-fetching, giant joins, connection starvation, and inefficient pagination can all wreck performance.
+
+Prisma query shape matters too.
+
+If a route only needs a count, do not hydrate every record. If a route needs five fields, do not fetch an entire relation graph. And if you only need recent activity, do not load the full history and slice it in JavaScript afterward.
+
+All of that still matters.
+
+But sequencing matters too. Before spending hours tuning queries, make sure the app itself is not wasting time before the query even starts. Otherwise you end up optimizing the database while the application burns CPU serializing request objects nobody needed.
+
+## What to look for in your own app
+
+Start with the cheapest routes you have. Health checks are great for this. Static JSON routes are great too. Simple lookup endpoints work well.
+
+Then start looking for repeated work:
+
+- parsing the same URL multiple times
+- reading query params through multiple APIs
+- cloning objects defensively
+- serializing data before passing it to `c.json()`
+- middleware doing work most routes never needed
+- synchronous logging and formatting on the hot path
+- giant instrumentation payloads allocated for every request
+
+Most of this stuff does not look scary during development, which is exactly why it tends to stick around.
+
+## Recap
+
+Two apps can use the same framework, the same ORM, the same routes, and the same database while having very different performance characteristics.
+
+The slow version spends a lot of time rebuilding request state, cloning objects, sorting data, and serializing things repeatedly. The fast version mostly just avoids doing that stuff.
+
+There is no magic optimization or clever framework trick here. The fast version just does less unnecessary work between the request and the database.
+
+Before you blame Postgres, look at what your application is doing first.

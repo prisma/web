@@ -20,7 +20,11 @@ function extractMarks(value: string): {
   const out: string[] = [];
   const marked: number[] = [];
   for (const line of lines) {
-    if (/^\s*\/\/\s*!mark(?:\s|$)/.test(line) || /^\s*#\s*!mark(?:\s|$)/.test(line)) {
+    if (
+      /^\s*\/\/\s*!mark(?:\s|$)/.test(line) ||
+      /^\s*#\s*!mark(?:\s|$)/.test(line) ||
+      /^\s*--\s*!mark(?:\s|$)/.test(line)
+    ) {
       // The next source line is marked.
       marked.push(out.length + 1);
       continue;
@@ -30,17 +34,19 @@ function extractMarks(value: string): {
   return { value: out.join("\n"), markedLines: marked };
 }
 
-async function highlightWithMarks(
-  value: string,
-  language: string,
-): Promise<HighlightedCode> {
+async function highlightWithMarks(value: string, language: string): Promise<HighlightedCode> {
   const { value: stripped, markedLines } = extractMarks(value);
   const result = (await highlight(
     { value: stripped, lang: language, meta: "" },
     "github-from-css",
   )) as HighlightedCode;
   const injected = markedLines
-    .filter((n) => !result.annotations.some((a) => a.name === "mark" && "fromLineNumber" in a && a.fromLineNumber === n))
+    .filter(
+      (n) =>
+        !result.annotations.some(
+          (a) => a.name === "mark" && "fromLineNumber" in a && a.fromLineNumber === n,
+        ),
+    )
     .map((n) => ({
       name: "mark",
       query: "",
@@ -65,16 +71,10 @@ export async function AgentPrompt({
 }: AgentPromptProps) {
   const hasCode = before != null && after != null;
   const [beforeHL, afterHL] = hasCode
-    ? await Promise.all([
-        highlightWithMarks(before, language),
-        highlightWithMarks(after, language),
-      ])
+    ? await Promise.all([highlightWithMarks(before, language), highlightWithMarks(after, language)])
     : [undefined, undefined];
   const maxCodeLines = hasCode
-    ? Math.max(
-        countLines(before as string),
-        countLines(after as string),
-      )
+    ? Math.max(countLines(before as string), countLines(after as string))
     : undefined;
 
   return (

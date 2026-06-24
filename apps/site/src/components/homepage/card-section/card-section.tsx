@@ -15,6 +15,8 @@ interface TwoColumnItem {
   logos: any[] | null;
   alignItems?: "items-end" | "items-start" | "items-center";
   footer?: ReactNode;
+  // Rendered inside the visual column, directly below the image/logo grid.
+  visualFooter?: ReactNode;
   color?: "orm" | "ppg";
   other?: ReactNode;
   useDefaultLogos: boolean;
@@ -22,15 +24,19 @@ interface TwoColumnItem {
   visualType: "logoGrid" | "image" | "other";
   noShadow?: boolean;
   step?: string;
+  visualClass?: string;
 }
 
 interface CardSectionProps {
   cardSection: TwoColumnItem[];
+  className?: string;
+  /** Override the vertical spacing applied to each card row. */
+  itemSpacing?: string;
 }
 
 const imageShadowClass = "shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)]";
-const sectionClass =
-  "py-6 md:py-8 lg:py-12 my-6 md:my-8 lg:my-12 w-full overflow-visible px-4 sm:px-0";
+const sectionBaseClass = "w-full overflow-visible px-4 sm:px-0";
+const defaultItemSpacing = "py-8 md:py-10 lg:py-14 my-8 md:my-10 lg:my-14";
 
 const getCardSectionItemKey = (item: TwoColumnItem) =>
   [
@@ -85,6 +91,14 @@ interface ThemeImagePairProps {
   wrapperClassName: string;
 }
 
+const withDefaultIllustrationExtension = (imagePath: string) =>
+  /\.[a-zA-Z0-9]+$/.test(imagePath) ? imagePath : `${imagePath}.svg`;
+
+const getLightIllustrationPath = (imagePath: string) =>
+  /\.[a-zA-Z0-9]+$/.test(imagePath)
+    ? imagePath.replace(/(\.[^.]+)$/, "_light$1")
+    : `${imagePath}_light.svg`;
+
 const ThemeImagePair = ({
   imageUrl,
   alt,
@@ -98,11 +112,8 @@ const ThemeImagePair = ({
 }: ThemeImagePairProps) => (
   <div className={wrapperClassName}>
     <Image
-      className={cn(
-        "hidden dark:block w-full h-auto",
-        !noShadow && imageShadowClass,
-      )}
-      src={`${imageUrl}.svg`}
+      className={cn("hidden dark:block w-full h-auto", !noShadow && imageShadowClass)}
+      src={withDefaultIllustrationExtension(imageUrl)}
       alt={alt}
       width={width}
       height={height}
@@ -111,11 +122,8 @@ const ThemeImagePair = ({
       loading={loading}
     />
     <Image
-      className={cn(
-        "block dark:hidden w-full h-auto",
-        !noShadow && imageShadowClass,
-      )}
-      src={`${imageUrl}_light.svg`}
+      className={cn("block dark:hidden w-full h-auto", !noShadow && imageShadowClass)}
+      src={getLightIllustrationPath(imageUrl)}
       alt={alt}
       width={width}
       height={height}
@@ -134,6 +142,7 @@ interface ImageVisualProps {
 const ImageVisual = ({ item, isLcpImage }: ImageVisualProps) => {
   if (!item.imageUrl) return null;
 
+  const mobileImageUrl = item.mobileImageUrl;
   const imageAlt = item.imageAlt || "";
   const mobileImageAlt = item.mobileImageAlt || "";
   const imageLoading = isLcpImage ? "eager" : "lazy";
@@ -141,7 +150,7 @@ const ImageVisual = ({ item, isLcpImage }: ImageVisualProps) => {
   const imageFetchPriority = isLcpImage ? "high" : "low";
 
   return (
-    <div className="relative w-full">
+    <div className="relative w-full border border-stroke rounded-[12px]">
       <ThemeImagePair
         imageUrl={item.imageUrl}
         alt={imageAlt}
@@ -151,11 +160,11 @@ const ImageVisual = ({ item, isLcpImage }: ImageVisualProps) => {
         fetchPriority={imageFetchPriority}
         loading={imageLoading}
         noShadow={item.noShadow}
-        wrapperClassName="hidden sm:block"
+        wrapperClassName={mobileImageUrl ? "hidden sm:block" : ""}
       />
-      {item.mobileImageUrl && (
+      {mobileImageUrl ? (
         <ThemeImagePair
-          imageUrl={item.mobileImageUrl}
+          imageUrl={mobileImageUrl}
           alt={mobileImageAlt}
           width={800}
           height={600}
@@ -165,18 +174,12 @@ const ImageVisual = ({ item, isLcpImage }: ImageVisualProps) => {
           noShadow={item.noShadow}
           wrapperClassName="sm:hidden"
         />
-      )}
+      ) : null}
     </div>
   );
 };
 
-const SectionVisual = ({
-  item,
-  isLcpImage,
-}: {
-  item: TwoColumnItem;
-  isLcpImage: boolean;
-}) => {
+const SectionVisual = ({ item, isLcpImage }: { item: TwoColumnItem; isLcpImage: boolean }) => {
   if (item.visualType === "other") {
     return item.other ? <>{item.other}</> : null;
   }
@@ -197,20 +200,22 @@ const CardSectionItem = ({
   isLcpImage,
   isActive,
   onRef,
+  spacing,
 }: {
   item: TwoColumnItem;
   isLcpImage: boolean;
   isActive: boolean;
   onRef: (element: HTMLElement | null) => void;
+  spacing: string;
 }) => (
-  <section ref={onRef} className={sectionClass}>
+  <section ref={onRef} className={cn(sectionBaseClass, spacing)}>
     <div
       className={cn(
         "[&_h2]:mt-0 flex gap-6 md:gap-8 lg:gap-12 sm:gap-6 items-center overflow-visible",
         item.visualPosition === "left" && "lg:flex-row-reverse flex-col",
         item.visualPosition === "right" && "md:flex-row flex-col",
         item.alignItems,
-        item.step && "items-start! flex-row! justify-between",
+        item.step && "items-start! flex-row! justify-start sm:gap-12! gap-4!",
       )}
     >
       {item.step && <StepIndicator icon={item.step} isActive={isActive} />}
@@ -228,10 +233,12 @@ const CardSectionItem = ({
         <div
           className={cn(
             "flex-1 min-w-0 overflow-visible w-full lg:max-w-unset max-w-137 mt-3 mx-auto",
+            item.visualClass,
             item.visualType === "logoGrid" ? "max-w-full" : "lg:w-full",
           )}
         >
           <SectionVisual item={item} isLcpImage={isLcpImage} />
+          {item.visualFooter && <div className="mt-6 flex justify-center">{item.visualFooter}</div>}
         </div>
       </div>
     </div>
@@ -239,7 +246,7 @@ const CardSectionItem = ({
   </section>
 );
 
-export const CardSection = ({ cardSection }: CardSectionProps) => {
+export const CardSection = ({ cardSection, className, itemSpacing }: CardSectionProps) => {
   const [active, setActive] = useState(0);
   const [progressHeight, setProgressHeight] = useState(0);
   const sectionRefs = useRef<(HTMLElement | null)[]>([]);
@@ -259,8 +266,7 @@ export const CardSection = ({ cardSection }: CardSectionProps) => {
         if (!containerRef.current) return;
 
         const container = containerRef.current;
-        const position =
-          container.getBoundingClientRect().y * -1 + window.innerHeight * 0.8;
+        const position = container.getBoundingClientRect().y * -1 + window.innerHeight * 0.8;
 
         setProgressHeight(position);
 
@@ -298,6 +304,7 @@ export const CardSection = ({ cardSection }: CardSectionProps) => {
       className={cn(
         "max-w-[1232px] mx-auto mt-8 px-0 sm:px-4 overflow-visible",
         hasSteps && "flex-col md:flex-row items-start gap-6! relative",
+        className,
       )}
     >
       {hasSteps && (
@@ -312,6 +319,7 @@ export const CardSection = ({ cardSection }: CardSectionProps) => {
           item={item}
           isLcpImage={index === firstImageIndex}
           isActive={active === index}
+          spacing={itemSpacing ?? defaultItemSpacing}
           onRef={(element) => {
             sectionRefs.current[index] = element;
           }}

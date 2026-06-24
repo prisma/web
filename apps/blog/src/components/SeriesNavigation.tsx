@@ -1,38 +1,28 @@
-import Link from "next/link";
+import { PostCard } from "./PostCard";
 import type { SeriesContext } from "@/lib/series";
 
 export function SeriesNavigation({ series }: { series: SeriesContext }) {
   if (!series.prev && !series.next) return null;
 
   return (
-    <nav aria-label="Series navigation" className="grid gap-4 sm:grid-cols-2 my-12">
+    <nav aria-label="Series navigation" className="grid gap-6 sm:grid-cols-2 my-12">
       {series.prev ? (
-        <Link
-          href={series.prev.url}
-          className="group block rounded-square border border-stroke-neutral-strong p-5 transition-colors hover:border-stroke-ppg hover:bg-background-ppg/5"
-        >
-          <div className="text-xs uppercase tracking-wide text-foreground-neutral-weak mb-1">
+        <div>
+          <div className="text-xs uppercase tracking-wide text-foreground-neutral-weak mb-2">
             ← Previous in series
           </div>
-          <div className="font-semibold text-foreground-neutral group-hover:text-foreground-ppg">
-            {series.prev.title}
-          </div>
-        </Link>
+          <PostCard post={series.prev} currentCategory="show-all" vertical />
+        </div>
       ) : (
-        <div />
+        <div className="hidden sm:block" />
       )}
       {series.next ? (
-        <Link
-          href={series.next.url}
-          className="group block rounded-square border border-stroke-neutral-strong p-5 transition-colors hover:border-stroke-ppg hover:bg-background-ppg/5 sm:text-right"
-        >
-          <div className="text-xs uppercase tracking-wide text-foreground-neutral-weak mb-1">
+        <div>
+          <div className="text-xs uppercase tracking-wide text-foreground-neutral-weak mb-2 sm:text-right">
             Next in series →
           </div>
-          <div className="font-semibold text-foreground-neutral group-hover:text-foreground-ppg">
-            {series.next.title}
-          </div>
-        </Link>
+          <PostCard post={series.next} currentCategory="show-all" vertical />
+        </div>
       ) : null}
     </nav>
   );

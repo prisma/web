@@ -11,11 +11,28 @@
  * cards take prime real estate.
  */
 export const seriesRegistry = {
+  "agentic-engineering": {
+    title: "Agentic engineering at Prisma",
+    description:
+      "How Prisma builds software with AI agents: introducing the practice, the process and documentation layer that make cross-repo agent work possible, the Drive process and the Maker role, and how the approach keeps evolving as models and harnesses improve.",
+    featured: false,
+    relatedSeries: ["prisma-next", "prisma-compute"],
+  },
+  "prisma-compute": {
+    title: "Prisma Compute",
+    description:
+      "The story of Prisma Compute: TypeScript app hosting that runs on the same infrastructure as your database. From the public beta launch to the runtime engineering underneath.",
+    featured: true,
+    docsUrl: "https://docs.prisma.io/docs/prisma-compute",
+    docsLabel: "Read the Prisma Compute docs",
+    relatedSeries: ["agentic-engineering", "prisma-next"],
+  },
   "prisma-next": {
     title: "Prisma Next",
     description:
       "Follow the journey of Prisma Next, the next evolution of Prisma ORM. From the announcement and roadmap to TypeScript migrations, the extension API, and Early Access.",
     featured: true,
+    relatedSeries: ["agentic-engineering", "prisma-compute"],
   },
   "rust-to-typescript-migration-journey": {
     title: "Prisma ORM: The Complete Rust-to-TypeScript Migration Journey",
@@ -62,7 +79,22 @@ export const seriesRegistry = {
     description:
       "Build code-first GraphQL servers with Nexus, from the problems of schema-first to using Nexus with a database.",
   },
-} as const satisfies Record<string, { title: string; description?: string; featured?: boolean }>;
+  "postgres-features": {
+    title: "Postgres features you can reach for instead of more infrastructure",
+    description:
+      "A short series on Postgres features that quietly replace pieces of your stack. Pub/Sub via LISTEN and NOTIFY, the bloom index for wide tables, and more.",
+  },
+} as const satisfies Record<
+  string,
+  {
+    title: string;
+    description?: string;
+    featured?: boolean;
+    docsUrl?: string;
+    docsLabel?: string;
+    relatedSeries?: readonly string[];
+  }
+>;
 
 export type SeriesKey = keyof typeof seriesRegistry;
 
@@ -70,6 +102,9 @@ export type SeriesMetadata = {
   title: string;
   description?: string;
   featured?: boolean;
+  docsUrl?: string;
+  docsLabel?: string;
+  relatedSeries?: readonly string[];
 };
 
 function hasSeriesKey(key: string): key is SeriesKey {

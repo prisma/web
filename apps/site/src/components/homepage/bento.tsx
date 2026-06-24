@@ -9,9 +9,10 @@ import { cn } from "@prisma-docs/ui/lib/cn";
 interface CardData {
   id: string;
   title: string;
-  subtitle: string;
-  image: string;
-  link: string;
+  subtitle?: string;
+  children?: React.ReactNode;
+  image?: string;
+  link?: string;
   icon: string;
   row: "top" | "center";
 }
@@ -22,7 +23,7 @@ interface BentoBox {
   imageUrl: string;
   icon: string;
   imageAlt: string | null;
-  link: string;
+  link?: string;
 }
 
 interface BentoProps {
@@ -94,11 +95,12 @@ export const Bento = ({ bentoSection, hero, color }: BentoProps) => {
 
 interface CardProps {
   card: CardData;
+  className?: string;
   color?: "orm" | "ppg";
 }
 
-export const Card = ({ card, color }: CardProps) => {
-  const cardRef = useRef<HTMLAnchorElement>(null);
+export const Card = ({ card, color, className }: CardProps) => {
+  const cardRef = useRef<HTMLElement>(null);
   const cardCenterRef = useRef<{ x: number; y: number } | null>(null);
   const isCenterCard = ["4", "5"].includes(card.id);
   const imageClassName =
@@ -121,7 +123,7 @@ export const Card = ({ card, color }: CardProps) => {
   }, [updateCardCenter]);
 
   const handleMouseMove = useCallback(
-    (e: React.MouseEvent<HTMLAnchorElement>) => {
+    (e: React.MouseEvent<HTMLElement>) => {
       const cardElement = cardRef.current;
       if (!cardElement) return;
       if (!cardCenterRef.current && !updateCardCenter()) return;
@@ -149,30 +151,32 @@ export const Card = ({ card, color }: CardProps) => {
     cardCenterRef.current = null;
   }, []);
 
-  return (
-    <Link
-      ref={cardRef}
-      href={card.link}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={cn("box", "box-visible", "w-full", isCenterCard && "w-full md:order-0", color)}
-      onMouseEnter={handleMouseEnter}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-    >
+  const sharedClassName = cn(
+    className,
+    "box",
+    "box-visible",
+    "w-full",
+    isCenterCard && "w-full md:order-0",
+    !card.link && "cursor-auto!",
+    color,
+  );
+
+  const cardContent = (
+    <>
       <div className="flex gap-4 text-xs py-4 px-0 mx-4 w-[calc(100%-2rem)]">
         <Action color={color || "ppg"} size="4xl">
           <i className={cn("text-xl", card.icon)} />
         </Action>
         <div className="z-2">
-          <h2 className="text-foreground-neutral font-sans-display text-base mt-0 mb-1 font-bold">
-            {card.title}
-          </h2>
-          <p className="text-foreground-neutral dark:text-foreground-neutral-weak text-sm font-normal m-0">
-            {card.subtitle}
-          </p>
+          <h2 className="text-foreground-neutral type-title-xl mt-0 mb-1">{card.title}</h2>
+          {card.subtitle && (
+            <p className="text-foreground-neutral dark:text-foreground-neutral-weak text-sm font-normal m-0">
+              {card.subtitle}
+            </p>
+          )}
         </div>
       </div>
+      {card.children}
       {card.image && (
         <>
           <Image
@@ -195,6 +199,35 @@ export const Card = ({ card, color }: CardProps) => {
           />
         </>
       )}
-    </Link>
+    </>
+  );
+
+  if (card.link) {
+    return (
+      <Link
+        ref={cardRef as React.Ref<HTMLAnchorElement>}
+        href={card.link}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={sharedClassName}
+        onMouseEnter={handleMouseEnter}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+      >
+        {cardContent}
+      </Link>
+    );
+  }
+
+  return (
+    <div
+      ref={cardRef as React.Ref<HTMLDivElement>}
+      className={sharedClassName}
+      onMouseEnter={handleMouseEnter}
+      onMouseMove={handleMouseMove as React.MouseEventHandler<HTMLDivElement>}
+      onMouseLeave={handleMouseLeave}
+    >
+      {cardContent}
+    </div>
   );
 };
