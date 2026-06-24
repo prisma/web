@@ -99,11 +99,15 @@ After the skeleton is written, enhance it with relevant links before handing it 
 
 Scan the skeleton for opportunities to link to Prisma's own content. Only add a link when the post introduces a topic and the linked page lets the reader go meaningfully deeper:
 
-- **Blog posts** — link to related existing posts on `prisma.io/blog` when the skeleton references a topic a previous post covers in depth.
-- **Documentation** — link to relevant docs pages on `prisma.io/docs` when the skeleton mentions a feature, concept, or workflow the docs explain authoritatively.
-- **Product pages** — link to the appropriate product page on `prisma.io` (e.g., `prisma.io/postgres`, `prisma.io/compute`, `prisma.io/orm`) when the skeleton names a Prisma product or describes what it does.
+- **Prisma product names (link the first mention to docs).** The first time the post names **Prisma Postgres**, **Prisma Compute**, or **Prisma Next**, link it inline to that product's documentation. These internal doc links build SEO and point the reader to the authoritative reference. Link the first mention only; do not re-link later occurrences. Use the canonical docs page, or a more specific docs page when one fits the sentence better:
+  - Prisma Postgres → `https://www.prisma.io/docs/postgres`
+  - Prisma Compute → `https://www.prisma.io/docs/compute`
+  - Prisma Next → `https://www.prisma.io/docs/orm` (Prisma Next is the next-generation Prisma ORM)
+- **Related blog posts (cross-link by topic).** When the skeleton mentions a topic an existing post covers in depth, link to that post. Search the blog content directory by topic and tag, not just by exact title, so you catch matches the wording doesn't make obvious. For example, a mention of a Postgres bloom filter or bloom index should link to the bloom-index post (`postgres-bloom-index-the-overlooked-postgres-feature`); a mention of `LISTEN`/`NOTIFY` should link to the post that covers it. These cross-links keep readers on the blog and strengthen internal SEO.
+- **Documentation** — link to relevant docs pages on `prisma.io/docs` when the skeleton mentions a feature, concept, or workflow beyond the three products above that the docs explain authoritatively.
+- **Product pages** — for a high-level, positioning-level mention of a product, the marketing page (`prisma.io/postgres`, `prisma.io/compute`, `prisma.io/orm`) can fit better than docs. Prefer docs for technical mentions; use the product page only for whole-product framing.
 
-Discover available internal links from the blog repository checkout (Step 3). Inspect existing blog posts in the content directory for relevant earlier articles. If the checkout includes docs or the operator can point to a docs checkout, inspect its structure for matching pages. For product pages, use Prisma's known site structure.
+Discover available internal links from the blog repository checkout (Step 3). Inspect existing blog posts in the content directory for relevant earlier articles, matching on topic and tags. If the checkout includes docs or the operator can point to a docs checkout, inspect its structure for matching pages. For product pages, use Prisma's known site structure.
 
 ### External links
 
@@ -154,6 +158,6 @@ Do not claim the post is "done" or "ready" — it is a skeleton handed back to t
 - **Contradicting positioning.** Read the positioning asset first. Do not write claims or framing that conflict with how Prisma describes itself; surface conflicts instead of papering over them.
 - **Skipping the author profile step for first-time contributors.** The missing profile is a common trip-wire. Surface it and scaffold it alongside the post.
 - **Inventing the pitch.** If the operator gave no direction, ask. Do not generate a topic from imagination.
-- **Over-linking.** Adding links to every proper noun, tangential reference, or vaguely related page produces a link farm, not a useful post. Link only when the reader genuinely benefits. If in doubt, leave it out — the operator can always add links later.
+- **Over-linking.** Adding links to every proper noun, tangential reference, or vaguely related page produces a link farm, not a useful post. Link only when the reader genuinely benefits. If in doubt, leave it out — the operator can always add links later. The one exception is the first mention of Prisma Postgres, Prisma Compute, and Prisma Next: always link those to docs for SEO.
 - **Linking to non-canonical sources.** External links must point to official sites and canonical docs. Wikipedia, Medium, third-party tutorials, and versioned URLs are not acceptable link targets.
 - **Modifying or relocating the operator's checkout.** If the checkout is the wrong repo or has unexpected state, surface it and ask — do not clean up, move, or reset it unilaterally.
