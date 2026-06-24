@@ -132,3 +132,14 @@ PR titles should follow the same convention as commits:
 - Prefer clarity over cleverness.
 - Avoid drive-by refactors inside feature/bugfix PRs.
 - Follow existing patterns within each app.
+
+---
+
+## Writing documentation
+
+Writing or editing a page in `apps/docs` or `apps/blog`? Start with the [`docs-writer` guide](.claude/skills/docs-writer/README.md). The "Writing style in one minute" section at the top is all you need to make a solid first contribution; the rest is there when you want it.
+
+It covers how we write docs for Prisma Postgres, Prisma Compute, and Prisma Next: page shape, how to write a step, what to cut, and a final-pass checklist, with a worked example for each kind of page.
+
+- **Using Claude Code?** The guide loads as a skill automatically. Ask it to write or improve a page.
+- **Not using Claude Code?** Read [`SKILL.md`](.claude/skills/docs-writer/SKILL.md) as a checklist and [`how-to-use.md`](.claude/skills/docs-writer/references/how-to-use.md) for examples.

@@ -15,7 +15,7 @@ The blog is owned by DevRel but contributed to by everyone, so do not assume the
 
 ## Assets
 
-- [`assets/positioning.md`](assets/positioning.md) — Prisma's positioning doc. Read it before drafting the lead and section stubs so the angle, framing, and product claims stay aligned with how Prisma describes itself. It is the source of truth for positioning — do not contradict it.
+- `assets/positioning.md` — Prisma's internal positioning doc. It is **not committed to this public repo** (it's gitignored); obtain it from the internal positioning source and place it at `assets/positioning.md` before drafting. Read it before writing the lead and section stubs so the angle, framing, and product claims stay aligned with how Prisma describes itself. It is the source of truth for positioning, so do not contradict it. If it is absent, ask the operator for the current positioning before grounding the post.
 
 ## Asking the operator questions
 
