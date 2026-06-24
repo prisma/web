@@ -1,0 +1,255 @@
+---
+title: "Price the Work, Not the Workflow"
+slug: "price-the-work-not-the-workflow"
+date: "2026-06-23"
+authors:
+  - "Luan van der Westhuizen"
+metaTitle: "Price the Work, Not the Workflow"
+metaDescription: "Agents can ship, preview, test, and retry in loops. Infrastructure pricing should charge for the work an app performs, not the workflow around it."
+heroImagePath: "/price-the-work-not-the-workflow/imgs/hero.png"
+metaImagePath: "/price-the-work-not-the-workflow/imgs/hero.png"
+heroImageAlt: "Agent-assisted development loop showing workflow activity around a small metered bill."
+series: prisma-compute
+seriesIndex: 8
+tags:
+  - "platform"
+  - "ai"
+---
+
+import { WorkPricingDiagram } from "./WorkPricingDiagram";
+
+The way software gets built is changing faster than the way infrastructure gets
+priced.
+
+When we worked through pricing for Prisma Compute, we kept coming back to one
+question: what should a bill look like when software is no longer built only by
+humans?
+
+The old shape was easier to reason about. A developer wrote code, opened a pull
+request, deployed it, and watched a human-sized number of environments. Pricing
+could lean on seats, plans, deploy events, and a few usage meters because the
+human workflow was a decent proxy for the work being done.
+
+That proxy is breaking.
+
+The next shape is looped. Some people call this loop engineering: a human sets
+intent, then agents keep the cycle moving through changes, checks, previews,
+retries, and handoffs back to human judgment. A single developer can now keep far
+more of these loops in motion than a human-only workflow ever allowed.
+
+Pricing has to survive that shift.
+
+The practical promise is simple: builders should be able to ship, preview, test,
+retry, and use agents without the workflow itself becoming the bill.
+
+**Price the work, not the workflow.**
+
+By **work**, we mean observable application activity and the resources that make
+it possible: requests, memory, CPU, and data sent out. By **workflow**, we mean
+the ceremony around building software: deploys, preview branches, retries, agent
+loops, and the number of humans with access.
+
+In practice, that means avoiding deploy-based pricing, preview charges, opaque
+credits, provider-specific compute units, and seats as the primary proxy for
+infrastructure work.
+
+<WorkPricingDiagram />
+
+This is still usage-based pricing in the familiar sense: when your app does more
+work, it costs more. The important question is what counts as usage. We think
+usage should mean observable application work, not seats, deploy events, preview
+creation, retries, opaque credits, provider-specific tokens, or a unit the user
+has to decode.
+
+## The problem is not more activity
+
+When agents participate in development, the number of software actions goes up.
+That is the point. More attempts, more checks, and more environments should make
+builders feel more capable, not more exposed.
+
+If a platform prices normal workflow activity as infrastructure consumption, the
+agentic future becomes expensive in the wrong places. Deploying more often feels
+financially suspicious. Creating a preview branch feels like a billing event.
+Asking an agent to test its own work carries a hidden penalty.
+
+That is backwards. Deploys, previews, and retries are not luxuries. They are the
+shape of modern development.
+
+The bill should start when application work happens: a request is handled, memory
+is kept allocated, CPU is consumed, or data is sent out. The existence of the
+workflow should not be the charge.
+
+The same principle applies to seats: useful for permissions, collaboration, and
+support, but weak as the primary unit for infrastructure work when a person,
+script, CI system, or agent can all start meaningful work.
+
+Infrastructure pricing should follow the work being done, not the headcount or
+the ceremony that triggered it.
+
+## The meter should explain the bill
+
+Too many infrastructure bills fail this test. The number goes up, and the user is
+left to dig through dashboards, plan pages, and provider-specific terms to
+understand why. Sometimes the answer is technically available but practically
+hidden. Sometimes different kinds of work are blended into one unit that is easy
+for the provider to price but hard for the builder to inspect.
+
+That is not good enough for the next era of software development.
+
+If agents are going to deploy, retry, test, and operate software on our behalf,
+then both humans and agents need bills they can read. A human should understand
+the shape of an application from the bill. An agent should be able to explain why
+spend changed without guessing how the provider charges.
+
+There is a temptation to hide infrastructure behind one simple unit: an abstract
+credit, provider-specific tokens, a compute unit, a clean line item. Simplicity
+matters. Nobody wants capacity planning just to ship.
+
+But hidden units become dangerous when they blend kinds of work that behave
+differently. A request is not CPU. CPU is not memory. Memory is not outbound
+transfer. Waiting on a model API is not executing CPU-heavy code. Serving JSON is
+not streaming a file.
+
+When those things are blended together too aggressively, the pricing table gets
+shorter, but the bill gets less honest.
+
+Our principle is: **one meter for each kind of consumption that behaves
+differently, and only when that meter makes the bill more legible.**
+
+Users should not need to pick instance sizes or tune autoscaling thresholds
+before they deploy. The platform should absorb that complexity. Once work
+happens, the bill should name it in terms the user can inspect.
+
+This matters for waiting-heavy applications. Waiting is not free if the app stays
+alive. It can still hold memory, and memory is real capacity. But waiting should
+not be disguised as CPU. CPU-heavy work should pay for CPU. Transfer-heavy work
+should pay for transfer. A long-lived process should account for the memory it
+keeps allocated.
+
+Readable pricing is not a nicer pricing page. It is a product requirement.
+
+## Builders should feel safe using agents
+
+There is an obvious fear with usage-based pricing in an agentic world: if agents
+do more, does the bill simply get bigger and scarier?
+
+It can, if the model only meters activity and leaves control as an afterthought.
+That is the failure mode we have to avoid.
+
+Pricing the work needs guardrails around it: estimates before work runs, usage
+visibility while spend is happening, warnings and spend controls that are more
+than apologies after the fact, room for small projects to explore safely, abuse
+protection, and usage data agents can read.
+
+The concrete shape should be boring. Before an agent runs a preview workflow, the
+platform should be able to say: this looks like cents unless traffic or transfer
+spikes. If that changes, the same system should show what changed while the work
+is happening.
+
+This is the psychological contract that matters. A builder should feel free to
+let agents do more of the mechanical iteration without treating every loop as a
+financial risk.
+
+Work has cost. Shipping should feel safe.
+
+## What this means for Prisma Compute
+
+Prisma Compute is in public beta, and Compute is free during beta. But pricing is
+part of the product model, so we are publishing how we expect it to work.
+
+If this thesis is real, it has to show up in the pricing table. Our current
+approach is a concrete expression of the principles above:
+
+<table>
+  <thead>
+    <tr>
+      <th>Meter</th>
+      <th style={{ textAlign: "right" }}>Expected price</th>
+      <th>What it represents</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <span style={{ whiteSpace: "nowrap" }}>Requests</span>
+      </td>
+      <td style={{ textAlign: "right" }}>
+        <code style={{ whiteSpace: "nowrap" }}>$1.00 / 1M requests</code>
+      </td>
+      <td>The familiar per-request anchor that keeps a normal app easy to estimate</td>
+    </tr>
+    <tr>
+      <td>
+        <span style={{ whiteSpace: "nowrap" }}>Provisioned memory</span>
+      </td>
+      <td style={{ textAlign: "right" }}>
+        <code style={{ whiteSpace: "nowrap" }}>$0.006 / GB-hour</code>
+      </td>
+      <td>Capacity kept alive while the app is running or intentionally kept awake</td>
+    </tr>
+    <tr>
+      <td>
+        <span style={{ whiteSpace: "nowrap" }}>Active CPU</span>
+      </td>
+      <td style={{ textAlign: "right" }}>
+        <code style={{ whiteSpace: "nowrap" }}>$0.064 / vCPU-hour</code>
+      </td>
+      <td>CPU your code actually consumes, not wall-clock waiting</td>
+    </tr>
+    <tr>
+      <td>
+        <span style={{ whiteSpace: "nowrap" }}>Outbound bandwidth</span>
+      </td>
+      <td style={{ textAlign: "right" }}>
+        <code style={{ whiteSpace: "nowrap" }}>$0.025 / GB</code>
+      </td>
+      <td>Data your app sends to the public internet</td>
+    </tr>
+  </tbody>
+</table>
+
+This is the practical shape of "price the work": no separate charge for
+deployments, no separate charge for preview branch creation, no charge for idle
+apps that have scaled to zero, and no Prisma-specific compute unit to decode.
+
+Under simple illustrative assumptions, this makes the model easy to inspect. A
+busy preview workflow with several deploys and smoke tests could be: 10k
+requests, a 1 GB preview kept warm for about 50 minutes (`0.833 GB-hours`),
+about 10 active CPU minutes (`0.167 vCPU-hours`), and 0.25 GB out. At the rates
+above, that is about `$0.03`.
+
+The deploys are not the bill. The work is.
+
+A month of ten thousand agent tasks, each mostly waiting on a model or another
+service, could be: 10k requests, each task alive for about 30 seconds on 1 GB
+memory (`83.33 GB-hours` total), plus about 3 active CPU seconds per task
+(`8.33 vCPU-hours` total), and 5 GB out. At the rates above, that is about
+`$1.17`. The bill separates the memory needed to stay alive from the CPU
+actually consumed while work runs.
+
+There is one line worth watching before you ship: outbound bandwidth. For
+streaming, media, exports, file-heavy apps, and high-transfer APIs, transfer can
+become the largest part of the bill. We expose it as its own meter rather than
+burying it inside a blended unit, and we expect to learn from it during beta.
+
+This is still a beta model. Rates, limits, included usage, and policy details may
+change before production billing turns on. But the direction is deliberate:
+familiar meters, no tax on shipping, no hidden Prisma unit, and usage data humans
+and agents can both reason about.
+
+## The future we are building for
+
+Compute is part of the Prisma developer platform, alongside Prisma Postgres and
+the Prisma ORM. The principle in this post is not only about Compute, it is how
+we think the platform should treat builders.
+
+To get that right, we need to learn from real workloads. How long apps stay
+alive, how much they compute versus wait, how much data they send out. Compute is
+now in public beta and free during this time. Tell us where these meters match
+how you actually build, and where they do not.
+
+Read the [Compute pricing docs](https://www.prisma.io/docs/compute/pricing) and
+follow the [Prisma Compute series](https://www.prisma.io/blog/series/prisma-compute)
+as the platform comes together.
+
+Price the work, not the workflow.

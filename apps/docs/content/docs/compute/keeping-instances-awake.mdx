@@ -1,0 +1,158 @@
+---
+title: Keeping instances awake
+description: "Keep a Prisma Compute instance awake so it does not scale to zero while you run background work, long-running jobs, or WebSocket connections."
+url: /compute/keeping-instances-awake
+metaTitle: "Keeping instances awake | Prisma Compute"
+metaDescription: Keep a Prisma Compute instance awake and prevent scale-to-zero while you run background work, long-running jobs, or WebSocket connections with waitUntil and KeepAwakeGuard from @prisma/compute.
+---
+
+By default, Prisma Compute [scales idle instances to zero](/compute/pricing) to save cost: idle instances sleep with a memory snapshot, then resume with memory intact in milliseconds. Some workloads need the instance to keep running instead. Long-running jobs, background processing, and open WebSocket connections all need the instance awake after a request ends or while no request is in flight.
+
+`@prisma/compute` provides two primitives for these cases:
+
+- `waitUntil`: keeps the current instance awake until a background promise settles.
+- `KeepAwakeGuard`: keeps the current instance awake until you release the guard.
+
+## When to keep instances awake
+
+Reach for `waitUntil` or `KeepAwakeGuard` when your app must keep running between requests, for example:
+
+- A long-running job that outlives the request that started it.
+- Background processing you kick off after returning a response.
+- A WebSocket connection that must stay open.
+
+If your work always finishes inside a single request, you do not need either primitive. Let the instance sleep as usual.
+
+## Use `waitUntil` for background promises
+
+Use `waitUntil` when you have a promise for background work that should keep the instance awake. This is the most direct API for work you start during a request but do not await before returning a response:
+
+```ts title="src/index.ts"
+import { waitUntil } from "@prisma/compute";
+
+export default {
+  fetch(req: Request) {
+    waitUntil(processInBackground(req), {
+      // Optional. Prevents a hanging promise from keeping the instance awake indefinitely.
+      signal: AbortSignal.timeout(30_000),
+    });
+
+    return new Response("Accepted");
+  },
+};
+```
+
+`waitUntil` follows the same pattern as [Cloudflare Workers](https://developers.cloudflare.com/workers/runtime-apis/context/#waituntil) and the [Service Worker API](https://developer.mozilla.org/en-US/docs/Web/API/ExtendableEvent/waitUntil): the instance stays awake until the promise settles. Prisma Compute adds an optional caller-owned `signal` value so you can stop the keep-awake effect if a promise hangs or never settles. The signal does not cancel the promise or the work it started.
+
+## Use `KeepAwakeGuard` for block-scoped or manual lifetimes
+
+Use `KeepAwakeGuard` when the keep-awake lifetime does not map cleanly to one promise, or when a block scope should control when the instance can resume normal scaling.
+
+`KeepAwakeGuard` implements the JavaScript [`Disposable` interface](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Resource_management), so you can use the `using` keyword to release it automatically at the end of the scope:
+
+```ts title="src/index.ts"
+import { KeepAwakeGuard } from "@prisma/compute";
+
+async function processBatch() {
+  using guard = new KeepAwakeGuard();
+
+  await fetchAllRecords();
+  await transformData();
+  await writeResults();
+}
+```
+
+While the guard is active, the instance does not sleep. When the scope exits, `using` disposes the guard and normal scaling resumes.
+
+If `using` is not available in your runtime or build setup, or if you need more granular control, release the guard in a `finally` block. This prevents a thrown error from leaving the guard active longer than intended:
+
+```ts title="src/index.ts"
+import { KeepAwakeGuard } from "@prisma/compute";
+
+async function processBatch() {
+  const guard = new KeepAwakeGuard();
+  try {
+    await fetchAllRecords();
+    await transformData();
+    await writeResults();
+  } finally {
+    guard.release();
+  }
+}
+```
+
+Calling `guard.release()` signals that the work is done and the instance can resume normal scaling behavior. Always release manually created guards, preferably from `finally`, unless `using` owns the lifetime for you.
+
+## The `signal` option
+
+`KeepAwakeGuard` accepts a caller-owned `signal` option. Use it as a safety fallback to release the guard if your code does not reach `release()`. The signal releases the keep-awake guard; it does not cancel the work protected by the guard.
+
+```ts title="src/index.ts"
+import { KeepAwakeGuard } from "@prisma/compute";
+
+const guard = new KeepAwakeGuard({
+  // Optional. Prevents a leaked guard from keeping the instance awake indefinitely.
+  signal: AbortSignal.timeout(30_000),
+});
+```
+
+:::warning
+
+The `signal` option is a fallback, not the primary way to control your work. Prefer `using` or `try`/`finally` for normal guard lifetimes. Use `signal` to cap the maximum keep-awake lifetime and avoid dangling guards.
+
+:::
+
+For example, combine `AbortSignal.timeout()` with `try`/`finally` when a job should keep the instance awake, but never for longer than a fixed duration:
+
+```ts title="src/index.ts"
+import { KeepAwakeGuard } from "@prisma/compute";
+
+async function processBatch() {
+  const guard = new KeepAwakeGuard({
+    // Optional. Prevents a leaked guard from keeping the instance awake indefinitely.
+    signal: AbortSignal.timeout(30_000),
+  });
+
+  try {
+    await fetchAllRecords();
+    await transformData();
+    await writeResults();
+  } finally {
+    guard.release();
+  }
+}
+```
+
+The `signal` follows the standard `AbortSignal` pattern, so you can pass any signal you control.
+
+## API reference
+
+### `waitUntil`
+
+```ts title="@prisma/compute"
+waitUntil(promise: Promise<unknown>, options?: { signal?: AbortSignal }): void;
+```
+
+Keeps the instance awake until `promise` settles. Pass `options.signal` as a caller-owned fallback to stop keeping the instance awake if the promise hangs or never settles. The signal does not cancel the promise.
+
+### `KeepAwakeGuard`
+
+```ts title="@prisma/compute"
+new KeepAwakeGuard(options?: { signal?: AbortSignal });
+```
+
+Creates a guard that keeps the instance awake until the guard is disposed, released, or its optional caller-owned `signal` aborts. The signal releases the guard; it does not cancel the work protected by the guard.
+
+| Member       | Type             | Description                                                                 |
+| ------------ | ---------------- | --------------------------------------------------------------------------- |
+| `release()`  | `() => void`     | Releases the guard, allowing the instance to resume normal scaling behavior. |
+| `Disposable` | `Symbol.dispose` | Enables automatic release with `using`.                                     |
+
+## Next steps
+
+- [Get started with Prisma Compute](/compute/getting-started): deploy your first app.
+- [Pricing](/compute/pricing): how scale-to-zero billing works.
+- [Deployments](/compute/deployments): build, deploy, logs, promote, and roll back.
+- [Environment variables](/compute/environment-variables): scoped configuration and secrets.
+- [Configuration](/compute/configuration): the `prisma.compute.ts` file reference.
+- [Known limitations](/compute/limitations): what the beta can and can't do.
