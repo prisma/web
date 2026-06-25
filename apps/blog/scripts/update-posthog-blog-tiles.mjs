@@ -82,7 +82,7 @@ function postsPerMonthQuery(tuples) {
     display: "ActionsBar",
     source: {
       kind: "HogQLQuery",
-      query: `SELECT toDate(concat(t.1, '-01')) AS month, t.2 AS posts FROM (SELECT arrayJoin([${tuples}]) AS t) ORDER BY month`,
+      query: `SELECT month, posts FROM (SELECT toDate(concat(t.1, '-01')) AS month, t.2 AS posts FROM (SELECT arrayJoin([${tuples}]) AS t)) WHERE month >= toStartOfMonth(today()) - toIntervalMonth(11) ORDER BY month`,
     },
     chartSettings: {
       xAxis: { column: "month" },
