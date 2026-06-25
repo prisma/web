@@ -92,12 +92,12 @@ Every step follows the same rhythm. Don't skip parts of it.
 
 Weak:
 
-> ### Initialize Prisma
+> **Initialize Prisma**
 > Run `npx prisma init`.
 
 Better:
 
-> ### Initialize Prisma
+> **Initialize Prisma**
 > Set up Prisma in your project. This creates a `prisma/` directory with your schema file and a `.env` file for your database connection string.
 >
 > ```terminal

@@ -146,9 +146,20 @@ End by giving the operator, in a short block:
 - The path to the post file (within their checkout).
 - The author profile path, if one was scaffolded.
 - A reminder that the repository workflow is theirs: create a feature branch, commit the skeleton (and author profile), push, and open the pull request following the blog repo's contribution process. The pull request should be opened as a **draft** until the post is fleshed out.
-- A clear next-step instruction: _"Edit the post to flesh out each section, keep it consistent with positioning, then branch, commit, push, and open a draft PR per the blog repo's contributing guide."_
+- A clear next-step instruction: _"Edit the post to flesh out each section, keep it consistent with positioning and free of AI slop (see Writing quality), then branch, commit, push, and open a draft PR per the blog repo's contributing guide."_
 
 Do not claim the post is "done" or "ready" — it is a skeleton handed back to the operator.
+
+## Writing quality
+
+The lead you draft, and the prose the author later writes over your stubs, ship to prisma.io/blog as public content. Draft the lead to this bar, and name the same bar in the hand-off so the author holds it:
+
+- **Open with the point.** Skip "Here's the thing", "It turns out", "In today's world". The first sentence says what the post is about.
+- **Name the actor.** A person or a product does the thing. Write "the team shipped the fix that week", not "the fix happened".
+- **Be specific.** Replace "this changes everything" or "the implications are significant" with the concrete change. Drop "every", "always", and "never" where a real number fits better.
+- **Cut filler.** No "really", "simply", "just", and no marketing verbs like "leverage", "unlock", "seamless", "powerful".
+- **Say it straight.** "Not X, but Y" and "X isn't the problem, Y is" telegraph the reversal. State Y.
+- **Vary sentence length**, and use a comma, colon, or period in place of em dashes.
 
 ## Anti-patterns
 

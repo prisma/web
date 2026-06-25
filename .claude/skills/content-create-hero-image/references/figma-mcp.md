@@ -12,6 +12,11 @@ The Figma Plugin API runs through the **`use_figma`** tool, which is gated behin
 its `skillNames` parameter. Work read-only and in small steps. Scripts use plain JS with
 top-level `await` and `return` (the return value is the only output channel).
 
+The snippets below use the `use_figma` query helpers — `node.query(selector)` (CSS-like
+selectors), `.values([...])`, and `.first()` — documented in the `figma-use` skill. These
+are `use_figma` conveniences layered on the Plugin API, not raw `figma.*` calls; the raw
+equivalents are `findAll`/`findOne` with a predicate.
+
 Point it at the **SOCIALS** file (or the current covers file) — ask the operator for the
 Figma URL, or operate on the file they have open. A design file URL looks like
 `figma.com/design/...`.

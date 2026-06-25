@@ -74,6 +74,8 @@ def main() -> None:
     rules = []
     for family, weight, fname in FACES:
         font_path = fonts / fname
+        if not font_path.is_file():
+            sys.exit(f"error: bundled font not found: {font_path}")
         if subset:
             opts = subset.Options()
             opts.flavor = "woff2"
