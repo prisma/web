@@ -1,0 +1,63 @@
+---
+title: "Search the Prisma Docs Using Your Coding Agent"
+slug: "search-prisma-docs-from-your-coding-agent"
+date: "2026-06-23"
+authors:
+  - "Ankur Datta"
+metaTitle: "Search the Prisma Docs Using Your Coding Agent"
+metaDescription: "The Prisma MCP server now answers documentation questions in your editor. Ask about ORM, Postgres, or Compute and get a cited answer, no tab-switching, no extra setup."
+heroImagePath: "/search-prisma-docs-from-your-coding-agent/imgs/hero.png"
+heroImageAlt: "Your coding agent can now search the Prisma docs"
+metaImagePath: "/search-prisma-docs-from-your-coding-agent/imgs/meta.png"
+tags:
+  - "ai"
+  - "orm"
+---
+
+Your coding agent is mid-task and needs one specific answer from the Prisma docs. The usual move is to switch to a browser, search, scan a page, and come back, losing your place along the way.
+
+The Prisma MCP server now skips that trip. Ask a documentation question about Prisma ORM, Prisma Postgres, schema design, or migrations, and get a cited answer assembled from the official docs, right where your agent is working. The tool rides along on the MCP server you already use to spin up databases: no new server to register, no extra auth, no client-side config.
+
+## What the docs tool does
+
+`search_prisma_documentation` takes a natural-language question and returns a cited answer with links back to the source. It is read-only, so it also works when your client runs in a restricted mode.
+
+## What the Prisma MCP server already does
+
+The [Prisma MCP server](/about-mcp-servers-and-how-we-built-one-for-prisma) lets AI tools manage Prisma Postgres through a standard interface: list databases, run SQL, introspect schemas. Docs search is the newest tool in that set, on the same server and connection. See the [MCP server docs](https://www.prisma.io/docs/ai/tools/mcp-server) for setup and the full tool list.
+
+## How docs search proxies Kapa
+
+Under the hood, `search_prisma_documentation` proxies [Kapa's hosted MCP server](https://docs.kapa.ai/integrations/mcp/guides/tutorial-proxy-kapa-from-your-mcp). Per call, our server connects to Kapa as a client, forwards your question, and returns the answer. Your client only ever talks to one endpoint, ours, while Kapa handles retrieval behind it.
+
+The Kapa API key stays server-side and never reaches your machine. Calls run through the same auth, rate limiting, and tracing as every other tool.
+
+## How to use it
+
+Connect to the Prisma MCP server as usual. For Claude Code:
+
+```bash
+claude mcp add --transport http prisma https://mcp.prisma.io/mcp
+```
+
+The same works in any MCP client, Cursor, Codex, Windsurf, VS Code, or the Vercel MCP integration, using that client's own MCP config and the `https://mcp.prisma.io/mcp` endpoint.
+
+Then just ask, and your agent picks the tool up on its own:
+
+> Use the Prisma docs search to find out how connection pooling works on Prisma Postgres.
+
+Or call it directly from any MCP client:
+
+```json
+{
+  "name": "search_prisma_documentation",
+  "arguments": { "query": "How do I deploy my project to Prisma Compute" }
+}
+```
+
+You get back a markdown answer with links to the relevant pages on [prisma.io/docs](https://www.prisma.io/docs).
+
+## One tool to access the entire Prisma docs
+
+The answers come from the full Prisma docs, so the same tool spans every latest product changes. Ask it about [Prisma Next](https://pris.ly/pn-ea), [Prisma Postgres](https://www.prisma.io/postgres), or [Prisma Compute](https://www.prisma.io/compute), and the answer comes back without leaving the editor.
+
