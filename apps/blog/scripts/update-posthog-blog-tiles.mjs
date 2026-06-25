@@ -114,9 +114,8 @@ function libraryAgeQuery(tuples) {
 }
 
 function recentPostsQuery(slugs) {
-  const arr = slugs.length
-    ? `[${slugs.map((s) => `'${s}'`).join(",")}]`
-    : "CAST([] AS Array(String))";
+  const quote = (s) => `'${s.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
+  const arr = slugs.length ? `[${slugs.map(quote).join(",")}]` : "CAST([] AS Array(String))";
   const query =
     `WITH recent AS (SELECT arrayJoin(${arr}) AS slug), ` +
     `pv AS (SELECT properties.$pathname AS path, count() AS pageviews, count(DISTINCT person_id) AS visitors ` +
@@ -153,13 +152,18 @@ console.log(
   `Blog posts: ${total} across ${hist.length} months (${hist[0]?.[0]} – ${hist.at(-1)?.[0]}); ${recent.length} recent (≤${RECENT_DAYS}d).`,
 );
 
-if (process.argv.includes("--dry-run") || !process.env.POSTHOG_API_KEY) {
-  console.log("\nDRY RUN — no POSTHOG_API_KEY set (or --dry-run passed). Queries that would be written:\n");
+if (process.argv.includes("--dry-run")) {
+  console.log("\nDRY RUN — queries that would be written (no API call):\n");
   console.log("posts-per-month:\n" + postsPerMonthQuery(tuples).source.query + "\n");
   console.log("library-age:\n" + libraryAgeQuery(tuples).source.query + "\n");
   console.log("recent slugs (" + recent.length + "): " + recent.join(", ") + "\n");
   console.log("recent-posts:\n" + recentPostsQuery(recent).source.query);
   process.exit(0);
+}
+
+if (!process.env.POSTHOG_API_KEY) {
+  console.error("Error: POSTHOG_API_KEY is not set. Set the repo secret, or pass --dry-run to preview.");
+  process.exit(1);
 }
 
 await patchInsight(INSIGHTS.postsPerMonth, postsPerMonthQuery(tuples));
