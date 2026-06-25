@@ -181,6 +181,58 @@ The flow for running said tests goes as follows:
 
 Each test suite will seed the database before all the test are run. After all the tests in the suite have finished, the data from all the tables will be dropped and the connection terminated.
 
+### Isolate test data with transactions
+
+For faster integration tests, you can wrap each test in an [interactive transaction](/orm/prisma-client/queries/transactions#interactive-transactions) and roll it back at the end. This keeps the test database available for the whole test run while still isolating data changes from one test to the next.
+
+This pattern works best when the code under test accepts a Prisma Client instance or transaction client as a dependency:
+
+```ts title="order-service.ts"
+import type { Prisma, PrismaClient } from "../generated/prisma/client";
+
+type DbClient = PrismaClient | Prisma.TransactionClient;
+
+export async function createCustomer(db: DbClient, email: string) {
+  return db.customer.create({
+    data: { email },
+  });
+}
+```
+
+Then, in your test, run the assertions inside an interactive transaction and intentionally roll back after the assertions complete:
+
+```ts title="order-service.test.ts"
+import { PrismaClient } from "../generated/prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { createCustomer } from "./order-service";
+
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL,
+});
+
+const prisma = new PrismaClient({ adapter });
+
+class RollbackTestTransaction extends Error {}
+
+test("creates a customer", async () => {
+  await prisma
+    .$transaction(async (tx) => {
+      const customer = await createCustomer(tx, "alice@example.com");
+
+      expect(customer.email).toBe("alice@example.com");
+
+      throw new RollbackTestTransaction();
+    })
+    .catch((error) => {
+      if (!(error instanceof RollbackTestTransaction)) {
+        throw error;
+      }
+    });
+});
+```
+
+If your application code opens its own transactions, uses a shared Prisma Client singleton, or needs savepoint-style nested transaction behavior, Prisma ORM does not provide a built-in test harness that transparently converts those nested transactions into `SAVEPOINT`s. In that case, use a community package such as [`@chax-at/transactional-prisma-testing`](https://github.com/chax-at/transactional-prisma-testing) or [`jest-prisma`](https://github.com/Quramy/jest-prisma), or refactor the code under test to accept a transaction client.
+
 ### The function to test
 
 The ecommerce application you are testing has a function which creates an order. This function does the following:
