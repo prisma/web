@@ -96,7 +96,9 @@ export default defineConfig({
           command: (cmd: string) => {
             const converted = convertLine(cmd, "bun");
             if (!converted) return undefined;
-            return converted.replace(/^bun x /gm, "bunx --bun ");
+            return converted
+              .replace(/^bun x (prisma(?:@\S+)? init\b)/gm, "bunx --bun $1")
+              .replace(/^bun x /gm, "bunx ");
           },
           name: "bun",
         },
