@@ -5,7 +5,7 @@ date: "2022-06-03"
 authors:
   - "Tasin Ishmam"
 metaTitle: "Build a REST API with NestJS, Prisma 7, PostgreSQL and Swagger"
-metaDescription: "Learn how to build a backend REST API with NestJS, Prisma ORM 7, PostgreSQL and Swagger. Set up the project, model your data, build the API and document it with Swagger — fully updated for Prisma 7 and NestJS 11."
+metaDescription: "Learn how to build a backend REST API with NestJS, Prisma ORM 7, PostgreSQL and Swagger. Set up the project, model your data, build the API and document it with Swagger. Fully updated for Prisma 7 and NestJS 11."
 heroImagePath: "/nestjs-prisma-rest-api-7D056s1BmOL0/imgs/hero-4bb8a42e7fe028072f5e7d90b2eff2435ad6dabb-844x474.svg"
 heroImageAlt: "Building a REST API with NestJS and Prisma"
 series: nestjs-prisma-rest-api
@@ -91,7 +91,7 @@ This is a beginner friendly tutorial. However, this tutorial assumes:
 To follow along with this tutorial, you will be expected to:
 
 - ... have [Node.js](https://nodejs.org) (v18 or higher) installed.
-- ... have a PostgreSQL database. The easiest option is [Prisma Postgres](https://www.prisma.io/postgres) — you can also run Postgres locally with [Docker](https://www.docker.com/) or a native install.
+- ... have a PostgreSQL database. The easiest option is [Prisma Postgres](https://www.prisma.io/postgres); you can also run Postgres locally with [Docker](https://www.docker.com/) or a native install.
 - ... have the [Prisma VSCode Extension](https://marketplace.visualstudio.com/items?itemName=Prisma.prisma) installed. _(optional)_
 - ... have access to a Unix shell (like the terminal/shell in Linux and macOS) to run the commands provided in this series. _(optional)_
 
@@ -109,7 +109,7 @@ You can use the NestJS CLI to create an empty project. To start, run the followi
 ```shell
 npx @nestjs/cli new median
 ```
-The CLI will prompt you to choose a _package manager_ for your project — choose **npm**. Afterward, you should have a new NestJS project in the current directory.
+The CLI will prompt you to choose a _package manager_ for your project. Choose **npm**. Afterward, you should have a new NestJS project in the current directory.
 
 Open the project in your preferred code editor (we recommend VSCode). You should see the following files:
 ```
@@ -150,16 +150,18 @@ This command will watch your files, automatically recompiling and reloading the 
 
 ## Create a PostgreSQL instance
 
-You will be using PostgreSQL as the database for your NestJS application. You have a few options for getting a database.
+You will be using PostgreSQL as the database for your NestJS application. You have a couple of options for getting one.
 
-**Option A — Prisma Postgres (recommended).** You can spin up a local Prisma Postgres server with a single command, no Docker required:
+**Option A: Prisma Postgres (recommended).** Create a free Prisma Postgres database in seconds, with no local setup, by running:
 
 ```shell
-npx prisma dev
+npx create-db
 ```
-Leave this command running in its own terminal window. It will print a `DATABASE_URL` connection string that you'll use in the next section. For a managed, production-ready database, create a free [Prisma Postgres](https://www.prisma.io/postgres) instance instead.
+This prints a `DATABASE_URL` connection string (along with a link to claim the database so you can keep it). Copy the `DATABASE_URL`; you'll paste it into your `.env` file in the next section. You can also create a Prisma Postgres database from the [Prisma Console](https://www.prisma.io/postgres).
 
-**Option B — Docker.** If you prefer to run Postgres yourself with Docker, create a `docker-compose.yml` file in the main folder of your project:
+> **Note**: Prefer to run Postgres locally with no cloud at all? `npx prisma dev` starts a local Prisma Postgres server in your terminal. It works for this tutorial, but the local server doesn't support the `prisma migrate dev` workflow you'll use later, so run `npx prisma db push` instead of `migrate dev` if you go this route. For the smoothest path through every step below, use `npx create-db` (Option A) or Docker (Option B).
+
+**Option B: Docker.** If you prefer to run Postgres yourself with Docker, create a `docker-compose.yml` file in the main folder of your project:
 
 ```shell
 touch docker-compose.yml
@@ -187,7 +189,7 @@ volumes:
 A few things to understand about this configuration:
 
 - The `image` option defines what Docker image to use. Here, you are using the [`postgres` image](https://hub.docker.com/_/postgres) version 17.
-- The `environment` option specifies the environment variables passed to the container during initialization. You can define the configuration options and secrets – such as the username and password – the container will use here.
+- The `environment` option specifies the environment variables passed to the container during initialization. You can define the configuration options and secrets (such as the username and password) the container will use here.
 - The `volumes` option is used for persisting data in the host file system.
 - The `ports` option maps ports from the host machine to the container. The format follows a `'host_port:container_port'` convention. In this case, you are mapping the port `5432` of the host machine to port `5432` of the `postgres` container. `5432` is conventionally the port used by PostgreSQL.
 
@@ -205,7 +207,7 @@ Now that the database is ready, it's time to set up Prisma!
 
 ### Initialize Prisma
 
-To get started, install the Prisma CLI along with two helpers you'll use later — `tsx` (to run the TypeScript seed script) and `dotenv` (to load environment variables) — as development dependencies:
+To get started, install the Prisma CLI along with two helpers you'll use later, `tsx` (to run the TypeScript seed script) and `dotenv` (to load environment variables), as development dependencies:
 
 ```shell
 npm install -D prisma tsx dotenv
@@ -215,18 +217,18 @@ You can initialize Prisma inside your project by running:
 ```shell
 npx prisma init --datasource-provider postgresql
 ```
-This creates a new `prisma` directory with a `schema.prisma` file, a **`prisma.config.ts`** file, and a `.env` file. In Prisma 7, `prisma.config.ts` is the central configuration file — it's where your database connection URL and other settings now live.
+This creates a new `prisma` directory with a `schema.prisma` file, a **`prisma.config.ts`** file, and a `.env` file. In Prisma 7, `prisma.config.ts` is the central configuration file; it's where your database connection URL and other settings now live.
 
 
 ### Set your environment variable
 
 Open the `.env` file and set `DATABASE_URL` to your database's connection string.
 
-If you're using `npx prisma dev` (Option A), copy the `DATABASE_URL` it printed:
+If you're using Prisma Postgres (Option A), paste the `DATABASE_URL` that `npx create-db` printed. It looks like this:
 
 ```shell
 # .env
-DATABASE_URL="postgres://postgres:postgres@localhost:51213/template1?sslmode=disable"
+DATABASE_URL="postgres://<user>:<password>@db.prisma.io:5432/postgres?sslmode=require"
 ```
 
 If you're using Docker (Option B), use the connection string for that instance:
@@ -235,13 +237,15 @@ If you're using Docker (Option B), use the connection string for that instance:
 # .env
 DATABASE_URL="postgresql://myuser:mypassword@localhost:5432/median-db?schema=public"
 ```
-> **Note**: The exact port and credentials depend on your setup. The connection string format for PostgreSQL is available in the [Prisma Docs](https://www.prisma.io/docs/orm/overview/databases/postgresql#connection-url).
+> **Note**: The exact host, port and credentials depend on your setup. The connection string format for PostgreSQL is available in the [Prisma Docs](https://www.prisma.io/docs/orm/overview/databases/postgresql#connection-url).
 
 Now open `prisma.config.ts`. Prisma generated it to read `DATABASE_URL` from your environment via `dotenv`. It should look like this:
 
 ```ts
 // prisma.config.ts
 
+// This file was generated by Prisma, and assumes you have installed the following:
+// npm install --save-dev prisma dotenv
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
@@ -251,7 +255,7 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env.DATABASE_URL,
+    url: process.env["DATABASE_URL"],
   },
 });
 ```
@@ -275,9 +279,9 @@ datasource db {
 ```
 This file is written in the _Prisma Schema Language_, which is a language that Prisma uses to define your database schema. The `schema.prisma` file has three main components:
 
-- **Data source**: Specifies your database connection. The provider is set to `postgresql`. Notice the connection URL is no longer here — in Prisma 7 it lives in `prisma.config.ts`.
+- **Data source**: Specifies your database connection. The provider is set to `postgresql`. Notice the connection URL is no longer here; in Prisma 7 it lives in `prisma.config.ts`.
 - **Generator**: Indicates that you want to generate Prisma Client, a type-safe query builder for your database. In Prisma 7, the `prisma-client` generator outputs the Client as source files into your project (here, `../generated/prisma`) rather than into `node_modules`. This makes the generated code transparent and bundler-friendly.
-- **Data model**: Defines your database _models_. Each model will be mapped to a table in the underlying database. Right now there are no models in your schema — you will add one in the next section.
+- **Data model**: Defines your database _models_. Each model will be mapped to a table in the underlying database. Right now there are no models in your schema; you will add one in the next section.
 
 Because NestJS compiles to CommonJS, add one option to the generator so the generated Client matches that module format:
 
@@ -380,11 +384,12 @@ This is the SQL needed to create the `Article` table inside your PostgreSQL data
 
 Currently, the database is empty. So you will create a _seed script_ that will populate the database with some dummy data.
 
-In Prisma 7, the Prisma Client is Rust-free and talks to your database through a **driver adapter**. For PostgreSQL, that adapter is `@prisma/adapter-pg`. Install it:
+In Prisma 7, the Prisma Client is Rust-free and talks to your database through a **driver adapter**. You need two runtime packages: `@prisma/client` (the runtime that your generated Client imports) and `@prisma/adapter-pg` (the PostgreSQL driver adapter). Install both:
 
 ```shell
-npm install @prisma/adapter-pg
+npm install @prisma/client @prisma/adapter-pg
 ```
+> **Note**: `@prisma/adapter-pg` pulls in the `pg` driver (and its types) for you, so there's no separate `pg` install. If you skip `@prisma/client`, the app fails at runtime with `Cannot find module '@prisma/client/runtime/client'`.
 
 Now create a seed file called `prisma/seed.ts`:
 
@@ -461,7 +466,7 @@ export default defineConfig({
     seed: "tsx prisma/seed.ts",
   },
   datasource: {
-    url: process.env.DATABASE_URL,
+    url: process.env["DATABASE_URL"],
   },
 });
 ```
@@ -1025,3 +1030,5 @@ Congratulations! You've built a rudimentary REST API using NestJS and Prisma 7. 
 One of the main takeaways from this tutorial is how easy it is to build a REST API with NestJS and Prisma. This is an incredibly productive stack for rapidly building well structured, type-safe and maintainable backend applications.
 
 If you want to keep building from here, start with the [Prisma getting started guide](https://www.prisma.io/docs/getting-started), learn more about [Prisma Migrate](https://www.prisma.io/docs/orm/prisma-migrate/getting-started), or create a [Prisma Postgres](https://www.prisma.io/postgres) database for your next NestJS project.
+
+> **What's next: Prisma Next.** Prisma Next is the next generation of Prisma ORM: a TypeScript-native rewrite that's extensible, composable, and built to work well with AI coding agents. When it's ready for general use, it becomes **Prisma 8**, the next major version of Prisma. It's in early access and still evolving, so Prisma 7 (used throughout this tutorial) remains the right choice for production today. If you want to try the future of Prisma and help shape it, run `npm create prisma@next`, explore the [early access docs](https://pris.ly/pn-ea), or star the [`prisma/prisma-next` repo](https://github.com/prisma/prisma-next).
