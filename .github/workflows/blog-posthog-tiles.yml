@@ -1,0 +1,38 @@
+name: Blog PostHog Tiles
+
+# Re-bakes the static "Blog posts published per month" and "Blog library age"
+# PostHog tiles from frontmatter publish dates whenever blog content changes,
+# so they stay current with no manual refresh. See
+# apps/blog/scripts/update-posthog-blog-tiles.mjs.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [apps/blog/content/blog/**/*.mdx]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  update-tiles:
+    name: Update PostHog blog tiles
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Re-bake PostHog tiles from frontmatter
+        run: node apps/blog/scripts/update-posthog-blog-tiles.mjs
+        env:
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
