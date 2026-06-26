@@ -10,7 +10,7 @@ metadata:
 
 Write documentation a developer can follow from start to finish without getting stuck or guessing. Every page answers three questions, in this order: what am I doing, why does it matter, and what do I do next.
 
-This skill is opinionated. If a rule here conflicts with an existing house style, follow the house style and tell the operator about the conflict.
+If a rule here conflicts with house style, follow the house style and flag the conflict to the operator.
 
 For a step-by-step example of writing each kind of page (how-to, concept, reference) and rewriting an existing one, see `references/how-to-use.md`.
 

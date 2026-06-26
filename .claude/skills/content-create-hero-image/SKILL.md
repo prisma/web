@@ -20,12 +20,7 @@ chat.
 Companion to `content-write-blog` (which scaffolds the post itself). This skill makes the
 imagery; it can be invoked standalone or as the cover step of that workflow.
 
-## Read first
-
-Use [`README.md`](README.md) when the operator asks how to use this skill or wants sample
-prompts. Use this `SKILL.md` as the execution contract when actually producing assets. Read
-[`references/design-system.md`](references/design-system.md) **before designing** and
-[`references/design-review.md`](references/design-review.md) **before the design-review pass**.
+Use [`README.md`](README.md) for usage and sample prompts; this `SKILL.md` is the execution contract for producing assets.
 
 ## References (load on demand)
 
@@ -77,11 +72,9 @@ cards. A single design may serve both files.
 
 ## Pre-conditions — halt if unmet
 
-1. A blog post slug is known or can be derived. If the operator has not given one, ask for the
-   slug or the post title and derive the kebab-case slug.
-2. The reference material is present: the bundled `assets/` (examples, logos, fonts, tokens) — or
-   the recent posts found during discovery. If nothing is available, ask the operator to supply
-   reference material before proceeding.
+1. A blog post slug, or a post title to derive the kebab-case slug from. Ask if neither is given.
+2. Reference material: the bundled `assets/` (examples, logos, fonts, tokens) or the recent posts
+   found during discovery. Ask the operator to supply some if none is available.
 
 ## Discover blog conventions
 
@@ -322,12 +315,11 @@ Visually inspect the rendered PNG, then verify:
 
 ## Anti-patterns
 
+(Format, filename, and destination rules live in _Output contract_ and _Validation_; these are the
+creative and brand traps a checklist can't catch.)
+
 - **Hardcoding blog conventions.** The repo evolves — always discover the image directory,
   filenames, and frontmatter fields from recent posts; the documented standard is a fallback.
-- **An SVG meta image.** Open Graph and social cards do not render SVG; the meta image is always
-  raster.
-- **A raster hero by default.** SVG is the house standard for the hero; use PNG only when the hero
-  is genuinely photographic and the operator asked for it.
 - **Generic AI look.** Glows everywhere, faux-3D blobs, busy gradients, literal robots. Prisma
   covers are restrained and typographic. When in doubt, remove an element.
 - **Off-system styling.** Inventing colors, or swapping the Mona Sans + Inter pairing (Barlow is
@@ -335,11 +327,6 @@ Visually inspect the rendered PNG, then verify:
 - **Decorative logos.** Marks are a footer sign-off or the subject — never wallpaper.
 - **Centering text-only layouts.** Default covers are left-anchored with right-side breathing room.
   Center only a single graphic-led composition.
-- **Content hashes or dimensions in filenames.** Keep the base names `hero` and `meta`; the
-  extension follows the format and nothing else.
-- **PNG-only or SVG-only.** SVG is the editable source of truth; the PNG is the export. Produce
-  both for the hero; the meta is always PNG.
-- **Saving to temp.** Final assets live in a durable repo location.
 - **Fabricating product palettes.** Postgres = teal, ORM = indigo. Compute/Next have no official
   tokens yet — use the platform teal and say so; don't invent a brand color.
 - **Tagline filler.** Avoid lines like `Resize. Encode. Cache.` If a secondary line is needed,

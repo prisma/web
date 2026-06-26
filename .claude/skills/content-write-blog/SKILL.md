@@ -9,7 +9,7 @@ metadata:
 
 Produce a _skeleton_ for a Prisma blog post — frontmatter, section headings, and short stubs — not a finished article. The human author writes the prose.
 
-This skill produces content only. It does **not** check out, branch, commit, push, or open pull requests against the blog repository. The operator owns the repository workflow: they prepare their own checkout of the blog repo, place or accept the skeleton into it, and push and open the pull request themselves, conforming to that repository's contribution process. Keep the boundary clear at every step.
+This skill produces content only. It does **not** check out, branch, commit, push, or open pull requests against the blog repository. The operator owns that workflow: they prepare the checkout, place the skeleton into it, and push and open the pull request following the repo's contribution process.
 
 The blog is owned by DevRel but contributed to by everyone, so do not assume the operator is on the DevRel team or familiar with the blog repository. Treat first-time contributors as the default case.
 
@@ -19,7 +19,7 @@ The blog is owned by DevRel but contributed to by everyone, so do not assume the
 
 ## Asking the operator questions
 
-When this skill needs a decision with a small set of options (which existing author to use, whether a proposal looks right, where the checkout lives), prefer a structured-choice question if the environment supports one. Fall back to plain questions when it does not, or when the answer is genuinely freeform (a pitch, a slug, a bio). Bias toward reasonable defaults from context; ask only when multiple valid paths exist.
+For a decision with a small set of options (which author, whether a proposal looks right, where the checkout lives), prefer a structured-choice question where the environment supports one; fall back to a plain question for freeform answers (a pitch, a slug, a bio). Bias toward reasonable defaults from context; ask only when multiple valid paths exist.
 
 ## Step 1: Gather the pitch
 
