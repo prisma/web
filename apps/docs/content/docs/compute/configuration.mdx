@@ -1,0 +1,197 @@
+---
+title: Configuration
+description: Declare your deployable app in a typed prisma.compute.ts file so deploys are reproducible and monorepos work, without re-passing flags every time.
+url: /compute/configuration
+metaTitle: "prisma.compute.ts configuration | Prisma Compute"
+metaDescription: "Reference for the prisma.compute.ts file: declare your app's framework, root, port, environment, and build settings, or several apps in a monorepo, with full type safety."
+---
+
+`prisma.compute.ts` is an optional, committed file that declares what you deploy. [`app deploy`](/compute/cli-reference#app) already works with zero config (it detects your framework and builds), so reach for a config file when you want one of these:
+
+- **Reproducible deploys.** Pin the framework, port, and build settings so every deploy (yours, a teammate's, or [deploy-on-push](/compute/github)) does the same thing without re-passing flags.
+- **A monorepo.** Declare several apps in one repository and deploy them together, or one at a time.
+- **Type safety.** Catch a typo'd field or an invalid framework in your editor, before you deploy.
+
+The file is read by `app deploy`, `app build`, and `app run`. It never selects your project, branch, or production; those stay explicit. It also does not configure a database; that stays on the [`--db` flag](/compute/cli-reference#app-deploy-options).
+
+## A minimal config
+
+Export a single `app` with `defineComputeConfig`:
+
+```ts title="prisma.compute.ts"
+import { defineComputeConfig } from "@prisma/compute-sdk/config";
+
+export default defineComputeConfig({
+  app: {
+    framework: "hono",
+    entry: "src/index.ts",
+    httpPort: 8080,
+  },
+});
+```
+
+Every field is optional. An empty `app: {}` is valid and defers entirely to detection. The values you do set become the defaults for `app deploy`; explicit flags still win over them.
+
+:::info
+
+`defineComputeConfig` is an identity helper that gives the file full type checking. The CLI resolves the import when it reads your config, so the file works without a local install. To get editor types, add the package as a dev dependency:
+
+```npm
+npm install -D @prisma/compute-sdk
+```
+
+JavaScript configs work too: a plain `export default { app: { ... } }` from `prisma.compute.js`/`.mjs`/`.cjs` is valid, just without the type checking.
+
+:::
+
+## App fields
+
+Each app accepts these fields. All are optional.
+
+| Field       | Type                          | Description                                                                                 |
+| ----------- | ----------------------------- | ------------------------------------------------------------------------------------------- |
+| `name`      | `string`                      | The deployed app name. Defaults to the `apps` key, then to inference from `package.json`.   |
+| `root`      | `string`                      | The app directory, relative to the config file. Defaults to the config file's directory.    |
+| `framework` | framework name                | One of `nextjs`, `nuxt`, `astro`, `hono`, `tanstack-start`, `bun`. Defaults to detection.   |
+| `entry`     | `string`                      | Entrypoint path for `bun` and `hono` apps, relative to the app root.                         |
+| `httpPort`  | `number`                      | The port your app listens on. Defaults to the framework's default.                          |
+| `env`       | `string` or `{ file, vars }`  | Environment inputs for the deploy. See [Environment](#environment).                          |
+| `build`     | `{ command, outputDirectory }`| Build settings. See [Build settings](#build-settings).                                       |
+
+```ts title="prisma.compute.ts"
+import { defineComputeConfig } from "@prisma/compute-sdk/config";
+
+export default defineComputeConfig({
+  app: {
+    name: "api",
+    framework: "hono",
+    entry: "src/index.ts",
+    httpPort: 8080,
+  },
+});
+```
+
+### Environment
+
+`env` is either a dotenv file path, or an object with file path(s) and inline variables:
+
+```ts title="prisma.compute.ts"
+export default defineComputeConfig({
+  app: {
+    // Shorthand: a single dotenv file.
+    env: ".env",
+  },
+});
+```
+
+```ts title="prisma.compute.ts"
+export default defineComputeConfig({
+  app: {
+    env: {
+      file: [".env", ".env.production"],
+      vars: { LOG_LEVEL: "info" },
+    },
+  },
+});
+```
+
+File paths resolve from the config file's directory. Any `--env` flag you pass on the command line **replaces** the config's env inputs entirely; they do not merge.
+
+:::info
+
+`prisma.compute.ts` is committed to your repository, so keep secrets out of inline `vars`. For real secrets and your database connection string, use scoped [environment variables](/compute/environment-variables) instead.
+
+:::
+
+### Build settings
+
+A `build` block lets you own how an app is built:
+
+```ts title="prisma.compute.ts"
+export default defineComputeConfig({
+  app: {
+    framework: "nextjs",
+    build: {
+      command: "pnpm run build",
+      outputDirectory: ".next/standalone",
+    },
+  },
+});
+```
+
+- Both fields are optional. A field you set overrides the framework default; a field you omit is inferred.
+- `command: null` skips the build step entirely.
+- A `build` block applies to `nextjs`, `hono`, `tanstack-start`, and `bun`. `nuxt` and `astro` run their own framework CLI, so a `build` block with those frameworks is a configuration error.
+
+Without a `build` block, the CLI infers everything (running your `package.json` build script when there is one, otherwise the framework default) and shows you what it chose during the deploy.
+
+## Where the file lives
+
+`app deploy` reads the **nearest** config file, searching from your current directory up to the repository or workspace root (the closest ancestor with a `.git`, `pnpm-workspace.yaml`, `bun.lock`, or a `workspaces` field). Discovery never escapes the repository.
+
+Per directory, exactly one of `prisma.compute.ts`, `prisma.compute.mts`, `prisma.compute.js`, `prisma.compute.mjs`, or `prisma.compute.cjs` may exist.
+
+The config file's directory is treated as the project directory: the [`.prisma/local.json`](/compute/getting-started#link-an-existing-project) project pin lives there, and paths in the config (`root`, `env.file`) resolve from there. That means the config means the same thing no matter which subdirectory you run the command from.
+
+## Monorepos
+
+Use `apps` instead of `app` to declare several apps in one repository, keyed by a target name:
+
+```ts title="prisma.compute.ts"
+import { defineComputeConfig } from "@prisma/compute-sdk/config";
+
+export default defineComputeConfig({
+  apps: {
+    api: {
+      root: "apps/api",
+      framework: "hono",
+      entry: "src/index.ts",
+    },
+    web: {
+      root: "apps/web",
+      framework: "nextjs",
+    },
+  },
+});
+```
+
+All the apps live in one project, deploying to the same branch. From here:
+
+- **Deploy everything** with a bare `app deploy`, which deploys every app in order. This is the default when no target is named or inferred:
+
+  ```npm
+  npx @prisma/cli@latest app deploy
+  ```
+
+- **Deploy one app** by naming its target, or by running from inside its `root` (the deepest matching root wins):
+
+  ```npm
+  npx @prisma/cli@latest app deploy api
+  ```
+
+  ```npm
+  cd apps/api && npx @prisma/cli@latest app deploy
+  ```
+
+When you deploy everything at once, per-app flags like `--framework` or `--entry` are rejected as ambiguous. Pass a target to apply them to one app. Project- and branch-level flags (`--branch`, `--db`, `--prod`, `--yes`) apply to the whole run.
+
+`app build` and `app run` always target a single app in a multi-app config. Unlike `deploy`, they have no all-apps form, so pass a target or run from inside the app's `root`.
+
+## How config and flags interact
+
+Config values are deploy **defaults**. Explicit flags always win:
+
+- `--framework`, `--entry`, and `--http-port` override their config value.
+- Any `--env` flag replaces the config's env inputs entirely.
+- `--app` and `PRISMA_APP_ID` outrank the config's app `name` for app selection.
+
+The config never sets your project, branch, or production target; those are always resolved the same way, [from the directory's project link and your Git branch](/compute/cli-reference#app-deploy-options). Settings that did come from the file are labeled `set by prisma.compute.ts` in the deploy output, so you can always see where a value came from.
+
+A config that fails to load or validate stops the deploy before any remote work, with a clear message pointing at the field to fix.
+
+## What's next
+
+- [CLI reference](/compute/cli-reference): every command, flag, and error code.
+- [Deploy your first app](/prisma-compute/deploy): the end-to-end quickstart.
+- [Environment variables](/compute/environment-variables): scoped configuration, secrets, and your database connection string.
+- [GitHub integration](/compute/github): deploy-on-push, including monorepos.

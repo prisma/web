@@ -1,5 +1,7 @@
 import { blog } from "./source";
 import { getSeriesMetadata } from "./series-registry";
+import { toBlogCardItem } from "./post-card-item";
+import type { BlogCardItem } from "@/components/BlogGrid";
 
 type BlogPage = ReturnType<typeof blog.getPages>[number];
 
@@ -17,8 +19,8 @@ export type SeriesContext = {
   posts: SeriesPostRef[];
   index: number;
   total: number;
-  prev: SeriesPostRef | null;
-  next: SeriesPostRef | null;
+  prev: BlogCardItem | null;
+  next: BlogCardItem | null;
 };
 
 function getSlug(page: BlogPage): string {
@@ -108,7 +110,7 @@ export function getSeriesContext(page: BlogPage): SeriesContext | null {
     posts: posts.map(toRef),
     index: currentIndex >= 0 ? currentIndex + 1 : 0,
     total: posts.length,
-    prev: prevPage ? toRef(prevPage) : null,
-    next: nextPage ? toRef(nextPage) : null,
+    prev: prevPage ? toBlogCardItem(prevPage) : null,
+    next: nextPage ? toBlogCardItem(nextPage) : null,
   };
 }

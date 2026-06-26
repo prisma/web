@@ -11,6 +11,13 @@
  * cards take prime real estate.
  */
 export const seriesRegistry = {
+  "agentic-engineering": {
+    title: "Agentic engineering at Prisma",
+    description:
+      "How Prisma builds software with AI agents: introducing the practice, the process and documentation layer that make cross-repo agent work possible, the Drive process and the Maker role, and how the approach keeps evolving as models and harnesses improve.",
+    featured: false,
+    relatedSeries: ["prisma-next", "prisma-compute"],
+  },
   "prisma-compute": {
     title: "Prisma Compute",
     description:
@@ -18,12 +25,14 @@ export const seriesRegistry = {
     featured: true,
     docsUrl: "https://docs.prisma.io/docs/prisma-compute",
     docsLabel: "Read the Prisma Compute docs",
+    relatedSeries: ["agentic-engineering", "prisma-next"],
   },
   "prisma-next": {
     title: "Prisma Next",
     description:
       "Follow the journey of Prisma Next, the next evolution of Prisma ORM. From the announcement and roadmap to TypeScript migrations, the extension API, and Early Access.",
     featured: true,
+    relatedSeries: ["agentic-engineering", "prisma-compute"],
   },
   "rust-to-typescript-migration-journey": {
     title: "Prisma ORM: The Complete Rust-to-TypeScript Migration Journey",
@@ -83,6 +92,7 @@ export const seriesRegistry = {
     featured?: boolean;
     docsUrl?: string;
     docsLabel?: string;
+    relatedSeries?: readonly string[];
   }
 >;
 
@@ -94,6 +104,7 @@ export type SeriesMetadata = {
   featured?: boolean;
   docsUrl?: string;
   docsLabel?: string;
+  relatedSeries?: readonly string[];
 };
 
 function hasSeriesKey(key: string): key is SeriesKey {

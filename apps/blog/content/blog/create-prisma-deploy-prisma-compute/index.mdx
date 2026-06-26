@@ -1,0 +1,91 @@
+---
+title: "Deploy Prisma Apps with create-prisma"
+slug: "create-prisma-deploy-prisma-compute"
+date: "2026-06-19"
+authors:
+  - "Aman Varshney"
+metaTitle: "Deploy Prisma Apps with create-prisma"
+metaDescription: "create-prisma now scaffolds Compute-ready Prisma apps with prisma.compute.ts, compute:deploy, Prisma Postgres, and Prisma Skills add-ons."
+heroImagePath: "/create-prisma-deploy-prisma-compute/imgs/hero.svg"
+heroImageAlt: "Scaffold a deploy-ready app with create-prisma: bun create prisma@latest, then choose a template, generate a typed config, and add Postgres and Skills."
+metaImagePath: "/create-prisma-deploy-prisma-compute/imgs/meta.png"
+excerpt: "create-prisma now scaffolds Compute-ready Prisma apps with prisma.compute.ts, compute:deploy, Prisma Postgres, and Prisma Skills add-ons."
+series: prisma-compute
+seriesIndex: 4
+tags:
+  - "announcement"
+  - "platform"
+  - "prisma-postgres"
+---
+
+`create-prisma` now scaffolds apps that deploy to [Prisma Compute](/blog/launching-prisma-compute-public-beta) out of the box.
+
+Run the initializer, pick a Compute-ready template, and the generated project can include:
+
+- Prisma schema, client helper, seed file, database scripts, and env file
+- `prisma.compute.ts` with the app's Compute defaults
+- Prisma Postgres setup, when selected
+- Prisma Skills, the Prisma MCP server, and editor add-ons, when selected
+- a `compute:deploy` script for later deploys
+
+```bash
+bun create prisma@latest
+```
+
+![Terminal output from create-prisma showing Prisma Compute setup](/create-prisma-deploy-prisma-compute/imgs/create-prisma-terminal.png)
+
+## The deploy config it writes for you
+
+For Compute-ready templates, the scaffold and the deploy defaults live in the same repo. The generated env file, app name, port, and framework drive the first deploy and every redeploy after it.
+
+For a Hono app, `create-prisma` writes a config like this:
+
+```typescript
+import { defineComputeConfig } from "@prisma/compute-sdk/config";
+
+export default defineComputeConfig({
+  app: {
+    name: "my-api",
+    framework: "hono",
+    httpPort: 8080,
+    env: ".env",
+  },
+});
+```
+
+That file is the whole deploy contract. For a closer look at it, including how it scales to monorepos, see [Configure Prisma Compute deploys in TypeScript](/blog/prisma-compute-config-file).
+
+## Add-ons that set your agent up
+
+The add-ons are optional, but the Skills add-on changes how an agent works with the repo. It installs Prisma Agent Skills from [`prisma/skills`](https://github.com/prisma/skills), including the `prisma-compute` skill for deploys, logs, domains, and the rest of the Compute workflow.
+
+With that in place, your agent already knows how to change the app and redeploy it. You don't have to spell out the steps in every prompt.
+
+## Redeploying after a change
+
+A project created with `create-prisma` ships with `prisma.compute.ts` and a `compute:deploy` script.
+
+After you make a change, redeploy from the project:
+
+```bash
+cd my-api
+bun run compute:deploy
+```
+
+The script redeploys your app code using the defaults in `prisma.compute.ts`. Database provisioning and migrations stay outside the deploy script.
+
+For an app you didn't scaffold, call the Prisma CLI directly:
+
+```bash
+bunx @prisma/cli@latest app deploy
+```
+
+## Where to go next
+
+`create-prisma` gets you from nothing to a deployed app and database in one command, with the config already wired up. From here:
+
+- Read [Configure Prisma Compute deploys in TypeScript](/blog/prisma-compute-config-file) to understand `prisma.compute.ts` and monorepo deploys in depth.
+- Follow the [deploy quickstart](https://docs.prisma.io/docs/prisma-compute/deploy) to take the generated app to a live URL.
+- Browse the [Prisma Compute docs](https://docs.prisma.io/docs/compute) for branching, environment variables, and the full CLI reference.
+
+Compute is in [public beta](https://docs.prisma.io/docs/compute) and free while the beta lasts. It runs your app on the same infrastructure as [Prisma Postgres](https://www.prisma.io/postgres), which has a generous free tier of its own, so the project you scaffold today already has somewhere to run. Tell us what you build in [#prisma-compute](https://pris.ly/discord-compute) on Discord.

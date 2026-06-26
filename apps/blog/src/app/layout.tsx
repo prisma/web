@@ -8,6 +8,7 @@ import Script from "next/script";
 import { BLOG_HOME_DESCRIPTION, BLOG_HOME_TITLE } from "@/lib/blog-metadata";
 import { FontAwesomeScript as EclipseFA } from "@prisma/eclipse";
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
+import { GoogleTagManager } from "@prisma-docs/ui/components/google-tag-manager";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -30,11 +31,7 @@ const blogStructuredData = createBlogStructuredData();
 
 export default function Layout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="en"
-      className={`${inter.variable} ${barlow.variable}`}
-      suppressHydrationWarning
-    >
+    <html lang="en" className={`${inter.variable} ${barlow.variable}`} suppressHydrationWarning>
       <head>
         <JsonLd id="blog-structured-data" data={blogStructuredData} />
         {/* FontAwesome — not render-critical; explicit strategy prevents accidental beforeInteractive promotion */}
@@ -50,6 +47,8 @@ export default function Layout({ children }: LayoutProps<"/">) {
           src="https://cdn-cookieyes.com/client_data/96980f76df67ad5235fc3f0d/script.js"
           strategy="afterInteractive"
         />
+        {/* Google Tag Manager — consent-gated; activates only after CookieYes analytics consent */}
+        <GoogleTagManager section="blog" />
       </head>
       <body className="flex flex-col min-h-screen relative">
         <div className="bg-blog absolute inset-0 -z-1 overflow-hidden" />
