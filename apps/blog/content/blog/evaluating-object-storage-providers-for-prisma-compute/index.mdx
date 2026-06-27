@@ -82,18 +82,20 @@ For this workload, Tigris was clearly faster.
 
 The main reason is that this benchmark is latency-sensitive, not just bandwidth-sensitive. After setup, it performs `2000` small serial operations against `10 KiB` files. That punishes every extra remote round trip. Tigris' global bucket model handled that shape much better than R2's regional bucket model, even after we created R2 buckets from each Prisma Compute region.
 
-Here is the averaged data across the six regions:
+The regional view makes that clearer. The mixed phase is where the latency gap shows up, so the compact version below focuses on that part of the benchmark. Timings are rounded seconds; each cell is `Tigris/R2 (R2 slowdown)`.
 
-| Provider | Size | Avg insert | Avg mixed reads/writes | R2/Tigris mixed ratio |
-| --- | ---: | ---: | ---: | ---: |
-| Tigris | 50 MiB | 3.2s | 109.5s | 1.0x |
-| R2 | 50 MiB | 10.2s | 578.7s | 5.3x slower |
-| Tigris | 500 MiB | 29.3s | 183.3s | 1.0x |
-| R2 | 500 MiB | 99.3s | 688.5s | 3.8x slower |
-| Tigris | 5 GiB | 312.2s | 265.8s | 1.0x |
-| R2 | 5 GiB | 1079.4s | 860.7s | 3.2x slower |
+```text
+Region         R2 loc  50 MiB           500 MiB          5 GiB
+Singapore      APAC    62/765 (12.3x)   113/918 (8.1x)  147/1140 (7.7x)
+Tokyo          APAC    82/498 (6.1x)    212/610 (2.9x)  332/773 (2.3x)
+Frankfurt      EEUR    94/584 (6.2x)    184/682 (3.7x)  263/905 (3.4x)
+Paris          WEUR    121/421 (3.5x)   220/532 (2.4x)  316/628 (2.0x)
+N. Virginia    ENAM    216/438 (2.0x)   219/498 (2.3x)  304/686 (2.3x)
+N. California  WNAM    82/767 (9.4x)    151/891 (5.9x)  233/1033 (4.4x)
+Average        -       110/579 (5.3x)   183/689 (3.8x)  266/861 (3.2x)
+```
 
-R2 did correctly create local-ish buckets. Across the benchmark, the R2 locations were `APAC`, `EEUR`, `WEUR`, `ENAM`, and `WNAM`. So the issue was not simply that the bucket landed in the wrong part of the world. For this access pattern, the per-operation latency was still much higher.
+The R2 location column matters: R2 did correctly create local-ish buckets in `APAC`, `EEUR`, `WEUR`, `ENAM`, and `WNAM`. So the issue was not simply that the bucket landed in the wrong part of the world. For this access pattern, the per-operation latency was still much higher.
 
 ## The in-flight benchmark
 
