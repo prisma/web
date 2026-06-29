@@ -83,7 +83,7 @@ The mixed-phase numbers tell you _that_ Tigris was faster. The same run also rec
 | 500 MiB | 9.8 / 56.3 / 181 ms | 66.4 s | 41.9 / 88.0 / 177 ms | 153.8 s |
 | 5 GiB | 8.9 / 55.5 / 169 ms | 72.6 s | 44.4 / 105.7 / 237 ms | 229.7 s |
 
-Two things stand out. Tigris' floor is about `4x` lower: its quickest reads land near `10 ms`, where R2's fastest sit around `44 ms`. On a workload of thousands of small serial reads, that floor sets the pace. And because Tigris' average per-read latency is roughly half of R2's, the cumulative time spent reading from the object store comes out at `54-73 s` against R2's `143-230 s` — closely tracking the mixed-phase gap.
+Two numbers explain the gap. Tigris' floor is about `4x` lower: its quickest reads land near `10 ms`, where R2's fastest sit around `44 ms`. On a workload of thousands of small serial reads, that floor sets the pace. And because Tigris' average per-read latency is roughly half of R2's, the cumulative time spent reading from the object store comes out at `54-73 s` against R2's `143-230 s` — closely tracking the mixed-phase gap.
 
 The cache helps both providers, but it cannot hide the floor. At `50 MiB`, where the whole dataset fits inside the `100 MiB` cache, the filesystem read latency `accelerated-fs` actually returns is well below the raw object latency: `29 ms` p95 on Tigris and `107 ms` p95 on R2. As the dataset grows past the cache, more reads fall through to the object store and the two layers converge — at `5 GiB` the filesystem read p95 is `423 ms` on Tigris and `436 ms` on R2. Past the cache, you pay object store latency directly.
 
@@ -111,34 +111,34 @@ The insert phase was almost identical from the plane. The mixed read/write phase
 
 ## A different axis: bulk throughput
 
-Everything above is about latency — the time for one small operation. Bandwidth is a separate axis, and a virtual filesystem occasionally has to move a large blob, not just `10 KiB` files. So I ran one more probe across the same eight combinations: a single `50 MiB` object, one `PutObject` and one `GetObject` per trial, three trials each.
+Everything above is about latency — the time for one small operation. Bandwidth is a separate axis, and a virtual filesystem occasionally has to move a large blob, not just `10 KiB` files. So I ran one more probe across the same eight combinations: a single `50 MiB` object, one `PutObject` and one `GetObject` per sample, `100` samples each.
 
-![Average bulk throughput in MiB/s for a 50 MiB upload and download, three trials each, across the eight runtime-and-store combinations. Upload bars extend left, download bars right. AWS S3 from Compute is fastest, about 91 up and 84 down; S3 Express downloads at about 90. Tigris from Compute is slowest at roughly 14 to 15. R2 is in the middle and downloads faster than it uploads. Tigris is markedly faster from Lambda than from Compute.](/evaluating-object-storage-providers-for-prisma-compute/imgs/bulk-throughput.svg)
+![Average bulk throughput in MiB/s for a 50 MiB upload and download, 100 samples each, across the eight runtime-and-store combinations. Upload bars extend left, download bars right. AWS S3 from Compute is the fastest and steadiest, about 91 up and 83 down. Tigris from Compute is close behind at about 60 up and 81 down, its download nearly matching S3 but with a much wider spread. S3 Express from Compute is around 76 up and 72 down. R2 is the slowest on both axes, around 18 up and 25 down, and downloads faster than it uploads. S3 Express measured from an in-region Lambda in Ireland downloads fastest of all, about 99.](/evaluating-object-storage-providers-for-prisma-compute/imgs/bulk-throughput.svg)
 
-On this axis the order from the latency tests inverts. AWS S3, built for exactly this, is the throughput champion — about `91 MiB/s` up and `84 MiB/s` down from Compute — with S3 Express close behind on download at `~90 MiB/s`. Tigris, which had the lowest per-operation latency, is the slowest at bulk transfer: roughly `15 MiB/s` from a Compute machine in Frankfurt. R2 sits in the middle and downloads noticeably faster than it uploads.
+This axis tells a different story from the latency tests, though not a clean inversion. AWS S3, built for exactly this, is the throughput champion — about `91 MiB/s` up and `83 MiB/s` down from Compute — and also the steadiest. Tigris, which had the lowest per-operation latency, holds up well here too: about `60 MiB/s` up and `81 MiB/s` down from Compute, its download nearly matching S3, though its spread is wide. S3 Express from Compute lands around `76 MiB/s` up and `72 MiB/s` down. The clear laggard is R2, at roughly `18 MiB/s` up and `25 MiB/s` down from Compute — the same store that trailed on latency — and it still downloads noticeably faster than it uploads.
 
-Two details stand out. First, Compute and Lambda diverge here, where for latency they were nearly identical. Tigris is about `3x` faster from Lambda than from Compute, while S3 is faster from Compute than from its own in-region Lambda. The likely cause is raw network bandwidth — an AWS Lambda's throughput scales with its memory size, while a Compute machine has its own pipe — so on this axis the result says as much about the client as the store.
+Two details stand out. First, Compute and Lambda diverge here, where for latency they were nearly identical. For the three Frankfurt stores — Tigris, R2, and standard S3 — Compute is the faster client, moving more data than an in-AWS Lambda in every case. The likely cause is raw network bandwidth — an AWS Lambda's throughput scales with its memory size, while a Compute machine has its own pipe — so on this axis the result says as much about the client as the store. (S3 Express is the exception, but only because its Lambda client sits in-region in Ireland while its Compute client crosses from Frankfurt — see below.)
 
-Second, latency and bandwidth are decoupled. S3 Express still downloads at `~90 MiB/s` from Compute even though that path crosses from Frankfurt to Ireland and pays a heavy per-operation latency penalty. For a single large transfer you pay the round trip once and then stream, so the cross-region hop that dominated the small-object workload barely dents bulk throughput.
+Second, latency and bandwidth are decoupled. S3 Express still moves a respectable `~76 MiB/s` up and `~72 MiB/s` down from Compute even though that path crosses from Frankfurt to Ireland and pays a heavy per-operation latency penalty. For a single large transfer you pay the round trip once and then stream, so the cross-region hop that dominated the small-object workload barely dents bulk throughput.
 
-With only three trials per combo there is real noise — some were steady, like Compute to S3 at `87/95/92 MiB/s`, while others bounced, like Compute to Tigris at `16/16/10` — so read the averages below as rough.
+Across `100` samples per combo, the spread is as revealing as the averages. S3 from Compute is rock-steady — its uploads ranged only from `82` to `93 MiB/s`. Tigris from Compute is fast on average but highly variable: uploads swung from `20` to `96 MiB/s` and downloads from `39` to `158`, so its headline numbers sit on top of a wide distribution. R2 is slow on both axes, and not especially steady either.
 
 | Runtime | Store | Upload MiB/s | Download MiB/s |
 | --- | --- | --: | --: |
-| Compute | Tigris | 14.1 | 15.3 |
-| Compute | R2 | 20.4 | 52.8 |
-| Compute | S3 | 91.4 | 84.3 |
-| Compute | S3 Express | 68.8 | 90.5 |
-| Lambda | Tigris | 39.7 | 46.7 |
-| Lambda | R2 | 27.8 | 40.5 |
-| Lambda | S3 | 61.0 | 73.4 |
-| Lambda | S3 Express | 48.0 | 90.1 |
+| Compute | Tigris | 60.2 | 81.3 |
+| Compute | R2 | 17.7 | 24.9 |
+| Compute | S3 | 91.1 | 83.4 |
+| Compute | S3 Express | 76.4 | 71.9 |
+| Lambda | Tigris | 46.1 | 65.8 |
+| Lambda | R2 | 16.6 | 23.1 |
+| Lambda | S3 | 62.6 | 73.0 |
+| Lambda | S3 Express | 64.2 | 98.8 |
 
-None of this changes the verdict for `accelerated-fs`: that workload is thousands of small operations, where latency rules and Tigris wins. Bulk transfer is simply a different regime — and one where, if it were our main workload, S3 would be the obvious pick.
+None of this changes the verdict for `accelerated-fs`: that workload is thousands of small operations, where latency rules and Tigris wins. Bulk transfer is simply a different regime — and one where, if it were our main workload, S3 would be the obvious pick, both the fastest and the steadiest of the four.
 
 ## What this means for Prisma Compute
 
-This is not a universal object storage benchmark. It does not say that every app should pick Tigris over R2. If your workload is mostly bulk upload/download — where S3 pulled well ahead above — or if your application already lives inside Cloudflare's network, your results may look different.
+This is not a universal object storage benchmark. It does not say that every app should pick Tigris over R2. If your workload is mostly bulk upload/download — where S3 pulled well ahead — or if your application already lives inside Cloudflare's network, your results may look different.
 
 But this is the workload we care about right now: a virtual filesystem over object storage, with a local cache and a metadata layer, running from any Prisma Compute region. In that shape, the object store sits on the hot path. Every small operation matters.
 
