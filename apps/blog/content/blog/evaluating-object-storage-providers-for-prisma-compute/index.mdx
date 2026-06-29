@@ -5,7 +5,7 @@ date: "2026-06-26"
 authors:
   - "Søren Bramer Schmidt"
 metaTitle: "Evaluating Object Storage Providers for Prisma Compute"
-metaDescription: "We benchmarked Tigris and Cloudflare R2 from six Prisma Compute regions using a latency-sensitive virtual filesystem workload."
+metaDescription: "We benchmarked Tigris and Cloudflare R2 from six Prisma Compute regions using a latency-sensitive virtual filesystem workload, with AWS S3 and S3 Express as a baseline."
 heroImagePath: "/evaluating-object-storage-providers-for-prisma-compute/imgs/hero.png"
 heroImageAlt: "Global object storage benchmark paths between Prisma Compute regions and storage buckets"
 metaImagePath: "/evaluating-object-storage-providers-for-prisma-compute/imgs/meta.png"
@@ -75,6 +75,39 @@ Average        -       110/579 (5.3x)   183/689 (3.8x)  266/861 (3.2x)
 
 The R2 location column matters: R2 did correctly create local-ish buckets in `APAC`, `EEUR`, `WEUR`, `ENAM`, and `WNAM`. So the issue was not simply that the bucket landed in the wrong part of the world. For this access pattern, the per-operation latency was still much higher.
 
+The mixed-phase numbers tell you _that_ Tigris was faster. The same run also recorded _why_, by sampling latency at two layers: the read latency `accelerated-fs` returns to the application after its cache, and the raw per-operation latency of the object store underneath it. The object store layer is where the gap is born.
+
+| Workload | Tigris floor / avg / p95 | Tigris object reads | R2 floor / avg / p95 | R2 object reads |
+| --- | :--: | --: | :--: | --: |
+| 50 MiB | 9.8 / 44.7 / 131 ms | 53.8 s | 43.8 / 90.6 / 171 ms | 143.0 s |
+| 500 MiB | 9.8 / 56.3 / 181 ms | 66.4 s | 41.9 / 88.0 / 177 ms | 153.8 s |
+| 5 GiB | 8.9 / 55.5 / 169 ms | 72.6 s | 44.4 / 105.7 / 237 ms | 229.7 s |
+
+Two things stand out. Tigris' floor is about `4x` lower: its quickest reads land near `10 ms`, where R2's fastest sit around `44 ms`. On a workload of thousands of small serial reads, that floor sets the pace. And because Tigris' average per-read latency is roughly half of R2's, the cumulative time spent reading from the object store comes out at `54-73 s` against R2's `143-230 s` — closely tracking the mixed-phase gap.
+
+The cache helps both providers, but it cannot hide the floor. At `50 MiB`, where the whole dataset fits inside the `100 MiB` cache, the filesystem read latency `accelerated-fs` actually returns is well below the raw object latency: `29 ms` p95 on Tigris and `107 ms` p95 on R2. As the dataset grows past the cache, more reads fall through to the object store and the two layers converge — at `5 GiB` the filesystem read p95 is `423 ms` on Tigris and `436 ms` on R2. Past the cache, you pay object store latency directly.
+
+## A baseline: AWS Lambda to S3 and S3 Express
+
+Tigris and R2 are both designed to run outside a single hyperscaler. To put their latency in context, I ran the same `accelerated-fs` workload from inside AWS instead — an AWS Lambda function reading and writing a bucket in its own region — against both standard S3 and [S3 Express One Zone](https://aws.amazon.com/s3/storage-classes/express-one-zone/), AWS' low-latency, single-AZ storage class. This is the in-network, same-region best case that a no-egress provider has to compete with. I ran it across seven AWS regions; the numbers below are averages.
+
+| Store | Workload | Insert | Mixed | Object floor / p95 | Object reads |
+| --- | --- | --: | --: | :--: | --: |
+| S3 | 50 MiB | 3.7 s | 105.3 s | 21.1 / 61.9 ms | 48.9 s |
+| S3 | 500 MiB | 33.8 s | 183.1 s | 20.2 / 63.6 ms | 51.4 s |
+| S3 | 5 GiB | 340.3 s | 224.8 s | 20.0 / 115.4 ms | 86.7 s |
+| S3 Express | 50 MiB | 2.6 s | 33.1 s | 5.3 / 9.9 ms | 12.7 s |
+| S3 Express | 500 MiB | 22.7 s | 92.3 s | 5.4 / 8.9 ms | 12.5 s |
+| S3 Express | 5 GiB | 223.4 s | 105.6 s | 5.3 / 9.6 ms | 18.6 s |
+
+Two clear results. Standard S3, read in-region from Lambda, has a per-operation floor around `20 ms` — between Tigris and R2, and better than R2 even though R2's bucket sat close to the compute. S3 Express is in a different class: a `5 ms` floor and a p95 under `10 ms` that barely moves as the dataset grows. That is what a storage class purpose-built for small, latency-sensitive object access looks like, and it carries straight through to the mixed phase, which S3 Express finished in between a third and a half of standard S3's time.
+
+Lined up by per-operation read latency, the four backends form a clear ladder:
+
+![Per-operation object store read latency on the 50 MiB workload. S3 Express One Zone ran from a 5.3 ms floor to a 9.9 ms p95, Tigris from 9.8 ms to 131 ms, standard S3 from 21 ms to 62 ms, and Cloudflare R2 from 44 ms to 171 ms. S3 and S3 Express were measured from AWS Lambda in the same region; Tigris and R2 from Prisma Compute.](/evaluating-object-storage-providers-for-prisma-compute/imgs/object-read-latency.svg)
+
+This is a baseline, not a head-to-head. The S3 and S3 Express runs are fully in-network: Lambda and the bucket sit in the same AWS region, so they take the shortest possible path. The Tigris and R2 runs cross from Prisma Compute into a third-party network. S3 Express is also single-AZ, priced above standard S3, and — unlike Tigris and R2 — bills for egress. With those caveats, the result is still encouraging: from outside AWS, with no egress fees and a single global bucket, Tigris' `10 ms` floor undercuts in-region standard S3's `20 ms`. Its p95 tail is wider than S3's, and nothing here touches S3 Express's `5 ms` floor — but among the no-egress stores we can actually deploy against, Tigris is the clear fit.
+
 ## The in-flight benchmark
 
 Since I was already on Starlink, I also ran the same workload from 36,000 feet. This is not the environment Prisma Compute runs in, but it was a useful sanity check: if the bottleneck is small serial operations, the same pattern should show up from a very different network.
@@ -89,6 +122,6 @@ This is not a universal object storage benchmark. It does not say that every app
 
 But this is the workload we care about right now: a virtual filesystem over object storage, with a local cache and a metadata layer, running from any Prisma Compute region. In that shape, the object store sits on the hot path. Every small operation matters.
 
-For `accelerated-fs` and the broader Prisma Compute platform, Tigris is the better fit today. It gave us one durable shared bucket, no egress fees, and much lower latency on the serial small-object workload that agents are likely to create when they use object storage as a backing filesystem.
+For `accelerated-fs` and the broader Prisma Compute platform, Tigris is the better fit today. It gave us one durable shared bucket, no egress fees, and much lower latency on the serial small-object workload that agents are likely to create when they use object storage as a backing filesystem. The AWS baseline gave that a yardstick: from outside AWS, Tigris' per-operation floor matched same-region standard S3 and trailed only S3 Express, AWS' purpose-built low-latency tier.
 
 We will keep benchmarking as we build more of Prisma Compute's integrated platform services. The important part is to benchmark the thing you actually plan to run. In this case, that meant many small files, a cache smaller than the full dataset, and serial operations from the regions where our users' apps will execute.
