@@ -1,0 +1,130 @@
+---
+title: "Evaluating Object Storage Providers for Prisma Compute"
+slug: "evaluating-object-storage-providers-for-prisma-compute"
+date: "2026-06-26"
+authors:
+  - "Søren Bramer Schmidt"
+metaTitle: "Evaluating Object Storage Providers for Prisma Compute"
+metaDescription: "We benchmarked Tigris and Cloudflare R2 from six Prisma Compute regions using a latency-sensitive virtual filesystem workload, with AWS S3 and S3 Express as a baseline."
+heroImagePath: "/evaluating-object-storage-providers-for-prisma-compute/imgs/hero.svg"
+heroImageAlt: "Tigris finished about 3x faster than Cloudflare R2 on the mixed read/write phase across six Prisma Compute regions"
+metaImagePath: "/evaluating-object-storage-providers-for-prisma-compute/imgs/meta.png"
+tags:
+  - "platform"
+  - "ai"
+series: prisma-compute
+seriesIndex: 9
+---
+
+We built [Prisma Compute](https://www.prisma.io/docs/compute), now in [public beta](/blog/launching-prisma-compute-public-beta), because existing serverless compute offerings felt too limited. It runs [Bun](https://bun.sh/) in microVMs and uses automatic memory snapshotting, so it gives much of the feel of a long-running server with the pricing model of serverless.
+
+Bun's batteries-included approach inspired us too. Over time, we want Prisma Compute to offer integrated solutions for email, auth, object storage, and more. This post is about one of those pieces: object storage.
+
+As I write this, I have just begun a 16-hour flight across the Atlantic to San Francisco for AI Engineering World Fair, with Starlink holding up well enough to keep shipping. It is a good time to benchmark object storage providers for the kind of workloads we expect Prisma Compute to run.
+
+## What we cared about
+
+AWS S3 set the standard for object storage, including the 11 nines of durability the rest of the industry later adopted. So our selection criteria came down to the areas that actually separate providers: price and performance.
+
+We operate outside the AWS ecosystem, so the egress fees of the major clouds matter. The exact bill depends on region, tier, and volume, but public list prices still put common internet egress paths in the same rough cost class: [AWS S3 pricing](https://aws.amazon.com/s3/pricing/) shows examples at `$0.09/GB`, [Azure bandwidth pricing](https://azure.microsoft.com/en-us/pricing/details/bandwidth/) lists `$0.087/GB` for the next 10 TB from North America and Europe on the Premium Global Network, and [Google Cloud Storage pricing](https://cloud.google.com/storage/pricing) treats network usage as its own pricing component.
+
+That makes object stores with no egress charges especially interesting. [Cloudflare R2](https://developers.cloudflare.com/r2/pricing/) and [Tigris](https://www.tigrisdata.com/pricing/) both publish no-egress pricing, both are S3-compatible, and both are designed for large-scale usage outside a single hyperscaler. So those were the two providers I tested.
+
+## The workload
+
+We are experimenting with ways to let agents work with large amounts of data on Prisma Compute. One experiment is [`accelerated-fs`](https://github.com/prisma/accelerated-fs), a virtual filesystem implemented in TypeScript that uses a small local cache to provide fast access to a much larger dataset in remote object storage.
+
+Think of an agent that needs to store and index all of your email locally so it can grep through it quickly. The useful interface is a filesystem. The durable backing store can be object storage. The hard part is making that feel fast when the working set is bigger than local disk.
+
+That made `accelerated-fs` a realistic benchmark target. I had Codex create a small load-test app, deploy it to all six Prisma Compute regions, and collect the results.
+
+![How the benchmark was set up: one load-test app deployed to all six Prisma Compute regions, each running accelerated-fs with a 100 MiB local cache and the same workload of 10 KiB files up to 50 MiB, 500 MiB, and 5 GiB followed by 1000 random reads and 1000 random writes, serial and interleaved, against two object stores. Tigris used a single global bucket shared by all regions; Cloudflare R2 used a separate bucket placed near each region.](/evaluating-object-storage-providers-for-prisma-compute/imgs/benchmark-setup.svg)
+
+For each provider and region, the benchmark did the same work:
+
+1. Create `10 KiB` files up to a configured dataset size.
+2. Run `1000` random reads and `1000` random writes.
+3. Keep reads and writes serial and interleaved.
+4. Repeat the workload for `50 MiB`, `500 MiB`, and `5 GiB`.
+5. Use a `100 MiB` local cache.
+
+Tigris supports global buckets, so all regions used the same bucket. For R2, I created the bucket from the benchmark app so the bucket would be placed close to the Prisma Compute region running the test.
+
+## The result
+
+For this workload, Tigris was clearly faster.
+
+![Average mixed read and write benchmark phase across six Prisma Compute regions. Tigris finished in 109.5 seconds, 183.3 seconds, and 265.8 seconds for the 50 MiB, 500 MiB, and 5 GiB workloads. R2 finished in 578.7 seconds, 688.5 seconds, and 860.7 seconds.](/evaluating-object-storage-providers-for-prisma-compute/imgs/mixed-latency-chart.svg)
+
+The main reason is that this benchmark is latency-sensitive, not just bandwidth-sensitive. After setup, it performs `2000` small serial operations against `10 KiB` files. That punishes every extra remote round trip. Tigris' global bucket model handled that shape much better than R2's regional bucket model, even after we created R2 buckets from each Prisma Compute region.
+
+The regional view makes that clearer. The mixed phase is where the latency gap shows up, so the compact version below focuses on that part of the benchmark. Timings are rounded seconds; each cell is `Tigris/R2 (R2 slowdown)`.
+
+```text
+Region         R2 loc  50 MiB           500 MiB          5 GiB
+Singapore      APAC    62/765 (12.3x)   113/918 (8.1x)  147/1140 (7.7x)
+Tokyo          APAC    82/498 (6.1x)    212/610 (2.9x)  332/773 (2.3x)
+Frankfurt      EEUR    94/584 (6.2x)    184/682 (3.7x)  263/905 (3.4x)
+Paris          WEUR    121/421 (3.5x)   220/532 (2.4x)  316/628 (2.0x)
+N. Virginia    ENAM    216/438 (2.0x)   219/498 (2.3x)  304/686 (2.3x)
+N. California  WNAM    82/767 (9.4x)    151/891 (5.9x)  233/1033 (4.4x)
+Average        -       110/579 (5.3x)   183/689 (3.8x)  266/861 (3.2x)
+```
+
+The R2 location column matters: R2 did correctly create local-ish buckets in `APAC`, `EEUR`, `WEUR`, `ENAM`, and `WNAM`. So the issue was not simply that the bucket landed in the wrong part of the world. For this access pattern, the per-operation latency was still much higher.
+
+The mixed-phase numbers tell you _that_ Tigris was faster. The same run also recorded _why_, by sampling latency at two layers: the read latency `accelerated-fs` returns to the application after its cache, and the raw per-operation latency of the object store underneath it. The object store layer is where the gap is born.
+
+| Workload | Tigris floor / avg / p95 | Tigris object reads | R2 floor / avg / p95 | R2 object reads |
+| --- | :--: | --: | :--: | --: |
+| 50 MiB | 9.8 / 44.7 / 131 ms | 53.8 s | 43.8 / 90.6 / 171 ms | 143.0 s |
+| 500 MiB | 9.8 / 56.3 / 181 ms | 66.4 s | 41.9 / 88.0 / 177 ms | 153.8 s |
+| 5 GiB | 8.9 / 55.5 / 169 ms | 72.6 s | 44.4 / 105.7 / 237 ms | 229.7 s |
+
+Two numbers explain the gap. Tigris' floor is about `4x` lower: its quickest reads land near `10 ms`, where R2's fastest sit around `44 ms`. On a workload of thousands of small serial reads, that floor sets the pace. And because Tigris' average per-read latency is roughly half of R2's, the cumulative time spent reading from the object store comes out at `54-73 s` against R2's `143-230 s`, closely tracking the mixed-phase gap.
+
+The cache helps both providers, but it cannot hide the floor. At `50 MiB`, where the whole dataset fits inside the `100 MiB` cache, the filesystem read latency `accelerated-fs` actually returns is well below the raw object latency: `29 ms` p95 on Tigris and `107 ms` p95 on R2. As the dataset grows past the cache, more reads fall through to the object store and the two layers converge. At `5 GiB` the filesystem read p95 is `423 ms` on Tigris and `436 ms` on R2. Past the cache, you pay object store latency directly.
+
+## The in-flight benchmark
+
+Since I was already on Starlink, I also ran the same workload from 36,000 feet. This is obviously not the environment Prisma Compute runs in, but I thought it would be a fun experiment. These are the timings of the 50 MiB mixed read/write phase.
+
+![In-flight Starlink comparison for the averaged mixed read and write phase. Tigris completed in 248.5 seconds and R2 completed in 618.5 seconds.](/evaluating-object-storage-providers-for-prisma-compute/imgs/starlink-mixed-chart.svg)
+
+As before, R2 is much slower than Tigris, and both are much slower than the land-based version. Turns out fiber optic cables beat space lasers after all!
+
+## A baseline: the same stores from AWS Lambda
+
+The numbers so far are aggregates. To see the full shape of the latency, and to check whether Prisma Compute pays any penalty reaching these stores, I ran a focused probe: `1,000` individual `10 KiB` reads and `1,000` writes against each store, issued once from a Prisma Compute machine in Frankfurt and again, as a baseline, from an [AWS Lambda](https://aws.amazon.com/lambda/) function. The targets were the Tigris global bucket, an R2 bucket in `EEUR`, AWS S3 in `eu-central-1`, and [S3 Express One Zone](https://aws.amazon.com/s3/storage-classes/express-one-zone/), AWS' low-latency, single-AZ storage class.
+
+![Per-operation latency distributions for 10 KiB reads and writes from Frankfurt, on Prisma Compute and AWS Lambda, against Tigris, Cloudflare R2, AWS S3, and S3 Express One Zone. R2 is the slowest and broadest; standard S3 is moderate; Tigris has the lowest median among the Frankfurt stores but a long tail past 300 ms. S3 Express is the fastest of all when measured in-region from a Lambda in Ireland, around 7 ms, but its Prisma Compute ridge sits near 25 ms because that test crosses from Frankfurt to the Ireland bucket. For Tigris, R2, and S3 the Compute and Lambda ridges nearly coincide.](/evaluating-object-storage-providers-for-prisma-compute/imgs/latency-distributions.svg)
+
+Three things stand out.
+
+First, for the three stores available in Frankfurt (Tigris, R2, and standard S3), Prisma Compute and AWS Lambda behave almost identically. Each store's distribution looks the same from either client, and the paired ridges sit on top of each other: standard S3 reads, for instance, have a `32 ms` median from both. Reaching these stores from Prisma Compute pays no platform tax. The gaps are between the stores, not the compute.
+
+Second, the stores have very different shapes. R2 is the slowest and broadest, with read medians near `85 ms` and write medians near `170 ms`. Standard S3 is moderate, around a `32 ms` read median, and unusually its writes run quicker than its reads. Tigris has the lowest typical latency of the Frankfurt stores, a read median of `14-18 ms`, but a long tail, with roughly `1%` of reads spiking past `300 ms`. S3 Express One Zone, measured in-region, is faster and tighter than anything else: from a Lambda in Ireland its reads cluster around `7 ms` with almost no spread.
+
+Third, S3 Express comes with an asterisk. AWS offers it in only a handful of regions, none of them Frankfurt, so its bucket lives in Ireland (`eu-west-1`); the Lambda test runs there too, in-region, which is where that `7 ms` comes from. Prisma Compute has no Ireland region, so its test reaches the same Ireland bucket from Frankfurt, and its S3 Express ridge sits near `25 ms`. The extra `~18 ms` is just the Frankfurt-to-Ireland round trip, not the store. Until there is a Compute region beside an S3 Express region, that hop is the cost of using it from Prisma Compute, on top of S3 Express being single-AZ and, unlike Tigris and R2, billing for egress.
+
+## A different axis: bulk throughput
+
+Everything above is about latency, the time for one small operation. Bandwidth is a separate axis. A virtual filesystem occasionally has to move a large blob, not just `10 KiB` files, so I ran one more probe across the same eight combinations: a single `50 MiB` object, one `PutObject` and one `GetObject` per sample, `100` samples each.
+
+![Average bulk throughput in MiB/s for a 50 MiB upload and download, 100 samples each, across the eight runtime-and-store combinations. Upload bars extend left, download bars right. AWS S3 from Compute is the fastest and steadiest, about 91 up and 83 down. Tigris from Compute is close behind at about 60 up and 81 down, its download nearly matching S3 but with a much wider spread. S3 Express from Compute is around 76 up and 72 down. R2 is the slowest on both axes, around 18 up and 25 down, and downloads faster than it uploads. S3 Express measured from an in-region Lambda in Ireland downloads fastest of all, about 99.](/evaluating-object-storage-providers-for-prisma-compute/imgs/bulk-throughput.svg)
+
+This axis tells a different story from the latency tests, though not a clean inversion. AWS S3, built for exactly this, is the throughput champion and the steadiest: about `91 MiB/s` up and `83 MiB/s` down from Compute. Tigris, which had the lowest per-operation latency, holds up well here too: about `60 MiB/s` up and `81 MiB/s` down from Compute, its download nearly matching S3, though its spread is wide. S3 Express from Compute lands around `76 MiB/s` up and `72 MiB/s` down. The clear laggard is R2, at roughly `18 MiB/s` up and `25 MiB/s` down from Compute, the same store that trailed on latency, and it still downloads noticeably faster than it uploads.
+
+Two details stand out. First, Compute and Lambda diverge here, where for latency they were nearly identical. For the three Frankfurt stores (Tigris, R2, and standard S3), Compute is the faster client, moving more data than an in-AWS Lambda in every case. The likely cause is raw network bandwidth: an AWS Lambda's throughput scales with its memory size, while a Compute machine has its own pipe. On this axis the result says as much about the client as the store. (S3 Express is the exception, but only because its Lambda client sits in-region in Ireland while its Compute client crosses from Frankfurt, as noted above.)
+
+Second, latency and bandwidth are decoupled. S3 Express still moves a respectable `~76 MiB/s` up and `~72 MiB/s` down from Compute even though that path crosses from Frankfurt to Ireland and pays a heavy per-operation latency penalty. For a single large transfer you pay the round trip once and then stream, so the cross-region hop that dominated the small-object workload barely dents bulk throughput.
+
+Across `100` samples per combo, the spread is as revealing as the averages. S3 from Compute is rock-steady: its uploads ranged only from `82` to `93 MiB/s`. Tigris from Compute is fast on average but highly variable: uploads swung from `20` to `96 MiB/s` and downloads from `39` to `158`, so its headline numbers sit on top of a wide distribution. R2 is slow on both axes, and not especially steady either.
+
+## What this means for Prisma Compute
+
+This is not a universal object storage benchmark. It does not say that every app should pick Tigris over R2. If your workload is mostly bulk upload and download, where S3 pulled well ahead, or if your application already lives inside Cloudflare's network, your results may look different.
+
+For `accelerated-fs`, Tigris is the better fit today. It gave us one durable shared bucket, no egress fees, and much lower latency on the serial small-object workload that agents are likely to create when they use object storage as a backing filesystem. The AWS baseline reassured us on the platform question: for stores that run in the same region, Prisma Compute reaches them just as quickly as an in-AWS Lambda function does. The latency is the store's, not a penalty for running outside AWS. (S3 Express is the lone exception, and only because AWS doesn't offer it in Frankfurt.)
+
+We will keep benchmarking as we build more of Prisma Compute's integrated platform services. The important part is to benchmark the thing you actually plan to run. In this case, that meant many small files, tested for both latency and throughput from all our regions. This was an interesting first dataset, and we will keep evaluating Tigris before integrating it directly into Prisma Compute.
