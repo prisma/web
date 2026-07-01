@@ -231,6 +231,11 @@ const config = {
         destination: "/",
         permanent: true,
       },
+      {
+        source: "/the-database-should-not-become-the-product",
+        destination: "/xeito-prisma-customer-story",
+        permanent: true,
+      },
       ...tagSlugs.map((tag) => ({
         source: `/${tag}`,
         destination: `/?tag=${tag}`,
