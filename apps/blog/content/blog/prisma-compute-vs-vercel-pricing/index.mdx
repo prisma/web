@@ -1,0 +1,98 @@
+---
+title: "Prisma Compute vs Vercel Pricing"
+slug: "prisma-compute-vs-vercel-pricing"
+date: "2026-07-01"
+authors:
+  - "Martin Janse van Rensburg"
+heroImagePath: "/prisma-compute-vs-vercel-pricing/imgs/hero.svg"
+heroImageAlt: "The same 20M-request month costs about $98 on Prisma Compute at planned rates versus about $236 on Vercel (Pro), saving about $138 or 58% every month."
+metaImagePath: "/prisma-compute-vs-vercel-pricing/imgs/meta.png"
+tags:
+  - "prisma-postgres"
+  - "platform"
+metaDescription: "Prisma Compute vs Vercel, priced line by line: the same workload runs ~$98 vs ~$236. See why, and why Vercel bills the workflow while Prisma bills the work."
+---
+
+You're weighing [Prisma Compute](https://www.prisma.io/compute) against Vercel to host a TypeScript app, and you want the hard numbers quick. Here they are, with some _musings_ about them after.
+
+:::note
+Prisma Compute is in **public beta** and free right now. The rates cited here are the [_expected_ production prices](https://www.prisma.io/docs/compute/pricing); they might still change by the time actual billing starts. [Vercel's pricing](https://vercel.com/pricing) is live.
+:::
+
+## Comparing Prisma Compute and Vercel by usage meter
+
+Both are usage-based and scale to zero, so once an app goes idle, it costs nothing.
+
+| Meter | Prisma Compute (Beta) | Vercel (Pro) | Cheaper |
+|---|---|---|---|
+| Requests / invocations | $1.00 / 1M | $0.60 / 1M | **Vercel** (~40% less) |
+| Provisioned memory | $0.006 / GB-hour | $0.0106 / GB-hour | **Prisma** (~43% less) |
+| Active CPU | $0.064 / vCPU-hour | $0.128 / vCPU-hour | **Prisma** (half) |
+| Outbound bandwidth | $0.025 / GB | $0.15 / GB | **Prisma** (6× less) |
+| Edge requests _(workflow)_ | None | $2.00 / 1M | **Prisma** |
+| Seat fee _(workflow)_ | None | $20 / user / mo (incl. $20 credit) | **Prisma** |
+
+**Note:** Vercel has a defined free tier and a more mature platform including a global edge network and a big ecosystem. Prisma Compute's production free allowance is work-in-progress, and it is a brand new product.
+
+## Comparing a 20M-request app on Prisma Compute vs Vercel
+
+Here's a single growing app for a month. Let's assume 20M requests, 2 GB of memory held while running (call it always-on for a 730-hour month, so 1,460 GB-hours), 300 vCPU-hours of actual compute, and 2 TB of outbound traffic. One seat.
+
+| Line | Prisma Compute (Beta) | Vercel (Pro, 1 seat) |
+|---|---|---|
+| Requests / invocations (20M) | $20.00 | $12.00 |
+| Memory (1,460 GB-hrs) | $8.76 | $15.48 |
+| Active CPU (300 hrs) | $19.20 | $38.40 |
+| Egress (2 TB, 1 TB included on Vercel) | $50.00 | $150.00 |
+| Seat _(workflow)_ | $0.00 | $20.00 |
+| **Total** | **~$98** | **~$236** |
+
+This is one snapshot. It assumes a single seat and leaves edge requests out entirely. Two things move the total from here. The seat fee tracks headcount, not load. Every engineer you add raises the Vercel bill while Prisma stays flat. And the gap cuts both ways: at near-zero egress on a single seat the two converge, and the split widens as egress and seats climb.
+
+## The bill splits into app work and shipping workflow
+
+Why does it shake out this way? Because both price the same way, then Vercel keeps going. Every hosting bill splits into two kinds of cost:
+
+- **Work:** what the app does while it's running: requests served, memory held, CPU burned, data sent out. Both companies charge for it, and neither charges while the app sits idle. It's the same model: Vercel calls it [Active CPU billing](https://vercel.com/blog/introducing-active-cpu-pricing-for-fluid-compute) ("pay for execution, not idle"); Prisma calls it "[pricing the work, not the workflow](/blog/price-the-work-not-the-workflow)".
+- **Workflow:** the activity _around_ shipping the app: developer seats, deploys, preview environments, routing. It scales with how your team (or your agent) operates, not with what your users do. Prisma meters none of it; Vercel meters two pieces.
+
+Side by side:
+
+| Meter | Type | Prisma Compute | Vercel |
+|---|---|---|---|
+| Requests, CPU, memory, egress | Work | Charged | Charged |
+| Idle time | Work | Free | Free |
+| Developer seats | Workflow | Free | Charged |
+| Edge requests | Workflow | Free | Charged |
+
+The work is a wash. The whole gap is the workflow.
+
+## Why the same workload produces different bills
+
+Beyond the pricing philosophy, two concrete things drive the numbers.
+
+**Architecture:** Prisma Compute [runs _next to_ your database](https://www.prisma.io/docs/compute) on [Prisma Postgres](https://www.prisma.io/postgres) instead of calling across to Supabase, Neon, or other vendors. This means the app-to-database traffic that inflates egress bills doesn't leave the building.
+
+**Agents:** Deploys, previews, and idle apps cost nothing on Prisma; every deploy is just an immutable version with [its own preview URL](https://www.prisma.io/docs/compute/branching). That's very little for a developer who ships a few times a day, but an agent's change → test → preview → retry loop will spin up _a lot_ more, all of which is workflow, all of which Vercel will bill you for, all of which is free on Prisma Compute.
+
+To be fair, this is a narrow comparison. Vercel is a frontend-first platform, arguably the best there is, and all we've measured is the cost of running compute next to your data. Vercel offers more than that, which should be considered.
+
+## What developers are saying about Vercel's pricing
+
+When Vercel's Fluid compute fits the workload, it can save you a lot of money. [Steven Tey](https://x.com/steventey/status/1886856115138499008), founder of [dub.co](https://dub.co), saw their bill drop 50% after turning it on… "thought my Vercel Usage tab was broken". Some say Fluid can even come in cheaper than running Lambda yourself.
+
+Beyond the free tier, it doesn't always go that way. The bill can jump with no jump in traffic. In one r/nextjs thread, a [CTO described a frontend-only Next.js app going from "under $100 to over $800" in a single month](https://www.reddit.com/r/nextjs/comments/1qnld0e/is_anyone_else_frustrated_with_vercel_pricing/), then moving to Cloudflare Workers for "under $20 for the same traffic."
+
+In the [same thread](https://www.reddit.com/r/nextjs/comments/1qnld0e/is_anyone_else_frustrated_with_vercel_pricing/), another developer drew a sharp line between the two sides of Vercel: the frontend is "really nice and cheap/free," the backend "absolute highway robbery." Others pointed at workflow charges, like a $150 bill "for Deployment Protection Exceptions." The recurring frustration is not just that bills get high, it's that teams feel they discover the shape of the bill after the workflow has already run.
+
+On the other hand, Prisma Compute is still in public beta, so developers haven't been able to use it in a way that would lead to meaningful feedback yet. I am sure there will be, and I will update this article when this feedback starts to arrive.
+
+## Summary
+
+On planned rates, Prisma Compute is a lot cheaper than Vercel for the parts of a bill that usually dominate (CPU, memory, egress) and it doesn't bill the seat, deploys, or previews. Vercel is cheaper on raw request price and has a more mature platform, an established free tier, and an ecosystem Prisma needs to catch up with.
+
+Finally, don't trust a blog article over your own math (or common sense). Figure things out for yourself before making a big commitment.
+
+:::ppg[Run the math on your own app]
+[Prisma Compute](https://www.prisma.io/compute) is free while the beta lasts. [Deploy a TypeScript app](https://www.prisma.io/docs/compute/getting-started) next to your [Prisma Postgres](https://www.prisma.io/postgres) database and watch the usage meters before billing ever starts.
+:::

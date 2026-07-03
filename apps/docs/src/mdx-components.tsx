@@ -83,7 +83,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     td: ({ ref: _ref, ...props }) => <TableCell {...props} />,
     caption: ({ ref: _ref, ...props }) => <TableCaption {...props} />,
     // Override Fumadocs Callout components with Eclipse Alert for alerts (:::ppg, :::error, :::success, :::warning)
-    CalloutTitle: ({ children }: any) => <>{children}</>,
+    CalloutTitle: ({ children }: any) => <div className="mb-2 font-semibold">{children}</div>,
     CalloutDescription: ({ children }: any) => <>{children}</>,
     CalloutContainer: ({ type, children, icon, ...props }: any) => {
       const variantMap: Record<string, "ppg" | "error" | "success" | "warning"> = {

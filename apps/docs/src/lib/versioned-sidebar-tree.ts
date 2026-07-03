@@ -1,6 +1,8 @@
 import type * as PageTree from "fumadocs-core/page-tree";
 import {
   LATEST_VERSION,
+  getCliVersionFromPathname,
+  getGettingStartedVersionFromPathname,
   getOrmVersionFromRoute,
   getOrmVersions,
   getVersionRoot,
@@ -23,8 +25,49 @@ type TreeRootNode = TreeNode & {
 function isOrmNode(node: TreeNode) {
   return (
     node.type === "folder" &&
-    (node.root === true || node.name === "ORM" || node.index?.url === "/orm")
+    (node.name === "ORM" || node.index?.url === "/orm" || node.index?.url?.startsWith("/orm/"))
   );
+}
+
+function isGettingStartedNode(node: TreeNode) {
+  return node.type === "folder" && (node.name === "Getting Started" || node.index?.url === "/");
+}
+
+function isCliNode(node: TreeNode) {
+  return node.type === "folder" && (node.name === "CLI" || node.index?.url === "/cli");
+}
+
+function isGettingStartedVersionNode(node: TreeNode, version: Version) {
+  if (node.type !== "folder") {
+    return false;
+  }
+
+  const name = String(node.name ?? "").toLowerCase();
+
+  if (version === "next") {
+    return (
+      name === "next" ||
+      name === "prisma next" ||
+      node.url === "/next" ||
+      node.index?.url === "/next"
+    );
+  }
+
+  return false;
+}
+
+function isCliVersionNode(node: TreeNode, version: Version) {
+  if (node.type !== "folder") {
+    return false;
+  }
+
+  const name = String(node.name ?? "").toLowerCase();
+
+  if (version === "next") {
+    return name === "next" || node.index?.url === "/cli/next";
+  }
+
+  return false;
 }
 
 function isVersionNode(node: TreeNode, version: Version) {
@@ -70,6 +113,76 @@ function collapseVersionChildren(
   };
 }
 
+function filterGettingStartedSidebarTree(node: TreeNode, version: Version): TreeNode {
+  const children = node.children?.map((child) => filterGettingStartedSidebarTree(child, version));
+
+  if (!children) {
+    return node;
+  }
+
+  if (isGettingStartedNode(node)) {
+    const versionChildren = children.filter((child) => isGettingStartedVersionNode(child, "next"));
+
+    if (version === "next") {
+      const selectedVersion = versionChildren.find((child) =>
+        isGettingStartedVersionNode(child, version),
+      );
+
+      if (selectedVersion?.children) {
+        return {
+          ...node,
+          index: selectedVersion.index ?? node.index,
+          children: selectedVersion.children,
+        };
+      }
+    }
+
+    return {
+      ...node,
+      children: children.filter((child) => !versionChildren.includes(child)),
+    };
+  }
+
+  return {
+    ...node,
+    children,
+  };
+}
+
+function filterCliSidebarTree(node: TreeNode, version: Version): TreeNode {
+  const children = node.children?.map((child) => filterCliSidebarTree(child, version));
+
+  if (!children) {
+    return node;
+  }
+
+  if (isCliNode(node)) {
+    const versionChildren = children.filter((child) => isCliVersionNode(child, "next"));
+
+    if (version === "next") {
+      const selectedVersion = versionChildren.find((child) => isCliVersionNode(child, version));
+
+      if (selectedVersion?.children) {
+        return {
+          ...node,
+          index: selectedVersion.index ?? node.index,
+          children: selectedVersion.children,
+        };
+      }
+    }
+
+    return {
+      ...node,
+      children: children.filter((child) => !versionChildren.includes(child)),
+    };
+  }
+
+  return {
+    ...node,
+    children,
+  };
+}
+
 function filterOrmSidebarTree(node: TreeNode, version: Version): TreeNode {
   const children = node.children?.map((child) => filterOrmSidebarTree(child, version));
 
@@ -95,7 +208,91 @@ function filterOrmSidebarTree(node: TreeNode, version: Version): TreeNode {
   };
 }
 
+function findGettingStartedNode(node: TreeNode): TreeNode | null {
+  if (isGettingStartedNode(node)) {
+    return node;
+  }
+
+  for (const child of node.children ?? []) {
+    const gettingStartedNode = findGettingStartedNode(child);
+    if (gettingStartedNode) {
+      return gettingStartedNode;
+    }
+  }
+
+  return null;
+}
+
+function findCliNode(node: TreeNode): TreeNode | null {
+  if (isCliNode(node)) {
+    return node;
+  }
+
+  for (const child of node.children ?? []) {
+    const cliNode = findCliNode(child);
+    if (cliNode) {
+      return cliNode;
+    }
+  }
+
+  return null;
+}
+
+function getGettingStartedSidebarTree(tree: TreeRootNode, version: Version): TreeRootNode {
+  const filteredTree = filterGettingStartedSidebarTree(tree, version) as TreeRootNode;
+
+  if (isGettingStartedNode(filteredTree)) {
+    return filteredTree;
+  }
+
+  const gettingStartedNode = findGettingStartedNode(filteredTree);
+
+  if (!gettingStartedNode) {
+    return filteredTree;
+  }
+
+  return {
+    ...filteredTree,
+    children: [gettingStartedNode],
+  };
+}
+
+function getCliSidebarTree(tree: TreeRootNode, version: Version): TreeRootNode {
+  const filteredTree = filterCliSidebarTree(tree, version) as TreeRootNode;
+
+  if (isCliNode(filteredTree)) {
+    return filteredTree;
+  }
+
+  const cliNode = findCliNode(filteredTree);
+
+  if (!cliNode) {
+    return filteredTree;
+  }
+
+  return {
+    ...filteredTree,
+    children: [cliNode],
+  };
+}
+
 export function getVersionedSidebarTree(tree: PageTree.Root, route?: string | string[]) {
+  const gettingStartedVersion =
+    typeof route === "string" ? getGettingStartedVersionFromPathname(route) : null;
+
+  if (gettingStartedVersion) {
+    return getGettingStartedSidebarTree(
+      tree as TreeRootNode,
+      gettingStartedVersion,
+    ) as PageTree.Root;
+  }
+
+  const cliVersion = typeof route === "string" ? getCliVersionFromPathname(route) : null;
+
+  if (cliVersion) {
+    return getCliSidebarTree(tree as TreeRootNode, cliVersion) as PageTree.Root;
+  }
+
   const versions = getOrmVersions(tree);
   const explicitVersions = versions.filter((version) => version !== LATEST_VERSION);
   const version = getOrmVersionFromRoute(route);

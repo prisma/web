@@ -104,7 +104,7 @@ function baseOptions() {
           },
           {
             text: "ORM",
-            url: "/orm",
+            url: "/docs/orm/next",
             desc: "Type-safe ORM for TypeScript and Node.js",
             icon: "fa-regular fa-database",
           },
@@ -169,7 +169,7 @@ function baseOptions() {
         ],
       },
       {
-        url: "https://www.prisma.io/docs",
+        url: "https://www.prisma.io/docs/next",
         text: "Docs",
       },
       {
