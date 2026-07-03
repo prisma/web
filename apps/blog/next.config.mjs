@@ -5,6 +5,7 @@ const withMDX = createMDX();
 const ContentSecurityPolicy = `
   default-src 'self';
   script-src 'self' 'unsafe-inline' 'unsafe-eval'
+    https://ingest.promptwatch.com
     https://cdn-cookieyes.com
     https://cdn.tolt.io
     https://unpkg.com
@@ -78,6 +79,7 @@ const ContentSecurityPolicy = `
     https://raw.githubusercontent.com;
 
   connect-src 'self'
+    https://ingest.promptwatch.com
     https://api.github.com
     https://p2zxqf70.api.sanity.io
     https://www.youtube.com
