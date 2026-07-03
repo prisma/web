@@ -1,0 +1,87 @@
+---
+title: How middleware works
+description: Middleware wraps every query your app sends through Prisma Next, so you can run code before and after execution.
+url: /next/middleware/how-middleware-works
+metaTitle: How middleware works in Prisma Next
+metaDescription: What Prisma Next middleware is, the hooks it exposes, how to register it on the runtime, and which middleware ships built in.
+badge: early-access
+---
+
+A middleware is an object with a name and one or more hooks that the Prisma Next runtime calls at fixed points around every query, so you can observe, guard, rewrite, or answer queries without touching application code.
+
+You register middleware once, on the runtime setup, through the `middleware` option:
+
+```ts title="src/prisma/db.ts"
+import { createCacheMiddleware } from '@prisma-next/middleware-cache';
+import postgres from '@prisma-next/postgres/runtime';
+import { budgets, lints } from '@prisma-next/sql-runtime';
+import type { Contract } from './contract.d';
+import contractJson from './contract.json' with { type: 'json' };
+
+export const db = postgres<Contract>({
+  contractJson,
+  url: process.env.DATABASE_URL,
+  middleware: [
+    createCacheMiddleware({ maxEntries: 1_000 }),
+    lints(),
+    budgets({ maxRows: 10_000, maxLatencyMs: 1_000 }),
+  ],
+});
+```
+
+Every query then passes through the chain: the ORM client, the SQL query builder, and raw SQL all execute through the same runtime, so one `middleware` array covers all of them. On MongoDB, pass the same option to `mongo(...)` from `@prisma-next/mongo/runtime`.
+
+## How it works
+
+Each middleware implements some of five hooks. The runtime calls each hook on every registered middleware, in the order they appear in the `middleware` array.
+
+| Hook | When it runs | What it can do |
+| --- | --- | --- |
+| `beforeCompile(draft, ctx)` | Before the query AST is lowered to SQL (SQL runtimes only) | Return a modified draft to rewrite the query, for example to add a predicate |
+| `beforeExecute(plan, ctx, params?)` | After lowering, before the driver runs | Inspect the plan (`plan.sql`, `plan.ast`), validate it, throw to block it, or mutate parameter values |
+| `intercept(plan, ctx)` | Right before the driver | Return rows directly and skip the driver entirely (this is how the cache serves hits) |
+| `onRow(row, plan, ctx)` | Once per row the driver yields | Observe or count rows; throw to abort the stream |
+| `afterExecute(plan, result, ctx)` | After the query finishes | Read `result.rowCount`, `result.latencyMs`, `result.completed`, and `result.source` for timing, logging, and budgets |
+
+The full lifecycle for a SQL query:
+
+```text
+beforeCompile → SQL lowering → beforeExecute → parameter encoding → intercept → driver → onRow (per row) → afterExecute
+```
+
+Two details of the ordering matter in practice:
+
+- **Registration order is execution order.** At every hook site, the first middleware in the array runs first. If a `beforeCompile` hook rewrites the query, the next middleware sees the rewritten draft. This is why the example above registers the cache first: on a cache hit, its `intercept` answers the query before `lints()` and `budgets()` do any work.
+- **`intercept` short-circuits.** When a middleware returns rows from `intercept`, the driver never runs and `onRow` is skipped, but `afterExecute` still fires on every middleware with `result.source` set to `'middleware'` instead of `'driver'`, so observability keeps working for served-from-cache reads.
+
+Every hook receives a context (`ctx`) with the contract, a `log` with `info`, `warn`, and `error` methods, a monotonic `now()`, the current `scope` (`'runtime'`, `'connection'`, or `'transaction'`), and a `planExecutionId` that is unique per `execute()` call, so you can correlate observations across hooks. See [Authoring custom middleware](/next/middleware/authoring-custom-middleware) for the full surface.
+
+## What ships built in
+
+Three middleware ship with Prisma Next today:
+
+| Middleware | Import | What it does |
+| --- | --- | --- |
+| [`budgets`](/next/middleware/built-in-budgets) | `@prisma-next/sql-runtime` | Fails queries that would read too many rows or run longer than a latency budget |
+| [`lints`](/next/middleware/built-in-lints) | `@prisma-next/sql-runtime` | Blocks or warns on risky query shapes, such as `DELETE` without `WHERE` |
+| [`cache`](/next/middleware/built-in-cache) | `@prisma-next/middleware-cache` | Serves repeated reads from an in-memory store, opted in per query |
+
+`budgets` and `lints` are SQL-specific and come with the SQL runtime. The cache lives in its own package because it is family-agnostic: it works on PostgreSQL and MongoDB.
+
+## Errors and failure behavior
+
+A middleware that throws from `beforeCompile`, `beforeExecute`, or `onRow` fails the query: the error propagates to the caller and the driver work stops. This is how `lints()` blocks a `DELETE` without a `WHERE` clause before it reaches the database.
+
+When the driver itself fails, the runtime still calls `afterExecute` on every middleware with `result.completed` set to `false`, then rethrows the original driver error. Errors thrown by `afterExecute` while handling a failed query are swallowed so they cannot mask the original error.
+
+## Database compatibility
+
+A middleware declares which runtime family it supports through an optional `familyId`. `budgets` and `lints` declare `familyId: 'sql'`, so they register on PostgreSQL but not on MongoDB. Middleware with no `familyId`, like the cache, work on any runtime. The runtime checks compatibility when you construct the client and throws `RUNTIME.MIDDLEWARE_FAMILY_MISMATCH` if a middleware does not match, so a wrong registration fails at startup rather than at query time.
+
+## See also
+
+- [Built-in: budgets](/next/middleware/built-in-budgets)
+- [Built-in: lints](/next/middleware/built-in-lints)
+- [Built-in: cache](/next/middleware/built-in-cache)
+- [Authoring custom middleware](/next/middleware/authoring-custom-middleware)
+- [Using extensions](/next/extensions/using-extensions) for adding new database capabilities rather than wrapping queries

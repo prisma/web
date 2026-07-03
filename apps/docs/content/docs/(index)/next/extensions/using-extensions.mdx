@@ -1,0 +1,99 @@
+---
+title: Using extensions
+description: Extensions add database capabilities like vector search, geospatial data, and full-text search to a Prisma Next project.
+url: /next/extensions/using-extensions
+metaTitle: Using extensions in Prisma Next
+metaDescription: Add an extension to a Prisma Next project, from install to first query, and browse the catalog of available extensions such as pgvector, PostGIS, and ParadeDB.
+badge: early-access
+---
+
+An extension is a package that teaches Prisma Next a database capability it does not have out of the box: new column types, query operations, and index types, along with the migrations that install the underlying database feature. Vector search, geospatial data, and full-text search all arrive this way.
+
+Adding one is an install plus two registrations, using pgvector as the example:
+
+```npm
+npm install @prisma-next/extension-pgvector
+```
+
+Register the extension's control-plane descriptor in your project config, where it participates in contract emission and migrations:
+
+```ts title="prisma-next.config.ts"
+import pgvector from '@prisma-next/extension-pgvector/control';
+import { defineConfig } from '@prisma-next/postgres/config';
+
+export default defineConfig({
+  contract: './src/prisma/contract.prisma',
+  extensions: [pgvector],
+  db: {
+    connection: process.env.DATABASE_URL,
+  },
+});
+```
+
+Register its runtime descriptor on the client, where it contributes codecs and query operations:
+
+```ts title="src/prisma/db.ts"
+import pgvector from '@prisma-next/extension-pgvector/runtime';
+import postgres from '@prisma-next/postgres/runtime';
+import type { Contract } from './contract.d';
+import contractJson from './contract.json' with { type: 'json' };
+
+export const db = postgres<Contract>({
+  contractJson,
+  url: process.env.DATABASE_URL,
+  extensions: [pgvector],
+});
+```
+
+The extension's types are now available in your contract. Declare a vector column with an explicit dimension:
+
+```prisma title="src/prisma/contract.prisma"
+types {
+  Embedding1536 = pgvector.Vector(1536)
+}
+
+model Post {
+  id        String         @id @default(uuid())
+  title     String
+  embedding Embedding1536?
+}
+```
+
+Run `prisma-next db init` (or `prisma-next db update` on an existing database). Extensions ship a baseline migration in their contract space, so this step installs the database-side feature for you, `CREATE EXTENSION IF NOT EXISTS vector` in pgvector's case. Then query with the operations the extension adds:
+
+```ts
+const plan = db.sql.public.post
+  .select('id', 'title')
+  .select('distance', (f, fns) => fns.cosineDistance(f.embedding, queryVector))
+  .orderBy((f, fns) => fns.cosineDistance(f.embedding, queryVector), { direction: 'asc' })
+  .limit(10)
+  .build();
+
+const similar = await db.runtime().execute(plan);
+```
+
+## Capabilities
+
+An extension declares the database capabilities it relies on under a namespaced key, `pgvector.cosine` for the query above. You do not configure capabilities by hand: registering the extension declares them in the contract, and the runtime verifies at `connect()` time that the database it reaches actually supports what the contract uses. A managed database that lacks the underlying feature fails at connect, not mid-query.
+
+## Available extensions
+
+The catalog is first-party today and designed for community authors: extension packs are versioned npm packages with a documented layout, and the [call for extension authors](https://www.prisma.io/blog/prisma-next-call-for-extension-authors) explains how to build one.
+
+| Extension | What it adds | Package | Databases |
+| --- | --- | --- | --- |
+| [pgvector](https://github.com/prisma/prisma-next/tree/main/packages/3-extensions/pgvector) | `vector(n)` columns with dimension-safe types, cosine distance and similarity operations | `@prisma-next/extension-pgvector` | PostgreSQL with pgvector |
+| [PostGIS](https://github.com/prisma/prisma-next/tree/main/packages/3-extensions/postgis) | `geometry` columns with SRID-aware types, GeoJSON values, distance and containment queries | `@prisma-next/extension-postgis` | PostgreSQL with PostGIS |
+| [ParadeDB](https://github.com/prisma/prisma-next/tree/main/packages/3-extensions/paradedb) | BM25 full-text search indexes, authored through the standard index surface | `@prisma-next/extension-paradedb` | PostgreSQL with ParadeDB |
+| [Supabase](https://github.com/prisma/prisma-next/tree/main/packages/3-extensions/supabase) | A Supabase-shaped contract with `auth.*` and `storage.*` as queryable external tables | `@prisma-next/extension-supabase` | PostgreSQL on Supabase |
+| [arktype-json](https://github.com/prisma/prisma-next/tree/main/packages/3-extensions/arktype-json) | JSON columns validated against an arktype schema, typed end to end | `@prisma-next/extension-arktype-json` | PostgreSQL |
+
+Two maturity notes, since Prisma Next itself is in Early Access: the ParadeDB pack currently covers the `key_field` index option only (per-field tokenizer configuration is not there yet), and the Supabase pack is an early milestone that ships the contract surface, with the role-binding runtime still to come. Each extension's README linked above states exactly what its current version covers.
+
+Every table row links to the extension's guide, with schema declaration, migration behavior, and the full query surface for that pack. The [prisma-next-demo](https://github.com/prisma/prisma-next/tree/main/examples/prisma-next-demo) example app shows pgvector registered alongside middleware in one working project, and the [PostGIS](https://github.com/prisma/prisma-next/tree/main/examples/prisma-next-postgis-demo) and [ParadeDB](https://github.com/prisma/prisma-next/tree/main/examples/paradedb-demo) demos do the same for their packs.
+
+## See also
+
+- [How middleware works](/next/middleware/how-middleware-works) for wrapping queries rather than adding database capabilities
+- [Quickstart with PostgreSQL](/next/quickstart/postgresql) to set up a project to add extensions to
+- [Prisma Next overview](/orm/next) for the contract-first model extensions plug into
