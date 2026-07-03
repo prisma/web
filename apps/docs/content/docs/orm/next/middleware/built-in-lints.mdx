@@ -60,11 +60,11 @@ lints({
 });
 ```
 
-The severity keys are `deleteWithoutWhere`, `updateWithoutWhere`, `noLimit`, and `selectStar`, plus `readOnlyMutation` for the raw-SQL guardrail described below.
+The severity keys are `deleteWithoutWhere`, `updateWithoutWhere`, `noLimit`, and `selectStar`, plus `readOnlyMutation` for the raw-SQL guardrail described below. The options type also accepts `unindexedPredicate`, but no rule emits that finding in v0.14.
 
 ## Raw SQL
 
-Queries built with the ORM client or the SQL query builder carry a typed AST, and the rules above inspect it structurally. Raw SQL does not have that structure, so `lints` falls back to text heuristics for raw plans: it flags `select *`, a missing `LIMIT`, and a mutation smuggled through a read-only raw query. Control the fallback with `fallbackWhenAstMissing`:
+Queries built with the ORM client or the SQL query builder carry a typed AST, and the rules above inspect it structurally. Raw SQL does not have that structure, so `lints` falls back to text heuristics for raw plans: it flags `select *`, a missing `LIMIT`, and a mutation smuggled through a raw query marked read-only (`LINT.READ_ONLY_MUTATION`). The raw heuristics carry their own defaults: `select *` escalates to `error` for raw plans (stricter than the AST rule's `warn`), a missing `LIMIT` stays a warning, and a read-only-intent mutation is an `error`. The `severities` keys above override raw findings too. Control the fallback with `fallbackWhenAstMissing`:
 
 ```ts title="src/prisma/db.ts"
 lints({ fallbackWhenAstMissing: 'raw' }); // default: heuristic checks on the SQL text
