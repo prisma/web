@@ -5,6 +5,7 @@ const withMDX = createMDX();
 const ContentSecurityPolicy = `
   default-src 'self';
   script-src 'self' 'unsafe-inline' 'unsafe-eval'
+    https://ingest.promptwatch.com
     https://cdn-cookieyes.com
     https://cdn.tolt.io
     https://unpkg.com
@@ -78,6 +79,7 @@ const ContentSecurityPolicy = `
     https://raw.githubusercontent.com;
 
   connect-src 'self'
+    https://ingest.promptwatch.com
     https://api.github.com
     https://p2zxqf70.api.sanity.io
     https://www.youtube.com
@@ -229,6 +231,16 @@ const config = {
       {
         source: "/optimize-now-generally-available",
         destination: "/",
+        permanent: true,
+      },
+      {
+        source: "/the-database-should-not-become-the-product",
+        destination: "/how-xeito-builds-features-not-database-infrastructure-with-prisma",
+        permanent: true,
+      },
+      {
+        source: "/xeito-prisma-customer-story",
+        destination: "/how-xeito-builds-features-not-database-infrastructure-with-prisma",
         permanent: true,
       },
       ...tagSlugs.map((tag) => ({
