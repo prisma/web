@@ -1,6 +1,7 @@
+import { Marquee } from "@/components/marquee";
 import { Action, Card } from "@prisma/eclipse";
+import type { CSSProperties } from "react";
 import { frameworks } from "./stack-data";
-import styles from "./stack.module.css";
 
 /**
  * Vertical stack: a scrolling marquee of the frameworks Prisma Compute runs,
@@ -11,18 +12,30 @@ export function FrameworkCarousel() {
   return (
     <div className="mx-auto flex w-full max-w-137 flex-col gap-4">
       <Card className="overflow-hidden p-4">
-        <div className={styles["fw-marquee"]}>
-          <div className={styles["fw-track"]}>
-            {[...frameworks, ...frameworks].map((f, i) => (
-              <div className={styles["fw-row"]} key={`${f.name}-${i}`}>
-                <div className={styles["fw-logo-sm"]} style={{ background: f.bg, color: f.color }}>
-                  {f.mono}
-                </div>
-                <div className={styles["fw-row-name"]}>{f.name}</div>
+        <Marquee
+          direction="up"
+          fade
+          fillContainer={false}
+          className="h-58 w-full"
+          style={{ "--duration": "22s", "--gap": "0.875rem" } as CSSProperties}
+        >
+          {frameworks.map((f) => (
+            <div
+              key={f.name}
+              className="flex h-16 items-center gap-3.5 rounded-square-high border border-stroke-neutral bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-ppg)_260%)] px-5"
+            >
+              <div
+                className="grid size-10 shrink-0 place-items-center rounded-square border border-stroke-neutral-strong font-sans-display text-base font-black"
+                style={{ background: f.bg, color: f.color }}
+              >
+                {f.mono}
               </div>
-            ))}
-          </div>
-        </div>
+              <div className="font-sans-display text-lg font-extrabold text-foreground-neutral">
+                {f.name}
+              </div>
+            </div>
+          ))}
+        </Marquee>
       </Card>
 
       <div className="flex justify-center">
