@@ -4,15 +4,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import styles from "./stack.module.css";
 
 /** Fades + lifts its children into view the first time they intersect. */
-export function Reveal({
-  children,
-  className,
-  as: Tag = "div",
-}: {
-  children: ReactNode;
-  className?: string;
-  as?: "div" | "section";
-}) {
+export function Reveal({ children, className }: { children: ReactNode; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -34,8 +26,8 @@ export function Reveal({
   }, []);
 
   return (
-    <Tag ref={ref as never} className={`${styles.reveal} ${className ?? ""}`}>
+    <div ref={ref} className={`${styles.reveal} ${className ?? ""}`}>
       {children}
-    </Tag>
+    </div>
   );
 }

@@ -126,14 +126,18 @@ export function StackDiagram() {
 
   // cycle the frontend framework in the header + diagram node
   useEffect(() => {
+    let swapTimeout: ReturnType<typeof setTimeout>;
     const interval = setInterval(() => {
       setSwapping(true);
-      setTimeout(() => {
+      swapTimeout = setTimeout(() => {
         setIdx((i) => (i + 1) % frameworks.length);
         setSwapping(false);
       }, 240);
     }, 2000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(swapTimeout);
+    };
   }, []);
 
   // redraw connectors after the frontend node width changes
@@ -143,13 +147,20 @@ export function StackDiagram() {
 
   // draw on mount, on resize, and once fonts are ready
   useEffect(() => {
+    // rAF-batch resize so a drag-resize doesn't thrash layout on every event
+    let raf = 0;
+    const onResize = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(drawFlow);
+    };
     drawFlow();
-    window.addEventListener("resize", drawFlow);
+    window.addEventListener("resize", onResize);
     if (document.fonts?.ready) document.fonts.ready.then(drawFlow);
     const t1 = setTimeout(drawFlow, 300);
     const t2 = setTimeout(drawFlow, 900);
     return () => {
-      window.removeEventListener("resize", drawFlow);
+      window.removeEventListener("resize", onResize);
+      cancelAnimationFrame(raf);
       clearTimeout(t1);
       clearTimeout(t2);
     };
@@ -292,7 +303,7 @@ export function StackDiagram() {
             </div>
           </div>
 
-          <svg className={styles["flow-svg"]} ref={svgRef} />
+          <svg className={styles["flow-svg"]} ref={svgRef} aria-hidden />
           <div className={styles["flow-badge"]} ref={badgeRef}>
             <i className="fa-regular fa-bolt" aria-hidden /> sub-ms latency
           </div>
