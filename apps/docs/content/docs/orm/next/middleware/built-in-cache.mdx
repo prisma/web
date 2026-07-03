@@ -25,12 +25,12 @@ import contractJson from './contract.json' with { type: 'json' };
 
 export const db = postgres<Contract>({
   contractJson,
-  url: process.env.DATABASE_URL,
+  url: process.env['DATABASE_URL']!,
   middleware: [createCacheMiddleware({ maxEntries: 1_000 })],
 });
 ```
 
-When you combine it with other middleware such as [`lints`](/orm/next/middleware/built-in-lints) and [`budgets`](/orm/next/middleware/built-in-budgets), register the cache first: hooks run in array order, so a cache hit then short-circuits before the downstream middleware do any work.
+When you combine it with other middleware that implement `intercept`, register the cache first when cached rows should win. `beforeExecute` hooks still run before a cache hit is served, and `afterExecute` still fires afterward with `result.source` set to `'middleware'`.
 
 The cache is family-agnostic: unlike `budgets` and `lints`, it works on MongoDB runtimes as well as PostgreSQL.
 
