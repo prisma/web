@@ -9,6 +9,8 @@ badge: early-access
 
 A custom middleware is a plain object: give it a `name`, declare the runtime family it targets, and implement the hooks you need. No base class, no registration API beyond the `middleware` array.
 
+Reach for custom middleware when the behavior belongs beside data access rather than inside every resolver or service method: tenant filters, soft-delete policy, query timing, read-through fixtures, request-scoped auditing, or parameter preparation for codecs and external services.
+
 This complete example warns whenever a query runs longer than a threshold:
 
 ```ts title="src/prisma/slow-query-warning.ts"
@@ -62,7 +64,7 @@ export const db = postgres<Contract>({
 
 Every query now reports when it crosses the threshold, whatever surface issued it:
 
-```text
+```text title="Example log"
 warn {
   code: 'APP.SLOW_QUERY',
   message: 'Query took 412ms (threshold: 250ms)',
@@ -75,7 +77,7 @@ warn {
 Type your middleware as `SqlMiddleware` (from `@prisma-next/sql-runtime`) and TypeScript infers every hook's parameters, so you rarely need to import the plan or context types directly. The hooks, all optional:
 
 - `beforeCompile(draft, ctx)` runs before the query AST is lowered to SQL. Return a new draft (`{ ...draft, ast: rewritten }`) to rewrite the query, or `undefined` to pass through. This hook is SQL-specific.
-- `beforeExecute(plan, ctx, params?)` runs after lowering. `plan.sql` is the rendered statement, `plan.params` the bound parameters, and `plan.ast` the pre-lowering AST. Throw to block the query. Use `params.replaceValue(...)` to mutate parameter values before they are encoded.
+- `beforeExecute(plan, ctx, params?)` runs after lowering and before parameter encoding. `plan.sql` is the rendered statement, `plan.params` contains user-domain parameter values, and `plan.ast` is the pre-lowering AST. Throw to block the query. Iterate `params.entries()` and call `params.replaceValue(...)` to mutate parameter values before they are encoded.
 - `intercept(plan, ctx)` runs last before the driver. Return `{ rows }` (an iterable or async iterable of row objects) to answer the query yourself and skip the driver, or `undefined` to pass through.
 - `onRow(row, plan, ctx)` runs for every row the driver yields.
 - `afterExecute(plan, result, ctx)` runs once at the end, with `result.rowCount`, `result.latencyMs`, `result.completed` (`false` when the driver errored), and `result.source` (`'driver'`, or `'middleware'` when an `intercept` answered).
@@ -85,6 +87,7 @@ Hooks run in registration order at every site, and the context (`ctx`) is shared
 | Context field | What it gives you |
 | --- | --- |
 | `ctx.log` | Structured `info` / `warn` / `error` (and optional `debug`) sinks wired to the runtime's logger |
+| `ctx.mode` | `'strict'` or `'permissive'`; use it when a middleware should throw in strict environments and warn elsewhere |
 | `ctx.now()` | Current time from the runtime's clock; prefer it over `Date.now()` so tests can control time |
 | `ctx.planExecutionId` | Unique ID per `execute()` call, the same value in every hook, for correlating observations |
 | `ctx.scope` | `'runtime'`, `'connection'`, or `'transaction'`; use it to skip work in scopes you should not touch |
@@ -98,7 +101,7 @@ Hooks run in registration order at every site, and the context (`ctx`) is shared
 
 `beforeCompile` sees the typed AST before lowering, which makes cross-cutting query rewrites possible: tenant scoping, soft-delete filters, or row-level restrictions. This middleware appends a predicate to every `SELECT` on the `user` table:
 
-```ts
+```ts title="src/prisma/scope-user-selects.ts"
 import type { SqlMiddleware } from '@prisma-next/sql-runtime';
 import { AndExpr, type BinaryExpr } from '@prisma-next/sql-relational-core/ast';
 
@@ -122,7 +125,7 @@ Because each middleware's returned draft feeds the next one, rewrites compose in
 
 ### Short-circuit with `intercept`
 
-Return rows from `intercept` to answer a query without the driver: caches, mocks and fixtures in tests, rate limiters, and circuit breakers all fit this hook. Return raw (undecoded) row objects; the runtime runs its normal decoding pass over them, and `afterExecute` reports `source: 'middleware'` so the short-circuit stays observable. The [cache middleware](/orm/next/middleware/built-in-cache) is the reference implementation of this pattern.
+Return rows from `intercept` to answer a query without the driver: caches, mocks and fixtures in tests, rate limiters, and circuit breakers all fit this hook. `beforeExecute` has already run, so validation and parameter mutation still happen before a short-circuit. Return raw (undecoded) row objects; the runtime runs its normal decoding pass over them, and `afterExecute` reports `source: 'middleware'` so the short-circuit stays observable. The [cache middleware](/orm/next/middleware/built-in-cache) is the reference implementation of this pattern.
 
 ### Support every database
 

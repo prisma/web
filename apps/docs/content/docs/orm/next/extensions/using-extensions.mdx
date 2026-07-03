@@ -7,15 +7,17 @@ metaDescription: Add an extension to a Prisma Next project, from install to firs
 badge: early-access
 ---
 
-An extension is a package that teaches Prisma Next a database capability it does not have out of the box: new column types, query operations, and index types, along with the migrations that install the underlying database feature. Vector search, geospatial data, and full-text search all arrive this way.
+An extension is a package that teaches Prisma Next a database capability it does not have out of the box: new column types, query operations, and index types, along with the migrations that install the underlying database feature. Vector search, geospatial data, full-text search, typed JSON, and provider-specific integrations all arrive this way.
+
+Use an extension when you want the database to do something powerful and still keep the Prisma Next experience: typed schema declarations, generated TypeScript, migration support, and query helpers that feel native to your app.
 
 Adding one is an install plus two registrations, using pgvector as the example:
 
-```npm
+```npm title="Terminal"
 npm install @prisma-next/extension-pgvector
 ```
 
-Register the extension's control-plane descriptor in your project config, where it participates in contract emission and migrations:
+Register the extension's control-plane descriptor in your project config. This is the side Prisma Next uses during contract emission and migrations:
 
 ```ts title="prisma-next.config.ts"
 import pgvector from '@prisma-next/extension-pgvector/control';
@@ -30,7 +32,7 @@ export default defineConfig({
 });
 ```
 
-Register its runtime descriptor on the client, where it contributes codecs and query operations:
+Register its runtime descriptor on the client. This is the side Prisma Next uses when your app encodes values, decodes rows, and builds extension-specific query operations:
 
 ```ts title="src/prisma/db.ts"
 import pgvector from '@prisma-next/extension-pgvector/runtime';
@@ -59,9 +61,9 @@ model Post {
 }
 ```
 
-Run `prisma-next db init` (or `prisma-next db update` on an existing database). Extensions ship a baseline migration in their contract space, so this step installs the database-side feature for you, `CREATE EXTENSION IF NOT EXISTS vector` in pgvector's case. Then query with the operations the extension adds:
+Run `prisma-next db init` (or `prisma-next db update` on an existing database). Extensions can ship a baseline migration in their contract space, so this step installs the database-side feature for you, `CREATE EXTENSION IF NOT EXISTS vector` in pgvector's case. Then query with the operations the extension adds:
 
-```ts
+```ts title="src/prisma/similarity-search.ts"
 const plan = db.sql.public.post
   .select('id', 'title')
   .select('distance', (f, fns) => fns.cosineDistance(f.embedding, queryVector))
@@ -74,7 +76,9 @@ const similar = await db.runtime().execute(plan);
 
 ## Capabilities
 
-An extension declares the database capabilities it relies on under a namespaced key, `pgvector.cosine` for the query above. You do not configure capabilities by hand: registering the extension declares them in the contract, and the runtime verifies at `connect()` time that the database it reaches actually supports what the contract uses. A managed database that lacks the underlying feature fails at connect, not mid-query.
+An extension declares the capabilities it contributes under a namespaced key, `pgvector.cosine` for the query above. You do not configure capabilities by hand: registering the control descriptor records them in the emitted contract, and registering the runtime descriptor lets the client satisfy the contract's required extension packs.
+
+If the runtime descriptor for a required pack is missing, Prisma Next fails when the client/runtime is constructed instead of letting a query run with half the extension installed. Database-side support is enforced by the extension's migrations and verification path. For example, if the database cannot install pgvector, `db init`, `db update`, or verification reports the problem before you rely on application traffic.
 
 ## Available extensions
 
@@ -85,12 +89,12 @@ The catalog is first-party today and designed for community authors: extension p
 | [pgvector](https://github.com/prisma/prisma-next/tree/main/packages/3-extensions/pgvector) | `vector(n)` columns with dimension-safe types, cosine distance and similarity operations | `@prisma-next/extension-pgvector` | PostgreSQL with pgvector |
 | [PostGIS](https://github.com/prisma/prisma-next/tree/main/packages/3-extensions/postgis) | `geometry` columns with SRID-aware types, GeoJSON values, distance and containment queries | `@prisma-next/extension-postgis` | PostgreSQL with PostGIS |
 | [ParadeDB](https://github.com/prisma/prisma-next/tree/main/packages/3-extensions/paradedb) | BM25 full-text search indexes, authored through the standard index surface | `@prisma-next/extension-paradedb` | PostgreSQL with ParadeDB |
-| [Supabase](https://github.com/prisma/prisma-next/tree/main/packages/3-extensions/supabase) | A Supabase-shaped contract with `auth.*` and `storage.*` as queryable external tables | `@prisma-next/extension-supabase` | PostgreSQL on Supabase |
+| [Supabase](https://github.com/prisma/prisma-next/tree/main/packages/3-extensions/supabase) | Supabase contract support plus role-bound runtime helpers for app tables and service-role access to `auth` and `storage` | `@prisma-next/extension-supabase` | PostgreSQL on Supabase |
 | [arktype-json](https://github.com/prisma/prisma-next/tree/main/packages/3-extensions/arktype-json) | JSON columns validated against an arktype schema, typed end to end | `@prisma-next/extension-arktype-json` | PostgreSQL |
 
-Two maturity notes, since Prisma Next itself is in Early Access: the ParadeDB pack currently covers the `key_field` index option only (per-field tokenizer configuration is not there yet), and the Supabase pack is an early milestone that ships the contract surface, with the role-binding runtime still to come. Each extension's README linked above states exactly what its current version covers.
+Two maturity notes, since Prisma Next itself is in Early Access: the ParadeDB pack currently covers the `key_field` index option only (per-field tokenizer configuration and query functions are not there yet), and the Supabase pack has the contract surface plus role-bound runtime helpers, while broader RLS authoring and cross-contract foreign keys are still separate follow-up projects. Each extension's README linked above states exactly what its current version covers.
 
-Every table row links to the extension's guide, with schema declaration, migration behavior, and the full query surface for that pack. The [prisma-next-demo](https://github.com/prisma/prisma-next/tree/main/examples/prisma-next-demo) example app shows pgvector registered alongside middleware in one working project, and the [PostGIS](https://github.com/prisma/prisma-next/tree/main/examples/prisma-next-postgis-demo) and [ParadeDB](https://github.com/prisma/prisma-next/tree/main/examples/paradedb-demo) demos do the same for their packs.
+Every table row links to the extension's source and README, with schema declaration, migration behavior, and the current query surface for that pack. The [prisma-next-demo](https://github.com/prisma/prisma-next/tree/main/examples/prisma-next-demo) example app shows pgvector registered alongside middleware in one working project, and the [PostGIS](https://github.com/prisma/prisma-next/tree/main/examples/prisma-next-postgis-demo) and [ParadeDB](https://github.com/prisma/prisma-next/tree/main/examples/paradedb-demo) demos do the same for their packs.
 
 ## See also
 

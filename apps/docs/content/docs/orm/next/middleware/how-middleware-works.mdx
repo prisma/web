@@ -9,6 +9,8 @@ badge: early-access
 
 A middleware is an object with a name and one or more hooks that the Prisma Next runtime calls at fixed points around every query, so you can observe, guard, rewrite, or answer queries without touching application code.
 
+Use middleware when you want one policy to cover every query surface: audit logging, query budgets, safety checks, caching, tenant scoping, test fixtures, circuit breakers, or parameter processing before values reach the driver.
+
 You register middleware once, on the runtime setup, through the `middleware` option:
 
 ```ts title="src/prisma/db.ts"
@@ -38,23 +40,23 @@ Each middleware implements some of five hooks. The runtime calls each hook on ev
 | Hook | When it runs | What it can do |
 | --- | --- | --- |
 | `beforeCompile(draft, ctx)` | Before the query AST is lowered to SQL (SQL runtimes only) | Return a modified draft to rewrite the query, for example to add a predicate |
-| `beforeExecute(plan, ctx, params?)` | After lowering, before the driver runs | Inspect the plan (`plan.sql`, `plan.ast`), validate it, throw to block it, or mutate parameter values |
-| `intercept(plan, ctx)` | Right before the driver | Return rows directly and skip the driver entirely (this is how the cache serves hits) |
+| `beforeExecute(plan, ctx, params?)` | After lowering, before parameter encoding and the driver | Inspect the plan (`plan.sql`, `plan.ast`), validate it, throw to block it, or mutate parameter values |
+| `intercept(plan, ctx)` | After `beforeExecute` and parameter encoding, right before the driver | Return rows directly and skip the driver entirely (this is how the cache serves hits) |
 | `onRow(row, plan, ctx)` | Once per row the driver yields | Observe or count rows; throw to abort the stream |
 | `afterExecute(plan, result, ctx)` | After the query finishes | Read `result.rowCount`, `result.latencyMs`, `result.completed`, and `result.source` for timing, logging, and budgets |
 
 The full lifecycle for a SQL query:
 
-```text
+```text title="Middleware lifecycle"
 beforeCompile → SQL lowering → beforeExecute → parameter encoding → intercept → driver → onRow (per row) → afterExecute
 ```
 
 Two details of the ordering matter in practice:
 
-- **Registration order is execution order.** At every hook site, the first middleware in the array runs first. If a `beforeCompile` hook rewrites the query, the next middleware sees the rewritten draft. This is why the example above registers the cache first: on a cache hit, its `intercept` answers the query before `lints()` and `budgets()` do any work.
-- **`intercept` short-circuits.** When a middleware returns rows from `intercept`, the driver never runs and `onRow` is skipped, but `afterExecute` still fires on every middleware with `result.source` set to `'middleware'` instead of `'driver'`, so observability keeps working for served-from-cache reads.
+- **Registration order is execution order at each hook site.** If a `beforeCompile` hook rewrites the query, the next middleware sees the rewritten draft. If multiple middleware implement `intercept`, the first one that returns rows wins.
+- **`intercept` short-circuits the row source.** `beforeExecute` has already run by the time `intercept` fires. When a middleware returns rows from `intercept`, the driver never runs and `onRow` is skipped, but `afterExecute` still fires on every middleware with `result.source` set to `'middleware'` instead of `'driver'`, so observability keeps working for served-from-cache reads.
 
-Every hook receives a context (`ctx`) with the contract, a `log` with `info`, `warn`, and `error` methods, a monotonic `now()`, the current `scope` (`'runtime'`, `'connection'`, or `'transaction'`), and a `planExecutionId` that is unique per `execute()` call, so you can correlate observations across hooks. See [Authoring custom middleware](/orm/next/middleware/authoring-custom-middleware) for the full surface.
+Every hook receives a context (`ctx`) with the contract, runtime `mode` (`'strict'` or `'permissive'`), a `log` with `info`, `warn`, and `error` methods, a monotonic `now()`, the current `scope` (`'runtime'`, `'connection'`, or `'transaction'`), and a `planExecutionId` that is unique per `execute()` call, so you can correlate observations across hooks. See [Authoring custom middleware](/orm/next/middleware/authoring-custom-middleware) for the full surface.
 
 ## What ships built in
 
@@ -70,13 +72,13 @@ Three middleware ship with Prisma Next today:
 
 ## Errors and failure behavior
 
-A middleware that throws from `beforeCompile`, `beforeExecute`, or `onRow` fails the query: the error propagates to the caller and the driver work stops. This is how `lints()` blocks a `DELETE` without a `WHERE` clause before it reaches the database.
+A middleware that throws from `beforeCompile`, `beforeExecute`, `intercept`, or `onRow` fails the query: the error propagates to the caller and the driver work stops. This is how `lints()` blocks a `DELETE` without a `WHERE` clause before it reaches the database.
 
 When the driver itself fails, the runtime still calls `afterExecute` on every middleware with `result.completed` set to `false`, then rethrows the original driver error. Errors thrown by `afterExecute` while handling a failed query are swallowed so they cannot mask the original error.
 
 ## Database compatibility
 
-A middleware declares which runtime family it supports through an optional `familyId`. `budgets` and `lints` declare `familyId: 'sql'`, so they register on PostgreSQL but not on MongoDB. Middleware with no `familyId`, like the cache, work on any runtime. The runtime checks compatibility when you construct the client and throws `RUNTIME.MIDDLEWARE_FAMILY_MISMATCH` if a middleware does not match, so a wrong registration fails at startup rather than at query time.
+A middleware declares which runtime family it supports through an optional `familyId`. `budgets` and `lints` declare `familyId: 'sql'`, so they register on PostgreSQL but not on MongoDB. Middleware with no `familyId`, like the cache, work on any runtime. The runtime checks compatibility when you construct the client and throws `RUNTIME.MIDDLEWARE_FAMILY_MISMATCH` or `RUNTIME.MIDDLEWARE_TARGET_MISMATCH` if a middleware does not match, so a wrong registration fails at startup rather than at query time.
 
 ## See also
 

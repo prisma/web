@@ -9,9 +9,11 @@ badge: early-access
 
 The cache middleware serves repeated reads from an in-memory store instead of the database. Caching is strictly opt-in per query: only queries annotated with a TTL are cached, everything else passes through untouched.
 
-Install the package and register the middleware first in the chain, so cache hits short-circuit before any other middleware does work:
+Use it for hot, repeatable reads such as dashboards, lookup tables, feature flags, navigation data, or expensive search results where a short stale window is acceptable.
 
-```npm
+Install the package and register the middleware. Put it before other middleware that implement `intercept` when cached rows should win:
+
+```npm title="Terminal"
 npm install @prisma-next/middleware-cache
 ```
 
@@ -39,7 +41,7 @@ The cache is family-agnostic: unlike `budgets` and `lints`, it works on MongoDB 
 
 Annotate a read with `cacheAnnotation` and a `ttl` in milliseconds. On the SQL query builder, chain `.annotate(...)` onto the plan:
 
-```ts
+```ts title="src/prisma/get-users-cached.ts"
 import { cacheAnnotation } from '@prisma-next/middleware-cache';
 
 const plan = db.sql.public.user
@@ -53,12 +55,12 @@ const users = await db.runtime().execute(plan);
 
 On the ORM client, pass the annotation through the query's meta callback:
 
-```ts
+```ts title="src/prisma/get-user-cached.ts"
 import { cacheAnnotation } from '@prisma-next/middleware-cache';
 import { orm } from '@prisma-next/sql-orm-client';
 
 const runtime = await db.connect();
-const models = orm({ runtime, context: db.context, collections: {} }).public;
+const models = orm({ runtime, context: db.context }).public;
 
 const user = await models.User.first({ id }, (meta) =>
   meta.annotate(cacheAnnotation({ ttl: 60_000 })),
@@ -81,7 +83,7 @@ The annotation payload has three fields:
 
 By default the cache key is a content hash of the executed query: the post-lowering statement plus its bound parameters, combined with the contract's storage hash. Two lookups with different parameter values land in different slots; the same lookup hits. Because schema migrations rotate the storage hash, entries cached before a migration cannot serve queries against the new schema.
 
-Cache hits are still visible to the rest of the middleware chain: `afterExecute` fires on every middleware with `result.source` set to `'middleware'` instead of `'driver'`, so logging and metrics keep working for cached reads.
+Cache hits are still visible to the rest of the middleware chain: `beforeExecute` hooks have already run, the driver and `onRow` are skipped, and `afterExecute` fires on every middleware with `result.source` set to `'middleware'` instead of `'driver'`, so logging and metrics keep working for cached reads.
 
 The cache only acts at runtime scope. Queries executed inside a transaction or on an explicitly checked-out connection always go to the database, because read-after-write consistency is the caller's expectation there.
 
@@ -91,7 +93,7 @@ The cache only acts at runtime scope. Queries executed inside a transaction or o
 | --- | --- | --- | --- |
 | `maxEntries` | `number` | `1000` | Maximum entries in the default in-memory store; least-recently-used entries are evicted first. Only consulted when `store` is omitted |
 | `store` | `CacheStore` | in-memory LRU | Bring your own store implementation, for example one backed by Redis |
-| `clock` | `() => number` | `Date.now` | Time source for TTL expiry, useful in tests |
+| `clock` | `() => number` | `Date.now` | Time source used to stamp `storedAt` on committed entries. TTL expiry lives in the store implementation |
 
 ## Common gotchas
 
