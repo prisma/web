@@ -1,0 +1,71 @@
+---
+title: Import from MySQL
+description: Import an existing MySQL database into Prisma Postgres, then use it with Prisma Next.
+url: /next/prisma-postgres/import-from-existing-database-mysql
+metaTitle: Import from MySQL into Prisma Postgres for Prisma Next
+metaDescription: Import MySQL data into Prisma Postgres, then connect Prisma Next to the imported database.
+badge: early-access
+---
+
+Move an existing MySQL database into Prisma Postgres, then connect Prisma Next to it.
+
+## Prerequisites
+
+You need:
+
+- the connection URL for the MySQL database you are importing from
+- a Prisma Data Platform account
+- `pgloader`
+- Node.js 24 or newer
+
+## 1. Create a Prisma Postgres database
+
+Create a Prisma Postgres database from Console or with the CLI. Copy the direct connection string; you will use it for the import and for `DATABASE_URL`.
+
+## 2. Create a pgloader config
+
+Create `config.load`:
+
+```text title="config.load"
+LOAD DATABASE
+    FROM mysql://USER:PASSWORD@HOST:PORT/DATABASE
+    INTO postgres://USER:PASSWORD@db.prisma.io:5432/?sslmode=require
+
+WITH quote identifiers,
+     include drop,
+     create tables,
+     create indexes,
+     reset sequences
+
+ALTER SCHEMA 'DATABASE' RENAME TO 'public';
+```
+
+## 3. Import into Prisma Postgres
+
+Run pgloader:
+
+```shell
+pgloader config.load
+```
+
+## 4. Add Prisma Next
+
+From your app root, initialize Prisma Next:
+
+```npm
+npx prisma-next init
+```
+
+Choose PostgreSQL, set `DATABASE_URL` to the Prisma Postgres connection string, then infer and emit the contract:
+
+```npm
+npx prisma-next contract infer --output ./prisma/contract.prisma
+npx prisma-next contract emit
+npx prisma-next db sign
+```
+
+## Next steps
+
+- Review table and column names in the inferred contract.
+- Use the [PostgreSQL existing-project guide](/next/add-to-existing-project/postgresql) for the first Prisma Next query.
+- Use the [full Prisma Postgres MySQL import guide](/prisma-postgres/import-from-existing-database-mysql) for deeper migration details.
