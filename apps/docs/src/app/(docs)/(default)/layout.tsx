@@ -25,11 +25,7 @@ const SIDEBAR_SLIDES = [
   },
 ];
 
-export default async function Layout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function Layout({ children }: { children: React.ReactNode }) {
   const { nav, ...base } = baseOptions();
 
   const navbarLinks: LinkItemType[] = [...links, ...authLinks];
@@ -47,6 +43,7 @@ export default async function Layout({
 
   const badges = Object.fromEntries(getPageBadges());
   const ormVersions = getOrmVersions(source.pageTree);
+  const pageUrls = source.getPages().map((page) => page.url);
 
   return (
     <BadgeProvider badges={badges}>
@@ -56,7 +53,7 @@ export default async function Layout({
         nav={{ ...nav }}
         sidebar={{
           collapsible: false,
-          banner: <VersionSwitcher versions={ormVersions} />,
+          banner: <VersionSwitcher versions={ormVersions} availablePathnames={pageUrls} />,
           components: { Item: SidebarBadgeItem },
           footer: ({ className, ...props }: ComponentProps<"div">) => (
             <div className={cn("flex flex-col p-4 pt-2 gap-3", className)} {...props}>

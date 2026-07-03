@@ -6,6 +6,7 @@ const withMDX = createMDX();
 const ContentSecurityPolicy = `
   default-src 'self';
   script-src 'self' 'unsafe-inline' 'unsafe-eval'
+    https://ingest.promptwatch.com
     https://cdn-cookieyes.com
     https://cdn.tolt.io
     https://unpkg.com
@@ -84,6 +85,7 @@ const ContentSecurityPolicy = `
     https://raw.githubusercontent.com;
 
   connect-src 'self'
+    https://ingest.promptwatch.com
     https://api.github.com
     https://p2zxqf70.api.sanity.io
     https://www.youtube.com
@@ -258,11 +260,47 @@ const config = {
         destination: "/orm/v6/:path*",
         permanent: true,
       },
+      {
+        source: "/orm/next/create-prisma",
+        destination: "/next/getting-started",
+        permanent: false,
+      },
+      {
+        source: "/next/create-prisma",
+        destination: "/next/getting-started",
+        permanent: false,
+      },
+      {
+        source: "/next/quickstart",
+        destination: "/next/quickstart/postgresql",
+        permanent: false,
+      },
+      {
+        source: "/next/prisma-postgres/quickstart",
+        destination: "/prisma-postgres/quickstart/prisma-next",
+        permanent: false,
+      },
+      // The Prisma Next + Prisma Postgres quickstart now lives in the Prisma Postgres
+      // Quickstart dropdown alongside the other ORMs.
+      {
+        source: "/next/prisma-postgres/quickstart/prisma-next",
+        destination: "/prisma-postgres/quickstart/prisma-next",
+        permanent: false,
+      },
+      {
+        source: "/orm/next/quickstart/:path*",
+        destination: "/next/quickstart/:path*",
+        permanent: false,
+      },
+      {
+        source: "/orm/next/add-to-existing-project/:path*",
+        destination: "/next/add-to-existing-project/:path*",
+        permanent: false,
+      },
     ];
   },
   async rewrites() {
     return [
-    
       // {
       //   source: "/orm/:path((?!latest(?:/|$)|v6(?:/|$)).*)",
       //   destination: "/orm/latest/:path",
