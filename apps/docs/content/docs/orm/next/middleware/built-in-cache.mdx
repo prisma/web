@@ -11,7 +11,7 @@ The cache middleware serves repeated reads from an in-memory store instead of th
 
 Use it for hot, repeatable reads such as dashboards, lookup tables, feature flags, navigation data, or expensive search results where a short stale window is acceptable.
 
-Install the package and register the middleware. Put it before other middleware that implement `intercept` when cached rows should win:
+Install the package and register the middleware:
 
 ```npm title="Terminal"
 npm install @prisma-next/middleware-cache
@@ -20,20 +20,17 @@ npm install @prisma-next/middleware-cache
 ```ts title="src/prisma/db.ts"
 import { createCacheMiddleware } from '@prisma-next/middleware-cache';
 import postgres from '@prisma-next/postgres/runtime';
-import { budgets, lints } from '@prisma-next/sql-runtime';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
 export const db = postgres<Contract>({
   contractJson,
   url: process.env.DATABASE_URL,
-  middleware: [
-    createCacheMiddleware({ maxEntries: 1_000 }),
-    lints(),
-    budgets({ maxRows: 10_000 }),
-  ],
+  middleware: [createCacheMiddleware({ maxEntries: 1_000 })],
 });
 ```
+
+When you combine it with other middleware such as [`lints`](/orm/next/middleware/built-in-lints) and [`budgets`](/orm/next/middleware/built-in-budgets), register the cache first: hooks run in array order, so a cache hit then short-circuits before the downstream middleware do any work.
 
 The cache is family-agnostic: unlike `budgets` and `lints`, it works on MongoDB runtimes as well as PostgreSQL.
 
