@@ -520,6 +520,268 @@ const githubConnection: FlowScene = {
   ],
 };
 
+// One query's round trip: app → middleware chain → driver, and back out.
+// The app and database boxes span both lanes so the return edge (and the
+// cache's short-circuit) can run through the clear band under the chain.
+const middlewarePipeline: FlowScene = {
+  label: "How a query moves through the middleware chain",
+  width: 712,
+  height: 248,
+  groupLabels: [{ text: "Middleware, in registration order", x: 160, y: 52 }],
+  nodes: [
+    {
+      id: "app",
+      label: "Your app",
+      sub: "ORM · SQL · raw",
+      variant: "neutral",
+      x: 16,
+      y: 70,
+      w: 108,
+      h: 150,
+    },
+    {
+      id: "cache",
+      label: "cache",
+      sub: "serves repeated reads",
+      variant: "source",
+      x: 160,
+      y: 70,
+      w: 130,
+      h: 64,
+    },
+    {
+      id: "lints",
+      label: "lints",
+      sub: "blocks risky shapes",
+      variant: "scope",
+      x: 322,
+      y: 70,
+      w: 116,
+      h: 64,
+    },
+    {
+      id: "budgets",
+      label: "budgets",
+      sub: "caps query cost",
+      variant: "production",
+      x: 470,
+      y: 70,
+      w: 102,
+      h: 64,
+    },
+    {
+      id: "db",
+      label: "Database",
+      sub: "the driver",
+      variant: "project",
+      x: 606,
+      y: 70,
+      w: 90,
+      h: 150,
+    },
+  ],
+  edges: [
+    // Request lane: anchors sit at the chain's center line (dy -43 on the
+    // tall boxes), so the four hops read as one straight pipeline.
+    { id: "e-in", from: "app", fromSide: "r", to: "cache", toSide: "l", fromDy: -43 },
+    { id: "e-c-l", from: "cache", fromSide: "r", to: "lints", toSide: "l" },
+    { id: "e-l-b", from: "lints", fromSide: "r", to: "budgets", toSide: "l" },
+    { id: "e-b-db", from: "budgets", fromSide: "r", to: "db", toSide: "l", toDy: -43 },
+    // Return lane: runs through the clear band under the chain boxes.
+    {
+      id: "e-return",
+      from: "db",
+      fromSide: "l",
+      to: "app",
+      toSide: "r",
+      fromDy: 43,
+      toDy: 43,
+      label: "rows · onRow · afterExecute",
+    },
+    // Cache hit: intercept answers from the chain, driver never runs.
+    {
+      id: "e-hit",
+      from: "cache",
+      fromSide: "b",
+      to: "app",
+      toSide: "r",
+      toDy: 43,
+      dashed: true,
+      label: "cached rows",
+    },
+  ],
+  steps: [
+    {
+      title: "1. One chain",
+      caption:
+        "Every query, from the ORM client, the SQL query builder, or raw SQL, runs through the same middleware array on its way to the driver. The chain runs in registration order: first in the array, first at every hook.",
+      nodes: ["app", "cache", "lints", "budgets", "db"],
+      edges: ["e-in", "e-c-l", "e-l-b", "e-b-db"],
+      emphasize: ["cache", "lints", "budgets"],
+    },
+    {
+      title: "2. Before the driver",
+      caption:
+        "Before anything reaches the database, beforeCompile can rewrite the query and beforeExecute can validate it, mutate parameters, or throw to block it. This is where lints stops a DELETE without WHERE and budgets rejects an unbounded SELECT.",
+      nodes: ["app", "cache", "lints", "budgets", "db"],
+      edges: ["e-in", "e-c-l", "e-l-b", "e-b-db"],
+      emphasize: ["lints", "budgets"],
+    },
+    {
+      title: "3. Cache answers early",
+      caption:
+        "A middleware can answer a query itself: on a hit, the cache returns rows from its intercept hook and the driver never runs. afterExecute still fires with source set to middleware, so logging and metrics see the read.",
+      nodes: ["app", "cache", "lints", "budgets", "db"],
+      edges: ["e-in", "e-hit"],
+      emphasize: ["cache"],
+    },
+    {
+      title: "4. Rows stream back",
+      caption:
+        "On the way back, onRow fires once per row as the driver streams, and afterExecute closes the call with the observed row count and latency. That is where budgets checks its latency ceiling and a custom slow-query middleware logs its warning.",
+      nodes: ["app", "cache", "lints", "budgets", "db"],
+      edges: ["e-in", "e-c-l", "e-l-b", "e-b-db", "e-return"],
+      emphasize: ["app", "db"],
+    },
+  ],
+};
+
+// One extension package, registered on two planes, converging on the database.
+const extensionPlanes: FlowScene = {
+  label: "How one extension package plugs into a project",
+  width: 712,
+  height: 330,
+  groupLabels: [
+    { text: "One package", x: 16, y: 22 },
+    { text: "Two registrations", x: 270, y: 22 },
+    { text: "One database", x: 560, y: 22 },
+  ],
+  nodes: [
+    {
+      id: "pkg",
+      label: "pgvector",
+      sub: "@prisma-next/extension-pgvector",
+      variant: "neutral",
+      x: 16,
+      y: 126,
+      w: 190,
+      h: 88,
+    },
+    {
+      id: "control",
+      label: "prisma-next.config.ts",
+      sub: "extensions: [pgvector]",
+      subBelow: true,
+      variant: "source",
+      x: 270,
+      y: 44,
+      w: 224,
+      h: 100,
+      rows: [
+        { key: "schema type", value: "Vector(n)", origin: "preview" },
+        { key: "migration", value: "CREATE EXTENSION", origin: "preview" },
+      ],
+    },
+    {
+      id: "runtime",
+      label: "db.ts",
+      sub: "extensions: [pgvector]",
+      subBelow: true,
+      variant: "production",
+      x: 270,
+      y: 196,
+      w: 224,
+      h: 100,
+      rows: [
+        { key: "query ops", value: "cosineDistance(…)", origin: "production" },
+        { key: "codecs", value: "vector ↔ number[]", origin: "production" },
+      ],
+    },
+    {
+      id: "db",
+      label: "PostgreSQL",
+      sub: "pgvector installed",
+      variant: "project",
+      x: 560,
+      y: 120,
+      w: 136,
+      h: 100,
+    },
+  ],
+  edges: [
+    {
+      id: "e-control",
+      from: "pkg",
+      fromSide: "r",
+      to: "control",
+      toSide: "l",
+      fromDy: -14,
+      label: "/control",
+    },
+    {
+      id: "e-runtime",
+      from: "pkg",
+      fromSide: "r",
+      to: "runtime",
+      toSide: "l",
+      fromDy: 14,
+      label: "/runtime",
+    },
+    {
+      id: "e-migrate",
+      from: "control",
+      fromSide: "r",
+      to: "db",
+      toSide: "l",
+      toDy: -26,
+      label: "db init",
+    },
+    {
+      id: "e-query",
+      from: "runtime",
+      fromSide: "r",
+      to: "db",
+      toSide: "l",
+      toDy: 26,
+      label: "queries",
+    },
+  ],
+  steps: [
+    {
+      title: "1. One package",
+      caption:
+        "An extension ships as one npm package with two entry points: a control export used at build time and a runtime export used when your app runs. You install it once.",
+      nodes: ["pkg"],
+      edges: [],
+      emphasize: ["pkg"],
+    },
+    {
+      title: "2. Control plane",
+      caption:
+        "prisma-next.config.ts registers the control export. That is the side contract emission and migrations use: the pack contributes schema types like Vector(n) and ships the baseline migration that installs the database feature.",
+      nodes: ["pkg", "control"],
+      edges: ["e-control"],
+      emphasize: ["control"],
+    },
+    {
+      title: "3. Runtime plane",
+      caption:
+        "db.ts registers the runtime export on the client. That side contributes the codecs that encode and decode vector values, and the query operations your code calls, like cosineDistance. If a required pack is missing here, the client fails at construction.",
+      nodes: ["pkg", "control", "runtime"],
+      edges: ["e-control", "e-runtime"],
+      emphasize: ["runtime"],
+    },
+    {
+      title: "4. Meet at the database",
+      caption:
+        "db init applies the pack's baseline migration, CREATE EXTENSION IF NOT EXISTS vector, and your queries run against a database that provably has the feature the contract relies on.",
+      nodes: ["pkg", "control", "runtime", "db"],
+      edges: ["e-control", "e-runtime", "e-migrate", "e-query"],
+      emphasize: ["db"],
+    },
+  ],
+};
+
 /**
  * Names that render as visual flow diagrams. Any name not listed here falls
  * back to the Code Hike token animation in presets.ts.
@@ -528,4 +790,6 @@ export const FLOW_SCENES = {
   "compute-model": computeModel,
   "env-layers": envLayers,
   "github-connection": githubConnection,
+  "middleware-pipeline": middlewarePipeline,
+  "extension-planes": extensionPlanes,
 } satisfies Partial<Record<ConceptName, FlowScene>>;
