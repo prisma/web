@@ -2,6 +2,7 @@
 import { type ComponentProps, type ReactNode, useEffect, useState } from "react";
 import { usePathname } from "fumadocs-core/framework";
 import { isActive, isActiveAny } from "../../lib/urls";
+import { getVersionedNavPathname } from "../../lib/version";
 import { getUtmParams, hasUtmParams } from "@prisma-docs/ui/lib/utm";
 import Link from "fumadocs-core/link";
 
@@ -44,6 +45,10 @@ interface WithHref {
    * @defaultValue 'url'
    */
   active?: "url" | "nested-url" | "none";
+  /**
+   * Preserve the current docs version when linking between top-level docs sections.
+   */
+  preserveDocsVersion?: boolean;
   /**
    * Optional list of paths that make this link active (exact or nested).
    * Use for catch-all links that should be active on e.g. `/`, `/prisma-orm/*`, `/prisma-postgres/*`.
@@ -134,7 +139,9 @@ export function LinkItem({
     ? isActiveAny(item.activePaths, pathname)
     : activeType !== "none" && isActive(item.url, pathname, activeType === "nested-url");
 
-  const href = useUtmHref(item.url);
+  const href = useUtmHref(
+    item.preserveDocsVersion ? getVersionedNavPathname(item.url, pathname) : item.url,
+  );
 
   return (
     <Link ref={ref} href={href} external={item.external} {...props} data-active={active}>
