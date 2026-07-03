@@ -19,7 +19,7 @@ You create an ORM client by connecting a runtime and calling `orm(...)`. The two
 
 ### PostgreSQL
 
-Create a Postgres client, connect it to get a runtime, then pass that runtime to `orm(...)`. Model accessors hang off `.public` and use the contract's **root names**, which match your PSL model names (`orm.User`, `orm.Post`).
+Create a Postgres client, connect it to get a runtime, then pass that runtime to `orm(...)`. Model accessors hang off `.public` and use the contract's **root names**, which match your Prisma Schema Language (PSL) model names (`orm.User`, `orm.Post`).
 
 ```ts
 import postgres from '@prisma-next/postgres/runtime';
@@ -238,7 +238,7 @@ On PostgreSQL, `include()`'s refinement callback receives the nested relation as
 
 - PostgreSQL only. MongoDB's `include()` has no refinement callback; the scalar reducers `count`/`sum`/`avg`/`min`/`max`/`combine` do not exist on the Mongo collection at all (calling them throws `TypeError`).
 - The reducers are only callable **inside** an `include()` refinement callback. Called elsewhere on a PostgreSQL collection, they throw `Error` (the method exists but asserts refinement mode).
-- `sum()` and `avg()` require a field with the numeric codec trait. Over a to-many relation with no rows, they resolve to `null`, not `0`.
+- `sum()` and `avg()` require a field with the numeric codec trait (codec traits are capability tags on a column's type mapping; they gate which comparison and aggregate methods a field offers). Over a to-many relation with no rows, they resolve to `null`, not `0`.
 - `min()` and `max()` are typed for numeric fields (`NumericFieldNames`). At the SQL level, Postgres's `MIN`/`MAX` also accept date/time columns, so `min('createdAt')` returns a real value at runtime even though it fails the type check. Treat the numeric-only typing as a type-level restriction, not a runtime one, for date and time columns. Do not rely on this: it requires bypassing the type system.
 
 #### Options
@@ -1051,7 +1051,7 @@ const updated = await db.Post.where({ id: postId })
   .select('id', 'title')
   .include('tags', (tag) => tag.select('id', 'label').orderBy((t) => t.label.asc()))
   .update({
-    tags: (tag) => tag.disconnect([{ id: ormTagId }]),
+    tags: (tag) => tag.disconnect([{ id: tagId }]),
   });
 // only the junction row is removed; the Tag row itself still exists
 ```
@@ -1674,7 +1674,7 @@ Static factories that build MongoDB filter expressions.
 #### Remarks
 
 - MongoDB. Imported from `@prisma-next/mongo-query-ast/execution`.
-- Exactly ten factories exist: `of`, `eq`, `neq`, `gt`, `lt`, `gte`, `lte`, `in`, `nin`, `isNull`, `isNotNull`. The inequality factory is `neq`, **not** `ne` (`MongoFieldFilter.ne` is `undefined`).
+- Exactly eleven factories exist: `of`, `eq`, `neq`, `gt`, `lt`, `gte`, `lte`, `in`, `nin`, `isNull`, `isNotNull`. The inequality factory is `neq`, **not** `ne` (`MongoFieldFilter.ne` is `undefined`).
 - `isNull` / `isNotNull` are sugar for equals-null / not-equals-null, not a `$exists` check.
 - The factories `exists`, `regex`, `elemMatch`, `all`, and `size` do **not** exist on `MongoFieldFilter`. There is a separate `MongoExistsExpr` class for `$exists`, but no regex, `elemMatch`, `$all`, or `$size` support anywhere in the library.
 
