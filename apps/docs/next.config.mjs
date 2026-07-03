@@ -260,11 +260,47 @@ const config = {
         destination: "/orm/v6/:path*",
         permanent: true,
       },
+      {
+        source: "/orm/next/create-prisma",
+        destination: "/next/getting-started",
+        permanent: false,
+      },
+      {
+        source: "/next/create-prisma",
+        destination: "/next/getting-started",
+        permanent: false,
+      },
+      {
+        source: "/next/quickstart",
+        destination: "/next/quickstart/postgresql",
+        permanent: false,
+      },
+      {
+        source: "/next/prisma-postgres/quickstart",
+        destination: "/prisma-postgres/quickstart/prisma-next",
+        permanent: false,
+      },
+      // The Prisma Next + Prisma Postgres quickstart now lives in the Prisma Postgres
+      // Quickstart dropdown alongside the other ORMs.
+      {
+        source: "/next/prisma-postgres/quickstart/prisma-next",
+        destination: "/prisma-postgres/quickstart/prisma-next",
+        permanent: false,
+      },
+      {
+        source: "/orm/next/quickstart/:path*",
+        destination: "/next/quickstart/:path*",
+        permanent: false,
+      },
+      {
+        source: "/orm/next/add-to-existing-project/:path*",
+        destination: "/next/add-to-existing-project/:path*",
+        permanent: false,
+      },
     ];
   },
   async rewrites() {
     return [
-    
       // {
       //   source: "/orm/:path((?!latest(?:/|$)|v6(?:/|$)).*)",
       //   destination: "/orm/latest/:path",

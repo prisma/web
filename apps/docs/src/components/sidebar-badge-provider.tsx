@@ -33,18 +33,36 @@ const BADGE_COLOR: Record<BadgeType, "ppg" | "warning" | "neutral"> = {
   deprecated: "warning",
 };
 
+function shouldHideSidebarBadge(url: string, badge: BadgeType | undefined) {
+  if (badge !== "early-access") {
+    return false;
+  }
+
+  const docsPathname = url.replace(/^\/docs(?=\/|$)/, "") || "/";
+
+  return (
+    docsPathname === "/next" ||
+    docsPathname.startsWith("/next/") ||
+    docsPathname === "/orm/next" ||
+    docsPathname.startsWith("/orm/next/") ||
+    docsPathname === "/cli/next" ||
+    docsPathname.startsWith("/cli/next/")
+  );
+}
+
 export const SidebarBadgeItem: FC<{ item: PageTree.Item }> = ({ item }) => {
   const badges = use(BadgeContext);
   const badge = badges[item.url] as BadgeType | undefined;
+  const visibleBadge = shouldHideSidebarBadge(item.url, badge) ? undefined : badge;
 
   return (
     <SidebarItem href={item.url} external={item.external} icon={item.icon}>
       <span className="flex items-center w-full gap-2">
         {item.name}
-        {badge && (
+        {visibleBadge && (
           <Badge
-            color={BADGE_COLOR[badge]}
-            label={BADGE_LABEL[badge]}
+            color={BADGE_COLOR[visibleBadge]}
+            label={BADGE_LABEL[visibleBadge]}
             size="md"
             className="ml-auto shrink-0"
           />

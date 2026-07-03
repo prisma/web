@@ -1,7 +1,7 @@
 import type * as PageTree from "fumadocs-core/page-tree";
 
 export const LATEST_VERSION = "latest";
-const NAMED_VERSIONS = ["next", 'v6'] as const;
+const NAMED_VERSIONS = ["next", "v6"] as const;
 export type Version = string;
 
 type TreeNode = {
@@ -16,11 +16,73 @@ type TreeNode = {
 
 const VERSION_SEGMENT_REGEX = /^v\d+$/i;
 const LEGACY_ORM_VERSION_REGEX = /^\/(?<version>[a-z0-9-]+)\/orm(?:\/|$)/i;
+const DOCS_PREFIX = "/docs";
+const NEXT_GETTING_STARTED_ROOT = "/next";
+const LATEST_CLI_ROOT = "/cli";
+const NEXT_CLI_ROOT = "/cli/next";
+const NEXT_GETTING_STARTED_PATHS_BY_LATEST_PATH = new Map<string, string>([
+  ["/", NEXT_GETTING_STARTED_ROOT],
+  ["/getting-started", "/next/getting-started"],
+  ["/prisma-orm", NEXT_GETTING_STARTED_ROOT],
+  ["/prisma-orm/quickstart/postgresql", "/next/quickstart/postgresql"],
+  ["/prisma-orm/quickstart/mongodb", "/next/quickstart/mongodb"],
+  ["/prisma-orm/add-to-existing-project/postgresql", "/next/add-to-existing-project/postgresql"],
+  ["/prisma-orm/add-to-existing-project/mongodb", "/next/add-to-existing-project/mongodb"],
+  ["/prisma-postgres", "/next/prisma-postgres/quickstart/prisma-next"],
+  ["/prisma-postgres/quickstart/prisma-orm", "/next/prisma-postgres/quickstart/prisma-next"],
+  [
+    "/prisma-postgres/import-from-existing-database-postgresql",
+    "/next/prisma-postgres/import-from-existing-database-postgresql",
+  ],
+  [
+    "/prisma-postgres/import-from-existing-database-mysql",
+    "/next/prisma-postgres/import-from-existing-database-mysql",
+  ],
+  ["/prisma-postgres/from-the-cli", "/next/prisma-postgres/from-the-cli"],
+]);
+const LATEST_GETTING_STARTED_PATHS_BY_NEXT_PATH = new Map<string, string>([
+  // Bare "/" redirects to /next, so the Latest getting-started anchor is /getting-started.
+  [NEXT_GETTING_STARTED_ROOT, "/getting-started"],
+  ["/next/getting-started", "/getting-started"],
+  ["/next/quickstart/postgresql", "/prisma-orm/quickstart/postgresql"],
+  ["/next/quickstart/mongodb", "/prisma-orm/quickstart/mongodb"],
+  ["/next/add-to-existing-project/postgresql", "/prisma-orm/add-to-existing-project/postgresql"],
+  ["/next/add-to-existing-project/mongodb", "/prisma-orm/add-to-existing-project/mongodb"],
+  ["/next/prisma-postgres/quickstart/prisma-next", "/prisma-postgres/quickstart/prisma-orm"],
+  [
+    "/next/prisma-postgres/import-from-existing-database-postgresql",
+    "/prisma-postgres/import-from-existing-database-postgresql",
+  ],
+  [
+    "/next/prisma-postgres/import-from-existing-database-mysql",
+    "/prisma-postgres/import-from-existing-database-mysql",
+  ],
+  ["/next/prisma-postgres/from-the-cli", "/prisma-postgres/from-the-cli"],
+]);
+
+function normalizePathname(pathname: string) {
+  const path = pathname.split(/[?#]/, 1)[0] || "/";
+  return path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
+}
+
+function withoutDocsPrefix(pathname: string) {
+  const normalizedPathname = normalizePathname(pathname);
+
+  if (normalizedPathname === DOCS_PREFIX) {
+    return "/";
+  }
+
+  if (normalizedPathname.startsWith(`${DOCS_PREFIX}/`)) {
+    return normalizedPathname.slice(DOCS_PREFIX.length) || "/";
+  }
+
+  return normalizedPathname;
+}
 
 function isOrmNode(node: TreeNode) {
   return (
     node.type === "folder" &&
-    (node.root === true || node.name === "ORM" || node.index?.url === "/orm")
+    (node.name === "ORM" || node.index?.url === "/orm" || node.index?.url?.startsWith("/orm/"))
   );
 }
 
@@ -118,20 +180,200 @@ export function getVersionRoot(version: Version) {
   return version === LATEST_VERSION ? "/orm" : `/orm/${version}`;
 }
 
+function isLatestGettingStartedPathname(pathname: string) {
+  return (
+    pathname === "/" ||
+    pathname === "/getting-started" ||
+    pathname === "/prisma-orm" ||
+    pathname.startsWith("/prisma-orm/") ||
+    pathname === "/prisma-postgres" ||
+    pathname.startsWith("/prisma-postgres/")
+  );
+}
+
+function isNextGettingStartedPathname(pathname: string) {
+  return (
+    pathname === NEXT_GETTING_STARTED_ROOT || pathname.startsWith(`${NEXT_GETTING_STARTED_ROOT}/`)
+  );
+}
+
+function getGettingStartedSwitchPathname(docsPathname: string, targetVersion: Version) {
+  if (targetVersion === "next") {
+    return NEXT_GETTING_STARTED_PATHS_BY_LATEST_PATH.get(docsPathname) ?? NEXT_GETTING_STARTED_ROOT;
+  }
+
+  if (targetVersion === LATEST_VERSION) {
+    return LATEST_GETTING_STARTED_PATHS_BY_NEXT_PATH.get(docsPathname) ?? "/getting-started";
+  }
+
+  return getVersionRoot(targetVersion);
+}
+
+function isLatestCliPathname(pathname: string) {
+  return (
+    pathname === LATEST_CLI_ROOT ||
+    (pathname.startsWith(`${LATEST_CLI_ROOT}/`) && !isNextCliPathname(pathname))
+  );
+}
+
+function isNextCliPathname(pathname: string) {
+  return pathname === NEXT_CLI_ROOT || pathname.startsWith(`${NEXT_CLI_ROOT}/`);
+}
+
+function getAvailablePathnameSet(availablePathnames: Iterable<string>) {
+  return new Set(
+    Array.from(availablePathnames, (availablePathname) => withoutDocsPrefix(availablePathname)),
+  );
+}
+
+function getCliSwitchPathname(
+  docsPathname: string,
+  targetVersion: Version,
+  availablePathnames: Iterable<string>,
+) {
+  if (targetVersion !== LATEST_VERSION && targetVersion !== "next") {
+    return getVersionRoot(targetVersion);
+  }
+
+  const targetRoot = targetVersion === "next" ? NEXT_CLI_ROOT : LATEST_CLI_ROOT;
+  const currentRoot = isNextCliPathname(docsPathname) ? NEXT_CLI_ROOT : LATEST_CLI_ROOT;
+  const suffix =
+    docsPathname === currentRoot
+      ? ""
+      : docsPathname.startsWith(`${currentRoot}/`)
+        ? docsPathname.slice(currentRoot.length)
+        : "";
+  const candidate = `${targetRoot}${suffix}`;
+  const available = getAvailablePathnameSet(availablePathnames);
+
+  if (available.size === 0 || available.has(candidate)) {
+    return candidate;
+  }
+
+  return targetRoot;
+}
+
+export function getGettingStartedVersionFromPathname(pathname: string): Version | null {
+  const docsPathname = withoutDocsPrefix(pathname);
+
+  if (isNextGettingStartedPathname(docsPathname)) {
+    return "next";
+  }
+
+  if (isLatestGettingStartedPathname(docsPathname)) {
+    return LATEST_VERSION;
+  }
+
+  return null;
+}
+
+export function isGettingStartedVersionPathname(pathname: string) {
+  return getGettingStartedVersionFromPathname(pathname) !== null;
+}
+
+export function getCliVersionFromPathname(pathname: string): Version | null {
+  const docsPathname = withoutDocsPrefix(pathname);
+
+  if (isNextCliPathname(docsPathname)) {
+    return "next";
+  }
+
+  if (isLatestCliPathname(docsPathname)) {
+    return LATEST_VERSION;
+  }
+
+  return null;
+}
+
+export function isCliVersionPathname(pathname: string) {
+  return getCliVersionFromPathname(pathname) !== null;
+}
+
 export function getOrmVersionFromPathname(pathname: string): Version | null {
-  const legacyMatch = pathname.match(LEGACY_ORM_VERSION_REGEX);
+  const docsPathname = withoutDocsPrefix(pathname);
+  const legacyMatch = docsPathname.match(LEGACY_ORM_VERSION_REGEX);
   if (legacyMatch?.groups?.version) {
     return legacyMatch.groups.version.toLowerCase();
   }
 
-  if (pathname !== "/orm" && !pathname.startsWith("/orm/")) {
+  if (docsPathname !== "/orm" && !docsPathname.startsWith("/orm/")) {
     return null;
   }
 
-  const segments = pathname.split("/").filter(Boolean);
+  const segments = docsPathname.split("/").filter(Boolean);
   const version = segments[1];
 
   return isVersionSegment(version) ? version.toLowerCase() : LATEST_VERSION;
+}
+
+export function getVersionSwitchPathname(
+  pathname: string,
+  targetVersion: Version,
+  availablePathnames: Iterable<string> = [],
+) {
+  const docsPathname = withoutDocsPrefix(pathname);
+  const gettingStartedVersion = getGettingStartedVersionFromPathname(docsPathname);
+
+  if (gettingStartedVersion) {
+    return getGettingStartedSwitchPathname(docsPathname, targetVersion);
+  }
+
+  const cliVersion = getCliVersionFromPathname(docsPathname);
+
+  if (cliVersion) {
+    return getCliSwitchPathname(docsPathname, targetVersion, availablePathnames);
+  }
+
+  const currentVersion = getOrmVersionFromPathname(docsPathname);
+  const targetRoot = getVersionRoot(targetVersion);
+
+  if (!currentVersion) {
+    return targetRoot;
+  }
+
+  const currentRoot = getVersionRoot(currentVersion);
+  const suffix =
+    docsPathname === currentRoot
+      ? ""
+      : docsPathname.startsWith(`${currentRoot}/`)
+        ? docsPathname.slice(currentRoot.length)
+        : "";
+  const candidate = `${targetRoot}${suffix}`;
+  const available = getAvailablePathnameSet(availablePathnames);
+
+  if (available.size === 0 || available.has(candidate)) {
+    return candidate;
+  }
+
+  return targetRoot;
+}
+
+export function getVersionedNavPathname(targetPathname: string, currentPathname: string) {
+  const targetDocsPathname = withoutDocsPrefix(targetPathname);
+  const isNextDocsPathname =
+    getGettingStartedVersionFromPathname(currentPathname) === "next" ||
+    getOrmVersionFromPathname(currentPathname) === "next" ||
+    getCliVersionFromPathname(currentPathname) === "next";
+
+  // Bare "/" redirects to /next, so route the Getting Started tab to the reachable
+  // landing for the active version instead of the redirecting root.
+  if (targetDocsPathname === "/") {
+    return isNextDocsPathname ? NEXT_GETTING_STARTED_ROOT : "/getting-started";
+  }
+
+  if (!isNextDocsPathname) {
+    return targetPathname;
+  }
+
+  if (targetDocsPathname === "/orm") {
+    return "/orm/next";
+  }
+
+  if (targetDocsPathname === LATEST_CLI_ROOT) {
+    return NEXT_CLI_ROOT;
+  }
+
+  return targetPathname;
 }
 
 export function getOrmVersionFromRoute(route?: string | string[]): Version | null {
@@ -152,7 +394,7 @@ export function getOrmVersionFromRoute(route?: string | string[]): Version | nul
 
 export function getOrmVersions(tree: PageTree.Root): Version[] {
   const ormNode = findOrmNode(tree as TreeNode);
-  const versions = new Set<Version>();
+  const versions = new Set<Version>(NAMED_VERSIONS);
 
   for (const child of ormNode?.children ?? []) {
     const version = getVersionFromNode(child);
@@ -161,5 +403,5 @@ export function getOrmVersions(tree: PageTree.Root): Version[] {
     }
   }
 
-  return [LATEST_VERSION, "v6", ...Array.from(versions).sort(compareVersionsDescending)];
+  return [LATEST_VERSION, ...Array.from(versions).sort(compareVersionsDescending)];
 }
