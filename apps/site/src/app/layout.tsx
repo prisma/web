@@ -169,7 +169,7 @@ function baseOptions() {
         ],
       },
       {
-        url: "https://www.prisma.io/docs/next",
+        url: "https://www.prisma.io/docs/orm",
         text: "Docs",
       },
       {
