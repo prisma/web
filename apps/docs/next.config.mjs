@@ -297,6 +297,29 @@ const config = {
         destination: "/next/add-to-existing-project/:path*",
         permanent: false,
       },
+      // ── Guides URL cutover (DR-8689 / DR-8687) — DO NOT ENABLE YET ────────
+      // Today: Prisma 7 guides live at /guides/* and Prisma Next guides at
+      // /guides/next/* (the "Guides version" dropdown switches between them).
+      // When Prisma Next becomes the default docs version ("/" becomes the
+      // Prisma Next docs and Prisma 7 moves to v7), the guides flip the same
+      // way: the Prisma 7 guide tree moves under /guides/v7, and the
+      // /guides/next tree is promoted to /guides. The redirects to enable at
+      // that cutover, kept here so the map builds up in one reviewable place:
+      //
+      // 1. Promote every converted Prisma Next guide (per-guide, as converted):
+      // { source: "/guides/next/bun", destination: "/guides/bun", permanent: false },
+      // { source: "/guides/next/deno", destination: "/guides/deno", permanent: false },
+      // { source: "/guides/next/hono", destination: "/guides/hono", permanent: false },
+      // { source: "/guides/next", destination: "/guides", permanent: false },
+      //
+      // 2. Park the Prisma 7 versions under /guides/v7 (only for guides that
+      //    have a Prisma Next replacement; unconverted guides keep their URL):
+      // { source: "/guides/runtimes/bun", destination: "/guides/v7/runtimes/bun", permanent: false },
+      // { source: "/guides/runtimes/deno", destination: "/guides/v7/runtimes/deno", permanent: false },
+      // { source: "/guides/frameworks/hono", destination: "/guides/v7/frameworks/hono", permanent: false },
+      //
+      // Each future guide conversion appends its pair here in the same PR.
+      // ───────────────────────────────────────────────────────────────────────
     ];
   },
   async rewrites() {
