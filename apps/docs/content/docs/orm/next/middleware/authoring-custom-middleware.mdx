@@ -1,104 +1,137 @@
 ---
 title: Authoring custom middleware
-description: Write your own Prisma Next middleware as an object with a name and hooks, and register it on the runtime.
+description: Build, register, and test your own Prisma Next middleware, step by step, starting with a query logger.
 url: /orm/next/middleware/authoring-custom-middleware
 metaTitle: Authoring custom middleware in Prisma Next
-metaDescription: Write a custom Prisma Next middleware, with a complete slow-query warning example, the hook and context reference, and query-rewriting variations.
+metaDescription: Write a custom Prisma Next middleware step by step. Build a query logger, register it, see its output, and learn the full hook surface.
 badge: early-access
 ---
 
-A custom middleware is a plain object: give it a `name`, declare the runtime family it targets, and implement the hooks you need. No base class, no registration API beyond the `middleware` array.
+## Introduction
 
-Reach for custom middleware when the behavior belongs beside data access rather than inside every resolver or service method: tenant filters, soft-delete policy, query timing, read-through fixtures, request-scoped auditing, or parameter preparation for codecs and external services.
+In this guide, you build your own middleware from scratch: a query logger that prints every query with its row count and latency. You will create the middleware file, register it, run a query, and see the output. At the end you will know the full hook surface well enough to write any middleware.
 
-This complete example warns whenever a query runs longer than a threshold:
+A custom middleware is a plain object with a `name` and the hooks you implement. There is no base class and no registration API beyond the `middleware` array you already know from [How middleware works](/orm/next/middleware/how-middleware-works).
 
-```ts title="src/prisma/slow-query-warning.ts"
-import type { SqlMiddleware } from '@prisma-next/sql-runtime';
+## Prerequisites
 
-export interface SlowQueryWarningOptions {
-  /** Latency above this many milliseconds logs a warning. Default: 250. */
-  readonly thresholdMs?: number;
-}
+- A Prisma Next project with a working `src/prisma/db.ts`. The [PostgreSQL quickstart](/next/quickstart/postgresql) sets one up in a few minutes.
+- At least one model with a few rows, so the logger has something to log.
 
-export function slowQueryWarning(options?: SlowQueryWarningOptions): SqlMiddleware {
-  const thresholdMs = options?.thresholdMs ?? 250;
+## 1. Create the middleware
 
+Create a new file next to your database setup. The middleware implements one hook, `afterExecute`, which runs once after every query with the outcome:
+
+```ts title="src/prisma/query-logger.ts"
+import type { SqlMiddleware } from "@prisma-next/sql-runtime";
+
+export function queryLogger(): SqlMiddleware {
   return {
-    name: 'slow-query-warning',
-    familyId: 'sql',
+    name: "query-logger",
+    familyId: "sql",
 
-    async afterExecute(plan, result, ctx) {
-      if (result.latencyMs <= thresholdMs) return;
-      ctx.log.warn({
-        code: 'APP.SLOW_QUERY',
-        message: `Query took ${result.latencyMs}ms (threshold: ${thresholdMs}ms)`,
-        details: {
-          sql: plan.sql,
-          rowCount: result.rowCount,
-          latencyMs: result.latencyMs,
-          source: result.source,
-          planExecutionId: ctx.planExecutionId,
-        },
-      });
+    async afterExecute(plan, result) {
+      console.log(
+        `[query-logger] ${result.rowCount} rows in ${Math.round(result.latencyMs)}ms · ${plan.sql}`,
+      );
     },
   };
 }
 ```
 
-Register it in the `middleware` array on the runtime setup, the same way as the [built-ins](/orm/next/middleware/how-middleware-works#what-ships-built-in):
+Typing the object as `SqlMiddleware` gives you inferred parameter types on every hook, so you rarely import the plan or result types yourself. `familyId: "sql"` says this middleware is for SQL databases; the [family section below](#which-family-to-declare) explains when to set it.
+
+## 2. Register it
+
+Add the middleware to the `middleware` array in your client setup:
 
 ```ts title="src/prisma/db.ts"
 import postgres from '@prisma-next/postgres/runtime';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
-import { slowQueryWarning } from './slow-query-warning';
+import { queryLogger } from './query-logger';
 
 export const db = postgres<Contract>({
   contractJson,
   url: process.env['DATABASE_URL']!,
-  middleware: [slowQueryWarning({ thresholdMs: 250 })],
+  middleware: [queryLogger()],
 });
 ```
 
-Every query now reports when it crosses the threshold, whatever surface issued it:
+That is the whole wiring. Every query on this client now passes through the logger, whether it comes from the ORM API or the SQL query builder.
 
-```text title="Example log"
-warn {
-  code: 'APP.SLOW_QUERY',
-  message: 'Query took 412ms (threshold: 250ms)',
-  details: { sql: 'SELECT "id", "email" FROM "user" LIMIT 10', rowCount: 10, ... }
+## 3. Run a query and check the output
+
+Run any query in your app, for example:
+
+```ts
+const users = await db.orm.public.User.select("id", "email").take(5).all();
+```
+
+Your terminal shows one line per query:
+
+```text no-copy
+[query-logger] 2 rows in 18ms · SELECT "user"."id" AS "id", "user"."email" AS "email" FROM "public"."user" LIMIT 5
+```
+
+If you see no output, check that the middleware is in the `middleware` array of the client your query actually uses, and that the query ran (an error before execution skips `afterExecute` only if the driver never started; failed driver calls still log, with `result.completed` set to `false`).
+
+## 4. Add an option
+
+Real middleware usually takes options. Add a threshold so the logger only reports slow queries:
+
+```ts title="src/prisma/query-logger.ts"
+import type { SqlMiddleware } from "@prisma-next/sql-runtime";
+
+export interface QueryLoggerOptions {
+  /** Only log queries slower than this many milliseconds. Default: 0, log everything. */
+  readonly thresholdMs?: number;
+}
+
+export function queryLogger(options?: QueryLoggerOptions): SqlMiddleware {
+  const thresholdMs = options?.thresholdMs ?? 0;
+
+  return {
+    name: "query-logger",
+    familyId: "sql",
+
+    async afterExecute(plan, result) {
+      if (result.latencyMs < thresholdMs) return;
+      console.log(
+        `[query-logger] ${result.rowCount} rows in ${Math.round(result.latencyMs)}ms · ${plan.sql}`,
+      );
+    },
+  };
 }
 ```
 
-## How it works
+Register it with a threshold and fast queries go quiet:
 
-Type your middleware as `SqlMiddleware` (from `@prisma-next/sql-runtime`) and TypeScript infers every hook's parameters, so you rarely need to import the plan or context types directly. The hooks, all optional:
+```ts title="src/prisma/db.ts"
+middleware: [queryLogger({ thresholdMs: 250 })],
+```
 
-- `beforeCompile(draft, ctx)` runs before the query AST is lowered to SQL. Return a new draft (`{ ...draft, ast: rewritten }`) to rewrite the query, or `undefined` to pass through. This hook is SQL-specific.
-- `beforeExecute(plan, ctx, params?)` runs after lowering and before parameter encoding. `plan.sql` is the rendered statement, `plan.params` contains user-domain parameter values, and `plan.ast` is the pre-lowering AST. Throw to block the query. Iterate `params.entries()` and call `params.replaceValue(...)` to mutate parameter values before they are encoded.
-- `intercept(plan, ctx)` runs last before the driver. Return `{ rows }` (an iterable or async iterable of row objects) to answer the query yourself and skip the driver, or `undefined` to pass through.
-- `onRow(row, plan, ctx)` runs for every row the driver yields.
-- `afterExecute(plan, result, ctx)` runs once at the end, with `result.rowCount`, `result.latencyMs`, `result.completed` (`false` when the driver errored), and `result.source` (`'driver'`, or `'middleware'` when an `intercept` answered).
+One placement rule worth knowing: hooks run in registration order, and a middleware that throws stops the ones after it. Register your logger before middleware that can throw, such as `budgets`, so the queries you most want to see still get logged.
 
-Hooks run in registration order at every site, and the context (`ctx`) is shared across one `execute()` call:
+You have a working, configurable middleware. The rest of this page is the surface you reach for as your middleware grows.
 
-| Context field | What it gives you |
-| --- | --- |
-| `ctx.log` | Structured `info` / `warn` / `error` (and optional `debug`) sinks wired to the runtime's logger |
-| `ctx.mode` | `'strict'` or `'permissive'`; use it when a middleware should throw in strict environments and warn elsewhere |
-| `ctx.now()` | Current time from the runtime's clock; prefer it over `Date.now()` so tests can control time |
-| `ctx.planExecutionId` | Unique ID per `execute()` call, the same value in every hook, for correlating observations |
-| `ctx.scope` | `'runtime'`, `'connection'`, or `'transaction'`; use it to skip work in scopes you should not touch |
-| `ctx.contentHash(plan)` | Stable digest of the statement plus parameters, for keying caches or coalescing requests |
-| `ctx.signal` | Optional `AbortSignal` for cancellation; observe it in long-running hook work |
-| `ctx.contract` | The runtime's contract, when a hook needs schema information |
+## The hooks
 
-## Variations
+`afterExecute` is one of five hooks. Implement any subset:
 
-### Rewrite queries with `beforeCompile`
+| Hook | Runs | Use it to |
+| --- | --- | --- |
+| `beforeCompile(draft, ctx)` | Before the query AST becomes SQL | Rewrite the query, for example add a tenant filter |
+| `beforeExecute(plan, ctx, params?)` | Before the driver, with `plan.sql` rendered | Validate, throw to block, or adjust parameter values |
+| `intercept(plan, ctx)` | Right before the driver | Return `{ rows }` to answer the query yourself |
+| `onRow(row, plan, ctx)` | Once per streamed row | Count or sample rows; throw to abort |
+| `afterExecute(plan, result, ctx)` | After the query finishes | Log timing, row count, and outcome |
 
-`beforeCompile` sees the typed AST before lowering, which makes cross-cutting query rewrites possible: tenant scoping, soft-delete filters, or row-level restrictions. This middleware appends a predicate to every `SELECT` on the `user` table:
+[How middleware works](/orm/next/middleware/how-middleware-works#the-five-hooks) walks the full lifecycle with an animation. Two hooks deserve a closer look here, because they change the query rather than observe it.
+
+### Rewrite queries with beforeCompile
+
+`beforeCompile` sees the typed AST before it becomes SQL. Return a new draft to rewrite the query. This middleware adds a predicate to every `SELECT` on the `user` table:
 
 ```ts title="src/prisma/scope-user-selects.ts"
 import type { SqlMiddleware } from '@prisma-next/sql-runtime';
@@ -120,28 +153,52 @@ export function scopeUserSelects(predicate: BinaryExpr): SqlMiddleware {
 }
 ```
 
-Because each middleware's returned draft feeds the next one, rewrites compose in registration order.
+Return `undefined` to pass the query through unchanged. Because each middleware's returned draft feeds the next, rewrites compose in registration order.
 
-### Short-circuit with `intercept`
+### Answer queries with intercept
 
-Return rows from `intercept` to answer a query without the driver: caches, mocks and fixtures in tests, rate limiters, and circuit breakers all fit this hook. `beforeExecute` has already run, so validation and parameter mutation still happen before a short-circuit. Return raw (undecoded) row objects; the runtime runs its normal decoding pass over them, and `afterExecute` reports `source: 'middleware'` so the short-circuit stays observable. The [cache middleware](/orm/next/middleware/built-in-cache) is the reference implementation of this pattern.
+Return rows from `intercept` and the driver never runs. Caches, test fixtures, rate limiters, and circuit breakers all fit this hook. Return raw row objects; the runtime decodes them normally, and `afterExecute` reports `source: 'middleware'` so the short-circuit stays visible to your logging. The [cache middleware](/orm/next/middleware/built-in-cache) is the reference implementation.
 
-### Support every database
+## The context object
 
-A middleware without `familyId` and `targetId` is cross-family and can register on PostgreSQL and MongoDB runtimes alike. Cross-family middleware cannot use SQL-specific surfaces like `beforeCompile` or `plan.sql`; they work against the shared hooks (`intercept`, `beforeExecute`, `onRow`, `afterExecute`) and the family-agnostic plan shape.
+Every hook receives a context (`ctx`) as its last argument:
+
+| Field | What it gives you |
+| --- | --- |
+| `ctx.planExecutionId` | The same unique ID in every hook of one query, for correlating observations |
+| `ctx.now()` | The runtime's clock; prefer it over `Date.now()` so tests can control time |
+| `ctx.scope` | `'runtime'`, `'connection'`, or `'transaction'`; skip work in scopes you should not touch |
+| `ctx.mode` | `'strict'` or `'permissive'`; throw in strict environments, warn elsewhere |
+| `ctx.contentHash(plan)` | A stable digest of statement plus parameters, for cache keys |
+| `ctx.contract` | The runtime's contract, when a hook needs schema information |
+| `ctx.log` | Structured log sinks (`info`, `warn`, `error`) wired to the runtime's logger |
+
+One honest note on `ctx.log`: the `postgres(...)` client does not expose a way to attach a log sink yet, so events sent to `ctx.log` are not printed anywhere by default. For output you can see today, log directly to your own logger, as the query logger above does with `console.log`.
+
+## Which family to declare
+
+Set `familyId: 'sql'` when your middleware touches anything SQL-shaped: `plan.sql`, the query AST in `beforeCompile`, SQL parameter handling. It will register on PostgreSQL and be rejected on MongoDB at startup, with `RUNTIME.MIDDLEWARE_FAMILY_MISMATCH`, rather than failing at query time.
+
+Leave `familyId` out only when the middleware sticks to family-neutral surfaces (`intercept`, `onRow`, `afterExecute` on the shared result shape). Such a middleware runs on PostgreSQL and MongoDB alike; the cache works this way.
 
 ## Common gotchas
 
 :::warning
 
-- The runtime validates middleware when you construct the client. A `familyId` that does not match the runtime throws `RUNTIME.MIDDLEWARE_FAMILY_MISMATCH` at startup, and a `targetId` without a `familyId` throws `RUNTIME.MIDDLEWARE_INCOMPATIBLE`.
-- `afterExecute` also fires when the driver fails, with `result.completed` set to `false`. Errors you throw from `afterExecute` on that failure path are swallowed so they cannot mask the driver error; put must-not-fail logic elsewhere.
 - Throwing from `afterExecute` on a successful query fails the call even though the database work already happened. Reserve it for cases where failing loudly is the point, as the [budgets](/orm/next/middleware/built-in-budgets) latency check does.
+- `afterExecute` also runs when the driver fails, with `result.completed` set to `false`. Errors you throw on that failure path are swallowed so they cannot mask the driver error.
 
 :::
 
-## See also
+## Prompt your coding agent
 
-- [How middleware works](/orm/next/middleware/how-middleware-works)
+Projects scaffolded with `create-prisma` install Prisma Next skills for your coding agent. Prompts that map to this guide:
+
+- "Write a Prisma Next middleware that logs every query slower than 250ms, and register it before budgets."
+- "Add a beforeCompile middleware that scopes every SELECT on the user table to the current tenant."
+- "Write an intercept middleware that returns fixture rows for the products table in tests."
+
+## Next steps
+
+- [How middleware works](/orm/next/middleware/how-middleware-works): the lifecycle your hooks plug into
 - [Built-in: budgets](/orm/next/middleware/built-in-budgets), [Built-in: lints](/orm/next/middleware/built-in-lints), and [Built-in: cache](/orm/next/middleware/built-in-cache) as production examples of the hook surface
-- [Using extensions](/orm/next/extensions/using-extensions) when you want to add database capabilities instead of wrapping queries

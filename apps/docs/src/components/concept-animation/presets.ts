@@ -21,6 +21,67 @@ export interface ConceptPreset {
 }
 
 export const CONCEPT_PRESETS = {
+  "middleware-lifecycle": {
+    label: "The middleware lifecycle, hook by hook",
+    steps: [
+      {
+        title: "1. Rewrite",
+        code:
+          "[[beforeCompile]]   your hook    rewrite the query AST\n" +
+          "SQL lowering      runtime      render the SQL\n" +
+          "beforeExecute     your hook    validate · block · tweak params\n" +
+          "param encoding    runtime      bind parameter values\n" +
+          "intercept         your hook    answer without the driver?\n" +
+          "driver            database     run the statement\n" +
+          "onRow             your hook    once per streamed row\n" +
+          "afterExecute      your hook    latency · row count · source",
+        caption:
+          "A query starts as a typed AST. beforeCompile sees it first and can return a rewritten draft: add a tenant filter, inject a soft-delete predicate. Then the runtime lowers the AST to SQL text.",
+      },
+      {
+        title: "2. Guard",
+        code:
+          "beforeCompile     your hook    rewrite the query AST\n" +
+          "SQL lowering      runtime      render the SQL\n" +
+          "[[beforeExecute]]   your hook    validate · block · tweak params\n" +
+          "param encoding    runtime      bind parameter values\n" +
+          "intercept         your hook    answer without the driver?\n" +
+          "driver            database     run the statement\n" +
+          "onRow             your hook    once per streamed row\n" +
+          "afterExecute      your hook    latency · row count · source",
+        caption:
+          "beforeExecute sees the rendered statement before anything reaches the database. Throw here to block the query (this is how lints stops a DELETE without WHERE), or adjust parameter values before they are encoded.",
+      },
+      {
+        title: "3. Short-circuit",
+        code:
+          "beforeCompile     your hook    rewrite the query AST\n" +
+          "SQL lowering      runtime      render the SQL\n" +
+          "beforeExecute     your hook    validate · block · tweak params\n" +
+          "param encoding    runtime      bind parameter values\n" +
+          "[[intercept]]       your hook    answer without the driver?\n" +
+          "driver            database     [[skipped on a cache hit]]\n" +
+          "onRow             your hook    once per streamed row\n" +
+          "afterExecute      your hook    latency · row count · source",
+        caption:
+          "intercept runs last before the driver. Return rows from it and the driver never runs: this is how the cache serves repeated reads. Return nothing and the query continues to the database.",
+      },
+      {
+        title: "4. Observe",
+        code:
+          "beforeCompile     your hook    rewrite the query AST\n" +
+          "SQL lowering      runtime      render the SQL\n" +
+          "beforeExecute     your hook    validate · block · tweak params\n" +
+          "param encoding    runtime      bind parameter values\n" +
+          "intercept         your hook    answer without the driver?\n" +
+          "driver            database     run the statement\n" +
+          "[[onRow]]             your hook    once per streamed row\n" +
+          "[[afterExecute]]      your hook    latency · row count · source",
+        caption:
+          "On the way back, onRow fires once per row as results stream, and afterExecute closes the call with the row count, the latency, and whether the driver or a middleware answered. Log it, meter it, or enforce a budget.",
+      },
+    ],
+  },
   "compute-model": {
     label: "How Compute organizes resources and isolates branches",
     steps: [

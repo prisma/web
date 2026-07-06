@@ -526,18 +526,19 @@ const githubConnection: FlowScene = {
 const middlewarePipeline: FlowScene = {
   label: "How a query moves through the middleware chain",
   width: 712,
-  height: 248,
-  groupLabels: [{ text: "Middleware, in registration order", x: 160, y: 52 }],
+  height: 230,
+  groupLabels: [{ text: "Middleware, in registration order", x: 160, y: 46 }],
   nodes: [
     {
       id: "app",
       label: "Your app",
-      sub: "ORM · SQL · raw",
+      sub: "ORM · SQL builder",
+      subBelow: true,
       variant: "neutral",
       x: 16,
-      y: 70,
+      y: 64,
       w: 108,
-      h: 150,
+      h: 124,
     },
     {
       id: "cache",
@@ -545,7 +546,7 @@ const middlewarePipeline: FlowScene = {
       sub: "serves repeated reads",
       variant: "source",
       x: 160,
-      y: 70,
+      y: 94,
       w: 130,
       h: 64,
     },
@@ -555,7 +556,7 @@ const middlewarePipeline: FlowScene = {
       sub: "blocks risky shapes",
       variant: "scope",
       x: 322,
-      y: 70,
+      y: 94,
       w: 116,
       h: 64,
     },
@@ -565,7 +566,7 @@ const middlewarePipeline: FlowScene = {
       sub: "caps query cost",
       variant: "production",
       x: 470,
-      y: 70,
+      y: 94,
       w: 102,
       h: 64,
     },
@@ -573,29 +574,31 @@ const middlewarePipeline: FlowScene = {
       id: "db",
       label: "Database",
       sub: "the driver",
+      subBelow: true,
       variant: "project",
       x: 606,
-      y: 70,
+      y: 64,
       w: 90,
-      h: 150,
+      h: 124,
     },
   ],
   edges: [
-    // Request lane: anchors sit at the chain's center line (dy -43 on the
-    // tall boxes), so the four hops read as one straight pipeline.
-    { id: "e-in", from: "app", fromSide: "r", to: "cache", toSide: "l", fromDy: -43 },
+    // Request lane: every box's vertical center sits on y=126, so the four
+    // hops are one straight line with no offsets.
+    { id: "e-in", from: "app", fromSide: "r", to: "cache", toSide: "l" },
     { id: "e-c-l", from: "cache", fromSide: "r", to: "lints", toSide: "l" },
     { id: "e-l-b", from: "lints", fromSide: "r", to: "budgets", toSide: "l" },
-    { id: "e-b-db", from: "budgets", fromSide: "r", to: "db", toSide: "l", toDy: -43 },
-    // Return lane: runs through the clear band under the chain boxes.
+    { id: "e-b-db", from: "budgets", fromSide: "r", to: "db", toSide: "l" },
+    // Return lane: runs through the clear band under the middleware row,
+    // inside the taller endpoint boxes.
     {
       id: "e-return",
       from: "db",
       fromSide: "l",
       to: "app",
       toSide: "r",
-      fromDy: 43,
-      toDy: 43,
+      fromDy: 44,
+      toDy: 44,
       label: "rows · onRow · afterExecute",
     },
     // Cache hit: intercept answers from the chain, driver never runs.
@@ -605,7 +608,7 @@ const middlewarePipeline: FlowScene = {
       fromSide: "b",
       to: "app",
       toSide: "r",
-      toDy: 43,
+      toDy: 44,
       dashed: true,
       label: "cached rows",
     },
@@ -614,7 +617,7 @@ const middlewarePipeline: FlowScene = {
     {
       title: "1. One chain",
       caption:
-        "Every query, from the ORM client, the SQL query builder, or raw SQL, runs through the same middleware array on its way to the driver. The chain runs in registration order: first in the array, first at every hook.",
+        "Every query, whether it comes from the ORM API or the SQL query builder, runs through the same middleware array on its way to the driver. The chain runs in registration order: first in the array, first at every hook.",
       nodes: ["app", "cache", "lints", "budgets", "db"],
       edges: ["e-in", "e-c-l", "e-l-b", "e-b-db"],
       emphasize: ["cache", "lints", "budgets"],

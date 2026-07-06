@@ -13,7 +13,7 @@ import { CONCEPT_PRESETS, type ConceptName, parseStepTokens } from "./presets";
  * way the surrounding layout never shifts as you step through.
  */
 export function ConceptAnimation({ name }: { name: ConceptName }) {
-  const scene = FLOW_SCENES[name];
+  const scene = (FLOW_SCENES as Partial<Record<ConceptName, (typeof FLOW_SCENES)[keyof typeof FLOW_SCENES]>>)[name];
   if (scene) return <FlowPlayer scene={scene} />;
 
   const preset = CONCEPT_PRESETS[name];
