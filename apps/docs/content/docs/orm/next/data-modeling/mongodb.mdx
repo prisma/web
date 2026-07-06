@@ -1,54 +1,55 @@
 ---
 title: MongoDB data modeling
-description: Modeling data in Prisma Next for MongoDB — documents, embedded documents, references, and when to use each.
+description: Model documents, embedded documents, and references for MongoDB, and decide when to embed and when to reference.
 url: /orm/next/data-modeling/mongodb
 metaTitle: MongoDB data modeling in Prisma Next
-metaDescription: How to model data in Prisma Next for MongoDB — documents and collections, embedded documents vs. separate collections, relations, and polymorphic collections.
+metaDescription: How to model data in Prisma Next for MongoDB, including documents and collections, embedded documents versus references, and polymorphic collections.
 badge: early-access
 ---
 
-MongoDB stores data as **documents** grouped into **collections**. A document is a nested structure, which gives you a real choice for related data: keep it *inside* a document (**embed** it) or store it in its own collection and link to it by reference. Making that choice well is the core of MongoDB data modeling, and it's what this page focuses on.
+MongoDB stores data as documents grouped into collections. A document can nest objects and arrays directly, which gives you a real choice for related data: keep it inside the document (embed it) or store it in its own collection and link to it (reference it).
 
-If you haven't yet, start with the [data modeling overview](/orm/next/data-modeling) for models, primary keys, and scalar fields.
+Making that choice well is the core of MongoDB data modeling, and it is what this page focuses on. New to models and keys? Start with the [data modeling overview](/orm/next/data-modeling).
 
-## Documents, collections, and the `_id` key
+## Documents, collections, and the _id key
 
-A Prisma Next model maps to a MongoDB **collection**, and each record is a **document**. Every document is identified by an `_id` field, which is the primary key. The idiomatic type for it is `ObjectId` — a 12-byte value that is globally unique without coordination and embeds its own creation timestamp.
+A Prisma Next model maps to a collection, and each record is a document. Every document has an `_id` field as its primary key. `ObjectId` is the idiomatic type for it:
 
 ```prisma
 model User {
   id    ObjectId @id @map("_id")
   name  String
   email String
+  @@map("users")
 }
 ```
 
-The `@map("_id")` maps the model's `id` field to MongoDB's mandatory `_id` field. Documents can hold nested objects and arrays directly, which is what makes embedding possible.
+`@map("_id")` maps the model's `id` field to MongoDB's mandatory `_id` field, and `@@map("users")` names the collection.
 
 ## Embed or reference
 
-This is the decision that shapes every MongoDB data model. Two pieces of related data can either live together in one document (**embedded**) or sit in separate collections linked by an id (**referenced**).
+Two pieces of related data can live together in one document (embedded) or in separate collections linked by an id (referenced).
 
-**Embedding** nests the related data directly inside its parent document — an order and its line items in a single `orders` document, a user and their address in one `users` document. The related data is stored, loaded, and updated as part of the parent, so one read returns the whole thing with no second query, and a write to the document updates parent and children together, atomically. The trade-off is that embedded data has no independent existence: you can't query it on its own, and it rides along on every read of the parent whether you need it or not.
+Embedding nests the data inside its parent: an order and its line items in one document. One read returns everything, and a write updates parent and children together, atomically. The trade-off: embedded data has no independent life. You cannot query it on its own, and it rides along on every read of the parent.
 
-**Referencing** keeps the related data in its own collection and stores a link — one document's `_id` — on the other. Loading both takes a second lookup, but each record stands on its own: it can be queried, listed, and updated independently, and it isn't duplicated when several parents point at it.
+Referencing keeps the data in its own collection and stores the linked document's `_id`. Loading both takes a second lookup, but each record stands on its own: it can be queried, listed, and updated independently, and it is not duplicated when several parents point at it.
 
-So embed data that's read and written with its parent and stays bounded in size; reference data that grows without limit, is queried on its own, or is shared by many parents. A quick way to decide:
+A quick way to decide:
 
 | Signal | Example | Lean toward |
 | ------ | ------- | ----------- |
-| Always loaded with the parent | An order's line items, shown whenever the order is | Embed |
-| Small and bounded in size | A user's single mailing address | Embed |
-| Has no meaning outside the parent | A blog post's SEO metadata | Embed |
-| Grows without limit | A user's activity events, appended forever | Reference |
-| Queried, listed, or updated on its own | Products, browsed and filtered independently | Reference |
-| Shared by many parents | A tag applied to thousands of posts | Reference |
+| Always loaded with the parent | An order's line items | Embed |
+| Small and bounded in size | A user's mailing address | Embed |
+| No meaning outside the parent | A post's SEO metadata | Embed |
+| Grows without limit | A user's activity events | Reference |
+| Queried or updated on its own | Products in a catalog | Reference |
+| Shared by many parents | A tag on thousands of posts | Reference |
 
-A blog post's comments make the trade-off concrete. If you always render them with the post and their count stays modest, embed them. If comments can grow into the thousands, or you need to list every comment by one author across posts, reference them in their own collection.
+A blog post's comments make it concrete. If you always render them with the post and their count stays modest, embed them. If comments can grow into the thousands, or you need "every comment by this author across posts", reference them.
 
 ## Embedded documents
 
-You describe the shape of embedded data with a `type` block, then use it as a field. An embedded type has no collection of its own — it exists only inside its parent document.
+Describe the shape of embedded data with a `type` block, then use it as a field. An embedded type has no collection of its own; it exists only inside its parent document.
 
 ```prisma
 type Address {
@@ -62,10 +63,11 @@ model User {
   id      ObjectId @id @map("_id")
   name    String
   address Address?
+  @@map("users")
 }
 ```
 
-The same mechanism covers embedded one-to-one (a single embedded value, `address Address?`) and embedded one-to-many (a list of embedded values):
+A single embedded value models a one-to-one. A list of embedded values models a one-to-many:
 
 ```prisma
 type CartItem {
@@ -75,53 +77,61 @@ type CartItem {
 }
 
 model Cart {
-  id     ObjectId   @id @map("_id")
-  items  CartItem[]
+  id    ObjectId   @id @map("_id")
+  items CartItem[]
+  @@map("carts")
 }
 ```
 
-`Cart.items` stores the line items directly inside the cart document. There is no separate `items` collection and no join to load them.
+`Cart.items` lives inside the cart document. There is no separate collection and no join to load the items; every read of a cart returns them.
 
-Embedding fits data that is *contained* by its parent and has no life of its own: a user's address, an order's line items, a document's metadata. These are value shapes, not entities — an embedded `Address` has no `_id` and can't be queried on its own; it's loaded, updated, and deleted with the document that holds it.
+An embedded `Address` has no `_id` and cannot be queried on its own. It is loaded, updated, and deleted with the document that holds it. That is the right behavior for values that belong to their parent, and the wrong one for records with their own life.
 
-The one caveat is growth. An embedded array is a good idea only while it stays bounded. Line items on an order are naturally capped; comments or activity events are not, and an unbounded array both slows every read of the parent and marches the document toward the 16 MB ceiling. When an embedded list has no natural limit, reference it instead.
+:::warning
+
+Embedded arrays are only a good idea while they stay bounded. An array that grows forever slows every read of the parent and pushes the document toward MongoDB's 16 MB limit. When a list has no natural cap, reference it instead.
+
+:::
 
 ## References across collections
 
-When related records need their own collection, link them by storing one document's `_id` in the other and declaring a relation, the same directional `@relation(from:, to:)` used across Prisma Next.
+When related records need their own collection, store one document's `_id` on the other and declare the relation with the same `@relation(fields:, references:)` used everywhere in Prisma Next:
 
 ```prisma
 model User {
   id    ObjectId @id @map("_id")
   name  String
   posts Post[]
+  @@map("users")
 }
 
 model Post {
   id       ObjectId @id @map("_id")
   title    String
   authorId ObjectId
-  author   User     @relation(from: [authorId], to: [id])
+  author   User     @relation(fields: [authorId], references: [id])
+  @@map("posts")
 }
 ```
 
-This is a one-to-many by reference: many posts reference one user, and each is queryable on its own. Prisma Next resolves the reference at query time (via a `$lookup` aggregation) when you include the related data.
+This is a one-to-many by reference: many posts point at one user, and each post is queryable on its own. When you [include the relation in a query](/orm/next/fundamentals/relations-and-joins), Prisma Next resolves it with a `$lookup` aggregation.
 
-Resolving a reference means a `$lookup`, which isn't free — so document models often **denormalize** to skip the join on hot reads. The extended-reference pattern embeds a small copy of the fields a read needs (a comment stores its author's name and avatar) while the full record stays in its own collection. You trade a little duplication, and the work of keeping the copy in sync, for a read that touches one document instead of two collections.
+A `$lookup` is a real cost on hot paths, so document models often denormalize: embed a small copy of the fields a read needs (a comment stores its author's name) while the full record stays in its own collection. You trade some duplication, and the work of keeping the copy in sync, for reads that touch one document.
 
 ## Polymorphic collections
 
-MongoDB collections don't enforce a single shape, so it's idiomatic to store documents of different "types" in one collection and tell them apart with a discriminator field. Prisma Next models this with a base model and variant models, distinguished by that discriminator, with all variants sharing the one collection.
+MongoDB collections do not enforce a single shape, so it is idiomatic to store documents of different kinds in one collection and tell them apart with a discriminator field.
+
+Prisma Next models this with a base model plus variant models, all sharing one collection:
 
 ```prisma
 model Post {
-  id        ObjectId @id @map("_id")
-  title     String
-  kind      String
-  authorId  ObjectId
-  author    User     @relation(from: [authorId], to: [id])
+  id       ObjectId @id @map("_id")
+  title    String
+  kind     String
 
   @@discriminator(kind)
+  @@map("posts")
 }
 
 model Article {
@@ -138,13 +148,21 @@ model Tutorial {
 }
 ```
 
-`@@discriminator(kind)` names the field that records each document's variant; `@@base(Post, "article")` declares `Article` as the `"article"` variant of `Post`. A query for posts returns articles and tutorials together; you can also narrow to one variant.
+`@@discriminator(kind)` names the field that records each document's variant. `@@base(Post, "article")` declares `Article` as the `"article"` variant of `Post`. A query for posts returns articles and tutorials together, and you can narrow to one variant in queries.
 
-Single-collection polymorphism fits when the variants are handled together far more than separately: a `notifications` collection of email, SMS, and push messages that you query as one stream; an `events` collection of many event types read together for a timeline. Storing them in one collection lets a single query return every variant, and MongoDB's flexible documents mean each variant simply carries its own fields.
+Use one polymorphic collection when the variants are handled together far more than separately: a notifications collection of email, SMS, and push messages read as one stream. Prefer separate collections when the types rarely appear in the same query or need very different indexes.
 
-Prefer separate collections when the types rarely appear in the same query, share little structure, or need very different indexes. The test: reach for base + variants when there's a shared identity and shared queries, not merely a family resemblance.
+## Prompt your coding agent
+
+Projects scaffolded with `create-prisma` install Prisma Next skills for your coding agent; the `prisma-next-contract` skill covers document modeling. Prompts that map to each section:
+
+- "Using the prisma-next-contract skill, add an embedded Address type to the User model."
+- "Cart items are always read with the cart. Model them as an embedded list."
+- "Comments can grow without limit. Move them from an embedded array to a referenced collection."
+- "Split the posts collection into Article and Tutorial variants with a discriminator."
 
 ## Next steps
 
-- Indexing embedded fields, resolving references with `$lookup`, and querying polymorphic collections are covered in the MongoDB query material.
-- Modeling for a relational database instead? See the [relational data modeling guide](/orm/next/data-modeling/relational-databases).
+- [Query documents](/orm/next/fundamentals/reading-data) and [resolve references](/orm/next/fundamentals/relations-and-joins) with `.include(...)`.
+- Aggregate and reshape documents with the [pipeline builder](/orm/next/fundamentals/advanced-queries#mongodb-pipeline-builder).
+- To model relational data, see the [relational data modeling guide](/orm/next/data-modeling/relational-databases).

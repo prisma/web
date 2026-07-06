@@ -297,6 +297,18 @@ const config = {
         destination: "/next/add-to-existing-project/:path*",
         permanent: false,
       },
+      // ── Prisma Next URL cutover (DR-8687) — DO NOT ENABLE YET ─────────────
+      // The redirects below retire live Prisma 7 URLs, so they ship only when
+      // Prisma Next becomes the default docs version (the /orm/next tree moves
+      // to /orm). Until then, keep your section's redirects here, commented
+      // out, so the full cutover map builds up in one reviewable place.
+      // Section owners: append your block below with a DR reference.
+      //
+      // DR-8679 Data modeling:
+      // { source: "/orm/prisma-schema", destination: "/orm/next/data-modeling", permanent: false },
+      // { source: "/orm/prisma-schema/data-model/models", destination: "/orm/next/data-modeling", permanent: false },
+      // { source: "/orm/prisma-schema/data-model/relations", destination: "/orm/next/data-modeling/relational-databases", permanent: false },
+      // ───────────────────────────────────────────────────────────────────────
     ];
   },
   async rewrites() {
