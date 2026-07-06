@@ -1,0 +1,174 @@
+---
+title: Reading data
+description: Read data with the Prisma Next ORM by chaining query methods and running them with .all() or .first().
+url: /next/fundamentals/reading-data
+metaTitle: Reading data with Prisma Next
+metaDescription: Query PostgreSQL and MongoDB with the Prisma Next ORM. Filter with where, project with select, sort with orderBy, and paginate with take and skip.
+---
+
+Read data by chaining query methods on a model collection, then running the chain with a terminal: `.all()` for many rows, `.first()` for one.
+
+<Tabs items={["PostgreSQL", "MongoDB"]}>
+<Tab value="PostgreSQL">
+
+```typescript
+import { db } from "./prisma/db";
+
+// Every published post
+const posts = await db.orm.public.Post.where({ published: true }).all();
+
+// One user, or null
+const user = await db.orm.public.User.where({ email: "alice@prisma.io" }).first();
+```
+
+</Tab>
+<Tab value="MongoDB">
+
+```typescript
+import { db } from "./prisma/db";
+
+// Every published post
+const posts = await db.orm.posts.where({ published: true }).all();
+
+// One user, or null
+const user = await db.orm.users.where({ email: "alice@prisma.io" }).first();
+```
+
+</Tab>
+</Tabs>
+
+## How it works in Prisma Next
+
+A query states what you want, the ORM runs it, and the result is typed against your [contract](/orm/next). There is no `findMany`, `findUnique`, or `findFirst`: if you are coming from Prisma 7, `.where(...).all()` replaces `findMany` and `.where(...).first()` replaces `findFirst` and `findUnique`.
+
+The model access path differs by database:
+
+- On PostgreSQL, models are addressed by namespace and PascalCase model name: `db.orm.public.Post`. `public` is the default PostgreSQL schema; contracts with more namespaces expose each one the same way.
+- On MongoDB, collections are addressed by their lowercased plural root from the contract: `db.orm.posts`. Documents keep their raw `_id`, so filter on `_id`, not `id`.
+
+`.first()` returns the row or `null`. On PostgreSQL it issues `LIMIT 1`, and `db.orm.public.User.first({ id })` is a shorthand for primary-key lookups. `.all()` has no implicit limit, so reserve it for the genuine many case.
+
+## Filter with where
+
+`.where(...)` narrows the result. Pass an object to match fields by equality. Chained `.where(...)` calls AND-compose, which is also how you express ranges.
+
+<Tabs items={["PostgreSQL", "MongoDB"]}>
+<Tab value="PostgreSQL">
+
+On PostgreSQL, `.where(...)` also takes a lambda over a field proxy for richer operators: `.eq`, `.neq`, `.lt`, `.lte`, `.gt`, `.gte`, `.like`, `.ilike`, `.in([...])`, `.isNull()`, `.isNotNull()`.
+
+```typescript
+// Object form: equality on named fields
+const drafts = await db.orm.public.Post.where({ published: false }).all();
+
+// Lambda form: full operator set
+const matches = await db.orm.public.Post.where((p) => p.title.ilike("%prisma%")).all();
+
+// A range is two chained where clauses
+const recent = await db.orm.public.Post
+  .where((p) => p.createdAt.gte(start))
+  .where((p) => p.createdAt.lte(end))
+  .all();
+```
+
+There is no `.between(...)` operator. For `OR` and `NOT`, the `or`, `and`, and `not` combinators currently import from `@prisma-next/sql-orm-client`; they are planned to move to the `@prisma-next/postgres` facade.
+
+</Tab>
+<Tab value="MongoDB">
+
+On MongoDB, use the object form. Values are compared by equality and are codec-aware, so `ObjectId` fields accept both `ObjectId` values and strings.
+
+```typescript
+const alicesPosts = await db.orm.posts
+  .where({ published: true })
+  .where({ authorId: alice._id })
+  .all();
+```
+
+Richer operators (ranges, `in`, boolean logic) are not yet exposed on the MongoDB facade. When you need them, drop to the [aggregation pipeline builder](/next/fundamentals/advanced-queries).
+
+</Tab>
+</Tabs>
+
+## Choose fields with select
+
+`.select(...)` limits which fields come back, and the result type narrows to match.
+
+<Tabs items={["PostgreSQL", "MongoDB"]}>
+<Tab value="PostgreSQL">
+
+```typescript
+const users = await db.orm.public.User.select("id", "email").all();
+// users: Array<{ id: string; email: string }>
+```
+
+</Tab>
+<Tab value="MongoDB">
+
+```typescript
+const users = await db.orm.users.select("_id", "email").all();
+// users: Array<{ _id: ObjectId; email: string }>
+```
+
+</Tab>
+</Tabs>
+
+## Sort and paginate
+
+`.orderBy(...)` sorts, `.take(n)` limits, and `.skip(n)` offsets. Chain them before the terminal.
+
+<Tabs items={["PostgreSQL", "MongoDB"]}>
+<Tab value="PostgreSQL">
+
+```typescript
+const page = await db.orm.public.Post
+  .orderBy((p) => p.createdAt.desc())
+  .take(20)
+  .skip(20)
+  .all();
+```
+
+Pass an array of lambdas for a composite sort. For stable pagination over large sets, follow `.orderBy(...)` with `.cursor({ createdAt: last.createdAt })` to resume from a known position instead of counting offsets.
+
+</Tab>
+<Tab value="MongoDB">
+
+```typescript
+const page = await db.orm.posts
+  .orderBy({ createdAt: -1 })
+  .take(20)
+  .skip(20)
+  .all();
+```
+
+MongoDB sorts use the driver's direction values: `1` ascending, `-1` descending.
+
+</Tab>
+</Tabs>
+
+## Count rows
+
+There is no `.count()` terminal on the collection. On PostgreSQL, count through `.aggregate(...)`:
+
+```typescript
+const result = await db.orm.public.Post
+  .where({ published: true })
+  .aggregate((a) => ({ total: a.count() }));
+// result.total: number
+```
+
+The MongoDB ORM does not expose `.aggregate(...)`. Count with a `$group` stage in the [aggregation pipeline builder](/next/fundamentals/advanced-queries) instead.
+
+## Common gotchas
+
+:::warning
+
+A query result is single-consumption. `await` buffers it into an array once; a second `await` on the same result throws `RUNTIME.ITERATOR_CONSUMED`. Store the array in a variable and reuse the variable. To stream rows one at a time instead of buffering, use `for await (const row of query.all())`.
+
+:::
+
+## Next
+
+- [Writing data](/next/fundamentals/writing-data): create, update, delete, and bulk writes.
+- [Relations and joins](/next/fundamentals/relations-and-joins): read related records with `.include(...)`.
+- [Advanced queries](/next/fundamentals/advanced-queries): the SQL builder and the MongoDB pipeline builder.

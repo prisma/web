@@ -1,0 +1,142 @@
+---
+title: Advanced queries
+description: Drop below the ORM when a query needs shapes the ORM can't express, with the SQL builder on PostgreSQL and the aggregation pipeline builder on MongoDB.
+url: /next/fundamentals/advanced-queries
+metaTitle: Advanced queries in Prisma Next
+metaDescription: Use the Prisma Next SQL builder for explicit joins, grouped aggregates, and RETURNING, and the typed aggregation pipeline builder on MongoDB.
+---
+
+When the ORM can't express a query, drop one level: the SQL builder on PostgreSQL, the aggregation pipeline builder on MongoDB. Both stay fully typed against your contract; neither means writing raw strings.
+
+The ORM remains the default. Reach for these lanes for explicit joins, computed projections, grouped top-N queries, and pipeline stages. The choice is per query, not per app.
+
+## The SQL builder (PostgreSQL)
+
+`db.sql.public.<table>` builds a *plan*: a typed, serializable description of one SQL statement. Tables use their storage names (lowercase), and you execute the plan through the runtime.
+
+```typescript
+import { db } from "./prisma/db";
+
+const plan = db.sql.public.post
+  .select("id", "title", "authorId")
+  .where((f, fns) => fns.eq(f.published, true))
+  .limit(10)
+  .build();
+
+const rows = await db.runtime().execute(plan);
+```
+
+The `.where(...)` callback receives `(fields, fns)`: `fields` holds the column references, `fns` the operator namespace (`eq`, `ne`, `gt`, `lt`, `and`, `count`, and extension-provided operators).
+
+### Explicit joins
+
+The ORM does not express arbitrary joins. Alias each side with `.as(...)`, join on any predicate, and project columns from both:
+
+```typescript
+const plan = db.sql.public.post
+  .as("p")
+  .innerJoin(db.sql.public.user.as("u"), (f, fns) => fns.eq(f.p.authorId, f.u.id))
+  .select((f) => ({
+    postId: f.p.id,
+    title: f.p.title,
+    authorEmail: f.u.email,
+  }))
+  .where((f, fns) => fns.eq(f.p.published, true))
+  .limit(10)
+  .build();
+
+const rows = await db.runtime().execute(plan);
+```
+
+This is also the workaround for reading through a many-to-many junction table, which [`.include(...)` does not handle yet](/next/fundamentals/relations-and-joins#limitations).
+
+### Grouped top-N aggregates
+
+The ORM's `.groupBy(...).aggregate(...)` cannot order or limit the grouped result at the database. The SQL builder can, so use it for "top authors by post count" shapes:
+
+```typescript
+const plan = db.sql.public.post
+  .select((f, fns) => ({
+    authorId: f.authorId,
+    posts: fns.count(),
+  }))
+  .groupBy((f) => f.authorId)
+  .orderBy((f, fns) => fns.count(), { direction: "desc" })
+  .limit(5)
+  .build();
+
+const rows = await db.runtime().execute(plan);
+// PostgreSQL returns count as a string; convert with Number(row.posts)
+```
+
+### Writes with RETURNING
+
+SQL builder writes take an array of rows and expose `.returning(...)` explicitly:
+
+```typescript
+const plan = db.sql.public.user
+  .insert([{ email: "sql@prisma.io" }])
+  .returning("id", "email")
+  .build();
+
+const [row] = await db.runtime().execute(plan);
+// Contract defaults such as generated ids are applied to the inserted rows
+```
+
+There is no raw-SQL escape hatch (`db.sql.raw` does not exist) and no TypedSQL. If the builder can't express a shape you need, that is worth [reporting](https://pris.ly/discord).
+
+## The pipeline builder (MongoDB)
+
+MongoDB reads below the ORM are typed aggregation pipelines. Start with `db.query.from(...)`, chain stages, `.build()`, and execute through the runtime. This is also where MongoDB aggregation lives: the MongoDB ORM has no `.aggregate(...)` or `.groupBy(...)`.
+
+```typescript
+import { acc } from "@prisma-next/mongo-query-builder";
+import { db } from "./prisma/db";
+
+const runtime = await db.runtime();
+
+// Post count per author, most prolific first
+const plan = db.query
+  .from("posts")
+  .group((f) => ({
+    _id: f.authorId,
+    postCount: acc.count(),
+  }))
+  .sort({ postCount: -1 })
+  .build();
+
+const byAuthor = await runtime.execute(plan);
+```
+
+`.match(...)` filters with typed field accessors, and `.lookup(...)` gives you a compile-time-checked `$lookup` join:
+
+```typescript
+const plan = db.query
+  .from("posts")
+  .match((f) => f.published.eq(true))
+  .lookup((from) =>
+    from("users")
+      .on((local, foreign) => ({ local: local.authorId, foreign: foreign._id }))
+      .as("author"),
+  )
+  .build();
+
+const rows = await runtime.execute(plan);
+```
+
+Accumulators (`acc.count()`, `acc.max(...)`) and expression helpers import from `@prisma-next/mongo-query-builder`.
+
+## How to choose
+
+| You need | Use |
+| --- | --- |
+| CRUD, filters, relations, simple aggregates | ORM (`db.orm`) |
+| Explicit join, computed projection, grouped top-N, `RETURNING` | SQL builder (`db.sql.public.<table>`) |
+| `$group`, `$lookup` with reshaping, any MongoDB aggregation | Pipeline builder (`db.query.from(...)`) |
+
+Plans execute through `db.runtime().execute(plan)` on PostgreSQL, `(await db.runtime()).execute(plan)` on MongoDB, and `tx.execute(plan)` inside a [transaction](/next/fundamentals/transactions).
+
+## Next
+
+- [Reading data](/next/fundamentals/reading-data): the ORM happy path these lanes back up.
+- [Transactions](/next/fundamentals/transactions): run SQL builder plans atomically.
