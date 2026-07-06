@@ -5,10 +5,6 @@ import { Button, Input } from "@prisma/eclipse";
 import { cn } from "@prisma-docs/ui/lib/cn";
 import { useNewsletter } from "../hooks/use-newsletter";
 
-const icon = (name: string) => (
-  <i color="currentColor" className={cn("text-[1.125rem]", name)} />
-);
-
 type ColorType = "orm" | "ppg" | undefined;
 
 type FooterNewsletterFormProps = {
@@ -16,21 +12,17 @@ type FooterNewsletterFormProps = {
   color?: ColorType;
   blog?: boolean;
   apiUrl?: string;
+  /** Vertical layout (heading → email → button) for narrow containers like the footer column. */
+  stacked?: boolean;
 };
 
 export const FooterNewsletterForm = ({
   blog = false,
   apiUrl,
+  stacked = false,
 }: FooterNewsletterFormProps) => {
-  const {
-    email,
-    setEmail,
-    isSubmitting,
-    isSubmitted,
-    isAlreadySubscribed,
-    error,
-    subscribe,
-  } = useNewsletter({ apiUrl });
+  const { email, setEmail, isSubmitting, isSubmitted, isAlreadySubscribed, error, subscribe } =
+    useNewsletter({ apiUrl });
 
   const buttonText = blog ? "Sign up" : "Subscribe";
 
@@ -64,14 +56,24 @@ export const FooterNewsletterForm = ({
     <div className="w-full">
       <form
         onSubmit={handleSubmit}
-        className="flex gap-6 sm:gap-2 items-center justify-between w-full flex-col sm:flex-row "
+        className={cn(
+          "flex w-full",
+          stacked
+            ? "flex-col items-start gap-4"
+            : "flex-col items-center justify-between gap-6 sm:flex-row sm:gap-2",
+        )}
       >
         <h5 className="font-family-display font-[650] text-neutral text-base">
           Subscribe to our newsletter
         </h5>
-        <div>
-          <div className="flex gap-2 items-center w-full sm:w-auto">
-            <label htmlFor="MERGE0" aria-label="Email" className="flex-grow">
+        <div className={stacked ? "w-full" : undefined}>
+          <div
+            className={cn(
+              "flex",
+              stacked ? "w-full flex-col items-start gap-3" : "w-full items-center gap-2 sm:w-auto",
+            )}
+          >
+            <label htmlFor="MERGE0" aria-label="Email" className={stacked ? "w-full" : "flex-grow"}>
               <Input
                 type="email"
                 name="EMAIL"
@@ -82,6 +84,7 @@ export const FooterNewsletterForm = ({
                 onChange={(e) => setEmail(e.target.value)}
                 autoCapitalize="off"
                 autoCorrect="off"
+                className={stacked ? "w-full" : undefined}
                 disabled={isSubmitting || isSubmitted || isAlreadySubscribed}
               />
             </label>
@@ -98,7 +101,7 @@ export const FooterNewsletterForm = ({
               />
             </Button>
           </div>
-          <div className="mt-2 min-h-5 absolute">
+          <div className={cn("mt-2 min-h-5", stacked ? "" : "absolute")}>
             {statusMessage ? (
               <p
                 className={cn("text-sm self-start", statusMessage.className)}

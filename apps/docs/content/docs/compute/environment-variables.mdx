@@ -1,0 +1,92 @@
+---
+title: Environment variables
+description: Project configuration that gets injected into your deployments, scoped to production, preview, or a single branch.
+url: /compute/environment-variables
+metaTitle: Environment variables | Prisma Compute
+metaDescription: Set, update, and remove environment variables for Prisma Compute apps, with production, preview, and per-branch scopes.
+---
+
+Environment variables are project configuration that gets injected into your deployments. You scope each one to production, to preview, or to a single preview branch. This is also how you connect your app to a database: set its connection string as a variable like `DATABASE_URL`.
+
+## How it works
+
+There are three layers:
+
+1. **Production variables**: used by production deploys.
+2. **Preview variables**: used by every preview deploy.
+3. **Branch overrides**: replace a preview value for one specific branch.
+
+<ConceptAnimation name="env-layers" />
+
+A preview deploy gets the preview variables, with any branch overrides layered on top. Overrides help when one branch needs a different API key, database URL, or feature flag than the rest.
+
+Values are resolved at deploy time and baked into the deployment. Changing a variable doesn't touch deployments that already exist and doesn't trigger a redeploy; the new value applies the next time you deploy.
+
+## Set a variable
+
+Pass `KEY=value` and a role or branch:
+
+```npm
+npx @prisma/cli@latest project env add DATABASE_URL=postgresql://example --role production
+npx @prisma/cli@latest project env add DATABASE_URL=postgresql://preview --role preview
+npx @prisma/cli@latest project env add FEATURE_FLAG=enabled --branch feature/search
+```
+
+To keep a secret out of your shell history, pass just the key and let the CLI read it from your environment:
+
+```bash
+DATABASE_URL=postgresql://example npx @prisma/cli@latest project env add DATABASE_URL --role production
+```
+
+## Connect a database
+
+To give your app a database, set its connection string per scope, then redeploy. Use a different database per scope if you want preview deployments isolated from production data.
+
+:::note
+
+Don't assume production data is copied into preview branches, and don't assume migrations run automatically on deploy. Run migrations yourself against the right database.
+
+:::
+
+## List, update, remove
+
+```npm
+npx @prisma/cli@latest project env list --role production
+npx @prisma/cli@latest project env list --branch feature/search
+npx @prisma/cli@latest project env update DATABASE_URL=postgresql://new --role production
+npx @prisma/cli@latest project env remove DATABASE_URL --role preview
+```
+
+`list --role` shows names and metadata, never values. `list --branch` shows the resolved view for one branch. `rm` works as an alias for `remove`.
+
+## Values are write-only
+
+Once you save a variable, the platform never gives it back. Values are encrypted at rest and never returned: not by the CLI, the API, or the Console. In practice:
+
+- `project env list` shows keys and metadata, not values.
+- There's no command to pull values into a local `.env`.
+- To rotate a secret, `project env update` it and redeploy.
+- To confirm an app sees a value, redeploy and check its behavior or logs.
+
+Keep your own copy of every value in a secret manager. Treat Prisma as the place values are *injected*, not a store you read back from.
+
+## Rules
+
+- Keys must match `[A-Z_][A-Z0-9_]*`.
+- Values must be non-empty, up to 8 KB.
+- Production variables can't be branch-scoped: use `--role production` for production, and `--branch <name>` only for preview overrides.
+
+## In CI and agents
+
+Add `--json` so the output is machine-readable, and `--no-interactive` so the CLI fails with an error code instead of waiting on a prompt nothing will answer:
+
+```npm
+npx @prisma/cli@latest project env list --role preview --json --no-interactive
+```
+
+Don't build anything that depends on reading a value back. Pass the source value in from your own secret store, and let Prisma handle injection at deploy time.
+
+## Next steps
+
+- [Deployments](/compute/deployments): redeploy to apply new values.
+- [Branching](/compute/branching): how preview branches work.

@@ -2,6 +2,7 @@
 
 import { WebNavigation } from "@prisma-docs/ui/components/web-navigation";
 import { Footer } from "@prisma-docs/ui/components/footer";
+import { FooterNewsletterForm } from "@prisma-docs/ui/components/newsletter";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { getUtmParams, hasUtmParams, type UtmParams } from "@prisma-docs/ui/lib/utm";
@@ -98,5 +99,10 @@ export function FooterWrapper() {
     return "ppg"; // default variant
   };
 
-  return <Footer color={getButtonVariant()} />;
+  return (
+    <Footer
+      color={getButtonVariant()}
+      newsletterComponent={<FooterNewsletterForm stacked apiUrl="/api/newsletter" />}
+    />
+  );
 }

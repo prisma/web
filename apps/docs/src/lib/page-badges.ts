@@ -1,6 +1,7 @@
 import { source } from "./source";
+import type { BadgeType } from "./badge-types";
 
-export type BadgeType = "early-access" | "deprecated" | "preview";
+export type { BadgeType };
 
 // Create a map of page URLs to their badge values
 export function getPageBadges(): Map<string, BadgeType> {

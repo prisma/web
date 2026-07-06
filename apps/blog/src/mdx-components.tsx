@@ -28,6 +28,7 @@ import {
 } from "@prisma/eclipse";
 import { Youtube } from "@prisma-docs/ui/components/youtube";
 import { TweetEmbedComp } from "@/components/TweetEmbed";
+import { TweetColumns } from "@/components/TweetColumns";
 import { Meetup, MeetupList } from "@/components/Meetup";
 import { Employee } from "@/components/Employee";
 import { AutoplayYoutubeEmbed } from "@/components/AutoplayYoutubeEmbed";
@@ -57,6 +58,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     CodeBlockTabsTrigger,
     CodeBlockTab,
     TweetEmbedComp,
+    TweetColumns,
     Youtube,
     Meetup,
     MeetupList,

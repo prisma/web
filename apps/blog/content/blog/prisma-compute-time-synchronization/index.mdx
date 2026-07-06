@@ -1,0 +1,98 @@
+---
+title: "How Prisma Compute Keeps Time Accurate in Long-Running Applications"
+slug: "prisma-compute-time-synchronization"
+date: "2026-06-26"
+authors:
+  - "Alexey Orlenko"
+metaTitle: "How Prisma Compute Keeps Time Accurate in Long-Running Applications"
+metaDescription: "How Prisma Compute keeps wall-clock time accurate in long-running Firecracker microVMs, using the host-paired KVM PTP clock instead of an in-guest NTP daemon."
+heroImagePath: "/prisma-compute-time-synchronization/imgs/hero.svg"
+heroImageAlt: "Average clock skew on an awake VM, drifting about 13.75 ms/h (3.82 ppm): -13.8 ms at one hour, -27.5 ms at two, -55 ms at four, -82.5 ms at six"
+metaImagePath: "/prisma-compute-time-synchronization/imgs/meta.png"
+series: prisma-compute
+seriesIndex: 9
+tags:
+  - "platform"
+---
+
+No computer clock is accurate on its own, and timekeeping in virtual machines is harder than on physical hardware, especially when VMs can be snapshotted and frozen in time until later. The surprising part of time synchronization in [Prisma Compute](https://www.prisma.io/docs/compute) is that snapshot restore is the easier case.
+
+Compute runs TypeScript apps on Bun inside [Firecracker](https://firecracker-microvm.github.io/) microVMs. When an app is idle, Compute can suspend the VM into a memory snapshot and restore it in a few milliseconds when traffic returns. The VM does not have to rebuild the process from scratch. It comes back with the same application memory, the same JavaScript heap, and the same runtime state the app had before it went idle.
+
+Firecracker has a useful trick here: a restored VM does not need every page of snapshot memory loaded before it starts running. Pages can be brought back from disk on demand, which is one reason restore is so fast that the app can feel as if it never stopped.
+
+That lifecycle raises a question: if a process can survive for days, months, or years, who keeps its clock aligned with the real world?
+
+Firecracker has a partial answer to that question for the restore path (or rather even two answers now).
+
+Firstly, it is possible to set `clock_realtime: true` in the `LoadSnapshot` request to advance the guest clock at restore time.
+
+Secondly, there is a new [`VMClock` device](https://uapi-group.org/specifications/specs/vmclock/) specification designed by the [UAPI group](https://uapi-group.org/) which is meant to solve the virtual machine clock problems once and for all. However, its implementation is still only partial, and only the clock drift on VM restore detection is supported in practice at the time of writing (and even that requires the latest versions of both Firecracker and the guest Linux kernel).
+
+Timekeeping in the long-running VMs that don't sleep is therefore purely the guest's responsibility right now.
+
+## The VM That Never Sleeps
+
+Scale-to-zero makes Compute cheap when nothing is happening, but not every VM spends its life idle. A service with steady traffic can stay awake for a long time. An app can also deliberately keep the VM awake while background work is active using the [`@prisma/compute`](https://www.npmjs.com/package/@prisma/compute) package, which exposes `waitUntil` and `KeepAwakeGuard` for that exact use case.
+
+Those are important VMs. They are serving users, holding WebSocket sessions, or processing background jobs. They also do not get the incidental clock correction that comes with boot or restore.
+
+We measured the clock drift with a small probe that pinned a Compute VM awake for about six hours. The VM never suspended, the collector sampled it every five minutes, and the guest clock drifted by about 13.75 ms/hour, or 3.82 ppm (parts per million). This is a pretty good result in a typical range for server-grade temperature-compensated oscillators (TCXOs). If you repeated the experiment on consumer-grade hardware, you'd be looking at a result an order of magnitude worse.
+
+At that rate, it takes roughly 73 hours for the clock to drift by one second. It's not a problem for apps that spend most of the time idle, but an app under constant traffic will eventually observe a clock skew large enough to break time-sensitive protocols. Token validation, signed requests, TLS checks, and scheduled work should not depend on the application author installing a time daemon in their Compute app. Correct time is a platform responsibility.
+
+## Why Every Clock Drifts
+
+It is not a virtual machine problem. Every clock drifts. A bare-metal server keeps time with a quartz oscillator, and no quartz oscillator runs at exactly its nominal frequency: temperature, ageing, and the spread of manufacturing pull it off by parts per million. Left alone, a physical machine wanders away from true time as surely as any VM. The reason the laptop on your desk does not is that something is quietly correcting it: a time synchronization daemon (such as `chrony` on Linux or similar clients in other operating systems) steering it back toward a reference over [NTP](https://www.ntp.org/), or, where microseconds matter, [PTP](https://standards.ieee.org/ieee/1588/6825/) from a local appliance. Disciplining a drifting clock against an external reference is how computers keep time.
+
+Virtual machines did once carry an extra burden on top of that. Older operating systems kept time by counting timer interrupts from devices such as the PIT or RTC. On hardware the ticks arrive on schedule, under virtualization they do not. The guest believes it is running normally while the host has preempted the VM to run something else, and the interrupts it was counting on do not arrive when expected, resulting in the guest falling behind.
+
+That problem is solved. On x86, [KVM](https://linux-kvm.org/) exposes a paravirtualized clock, commonly called kvmclock ([documented at length](https://docs.kernel.org/virt/kvm/x86/timekeeping.html) for the curious). Rather than counting ticks, or exiting the VM to the hypervisor to read a clock source on every query, the guest reads a small time model the host publishes in shared memory and scales it by the CPU time-stamp counter. The result is a monotonic clock that is cheap to read and immune to the lost-tick problem. After kvmclock, a long-running VM is no longer a special case. It is back exactly where bare metal already stood: holding a good local clock that still needs disciplining to a reference.
+
+The subtlety that remains (and it is the one that matters for Compute) is _which_ clock kvmclock hands you. It gives you an excellent *monotonic* clock. But wall-clock time, `CLOCK_REALTIME`, is that monotonic clock plus an offset, and the offset is established at boot or adjusted when restoring from snapshot. The host, meanwhile, never stops disciplining its _own_ realtime clock toward true time using NTP, but none of that correction crosses into the guest while the guest is running. The guest's monotonic clock tracks the host's oscillator faithfully, and its realtime rides along on a frozen offset, so it drifts at the same rate the host is correcting for itself.
+
+## Naive Solution: NTP
+
+The normal answer is NTP. On the host, we synchronize time from public NTP pools. For a conventional long-running VM, running `chrony` or another NTP client inside the guest is also the boring, correct answer.
+
+It is less attractive when the "guest" is a lightweight Firecracker microVM running one customer's Bun app.
+
+Compute VMs are intentionally small. **Spark**, the Rust launcher inside each VM, prepares the application volume, decrypts environment variables, resolves the entrypoint, and then `exec`s Bun. There is nothing inside the VM other than Spark, Bun and the user's application, not even a shell or coreutils. We do not want every microVM to grow a general-purpose time-sync daemon, a daemon supervisor, and a public-pool dependency to keep `Date.now()` honest.
+
+There is also a scaling problem. A network NTP exchange is cheap once. At platform scale, doing that across many lightweight VMs creates traffic, external dependency, and failure surface we do not want or need. Worse, a VM has to be awake while the exchange happens. If a sync attempt takes one second (note that a single sync requires multiple network exchanges due to RTT noise!), that second is pure platform-initiated runtime cost. It did no user work.
+
+So, for a platform like ours, it is the wrong tool.
+
+## The Better Clock Is Already in the Guest
+
+A datacenter chasing better-than-NTP accuracy reaches for a local PTP appliance — a dedicated clock on the network. A Compute guest needs no appliance: the reference it wants is the host it already runs on, [one hypercall away](https://docs.kernel.org/virt/kvm/x86/hypercalls.html#kvm-hc-clock-pairing). Firecracker's own FAQ points at this answer for scale: use the KVM PTP clock as the guest's time source instead of sending every guest to a network NTP pool. The Linux side of that is the [PTP hardware clock](https://docs.kernel.org/driver-api/ptp.html) (PHC) infrastructure. A PTP clock driver can expose a character device, and userspace can turn an open file descriptor for that device into a POSIX clock id and call `clock_gettime` on it.
+
+In our Compute guest image, the relevant device is `/dev/ptp0`, backed by `ptp_kvm`. It exposes the host-paired wall clock to the guest as a local PHC device. The kernel driver does the KVM clock-pairing work, Spark sees a file it can open and a clock it can read.
+
+A reasonably quick (around 50 ms) but potentially inaccurate SNTP exchange would look like this:
+
+1. hold VM awake
+2. send packet to the NTP server
+3. wait for response
+4. estimate offset
+5. step guest clock
+6. release VM
+
+A full and more accurate NTP sync is more complex and requires multiple network exchanges.
+
+Instead, we do this:
+
+1. hold VM awake
+2. read guest CLOCK_REALTIME
+3. read host-paired time from /dev/ptp0
+4. read guest CLOCK_REALTIME again
+5. step guest clock by (host - guest)
+6. release VM
+
+The second version has no network exchange at all and the read takes microseconds. There is still a guard around the read and step. A local PHC read is tiny, but if Spark is actively measuring and changing `CLOCK_REALTIME`, the VM must not be suspended halfway through that critical section.
+
+## Why This Belongs in the Platform
+
+Correct time should be boring infrastructure. On Prisma Compute, a Bun app can suspend and wake from a snapshot, or stay awake under traffic for a long time, without the application author having to worry about clocks and timekeeping.
+
+That is the point of this kind of platform work. The feature is not a button or an API, but the absence of a problem the user should never have had to learn about.

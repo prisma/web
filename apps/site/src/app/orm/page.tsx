@@ -56,12 +56,7 @@ const CardFooter = () => (
           <div className="flex justify-center md:justify-start gap-3">
             {badge.list &&
               badge.list.map((item: any) => (
-                <Button
-                  asChild
-                  variant="orm"
-                  key={item.label}
-                  className="text-base"
-                >
+                <Button asChild variant="orm" key={item.label} className="text-base">
                   <a href={item.url}>{item.label}</a>
                 </Button>
               ))}
@@ -78,13 +73,13 @@ const twoCol = [
         <div className="flex flex-col gap-1">
           <h5 className="text-foreground-orm type-title-sm">Why Prisma ORM</h5>
           <h2 className="text-foreground-neutral stretch-display text-3xl font-sans-display mt-0 mb-4">
-            Delightful DB workflows
+            Database workflows without the friction
           </h2>
         </div>
         <p className="text-foreground-neutral-weak! text-base">
-          Database workflows can feel brittle and error-prone. Prisma ORM
-          increases productivity and confidence when working with databases and
-          makes workflows like data modeling, migrations and querying easy.
+          Database workflows can feel brittle and error-prone. Prisma ORM increases productivity and
+          confidence when working with databases and makes workflows like data modeling, migrations
+          and querying easy.
         </p>
       </>
     ),
@@ -113,8 +108,8 @@ const twoCol = [
           Works with your favorite databases and frameworks
         </h2>
         <p className="text-foreground-neutral-weak! text-base">
-          Prisma's compatibility with popular tools ensures no stack lock-in,
-          lower integration costs, and smooth transitions.
+          Prisma ORM works with popular databases and tools, so you avoid stack lock-in and reduce
+          integration costs.
         </p>
         <Link href="/stack" className="link-btn orm w-fit mx-auto lg:mx-0">
           <span>Learn more</span>
@@ -146,15 +141,10 @@ const twoCol_2 = [
           </h2>
         </div>
         <p className="text-foreground-neutral-weak! text-base">
-          A meaningful comparison of database query latencies across database
-          providers and ORM libraries in the Node.js & TypeScript ecosystem.
+          A meaningful comparison of database query latencies across database providers and ORM
+          libraries in the Node.js & TypeScript ecosystem.
         </p>
-        <Button
-          asChild
-          variant="orm"
-          size="xl"
-          className="w-fit mx-auto lg:w-full"
-        >
+        <Button asChild variant="orm" size="xl" className="w-fit mx-auto lg:w-full">
           <a href="https://benchmarks.prisma.io">
             Explore Benchmarks
             <i className="fa-regular fa-arrow-right" />
@@ -163,11 +153,9 @@ const twoCol_2 = [
       </div>
     ),
     imageUrl: "/illustrations/orm/orm_1",
-    imageAlt:
-      "Chart comparing database query latency across Prisma and other ORM libraries",
+    imageAlt: "Chart comparing database query latency across Prisma and other ORM libraries",
     mobileImageUrl: "/illustrations/orm/orm_1",
-    mobileImageAlt:
-      "Chart comparing database query latency across Prisma and other ORM libraries",
+    mobileImageAlt: "Chart comparing database query latency across Prisma and other ORM libraries",
     logos: null,
     noShadow: true,
     useDefaultLogos: true,
@@ -184,10 +172,9 @@ const twoCol_2 = [
           </h2>
         </div>
         <p className="text-foreground-neutral-weak! text-base">
-          Prisma Client is a query builder that’s tailored to your schema. We
-          designed its API to be intuitive, both for SQL veterans and developers
-          brand new to databases. The auto-completion helps you figure out your
-          query without the need for documentation.
+          Prisma Client is a query builder that’s tailored to your schema. We designed its API to be
+          intuitive, both for SQL veterans and developers brand new to databases. The
+          auto-completion helps you figure out your query without the need for documentation.
         </p>
         <Link href="/client" className="link-btn orm w-fit mx-auto lg:mx-0">
           <span>Learn more</span>
@@ -196,11 +183,9 @@ const twoCol_2 = [
       </div>
     ),
     imageUrl: "/illustrations/orm/orm_2",
-    imageAlt:
-      "Code editor showing Prisma Client query with auto-completion and type safety",
+    imageAlt: "Code editor showing Prisma Client query with auto-completion and type safety",
     mobileImageUrl: "/illustrations/orm/orm_2",
-    mobileImageAlt:
-      "Code editor showing Prisma Client query with auto-completion and type safety",
+    mobileImageAlt: "Code editor showing Prisma Client query with auto-completion and type safety",
     color: "orm" as const,
     noShadow: true,
     logos: null,
@@ -213,12 +198,12 @@ const twoCol_2 = [
 const twoCol_3 = [
   {
     icon: "/icons/technologies/vscode.svg",
-    title: "Extra ergonomy in VS Code",
+    title: "Built for VS Code",
     description:
-      "Auto-completion, linting, formatting and more help Prisma developers in VSCode stay confident and productive.",
+      "Auto-completion, linting, and formatting help Prisma developers in VS Code catch errors early and stay productive.",
     btn: {
       url: "https://marketplace.visualstudio.com/items?itemName=Prisma.prisma",
-      label: "Download Prisma VSCode Extension",
+      label: "Download Prisma VS Code Extension",
       icon: "fa-regular fa-arrow-up-right",
     },
   },
@@ -254,7 +239,7 @@ const features = [
   },
   {
     title: "Data model you can read",
-    subtitle: "The Prisma schema is intuitive and easy to use",
+    subtitle: "The Prisma schema is intuitive and easy to read.",
     image: "/illustrations/orm/collaborative",
     alt: "Collaborative work",
     icon: "fa-light fa-screen-users",
@@ -302,16 +287,11 @@ export default function ORM() {
             </h1>
           </div>
           <p className="text-center text-foreground-neutral max-w-2xl mx-auto">
-            Prisma ORM elevates developer experience with intuitive data
-            modeling, automated migrations, and type-safety.
+            Prisma ORM gives you intuitive data modeling, automated migrations, and type-safety
+            across PostgreSQL, MySQL, SQLite, MongoDB, and more.
           </p>
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
-            <Button
-              asChild
-              variant="orm"
-              size="3xl"
-              className="font-sans-display! font-[650]"
-            >
+            <Button asChild variant="orm" size="3xl" className="font-sans-display! font-[650]">
               <a href={prismaPostgresQuickstartUrl}>
                 Read the docs
                 <i className="fa-regular fa-arrow-right" />
@@ -353,11 +333,7 @@ export default function ORM() {
           <div className="grid md:grid-cols-2 gap-9">
             {twoCol_3.map((stat, index) => (
               <div key={stat.title} className="flex flex-col gap-4">
-                <Action
-                  size="4xl"
-                  color="orm"
-                  className={cn(index === 0 && "p-0", "relative")}
-                >
+                <Action size="4xl" color="orm" className={cn(index === 0 && "p-0", "relative")}>
                   <Image src={stat.icon} alt={stat.title} fill loading="lazy" />
                 </Action>
                 <h4 className="text-2xl text-center md:text-left font-sans-display stretch-display text-foreground-neutral">
@@ -373,8 +349,7 @@ export default function ORM() {
                   className="w-fit mx-auto md:mx-0"
                 >
                   <a href={stat.btn.url}>
-                    {stat.btn.label}{" "}
-                    {stat.btn.icon && <i className={stat.btn.icon} />}
+                    {stat.btn.label} {stat.btn.icon && <i className={stat.btn.icon} />}
                   </a>
                 </Button>
               </div>
@@ -391,8 +366,8 @@ export default function ORM() {
           </h3>
           <div className="content flex flex-col lg:flex-row gap-3 lg:gap-12 items-center md:items-start lg:items-center">
             <p className="max-w-94 w-full text-center md:text-left text-foreground-neutral-weak text-md">
-              Integrate Prisma into your development ecosystem and focus on your
-              team’s core competencies
+              Integrate Prisma into your development workflow and spend less time managing database
+              tooling.
             </p>
             <Button asChild variant="orm" size="2xl">
               <a href="/enterprise">
@@ -439,8 +414,8 @@ export default function ORM() {
                 Ready to get started?
               </h2>
               <p className="text-foreground-neutral-weak max-w-121">
-                Start from scratch, add Prisma ORM to your existing project, or
-                explore how to build an app using your favorite framework.
+                Start from scratch, add Prisma ORM to your existing project, or explore how to build
+                an app using your favorite framework.
               </p>
             </div>
             <div className="flex flex-col md:flex-row gap-6">

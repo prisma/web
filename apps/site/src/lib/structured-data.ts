@@ -65,11 +65,7 @@ export function createSiteStructuredData() {
   };
 }
 
-export function createFaqStructuredData(
-  pagePath: string,
-  faqs: FaqEntry[],
-  name: string,
-) {
+export function createFaqStructuredData(pagePath: string, faqs: FaqEntry[], name: string) {
   return {
     "@context": "https://schema.org",
     "@type": "FAQPage",

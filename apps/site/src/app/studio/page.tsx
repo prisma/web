@@ -16,21 +16,21 @@ const TRY_STUDIO_COMMAND = `npx try-prisma@latest --template orm/starter \\
 const featureCards = [
   {
     icon: "fa-regular fa-code-branch",
-    title: "Instant Access to Your Database",
+    title: "Quick access to your database",
     description:
-      "Connect to your Prisma Postgres database or bring your own in seconds. Prisma Studio now lives right in the Prisma Data Platform.",
+      "Connect to your Prisma Postgres database or bring your own. Prisma Studio now lives right in the Prisma Console.",
   },
   {
     icon: "fa-regular fa-wand-magic-sparkles",
-    title: "Zero Setup Required",
+    title: "No setup required",
     description:
-      "Skip installation and dive straight into your data. Your entire team can access and collaborate instantly.",
+      "Skip installation and go straight to your data. Your whole team can access and collaborate in one place.",
   },
   {
     icon: "fa-regular fa-people-line",
-    title: "Real-Time Collaboration",
+    title: "Real-time collaboration",
     description:
-      "Work together on the same database in real time. No local setup, no configuration, just seamless teamwork.",
+      "Work together on the same database in real time, with no local setup or configuration.",
   },
 ] as const;
 
@@ -39,10 +39,9 @@ const featureRows = [
     eyebrow: "Runs anywhere",
     title: "Local or collaborative",
     description:
-      "Access your database anywhere. Work locally for rapid development or use Console for team collaboration. Switch seamlessly between solo and team workflows.",
+      "Access your database anywhere. Work locally for fast development or use the Console for team collaboration. Move between solo and team workflows.",
     imageSrc: "/illustrations/studio/laptop.svg",
-    imageAlt:
-      "Prisma Studio interface showing local and collaborative workflows",
+    imageAlt: "Prisma Studio interface showing local and collaborative workflows",
     imageWidth: 522,
     imageHeight: 295,
   },
@@ -50,18 +49,17 @@ const featureRows = [
     eyebrow: "Data exploration",
     title: "Understand your data",
     description:
-      "Browse your database visually with powerful filters and search. Spot patterns instantly and get insights for debugging or schema changes, no SQL needed.",
+      "Browse your database visually with filters and search. Spot patterns and find what you need for debugging or schema changes, no SQL required.",
     imageSrc: "/illustrations/studio/explore.svg",
-    imageAlt:
-      "Prisma Studio data exploration interface with highlighted filters",
+    imageAlt: "Prisma Studio data exploration interface with highlighted filters",
     imageWidth: 546,
     imageHeight: 275,
   },
   {
     eyebrow: "Advanced filtering",
-    title: "Power through complexity",
+    title: "Navigate complex relationships",
     description:
-      "Visualize complex data relationships with clickable model navigation. See your database architecture unfold naturally, helping teams understand how everything connects.",
+      "Explore data relationships with clickable, model-aware navigation. See how your records connect so your team can understand the database structure.",
     imageSrc: "/illustrations/studio/filter.svg",
     imageAlt: "Prisma Studio advanced filtering interface",
     imageWidth: 571,
@@ -71,17 +69,17 @@ const featureRows = [
     eyebrow: "Multiple tabs",
     title: "Switch contexts instantly",
     description:
-      "Find exactly what you need with powerful, precise filtering. Combine filters and operators to quickly surface insights from complex data.",
+      "Find exactly what you need with precise filtering. Combine filters and operators to surface records from complex data.",
     imageSrc: "/illustrations/studio/tabs.svg",
     imageAlt: "Prisma Studio with multiple tabs open",
     imageWidth: 561,
     imageHeight: 215,
   },
   {
-    eyebrow: "Amazing data editing UX",
+    eyebrow: "Embedded data editing",
     title: "Embed in your own apps",
     description:
-      "When using Prisma Postgres, you can integrate Studio directly in your own applications to provide a polished data editing experience to your users.",
+      "When using Prisma Postgres, you can integrate Studio directly into your own applications to give your users a data editing experience.",
     imageSrc: "/illustrations/studio/embed.svg",
     imageAlt: "Embedded Prisma Studio experience inside an app",
     imageWidth: 582,
@@ -93,7 +91,7 @@ const studioStructuredData = createSoftwareApplicationStructuredData({
   path: "/studio",
   name: "Prisma Studio",
   description:
-    "Visual database browser and editor for Prisma. Explore and manipulate your data with an intuitive interface, locally or in the Prisma Data Platform.",
+    "Visual database browser and editor for Prisma. Explore and edit your data with a model-aware interface, locally or in the Prisma Console.",
 });
 
 export const metadata = createPageMetadata({
@@ -127,8 +125,8 @@ export default function StudioPage() {
           </div>
 
           <p className="text-center text-foreground-neutral max-w-2xl mx-auto">
-            The ultimate tool for exploring and editing data in your Prisma
-            project. Work locally or team up inside the Prisma Console.
+            A visual browser and editor for the data in your Prisma project. Work locally or team up
+            inside the Prisma Console.
           </p>
 
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
@@ -166,10 +164,7 @@ export default function StudioPage() {
             >
               <div className="flex items-start gap-4">
                 <div className="flex size-12 items-center justify-center rounded-md bg-background-orm p-3">
-                  <i
-                    className={`${card.icon} text-lg text-foreground-orm`}
-                    aria-hidden="true"
-                  />
+                  <i className={`${card.icon} text-lg text-foreground-orm`} aria-hidden="true" />
                 </div>
                 <div>
                   <h2 className="m-0 text-foreground-neutral type-title-lg">
@@ -213,9 +208,8 @@ export default function StudioPage() {
                 See how Studio works
               </h2>
               <p className="m-0 mt-4 text-base leading-6 text-foreground-neutral-weak">
-                Access Prisma Studio on your local machine during development,
-                or in the Platform Console to collaborate on data with your
-                team.
+                Access Prisma Studio on your local machine during development, or in the Prisma
+                Console to collaborate on data with your team.
               </p>
             </div>
 
@@ -251,8 +245,7 @@ export default function StudioPage() {
                   Try it out!
                 </h2>
                 <p className="m-0 mt-4 text-base leading-6 text-foreground-neutral-weak">
-                  Take Studio for a spin with a local pre-seeded database and
-                  example project.
+                  Take Studio for a spin with a local pre-seeded database and example project.
                 </p>
               </div>
 
@@ -309,17 +302,10 @@ function FeatureRow({
         <h2 className="m-0 mt-2 text-foreground-neutral type-title-3xl">
           {title}
         </h2>
-        <p className="m-0 mt-4 text-base leading-8 text-foreground-neutral-weak">
-          {description}
-        </p>
+        <p className="m-0 mt-4 text-base leading-8 text-foreground-neutral-weak">{description}</p>
       </div>
 
-      <StudioFeatureImage
-        src={imageSrc}
-        alt={imageAlt}
-        width={imageWidth}
-        height={imageHeight}
-      />
+      <StudioFeatureImage src={imageSrc} alt={imageAlt} width={imageWidth} height={imageHeight} />
     </div>
   );
 }

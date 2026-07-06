@@ -22,12 +22,13 @@ import { usePathname } from "fumadocs-core/framework";
 import { type BreadcrumbOptions, getBreadcrumbItemsFromPath } from "fumadocs-core/breadcrumb";
 import { formatSlugDisplayName } from "@/lib/breadcrumb-utils";
 import { getPageTitleText } from "@/lib/page-title";
+import { getVersionedSidebarTree } from "@/lib/versioned-sidebar-tree";
 import { isActive } from "../../../../lib/urls";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../../ui/collapsible";
 import { useTOCItems } from "../../../toc";
 import { useActiveAnchor } from "fumadocs-core/toc";
 import { LayoutContext, SidebarEnabledSetterContext } from "../client";
-import { useFooterItems } from "@fumadocs/base-ui/utils/use-footer-items";
+import { flattenTree } from "fumadocs-core/page-tree";
 
 const TocPopoverContext = createContext<{
   open: boolean;
@@ -261,8 +262,12 @@ export interface FooterProps extends ComponentProps<"div"> {
 }
 
 export function PageFooter({ items, children, className, ...props }: FooterProps) {
-  const footerList = useFooterItems();
   const pathname = usePathname();
+  const { root } = useTreeContext();
+  const footerList = useMemo(() => {
+    const tree = getVersionedSidebarTree(root as PageTree.Root, pathname);
+    return flattenTree(tree.children).filter((item) => !item.external);
+  }, [pathname, root]);
   const { previous, next } = useMemo(() => {
     if (items) return items;
 

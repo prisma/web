@@ -29,12 +29,14 @@ export const TestimonialItem = ({
   <div
     {...rest}
     className={cn(
-      "text-foreground-neutral p-3 my-2 font-[family-name:var(--barlow)] font-normal text-lg bg-background-default border border-border-primary rounded-[10px] leading-[25.2px]",
+      "text-foreground-neutral my-2 flex h-full w-full flex-col rounded-[10px] border border-border-primary bg-background-default p-3 font-(family-name:--barlow) text-lg font-normal leading-[25.2px]",
       startups && "grid m-0",
     )}
   >
-    <div className="text-foreground-neutral italic text-md font-[375]">
-      {typeof text === "string" ? parse(text) : text}
+    <div className="min-h-0 flex-1">
+      <div className="line-clamp-4 overflow-hidden text-foreground-neutral italic text-md font-[375]">
+        {typeof text === "string" ? parse(text) : text}
+      </div>
     </div>
     <div className="flex gap-4 items-center font-bold leading-[19.8px] tracking-[0.02em] mt-8">
       <Avatar
@@ -46,8 +48,8 @@ export const TestimonialItem = ({
       ></Avatar>
       <div
         className={cn(
-          "font-[family-name:var(--inter)] text-base font-normal leading-[22px] mt-1",
-          startups && "font-[family-name:var(--barlow)]",
+          "mt-1 font-(family-name:--inter) text-base font-normal leading-[22px]",
+          startups && "font-(family-name:--barlow)",
         )}
       >
         <div
@@ -74,7 +76,7 @@ export const TestimonialItem = ({
             company && (
               <span
                 className={cn(
-                  "text-xs [text-transform:none]",
+                  "text-xs normal-case",
                   color === "orm" ? "text-foreground-orm" : "text-foreground-ppg",
                 )}
               >

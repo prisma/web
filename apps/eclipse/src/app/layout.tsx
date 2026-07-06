@@ -2,6 +2,7 @@ import { Provider } from "@/components/provider";
 import Script from "next/script";
 import "./global.css";
 import { Inter, Barlow } from "next/font/google";
+import localFont from "next/font/local";
 import { FontAwesomeScript as EclipseFA } from "@prisma/eclipse";
 
 const inter = Inter({
@@ -15,11 +16,44 @@ const barlow = Barlow({
   variable: "--font-barlow",
 });
 
+const monaSans = localFont({
+  src: [
+    {
+      path: "../../../../packages/eclipse/src/static/fonts/MonaSansVF[wdth,wght,opsz,ital].woff2",
+      weight: "200 900",
+      style: "normal",
+    },
+    {
+      path: "../../../../packages/eclipse/src/static/fonts/MonaSansVF[wdth,wght,opsz,ital].woff2",
+      weight: "200 900",
+      style: "italic",
+    },
+  ],
+  variable: "--font-mona-sans",
+  display: "swap",
+});
+
+const monaSansMono = localFont({
+  src: "../../../../packages/eclipse/src/static/fonts/MonaSansMonoVF[wght].woff2",
+  variable: "--font-mona-mono",
+  display: "swap",
+  weight: "200 900",
+});
+
 export default function Layout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${inter.variable} ${barlow.variable}`} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${inter.variable} ${barlow.variable} ${monaSans.variable} ${monaSansMono.variable}`}
+      suppressHydrationWarning
+    >
       <head>
-        <Script src={EclipseFA} crossOrigin="anonymous" async data-auto-add-css="false" />
+        <Script
+          src={EclipseFA}
+          crossOrigin="anonymous"
+          async
+          data-auto-add-css="false"
+        />
         <Script
           src="https://widget.kapa.ai/kapa-widget.bundle.js"
           data-website-id="1b51bb03-43cc-4ef4-95f1-93288a91b560"

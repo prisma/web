@@ -1,0 +1,78 @@
+---
+title: Domains
+description: Point a custom domain at a production app and the platform verifies DNS and provisions TLS for you.
+url: /compute/domains
+metaTitle: Custom domains | Prisma Compute
+metaDescription: Add a custom domain to a Prisma Compute app, configure the CNAME record, watch provisioning, and troubleshoot failures.
+---
+
+Point a custom domain at a production app and the platform verifies DNS and provisions TLS for you. In beta, custom domains are production-only.
+
+## Before you start
+
+You'll need:
+
+- A linked project.
+- A production app with a promoted, live deployment.
+- Access to your domain's DNS settings.
+
+Domain commands target the production branch. Pointing them at any other branch fails with `BRANCH_NOT_DEPLOYABLE`.
+
+## Add a domain
+
+```npm
+npx @prisma/cli@latest app domain add shop.acme.com --app web
+```
+
+The command prints a **CNAME** record. Add it at your DNS provider; it points your hostname at Prisma's routing. Then wait for the domain to go live:
+
+```npm
+npx @prisma/cli@latest app domain wait shop.acme.com --app web
+```
+
+`wait` polls until the domain is active, up to 15 minutes. For a single status check, use `--timeout 0`:
+
+```npm
+npx @prisma/cli@latest app domain wait shop.acme.com --app web --timeout 0 --json
+```
+
+In `--json` mode, `wait` streams newline-delimited status events, so an agent can track provisioning as it progresses.
+
+## Check and fix
+
+```npm
+npx @prisma/cli@latest app domain show shop.acme.com --app web
+npx @prisma/cli@latest app domain retry shop.acme.com --app web
+```
+
+`show` gives you the exact state, certificate details, and any DNS hints. `retry` restarts stuck provisioning; if a domain isn't in a retryable state, it returns `DOMAIN_RETRY_NOT_ELIGIBLE`.
+
+A domain moves through these states:
+
+| Status             | Meaning                                                       |
+| ------------------ | ------------------------------------------------------------- |
+| `pending_dns`      | Waiting for your CNAME record to be visible                    |
+| `verifying`        | DNS found; ownership and routing are being verified            |
+| `provisioning_tls` | The TLS certificate is being issued                            |
+| `active`           | The domain is fully provisioned and routing traffic to your app |
+| `failed`           | Registration or provisioning failed; see the failure reason     |
+
+## Remove a domain
+
+```npm
+npx @prisma/cli@latest app domain remove shop.acme.com --app web
+```
+
+Removing detaches the domain from the app; pass `--yes` to skip the confirmation prompt. Prisma can't touch your DNS, so the CNAME record stays behind: delete it at your provider once you no longer need it.
+
+## Limits
+
+- Custom domains are production-only.
+- DNS uses CNAME records.
+- Up to 3 custom domains per app; more returns `DOMAIN_QUOTA_EXCEEDED`.
+- There's no workspace-wide domain list in the CLI.
+
+## Next steps
+
+- [Deployments](/compute/deployments): promote a deployment to production first.
+- [Known limitations](/compute/limitations): what the beta can and can't do.

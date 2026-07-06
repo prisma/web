@@ -35,9 +35,7 @@ export const EcosystemGrid = () => {
             key={filter}
             className={cn(
               "flex flex-col gap-12 my-12",
-              activeFilter !== filter &&
-                activeFilter !== "show-all" &&
-                "hidden",
+              activeFilter !== filter && activeFilter !== "show-all" && "hidden",
             )}
           >
             <h3 className="text-foreground-neutral font-sans-display text-3xl stretch-display my-0 font-bold capitalize">
@@ -62,12 +60,7 @@ export const EcosystemGrid = () => {
                         {box.description}
                       </p>
                       <div className="flex gap-2 justify-between items-center">
-                        <Badge
-                          className="w-fit"
-                          color="orm"
-                          size="lg"
-                          label={box.type}
-                        ></Badge>
+                        <Badge className="w-fit" color="orm" size="lg" label={box.type}></Badge>
 
                         <div className="relative after:content-[''] after:absolute after:w-full after:h-full after:z-10000 after:left-0 after:top-0">
                           <GitHubButton

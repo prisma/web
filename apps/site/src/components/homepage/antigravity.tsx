@@ -89,6 +89,8 @@ const AntigravityInner = ({
   const lastMouseMoveTime = useRef(0);
   const virtualMouse = useRef({ x: 0, y: 0 });
   const isPageVisible = useRef(true);
+  // #1 – IntersectionObserver: skip RAF work when off-screen.
+  const isInViewRef = useRef(true);
   const [size, setSize] = useState({ width: 0, height: 0 });
 
   const sceneSize = useMemo(() => {
@@ -131,6 +133,21 @@ const AntigravityInner = ({
     return () => {
       observer.disconnect();
     };
+  }, []);
+
+  // #1 – IntersectionObserver: stop RAF work when the component is off-screen.
+  useEffect(() => {
+    const element = containerRef.current;
+    if (!element || typeof IntersectionObserver === "undefined") return;
+
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        isInViewRef.current = entry.isIntersecting;
+      },
+      { threshold: 0.05 },
+    );
+    io.observe(element);
+    return () => io.disconnect();
   }, []);
 
   useEffect(() => {
@@ -198,7 +215,8 @@ const AntigravityInner = ({
     const inverseFieldStrength = 5 / (fieldStrength + 0.1);
 
     const tick = (now: number) => {
-      if (isPageVisible.current) {
+      // #1 + #5: skip all particle computation when off-screen or tab hidden.
+      if (isPageVisible.current && isInViewRef.current) {
         if (introStartTime.current === null) {
           introStartTime.current = now;
         }

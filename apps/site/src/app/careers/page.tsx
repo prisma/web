@@ -14,18 +14,15 @@ import MasonryPict from "@/components/careers/masonry-client";
 const masonryImages = [
   {
     imageUrl: "/photos/careers/masonry_1.webp",
-    imageAlt:
-      "A Prisma team member presenting at a conference in front of a Prisma banner",
+    imageAlt: "A Prisma team member presenting at a conference in front of a Prisma banner",
   },
   {
     imageUrl: "/photos/careers/masonry_2.webp",
-    imageAlt:
-      "Prisma team members walking outdoors together during a company offsite",
+    imageAlt: "Prisma team members walking outdoors together during a company offsite",
   },
   {
     imageUrl: "/photos/careers/masonry_3.webp",
-    imageAlt:
-      "A large group of Prisma team members gathered on a beach during a company retreat",
+    imageAlt: "A large group of Prisma team members gathered on a beach during a company retreat",
   },
   {
     imageUrl: "/photos/careers/masonry_4.webp",
@@ -33,8 +30,7 @@ const masonryImages = [
   },
   {
     imageUrl: "/photos/careers/masonry_5.webp",
-    imageAlt:
-      "The Prisma team celebrating together on a beach, holding a Prisma flag",
+    imageAlt: "The Prisma team celebrating together on a beach, holding a Prisma flag",
   },
   {
     imageUrl: "/photos/careers/masonry_10.webp",
@@ -46,13 +42,11 @@ const masonryImages = [
   },
   {
     imageUrl: "/photos/careers/masonry_7.webp",
-    imageAlt:
-      "Prisma team members smiling and engaged during an indoor workshop",
+    imageAlt: "Prisma team members smiling and engaged during an indoor workshop",
   },
   {
     imageUrl: "/photos/careers/masonry_8.webp",
-    imageAlt:
-      "Prisma team members posing in front of illuminated PRISMA lettering",
+    imageAlt: "Prisma team members posing in front of illuminated PRISMA lettering",
   },
   {
     imageUrl: "/photos/careers/masonry_9.webp",
@@ -64,8 +58,7 @@ const masonryImages = [
   },
   {
     imageUrl: "/photos/careers/masonry_11.webp",
-    imageAlt:
-      "Three Prisma team members receiving a Values Award at a company event",
+    imageAlt: "Three Prisma team members receiving a Values Award at a company event",
   },
   {
     imageUrl: "/photos/careers/masonry_12.webp",
@@ -128,9 +121,9 @@ const twoCol = [
           Solve challenging <br /> technical problems
         </h2>
         <p className="text-foreground-neutral-weak! text-base">
-          Prisma is building the data access layer for modern applications. If
-          you're drawn to the technology powering large companies but desire the
-          challenges and freedom of a startup, then consider joining us.
+          Prisma is building the data access layer for modern applications. If you're drawn to the
+          technology powering large companies but desire the challenges and freedom of a startup,
+          then consider joining us.
         </p>
       </>
     ),
@@ -151,10 +144,9 @@ const twoCol = [
           Flexible work environment
         </h2>
         <p className="text-foreground-neutral-weak! text-base">
-          We offer flexible working hours and generous paid time off to
-          accommodate different lifestyles and responsibilities. As long as it
-          suits your team, you have the freedom to build your work schedule
-          around your life.
+          We offer flexible working hours and generous paid time off to accommodate different
+          lifestyles and responsibilities. As long as it suits your team, you have the freedom to
+          build your work schedule around your life.
         </p>
       </>
     ),
@@ -175,9 +167,8 @@ const twoCol = [
           Flexible remote organization
         </h2>
         <p className="text-foreground-neutral-weak! text-base">
-          Our team is globally distributed and everyone can work from any
-          location within the UTC -5 to UTC +3 timezones. We want you to choose
-          wherever you are happiest and most productive.
+          Our team is globally distributed and everyone can work from any location within the UTC -5
+          to UTC +3 timezones. We want you to choose wherever you are happiest and most productive.
         </p>
       </>
     ),
@@ -235,12 +226,7 @@ export default function Careers() {
             Help us empower developers to build data-driven applications.
           </p>
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
-            <Button
-              asChild
-              variant="orm"
-              size="3xl"
-              className="font-sans-display! font-[650]"
-            >
+            <Button asChild variant="orm" size="3xl" className="font-sans-display! font-[650]">
               <a href="#open-positions">
                 View open positions
                 <i className="fa-solid fa-arrow-down" />
@@ -279,10 +265,9 @@ export default function Careers() {
                 Our Values
               </h2>
               <p className="text-base text-foreground-neutral-weak text-center max-w-[844px] mx-auto mb-4">
-                At Prisma, we believe that our company values are essential to
-                our success. They guide us in our daily work, helping us to
-                thrive and creating an environment where team members can grow
-                and collaborate effectively.
+                At Prisma, we believe that our company values are essential to our success. They
+                guide us in our daily work, helping us to thrive and creating an environment where
+                team members can grow and collaborate effectively.
               </p>
 
               {/* Values Grid */}
@@ -292,9 +277,7 @@ export default function Careers() {
                   <Action color="orm" size="5xl">
                     <i className="fa-regular fa-eye text-3xl" />
                   </Action>
-                  <h3 className="text-2xl font-bold font-sans-display">
-                    Transparency
-                  </h3>
+                  <h3 className="text-2xl font-bold font-sans-display">Transparency</h3>
                 </div>
 
                 {/* Curiosity */}
@@ -302,9 +285,7 @@ export default function Careers() {
                   <Action color="orm" size="5xl">
                     <i className="fa-regular fa-face-raised-eyebrow text-3xl" />
                   </Action>
-                  <h3 className="text-2xl font-bold font-sans-display">
-                    Curiosity
-                  </h3>
+                  <h3 className="text-2xl font-bold font-sans-display">Curiosity</h3>
                 </div>
 
                 {/* Solidarity */}
@@ -335,13 +316,8 @@ export default function Careers() {
           <div className="grid md:grid-cols-2 gap-10">
             {benefits.map((benefit, index) => (
               <div key={index} className="flex items-start gap-4">
-                <i
-                  className={`fa-regular ${benefit.icon} text-3xl text-foreground-orm`}
-                />
-                <p
-                  className="text-lg"
-                  dangerouslySetInnerHTML={{ __html: benefit.text }}
-                />
+                <i className={`fa-regular ${benefit.icon} text-3xl text-foreground-orm`} />
+                <p className="text-lg" dangerouslySetInnerHTML={{ __html: benefit.text }} />
               </div>
             ))}
           </div>
