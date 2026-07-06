@@ -51,18 +51,20 @@ export default defineConfig({
 });
 ```
 
-The fastest way to get a `DATABASE_URL` is [Prisma Postgres](https://www.prisma.io/postgres), the managed PostgreSQL database that integrates natively with Prisma ORM. A single command provisions a database and writes the connection string to your `.env` file:
+The fastest way to get a `DATABASE_URL` is [Prisma Postgres](https://www.prisma.io/postgres), the managed PostgreSQL database that integrates natively with Prisma ORM. A single command provisions a database and gives you the connection string to put in your `.env` file:
 
 ```shell
 npm create db
 ```
 
-After running `prisma generate`, you import the client from the `output` location instead of `@prisma/client`:
+After running `prisma generate`, you import the client from the `output` location instead of `@prisma/client`. The rust-free client talks to your database through a driver adapter, so install the one for your database (`npm install @prisma/adapter-pg` for PostgreSQL) and pass it to the constructor:
 
 ```typescript
 import { PrismaClient } from "./generated/prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 
-const prisma = new PrismaClient();
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+const prisma = new PrismaClient({ adapter });
 ```
 
 That's the whole model: the generated client is part of your application code, your build tools see it like any other source file, and nothing in `node_modules` is modified after installation.
@@ -117,11 +119,14 @@ Then:
 
 1. Run `npx prisma generate`.
 2. Update your imports from `@prisma/client` to your `output` location, e.g. `./generated/prisma/client`.
-3. Exclude the generated folder from linting and formatting (for example in your ESLint ignore config). The code is generated, so lint findings there don't matter, and tools like the Next.js dev server can otherwise halt on them.
+3. Install the driver adapter for your database (`npm install @prisma/adapter-pg` for PostgreSQL) and construct the client with it: `new PrismaClient({ adapter })`, as shown above.
+4. Exclude the generated folder from linting and formatting (for example in your ESLint ignore config). The code is generated, so lint findings there don't matter, and tools like the Next.js dev server can otherwise halt on them.
 
 ## Common errors and how to fix them
 
 **"An output path is required for the `prisma-client` generator"**: add an `output` field to your generator block, as shown above. Any location in your source tree works; we suggest `../src/generated/prisma` (relative to your schema file).
+
+**"`PrismaClient` needs to be constructed with a non-empty, valid `PrismaClientOptions`"**: the `prisma-client` generator connects through a driver adapter. Install the adapter for your database (for PostgreSQL, `@prisma/adapter-pg`) and pass it to the constructor: `new PrismaClient({ adapter })`.
 
 **"@prisma/client did not initialize yet. Please run `prisma generate`"**: this error comes from importing `@prisma/client` before the client was generated. Run `npx prisma generate` (it also runs automatically on `npm install` via the `postinstall` hook in many setups). If you're on the `prisma-client` generator, check that you're importing from your `output` path instead of `@prisma/client`.
 
