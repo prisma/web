@@ -138,6 +138,8 @@ The same rule applies inside sections: when a paragraph packs several decisions 
 
 Never lean on internal vocabulary ("runtime family", "lowering", "execution stack") without a one-line plain definition at first use.
 
+For hands-on guides (anything that builds something), follow the house guide style used by /docs/guides/runtimes/bun and the middleware authoring guide: an Introduction stating what the reader builds, Prerequisites, short numbered step headings ("## 1. Create the middleware"), one action per step with the exact file path on every code block, the real expected output after the step that produces it, a likely-failure line where a step commonly breaks, and options or reference material only after the working result.
+
 ## Cut the slop
 
 Delete these on sight. They add length, not clarity.
