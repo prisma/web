@@ -1,54 +1,75 @@
 ---
-title: "Organize Your Prisma Schema into Multiple Files in v5.15"
+title: "Organize Your Prisma Schema into Multiple Files"
 slug: "organize-your-prisma-schema-with-multi-file-support"
 date: "2024-06-04"
+updatedAt: "2026-07-06"
 authors:
   - "Jon Harrell"
-metaTitle: "Organize your Prisma Schema into multiple files with Prisma ORM version 5.15.0"
-metaDescription: "With Prisma ORM 5.15.0 you can now use multiple Prisma Schema files instead of just one. Learn how to enable this Preview feature and check out a real-world example."
+metaTitle: "Organize Your Prisma Schema into Multiple Files"
+metaDescription: "Prisma ORM supports splitting your schema into multiple .prisma files, Generally Available since v6.7.0. Learn the Prisma 7 setup with prisma.config.ts, best practices, and common pitfalls."
 metaImagePath: "/organize-your-prisma-schema-with-multi-file-support/imgs/meta-26e729ad6c2082d921722ad482ef83992eb66f5f-1266x711.png"
 heroImagePath: "/organize-your-prisma-schema-with-multi-file-support/imgs/hero-5df6e670b8b37555a5d3caf40521722d9613b705-844x474.svg"
 heroImageAlt: "An image showing several .prisma files with the text \"Split your schema!\""
 tags:
-  - "announcement"
   - "orm"
+  - "education"
 ---
 
-We are excited to introduce a new Preview feature in Prisma ORM: the ability to [organize your Prisma Schema into multiple files](https://www.prisma.io/docs/orm/prisma-schema/overview/location#multi-file-prisma-schema). Learn how to implement this in your projects, explore best practices, and check out our sample project for a hands-on example.
+Prisma ORM lets you [organize your Prisma Schema into multiple files](https://www.prisma.io/docs/orm/prisma-schema/overview/location#multi-file-prisma-schema). You split your models across as many `.prisma` files as you like, relations work across files without any imports, and Prisma combines everything when you run `prisma generate` or a migration command. The feature is Generally Available since v6.7.0, so no preview flag is needed. In Prisma ORM v7, you point the `schema` property in `prisma.config.ts` at the directory that holds your schema files. This post shows the setup, when to split, and the pitfalls to avoid.
 
-> **Update (June 2025)**: This feature went into General Availability in [v6.7.0](https://github.com/prisma/prisma/releases/tag/6.7.0). You now don't need to include it in the `previewFeatures` any more. Learn more in the [docs](https://www.prisma.io/docs/orm/prisma-schema/overview/location#multi-file-prisma-schema).
-
-It’s been a long road, but with Prisma ORM 5.15.0 we are finally introducing the ability to use multiple files in your Prisma Schema. This aims to improve the manageability and organization of your database schema, making it easier to work with larger projects. As one of [our most requested features](https://github.com/prisma/prisma/issues/2377), we hope that you'll try out the `prismaSchemaFolder` Preview feature and let us know what you think on [GitHub](https://github.com/prisma/prisma/discussions/24413). Your continued feedback will help us deliver features like this one!
-
-### What is included in the multi-file Prisma Schema Preview feature
-
-The new `prismaSchemaFolder` Preview feature allows you to define multiple files in a `schema` subdirectory of your `prisma` directory. Prisma handles the combining of files, allowing you to define a model in one file and then use it in other schema files without the need for importing. We've also included updates to the Prisma Visual Studio Code Extension to handle multiple schema files, including “Go to Definition” and checks for existence.
-
-![An image of Visual Studio Code showing multiple .prisma files in a schema sub-directory of the prisma directory.](/organize-your-prisma-schema-with-multi-file-support/imgs/55b449e46a7d01963d4c7a3fdd3bb921b8c4619f-2908x2064.png)
+Multi-file schemas were [one of our most requested features](https://github.com/prisma/prisma/issues/2377): they first shipped as the `prismaSchemaFolder` Preview feature in v5.15 and went GA in [v6.7.0](https://github.com/prisma/prisma/releases/tag/6.7.0).
 
 ### How to split your Prisma Schema into multiple files
 
-First, make sure that `prisma` and `@prisma/client` have been updated to at least **5.15.0**. You’ll also need the latest version (5.15.0) of the [Prisma VSCode Extension](https://marketplace.visualstudio.com/items?itemName=Prisma.prisma) in order to take advantage of these updates in your IDE.
+A multi-file schema keeps your main `schema.prisma`, containing the `generator` and `datasource` blocks, at the top of your `prisma` directory, with your models split into files alongside or below it. A common layout groups model files in a `models` subdirectory:
 
-To split your Prisma Schema into multiple files, first enable the `prismaSchemaFolder` Preview feature by including it in the `previewFeatures` field of your `generator`.
+```
+prisma/
+├── migrations
+├── models
+│   ├── user.prisma
+│   └── post.prisma
+└── schema.prisma
+```
+
+In Prisma ORM v7, tell Prisma where your schema directory lives via the `schema` property in `prisma.config.ts`. Note that it points at the directory, not at a single file:
+
+```ts
+// prisma.config.ts
+import "dotenv/config";
+import { defineConfig, env } from "prisma/config";
+
+export default defineConfig({
+  schema: "prisma/",
+  migrations: {
+    path: "prisma/migrations",
+  },
+  datasource: {
+    url: env("DATABASE_URL"),
+  },
+});
+```
+
+The main `schema.prisma` only carries the `generator` and `datasource` blocks (in v7, the connection URL lives in `prisma.config.ts`, as shown above):
 
 ```prisma
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
-generator client {
-  provider        = "prisma-client-js"
-   // previewFeatures = ["prismaSchemaFolder"] // not needed since 6.7.0
 }
 ```
-Then, create a `schema` subdirectory under your `prisma` directory. Make sure to move your `schema.prisma` into this directory to ensure everything works correctly.
 
-Now, you're able to create additional files in your `schema` directory! All models can be referenced in all files, so relations can cross files like so:
+If you need a PostgreSQL database for `DATABASE_URL`, the fastest way to get one is [Prisma Postgres](https://www.prisma.io/postgres): running `npm create db` provisions a database and gives you the connection string to put in your `.env` file.
+
+Now you can create model files in your schema directory. All models can be referenced in all files, so relations can cross files like so:
 
 ```prisma
-// user.prisma
+// prisma/models/user.prisma
 model User {
   id    Int     @id @default(autoincrement())
   name  String
@@ -56,7 +77,7 @@ model User {
 }
 ```
 ```prisma
-// post.prisma
+// prisma/models/post.prisma
 model Post {
   id       Int     @id @default(autoincrement())
   title    String
@@ -65,34 +86,47 @@ model Post {
   author   User    @relation(fields: [authorId], references: [id])
 }
 ```
-When running `prisma generate` all schema files are combined, so your workflow will continue as normal. Other Prisma CLI commands, such as `validate` and `format` have also been updated to work with multi-file Prisma Schemas.
+
+When running `prisma generate`, all schema files are combined, so your workflow continues as normal. Other Prisma CLI commands, such as `validate` and `format`, work with multi-file schemas too, and the [Prisma VS Code extension](https://marketplace.visualstudio.com/items?itemName=Prisma.prisma) understands them as well, including "Go to Definition" across files.
+
+We verified this exact setup on Prisma ORM 7.8.0: `prisma generate`, `prisma db push`, and relation queries across the two files above all work without any flag.
+
+### Common pitfalls
+
+A few things to watch out for, all of which we ran into while testing:
+
+- **Point `schema` at the directory, not the file.** If `prisma.config.ts` says `schema: "prisma/schema.prisma"`, Prisma only reads that one file: `prisma generate` still succeeds, but the generated client silently contains none of the models from your other files. If your models seem to have disappeared after splitting files, check this first.
+- **Keep `schema.prisma` directly in the configured directory.** The file with your `generator` block must sit at the top of the directory you configured (e.g. `prisma/schema.prisma`), not in a subdirectory like `prisma/models/`.
+- **Keep the `migrations` directory at the same level as `schema.prisma`.**
+- **Keep every `.prisma` file inside the configured directory.** Prisma only loads files from the directory you specify, so files outside it are ignored.
 
 ### When to use multi-file schemas
 
-We’ve heard and seen that as a project grows, a single-file Prisma Schema eventually hits a point where it’s simply too large to manage effectively. You’ll see immediate benefits from this feature if you:
+We've heard and seen that as a project grows, a single-file Prisma Schema eventually hits a point where it's simply too large to manage effectively. You'll see immediate benefits from this feature if you:
 
 * Have a complex schema: if your schema has large models or complex relations, putting related models into a separate file can help make your schema easier to understand and navigate.
 * Have a large team: when you have a single Prisma Schema file and have many developers committing, you could run into some pretty annoying merge conflicts during your day. Separating a large schema into several files can help reduce this pain.
 
 ### Tips for multi-file Prisma Schemas
 
-We’ve found a few patterns work well with this feature and will help you get the most out of it:
+We've found a few patterns work well with this feature and will help you get the most out of it:
 
-* Organize your files by domain: group related models into the same file. For example, keep all user-related models in `user.prisma` while post-related models go in `post.prisma`. Try to avoid having “kitchen sink” schema files.
+* Organize your files by domain: group related models into the same file. For example, keep all user-related models in `user.prisma` while post-related models go in `post.prisma`. Try to avoid having "kitchen sink" schema files.
 * Use clear naming conventions: schema files should be named clearly and succinctly. Use names like `user.prisma` and `post.prisma` and not `myModels.prisma` or `CommentFeaturesSchema.prisma`.
-* Have an obvious “main” schema file: while you can now have as many schema files as you want, you’ll still need a place where you define the `generator` block. We recommend having a single schema file that’s obviously the “main” file so that these blocks are easy to find. `main.prisma`, `schema.prisma`, and `base.prisma` are a few we’ve seen that work well.
-* Keep all schema files inside your configured schema folder: if you set a custom schema directory in your Prisma configuration, make sure every .prisma file is inside that folder, including your schema.prisma file. Prisma only loads files from the directory you specify, so files outside that folder will be ignored.
+* Have an obvious "main" schema file: while you can have as many schema files as you want, you'll still need a place where you define the `generator` block. We recommend having a single schema file that's obviously the "main" file so that these blocks are easy to find. `main.prisma`, `schema.prisma`, and `base.prisma` are a few we've seen that work well.
 
 ### Sample Project
 
-If you’d like to see how this feature looks in the real world, check out our [fork of dub](https://github.com/prisma/dub) from dub.co, one of our favorite OSS projects!
+If you'd like to see how this feature looks in the real world, check out our [fork of dub](https://github.com/prisma/dub) from dub.co, one of our favorite OSS projects!
 
-### We Want Your Feedback!
+### Looking ahead: Prisma Next
 
-We'd love to hear your thoughts on this new feature. Please share your feedback and any issues you may encounter by commenting on our dedicated [GitHub discussion](https://github.com/prisma/prisma/discussions/24413).
+Schema organization is also central to [Prisma Next](https://www.prisma.io/blog/prisma-next-early-access-write-your-contract-prompt-your-agent-ship-your-app), the next generation of Prisma ORM, available in Early Access today and becoming Prisma 8 at GA. In Prisma Next, your schema is a single centralised data contract that both you and your coding agent work against, and you can author it in Prisma Schema Language or in TypeScript, keeping your data model in the same language as your application.
+
+It's fast, too: in [our published benchmark](https://www.prisma.io/blog/prisma-next-performance-benchmark), a fork of the open-source drizzle-benchmarks suite, Prisma Next reaches roughly 90% of the raw `pg` driver's speed and ships a client of about 148.5 KB gzipped. Like Prisma ORM, it pairs with [Prisma Postgres](https://www.prisma.io/postgres) out of the box. For new projects, especially ones built with AI coding agents, it's the direction to watch.
 
 ## Where to go next
 
-- [Read the multi-file Prisma schema docs](https://www.prisma.io/docs/orm/prisma-schema/overview/location#multi-file-prisma-schema) for the current GA workflow and caveats.
+- [Read the multi-file Prisma schema docs](https://www.prisma.io/docs/orm/prisma-schema/overview/location#multi-file-prisma-schema) for the current workflow and caveats.
 - [Explore Prisma ORM](https://www.prisma.io/orm) if you're evaluating the broader developer workflow around schema design and generated types.
 - [Pair it with Prisma Postgres](https://www.prisma.io/postgres) if you want a managed Postgres setup that works naturally with larger Prisma projects.
