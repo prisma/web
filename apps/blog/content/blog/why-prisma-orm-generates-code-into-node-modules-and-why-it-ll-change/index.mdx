@@ -1,12 +1,13 @@
 ---
-title: "Why Prisma ORM Generates Code into Node Modules & Why It’ll Change"
+title: "Where Prisma ORM Generates Client Code (and Why)"
 slug: "why-prisma-orm-generates-code-into-node-modules-and-why-it-ll-change"
 date: "2025-05-23"
+updatedAt: "2026-07-06"
 authors:
   - "Nikolas Burk"
   - "Will Madden"
-metaTitle: "Why Prisma ORM Generates Code into Node Modules & Why It’ll Change"
-metaDescription: "Prisma has historically generated client code into node_modules, but this is changing in the future."
+metaTitle: "Where Prisma ORM Generates Client Code (and Why)"
+metaDescription: "Prisma ORM v7 generates Prisma Client into your project source via the prisma-client generator and a required output path. Learn why earlier versions used node_modules, what changed, and how to migrate."
 metaImagePath: "/why-prisma-orm-generates-code-into-node-modules-and-why-it-ll-change/imgs/meta-3524d5ed551401d4e4299f6573888377675d62c9-1266x711.png"
 heroImagePath: "/why-prisma-orm-generates-code-into-node-modules-and-why-it-ll-change/imgs/hero-790371627d3721ca4217827e0f291f31d7345fa4-844x474.svg"
 tags:
@@ -14,97 +15,135 @@ tags:
   - "education"
 ---
 
-Prisma ORM historically generated its database client code to `node_modules`. But why does it do this? Let's look at why this decision was made and why we're changing this in the future.
+Since Prisma ORM v7, Prisma Client is generated into a folder you choose inside your project source, such as `src/generated/prisma`. The `output` option is required, and the generated code is treated like regular application code. Earlier versions generated the client into `node_modules` by default. This post explains how the current setup works, why the original default existed, and how to migrate if you are still on the old generator.
 
-Since its initial release, Prisma ORM has been using _code generation_ to generate a database client (called "Prisma Client") that's tailored to a database schema. The Prisma Client library is auto-generated based on the Prisma schema so that it's aware of their structure and can provide custom, type-safe queries for them. 
+## Where Prisma Client lives today
 
-Code generation isn't the most conventional method in the TypeScript ecosystem and Prisma ORM was one of the first popular libraries to rely on it. To keep things familiar with develoeprs, we decided to generate Prisma Client into the `node_modules` folder by default because that's typically how they're used to integrate third party libraries in their applications.
+In Prisma ORM v7, the default generator is [`prisma-client`](https://www.prisma.io/docs/orm/prisma-schema/overview/generators). It requires an explicit `output` path and writes the generated client into your project source tree:
 
-While it was possible from the beginning to choose a custom location for the generated code via the [`output`](https://www.prisma.io/docs/orm/prisma-client/setup-and-configuration/generating-prisma-client#using-a-custom-output-path) field, this default gave us a unified behavior across various frameworks and usage contexts of Prisma ORM:
+```prisma
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client"           // rust-free and ESM
+  output   = "../src/generated/prisma" // required
+}
+
+datasource db {
+  provider = "postgresql"
+}
+```
+
+Project configuration, including your database connection, lives in `prisma.config.ts`:
+
+```typescript
+// prisma.config.ts
+import "dotenv/config";
+import { defineConfig, env } from "prisma/config";
+
+export default defineConfig({
+  schema: "prisma/schema.prisma",
+  migrations: {
+    path: "prisma/migrations",
+  },
+  datasource: {
+    url: env("DATABASE_URL"),
+  },
+});
+```
+
+The fastest way to get a `DATABASE_URL` is [Prisma Postgres](https://www.prisma.io/postgres), the managed PostgreSQL database that integrates natively with Prisma ORM. A single command provisions a database and gives you the connection string to put in your `.env` file:
+
+```shell
+npm create db
+```
+
+After running `prisma generate`, you import the client from the `output` location instead of `@prisma/client`. The rust-free client talks to your database through a driver adapter, so install the one for your database (`npm install @prisma/adapter-pg` for PostgreSQL) and pass it to the constructor:
+
+```typescript
+import { PrismaClient } from "./generated/prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+const prisma = new PrismaClient({ adapter });
+```
+
+That's the whole model: the generated client is part of your application code, your build tools see it like any other source file, and nothing in `node_modules` is modified after installation.
+
+## Why Prisma ORM generates code at all
+
+Since its initial release, Prisma ORM has used _code generation_ to produce a database client (called "Prisma Client") that's tailored to your database schema. Prisma Client is auto-generated from the Prisma schema so that it knows the structure of your models and can provide custom, type-safe queries for them.
+
+Code generation isn't the most conventional method in the TypeScript ecosystem, and Prisma ORM was one of the first popular libraries to rely on it. The payoff is a client API that matches your schema exactly, with autocomplete and compile-time guarantees for every query.
+
+## Why the client used to live in `node_modules`
+
+To keep things familiar for developers, earlier versions of Prisma ORM generated Prisma Client into the `node_modules` folder by default, because that's how developers typically integrate third-party libraries into their applications. A custom location was always possible via the `output` field, but the default gave Prisma ORM unified behavior across frameworks and usage contexts.
+
+Generating Prisma Client into `node_modules` led to a magical "it just works™️" developer experience for most people … except when it didn't.
+
+Many tools across the JS/TS ecosystem assume that the `node_modules` directory is only modified by your package manager (`npm`, `pnpm`, `yarn` etc.). With Prisma ORM, however, you need to re-generate Prisma Client after every database schema change so the generated code reflects the latest state of your database. That requirement, combined with the `node_modules` default, violated the assumption of many tools in the ecosystem.
+
+Because of this, we (and others in the community) had to put _workarounds_ in place to keep the DX smooth:
+
+- The TS language server doesn't watch for changes in `node_modules`, so the Prisma VS Code extension rebooted the TS language server any time you ran `prisma generate`.
+- The [`@prisma/nextjs-monorepo-workaround-plugin`](https://www.npmjs.com/package/@prisma/nextjs-monorepo-workaround-plugin) package existed solely to ensure files were copied properly from `node_modules` when Prisma ORM was used in monorepos with Next.js.
+- Dockerfiles needed dedicated `COPY` steps for `node_modules/.prisma` and `node_modules/@prisma` so the generated client survived multi-stage builds.
+
+Workarounds existed in various shapes and forms, from dedicated packages to hardcoded code paths. They all traced back to the same core issue: generated code living in a folder that tools expect to be immutable.
+
+## What changed in Prisma ORM v7
+
+As part of [making the DX of Prisma ORM simpler and more predictable](https://www.prisma.io/blog/prisma-orm-manifesto) by removing magical behavior and unnecessary abstraction layers, [Prisma ORM v7](https://www.prisma.io/blog/announcing-prisma-orm-7-0-0) made the `prisma-client` generator the default and made the `output` path required. The old `prisma-client-js` generator, with its `node_modules` generation, is in maintenance mode.
+
+This approach has several benefits:
+
+- **The generated code is treated like regular application code.** You have full control over it and decide how it becomes part of your application bundle.
+- **More predictability.** File watchers, linters, and bundlers react to `prisma generate` like they would to any other source change, so the old workarounds are no longer needed.
+- **Compliance with ecosystem assumptions.** Your package manager is the only thing that touches `node_modules`.
+
+The new generator also ships without the Rust query engine, supports ESM, and is compatible with various JS runtimes (Node.js, Deno, Bun, Cloudflare Workers, and more). The rust-free client produces up to 90% smaller bundles and executes queries up to 3x faster; [the benchmarks](https://www.prisma.io/blog/prisma-orm-without-rust-latest-performance-benchmarks) tell the full story.
+
+## Migrating from `prisma-client-js`
+
+If your project still uses the `prisma-client-js` generator, the switch is small:
 
 ```prisma
 generator client {
-  provider = "prisma-client-js"
-  
-  // generate code in custom folder, not `node_modules`
-  output   = "../src/generated/prisma" // optional
+-  provider = "prisma-client-js"
++  provider = "prisma-client"
++  output   = "../src/generated/prisma"
 }
 ```
-Generating Prisma Client into `node_modules` by default ultimately led to a magical "it just works™️" developer experience for most people … except, when it didn't!
 
-## Why and how are we changing the location of Prisma Client in v7
+Then:
 
-Since then, developers encountered problems due to the generated code in `node_modules`. Many tools across the JS/TS ecosystem operate under the assumption that the `node_modules` directory won't be modified—except by your package manager (`npm`, `pnpm`, `yarn` etc).
+1. Run `npx prisma generate`.
+2. Update your imports from `@prisma/client` to your `output` location, e.g. `./generated/prisma/client`.
+3. Install the driver adapter for your database (`npm install @prisma/adapter-pg` for PostgreSQL) and construct the client with it: `new PrismaClient({ adapter })`, as shown above.
+4. Exclude the generated folder from linting and formatting (for example in your ESLint ignore config). The code is generated, so lint findings there don't matter, and tools like the Next.js dev server can otherwise halt on them.
 
-However, with Prisma ORM, you need to re-generate Prisma Client after every database schema change so that the generated code reflects the latest state of your database. This requirement along with the default choice of putting generated code into `node_modules` violated the assumption of many tools in the ecosystem.
+## Common errors and how to fix them
 
-### Required workarounds when putting generated code into `node_modules`
+**"An output path is required for the `prisma-client` generator"**: add an `output` field to your generator block, as shown above. Any location in your source tree works; we suggest `../src/generated/prisma` (relative to your schema file).
 
-Because many tools operate under the assumption that `node_modules` is only modified by a package manager, we (and others in the community) put in place _workarounds_ to ensure a smooth DX.
+**"`PrismaClient` needs to be constructed with a non-empty, valid `PrismaClientOptions`"**: the `prisma-client` generator connects through a driver adapter. Install the adapter for your database (for PostgreSQL, `@prisma/adapter-pg`) and pass it to the constructor: `new PrismaClient({ adapter })`.
 
-For example, because the TS language server doesn't watch for changes in `node_modules`, we adjusted the Prisma VS Code extension to reboot the TS language server any time you run `prisma generate`. Another example is the [`@prisma/nextjs-monorepo-workaround-plugin`](https://www.npmjs.com/package/@prisma/nextjs-monorepo-workaround-plugin) package whose sole purpose is to ensure that files are copied properly from `node_modules` when Prisma ORM is used in monorepos with Next.js. 
+**"@prisma/client did not initialize yet. Please run `prisma generate`"**: this error comes from importing `@prisma/client` before the client was generated. Run `npx prisma generate` (it also runs automatically on `npm install` via the `postinstall` hook in many setups). If you're on the `prisma-client` generator, check that you're importing from your `output` path instead of `@prisma/client`.
 
-Workarounds for the core issue of the generated code living in `node_modules` exist in various shapes and forms, from dedicated packages to hardcoded code paths.
+**Lint or type errors inside the generated folder**: exclude the `output` directory from ESLint, Prettier, and any strict `tsconfig` includes. Generated code is meant to be consumed, and it doesn't need to pass your project's style rules.
 
-### What is changing going forward?
+**Docker builds and monorepos**: with the client generated into your source tree, it's bundled with your application like any other module. The `COPY node_modules/.prisma` steps and the `@prisma/nextjs-monorepo-workaround-plugin` are no longer needed on the `prisma-client` generator.
 
-While the initial decision of generating Prisma Client into `node_modules` helped a lot of developers getting started and provided a smooth, unified DX, we also saw that this kind of "magical" behavior often led to unexpected problems when developers were using Prisma ORM.
+## Looking ahead: Prisma Next
 
-We are currently in the process of [making the DX of using Prisma ORM simpler and more predictable](https://www.prisma.io/blog/prisma-orm-manifesto) by removing magical behavior or unnecessary abstraction layers. 
+Prisma ORM v7 is the production version today. [Prisma Next](https://www.prisma.io/blog/prisma-next-early-access-write-your-contract-prompt-your-agent-ship-your-app) is where the ORM is heading: the next generation, available in Early Access now, becoming Prisma 8 at GA. You describe your models and relationships in a single data contract, Prisma generates the migrations, and you or your coding agent write type-safe queries in terms of your models. Every query returns structured, machine-readable output, and every operation comes with guardrails, so humans and AI agents can iterate quickly without breaking things.
 
-As part of this initiative, **we are going to remove the option to generate code into `node_modules` by always requiring an `output` path**.
+It's also fast. In [our published benchmark](https://www.prisma.io/blog/prisma-next-performance-benchmark), a fork of the open-source drizzle-benchmarks suite, Prisma Next reaches roughly 90% of the raw `pg` driver's speed, holds p95 latency around 4 ms at 6,000 to 7,000 requests/second, and keeps scaling to about 12,500 requests/second, roughly 50% beyond where Prisma 7 tops out. The client ships at about 148.5 KB gzipped, around 9x smaller than Prisma 7's, which translates directly into faster cold starts on serverless and edge.
 
-> To anticipate this change, we added a deprecation warning in v6.6.0 and changed our documentation. This has caused some unnecessary confusion in the community, read more about that in the [next section](#confusions-with-setting-an-output-path-since-v660).
+Prisma Next pairs with [Prisma Postgres](https://www.prisma.io/postgres) the same way v7 does: provision a database in one step and connect with a single URL. If you're starting a new project, especially one built with AI coding agents, Prisma Next is the direction to watch.
 
-This change will come later this year as part of Prisma ORM v7 and only affect the new `prisma-client` generator. There are several benefits to this approach:
+## Wrap-up
 
-- **The generated code will be treated like "regular" application code:** developers will have full control over it and can decide how it's going to be part of their application bundle.
-- More predictability and no more workarounds due to magical behavior.
-- Compliance with the assumption that `node_modules` can only be modified by package managers.
-
-### `prisma-client` vs `prisma-client-js` generators
-
-If you've followed our releases, you know that in [v6.6.0](https://github.com/prisma/prisma/releases/tag/6.6.0) we released a new generator, called simply [`prisma-client`](https://www.prisma.io/docs/orm/prisma-schema/overview/generators#prisma-client-early-access):
-
-```prisma
-generator client {
-  provider     = "prisma-client"           // no `-js` at the end
-  output       = "../src/generated/prisma" // `output` is required
-}
-```
-This new generator supports ESM, is compatible with various JS runtimes, overall is more flexible, and _requires_ the custom `output` path. 
-
-In Prisma ORM v7, it will become the default generator to be used with Prisma ORM and the current `prisma-client-js` generator (with the magical `node_modules` generation) will be put in maintenance mode.
-
-## Confusions with setting an `output` path since v6.6.0
-
-To anticipate the upcoming changes in v7, we wanted to help developers prepare for the breaking change of a required `output` path by nudging them to not rely on generating Prisma Client into `node_modules` any more.
-
-So, in the recent v6.6.0 release, we introduced the following deprecation warning in the Prisma CLI output when you were not using a custom `output` path with the `prisma-client-js` generator:
-```
-Warning: You did not specify an output path for your `generator` in schema.prisma. 
-This behavior is deprecated and will no longer be supported in Prisma 7.0.0. 
-To learn more visit https://pris.ly/cli/output-path
-✔ Generated Prisma Client (v6.7.0) to ./node_modules/@prisma/client in 343ms  
-```
-We also changed the default generated Prisma schema that was generated when running `prisma init` to include an `output` path and updated our documentation accordingly.
-
-While we expected this nudge to only have positive effects due to the removal of unpredictable, problematic behaviors and giving more control to developers, a lot of people actually reported issues after they saw the deprecation warning and switched to using a custom `output` path with the `prisma-client-js` generator. 
-
-Users started reporting linting failures in `src/generated/prisma`, particularly problematic with e.g. the Next.js dev server which halts operations if linting errors are detected. Since the code is generated, linting errors don't really matter, but users didn't by default have `src/generated` excluded from their linting config.
-
-Other users reported issues with their bundlers, relative path resolution, and a host of other unintended side effects. Overall, we saw a lot of confusion around where to generate Prisma Client and how to bundle it.
-
-All this happened on projects that had been working fine when Prisma Client lived in `node_modules`. To avoid these kinds of issues until v7, we are removing the deprecation warning from the CLI output again and will be fixing the issues that have been raised by the community.
-
-## When to use a custom `output` path with Prisma ORM today
-
-Here's a TLDR for what all of this means for you today:
-
-- **If you have an existing project with Prisma ORM and are using the `prisma-client-js` generator:**
-    - **If you recently added a custom `output` path and saw errors due to that change**, you can revert back to generating Prisma Client into `node_modules` as you did before.
-    - **If Prisma ORM is working for you today while generating Prisma Client into `node_modules`, there's no reason to change anything.** Prisma ORM v7 will introduce the new `prisma-client` generator as the default way for using Prisma ORM with an `output` path. When the time comes, there will be comprehensive documentation for your upgrade paths.
-- **If you start with a new project today**, we recommend setting a custom `output` path to avoid bundling issues and prepare for the upcoming breaking changes in Prisma ORM v7. Since the generated assets are (mostly) source code, which is intended to be processed and included in your application's bundle, we suggest using a path within your application source tree (e.g. `src/generated/prisma`).
-- **If you experience issues with an `output` path** (regardless of whether you use the new `prisma-client` or the current `prisma-client-js` generator), please [open a new issue](https://github.com/prisma/prisma/issues) so we can help you resolve the problem.
+Prisma Client now lives where the rest of your code lives. That single decision removed a whole category of workarounds and made Prisma ORM more predictable across bundlers, monorepos, and deploy targets. If you're starting fresh, `npm create db` gives you a Prisma Postgres database and a ready-to-run v7 setup in one step.
 
 As always, [reach out to us on X](https://pris.ly/x) or [join our Discord](https://pris.ly/discord) if you have any feedback or questions!
