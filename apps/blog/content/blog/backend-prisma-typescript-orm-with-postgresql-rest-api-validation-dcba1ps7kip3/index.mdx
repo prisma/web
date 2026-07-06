@@ -2,10 +2,11 @@
 title: "Backend with TypeScript, PostgreSQL & Prisma: REST, Validation & Tests"
 slug: "backend-prisma-typescript-orm-with-postgresql-rest-api-validation-dcba1ps7kip3"
 date: "2020-08-20"
+updatedAt: "2026-07-03"
 authors:
   - "Daniel Norman"
 metaTitle: "TypeScript, PostgreSQL, Prisma Backend | REST API, Validation, Testing"
-metaDescription: "Build a REST API with TypeScript, PostgreSQL, Prisma, and Hapi, then add validation and tests for CRUD endpoints."
+metaDescription: "Build a REST API with TypeScript, PostgreSQL, Prisma ORM 7, and Hono, then add Zod validation and Vitest tests for CRUD endpoints."
 metaImagePath: "/backend-prisma-typescript-orm-with-postgresql-rest-api-validation-dcba1ps7kip3/imgs/hero-21fe21324bb4e62111c88b37b71091676e29f616-1692x852.png"
 heroImagePath: "/backend-prisma-typescript-orm-with-postgresql-rest-api-validation-dcba1ps7kip3/imgs/hero-21fe21324bb4e62111c88b37b71091676e29f616-1692x852.png"
 heroImageAlt: "Backend with TypeScript, PostgreSQL & Prisma: REST, Validation & Tests"
@@ -13,25 +14,21 @@ series: backend-prisma-typescript-orm-with-postgresql
 seriesIndex: 2
 ---
 
-This article is part of a series of [live streams](https://www.youtube.com/playlist?list=PLn2e1F9Rfr6k7ULe0gzQvtaXLoXrPqpki) and articles on building a backend with TypeScript, PostgreSQL, and Prisma. In this article, we'll look at how to build a REST API, validate input, and testing the API.
+> **Update (July 2026):** This article was updated for Prisma ORM 7. The REST API is now built with [Hono](https://hono.dev/) instead of Hapi, with [Zod](https://zod.dev/) for input validation and [Vitest](https://vitest.dev/) for testing. It uses the rust-free `prisma-client` generator, the `prisma.config.ts` config file, and driver adapters. All commands and code work verbatim on Prisma ORM 7 with Node.js 20 or later.
 
-<Youtube videoId="d9v7umfMNkM" />
+This article is part of a series on building a backend with TypeScript, PostgreSQL, and Prisma. In this second part, you will build a REST API on top of the data model from part 1, validate input, and test the API.
 
 ## Introduction
 
-The goal of the series is to explore and demonstrate different patterns, problems, and architectures for a modern backend by solving a concrete problem: **a grading system for online courses.** This is a good example because it features diverse relations types and is complex enough to represent a real-world use case.
+The goal of the series is to explore and demonstrate different patterns, problems, and architectures for a modern backend by solving a concrete problem: **a grading system for online courses.** This is a good example because it features diverse relation types and is complex enough to represent a real-world use case.
 
-The recording of the live stream is available above and covers the same ground as this article.
-
-### What the series will cover
-
-The series will focus on the role of the database in every aspect of backend development covering:
+### What the series covers
 
 | Topic                          | Part                                                                |
 | ------------------------------ | ------------------------------------------------------------------- |
-| Data modeling                  | [Part 1](https://www.prisma.io/blog/backend-prisma-typescript-orm-with-postgresql-data-modeling-tsjs1ps7kip1) |
-| CRUD                           | [Part 1](https://www.prisma.io/blog/backend-prisma-typescript-orm-with-postgresql-data-modeling-tsjs1ps7kip1) |
-| Aggregations                   | [Part 1](https://www.prisma.io/blog/backend-prisma-typescript-orm-with-postgresql-data-modeling-tsjs1ps7kip1) |
+| Data modeling                  | [Part 1](/backend-prisma-typescript-orm-with-postgresql-data-modeling-tsjs1ps7kip1) |
+| CRUD                           | [Part 1](/backend-prisma-typescript-orm-with-postgresql-data-modeling-tsjs1ps7kip1) |
+| Aggregations                   | [Part 1](/backend-prisma-typescript-orm-with-postgresql-data-modeling-tsjs1ps7kip1) |
 | REST API layer                 | Part 2 (current)                                                    |
 | Validation                     | Part 2 (current)                                                    |
 | Testing                        | Part 2 (current)                                                    |
@@ -40,22 +37,19 @@ The series will focus on the role of the database in every aspect of backend dev
 | Integration with external APIs | Coming up                                                           |
 | Deployment                     | Coming up                                                           |
 
-
 ### What you will learn today
 
-In the first article, you designed a data model for the problem domain and wrote a seed script which uses Prisma Client to save data to the database.
+In the [first article](/backend-prisma-typescript-orm-with-postgresql-data-modeling-tsjs1ps7kip1), you designed a data model for the problem domain and wrote a seed script that uses Prisma Client to save data to the database.
 
-In this second article of the series, you will build a REST API on top of the data model and Prisma schema from the [first article](/backend-prisma-typescript-orm-with-postgresql-data-modeling-tsjs1ps7kip1). You will use [Hapi](https://hapi.dev/) to build the REST API. With the REST API, you'll be able to perform database operations via HTTP requests.
+In this second article, you will build a REST API on top of that data model and Prisma schema. You will use [Hono](https://hono.dev/) to build the REST API. With the REST API, you'll be able to perform database operations via HTTP requests.
 
 As part of the REST API, you will develop the following aspects:
 
-1. **REST API:** Implement an HTTP server with resource endpoints to handle CRUD for the different models. You will integrate Prisma with Hapi so as to allow accessing Prisma Client for the API endpoint handlers.
-2. **Validation:** Add payload validation rules to ensure that user input matches the expected types of the Prisma schema.
-3. **Testing:** Write tests for the REST endpoints with [Jest](https://jestjs.io/) and Hapi's [`server.inject`](https://hapi.dev/api?v=19.2.0#-await-serverinjectoptions) that simulate HTTP requests verifying the validation and persistence logic of the REST endpoints.
+1. **REST API:** Implement an HTTP server with resource endpoints to handle CRUD for the different models. You will make Prisma Client available to the endpoint handlers through Hono middleware.
+2. **Validation:** Add payload validation rules with Zod to ensure that user input matches the expected types of the Prisma schema.
+3. **Testing:** Write tests for the REST endpoints with [Vitest](https://vitest.dev/) and Hono's [`app.request`](https://hono.dev/docs/guides/testing) helper, which simulates HTTP requests to verify the validation and persistence logic of the endpoints.
 
-By the end of this article you will have a REST API with endpoints for CRUD (Create, Read, Update, and Delete) operations and tests. The REST resources will map HTTP requests to the models in the Prisma schema, e.g. a `GET /users` endpoint will handle operations associated with the `User` model.
-
-The next parts of this series will cover the other aspects from the list in detail.
+By the end of this article you will have a REST API with endpoints for CRUD (Create, Read, Update, and Delete) operations and tests. The REST resources map HTTP requests to the models in the Prisma schema, for example a `GET /users` endpoint handles operations associated with the `User` model.
 
 > **Note:** Throughout the guide you'll find various **checkpoints** that enable you to validate whether you performed the steps correctly.
 
@@ -63,51 +57,31 @@ The next parts of this series will cover the other aspects from the list in deta
 
 ### Assumed knowledge
 
-This series assumes basic knowledge of TypeScript, Node.js, and relational databases. If you're experienced with JavaScript but haven't had the chance to try TypeScript, you should still be able to follow along. The series will use PostgreSQL, however, most of the concepts apply to other relational databases such as MySQL. Additionally, familiarity with REST concepts is useful. Beyond that, no prior knowledge of Prisma is required as that will be covered in the series.
+This series assumes basic knowledge of TypeScript, Node.js, and relational databases. Familiarity with REST concepts is useful. No prior knowledge of Prisma is required.
+
+This article continues directly from [part 1](/backend-prisma-typescript-orm-with-postgresql-data-modeling-tsjs1ps7kip1). You should already have the `grading-app` project from part 1, with the Prisma schema, a migrated database, and the generated Prisma Client. If you haven't completed part 1, do that first, as this article builds on its data model and project setup.
 
 ### Development environment
 
 You should have the following installed:
 
-- [Node.js](https://nodejs.org/en/)
-- [Docker](https://www.docker.com/) (will be used to run a development PostgreSQL database)
+- [Node.js](https://nodejs.org/en/) 20 or later
 
-If you're using Visual Studio Code, the [Prisma extension](https://marketplace.visualstudio.com/items?itemName=Prisma.prisma) is recommended for syntax highlighting, formatting, and other helpers.
+If you're using Visual Studio Code, the [Prisma extension](https://marketplace.visualstudio.com/items?itemName=Prisma.prisma) is recommended for syntax highlighting, formatting, and autocomplete in your schema.
 
-> **Note**: If you don't want to use Docker, you can set up a [local PostgreSQL database](https://www.prisma.io/dataguide/postgresql/setting-up-a-local-postgresql-database) or a [hosted PostgreSQL database on Heroku](https://dev.to/prisma/how-to-setup-a-free-postgresql-database-on-heroku-1dc1).
-
-## Clone the repository
-
-The source code for the series can be found on [GitHub](https://github.com/2color/real-world-grading-app).
-
-To get started, clone the repository and install the dependencies:
-```
-git clone -b part-2 git@github.com:2color/real-world-grading-app.git
-cd real-world-grading-app
-npm install
-```
-> **Note:** By checking out the `part-2` branch you'll be able to follow the article from the same starting point.
-
-## Start PostgreSQL
-
-To start PostgreSQL, run the following command from the `real-world-grading-app` folder:
-
-```sh
-docker-compose up -d
-```
-> **Note:** Docker will use the [`docker-compose.yml`](https://github.com/2color/real-world-grading-app/blob/21de326008776144ced60427a055c9fc54a32840/docker-compose.yml) file to start the PostgreSQL container.
+You will use the [Prisma Postgres](https://www.prisma.io/postgres) database you created in part 1, so you don't need a local database server. If you set up a local database with Docker in part 1 instead, that works identically here.
 
 ## Building a REST API
 
-Before diving into the implementation, we'll go through some basic concepts relevant in the context of REST APIs:
+Before diving into the implementation, here are some basic concepts relevant in the context of REST APIs:
 
 - **API:** Application programming interface. A set of rules that allow programs to talk to each other. Typically the developer creates the API on the server and allows clients to talk to it.
-- **REST:** A set of conventions that developers follow to expose state-related (in this case state stored in the database) operations over HTTP requests. As an example, check out the [GitHub REST API](https://docs.github.com/en/rest/overview/resources-in-the-rest-api).
+- **REST:** A set of conventions that developers follow to expose state-related operations (in this case state stored in the database) over HTTP requests. As an example, check out the [GitHub REST API](https://docs.github.com/en/rest).
 - **Endpoint:** Entry point to the REST API which has the following properties (non-exhaustive):
-  - **Path**, e.g. `/users/`, which is used to access the users endpoint. The path determines the URL used to access the endpoint, e.g. `www.myapi.com/users/`.
-  - **HTTP method**, e.g. `GET`, `POST`, and `DELETE`. The HTTP method will determine the type of operation an endpoint exposes, for example the `GET /users` endpoint will allow fetching users and `POST /users` endpoint will allow creating users.
-  - **Handler**: The code (in this case TypeScript) which will handle requests for an endpoint.
-- **HTTP status codes:** The response HTTP status code will inform the API consumer whether the operation was successful and if any errors occurred. Check out [this list](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status) for the different HTTP status codes, e.g. `201` when a resource was created successfully, and `400` when consumer input fails validation.
+  - **Path**, for example `/users/`, which is used to access the users endpoint. The path determines the URL used to access the endpoint, for example `www.myapi.com/users/`.
+  - **HTTP method**, for example `GET`, `POST`, and `DELETE`. The HTTP method determines the type of operation an endpoint exposes, for example the `GET /users` endpoint allows fetching users and the `POST /users` endpoint allows creating users.
+  - **Handler:** The code (in this case TypeScript) that handles requests for an endpoint.
+- **HTTP status codes:** The response HTTP status code informs the API consumer whether the operation was successful and if any errors occurred. Check out [this list](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status) of the different HTTP status codes, for example `201` when a resource was created successfully, and `400` when consumer input fails validation.
 
 > **Note:** One of the key objectives of the REST approach is using HTTP as an application protocol to avoid reinventing the wheel by sticking to conventions.
 
@@ -122,9 +96,9 @@ The API will have the following endpoints (HTTP method followed by path):
 | `User`             | `PUT`       | `/users/{userId}`                            | Update a user                                            |
 | `User`             | `DELETE`    | `/users/{userId}`                            | Delete a user                                            |
 | `User`             | `GET`       | `/users`                                     | Get users                                                |
-| `CourseEnrollment` | `GET`       | `/users/{userId}/courses`                    | Get a user's enrollement incourses                       |
-| `CourseEnrollment` | `POST`      | `/users/{userId}/courses`                    | Enroll a user to a course (as student or teacher)        |
-| `CourseEnrollment` | `DELETE`    | `/users/{userId}/courses/{courseId}`         | Delete a user's enrollment to a course                   |
+| `CourseEnrollment` | `GET`       | `/users/{userId}/courses`                    | Get a user's course enrollments                          |
+| `CourseEnrollment` | `POST`      | `/users/{userId}/courses`                    | Enroll a user in a course (as student or teacher)        |
+| `CourseEnrollment` | `DELETE`    | `/users/{userId}/courses/{courseId}`         | Delete a user's enrollment in a course                   |
 | `Course`           | `POST`      | `/courses`                                   | Create a course                                          |
 | `Course`           | `GET`       | `/courses`                                   | Get courses                                              |
 | `Course`           | `GET`       | `/courses/{courseId}`                        | Get a course                                             |
@@ -135,1003 +109,503 @@ The API will have the following endpoints (HTTP method followed by path):
 | `Test`             | `PUT`       | `/courses/tests/{testId}`                    | Update a test                                            |
 | `Test`             | `DELETE`    | `/courses/tests/{testId}`                    | Delete a test                                            |
 | `Test Result`      | `GET`       | `/users/{userId}/test-results`               | Get a user's test results                                |
-| `Test Result`      | `POST`      | `/courses/tests/{testId}/test-results`       | Create test result for a test associated with a user     |
+| `Test Result`      | `POST`      | `/courses/tests/{testId}/test-results`       | Create a test result for a test associated with a user   |
 | `Test Result`      | `GET`       | `/courses/tests/{testId}/test-results`       | Get multiple test results for a test                     |
 | `Test Result`      | `PUT`       | `/courses/tests/test-results/{testResultId}` | Update a test result (associated with a user and a test) |
 | `Test Result`      | `DELETE`    | `/courses/tests/test-results/{testResultId}` | Delete a test result                                     |
 
-> **Note:** The paths containing a parameter enclosed in `{}`, e.g. `{userId}` represent a variable that is interpolated in the URL, e.g. in `www.myapi.com/users/13` the `userId` is `13`.
+> **Note:** The paths containing a parameter enclosed in `{}`, for example `{userId}`, represent a variable that is interpolated in the URL. In `www.myapi.com/users/13` the `userId` is `13`.
 
-The endpoints above have been grouped based on the main model/resource they're associated with. The categorization will help with organizing the code into separate modules for maintainability.
+The endpoints above have been grouped based on the main model/resource they're associated with. The categorization helps with organizing the code into separate modules for maintainability.
 
-In this article, you will implement a subset of the endpoints above (the first four) to illustrate the different patterns for different CRUD operations. The full API will be available in the [GitHub repository](https://github.com/2color/real-world-grading-app).
-These endpoints should provide an interface for most operations. While some resources do not have a `DELETE` endpoint for deleting resources, they can be added later.
+In this article, you will implement a subset of these endpoints (the CRUD operations for `User`) to illustrate the different patterns. You can implement the rest by following the same principles.
 
-> **Note:** Throughout the article, the words _endpoint_ and _route_ will be used interchangeably. While they refer to the same thing, _endpoint_ is the term used in the context of REST, while _route_ is the term used in the context of HTTP servers.
+> **Note:** Throughout the article, the words _endpoint_ and _route_ are used interchangeably. While they refer to the same thing, _endpoint_ is the term used in the context of REST, while _route_ is the term used in the context of HTTP servers.
 
-### Hapi
+### Hono
 
-The API will be built with [Hapi](https://hapi.dev/) – a Node.js framework for building HTTP servers that support validation and testing out of the box.
+The API will be built with [Hono](https://hono.dev/), a small, fast web framework that runs on any JavaScript runtime (Node.js, Bun, Deno, Cloudflare Workers, and more). It has a clean routing API, first-class TypeScript support, built-in middleware, and a testing helper that lets you send requests to your app without starting a server.
 
-Hapi consists of a core module named `@hapi/hapi` which is the HTTP server and modules that extend the core functionality. In this backend you will also use the following:
+You will use the following packages alongside Hono:
 
-- `@hapi/joi` for declarative input validation
-- `@hapi/boom` for HTTP-friendly error objects
+- `@hono/node-server` to run the Hono app on Node.js
+- `zod` for declarative, type-safe input validation
+- `@hono/zod-validator` to plug Zod schemas into Hono routes as validation middleware
+- `vitest` as the test runner
 
-For Hapi to work with TypeScript, you will need to add the types for Hapi and Joi. This is necessary because Hapi is written in JavaScript. By adding the types, you will have rich auto-completion and allow the TypeScript compiler to ensure the type safety of your code.
+Install them in your `grading-app` project:
 
-Install the following packages:
-
-```npm
-npm install --save @hapi/boom @hapi/hapi @hapi/joi
-npm install --save-dev @types/hapi__hapi @types/hapi__joi
+```sh
+npm install hono @hono/node-server zod @hono/zod-validator dotenv
+npm install vitest --save-dev
 ```
-### Creating the server
 
-The first thing you need to do is create a Hapi server which will bind to an interface and port.
+### Making Prisma Client available with middleware
 
-Add the following Hapi server to `src/server.ts`:
+Before defining routes, you need a way to access Prisma Client inside your route handlers. Hono has the concept of [middleware](https://hono.dev/docs/guides/middleware): functions that run before your handlers and can read from and write to the request [context](https://hono.dev/docs/api/context).
+
+You will write a small middleware that attaches a single Prisma Client instance to the context so every handler can reach it through `c.get("prisma")`. Reusing one instance avoids opening a new database connection on every request.
+
+Create a new file `src/lib/prisma.ts`:
 
 ```ts
-import Hapi from '@hapi/hapi'
+import "dotenv/config";
+import type { Context, Next } from "hono";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "../../generated/prisma/client";
 
-const server: Hapi.Server = Hapi.server({
-  port: process.env.PORT || 3000,
-  host: process.env.HOST || 'localhost',
-})
-
-export async function start(): Promise<Hapi.Server> {
-  await server.start()
-  return server
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+  throw new Error("DATABASE_URL is not set");
 }
 
-process.on('unhandledRejection', err => {
-  console.log(err)
-  process.exit(1)
-})
+const adapter = new PrismaPg({ connectionString: databaseUrl });
+export const prisma = new PrismaClient({ adapter });
 
-start()
-  .then(server => {
-    console.log(`Server running on ${server.info.uri}`)
-  })
-  .catch(err => {
-    console.log(err)
-  })
+export type AppEnv = {
+  Variables: {
+    prisma: PrismaClient;
+  };
+};
+
+export function withPrisma(c: Context<AppEnv>, next: Next) {
+  if (!c.get("prisma")) {
+    c.set("prisma", prisma);
+  }
+  return next();
+}
 ```
-First, you import Hapi. Then you initialize a new `Hapi.server()` (of type `Hapi.Server` defined in `@types/hapi__hapi` package) with connection details containing a port number to listen on and the host information. After that you start the server and log that it's running.
 
-To run the server locally during development, run the npm `dev`script which will use `ts-node-dev` to automatically transpile the TypeScript code and restart the server when you make changes: `npm run dev`:
+A few things to note:
+
+- Prisma Client is instantiated once with the `@prisma/adapter-pg` driver adapter, exactly as in the seed script from part 1.
+- `AppEnv` is a Hono [environment type](https://hono.dev/docs/api/hono#generics-for-hono). By declaring `Variables.prisma`, TypeScript knows that `c.get("prisma")` returns a `PrismaClient`, giving you autocomplete and type safety in every handler.
+- `withPrisma` sets the client on the context if it isn't already there, then calls `next()` to continue to the route handler.
+
+### Creating the server
+
+Next, create the Hono app and register the middleware. Splitting the app definition from the code that starts the server is deliberate: it lets your tests import the fully configured app and send requests to it without ever binding to a port.
+
+Create `src/app.ts`:
+
+```ts
+import { Hono } from "hono";
+import { withPrisma, type AppEnv } from "./lib/prisma";
+import status from "./routes/status";
+import users from "./routes/users";
+
+const app = new Hono<AppEnv>();
+
+app.use("*", withPrisma);
+
+app.route("/", status);
+app.route("/", users);
+
+export default app;
+```
+
+`app.use("*", withPrisma)` applies the Prisma middleware to every route. `app.route()` mounts route modules (which you'll create next) onto the app, keeping each resource's routes in its own file.
+
+Then create the runnable entry point, `src/index.ts`, which starts the server with `@hono/node-server`:
+
+```ts
+import { serve } from "@hono/node-server";
+import app from "./app";
+
+serve(
+  {
+    fetch: app.fetch,
+    port: 3000,
+  },
+  (info) => {
+    console.log(`Server is running on http://localhost:${info.port}`);
+  },
+);
+```
+
+Finally, add `dev`, `start`, and `test` scripts to your `package.json`:
+
+```json
+{
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "test": "vitest run"
+  }
+}
+```
+
+### Defining the status route
+
+Before defining routes related to business logic, it's good practice to add a status endpoint that returns a `200` HTTP status code. This is useful to check that the server is running correctly.
+
+Create the `src/routes` directory and add a `status.ts` file:
+
+```ts
+import { Hono } from "hono";
+import type { AppEnv } from "../lib/prisma";
+
+const status = new Hono<AppEnv>();
+
+status.get("/", (c) => {
+  return c.json({ up: true }, 200);
+});
+
+export default status;
+```
+
+Here you create a Hono instance for the status routes, define a `GET /` handler that returns the object `{ up: true }` with a `200` status code, and export it so `app.ts` can mount it.
+
+Start the server to try it out:
 
 ```sh
 npm run dev
-
-> ts-node-dev --respawn ./src/server.ts
-
-Using ts-node version 8.10.2, typescript version 3.9.6
-Server running on http://localhost:3000
 ```
-**Checkpoint:** If you open http://localhost:3000 in your browser, you should see the following: `{"statusCode":404,"error":"Not Found","message":"Not Found"}`
 
-Congratulations, you have successfully created a server. However, the server has no routes defined. In the next step, you will define the first route.
+**Checkpoint:** If you open [http://localhost:3000](http://localhost:3000) in your browser, you should see: `{"up":true}`
 
-### Defining a route
+### Testing the status route
 
-To add a route, you will use the [`route()`](https://hapi.dev/api?v=19.2.0#-serverrouteroute) method on the Hapi `server` you instantiated in the previous step. Before defining routes related to business logic, it's good practice to add a `/status` endpoint which returns a `200` HTTP status code. This is useful to ensure the server is running correctly
+To test the status endpoint, you'll use [Vitest](https://vitest.dev/) as the test runner together with Hono's [`app.request`](https://hono.dev/docs/guides/testing) helper, which sends a request straight to your app and returns a standard `Response`. Because `app.request` doesn't start a server, tests run fast and don't need a free port.
 
-To do so, update the `start` function in `server.ts` by adding the following to the top:
+Create a `tests` directory and add `status.test.ts`:
 
 ```ts
-export async function start(): Promise<Hapi.Server> {
-  server.route({
-    method: 'GET',
-    path: '/',
-    handler: (_, h: Hapi.ResponseToolkit) => {
-      return h.response({ up: true }).code(200)
-    },
-  })
-  await server.start()
-  console.log(`Server running on ${server.info.uri}`)
-  return server
-}
+import { describe, test, expect } from "vitest";
+import app from "../src/app";
+
+describe("Status route", () => {
+  test("GET / returns 200 and { up: true }", async () => {
+    const res = await app.request("/");
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ up: true });
+  });
+});
 ```
-Here you defined the HTTP method, the path, and a handler which returns the object `{ up: true }` and lastly set the HTTP status code to `200`.
 
-**Checkpoint:** If you open http://localhost:3000 in your browser, you should see the following: `{"up":true}`
+The test imports the configured `app`, sends a `GET /` request with `app.request`, and asserts on the status code and the JSON body.
 
-### Moving the route to a plugin
-
-In the previous step you defined a status endpoint. Since the API will expose many different endpoints, it won't be maintainable to have them all defined in the `start` function.
-
-Hapi has the concept of [plugins](https://hapi.dev/tutorials/plugins/) as a way of breaking up the backend into isolated pieces of business logic. Plugins are a lean way to keep your code modular. In this step, you will move the route defined in the previous step into a plugin.
-
-This requires two steps:
-
-1. Define a plugin in a new file.
-1. Register the plugin before calling `server.start()`
-
-#### Defining the plugin
-
-Begin by creating a new folder in `src/` named `plugins`:
+**Checkpoint:** Run the tests with `npm test`. You should see output similar to:
 
 ```sh
-mkdir src/plugins
-```
-Create a new file named `status.ts` in the `src/plugins/` folder:
+ ✓ tests/status.test.ts > Status route > GET / returns 200 and { up: true }
 
-```sh
-touch src/plugins/status.ts
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
 ```
-And add the following to the file:
+
+### Defining the user routes
+
+You'll now create a route module for the `User` resource. Because the Prisma middleware is registered on the app, every handler in this module can access Prisma Client through `c.get("prisma")`.
+
+Create `src/routes/users.ts` with the following starting point:
 
 ```ts
-import Hapi from '@hapi/hapi'
+import { Hono } from "hono";
+import { zValidator } from "@hono/zod-validator";
+import { z } from "zod";
+import type { AppEnv } from "../lib/prisma";
 
-const plugin: Hapi.Plugin<undefined> = {
-  name: 'app/status',
-  register: async function(server: Hapi.Server) {
-    server.route({
-      method: 'GET',
-      path: '/',
-      handler: (_, h: Hapi.ResponseToolkit) => {
-        return h.response({ up: true }).code(200)
-      },
+const users = new Hono<AppEnv>();
+
+export default users;
+```
+
+The `Hono<AppEnv>` type parameter carries the `prisma` context variable through to every handler you add. In the next steps you'll fill in the CRUD routes.
+
+### Defining the create user route with validation
+
+The create user route uses the HTTP method `POST` and the path `/users`.
+
+User input arrives at runtime, so it can't be checked by the TypeScript compiler. This is what validation is for: it's a runtime check that the incoming payload has the right shape before you touch the database. You'll define the expected shape once as a Zod schema and reuse it both for validation and for deriving the TypeScript type.
+
+Add the schemas to `src/routes/users.ts`:
+
+```ts
+const userSchema = z.object({
+  firstName: z.string(),
+  lastName: z.string(),
+  email: z.email(),
+  social: z
+    .object({
+      bluesky: z.string().optional(),
+      linkedin: z.string().optional(),
+      website: z.string().optional(),
     })
-  },
-}
-
-export default plugin
+    .optional(),
+});
 ```
-A Hapi plugin is an object with a `name` property and a `register` function which is where you would typically encapsulate the logic of the plugin. The `name` property the plugin name string and is used as a unique key.
 
-Each plugin can manipulate the server through the standard [server interface](https://hapi.dev/api?v=19.2.0#server). In the `app/status` plugin above, `server` is used to define the _status_ route in the `register` function.
-
-#### Registering the plugin
-
-To register the plugin, go back to `server.ts` and import the status plugin as follows:
+Now define the create route. `zValidator("json", userSchema)` is middleware from `@hono/zod-validator` that validates the JSON body against `userSchema`. If validation fails, it responds with a `400` automatically. If it succeeds, the parsed and typed payload is available through `c.req.valid("json")`:
 
 ```ts
-import status from './plugins/status'
+users.post("/users", zValidator("json", userSchema), async (c) => {
+  const prisma = c.get("prisma");
+  const data = c.req.valid("json");
+
+  const createdUser = await prisma.user.create({
+    data,
+    select: { id: true },
+  });
+
+  return c.json(createdUser, 201);
+});
 ```
-In the `start` function, replace the `route()` call from the previous step with the following [`server.register()`](https://hapi.dev/api?v=19.2.0#-await-serverregisterplugins-options) call:
+
+Here you access `prisma` from the context (set by the middleware), pass the validated payload to `prisma.user.create`, and return the created user's `id` with a `201` status code. Because `social` in the schema matches the `Json?` field in the Prisma schema, you pass the object straight through, no manual serialization required.
+
+### Testing the create user route
+
+Create `tests/users.test.ts` and add a test that sends a valid payload and asserts that the response contains a numeric `id`:
 
 ```ts
-export async function start(): Promise<Hapi.Server> {
-  await server.register([status])
-  await server.start()
-  console.log(`Server running on ${server.info.uri}`)
-  return server
-}
-```
-**Checkpoint:** If you open http://localhost:3000 in your browser, you should see the following: `{"up":true}`
+import { describe, test, expect, afterAll } from "vitest";
+import app from "../src/app";
+import { prisma } from "../src/lib/prisma";
 
-Congratulations, you have successfully created a Hapi plugin which encapsulates the logic for the status endpoint.
-
-In the next step, you will define a test to test the status endpoint.
-
-### Defining a test for the status endpoint
-
-To test the status endpoint, you will use [Jest](https://jestjs.io/) as the test runner together with the Hapi's [`server.inject`](https://hapi.dev/api?v=19.2.0#-await-serverinjectoptions) test helper that simulates an HTTP request to the server. This will allow you to verify that you correctly implemented the endpoint.
-
-#### Splitting server.ts into two files
-
-To use the `server.inject` method, you need access in your tests to the `server` object after the plugins have been registered but prior to starting the server so as to avoid the server listening to requests when tests run. To do so, modify the `server.ts` to look as follows:
-
-```ts
-const server: Hapi.Server = Hapi.server({
-  port: process.env.PORT || 3000,
-  host: process.env.HOST || 'localhost',
-})
-
-export async function createServer(): Promise<Hapi.Server> {
-  await server.register([statusPlugin])
-  await server.initialize()
-
-  return server
-}
-
-export async function startServer(server: Hapi.Server): Promise<Hapi.Server> {
-  await server.start()
-  console.log(`Server running on ${server.info.uri}`)
-  return server
-}
-
-process.on('unhandledRejection', err => {
-  console.log(err)
-  process.exit(1)
-})
-```
-You just split replaced the `start` function with two functions:
-
-- `createServer()`: Registers the plugins and initializes the server
-- `startServer()`: Starts the server
-
-> **Note:** Hapi's `server.initialize()` initializes the server (starts the caches, finalizes plugin registration) but does not start listening on the connection port.
-
-Now you can import `server.ts` and use `createServer()` in your tests to initialize the server and call `server.inject()` to simulate HTTP requests.
-
-Next, you will create a new entry point for the application which will call both `createServer()` and `startServer()`.
-
-Create a new `src/index.ts` file and add the following to it:
-
-```ts
-import { createServer, startServer } from './server'
-
-createServer()
-  .then(startServer)
-  .catch(err => {
-    console.log(err)
-  })
-```
-Lastly, update the `dev` script in `package.json` to start `src/index.ts` instead of `src/server.ts`:
-
-```json
-diff
-- "dev": "ts-node-dev --respawn ./src/server.ts",
-+ "dev": "ts-node-dev --respawn ./src/index.ts",
-```
-#### Creating the test
-
-To create the test, create a folder named `tests` in the root of the project and create a file named `status.test.ts` and add the following to the file:
-
-```ts
-import { createServer } from '../src/server'
-import Hapi from '@hapi/hapi'
-
-describe('Status plugin', () => {
-  let server: Hapi.Server
-
-  beforeAll(async () => {
-    server = await createServer()
-  })
+describe("User routes", () => {
+  let userId: number;
 
   afterAll(async () => {
-    await server.stop()
-  })
-
-  test('status endpoint returns 200', async () => {
-    const res = await server.inject({
-      method: 'GET',
-      url: '/',
-    })
-    expect(res.statusCode).toEqual(200)
-    const response = JSON.parse(res.payload)
-    expect(response.up).toEqual(true)
-  })
-})
-```
-In the test above, the `beforeAll` and `afterAll` are used as [setup and teardown](https://jestjs.io/docs/en/setup-teardown) functions to create and stop the server.
-
-Then, the `server.inject` is called to simulate a `GET` HTTP request to the root endpoint `/`. The test then asserts the HTTP status code and the payload to ensure it matches the handler.
-
-**Checkpoint:** Run the test with `npm test` and you should see the following output:
-
-```sh
-PASS  tests/status.test.ts
-  Status plugin
-    ✓ status endpoint returns 200 (9 ms)
-
-Test Suites: 1 passed, 1 total
-Tests:       1 passed, 1 total
-Snapshots:   0 total
-Time:        0.886 s, estimated 1 s
-Ran all test suites.
-```
-Congratulations, you have created a plugin with a route and tested the route.
-
-In the next step, you will define a Prisma plugin so that you can access the Prisma Client instance throughout the application.
-
-### Defining a Prisma plugin
-
-Similar to how you created the status plugin, create a new file `src/plugins/prisma.ts` file for the Prisma plugin.
-
-The goal of the Prisma plugin is to instantiate the Prisma Client, make it available to the rest of the application through the [`server.app`](https://hapi.dev/api?v=19.2.0#-await-serverregisterplugins-options) object, and to disconnect from the database when the server is stopped. `server.app` provides a safe place to store server-specific run-time application data without potential conflicts with the framework internals. The data can be accessed whenever the server is accessible.
-
-Add the following to the `src/plugins/prisma.ts` file:
-
-```ts
-import { PrismaClient } from '@prisma/client'
-import Hapi from '@hapi/hapi'
-
-// plugin to instantiate Prisma Client
-const prismaPlugin: Hapi.Plugin<null> = {
-  name: 'prisma',
-  register: async function(server: Hapi.Server) {
-    const prisma = new PrismaClient()
-
-    server.app.prisma = prisma
-
-    // Close DB connection after the server's connection listeners are stopped
-    // Related issue: https://github.com/hapijs/hapi/issues/2839
-    server.ext({
-      type: 'onPostStop',
-      method: async (server: Hapi.Server) => {
-        server.app.prisma.disconnect()
-      },
-    })
-  },
-}
-
-export default prismaPlugin
-```
-Here we define a plugin, instantiate Prisma Client, assign it to `server.app`, and add an extension function (can be thought of as a hook) that will run on the `onPostStop` event which gets called after the server's connection listeners are stopped.
-
-To register the Prisma plugin, import the plugin in `server.ts` and add it to the array passed to the `server.register` call as follows:
-
-```ts
-await server.register([status, prisma])
-```
-If you're using VSCode, you will see a red squiggly line below `server.app.prisma = prisma` in the `src/plugins/prisma.ts` file. This is the first type error you encounter. If you don't see the line, you can run the `compile` script to run the TypeScript compiler:
-
-```sh
-npm run compile
-
-src/plugins/prisma.ts:21:16 - error TS2339: Property 'prisma' does not exist on type 'ServerApplicationState'.
-
-21     server.app.prisma = prisma
-```
-This reason for this error is that you've modified the `server.app` without updating its type. To resolve the error, add the following on top of the `prismaPlugin` definition:
-
-```ts
-declare module '@hapi/hapi' {
-  interface ServerApplicationState {
-    prisma: PrismaClient
-  }
-}
-```
-This will augment the module and assign the `PrismaClient` type to the `server.app.prisma` property.
-
-> **Note:** For more information about why module augmentation is necessary, check out [this comment](https://github.com/DefinitelyTyped/DefinitelyTyped/issues/33809#issuecomment-472103564) in the DefinitelyTyped repository.
-
-Besides appeasing the TypeScript compiler, this will also make auto-completion work whenever `server.app.prisma` is accessed throughout the application.
-
-**Checkpoint:** If you run `npm run compile` again, no errors should be emitted.
-
-Well done! You have now defined two plugins and made Prisma Client available to the rest of the application. In the next step you will define a plugin for the user routes.
-
-### Defining a plugin for user routes with a dependency on the Prisma plugin
-
-You will now define a new plugin for the user routes. This plugin will need to make use of Prisma Client that you defined in the Prisma plugin so that it can perform CRUD operation in the user-specific route handlers.
-
-Hapi plugins have an optional dependencies property which can be used to indicate a dependency on other plugins. When specified, Hapi will ensure the plugins are loaded in the correct order.
-
-Begin by creating a new file `src/plugins/users.ts` file for the users plugin.
-
-Add the following to the file:
-
-```ts
-import Hapi from '@hapi/hapi'
-
-// plugin to instantiate Prisma Client
-const usersPlugin = {
-  name: 'app/users',
-  dependencies: ['prisma'],
-  register: async function(server: Hapi.Server) {
-    // here you can use server.app.prisma
-  },
-}
-export default usersPlugin
-```
-Here you passed an array to the `dependencies` property to make sure Hapi loads the Prisma plugin first.
-
-You can now define the user-specific routes in the `register` function knowing that Prisma Client will be accessible.
-
-Lastly, you will need to import the plugin and register it in `src/server.ts` as follows:
-
-```ts
-diff
--await server.register([status, prisma])
-+await server.register([status, prisma, users])
-```
-In the next step, you will define a create user endpoint.
-
-### Defining the create user route
-
-With the user plugin defined, you can now define the create user route.
-
-The create user route will have the HTTP method `POST` and the path `/users`.
-
-Begin by adding the following `server.route` call in `src/plugins/users.ts` inside the `register` function:
-
-```ts
-server.route([
-  {
-    method: 'POST',
-    path: '/users',
-    handler: createUserHandler,
-  },
-])
-```
-Then define the `createUserHandler` function as follows:
-
-```ts
-async function createUserHandler(request: Hapi.Request, h: Hapi.ResponseToolkit) {
-  const { prisma } = request.server.app
-  const payload = request.payload
-
-  try {
-    const createdUser = await prisma.user.create({
-      data: {
-        firstName: payload.firstName,
-        lastName: payload.lastName,
-        email: payload.email,
-        social: JSON.stringify(payload.social),
-      },
-      select: {
-        id: true,
-      },
-    })
-    return h.response(createdUser).code(201)
-  } catch (err) {
-    console.log(err)
-  }
-}
-```
-Here you access `prisma` from the `server.app` object (assigned in the Prisma plugin), and use the request payload in the `prisma.user.create` call to save the user in the database.
-
-You should see a red squiggly line again below the lines accessing `payload`'s properties', indicating a type error. If you don't see the error, run the TypeScript compiler again:
-
-```sh
-npm run compile
-src/plugins/users.ts:27:28 - error TS2339: Property 'firstName' does not exist on type 'string | object | Buffer | Readable'.
-  Property 'firstName' does not exist on type 'string'.
-
-27         firstName: payload.firstName,
-                              ~~~~~~~~~
-```
-This is because `payload`'s value is determined at runtime, so the TypeScript compiler has no way of knowing its time. This can be fixed with a **type assertion**.
-Type assertion is a mechanism in TypeScript that allows you to override a variable's inferred type. TypeScript's type assertion is purely you telling the compiler that you know about the types better than it does as here.
-
-To do so, define an interface for the expected payload:
-
-```ts
-interface UserInput {
-  firstName: string
-  lastName: string
-  email: string
-  social: {
-    facebook?: string
-    twitter?: string
-    github?: string
-    website?: string
-  }
-}
-```
-> **Note:** Types and Interfaces have many similarities in TypeScript.
-
-Then add the type assertion:
-
-```ts
-const payload = request.payload as UserInput
-```
-The plugin should look as follows:
-
-```ts
-// plugin to instantiate Prisma Client
-const usersPlugin = {
-  name: 'app/users',
-  dependencies: ['prisma'],
-  register: async function(server: Hapi.Server) {
-    server.route([
-      {
-        method: 'POST',
-        path: '/users',
-        handler: registerHandler,
-      },
-    ])
-  },
-}
-
-export default usersPlugin
-
-interface UserInput {
-  firstName: string
-  lastName: string
-  email: string
-  social: {
-    facebook?: string
-    twitter?: string
-    github?: string
-    website?: string
-  }
-}
-
-async function registerHandler(request: Hapi.Request, h: Hapi.ResponseToolkit) {
-  const { prisma } = request.server.app
-  const payload = request.payload as UserInput
-
-  try {
-    const createdUser = await prisma.user.create({
-      data: {
-        firstName: payload.firstName,
-        lastName: payload.lastName,
-        email: payload.email,
-        social: JSON.stringify(payload.social),
-      },
-      select: {
-        id: true,
-      },
-    })
-    return h.response(createdUser).code(201)
-  } catch (err) {
-    console.log(err)
-  }
-}
-```
-### Adding validation to the create user route
-
-In this step, you will also add payload validation using Joi to ensure the route only handles requests with the correct data.
-
-Validation can be thought of as a runtime type check. When using TypeScript, the type checks that the compiler performs are bound to what can be known at compile time. Since user API input cannot be known at compile-time, runtime validation help with such cases.
-
-To do so, import Joi as follows:
-
-```ts
-import Joi from '@hapi/joi'
-```
-Joi allows you to define validation rules by creating a Joi validation object which can be assigned to the route handler so that Hapi will know to validate the payload.
-
-In the create user endpoint, you want to validate that the user input fits the type you've defined above:
-
-```ts
-interface UserInput {
-  firstName: string
-  lastName: string
-  email: string
-  social: {
-    facebook?: string
-    twitter?: string
-    github?: string
-    website?: string
-  }
-}
-```
-The Joi corresponding validation object would look as follows:
-
-```ts
-const userInputValidator = Joi.object({
-  firstName: Joi.string().required(),
-  lastName: Joi.string().required(),
-  email: Joi.string()
-    .email()
-    .required(),
-  social: Joi.object({
-    facebook: Joi.string().optional(),
-    twitter: Joi.string().optional(),
-    github: Joi.string().optional(),
-    website: Joi.string().optional(),
-  }).optional(),
-})
-```
-Next, you have to configure the route handler to use the validator object `userInputValidator`. Add the following to your route definition object:
-
-```json
-diff
-{
-  method: 'POST',
-  path: '/users',
-  handler: registerHandler,
-+  options: {
-+    validate: {
-+      payload: userInputValidator
-+    }
-+  },
-}
-```
-### Create a test for the create user route
-
-In this step, you will create a test to verify the create user logic. The test will make a request to the `POST /users` endpoint with `server.inject` and check that the response includes the `id` field thereby verifying that the user has been created in the database.
-
-Start by creating a `tests/users.tests.ts` file and add the following contents:
-
-```ts
-import { createServer } from '../src/server'
-import Hapi from '@hapi/hapi'
-
-describe('POST /users - create user', () => {
-  let server: Hapi.Server
-
-  beforeAll(async () => {
-    server = await createServer()
-  })
-
-  afterAll(async () => {
-    await server.stop()
-  })
-
-  let userId
-
-  test('create user', async () => {
-    const response = await server.inject({
-      method: 'POST',
-      url: '/users',
-      payload: {
-        firstName: 'test-first-name',
-        lastName: 'test-last-name',
+    await prisma.$disconnect();
+  });
+
+  test("POST /users creates a user", async () => {
+    const res = await app.request("/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        firstName: "test-first-name",
+        lastName: "test-last-name",
         email: `test-${Date.now()}@prisma.io`,
-        social: {
-          twitter: 'thisisalice',
-          website: 'https://www.thisisalice.com'
-        }
-      }
-    })
+        social: { bluesky: "thisisalice", website: "https://thisisalice.com" },
+      }),
+    });
 
-    expect(response.statusCode).toEqual(201)
-    userId = JSON.parse(response.payload)?.id
-    expect(typeof userId === 'number').toBeTruthy()
-  })
-
-})
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    userId = body.id;
+    expect(typeof userId).toBe("number");
+  });
+});
 ```
-The test injects a request with a payload and asserts the `statusCode` and that the `id` in the response is a number.
 
-> **Note:** The test avoids unique constraint errors by ensuring that the `email` is unique on every test run.
+The test stores the created `userId` in a variable scoped to the `describe` block so later tests can reuse it. Using `` `test-${Date.now()}@prisma.io` `` keeps the email unique on every run, avoiding unique constraint errors. The `afterAll` hook disconnects Prisma Client when the suite finishes.
 
-Now that you've written a test for the happpy path (creating a user sucessfully), you will write another test to verify the validation logic. You will do so by crafting another request with invalid payload, e.g. ommitting the required field `firstName` as follows:
+Now add a test for the validation logic by sending an invalid payload that omits the required `firstName` field:
 
 ```ts
-test('create user validation', async () => {
-  const response = await server.inject({
-    method: 'POST',
-    url: '/users',
-    payload: {
-      lastName: 'test-last-name',
-      email: `test-${Date.now()}@prisma.io`,
-      social: {
-        twitter: 'thisisalice',
-        website: 'https://www.thisisalice.com',
-      },
-    },
-  })
+  test("POST /users rejects invalid input with 400", async () => {
+    const res = await app.request("/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        lastName: "test-last-name",
+        email: `test-${Date.now()}@prisma.io`,
+      }),
+    });
 
-  console.log(response.payload)
-  expect(response.statusCode).toEqual(400)
-})
+    expect(res.status).toBe(400);
+  });
 ```
-**Checkpoint:** Run the tests with the `npm test` command and verify that all tests pass.
+
+**Checkpoint:** Run `npm test` and verify that both tests pass.
 
 ### Defining and testing the get user route
 
-In the step, you will first define a test for the get user endpoint and then implement the route handler.
+The get user endpoint has the `GET /users/{userId}` signature.
 
-As a reminder, the get user endpoint will have the `GET /users/{userId}` signature.
+The practice of first writing the test and then the implementation is often referred to as _test-driven development_. It can improve productivity by giving you a fast way to verify the correctness of changes while you work on the implementation.
 
-The practice of first writing the test and then the implementation is often referred to as _test-driven development_. Test-driven development can improve productivity by providing a fast mechanism to verify the correctness of changes while you work on the implementation.
+#### Writing the tests
 
-#### Defining the test
-
-First, you will test the route returning 404 when a user is not found.
-
-Open the `users.test.ts` file and add the following `test`:
+First, test that the route returns `404` when a user is not found. Add these tests inside the `describe` block in `users.test.ts`:
 
 ```ts
-test('get user returns 404 for non existant user', async () => {
-  const response = await server.inject({
-    method: 'GET',
-    url: '/users/9999',
-  })
+  test("GET /users/:userId returns 404 for a non-existent user", async () => {
+    const res = await app.request("/users/999999");
+    expect(res.status).toBe(404);
+  });
 
-  expect(response.statusCode).toEqual(404)
-})
+  test("GET /users/:userId returns the user", async () => {
+    const res = await app.request(`/users/${userId}`);
+    expect(res.status).toBe(200);
+    const user = await res.json();
+    expect(user.id).toBe(userId);
+  });
 ```
-The second test will test the happy path – a successfully retrieved user. You will use the `userId` variable set in the create user test created in the previous step. This will ensure that you fetch an existing user. Add the following test:
 
-```ts
-test('get user returns user', async () => {
-  const response = await server.inject({
-    method: 'GET',
-    url: `/users/${userId}`,
-  })
-  expect(response.statusCode).toEqual(200)
-  const user = JSON.parse(response.payload)
-
-  expect(user.id).toBe(userId)
-})
-```
-Since you haven't defined the route yet, running the tests now will result in failing tests. The next step will be to define the route.
+The second test uses the `userId` from the create test, so it fetches an existing user.
 
 #### Defining the route
 
-Go to the `users.ts` (users plugin) and add the following route object to the `server.route()` call:
+To validate URL parameters, define a Zod schema for the `userId` and use `zValidator("param", ...)`. Since parameters arrive as strings, `z.coerce.number()` converts the value before checking that it's an integer:
 
 ```ts
-server.route([
-  {
-    method: 'GET',
-    path: '/users/{userId}',
-    handler: getUserHandler,
-    options: {
-      validate: {
-        params: Joi.object({
-          userId: Joi.number().integer(),
-        }),
-      },
-    },
-  },
-])
-```
-Similar to how you defined validation rules for the create user endpoint, in the route definition above you validate the `userId` url parameter to ensure a number is passed.
+const userIdParam = z.object({
+  userId: z.coerce.number().int(),
+});
 
-Next, define the `getUserHandler` function as follows:
+users.get("/users/:userId", zValidator("param", userIdParam), async (c) => {
+  const prisma = c.get("prisma");
+  const { userId } = c.req.valid("param");
 
-```ts
-async function getUserHandler(request: Hapi.Request, h: Hapi.ResponseToolkit) {
-  const { prisma } = request.server.app
-  const userId = parseInt(request.params.userId, 10)
+  const user = await prisma.user.findUnique({ where: { id: userId } });
 
-  try {
-    const user = await prisma.user.findUnique({
-      where: {
-        id: userId,
-      },
-    })
-    if (!user) {
-      return h.response().code(404)
-    } else {
-      return h.response(user).code(200)
-    }
-  } catch (err) {
-    console.log(err)
-    return Boom.badImplementation()
+  if (!user) {
+    return c.body(null, 404);
   }
-}
+
+  return c.json(user, 200);
+});
 ```
-> **Note:** when calling `findUnique`, Prisma will return `null` if no result could be found.
 
-In the handler, the `userId` is parsed from the request parameters and used in a Prisma Client query. If the user cannot be found `404` is returned, otherwise, the found user object is returned.
+The handler parses the validated `userId`, queries the database, returns `404` if no user is found, and otherwise returns the user with a `200`.
 
-**Checkpoint:** Run the tests with `npm test` and verify that all tests have passed.
+> **Note:** When calling `findUnique`, Prisma Client returns `null` if no record could be found.
+
+**Checkpoint:** Run `npm test` and verify that all tests pass.
 
 ### Defining and testing the delete user route
 
-In the step, you will define a test for the delete user endpoint and then implement the route handler.
+The delete user endpoint has the `DELETE /users/{userId}` signature.
 
-The delete user endpoint will have the `DELETE /users/{userId}` signature.
+#### Writing the tests
 
-#### Defining the test
-
-First, you will write a test for the route's parameter valdation. Add the following test to `users.test.ts`:
+First, write a test for the parameter validation, then one for the delete logic that removes the user created earlier:
 
 ```ts
-test('delete user fails with invalid userId parameter', async () => {
-  const response = await server.inject({
-    method: 'DELETE',
-    url: `/users/aa22`,
-  })
-  expect(response.statusCode).toEqual(400)
-})
-```
-Then add another test for the delete user logic in which you will delete the user created in the create user test:
+  test("DELETE /users/:userId fails with 400 for an invalid id", async () => {
+    const res = await app.request("/users/aa22", { method: "DELETE" });
+    expect(res.status).toBe(400);
+  });
 
-```ts
-test('delete user', async () => {
-  const response = await server.inject({
-    method: 'DELETE',
-    url: `/users/${userId}`,
-  })
-  expect(response.statusCode).toEqual(204)
-})
+  test("DELETE /users/:userId deletes the user", async () => {
+    const res = await app.request(`/users/${userId}`, { method: "DELETE" });
+    expect(res.status).toBe(204);
+  });
 ```
-> **Note:** The 204 status response code indicates that the request has succeeded, but the response has no content.
+
+> **Note:** The `204` status code indicates that the request succeeded but the response has no content.
 
 #### Defining the route
 
-Go to the `users.ts` (users plugin) and add the following route object to the `server.route()` call:
+Reuse the `userIdParam` schema for validation and add the route:
 
 ```ts
-server.route([
-  {
-    method: 'DELETE',
-    path: '/users/{userId}',
-    handler: deleteUserHandler,
-    options: {
-      validate: {
-        params: Joi.object({
-          userId: Joi.number().integer(),
-        }),
-      },
-    },
-  },
-])
-```
-After you've defined the route, define the `deleteUserHandler` as follows:
+users.delete("/users/:userId", zValidator("param", userIdParam), async (c) => {
+  const prisma = c.get("prisma");
+  const { userId } = c.req.valid("param");
 
-```ts
-async function deleteUserHandler(request: Hapi.Request, h: Hapi.ResponseToolkit) {
-  const { prisma } = request.server.app
-  const userId = parseInt(request.params.userId, 10)
+  await prisma.user.delete({ where: { id: userId } });
 
-  try {
-    await prisma.user.delete({
-      where: {
-        id: userId,
-      },
-    })
-    return h.response().code(204)
-  } catch (err) {
-    console.log(err)
-    return h.response().code(500)
-  }
-}
+  return c.body(null, 204);
+});
 ```
-**Checkpoint:** Run the tests with `npm test` and verify that all tests have passed.
+
+**Checkpoint:** Run `npm test` and verify that all tests pass.
 
 ### Defining and testing the update user route
 
-In the step, you will define a test for the update user endpoint and then implement the route handler.
+The update user endpoint has the `PUT /users/{userId}` signature.
 
-The update user endpoint will have the `PUT /users/{userId}` signature.
+Because the delete test above removes the user, add the update tests _before_ the delete tests in the file so the user still exists when the update runs.
 
-#### Writing the tests for the update user route
-
-First, you will write a test for the route's parameter valdation. Add the following test to `users.test.ts`:
+#### Writing the tests
 
 ```ts
-test('update user fails with invalid userId parameter', async () => {
-  const response = await server.inject({
-    method: 'PUT',
-    url: `/users/aa22`,
-  })
-  expect(response.statusCode).toEqual(400)
-})
+  test("PUT /users/:userId fails with 400 for an invalid id", async () => {
+    const res = await app.request("/users/aa22", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ firstName: "x" }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  test("PUT /users/:userId updates the user", async () => {
+    const res = await app.request(`/users/${userId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        firstName: "test-first-name-UPDATED",
+        lastName: "test-last-name-UPDATED",
+      }),
+    });
+    expect(res.status).toBe(200);
+    const user = await res.json();
+    expect(user.firstName).toBe("test-first-name-UPDATED");
+    expect(user.lastName).toBe("test-last-name-UPDATED");
+  });
 ```
-Add another test for the update user endpoint in which you update the user's `firstName`and `lastName` fields (for the user created in the create user test):
+
+#### Deriving the update validation from the create schema
+
+For the update route, every field should be optional so you can update a single field, for example just `firstName`. Rather than write a second schema by hand, derive it from `userSchema` with Zod's [`.partial()`](https://zod.dev/api?id=partial) method, which makes every field optional. This keeps the create and update rules in sync and your code [DRY](https://en.wikipedia.org/wiki/Don%27t_repeat_yourself):
 
 ```ts
-test('update user', async () => {
-  const updatedFirstName = 'test-first-name-UPDATED'
-  const updatedLastName = 'test-last-name-UPDATED'
-
-  const response = await server.inject({
-    method: 'PUT',
-    url: `/users/${userId}`,
-    payload: {
-      firstName: updatedFirstName,
-      lastName: updatedLastName,
-    },
-  })
-  expect(response.statusCode).toEqual(200)
-  const user = JSON.parse(response.payload)
-  expect(user.firstName).toEqual(updatedFirstName)
-  expect(user.lastName).toEqual(updatedLastName)
-})
+const updateUserSchema = userSchema.partial();
 ```
-#### Defining the update user validation rules
 
-In this step you will define the update user route. In terms of validation, the endpoint's payload should not require any specific fields (unlike the create user endpoint where `email`, `firstName`, and `lastName` are required). This will allow you to use the endpoint to update a single field, e.g. `firstName`.
+#### Defining the route
 
-To define the payload validation, you _could_ use the `userInputValidator` Joi object, however, if you recall, some of the fields were required:
+The update route validates both the `userId` parameter and the JSON body, then passes the validated payload to `prisma.user.update`:
 
 ```ts
-const userInputValidator = Joi.object({
-  firstName: Joi.string().required(),
-  lastName: Joi.string().required(),
-  email: Joi.string()
-    .email()
-    .required(),
-  social: Joi.object({
-    facebook: Joi.string().optional(),
-    twitter: Joi.string().optional(),
-    github: Joi.string().optional(),
-    website: Joi.string().optional(),
-  }).optional(),
-})
-```
-In the update user endpoint, all fields should be optional. Joi provides a way to create different alterations of the same Joi object using the [`tailor` and `alter` methods](https://github.com/sideway/joi/blob/master/API.md#anytailortargets). This is especially useful when defining create and update routes that have similar validation rules while keeping the code [DRY](https://en.wikipedia.org/wiki/Don%27t_repeat_yourself).
+users.put(
+  "/users/:userId",
+  zValidator("param", userIdParam),
+  zValidator("json", updateUserSchema),
+  async (c) => {
+    const prisma = c.get("prisma");
+    const { userId } = c.req.valid("param");
+    const data = c.req.valid("json");
 
-Update the already defined `userInputValidator` as follows:
-
-```ts
-const userInputValidator = Joi.object({
-  firstName: Joi.string().alter({
-    create: schema => schema.required(),
-    update: schema => schema.optional(),
-  }),
-  lastName: Joi.string().alter({
-    create: schema => schema.required(),
-    update: schema => schema.optional(),
-  }),
-  email: Joi.string()
-    .email()
-    .alter({
-      create: schema => schema.required(),
-      update: schema => schema.optional(),
-    }),
-  social: Joi.object({
-    facebook: Joi.string().optional(),
-    twitter: Joi.string().optional(),
-    github: Joi.string().optional(),
-    website: Joi.string().optional(),
-  }).optional(),
-})
-
-const createUserValidator = userInputValidator.tailor('create')
-const updateUserValidator = userInputValidator.tailor('update')
-```
-#### Updating the create user route's payload validation
-
-Now you can update the create user route definition to use `createUserValidator` in `src/plugins/users.ts` (users plugin):
-
-```json
-diff
-{
-  method: 'POST',
-  path: '/users',
-  handler: createUserHandler,
-  options: {
-    validate: {
--      payload: userInputValidator,
-+      payload: createUserValidator,
-    }
-  }
-}
-```
-#### Defining the update user route
-
-With the validation object for update defined, you can now define the update user route.
-Go to `src/plugins/users.ts` (users plugin) and add the following route object to the `server.route()` call:
-
-```ts
-server.route([
-  {
-    method: 'PUT',
-    path: '/users/{userId}',
-    handler: updateUserHandler,
-    options: {
-      validate: {
-        params: Joi.object({
-          userId: Joi.number().integer(),
-        }),
-       payload: createUserValidator,
-    },
-  },
-])
-```
-After you've defined the route, define the `updateUserHandler` function as follows:
-
-```ts
-async function updateUserHandler(request: Hapi.Request, h: Hapi.ResponseToolkit) {
-  const { prisma } = request.server.app
-  const userId = parseInt(request.params.userId, 10)
-  const payload = request.payload as Partial<UserInput>
-
-  try {
     const updatedUser = await prisma.user.update({
-      where: {
-        id: userId,
-      },
-      data: payload,
-    })
-    return h.response(updatedUser).code(200)
-  } catch (err) {
-    console.log(err)
-    return h.response().code(500)
-  }
-}
+      where: { id: userId },
+      data,
+    });
+
+    return c.json(updatedUser, 200);
+  },
+);
 ```
-**Checkpoint:** Run the tests with `npm test` and verify that all tests have passed.
+
+**Checkpoint:** Run `npm test`. With all four user routes and the status route in place, you should see all tests pass:
+
+```sh
+ ✓ tests/status.test.ts > Status route > GET / returns 200 and { up: true }
+ ✓ tests/users.test.ts > User routes > POST /users creates a user
+ ✓ tests/users.test.ts > User routes > POST /users rejects invalid input with 400
+ ✓ tests/users.test.ts > User routes > GET /users/:userId returns 404 for a non-existent user
+ ✓ tests/users.test.ts > User routes > GET /users/:userId returns the user
+ ✓ tests/users.test.ts > User routes > PUT /users/:userId fails with 400 for an invalid id
+ ✓ tests/users.test.ts > User routes > PUT /users/:userId updates the user
+ ✓ tests/users.test.ts > User routes > DELETE /users/:userId fails with 400 for an invalid id
+ ✓ tests/users.test.ts > User routes > DELETE /users/:userId deletes the user
+
+ Test Files  2 passed (2)
+      Tests  9 passed (9)
+```
 
 ## Summary and next steps
 
-If you've made it this far, congratulations. The article covered a lot of ground starting with REST concepts and then going into Hapi concepts such as routes, plugins, plugin dependencies, testing, and validation.
+The article covered a lot of ground, starting with REST concepts and then going into Hono concepts such as routes, middleware, route modules, testing, and validation.
 
-You implemented a Prisma plugin for Hapi, making Prisma available throughout your application and implemented routes that make use of it.
+You made Prisma Client available throughout your application with a middleware, and implemented routes that use it. You validated input at the edge with Zod, deriving the update schema from the create schema so the rules stay in sync, and you tested every endpoint with Vitest and Hono's `app.request` helper. Throughout, TypeScript kept the handlers in sync with the database schema, so the types you query against are the same types Prisma generates from your models.
 
-Moreover, TypeScript helped with auto-completion and verifying the correct use of types (in sync with the database schema) throughout the application.
+The article covered a subset of all the endpoints. As a next step, you could implement the other routes following the same principles.
 
-The article covered the implementation of a subset of all the endpoints. As a next step, you could implement the other routes following the same principles.
+While Prisma aims to make working with relational databases easy, it helps to have a deeper understanding of the underlying database. Check out [Prisma's Data Guide](https://www.prisma.io/dataguide) to learn more about how databases work.
 
-You can find the full source code for the backend on [GitHub](https://github.com/2color/real-world-grading-app).
+In the next parts of this series, you'll learn more about:
 
-The focus of the article was implementing a REST API, however, concepts such as validation and testing apply in other situations too.
-
-While Prisma aims to make working with relational databases easy, it can be helpful to have a deeper understanding of the underlying database.
-
-Check out the [Prisma's Data Guide](https://www.prisma.io/dataguide) to learn more about how databases work, how to choose the right one, and how to use databases with your applications to their full potential.
-
-In the next parts of the series, you'll learn more about:
-
-- Authentication: Implementing passwordless authentication with emails and JWT.
-- Continues Integration: Building a GitHub Actions pipeline to automate testing of the backend.
-- Integration with external APIs: Using a transactional email API to send emails.
-- Authorization: Provide different levels of access to different resources.
+- Authentication: implementing passwordless authentication with email and JWT
+- Continuous integration: building a GitHub Actions pipeline to automate testing of the backend
+- Integration with external APIs: using a transactional email API to send emails
+- Authorization: providing different levels of access to different resources
 - Deployment
+
+Your database runs on [Prisma Postgres](https://www.prisma.io/postgres), which you can manage in the [Prisma Console](https://console.prisma.io). If AI agents are part of your development workflow, the [Prisma MCP server](https://www.prisma.io/docs/postgres/integrations/mcp-server) lets them create and manage databases as they need them. When you reach the deployment part of this series, [Prisma Compute](https://www.prisma.io/compute) runs your backend on the same platform as your database.
+
+This series teaches Prisma ORM 7, the current production release. If you want to see where Prisma ORM is heading for AI-assisted development, read [The Next Evolution of Prisma ORM](https://www.prisma.io/blog/the-next-evolution-of-prisma-orm). Prisma Next is the agent-native evolution of the ORM, available in Early Access today, and it becomes Prisma 8 at GA. The type-safe, schema-as-contract approach you used here to keep validation and queries in sync is exactly what Prisma Next builds on: every query returns structured output that humans and coding agents can build on safely, and you can adopt it incrementally alongside an existing project. The [performance benchmark](https://www.prisma.io/blog/prisma-next-performance-benchmark) covers what the rewrite means for throughput and client size.
