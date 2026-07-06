@@ -107,33 +107,7 @@ model Post {
 
 This is a one-to-many by reference: many posts reference one user, and each is queryable on its own. Prisma Next resolves the reference at query time (via a `$lookup` aggregation) when you include the related data.
 
-**Many-to-many** has no dedicated form in MongoDB; you build it from the same references. The most explicit way is a **join collection** — one small document per pairing, each holding the two ids:
-
-```prisma
-model Post {
-  id       ObjectId  @id @map("_id")
-  title    String
-  taggings Tagging[]
-}
-
-model Tag {
-  id       ObjectId  @id @map("_id")
-  label    String
-  taggings Tagging[]
-}
-
-model Tagging {
-  id     ObjectId @id @map("_id")
-  postId ObjectId
-  tagId  ObjectId
-  post   Post @relation(from: [postId], to: [id])
-  tag    Tag  @relation(from: [tagId], to: [id])
-
-  @@unique([postId, tagId])
-}
-```
-
-Resolving any reference means a `$lookup`, which isn't free — so document models often **denormalize** to skip the join on hot reads. The extended-reference pattern embeds a small copy of the fields a read needs (a comment stores its author's name and avatar) while the full record stays in its own collection. You trade a little duplication, and the work of keeping the copy in sync, for a read that touches one document instead of two collections.
+Resolving a reference means a `$lookup`, which isn't free — so document models often **denormalize** to skip the join on hot reads. The extended-reference pattern embeds a small copy of the fields a read needs (a comment stores its author's name and avatar) while the full record stays in its own collection. You trade a little duplication, and the work of keeping the copy in sync, for a read that touches one document instead of two collections.
 
 ## Polymorphic collections
 
