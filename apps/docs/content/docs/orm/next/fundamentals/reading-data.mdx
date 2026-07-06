@@ -1,9 +1,9 @@
 ---
 title: Reading data
-description: Fetch one record or many with the Prisma Next ORM, then filter, select, sort, and paginate the results.
+description: Fetch one record or many with Prisma Next, then filter, select, sort, paginate, and stream the results.
 url: /orm/next/fundamentals/reading-data
 metaTitle: Reading data with Prisma Next
-metaDescription: Query PostgreSQL and MongoDB with the Prisma Next ORM. Filter with where, project with select, sort with orderBy, and paginate with take and skip.
+metaDescription: Query PostgreSQL and MongoDB with Prisma Next. Filter with where, project with select, sort with orderBy, paginate with take and skip, and stream large results.
 ---
 
 Read data by chaining query methods on a model, then running the chain with `.all()` for many records or `.first()` for one.
@@ -30,7 +30,7 @@ const user = await db.orm.users.where({ email: "alice@prisma.io" }).first();
 
 Every result is typed against your contract. Models are addressed by schema namespace on PostgreSQL (`db.orm.public.User`, where `public` is the default PostgreSQL schema) and by collection name on MongoDB (`db.orm.users`).
 
-If you are coming from Prisma 7: `.where(...).all()` replaces `findMany`, and `.where(...).first()` replaces `findFirst` and `findUnique`.
+Coming from Prisma 7? `.where(...).all()` replaces `findMany`, and `.where(...).first()` replaces `findFirst` and `findUnique`.
 
 ## Fetch many records or one
 
@@ -71,7 +71,7 @@ const matchingPosts = await db.orm.public.Post
 
 To combine conditions with OR or NOT on PostgreSQL, use the `or`, `and`, and `not` helpers, currently exported from `@prisma-next/sql-orm-client`.
 
-On MongoDB, use the object form. Comparison operators and boolean logic are not available on MongoDB's `.where(...)` yet; for those queries, use the [pipeline builder](/orm/next/fundamentals/advanced-queries#query-with-the-pipeline-builder-mongodb).
+On MongoDB, use the object form. Comparison operators and boolean logic are not available on MongoDB's `.where(...)` yet; for those queries, use the [pipeline builder](/orm/next/fundamentals/advanced-queries#mongodb-pipeline-builder).
 
 ## Select fields
 
@@ -122,19 +122,92 @@ const result = await db.orm.public.Post
 // result.total: number
 ```
 
-There is no `.count()` method on the query chain. On MongoDB, count with a `$group` stage in the [pipeline builder](/orm/next/fundamentals/advanced-queries#query-with-the-pipeline-builder-mongodb).
+There is no `.count()` method on the query chain. On MongoDB, count with a `$group` stage in the [pipeline builder](/orm/next/fundamentals/advanced-queries#mongodb-pipeline-builder).
+
+## Stream large results
+
+A query result is more than a promise: it can also be iterated record by record. That gives you two ways to consume it.
+
+`await` runs the query and buffers every record into an array. This is the right default: the whole result is in memory, and you can read the array as often as you like.
+
+```typescript
+const posts = await db.orm.public.Post.all();
+
+console.log(posts.length);
+console.log(posts[0]);
+```
+
+`for await` streams the result instead. Records are handed to your loop one at a time, without buffering the full result first. Use it when the result is too large to hold in memory, or when you want to start processing before the last record arrives:
+
+```typescript
+for await (const post of db.orm.public.Post.all()) {
+  await exportToSearchIndex(post);
+}
+```
+
+You can also leave the loop early; unprocessed records are never buffered:
+
+```typescript
+for await (const post of db.orm.public.Post.all()) {
+  if (isMatch(post)) break;
+}
+```
+
+### A streamed result can only be read once
+
+Once a `for await` loop has touched a result, that result is finished, even if the loop exited early. Iterating it again, or `await`ing it afterwards, throws an error explaining the result was already consumed:
+
+```typescript
+const result = db.orm.public.Post.all();
+
+for await (const post of result) {
+  // ...
+}
+
+await result;
+// Error: AsyncIterableResult iterator has already been consumed
+```
+
+If you need the data more than once, `await` the query into an array and reuse the array:
+
+```typescript
+const posts = await db.orm.public.Post.all();
+
+const published = posts.filter((p) => p.published);
+const titles = posts.map((p) => p.title);
+```
+
+Streaming behaves the same on PostgreSQL and MongoDB.
 
 ## Common mistakes
 
-:::warning
+### Fetching everything to use one record
 
-A query result can only be consumed once. `await` buffers it into an array; a second `await` on the same result throws `RUNTIME.ITERATOR_CONSUMED`. Store the array in a variable and reuse the variable.
+You wanted one record, so you queried and took the first element:
 
-:::
+```typescript
+const users = await db.orm.public.User.where({ email }).all();
+const user = users[0];
+```
 
-- Using `.all()` for a single record. Use `.first()`: it returns one record or `null`, without fetching the rest.
-- Expecting `.all()` to limit itself. It returns every match; add `.take(n)` when the table can grow.
-- Loading a huge result into memory. Iterate it instead of awaiting: `for await (const row of query.all())`.
+This fetches every matching record and throws away the rest. Use `.first()` instead: it returns one record or `null`, and on PostgreSQL it asks the database for at most one row:
+
+```typescript
+const user = await db.orm.public.User.where({ email }).first();
+```
+
+### Forgetting that .all() has no limit
+
+`.all()` returns every match. On a table that grows, yesterday's fast query becomes today's slow one. Add `.take(n)` when you don't genuinely need every record, or [stream the result](#stream-large-results) when you do.
+
+### Reusing a streamed result
+
+You streamed a result with `for await`, then tried to read it again. The second read throws, because a streamed result is consumed as it is read. Store the data if you need it twice:
+
+```typescript
+const posts = await db.orm.public.Post.all();
+// posts is a plain array now; read it as often as you like
+```
 
 ## Next
 

@@ -109,14 +109,46 @@ Writes made through the driver skip the type-checking that Prisma Next queries g
 
 ## Common mistakes
 
-:::warning
+### Side effects inside the callback
 
-Keep side effects out of the callback. If you send an email or queue a message inside the transaction and it then rolls back, the side effect already happened. Return the IDs you need from the callback and act on them after it resolves.
+You sent an email or queued a job inside the transaction, next to the write it belongs to:
 
-:::
+```typescript
+await db.transaction(async (tx) => {
+  const user = await tx.orm.public.User.create({ email, name });
+  await sendWelcomeEmail(user.email); // runs even if the transaction rolls back
+});
+```
 
-- Passing an array of queries, Prisma 7 style (`$transaction([query1, query2])`). Put the calls inside one `db.transaction(...)` callback instead.
-- Querying through `db.orm` inside the callback. Use `tx.orm`, or the query runs outside the transaction.
+Database writes roll back; emails don't. If a later statement throws, the record disappears but the email was already sent.
+
+Return what you need from the callback, and run the side effect after the transaction has committed:
+
+```typescript
+const user = await db.transaction(async (tx) => {
+  return tx.orm.public.User.create({ email, name });
+});
+
+await sendWelcomeEmail(user.email);
+```
+
+Now the email can only go out for a user that actually exists.
+
+### Querying through db instead of tx
+
+You opened a transaction but kept writing `db.orm` inside the callback:
+
+```typescript
+await db.transaction(async (tx) => {
+  await db.orm.public.User.create({ email, name }); // outside the transaction
+});
+```
+
+Queries on `db` run on their own connection, outside the open transaction. They commit immediately and won't roll back with the rest of the callback. Use the `tx` handle for every query inside the callback: `tx.orm` for models, `tx.sql` and `tx.execute` for SQL builder plans.
+
+### Passing an array of queries
+
+Prisma 7 supported `$transaction([query1, query2])`. Prisma Next has no `$transaction` and no array form. Write the queries inside one `db.transaction(...)` callback; you get the same atomicity, plus the ability to use one query's result in the next.
 
 ## Next
 

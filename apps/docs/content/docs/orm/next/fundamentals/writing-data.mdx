@@ -1,9 +1,9 @@
 ---
 title: Writing data
-description: Create, update, delete, and upsert records with the Prisma Next ORM, one at a time or in bulk.
+description: Create, update, delete, and upsert records with Prisma Next, one at a time or in bulk.
 url: /orm/next/fundamentals/writing-data
 metaTitle: Writing data with Prisma Next
-metaDescription: Create, update, delete, and upsert records in PostgreSQL and MongoDB with the Prisma Next ORM, and use createAll, updateAll, and deleteAll for bulk writes.
+metaDescription: Create, update, delete, and upsert records in PostgreSQL and MongoDB with Prisma Next, and use createAll, updateAll, and deleteAll for bulk writes.
 ---
 
 Write data with `.create(...)`, `.update(...)`, and `.delete()` for single records, and their `All` and `Count` variants for many records at once.
@@ -34,6 +34,8 @@ const user = await db.orm.users.create({
 ```
 
 To get back only some fields, chain `.select(...)` before `.create(...)`.
+
+Coming from Prisma 7? There is no `data` wrapper. Prisma 7 wrote `.create({ data: { email, name } })`; Prisma Next takes the fields directly: `.create({ email, name })`.
 
 :::note
 
@@ -139,22 +141,73 @@ Each mutation comes in three forms. Pick by what you need back:
 | `createAll`, `updateAll`, `deleteAll` | every match | the affected records |
 | `createCount`, `updateCount`, `deleteCount` | every match | the number affected |
 
-The `Count` forms skip re-reading the affected records, so prefer them for large batches. The `All` forms return their records as an async-iterable result: `await` it for an array, or `for await` to process records one at a time.
+The `Count` forms skip re-reading the affected records, so prefer them for large batches. The `All` forms return their records as a result you can `await` into an array or [stream with `for await`](/orm/next/fundamentals/reading-data#stream-large-results).
 
 ## Common mistakes
 
-:::warning
+### Updating or deleting more than one record
 
-`.update(...)` and `.delete()` change one record even when the filter matches many. If you meant "all matches", use `updateAll` / `updateCount` or `deleteAll` / `deleteCount`.
+You filtered on a non-unique field and expected every match to change:
 
-:::
+```typescript
+await db.orm.public.Post.where({ published: false }).update({ published: true });
+```
 
-- Wrapping the fields in `.create({ data: {...} })`, Prisma 7 style. Pass the fields directly: `.create({ email, name })`.
-- Calling `.update(...)` or `.delete()` without `.where(...)`. Both need a filter first.
-- Running related writes back to back when they must succeed together. Use a [transaction](/orm/next/fundamentals/transactions). Batch arrays in the Prisma 7 style (`$transaction([...])`) are not supported.
+`.update(...)` and `.delete()` only change one record. Even when the filter matches many, Prisma Next updates or deletes a single matching record, and the rest stay as they were.
+
+When you intend to affect every match, say so with the bulk variants:
+
+```typescript
+const updatedCount = await db.orm.public.Post
+  .where({ published: false })
+  .updateCount({ published: true });
+```
+
+Use `updateAll` or `deleteAll` when you also need the changed records back, and `updateCount` or `deleteCount` when the number is enough. The singular forms stay safe for the one-record case: they can never fan out further than you expected.
+
+### Wrapping create fields in a data object
+
+You wrote the Prisma 7 shape:
+
+```typescript
+await db.orm.public.User.create({ data: { email, name } });
+```
+
+Prisma Next has no `data` wrapper, so this creates a record with a field literally named `data`, which fails type-checking against your contract. Pass the fields directly:
+
+```typescript
+await db.orm.public.User.create({ email, name });
+```
+
+The shape you pass is the shape of the record, which is also why the return value needs no unwrapping.
+
+### Updating or deleting without a filter
+
+You called `.update(...)` or `.delete()` straight on the model:
+
+```typescript
+await db.orm.public.User.delete();
+```
+
+Both mutations require a `.where(...)` first, and the types reject the call without one. This is deliberate: there is no accidental way to write "delete a record, whichever one". If you truly mean every record, write the filter that says so and use `deleteAll`.
+
+### Running related writes back to back
+
+You created a user, then created their first post as a second await:
+
+```typescript
+const user = await db.orm.public.User.create({ email, name });
+const post = await db.orm.public.Post.create({ title, published: false, authorId: user.id });
+```
+
+If the second write fails, the first has already committed, and you're left with half the operation. When writes must succeed together, run them in a [transaction](/orm/next/fundamentals/transactions): one callback, one commit, or one rollback.
+
+### Passing an array of queries to a transaction
+
+Prisma 7 supported `$transaction([query1, query2])`. Prisma Next does not: there is no `$transaction`, and queries don't queue up in arrays. Put the calls inside one `db.transaction(...)` callback instead; the [Transactions page](/orm/next/fundamentals/transactions) shows the pattern.
 
 ## Next
 
 - [Run several writes atomically](/orm/next/fundamentals/transactions) with `db.transaction(...)`.
 - [Read data](/orm/next/fundamentals/reading-data) to filter, sort, paginate, and select fields from your models.
-- [Use the SQL builder](/orm/next/fundamentals/advanced-queries) for inserts and updates with explicit `RETURNING` clauses.
+- [Use the SQL builder](/orm/next/fundamentals/advanced-queries#postgresql-sql-query-builder) for inserts and updates with explicit `RETURNING` clauses.
