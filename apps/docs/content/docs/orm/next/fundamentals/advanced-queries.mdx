@@ -124,7 +124,22 @@ const [insertedUser] = await db.runtime().execute(plan);
 // Contract defaults such as generated IDs are applied
 ```
 
-Prisma Next does not run raw SQL strings: every query goes through the typed builder. If the builder can't express a shape you need, [share the use case](https://pris.ly/discord).
+### Raw SQL fragments
+
+Prisma Next does not run standalone raw SQL statements: every query goes through the typed builder. When the operators don't cover an expression you need, embed a raw fragment with `fns.raw` and declare its type with `.returns(...)`. The rest of the query stays typed:
+
+```typescript
+const plan = db.sql.public.user
+  .select("id", "email")
+  .select("upperEmail", (f, fns) => fns.raw`UPPER(${f.email})`.returns("pg/text@1"))
+  .limit(10)
+  .build();
+
+const users = await db.runtime().execute(plan);
+// [{ id: 'cuid20000000000000000001', email: 'alice@prisma.io', upperEmail: 'ALICE@PRISMA.IO' }, ...]
+```
+
+Interpolated values are AST nodes, not string splices, so a fragment can reference columns and other typed expressions safely. If the builder plus `fns.raw` still can't express a shape you need, [share the use case](https://pris.ly/discord).
 
 ## MongoDB: Pipeline builder
 

@@ -297,6 +297,29 @@ const config = {
         destination: "/next/add-to-existing-project/:path*",
         permanent: false,
       },
+      // ── Prisma Next URL cutover (DR-8687) — DO NOT ENABLE YET ─────────────
+      // The redirects below retire live Prisma 7 URLs, so they ship only when
+      // Prisma Next becomes the default docs version (the /orm/next tree moves
+      // to /orm). Until then, keep your section's redirects here, commented
+      // out, so the full cutover map builds up in one reviewable place.
+      // Section owners: append your block below with a DR reference.
+      //
+      // DR-8681 Fundamentals:
+      // { source: "/orm/prisma-client", destination: "/orm/next/fundamentals/reading-data", permanent: false },
+      // { source: "/orm/prisma-client/queries/crud", destination: "/orm/next/fundamentals/reading-data", permanent: false },
+      // { source: "/orm/prisma-client/queries/select-fields", destination: "/orm/next/fundamentals/reading-data", permanent: false },
+      // { source: "/orm/prisma-client/queries/filtering-and-sorting", destination: "/orm/next/fundamentals/reading-data", permanent: false },
+      // { source: "/orm/prisma-client/queries/pagination", destination: "/orm/next/fundamentals/reading-data", permanent: false },
+      // { source: "/orm/prisma-client/queries/aggregation-grouping-summarizing", destination: "/orm/next/fundamentals/reading-data", permanent: false },
+      // { source: "/orm/prisma-client/queries/relation-queries", destination: "/orm/next/fundamentals/relations-and-joins", permanent: false },
+      // { source: "/orm/prisma-client/queries/transactions", destination: "/orm/next/fundamentals/transactions", permanent: false },
+      // { source: "/orm/prisma-client/using-raw-sql", destination: "/orm/next/fundamentals/advanced-queries", permanent: false },
+      //
+      // No Prisma Next equivalent yet (stay on the Prisma 7 tree, flag to the
+      // SEO owner at cutover): /orm/prisma-client/queries/full-text-search,
+      // /orm/prisma-client/queries/advanced/query-optimization-performance,
+      // /orm/prisma-client/queries/excluding-fields.
+      // ───────────────────────────────────────────────────────────────────────
     ];
   },
   async rewrites() {
