@@ -1,0 +1,213 @@
+---
+title: Author in TypeScript
+description: Define the Prisma Next contract with a typed builder API instead of a schema file. Same models, same artifacts, no separate language.
+url: /orm/next/contract/typescript
+metaTitle: Author the Prisma Next contract in TypeScript
+metaDescription: Learn how to define a Prisma Next contract in TypeScript with defineContract, including fields, relations, enums, storage mapping, and extension types.
+---
+
+TypeScript authoring defines the Prisma Next [data contract](/orm/next/contract) in code. Instead of a `.prisma` file, you write `prisma/contract.ts` with the `defineContract` builder, and [`prisma-next contract emit`](/cli/next/contract-emit) produces exactly the same `contract.json` and `contract.d.ts` a PSL schema would.
+
+The trade is straightforward: you give up PSL's compact syntax and get the full TypeScript toolchain in return. Your editor type-checks model definitions as you write them, invalid references are compile errors instead of emit-time diagnostics, and you can split, compose, and reuse definitions with ordinary modules.
+
+## Point the config at the contract file
+
+The config's `contract` path names the source of truth. A `.ts` extension selects TypeScript authoring:
+
+```typescript title="prisma-next.config.ts"
+import { defineConfig } from "@prisma-next/postgres/config";
+
+export default defineConfig({
+  contract: "./prisma/contract.ts",
+});
+```
+
+## A complete contract
+
+The builder comes from your database's target package. For PostgreSQL that is `@prisma-next/postgres/contract-builder`:
+
+```typescript title="prisma/contract.ts"
+import pgvector from "@prisma-next/extension-pgvector/pack";
+import { defineContract, enumType, member, rel } from "@prisma-next/postgres/contract-builder";
+
+const pgText = { codecId: "pg/text@1", nativeType: "text" } as const;
+
+const Priority = enumType(
+  "Priority",
+  pgText,
+  member("Low", "low"),
+  member("High", "high"),
+  member("Urgent", "urgent"),
+);
+
+export const contract = defineContract(
+  {
+    extensionPacks: { pgvector },
+  },
+  ({ field, model, type }) => {
+    const types = {
+      Embedding1536: type.pgvector.Vector(1536),
+    } as const;
+
+    const User = model("User", {
+      fields: {
+        id: field.id.uuidv4String(),
+        email: field.text(),
+        createdAt: field.temporal.createdAt(),
+        updatedAt: field.temporal.updatedAt(),
+        address: field.json().optional(),
+      },
+    });
+
+    const Post = model("Post", {
+      fields: {
+        id: field.id.uuidv4String(),
+        title: field.text(),
+        userId: field.uuidString(),
+        priority: field.namedType(Priority).default(Priority.members.Low),
+        createdAt: field.temporal.createdAt(),
+        updatedAt: field.temporal.updatedAt(),
+        embedding: field.namedType(types.Embedding1536).optional(),
+      },
+    });
+
+    return {
+      enums: { Priority },
+      types,
+      models: {
+        User: User.relations({
+          posts: rel.hasMany(Post, { by: "userId" }),
+        }).sql({
+          table: "user",
+        }),
+        Post: Post.relations({
+          user: rel.belongsTo(User, { from: "userId", to: "id" }),
+        }).sql(({ cols, constraints }) => ({
+          table: "post",
+          foreignKeys: [
+            constraints.foreignKey(cols.userId, User.refs.id, {
+              name: "post_userId_fkey",
+            }),
+          ],
+        })),
+      },
+    };
+  },
+);
+```
+
+Run `npx prisma-next contract emit` after any change to refresh the artifacts.
+
+## How `defineContract` works
+
+`defineContract` takes two arguments: an options object and a factory function.
+
+The options object declares what the contract is built from, most importantly `extensionPacks`. The target and database family are already bound by the import: `@prisma-next/postgres/contract-builder` produces PostgreSQL contracts, so you never name them yourself.
+
+The factory receives authoring helpers composed from the target and every extension pack you declared: `field` for field definitions, `model` for models, and `type` for pack-provided types (which is why `type.pgvector` exists in the example, and only when `pgvector` is in `extensionPacks`). The factory returns the contract's content: `models`, plus optional `enums` and `types`.
+
+## Fields
+
+`field` provides typed constructors for common field shapes:
+
+- `field.text()`, `field.uuidString()`, `field.json()` for scalar fields
+- `field.id.uuidv4String()` for a UUID primary key with a client-generated default
+- `field.temporal.createdAt()` and `field.temporal.updatedAt()` for managed timestamps
+- `field.namedType(x)` for enums and declared named types
+
+The exact helper set comes from the target and the composed extension packs. Every field builder supports chained modifiers:
+
+- `.optional()` makes the field nullable.
+- `.default(value)` sets a literal default; `.defaultSql(expression)` sets a database function default.
+- `.unique()` adds a unique constraint; `.id()` marks the primary key.
+- `.column("column_name")` sets the physical column name when it differs from the field name.
+
+## Enums
+
+`enumType` declares an enum with an explicit storage codec and members:
+
+```typescript
+const Priority = enumType(
+  "Priority",
+  { codecId: "pg/text@1", nativeType: "text" } as const,
+  member("Low", "low"),
+  member("High", "high"),
+);
+```
+
+Each `member(name, storedValue)` pairs the TypeScript-visible name with the value stored in the column. Fields reference the enum with `field.namedType(Priority)`, and defaults reference a member as `Priority.members.Low`. Include the enum in the factory's returned `enums` map so it is emitted.
+
+## Relations
+
+Relations are declared on the model builder with `.relations(...)` and the `rel` helpers:
+
+```typescript
+User.relations({
+  posts: rel.hasMany(Post, { by: "userId" }),
+});
+
+Post.relations({
+  user: rel.belongsTo(User, { from: "userId", to: "id" }),
+});
+```
+
+`rel.hasMany(Model, { by })` names the foreign key field on the other model; `rel.belongsTo(Model, { from, to })` maps the local foreign key field to the referenced field. `rel.hasOne` and `rel.manyToMany` cover the remaining shapes. Because the arguments are model objects, not strings, a typo in a relation target is a compile error.
+
+## Storage mapping
+
+`.sql(...)` maps a model to its table. The object form covers the common case:
+
+```typescript
+User.relations({ ... }).sql({ table: "user" });
+```
+
+The callback form additionally exposes the model's columns and constraint builders, for foreign keys with explicit names:
+
+```typescript
+Post.relations({ ... }).sql(({ cols, constraints }) => ({
+  table: "post",
+  foreignKeys: [
+    constraints.foreignKey(cols.userId, User.refs.id, { name: "post_userId_fkey" }),
+  ],
+}));
+```
+
+`Model.refs` provides typed references to another model's fields, so `User.refs.id` is checked against the actual `User` definition.
+
+## Extension types
+
+Declare packs in `defineContract`'s options and the factory's `type` helper exposes their constructors:
+
+```typescript
+import pgvector from "@prisma-next/extension-pgvector/pack";
+
+export const contract = defineContract(
+  { extensionPacks: { pgvector } },
+  ({ field, model, type }) => {
+    const types = { Embedding1536: type.pgvector.Vector(1536) } as const;
+    // ... use field.namedType(types.Embedding1536) in a model
+    return { types, models: { /* ... */ } };
+  },
+);
+```
+
+The same pack must also be composed in `prisma-next.config.ts` (as `extensions: [pgvector]`, using the pack's `/control` export) so the CLI and runtime agree with the contract.
+
+## Keep the contract file pure
+
+The contract file describes structure; emission canonicalizes it to JSON and hashes it, and the same source must always produce the same bytes. That works only if the file is pure data:
+
+- Do not read `process.env`, the current time, or random values into the contract. A contract that changes per machine or per run breaks hashing and verification.
+- Keep field values plain: strings, numbers, booleans, and the builder's own objects. Functions, class instances, and `Date` objects do not serialize.
+- Keep the file free of side effects. Emission evaluates it to obtain the contract object and nothing else.
+
+Configuration that legitimately varies per environment, such as the database URL, belongs in `prisma-next.config.ts`, not in the contract.
+
+## Parity with PSL
+
+TypeScript and [PSL](/orm/next/contract/psl) authoring emit the same canonical artifact for an equivalent schema. You can move between the modes without any downstream change, but a project declares exactly one source of truth: the file named in the config. Keep the other form out of the project so the two can never disagree.
+
+## Next steps
+
+- Emit and inspect [the artifacts](/orm/next/contract/artifacts) the contract produces.
+- Apply the contract to a database with [`prisma-next db init`](/cli/next/db-init) or plan changes with [`prisma-next migration plan`](/cli/next/migration-plan).
