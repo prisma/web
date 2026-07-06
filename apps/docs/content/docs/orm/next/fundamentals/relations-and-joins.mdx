@@ -61,7 +61,21 @@ const profileWithUser = await db.orm.public.Profile
 
 `.first()` returns `null` when the profile doesn't exist, so a user without a profile is a `null` check, not an error.
 
-One thing to know: the mirror field on the other model (`profile Profile?` on `User`) is not supported in the contract yet, so include the relation from the side that owns the foreign key. To start from users and attach profiles in one query, [join the two tables with the SQL builder](/orm/next/fundamentals/advanced-queries#join-tables-with-precise-control).
+One thing to know: the mirror field on the other model (`profile Profile?` on `User`) is not supported in the contract yet, so include the relation from the side that owns the foreign key. To start from users and attach profiles in one query, join the two tables with the [SQL query builder](/orm/next/fundamentals/advanced-queries#join-tables-with-precise-control):
+
+```typescript
+const plan = db.sql.public.user
+  .as("u")
+  .innerJoin(db.sql.public.profile.as("pr"), (f, fns) => fns.eq(f.pr.userId, f.u.id))
+  .select((f) => ({ email: f.u.email, bio: f.pr.bio }))
+  .build();
+
+const usersWithProfiles = await db.runtime().execute(plan);
+```
+
+```js no-copy
+[ { email: 'alice@prisma.io', bio: 'Writes about typed databases.' } ]
+```
 
 ## One-to-many
 

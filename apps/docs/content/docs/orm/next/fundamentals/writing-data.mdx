@@ -89,14 +89,24 @@ The returned record is complete, so you can use the generated values right away:
 
 ```js no-copy
 {
-  id: 'i3czppyhmfv77p79azedy0bl',
+  id: 'cuid20000000000000000003',
   email: 'jane@prisma.io',
   name: 'Jane',
   createdAt: 2026-07-06T09:09:56.119Z
 }
 ```
 
-To get back only some fields, chain `.select(...)` before `.create(...)`.
+To get back only some fields, chain `.select(...)` before `.create(...)`. The insert is the same; only the returned shape narrows:
+
+```typescript
+const account = await db.orm.public.User
+  .select("id", "email")
+  .create({ email: "jane@prisma.io", name: "Jane" });
+```
+
+```js no-copy
+{ id: 'cuid20000000000000000003', email: 'jane@prisma.io' }
+```
 
 For Prisma 7 users, there is no `data` wrapper:
 
@@ -129,7 +139,7 @@ const updatedUser = await db.orm.users
 
 ```js no-copy
 {
-  id: 'i3czppyhmfv77p79azedy0bl',
+  id: 'cuid20000000000000000003',
   email: 'jane@prisma.io',
   name: 'Jane Doe',
   createdAt: 2026-07-06T09:09:56.119Z
@@ -225,7 +235,20 @@ Each mutation comes in three forms. Pick by what you need back:
 | `createAll`, `updateAll`, `deleteAll` | every match | the affected records |
 | `createCount`, `updateCount`, `deleteCount` | every match | the number affected |
 
-The `Count` forms skip re-reading the affected records, so prefer them for large batches. The `All` forms return their records as a result you can `await` into an array or [stream with `for await`](/orm/next/fundamentals/reading-data#stream-large-results).
+The `Count` forms skip re-reading the affected records, so prefer them for large batches. The `All` forms return their records as a result you can `await` into an array or [stream with `for await`](/orm/next/fundamentals/reading-data#stream-large-results):
+
+```typescript
+const publishedPosts = await db.orm.public.Post
+  .where({ published: false })
+  .updateAll({ published: true });
+```
+
+```js no-copy
+[
+  { id: 'cuid20000000000000000101', title: 'One', published: true, /* ... */ },
+  { id: 'cuid20000000000000000102', title: 'Two', published: true, /* ... */ }
+]
+```
 
 ## Common mistakes
 

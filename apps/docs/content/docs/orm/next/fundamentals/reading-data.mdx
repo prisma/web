@@ -104,8 +104,8 @@ const users = await db.orm.public.User.all();
 
 ```js no-copy
 [
-  { id: 'zmlhqodhz2tj5pztggwa50nm', email: 'alice@prisma.io', name: 'Alice', createdAt: 2026-07-06T09:03:13.808Z },
-  { id: 'yvp1col4louhkzxyycg4tnur', email: 'bob@prisma.io', name: 'Bob', createdAt: 2026-07-06T09:03:14.112Z }
+  { id: 'cuid20000000000000000001', email: 'alice@prisma.io', name: 'Alice', createdAt: 2026-07-06T09:03:13.808Z },
+  { id: 'cuid20000000000000000002', email: 'bob@prisma.io', name: 'Bob', createdAt: 2026-07-06T09:03:14.112Z }
 ]
 ```
 
@@ -118,10 +118,18 @@ const user = await db.orm.public.User.where({ email: "alice@prisma.io" }).first(
 ```
 
 ```js no-copy
-{ id: 'zmlhqodhz2tj5pztggwa50nm', email: 'alice@prisma.io', name: 'Alice', createdAt: 2026-07-06T09:03:13.808Z }
+{ id: 'cuid20000000000000000001', email: 'alice@prisma.io', name: 'Alice', createdAt: 2026-07-06T09:03:13.808Z }
 ```
 
-For a primary-key lookup on PostgreSQL, pass the key directly: `db.orm.public.User.first({ id: userId })`. On MongoDB, look up documents by their `_id` field: `db.orm.users.where({ _id: id }).first()`.
+For a primary-key lookup, pass the key directly on PostgreSQL, or filter on `_id` on MongoDB:
+
+```typescript tab="PostgreSQL"
+const user = await db.orm.public.User.first({ id: userId });
+```
+
+```typescript tab="MongoDB"
+const user = await db.orm.users.where({ _id: id }).first();
+```
 
 ## Filter records
 
@@ -200,8 +208,8 @@ const users = await db.orm.users.select("_id", "email").all();
 
 ```js no-copy
 [
-  { id: 'zmlhqodhz2tj5pztggwa50nm', email: 'alice@prisma.io' },
-  { id: 'yvp1col4louhkzxyycg4tnur', email: 'bob@prisma.io' }
+  { id: 'cuid20000000000000000001', email: 'alice@prisma.io' },
+  { id: 'cuid20000000000000000002', email: 'bob@prisma.io' }
 ]
 ```
 
@@ -235,18 +243,20 @@ const posts = await db.orm.public.Post
   .all();
 ```
 
-Offset pagination (`.skip`) re-counts skipped rows on every page, which gets slower as readers go deeper. For stable pagination over large tables on PostgreSQL, follow `.orderBy(...)` with `.cursor(...)` to resume from the last record you returned:
+Offset pagination (`.skip`) re-counts skipped rows on every page, which gets slower as readers go deeper. For stable pagination over large tables on PostgreSQL, follow `.orderBy(...)` with `.cursor(...)` to resume from the last record you returned.
+
+Keep the `id` tiebreaker in both the sort and the cursor: `createdAt` is not unique, and a cursor on a non-unique field alone can skip or repeat records that share the boundary value. With the composite cursor, pages never overlap even when timestamps tie:
 
 ```typescript
 const page1 = await db.orm.public.Post
-  .orderBy((p) => p.createdAt.desc())
+  .orderBy([(p) => p.createdAt.desc(), (p) => p.id.desc()])
   .take(20)
   .all();
 
 const last = page1[page1.length - 1]!;
 const page2 = await db.orm.public.Post
-  .orderBy((p) => p.createdAt.desc())
-  .cursor({ createdAt: last.createdAt })
+  .orderBy([(p) => p.createdAt.desc(), (p) => p.id.desc()])
+  .cursor({ createdAt: last.createdAt, id: last.id })
   .take(20)
   .all();
 ```
