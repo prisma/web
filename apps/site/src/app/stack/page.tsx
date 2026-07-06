@@ -227,9 +227,7 @@ export default function StackPage() {
                 </Button>
               </div>
               <p className="m-0 text-sm text-foreground-neutral-weaker">
-                <code className="font-mono text-foreground-ppg-strong">
-                  bun create prisma-stack@latest
-                </code>
+                <code className="font-mono text-foreground-ppg-strong">npx create-prisma</code>
               </p>
             </div>
           </section>

@@ -7,8 +7,12 @@ import { PrismaMark } from "./prisma-mark";
 import styles from "./stack.module.css";
 import { frameworks } from "./stack-data";
 
-const accentPPG = { "--accent": "var(--color-foreground-ppg)" } as CSSProperties;
-const accentViolet = { "--accent": "var(--color-foreground-violet)" } as CSSProperties;
+const accentPPG = {
+  "--accent": "var(--color-foreground-ppg)",
+} as CSSProperties;
+const accentViolet = {
+  "--accent": "var(--color-foreground-violet)",
+} as CSSProperties;
 
 /** Orthogonal connectors drawn between diagram nodes. */
 const FLOW_LINKS: [string, string][] = [
@@ -72,7 +76,14 @@ export function StackDiagram() {
       }
       const w = el.offsetWidth;
       const h = el.offsetHeight;
-      return { left: x, right: x + w, top: y, bottom: y + h, cx: x + w / 2, cy: y + h / 2 };
+      return {
+        left: x,
+        right: x + w,
+        top: y,
+        bottom: y + h,
+        cx: x + w / 2,
+        cy: y + h / 2,
+      };
     };
     const elbow = (a: string, b: string) => {
       const s = rel(a);
@@ -195,10 +206,8 @@ export function StackDiagram() {
           </a>
         </Button>
         <p className="m-0 text-sm text-foreground-neutral-weaker">
-          <code className="font-mono text-foreground-ppg-strong">
-            bun create prisma-stack@latest
-          </code>{" "}
-          and you have compute, a database, and a runtime.
+          <code className="font-mono text-foreground-ppg-strong">npx create-prisma</code> and you
+          have compute, a database, and a runtime.
         </p>
       </div>
 
