@@ -73,7 +73,14 @@ const plan = db.sql.public.postTag
   .build();
 
 const postTagPairs = await db.runtime().execute(plan);
-// [{ postTitle: "Hello Prisma Next", tagName: "typescript" }, ...]
+```
+
+```js no-copy
+[
+  { postTitle: 'Hello Prisma Next', tagName: 'databases' },
+  { postTitle: 'Hello Prisma Next', tagName: 'typescript' },
+  { postTitle: 'Typed queries', tagName: 'typescript' }
+]
 ```
 
 ### Group and rank results
@@ -92,8 +99,16 @@ const plan = db.sql.public.post
   .build();
 
 const topAuthors = await db.runtime().execute(plan);
-// PostgreSQL returns counts as strings; convert with Number(row.posts)
 ```
+
+```js no-copy
+[
+  { authorId: 'zmlhqodhz2tj5pztggwa50nm', posts: '2' },
+  { authorId: 'yvp1col4louhkzxyycg4tnur', posts: '1' }
+]
+```
+
+PostgreSQL returns counts as strings; convert with `Number(row.posts)`.
 
 ### Write with RETURNING
 
@@ -145,7 +160,13 @@ const plan = db.query
   .build();
 
 const postsByAuthor = await runtime.execute(plan);
-// [{ _id: ObjectId, postCount: 3 }, ...]
+```
+
+```js no-copy
+[
+  { _id: new ObjectId('6a4b70352eabdda01b0e6af5'), postCount: 3 },
+  { _id: new ObjectId('6a4b70352eabdda01b0e6af4'), postCount: 2 }
+]
 ```
 
 Accumulators such as `acc.count()` and `acc.max(...)` import from `@prisma-next/mongo-query-builder`.
@@ -183,7 +204,7 @@ const postsWithAuthors = await runtime.execute(plan);
 // Each post carries an "author" array with the matching user documents
 ```
 
-## Choose the right lane
+## Choose the right query API
 
 | You need | Use |
 | --- | --- |
@@ -192,6 +213,15 @@ const postsWithAuthors = await runtime.execute(plan);
 | `$group`, `$lookup` with reshaping, any MongoDB aggregation | Pipeline builder (`db.query.from(...)`) |
 
 Plans execute through `db.runtime().execute(plan)` on PostgreSQL and `(await db.runtime()).execute(plan)` on MongoDB. Inside a [transaction](/orm/next/fundamentals/transactions), use `tx.execute(plan)`.
+
+## Prompt your coding agent
+
+Projects scaffolded with `create-prisma` install Prisma Next skills for your coding agent; the `prisma-next-queries` skill covers both builders and the choice between them and the ORM API. Prompts that map to each section:
+
+- "Using the prisma-next-queries skill, write a SQL builder plan for the top 10 authors by post count."
+- "This report needs post and author columns in one flat result. Build the join with the SQL query builder."
+- "On MongoDB, group posts per author with the pipeline builder and sort by the count."
+- "Review this file and tell me which queries should stay on the ORM API and which need a builder."
 
 ## Next
 

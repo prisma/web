@@ -147,7 +147,20 @@ const postsWithTags = await db.orm.public.Post
   .where({ published: true })
   .include("tags", (postTag) => postTag.include("tag"))
   .all();
-// Array<{ ..., tags: Array<{ id, postId, tagId, tag: { id, name } }> }>
+```
+
+```js no-copy
+[
+  {
+    title: 'Hello Prisma Next',
+    // ...
+    tags: [
+      { id: 'k2…', postId: 'i3…', tagId: 't1…', tag: { id: 't1…', name: 'typescript' } },
+      { id: 'k3…', postId: 'i3…', tagId: 't2…', tag: { id: 't2…', name: 'databases' } }
+    ]
+  },
+  { title: 'Typed queries', tags: [ /* one link record */ ] }
+]
 ```
 
 The result keeps the junction records in the shape, with each tag nested inside its link record. Read the tag names as `post.tags.map((pt) => pt.tag.name)`.
@@ -189,6 +202,15 @@ The relationship shapes above apply to reference-style relations on both databas
 - Relations declared with an implicit many-to-many (a `through` junction the contract manages for you) are not supported by `.include(...)` yet. Model the junction explicitly, as shown [above](#many-to-many), and it works today.
 - A one-to-one relation can only declare its relation field on the side that holds the foreign key. The mirror field on the other model is not supported yet.
 - The include refinement callback is tested on PostgreSQL. On MongoDB, start with the plain `.include("author")` form and use the [pipeline builder](/orm/next/fundamentals/advanced-queries#mongodb-pipeline-builder) to reshape joined documents.
+
+## Prompt your coding agent
+
+Projects scaffolded with `create-prisma` install Prisma Next skills for your coding agent; the `prisma-next-queries` skill covers relation queries, and `prisma-next-contract` covers the relation fields in your schema. Prompts that map to each section:
+
+- "Using the prisma-next-contract skill, add a one-to-one Profile model with a unique foreign key to User."
+- "Using the prisma-next-queries skill, fetch each user with their five newest posts in one query."
+- "Model a many-to-many between Post and Tag with an explicit junction model, and write the nested include that reads a post's tag names."
+- "Find users that have at least one published post, using a relation predicate instead of a loop."
 
 ## Next
 

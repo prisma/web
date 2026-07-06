@@ -6,7 +6,59 @@ metaTitle: Writing data with Prisma Next
 metaDescription: Create, update, delete, and upsert records in PostgreSQL and MongoDB with Prisma Next, and use createAll, updateAll, and deleteAll for bulk writes.
 ---
 
-Write data with `.create(...)`, `.update(...)`, and `.delete()` for single records, and their `All` and `Count` variants for many records at once.
+This page shows how to write data with Prisma Next: [creating](#create-one-record), [updating](#update-one-record), [deleting](#delete-one-record), and [upserting](#upsert-a-record) single records, and [writing many records at once](#write-many-records) with the `All` and `Count` variants.
+
+## Example schema
+
+All examples on this page are based on the following schema:
+
+<details>
+
+<summary>Expand for sample schema</summary>
+
+```prisma tab="PostgreSQL"
+model User {
+  id        String   @id @default(cuid(2))
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  posts     Post[]
+}
+
+model Post {
+  id        String   @id @default(cuid(2))
+  title     String
+  content   String?
+  published Boolean
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  createdAt DateTime @default(now())
+}
+```
+
+```prisma tab="MongoDB"
+model User {
+  id        ObjectId @id @map("_id")
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  posts     Post[]
+  @@map("users")
+}
+
+model Post {
+  id        ObjectId @id @map("_id")
+  title     String
+  content   String?
+  published Boolean
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  ObjectId
+  createdAt DateTime @default(now())
+  @@map("posts")
+}
+```
+
+</details>
 
 ## Create one record
 
@@ -33,9 +85,25 @@ const user = await db.orm.users.create({
 // user._id is filled in by the server
 ```
 
+The returned record is complete, so you can use the generated values right away:
+
+```js no-copy
+{
+  id: 'i3czppyhmfv77p79azedy0bl',
+  email: 'jane@prisma.io',
+  name: 'Jane',
+  createdAt: 2026-07-06T09:09:56.119Z
+}
+```
+
 To get back only some fields, chain `.select(...)` before `.create(...)`.
 
-Coming from Prisma 7? There is no `data` wrapper. Prisma 7 wrote `.create({ data: { email, name } })`; Prisma Next takes the fields directly: `.create({ email, name })`.
+For Prisma 7 users, there is no `data` wrapper:
+
+```diff
+- const user = await prisma.user.create({ data: { email: "jane@prisma.io", name: "Jane" } });
++ const user = await db.orm.public.User.create({ email: "jane@prisma.io", name: "Jane" });
+```
 
 :::note
 
@@ -57,6 +125,15 @@ const updatedUser = await db.orm.public.User
 const updatedUser = await db.orm.users
   .where({ email: "jane@prisma.io" })
   .update({ name: "Jane Doe" });
+```
+
+```js no-copy
+{
+  id: 'i3czppyhmfv77p79azedy0bl',
+  email: 'jane@prisma.io',
+  name: 'Jane Doe',
+  createdAt: 2026-07-06T09:09:56.119Z
+}
 ```
 
 If the filter can match more than one record, `.update(...)` still changes only one. To change every match, use [`updateAll` or `updateCount`](#write-many-records).
@@ -129,6 +206,13 @@ const deletedCount = await db.orm.public.Post
   .deleteCount();
 ```
 
+The `Count` variants return plain numbers:
+
+```js no-copy
+updatedCount: 3
+deletedCount: 3
+```
+
 The bulk methods work the same on MongoDB, on the collection roots (`db.orm.posts`).
 
 ## Return rows or counts
@@ -167,16 +251,11 @@ Use `updateAll` or `deleteAll` when you also need the changed records back, and 
 
 ### Wrapping create fields in a data object
 
-You wrote the Prisma 7 shape:
+You wrote the Prisma 7 shape, and it fails type-checking, because your contract has no field named `data`:
 
-```typescript
-await db.orm.public.User.create({ data: { email, name } });
-```
-
-Prisma Next has no `data` wrapper, so this creates a record with a field literally named `data`, which fails type-checking against your contract. Pass the fields directly:
-
-```typescript
-await db.orm.public.User.create({ email, name });
+```diff
+- await db.orm.public.User.create({ data: { email, name } });
++ await db.orm.public.User.create({ email, name });
 ```
 
 The shape you pass is the shape of the record, which is also why the return value needs no unwrapping.
@@ -205,6 +284,15 @@ If the second write fails, the first has already committed, and you're left with
 ### Passing an array of queries to a transaction
 
 Prisma 7 supported `$transaction([query1, query2])`. Prisma Next does not: there is no `$transaction`, and queries don't queue up in arrays. Put the calls inside one `db.transaction(...)` callback instead; the [Transactions page](/orm/next/fundamentals/transactions) shows the pattern.
+
+## Prompt your coding agent
+
+Projects scaffolded with `create-prisma` install Prisma Next skills for your coding agent; the `prisma-next-queries` skill covers everything on this page. Prompts that map to each section:
+
+- "Using the prisma-next-queries skill, add a signup function that creates a User and returns only its id and email."
+- "Write an upsert that creates a user by email or updates their name if they exist."
+- "This cleanup script must delete every draft older than 30 days. Use the bulk delete variant and log how many records were removed."
+- "Review my mutations for places where .update() should be updateAll or updateCount."
 
 ## Next
 

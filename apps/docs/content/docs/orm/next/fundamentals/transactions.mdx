@@ -148,7 +148,35 @@ Queries on `db` run on their own connection, outside the open transaction. They 
 
 ### Passing an array of queries
 
-Prisma 7 supported `$transaction([query1, query2])`. Prisma Next has no `$transaction` and no array form. Write the queries inside one `db.transaction(...)` callback; you get the same atomicity, plus the ability to use one query's result in the next.
+Prisma 7 supported `$transaction([query1, query2])`. Prisma Next has no `$transaction` and no array form; the callback replaces it:
+
+```diff
+- const [user, post] = await prisma.$transaction([
+-   prisma.user.create({ data: { email, name } }),
+-   prisma.post.create({ data: { title, authorId } }),
+- ]);
++ const { user, post } = await db.transaction(async (tx) => {
++   const user = await tx.orm.public.User.create({ email, name });
++   const post = await tx.orm.public.Post.create({
++     title,
++     content: null,
++     published: false,
++     authorId: user.id,
++   });
++   return { user, post };
++ });
+```
+
+You get the same atomicity, plus something the array form never had: one query's result (here `user.id`) can feed the next query in the same transaction.
+
+## Prompt your coding agent
+
+Projects scaffolded with `create-prisma` install Prisma Next skills for your coding agent; the `prisma-next-queries` skill covers transactions. Prompts that map to each section:
+
+- "Using the prisma-next-queries skill, wrap this signup flow (create user, create welcome post) in a db.transaction so both writes commit together."
+- "Check this transaction callback for queries that use db instead of tx."
+- "Move the email send out of this transaction callback so it only runs after commit."
+- "This project is on MongoDB. Show me the driver-session pattern for an atomic two-collection write with a shared MongoClient."
 
 ## Next
 
