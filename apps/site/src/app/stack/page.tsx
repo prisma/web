@@ -9,9 +9,9 @@ import { StackDiagram } from "./stack-diagram";
 import { bunApis, postgresExtensions } from "./stack-data";
 import styles from "./stack.module.css";
 
-const title = "Prisma Stack: a complete TypeScript foundation | Prisma";
+const title = "Prisma Stack: a complete and flexible tech stack";
 const description =
-  "Prisma Compute, Prisma Postgres, Bun and TypeScript. A complete, opinionated stack with room for your frontend.";
+  "Prisma Compute, Prisma Postgres, Bun, TypeScript with room for your frontend framework.";
 
 export const metadata = createPageMetadata({
   title,
