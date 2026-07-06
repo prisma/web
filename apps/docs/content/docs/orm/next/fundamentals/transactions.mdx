@@ -1,0 +1,124 @@
+---
+title: Transactions
+description: Run several writes so they all succeed or all fail together with db.transaction().
+url: /orm/next/fundamentals/transactions
+metaTitle: Transactions in Prisma Next
+metaDescription: Group writes atomically with db.transaction() on PostgreSQL, and run multi-document MongoDB transactions with the MongoDB driver.
+---
+
+Run several writes as one unit with `db.transaction(...)`: they all commit together, or they all roll back.
+
+## Run writes in a transaction
+
+Use a transaction whenever one business operation spans more than one write: creating a user with their first records, moving a value between two rows, or deleting a parent after its children.
+
+Pass a callback to `db.transaction(...)`. Inside it, query through `tx.orm` instead of `db.orm`; every call rides the same transaction. The callback's return value passes through:
+
+```typescript
+import { db } from "./prisma/db";
+
+const result = await db.transaction(async (tx) => {
+  const user = await tx.orm.public.User.create({ email: "jane@prisma.io", name: "Jane" });
+  const post = await tx.orm.public.Post.create({
+    title: "Hello",
+    content: null,
+    published: false,
+    authorId: user.id,
+  });
+  return { userId: user.id, postId: post.id };
+});
+// Both records exist now
+```
+
+You don't need a transaction for a single write; every mutation is already atomic on its own.
+
+## Roll back on errors
+
+The transaction commits when the callback returns and rolls back when it throws. Nothing inside the callback survives an error:
+
+```typescript
+try {
+  await db.transaction(async (tx) => {
+    await tx.orm.public.User.create({ email: "ghost@prisma.io", name: "Ghost" });
+    throw new Error("boom");
+  });
+} catch {
+  // The user record was rolled back and does not exist
+}
+```
+
+## Use the SQL builder in a transaction
+
+[SQL builder](/orm/next/fundamentals/advanced-queries) plans run inside a transaction through `tx.execute(...)`, with `tx.sql` mirroring `db.sql`:
+
+```typescript
+await db.transaction(async (tx) => {
+  const plan = tx.sql.public.post
+    .update({ published: false })
+    .where((f, fns) => fns.lt(f.createdAt, cutoff))
+    .build();
+  await tx.execute(plan);
+});
+```
+
+## Transactions on MongoDB
+
+Prisma Next does not support MongoDB transactions yet: there is no `db.transaction(...)` on the MongoDB client, and each ORM write is atomic per document.
+
+To run a multi-document transaction today, use the MongoDB driver directly. Share one `MongoClient` between Prisma Next and your code, and group the writes in a driver session. MongoDB requires a replica set for transactions.
+
+```typescript title="src/prisma/db.ts"
+import mongo from "@prisma-next/mongo/runtime";
+import { MongoClient } from "mongodb";
+import type { Contract } from "./contract.d";
+import contractJson from "./contract.json" with { type: "json" };
+
+export const client = new MongoClient(process.env["DATABASE_URL"]!);
+
+export const db = mongo<Contract>({
+  contractJson,
+  mongoClient: client,
+  dbName: "app",
+});
+```
+
+```typescript
+import { client, db } from "./prisma/db";
+
+const session = client.startSession();
+try {
+  await session.withTransaction(async () => {
+    const database = client.db("app");
+    const user = await database
+      .collection("users")
+      .insertOne({ email: "jane@prisma.io", name: "Jane", createdAt: new Date() }, { session });
+    await database.collection("posts").insertOne(
+      { title: "Hello", content: null, published: false, authorId: user.insertedId, createdAt: new Date() },
+      { session },
+    );
+  });
+} finally {
+  await session.endSession();
+}
+
+// Prisma Next reads see the committed result
+const jane = await db.orm.users.where({ email: "jane@prisma.io" }).first();
+```
+
+Writes made through the driver skip the type-checking that Prisma Next queries get, so keep these sections small: one function per atomic operation, with Prisma Next queries for everything around it.
+
+## Common mistakes
+
+:::warning
+
+Keep side effects out of the callback. If you send an email or queue a message inside the transaction and it then rolls back, the side effect already happened. Return the IDs you need from the callback and act on them after it resolves.
+
+:::
+
+- Passing an array of queries, Prisma 7 style (`$transaction([query1, query2])`). Put the calls inside one `db.transaction(...)` callback instead.
+- Querying through `db.orm` inside the callback. Use `tx.orm`, or the query runs outside the transaction.
+
+## Next
+
+- [Write data](/orm/next/fundamentals/writing-data): the single-record and bulk mutations you group in a transaction.
+- [Use advanced queries](/orm/next/fundamentals/advanced-queries) to run SQL builder plans inside or outside transactions.

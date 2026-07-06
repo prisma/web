@@ -1,0 +1,88 @@
+---
+title: Relations and joins
+description: Read related records in one query with .include(), and shape what comes back per relation.
+url: /orm/next/fundamentals/relations-and-joins
+metaTitle: Relations and joins in Prisma Next
+metaDescription: Eager-load related records with the Prisma Next ORM on PostgreSQL and MongoDB, select fields per relation, and filter parents by relation data.
+---
+
+Read related records in the same query by adding `.include(...)`. The related records come back nested on the parent, typed to match.
+
+## Include related records
+
+Use `.include("<relation>")` with the relation's field name from your contract:
+
+```typescript tab="PostgreSQL"
+import { db } from "./prisma/db";
+
+const posts = await db.orm.public.Post
+  .where({ published: true })
+  .include("author")
+  .all();
+// posts[0].author is the full User record
+```
+
+```typescript tab="MongoDB"
+import { db } from "./prisma/db";
+
+const posts = await db.orm.posts
+  .where({ published: true })
+  .include("author")
+  .all();
+// posts[0].author is the referenced user document
+```
+
+Use `.include(...)` when the caller needs the related data in the same response. Skip it when the foreign key on the record is enough.
+
+If you find yourself querying children inside a loop over parents, replace the loop with one `.include(...)` on the parent query: it turns one query per parent into a single query.
+
+## Select fields from included records
+
+Pass a callback as the second argument to shape what each relation returns. Inside it, chain `.where`, `.select`, `.orderBy`, and `.take` exactly like a top-level query. This is how you fetch "each user with their five newest posts" in one query:
+
+```typescript
+const usersWithRecentPosts = await db.orm.public.User
+  .select("id", "email")
+  .include("posts", (post) =>
+    post
+      .select("id", "title", "createdAt")
+      .orderBy((p) => p.createdAt.desc())
+      .take(5),
+  )
+  .take(10)
+  .all();
+// Array<{ id, email, posts: Array<{ id, title, createdAt }> }>
+```
+
+On MongoDB, start with the plain `.include("author")` form. When you need to reshape the joined documents, use a `$lookup` stage in the [pipeline builder](/orm/next/fundamentals/advanced-queries#query-with-the-pipeline-builder-mongodb).
+
+## Filter parent records by relation data
+
+On PostgreSQL, use relation predicates inside `.where(...)`: `.some(...)` matches parents with at least one matching child, `.none(...)` matches parents with no matching child, and `.every(...)` requires all children to match.
+
+```typescript
+// Users who have at least one published post
+const activeAuthors = await db.orm.public.User
+  .where((u) => u.posts.some((p) => p.published.eq(true)))
+  .all();
+```
+
+On MongoDB, query the child collection directly, or express the shape as a pipeline with `$lookup` and `$match`.
+
+## Database-specific behavior
+
+On PostgreSQL, Prisma Next fetches included relations with joins. On MongoDB, it uses `$lookup` for reference-style relations; embedded documents are already part of the parent and need no include.
+
+## Current limitations
+
+:::warning
+
+Many-to-many relations are not supported by `.include(...)` yet. For now, query the junction table explicitly with the [SQL builder](/orm/next/fundamentals/advanced-queries#join-tables-explicitly).
+
+:::
+
+## Next
+
+- [Use advanced queries](/orm/next/fundamentals/advanced-queries) for explicit joins, junction tables, and `$lookup` pipelines.
+- [Read data](/orm/next/fundamentals/reading-data) to filter, sort, paginate, and select fields from your models.
+- [Run writes that span several models atomically](/orm/next/fundamentals/transactions) with a transaction.

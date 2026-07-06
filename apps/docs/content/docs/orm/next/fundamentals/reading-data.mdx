@@ -1,0 +1,143 @@
+---
+title: Reading data
+description: Fetch one record or many with the Prisma Next ORM, then filter, select, sort, and paginate the results.
+url: /orm/next/fundamentals/reading-data
+metaTitle: Reading data with Prisma Next
+metaDescription: Query PostgreSQL and MongoDB with the Prisma Next ORM. Filter with where, project with select, sort with orderBy, and paginate with take and skip.
+---
+
+Read data by chaining query methods on a model, then running the chain with `.all()` for many records or `.first()` for one.
+
+```typescript tab="PostgreSQL"
+import { db } from "./prisma/db";
+
+// Every published post
+const posts = await db.orm.public.Post.where({ published: true }).all();
+
+// One user, or null
+const user = await db.orm.public.User.where({ email: "alice@prisma.io" }).first();
+```
+
+```typescript tab="MongoDB"
+import { db } from "./prisma/db";
+
+// Every published post
+const posts = await db.orm.posts.where({ published: true }).all();
+
+// One user, or null
+const user = await db.orm.users.where({ email: "alice@prisma.io" }).first();
+```
+
+Every result is typed against your contract. Models are addressed by schema namespace on PostgreSQL (`db.orm.public.User`, where `public` is the default PostgreSQL schema) and by collection name on MongoDB (`db.orm.users`).
+
+If you are coming from Prisma 7: `.where(...).all()` replaces `findMany`, and `.where(...).first()` replaces `findFirst` and `findUnique`.
+
+## Fetch many records or one
+
+Use `.all()` when you want every matching record. It returns an array and applies no limit of its own, so combine it with [`take`](#sort-and-paginate) on tables that can grow.
+
+Use `.first()` when you want a single record. It returns the record or `null`, and on PostgreSQL it fetches at most one row. For a primary-key lookup on PostgreSQL, pass the key directly:
+
+```typescript
+const user = await db.orm.public.User.first({ id: userId });
+```
+
+On MongoDB, look up documents by their `_id` field: `db.orm.users.where({ _id: id }).first()`.
+
+## Filter records
+
+Use `.where(...)` to narrow a query. Pass an object to match fields by equality:
+
+```typescript
+const drafts = await db.orm.public.Post.where({ published: false }).all();
+```
+
+Chain several `.where(...)` calls to combine conditions with AND. This is also how you express a range:
+
+```typescript
+const recentPosts = await db.orm.public.Post
+  .where((p) => p.createdAt.gte(start))
+  .where((p) => p.createdAt.lte(end))
+  .all();
+```
+
+On PostgreSQL, `.where(...)` also accepts a lambda for richer comparisons, as in the range example above. The field proxy supports `.eq`, `.neq`, `.lt`, `.lte`, `.gt`, `.gte`, `.like`, `.ilike`, `.in([...])`, `.isNull()`, and `.isNotNull()`:
+
+```typescript
+const matchingPosts = await db.orm.public.Post
+  .where((p) => p.title.ilike("%prisma%"))
+  .all();
+```
+
+To combine conditions with OR or NOT on PostgreSQL, use the `or`, `and`, and `not` helpers, currently exported from `@prisma-next/sql-orm-client`.
+
+On MongoDB, use the object form. Comparison operators and boolean logic are not available on MongoDB's `.where(...)` yet; for those queries, use the [pipeline builder](/orm/next/fundamentals/advanced-queries#query-with-the-pipeline-builder-mongodb).
+
+## Select fields
+
+Use `.select(...)` to fetch only the fields you need. The result type narrows to match:
+
+```typescript tab="PostgreSQL"
+const users = await db.orm.public.User.select("id", "email").all();
+// Array<{ id: string; email: string }>
+```
+
+```typescript tab="MongoDB"
+const users = await db.orm.users.select("_id", "email").all();
+// Array<{ _id: ObjectId; email: string }>
+```
+
+## Sort and paginate
+
+Use `.orderBy(...)` to sort, `.take(n)` to limit, and `.skip(n)` to offset:
+
+```typescript tab="PostgreSQL"
+const page = await db.orm.public.Post
+  .orderBy((p) => p.createdAt.desc())
+  .take(20)
+  .skip(20)
+  .all();
+```
+
+```typescript tab="MongoDB"
+const page = await db.orm.posts
+  .orderBy({ createdAt: -1 })
+  .take(20)
+  .skip(20)
+  .all();
+```
+
+PostgreSQL sorts with lambdas calling `.asc()` or `.desc()`; pass an array of lambdas for a composite sort. MongoDB sorts with the driver's direction values: `1` for ascending, `-1` for descending.
+
+For stable pagination over large tables on PostgreSQL, follow `.orderBy(...)` with `.cursor({ createdAt: last.createdAt })` to resume from a known position instead of counting offsets.
+
+## Count records
+
+Count through `.aggregate(...)` on PostgreSQL. It returns an object with the keys you name:
+
+```typescript
+const result = await db.orm.public.Post
+  .where({ published: true })
+  .aggregate((a) => ({ total: a.count() }));
+// result.total: number
+```
+
+There is no `.count()` method on the query chain. On MongoDB, count with a `$group` stage in the [pipeline builder](/orm/next/fundamentals/advanced-queries#query-with-the-pipeline-builder-mongodb).
+
+## Common mistakes
+
+:::warning
+
+A query result can only be consumed once. `await` buffers it into an array; a second `await` on the same result throws `RUNTIME.ITERATOR_CONSUMED`. Store the array in a variable and reuse the variable.
+
+:::
+
+- Using `.all()` for a single record. Use `.first()`: it returns one record or `null`, without fetching the rest.
+- Expecting `.all()` to limit itself. It returns every match; add `.take(n)` when the table can grow.
+- Loading a huge result into memory. Iterate it instead of awaiting: `for await (const row of query.all())`.
+
+## Next
+
+- [Write data](/orm/next/fundamentals/writing-data): create, update, delete, and upsert records.
+- [Read related records](/orm/next/fundamentals/relations-and-joins) in the same query with `.include(...)`.
+- [Use advanced queries](/orm/next/fundamentals/advanced-queries) when a shape needs the SQL builder or a MongoDB pipeline.
