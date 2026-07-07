@@ -314,6 +314,12 @@ const config = {
       // have a Prisma Next replacement; unconverted guides keep their URL):
       // { source: "/guides/runtimes/bun", destination: "/guides/v7/runtimes/bun", permanent: false },
       // { source: "/guides/runtimes/deno", destination: "/guides/v7/runtimes/deno", permanent: false },
+      // { source: "/guides/frameworks/nextjs", destination: "/guides/v7/frameworks/nextjs", permanent: false },
+      // { source: "/guides/frameworks/astro", destination: "/guides/v7/frameworks/astro", permanent: false },
+      // { source: "/guides/frameworks/nuxt", destination: "/guides/v7/frameworks/nuxt", permanent: false },
+      // { source: "/guides/frameworks/sveltekit", destination: "/guides/v7/frameworks/sveltekit", permanent: false },
+      // { source: "/guides/frameworks/tanstack-start", destination: "/guides/v7/frameworks/tanstack-start", permanent: false },
+      // { source: "/guides/frameworks/nestjs", destination: "/guides/v7/frameworks/nestjs", permanent: false },
       // { source: "/guides/frameworks/hono", destination: "/guides/v7/frameworks/hono", permanent: false },
       // { source: "/guides/frameworks/elysia", destination: "/guides/v7/frameworks/elysia", permanent: false },
       //
