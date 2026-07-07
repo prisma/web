@@ -5,8 +5,8 @@ date: "2022-09-16"
 updatedAt: "2026-07-07"
 authors:
   - "Alex Ruheni"
-metaTitle: "Improve Query Performance with B-Tree Indexes in Prisma ORM and Postgres"
-metaDescription: "B-tree indexes turn linear table scans into logarithmic lookups. Speed up a slow Postgres query with Prisma ORM 7 in a runnable walkthrough with EXPLAIN ANALYZE and real measurements."
+metaTitle: "B-Tree Indexes in Prisma ORM: Make Slow Postgres Queries 80x Faster"
+metaDescription: "Add a B-tree index in your Prisma schema with @@index and turn a 66ms sequential scan into a sub-millisecond lookup, an 80x improvement verified on Prisma ORM 7 and PostgreSQL 17 with EXPLAIN ANALYZE."
 metaImagePath: "/improving-query-performance-using-indexes-2-MyoiJNMFTsfq/imgs/meta-f47ff182b4ce89e7dd52fb5ba19e0850dd24a8fa-1692x952.png"
 heroImagePath: "/improving-query-performance-using-indexes-2-MyoiJNMFTsfq/imgs/hero-21765b1aeb13badff0117580a169a45609788d7e-844x474.svg"
 heroImageAlt: "Improving Query Performance with Indexes using Prisma: B-Tree Index"
@@ -16,7 +16,7 @@ tags:
   - "education"
 ---
 
-A B-tree index is the default index type in PostgreSQL. It stores a sorted copy of the indexed columns, so the database can find matching rows in logarithmic time instead of scanning the whole table. In this article you will see how B-tree indexes work, then measure their effect directly: a filtered query over 500,000 rows drops from roughly 66ms to under 1ms after adding a single `@@index` line to a Prisma schema. Every command and number in this walkthrough was verified on Prisma ORM 7.8 and PostgreSQL 17.
+A B-tree index is the default index type in PostgreSQL. It stores a sorted copy of the indexed columns, so the database can find matching rows in logarithmic time instead of scanning the whole table. In this article you will see how B-tree indexes work, then measure their effect directly: a filtered query over 500,000 rows drops from roughly 66ms to under 1ms, an improvement of about 80x, after adding a single `@@index` line to a [Prisma ORM](https://www.prisma.io/orm) schema. Every command and number in this walkthrough was verified on Prisma ORM 7.8 and PostgreSQL 17.
 
 ## Overview
 
@@ -24,7 +24,7 @@ A B-tree index is the default index type in PostgreSQL. It stores a sorted copy 
 - [The data structure that powers indexes](#the-data-structure-that-powers-indexes)
 - [The time complexity of a B-tree](#the-time-complexity-of-a-b-tree)
 - [When to use a B-tree index](#when-to-use-a-b-tree-index)
-- [Working with indexes using Prisma ORM](#working-with-indexes-using-prisma-orm)
+- [How to add an index with Prisma ORM](#how-to-add-an-index-with-prisma-orm)
   - [Prerequisites](#prerequisites)
   - [Set up the project](#set-up-the-project)
   - [Define the schema and configuration](#define-the-schema-and-configuration)
@@ -33,6 +33,7 @@ A B-tree index is the default index type in PostgreSQL. It stores a sorted copy 
   - [Measure the slow query](#measure-the-slow-query)
   - [Improve query performance with an index](#improve-query-performance-with-an-index)
   - [Bonus: Add an index to multiple fields](#bonus-add-an-index-to-multiple-fields)
+- [Frequently asked questions](#frequently-asked-questions)
 - [Summary and next steps](#summary-and-next-steps)
 
 ## Introduction
@@ -48,7 +49,7 @@ Database indexes are smaller secondary data structures used by the database to s
 - **key**: the column(s) that will be used to create an index
 - **value**: a pointer to the record in the specific table
 
-![](/improving-query-performance-using-indexes-2-MyoiJNMFTsfq/imgs/index.png)
+![Diagram of a database index as key-value pairs, where the key is the indexed column and the value is a pointer to the full row in the table](/improving-query-performance-using-indexes-2-MyoiJNMFTsfq/imgs/index.png)
 
 However, the data structures used to define an index are more sophisticated, making them as fast as they are.
 
@@ -72,7 +73,7 @@ B-tree indexes work with equality (`=`) or range comparison (`<`, `<=`,`>`, `>=`
 
 In some special situations, the database can utilize a B-tree index using string comparison operators such as `LIKE`.
 
-## Working with indexes using Prisma ORM
+## How to add an index with Prisma ORM
 
 With the theory out of the way, let's take a look at a concrete example. You will build a small project from scratch, run a deliberately slow query against half a million rows, inspect the query plan, and then fix it with an index.
 
@@ -381,6 +382,23 @@ CREATE INDEX "User_firstName_lastName_idx" ON "User" USING btree ("firstName" DE
 ```
 
 A composite index like this one serves queries that filter on `firstName` alone as well as queries that filter on both fields, because `firstName` is the leading column. It does nothing for queries that filter only on `lastName`.
+
+## Frequently asked questions
+
+<Accordions type="single">
+  <Accordion title="How do I add an index in a Prisma schema?">
+Add the `@@index` attribute to the model in your Prisma schema, for example `@@index([firstName])`, then apply it with `npx prisma db push` (or `npx prisma migrate dev` in a migration-based workflow). Prisma creates a B-tree index in PostgreSQL, such as `CREATE INDEX "User_firstName_idx" ON "User" USING btree ("firstName")`.
+  </Accordion>
+  <Accordion title="When should I use a B-tree index?">
+Use a B-tree index for columns you filter or sort on with equality (`=`) or range comparisons (`<`, `<=`, `>`, `>=`). It is the default index type in PostgreSQL and the right choice for most lookups; in some cases the database can also use it for string comparisons with `LIKE`.
+  </Accordion>
+  <Accordion title="Do indexes slow down writes?">
+Yes. Every insert, update, or delete that touches an indexed column also updates the index, so each index adds a small write cost and uses storage. Index the columns your queries filter and sort on, and avoid indexing columns you never query.
+  </Accordion>
+  <Accordion title="How much faster does an index make a query?">
+It depends on table size and how selective the filter is. In the test in this article, verified on Prisma ORM 7.8 and PostgreSQL 17, a filtered query over 500,000 rows went from a 66.5ms sequential scan to a 0.8ms index scan, an improvement of about 80x.
+  </Accordion>
+</Accordions>
 
 ## Summary and next steps
 
