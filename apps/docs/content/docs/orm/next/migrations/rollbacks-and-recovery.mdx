@@ -49,6 +49,10 @@ The planner diffs the two contract states and writes the operations that undo th
 npx prisma-next migrate --to 20260707T1008_add_display_name^
 ```
 
+A rollback also leaves a cycle in the graph, so the next `migration plan` cannot pick its starting point automatically. It fails with `MIGRATION.NO_TARGET` and lists the reachable states; plan with an explicit `--from <state>` until history moves forward again.
+
+One loose end remains after the database moves back: your contract source still contains the change, so `prisma-next db verify` reports a hash mismatch until you revert the schema and re-run `prisma-next contract emit`. Roll back the contract in the same commit as the rollback migration and the two stay in step.
+
 Afterwards the graph shows the round trip: a forward edge up, a rollback edge back down:
 
 ```text
