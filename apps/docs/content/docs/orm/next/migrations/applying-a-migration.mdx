@@ -1,9 +1,9 @@
 ---
 title: Applying a migration
-description: prisma-next migrate walks the graph from where your database is to where you want it — with a preview, a checkpoint at every step, and safe retries.
+description: prisma-next migrate walks the graph from where your database is to where you want it, with a preview, a checkpoint at every step, and safe retries.
 url: /orm/next/migrations/applying-a-migration
 metaTitle: Applying a migration in Prisma Next
-metaDescription: How prisma-next migrate applies migrations — targeting refs and hashes, previewing with --show, checking status, and running safely in development and production.
+metaDescription: How prisma-next migrate applies migrations, from targeting refs and hashes and previewing with --show to checking status and running safely in development and production.
 badge: early-access
 ---
 
@@ -13,7 +13,7 @@ Applying is the one step that touches a database, and it has one command:
 npx prisma-next migrate
 ```
 
-Note the verb: it's `migrate`, not `migration apply`. The `migration ...` subcommands manage files on disk; `migrate` moves a database. It reads where the database currently is (its **marker**), finds a path through the [migration graph](/orm/next/migrations/the-migration-graph) to the target, and applies each migration along the path — running every operation's precheck, execute, and postcheck as it goes.
+Note the verb: it's `migrate`, not `migration apply`. The `migration ...` subcommands manage files on disk; `migrate` moves a database. It reads where the database currently is (its **marker**), finds a path through the [migration graph](/orm/next/migrations/the-migration-graph) to the target, and applies each migration along the path, running every operation's precheck, execute, and postcheck as it goes.
 
 The connection comes from `db.connection` in `prisma-next.config.ts`, or `--db` to override:
 
@@ -37,7 +37,7 @@ Next: prisma-next migration status
 
 ## Check before, preview, then apply
 
-The habit worth building — especially against shared databases — is a three-step rhythm:
+The habit worth building, especially against shared databases, is a three-step rhythm:
 
 ```bash
 # 1. Where is the database, what's pending?
@@ -64,9 +64,20 @@ npx prisma-next migrate --db $DATABASE_URL
 
 Read the markers on the right: `@db` is where the database is, `@contract` is where your emitted contract is, and `(db)` is the [ref](/orm/next/migrations/the-migration-graph#refs-naming-places-in-the-graph) of that name pointing at the same node.
 
-`migrate --show` is the read-only dry run: it prints the migrations that would execute and stops. Nothing touches the database.
+`migrate --show` is the read-only dry run: it draws the path from the database's position to the target and stops. Nothing touches the database:
 
-After applying, `migration log` shows the database's own record of what ran — an append-only **ledger** the runner writes alongside the marker:
+```text
+│↑  20260707T1006_add_user_phone  705b1a6 → 925198f  ↑ will run
+○   705b1a6
+│↑  20260707T1005_init                  ∅ → 705b1a6  ↑ will run
+○   ∅  @db
+
+The following 2 migrations will run:
+  20260707T1005_init                ∅ → 705b1a6
+  20260707T1006_add_user_phone  705b1a6 → 925198f
+```
+
+After applying, `migration log` shows the database's own record of what ran: an append-only **ledger** the runner writes alongside the marker:
 
 ```text
  Applied at             Migration                       Change                 Ops
@@ -77,7 +88,7 @@ After applying, `migration log` shows the database's own record of what ran — 
 
 ## Choosing a target
 
-With no `--to`, `migrate` advances toward your emitted contract. To aim somewhere specific, `--to` accepts the same reference grammar as everywhere else — a ref name, a contract hash or prefix, a migration directory name, or `<dir>^` for the state before a migration:
+With no `--to`, `migrate` advances toward your emitted contract. To aim somewhere specific, `--to` accepts the same reference grammar as everywhere else: a ref name, a contract hash or prefix, a migration directory name, or `<dir>^` for the state before a migration:
 
 ```bash
 npx prisma-next migrate --to prod --db $DATABASE_URL          # a ref
@@ -105,9 +116,9 @@ The runner stops at the first failing operation and tells you which one, why, an
 
 Three properties make failure boring instead of terrifying:
 
-- **On PostgreSQL, a failed run leaves nothing behind.** The entire `migrate` run executes inside one transaction, so when an operation fails, everything from that run rolls back and the database is exactly where it was before you started. Migrations applied in *earlier* runs are untouched — that's what "previously applied migrations are preserved" means.
-- **The error is specific.** It names the operation, the phase (precheck, execute, or postcheck), and the check that failed — enough to fix the cause without spelunking.
-- **Re-running is safe.** Operations are idempotent: before running one, the runner evaluates its postcheck and skips it if the database already satisfies it. A change that snuck in out-of-band doesn't break the run — it just becomes a skip. On MongoDB, where cross-collection transactions don't exist, this same mechanism is what makes a partially-applied run converge on retry. See [Rollbacks and recovery](/orm/next/migrations/rollbacks-and-recovery) for the full failure playbook.
+- **On PostgreSQL, a failed run leaves nothing behind.** The entire `migrate` run executes inside one transaction, so when an operation fails, everything from that run rolls back and the database is exactly where it was before you started. Migrations applied in *earlier* runs are untouched; that's what "previously applied migrations are preserved" means.
+- **The error is specific.** It names the operation, the phase (precheck, execute, or postcheck), and the check that failed, which is enough to fix the cause without spelunking.
+- **Re-running is safe.** Operations are idempotent: before running one, the runner evaluates its postcheck and skips it if the database already satisfies it. A change that snuck in out-of-band doesn't break the run; it becomes a skip. On MongoDB, where cross-collection transactions don't exist, this same mechanism is what makes a partially-applied run converge on retry. See [Rollbacks and recovery](/orm/next/migrations/rollbacks-and-recovery) for the full failure playbook.
 
 Before running any DDL, `migrate` also verifies the database's marker is a state the graph knows. A database that was changed outside of migrations fails fast with a marker mismatch instead of getting SQL applied on top of unknown drift.
 
@@ -121,7 +132,7 @@ The commands are the same everywhere; what changes is where the files come from 
 npx prisma-next migration plan --name my_change && npx prisma-next migrate --advance-ref db
 ```
 
-**In CI and production**, migrations arrive via your repo, already planned, reviewed, and merged. The deploy step is:
+**In CI and production**, migrations arrive via your repo, already planned, reviewed, and merged. That's why the [editing rule](/orm/next/migrations/editing-a-migration) matters: commit `migration.ts` and `ops.json` together, and let `migration check` (exit codes `0`/`2`/`4`, see [Generating a migration](/orm/next/migrations/generating-a-migration#reviewing-what-you-planned)) catch a stale recompile before deploy. The deploy step is:
 
 ```bash
 npx prisma-next migration check          # files intact, graph well-formed (offline)
@@ -129,13 +140,13 @@ npx prisma-next migrate --show --db $DATABASE_URL   # log what's about to run
 npx prisma-next migrate --db $DATABASE_URL
 ```
 
-A production nicety that falls out of the design: the runner executes only `ops.json` — plain data. Your `migration.ts` files, and any TypeScript they import, are never executed with production credentials.
+A production nicety that falls out of the design: the runner executes only `ops.json`, plain data. Your `migration.ts` files, and any TypeScript they import, are never executed with production credentials.
 
-Concurrent deploys are safe: on PostgreSQL the whole apply runs inside a transaction guarded by an advisory lock, so two `migrate` runs serialize instead of interleaving. On MongoDB — where cross-collection DDL transactions don't exist — each migration advances the marker with compare-and-swap and the runner verifies the resulting schema before committing the marker, so a re-run converges rather than double-applying.
+Concurrent deploys are safe: on PostgreSQL the whole apply runs inside a transaction guarded by an advisory lock, so two `migrate` runs serialize instead of interleaving. On MongoDB, where cross-collection DDL transactions don't exist, each migration advances the marker with compare-and-swap and the runner verifies the resulting schema before committing the marker, so a re-run converges rather than double-applying.
 
 ## Extension spaces
 
-If your project uses database extensions (say pgvector), you'll see more than one *contract space* in the output: extensions ship their own migrations (for example `CREATE EXTENSION vector`), tracked in `migrations/<extension>/` next to your app's. One `migrate` run walks them all — extensions first, then your app — and reports each space separately:
+If your project uses database extensions (say pgvector), you'll see more than one *contract space* in the output: extensions ship their own migrations (for example `CREATE EXTENSION vector`), tracked in `migrations/<extension>/` next to your app's. One `migrate` run walks them all (extensions first, then your app) and reports each space separately:
 
 ```text
 ✔ Applied 2 migration(s) (20 operation(s)) across 2 contract space(s)
@@ -150,7 +161,7 @@ App space
 
 :::note[What's early]
 
-Apply, targeting, preview, refs, the ledger, and multi-space runs all work today. Not built yet: a shadow-database rehearsal (`migrate` runs against the real target; use `--show` and a staging database), and an apply-time check that `ops.json` still matches `migration.ts` (today that's `migration check`'s job — run it in CI).
+Apply, targeting, preview, refs, the ledger, and multi-space runs all work today. Not built yet: a shadow-database rehearsal (`migrate` runs against the real target; use `--show` and a staging database), and an apply-time check that `ops.json` still matches `migration.ts` (today that's `migration check`'s job; run it in CI).
 
 :::
 

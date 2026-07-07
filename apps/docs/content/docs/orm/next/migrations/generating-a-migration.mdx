@@ -3,11 +3,11 @@ title: Generating a migration
 description: Turn a contract change into a reviewable migration with prisma-next migration plan.
 url: /orm/next/migrations/generating-a-migration
 metaTitle: Generating a migration in Prisma Next
-metaDescription: A step-by-step tutorial for prisma-next migration plan — from contract change to a planned, reviewable migration, entirely offline.
+metaDescription: A step-by-step tutorial for prisma-next migration plan, from contract change to a planned, reviewable migration, entirely offline.
 badge: early-access
 ---
 
-This tutorial takes a contract change from your editor to a planned migration on disk. Planning is **fully offline**: `migration plan` reads your emitted contract and your existing migrations — it never connects to a database, so you can plan on a plane, in CI, or in a sandbox with no credentials.
+This tutorial takes a contract change from your editor to a planned migration on disk. Planning is **fully offline**: `migration plan` reads your emitted contract and your existing migrations; it never connects to a database, so you can plan on a plane, in CI, or in a sandbox with no credentials.
 
 We'll start from a minimal project. If you don't have one, `npx create-prisma@next` scaffolds it.
 
@@ -25,13 +25,13 @@ model User {
 }
 ```
 
-First, emit the contract — this compiles the schema into the `contract.json` artifact that every other command reads:
+First, emit the contract. This compiles the schema into the `contract.json` artifact that every other command reads:
 
 ```bash
 npx prisma-next contract emit
 ```
 
-Now plan. `--name` sets the human-readable part of the directory name; without it the directory is just called `migration`:
+Now plan. `--name` sets the human-readable part of the directory name; without it the directory is called `migration`:
 
 ```bash
 npx prisma-next migration plan --name init
@@ -64,7 +64,7 @@ CREATE TABLE "public"."user" (
 Three things to notice:
 
 - **The DDL preview is right there.** You see the exact SQL before anything exists but files.
-- **`from: null`** means this migration starts from an empty database — it's the root of your [migration graph](/orm/next/migrations/the-migration-graph).
+- **`from: null`** means this migration starts from an empty database; it's the root of your [migration graph](/orm/next/migrations/the-migration-graph).
 - **`to:` is your contract's hash.** The migration promises to deliver a database matching exactly the contract you just emitted.
 
 The planned migration directory contains the TypeScript source, the compiled operations, and the contract snapshots:
@@ -77,7 +77,7 @@ migrations/app/20260707T1005_init/
 └── end-contract.json  (+ end-contract.d.ts)
 ```
 
-Open `migration.ts` — it reads like a description of the change, because it is one:
+Open `migration.ts`. It reads like a description of the change, because it is one:
 
 ```ts title="migrations/app/20260707T1005_init/migration.ts"
 import type { Contract as End } from './end-contract';
@@ -107,13 +107,13 @@ export default class M extends Migration<never, End> {
 MigrationCLI.run(import.meta.url, M);
 ```
 
-Two notes on reading it: the `col(...)` calls mirror your contract fields, and you never write `codecRef` by hand — the planner fills it in (it pins how values convert between TypeScript and Postgres), so treat it as noise when reviewing.
+Two notes on reading it: the `col(...)` calls mirror your contract fields, and you never write `codecRef` by hand. The planner fills it in to pin how values convert between TypeScript and Postgres; treat it as noise when reviewing.
 
-For a simple change you don't need to touch this file. When you do — to add a data backfill, reorder operations, or drop in raw SQL — that's [Editing a migration](/orm/next/migrations/editing-a-migration).
+For a simple change you don't need to touch this file. When you do (to add a data backfill, reorder operations, or drop in raw SQL), that's [Editing a migration](/orm/next/migrations/editing-a-migration).
 
 ## The second migration: planning a delta
 
-Apply the first migration (covered properly in [Applying a migration](/orm/next/migrations/applying-a-migration)), then make another change — add a `phone` field:
+Apply the first migration (covered properly in [Applying a migration](/orm/next/migrations/applying-a-migration)), then make another change: add a `phone` field:
 
 ```prisma
 model User {
@@ -152,7 +152,7 @@ ALTER TABLE "public"."user" ADD COLUMN "phone" text;
 
 ### The db ref: skipping --from
 
-Passing `--from` every time gets old. The planner's default is smarter: if a ref named **`db`** exists, planning starts from whatever it points at. Keep it advanced as part of applying:
+Passing `--from` every time gets old. The planner's default is smarter: if a [ref](/orm/next/migrations/the-migration-graph#refs-naming-places-in-the-graph) named **`db`** exists, planning starts from whatever it points at. Keep it advanced as part of applying:
 
 ```bash
 npx prisma-next migrate --advance-ref db
@@ -161,13 +161,13 @@ npx prisma-next migration plan --name next_change   # starts from the db ref aut
 
 :::warning[Without `--from` or a `db` ref, plans start from empty]
 
-If there's no `db` ref and you omit `--from`, `migration plan` plans from an **empty database** — a full `CREATE`-everything migration, not a delta. If you expected a one-column change and got a wall of `CREATE TABLE`, this is why. Pass `--from` or set up the `db` ref.
+If there's no `db` ref and you omit `--from`, `migration plan` plans from an **empty database**: a full `CREATE`-everything migration, not a delta. If you expected a one-column change and got a wall of `CREATE TABLE`, this is why. Pass `--from` or set up the `db` ref.
 
 :::
 
 ## When the planner needs your input
 
-Some changes can't be planned from the schema diff alone. Add a **required** field to a table that already has rows, and the planner can write the `ADD COLUMN` and the `SET NOT NULL` — but only you know what the existing rows should contain. Rather than guessing, it scaffolds the decision as a **placeholder**:
+Some changes can't be planned from the schema diff alone. Add a **required** field to a table that already has rows, and the planner can write the `ADD COLUMN` and the `SET NOT NULL`, but only you know what the existing rows should contain. Rather than guessing, it scaffolds the decision as a **placeholder**:
 
 ```text
 ⚠ Planned migration with placeholder(s) — edit migration.ts then run `node migration.ts` to self-emit
@@ -193,11 +193,11 @@ npx prisma-next migration graph
 npx prisma-next migration check
 ```
 
-`migration check` is designed for CI: exit code `0` means clean, `2` means it couldn't resolve what you asked for, `4` means an integrity failure — for example, someone hand-edited `ops.json` without re-running `migration.ts`.
+`migration check` is designed for CI: exit code `0` means clean, `2` means it couldn't resolve what you asked for, `4` means an integrity failure, for example someone hand-edited `ops.json` without re-running `migration.ts`.
 
 :::note[What's early]
 
-Planning covers tables, columns, indexes, constraints, and the backfill scaffold shown above. Rename inference is not built yet: renaming a field plans as **drop column + add column** — flagged destructive, with a data-loss warning — so for a true rename, edit the migration and replace the pair with a `rawSql` `ALTER TABLE ... RENAME COLUMN`. There is also no interactive mode; the planner writes its best answer and leaves refinement to you in `migration.ts`.
+Planning covers tables, columns, indexes, constraints, and the backfill scaffold shown above. Rename inference is not built yet: renaming a field plans as **drop column + add column**, flagged destructive with a data-loss warning. For a true rename, edit the migration and replace the pair with a `rawSql` `ALTER TABLE ... RENAME COLUMN`. There is also no interactive mode; the planner writes its best answer and leaves refinement to you in `migration.ts`.
 
 :::
 

@@ -180,7 +180,7 @@ export const CONCEPT_PRESETS = {
           "├─ [[ops.json]]        ← compiled SQL steps, what runs\n" +
           "└─ migration.json    ← from/to contract hashes",
         caption:
-          "The planner diffs the new contract against your migration history and writes a migration package — no database connection needed.",
+          "The planner diffs the new contract against your migration history and writes a migration directory. No database connection needed.",
       },
       {
         title: "3. Review (and edit)",
@@ -203,7 +203,7 @@ export const CONCEPT_PRESETS = {
           '└─ Add column "phone" to "user"\n' +
           "   precheck ✓ → execute ✓ → postcheck ✓",
         caption:
-          "migrate walks the pending migrations. Every operation verifies the database before it runs and confirms the result after — so a failed run is safe to retry.",
+          "migrate walks the pending migrations. Every operation verifies the database before it runs and confirms the result after, so a failed run is safe to retry.",
       },
     ],
   },
@@ -231,7 +231,7 @@ export const CONCEPT_PRESETS = {
           "  |^  add_posts\n" +
           "  *   705b1a6",
         caption:
-          "Alice and Bob each plan a migration from the same state, on separate git branches. No timestamps to fight over — both edges are simply valid futures of 9f49f8f.",
+          "Alice and Bob each plan a migration from the same state, on separate git branches. No timestamps to fight over: both edges are valid futures of 9f49f8f.",
       },
       {
         title: "3. The branches merge",
@@ -285,10 +285,10 @@ export const CONCEPT_PRESETS = {
           '└─ Drop column "displayName"  [[(destructive)]]\n' +
           "⚠ may cause data loss — review before applying",
         caption:
-          '`add_display_name^` means "the state before that migration". The planner writes a real migration that undoes the change — and warns you it\'s destructive. Review it, edit it, commit it.',
+          '`add_display_name^` means "the state before that migration". The planner writes a real migration that undoes the change, and warns you it\'s destructive. Review it, edit it, commit it.',
       },
       {
-        title: "3. Apply it — history grows",
+        title: "3. Apply it: history grows",
         code:
           "$ [[npx prisma-next migrate --to add_display_name^]]\n" +
           "\n" +
