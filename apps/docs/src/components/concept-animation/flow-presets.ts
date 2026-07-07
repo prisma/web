@@ -1064,6 +1064,146 @@ const relationManyToMany: FlowScene = {
   ],
 };
 
+
+// ---------------------------------------------------------------------------
+// Migration scenes. Each teaches exactly one concept.
+// ---------------------------------------------------------------------------
+
+const migrationLoop: FlowScene = {
+  label: "The migration loop",
+  width: 620,
+  height: 236,
+  nodes: [
+    { id: "contract", label: "Change the contract", sub: "your schema", variant: "source", x: 24, y: 24, w: 240, h: 64 },
+    { id: "plan", label: "Plan", sub: "writes migration files", variant: "scope", x: 356, y: 24, w: 240, h: 64 },
+    { id: "review", label: "Review", sub: "read it, edit if needed", variant: "vars", x: 356, y: 148, w: 240, h: 64 },
+    { id: "apply", label: "Apply", sub: "runs against the database", variant: "project", x: 24, y: 148, w: 240, h: 64 },
+  ],
+  edges: [
+    { id: "e1", from: "contract", fromSide: "r", to: "plan", toSide: "l" },
+    { id: "e2", from: "plan", fromSide: "b", to: "review", toSide: "t" },
+    { id: "e3", from: "review", fromSide: "l", to: "apply", toSide: "r" },
+    { id: "e4", from: "apply", fromSide: "t", to: "contract", toSide: "b", dashed: true, label: "next change" },
+  ],
+  steps: [
+    {
+      title: "1. Change",
+      caption: "Edit your schema, then emit it. The contract is what every migration command reads.",
+      nodes: ["contract", "plan", "review", "apply"],
+      edges: ["e1", "e2", "e3", "e4"],
+      emphasize: ["contract"],
+    },
+    {
+      title: "2. Plan",
+      caption: "The planner diffs your contract against history and writes migration files. No database needed.",
+      nodes: ["contract", "plan", "review", "apply"],
+      edges: ["e1", "e2", "e3", "e4"],
+      emphasize: ["plan"],
+    },
+    {
+      title: "3. Review",
+      caption: "Read the TypeScript and the SQL preview. Edit the migration when a change needs a data step.",
+      nodes: ["contract", "plan", "review", "apply"],
+      edges: ["e1", "e2", "e3", "e4"],
+      emphasize: ["review"],
+    },
+    {
+      title: "4. Apply",
+      caption: "migrate runs the pending migrations. Then the loop starts again with your next change.",
+      nodes: ["contract", "plan", "review", "apply"],
+      edges: ["e1", "e2", "e3", "e4"],
+      emphasize: ["apply"],
+    },
+  ],
+};
+
+// One concept: schema states are nodes, migrations are the edges between them.
+const migrationGraph: FlowScene = {
+  label: "States are nodes, migrations are edges",
+  width: 700,
+  height: 250,
+  nodes: [
+    { id: "s0", label: "empty", sub: "new database", variant: "neutral", x: 16, y: 93, w: 120, h: 64 },
+    { id: "s1", label: "705b1a6", sub: "after init", variant: "source", x: 190, y: 93, w: 130, h: 64 },
+    { id: "sa", label: "93be6c2", sub: "Alice's branch", variant: "scope", x: 386, y: 20, w: 130, h: 64 },
+    { id: "sb", label: "7e3fa7f", sub: "Bob's branch", variant: "vars", x: 386, y: 166, w: 130, h: 64 },
+    { id: "sm", label: "f9a41d7", sub: "merged", variant: "project", x: 560, y: 93, w: 124, h: 64 },
+  ],
+  edges: [
+    { id: "e0", from: "s0", fromSide: "r", to: "s1", toSide: "l", label: "init" },
+    { id: "ea", from: "s1", fromSide: "r", to: "sa", toSide: "l", label: "alice_phone" },
+    { id: "eb", from: "s1", fromSide: "r", to: "sb", toSide: "l", label: "bob_avatar" },
+    { id: "ma", from: "sa", fromSide: "r", to: "sm", toSide: "l", label: "merge" },
+    { id: "mb", from: "sb", fromSide: "r", to: "sm", toSide: "l", label: "merge" },
+  ],
+  steps: [
+    {
+      title: "1. States and edges",
+      caption:
+        "Every emitted contract hashes to an identifier for that exact schema state. A migration is an edge from one state to the next.",
+      nodes: ["s0", "s1"],
+      edges: ["e0"],
+      emphasize: ["s1"],
+    },
+    {
+      title: "2. Branches",
+      caption:
+        "Alice and Bob each plan a migration from the same state. Both edges are valid; there are no timestamps to fight over.",
+      nodes: ["s0", "s1", "sa", "sb"],
+      edges: ["e0", "ea", "eb"],
+      emphasize: ["sa", "sb"],
+    },
+    {
+      title: "3. Merge",
+      caption:
+        "After the git merge, each branch gets a small merge migration into the combined state. Every database finds its own path.",
+      nodes: ["s0", "s1", "sa", "sb", "sm"],
+      edges: ["e0", "ea", "eb", "ma", "mb"],
+      emphasize: ["sm"],
+    },
+  ],
+};
+
+// One concept: a rollback is a new forward edge back to a state you have been in.
+const migrationRollback: FlowScene = {
+  label: "A rollback is a new migration, not rewritten history",
+  width: 640,
+  height: 220,
+  nodes: [
+    { id: "before", label: "705b1a6", sub: "before the change", variant: "source", x: 24, y: 48, w: 200, h: 124 },
+    { id: "after", label: "e6b5c28", sub: "after add_display_name", variant: "project", x: 416, y: 48, w: 200, h: 124 },
+  ],
+  edges: [
+    { id: "fwd", from: "before", fromSide: "r", to: "after", toSide: "l", fromDy: -30, toDy: -30, label: "add_display_name" },
+    { id: "back", from: "after", fromSide: "l", to: "before", toSide: "r", fromDy: 30, toDy: 30, dashed: true, label: "rollback (a new migration)" },
+  ],
+  steps: [
+    {
+      title: "1. A change ships",
+      caption: "add_display_name applies cleanly and the database sits at the new state. Then the team decides the change was wrong.",
+      nodes: ["before", "after"],
+      edges: ["fwd"],
+      emphasize: ["after"],
+    },
+    {
+      title: "2. Plan the way back",
+      caption:
+        "Planning to the previous state writes a real migration that undoes the change, with a data-loss warning where one applies.",
+      nodes: ["before", "after"],
+      edges: ["fwd", "back"],
+      emphasize: ["before"],
+    },
+    {
+      title: "3. History grows",
+      caption:
+        "Applying it moves the database back, and the ledger records the round trip. Like git revert, never git reset.",
+      nodes: ["before", "after"],
+      edges: ["fwd", "back"],
+      emphasize: ["before"],
+    },
+  ],
+};
+
 /**
  * Names that render as visual flow diagrams. Any name not listed here falls
  * back to the Code Hike token animation in presets.ts.
@@ -1078,6 +1218,9 @@ export const FLOW_SCENES = {
   "middleware-pipeline": middlewarePipeline,
   "middleware-lifecycle": middlewareLifecycle,
   "extension-planes": extensionPlanes,
+  "migration-loop": migrationLoop,
+  "migration-graph": migrationGraph,
+  "migration-rollback": migrationRollback,
 } satisfies Record<string, FlowScene>;
 
 export type FlowName = keyof typeof FLOW_SCENES;

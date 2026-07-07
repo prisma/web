@@ -47,7 +47,7 @@ and `migrate` applies the migration to your database and confirms what it applie
 
 The contract-space count only matters once you add database extensions; ignore it for now. If you see the `✔ Applied` line, you've already run the entire workflow. The rest of this page covers additional detail: what a migration is, and why it looks the way it does.
 
-## What a migration is
+## What a migration contains
 
 A migration is a directory under `migrations/app/`, named with a timestamp and a slug:
 
@@ -55,21 +55,64 @@ A migration is a directory under `migrations/app/`, named with a timestamp and a
 migrations/
 └── app/
     └── 20260707T1006_add_user_phone/
-        ├── migration.ts         # the migration, in TypeScript — this is what you edit
-        ├── ops.json             # the compiled operations — this is what runs
-        ├── migration.json       # metadata: from/to contract hashes
-        ├── start-contract.json  # snapshot of the contract before this migration
-        └── end-contract.json    # snapshot of the contract after this migration
+        ├── migration.ts         # the file you edit
+        ├── ops.json             # the file Prisma runs
+        ├── migration.json       # where this migration fits in history
+        ├── start-contract.json  # snapshot of the contract before
+        └── end-contract.json    # snapshot of the contract after
 ```
 
-Two files do the real work:
+Three files matter day to day. Each has one job:
 
-- **`migration.ts`** is the authoring surface. It lists the migration's operations as plain function calls: `this.addColumn(...)`, `this.createTable(...)`, `this.dataTransform(...)`. It is ordinary TypeScript, type-checked against the contract snapshots sitting next to it, so your editor autocompletes column names and catches typos before anything touches a database. See [Editing a migration](/orm/next/migrations/editing-a-migration).
-- **`ops.json`** is what the runner executes. When you run `migration.ts` (the planner does this for you; after an edit you re-run it with `node migration.ts`), it compiles the operations to JSON. Production never executes your TypeScript: the runner only reads `ops.json`, so no application code runs with production credentials.
+| File | Purpose |
+| --- | --- |
+| `migration.ts` | The file you edit. It describes the schema and data changes as TypeScript function calls. |
+| `ops.json` | The file Prisma runs. It contains the compiled migration operations as JSON. |
+| `migration.json` | The file Prisma uses to track where this migration fits in history. |
 
-Both files are committed side by side, like `package.json` and `package-lock.json`: one you edit, one records exactly what will happen.
+### migration.ts: the file you edit
 
-`migration.json` records where the migration fits in history. Every contract compiles to a deterministic JSON artifact, and hashing it gives a short identifier for that exact database shape, like a git commit hash for your schema. A migration records the hash it starts **from** and the hash it moves the database **to**:
+`migration.ts` is the authoring file. It contains the migration steps as ordinary TypeScript:
+
+```ts
+this.addColumn(...)
+this.createTable(...)
+this.dataTransform(...)
+```
+
+Because it is TypeScript, type-checked against the contract snapshots sitting next to it, your editor autocompletes table and column names and catches mistakes before the migration touches a database.
+
+Use this file when you want to review or change what the migration does. See [Editing a migration](/orm/next/migrations/editing-a-migration).
+
+### ops.json: the file Prisma runs
+
+`ops.json` is the compiled form of the migration. When `migration.ts` runs (the planner does this for you; after an edit, re-run it with `node migration.ts`), Prisma turns the TypeScript steps into JSON operations. The migration runner reads only this file.
+
+That means production never executes your TypeScript. It reads the compiled operations, so no application code runs with production credentials.
+
+```text
+migration.ts  ->  ops.json
+you edit          Prisma runs
+```
+
+The two files are committed side by side and work like `package.json` and `package-lock.json`:
+
+```text
+package.json  ->  package-lock.json
+what you ask for  exact resolved result
+
+migration.ts  ->  ops.json
+what you author   exact operations to run
+```
+
+### migration.json: the history marker
+
+`migration.json` records where this migration fits in your database history. Every contract compiles to a deterministic artifact, and hashing it gives a short identifier for that exact schema state. A migration records:
+
+- the schema hash it starts `from`
+- the schema hash it moves `to`
+- when it was created
+- its own hash, so tampering is detectable
 
 ```json title="migrations/app/20260707T1006_add_user_phone/migration.json"
 {
@@ -81,9 +124,17 @@ Both files are committed side by side, like `package.json` and `package-lock.jso
 }
 ```
 
-(`migrationHash` fingerprints the compiled migration itself so tampering is detectable; `providedInvariants` is used by extension migrations and stays empty for typical app migrations.)
+Read `from` and `to` like a Git commit range: the schema state before, and the schema state after. These hashes are what link migrations into a [graph](/orm/next/migrations/the-migration-graph) instead of a numbered list. If you want a simple linear migration system, you can ignore the graph entirely.
 
-These `from`/`to` hashes are what link migrations into a [graph](/orm/next/migrations/the-migration-graph) instead of a numbered list. Thinking about your migrations as a graph instead of a linear set of actions enables Prisma Next migrations to help you in complex scenarios that other migration systems can't. If you want a simple migration system, you can ignore this.
+Together, the three files make a migration both editable and safe to run:
+
+```text
+migration.ts     you author the change
+ops.json         Prisma runs the compiled operations
+migration.json   Prisma tracks the migration in history
+```
+
+(`providedInvariants` is used by extension migrations and stays empty for typical app migrations.)
 
 ## Every operation checks itself
 
@@ -170,7 +221,7 @@ Prisma Next is in Early Access and migrations are one of its newest parts. The c
 
 ## Prompt your coding agent
 
-Projects scaffolded with `create-prisma` install [Prisma Next skills](/ai/tools/skills) for your coding agent. Ask your agent to:
+Projects scaffolded with `create-prisma` install [Prisma Next skills](/ai/tools/skills#available-skills-for-prisma-next) for your coding agent. Ask your agent to:
 
 - "Add a `phone` field to the User model and plan a migration for it."
 - "Show me the pending migrations and what SQL they will run."
