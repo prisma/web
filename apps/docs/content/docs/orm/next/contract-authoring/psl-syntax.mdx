@@ -8,7 +8,7 @@ metaDescription: Learn how to write a Prisma Next contract in the Prisma schema 
 
 PSL is the default authoring mode for the Prisma Next [data contract](/orm/next/contract-authoring/the-data-contract). You write a Prisma schema file, usually `prisma/contract.prisma`, and [`prisma-next contract emit`](/cli/next/contract-emit) turns it into `contract.json` and `contract.d.ts`.
 
-If you know the Prisma schema language, most of a contract file reads exactly as you expect. This page covers the shared basics briefly and the Prisma Next additions in detail: named types, typed enums, value objects, model inheritance, and extension types.
+If you know the Prisma schema language, most of a contract file reads exactly as you expect. This page covers the shared basics briefly and the Prisma Next additions in detail: named types, typed enums, value objects, base models with variants, and extension types.
 
 ## Point the config at the schema
 
@@ -231,7 +231,7 @@ model User {
 }
 ```
 
-Storage follows the database's nature: on PostgreSQL a value object field lives in a single `jsonb` column, and on MongoDB it is an embedded document. Either way, `contract.d.ts` types it as a structured object rather than untyped JSON.
+Storage follows the database's nature: on PostgreSQL a value object field lives in a single `jsonb` column, and on MongoDB it is an embedded document. Either way, `contract.d.ts` types it as a structured object rather than untyped JSON. On MongoDB, whether to embed or reference is the central modeling decision; [MongoDB data modeling](/orm/next/data-modeling/mongodb#embed-or-reference) covers it.
 
 ## Relations
 
@@ -273,7 +273,7 @@ model PostTag {
 
 The emitted contract records the relation as `N:M` with the join table's columns, so queries can traverse `post.tags` directly.
 
-## Model inheritance
+## Base models and variants
 
 A base model declares a discriminator field, and each variant names its base and its discriminator value:
 
@@ -296,7 +296,7 @@ model Bug {
 }
 ```
 
-Rows with `type = "bug"` are `Bug` records. On PostgreSQL, a variant's own fields live in the variant's own table (here `bug`), which shares the base model's primary key. On MongoDB, variants add their fields to documents in the base model's collection instead, so a variant declares `@@base` but no `@@map` of its own.
+Rows with `type = "bug"` are `Bug` records. On PostgreSQL, the variant's `@@map` picks its storage layout: with its own `@@map`, as here, the variant's fields live in their own table sharing the base model's primary key; without one, they live in the base table as nullable columns. [Relational data modeling](/orm/next/data-modeling/relational-databases#polymorphic-relations) covers choosing between the two. On MongoDB, variants add their fields to documents in the base model's collection, so a variant declares `@@base` but no `@@map` of its own.
 
 ## Extension types
 
