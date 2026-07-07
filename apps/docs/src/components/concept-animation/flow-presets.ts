@@ -519,12 +519,237 @@ const githubConnection: FlowScene = {
   ],
 };
 
+// One query's round trip: app → middleware chain → driver, and back out.
+// The app and database boxes span both lanes so the return edge (and the
+// cache's short-circuit) can run through the clear band under the chain.
+const middlewarePipeline: FlowScene = {
+  label: "How a query moves through middleware",
+  width: 660,
+  height: 220,
+  nodes: [
+    {
+      id: "app",
+      label: "Your app",
+      variant: "neutral",
+      x: 24,
+      y: 48,
+      w: 150,
+      h: 124,
+    },
+    {
+      id: "mw",
+      label: "Middleware",
+      sub: "cache · lints · budgets",
+      variant: "source",
+      x: 240,
+      y: 78,
+      w: 190,
+      h: 64,
+    },
+    {
+      id: "db",
+      label: "Database",
+      variant: "project",
+      x: 496,
+      y: 48,
+      w: 140,
+      h: 124,
+    },
+  ],
+  edges: [
+    { id: "fwd1", from: "app", fromSide: "r", to: "mw", toSide: "l" },
+    { id: "fwd2", from: "mw", fromSide: "r", to: "db", toSide: "l" },
+    {
+      id: "ret",
+      from: "db",
+      fromSide: "l",
+      to: "app",
+      toSide: "r",
+      fromDy: 44,
+      toDy: 44,
+      label: "results",
+    },
+    {
+      id: "hit",
+      from: "mw",
+      fromSide: "b",
+      to: "app",
+      toSide: "r",
+      toDy: 44,
+      dashed: true,
+      label: "cached rows",
+    },
+  ],
+  steps: [
+    {
+      title: "1. In the middle",
+      caption: "Every query passes through your middleware on its way to the database.",
+      nodes: ["app", "mw", "db"],
+      edges: ["fwd1", "fwd2"],
+      emphasize: ["mw"],
+    },
+    {
+      title: "2. Block",
+      caption:
+        "Middleware can stop a query before it reaches the database. This is how lints blocks a DELETE without WHERE.",
+      nodes: ["app", "mw", "db"],
+      edges: ["fwd1"],
+      emphasize: ["mw"],
+    },
+    {
+      title: "3. Answer",
+      caption:
+        "Middleware can answer a query itself. On a cache hit, the database is skipped entirely.",
+      nodes: ["app", "mw", "db"],
+      edges: ["fwd1", "hit"],
+      emphasize: ["mw"],
+    },
+    {
+      title: "4. Observe",
+      caption:
+        "Results flow back through the middleware, which sees every row and the final timing.",
+      nodes: ["app", "mw", "db"],
+      edges: ["fwd1", "fwd2", "ret"],
+      emphasize: ["app"],
+    },
+  ],
+};
 
-// ---------------------------------------------------------------------------
-// Relationship scenes for the Prisma Next Fundamentals docs.
-// Row colors double as a field legend: production = primary key,
-// override = foreign key, preview = regular field.
-// ---------------------------------------------------------------------------
+// Five hooks in execution order; the driver runs between intercept and onRow.
+const middlewareLifecycle: FlowScene = {
+  label: "The five hooks, in the order they run",
+  width: 700,
+  height: 150,
+  nodes: [
+    { id: "bc", label: "beforeCompile", sub: "rewrite", variant: "source", x: 16, y: 40, w: 128, h: 64 },
+    { id: "be", label: "beforeExecute", sub: "guard", variant: "scope", x: 156, y: 40, w: 128, h: 64 },
+    { id: "ic", label: "intercept", sub: "answer early", variant: "production", x: 296, y: 40, w: 122, h: 64 },
+    { id: "or", label: "onRow", sub: "each row", variant: "vars", x: 470, y: 40, w: 100, h: 64 },
+    { id: "ae", label: "afterExecute", sub: "observe", variant: "branch", x: 582, y: 40, w: 112, h: 64 },
+  ],
+  edges: [
+    { id: "e1", from: "bc", fromSide: "r", to: "be", toSide: "l" },
+    { id: "e2", from: "be", fromSide: "r", to: "ic", toSide: "l" },
+    { id: "e3", from: "ic", fromSide: "r", to: "or", toSide: "l", label: "driver" },
+    { id: "e4", from: "or", fromSide: "r", to: "ae", toSide: "l" },
+  ],
+  steps: [
+    {
+      title: "1. Rewrite",
+      caption: "beforeCompile can change the query while it is still a typed AST.",
+      nodes: ["bc", "be", "ic", "or", "ae"],
+      edges: ["e1", "e2", "e3", "e4"],
+      emphasize: ["bc"],
+    },
+    {
+      title: "2. Guard",
+      caption: "beforeExecute sees the final SQL. Throw here to block the query.",
+      nodes: ["bc", "be", "ic", "or", "ae"],
+      edges: ["e1", "e2", "e3", "e4"],
+      emphasize: ["be"],
+    },
+    {
+      title: "3. Answer early",
+      caption: "intercept can return rows itself; if it does, the driver never runs.",
+      nodes: ["bc", "be", "ic", "or", "ae"],
+      edges: ["e1", "e2", "e3", "e4"],
+      emphasize: ["ic"],
+    },
+    {
+      title: "4. Watch and close",
+      caption:
+        "The driver runs, onRow fires per streamed row, and afterExecute closes with row count and latency.",
+      nodes: ["bc", "be", "ic", "or", "ae"],
+      edges: ["e1", "e2", "e3", "e4"],
+      emphasize: ["or", "ae"],
+    },
+  ],
+};
+
+// One extension package, registered on two planes, converging on the database.
+const extensionPlanes: FlowScene = {
+  label: "One extension package, two registrations, one database",
+  width: 680,
+  height: 250,
+  nodes: [
+    {
+      id: "pkg",
+      label: "pgvector",
+      sub: "one npm package",
+      variant: "neutral",
+      x: 16,
+      y: 93,
+      w: 170,
+      h: 64,
+    },
+    {
+      id: "cfg",
+      label: "prisma-next.config.ts",
+      sub: "migrations",
+      variant: "source",
+      x: 260,
+      y: 24,
+      w: 200,
+      h: 64,
+    },
+    {
+      id: "rt",
+      label: "db.ts",
+      sub: "queries",
+      variant: "scope",
+      x: 260,
+      y: 162,
+      w: 200,
+      h: 64,
+    },
+    {
+      id: "pg",
+      label: "PostgreSQL",
+      variant: "project",
+      x: 524,
+      y: 93,
+      w: 140,
+      h: 64,
+    },
+  ],
+  edges: [
+    { id: "p-cfg", from: "pkg", fromSide: "r", to: "cfg", toSide: "l" },
+    { id: "p-rt", from: "pkg", fromSide: "r", to: "rt", toSide: "l" },
+    { id: "cfg-pg", from: "cfg", fromSide: "r", to: "pg", toSide: "l", label: "db init" },
+    { id: "rt-pg", from: "rt", fromSide: "r", to: "pg", toSide: "l", label: "queries" },
+  ],
+  steps: [
+    {
+      title: "1. Install",
+      caption: "One package brings everything the extension needs.",
+      nodes: ["pkg"],
+      edges: [],
+      emphasize: ["pkg"],
+    },
+    {
+      title: "2. Config side",
+      caption:
+        "Registered in the config, the extension adds its schema types and its migration (CREATE EXTENSION).",
+      nodes: ["pkg", "cfg"],
+      edges: ["p-cfg"],
+      emphasize: ["cfg"],
+    },
+    {
+      title: "3. Client side",
+      caption: "Registered in db.ts, it adds the query operations your code calls.",
+      nodes: ["pkg", "cfg", "rt"],
+      edges: ["p-cfg", "p-rt"],
+      emphasize: ["rt"],
+    },
+    {
+      title: "4. The database",
+      caption: "db init installs the feature; your queries then use it.",
+      nodes: ["pkg", "cfg", "rt", "pg"],
+      edges: ["p-cfg", "p-rt", "cfg-pg", "rt-pg"],
+      emphasize: ["pg"],
+    },
+  ],
+};
 
 const RELATION_LEGEND: { origin: RowOrigin; label: string }[] = [
   { origin: "production", label: "primary key" },
@@ -815,6 +1040,9 @@ export const FLOW_SCENES = {
   "relation-one-to-one": relationOneToOne,
   "relation-one-to-many": relationOneToMany,
   "relation-many-to-many": relationManyToMany,
+  "middleware-pipeline": middlewarePipeline,
+  "middleware-lifecycle": middlewareLifecycle,
+  "extension-planes": extensionPlanes,
 } satisfies Record<string, FlowScene>;
 
 export type FlowName = keyof typeof FLOW_SCENES;
