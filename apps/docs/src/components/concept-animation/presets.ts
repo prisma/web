@@ -299,6 +299,9 @@ export const CONCEPT_PRESETS = {
           "|^  init",
         caption:
           "The rollback is applied like any other migration: the marker moves back, the ledger records the round trip, and nothing is rewritten. Like git revert, not git reset.",
+      },
+    ],
+  },
   "middleware-pipeline": {
     label: "How a query moves through the middleware chain",
     steps: [
