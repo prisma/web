@@ -1,0 +1,324 @@
+---
+title: Writing data
+description: Create, update, delete, and upsert records with Prisma Next, one at a time or in bulk.
+url: /orm/next/fundamentals/writing-data
+metaTitle: Writing data with Prisma Next
+metaDescription: Create, update, delete, and upsert records in PostgreSQL and MongoDB with Prisma Next, and use createAll, updateAll, and deleteAll for bulk writes.
+---
+
+This page shows how to write data with Prisma Next: [creating](#create-one-record), [updating](#update-one-record), [deleting](#delete-one-record), and [upserting](#upsert-a-record) single records, and [writing many records at once](#write-many-records) with the `All` and `Count` variants.
+
+## Example schema
+
+All examples on this page are based on the following schema:
+
+<details>
+
+<summary>Expand for sample schema</summary>
+
+```prisma tab="PostgreSQL"
+model User {
+  id        String   @id @default(cuid(2))
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  posts     Post[]
+}
+
+model Post {
+  id        String   @id @default(cuid(2))
+  title     String
+  content   String?
+  published Boolean
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  createdAt DateTime @default(now())
+}
+```
+
+```prisma tab="MongoDB"
+model User {
+  id        ObjectId @id @map("_id")
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  posts     Post[]
+  @@map("users")
+}
+
+model Post {
+  id        ObjectId @id @map("_id")
+  title     String
+  content   String?
+  published Boolean
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  ObjectId
+  createdAt DateTime @default(now())
+  @@map("posts")
+}
+```
+
+</details>
+
+## Create one record
+
+Use `.create(...)` to insert one record. Pass the fields directly, and Prisma Next returns the inserted record, including generated values such as IDs and database defaults:
+
+```typescript tab="PostgreSQL"
+import { db } from "./prisma/db";
+
+const user = await db.orm.public.User.create({
+  email: "jane@prisma.io",
+  name: "Jane",
+});
+// user.id and user.createdAt are filled in
+```
+
+```typescript tab="MongoDB"
+import { db } from "./prisma/db";
+
+const user = await db.orm.users.create({
+  email: "jane@prisma.io",
+  name: "Jane",
+  createdAt: new Date(),
+});
+// user._id is filled in by the server
+```
+
+The returned record is complete, so you can use the generated values right away:
+
+```js no-copy
+{
+  id: 'cuid20000000000000000003',
+  email: 'jane@prisma.io',
+  name: 'Jane',
+  createdAt: 2026-07-06T09:09:56.119Z
+}
+```
+
+To get back only some fields, chain `.select(...)` before `.create(...)`. The insert is the same; only the returned shape narrows:
+
+```typescript
+const account = await db.orm.public.User
+  .select("id", "email")
+  .create({ email: "jane@prisma.io", name: "Jane" });
+```
+
+```js no-copy
+{ id: 'cuid20000000000000000003', email: 'jane@prisma.io' }
+```
+
+For Prisma 7 users, there is no `data` wrapper:
+
+```diff
+- const user = await prisma.user.create({ data: { email: "jane@prisma.io", name: "Jane" } });
++ const user = await db.orm.public.User.create({ email: "jane@prisma.io", name: "Jane" });
+```
+
+:::note
+
+On MongoDB, pass timestamp fields such as `createdAt` explicitly. `@default(now())` from the contract is not applied at create time yet. On PostgreSQL the database fills them in.
+
+:::
+
+## Update one record
+
+Use `.where(...)` to pick the record, then `.update(...)` with the fields to change. It updates **one** matching record and returns it:
+
+```typescript tab="PostgreSQL"
+const updatedUser = await db.orm.public.User
+  .where({ email: "jane@prisma.io" })
+  .update({ name: "Jane Doe" });
+```
+
+```typescript tab="MongoDB"
+const updatedUser = await db.orm.users
+  .where({ email: "jane@prisma.io" })
+  .update({ name: "Jane Doe" });
+```
+
+```js no-copy
+{
+  id: 'cuid20000000000000000003',
+  email: 'jane@prisma.io',
+  name: 'Jane Doe',
+  createdAt: 2026-07-06T09:09:56.119Z
+}
+```
+
+If the filter can match more than one record, `.update(...)` still changes only one. To change every match, use [`updateAll` or `updateCount`](#write-many-records).
+
+On MongoDB, you can also update with field operations such as `.set(...)`, `.inc(...)`, and `.push(...)` by passing a callback:
+
+```typescript
+await db.orm.posts
+  .where({ title: "Draft thoughts" })
+  .update((p) => [p.content.set("Now filled in")]);
+```
+
+## Delete one record
+
+Use `.where(...)` then `.delete()`. It deletes **one** matching record and returns it:
+
+```typescript tab="PostgreSQL"
+const deletedUser = await db.orm.public.User
+  .where({ email: "jane@prisma.io" })
+  .delete();
+```
+
+```typescript tab="MongoDB"
+const deletedUser = await db.orm.users
+  .where({ email: "jane@prisma.io" })
+  .delete();
+```
+
+To delete every match, use [`deleteAll` or `deleteCount`](#write-many-records).
+
+## Upsert a record
+
+Use `.upsert(...)` to update a record if it exists and create it otherwise. Pass the two branches separately:
+
+```typescript tab="PostgreSQL"
+await db.orm.public.User.upsert({
+  create: { email: "eve@prisma.io", name: "Eve" },
+  update: { name: "Eve Exists" },
+});
+```
+
+```typescript tab="MongoDB"
+await db.orm.users.where({ email: "eve@prisma.io" }).upsert({
+  create: { email: "eve@prisma.io", name: "Eve", createdAt: new Date() },
+  update: { name: "Eve Exists" },
+});
+```
+
+On PostgreSQL, the record is matched on the model's unique fields (here `email`). On MongoDB, put the match in `.where(...)` before `.upsert(...)`.
+
+## Write many records
+
+Use the `All` and `Count` variants when you intend to affect every matching record:
+
+```typescript
+// Insert many records
+const newPosts = await db.orm.public.Post.createAll([
+  { title: "One", content: null, published: false, authorId: user.id },
+  { title: "Two", content: null, published: false, authorId: user.id },
+]);
+
+// Update every match
+const updatedCount = await db.orm.public.Post
+  .where({ published: false })
+  .updateCount({ published: true });
+
+// Delete every match
+const deletedCount = await db.orm.public.Post
+  .where((p) => p.title.ilike("draft%"))
+  .deleteCount();
+```
+
+The `Count` variants return plain numbers:
+
+```js no-copy
+updatedCount: 3
+deletedCount: 3
+```
+
+The bulk methods work the same on MongoDB, on the collection roots (`db.orm.posts`).
+
+## Return rows or counts
+
+Each mutation comes in three forms. Pick by what you need back:
+
+| Form | Affects | Returns |
+| --- | --- | --- |
+| `create`, `update`, `delete` | one record | the affected record |
+| `createAll`, `updateAll`, `deleteAll` | every match | the affected records |
+| `createCount`, `updateCount`, `deleteCount` | every match | the number affected |
+
+The `Count` forms skip re-reading the affected records, so prefer them for large batches. The `All` forms return their records as a result you can `await` into an array or [stream with `for await`](/orm/next/fundamentals/reading-data#stream-large-results):
+
+```typescript
+const publishedPosts = await db.orm.public.Post
+  .where({ published: false })
+  .updateAll({ published: true });
+```
+
+```js no-copy
+[
+  { id: 'cuid20000000000000000101', title: 'One', published: true, /* ... */ },
+  { id: 'cuid20000000000000000102', title: 'Two', published: true, /* ... */ }
+]
+```
+
+## Common mistakes
+
+### Updating or deleting more than one record
+
+You filtered on a non-unique field and expected every match to change:
+
+```typescript
+await db.orm.public.Post.where({ published: false }).update({ published: true });
+```
+
+`.update(...)` and `.delete()` only change one record. Even when the filter matches many, Prisma Next updates or deletes a single matching record, and the rest stay as they were.
+
+When you intend to affect every match, say so with the bulk variants:
+
+```typescript
+const updatedCount = await db.orm.public.Post
+  .where({ published: false })
+  .updateCount({ published: true });
+```
+
+Use `updateAll` or `deleteAll` when you also need the changed records back, and `updateCount` or `deleteCount` when the number is enough. The singular forms stay safe for the one-record case: they can never fan out further than you expected.
+
+### Wrapping create fields in a data object
+
+You wrote the Prisma 7 shape, and it fails type-checking, because your contract has no field named `data`:
+
+```diff
+- await db.orm.public.User.create({ data: { email, name } });
++ await db.orm.public.User.create({ email, name });
+```
+
+The shape you pass is the shape of the record, which is also why the return value needs no unwrapping.
+
+### Updating or deleting without a filter
+
+You called `.update(...)` or `.delete()` straight on the model:
+
+```typescript
+await db.orm.public.User.delete();
+```
+
+Both mutations require a `.where(...)` first, and the types reject the call without one. This is deliberate: there is no accidental way to write "delete a record, whichever one". If you truly mean every record, write the filter that says so and use `deleteAll`.
+
+### Running related writes back to back
+
+You created a user, then created their first post as a second await:
+
+```typescript
+const user = await db.orm.public.User.create({ email, name });
+const post = await db.orm.public.Post.create({ title, published: false, authorId: user.id });
+```
+
+If the second write fails, the first has already committed, and you're left with half the operation. When writes must succeed together, run them in a [transaction](/orm/next/fundamentals/transactions): one callback, one commit, or one rollback.
+
+### Passing an array of queries to a transaction
+
+Prisma 7 supported `$transaction([query1, query2])`. Prisma Next does not: there is no `$transaction`, and queries don't queue up in arrays. Put the calls inside one `db.transaction(...)` callback instead; the [Transactions page](/orm/next/fundamentals/transactions) shows the pattern.
+
+## Prompt your coding agent
+
+Projects scaffolded with `create-prisma` install Prisma Next skills for your coding agent; the `prisma-next-queries` skill covers everything on this page. Prompts that map to each section:
+
+- "Using the prisma-next-queries skill, add a signup function that creates a User and returns only its id and email."
+- "Write an upsert that creates a user by email or updates their name if they exist."
+- "This cleanup script must delete every draft older than 30 days. Use the bulk delete variant and log how many records were removed."
+- "Review my mutations for places where .update() should be updateAll or updateCount."
+
+## Next
+
+- [Run several writes atomically](/orm/next/fundamentals/transactions) with `db.transaction(...)`.
+- [Read data](/orm/next/fundamentals/reading-data) to filter, sort, paginate, and select fields from your models.
+- [Use the SQL builder](/orm/next/fundamentals/advanced-queries#postgresql-sql-query-builder) for inserts and updates with explicit `RETURNING` clauses.
