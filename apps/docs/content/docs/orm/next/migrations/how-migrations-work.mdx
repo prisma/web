@@ -18,13 +18,34 @@ The workflow is a loop you will run many times a day in development:
 3. **Review it**: read the generated TypeScript and the DDL preview. Edit the migration if the change needs a data step, then re-run the file to recompile it.
 4. **Apply it**: `prisma-next migrate` runs the pending migrations against your database.
 
+In a project with a database connection configured (the [quickstart](/next/quickstart/postgresql) gives you one), the whole loop is three commands. Add an optional `phone String?` field to a model in your `.prisma` file, then:
+
 ```bash
 npx prisma-next contract emit
 npx prisma-next migration plan --name add_user_phone
 npx prisma-next migrate
 ```
 
-Each page in this section walks through one part of the loop in detail. This page covers the model: what a migration is, and why it looks the way it does.
+`migration plan` prints the SQL it wrote before anything runs:
+
+```text
+✔ Planned 1 operation(s)
+
+│
+└─ Add column "phone" to "user"
+
+DDL preview
+
+ALTER TABLE "public"."user" ADD COLUMN "phone" text;
+```
+
+and `migrate` confirms what it applied:
+
+```text
+✔ Applied 1 migration(s) (1 operation(s)) across 1 contract space(s)
+```
+
+(The contract-space count only matters once you add database extensions; ignore it for now.) If you see that `✔ Applied` line, you've already run the entire workflow; the rest of this section is detail. This page covers the model: what a migration is, and why it looks the way it does.
 
 ## What a migration is
 
@@ -121,7 +142,7 @@ Two commands talk to a database:
 | ------------------ | ---------------------------------------------------------------------------- |
 | `migrate`          | [Apply pending migrations](/orm/next/migrations/applying-a-migration)        |
 | `migration status` | Show where the database is in the graph and which migrations are pending     |
-| `migration log`    | Show the history of applied migrations from the database's ledger            |
+| `migration log`    | Show the history of migrations the database has actually applied             |
 
 Note that applying is `prisma-next migrate`, not `migration apply`: `migration ...` commands manage the on-disk migration directories, while `migrate` moves a database.
 

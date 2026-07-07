@@ -224,10 +224,10 @@ export const CONCEPT_PRESETS = {
       {
         title: "2. Two people branch",
         code:
-          "[[*   93be6c2         *   7e3fa7f]]\n" +
-          "[[|^  alice_phone     |^  bob_avatar]]\n" +
-          " \\               /\n" +
-          "  *   9f49f8f   ← both branched from here\n" +
+          "[[*   93be6c2]]        [[*   7e3fa7f]]\n" +
+          "[[|^  alice_phone]]    [[|^  bob_avatar]]\n" +
+          " \\                  /\n" +
+          "  *   9f49f8f    ← both branched from here\n" +
           "  |^  add_posts\n" +
           "  *   705b1a6",
         caption:
@@ -236,13 +236,13 @@ export const CONCEPT_PRESETS = {
       {
         title: "3. The branches merge",
         code:
-          "      *   [[f9a41d7  (prod)]]\n" +
-          "     / \\\n" +
-          "[[|^ merge_alice  |^ merge_bob]]\n" +
-          "  *   93be6c2   *   7e3fa7f\n" +
-          "  |^  alice_phone   |^  bob_avatar\n" +
-          "   \\             /\n" +
-          "    *   9f49f8f",
+          "         *   [[f9a41d7  (prod)]]\n" +
+          "        /            \\\n" +
+          "[[|^  merge_alice]]     [[|^  merge_bob]]\n" +
+          "*   93be6c2         *   7e3fa7f\n" +
+          "|^  alice_phone     |^  bob_avatar\n" +
+          " \\                  /\n" +
+          "  *   9f49f8f",
         caption:
           "After the git merge, each branch gets a small merge migration into the combined state. A database that followed Alice takes merge_alice; one that followed Bob takes merge_bob. Every environment finds its own path.",
       },
