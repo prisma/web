@@ -306,17 +306,16 @@ const config = {
       // /guides/next tree is promoted to /guides. The redirects to enable at
       // that cutover, kept here so the map builds up in one reviewable place:
       //
-      // 1. Promote every converted Prisma Next guide (per-guide, as converted):
-      // { source: "/guides/next/bun", destination: "/guides/bun", permanent: false },
-      // { source: "/guides/next/deno", destination: "/guides/deno", permanent: false },
-      // { source: "/guides/next/hono", destination: "/guides/hono", permanent: false },
-      // { source: "/guides/next", destination: "/guides", permanent: false },
+      // The /guides/next tree mirrors the Prisma 7 folder structure, so the
+      // promotion is one wildcard:
+      // { source: "/guides/next/:path*", destination: "/guides/:path*", permanent: false },
       //
-      // 2. Park the Prisma 7 versions under /guides/v7 (only for guides that
-      //    have a Prisma Next replacement; unconverted guides keep their URL):
+      // Park the Prisma 7 versions under /guides/v7 (only for guides that
+      // have a Prisma Next replacement; unconverted guides keep their URL):
       // { source: "/guides/runtimes/bun", destination: "/guides/v7/runtimes/bun", permanent: false },
       // { source: "/guides/runtimes/deno", destination: "/guides/v7/runtimes/deno", permanent: false },
       // { source: "/guides/frameworks/hono", destination: "/guides/v7/frameworks/hono", permanent: false },
+      // { source: "/guides/frameworks/elysia", destination: "/guides/v7/frameworks/elysia", permanent: false },
       //
       // Each future guide conversion appends its pair here in the same PR.
       // ───────────────────────────────────────────────────────────────────────
