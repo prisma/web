@@ -8,7 +8,25 @@ metaDescription: What the Prisma Next data contract is, how PSL and TypeScript a
 
 Every Prisma Next project has one description of its data: the models, their fields, and how they map to database tables. That description is the data contract.
 
-For example, a blog's contract declares a `User` and a `Post`, the fields each carries, and which tables store them. Prisma Next compiles that into a machine-readable artifact, and everything else checks itself against it: queries are type-checked against the contract, migrations are planned as changes to it, and the database is verified against it before your code runs.
+For example, a blog's contract declares a `User` and a `Post`, the fields each carries, and how they relate. You author it in PSL, the Prisma schema language:
+
+```prisma title="prisma/contract.prisma"
+model User {
+  id    Int    @id @default(autoincrement())
+  email String @unique
+  posts Post[]
+}
+
+model Post {
+  id     Int    @id @default(autoincrement())
+  title  String
+  userId Int
+
+  user User @relation(fields: [userId], references: [id])
+}
+```
+
+Prisma Next compiles this into a machine-readable artifact, and everything else checks itself against it: queries are type-checked against the contract, migrations are planned as changes to it, and the database is verified against it before your code runs.
 
 Think of it as a `package-lock.json` for your data: an exact, versioned record of what your application expects from its database.
 
@@ -22,7 +40,7 @@ In Prisma Next, the **contract** is what you write in your code, and the **schem
 
 Prisma ORM's current architecture compiles your schema into generated client code. The schema knowledge exists, but it is buried in code that only the client itself can interpret.
 
-Prisma Next keeps the schema knowledge in the open. Your schema source compiles to two plain files: `contract.json`, a canonical JSON description of models, storage, and capabilities, and `contract.d.ts`, the TypeScript types derived from it. Both are deterministic: the same source always produces byte-identical output, so the artifacts can be diffed in code review, hashed for verification, and read directly by tools and AI agents.
+Prisma Next keeps the schema knowledge in the open. Your contract source compiles to two plain files: `contract.json`, a canonical JSON description of models, storage, and capabilities, and `contract.d.ts`, the TypeScript types derived from it. Both are deterministic: the same source always produces byte-identical output, so the artifacts can be diffed in code review, hashed for verification, and read directly by tools and AI agents.
 
 The contract also carries identity. Emission computes hashes over the contract's content, and [`prisma-next db sign`](/cli/next/db-sign) records them in a small marker inside the database. Before executing queries, Prisma Next compares the contract it was built against with the marker in the database it is talking to. A mismatch, such as a deploy against an unmigrated database, fails verification instead of failing at query time.
 
@@ -54,14 +72,11 @@ This writes `contract.json` and `contract.d.ts` next to the source. From there, 
 
 ## Two authoring modes, one artifact
 
-PSL and TypeScript authoring are two front ends to the same contract. For an equivalent schema they emit the same `contract.json`, so nothing downstream, including migrations, verification, and the query APIs, cares which one you write.
+**[PSL](/orm/next/contract-authoring/psl-syntax)** is the preferred authoring surface: a compact language purpose-built for describing data. It is what `create-prisma` scaffolds, what [`prisma-next contract infer`](/cli/next/contract-infer) writes when you start from an existing database, and what the examples throughout these docs use.
 
-A project declares exactly one source of truth: the file named by `contract` in the config. Keep the other form out of the project, or treat it as a generated reference, so the two can never disagree.
+For the cases PSL does not cover, defining models with a **[TypeScript builder](/orm/next/contract-authoring/typescript-schema-builder)** exists as an escape hatch: reach for it when model definitions must be composed, generated, or shared as ordinary TypeScript modules.
 
-Choose based on how you want to write schemas:
-
-- **[PSL](/orm/next/contract-authoring/psl-syntax)** is the Prisma schema language you already know, extended for Prisma Next. It is the default for scaffolded projects, and it is what [`prisma-next contract infer`](/cli/next/contract-infer) writes when you start from an existing database.
-- **[TypeScript](/orm/next/contract-authoring/typescript-schema-builder)** defines the same models with a typed builder API. There is no separate language to learn, your editor type-checks the schema as you write it, and you can compose and reuse definitions with ordinary TypeScript modules.
+Both modes are front ends to the same contract. For an equivalent schema they emit the same `contract.json`, so nothing downstream, including migrations, verification, and the query APIs, cares which one you write, and you give up nothing by staying with PSL. A project declares exactly one source of truth: the file named by `contract` in the config. Keep the other form out of the project, or treat it as a generated reference, so the two can never disagree.
 
 ## What the contract contains
 
