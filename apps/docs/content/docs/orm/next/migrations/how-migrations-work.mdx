@@ -1,0 +1,148 @@
+---
+title: How migrations work
+description: Change your contract, plan a migration, review it, apply it. Every step is checked before and after it runs.
+url: /orm/next/migrations/how-migrations-work
+metaTitle: How migrations work in Prisma Next
+metaDescription: What a Prisma Next migration is, the plan-review-apply loop, the files inside a migration package, and why every operation is safe to retry.
+badge: early-access
+---
+
+A migration is how Prisma Next changes your database when your contract changes. You add a field to a model, and something has to run `ALTER TABLE` against every database that serves your app: your laptop, staging, production. Migrations are that something, recorded as files in your repo so the change is reviewable, repeatable, and versioned with your code.
+
+The workflow is a loop you will run many times a day in development:
+
+<ConceptAnimation name="migration-loop" />
+
+1. **Change your contract**: edit your `.prisma` file (or TypeScript contract) and run `prisma-next contract emit`.
+2. **Plan a migration**: `prisma-next migration plan` compares the new contract against your migration history and writes a migration package to `migrations/`.
+3. **Review it**: read the generated TypeScript and the DDL preview. Edit the migration if the change needs a data step, then re-run the file to recompile it.
+4. **Apply it**: `prisma-next migrate` runs the pending migrations against your database.
+
+```bash
+npx prisma-next contract emit
+npx prisma-next migration plan --name add_user_phone
+npx prisma-next migrate
+```
+
+Each page in this section walks through one part of the loop in detail. This page covers the model: what a migration actually is, and why it looks the way it does.
+
+## What a migration is
+
+A migration is a directory under `migrations/app/`, named with a timestamp and a slug:
+
+```text
+migrations/
+└── app/
+    └── 20260707T1005_add_user_phone/
+        ├── migration.ts         # the migration, in TypeScript — this is what you edit
+        ├── ops.json             # the compiled operations — this is what runs
+        ├── migration.json       # metadata: from/to contract hashes
+        ├── start-contract.json  # snapshot of the contract before this migration
+        └── end-contract.json    # snapshot of the contract after this migration
+```
+
+Two files do the real work:
+
+- **`migration.ts`** is the authoring surface. It lists the migration's operations as plain function calls: `this.addColumn(...)`, `this.createTable(...)`, `this.dataTransform(...)`. It is ordinary TypeScript, type-checked against the contract snapshots sitting next to it, so your editor autocompletes column names and catches typos before anything touches a database. See [Editing a migration](/orm/next/migrations/editing-a-migration).
+- **`ops.json`** is what the runner executes. When you run `migration.ts` (the planner does this for you; after an edit you re-run it with `node migration.ts`), it compiles the operations to JSON. Production never executes your TypeScript — the runner only reads `ops.json`, so no application code runs with production credentials.
+
+Both files are committed side by side, like `package.json` and `package-lock.json`: one you edit, one records exactly what will happen.
+
+`migration.json` records where the migration fits in history. Every contract compiles to a deterministic JSON artifact, and hashing it gives a short identifier for that exact database shape — like a git commit hash for your schema. A migration records the hash it starts **from** and the hash it moves the database **to**:
+
+```json title="migrations/app/20260707T1005_add_user_phone/migration.json"
+{
+  "from": "sha256:705b1a62f26f0913caa4bfe3f8b7cb491a1b94bd47fc43471d8711bc480bcbb5",
+  "to": "sha256:925198f3cc272c5fd19c24ac02f251661775ddac21cdac4e634bbc0dda8b2d72",
+  "providedInvariants": [],
+  "createdAt": "2026-07-07T10:05:55.937Z",
+  "migrationHash": "sha256:4b57fa2141c8ad94476d5de66c451468fd6c864210481ad00ac89b259491fbcf"
+}
+```
+
+These `from`/`to` hashes are what link migrations into a [graph](/orm/next/migrations/the-migration-graph) instead of a numbered list — that's the next page.
+
+## Every operation checks itself
+
+Inside `ops.json`, each operation has three parts: a **precheck** that confirms the database is in the expected state, the **execute** statements that make the change, and a **postcheck** that confirms the change worked.
+
+```json title="One operation from ops.json"
+{
+  "id": "column.public.user.phone",
+  "label": "Add column \"phone\" to \"user\"",
+  "operationClass": "additive",
+  "precheck": [
+    {
+      "description": "ensure column \"phone\" is missing",
+      "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+      "params": ["public", "user", "phone"]
+    }
+  ],
+  "execute": [
+    {
+      "description": "add column \"phone\"",
+      "sql": "ALTER TABLE \"public\".\"user\" ADD COLUMN \"phone\" text"
+    }
+  ],
+  "postcheck": [
+    {
+      "description": "verify column \"phone\" exists",
+      "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+      "params": ["public", "user", "phone"]
+    }
+  ]
+}
+```
+
+This structure is what makes Prisma Next migrations safe in the situations where classic SQL migrations hurt:
+
+- **A migration fails.** On PostgreSQL the whole run is one transaction, so a failure rolls everything back — the database returns to exactly where it was, and you fix the cause and re-run. And because the runner skips any operation whose postcheck already holds, re-running never double-applies work that's already true in the database. No commenting out statements, no hand-editing the database.
+- **The database isn't in the state you assumed.** The precheck catches it before the change runs, and the error names the exact operation and the exact check that failed — not a generic SQL error halfway through.
+- **Someone (or some agent) wrote the migration for you.** The intent (`migration.ts`), the exact SQL (`ops.json`), and the verification for every step are all in the diff, so review is straightforward.
+
+## The commands
+
+Everything lives under the `prisma-next` CLI. Planning and inspection are offline — they read files, not your database:
+
+| Command                   | What it does                                                            |
+| ------------------------- | ----------------------------------------------------------------------- |
+| `migration plan`          | [Generate a migration](/orm/next/migrations/generating-a-migration) from your contract changes |
+| `migration new`           | Scaffold an empty migration for [manual authoring](/orm/next/migrations/editing-a-migration#starting-from-a-blank-migration) |
+| `migration show <target>` | Print one migration's operations, DDL preview, and metadata            |
+| `migration list`          | List every on-disk migration                                            |
+| `migration graph`         | Draw the [migration graph](/orm/next/migrations/the-migration-graph)   |
+| `migration check`         | Verify migration files and graph integrity (useful in CI)               |
+
+Two commands talk to a database:
+
+| Command            | What it does                                                                 |
+| ------------------ | ---------------------------------------------------------------------------- |
+| `migrate`          | [Apply pending migrations](/orm/next/migrations/applying-a-migration)        |
+| `migration status` | Show where the database is in the graph and which migrations are pending     |
+| `migration log`    | Show the history of applied migrations from the database's ledger            |
+
+Note that applying is `prisma-next migrate`, not `migration apply` — `migration ...` commands manage the on-disk packages, `migrate` moves a database.
+
+## The same model for SQL and MongoDB
+
+Everything on this page applies to both database families. On PostgreSQL, operations compile to SQL DDL and the applied state is tracked in a marker table. On MongoDB, operations create collections, indexes, and JSON Schema validators, and state is tracked in a `_prisma_migrations` collection. The commands, the file layout, the graph, and the precheck/execute/postcheck structure are identical.
+
+:::note[Migrations are early]
+
+Prisma Next is in Early Access and migrations are one of its newest parts. The core loop on this page — plan, edit, apply, roll back — works today and is exercised in the Prisma Next test suite. Some things classic migration tools grew over years are not built yet: there are no squash/baseline commands, and no shadow-database dry run. We call out what's missing on each page rather than papering over it.
+
+:::
+
+## Prompt your coding agent
+
+Projects scaffolded with `create-prisma` install Prisma Next skills for your coding agent. Prompts that map to this page:
+
+- "Add a `phone` field to the User model and plan a migration for it."
+- "Show me the pending migrations and what SQL they will run."
+- "Explain what the ops.json in the latest migration does."
+
+## See also
+
+- [The migration graph](/orm/next/migrations/the-migration-graph): why migrations form a graph and what that buys you
+- [Generating a migration](/orm/next/migrations/generating-a-migration): the `migration plan` walkthrough
+- [Rethinking Database Migrations](https://www.prisma.io/blog/rethinking-database-migrations): the blog post on why this design exists

@@ -1,5 +1,3 @@
-import type { ConceptName } from "./presets";
-
 /**
  * A flow scene is a fixed box-and-arrow diagram drawn in a viewBox. Every node
  * and edge is laid out once; each step only chooses which of them are visible
@@ -528,4 +526,6 @@ export const FLOW_SCENES = {
   "compute-model": computeModel,
   "env-layers": envLayers,
   "github-connection": githubConnection,
-} satisfies Partial<Record<ConceptName, FlowScene>>;
+} satisfies Record<string, FlowScene>;
+
+export type FlowName = keyof typeof FLOW_SCENES;

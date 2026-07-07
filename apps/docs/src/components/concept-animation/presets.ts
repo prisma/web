@@ -153,6 +153,155 @@ export const CONCEPT_PRESETS = {
       },
     ],
   },
+  "migration-loop": {
+    label: "The migration loop: change, plan, review, apply",
+    steps: [
+      {
+        title: "1. Change the contract",
+        code:
+          "model User {\n" +
+          "  id    Int     @id\n" +
+          "  email String\n" +
+          "  [[phone String?   ← new field]]\n" +
+          "}\n" +
+          "\n" +
+          "$ [[npx prisma-next contract emit]]",
+        caption:
+          "Everything starts in your contract. Add the field, then emit: the schema compiles to contract.json, the artifact every migration command reads.",
+      },
+      {
+        title: "2. Plan a migration",
+        code:
+          "$ [[npx prisma-next migration plan --name add_phone]]\n" +
+          "  │\n" +
+          "  ▼\n" +
+          "migrations/app/20260707T1005_add_phone/\n" +
+          "├─ [[migration.ts]]    ← TypeScript, yours to edit\n" +
+          "├─ [[ops.json]]        ← compiled SQL steps, what runs\n" +
+          "└─ migration.json    ← from/to contract hashes",
+        caption:
+          "The planner diffs the new contract against your migration history and writes a migration package — no database connection needed.",
+      },
+      {
+        title: "3. Review (and edit)",
+        code:
+          "migration.ts:  this.addColumn({ table: 'user', ... })\n" +
+          'ops.json:      ALTER TABLE "user" ADD COLUMN "phone" text\n' +
+          "\n" +
+          "# edited? recompile:\n" +
+          "$ [[node migrations/app/20260707T1005_add_phone/migration.ts]]",
+        caption:
+          "Intent and exact SQL sit side by side in the diff. Need a data backfill or a custom step? Edit migration.ts and re-run it to regenerate ops.json.",
+      },
+      {
+        title: "4. Apply",
+        code:
+          "$ [[npx prisma-next migrate]]\n" +
+          "  │\n" +
+          "  ▼\n" +
+          "✔ Applied 1 migration(s)\n" +
+          '└─ Add column "phone" to "user"\n' +
+          "   precheck ✓ → execute ✓ → postcheck ✓",
+        caption:
+          "migrate walks the pending migrations. Every operation verifies the database before it runs and confirms the result after — so a failed run is safe to retry.",
+      },
+    ],
+  },
+  "migration-graph": {
+    label: "How migrations form a graph",
+    steps: [
+      {
+        title: "1. A chain of states",
+        code:
+          "*   [[9f49f8f]]   ← contract hash = a database state\n" +
+          "|^  add_posts\n" +
+          "*   705b1a6\n" +
+          "|^  init\n" +
+          "*   -           ← empty database",
+        caption:
+          "Every emitted contract hashes to an identifier, like a git commit. Each migration is an edge that moves a database from one state (its `from`) to another (its `to`).",
+      },
+      {
+        title: "2. Two people branch",
+        code:
+          "[[*   93be6c2         *   7e3fa7f]]\n" +
+          "[[|^  alice_phone     |^  bob_avatar]]\n" +
+          " \\               /\n" +
+          "  *   9f49f8f   ← both branched from here\n" +
+          "  |^  add_posts\n" +
+          "  *   705b1a6",
+        caption:
+          "Alice and Bob each plan a migration from the same state, on separate git branches. No timestamps to fight over — both edges are simply valid futures of 9f49f8f.",
+      },
+      {
+        title: "3. The branches merge",
+        code:
+          "      *   [[f9a41d7  (prod)]]\n" +
+          "     / \\\n" +
+          "[[|^ merge_alice  |^ merge_bob]]\n" +
+          "  *   93be6c2   *   7e3fa7f\n" +
+          "  |^  alice_phone   |^  bob_avatar\n" +
+          "   \\             /\n" +
+          "    *   9f49f8f",
+        caption:
+          "After the git merge, each branch gets a small merge migration into the combined state. A database that followed Alice takes merge_alice; one that followed Bob takes merge_bob. Every environment finds its own path.",
+      },
+      {
+        title: "4. Databases walk the graph",
+        code:
+          "*   f9a41d7  [[(prod)  @db ← production is here]]\n" +
+          "|^  merge_alice\n" +
+          "*   93be6c2  [[← staging is here]]\n" +
+          "|^  alice_phone\n" +
+          "*   9f49f8f\n" +
+          "\n" +
+          "$ [[npx prisma-next migrate --to prod]]",
+        caption:
+          "Each database carries a marker naming its current node. Applying means finding the path from the marker to the target and walking it, edge by edge. Refs like `prod` give important nodes a name.",
+      },
+    ],
+  },
+  "migration-rollback": {
+    label: "Rollback: a new edge to a state you've been in",
+    steps: [
+      {
+        title: "1. A change ships",
+        code:
+          "*   [[e6b5c28  @db ← database is here]]\n" +
+          "|^  add_display_name\n" +
+          "*   705b1a6\n" +
+          "|^  init\n" +
+          "*   -",
+        caption:
+          "add_display_name applied cleanly and the marker moved to e6b5c28. Then the team decides the change was wrong.",
+      },
+      {
+        title: "2. Plan the reverse edge",
+        code:
+          "$ [[npx prisma-next migration plan \\]]\n" +
+          "    [[--to add_display_name^  --name rollback]]\n" +
+          "  │\n" +
+          "  ▼\n" +
+          '└─ Drop column "displayName"  [[(destructive)]]\n' +
+          "⚠ may cause data loss — review before applying",
+        caption:
+          '`add_display_name^` means "the state before that migration". The planner writes a real migration that undoes the change — and warns you it\'s destructive. Review it, edit it, commit it.',
+      },
+      {
+        title: "3. Apply it — history grows",
+        code:
+          "$ [[npx prisma-next migrate --to add_display_name^]]\n" +
+          "\n" +
+          "*   e6b5c28\n" +
+          "|^  add_display_name\n" +
+          "[[|v  rollback            e6b5c28 -> 705b1a6]]\n" +
+          "*   [[705b1a6  @db ← database is back here]]\n" +
+          "|^  init",
+        caption:
+          "The rollback is applied like any other migration: the marker moves back, the ledger records the round trip, and nothing is rewritten. Like git revert, not git reset.",
+      },
+    ],
+  },
 } satisfies Record<string, ConceptPreset>;
 
 export type ConceptName = keyof typeof CONCEPT_PRESETS;

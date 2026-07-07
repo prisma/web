@@ -297,6 +297,34 @@ const config = {
         destination: "/next/add-to-existing-project/:path*",
         permanent: false,
       },
+      // Prisma 7 migrate docs → Prisma Next migrations (temporary; the
+      // underlying model changed, so only pages with a clean equivalent
+      // redirect — see apps/docs/content/docs/orm/next/migrations/).
+      {
+        source: "/orm/prisma-migrate",
+        destination: "/orm/next/migrations/how-migrations-work",
+        permanent: false,
+      },
+      {
+        source: "/orm/prisma-migrate/getting-started",
+        destination: "/orm/next/migrations/how-migrations-work",
+        permanent: false,
+      },
+      {
+        source: "/orm/prisma-migrate/understanding-prisma-migrate/mental-model",
+        destination: "/orm/next/migrations/the-migration-graph",
+        permanent: false,
+      },
+      {
+        source: "/orm/prisma-migrate/workflows/development-and-production",
+        destination: "/orm/next/migrations/applying-a-migration",
+        permanent: false,
+      },
+      {
+        source: "/orm/prisma-migrate/workflows/customizing-migrations",
+        destination: "/orm/next/migrations/editing-a-migration",
+        permanent: false,
+      },
     ];
   },
   async rewrites() {
