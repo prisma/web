@@ -1,4 +1,3 @@
-
 /**
  * A flow scene is a fixed box-and-arrow diagram drawn in a viewBox. Every node
  * and edge is laid out once; each step only chooses which of them are visible
@@ -621,11 +620,47 @@ const middlewareLifecycle: FlowScene = {
   width: 700,
   height: 150,
   nodes: [
-    { id: "bc", label: "beforeCompile", sub: "rewrite", variant: "source", x: 16, y: 40, w: 128, h: 64 },
-    { id: "be", label: "beforeExecute", sub: "guard", variant: "scope", x: 156, y: 40, w: 128, h: 64 },
-    { id: "ic", label: "intercept", sub: "answer early", variant: "production", x: 296, y: 40, w: 122, h: 64 },
+    {
+      id: "bc",
+      label: "beforeCompile",
+      sub: "rewrite",
+      variant: "source",
+      x: 16,
+      y: 40,
+      w: 128,
+      h: 64,
+    },
+    {
+      id: "be",
+      label: "beforeExecute",
+      sub: "guard",
+      variant: "scope",
+      x: 156,
+      y: 40,
+      w: 128,
+      h: 64,
+    },
+    {
+      id: "ic",
+      label: "intercept",
+      sub: "answer early",
+      variant: "production",
+      x: 296,
+      y: 40,
+      w: 122,
+      h: 64,
+    },
     { id: "or", label: "onRow", sub: "each row", variant: "vars", x: 470, y: 40, w: 100, h: 64 },
-    { id: "ae", label: "afterExecute", sub: "observe", variant: "branch", x: 582, y: 40, w: 112, h: 64 },
+    {
+      id: "ae",
+      label: "afterExecute",
+      sub: "observe",
+      variant: "branch",
+      x: 582,
+      y: 40,
+      w: 112,
+      h: 64,
+    },
   ],
   edges: [
     { id: "e1", from: "bc", fromSide: "r", to: "be", toSide: "l" },
@@ -823,7 +858,7 @@ const relationOneToOne: FlowScene = {
     {
       title: "3. Query from the profile",
       caption:
-        "The model that holds the foreign key declares the relation, so you query from that side: Profile.include(\"user\") follows userId and attaches the matching user to the result.",
+        'The model that holds the foreign key declares the relation, so you query from that side: Profile.include("user") follows userId and attaches the matching user to the result.',
       nodes: ["user", "profile"],
       edges: ["fk"],
       emphasize: ["user"],
@@ -908,7 +943,7 @@ const relationOneToMany: FlowScene = {
     {
       title: "3. Query either direction",
       caption:
-        "User.include(\"posts\") gathers every post with a matching authorId into an array on the user. Post.include(\"author\") follows the key the other way and attaches one user to each post.",
+        'User.include("posts") gathers every post with a matching authorId into an array on the user. Post.include("author") follows the key the other way and attaches one user to each post.',
       nodes: ["user", "p1", "p2", "p3"],
       edges: ["e1", "e2", "e3"],
       emphasize: ["user"],
@@ -1021,7 +1056,7 @@ const relationManyToMany: FlowScene = {
     {
       title: "3. Traverse in two hops",
       caption:
-        "Queries follow the same two hops: Post.include(\"tags\") fetches the link records, and nesting include(\"tag\") inside it attaches each tag. One query, both hops.",
+        'Queries follow the same two hops: Post.include("tags") fetches the link records, and nesting include("tag") inside it attaches each tag. One query, both hops.',
       nodes: ["post1", "post2", "pt1", "pt2", "pt3", "tag1", "tag2"],
       edges: ["a1", "b1", "a2", "b2", "a3", "b3"],
       emphasize: ["post1", "tag1", "tag2"],

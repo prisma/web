@@ -162,7 +162,7 @@ export const CONCEPT_PRESETS = {
           "model User {\n" +
           "  id    Int     @id\n" +
           "  email String\n" +
-          "  [[phone String?   ← new field]]\n" +
+          "  phone String?   [[← new field]]\n" +
           "}\n" +
           "\n" +
           "$ [[npx prisma-next contract emit]]",
