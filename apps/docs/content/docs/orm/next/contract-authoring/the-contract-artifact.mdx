@@ -1,7 +1,7 @@
 ---
 title: The emitted artifacts
 description: contract.json and contract.d.ts are the deterministic artifacts every other part of Prisma Next consumes. Here is what is inside them.
-url: /next/contract-authoring/the-contract-artifact
+url: /orm/next/contract-authoring/the-contract-artifact
 metaTitle: The Prisma Next contract artifacts
 metaDescription: What contract.json and contract.d.ts contain, how deterministic emission and content hashes work, and how the runtime and tooling consume the artifacts.
 ---
@@ -13,13 +13,13 @@ metaDescription: What contract.json and contract.d.ts contain, how deterministic
 | `contract.json` | The canonical, machine-readable contract: models, storage, capabilities, and content hashes | The runtime, migration tooling, verification, and anything else that needs to read your schema |
 | `contract.d.ts` | TypeScript declarations derived from the contract | The query APIs and your application code, for typed models and results |
 
-Both files are generated. Do not edit them; change the [PSL](/next/contract-authoring/psl-syntax) or [TypeScript](/next/contract-authoring/typescript-schema-builder) source and re-run `contract emit`. The files carry a generated-file notice that says exactly this.
+Both files are generated. Do not edit them; change the [PSL](/orm/next/contract-authoring/psl-syntax) or [TypeScript](/orm/next/contract-authoring/typescript-schema-builder) source and re-run `contract emit`. The files carry a generated-file notice that says exactly this.
 
 ## Deterministic emission
 
 Emission is deterministic: the same source produces byte-identical artifacts on every machine and every run. Keys are written in canonical order and values in normalized form, which is what makes the artifacts diffable in code review and hashable for verification.
 
-Determinism is also why the contract source must stay pure. A schema that read the clock or the environment would emit differently each time, and every hash-based guarantee below would collapse. The [TypeScript authoring page](/next/contract-authoring/typescript-schema-builder#keep-the-contract-file-pure) lists the concrete rules.
+Determinism is also why the contract source must stay pure. A schema that read the clock or the environment would emit differently each time, and every hash-based guarantee below would collapse. The [TypeScript authoring page](/orm/next/contract-authoring/typescript-schema-builder#keep-the-contract-file-pure) lists the concrete rules.
 
 ## The content hashes
 
@@ -106,7 +106,7 @@ The sections, top to bottom:
 - **`domain`**: the application's view. Each field carries `nullable` and a `codecId` such as `pg/text@1`, which names the codec that encodes and decodes values of that type. Relations record cardinality and the fields they join on. The model's `storage` block maps fields to columns.
 - **`storage`**: the database's view: tables with columns (native type plus codec), primary keys, uniques, indexes, foreign keys, and value sets backing enums. This is the section migration tooling diffs and `db verify` checks the live schema against.
 - **`execution`**: defaults Prisma Next applies before writes, such as UUID generation, kept out of the database's DDL.
-- **`capabilities`** and **`extensionPacks`**: the database and extension features available to this contract, merged from the target, adapter, and extension packs at emit time. Query APIs consult these before using gated features; see [Capabilities](/next/contract-authoring/capabilities).
+- **`capabilities`** and **`extensionPacks`**: the database and extension features available to this contract, merged from the target, adapter, and extension packs at emit time. Query APIs consult these before using gated features; see [Capabilities](/orm/next/contract-authoring/capabilities).
 
 ## Inside `contract.d.ts`
 
@@ -148,9 +148,16 @@ At startup, the client carries the contract's hashes and verifies them against t
 
 Commit the artifacts alongside the source. They contain structure only, no data and no credentials, and committed artifacts let teammates, CI, and deploys consume the contract without re-running emission. Re-run `contract emit` after every source change so the committed artifacts never trail the source; a CI job can enforce this by running the emit and failing if the working tree changes.
 
+## Prompt your coding agent
+
+Projects scaffolded with `create-prisma` install [Prisma Next skills](/ai/tools/skills) for your coding agent; the `prisma-next-contract` skill covers this page. Ask your agent to:
+
+- "Explain the difference between contract.json and contract.d.ts in this project."
+- "Re-emit the contract and show me what changed in the artifact."
+
 ## Next steps
 
-- Learn how the contract's [capabilities](/next/contract-authoring/capabilities) gate database features.
+- Learn how the contract's [capabilities](/orm/next/contract-authoring/capabilities) gate database features.
 - Apply the contract to a fresh database with [`prisma-next db init`](/cli/next/db-init).
 - Check a live database against the contract with [`prisma-next db verify`](/cli/next/db-verify).
 - Plan schema changes between contract versions with [`prisma-next migration plan`](/cli/next/migration-plan).
