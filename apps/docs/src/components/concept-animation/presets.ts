@@ -153,6 +153,87 @@ export const CONCEPT_PRESETS = {
       },
     ],
   },
+  "middleware-pipeline": {
+    label: "How a query moves through the middleware chain",
+    steps: [
+      {
+        title: "1. One chain",
+        code:
+          "your app  (ORM client · SQL query builder · raw)\n" +
+          "  │  execute(plan)\n" +
+          "  ▼\n" +
+          "[[cache]] → [[lints]] → [[budgets]] → driver → database",
+        caption:
+          "Every query, whichever surface issued it, runs through the same middleware array on its way to the driver, in registration order: first in the array, first at every hook.",
+      },
+      {
+        title: "2. Before the driver",
+        code:
+          "your app\n" +
+          "  │  [[beforeCompile]] · [[beforeExecute]]\n" +
+          "  ▼\n" +
+          "cache → [[lints]] → [[budgets]] → driver → database",
+        caption:
+          "Before anything reaches the database, beforeCompile can rewrite the query and beforeExecute can validate it, mutate parameters, or throw to block it. This is where lints and budgets do their pre-flight checks.",
+      },
+      {
+        title: "3. Cache answers early",
+        code:
+          "your app ◄───────────── [[intercept: cached rows]]\n" +
+          "  │                     │\n" +
+          "  ▼                     │\n" +
+          "[[cache]] ──────────────┘   lints · budgets · driver skipped",
+        caption:
+          "A middleware can answer a query itself: on a hit, the cache returns rows from intercept and the driver never runs. afterExecute still fires with source set to middleware, so observability keeps working.",
+      },
+      {
+        title: "4. Rows stream back",
+        code:
+          "your app ◄── [[onRow]] (per row) ◄── database rows\n" +
+          "             [[afterExecute]]  (rowCount · latencyMs)",
+        caption:
+          "On the way back, onRow fires once per row as the driver streams, and afterExecute closes the call with the observed row count and latency.",
+      },
+    ],
+  },
+  "extension-planes": {
+    label: "How one extension package plugs into a project",
+    steps: [
+      {
+        title: "1. One package",
+        code: "[[@prisma-next/extension-pgvector]]\n  ├─ /control   (build time)\n  └─ /runtime   (query time)",
+        caption:
+          "An extension ships as one npm package with two entry points: a control export used at build time and a runtime export used when your app runs.",
+      },
+      {
+        title: "2. Control plane",
+        code:
+          "@prisma-next/extension-pgvector\n" +
+          "  └─ /control → [[prisma-next.config.ts]]\n" +
+          "                 schema types · [[baseline migration]]",
+        caption:
+          "prisma-next.config.ts registers the control export. Contract emission picks up schema types like Vector(n), and the pack ships the baseline migration that installs the database feature.",
+      },
+      {
+        title: "3. Runtime plane",
+        code:
+          "@prisma-next/extension-pgvector\n" +
+          "  ├─ /control → prisma-next.config.ts\n" +
+          "  └─ /runtime → [[db.ts]]\n" +
+          "                 codecs · [[query operations]]",
+        caption:
+          "db.ts registers the runtime export on the client, which gains the pack's codecs and query operations like cosineDistance. A missing required pack fails at client construction.",
+      },
+      {
+        title: "4. Meet at the database",
+        code:
+          "prisma-next.config.ts → [[db init]] → CREATE EXTENSION vector\n" +
+          "db.ts                 → [[queries]] → cosineDistance(…)",
+        caption:
+          "db init applies the pack's baseline migration, and your queries run against a database that provably has the feature the contract relies on.",
+      },
+    ],
+  },
 } satisfies Record<string, ConceptPreset>;
 
 export type ConceptName = keyof typeof CONCEPT_PRESETS;
