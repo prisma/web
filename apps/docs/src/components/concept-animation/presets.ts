@@ -183,15 +183,17 @@ export const CONCEPT_PRESETS = {
           "The planner diffs the new contract against your migration history and writes a migration directory. No database connection needed.",
       },
       {
-        title: "3. Review (and edit)",
+        title: "3. Review (edit if needed)",
         code:
-          "migration.ts:  this.addColumn({ table: 'user', ... })\n" +
-          'ops.json:      ALTER TABLE "user" ADD COLUMN "phone" text\n' +
+          "review the pair:\n" +
+          "  migration.ts  →  this.addColumn({ table: 'user', ... })\n" +
+          '  ops.json      →  ALTER TABLE "user" ADD COLUMN "phone" text\n' +
           "\n" +
-          "# edited? recompile:\n" +
-          "$ [[node migrations/app/20260707T1005_add_phone/migration.ts]]",
+          "only if you [[edit migration.ts]], run it once to\n" +
+          "[[regenerate ops.json]] so the two stay in sync:\n" +
+          "$ node migrations/app/20260707T1005_add_phone/migration.ts",
         caption:
-          "Intent and exact SQL sit side by side in the diff. Need a data backfill or a custom step? Edit migration.ts and re-run it to regenerate ops.json.",
+          "migration.ts states the intent; ops.json is the exact SQL that will run. For most changes you review both and move on. If you do edit migration.ts (say, to add a data backfill), running the file rewrites ops.json to match.",
       },
       {
         title: "4. Apply",
