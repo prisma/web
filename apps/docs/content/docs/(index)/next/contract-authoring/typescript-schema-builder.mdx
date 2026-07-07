@@ -1,18 +1,30 @@
 ---
 title: Author in TypeScript
 description: Define the Prisma Next contract with a typed builder API instead of a schema file. Same models, same artifacts, no separate language.
-url: /orm/next/contract/typescript
+url: /next/contract-authoring/typescript-schema-builder
 metaTitle: Author the Prisma Next contract in TypeScript
 metaDescription: Learn how to define a Prisma Next contract in TypeScript with defineContract, including fields, relations, enums, storage mapping, and extension types.
 ---
 
-TypeScript authoring defines the Prisma Next [data contract](/orm/next/contract) in code. Instead of a `.prisma` file, you write `prisma/contract.ts` with the `defineContract` builder, and [`prisma-next contract emit`](/cli/next/contract-emit) produces exactly the same `contract.json` and `contract.d.ts` a PSL schema would.
+TypeScript authoring defines the Prisma Next [data contract](/next/contract-authoring/the-data-contract) in code. Instead of a `.prisma` file, you write `prisma/contract.ts` with the `defineContract` builder, and [`prisma-next contract emit`](/cli/next/contract-emit) produces exactly the same `contract.json` and `contract.d.ts` a PSL schema would.
 
-The trade is straightforward: you give up PSL's compact syntax and get the full TypeScript toolchain in return. Your editor type-checks model definitions as you write them, invalid references are compile errors instead of emit-time diagnostics, and you can split, compose, and reuse definitions with ordinary modules.
+## When to choose TypeScript over PSL
+
+The trade is straightforward: you give up PSL's compact syntax and get the full TypeScript toolchain in return. Choose TypeScript when:
+
+- you want the schema type-checked as you write it, with invalid references caught as compile errors instead of emit-time diagnostics
+- you want to split, compose, or reuse model definitions with ordinary modules
+- your team prefers one language for everything over learning PSL
+
+Choose [PSL](/next/contract-authoring/psl-syntax) when you want the most compact syntax, or when you start from an existing database, since [`prisma-next contract infer`](/cli/next/contract-infer) writes PSL.
 
 ## Point the config at the contract file
 
 The config's `contract` path names the source of truth. A `.ts` extension selects TypeScript authoring:
+
+<Tabs items={["PostgreSQL", "MongoDB"]}>
+
+<Tab value="PostgreSQL">
 
 ```typescript title="prisma-next.config.ts"
 import { defineConfig } from "@prisma-next/postgres/config";
@@ -22,9 +34,29 @@ export default defineConfig({
 });
 ```
 
+</Tab>
+
+<Tab value="MongoDB">
+
+```typescript title="prisma-next.config.ts"
+import { defineConfig } from "@prisma-next/mongo/config";
+
+export default defineConfig({
+  contract: "./prisma/contract.ts",
+});
+```
+
+</Tab>
+
+</Tabs>
+
 ## A complete contract
 
-The builder comes from your database's target package. For PostgreSQL that is `@prisma-next/postgres/contract-builder`:
+The builder comes from your database's target package: `@prisma-next/postgres/contract-builder` for PostgreSQL, `@prisma-next/mongo/contract-builder` for MongoDB.
+
+<Tabs items={["PostgreSQL", "MongoDB"]}>
+
+<Tab value="PostgreSQL">
 
 ```typescript title="prisma/contract.ts"
 import pgvector from "@prisma-next/extension-pgvector/pack";
@@ -96,7 +128,54 @@ export const contract = defineContract(
 );
 ```
 
+</Tab>
+
+<Tab value="MongoDB">
+
+```typescript title="prisma/contract.ts"
+import { defineContract, field, model, rel } from "@prisma-next/mongo/contract-builder";
+
+const User = model("User", {
+  collection: "users",
+  fields: {
+    _id: field.objectId(),
+    name: field.string(),
+    email: field.string(),
+    bio: field.string().optional(),
+  },
+  relations: {
+    posts: rel.hasMany("Post", { from: "_id", to: "authorId" }),
+  },
+});
+
+const Post = model("Post", {
+  collection: "posts",
+  fields: {
+    _id: field.objectId(),
+    authorId: field.objectId(),
+    title: field.string(),
+    publishedAt: field.date().optional(),
+  },
+  relations: {
+    author: rel.belongsTo(User, { from: "authorId", to: User.ref("_id") }),
+  },
+});
+
+export const contract = defineContract({
+  models: {
+    User,
+    Post,
+  },
+});
+```
+
+</Tab>
+
+</Tabs>
+
 Run `npx prisma-next contract emit` after any change to refresh the artifacts.
+
+The two builders share the same shape but differ where the databases do. On PostgreSQL, fields pick column types and models chain `.sql({ table })` to map storage; on MongoDB, the ID is a `field.objectId()` named `_id`, scalar helpers are `field.string()`, `field.int32()`, `field.double()`, `field.bool()`, and `field.date()`, and the collection is an inline `collection` option on the model rather than a chained call.
 
 ## How `defineContract` works
 
@@ -105,6 +184,8 @@ Run `npx prisma-next contract emit` after any change to refresh the artifacts.
 The options object declares what the contract is built from, most importantly `extensionPacks`. The target and database family are already bound by the import: `@prisma-next/postgres/contract-builder` produces PostgreSQL contracts, so you never name them yourself.
 
 The factory receives authoring helpers composed from the target and every extension pack you declared: `field` for field definitions, `model` for models, and `type` for pack-provided types (which is why `type.pgvector` exists in the example, and only when `pgvector` is in `extensionPacks`). The factory returns the contract's content: `models`, plus optional `enums` and `types`.
+
+The MongoDB builder is simpler: it exports `field`, `model`, and `rel` directly, and its `defineContract` takes a single definition object with the `models`, as in the MongoDB tab above. The sections below use the PostgreSQL builder.
 
 ## Fields
 
@@ -205,9 +286,9 @@ Configuration that legitimately varies per environment, such as the database URL
 
 ## Parity with PSL
 
-TypeScript and [PSL](/orm/next/contract/psl) authoring emit the same canonical artifact for an equivalent schema. You can move between the modes without any downstream change, but a project declares exactly one source of truth: the file named in the config. Keep the other form out of the project so the two can never disagree.
+TypeScript and [PSL](/next/contract-authoring/psl-syntax) authoring emit the same canonical artifact for an equivalent schema. You can move between the modes without any downstream change, but a project declares exactly one source of truth: the file named in the config. Keep the other form out of the project so the two can never disagree.
 
 ## Next steps
 
-- Emit and inspect [the artifacts](/orm/next/contract/artifacts) the contract produces.
+- Emit and inspect [the artifacts](/next/contract-authoring/the-contract-artifact) the contract produces.
 - Apply the contract to a database with [`prisma-next db init`](/cli/next/db-init) or plan changes with [`prisma-next migration plan`](/cli/next/migration-plan).

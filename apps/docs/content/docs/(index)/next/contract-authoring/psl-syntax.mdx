@@ -1,18 +1,22 @@
 ---
 title: Author in PSL
 description: Write the Prisma Next contract as a Prisma schema file, using the schema language you already know plus the Prisma Next additions.
-url: /orm/next/contract/psl
+url: /next/contract-authoring/psl-syntax
 metaTitle: Author the Prisma Next contract in PSL
 metaDescription: Learn how to write a Prisma Next contract in the Prisma schema language, including named types, enums, value objects, relations, and extension types.
 ---
 
-PSL is the default authoring mode for the Prisma Next [data contract](/orm/next/contract). You write a Prisma schema file, usually `prisma/contract.prisma`, and [`prisma-next contract emit`](/cli/next/contract-emit) turns it into `contract.json` and `contract.d.ts`.
+PSL is the default authoring mode for the Prisma Next [data contract](/next/contract-authoring/the-data-contract). You write a Prisma schema file, usually `prisma/contract.prisma`, and [`prisma-next contract emit`](/cli/next/contract-emit) turns it into `contract.json` and `contract.d.ts`.
 
 If you know the Prisma schema language, most of a contract file reads exactly as you expect. This page covers the shared basics briefly and the Prisma Next additions in detail: named types, typed enums, value objects, model inheritance, and extension types.
 
 ## Point the config at the schema
 
 The config's `contract` path names the source of truth. A `.prisma` extension selects PSL authoring:
+
+<Tabs items={["PostgreSQL", "MongoDB"]}>
+
+<Tab value="PostgreSQL">
 
 ```typescript title="prisma-next.config.ts"
 import { defineConfig } from "@prisma-next/postgres/config";
@@ -22,9 +26,29 @@ export default defineConfig({
 });
 ```
 
+</Tab>
+
+<Tab value="MongoDB">
+
+```typescript title="prisma-next.config.ts"
+import { defineConfig } from "@prisma-next/mongo/config";
+
+export default defineConfig({
+  contract: "./prisma/contract.prisma",
+});
+```
+
+</Tab>
+
+</Tabs>
+
 Scaffolded projects (`npx create-prisma@next`) already contain this wiring and a starter schema.
 
 ## A complete contract
+
+<Tabs items={["PostgreSQL", "MongoDB"]}>
+
+<Tab value="PostgreSQL">
 
 ```prisma title="prisma/contract.prisma"
 // use prisma-next
@@ -70,6 +94,57 @@ model Post {
 }
 ```
 
+</Tab>
+
+<Tab value="MongoDB">
+
+```prisma title="prisma/contract.prisma"
+// use prisma-next
+
+type Address {
+  street  String
+  city    String
+  zip     String?
+  country String
+}
+
+enum UserRole {
+  @@type("mongo/string@1")
+  Admin  = "admin"
+  Author = "author"
+  Reader = "reader"
+}
+
+model User {
+  id      ObjectId @id @map("_id")
+  name    String
+  email   String
+  bio     String?
+  role    UserRole
+  address Address?
+  posts   Post[]
+
+  @@map("users")
+}
+
+model Post {
+  id        ObjectId @id @map("_id")
+  title     String
+  content   String
+  authorId  ObjectId
+  createdAt DateTime
+
+  author User @relation(fields: [authorId], references: [id])
+
+  @@index([authorId])
+  @@map("posts")
+}
+```
+
+</Tab>
+
+</Tabs>
+
 Run `npx prisma-next contract emit` after any change to refresh the artifacts.
 
 ## Models and fields
@@ -77,9 +152,39 @@ Run `npx prisma-next contract emit` after any change to refresh the artifacts.
 Models declare fields with a type, an optional `?` marker, and attributes:
 
 - `@id` marks the primary key; `@@id([a, b])` declares a composite key.
-- `@unique` adds a unique constraint.
+- `@unique` adds a unique constraint; `@@index([...])` declares a secondary index.
 - `@default(...)` sets a default. Database function defaults such as `@default(now())` become column defaults in the database. Generated defaults such as `@default(uuid())` are applied by Prisma Next before each write instead, so they work the same on every database and appear in the contract's `execution` section rather than as DDL.
-- `@@map("table_name")` sets the table name when it differs from the model name.
+- `@map("column_name")` sets a field's physical name; `@@map("table_name")` sets the table or collection name when it differs from the model name.
+
+How IDs map differs by database:
+
+<Tabs items={["PostgreSQL", "MongoDB"]}>
+
+<Tab value="PostgreSQL">
+
+```prisma
+model User {
+  id Uuid @id @default(uuid())
+}
+```
+
+The primary key is an ordinary column; pick its type and default yourself.
+
+</Tab>
+
+<Tab value="MongoDB">
+
+```prisma
+model User {
+  id ObjectId @id @map("_id")
+}
+```
+
+The primary key is MongoDB's `_id`: type it `ObjectId` and map it to the physical `_id` key.
+
+</Tab>
+
+</Tabs>
 
 ## Named types
 
@@ -126,7 +231,7 @@ model User {
 }
 ```
 
-On PostgreSQL, a value object field is stored in a single `jsonb` column, and `contract.d.ts` types it as a structured object rather than untyped JSON.
+Storage follows the database's nature: on PostgreSQL a value object field lives in a single `jsonb` column, and on MongoDB it is an embedded document. Either way, `contract.d.ts` types it as a structured object rather than untyped JSON.
 
 ## Relations
 
@@ -191,7 +296,7 @@ model Bug {
 }
 ```
 
-Rows with `type = "bug"` are `Bug` records. The variant's own fields live in its own table (here `bug`), which shares the base model's primary key.
+Rows with `type = "bug"` are `Bug` records. On PostgreSQL, a variant's own fields live in the variant's own table (here `bug`), which shares the base model's primary key. On MongoDB, variants add their fields to documents in the base model's collection instead, so a variant declares `@@base` but no `@@map` of its own.
 
 ## Extension types
 
@@ -226,6 +331,6 @@ If the database already exists, don't write the schema by hand. [`prisma-next co
 
 ## Next steps
 
-- Emit and inspect [the artifacts](/orm/next/contract/artifacts) the schema produces.
-- Prefer defining models in code? See [authoring in TypeScript](/orm/next/contract/typescript).
+- Emit and inspect [the artifacts](/next/contract-authoring/the-contract-artifact) the schema produces.
+- Prefer defining models in code? See [authoring in TypeScript](/next/contract-authoring/typescript-schema-builder).
 - Apply the contract to a database with [`prisma-next db init`](/cli/next/db-init) or plan changes with [`prisma-next migration plan`](/cli/next/migration-plan).

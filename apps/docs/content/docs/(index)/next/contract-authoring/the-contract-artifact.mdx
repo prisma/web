@@ -1,7 +1,7 @@
 ---
 title: The emitted artifacts
 description: contract.json and contract.d.ts are the deterministic artifacts every other part of Prisma Next consumes. Here is what is inside them.
-url: /orm/next/contract/artifacts
+url: /next/contract-authoring/the-contract-artifact
 metaTitle: The Prisma Next contract artifacts
 metaDescription: What contract.json and contract.d.ts contain, how deterministic emission and content hashes work, and how the runtime and tooling consume the artifacts.
 ---
@@ -13,13 +13,13 @@ metaDescription: What contract.json and contract.d.ts contain, how deterministic
 | `contract.json` | The canonical, machine-readable contract: models, storage, capabilities, and content hashes | The runtime, migration tooling, verification, and anything else that needs to read your schema |
 | `contract.d.ts` | TypeScript declarations derived from the contract | The query APIs and your application code, for typed models and results |
 
-Both files are generated. Do not edit them; change the [PSL](/orm/next/contract/psl) or [TypeScript](/orm/next/contract/typescript) source and re-run `contract emit`. The files carry a generated-file notice that says exactly this.
+Both files are generated. Do not edit them; change the [PSL](/next/contract-authoring/psl-syntax) or [TypeScript](/next/contract-authoring/typescript-schema-builder) source and re-run `contract emit`. The files carry a generated-file notice that says exactly this.
 
 ## Deterministic emission
 
 Emission is deterministic: the same source produces byte-identical artifacts on every machine and every run. Keys are written in canonical order and values in normalized form, which is what makes the artifacts diffable in code review and hashable for verification.
 
-Determinism is also why the contract source must stay pure. A schema that read the clock or the environment would emit differently each time, and every hash-based guarantee below would collapse. The [TypeScript authoring page](/orm/next/contract/typescript#keep-the-contract-file-pure) lists the concrete rules.
+Determinism is also why the contract source must stay pure. A schema that read the clock or the environment would emit differently each time, and every hash-based guarantee below would collapse. The [TypeScript authoring page](/next/contract-authoring/typescript-schema-builder#keep-the-contract-file-pure) lists the concrete rules.
 
 ## The content hashes
 
@@ -29,13 +29,13 @@ Emission computes hashes over distinct parts of the contract. Each answers a dif
 | --- | --- | --- |
 | `storageHash` | Models, fields, relations, and the full storage layout: tables, columns, keys, indexes | Any schema change |
 | `executionHash` | Defaults Prisma Next applies before writes, such as `uuid()` generators | Generated defaults change |
-| `profileHash` | The capability profile the contract declares for the target and its extensions | Capabilities or extension packs change, even with an identical schema |
+| `profileHash` | The profile the contract is built for: the target database and its family | The contract targets a different database |
 
 The hashes are how Prisma Next connects the contract to a live database. [`prisma-next db sign`](/cli/next/db-sign) checks that the database satisfies the contract and records the hashes in a marker inside the database. From then on, [`prisma-next db verify`](/cli/next/db-verify) and the runtime compare the contract they hold against the marker, so a stale deploy or an unmigrated database is caught by verification rather than by a failing query.
 
 ## Inside `contract.json`
 
-The contract separates what your application models from how it is stored. The `domain` section describes models, fields, and relations; the `storage` section describes tables, columns, keys, and indexes; each model's `storage` block bridges the two. Everything is grouped by namespace (on PostgreSQL, the schema, typically `public`).
+The contract separates what your application models from how it is stored. The `domain` section describes models, fields, and relations; the `storage` section describes tables, columns, keys, and indexes (or collections and indexes for a MongoDB contract); each model's `storage` block bridges the two. Everything is grouped by namespace (on PostgreSQL, the schema, typically `public`).
 
 An abridged emit of a `User`/`Post` schema:
 
@@ -106,7 +106,7 @@ The sections, top to bottom:
 - **`domain`**: the application's view. Each field carries `nullable` and a `codecId` such as `pg/text@1`, which names the codec that encodes and decodes values of that type. Relations record cardinality and the fields they join on. The model's `storage` block maps fields to columns.
 - **`storage`**: the database's view: tables with columns (native type plus codec), primary keys, uniques, indexes, foreign keys, and value sets backing enums. This is the section migration tooling diffs and `db verify` checks the live schema against.
 - **`execution`**: defaults Prisma Next applies before writes, such as UUID generation, kept out of the database's DDL.
-- **`capabilities`** and **`extensionPacks`**: the database and extension features the contract relies on, pinned so verification can check the target actually provides them.
+- **`capabilities`** and **`extensionPacks`**: the database and extension features available to this contract, merged from the target, adapter, and extension packs at emit time. Query APIs consult these before using gated features; see [Capabilities](/next/contract-authoring/capabilities).
 
 ## Inside `contract.d.ts`
 
@@ -150,6 +150,7 @@ Commit the artifacts alongside the source. They contain structure only, no data 
 
 ## Next steps
 
+- Learn how the contract's [capabilities](/next/contract-authoring/capabilities) gate database features.
 - Apply the contract to a fresh database with [`prisma-next db init`](/cli/next/db-init).
 - Check a live database against the contract with [`prisma-next db verify`](/cli/next/db-verify).
 - Plan schema changes between contract versions with [`prisma-next migration plan`](/cli/next/migration-plan).
