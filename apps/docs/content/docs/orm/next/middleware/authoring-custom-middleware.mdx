@@ -1,22 +1,29 @@
 ---
 title: Authoring custom middleware
-description: Build, register, and test your own Prisma Next middleware, step by step, starting with a query logger.
+description: Build, register, and run your own Prisma Next middleware, step by step, starting with a query logger.
 url: /orm/next/middleware/authoring-custom-middleware
 metaTitle: Authoring custom middleware in Prisma Next
-metaDescription: Write a custom Prisma Next middleware step by step. Build a query logger, register it, see its output, and learn the full hook surface.
+metaDescription: Write a custom Prisma Next middleware step by step. Build a query logger, register it, run it, and learn the full hook surface.
 badge: early-access
 ---
 
 ## Introduction
 
-In this guide, you build your own middleware from scratch: a query logger that prints every query with its row count and latency. You will create the middleware file, register it, run a query, and see the output. At the end you will know the full hook surface well enough to write any middleware.
+In this guide, you build your own middleware from scratch: a query logger that prints every query with its row count and latency. You create one file, register it in one place, run a query, and see the output.
 
 A custom middleware is a plain object with a `name` and the hooks you implement. There is no base class and no registration API beyond the `middleware` array you already know from [How middleware works](/orm/next/middleware/how-middleware-works).
 
+This entire guide was run end to end on a fresh `create-prisma` project against a live Prisma Postgres database; the outputs shown are from that run.
+
 ## Prerequisites
 
-- A Prisma Next project with a working `src/prisma/db.ts`. The [PostgreSQL quickstart](/next/quickstart/postgresql) sets one up in a few minutes.
-- At least one model with a few rows, so the logger has something to log.
+- A Prisma Next project with a working `src/prisma/db.ts`. The [PostgreSQL quickstart](/next/quickstart/postgresql) sets one up in a few minutes:
+
+```bash
+npx create-prisma@next --provider postgres
+cd my-app
+npm run db:init
+```
 
 ## 1. Create the middleware
 
@@ -39,17 +46,17 @@ export function queryLogger(): SqlMiddleware {
 }
 ```
 
-Typing the object as `SqlMiddleware` gives you inferred parameter types on every hook, so you rarely import the plan or result types yourself. `familyId: "sql"` says this middleware is for SQL databases; the [family section below](#which-family-to-declare) explains when to set it.
+Typing the object as `SqlMiddleware` gives you inferred parameter types on every hook, so you rarely import the plan or result types yourself. `familyId: "sql"` says this middleware is for SQL databases; [step 5](#5-know-which-family-to-declare) explains when to set it.
 
 ## 2. Register it
 
-Add the middleware to the `middleware` array in your client setup:
+Add the middleware to the `middleware` array in your client setup. This is the complete file after the change:
 
 ```ts title="src/prisma/db.ts"
 import postgres from '@prisma-next/postgres/runtime';
+import { queryLogger } from './query-logger';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
-import { queryLogger } from './query-logger';
 
 export const db = postgres<Contract>({
   contractJson,
@@ -60,21 +67,39 @@ export const db = postgres<Contract>({
 
 That is the whole wiring. Every query on this client now passes through the logger, whether it comes from the ORM API or the SQL query builder.
 
-## 3. Run a query and check the output
+## 3. Run a query and see the output
 
-Run any query in your app, for example:
+Put a small script in `src/index.ts` that writes and reads:
 
-```ts
+```ts title="src/index.ts"
+import { db } from "./prisma/db";
+
+await db.orm.public.User.create({
+  email: `mia+${Date.now()}@prisma.io`,
+  name: "Mia",
+});
+
 const users = await db.orm.public.User.select("id", "email").take(5).all();
+console.log(`fetched ${users.length} users`);
+
+await db.close();
 ```
 
-Your terminal shows one line per query:
+Run it:
+
+```bash
+npm run dev
+```
+
+The logger reports both queries, with the SQL the runtime actually executed:
 
 ```text no-copy
-[query-logger] 2 rows in 18ms · SELECT "user"."id" AS "id", "user"."email" AS "email" FROM "public"."user" LIMIT 5
+[query-logger] 1 rows in 18ms · INSERT INTO "public"."user" ("email", "name", "updatedAt") VALUES ($1, $2, $3) RETURNING "user"."createdAt", "user"."email", "user"."id", "user"."name", "user"."updatedAt", "user"."username"
+[query-logger] 1 rows in 17ms · SELECT "user"."id" AS "id", "user"."email" AS "email" FROM "public"."user" LIMIT 5
+fetched 1 users
 ```
 
-If you see no output, check that the middleware is in the `middleware` array of the client your query actually uses, and that the query ran (an error before execution skips `afterExecute` only if the driver never started; failed driver calls still log, with `result.completed` set to `false`).
+If you see the query result but no `[query-logger]` lines, the query ran on a client that does not have the middleware registered; check that your script imports `db` from the file you edited in step 2.
 
 ## 4. Add an option
 
@@ -105,13 +130,21 @@ export function queryLogger(options?: QueryLoggerOptions): SqlMiddleware {
 }
 ```
 
-Register it with a threshold and fast queries go quiet:
+Register it with a threshold:
 
 ```ts title="src/prisma/db.ts"
 middleware: [queryLogger({ thresholdMs: 250 })],
 ```
 
+Run the script again and the logger goes quiet, because both queries finish in under 250ms. Drop the threshold back to see them again.
+
 One placement rule worth knowing: hooks run in registration order, and a middleware that throws stops the ones after it. Register your logger before middleware that can throw, such as `budgets`, so the queries you most want to see still get logged.
+
+## 5. Know which family to declare
+
+Prisma Next groups databases into families: SQL (PostgreSQL) and document (MongoDB). Set `familyId: 'sql'` when your middleware touches anything SQL-shaped, like `plan.sql` in the logger above. The runtime then rejects it on MongoDB at startup with `RUNTIME.MIDDLEWARE_FAMILY_MISMATCH`, instead of failing at query time.
+
+Leave `familyId` out only when the middleware sticks to family-neutral surfaces (`intercept`, `onRow`, `afterExecute` on the shared result shape). Such a middleware runs on PostgreSQL and MongoDB alike; the [cache](/orm/next/middleware/built-in-cache) works this way.
 
 You have a working, configurable middleware. The rest of this page is the surface you reach for as your middleware grows.
 
@@ -127,7 +160,7 @@ You have a working, configurable middleware. The rest of this page is the surfac
 | `onRow(row, plan, ctx)` | Once per streamed row | Count or sample rows; throw to abort |
 | `afterExecute(plan, result, ctx)` | After the query finishes | Log timing, row count, and outcome |
 
-[How middleware works](/orm/next/middleware/how-middleware-works#the-five-hooks) walks the full lifecycle with an animation. Two hooks deserve a closer look here, because they change the query rather than observe it.
+[How middleware works](/orm/next/middleware/how-middleware-works#the-five-hooks) walks the order with an animation. Two hooks deserve a closer look here, because they change the query rather than observe it.
 
 ### Rewrite queries with beforeCompile
 
@@ -174,12 +207,6 @@ Every hook receives a context (`ctx`) as its last argument:
 | `ctx.log` | Structured log sinks (`info`, `warn`, `error`) wired to the runtime's logger |
 
 One honest note on `ctx.log`: the `postgres(...)` client does not expose a way to attach a log sink yet, so events sent to `ctx.log` are not printed anywhere by default. For output you can see today, log directly to your own logger, as the query logger above does with `console.log`.
-
-## Which family to declare
-
-Set `familyId: 'sql'` when your middleware touches anything SQL-shaped: `plan.sql`, the query AST in `beforeCompile`, SQL parameter handling. It will register on PostgreSQL and be rejected on MongoDB at startup, with `RUNTIME.MIDDLEWARE_FAMILY_MISMATCH`, rather than failing at query time.
-
-Leave `familyId` out only when the middleware sticks to family-neutral surfaces (`intercept`, `onRow`, `afterExecute` on the shared result shape). Such a middleware runs on PostgreSQL and MongoDB alike; the cache works this way.
 
 ## Common gotchas
 
