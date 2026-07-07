@@ -179,7 +179,7 @@ Create a MongoDB client.
 #### Remarks
 
 - Pass the contract with `contractJson` or `contract` (supply exactly one).
-- Bind to a database in one of three ways: `url` (a `mongodb://` connection string that includes the database name in its path), `uri` plus an explicit `dbName`, or `mongoClient` (an existing `MongoClient` from the `mongodb` package) plus an explicit `dbName`.
+- Bind to a database in one of three ways: `url` (a `mongodb://` connection string, with an optional `dbName` to select or override the database — the form the examples on this page use), `uri` plus an explicit `dbName`, or `mongoClient` (an existing `MongoClient` from the `mongodb` package) plus an explicit `dbName`.
 - **Client ownership** (source-read from `binding.ts` / `mongo-driver.ts`): with `url` or `uri`, Prisma Next creates the underlying `MongoClient` and closes it on `close()`. With `mongoClient`, you supplied the client, so Prisma Next does **not** close it: `close()` is a no-op on your client, and you close it yourself. This is what lets you share one `MongoClient` between Prisma Next and driver-level code.
 - `mongo(options)` does not open a connection. The runtime is built lazily on first use, or explicitly via [`connect()`](#connect-1).
 
@@ -188,7 +188,7 @@ Create a MongoDB client.
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `contractJson` / `contract` | JSON contract or contract value | Yes | The contract. Supply exactly one. |
-| `url` | `string` | One binding | A `mongodb://` or `mongodb+srv://` string with the database in its path. |
+| `url` | `string` | One binding | A `mongodb://` or `mongodb+srv://` string; combine with an optional `dbName` to select the database. |
 | `uri` + `dbName` | `string` + `string` | One binding | A connection string plus an explicit database name. |
 | `mongoClient` + `dbName` | `MongoClient` + `string` | One binding | An existing `MongoClient` you own, plus the database name. |
 | `middleware` | Array of middleware | No | Middleware applied to every execution. |
@@ -720,8 +720,7 @@ Per-query options for cancellation and scope.
 
 #### Remarks
 
-- `signal` is an `AbortSignal` for per-query cancellation. An already-aborted signal short-circuits with `RUNTIME.ABORTED` before any rows stream (verified); per the runtime source, the signal is also threaded through codec calls and checked between rows mid-stream.
-- A signal that is **already aborted** when you call `execute(...)` short-circuits before any query runs, rejecting with `RUNTIME.ABORTED` and `details.phase` of `'stream'`. This is the first thing the execute path checks, before any network round-trip.
+- `signal` is an `AbortSignal` for per-query cancellation. A signal that is **already aborted** when you call `execute(...)` short-circuits before any query runs, rejecting with `RUNTIME.ABORTED` and `details.phase` of `'stream'` (verified). Per the runtime source, the signal is also threaded through codec calls and checked between rows mid-stream.
 - Aborting mid-stream (after rows have started arriving) is not separately verified in the validation harness: reliably landing an abort between two internal stream checks needs a very large result set or a fake-timer harness. The pre-aborted case above is verified.
 - `scope` is `'runtime' | 'connection' | 'transaction'` (source-read from `runtime-middleware.ts`; not separately exercised by the validation harness). It selects the execution scope for the query.
 
@@ -780,19 +779,3 @@ const after = runtime.telemetry();
 Read terminals (`all()`, `createAll()`, and the client's `execute(...)`) return an `AsyncIterableResult`: `await` it to collect an array, or `for await` to stream rows one at a time.
 
 A result is consumed once per mode. Re-`await`ing a buffered result is safe (it returns the cached array), but switching between awaiting and iterating a consumed result throws `RUNTIME.ITERATOR_CONSUMED`. For the full single-consumption rules, shared identically by PostgreSQL and MongoDB, see [`AsyncIterableResult`](/orm/next/reference/orm-client#asynciterableresult) in the ORM client reference.
-
-## Prompt your coding agent
-
-Projects scaffolded with `create-prisma` install Prisma Next skills for your coding agent; the `prisma-next-queries` skill covers transactions. Prompts that map to sections on this page:
-
-- "Using the prisma-next-queries skill, wrap these two writes in a `db.transaction` so they commit together and roll back on error."
-- "Rewrite this manual `runtime.connection()` / `transaction()` block to use `db.transaction(...)` instead."
-- "Prepare this repeated lookup query with `runtime.prepare(...)` and run it against both the runtime and a transaction."
-- "This project is on MongoDB and needs a multi-document atomic write. Show me the driver-session pattern with a shared MongoClient, since Prisma Next has no `db.transaction` for MongoDB yet."
-
-## Next
-
-- [Transactions](/orm/next/fundamentals/transactions): the task-oriented guide, including the MongoDB driver-session workaround.
-- [ORM client reference](/orm/next/reference/orm-client): the model methods you call on `tx.orm`.
-- [SQL query builder reference](/orm/next/reference/sql-query-builder): the plans you run with `tx.sql` and `tx.execute`.
-- [Raw queries reference](/orm/next/reference/raw-queries): raw SQL and MongoDB escape hatches.

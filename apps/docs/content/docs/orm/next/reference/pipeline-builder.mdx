@@ -147,8 +147,9 @@ Filter documents by a predicate.
 
 #### Remarks
 
-- `match()` takes a callback that receives a field accessor and returns a filter expression (`(f) => f.kind.eq('tutorial'))`.
+- `match()` takes a callback that receives a field accessor and returns a filter expression (`(f) => f.kind.eq('tutorial')`).
 - `match()` filter values are **not codec-encoded**. The value you pass is compared as-is against the stored value. For most scalar fields this is what you want, but it breaks down for `_id` (see the warning below).
+- Leaf fields expose these filter operators: `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `nin`, `exists`, and `type`. `eq` and `expr(...)`-wrapped comparisons are exercised by our executable test suite; the remaining operators are documented from the builder's source (`field-accessor.ts`) and follow the matching MongoDB query operators (`$ne`, `$gt`, `$in`, `$exists`, `$type`, and so on).
 - For an aggregation-expression predicate (comparing computed values rather than a field against a constant), wrap it in `expr(...)`: `match((f) => expr(fn.gt(fn.year(f.createdAt), fn.literal(2023))))`. See [Expression helpers](#expression-helpers).
 
 #### Options
@@ -188,7 +189,7 @@ const recent = await db.execute(plan);
 ```
 
 :::warning[`_id` equality filters do not work through the pipeline builder]
-Filtering by `_id` equality inside `match()` **never matches any document**, and this is verified empirically. Neither a hex string (`f._id.eq('507f...')`) nor a real driver `ObjectId` matches: the pipeline builder's value resolver walks the value as a plain object, destructuring an `ObjectId` into its internal `buffer` bytes, so the filter that reaches MongoDB never carries a real `ObjectId`. The type system already steers you away (the value type does not include `ObjectId`), so reaching this at all requires a cast.
+Filtering by `_id` equality inside `match()` **never matches any document**, and this is verified empirically. Neither a hex string (`f._id.eq('507f...')`) nor a real driver `ObjectId` matches: the pipeline builder's value resolver walks the value as a plain object, destructuring an `ObjectId` into its internal `buffer` bytes, so the filter that reaches MongoDB never carries a real `ObjectId`. Note that the hex-string form **compiles without any cast** — round-tripping a decoded `_id` back into `match()` typechecks cleanly and silently returns zero rows. Only the driver-`ObjectId` form requires a cast to attempt.
 
 There is currently no supported way to filter by `_id` equality through the typed pipeline builder. The escape hatch is [`rawCommand()`](#rawcommand), which places a real `ObjectId` directly in a raw pipeline document and matches correctly, or the [ORM client](/orm/next/reference/orm-client), which handles `_id` encoding for you (`db.orm.posts.where({ _id })`).
 :::
@@ -622,6 +623,7 @@ Several stages take a single MongoDB stage options object rather than a typed fi
 #### Remarks
 
 - The following stages take an options object: `unionWith`, `bucket`, `bucketAuto`, `geoNear`, `facet`, `graphLookup`, `setWindowFields`, `densify`, and `fill`.
+- Of these, `unionWith`, `bucket`, and `graphLookup` are exercised by our executable test suite (examples below). `bucketAuto`, `geoNear`, `facet`, `setWindowFields`, `densify`, and `fill` are documented from the builder's source signatures and are **not exercised by the validation harness**.
 - **The expression fields inside these options are opaque.** Fields like `bucket.groupBy`, `graphLookup.startWith`, `setWindowFields.partitionBy`, and `geoNear.near` are raw aggregation expressions (`MongoAggExpr`), not reachable through the typed field-accessor callback the classic stages use. You build these values with expression helpers and pass the underlying node (`fn.year(ref).node`), which is less type-safe than the callback stages. This is a known gap in the typed surface for these stages.
 - `unionWith` is the simplest: it takes a collection name and concatenates that collection's documents onto the pipeline output.
 
@@ -852,6 +854,16 @@ const plan = db.query
   .build();
 const rows = await db.execute(plan);
 ```
+
+### `pipe()`
+
+Append an arbitrary raw pipeline stage the typed methods don't cover.
+
+#### Remarks
+
+- Documented from the builder's source (`builder.ts`); **not exercised by the validation harness**.
+- `pipe(stage)` appends a raw `MongoPipelineStage` node and collapses the row shape to an opaque document shape. `pipe<NewShape>(stage)` lets you declare the resulting shape yourself.
+- Prefer a typed stage when one exists; `pipe()` is the in-chain escape hatch, and [`rawCommand()`](#rawcommand) is the whole-command one.
 
 ## Read terminals
 
