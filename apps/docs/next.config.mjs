@@ -297,34 +297,49 @@ const config = {
         destination: "/next/add-to-existing-project/:path*",
         permanent: false,
       },
-      // Prisma 7 migrate docs → Prisma Next migrations (temporary; the
-      // underlying model changed, so only pages with a clean equivalent
-      // redirect — see apps/docs/content/docs/orm/next/migrations/).
-      {
-        source: "/orm/prisma-migrate",
-        destination: "/orm/next/migrations/how-migrations-work",
-        permanent: false,
-      },
-      {
-        source: "/orm/prisma-migrate/getting-started",
-        destination: "/orm/next/migrations/how-migrations-work",
-        permanent: false,
-      },
-      {
-        source: "/orm/prisma-migrate/understanding-prisma-migrate/mental-model",
-        destination: "/orm/next/migrations/the-migration-graph",
-        permanent: false,
-      },
-      {
-        source: "/orm/prisma-migrate/workflows/development-and-production",
-        destination: "/orm/next/migrations/applying-a-migration",
-        permanent: false,
-      },
-      {
-        source: "/orm/prisma-migrate/workflows/customizing-migrations",
-        destination: "/orm/next/migrations/editing-a-migration",
-        permanent: false,
-      },
+      // ── Prisma Next URL cutover (DR-8687) — DO NOT ENABLE YET ─────────────
+      // The redirects below retire live Prisma 7 URLs, so they ship only when
+      // Prisma Next becomes the default docs version (the /orm/next tree moves
+      // to /orm). Until then, keep your section's redirects here, commented
+      // out, so the full cutover map builds up in one reviewable place.
+      // Section owners: append your block below with a DR reference.
+      //
+      // DR-8681 Fundamentals:
+      // { source: "/orm/prisma-client", destination: "/orm/next/fundamentals/reading-data", permanent: false },
+      // { source: "/orm/prisma-client/queries/crud", destination: "/orm/next/fundamentals/reading-data", permanent: false },
+      // { source: "/orm/prisma-client/queries/select-fields", destination: "/orm/next/fundamentals/reading-data", permanent: false },
+      // { source: "/orm/prisma-client/queries/filtering-and-sorting", destination: "/orm/next/fundamentals/reading-data", permanent: false },
+      // { source: "/orm/prisma-client/queries/pagination", destination: "/orm/next/fundamentals/reading-data", permanent: false },
+      // { source: "/orm/prisma-client/queries/aggregation-grouping-summarizing", destination: "/orm/next/fundamentals/reading-data", permanent: false },
+      // { source: "/orm/prisma-client/queries/relation-queries", destination: "/orm/next/fundamentals/relations-and-joins", permanent: false },
+      // { source: "/orm/prisma-client/queries/transactions", destination: "/orm/next/fundamentals/transactions", permanent: false },
+      // { source: "/orm/prisma-client/using-raw-sql", destination: "/orm/next/fundamentals/advanced-queries", permanent: false },
+      //
+      // No Prisma Next equivalent yet (stay on the Prisma 7 tree, flag to the
+      // SEO owner at cutover): /orm/prisma-client/queries/full-text-search,
+      // /orm/prisma-client/queries/advanced/query-optimization-performance,
+      // /orm/prisma-client/queries/excluding-fields.
+      //
+      // DR-8679 Data modeling:
+      // { source: "/orm/prisma-schema", destination: "/orm/next/data-modeling", permanent: false },
+      // { source: "/orm/prisma-schema/data-model/models", destination: "/orm/next/data-modeling", permanent: false },
+      // { source: "/orm/prisma-schema/data-model/relations", destination: "/orm/next/data-modeling/relational-databases", permanent: false },
+      //
+      // Migrations (PR #8025; the "Migrating from Prisma 7" guide is DR-8689):
+      // { source: "/orm/prisma-migrate", destination: "/orm/next/migrations/how-migrations-work", permanent: false },
+      // { source: "/orm/prisma-migrate/getting-started", destination: "/orm/next/migrations/how-migrations-work", permanent: false },
+      // { source: "/orm/prisma-migrate/understanding-prisma-migrate/mental-model", destination: "/orm/next/migrations/the-migration-graph", permanent: false },
+      // { source: "/orm/prisma-migrate/workflows/development-and-production", destination: "/orm/next/migrations/applying-a-migration", permanent: false },
+      // { source: "/orm/prisma-migrate/workflows/customizing-migrations", destination: "/orm/next/migrations/editing-a-migration", permanent: false },
+      //
+      // No Prisma Next equivalent yet (stay on the Prisma 7 tree, flag to the
+      // SEO owner at cutover): /orm/prisma-migrate/understanding-prisma-migrate/shadow-database,
+      // .../migration-histories, .../limitations-and-known-issues, and the
+      // /orm/prisma-migrate/workflows/ pages for seeding, baselining,
+      // squashing-migrations, generating-down-migrations, patching-and-hotfixing,
+      // native-database-functions, native-database-types, prototyping-your-schema,
+      // troubleshooting — reassess as matching Prisma Next pages land.
+      // ───────────────────────────────────────────────────────────────────────
     ];
   },
   async rewrites() {

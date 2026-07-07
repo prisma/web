@@ -1,3 +1,4 @@
+
 /**
  * A flow scene is a fixed box-and-arrow diagram drawn in a viewBox. Every node
  * and edge is laid out once; each step only chooses which of them are visible
@@ -518,6 +519,516 @@ const githubConnection: FlowScene = {
   ],
 };
 
+// One query's round trip: app → middleware chain → driver, and back out.
+// The app and database boxes span both lanes so the return edge (and the
+// cache's short-circuit) can run through the clear band under the chain.
+const middlewarePipeline: FlowScene = {
+  label: "How a query moves through middleware",
+  width: 660,
+  height: 220,
+  nodes: [
+    {
+      id: "app",
+      label: "Your app",
+      variant: "neutral",
+      x: 24,
+      y: 48,
+      w: 150,
+      h: 124,
+    },
+    {
+      id: "mw",
+      label: "Middleware",
+      sub: "cache · lints · budgets",
+      variant: "source",
+      x: 240,
+      y: 78,
+      w: 190,
+      h: 64,
+    },
+    {
+      id: "db",
+      label: "Database",
+      variant: "project",
+      x: 496,
+      y: 48,
+      w: 140,
+      h: 124,
+    },
+  ],
+  edges: [
+    { id: "fwd1", from: "app", fromSide: "r", to: "mw", toSide: "l" },
+    { id: "fwd2", from: "mw", fromSide: "r", to: "db", toSide: "l" },
+    {
+      id: "ret",
+      from: "db",
+      fromSide: "l",
+      to: "app",
+      toSide: "r",
+      fromDy: 44,
+      toDy: 44,
+      label: "results",
+    },
+    {
+      id: "hit",
+      from: "mw",
+      fromSide: "b",
+      to: "app",
+      toSide: "r",
+      toDy: 44,
+      dashed: true,
+      label: "cached rows",
+    },
+  ],
+  steps: [
+    {
+      title: "1. In the middle",
+      caption: "Every query passes through your middleware on its way to the database.",
+      nodes: ["app", "mw", "db"],
+      edges: ["fwd1", "fwd2"],
+      emphasize: ["mw"],
+    },
+    {
+      title: "2. Block",
+      caption:
+        "Middleware can stop a query before it reaches the database. This is how lints blocks a DELETE without WHERE.",
+      nodes: ["app", "mw", "db"],
+      edges: ["fwd1"],
+      emphasize: ["mw"],
+    },
+    {
+      title: "3. Answer",
+      caption:
+        "Middleware can answer a query itself. On a cache hit, the database is skipped entirely.",
+      nodes: ["app", "mw", "db"],
+      edges: ["fwd1", "hit"],
+      emphasize: ["mw"],
+    },
+    {
+      title: "4. Observe",
+      caption:
+        "Results flow back through the middleware, which sees every row and the final timing.",
+      nodes: ["app", "mw", "db"],
+      edges: ["fwd1", "fwd2", "ret"],
+      emphasize: ["app"],
+    },
+  ],
+};
+
+// Five hooks in execution order; the driver runs between intercept and onRow.
+const middlewareLifecycle: FlowScene = {
+  label: "The five hooks, in the order they run",
+  width: 700,
+  height: 150,
+  nodes: [
+    { id: "bc", label: "beforeCompile", sub: "rewrite", variant: "source", x: 16, y: 40, w: 128, h: 64 },
+    { id: "be", label: "beforeExecute", sub: "guard", variant: "scope", x: 156, y: 40, w: 128, h: 64 },
+    { id: "ic", label: "intercept", sub: "answer early", variant: "production", x: 296, y: 40, w: 122, h: 64 },
+    { id: "or", label: "onRow", sub: "each row", variant: "vars", x: 470, y: 40, w: 100, h: 64 },
+    { id: "ae", label: "afterExecute", sub: "observe", variant: "branch", x: 582, y: 40, w: 112, h: 64 },
+  ],
+  edges: [
+    { id: "e1", from: "bc", fromSide: "r", to: "be", toSide: "l" },
+    { id: "e2", from: "be", fromSide: "r", to: "ic", toSide: "l" },
+    { id: "e3", from: "ic", fromSide: "r", to: "or", toSide: "l", label: "driver" },
+    { id: "e4", from: "or", fromSide: "r", to: "ae", toSide: "l" },
+  ],
+  steps: [
+    {
+      title: "1. Rewrite",
+      caption: "beforeCompile can change the query while it is still a typed AST.",
+      nodes: ["bc", "be", "ic", "or", "ae"],
+      edges: ["e1", "e2", "e3", "e4"],
+      emphasize: ["bc"],
+    },
+    {
+      title: "2. Guard",
+      caption: "beforeExecute sees the final SQL. Throw here to block the query.",
+      nodes: ["bc", "be", "ic", "or", "ae"],
+      edges: ["e1", "e2", "e3", "e4"],
+      emphasize: ["be"],
+    },
+    {
+      title: "3. Answer early",
+      caption: "intercept can return rows itself; if it does, the driver never runs.",
+      nodes: ["bc", "be", "ic", "or", "ae"],
+      edges: ["e1", "e2", "e3", "e4"],
+      emphasize: ["ic"],
+    },
+    {
+      title: "4. Watch and close",
+      caption:
+        "The driver runs, onRow fires per streamed row, and afterExecute closes with row count and latency.",
+      nodes: ["bc", "be", "ic", "or", "ae"],
+      edges: ["e1", "e2", "e3", "e4"],
+      emphasize: ["or", "ae"],
+    },
+  ],
+};
+
+// One extension package, registered on two planes, converging on the database.
+const extensionPlanes: FlowScene = {
+  label: "One extension package, two registrations, one database",
+  width: 680,
+  height: 250,
+  nodes: [
+    {
+      id: "pkg",
+      label: "pgvector",
+      sub: "one npm package",
+      variant: "neutral",
+      x: 16,
+      y: 93,
+      w: 170,
+      h: 64,
+    },
+    {
+      id: "cfg",
+      label: "prisma-next.config.ts",
+      sub: "migrations",
+      variant: "source",
+      x: 260,
+      y: 24,
+      w: 200,
+      h: 64,
+    },
+    {
+      id: "rt",
+      label: "db.ts",
+      sub: "queries",
+      variant: "scope",
+      x: 260,
+      y: 162,
+      w: 200,
+      h: 64,
+    },
+    {
+      id: "pg",
+      label: "PostgreSQL",
+      variant: "project",
+      x: 524,
+      y: 93,
+      w: 140,
+      h: 64,
+    },
+  ],
+  edges: [
+    { id: "p-cfg", from: "pkg", fromSide: "r", to: "cfg", toSide: "l" },
+    { id: "p-rt", from: "pkg", fromSide: "r", to: "rt", toSide: "l" },
+    { id: "cfg-pg", from: "cfg", fromSide: "r", to: "pg", toSide: "l", label: "db init" },
+    { id: "rt-pg", from: "rt", fromSide: "r", to: "pg", toSide: "l", label: "queries" },
+  ],
+  steps: [
+    {
+      title: "1. Install",
+      caption: "One package brings everything the extension needs.",
+      nodes: ["pkg"],
+      edges: [],
+      emphasize: ["pkg"],
+    },
+    {
+      title: "2. Config side",
+      caption:
+        "Registered in the config, the extension adds its schema types and its migration (CREATE EXTENSION).",
+      nodes: ["pkg", "cfg"],
+      edges: ["p-cfg"],
+      emphasize: ["cfg"],
+    },
+    {
+      title: "3. Client side",
+      caption: "Registered in db.ts, it adds the query operations your code calls.",
+      nodes: ["pkg", "cfg", "rt"],
+      edges: ["p-cfg", "p-rt"],
+      emphasize: ["rt"],
+    },
+    {
+      title: "4. The database",
+      caption: "db init installs the feature; your queries then use it.",
+      nodes: ["pkg", "cfg", "rt", "pg"],
+      edges: ["p-cfg", "p-rt", "cfg-pg", "rt-pg"],
+      emphasize: ["pg"],
+    },
+  ],
+};
+
+const RELATION_LEGEND: { origin: RowOrigin; label: string }[] = [
+  { origin: "production", label: "primary key" },
+  { origin: "override", label: "foreign key" },
+];
+
+const relationOneToOne: FlowScene = {
+  label: "One-to-one: a profile belongs to exactly one user",
+  width: 680,
+  height: 220,
+  legend: RELATION_LEGEND,
+  nodes: [
+    {
+      id: "user",
+      label: "User",
+      sub: "one record",
+      subBelow: true,
+      variant: "project",
+      x: 40,
+      y: 48,
+      w: 240,
+      h: 104,
+      rows: [
+        { key: "id", value: "u_01", origin: "production" },
+        { key: "email", value: "alice@prisma.io", origin: "preview" },
+      ],
+    },
+    {
+      id: "profile",
+      label: "Profile",
+      sub: "at most one per user",
+      subBelow: true,
+      variant: "scope",
+      x: 400,
+      y: 40,
+      w: 240,
+      h: 128,
+      rows: [
+        { key: "id", value: "p_01", origin: "production" },
+        { key: "userId", value: "u_01 · unique", origin: "override" },
+        { key: "bio", value: "Writes about…", origin: "preview" },
+      ],
+    },
+  ],
+  edges: [
+    {
+      id: "fk",
+      from: "profile",
+      fromSide: "l",
+      to: "user",
+      toSide: "r",
+      label: "userId → id",
+    },
+  ],
+  steps: [
+    {
+      title: "1. Two models",
+      caption:
+        "A profile stores extra data about one user, in its own table or collection. On its own, nothing connects the two records yet.",
+      nodes: ["user", "profile"],
+      edges: [],
+    },
+    {
+      title: "2. A unique foreign key",
+      caption:
+        "Profile.userId holds the id of its user: that is the foreign key. Marking it unique is what makes the relationship one-to-one, because two profiles can never point at the same user.",
+      nodes: ["user", "profile"],
+      edges: ["fk"],
+      emphasize: ["profile"],
+    },
+    {
+      title: "3. Query from the profile",
+      caption:
+        "The model that holds the foreign key declares the relation, so you query from that side: Profile.include(\"user\") follows userId and attaches the matching user to the result.",
+      nodes: ["user", "profile"],
+      edges: ["fk"],
+      emphasize: ["user"],
+    },
+  ],
+};
+
+const relationOneToMany: FlowScene = {
+  label: "One-to-many: one user has many posts",
+  width: 680,
+  height: 300,
+  legend: RELATION_LEGEND,
+  nodes: [
+    {
+      id: "user",
+      label: "User",
+      sub: "the one side",
+      subBelow: true,
+      variant: "project",
+      x: 40,
+      y: 98,
+      w: 220,
+      h: 104,
+      rows: [
+        { key: "id", value: "u_01", origin: "production" },
+        { key: "email", value: "alice@prisma.io", origin: "preview" },
+      ],
+    },
+    {
+      id: "p1",
+      label: "Post",
+      sub: "authorId = u_01",
+      variant: "branch",
+      x: 420,
+      y: 24,
+      w: 220,
+      h: 64,
+    },
+    {
+      id: "p2",
+      label: "Post",
+      sub: "authorId = u_01",
+      variant: "branch",
+      x: 420,
+      y: 118,
+      w: 220,
+      h: 64,
+    },
+    {
+      id: "p3",
+      label: "Post",
+      sub: "authorId = u_01",
+      variant: "branch",
+      x: 420,
+      y: 212,
+      w: 220,
+      h: 64,
+    },
+  ],
+  edges: [
+    { id: "e1", from: "p1", fromSide: "l", to: "user", toSide: "r", toDy: -24 },
+    { id: "e2", from: "p2", fromSide: "l", to: "user", toSide: "r" },
+    { id: "e3", from: "p3", fromSide: "l", to: "user", toSide: "r", toDy: 24 },
+  ],
+  steps: [
+    {
+      title: "1. The foreign key",
+      caption:
+        "Each post stores the id of its author in authorId. One post always has exactly one author.",
+      nodes: ["user", "p1"],
+      edges: ["e1"],
+      emphasize: ["p1"],
+    },
+    {
+      title: "2. Many rows, same key",
+      caption:
+        "Nothing stops many posts from carrying the same authorId. That is the whole mechanism: one-to-many is many child records pointing at one parent.",
+      nodes: ["user", "p1", "p2", "p3"],
+      edges: ["e1", "e2", "e3"],
+      emphasize: ["p2", "p3"],
+    },
+    {
+      title: "3. Query either direction",
+      caption:
+        "User.include(\"posts\") gathers every post with a matching authorId into an array on the user. Post.include(\"author\") follows the key the other way and attaches one user to each post.",
+      nodes: ["user", "p1", "p2", "p3"],
+      edges: ["e1", "e2", "e3"],
+      emphasize: ["user"],
+    },
+  ],
+};
+
+const relationManyToMany: FlowScene = {
+  label: "Many-to-many: posts and tags connect through a junction model",
+  width: 700,
+  height: 300,
+  groupLabels: [{ text: "Junction model", x: 280, y: 18 }],
+  legend: RELATION_LEGEND,
+  nodes: [
+    {
+      id: "post1",
+      label: "Post",
+      sub: "Hello Prisma Next",
+      variant: "project",
+      x: 24,
+      y: 46,
+      w: 190,
+      h: 64,
+    },
+    {
+      id: "post2",
+      label: "Post",
+      sub: "Typed queries",
+      variant: "project",
+      x: 24,
+      y: 196,
+      w: 190,
+      h: 64,
+    },
+    {
+      id: "pt1",
+      label: "PostTag",
+      sub: "postId + tagId",
+      variant: "neutral",
+      x: 280,
+      y: 34,
+      w: 150,
+      h: 56,
+    },
+    {
+      id: "pt2",
+      label: "PostTag",
+      sub: "postId + tagId",
+      variant: "neutral",
+      x: 280,
+      y: 126,
+      w: 150,
+      h: 56,
+    },
+    {
+      id: "pt3",
+      label: "PostTag",
+      sub: "postId + tagId",
+      variant: "neutral",
+      x: 280,
+      y: 218,
+      w: 150,
+      h: 56,
+    },
+    {
+      id: "tag1",
+      label: "Tag",
+      sub: "typescript",
+      variant: "source",
+      x: 496,
+      y: 46,
+      w: 180,
+      h: 64,
+    },
+    {
+      id: "tag2",
+      label: "Tag",
+      sub: "databases",
+      variant: "source",
+      x: 496,
+      y: 196,
+      w: 180,
+      h: 64,
+    },
+  ],
+  edges: [
+    { id: "a1", from: "pt1", fromSide: "l", to: "post1", toSide: "r" },
+    { id: "b1", from: "pt1", fromSide: "r", to: "tag1", toSide: "l" },
+    { id: "a2", from: "pt2", fromSide: "l", to: "post1", toSide: "r", toDy: 18 },
+    { id: "b2", from: "pt2", fromSide: "r", to: "tag2", toSide: "l", toDy: -18 },
+    { id: "a3", from: "pt3", fromSide: "l", to: "post2", toSide: "r" },
+    { id: "b3", from: "pt3", fromSide: "r", to: "tag1", toSide: "l", toDy: 18 },
+  ],
+  steps: [
+    {
+      title: "1. Both sides need many",
+      caption:
+        "A post can carry many tags, and a tag appears on many posts. Neither table can hold the other's foreign key without losing one of those directions.",
+      nodes: ["post1", "post2", "tag1", "tag2"],
+      edges: [],
+    },
+    {
+      title: "2. The junction model",
+      caption:
+        "A junction model solves it: each PostTag record links one post to one tag. Three link records here connect two posts and two tags in every combination the data needs.",
+      nodes: ["post1", "post2", "pt1", "pt2", "pt3", "tag1", "tag2"],
+      edges: ["a1", "b1", "a2", "b2", "a3", "b3"],
+      emphasize: ["pt1", "pt2", "pt3"],
+    },
+    {
+      title: "3. Traverse in two hops",
+      caption:
+        "Queries follow the same two hops: Post.include(\"tags\") fetches the link records, and nesting include(\"tag\") inside it attaches each tag. One query, both hops.",
+      nodes: ["post1", "post2", "pt1", "pt2", "pt3", "tag1", "tag2"],
+      edges: ["a1", "b1", "a2", "b2", "a3", "b3"],
+      emphasize: ["post1", "tag1", "tag2"],
+    },
+  ],
+};
+
 /**
  * Names that render as visual flow diagrams. Any name not listed here falls
  * back to the Code Hike token animation in presets.ts.
@@ -526,6 +1037,12 @@ export const FLOW_SCENES = {
   "compute-model": computeModel,
   "env-layers": envLayers,
   "github-connection": githubConnection,
+  "relation-one-to-one": relationOneToOne,
+  "relation-one-to-many": relationOneToMany,
+  "relation-many-to-many": relationManyToMany,
+  "middleware-pipeline": middlewarePipeline,
+  "middleware-lifecycle": middlewareLifecycle,
+  "extension-planes": extensionPlanes,
 } satisfies Record<string, FlowScene>;
 
 export type FlowName = keyof typeof FLOW_SCENES;
