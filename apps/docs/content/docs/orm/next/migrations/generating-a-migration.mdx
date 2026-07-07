@@ -1,9 +1,9 @@
 ---
 title: Generating a migration
-description: Turn a contract change into a reviewable migration package with prisma-next migration plan.
+description: Turn a contract change into a reviewable migration with prisma-next migration plan.
 url: /orm/next/migrations/generating-a-migration
 metaTitle: Generating a migration in Prisma Next
-metaDescription: A step-by-step tutorial for prisma-next migration plan — from contract change to a planned, reviewable migration package, entirely offline.
+metaDescription: A step-by-step tutorial for prisma-next migration plan — from contract change to a planned, reviewable migration, entirely offline.
 badge: early-access
 ---
 
@@ -67,7 +67,7 @@ Three things to notice:
 - **`from: null`** means this migration starts from an empty database — it's the root of your [migration graph](/orm/next/migrations/the-migration-graph).
 - **`to:` is your contract's hash.** The migration promises to deliver a database matching exactly the contract you just emitted.
 
-The planned package contains the TypeScript source, the compiled operations, and the contract snapshots:
+The planned migration directory contains the TypeScript source, the compiled operations, and the contract snapshots:
 
 ```text
 migrations/app/20260707T1005_init/
@@ -106,6 +106,8 @@ export default class M extends Migration<never, End> {
 
 MigrationCLI.run(import.meta.url, M);
 ```
+
+Two notes on reading it: the `col(...)` calls mirror your contract fields, and you never write `codecRef` by hand — the planner fills it in (it pins how values convert between TypeScript and Postgres), so treat it as noise when reviewing.
 
 For a simple change you don't need to touch this file. When you do — to add a data backfill, reorder operations, or drop in raw SQL — that's [Editing a migration](/orm/next/migrations/editing-a-migration).
 
@@ -148,7 +150,7 @@ ALTER TABLE "public"."user" ADD COLUMN "phone" text;
 
 `--from` accepts a migration directory name (as here), a contract hash or unambiguous prefix, a ref name, or `<dir>^` meaning "the state *before* that migration".
 
-### Skipping `--from`: the `db` ref
+### The db ref: skipping --from
 
 Passing `--from` every time gets old. The planner's default is smarter: if a ref named **`db`** exists, planning starts from whatever it points at. Keep it advanced as part of applying:
 
