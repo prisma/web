@@ -1,4 +1,3 @@
-import type { ConceptName } from "./presets";
 
 /**
  * A flow scene is a fixed box-and-arrow diagram drawn in a viewBox. Every node
@@ -520,6 +519,291 @@ const githubConnection: FlowScene = {
   ],
 };
 
+
+// ---------------------------------------------------------------------------
+// Relationship scenes for the Prisma Next Fundamentals docs.
+// Row colors double as a field legend: production = primary key,
+// override = foreign key, preview = regular field.
+// ---------------------------------------------------------------------------
+
+const RELATION_LEGEND: { origin: RowOrigin; label: string }[] = [
+  { origin: "production", label: "primary key" },
+  { origin: "override", label: "foreign key" },
+];
+
+const relationOneToOne: FlowScene = {
+  label: "One-to-one: a profile belongs to exactly one user",
+  width: 680,
+  height: 220,
+  legend: RELATION_LEGEND,
+  nodes: [
+    {
+      id: "user",
+      label: "User",
+      sub: "one record",
+      subBelow: true,
+      variant: "project",
+      x: 40,
+      y: 48,
+      w: 240,
+      h: 104,
+      rows: [
+        { key: "id", value: "u_01", origin: "production" },
+        { key: "email", value: "alice@prisma.io", origin: "preview" },
+      ],
+    },
+    {
+      id: "profile",
+      label: "Profile",
+      sub: "at most one per user",
+      subBelow: true,
+      variant: "scope",
+      x: 400,
+      y: 40,
+      w: 240,
+      h: 128,
+      rows: [
+        { key: "id", value: "p_01", origin: "production" },
+        { key: "userId", value: "u_01 · unique", origin: "override" },
+        { key: "bio", value: "Writes about…", origin: "preview" },
+      ],
+    },
+  ],
+  edges: [
+    {
+      id: "fk",
+      from: "profile",
+      fromSide: "l",
+      to: "user",
+      toSide: "r",
+      label: "userId → id",
+    },
+  ],
+  steps: [
+    {
+      title: "1. Two models",
+      caption:
+        "A profile stores extra data about one user, in its own table or collection. On its own, nothing connects the two records yet.",
+      nodes: ["user", "profile"],
+      edges: [],
+    },
+    {
+      title: "2. A unique foreign key",
+      caption:
+        "Profile.userId holds the id of its user: that is the foreign key. Marking it unique is what makes the relationship one-to-one, because two profiles can never point at the same user.",
+      nodes: ["user", "profile"],
+      edges: ["fk"],
+      emphasize: ["profile"],
+    },
+    {
+      title: "3. Query from the profile",
+      caption:
+        "The model that holds the foreign key declares the relation, so you query from that side: Profile.include(\"user\") follows userId and attaches the matching user to the result.",
+      nodes: ["user", "profile"],
+      edges: ["fk"],
+      emphasize: ["user"],
+    },
+  ],
+};
+
+const relationOneToMany: FlowScene = {
+  label: "One-to-many: one user has many posts",
+  width: 680,
+  height: 300,
+  legend: RELATION_LEGEND,
+  nodes: [
+    {
+      id: "user",
+      label: "User",
+      sub: "the one side",
+      subBelow: true,
+      variant: "project",
+      x: 40,
+      y: 98,
+      w: 220,
+      h: 104,
+      rows: [
+        { key: "id", value: "u_01", origin: "production" },
+        { key: "email", value: "alice@prisma.io", origin: "preview" },
+      ],
+    },
+    {
+      id: "p1",
+      label: "Post",
+      sub: "authorId = u_01",
+      variant: "branch",
+      x: 420,
+      y: 24,
+      w: 220,
+      h: 64,
+    },
+    {
+      id: "p2",
+      label: "Post",
+      sub: "authorId = u_01",
+      variant: "branch",
+      x: 420,
+      y: 118,
+      w: 220,
+      h: 64,
+    },
+    {
+      id: "p3",
+      label: "Post",
+      sub: "authorId = u_01",
+      variant: "branch",
+      x: 420,
+      y: 212,
+      w: 220,
+      h: 64,
+    },
+  ],
+  edges: [
+    { id: "e1", from: "p1", fromSide: "l", to: "user", toSide: "r", toDy: -24 },
+    { id: "e2", from: "p2", fromSide: "l", to: "user", toSide: "r" },
+    { id: "e3", from: "p3", fromSide: "l", to: "user", toSide: "r", toDy: 24 },
+  ],
+  steps: [
+    {
+      title: "1. The foreign key",
+      caption:
+        "Each post stores the id of its author in authorId. One post always has exactly one author.",
+      nodes: ["user", "p1"],
+      edges: ["e1"],
+      emphasize: ["p1"],
+    },
+    {
+      title: "2. Many rows, same key",
+      caption:
+        "Nothing stops many posts from carrying the same authorId. That is the whole mechanism: one-to-many is many child records pointing at one parent.",
+      nodes: ["user", "p1", "p2", "p3"],
+      edges: ["e1", "e2", "e3"],
+      emphasize: ["p2", "p3"],
+    },
+    {
+      title: "3. Query either direction",
+      caption:
+        "User.include(\"posts\") gathers every post with a matching authorId into an array on the user. Post.include(\"author\") follows the key the other way and attaches one user to each post.",
+      nodes: ["user", "p1", "p2", "p3"],
+      edges: ["e1", "e2", "e3"],
+      emphasize: ["user"],
+    },
+  ],
+};
+
+const relationManyToMany: FlowScene = {
+  label: "Many-to-many: posts and tags connect through a junction model",
+  width: 700,
+  height: 300,
+  groupLabels: [{ text: "Junction model", x: 280, y: 18 }],
+  legend: RELATION_LEGEND,
+  nodes: [
+    {
+      id: "post1",
+      label: "Post",
+      sub: "Hello Prisma Next",
+      variant: "project",
+      x: 24,
+      y: 46,
+      w: 190,
+      h: 64,
+    },
+    {
+      id: "post2",
+      label: "Post",
+      sub: "Typed queries",
+      variant: "project",
+      x: 24,
+      y: 196,
+      w: 190,
+      h: 64,
+    },
+    {
+      id: "pt1",
+      label: "PostTag",
+      sub: "postId + tagId",
+      variant: "neutral",
+      x: 280,
+      y: 34,
+      w: 150,
+      h: 56,
+    },
+    {
+      id: "pt2",
+      label: "PostTag",
+      sub: "postId + tagId",
+      variant: "neutral",
+      x: 280,
+      y: 126,
+      w: 150,
+      h: 56,
+    },
+    {
+      id: "pt3",
+      label: "PostTag",
+      sub: "postId + tagId",
+      variant: "neutral",
+      x: 280,
+      y: 218,
+      w: 150,
+      h: 56,
+    },
+    {
+      id: "tag1",
+      label: "Tag",
+      sub: "typescript",
+      variant: "source",
+      x: 496,
+      y: 46,
+      w: 180,
+      h: 64,
+    },
+    {
+      id: "tag2",
+      label: "Tag",
+      sub: "databases",
+      variant: "source",
+      x: 496,
+      y: 196,
+      w: 180,
+      h: 64,
+    },
+  ],
+  edges: [
+    { id: "a1", from: "pt1", fromSide: "l", to: "post1", toSide: "r" },
+    { id: "b1", from: "pt1", fromSide: "r", to: "tag1", toSide: "l" },
+    { id: "a2", from: "pt2", fromSide: "l", to: "post1", toSide: "r", toDy: 18 },
+    { id: "b2", from: "pt2", fromSide: "r", to: "tag2", toSide: "l", toDy: -18 },
+    { id: "a3", from: "pt3", fromSide: "l", to: "post2", toSide: "r" },
+    { id: "b3", from: "pt3", fromSide: "r", to: "tag1", toSide: "l", toDy: 18 },
+  ],
+  steps: [
+    {
+      title: "1. Both sides need many",
+      caption:
+        "A post can carry many tags, and a tag appears on many posts. Neither table can hold the other's foreign key without losing one of those directions.",
+      nodes: ["post1", "post2", "tag1", "tag2"],
+      edges: [],
+    },
+    {
+      title: "2. The junction model",
+      caption:
+        "A junction model solves it: each PostTag record links one post to one tag. Three link records here connect two posts and two tags in every combination the data needs.",
+      nodes: ["post1", "post2", "pt1", "pt2", "pt3", "tag1", "tag2"],
+      edges: ["a1", "b1", "a2", "b2", "a3", "b3"],
+      emphasize: ["pt1", "pt2", "pt3"],
+    },
+    {
+      title: "3. Traverse in two hops",
+      caption:
+        "Queries follow the same two hops: Post.include(\"tags\") fetches the link records, and nesting include(\"tag\") inside it attaches each tag. One query, both hops.",
+      nodes: ["post1", "post2", "pt1", "pt2", "pt3", "tag1", "tag2"],
+      edges: ["a1", "b1", "a2", "b2", "a3", "b3"],
+      emphasize: ["post1", "tag1", "tag2"],
+    },
+  ],
+};
+
 /**
  * Names that render as visual flow diagrams. Any name not listed here falls
  * back to the Code Hike token animation in presets.ts.
@@ -528,4 +812,9 @@ export const FLOW_SCENES = {
   "compute-model": computeModel,
   "env-layers": envLayers,
   "github-connection": githubConnection,
-} satisfies Partial<Record<ConceptName, FlowScene>>;
+  "relation-one-to-one": relationOneToOne,
+  "relation-one-to-many": relationOneToMany,
+  "relation-many-to-many": relationManyToMany,
+} satisfies Record<string, FlowScene>;
+
+export type FlowName = keyof typeof FLOW_SCENES;
