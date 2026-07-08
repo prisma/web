@@ -90,12 +90,21 @@ export default async function BlogHome() {
       }
     }
 
+    let updatedAtISO: string | null = null;
+    if (data.updatedAt) {
+      const updatedObj = new Date(data.updatedAt);
+      if (!isNaN(updatedObj.getTime())) {
+        updatedAtISO = updatedObj.toISOString();
+      }
+    }
+
     const authors = getAllAuthors(post);
 
     return {
       url: withBlogBasePath(post.url),
       title: data.title as string,
       date: dateISO,
+      updatedAt: updatedAtISO,
       excerpt: data.metaDescription as string,
       author: authors[0] ?? null,
       authors,

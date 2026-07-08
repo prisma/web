@@ -1,0 +1,96 @@
+---
+title: Bun
+description: Scaffold a Prisma Next app with Bun, initialize your database, and run your first typed query.
+url: /guides/next/runtimes/bun
+metaTitle: How to use Prisma Next with Bun
+metaDescription: Set up a Prisma Next project with Bun and Prisma Postgres, from scaffold to first query, with tested commands and real output.
+---
+
+## Introduction
+
+In this guide, you scaffold a Prisma Next project with Bun, initialize a PostgreSQL database from your schema, and run your first typed query. Bun runs TypeScript directly, so there is no build step anywhere in the flow.
+
+Every command and code sample below was run end to end against a live Prisma Postgres database.
+
+## Prerequisites
+
+- [Bun](https://bun.sh/) 1.1 or later (`bun --version`)
+- A PostgreSQL connection string, or nothing at all: the scaffold can create a [Prisma Postgres](/postgres) database for you
+
+## 1. Scaffold the project
+
+Create the project with `create-prisma`. Pick Bun as the package manager when prompted, or pass everything up front:
+
+```bash
+bunx create-prisma@next create my-bun-app --provider postgres --package-manager bun
+```
+
+When the prompt asks about the database, pick Prisma Postgres to have one created for you, or paste your own `DATABASE_URL`. The scaffold writes the connection string to `.env`, sets up `src/prisma/` with a starter schema, and installs dependencies with Bun.
+
+```bash
+cd my-bun-app
+```
+
+## 2. Emit the contract and initialize the database
+
+Prisma Next compiles your schema (`src/prisma/contract.prisma`) into a contract that your queries are type-checked against. Emit it, then apply the schema to the database:
+
+```bash
+bun run contract:emit
+bun run db:init
+```
+
+`db:init` creates the tables and signs the database:
+
+```text no-copy
+"summary": "Applied 5 operation(s) across 1 space(s), database signed"
+```
+
+If `db:init` reports that the contract file is missing, run `bun run contract:emit` first; the emit step generates `src/prisma/contract.json`.
+
+## 3. Write your first query
+
+Replace `src/index.ts` with a script that creates a user and reads every user back. Model access is namespace-qualified on PostgreSQL: `db.orm.public.User`, where `public` is the default schema.
+
+```ts title="src/index.ts"
+import { db } from "./prisma/db";
+
+// Create a user, then read every user back
+const user = await db.orm.public.User.create({
+  email: `ada+${Date.now()}@prisma.io`,
+  name: "Ada Lovelace",
+});
+console.log(`created user ${user.email}`);
+
+const users = await db.orm.public.User.select("id", "email", "name").all();
+console.log(`there are now ${users.length} users`);
+
+await db.close();
+```
+
+`await db.close()` at the end lets the script exit cleanly; without it, the connection pool keeps the process alive.
+
+## 4. Run it
+
+```bash
+bun run dev
+```
+
+```text no-copy
+created user ada+1783380852695@prisma.io
+there are now 2 users
+```
+
+That is the whole loop: schema to contract, contract to database, typed queries against both.
+
+## Prompt your coding agent
+
+The scaffold installs Prisma Next skills for your coding agent. Prompts that map to this guide:
+
+- "Using the prisma-next-queries skill, add a script that lists the 10 newest users."
+- "Add a Post model related to User, emit the contract, and update the database."
+
+## Next steps
+
+- [Learn the fundamentals](/orm/next/fundamentals/reading-data): filtering, sorting, pagination, and writes.
+- [Read the Prisma Next overview](/orm/next) for the concepts behind contracts and typed queries.

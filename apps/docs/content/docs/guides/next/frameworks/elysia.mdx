@@ -1,0 +1,91 @@
+---
+title: Elysia
+description: Build an Elysia API on Prisma Next with the elysia template.
+url: /guides/next/frameworks/elysia
+metaTitle: How to use Prisma Next with Elysia
+metaDescription: Scaffold an Elysia API backed by Prisma Next and Prisma Postgres, seed it, and serve users over HTTP, with tested commands and output.
+---
+
+## Introduction
+
+In this guide, you scaffold an Elysia API backed by Prisma Next, initialize and seed a PostgreSQL database, and serve data over HTTP. The `elysia` template generates the server, so most of the work is understanding the pieces.
+
+Every command and response below was run end to end against a live Prisma Postgres database.
+
+## Prerequisites
+
+- [Bun](https://bun.sh/) 1.1 or later (Elysia is Bun-first)
+- A PostgreSQL connection string, or nothing at all: the scaffold can create a [Prisma Postgres](/postgres) database for you
+
+## 1. Scaffold the project
+
+```bash
+bunx create-prisma@next create my-elysia-api --provider postgres --template elysia
+```
+
+Pick your database at the prompt. The template generates an Elysia server in `src/index.ts` with `GET /` and `GET /users` routes, the Prisma Next setup in `src/prisma/`, and package scripts for the database steps.
+
+```bash
+cd my-elysia-api
+```
+
+## 2. Initialize and seed the database
+
+```bash
+bun run db:init
+bun run db:seed
+```
+
+```text no-copy
+"summary": "Applied 5 operation(s) across 1 space(s), database signed"
+Seeded 3 users.
+```
+
+:::note
+
+Scaffolded with an older `create-prisma` and seeing `Cannot read properties of undefined (reading 'where')`? Update `db.orm.User` to `db.orm.public.User` in `src/prisma/seed.ts` and `src/prisma/users.ts`. Current templates generate the qualified form.
+
+:::
+
+## 3. Run the server
+
+```bash
+bun run dev
+```
+
+The server starts on port 3000 (set `PORT` to change it):
+
+```bash
+curl http://localhost:3000/users
+```
+
+```json no-copy
+[
+  { "id": "1", "email": "alice@prisma.io", "username": "alice", "name": "Alice", "createdAt": "2026-07-07T08:51:14.054Z" },
+  { "id": "2", "email": "bob@prisma.io", "username": "bob", "name": "Bob", "createdAt": "2026-07-07T08:51:14.089Z" },
+  { "id": "3", "email": "carol@prisma.io", "username": "carol", "name": "Carol", "createdAt": "2026-07-07T08:51:14.122Z" }
+]
+```
+
+The route handler is ordinary Elysia code calling an ordinary Prisma Next query; there is no framework adapter in between. To add write routes, follow the same pattern as the [Hono guide's POST route](/guides/next/frameworks/hono#4-add-a-post-route); the query code is identical.
+
+## Common gotchas
+
+:::warning
+
+In a long-running server, don't call `db.close()` in route handlers; the client's connection pool is shared across requests. Close it only on process shutdown.
+
+:::
+
+## Prompt your coding agent
+
+The scaffold installs Prisma Next skills for your coding agent. Prompts that map to this guide:
+
+- "Using the prisma-next-queries skill, add GET /users/:id that returns one user or a 404."
+- "Add a POST /users route that creates a user from the request body."
+
+## Next steps
+
+- [Learn the fundamentals](/orm/next/fundamentals/reading-data): filtering, sorting, pagination, and writes.
+- [Read the Prisma Next overview](/orm/next) for the concepts behind contracts and typed queries.
+- [Use the Hono guide](/guides/next/frameworks/hono) for the tested POST route pattern.

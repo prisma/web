@@ -20,6 +20,8 @@ const DOCS_PREFIX = "/docs";
 const NEXT_GETTING_STARTED_ROOT = "/next";
 const LATEST_CLI_ROOT = "/cli";
 const NEXT_CLI_ROOT = "/cli/next";
+const LATEST_GUIDES_ROOT = "/guides";
+const NEXT_GUIDES_ROOT = "/guides/next";
 const NEXT_GETTING_STARTED_PATHS_BY_LATEST_PATH = new Map<string, string>([
   ["/", NEXT_GETTING_STARTED_ROOT],
   ["/getting-started", "/next/getting-started"],
@@ -220,6 +222,62 @@ function isNextCliPathname(pathname: string) {
   return pathname === NEXT_CLI_ROOT || pathname.startsWith(`${NEXT_CLI_ROOT}/`);
 }
 
+function isLatestGuidesPathname(pathname: string) {
+  return (
+    pathname === LATEST_GUIDES_ROOT ||
+    (pathname.startsWith(`${LATEST_GUIDES_ROOT}/`) && !isNextGuidesPathname(pathname))
+  );
+}
+
+function isNextGuidesPathname(pathname: string) {
+  return pathname === NEXT_GUIDES_ROOT || pathname.startsWith(`${NEXT_GUIDES_ROOT}/`);
+}
+
+function getGuidesSwitchPathname(
+  docsPathname: string,
+  targetVersion: Version,
+  availablePathnames: Iterable<string>,
+) {
+  if (targetVersion !== LATEST_VERSION && targetVersion !== "next") {
+    return getVersionRoot(targetVersion);
+  }
+
+  const targetRoot = targetVersion === "next" ? NEXT_GUIDES_ROOT : LATEST_GUIDES_ROOT;
+  const currentRoot = isNextGuidesPathname(docsPathname) ? NEXT_GUIDES_ROOT : LATEST_GUIDES_ROOT;
+  const suffix =
+    docsPathname === currentRoot
+      ? ""
+      : docsPathname.startsWith(`${currentRoot}/`)
+        ? docsPathname.slice(currentRoot.length)
+        : "";
+  const candidate = `${targetRoot}${suffix}`;
+  const available = getAvailablePathnameSet(availablePathnames);
+
+  if (available.size === 0 || available.has(candidate)) {
+    return candidate;
+  }
+
+  return targetRoot;
+}
+
+export function getGuidesVersionFromPathname(pathname: string): Version | null {
+  const docsPathname = withoutDocsPrefix(pathname);
+
+  if (isNextGuidesPathname(docsPathname)) {
+    return "next";
+  }
+
+  if (isLatestGuidesPathname(docsPathname)) {
+    return LATEST_VERSION;
+  }
+
+  return null;
+}
+
+export function isGuidesVersionPathname(pathname: string) {
+  return getGuidesVersionFromPathname(pathname) !== null;
+}
+
 function getAvailablePathnameSet(availablePathnames: Iterable<string>) {
   return new Set(
     Array.from(availablePathnames, (availablePathname) => withoutDocsPrefix(availablePathname)),
@@ -324,6 +382,12 @@ export function getVersionSwitchPathname(
     return getCliSwitchPathname(docsPathname, targetVersion, availablePathnames);
   }
 
+  const guidesVersion = getGuidesVersionFromPathname(docsPathname);
+
+  if (guidesVersion) {
+    return getGuidesSwitchPathname(docsPathname, targetVersion, availablePathnames);
+  }
+
   const currentVersion = getOrmVersionFromPathname(docsPathname);
   const targetRoot = getVersionRoot(targetVersion);
 
@@ -353,7 +417,8 @@ export function getVersionedNavPathname(targetPathname: string, currentPathname:
   const isNextDocsPathname =
     getGettingStartedVersionFromPathname(currentPathname) === "next" ||
     getOrmVersionFromPathname(currentPathname) === "next" ||
-    getCliVersionFromPathname(currentPathname) === "next";
+    getCliVersionFromPathname(currentPathname) === "next" ||
+    getGuidesVersionFromPathname(currentPathname) === "next";
 
   // Bare "/" redirects to /next, so route the Getting Started tab to the reachable
   // landing for the active version instead of the redirecting root.
@@ -371,6 +436,10 @@ export function getVersionedNavPathname(targetPathname: string, currentPathname:
 
   if (targetDocsPathname === LATEST_CLI_ROOT) {
     return NEXT_CLI_ROOT;
+  }
+
+  if (targetDocsPathname === LATEST_GUIDES_ROOT) {
+    return NEXT_GUIDES_ROOT;
   }
 
   return targetPathname;

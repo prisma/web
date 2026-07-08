@@ -21,6 +21,7 @@ function buildCardItems(seriesKey: string): BlogCardItem[] {
     const data = post.data as {
       title?: string;
       date?: Date | string;
+      updatedAt?: Date | string;
       metaDescription?: string;
       authors?: string[];
       heroImagePath?: string;
@@ -36,6 +37,14 @@ function buildCardItems(seriesKey: string): BlogCardItem[] {
       }
     }
 
+    let updatedAtISO: string | null = null;
+    if (data.updatedAt) {
+      const updatedObj = new Date(data.updatedAt);
+      if (!Number.isNaN(updatedObj.getTime())) {
+        updatedAtISO = updatedObj.toISOString();
+      }
+    }
+
     const authors = Array.isArray(data.authors)
       ? data.authors.filter((a): a is string => typeof a === "string")
       : [];
@@ -44,6 +53,7 @@ function buildCardItems(seriesKey: string): BlogCardItem[] {
       url: withBlogBasePath(post.url),
       title: data.title ?? "",
       date: dateISO,
+      updatedAt: updatedAtISO,
       excerpt: data.metaDescription,
       author: authors[0] ?? null,
       authors,
