@@ -14,6 +14,8 @@ If a rule here conflicts with house style, follow the house style and flag the c
 
 For a step-by-step example of writing each kind of page (how-to, concept, reference) and rewriting an existing one, see `references/how-to-use.md`.
 
+For a Prisma Next docs page or section (anything under `content/docs/orm/next/` or `content/docs/(index)/next/`), also read `references/prisma-next.md`: page location, redirect handling (commented out until the URL cutover), tested-example requirements, tab and diagram conventions, and naming rules.
+
 ## Foundation
 
 These come from Prisma's positioning. They shape how docs frame the product, without turning a page into marketing.
@@ -117,6 +119,28 @@ Better:
 - Link the first mention of a concept the reader may not know. Don't re-link it every time.
 - Use exact product names: Prisma Postgres, Prisma Compute, Prisma Next. Don't shorten "Prisma Postgres" to "the database" or "Prisma Next" to "the ORM" once a page covers more than one product.
 - When you tell the reader something is automatic, show the trigger that makes it happen and how to confirm it did. "Compute injects `DATABASE_URL` automatically" needs a follow-up: "Run `prisma compute env` to confirm it's set."
+
+## Teach in plain language
+
+Open every concept with the plain-words version a newcomer can repeat, then a concrete everyday example, and only then the precise terms. Jargon may appear after the reader has the idea, never as the introduction to it.
+
+Weak (jargon-first):
+
+> Data modeling is the step where you describe the shape of your application's data: the entities it works with, the fields each entity carries, and how those entities connect. You author that description as a schema, and it compiles into a versioned contract that your code, migrations, and tooling all read from.
+
+Better (idea first, example second, terms last):
+
+> Data modeling is the process of describing the data your application needs and how that data is connected.
+>
+> For example, a blog has users, posts, and comments. A user has fields like an email and a name. These models also relate to each other: a user can write many posts, and a post can have many comments.
+>
+> In Prisma Next, you define this structure in a `contract.prisma` file. This file becomes the shared contract between your application code, database migrations, and developer tools.
+
+The same rule applies inside sections: when a paragraph packs several decisions together, split it into short subsections, one decision each, and show a code block for every option you name. Guidance that lives only in inline code (`Int @id @default(autoincrement())` mid-sentence) belongs in a fenced block with a sentence of its own.
+
+Never lean on internal vocabulary ("runtime family", "lowering", "execution stack") without a one-line plain definition at first use.
+
+For hands-on guides (anything that builds something), follow the house guide style used by /docs/guides/runtimes/bun and the middleware authoring guide: an Introduction stating what the reader builds, Prerequisites, short numbered step headings ("## 1. Create the middleware"), one action per step with the exact file path on every code block, the real expected output after the step that produces it, a likely-failure line where a step commonly breaks, and options or reference material only after the working result.
 
 ## Cut the slop
 

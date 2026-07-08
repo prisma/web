@@ -1,0 +1,121 @@
+---
+title: How middleware works
+description: Middleware runs your code before and after every query, so one policy can cover your whole app.
+url: /orm/next/middleware/how-middleware-works
+metaTitle: How middleware works in Prisma Next
+metaDescription: What Prisma Next middleware is, the hooks it exposes, how to register it on the runtime, and which middleware ships built in.
+badge: early-access
+---
+
+Middleware lets you run your own code around every query your app sends through Prisma Next.
+
+For example, you can log every query with its latency, block a `DELETE` that has no `WHERE` clause before it reaches the database, or serve a repeated read from memory instead of running it again. You write the policy once, register it once, and every query follows it. No call sites to update.
+
+A middleware is a plain object with a name and one or more hooks. Register it once, in the `middleware` option of your client setup:
+
+```ts title="src/prisma/db.ts"
+import { createCacheMiddleware } from '@prisma-next/middleware-cache';
+import postgres from '@prisma-next/postgres/runtime';
+import { budgets, lints } from '@prisma-next/sql-runtime';
+import type { Contract } from './contract.d';
+import contractJson from './contract.json' with { type: 'json' };
+
+export const db = postgres<Contract>({
+  contractJson,
+  url: process.env['DATABASE_URL']!,
+  middleware: [
+    createCacheMiddleware({ maxEntries: 1_000 }),
+    lints(),
+    budgets({ maxRows: 10_000, maxLatencyMs: 1_000 }),
+  ],
+});
+```
+
+Every query passes through the chain, whether it comes from the ORM API or the SQL query builder, because both execute through the same runtime. On MongoDB, pass the same option to `mongo(...)` from `@prisma-next/mongo/runtime`.
+
+The whole model fits in one picture: your app talks to the database, and middleware sits in the middle. It can let a query pass, block it, or answer it itself:
+
+<ConceptAnimation name="middleware-pipeline" />
+
+## The five hooks
+
+A middleware implements only the hooks it needs. There are five, and they run in a fixed order:
+
+<ConceptAnimation name="middleware-lifecycle" />
+
+The runtime calls each hook on every registered middleware, in the order they appear in the `middleware` array. What each hook is for:
+
+### beforeCompile: rewrite the query
+
+Runs before the query is turned into SQL, while it is still a typed AST. Return a modified draft to rewrite the query, for example to add a tenant filter to every `SELECT`. This hook exists on SQL databases only, because it works on the SQL query AST.
+
+### beforeExecute: validate or block
+
+Runs after the SQL is rendered and before anything reaches the database. The hook sees the full plan (`plan.sql`, `plan.ast`). Throw an error to block the query:
+
+```ts
+async beforeExecute(plan) {
+  if (isForbidden(plan)) throw new Error("blocked by policy");
+}
+```
+
+This is where `lints` stops a `DELETE` without `WHERE`, and where `budgets` rejects a query that would read too many rows. This hook can also adjust parameter values before they are encoded for the driver.
+
+### intercept: answer without the database
+
+Runs last before the driver. Return `{ rows }` and the driver never runs; return nothing and the query continues. This is how the cache serves repeated reads. Validation from `beforeExecute` has already happened by this point.
+
+### onRow: watch rows stream
+
+Runs once per row as the database streams results. Count rows, sample them, or throw to abort the stream. `budgets` uses this hook to stop a query that returns more rows than its estimate promised.
+
+### afterExecute: observe the finished query
+
+Runs once at the end, success or failure. It receives the outcome: `result.rowCount`, `result.latencyMs`, `result.completed`, and `result.source`, which is `'driver'` for a normal query and `'middleware'` when an `intercept` answered. Timing, logging, and latency budgets live here.
+
+Two ordering rules matter in practice:
+
+- Registration order is execution order at every hook. If one middleware rewrites the query in `beforeCompile`, the next middleware sees the rewritten version.
+- If several middleware implement `intercept`, the first one that returns rows wins.
+
+## What ships built in
+
+Three middleware ship with Prisma Next today:
+
+| Middleware | Import | What it does |
+| --- | --- | --- |
+| [`budgets`](/orm/next/middleware/built-in-budgets) | `@prisma-next/sql-runtime` | Blocks queries that would read too many rows, and reports queries that overrun a latency budget |
+| [`lints`](/orm/next/middleware/built-in-lints) | `@prisma-next/sql-runtime` | Blocks or warns on risky query shapes, such as `DELETE` without `WHERE` |
+| [`cache`](/orm/next/middleware/built-in-cache) | `@prisma-next/middleware-cache` | Serves repeated reads from an in-memory store, opted in per query |
+
+To write your own, follow the [authoring guide](/orm/next/middleware/authoring-custom-middleware): it builds a working query logger step by step.
+
+## Which databases a middleware runs on
+
+Prisma Next groups databases into families: the SQL family (PostgreSQL and other SQL databases) and the document family (MongoDB). A middleware that inspects SQL text or the SQL query AST only makes sense on SQL databases, so it declares which family it belongs to with `familyId: 'sql'`.
+
+- `budgets` and `lints` declare `familyId: 'sql'`. They register on PostgreSQL and are rejected on MongoDB.
+- The cache declares no `familyId`. It works against the family-neutral parts of a query, so it runs on both PostgreSQL and MongoDB.
+
+The runtime checks this when you construct the client. A middleware that does not match the runtime fails at startup with `RUNTIME.MIDDLEWARE_FAMILY_MISMATCH`, not at query time in production.
+
+## When a middleware or the driver throws
+
+A middleware that throws from `beforeCompile`, `beforeExecute`, `intercept`, or `onRow` fails the query: the error goes to the caller and the database work stops.
+
+When the driver itself fails, `afterExecute` still runs on every middleware with `result.completed` set to `false`, so your logging sees failed queries too. Errors thrown from `afterExecute` while handling a failure are swallowed, so they cannot mask the original error.
+
+## Prompt your coding agent
+
+Projects scaffolded with `create-prisma` install Prisma Next skills for your coding agent. Prompts that map to this page:
+
+- "Register the lints and budgets middleware on our Prisma Next client with a 10k row budget."
+- "Add the cache middleware and opt the dashboard queries in with a 60 second TTL."
+- "Write a middleware that logs every query slower than 250ms."
+
+## See also
+
+- [Authoring custom middleware](/orm/next/middleware/authoring-custom-middleware): build and test a query logger step by step
+- [Writing data](/orm/next/fundamentals/writing-data): the mutations that lints and budgets guard
+- [Built-in: budgets](/orm/next/middleware/built-in-budgets), [Built-in: lints](/orm/next/middleware/built-in-lints), [Built-in: cache](/orm/next/middleware/built-in-cache)
+- [Using extensions](/orm/next/extensions/using-extensions) for adding database capabilities rather than wrapping queries
