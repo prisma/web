@@ -315,6 +315,13 @@ const config = {
       // { source: "/orm/prisma-client/queries/transactions", destination: "/orm/next/fundamentals/transactions", permanent: false },
       // { source: "/orm/prisma-client/using-raw-sql", destination: "/orm/next/fundamentals/advanced-queries", permanent: false },
       //
+      // DR-8680 Contract authoring:
+      // { source: "/orm/prisma-schema", destination: "/orm/next/contract-authoring/the-data-contract", permanent: false },
+      // { source: "/orm/prisma-schema/overview", destination: "/orm/next/contract-authoring/psl-syntax", permanent: false },
+      // { source: "/orm/prisma-schema/overview/data-sources", destination: "/orm/next/contract-authoring/psl-syntax", permanent: false },
+      // { source: "/orm/prisma-schema/overview/location", destination: "/orm/next/contract-authoring/psl-syntax", permanent: false },
+      // { source: "/orm/prisma-client/type-safety", destination: "/orm/next/contract-authoring/the-data-contract", permanent: false },
+      //
       // No Prisma Next equivalent yet (stay on the Prisma 7 tree, flag to the
       // SEO owner at cutover): /orm/prisma-client/queries/full-text-search,
       // /orm/prisma-client/queries/advanced/query-optimization-performance,
