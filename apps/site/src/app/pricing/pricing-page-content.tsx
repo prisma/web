@@ -56,7 +56,14 @@ export function PricingPageContent() {
               >
                 expected pricing
               </a>{" "}
-              for when production billing turns on.
+              for when production billing turns on, or{" "}
+              <a
+                className="underline underline-offset-2 decoration-[var(--color-foreground-ppg)] hover:text-foreground-neutral"
+                href="https://www.prisma.io/blog/prisma-compute-vs-vercel-pricing?utm_source=pricing_website"
+              >
+                how those rates compare to Vercel&apos;s
+              </a>{" "}
+              for the same workload.
             </p>
           </div>
           <Button asChild variant="ppg" size="2xl">

@@ -1,0 +1,403 @@
+/*
+ * Prisma Stack — flow-diagram + marquee geometry only.
+ *
+ * The page chrome (hero, sections, cards, code, CTA) is built with Tailwind
+ * and @prisma/eclipse components, matching the compute/postgres pages. This
+ * module holds only what those primitives can't express: the subgrid diagram,
+ * its SVG connectors, the "stack simplified" bracket, and the framework
+ * marquee. All colours come from semantic design tokens so it themes in both
+ * modes. Class names are referenced from JSX via styles["kebab-name"].
+ */
+
+.page {
+  --panel-from: var(--color-background-default);
+  --panel-to: var(--color-background-ppg);
+  --border: var(--color-stroke-neutral);
+  --border-ppg: var(--color-stroke-ppg);
+  --line: var(--color-stroke-neutral-strong);
+  --ink: var(--color-foreground-neutral);
+  --ink-dim: var(--color-foreground-neutral-weak);
+  --ink-faint: var(--color-foreground-neutral-weaker);
+  --teal: var(--color-foreground-ppg);
+  --teal-bright: var(--color-foreground-ppg-weak);
+  --violet: var(--color-foreground-violet);
+  --font-display: var(--font-mona-sans), "Mona Sans VF", "Inter", sans-serif;
+
+  position: relative;
+  width: 100%;
+  /* the diagram is 820px wide before it scales to fit; clip so it can never
+     widen the page and cause horizontal overflow on narrow viewports */
+  overflow-x: clip;
+}
+.content {
+  position: relative;
+  z-index: 1;
+}
+
+/* ===== "stack simplified" one-liner + include bracket ===== */
+.stack-simplified {
+  text-align: center;
+  max-width: 940px;
+  margin: 0 auto;
+  font-weight: 800;
+  font-family: var(--font-display);
+}
+.stack-simplified .ss-eq {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: baseline;
+  column-gap: 0.28em;
+  margin-top: 10px;
+  text-align: left;
+}
+.stack-simplified .ss-leftcol {
+  grid-column: 1;
+  justify-self: end;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.stack-simplified .ss-brand {
+  white-space: nowrap;
+  background: linear-gradient(100deg, var(--teal-bright), var(--color-foreground-orm));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.stack-simplified .ss-plus {
+  grid-column: 2;
+  white-space: nowrap;
+  color: var(--ink-faint);
+}
+.stack-simplified .ss-fw {
+  grid-column: 3;
+  justify-self: start;
+  min-width: 0;
+  white-space: nowrap;
+  color: var(--ink);
+  transition: opacity 0.35s ease;
+}
+.stack-simplified.swapping .ss-fw {
+  opacity: 0;
+}
+/* the include bracket: one vertical rail spanning the two branch centres,
+   each branch a horizontal stub that meets the rail with no gap */
+.stack-simplified .ss-includes {
+  position: relative;
+  width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin: 4px 0 0 0.3em;
+  font-size: 0.68em;
+  font-weight: 600;
+}
+/* vertical rail descends from just below "Prisma" down to the last branch */
+.stack-simplified .ss-includes::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0.9em;
+  width: 2px;
+  background: var(--line);
+}
+.stack-simplified .ss-inc {
+  position: relative;
+  padding-left: 1.05em;
+  line-height: 1.8;
+  white-space: nowrap;
+  color: var(--ink-dim);
+}
+.stack-simplified .ss-inc::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.9em;
+  transform: translateY(-50%);
+  width: 0.8em;
+  height: 2px;
+  background: var(--line);
+}
+
+/* ===== flow diagram ===== */
+.flow-scroll {
+  overflow: hidden;
+  padding: 12px 6px 52px;
+}
+.flow {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto max-content max-content;
+  grid-template-areas:
+    "tsg compute feat"
+    "tsg postgres ext";
+  align-items: center;
+  column-gap: 70px;
+  row-gap: 48px;
+  min-width: 820px;
+  width: max-content;
+  margin: 0 auto;
+}
+.ts-group {
+  grid-area: tsg;
+  position: relative;
+  display: grid;
+  grid-template-rows: subgrid;
+  align-items: center;
+  padding: 0 16px;
+}
+/* container box; a pseudo-element so its height is independent of the subgrid */
+.ts-group::before {
+  content: "";
+  position: absolute;
+  inset: -6px 0 -34px 0;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--teal) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--teal) 26%, transparent);
+  z-index: -1;
+}
+.ts-sub {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.ts-label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -26px;
+  z-index: 1;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  font-size: 13px;
+  color: var(--teal);
+}
+.n-compute {
+  grid-area: compute;
+  justify-self: start;
+}
+.n-postgres {
+  grid-area: postgres;
+  justify-self: start;
+}
+.feat-stack {
+  grid-area: feat;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.ext-stack {
+  grid-area: ext;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.flow-svg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+.flow-path {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 1.5;
+}
+.flow-path.dashed {
+  stroke: var(--teal);
+  stroke-dasharray: 5 5;
+}
+.flow-badge {
+  position: absolute;
+  z-index: 5;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--color-background-default);
+  border: 1px solid color-mix(in srgb, var(--teal) 45%, transparent);
+  color: var(--teal);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+  box-shadow: var(--shadow-box-low);
+}
+
+/* ===== node ===== */
+.node {
+  position: relative;
+  z-index: 1;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--panel-from) 0%, var(--panel-to) 240%);
+  padding: 12px 15px;
+  min-width: 168px;
+  white-space: nowrap;
+  transition:
+    transform 0.18s,
+    border-color 0.18s,
+    box-shadow 0.18s;
+}
+.node:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-ppg);
+  box-shadow: var(--shadow-box);
+}
+.node::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--accent, var(--teal));
+}
+.node-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-weight: 700;
+}
+.node-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--ink);
+}
+.node-sub {
+  font-size: 11.5px;
+  color: var(--ink-dim);
+  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+/* Action-style icon tile (mirrors eclipse Action color="ppg") */
+.node-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  font-size: 12px;
+  background: var(--color-background-ppg);
+  color: var(--color-foreground-ppg);
+  border: 1px solid color-mix(in srgb, var(--accent, var(--teal)) 30%, transparent);
+}
+.node.root .node-icon {
+  width: 30px;
+  height: 30px;
+  font-size: 14px;
+}
+/* framework monogram tile (violet "open" layer) */
+.mono-badge {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 12px;
+  flex: 0 0 auto;
+  background: color-mix(in srgb, var(--violet) 16%, transparent);
+  color: var(--violet);
+  border: 1px solid color-mix(in srgb, var(--violet) 34%, transparent);
+}
+.pill {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+.pill.open {
+  color: var(--violet);
+  background: color-mix(in srgb, var(--violet) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--violet) 30%, transparent);
+}
+.node.leaf {
+  min-width: 150px;
+  padding: 10px 14px;
+  background: color-mix(in srgb, var(--ink) 3%, transparent);
+}
+.node.leaf .node-title {
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+}
+.node.leaf::before {
+  top: 8px;
+  bottom: 8px;
+}
+.node.leaf.dots-leaf {
+  min-width: 60px;
+  text-align: center;
+}
+.node.leaf.dots-leaf .node-title {
+  justify-content: center;
+  color: var(--ink-faint);
+  font-weight: 800;
+  letter-spacing: 3px;
+}
+.node.root {
+  min-width: 208px;
+  border-color: color-mix(in srgb, var(--teal) 40%, transparent);
+}
+.node.root .node-title {
+  font-size: 16px;
+}
+.n-frontend .node-title {
+  transition: opacity 0.35s ease;
+}
+.n-frontend.swapping .node-title {
+  opacity: 0;
+}
+.leaf-dim {
+  color: var(--ink-faint);
+  font-weight: 400;
+}
+
+/* ===== scroll reveal ===== */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 0.7s ease,
+    transform 0.7s ease;
+}
+.reveal.in {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  /* the diagram auto-cycles frameworks, so silence its swap + hover motion too */
+  .stack-simplified .ss-fw,
+  .n-frontend .node-title,
+  .node {
+    transition: none;
+  }
+  .node:hover {
+    transform: none;
+  }
+}

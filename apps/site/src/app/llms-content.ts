@@ -58,9 +58,9 @@ const sitePages: LlmsPage[] = [
   },
   {
     path: "/stack",
-    title: "Prisma in your stack | Prisma",
+    title: "Prisma Stack: a complete and flexible tech stack",
     description:
-      "Framework, language, and database integrations for teams building with Prisma across modern stacks.",
+      "Prisma Compute, Prisma Postgres, Bun, TypeScript with room for your frontend framework.",
   },
   {
     path: "/ecosystem",
@@ -242,7 +242,7 @@ How to use: fetch https://www.prisma.io/changelog.md for a machine-readable inde
 ## Stack and ecosystem
 
 Stack URL: ${toAbsoluteUrl(baseUrl, "/stack")}
-Stack description: Prisma integrates with popular databases, frameworks, and modern development stacks.
+Stack description: Prisma Compute, Prisma Postgres, Bun, and TypeScript, a complete and flexible stack with room for your frontend framework.
 
 Ecosystem URL: ${toAbsoluteUrl(baseUrl, "/ecosystem")}
 Ecosystem description: Prisma has a wider ecosystem of community-built tools, generators, middleware, CLIs, and integrations.

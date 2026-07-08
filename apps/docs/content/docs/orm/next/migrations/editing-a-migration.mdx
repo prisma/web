@@ -1,0 +1,236 @@
+---
+title: Editing a migration
+description: A migration is TypeScript you own. Fill in backfills, reorder steps, or drop to raw SQL, then recompile it with one command.
+url: /orm/next/migrations/editing-a-migration
+metaTitle: Editing a migration in Prisma Next
+metaDescription: How to edit a Prisma Next migration.ts by filling placeholder data transforms, writing typed backfills, using rawSql, and recompiling ops.json with node migration.ts.
+badge: early-access
+---
+
+The planner writes a good first draft, but plenty of real migrations need a human (or agent) decision: what to put in existing rows when a column becomes required, which order two steps must run in, one statement the planner has no factory for. In Prisma Next you make those changes by editing `migration.ts`, ordinary TypeScript with autocomplete and type checking, and recompiling it. You never hand-edit SQL files, and you never hand-edit `ops.json`.
+
+The rule that makes this safe:
+
+> **You edit `migration.ts`. Running it regenerates `ops.json`. The runner only ever executes `ops.json`.**
+
+After any edit, recompile from inside your project:
+
+```bash
+node migrations/app/20260707T1008_add_display_name/migration.ts
+```
+
+```text
+Wrote ops.json + migration.json to migrations/app/20260707T1008_add_display_name
+```
+
+The recompile also **re-attests** the migration: `migration.json` gets a fresh `migrationHash` fingerprinting the compiled output, so any later hand-edit of `ops.json` is detectable. If someone edits `ops.json` directly, or edits `migration.ts` and forgets to recompile, `migration check` fails in CI with a hash mismatch. Commit `migration.ts` and `ops.json` together, like a lockfile and its manifest.
+
+## Worked example: making a column required
+
+This is the classic case. `User` gets a required `displayName`, but the table already has rows, and those rows have no `displayName`. Plan it:
+
+```bash
+npx prisma-next migration plan --name add_display_name
+```
+
+```text
+⚠ Planned migration with placeholder(s) — edit migration.ts then run `node migration.ts` to self-emit
+
+Open migration.ts and replace each `placeholder(...)` call with your actual query.
+```
+
+The planner knew the shape of the fix (add the column nullable, backfill, then tighten) and scaffolded exactly that, leaving the backfill query to you:
+
+```ts title="migration.ts (as planned)"
+override get operations() {
+  return [
+    this.addColumn({
+      schema: 'public',
+      table: 'user',
+      column: col('displayName', 'text', { codecRef: { codecId: 'pg/text@1' } }),
+    }),
+    this.dataTransform(endContract, 'backfill-user-displayName', {
+      check: () => placeholder('backfill-user-displayName:check'),
+      run: () => placeholder('backfill-user-displayName:run'),
+    }),
+    this.setNotNull({ schema: 'public', table: 'user', column: 'displayName' }),
+  ];
+}
+```
+
+A `dataTransform` takes two closures. `check` asks "are there rows that still need this?" It must be a row-returning query where *any row* means work remains; the conventional shape is `select('id').where(<violation>).limit(1)`. `run` performs the change. Fill them with the typed SQL query builder, wired to the contract snapshot sitting next to the migration:
+
+```ts title="migration.ts (filled in)"
+import type { Contract as End } from './end-contract';
+import endContractJson from './end-contract.json' with { type: 'json' };
+import type { Contract as Start } from './start-contract';
+import startContractJson from './start-contract.json' with { type: 'json' };
+import { Migration, MigrationCLI, col } from '@prisma-next/postgres/migration';
+import postgresAdapter from '@prisma-next/adapter-postgres/runtime';
+import { sql } from '@prisma-next/sql-builder/runtime';
+import { createExecutionContext, createSqlExecutionStack } from '@prisma-next/sql-runtime';
+import postgresTarget, { PostgresContractSerializer } from '@prisma-next/target-postgres/runtime';
+
+const endContract = new PostgresContractSerializer().deserializeContract(endContractJson);
+
+const db = sql<End>({
+  context: createExecutionContext({
+    contract: endContract,
+    stack: createSqlExecutionStack({ target: postgresTarget, adapter: postgresAdapter }),
+  }),
+});
+
+export default class M extends Migration<Start, End> {
+  override readonly endContractJson = endContractJson;
+  override readonly startContractJson = startContractJson;
+
+  override get operations() {
+    return [
+      this.addColumn({
+        schema: 'public',
+        table: 'user',
+        column: col('displayName', 'text', { codecRef: { codecId: 'pg/text@1' } }),
+      }),
+      this.dataTransform(endContract, 'backfill-user-displayName', {
+        check: () =>
+          db.public.user
+            .select('id')
+            .where((f, fns) => fns.eq(f.displayName, null))
+            .limit(1),
+        run: () =>
+          db.public.user
+            .update({ displayName: 'Anonymous' })
+            .where((f, fns) => fns.eq(f.displayName, null)),
+      }),
+      this.setNotNull({ schema: 'public', table: 'user', column: 'displayName' }),
+    ];
+  }
+}
+
+MigrationCLI.run(import.meta.url, M);
+```
+
+Two details worth pausing on:
+
+- **The types come from the migration's own contract snapshot** (`./end-contract`), not your live app contract. You're type-checking against the schema *as it will exist when this step runs*. That's why the builder happily references `displayName` even though the column doesn't exist yet, and why a migration written months ago keeps compiling after your contract moves on.
+- **The query is real application-grade TypeScript.** You can import shared constants, and typos in column names fail the type check instead of failing in production.
+
+The wiring block at the top (deserializing the contract, building the `db` handle) is the current Early Access shape; expect it to shrink to a one-liner. It's the price of a query builder that's typed against this migration's snapshot instead of your live app client.
+
+Recompile with `node migration.ts` and inspect what the backfill became:
+
+```json title="ops.json (the compiled dataTransform)"
+{
+  "id": "data_migration.backfill-user-displayName",
+  "label": "Data transform: backfill-user-displayName",
+  "operationClass": "data",
+  "precheck": [
+    {
+      "description": "Check backfill-user-displayName has work to do",
+      "sql": "SELECT EXISTS (SELECT \"id\" AS \"id\" FROM \"public\".\"user\" WHERE \"displayName\" IS NULL LIMIT 1) AS ok",
+      "params": []
+    }
+  ],
+  "execute": [
+    {
+      "description": "Run backfill-user-displayName",
+      "sql": "UPDATE \"public\".\"user\" SET \"displayName\" = $1 WHERE \"displayName\" IS NULL",
+      "params": ["Anonymous"]
+    }
+  ],
+  "postcheck": [
+    {
+      "description": "Verify backfill-user-displayName resolved all violations",
+      "sql": "SELECT NOT EXISTS (SELECT \"id\" AS \"id\" FROM \"public\".\"user\" WHERE \"displayName\" IS NULL LIMIT 1) AS ok",
+      "params": []
+    }
+  ]
+}
+```
+
+Your `check` closure became both the precheck (`EXISTS`: is there work?) and the postcheck (`NOT EXISTS`: is it done?). Your `run` became a parameterized `UPDATE`; note that `"Anonymous"` travels in `params`, through the driver's parameter binder, never spliced into SQL text. The reviewer reading your PR sees intent in `migration.ts` and the exact statements in `ops.json`, side by side.
+
+## Escape hatch: raw SQL
+
+For anything the operation factories don't cover (enabling an extension, `CREATE INDEX CONCURRENTLY`, a vendor-specific statement), use `rawSql`, and keep the same three-phase safety if you can:
+
+```ts
+rawSql({
+  id: 'extension.pgcrypto',
+  label: 'Enable extension "pgcrypto"',
+  operationClass: 'additive',
+  target: { id: 'postgres' },
+  precheck: [
+    { description: 'not yet enabled', sql: "SELECT NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pgcrypto')" },
+  ],
+  execute: [{ description: 'enable it', sql: 'CREATE EXTENSION IF NOT EXISTS pgcrypto' }],
+  postcheck: [
+    { description: 'now enabled', sql: "SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pgcrypto')" },
+  ],
+}),
+```
+
+The prechecks and postchecks are optional, but they're what makes a failed run resumable and a mistake diagnosable, so skipping them trades away most of what this system gives you. If you write the same `rawSql` twice, lift it into a function; the built-in factories are plain functions doing exactly this.
+
+## The same pattern on MongoDB
+
+Data transforms work on MongoDB with the same `check`/`run` shape and the same compilation to precheck/execute/postcheck. Hand-authored Mongo transforms currently build their queries from raw Mongo command shapes rather than the full typed builder:
+
+```ts title="migration.ts (MongoDB, excerpt)"
+import { dataTransform, setValidation } from '@prisma-next/target-mongo/migration';
+
+override get operations() {
+  const storageHash = this.endContract.storage.storageHash;
+  const productsValidator = this.endContract.collection.products.validator;
+  return [
+    setValidation('products', productsValidator.jsonSchema, {
+      validationLevel: productsValidator.validationLevel,
+      validationAction: productsValidator.validationAction,
+    }),
+    dataTransform('backfill-product-status', {
+      check: { source: () => existingProductsWithoutStatus(storageHash) },
+      run: () => backfillRun(storageHash),
+    }),
+  ];
+}
+```
+
+The full working migration, including the two query-plan helpers, is in the Prisma Next repo's [retail-store example](https://github.com/prisma/prisma-next/blob/main/examples/retail-store/migrations/app/20260513T0508_backfill_product_status/migration.ts).
+
+## Starting from a blank migration
+
+Sometimes there's no contract change at all: you want a data-only migration, or you'd rather write the whole thing by hand. `migration new` scaffolds an empty migration directory (already attested, like everything the CLI writes):
+
+```bash
+npx prisma-next migration new --name backfill_scores
+```
+
+Write your operations in the generated `migration.ts`, then compile it the same way: `node migration.ts`.
+
+## Editing checklist
+
+1. Edit `migration.ts`, never `ops.json`.
+2. Recompile: `node <migration-dir>/migration.ts`.
+3. Review the diff of `ops.json`; that's what will run.
+4. Verify: `npx prisma-next migration check`.
+5. Commit `migration.ts`, `ops.json`, and `migration.json` together.
+
+:::note[What's early]
+
+The typed-builder wiring and the raw Mongo command shapes above are the current Early Access surface and will get slimmer. Everything shown on this page (the scaffolded placeholder flow, the typed backfill, `rawSql`, the recompile loop) works today, end to end.
+
+:::
+
+## Prompt your coding agent
+
+Projects scaffolded with `create-prisma` install [Prisma Next skills](/ai/tools/skills#available-skills-for-prisma-next) for your coding agent. Ask your agent to:
+
+- "Fill in the placeholder in the latest migration: backfill `displayName` with the user's email prefix."
+- "Add a data transform to this migration that normalizes existing `phone` values before the unique constraint."
+- "Recompile the migration I just edited and show me the ops.json diff."
+
+## See also
+
+- [Generating a migration](/orm/next/migrations/generating-a-migration): where the scaffold comes from
+- [Applying a migration](/orm/next/migrations/applying-a-migration): run the edited migration
+- [Data Migrations in Prisma Next](https://www.prisma.io/blog/data-migrations-in-prisma-next): the design story for `dataTransform`
