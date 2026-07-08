@@ -1,0 +1,288 @@
+---
+title: Raw queries reference
+description: "Reference for Prisma Next raw query escape hatches: PostgreSQL raw SQL and MongoDB raw commands."
+url: /orm/next/reference/raw-queries
+metaTitle: Prisma Next raw queries reference
+metaDescription: "Reference for Prisma Next raw query escape hatches: PostgreSQL raw SQL and MongoDB raw commands."
+badge: early-access
+---
+
+Raw queries are the escape hatches for the queries the typed surfaces can't express. Reach for a typed surface first: the [ORM client](/orm/next/reference/orm-client) for everyday reads and writes, the [SQL query builder](/orm/next/reference/sql-query-builder) for PostgreSQL joins and aggregates, and the [pipeline builder](/orm/next/reference/pipeline-builder) for MongoDB aggregation. When none of them reaches the SQL clause or MongoDB command you need, drop down to raw.
+
+This page covers two escape hatches: **PostgreSQL raw SQL** (the `fns.raw` tagged template and the client-level `db.raw` tag) and **MongoDB raw commands** (`db.raw.collection(...)` and `db.query.rawCommand(...)`). Every example is transcribed from an executable test suite that runs against a live database.
+
+:::warning[Raw results bypass codec decoding]
+Unlike the typed surfaces, raw queries do not carry a result shape, so their results are **not codec-decoded**. On MongoDB this means raw results come back as native BSON: `_id` fields are raw driver `ObjectId` instances (not decoded hex strings), and write methods return the driver's own result envelopes (`{ insertedId }`, `{ matchedCount, modifiedCount }`, `{ deletedCount }`). You are responsible for value handling: compare an `ObjectId` with `String(...)`, and read the envelope keys directly.
+:::
+
+## PostgreSQL raw SQL
+
+Raw SQL lives inside the [SQL query builder](/orm/next/reference/sql-query-builder), not as a standalone statement. You write a SQL fragment as a tagged template and splice it into a `select()`, `where()`, `orderBy()`, or `update()` call. There is no way to run a bare raw SQL string on its own; every raw fragment is part of a builder query that you [`build()`](/orm/next/reference/sql-query-builder#build) and run with `runtime.execute(...)`.
+
+The examples in this section run against the `user` / `post` schema from the SQL query builder page. See its [example schema](/orm/next/reference/sql-query-builder#example-schema) for the full model definitions. As on that page, create the client with `postgres(...)`, connect it for a runtime, and reach tables through `db.sql.public`:
+
+```ts
+import postgres from '@prisma-next/postgres/runtime';
+import type { Contract } from './contract.d';
+import contractJson from './contract.json' with { type: 'json' };
+
+const db = postgres<Contract>({ contractJson, url: process.env.DATABASE_URL });
+const runtime = await db.connect();
+```
+
+### `fns.raw` in a projection
+
+Inside a `select()` callback you get a function bag `fns` whose `raw` member is a tagged template. Write a SQL fragment, interpolate columns and values with `${...}`, and declare the fragment's result type with `.returns(codecId)`.
+
+```ts
+const plan = db.sql.public.user
+  .select('id')
+  .select('upperEmail', (f, fns) => fns.raw`UPPER(${f.email})`.returns('pg/text@1'))
+  .where((f, fns) => fns.eq(f.id, aliceId))
+  .build();
+const rows = await runtime.execute(plan);
+// rows === [{ id: aliceId, upperEmail: 'ALICE@EXAMPLE.COM' }]
+```
+
+`.returns(codecId)` is a compile-time type annotation only. It declares how the fragment's result is typed on the JavaScript side; it does not cast the value in SQL or change how the driver decodes it. See the SQL query builder's [`fns.raw` and `.returns()`](/orm/next/reference/sql-query-builder#fnsraw-and-returns) for the full treatment.
+
+### `fns.raw` as a `where()` predicate
+
+`where()`'s callback returns a boolean expression, which is the same generic `Expression` shape the comparison helpers return. A raw fragment typed `.returns('pg/bool@1')` satisfies `where()` on its own, with no `fns.eq(...)` wrapper.
+
+```ts
+const plan = db.sql.public.user
+  .select('id', 'email')
+  .where((f, fns) => fns.raw`LENGTH(${f.email}) > 15`.returns('pg/bool@1'))
+  .build();
+const rows = await runtime.execute(plan);
+// only users whose email is longer than 15 characters
+```
+
+### Interpolating a typed expression
+
+Interpolating another `Expression` (a comparison, a field reference, or nested raw) splices that expression's AST into the fragment. It is **not** a string concatenation of rendered SQL: the interpolated expression lowers to its own AST node, so it stays parameterized and type-checked.
+
+```ts
+const plan = db.sql.public.user
+  .select('id', 'kind')
+  .select('kindLabel', (f, fns) =>
+    fns.raw`CASE WHEN ${fns.eq(f.kind, 'admin')} THEN 'admin' ELSE 'regular user' END`.returns(
+      'pg/text@1',
+    ),
+  )
+  .build();
+const rows = await runtime.execute(plan);
+// each row's kindLabel is 'admin' or 'regular user'
+```
+
+### Binding a bare value with `param()`
+
+To interpolate a bound value that has no adjacent column to infer a codec from, wrap it in `param(value, { codecId })` and give it an explicit, versioned codec id. Import `param` from `@prisma-next/sql-relational-core/expression`.
+
+```ts
+import { param } from '@prisma-next/sql-relational-core/expression';
+
+const targetLength = param(15, { codecId: 'pg/int4@1' });
+const plan = db.sql.public.user
+  .select('id', 'email')
+  .where((f, fns) => fns.raw`LENGTH(${f.email}) = ${targetLength}`.returns('pg/bool@1'))
+  .build();
+const rows = await runtime.execute(plan);
+// users whose email is exactly 15 characters long
+```
+
+:::warning[Always wrap bare values in `param(...)`]
+Bare-scalar interpolation (`` fns.raw`${limit}` ``) is currently broken against the real PostgreSQL adapter: its codec inferer emits unversioned codec ids (`pg/int4`) that don't match the versioned registry (`pg/int4@1`), so rendering throws. This is empirically verified. Always wrap values in `param(...)` with an explicit versioned codec id (`param(15, { codecId: 'pg/int4@1' })`). Interpolating a column or a typed `Expression` is also safe, because neither goes through codec inference.
+:::
+
+### Declaring a nullable result
+
+The object form of `.returns()` declares a nullable result. Use it when a fragment can evaluate to SQL `NULL`, so the result type is `T | null`.
+
+```ts
+const plan = db.sql.public.user
+  .select('id')
+  .select('adminName', (f, fns) =>
+    fns.raw`CASE WHEN ${fns.eq(f.kind, 'admin')} THEN ${f.displayName} END`.returns({
+      codecId: 'pg/text@1',
+      nullable: true,
+    }),
+  )
+  .build();
+const rows = await runtime.execute(plan);
+// adminName is the displayName for admins, null for everyone else
+```
+
+### The client-level `db.raw` tag
+
+`db.raw` on a connected client is the same tagged template as `fns.raw`, just reachable outside a builder callback. It has no field-accessor context (no `f` / `fns`), so use it to build a standalone `Expression` ahead of time and splice it into a query.
+
+```ts
+const serverNow = db.raw`now()`.returns('pg/timestamptz@1');
+const plan = db.sql.public.user
+  .select((f) => ({ id: f.id, serverNow }))
+  .where((f, fns) => fns.eq(f.id, aliceId))
+  .build();
+const rows = await runtime.execute(plan);
+// rows[0].serverNow is a Date
+```
+
+`db.raw` is not a way to execute a standalone raw SQL statement: there is no plan-building or execution path for a bare `db.raw` result. Every use embeds the `.returns(...)`-typed `Expression` into a `select()`, `where()`, or other builder call.
+
+### Unsupported interpolation
+
+Interpolation accepts columns, typed expressions, `param(...)` values, and the bare scalar types (`number`, `bigint`, `string`, `boolean`, `Uint8Array`) — though bare scalars then fail at render time on PostgreSQL (see [the warning above](#binding-a-bare-value-with-param)). Interpolating anything else, such as a `Date`, throws synchronously with code `RUNTIME.RAW_SQL_UNSUPPORTED_INTERPOLATION`:
+
+```
+... wrap this value in `param(...)` with an explicit codec ...
+```
+
+TypeScript already rejects an unsupported value at compile time. If you need to bind a `Date` (or any value with no supported type), wrap it in [`param(value, { codecId })`](#binding-a-bare-value-with-param) with the right codec.
+
+## MongoDB raw commands
+
+`db.raw.collection(rootName)` returns a raw collection with nine methods for running MongoDB commands directly against a collection. The root name is the contract's lowercase plural root (`'users'`, `'posts'`), the same name the ORM client uses (`db.orm.users`).
+
+Each method returns a buildable command: call `.build()` to get a plan, then run it with `db.execute(plan)`. Because raw filters carry native BSON values, the examples below construct ids with the driver's `ObjectId` class:
+
+```ts
+import { ObjectId } from 'mongodb';
+```
+
+The examples in this section run against the `users` / `posts` schema from the pipeline builder page. See its [example schema](/orm/next/reference/pipeline-builder#example-schema) for the full model definitions.
+
+:::warning[Raw command results are undecoded]
+As noted in the page-level warning at the top, raw command results are native BSON. `_id` and other ObjectId-valued fields come back as raw driver `ObjectId` instances, and write methods return the driver's result envelopes rather than decoded documents. Compare an `ObjectId` with `String(...)`, and read envelope keys (`insertedId`, `matchedCount`, `deletedCount`) directly.
+:::
+
+### `aggregate<Row>()`
+
+Run a raw aggregation pipeline against a collection. The generic type parameter types the yielded rows; the pipeline stages are raw MongoDB documents.
+
+```ts
+const plan = db.raw
+  .collection('posts')
+  .aggregate<{ _id: unknown; title: string }>([{ $match: { title: 'Hello world' } }])
+  .build();
+const rows = await db.execute(plan);
+// rows[0].title === 'Hello world'
+// rows[0]._id is a raw ObjectId — String(rows[0]._id) is the hex string
+```
+
+### `insertOne()` and `insertMany()`
+
+Insert one or many documents. Both return the driver's insert envelope, with `ObjectId` instances for the generated ids.
+
+```ts
+const onePlan = db.raw
+  .collection('users')
+  .insertOne({ name: 'Dave', email: 'dave@example.com', role: 'author' })
+  .build();
+const [oneResult] = await db.execute(onePlan);
+// { insertedId: <ObjectId> }
+
+const manyPlan = db.raw
+  .collection('users')
+  .insertMany([
+    { name: 'Eve', email: 'eve@example.com', role: 'author' },
+    { name: 'Frank', email: 'frank@example.com', role: 'author' },
+  ])
+  .build();
+const [manyResult] = await db.execute(manyPlan);
+// { insertedCount: 2, insertedIds: [<ObjectId>, <ObjectId>] }
+```
+
+`insertMany()`'s `insertedIds` is a plain array of `ObjectId`, reshaped from the native driver's index-keyed map.
+
+### `updateOne()` and `updateMany()`
+
+Update one or every matching document. The first argument is a raw filter document; the second is either an update document (`{ $set: ... }`) or an aggregation pipeline (an array of stages). Both return `{ matchedCount, modifiedCount, upsertedCount, upsertedId }`.
+
+#### Update document form
+
+```ts
+const plan = db.raw
+  .collection('users')
+  .updateOne({ _id: new ObjectId(aliceId) }, { $set: { bio: 'Updated bio' } })
+  .build();
+const [result] = await db.execute(plan);
+// { matchedCount: 1, modifiedCount: 1, ... }
+```
+
+#### Pipeline form
+
+An array update is a full aggregation-pipeline update, so a stage can reference the document's other fields.
+
+```ts
+const plan = db.raw
+  .collection('users')
+  .updateMany({ role: 'author' }, [{ $set: { bio: { $concat: ['bio for ', '$name'] } } }])
+  .build();
+const [result] = await db.execute(plan);
+// { matchedCount: 2, modifiedCount: 2, ... }
+```
+
+### `deleteOne()` and `deleteMany()`
+
+Delete one or every matching document. Both return `{ deletedCount }`.
+
+```ts
+const onePlan = db.raw.collection('users').deleteOne({ _id: new ObjectId(bobId) }).build();
+const [oneResult] = await db.execute(onePlan);
+// { deletedCount: 1 }
+
+const manyPlan = db.raw.collection('users').deleteMany({ role: 'author' }).build();
+const [manyResult] = await db.execute(manyPlan);
+// { deletedCount: 2 }
+```
+
+### `findOneAndUpdate()`
+
+Atomically update a matching document and return an image of it. The third argument accepts `{ upsert }`; when no document matches and `upsert` is `true`, the update inserts one.
+
+#### Remarks
+
+- The MongoDB command AST carries `sort` and `returnDocument` fields, but the public `findOneAndUpdate()` wrapper does **not** expose them. Passing them in the options object has no effect: they are silently dropped, not a type or runtime error. A caller who needs either must build the raw command directly, bypassing this collection wrapper.
+- Because `returnDocument` is never forwarded, the native driver's own default applies, which is `'before'` (the pre-update image). This has a surprising consequence for the classic upsert-counter pattern, shown below.
+
+##### Upsert counter pattern
+
+Because the wrapper always uses the driver's `'before'` default, the **first** call to an upsert counter returns an **empty** result: the upsert creates a brand-new document, so there is no pre-image to return, and the driver yields `null`. Read the counter value on the second and later calls, each of which returns the pre-image of its own increment.
+
+```ts
+const filter = { _id: 'pageViews' };
+const update = { $inc: { count: 1 }, $setOnInsert: { _id: 'pageViews' } };
+const counter = db.raw.collection('users');
+
+const first = await db.execute(counter.findOneAndUpdate(filter, update, { upsert: true }).build());
+const second = await db.execute(counter.findOneAndUpdate(filter, update, { upsert: true }).build());
+const third = await db.execute(counter.findOneAndUpdate(filter, update, { upsert: true }).build());
+// first  === []                    — no pre-image exists on the insert
+// second === [{ ..., count: 1 }]   — the pre-image after the first increment
+// third  === [{ ..., count: 2 }]
+```
+
+### `findOneAndDelete()`
+
+Atomically delete a matching document and return it. The yielded row is the raw matched document itself, not an envelope, so its `_id` is a raw `ObjectId`.
+
+```ts
+const plan = db.raw.collection('users').findOneAndDelete({ _id: new ObjectId(aliceId) }).build();
+const [deleted] = await db.execute(plan);
+// deleted is the removed document; deleted._id is a raw ObjectId
+```
+
+## `db.query.rawCommand()`
+
+`db.query.rawCommand(command)` runs a raw MongoDB aggregate command through the [pipeline builder](/orm/next/reference/pipeline-builder), bypassing the typed AST. Its rows come back as `unknown`; you type them yourself.
+
+```ts
+import { RawAggregateCommand } from '@prisma-next/mongo-query-ast/execution';
+
+const plan = db.query.rawCommand(new RawAggregateCommand('posts', [{ $count: 'total' }]));
+const rows = await db.execute(plan);
+// [{ total: 2 }]
+```
+
+`rawCommand()` is the escape hatch for anything the typed pipeline builder can't express, including `_id` equality filters (a real `ObjectId` in a raw pipeline document matches correctly) and `$redact` with `$$KEEP` / `$$PRUNE`. For the full treatment, including the working `_id`-filter pattern, see the pipeline builder's [`rawCommand()`](/orm/next/reference/pipeline-builder#rawcommand) section.

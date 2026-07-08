@@ -297,6 +297,84 @@ const config = {
         destination: "/next/add-to-existing-project/:path*",
         permanent: false,
       },
+      // ── Prisma Next URL cutover (DR-8687) — DO NOT ENABLE YET ─────────────
+      // The redirects below retire live Prisma 7 URLs, so they ship only when
+      // Prisma Next becomes the default docs version (the /orm/next tree moves
+      // to /orm). Until then, keep your section's redirects here, commented
+      // out, so the full cutover map builds up in one reviewable place.
+      // Section owners: append your block below with a DR reference.
+      //
+      // DR-8681 Fundamentals:
+      // { source: "/orm/prisma-client", destination: "/orm/next/fundamentals/reading-data", permanent: false },
+      // { source: "/orm/prisma-client/queries/crud", destination: "/orm/next/fundamentals/reading-data", permanent: false },
+      // { source: "/orm/prisma-client/queries/select-fields", destination: "/orm/next/fundamentals/reading-data", permanent: false },
+      // { source: "/orm/prisma-client/queries/filtering-and-sorting", destination: "/orm/next/fundamentals/reading-data", permanent: false },
+      // { source: "/orm/prisma-client/queries/pagination", destination: "/orm/next/fundamentals/reading-data", permanent: false },
+      // { source: "/orm/prisma-client/queries/aggregation-grouping-summarizing", destination: "/orm/next/fundamentals/reading-data", permanent: false },
+      // { source: "/orm/prisma-client/queries/relation-queries", destination: "/orm/next/fundamentals/relations-and-joins", permanent: false },
+      // { source: "/orm/prisma-client/queries/transactions", destination: "/orm/next/fundamentals/transactions", permanent: false },
+      // { source: "/orm/prisma-client/using-raw-sql", destination: "/orm/next/fundamentals/advanced-queries", permanent: false },
+      //
+      // DR-8680 Contract authoring:
+      // { source: "/orm/prisma-schema", destination: "/orm/next/contract-authoring/the-data-contract", permanent: false },
+      // { source: "/orm/prisma-schema/overview", destination: "/orm/next/contract-authoring/psl-syntax", permanent: false },
+      // { source: "/orm/prisma-schema/overview/data-sources", destination: "/orm/next/contract-authoring/psl-syntax", permanent: false },
+      // { source: "/orm/prisma-schema/overview/location", destination: "/orm/next/contract-authoring/psl-syntax", permanent: false },
+      // { source: "/orm/prisma-client/type-safety", destination: "/orm/next/contract-authoring/the-data-contract", permanent: false },
+      //
+      // No Prisma Next equivalent yet (stay on the Prisma 7 tree, flag to the
+      // SEO owner at cutover): /orm/prisma-client/queries/full-text-search,
+      // /orm/prisma-client/queries/advanced/query-optimization-performance,
+      // /orm/prisma-client/queries/excluding-fields.
+      //
+      // DR-8679 Data modeling:
+      // { source: "/orm/prisma-schema", destination: "/orm/next/data-modeling", permanent: false },
+      // { source: "/orm/prisma-schema/data-model/models", destination: "/orm/next/data-modeling", permanent: false },
+      // { source: "/orm/prisma-schema/data-model/relations", destination: "/orm/next/data-modeling/relational-databases", permanent: false },
+      //
+      // Migrations (PR #8025; the "Migrating from Prisma 7" guide is DR-8689):
+      // { source: "/orm/prisma-migrate", destination: "/orm/next/migrations/how-migrations-work", permanent: false },
+      // { source: "/orm/prisma-migrate/getting-started", destination: "/orm/next/migrations/how-migrations-work", permanent: false },
+      // { source: "/orm/prisma-migrate/understanding-prisma-migrate/mental-model", destination: "/orm/next/migrations/the-migration-graph", permanent: false },
+      // { source: "/orm/prisma-migrate/workflows/development-and-production", destination: "/orm/next/migrations/applying-a-migration", permanent: false },
+      // { source: "/orm/prisma-migrate/workflows/customizing-migrations", destination: "/orm/next/migrations/editing-a-migration", permanent: false },
+      //
+      // No Prisma Next equivalent yet (stay on the Prisma 7 tree, flag to the
+      // SEO owner at cutover): /orm/prisma-migrate/understanding-prisma-migrate/shadow-database,
+      // .../migration-histories, .../limitations-and-known-issues, and the
+      // /orm/prisma-migrate/workflows/ pages for seeding, baselining,
+      // squashing-migrations, generating-down-migrations, patching-and-hotfixing,
+      // native-database-functions, native-database-types, prototyping-your-schema,
+      // troubleshooting — reassess as matching Prisma Next pages land.
+      //
+      // ── Guides URL cutover (DR-8689 / DR-8687) — DO NOT ENABLE YET ────────
+      // Today: Prisma 7 guides live at /guides/* and Prisma Next guides at
+      // /guides/next/* (the "Guides version" dropdown switches between them).
+      // When Prisma Next becomes the default docs version ("/" becomes the
+      // Prisma Next docs and Prisma 7 moves to v7), the guides flip the same
+      // way: the Prisma 7 guide tree moves under /guides/v7, and the
+      // /guides/next tree is promoted to /guides. The redirects to enable at
+      // that cutover, kept here so the map builds up in one reviewable place:
+      //
+      // The /guides/next tree mirrors the Prisma 7 folder structure, so the
+      // promotion is one wildcard:
+      // { source: "/guides/next/:path*", destination: "/guides/:path*", permanent: false },
+      //
+      // Park the Prisma 7 versions under /guides/v7 (only for guides that
+      // have a Prisma Next replacement; unconverted guides keep their URL):
+      // { source: "/guides/runtimes/bun", destination: "/guides/v7/runtimes/bun", permanent: false },
+      // { source: "/guides/runtimes/deno", destination: "/guides/v7/runtimes/deno", permanent: false },
+      // { source: "/guides/frameworks/nextjs", destination: "/guides/v7/frameworks/nextjs", permanent: false },
+      // { source: "/guides/frameworks/astro", destination: "/guides/v7/frameworks/astro", permanent: false },
+      // { source: "/guides/frameworks/nuxt", destination: "/guides/v7/frameworks/nuxt", permanent: false },
+      // { source: "/guides/frameworks/sveltekit", destination: "/guides/v7/frameworks/sveltekit", permanent: false },
+      // { source: "/guides/frameworks/tanstack-start", destination: "/guides/v7/frameworks/tanstack-start", permanent: false },
+      // { source: "/guides/frameworks/nestjs", destination: "/guides/v7/frameworks/nestjs", permanent: false },
+      // { source: "/guides/frameworks/hono", destination: "/guides/v7/frameworks/hono", permanent: false },
+      // { source: "/guides/frameworks/elysia", destination: "/guides/v7/frameworks/elysia", permanent: false },
+      //
+      // Each future guide conversion appends its pair here in the same PR.
+      // ───────────────────────────────────────────────────────────────────────
     ];
   },
   async rewrites() {

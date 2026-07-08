@@ -1,0 +1,215 @@
+---
+title: Relational data modeling
+description: Model one-to-one, one-to-many, many-to-many, and polymorphic relations for PostgreSQL and other SQL databases.
+url: /orm/next/data-modeling/relational-databases
+metaTitle: Relational data modeling in Prisma Next
+metaDescription: How to model one-to-one, one-to-many, many-to-many, and polymorphic relations in Prisma Next for PostgreSQL, including which side owns the foreign key.
+badge: early-access
+---
+
+In a relational database, each model becomes a table and each scalar field becomes a column. Models connect through foreign keys: a column in one table that holds the primary key of a row in another table.
+
+This page shows how to model each relation shape and, for each one, where the foreign key belongs. New to models and keys? Start with the [data modeling overview](/orm/next/data-modeling).
+
+## How relations are declared
+
+The model that stores the connection carries two fields: a scalar field for the foreign key column, and a relation field that navigates it. `@relation(fields:, references:)` ties them together:
+
+```prisma
+model Post {
+  id       Int  @id @default(autoincrement())
+  authorId Int
+  author   User @relation(fields: [authorId], references: [id])
+}
+```
+
+The side that carries the `fields` argument owns the foreign key. Which side that should be is the main decision in the shapes below.
+
+## One-to-many
+
+A one-to-many relation (`1:n`) connects one record to many: one user writes many posts, and each post belongs to one user. This is the most common relation shape.
+
+```prisma
+model User {
+  id    Int    @id @default(autoincrement())
+  email String @unique
+  posts Post[]
+}
+
+model Post {
+  id       Int    @id @default(autoincrement())
+  title    String
+  authorId Int
+  author   User   @relation(fields: [authorId], references: [id])
+}
+```
+
+The foreign key lives on the "many" side, `Post.authorId`, because each post points at exactly one user, while a user points at an open-ended list of posts. The `posts Post[]` field on `User` is the back-relation: it stores nothing in the database and is inferred from the foreign key on `Post`.
+
+Use a one-to-many whenever a record belongs to one parent and a parent has many children: comments on a post, line items on an order, employees in a department.
+
+Because the list field is virtual, you never write to it. To connect a post to a user, set the foreign key:
+
+```typescript
+const post = await db.orm.public.Post.create({
+  title: "Hello",
+  authorId: user.id,
+});
+```
+
+See [Relations and joins](/orm/next/fundamentals/relations-and-joins#one-to-many) for querying in both directions.
+
+## One-to-one
+
+A one-to-one relation (`1:1`) connects at most one record on each side: a user has at most one profile, and a profile belongs to exactly one user.
+
+Model it like a one-to-many, then add `@unique` to the foreign key. The unique constraint is what turns "many" into "at most one": no two profiles can reference the same user.
+
+```prisma
+model User {
+  id    Int    @id @default(autoincrement())
+  email String @unique
+}
+
+model Profile {
+  id     Int    @id @default(autoincrement())
+  bio    String
+  userId Int    @unique
+  user   User   @relation(fields: [userId], references: [id])
+}
+```
+
+Declare the relation on the side that holds the foreign key (`Profile` here). The mirror field on the other model (`profile Profile?` on `User`) is not supported yet, so [query the relation from the profile side](/orm/next/fundamentals/relations-and-joins#one-to-one).
+
+### Which side owns the foreign key
+
+Put the foreign key on the dependent side: the record that cannot exist on its own.
+
+A profile needs a user. A user does not need a profile. So `Profile` carries `userId`:
+
+```prisma
+model Profile {
+  id     Int  @id @default(autoincrement())
+  userId Int  @unique
+  user   User @relation(fields: [userId], references: [id])
+}
+```
+
+The other signals all point at the same side. The dependent record is:
+
+- The one you create second. Insert the `User`, then its `Profile`.
+- The one you would delete when the parent goes away.
+- The one whose absence is normal. A user without a profile is fine; a profile without a user is broken data.
+
+Placing the key on the dependent side keeps `User` free of profile concerns, lets a user exist with no profile, and guarantees every profile has exactly one user.
+
+If neither side is clearly dependent, put the key on the side you query from less often.
+
+## Many-to-many
+
+A many-to-many relation (`m:n`) connects many records on each side: a post has many tags, and a tag applies to many posts.
+
+A single foreign key cannot express this, because each side needs to point at many records. The answer is a junction model: a third model that holds one record per connected pair.
+
+```prisma
+model Post {
+  id    Int       @id @default(autoincrement())
+  title String
+  tags  PostTag[]
+}
+
+model Tag {
+  id    Int       @id @default(autoincrement())
+  label String    @unique
+  posts PostTag[]
+}
+
+model PostTag {
+  postId Int
+  tagId  Int
+  post   Post @relation(fields: [postId], references: [id])
+  tag    Tag  @relation(fields: [tagId], references: [id])
+
+  @@id([postId, tagId])
+}
+```
+
+The junction model is two one-to-many relations back to back. Its composite primary key, `@@id([postId, tagId])`, enforces one record per pair.
+
+Connecting a post to a tag is a plain create on the junction model, and disconnecting is a delete:
+
+```typescript
+await db.orm.public.PostTag.create({ postId: post.id, tagId: tag.id });
+```
+
+The junction is an ordinary model, so it can carry data about the pairing itself. When the tag was added, who added it, a sort order: add the field to the junction model.
+
+```prisma
+model PostTag {
+  postId  Int
+  tagId   Int
+  addedAt DateTime @default(now())
+  post    Post     @relation(fields: [postId], references: [id])
+  tag     Tag      @relation(fields: [tagId], references: [id])
+
+  @@id([postId, tagId])
+}
+```
+
+An implicit many-to-many (list fields on both sides with no junction model, as in Prisma 7) is not supported yet: the schema compiler rejects it and asks for an explicit join model. Model the junction explicitly; [Relations and joins](/orm/next/fundamentals/relations-and-joins#many-to-many) shows how to traverse it in one query.
+
+## Polymorphic relations
+
+Sometimes several kinds of record share a common core but each carries its own extra fields: every `Task` has a title, but a `Bug` also has a severity and a `Feature` has a target release.
+
+Prisma Next models this with a base model plus variant models. A discriminator field records which variant each row is:
+
+```prisma
+model Task {
+  id    Int    @id @default(autoincrement())
+  title String
+  type  String
+
+  @@discriminator(type)
+}
+
+model Bug {
+  severity String
+
+  @@base(Task, "bug")
+}
+
+model Feature {
+  targetRelease String?
+
+  @@base(Task, "feature")
+
+  @@map("features")
+}
+```
+
+`@@discriminator(type)` marks the field that records the variant. `@@base(Task, "bug")` declares that `Bug` is the `"bug"` variant of `Task`.
+
+Variants appear as their own models in queries (`db.orm.public.Bug` alongside `db.orm.public.Task`), and a query on the base model returns every variant. One thing to know when writing: pass the discriminator value explicitly when you create through a variant (`{ title, severity, type: "bug" }`); it is not filled in automatically yet.
+
+Each variant picks one of two storage layouts:
+
+- A variant with no `@@map`, like `Bug`, shares the base table. Its extra columns live alongside the base columns and must be nullable at the storage level, because a `Feature` row has no severity.
+- A variant with its own `@@map`, like `Feature`, gets its own table holding only its extra columns, linked back to the base table's primary key. Its columns keep their constraints, at the cost of a join to read a full variant.
+
+Use polymorphism when you query the variants together (one feed of tasks, one stream of events) and each variant carries real structure of its own. If you never query them together, separate models are simpler. If the variants differ by one nullable field, a single model is simpler still.
+
+## Prompt your coding agent
+
+Projects scaffolded with `create-prisma` install Prisma Next skills for your coding agent; the `prisma-next-contract` skill covers relation modeling. Prompts that map to each section:
+
+- "Using the prisma-next-contract skill, add a one-to-many between User and Post with the foreign key on Post."
+- "Make the Profile relation one-to-one by adding a unique constraint to its foreign key."
+- "Model a many-to-many between Post and Tag with an explicit junction model and an addedAt timestamp."
+- "Split Task into Bug and Feature variants with a discriminator field."
+
+## Next steps
+
+- [Query relations](/orm/next/fundamentals/relations-and-joins) with `.include(...)`, relation predicates, and junction traversal.
+- To model for MongoDB, see the [MongoDB data modeling guide](/orm/next/data-modeling/mongodb).
+- Referential actions (what happens to related rows on delete) are covered in the relations reference as it lands.
