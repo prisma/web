@@ -20,23 +20,9 @@ tags:
       <i>8 min read</i>
   </center>
 
-  Welcome to the second tutorial in the series about building a REST API with NestJS and Prisma! In this tutorial, you will add input validation and transformation to the API: the built-in NestJS `ValidationPipe` enforces validation rules declared with `class-validator` decorators on your DTO classes, and `ParseIntPipe` converts URL path parameters from strings to numbers.
+  Input validation in NestJS is handled by the built-in `ValidationPipe`: you declare rules with `class-validator` decorators on your DTO classes, register the pipe globally, and every incoming request body is checked before it reaches your route handlers. This tutorial is the second part of a five-part series on building a REST API with NestJS and Prisma ORM. In it, you will add validation and transformation to the Median blog API: reject malformed input, strip unknown fields with the `whitelist` option, and convert URL path parameters from strings to numbers with `ParseIntPipe`.
 
-> **Updated (July 2026):** This tutorial has been fully revised for **Prisma ORM 7** and **NestJS 11**, and continues directly from the updated [first part](/nestjs-prisma-rest-api-7D056s1BmOL0) of the series. Every command and code block below was run end-to-end against `prisma@7.8`, `@prisma/client@7.8` and `@nestjs/core@11`, with the database on [Prisma Postgres](https://www.prisma.io/postgres).
-
-## Table Of Contents
-
-- [Introduction](#introduction)
-  - [Development environment](#development-environment)
-  - [Set up the project](#set-up-the-project)
-  - [Project structure and files](#project-structure-and-files)
-- [Perform input validation](#perform-input-validation)
-  - [Set up `ValidationPipe` globally](#set-up-validationpipe-globally)
-  - [Add validation rules to `CreateArticleDto`](#add-validation-rules-to-createarticledto)
-  - [Strip unnecessary properties from client requests](#strip-unnecessary-properties-from-client-requests)
-- [Transform dynamic URL paths with `ParseIntPipe`](#transform-dynamic-url-paths-with-parseintpipe)
-- [Summary and final remarks](#summary-and-final-remarks)
-
+> **Updated (July 2026):** This tutorial has been fully revised for **Prisma ORM 7** and **NestJS 11**, and continues directly from the updated [first part](/nestjs-prisma-rest-api-7D056s1BmOL0) of the series. Every command and code block below was run end-to-end against `prisma@7.8`, `@prisma/client@7.8` and `@nestjs/core@11`, with the database on [Prisma Postgres](https://www.prisma.io/docs/postgres).
 
 ## Introduction
 
@@ -51,11 +37,11 @@ You will also learn how to perform input transformation. Input transformation is
 To follow along with this tutorial, you will be expected to:
 
 - ... have [Node.js](https://nodejs.org) (v18 or higher) installed.
-- ... have a PostgreSQL database. The easiest option is [Prisma Postgres](https://www.prisma.io/postgres); you can also run Postgres locally with [Docker](https://www.docker.com/) or a native install.
+- ... have a PostgreSQL database. The easiest option is Prisma Postgres; you can also run Postgres locally with [Docker](https://www.docker.com/) or a native install.
 - ... have the [Prisma VSCode Extension](https://marketplace.visualstudio.com/items?itemName=Prisma.prisma) installed. _(optional)_
 - ... have access to a Unix shell (like the terminal/shell in Linux and macOS) to run the commands provided in this series. _(optional)_
 
-> **Note 1**: The optional Prisma VSCode extension adds some really nice IntelliSense and syntax highlighting for Prisma.
+> **Note 1**: The optional Prisma VSCode extension adds IntelliSense and syntax highlighting for Prisma.
 
 > **Note 2**: If you don't have a Unix shell (for example, you are on a Windows machine), you can still follow along, but the shell commands may need to be modified for your machine.
 
@@ -125,14 +111,14 @@ The notable files and directories in this repository are:
 
 ## Perform input validation
 
-To perform input validation, you will be using [NestJS Pipes](https://docs.nestjs.com/pipes). Pipes operate on the arguments being processed by a route handler. Nest invokes a pipe before the route handler, and the pipe receives the arguments destined for the route handler. Pipes can do a number of things, like validate the input, add fields to the input, etc. Pipes are similar to [middleware](https://docs.nestjs.com/middleware), but the scope of pipes is limited to processing input arguments. NestJS provides a few pipes out-of-the-box, but you can also create your own [custom pipes](https://docs.nestjs.com/pipes#custom-pipes).
+To perform input validation, you will be using [NestJS Pipes](https://docs.nestjs.com/pipes). A pipe in NestJS is a class that validates or transforms the arguments of a route handler before the handler runs. Nest invokes a pipe before the route handler, and the pipe receives the arguments destined for the route handler. Pipes are similar to [middleware](https://docs.nestjs.com/middleware), but the scope of pipes is limited to processing input arguments. NestJS provides a few pipes out-of-the-box, but you can also create your own [custom pipes](https://docs.nestjs.com/pipes#custom-pipes).
 
 Pipes have two typical use cases:
 
 - **Validation**: Evaluate input data and, if valid, pass it through unchanged; otherwise, throw an exception when the data is incorrect.
 - **Transformation**: Transform input data to the desired form (e.g., from string to integer).
 
-A NestJS validation pipe will check the arguments passed to a route. If the arguments are valid, the pipe will pass the arguments to the route handler without any modification. However, if the arguments violate any of the specified validation rules, the pipe will throw an exception.
+A NestJS validation pipe will check the arguments passed to a route. If the arguments are valid, the pipe will pass the arguments to the route handler without any modification. However, if the arguments violate any of the specified validation rules, the pipe will throw an exception with an HTTP `400 Bad Request` status.
 
 The following two diagrams show how a validation pipe works, for an arbitrary `/example` route.
 
@@ -151,7 +137,7 @@ To use this feature, you will need to add two packages to your project:
 npm install class-validator class-transformer
 ```
 
-The `class-validator` package provides decorators for validating input data, and the `class-transformer` package provides decorators to transform input data to the desired form. Both packages are well integrated with NestJS pipes.
+The `class-validator` package provides decorators for validating input data, and the `class-transformer` package converts incoming JSON into typed instances of your DTO classes so those rules can run. Both packages are required by the `ValidationPipe`.
 
 Now import the `ValidationPipe` in your `main.ts` file and use the `app.useGlobalPipes` method to make it available globally in your application:
 
@@ -373,6 +359,20 @@ The `ParseIntPipe` will intercept the `id` parameter of string type and automati
 }
 ```
 
+## Frequently asked questions
+
+### Does `whitelist: true` reject requests that contain unknown fields?
+
+No. With `whitelist: true`, the `ValidationPipe` silently strips unknown properties from the request body and processes the rest. If you want the API to reject such requests instead, add `forbidNonWhitelisted: true` alongside it; the request then fails with an HTTP 400 response like `"property extraField should not exist"`.
+
+### Do I need both `class-validator` and `class-transformer`?
+
+Yes. The `ValidationPipe` depends on both packages: the validation rules come from `class-validator` decorators on your DTO classes, and `class-transformer` converts the plain JSON request body into instances of those classes so the rules can be evaluated.
+
+### How do I validate URL path parameters like `/articles/:id`?
+
+Use a transformation pipe on the parameter, for example `@Param('id', ParseIntPipe) id: number`. The pipe converts the string from the URL into a number, documents the parameter correctly in Swagger, and rejects non-numeric values with an HTTP 400 response.
+
 ## Summary and final remarks
 
 Congratulations! In this tutorial, you took an existing REST API built with NestJS 11 and Prisma ORM 7 and:
@@ -381,8 +381,8 @@ Congratulations! In this tutorial, you took an existing REST API built with Nest
 - Stripped client requests of unnecessary properties with the `whitelist` option.
 - Integrated `ParseIntPipe` to parse a `string` path variable and convert it to a `number`.
 
-You might have noticed that NestJS heavily relies on decorators. This is a very intentional design choice. NestJS aims to improve code readability and modularity by heavily leveraging decorators for various kinds of [cross-cutting concerns](https://en.wikipedia.org/wiki/Cross-cutting_concern). As a result, controllers and service methods do not need to be bloated with boilerplate code for doing things like validation, caching, logging, etc.
+You might have noticed that NestJS heavily relies on decorators. This is a very intentional design choice. NestJS aims to improve code readability and modularity by heavily leveraging decorators for various kinds of cross-cutting concerns. As a result, controllers and service methods do not need to be bloated with boilerplate code for doing things like validation, caching, logging, etc.
 
-In the [next part](/nestjs-prisma-error-handling-7D056s1kOop2) of this series, you will learn how to handle errors in a NestJS and Prisma application, including the database errors that validation alone can't catch. If you want to go deeper on the Prisma side first, the [Prisma getting started guide](https://www.prisma.io/docs/getting-started) and [Prisma Migrate docs](https://www.prisma.io/docs/orm/prisma-migrate/getting-started) are good next steps, and [Prisma Postgres](https://www.prisma.io/postgres) is an easy way to stand up the database layer for follow-on work.
+In the [next part](/nestjs-prisma-error-handling-7D056s1kOop2) of this series, you will learn how to handle errors in a NestJS and Prisma application, including the database errors that validation alone can't catch. If you want to go deeper on the Prisma side first, the [Prisma getting started guide](https://www.prisma.io/docs/getting-started) and [Prisma Migrate docs](https://www.prisma.io/docs/orm/prisma-migrate/getting-started) are good next steps, and Prisma Postgres is an easy way to stand up the database layer for follow-on work.
 
-> **What's next: Prisma Next.** Prisma Next is the next generation of Prisma ORM: a TypeScript-native rewrite that's extensible, composable, and built to work well with AI coding agents. When it's ready for general use, it becomes **Prisma 8**, the next major version of Prisma. It's in early access and still evolving, so Prisma 7 (used throughout this tutorial) remains the right choice for production today. If you want to try the future of Prisma and help shape it, run `npm create prisma@next`, explore the [early access docs](https://pris.ly/pn-ea), or star the [`prisma/prisma-next` repo](https://github.com/prisma/prisma-next).
+> **What's next: Prisma Next.** [Prisma Next](https://www.prisma.io/docs/orm) is the next generation of Prisma ORM: a TypeScript-native rewrite that's extensible, composable, and built to work well with AI coding agents. When it's ready for general use, it becomes **Prisma 8**, the next major version of Prisma. It's in early access and still evolving, so Prisma 7 (used throughout this tutorial) remains the right choice for production today. If you want to try the future of Prisma and help shape it, run `npm create prisma@next`, explore the [early access docs](https://pris.ly/pn-ea), or star the [`prisma/prisma-next` repo](https://github.com/prisma/prisma-next).
