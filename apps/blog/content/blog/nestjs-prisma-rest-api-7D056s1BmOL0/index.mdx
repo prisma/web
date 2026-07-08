@@ -2,6 +2,7 @@
 title: "Building a REST API with NestJS and Prisma"
 slug: "nestjs-prisma-rest-api-7D056s1BmOL0"
 date: "2022-06-03"
+updatedAt: "2026-07-08"
 authors:
   - "Tasin Ishmam"
 metaTitle: "Build a REST API with NestJS, Prisma 7, PostgreSQL and Swagger"
@@ -18,41 +19,9 @@ tags:
       <i>20 min read</i>
   </center>
 
-  NestJS is one of the most popular Node.js frameworks for building structured, type-safe server-side applications. This article will teach you how to build a backend REST API with NestJS, Prisma ORM, PostgreSQL and Swagger.
+  NestJS is one of the most popular Node.js frameworks for building structured, type-safe server-side applications, and Prisma ORM gives it a type-safe database layer. This tutorial is the first part of a five-part series on building a REST API with NestJS and Prisma ORM. In it, you will generate a NestJS project, connect it to PostgreSQL with Prisma ORM 7, build CRUD endpoints for a blog application called "Median", and document the API with Swagger.
 
-> **Updated (June 2026):** This tutorial has been fully revised for **Prisma ORM 7** and **NestJS 11**. Prisma 7 is Rust-free and uses [driver adapters](https://www.prisma.io/docs/orm/overview/databases/database-drivers), generates the Prisma Client into your project (instead of `node_modules`), and is configured through a `prisma.config.ts` file. Every command and code block below was run end-to-end against `prisma@7.8`, `@prisma/client@7.8` and `@nestjs/core@11`. If you're starting fresh, pair Prisma ORM with [Prisma Postgres](https://www.prisma.io/postgres) for a managed database that works out of the box.
-
-## Table Of Contents
-
-- [Introduction](#introduction)
-  - [Technologies you will use](#technologies-you-will-use)
-- [Prerequisites](#prerequisites)
-  - [Assumed knowledge](#assumed-knowledge)
-  - [Development environment](#development-environment)
-- [Generate the NestJS project](#generate-the-nestjs-project)
-- [Create a PostgreSQL instance](#create-a-postgresql-instance)
-- [Set up Prisma](#set-up-prisma)
-  - [Initialize Prisma](#initialize-prisma)
-  - [Set your environment variable](#set-your-environment-variable)
-  - [Understand the Prisma schema](#understand-the-prisma-schema)
-  - [Model the data](#model-the-data)
-  - [Migrate the database](#migrate-the-database)
-  - [Seed the database](#seed-the-database)
-  - [Create a Prisma service](#create-a-prisma-service)
-- [Set up Swagger](#set-up-swagger)
-- [Implement CRUD operations for `Article` model](#implement-crud-operations-for-article-model)
-  - [Generate REST Resources](#generate-rest-resources)
-  - [Add `PrismaClient` to the `Articles` module](#add-prismaclient-to-the-articles-module)
-  - [Define `GET /articles` endpoint](#define-get-articles-endpoint)
-  - [Define `GET /articles/drafts` endpoint](#define-get-articlesdrafts-endpoint)
-  - [Define `GET /articles/:id` endpoint](#define-get-articlesid-endpoint)
-  - [Define `POST /articles` endpoint](#define-post-articles-endpoint)
-  - [Define `PATCH /articles/:id` endpoint](#define-patch-articlesid-endpoint)
-  - [Define `DELETE /articles/:id` endpoint](#define-delete-articlesid-endpoint)
-  - [Group endpoints together in Swagger](#group-endpoints-together-in-swagger)
-- [Update Swagger response types](#update-swagger-response-types)
-- [Summary and final remarks](#summary-and-final-remarks)
-
+> **Updated (July 2026):** This tutorial has been fully revised for **Prisma ORM 7** and **NestJS 11**. Prisma 7 is Rust-free and uses [driver adapters](https://www.prisma.io/docs/orm/overview/databases/database-drivers), generates the Prisma Client into your project (instead of `node_modules`), and is configured through a `prisma.config.ts` file. Every command and code block below was run end-to-end against `prisma@7.8`, `@prisma/client@7.8` and `@nestjs/core@11`. If you're starting fresh, pair Prisma ORM with [Prisma Postgres](https://www.prisma.io/docs/postgres) for a managed database that works out of the box.
 
 ## Introduction
 
@@ -69,7 +38,7 @@ You will be using the following tools to build this application:
 
 - [NestJS](https://nestjs.com/) as the backend framework
 - [Prisma ORM](https://www.prisma.io/) as the Object-Relational Mapper (ORM)
-- [PostgreSQL](https://www.postgresql.org/) as the database (via [Prisma Postgres](https://www.prisma.io/postgres) or your own instance)
+- [PostgreSQL](https://www.postgresql.org/) as the database (via Prisma Postgres or your own instance)
 - [Swagger](https://swagger.io/) as the API documentation tool
 - [TypeScript](https://www.typescriptlang.org/) as the programming language
 
@@ -91,11 +60,11 @@ This is a beginner friendly tutorial. However, this tutorial assumes:
 To follow along with this tutorial, you will be expected to:
 
 - ... have [Node.js](https://nodejs.org) (v18 or higher) installed.
-- ... have a PostgreSQL database. The easiest option is [Prisma Postgres](https://www.prisma.io/postgres); you can also run Postgres locally with [Docker](https://www.docker.com/) or a native install.
+- ... have a PostgreSQL database. The easiest option is Prisma Postgres; you can also run Postgres locally with [Docker](https://www.docker.com/) or a native install.
 - ... have the [Prisma VSCode Extension](https://marketplace.visualstudio.com/items?itemName=Prisma.prisma) installed. _(optional)_
 - ... have access to a Unix shell (like the terminal/shell in Linux and macOS) to run the commands provided in this series. _(optional)_
 
-> **Note 1**: The optional Prisma VSCode extension adds some really nice IntelliSense and syntax highlighting for Prisma.
+> **Note 1**: The optional Prisma VSCode extension adds IntelliSense and syntax highlighting for Prisma.
 
 > **Note 2**: If you don't have a Unix shell (for example, you are on a Windows machine), you can still follow along, but the shell commands may need to be modified for your machine.
 
@@ -157,7 +126,7 @@ You will be using PostgreSQL as the database for your NestJS application. You ha
 ```shell
 npx create-db
 ```
-This prints a `DATABASE_URL` connection string (along with a link to claim the database so you can keep it). Copy the `DATABASE_URL`; you'll paste it into your `.env` file in the next section. You can also create a Prisma Postgres database from the [Prisma Console](https://www.prisma.io/postgres).
+This prints a `DATABASE_URL` connection string (along with a link to claim the database so you can keep it). Copy the `DATABASE_URL`; you'll paste it into your `.env` file in the next section. You can also create a Prisma Postgres database from the [Prisma Console](https://console.prisma.io).
 
 > **Note**: Prefer to run Postgres locally with no cloud at all? `npx prisma dev` starts a local Prisma Postgres server in your terminal. It works for this tutorial, but the local server doesn't support the `prisma migrate dev` workflow you'll use later, so run `npx prisma db push` instead of `migrate dev` if you go this route. For the smoothest path through every step below, use `npx create-db` (Option A) or Docker (Option B).
 
@@ -335,11 +304,10 @@ With the Prisma schema defined, you will run migrations to create the actual tab
 ```shell
 npx prisma migrate dev --name init
 ```
-This command will do three things:
+This command will do two things:
 
 1. **Save the migration**: Prisma Migrate will take a snapshot of your schema and figure out the SQL commands necessary to carry out the migration. Prisma will save the migration file containing the SQL commands to the newly created `prisma/migrations` folder.
 2. **Execute the migration**: Prisma Migrate will execute the SQL in the migration file to create the underlying tables in your database.
-3. **Generate Prisma Client**: Prisma will generate Prisma Client based on your latest schema, outputting it to the `generated/prisma` folder you configured.
 
 > **Note**: You can learn more about Prisma Migrate in the [Prisma docs](https://www.prisma.io/docs/orm/prisma-migrate).
 
@@ -352,9 +320,21 @@ migrations/
     └─ migration.sql
 
 Your database is now in sync with your schema.
-...
+```
+
+After the migration completes, generate Prisma Client so it reflects your latest schema:
+
+```shell
+npx prisma generate
+```
+
+You should see output like this:
+
+```
 ✔ Generated Prisma Client (7.8.0) to ./generated/prisma
 ```
+
+> **Note**: In Prisma 7, `migrate dev` applies migrations but does not regenerate Prisma Client into your configured `output` folder. Run `npx prisma generate` after every schema change; without it, new models are missing from the Client at runtime.
 Check the generated migration file to get an idea about what Prisma Migrate is doing behind the scenes:
 
 ```sql
@@ -1019,6 +999,20 @@ Now, Swagger should properly define the response type for all endpoints on the A
 ![](/nestjs-prisma-rest-api-7D056s1BmOL0/imgs/response-types.png)
 
 
+## Frequently asked questions
+
+<Accordions type="single">
+  <Accordion title="Why does Prisma 7 generate the Client into my project instead of node_modules?">
+The `prisma-client` generator outputs the Client as plain source files to the `output` path you configure (here, `generated/prisma`). This makes the generated code transparent and bundler-friendly, and your application imports the Client from that path instead of from `@prisma/client`.
+  </Accordion>
+  <Accordion title="Do I still need the @prisma/client package in Prisma 7?">
+Yes. The generated Client imports its runtime from the `@prisma/client` package, and Postgres access goes through the `@prisma/adapter-pg` driver adapter. Without `@prisma/client` installed, the app fails at runtime with `Cannot find module '@prisma/client/runtime/client'`.
+  </Accordion>
+  <Accordion title="Why do I get 'exports is not defined' when NestJS loads Prisma Client?">
+NestJS compiles to CommonJS, while the generated Client defaults to a module format that doesn't match. Set `moduleFormat = "cjs"` on the generator block in `schema.prisma` and regenerate; the error disappears.
+  </Accordion>
+</Accordions>
+
 ## Summary and final remarks
 
 Congratulations! You've built a rudimentary REST API using NestJS and Prisma 7. Throughout this tutorial you:
@@ -1029,6 +1023,6 @@ Congratulations! You've built a rudimentary REST API using NestJS and Prisma 7. 
 
 One of the main takeaways from this tutorial is how easy it is to build a REST API with NestJS and Prisma. This is an incredibly productive stack for rapidly building well structured, type-safe and maintainable backend applications.
 
-If you want to keep building from here, start with the [Prisma getting started guide](https://www.prisma.io/docs/getting-started), learn more about [Prisma Migrate](https://www.prisma.io/docs/orm/prisma-migrate/getting-started), or create a [Prisma Postgres](https://www.prisma.io/postgres) database for your next NestJS project.
+In the [next part](/nestjs-prisma-validation-7D056s1kOla1) of this series, you will add input validation and transformation to this API. If you want to go deeper on the Prisma side first, start with the [Prisma getting started guide](https://www.prisma.io/docs/getting-started), learn more about [Prisma Migrate](https://www.prisma.io/docs/orm/prisma-migrate/getting-started), or create a Prisma Postgres database for your next NestJS project.
 
-> **What's next: Prisma Next.** Prisma Next is the next generation of Prisma ORM: a TypeScript-native rewrite that's extensible, composable, and built to work well with AI coding agents. When it's ready for general use, it becomes **Prisma 8**, the next major version of Prisma. It's in early access and still evolving, so Prisma 7 (used throughout this tutorial) remains the right choice for production today. If you want to try the future of Prisma and help shape it, run `npm create prisma@next`, explore the [early access docs](https://pris.ly/pn-ea), or star the [`prisma/prisma-next` repo](https://github.com/prisma/prisma-next).
+Looking ahead: [Prisma Next](https://www.prisma.io/docs/orm) is a TypeScript-native rewrite of Prisma ORM, built for AI coding agents and currently in early access. It becomes Prisma 8 at general availability; until then, Prisma 7 stays the production choice. To try it, run `npm create prisma@next` or read the [early access docs](https://pris.ly/pn-ea).
