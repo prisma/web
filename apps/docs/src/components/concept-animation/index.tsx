@@ -16,7 +16,9 @@ export function ConceptAnimation({ name }: { name: ConceptName | FlowName }) {
   const scene = (FLOW_SCENES as Partial<Record<string, (typeof FLOW_SCENES)[FlowName]>>)[name];
   if (scene) return <FlowPlayer scene={scene} />;
 
-  const preset = (CONCEPT_PRESETS as Partial<Record<string, (typeof CONCEPT_PRESETS)[ConceptName]>>)[name];
+  const preset = (
+    CONCEPT_PRESETS as Partial<Record<string, (typeof CONCEPT_PRESETS)[ConceptName]>>
+  )[name];
   if (!preset) throw new Error(`Unknown concept animation: ${String(name)}`);
   const steps = preset.steps.map((step) => ({
     ...parseStepTokens(step.code),

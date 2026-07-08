@@ -40,6 +40,12 @@ export class SmoothPre extends React.Component<CustomPreProps> {
     if (!this.ref.current || !snapshot) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const transitions = calculateTransitions(this.ref.current, snapshot);
+    // Cancel leftover fill-both animations before starting new ones. React
+    // reuses token spans across steps, and a stale animation otherwise keeps
+    // painting the previous step's color/position onto the reused element.
+    for (const animation of this.ref.current.getAnimations({ subtree: true })) {
+      animation.cancel();
+    }
     for (const { element, keyframes, options } of transitions) {
       const { translateX, translateY, ...rest } = keyframes as Record<
         string,
