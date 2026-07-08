@@ -2,10 +2,11 @@
 title: "Improving Query Performance with Indexes using Prisma: Hash Indexes"
 slug: "improving-query-performance-using-indexes-3-kduk351qv1"
 date: "2022-10-12"
+updatedAt: "2026-07-08"
 authors:
   - "Alex Ruheni"
-metaTitle: "Improving query performance with database indexes using Prisma: Hash indexes"
-metaDescription: "Learn how you can optimize a slow database query in your application with a Hash index using Prisma"
+metaTitle: "Hash Indexes in Prisma ORM: Fast Equality Lookups in Postgres"
+metaDescription: "Add a hash index in Prisma with @@index(type: Hash): a 64ms sequential scan becomes a 1.6ms lookup, verified on Prisma ORM 7 and PostgreSQL 17."
 metaImagePath: "/improving-query-performance-using-indexes-3-kduk351qv1/imgs/meta-a2babe32fc26290c3dee9a6d0cb09decc68fae6a-1269x714.png"
 heroImagePath: "/improving-query-performance-using-indexes-3-kduk351qv1/imgs/hero-f7add11b063d3376bf02a64092431ac5397e82ba-844x474.svg"
 heroImageAlt: "Improving Query Performance with Indexes using Prisma: Hash Indexes"
@@ -15,150 +16,64 @@ tags:
   - "education"
 ---
 
-One strategy for improving performance for your database queries is using indexes. This article will dive into hash indexes: taking a look at the data structure used and improve the performance of an existing query with an index using Prisma.
+A hash index is a PostgreSQL index type built for one job: equality lookups. It maps each value to a bucket with a hash function, so the database can jump straight to the matching rows for `=` comparisons. In this article you will see how hash indexes work, when to choose one over the default B-tree, and then measure the effect directly: an equality query over 500,000 rows drops from roughly 64ms to under 2ms after adding `@@index(type: Hash)` to a [Prisma ORM](https://www.prisma.io/orm) schema. Every command and number in this walkthrough was verified on Prisma ORM 7.8 and PostgreSQL 17.
 
-## Overview
-- [Introduction](#introduction)
-- [Hash tables: the data structure that powers hash indexes](#hash-tables-the-data-structure-that-powers-hash-indexes)
-- [When to use a hash index](#when-to-use-a-hash-index)
-- [Working with hash indexes using Prisma](#working-with-hash-indexes-using-prisma)
-    - [Assumed knowledge](#assumed-knowledge)
-    - [Development environment](#development-environment)
-  - [Clone the repository and install dependencies](#clone-the-repository-and-install-dependencies)
-  - [Project walkthrough](#project-walkthrough)
-  - [Create and seed the database](#create-and-seed-the-database)
-  - [Make an API request](#make-an-api-request)
-  - [Improve query performance with a hash index](#improve-query-performance-with-a-hash-index)
-- [Summary and next steps](#summary-and-next-steps)
-## Introduction 
+> **Updated (July 2026):** Fully revised for **Prisma ORM 7**: the walkthrough now uses the `prisma-client` generator, a driver adapter, and a local Prisma Postgres database, and every command and number was re-run end-to-end on Prisma ORM 7.8 and PostgreSQL 17.
 
-In this part of the series, you will learn what hash indexes are, how they work, and when to use them, and then dive into a concrete example of how you can improve the performance of a query with a hash index using Prisma.
+## Introduction
 
-If you want to learn more about the fundamentals of database indexes, check out the [first part](/improving-query-performance-using-indexes-1-zuLNZwBkuL).
+In this part of the series, you will learn what hash indexes are, how they work, and when to use them, and then dive into a concrete example of how you can improve the performance of a query with a hash index using Prisma ORM.
+
+If you want to learn more about the fundamentals of database indexes, check out the [first part](/improving-query-performance-using-indexes-1-zuLNZwBkuL). [Part two](/improving-query-performance-using-indexes-2-MyoiJNMFTsfq) covers B-tree indexes and builds the project this article continues from.
 
 ## Hash tables: the data structure that powers hash indexes
 
-Hash indexes use the [hash table](https://en.wikipedia.org/wiki/Hash_table) data structure. Hash tables (also known as hash maps) are great data structures that allow fast data retrieval in almost _constant_ time (`O(1)`). This means the retrieval time of a record won't be affected by the size of the data being searched.
+Hash indexes use the hash table data structure. Hash tables (also known as hash maps) allow fast data retrieval in almost _constant_ time (`O(1)`), meaning the retrieval time of a record won't be affected by the size of the data being searched. (Big O notation describes how an algorithm's cost grows with input size; `O(1)` means the cost stays flat.)
 
-> If you're unfamiliar with the concept of Big O notation, take a look at [What is Big O notation](https://jarednielsen.com/big-o-notation/).
+PostgreSQL's hash index is composed of "buckets" or "slots" into which index entries are placed.
 
-PostgreSQL's hash index is composed of "buckets" or "slots" into which [tuples](https://en.wikipedia.org/wiki/Tuple) are placed.
+![Diagram of a hash index mapping values into buckets](/improving-query-performance-using-indexes-3-kduk351qv1/imgs/194055764-a7c4adfd-b649-4597-af10-1676b0159272.png)
 
+PostgreSQL uses a _hash function_ when storing a value to the index:
 
-![](/improving-query-performance-using-indexes-3-kduk351qv1/imgs/194055764-a7c4adfd-b649-4597-af10-1676b0159272.png)
-
-PostgreSQL uses a _hash function_ to compute a _hash key_ or _hash code_ when storing a value to the index:
-- Hash key: maps the value to a 32-bit integer. 
-- Hash code: maps to a bucket number in which the value will be stored. 
+- The hash function maps the indexed value to a 32-bit integer, the _hash code_.
+- The bucket number is derived from that hash code, and the index entry is stored in that bucket.
 
 > **Hash function**: a function that maps data of arbitrary size to fixed-size values.
 >
-> **Hash code/ key**: the output of a hash function.
+> **Hash code**: the output of a hash function.
 
-When retrieving a record using a hash index, the database applies the hash function to the value to determine the bucket that might contain the value. After determining the bucket, the database will search through the tuple to find the records that match your query.
+When retrieving a record using a hash index, the database applies the hash function to the value to determine the bucket that might contain the value. After determining the bucket, the database searches the bucket's entries to find the records that match your query.
 
-![](/improving-query-performance-using-indexes-3-kduk351qv1/imgs/194057994-bdf3aeca-85f8-4b06-801a-63bac39621be.png)
+![Diagram of a lookup in a hash index: the hash function locates the bucket, then the bucket is searched for matching tuples](/improving-query-performance-using-indexes-3-kduk351qv1/imgs/194057994-bdf3aeca-85f8-4b06-801a-63bac39621be.png)
+
 If you're interested in reading about PostgreSQL's implementation of the hash index, you can read further [here](https://github.com/postgres/postgres/blob/master/src/backend/access/hash/README).
-
 
 ## When to use a hash index
 
-Hash indexes would be a solid choice if you only intend to use the equality operator (`=`) to query your data. For example, in the query in the example below, a hash index would be suitable.
+Hash indexes only work with the equality (`=`) operator. They are a solid choice when your queries filter a column exclusively with `=`, for example:
+
 ```sql
-SELECT firstName from 'User' where lastName = 'Wick';
+SELECT * FROM "User" WHERE "lastName" = 'Wick';
 ```
-If you intend to use range operators (`<`, `<=`,`>`, `>=`) when filtering your data, you can use a B-Tree index. You can refer to [part 2](/improving-query-performance-using-indexes-2-MyoiJNMFTsfq) to learn more about B-tree indexes.
 
-Hash indexes only work with the equality (`=`) operator. This means that a hash index would be a solid choice if you're using the `=` operator when querying your data.
+If you intend to use range operators (`<`, `<=`,`>`, `>=`) when filtering your data, use a B-tree index instead. You can refer to [part 2](/improving-query-performance-using-indexes-2-MyoiJNMFTsfq) to learn more about B-tree indexes.
 
-While a hash index might be a good choice for speeding up your queries, it comes with some caveats. Some of the limitations are that they:
+While a hash index might be a good choice for speeding up equality queries, it comes with some limitations. Hash indexes:
+
 - Cannot be used to index multiple columns
 - Cannot be used to create sorted indexes
 - Cannot be used to enforce unique constraints
 
-## Working with hash indexes using Prisma
+## How to add a hash index with Prisma ORM
 
-#### Assumed knowledge
-To follow along, the following knowledge will be assumed:
-- Some familiarity with JavaScript/TypeScript
-- Some experience working with REST APIs
-- A basic understanding of working with Git
+With the theory out of the way, let's measure a hash index against real data.
 
-#### Development environment
+### Set up the project
 
-You will also be expected to have the following tools set up in your development environment:
-- [Node.js](https://nodejs.org/)
-- [Git](https://git-scm.com/downloads)
-- [Docker](https://www.docker.com/) or [PostgresQL](https://www.postgresql.org/download/)
-- [Prisma VS Code extension](https://marketplace.visualstudio.com/items?itemName=Prisma.prisma) _(optional)_: intellisense and syntax highlighting for Prisma
-- [REST Client VS Code extension](https://marketplace.visualstudio.com/items?itemName=humao.rest-client) _(optional)_: sending HTTP requests on VS Code
+This walkthrough continues from the project built in [part two](/improving-query-performance-using-indexes-2-MyoiJNMFTsfq): a small Prisma ORM 7 project with a `User` model, a local [Prisma Postgres](https://www.prisma.io/docs/postgres) database started with `npx prisma dev`, 500,000 seeded users, and a `src/measure.ts` script that times queries with a client extension and prints the query plan with `EXPLAIN ANALYZE`. If you haven't built it, follow the [setup sections in part two](/improving-query-performance-using-indexes-2-MyoiJNMFTsfq#how-to-add-an-index-with-prisma-orm); it takes about five minutes.
 
-> **Note**: If you don't have Docker or PostgreSQL installed, you can set up a free database on [Railway](http://railway.app/).
-
-
-### Clone the repository and install dependencies
-
-Navigate to your directory of choice and clone the repository:
-
-```shell
-git clone -b hash-indexes git@github.com:ruheni/prisma-indexes.git
-```
-Change the directory to the cloned repository and install dependencies: 
-
-```shell
-cd prisma-indexes
-npm install
-```
-Next, rename the `.env.example` file to `.env`.
-
-
-
-```shell
-mv .env.example .env
-```
-```cmd
-ren .env.example .env
-```
-
-
-### Project walkthrough
-
-The sample project is a minimal REST API built with TypeScript and [Fastify](https://www.fastify.io/).
-
-The project contains the following file structure:
-```
-prisma-indexes
-  ├── .github/workflows
-  │   │   └── test.yaml
-  │   └── renovate.json
-  ├── node_modules
-  ├── prisma
-  │   ├── migrations/
-  │   ├── schema.prisma
-  │   └── seed.ts
-  ├── src
-  │   └── index.ts
-  ├── README.md
-  ├── .env
-  ├── .gitignore
-  ├── docker-compose.yml
-  ├── package-lock.json
-  ├── package.json
-  ├── requests.http
-  └── tsconfig.json
-```
-The notable files and directories for this project are:
-
-- The `prisma` folder contains:
-  - The `schema.prisma` file that defines the database schema
-  - The `migrations` directory that contains the database migrations history
-  - The `seed.ts` file that contains a script to seed your development database
-- The `src` directory:
-  - The `index.ts` file defines a REST API using Fastify. It contains one endpoint called `/users` and accepts one optional query parameter — `firstName`
-- The `docker-compose.yml` file defining the PostgreSQL database docker image
-- The `.env` file containing your database connection string
-
-The application contains a single model in the Prisma schema called `User` with the following fields:
+The `User` model, including the B-tree index on `firstName` from part two, looks like this:
 
 ```prisma
 // prisma/schema.prisma
@@ -167,126 +82,127 @@ model User {
   firstName String
   lastName  String
   email     String
+
+  @@index([firstName])
 }
 ```
-The `src/index.ts` file contains _primitive_ [logging middleware](https://www.prisma.io/docs/concepts/components/prisma-client/middleware/logging-middleware) to measure the time taken by a Prisma query:
+
+### Measure the slow query
+
+This time you will query by `lastName`, which has no index. Point the measurement script at it (or adapt `src/measure.ts` from part two by replacing `firstName` with `lastName`):
 
 ```typescript
-// src/index.ts
-prisma.$use(async (params, next) => {
-  const before = Date.now()
-  const result = await next(params)
-  const after = Date.now()
+// src/measure.ts (excerpt)
+const sample = await prisma.user.findFirst({ select: { lastName: true } })
+const name = sample!.lastName
 
-  logger.info(`Query took ${after - before}ms`)
-  return result
-})
+const users = await prisma.user.findMany({ where: { lastName: name } })
+
+const plan = await prisma.$queryRawUnsafe<{ 'QUERY PLAN': string }[]>(
+  `EXPLAIN ANALYZE SELECT * FROM "User" WHERE "lastName" = '${name.replace(/'/g, "''")}'`
+)
 ```
-You can use the logged data to determine which Prisma queries are slow. You can use the logs to gauge queries that could require some performance improvements.
 
-`src/index.ts` also logs Prisma `query` events and parameters to the terminal. The `query` event and parameters contains the SQL query and parameters that Prisma executes against your database.
-```typescript
-const prisma = new PrismaClient({
-  log: [{ emit: "event", level: "query", },],
-})
+Run it with `npx tsx src/measure.ts`. Here is the output from our run (your name and exact numbers will differ):
 
-prisma.$on("query", async (e) => {
-  logger.info(`Query: ${e.query}`)
-  logger.info(`Params: ${e.params}`)
-});
 ```
-The SQL queries (with filled-in parameters) can be copied and prefixed with `EXPLAIN` to view the query plan the database will provide.
+User.findFirst took 86ms
+Searching for lastName = Wolff
+User.findMany took 149ms
+matches: 962
+User.findMany took 80ms
+User.findMany took 76ms
 
-### Create and seed the database
-
-Start up the PostgreSQL database with docker:
-
-```shell
-docker-compose up -d
+--- EXPLAIN ANALYZE ---
+Seq Scan on "User"  (cost=0.00..8378.01 rows=1476 width=100) (actual time=0.039..63.396 rows=962 loops=1)
+  Filter: ("lastName" = 'Wolff'::text)
+  Rows Removed by Filter: 499038
+Planning Time: 0.127 ms
+Execution Time: 64.149 ms
 ```
-Next, apply the existing database migration in `prisma/migrations`:
 
-```shell
-npx prisma migrate dev
-```
-The above command will:
+Postgres scans all 500,000 rows and discards 499,038 of them to find 962 matches. Note that the B-tree index on `firstName` does not help here: an index only serves queries that filter on its own columns.
 
-1. Create a new database called `users-db` (inferred from the connection string defined in the `.env` file)
-1. Create a `User` table as defined by the model in `prisma/schema.prisma`.
-1. Trigger the seeding script defined in `package.json`. The seeding step is triggered because it's run against a new database.
-
-The seed file in `prisma/seed.ts` will populate the database with a million user records.
-
-Start up the application server:
-
-```shell
-npm run dev
-```
-### Make an API request
-
-The cloned repository contains a `requests.http` file that contains sample requests to `http://localhost:3000/users` that can be used by the installed REST Client VS Code extension. The requests contain different `firstName` query parameters.
-
-> **Note**: Ensure you've installed the [REST Client VS Code extension](https://marketplace.visualstudio.com/items?itemName=humao.rest-client) for this step. You can also use other API testing tools such as [Postman](https://www.postman.com/), [Insomnia](https://www.insomnia.rest/), or your preferred tool of choice.
-```
-Click the **Send Request** button right above the request to make the request. 
-
-![](/improving-query-performance-using-indexes-3-kduk351qv1/imgs/184096935-1a680505-14fc-47ef-8862-126ef0d15708.png)
-
-VS Code will open an editor tab on the right side of the window with the responses. You should also see some information logged on the terminal.
-
-![](/improving-query-performance-using-indexes-3-kduk351qv1/imgs/194079327-6dab2f11-a528-45f6-99f9-13db3a84cb0d.png)
-
-In the screenshot above, the query took 55 ms.
 ### Improve query performance with a hash index
 
-You can define a hash index in your Prisma schema file using the `@@index()` attribute function and providing the following arguments:
-- `fields`: a list of fields to be indexed
-- `type`: the name of the index created in the database
+You can define a hash index in your Prisma schema using the `@@index()` attribute with two arguments:
 
-The `@@index` attribute supports more arguments you can learn more about in the [Prisma Schema API Reference](https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference#index).
+- `fields`: the list of fields to be indexed
+- `type`: the index access method the database should use, `Hash` in this case (the default is `BTree`)
 
-Next, specify the `firstName` in the `fields` argument and `Hash` as the value of the `type` argument.
+The `@@index` attribute supports more arguments you can learn more about in the [Prisma Schema API Reference](https://www.prisma.io/docs/orm/reference/prisma-schema-reference#index).
+
+Add a hash index on the `lastName` field:
+
 ```prisma
-diff
+// prisma/schema.prisma
 model User {
   id        Int    @id @default(autoincrement())
   firstName String
   lastName  String
   email     String
 
-+  @@index(fields: [firstName], type: Hash)
+  @@index([firstName])
+  @@index([lastName], type: Hash)
 }
 ```
-After making the change, create and run another migration to create the index on the `firstName` field in the `User` model:
+
+Like the B-tree index in part two, the hash index is declared in your schema, so it ships as code and applies identically in every environment. Apply the change:
 
 ```shell
-npx prisma migrate dev --name add-firstName-index
+npx prisma db push
 ```
-<Accordions type="single">
-  <Accordion title="Generated SQL migration">
+
+Behind the scenes, Postgres now has a hash index (you can confirm it by querying `pg_indexes`):
+
 ```sql
---- prisma/migrations/[timestamp]_add_firstName_index/migration.sql
--- CreateIndex
-CREATE INDEX "User_firstName_idx" ON "User" USING HASH ("firstName");
+CREATE INDEX "User_lastName_idx" ON public."User" USING hash ("lastName");
 ```
-  </Accordion>
-</Accordions>
 
-Next, navigate to the `requests.http` file again and resend the requests to the `/users` route.
+Run the measurement script again:
 
-You will notice an improvement in response times. In my case, in the screenshot below, the response times have been down to about 9 to 11ms.
+```
+User.findFirst took 82ms
+Searching for lastName = Wolff
+User.findMany took 36ms
+matches: 962
+User.findMany took 19ms
+User.findMany took 14ms
 
-![](/improving-query-performance-using-indexes-3-kduk351qv1/imgs/194080275-c4bd1059-595b-40b0-b2d9-b05339dac8cc.png)
+--- EXPLAIN ANALYZE ---
+Bitmap Heap Scan on "User"  (cost=75.38..4159.41 rows=2500 width=100) (actual time=0.268..1.298 rows=962 loops=1)
+  Recheck Cond: ("lastName" = 'Wolff'::text)
+  Heap Blocks: exact=872
+  ->  Bitmap Index Scan on "User_lastName_idx"  (cost=0.00..74.75 rows=2500 width=0) (actual time=0.121..0.121 rows=962 loops=1)
+        Index Cond: ("lastName" = 'Wolff'::text)
+Planning Time: 0.115 ms
+Execution Time: 1.567 ms
+```
+
+The sequential scan is gone. Postgres uses the hash index to locate the matching rows directly, and execution time drops from 64.1ms to 1.6ms, roughly a 41x improvement. At the application level, the `findMany` call returning all 962 matching rows settles around 14 to 19ms instead of 76 to 80ms.
 
 Congratulations! 🎉
 
 You've learned how to reduce your database queries' response times using a hash index.
 
+## Frequently asked questions
+
+<Accordions type="single">
+  <Accordion title="How do I add a hash index in a Prisma schema?">
+Add `@@index([fieldName], type: Hash)` to the model in your Prisma schema, then apply it with `npx prisma db push` (or `npx prisma migrate dev` in a migration-based workflow). Prisma creates a hash index in PostgreSQL, such as `CREATE INDEX "User_lastName_idx" ON "User" USING hash ("lastName")`. Hash indexes are supported on the PostgreSQL provider.
+  </Accordion>
+  <Accordion title="Should I use a hash index or a B-tree index?">
+Use a B-tree index by default: it handles equality, ranges, sorting, unique constraints, and multiple columns. Choose a hash index only for a column you query exclusively with the equality operator, where it can be slightly faster and smaller. When in doubt, B-tree is the safe choice.
+  </Accordion>
+  <Accordion title="How much faster does a hash index make an equality query?">
+It depends on table size and how many rows match. In the test in this article, verified on Prisma ORM 7.8 and PostgreSQL 17, an equality query over 500,000 rows went from a 64.1ms sequential scan to a 1.6ms hash index lookup, an improvement of roughly 41x.
+  </Accordion>
+</Accordions>
+
 ## Summary and next steps
 
-In this part, you learned what hash indexes are, their internal structure and limitations, and how to define and use a hash index using Prisma.
+In this part, you learned what hash indexes are, their internal structure and limitations, and how to define and use a hash index using Prisma ORM: from a 64.1ms sequential scan over 500,000 rows to a 1.6ms lookup, verified with `EXPLAIN ANALYZE`.
 
-If you would like learn about the fundamentals of database indexes and B-Tree indexes, refer to [part 1](/improving-query-performance-using-indexes-1-zuLNZwBkuL) and [part 2](/improving-query-performance-using-indexes-2-MyoiJNMFTsfq).
+The same workflow carries to production: `npx prisma init --db` provisions a managed Prisma Postgres database, and the indexes you declared in your schema apply there exactly as they did locally.
 
-In the following article, you will learn about GIN indexes: what it is, their structure, how it works, and how you can utilize a GIN index in your application using Prisma.
-
+If you would like to learn about the fundamentals of database indexes and B-tree indexes, refer to [part 1](/improving-query-performance-using-indexes-1-zuLNZwBkuL) and [part 2](/improving-query-performance-using-indexes-2-MyoiJNMFTsfq).
