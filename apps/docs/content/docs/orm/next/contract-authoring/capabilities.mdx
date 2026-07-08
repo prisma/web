@@ -1,0 +1,97 @@
+---
+title: Capabilities
+description: Capabilities record what your database stack supports, so Prisma Next can reject unsupported features early with a clear error.
+url: /orm/next/contract-authoring/capabilities
+metaTitle: Capabilities in Prisma Next
+metaDescription: How Prisma Next capabilities are derived from the target, adapter, and extension packs, what they gate, and what happens when a required capability is missing.
+---
+
+Not every database stack supports every feature. One setup can run lateral joins, `RETURNING` clauses, and vector distance operations; another cannot.
+
+Capabilities are how the [data contract](/orm/next/contract-authoring/the-data-contract) records what yours supports. Prisma Next checks them before using a gated feature, so an unsupported feature fails early, with an error that names the missing capability, instead of surfacing as a database error mid-query.
+
+## Where capabilities come from
+
+You do not write capabilities yourself. When [`prisma-next contract emit`](/cli/next/contract-emit) runs, it merges the capability declarations of every component composed in your project: the target (PostgreSQL, SQLite, MongoDB), its adapter and driver, and any extension packs from the config. The merged result lands in the contract's `capabilities` section, grouped by namespace:
+
+```json title="prisma/contract.json (excerpt)"
+{
+  "capabilities": {
+    "postgres": {
+      "distinctOn": true,
+      "jsonAgg": true,
+      "lateral": true,
+      "limit": true,
+      "orderBy": true,
+      "pgvector.cosine": true,
+      "returning": true
+    },
+    "sql": {
+      "defaultInInsert": true,
+      "enums": true,
+      "lateral": true,
+      "returning": true,
+      "scalarList": true
+    }
+  }
+}
+```
+
+The `sql` namespace holds keys shared across SQL databases; the `postgres` namespace holds PostgreSQL-specific keys. Extension packs contribute keys of their own: composing the pgvector pack is what adds `pgvector.cosine` above. Because the packs declare the keys, adding or removing an extension in `prisma-next.config.ts` and re-running `contract emit` changes the capability set with no further work.
+
+## What capabilities gate
+
+Capabilities are checked at two points, both before any SQL reaches the database.
+
+**When the contract is built.** A schema feature the target cannot store fails emission with a diagnostic. For example, SQLite does not report the `scalarList` capability, so a scalar list field in a contract targeting SQLite fails to emit:
+
+```text
+Field "User.tags" is a scalar list, but target "sqlite" does not support
+scalar lists (the adapter does not report the "scalarList" capability).
+```
+
+**When a query is built.** Query-builder methods that depend on a capability check the contract's matrix and throw if the key is missing, naming the method and the capability:
+
+```text
+distinctOn() requires capability postgres.distinctOn
+lateralJoin() requires capability sql.lateral
+```
+
+The error fires when your code constructs the query, which makes it easy to catch in tests: a query that uses a feature your stack lacks cannot be built at all.
+
+## Example capabilities
+
+A few of the keys the built-in components declare, to give a sense of the granularity:
+
+| Capability | Gates |
+| --- | --- |
+| `sql.lateral` | Lateral joins (`lateralJoin()`); PostgreSQL declares it, SQLite does not |
+| `sql.returning` | `RETURNING` clauses on writes |
+| `sql.enums` | Enum value sets enforced in the database; SQLite does not declare it |
+| `sql.defaultInInsert` | Using `DEFAULT` as a value in multi-row inserts |
+| `sql.scalarList` | Scalar list fields in the schema |
+| `postgres.distinctOn` | `DISTINCT ON` queries (`distinctOn()`) |
+| `postgres.jsonAgg` | JSON aggregation for nested reads |
+| `postgres.pgvector.cosine` | Cosine distance operations, contributed by the pgvector pack |
+
+This is an illustration, not the full registry; each target, adapter, and pack ships its own declarations. The emitted `contract.json` of your own project is the authoritative list of what your stack supports.
+
+MongoDB currently declares no capability keys: the capability system mostly differentiates SQL targets and their extensions, and the MongoDB pipeline does not yet gate features this way.
+
+## Capabilities and verification
+
+Capabilities describe what the composed software stack supports, as declared by the target, adapter, and packs. They are recorded in the contract at emit time rather than probed from the live database, so the same contract behaves identically in every environment. Database-side verification is the separate hash-and-marker mechanism described in [the contract artifact](/orm/next/contract-authoring/the-contract-artifact#the-content-hashes): [`prisma-next db verify`](/cli/next/db-verify) checks that the database matches the contract's schema and profile.
+
+Extensions are the main source of capabilities beyond the core; [Using extensions](/orm/next/extensions/using-extensions) shows the full install-to-query flow.
+
+## Prompt your coding agent
+
+Projects scaffolded with `create-prisma` install [Prisma Next skills](/ai/tools/skills) for your coding agent; the `prisma-next-contract` skill covers this page. Ask your agent to:
+
+- "Which capabilities does our contract currently require, and which package provides each?"
+- "Add pgvector to the project and confirm the capability shows up in the emitted contract."
+
+## Next steps
+
+- See where the `capabilities` block sits in [the contract artifact](/orm/next/contract-authoring/the-contract-artifact).
+- Compose extension packs, and the capabilities they bring, in the [CLI configuration](/cli/next/configuration).

@@ -1,0 +1,245 @@
+---
+title: Advanced queries
+description: Use the SQL query builder on PostgreSQL and the pipeline builder on MongoDB for queries the ORM API can't express.
+url: /orm/next/fundamentals/advanced-queries
+metaTitle: Advanced queries in Prisma Next
+metaDescription: Use the Prisma Next SQL query builder for explicit joins, grouped aggregates, and RETURNING, and the typed aggregation pipeline builder on MongoDB.
+---
+
+When the ORM API can't express a query, drop one level: the SQL query builder on PostgreSQL, or the pipeline builder on MongoDB. Both stay typed against your contract; neither means writing raw strings.
+
+The choice is per query, not per app. A codebase that uses the ORM API everywhere and the builders in three hot spots is the intended shape.
+
+## PostgreSQL: SQL query builder
+
+The SQL query builder composes a single SQL statement as a typed *plan*: a description of the query you build once and execute through the runtime. You keep full control over the SQL shape (joins, grouping, projections) and full type safety against your contract.
+
+**Use it when:**
+
+- The query is easier to say in SQL: joins with conditions, computed columns, set-shaped results.
+- You need PostgreSQL behavior the ORM API doesn't surface, such as `RETURNING` on a bulk insert.
+- An aggregation needs precise control, like ordering and limiting by an aggregate in the database.
+- A query is performance-sensitive and you want to decide its exact shape.
+
+**Prefer the ORM API when** the query is CRUD, filtered reads, or relation traversal. The [reading](/orm/next/fundamentals/reading-data), [writing](/orm/next/fundamentals/writing-data), and [relations](/orm/next/fundamentals/relations-and-joins) pages cover that surface, with less code and the same type safety.
+
+### Build and run a plan
+
+Start from a table with `db.sql.public.<table>` (tables use lowercase storage names), chain clauses, and call `.build()`. Execute the plan with the runtime:
+
+```typescript
+import { db } from "./prisma/db";
+
+const plan = db.sql.public.post
+  .select("id", "title", "authorId")
+  .where((f, fns) => fns.eq(f.published, true))
+  .limit(10)
+  .build();
+
+const publishedPosts = await db.runtime().execute(plan);
+```
+
+The `.where(...)` callback receives `(fields, fns)`: `fields` holds the column references, `fns` the operators (`eq`, `ne`, `gt`, `lt`, `ilike`, `and`, `count`, and operators added by extensions).
+
+### Join tables with precise control
+
+Alias each side with `.as(...)`, join on any condition, and project columns from both sides into a flat result:
+
+```typescript
+const plan = db.sql.public.post
+  .as("p")
+  .innerJoin(db.sql.public.user.as("u"), (f, fns) => fns.eq(f.p.authorId, f.u.id))
+  .select((f) => ({
+    postId: f.p.id,
+    title: f.p.title,
+    authorEmail: f.u.email,
+  }))
+  .where((f, fns) => fns.eq(f.p.published, true))
+  .limit(10)
+  .build();
+
+const postsWithAuthors = await db.runtime().execute(plan);
+// Array<{ postId, title, authorEmail }>
+```
+
+Chain more joins for multi-hop traversals. This is how you get a flat post-tag list through a [many-to-many junction table](/orm/next/fundamentals/relations-and-joins#many-to-many), one row per pair:
+
+```typescript
+const plan = db.sql.public.postTag
+  .as("pt")
+  .innerJoin(db.sql.public.tag.as("t"), (f, fns) => fns.eq(f.pt.tagId, f.t.id))
+  .innerJoin(db.sql.public.post.as("p"), (f, fns) => fns.eq(f.pt.postId, f.p.id))
+  .select((f) => ({ postTitle: f.p.title, tagName: f.t.name }))
+  .build();
+
+const postTagPairs = await db.runtime().execute(plan);
+```
+
+```js no-copy
+[
+  { postTitle: 'Hello Prisma Next', tagName: 'databases' },
+  { postTitle: 'Hello Prisma Next', tagName: 'typescript' },
+  { postTitle: 'Typed queries', tagName: 'typescript' }
+]
+```
+
+### Group and rank results
+
+Answer "top N groups" questions, such as the authors with the most posts, by ordering and limiting on an aggregate directly in the database:
+
+```typescript
+const plan = db.sql.public.post
+  .select((f, fns) => ({
+    authorId: f.authorId,
+    posts: fns.count(),
+  }))
+  .groupBy((f) => f.authorId)
+  .orderBy((f, fns) => fns.count(), { direction: "desc" })
+  .limit(5)
+  .build();
+
+const topAuthors = await db.runtime().execute(plan);
+```
+
+```js no-copy
+[
+  { authorId: 'cuid20000000000000000001', posts: '2' },
+  { authorId: 'cuid20000000000000000002', posts: '1' }
+]
+```
+
+PostgreSQL returns counts as strings; convert with `Number(row.posts)`.
+
+### Write with RETURNING
+
+SQL builder writes take an array of rows. Use `.returning(...)` to choose which columns come back from the same statement:
+
+```typescript
+const plan = db.sql.public.user
+  .insert([{ email: "sql@prisma.io" }])
+  .returning("id", "email")
+  .build();
+
+const [insertedUser] = await db.runtime().execute(plan);
+// Contract defaults such as generated IDs are applied
+```
+
+### Raw SQL fragments
+
+Prisma Next does not run standalone raw SQL statements: every query goes through the typed builder. When the operators don't cover an expression you need, embed a raw fragment with `fns.raw` and declare its type with `.returns(...)`. The rest of the query stays typed:
+
+```typescript
+const plan = db.sql.public.user
+  .select("id", "email")
+  .select("upperEmail", (f, fns) => fns.raw`UPPER(${f.email})`.returns("pg/text@1"))
+  .limit(10)
+  .build();
+
+const users = await db.runtime().execute(plan);
+// [{ id: 'cuid20000000000000000001', email: 'alice@prisma.io', upperEmail: 'ALICE@PRISMA.IO' }, ...]
+```
+
+Interpolated values are AST nodes, not string splices, so a fragment can reference columns and other typed expressions safely. If the builder plus `fns.raw` still can't express a shape you need, [share the use case](https://pris.ly/discord).
+
+## MongoDB: Pipeline builder
+
+The pipeline builder composes a typed MongoDB aggregation pipeline: a sequence of stages such as `$match`, `$group`, `$sort`, and `$lookup`, checked against your contract. It is the MongoDB counterpart of the SQL query builder, and it is also where all MongoDB aggregation lives, because the ORM API has no `.aggregate(...)` on MongoDB.
+
+**Use it when:**
+
+- You need an aggregation: counts, grouping, or summaries per key.
+- You want to join and reshape documents across collections with `$lookup`.
+- A query needs MongoDB pipeline stages that don't map to the ORM API, such as multi-stage filtering and projection.
+- You need operators the MongoDB `.where(...)` doesn't cover yet, like ranges or boolean logic.
+
+**Prefer the ORM API when** the query is document CRUD or a reference-relation read; `.include(...)` already covers the common `$lookup` case.
+
+### Build and run a pipeline
+
+Start from a collection with `db.query.from(...)`, chain stages, and call `.build()`. Execute the plan through the runtime:
+
+```typescript
+import { acc } from "@prisma-next/mongo-query-builder";
+import { db } from "./prisma/db";
+
+const runtime = await db.runtime();
+
+// Post count per author, most prolific first
+const plan = db.query
+  .from("posts")
+  .group((f) => ({
+    _id: f.authorId,
+    postCount: acc.count(),
+  }))
+  .sort({ postCount: -1 })
+  .build();
+
+const postsByAuthor = await runtime.execute(plan);
+```
+
+```js no-copy
+[
+  { _id: new ObjectId('650000000000000000000001'), postCount: 3 },
+  { _id: new ObjectId('650000000000000000000002'), postCount: 2 }
+]
+```
+
+Accumulators such as `acc.count()` and `acc.max(...)` import from `@prisma-next/mongo-query-builder`.
+
+### Filter and group in stages
+
+Chain `.match(...)` before `.group(...)` to aggregate over a subset, the pipeline equivalent of `WHERE` before `GROUP BY`:
+
+```typescript
+const plan = db.query
+  .from("posts")
+  .match((f) => f.published.eq(false))
+  .group((f) => ({ _id: f.authorId, draftCount: acc.count() }))
+  .build();
+
+const draftsByAuthor = await runtime.execute(plan);
+```
+
+### Join collections with $lookup
+
+Use `.lookup(...)` for a type-checked join against another collection. The joined documents arrive under the name you give `.as(...)`:
+
+```typescript
+const plan = db.query
+  .from("posts")
+  .match((f) => f.published.eq(true))
+  .lookup((from) =>
+    from("users")
+      .on((local, foreign) => ({ local: local.authorId, foreign: foreign._id }))
+      .as("author"),
+  )
+  .build();
+
+const postsWithAuthors = await runtime.execute(plan);
+// Each post carries an "author" array with the matching user documents
+```
+
+## Choose the right query API
+
+| You need | Use |
+| --- | --- |
+| CRUD, filters, relations, simple aggregates | ORM API (`db.orm`) |
+| Explicit join, computed projection, grouped top-N, `RETURNING` | SQL query builder (`db.sql.public.<table>`) |
+| `$group`, `$lookup` with reshaping, any MongoDB aggregation | Pipeline builder (`db.query.from(...)`) |
+
+Plans execute through `db.runtime().execute(plan)` on PostgreSQL and `(await db.runtime()).execute(plan)` on MongoDB. Inside a [transaction](/orm/next/fundamentals/transactions), use `tx.execute(plan)`.
+
+## Prompt your coding agent
+
+Projects scaffolded with `create-prisma` install Prisma Next skills for your coding agent; the `prisma-next-queries` skill covers both builders and the choice between them and the ORM API. Prompts that map to each section:
+
+- "Using the prisma-next-queries skill, write a SQL builder plan for the top 10 authors by post count."
+- "This report needs post and author columns in one flat result. Build the join with the SQL query builder."
+- "On MongoDB, group posts per author with the pipeline builder and sort by the count."
+- "Review this file and tell me which queries should stay on the ORM API and which need a builder."
+
+## Next
+
+- [Read data](/orm/next/fundamentals/reading-data): the ORM happy path these builders back up.
+- [Understand relationships](/orm/next/fundamentals/relations-and-joins) before reaching for explicit joins.
+- [Run SQL builder plans atomically](/orm/next/fundamentals/transactions) inside a transaction.

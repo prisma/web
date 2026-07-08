@@ -110,7 +110,9 @@ export function PlayerShell({
       aria-label={label}
       className="not-prose my-4 overflow-hidden rounded-square border border-stroke-neutral bg-fd-card"
     >
-      <style>{"@keyframes concept-progress{from{transform:scaleX(0)}to{transform:scaleX(1)}}"}</style>
+      <style>
+        {"@keyframes concept-progress{from{transform:scaleX(0)}to{transform:scaleX(1)}}"}
+      </style>
 
       {/* Autoplay progress bar: refills every step, so it is obvious the
           diagram is advancing on its own and that more steps are coming. */}
