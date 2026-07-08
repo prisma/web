@@ -26,16 +26,24 @@ export function toBlogCardItem(page: BlogPage): BlogCardItem {
     heroImagePath?: string;
     heroImageAlt?: string;
     tags?: string[];
+    updatedAt?: Date | string;
   };
   const authors = Array.isArray(data.authors)
     ? data.authors.filter((name): name is string => typeof name === "string")
     : [];
   const time = getPostTime(page);
 
+  let updatedAtISO: string | null = null;
+  if (data.updatedAt) {
+    const updated = new Date(data.updatedAt);
+    if (!Number.isNaN(updated.getTime())) updatedAtISO = updated.toISOString();
+  }
+
   return {
     url: withBlogBasePath(page.url),
     title: data.title ?? "",
     date: time ? new Date(time).toISOString() : "",
+    updatedAt: updatedAtISO,
     excerpt: data.metaDescription ?? null,
     author: authors[0] ?? null,
     authors,
