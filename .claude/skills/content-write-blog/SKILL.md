@@ -2,7 +2,7 @@
 name: content-write-blog
 description: Use when the operator wants to write a blog post, draft a blog article, start a new post for the Prisma blog, or publish to prisma.io/blog.
 metadata:
-  version: "2026.6.15"
+  version: "2026.7.8"
 ---
 
 # Write Blog Post
@@ -146,7 +146,7 @@ End by giving the operator, in a short block:
 - The path to the post file (within their checkout).
 - The author profile path, if one was scaffolded.
 - A reminder that the repository workflow is theirs: create a feature branch, commit the skeleton (and author profile), push, and open the pull request following the blog repo's contribution process. The pull request should be opened as a **draft** until the post is fleshed out.
-- A clear next-step instruction: _"Edit the post to flesh out each section, keep it consistent with positioning and free of AI slop (see Writing quality), then branch, commit, push, and open a draft PR per the blog repo's contributing guide."_
+- A clear next-step instruction: _"Edit the post to flesh out each section, keep it consistent with positioning and free of AI slop (see Writing quality), run the `content-seo-geo` skill in this repo to optimize the finished draft for search engines and AI answer engines, then branch, commit, push, and open a draft PR per the blog repo's contributing guide."_
 
 Do not claim the post is "done" or "ready" — it is a skeleton handed back to the operator.
 
