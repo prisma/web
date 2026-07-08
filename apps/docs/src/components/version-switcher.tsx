@@ -6,11 +6,13 @@ import { ChevronDownIcon } from "lucide-react";
 import {
   getCliVersionFromPathname,
   getGettingStartedVersionFromPathname,
+  getGuidesVersionFromPathname,
   getOrmVersionFromPathname,
   getVersionLabel,
   getVersionSwitchPathname,
   isCliVersionPathname,
   isGettingStartedVersionPathname,
+  isGuidesVersionPathname,
   LATEST_VERSION,
   type Version,
 } from "@/lib/version";
@@ -34,6 +36,7 @@ export function VersionSwitcher({
   const router = useRouter();
   const isGettingStartedVersion = isGettingStartedVersionPathname(pathname);
   const isCliVersion = isCliVersionPathname(pathname);
+  const isGuidesVersion = isGuidesVersionPathname(pathname);
 
   // Getting Started no longer has a version toggle: Prisma Next lives inline in the
   // getting-started sidebar as its own sections, so there is no "Docs version" dropdown.
@@ -44,9 +47,10 @@ export function VersionSwitcher({
   const detectedVersion =
     getGettingStartedVersionFromPathname(pathname) ??
     getCliVersionFromPathname(pathname) ??
+    getGuidesVersionFromPathname(pathname) ??
     getOrmVersionFromPathname(pathname);
   const currentVersion = detectedVersion ?? null;
-  const usesScopedVersions = isGettingStartedVersion || isCliVersion;
+  const usesScopedVersions = isGettingStartedVersion || isCliVersion || isGuidesVersion;
   const visibleVersions = usesScopedVersions
     ? versions.filter((version) => version === LATEST_VERSION || version === "next")
     : versions;
@@ -54,7 +58,9 @@ export function VersionSwitcher({
     ? "Docs version"
     : isCliVersion
       ? "CLI version"
-      : "ORM version";
+      : isGuidesVersion
+        ? "Guides version"
+        : "ORM version";
 
   if (!currentVersion || !visibleVersions.includes(currentVersion)) {
     return null;

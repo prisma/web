@@ -13,6 +13,7 @@ type PostCardItem = {
   url: string;
   title: string;
   date: string;
+  updatedAt?: string | null;
   excerpt?: string | null;
   author?: string | null;
   authors?: string[] | null;
@@ -50,6 +51,7 @@ export function PostCard({
     url: post.url,
     title: post.title,
     date: formatDate(new Date(post.date).toISOString()),
+    updatedAt: post.updatedAt ? formatDate(new Date(post.updatedAt).toISOString()) : null,
     excerpt: post.excerpt,
     author,
     authors: authorProfiles,

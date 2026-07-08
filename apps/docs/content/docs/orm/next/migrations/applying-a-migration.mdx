@@ -1,0 +1,182 @@
+---
+title: Applying a migration
+description: prisma-next migrate walks the graph from where your database is to where you want it, with a preview, a checkpoint at every step, and safe retries.
+url: /orm/next/migrations/applying-a-migration
+metaTitle: Applying a migration in Prisma Next
+metaDescription: How prisma-next migrate applies migrations, from targeting refs and hashes and previewing with --show to checking status and running safely in development and production.
+badge: early-access
+---
+
+Applying is the one step that touches a database, and it has one command:
+
+```bash
+npx prisma-next migrate
+```
+
+Note the verb: it's `migrate`, not `migration apply`. The `migration ...` subcommands manage files on disk; `migrate` moves a database. It reads where the database currently is (its **marker**), finds a path through the [migration graph](/orm/next/migrations/the-migration-graph) to the target, and applies each migration along the path, running every operation's precheck, execute, and postcheck as it goes.
+
+The connection comes from `db.connection` in `prisma-next.config.ts`, or `--db` to override:
+
+```bash
+npx prisma-next migrate --db $DATABASE_URL
+```
+
+A successful run reports every operation it performed and the marker it left behind:
+
+```text
+✔ Applied 1 migration(s) (3 operation(s)) across 1 contract space(s)
+
+App space
+  ├─ Add column "displayName" to "user"
+  ├─ Data transform: backfill-user-displayName
+  └─ Set NOT NULL on "user"."displayName" (destructive)
+  marker: sha256:e6b5c2849eca8d24ff1e8e88ab2a4234db8e74c497c035cb7ce42e814f31cd63
+
+Next: prisma-next migration status
+```
+
+`App space` is your application's migration lane, one of the run's *contract spaces*; projects that use database extensions gain additional spaces, covered in [Extension spaces](#extension-spaces) below.
+
+## Check before, preview, then apply
+
+The habit worth building, especially against shared databases, is a three-step rhythm:
+
+```bash
+# 1. Where is the database, what's pending?
+npx prisma-next migration status --db $DATABASE_URL
+
+# 2. What exactly would run?
+npx prisma-next migrate --show --db $DATABASE_URL
+
+# 3. Run it.
+npx prisma-next migrate --db $DATABASE_URL
+```
+
+`migration status` draws the path between the database's marker and the target, flagging each migration as applied or pending:
+
+```text
+*   925198f  @contract
+|^  20260707T1006_add_user_phone  705b1a6 -> 925198f  1 ops  > pending
+*   705b1a6  @db (db)
+|^  20260707T1005_init                  - -> 705b1a6  2 ops  + applied
+*   -
+
+1 pending — run `prisma-next migrate --to 925198f3cc27`
+```
+
+Read the markers on the right: `@db` is where the database is, `@contract` is where your emitted contract is, and `(db)` is the [ref](/orm/next/migrations/the-migration-graph#refs-naming-places-in-the-graph) of that name pointing at the same node.
+
+`migrate --show` is the read-only dry run: it draws the path from the database's position to the target and stops. Nothing touches the database:
+
+```text
+│↑  20260707T1006_add_user_phone  705b1a6 → 925198f  ↑ will run
+○   705b1a6
+│↑  20260707T1005_init                  ∅ → 705b1a6  ↑ will run
+○   ∅  @db
+
+The following 2 migrations will run:
+  20260707T1005_init                ∅ → 705b1a6
+  20260707T1006_add_user_phone  705b1a6 → 925198f
+```
+
+After applying, `migration log` shows the database's own record of what ran: an append-only **ledger** the runner writes alongside the marker:
+
+```text
+ Applied at             Migration                       Change                 Ops
+---------------------- ------------------------------- -------------------- ------
+ 2026-07-07 10:05:32Z   20260707T1005_init              - -> 705b1a6         2 ops
+ 2026-07-07 10:09:55Z   20260707T1006_add_user_phone    705b1a6 -> 925198f   1 ops
+```
+
+## Choosing a target
+
+With no `--to`, `migrate` advances toward your emitted contract. To aim somewhere specific, `--to` accepts the same reference grammar as everywhere else: a ref name, a contract hash or prefix, a migration directory name, or `<dir>^` for the state before a migration:
+
+```bash
+npx prisma-next migrate --to prod --db $DATABASE_URL          # a ref
+npx prisma-next migrate --to sha256:e6b5c28 --db $DATABASE_URL # a hash prefix
+npx prisma-next migrate --to 20260707T1005_init --db $DATABASE_URL
+```
+
+If the graph has branched and more than one tip is reachable, `migrate` refuses to guess and asks for an explicit `--to`. That's the graph protecting you: two feature branches may both be valid futures, and picking one is a human decision.
+
+`--advance-ref` moves a named ref to the post-apply state in the same step. Advancing one called `db` is what keeps [`migration plan`](/orm/next/migrations/generating-a-migration#the-db-ref-skipping---from) incremental:
+
+```bash
+npx prisma-next migrate --advance-ref db
+```
+
+## When something goes wrong
+
+The runner stops at the first failing operation and tells you which one, why, and what to do:
+
+```text
+✖ Operation pgvector.install-vector-extension failed during execution: create extension "vector" (PN-RUN-3000)
+  Why: extension "vector" is not available
+  Fix: Fix the issue and re-run `prisma-next migrate --to <contract>` — previously applied migrations are preserved.
+```
+
+Three properties make failure boring instead of terrifying:
+
+- **On PostgreSQL, a failed run leaves nothing behind.** The entire `migrate` run executes inside one transaction, so when an operation fails, everything from that run rolls back and the database is exactly where it was before you started. Migrations applied in *earlier* runs are untouched; that's what "previously applied migrations are preserved" means.
+- **The error is specific.** It names the operation, the phase (precheck, execute, or postcheck), and the check that failed, which is enough to fix the cause without spelunking.
+- **Re-running is safe.** Operations are idempotent: before running one, the runner evaluates its postcheck and skips it if the database already satisfies it. A change that snuck in out-of-band doesn't break the run; it becomes a skip. On MongoDB, where cross-collection transactions don't exist, this same mechanism is what makes a partially-applied run converge on retry. See [Rollbacks and recovery](/orm/next/migrations/rollbacks-and-recovery) for the full failure playbook.
+
+Before running any DDL, `migrate` also verifies the database's marker is a state the graph knows. A database that was changed outside of migrations fails fast with a marker mismatch instead of getting SQL applied on top of unknown drift.
+
+## Development vs. production
+
+The commands are the same everywhere; what changes is where the files come from and who runs them.
+
+**In development**, you're the one planning and editing, and you apply immediately:
+
+```bash
+npx prisma-next migration plan --name my_change && npx prisma-next migrate --advance-ref db
+```
+
+**In CI and production**, migrations arrive via your repo, already planned, reviewed, and merged. That's why the [editing rule](/orm/next/migrations/editing-a-migration) matters: commit `migration.ts` and `ops.json` together, and let `migration check` (exit codes `0`/`2`/`4`, see [Generating a migration](/orm/next/migrations/generating-a-migration#reviewing-what-you-planned)) catch a stale recompile before deploy. The deploy step is:
+
+```bash
+npx prisma-next migration check          # files intact, graph well-formed (offline)
+npx prisma-next migrate --show --db $DATABASE_URL   # log what's about to run
+npx prisma-next migrate --db $DATABASE_URL
+```
+
+A production nicety that falls out of the design: the runner executes only `ops.json`, plain data. Your `migration.ts` files, and any TypeScript they import, are never executed with production credentials.
+
+Concurrent deploys are safe: on PostgreSQL the whole apply runs inside a transaction guarded by an advisory lock, so two `migrate` runs serialize instead of interleaving. On MongoDB, where cross-collection DDL transactions don't exist, each migration advances the marker with compare-and-swap and the runner verifies the resulting schema before committing the marker, so a re-run converges rather than double-applying.
+
+## Extension spaces
+
+If your project uses [database extensions](/orm/next/extensions/using-extensions) (say pgvector), you'll see more than one *contract space* in the output: extensions ship their own migrations (for example `CREATE EXTENSION vector`), tracked in `migrations/<extension>/` next to your app's. One `migrate` run walks them all (extensions first, then your app) and reports each space separately:
+
+```text
+✔ Applied 2 migration(s) (20 operation(s)) across 2 contract space(s)
+
+Extension space: pgvector
+  └─ Enable extension "vector"
+
+App space
+  ├─ Create table "user"
+  └─ ...
+```
+
+:::note[What's early]
+
+Apply, targeting, preview, refs, the ledger, and multi-space runs all work today. Not built yet: a shadow-database rehearsal (`migrate` runs against the real target; use `--show` and a staging database), and an apply-time check that `ops.json` still matches `migration.ts` (today that's `migration check`'s job; run it in CI).
+
+:::
+
+## Prompt your coding agent
+
+Projects scaffolded with `create-prisma` install [Prisma Next skills](/ai/tools/skills#available-skills-for-prisma-next) for your coding agent. Ask your agent to:
+
+- "Check migration status against staging and apply whatever is pending."
+- "Preview what `migrate --to prod` would run and summarize the destructive operations."
+- "Apply the pending migrations and advance the `db` ref."
+
+## See also
+
+- [Rollbacks and recovery](/orm/next/migrations/rollbacks-and-recovery): when you need to go back instead of forward
+- [The migration graph](/orm/next/migrations/the-migration-graph): markers, refs, and pathfinding
+- [Generating a migration](/orm/next/migrations/generating-a-migration): producing what `migrate` runs
