@@ -8,6 +8,8 @@ export type DecisionResult = {
   title: string;
   why: string;
   caveat?: string;
+  /** Subtle visual emphasis (used for the publisher's own product). */
+  accent?: boolean;
 };
 
 export type DecisionQuestion = {
@@ -238,12 +240,24 @@ function TreeBranch({
           if (el) cardRefs.current.set(cardKey, el);
           else cardRefs.current.delete(cardKey);
         }}
-        className="w-72 shrink-0 rounded-lg border border-foreground-ppg bg-background-ppg shadow-sm"
+        className={[
+          "w-64 shrink-0 rounded-lg border shadow-sm",
+          node.accent
+            ? "border-foreground-ppg bg-background-ppg"
+            : "border-stroke-neutral-strong bg-background-neutral",
+        ].join(" ")}
         style={{ animation: "dt-card-in 300ms cubic-bezier(0.2, 0.8, 0.2, 1) both" }}
       >
         <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-2">
           <span className="font-semibold text-foreground-neutral text-sm">{node.title}</span>
-          <span className="shrink-0 rounded-full border border-foreground-ppg px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-foreground-ppg">
+          <span
+            className={[
+              "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+              node.accent
+                ? "border-foreground-ppg text-foreground-ppg"
+                : "border-stroke-neutral-strong text-foreground-neutral-weak",
+            ].join(" ")}
+          >
             {fanSize > 1 ? "Option" : "Match"}
           </span>
         </div>
