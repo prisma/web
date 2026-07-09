@@ -2,7 +2,7 @@
 name: content-write-blog
 description: Use when the operator wants to write a blog post, draft a blog article, start a new post for the Prisma blog, or publish to prisma.io/blog.
 metadata:
-  version: "2026.7.8"
+  version: "2026.7.9"
 ---
 
 # Write Blog Post
@@ -146,9 +146,32 @@ End by giving the operator, in a short block:
 - The path to the post file (within their checkout).
 - The author profile path, if one was scaffolded.
 - A reminder that the repository workflow is theirs: create a feature branch, commit the skeleton (and author profile), push, and open the pull request following the blog repo's contribution process. The pull request should be opened as a **draft** until the post is fleshed out.
-- A clear next-step instruction: _"Edit the post to flesh out each section, keep it consistent with positioning and free of AI slop (see Writing quality), run the `content-seo-geo` skill in this repo to optimize the finished draft for search engines and AI answer engines, then branch, commit, push, and open a draft PR per the blog repo's contributing guide."_
+- A clear next-step instruction: _"Edit the post to flesh out each section, keep it consistent with positioning and free of AI slop (see Writing quality), run the `content-seo-geo` skill in this repo to optimize the finished draft for search engines and AI answer engines, run the Adversarial review below on the finished draft, then branch, commit, push, and open a draft PR per the blog repo's contributing guide."_
 
 Do not claim the post is "done" or "ready" — it is a skeleton handed back to the operator.
+
+## Adversarial review (required before any PR)
+
+Every finished draft is reviewed by agents that did not write it, in separate context windows, before it goes anywhere near a pull request. The author (human or agent) wants the post to ship; a reviewer with a fresh context and a refutation mission does not share that bias. A blog post is a set of falsifiable claims — prices, version numbers, benchmark figures, API behaviors, links — and the reviewers' job is to falsify them.
+
+Run this after the draft is complete and the `content-seo-geo` pass is done, and re-run it after fixing what it finds.
+
+### How to run it
+
+Spawn at least two reviewer agents (Claude Code subagents, or a review workflow for larger posts). Rules that make the isolation real:
+
+1. **Reviewers receive only the draft file path and their mission.** Never include the writing conversation, the pitch, the outline, or any statement of what the post intends or why it is correct. A prompt that says "review this post, which correctly explains X" has already contaminated the reviewer.
+2. **Each reviewer gets a refutation mission, and skepticism is the default.** "Find reasons this is wrong" outperforms "check whether this is right."
+3. **Distinct lenses, one per reviewer** — diversity catches what redundancy misses. Pick from:
+   - **Fact refuter**: attack every number, price, version, date, and named behavior. Verify each against the live primary source (vendor pricing page, official docs), not from memory. Report any claim whose source does not say what the post says.
+   - **Code refuter** (posts with code): run every sample fresh against the stated versions. Report anything that does not compile, run, or produce the shown output.
+   - **Reader skeptic**: where does the post confuse, overclaim, contradict itself, or read like marketing? Where would a knowledgeable reader stop trusting it?
+   - **Positioning refuter**: report claims that contradict the positioning doc or overstate product status (GA claims, superlatives, unverified benchmarks).
+4. **The implementer fixes; reviewers re-review.** Findings come back to the authoring session, which applies fixes. Re-run the reviewers on the fixed draft. Repeat until a round produces no confirmed findings. The implementer never marks its own finding as resolved without a reviewer pass confirming it.
+
+### Completion criterion
+
+The draft is ready for the operator's PR when the most recent review round returned zero confirmed findings, and the operator has been given the final round's summary (findings found and fixed per round) so they can judge the review's depth, not just its verdict.
 
 ## Writing quality
 
