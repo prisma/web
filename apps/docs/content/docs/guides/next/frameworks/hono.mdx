@@ -1,0 +1,121 @@
+---
+title: Hono
+description: Build a Hono API on Prisma Next with the hono template, then add your own routes.
+url: /guides/next/frameworks/hono
+metaTitle: How to use Prisma Next with Hono
+metaDescription: Scaffold a Hono API backed by Prisma Next and Prisma Postgres, seed it, serve users over HTTP, and add a POST route, with tested commands and output.
+---
+
+## Introduction
+
+In this guide, you scaffold a Hono API backed by Prisma Next, initialize and seed a PostgreSQL database, serve data over HTTP, and add your own POST route. The `hono` template generates the server for you, so most of the work is understanding the pieces and extending them.
+
+Every command, route, and response below was run end to end against a live Prisma Postgres database.
+
+## Prerequisites
+
+- Node.js 24 or later, or [Bun](https://bun.sh/) (this guide uses Bun for speed; npm works the same)
+- A PostgreSQL connection string, or nothing at all: the scaffold can create a [Prisma Postgres](/postgres) database for you
+
+## 1. Scaffold the project
+
+```bash
+bunx create-prisma@next create my-hono-api --provider postgres --template hono
+```
+
+Pick your package manager and database at the prompts. The template generates a Hono server in `src/index.ts` with two routes (`GET /` and `GET /users`), the Prisma Next setup in `src/prisma/`, and package scripts for the database steps.
+
+```bash
+cd my-hono-api
+```
+
+## 2. Initialize and seed the database
+
+```bash
+bun run db:init
+bun run db:seed
+```
+
+```text no-copy
+"summary": "Applied 5 operation(s) across 1 space(s), database signed"
+Seeded 3 users.
+```
+
+:::note
+
+Scaffolded with an older `create-prisma` and seeing `Cannot read properties of undefined (reading 'where')`? Update `db.orm.User` to `db.orm.public.User` in `src/prisma/seed.ts` and `src/prisma/users.ts`. Current templates generate the qualified form.
+
+:::
+
+## 3. Run the server
+
+```bash
+bun run dev
+```
+
+The server starts on port 3000 (set `PORT` to change it). Check both routes:
+
+```bash
+curl http://localhost:3000/users
+```
+
+```json no-copy
+[
+  { "id": "1", "email": "alice@prisma.io", "username": "alice", "name": "Alice", "createdAt": "2026-07-06T23:37:32.440Z" },
+  { "id": "2", "email": "bob@prisma.io", "username": "bob", "name": "Bob", "createdAt": "2026-07-06T23:37:32.474Z" },
+  { "id": "3", "email": "carol@prisma.io", "username": "carol", "name": "Carol", "createdAt": "2026-07-06T23:37:32.507Z" }
+]
+```
+
+The route handler is ordinary Hono code calling an ordinary Prisma Next query; there is no framework adapter in between.
+
+## 4. Add a POST route
+
+Add a route that creates a user from the request body. Add this to `src/index.ts` above the `serve(...)` call:
+
+```ts title="src/index.ts"
+app.post("/users", async (c) => {
+  const body = await c.req.json<{ email: string; name?: string }>();
+  const { db } = await import("./prisma/db");
+  const user = await db.orm.public.User.create({
+    email: body.email,
+    name: body.name ?? null,
+  });
+  return c.json(user, 201);
+});
+```
+
+Restart the server and create a user:
+
+```bash
+curl -X POST http://localhost:3000/users \
+  -H "content-type: application/json" \
+  -d '{"email":"dev@prisma.io","name":"Dev"}'
+```
+
+```json no-copy
+{ "createdAt": "2026-07-06T23:37:56.184Z", "email": "dev@prisma.io", "id": 4, "name": "Dev", "username": null }
+```
+
+`.create(...)` returns the full inserted record, database defaults included, so the response needs no second query.
+
+## Common gotchas
+
+:::warning
+
+In a long-running server, don't call `db.close()` in route handlers; the client's connection pool is shared across requests. Close it only on process shutdown.
+
+:::
+
+## Prompt your coding agent
+
+The scaffold installs Prisma Next skills for your coding agent. Prompts that map to this guide:
+
+- "Using the prisma-next-queries skill, add GET /users/:id that returns one user or a 404."
+- "Add a Post model related to User, update the database, and expose GET /users/:id/posts."
+- "Wrap the signup route's writes in a [transaction](/orm/next/fundamentals/transactions)."
+
+## Next steps
+
+- [Learn the fundamentals](/orm/next/fundamentals/reading-data): filtering, sorting, pagination, and writes.
+- [Read the Prisma Next overview](/orm/next) for the concepts behind contracts and typed queries.
