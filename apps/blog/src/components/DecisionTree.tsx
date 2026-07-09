@@ -49,9 +49,12 @@ export function DecisionTree({ data, label }: { data: DecisionTreeData; label: s
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const rowRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const pendingAnchor = useRef<{ key: string; top: number } | null>(null);
 
   function toggle(questionId: string, optionLabel: string) {
     const edgeKey = `${questionId}::${optionLabel}`;
+    const row = rowRefs.current.get(edgeKey);
+    if (row) pendingAnchor.current = { key: edgeKey, top: row.getBoundingClientRect().top };
     setExpanded((prev) => {
       const next = new Set(prev);
       if (next.has(edgeKey)) {
@@ -84,6 +87,15 @@ export function DecisionTree({ data, label }: { data: DecisionTreeData; label: s
   }
 
   useLayoutEffect(() => {
+    const anchor = pendingAnchor.current;
+    if (anchor) {
+      pendingAnchor.current = null;
+      const row = rowRefs.current.get(anchor.key);
+      if (row) {
+        const delta = row.getBoundingClientRect().top - anchor.top;
+        if (delta !== 0) window.scrollBy(0, delta);
+      }
+    }
     function measure() {
       const canvas = canvasRef.current;
       if (!canvas) return;
