@@ -2,10 +2,11 @@
 title: "Advanced Database Schema Management with Atlas & Prisma ORM"
 slug: "advanced-database-schema-management-with-atlas-and-prisma-orm"
 date: "2024-12-12"
+updatedAt: "2026-07-09"
 authors:
   - "Nikolas Burk"
-metaTitle: "Advanced Database Schema Management with Atlas & Prisma ORM"
-metaDescription: "Atlas is a powerful data modeling and migrations tool enabling advanced DB schema management workflows, like CI/CD, schema monitoring, versioning, and more."
+metaTitle: "Advanced Schema Management with Atlas & Prisma ORM"
+metaDescription: "Use Atlas with Prisma ORM 7 for advanced schema management: CI/CD linting, schema monitoring, versioning, and low-level features like views and triggers."
 metaImagePath: "/advanced-database-schema-management-with-atlas-and-prisma-orm/imgs/meta-862a4191726cfb1bcc2e53bc83e377e1af47cd5d-1200x675.png"
 heroImagePath: "/advanced-database-schema-management-with-atlas-and-prisma-orm/imgs/hero-6ad0def91299fbf2a745f528d83a194350d0ee74-844x475.svg"
 tags:
@@ -13,38 +14,60 @@ tags:
   - "education"
 ---
 
-[Atlas](https://atlasgo.io/) is a powerful migration tool that enables advanced database schema management workflows, like CI/CD, schema monitoring, versioning, and more. Learn how to use Atlas together with Prisma ORM and make use of Atlas' capabilities by using low-level database features.
+[Atlas](https://atlasgo.io/) is a database schema management tool that works alongside Prisma ORM to add CI/CD linting, schema monitoring, versioning, and support for low-level database objects (views, triggers, row-level security) that the Prisma schema doesn't express. This guide is for teams already on Prisma ORM 7 who want migration workflows beyond what Prisma Migrate covers, while keeping Prisma's data model and type-safe Client.
+
+> **Updated (July 2026):** Refreshed for Prisma ORM 7 and Atlas CLI v1.2. Key changes verified against the current docs: the `prisma migrate diff` flag `--to-schema-datamodel` was removed and replaced by `--to-schema`; the database connection URL now lives in `prisma.config.ts` (not in the `datasource` block of `schema.prisma`); the recommended generator is `prisma-client` with an explicit `output` path; and `prisma generate` must be run explicitly after schema changes because migrate commands no longer trigger it automatically. The Atlas config file is still `atlas.hcl`. All commands and the generated migration SQL below were captured against Atlas CLI v1.2 and a local [Prisma Postgres](https://www.prisma.io/docs/postgres) database (Prisma 7.8, PostgreSQL 16).
 
 ## Introduction
 
-[Atlas](https://atlasgo.io/) is a powerful data modeling and migrations tool that enables advanced database schema management workflows, like CI/CD integrations, schema monitoring, versioning, and more. 
+Atlas is a data modeling and migrations tool that enables advanced database schema management workflows, like CI/CD integrations, schema monitoring, versioning, and more.
 
-In this guide, you will learn how to make use of Atlas advanced schema management and migration workflows by replacing Prisma Migrate in an existing Prisma ORM project with it. 
+In this guide, you will learn how to make use of Atlas advanced schema management and migration workflows by replacing Prisma Migrate in an existing Prisma ORM project with it.
 
-That way, you can still use Prisma ORM's intuitive data model and type-safe query capabilities while taking advantage of the enhanced migration capabilities provided by Atlas.
+That way, you can still use Prisma ORM's data model and type-safe query capabilities while taking advantage of the enhanced migration capabilities provided by Atlas.
 
 You can find the [example repo](https://github.com/prisma/prisma-atlas) for this tutorial on GitHub. The repo has [branches](https://github.com/prisma/prisma-atlas/branches) that correspond to every step of this guide.
 
 ## Why use Atlas instead of Prisma Migrate?
 
-[Prisma Migrate](https://www.prisma.io/migrate) is a powerful migration tool that covers the majority of use cases application developers have when managing their database schemas. It provides workflows specifically designed for taking you [from development to production](https://www.prisma.io/docs/orm/prisma-migrate/workflows/development-and-production) and with [team collaboration](https://www.prisma.io/docs/orm/prisma-migrate/workflows/team-development) in mind.
+[Prisma Migrate](https://www.prisma.io/migrate) is a migration tool that covers the majority of use cases application developers have when managing their database schemas. It provides workflows specifically designed for taking you [from development to production](https://www.prisma.io/docs/orm/prisma-migrate/workflows/development-and-production) and with [team collaboration](https://www.prisma.io/docs/orm/prisma-migrate/workflows/team-development) in mind.
 
-However, for even more capabilities, you may use a dedicated tool like Atlas to supercharge your migration workflows in the following scenarios:
+However, for even more capabilities, you may use a dedicated tool like Atlas to extend your migration workflows in the following scenarios:
 
-- **Continuous Integration (CI)**: With Atlas, you can issues before they hit production with robust [GitHub Actions](https://atlasgo.io/integrations/github-actions), [GitLab](https://atlasgo.io/guides/ci-platforms/gitlab), and [CircleCI Orbs](https://atlasgo.io/integrations/circleci-orbs) integrations. You can also detect [risky migrations](https://atlasgo.io/versioned/lint), test [data migrations](https://atlasgo.io/guides/testing/data-migrations), [database functions](https://atlasgo.io/guides/testing/functions), and more.
-- **Continuous Delivery (CD)**: Atlas can be integrated into your pipelines to provide native integrations with your deployment machinery (e.g. [Kubernetes Operator](https://atlasgo.io/integrations/kubernetes), [Terraform](https://atlasgo.io/integrations/terraform-provider), etc.).
+- **Continuous Integration (CI)**: With Atlas, you can catch issues before they hit production with [GitHub Actions](https://atlasgo.io/integrations/github-actions), [GitLab CI](https://atlasgo.io/integrations/gitlab-ci-components), and [CircleCI Orbs](https://atlasgo.io/integrations/circleci-orbs) integrations. You can also detect [risky migrations](https://atlasgo.io/versioned/lint), test [data migrations](https://atlasgo.io/guides/testing/data-migrations), [database functions](https://atlasgo.io/guides/testing/functions), and more.
+- **Continuous Delivery (CD)**: Atlas can be integrated into your pipelines to provide native integrations with your deployment machinery (for example, the [Kubernetes Operator](https://atlasgo.io/integrations/kubernetes) or [Terraform](https://atlasgo.io/integrations/terraform-provider)).
 - **Schema monitoring**: Atlas can monitor your database schema and alert you when it drifts away from its expected state.
-- **Support for low-level database features**: Automatic migration planning for advanced database objects such as Views, Stored Procedures, Triggers, Row Level Security, etc.
+- **Support for low-level database features**: Automatic migration planning for advanced database objects such as views, stored procedures, triggers, row-level security, and more.
 
 ## Prerequisites
 
-To successfully complete this guide, you need:
+To complete this guide, you need:
 
-- an existing Prisma ORM project (with the `prisma` and `@prisma/client` packages installed)
-- a PostgreSQL database and its connection string
-- Docker installed on your machine (to manage Atlas' ephemeral dev databases)
+- an existing Prisma ORM 7 project (with the `prisma` and `@prisma/client` packages installed)
+- a PostgreSQL database and its connection string; if you don't have one, you can start a local [Prisma Postgres](https://www.prisma.io/docs/postgres) instance with `npx prisma dev -n atlas`
+- Docker installed on your machine (Atlas uses it to manage the ephemeral dev database described below)
 
-For the purpose of this guide, we'll assume that your Prisma schema contains the standard `User` and `Post` models that we use as [main examples](](https://www.prisma.io/docs/orm/overview/introduction/what-is-prisma#the-prisma-schema)) across our documentation. If you don't have a Prisma ORM project, you can use the [`orm/script`](https://github.com/prisma/prisma-examples/tree/latest/orm/script) example to follow this guide.
+For the purpose of this guide, we'll assume that your Prisma schema contains the standard `User` and `Post` models that we use as [main examples](https://www.prisma.io/docs/orm/overview/introduction/what-is-prisma) across our documentation. If you don't have a Prisma ORM project, you can use the [`orm/script`](https://github.com/prisma/prisma-examples/tree/latest/orm/script) example to follow this guide.
+
+In Prisma ORM 7, the database connection URL lives in [`prisma.config.ts`](https://www.prisma.io/docs/orm/reference/prisma-config-reference), not in the `datasource` block of `schema.prisma`. A minimal config looks like this:
+
+```ts
+// prisma.config.ts
+import "dotenv/config";
+import { defineConfig, env } from "prisma/config";
+
+export default defineConfig({
+  schema: "prisma/schema.prisma",
+  migrations: {
+    path: "prisma/migrations",
+  },
+  datasource: {
+    url: env("DATABASE_URL"),
+  },
+});
+```
+
+Because Atlas invokes the Prisma CLI, make sure `DATABASE_URL` is set in your environment so `prisma.config.ts` can resolve it.
 
 The starting point for this step is the [`start`](https://github.com/prisma/prisma-atlas/tree/start) branch in the example repo.
 
@@ -53,28 +76,28 @@ The starting point for this step is the [`start`](https://github.com/prisma/pris
 To kick off this tutorial, first install the Atlas CLI:
 
 ```shell
--sSf https://atlasgo.sh | sh
+curl -sSf https://atlasgo.sh | sh
 ```
-If you prefer a different installation method (like Docker or Homebrew), you can find it [here](https://atlasgo.io/getting-started/#installation).
+If you prefer a different installation method (like Docker or Homebrew), you can find it in the [getting started guide](https://atlasgo.io/getting-started).
 
 Next, navigate into the root directory of your project that uses Prisma ORM and create the main [Atlas schema file](https://atlasgo.io/atlas-schema/hcl), called `atlas.hcl`:
 
 ```shell
 touch atlas.hcl
 ```
-Now, add the following code it:
+Now, add the following code to it:
 
 ```hcl
 // atlas.hcl
 
 data "external_schema" "prisma" {
-    program = [ 
+    program = [
       "npx",
       "prisma",
       "migrate",
       "diff",
       "--from-empty",
-      "--to-schema-datamodel",
+      "--to-schema",
       "prisma/schema.prisma",
       "--script"
     ]
@@ -95,13 +118,13 @@ env "local" {
 
 In the above snippet, you're doing two things:
 
-- Define an `external_schema` called `prisma` via the `data` block: Atlas is able to integrate database schema definitions from various sources. In this case, the _source_ is the SQL that's generated by the `prisma migrate diff` command which is specified via the `program` field.
+- Define an `external_schema` called `prisma` via the `data` block: Atlas integrates database schema definitions from various sources. In this case, the _source_ is the SQL that's generated by the `prisma migrate diff` command, specified via the `program` field. (In Prisma ORM 7, the flag is `--to-schema`; the older `--to-schema-datamodel` was removed.)
 - Specify details about your environment (called `local`) using the `env` block:
-    - `dev`: Points to a [shadow database](https://www.prisma.io/docs/orm/prisma-migrate/understanding-prisma-migrate/shadow-database) (which is called _dev database_ in Atlas). Similar to Prisma Migrate, Atlas also uses a shadow database to "dry-run" migrations. The connection you provide here is similar to the `shadowDatabaseUrl` in the Prisma schema. However, for convenience we're using Docker in this case to manage these ephemeral database instances.
+    - `dev`: Points to a [shadow database](https://www.prisma.io/docs/orm/prisma-migrate/understanding-prisma-migrate/shadow-database) (which is called _dev database_ in Atlas). Similar to Prisma Migrate, Atlas uses a shadow database to "dry-run" migrations. The connection you provide here is similar to the `shadowDatabaseUrl` in the Prisma schema. For convenience we're using Docker in this case to manage these ephemeral database instances.
     - `schema`: Points to the database connection URL of the database targeted by Prisma ORM (in most cases, this will be identical to the `DATABASE_URL` environment variable).
-    - `migration`: Points to the directory on your file system where you want to store the Atlas migration files (similar to the `prisma/migrations` folder). Note that you're also [excluding](https://atlasgo.io/versioned/diff#exclude-objects) the `_prisma_migrations` from being tracked in Atlas' migration history.
+    - `migration`: Points to the directory on your file system where you want to store the Atlas migration files (similar to the `prisma/migrations` folder). Note that you're also [excluding](https://atlasgo.io/versioned/diff) the `_prisma_migrations` table from being tracked in Atlas' migration history.
 
-In addition to the shadow database, Atlas' migration system and Prisma Migrate have another commonality: They both use a dedicated table in the database to track the history of applied migrations. In Prisma Migrate, this table is called `_prisma_migrations`. In Atlas, it's called `atlas_schema_revisions`.
+In addition to the shadow database, Atlas' migration system and Prisma Migrate have another commonality: they both use a dedicated table in the database to track the history of applied migrations. In Prisma Migrate, this table is called `_prisma_migrations`. In Atlas, it's called `atlas_schema_revisions`.
 
 In order to tell Atlas that the _current_ state of your database (with all its existing tables and other database objects) should be the _starting point_ for tracking migrations in your project, you need to do an initial _baseline_ migration.
 
@@ -130,12 +153,13 @@ After running it, your folder structure should look similar to this:
 │   │   │   └── migration.sql
 │   │   └── migration_lock.toml
 │   └── schema.prisma
+├── prisma.config.ts
 ├── src
 └── ...
 ```
-At this point, Atlas hasn't done anything to your database yet — it only created *files* on your local machine. 
+At this point, Atlas hasn't done anything to your database yet. It only created *files* on your local machine.
 
-Now, you need to _apply_ the generated migrations to tell Atlas that this should be the beginning of its migration history. To do so, run the `atlas migrate apply` command but provide the `--baseline __TIMESTAMP__` option to it this time. 
+Now, you need to _apply_ the generated migrations to tell Atlas that this should be the beginning of its migration history. To do so, run the `atlas migrate apply` command but provide the `--baseline __TIMESTAMP__` option to it this time.
 
 Copy the timestamp from the filename that Atlas created inside `atlas/migrations` and use it to replace the `__TIMESTAMP__` placeholder value in the next snippet. Similarly, replace the `__DATABASE_URL__` placeholder with your database connection string:
 
@@ -153,12 +177,12 @@ atlas migrate apply \
   --url "postgresql://johndoe:mypassword42@localhost:5432/example-db?search_path=public&sslmode=disable" \
   --baseline 20241210094213
 ```
-The command output will say the following:
+Because the database already matches the baseline migration, the command reports that there is nothing left to run:
 
 ```shell
 No migration files to execute
 ```
-If you inspect your database now, you'll see that the `atlas_schema_revisions` table has been created and contains two entries that specify the beginning of the Atlas migration history.
+If you inspect your database now, you'll see that the `atlas_schema_revisions` table has been created and contains an entry that marks the beginning of the Atlas migration history.
 
 > Your project should now be in a state looking similar to the [`step-1`](https://github.com/prisma/prisma-atlas/tree/step-1) branch of the example repo.
 
@@ -167,9 +191,9 @@ If you inspect your database now, you'll see that the `atlas_schema_revisions` t
 Next, you'll learn how to make edits to your Prisma schema and reflect the change in your database using Atlas migrations. On a high-level, the process will look as follows:
 
 1. Make a change to the Prisma schema
-2. Run `atlas migrate diff`  to create migration files
+2. Run `atlas migrate diff` to create migration files
 3. Run `atlas migrate apply` to execute the migration files against your database
-4. Run `prisma generate` to update your Prisma Client
+4. Run `npx prisma generate` to update your Prisma Client
 5. Access the modified schema in your application code via Prisma Client
 
 For the purpose of this tutorial, we're going to expand the Prisma schema with a `Tag` model that has a [many-to-many relation](https://www.prisma.io/docs/orm/prisma-schema/data-model/relations/many-to-many-relations#implicit-many-to-many-relations) to the `Post` model:
@@ -193,8 +217,8 @@ model Post {
 }
 
 + model Tag {
-+   id   Int    @id @default(autoincrement())
-+   name String @unique
++   id    Int    @id @default(autoincrement())
++   name  String @unique
 +   posts Post[]
 + }
 ```
@@ -203,33 +227,52 @@ With that change in place, now run the command to create the migration files on 
 ```shell
 atlas migrate diff --env local
 ```
-As before, this creates a new file inside the `atlas/migrations` folder, e.g. `20241210132739.sql`, with the SQL code that reflects the change in your data model. In the case of our change above, it'll look like this:
+As before, this creates a new file inside the `atlas/migrations` folder, for example `20241210132739.sql`, with the SQL code that reflects the change in your data model. For the change above, Atlas CLI v1.2 generates the following (captured against a local Prisma Postgres database):
 
 ```sql
 -- Create "Tag" table
-CREATE TABLE "Tag" ("id" serial NOT NULL, "name" text NOT NULL, PRIMARY KEY ("id"));
+CREATE TABLE "public"."Tag" (
+  "id" serial NOT NULL,
+  "name" text NOT NULL,
+  PRIMARY KEY ("id")
+);
 -- Create index "Tag_name_key" to table: "Tag"
-CREATE UNIQUE INDEX "Tag_name_key" ON "Tag" ("name");
+CREATE UNIQUE INDEX "Tag_name_key" ON "public"."Tag" ("name");
 -- Create "_PostToTag" table
-CREATE TABLE "_PostToTag" ("A" integer NOT NULL, "B" integer NOT NULL, CONSTRAINT "_PostToTag_A_fkey" FOREIGN KEY ("A") REFERENCES "Post" ("id") ON UPDATE CASCADE ON DELETE CASCADE, CONSTRAINT "_PostToTag_B_fkey" FOREIGN KEY ("B") REFERENCES "Tag" ("id") ON UPDATE CASCADE ON DELETE CASCADE);
--- Create index "_PostToTag_AB_unique" to table: "_PostToTag"
-CREATE UNIQUE INDEX "_PostToTag_AB_unique" ON "_PostToTag" ("A", "B");
+CREATE TABLE "public"."_PostToTag" (
+  "A" integer NOT NULL,
+  "B" integer NOT NULL,
+  CONSTRAINT "_PostToTag_AB_pkey" PRIMARY KEY ("A", "B"),
+  CONSTRAINT "_PostToTag_A_fkey" FOREIGN KEY ("A") REFERENCES "public"."Post" ("id") ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT "_PostToTag_B_fkey" FOREIGN KEY ("B") REFERENCES "public"."Tag" ("id") ON UPDATE CASCADE ON DELETE CASCADE
+);
 -- Create index "_PostToTag_B_index" to table: "_PostToTag"
-CREATE INDEX "_PostToTag_B_index" ON "_PostToTag" ("B");
+CREATE INDEX "_PostToTag_B_index" ON "public"."_PostToTag" ("B");
 ```
+The join table now uses a composite primary key (`_PostToTag_AB_pkey`) for the implicit relation, which is the current Prisma ORM behavior.
+
 Next, you can apply the migration with the same `atlas migrate apply` command as before, minus the `--baseline` option this time (remember to replace the `__DATABASE_URL__` placeholder):
 
 ```shell
 atlas migrate apply \
   --env local \
-  --url __DATABASE_URL__ \
+  --url __DATABASE_URL__
 ```
-Your database schema is now updated, but your generated Prisma Client inside `node_modules/@prisma/client` isn't aware of the schema change yet. That's why you need to re-generate it using the Prisma CLI:
+Your database schema is now updated, but your generated Prisma Client isn't aware of the schema change yet. In Prisma ORM 7, the recommended [`prisma-client` generator](https://www.prisma.io/docs/orm/prisma-schema/overview/generators) writes the Client to an explicit `output` path rather than into `node_modules`:
+
+```prisma
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+```
+
+Migrate commands no longer trigger generation automatically, so re-generate the Client explicitly using the Prisma CLI after every schema change:
 
 ```shell
 npx prisma generate
 ```
-Now, you can go into your application code and run queries against the updated schema. In our case, that would be a query involving the new `Tag` model, e.g.:
+Now, you can go into your application code and run queries against the updated schema. In our case, that would be a query involving the new `Tag` model, for example:
 
 ```typescript
 const tag = await prisma.tag.create({
@@ -251,12 +294,12 @@ The workflow to achieve this looks as follows:
 
 1. Create a SQL file inside the `atlas` directory that reflects the desired change
 2. Update `atlas.hcl` to include that SQL file so that Atlas is aware of it
-3. Run `atlas migrate diff`  to create migration files
+3. Run `atlas migrate diff` to create migration files
 4. Run `atlas migrate apply` to execute the migration files against your database
 
-This time, you won't need to re-generate Prisma Client because you didn't make any manual edits to the Prisma schema file. 
+This time, you won't need to re-generate Prisma Client because you didn't make any manual edits to the Prisma schema file.
 
-Let's go and add a partial index!
+Let's go and add a partial index.
 
 First, create a file called `published_posts_index.sql` inside the `atlas` directory:
 
@@ -267,35 +310,34 @@ Then, add the following code to it:
 
 ```sql
 CREATE INDEX "idx_published_posts"
-ON "Post" ("id") 
+ON "Post" ("id")
 WHERE "published" = true;
 ```
-This creates an index on `Post` records that have their `published` field set to `true`. This query is useful when you query for these published posts, e.g.:
+This creates an index on `Post` records that have their `published` field set to `true`. This index helps when you query for these published posts, for example:
 
 ```typescript
 const publishedPosts = await prisma.post.findMany({
   where: { published: true }
-}
+});
 ```
-You now need to adjust the `atlas.hcl` file to make sure it's aware of the new SQL snippet for the schema. You can do this by using the [`composite_schema`](https://atlasgo.io/atlas-schema/projects#data-source-composite_schema) approach. Adjust your `atlas.hcl` file as follows:
+You now need to adjust the `atlas.hcl` file to make sure it's aware of the new SQL snippet for the schema. You can do this by using the [`composite_schema`](https://atlasgo.io/atlas-schema/projects) approach. Adjust your `atlas.hcl` file as follows:
 
 ```diff
 data "external_schema" "prisma" {
-    program = [ 
+    program = [
       "npx",
       "prisma",
       "migrate",
       "diff",
       "--from-empty",
-      "--to-schema-datamodel",
+      "--to-schema",
       "prisma/schema.prisma",
       "--script"
     ]
 }
 
 env "local" {
-  // dev = "postgresql://nikolasburk:nikolasburk@localhost:5432/atlas-prisma?sslmode=disable"
-  dev = "docker://postgres/13/dev?search_path=public"
+  dev = "docker://postgres/16/dev?search_path=public"
   schema {
 +    src = data.composite_schema.prisma-extended.url
   }
@@ -314,26 +356,42 @@ env "local" {
 +   }
 + }
 ```
-> Note that `composite_schema` is only available via the [Atlas Pro plan](https://atlasgo.io/features#pro) and requires you to be authenticated via `atlas login`.
+> Note that `composite_schema` is an [Atlas Pro](https://atlasgo.io/features) feature and requires you to be authenticated via `atlas login`.
 
 Atlas is now aware of the schema change, so you can go ahead and generate the migration files as before:
 
 ```shell
 atlas migrate diff --env local
 ```
-You'll again see a new file inside the `atlas/migrations` directory. Go ahead and execute the migration with the same command as before (replacing `__DATABASE_URL__` with your own connection string):
+You'll again see a new file inside the `atlas/migrations` directory containing a `CREATE INDEX ... WHERE "published" = true` statement for the partial index. Go ahead and execute the migration with the same command as before (replacing `__DATABASE_URL__` with your own connection string):
 
 ```shell
 atlas migrate apply \
   --env local \
-  --url __DATABASE_URL__ \
+  --url __DATABASE_URL__
 ```
-Congratulations! Your database is now updated with a partial index that will make your queries for published posts faster.
+Your database is now updated with a partial index that speeds up your queries for published posts.
 
 > Your project should now be in a state looking similar to the [`step-3`](https://github.com/prisma/prisma-atlas/tree/step-3) branch of the example repo.
 
+## Frequently asked questions
+
+<Accordions type="single">
+<Accordion title="Can I use Atlas and Prisma Migrate in the same project?">
+You can, but they should not both manage the same tables. In this setup Atlas takes over applying migrations, so you keep writing your data model in `schema.prisma` and let Atlas generate and apply the SQL. Atlas tracks its history in the `atlas_schema_revisions` table, and the `atlas.hcl` config excludes Prisma's own `_prisma_migrations` table so the two histories don't collide. The Prisma schema stays the source of truth for your models and for generating Prisma Client.
+</Accordion>
+<Accordion title="Do I still run prisma generate when using Atlas?">
+Yes. Atlas updates the database, but Prisma Client is generated separately from your Prisma schema. In Prisma ORM 7, migrate commands no longer trigger `prisma generate` automatically, and the recommended `prisma-client` generator writes the Client to an explicit `output` path instead of `node_modules`. Run `npx prisma generate` after any change to your Prisma schema so the generated types match your database.
+</Accordion>
+<Accordion title="Does the partial-index workflow require a paid Atlas plan?">
+The `composite_schema` data source used to combine your Prisma schema with a hand-written SQL file is an Atlas Pro feature and requires authentication via `atlas login`. The core workflow in Steps 1 and 2, based on `external_schema` plus versioned `atlas migrate diff` and `atlas migrate apply`, works with the free Atlas CLI.
+</Accordion>
+</Accordions>
+
 ## Conclusion
 
-In this tutorial, you learned how to integrate Atlas into an existing Prisma ORM project. Atlas can be used to supercharge your schema management and migration workflows when using Prisma ORM.
+In this tutorial, you learned how to integrate Atlas into an existing Prisma ORM 7 project. Atlas extends your schema management and migration workflows while you keep Prisma ORM's data model and type-safe Client.
 
 Check out the [example repo](https://github.com/prisma/prisma-atlas/) if you want to have a quick look at the final result of this tutorial.
+
+Looking ahead: [Prisma Next](https://www.prisma.io/docs/orm) is a TypeScript-native rewrite of Prisma ORM, built for AI coding agents and currently in early access. It becomes Prisma 8 at general availability; until then, Prisma 7 stays the production choice. To try it, run `npm create prisma@next` or read the [early access docs](https://pris.ly/pn-ea).
