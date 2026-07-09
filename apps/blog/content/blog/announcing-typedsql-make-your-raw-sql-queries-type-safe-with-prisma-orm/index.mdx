@@ -1,11 +1,12 @@
 ---
-title: "Announcing TypedSQL: Make your raw SQL queries type-safe with Prisma ORM"
+title: "TypedSQL: Type-Safe Raw SQL Queries in Prisma ORM"
 slug: "announcing-typedsql-make-your-raw-sql-queries-type-safe-with-prisma-orm"
 date: "2024-08-27"
+updatedAt: "2026-07-09"
 authors:
   - "Nikolas Burk"
-metaTitle: "Announcing TypedSQL: Make your raw SQL queries type-safe with Prisma ORM"
-metaDescription: "Prisma ORM now supports the ability to write raw sql queries and have the inputs and outputs be fully type-safe! Get the benefit of a high-level API with the power of raw SQL."
+metaTitle: "TypedSQL: Type-Safe Raw SQL Queries in Prisma ORM"
+metaDescription: "TypedSQL adds type-safe raw SQL to Prisma ORM: write queries in .sql files, generate typed functions, and run them with $queryRawTyped. Verified on Prisma 7."
 metaImagePath: "/announcing-typedsql-make-your-raw-sql-queries-type-safe-with-prisma-orm/imgs/meta-6212889ff7d56ad41636c0f7938159b1fd740651-1688x948.png"
 heroImagePath: "/announcing-typedsql-make-your-raw-sql-queries-type-safe-with-prisma-orm/imgs/hero-9d1c710f959ab75107576ad53720a7731c75797a-844x474.png"
 tags:
@@ -13,177 +14,219 @@ tags:
   - "announcement"
 ---
 
-With today’s [v5.19.0](https://github.com/prisma/prisma/releases/tag/5.19.0) release, Prisma ORM introduces a new way to write raw SQL queries in a type-safe way! You now get the best of both worlds with Prisma ORM: A convenient  high-level abstraction for the majority of queries _and_ a flexible, type-safe escape hatch for raw SQL.
+[TypedSQL](https://www.prisma.io/docs/orm/prisma-client/using-raw-sql/typedsql) is a Prisma ORM feature that turns raw SQL queries written in `.sql` files into fully typed TypeScript functions. You write plain SQL, run `prisma generate --sql`, and Prisma ORM generates a function with typed arguments and a typed result that you execute with `$queryRawTyped`. This guide walks through the complete workflow on Prisma ORM 7.
 
-## TL;DR: We made raw SQL fully type-safe
+> **Updated (July 2026):** This post originally announced TypedSQL in Prisma ORM [v5.19.0](https://github.com/prisma/prisma/releases/tag/5.19.0). It is now maintained as an evergreen guide. TypedSQL remains a Preview feature in Prisma ORM 7. Every command and code block below was run end-to-end against `prisma@7.8` and `@prisma/client@7.8`, using the `prisma-client` generator and a local [Prisma Postgres](https://www.prisma.io/docs/postgres) database started with `npx prisma dev`.
 
-With Prisma ORM, we have designed what we believe to be the best API to write regular CRUD queries that make up 95% of most apps! 
+## How TypedSQL works
 
-For the remaining 5% — the complex queries that either can't be expressed with the Prisma Client API or rCopy the port number from the terminal output, you’ll need it in the next step for the pg_restore command.equire maximum performance — we have provided a lower level API to write raw SQL. However, this escape hatch didn't offer type safety and developers were missing the great DX they were used to from Prisma ORM, so we looked for a better way!
+TypedSQL is a four-step workflow: enable the Preview feature, write a query in a `.sql` file, generate the typed function, and call it through Prisma Client.
 
-With today’s Prisma ORM [v5.19.0](https://github.com/prisma/prisma/releases/tag/5.19.0) release, we are thrilled to announce TypedSQL: The best way to write complex and highly performant queries. **[TypedSQL](https://www.prisma.io/typedsql) is just SQL, but better.** It’s fully type-safe, provides auto-completion, and gives you a fantastic DX whenever you need to craft raw SQL queries. Here’s how it works:
+### 1. Enable the `typedSql` Preview feature
 
-1. Write a SQL query in a `.sql` file and put it into the `prisma/sql` directory:
+Add `typedSql` to the `previewFeatures` of your [generator](https://www.prisma.io/docs/orm/prisma-schema/overview/generators) block. On Prisma ORM 7, the default generator is `prisma-client`, which emits the client into your own source tree instead of `node_modules`:
 
-    
+```prisma
+// prisma/schema.prisma
 
-    ```sql
-    -- prisma/sql/conversionByVariant.sql
-    
-    SELECT "variant", CAST("checked_out" AS FLOAT) / CAST("opened" AS FLOAT) AS "conversion"
-    FROM (
-      SELECT
-        "variant",
-        COUNT(*) FILTER (WHERE "type"='PageOpened') AS "opened",
-        COUNT(*) FILTER (WHERE "type"='CheckedOut') AS "checked_out"
-      FROM "TrackingEvent"
-      GROUP BY "variant"
-    ) AS "counts"
-    ORDER BY "conversion" DESC
-    ```
-    
-    ```prisma
-    model User {
-      id             String          @id @default(uuid())
-      email          String          @unique
-      trackingEvents TrackingEvent[]
-    }
-    
-    model TrackingEvent {
-      id        String   @id @default(uuid())
-      timestamp DateTime @default(now())
-      userId    String
-      type      String
-      variant   String
-      user      User     @relation(fields: [userId], references: [id])
-    }
-    ```
-    
-		You can also create SQL queries with arguments!
-		
+generator client {
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["typedSql"]
+}
 
-    ```sql
-    -- prisma/sql/conversionByVariantByVersion.sql
-	-- note that this syntax is for PostgreSQL.
-	-- Argument syntax will depend on your database engine.
-    
-    SELECT "variant", CAST("checked_out" AS FLOAT) / CAST("opened" AS FLOAT) AS "conversion"
-    FROM (
-      SELECT
-        "variant",
-        COUNT(*) FILTER (WHERE "type"='PageOpened') AS "opened",
-        COUNT(*) FILTER (WHERE "type"='CheckedOut') AS "checked_out"
-      FROM "TrackingEvent"
-	    WHERE version = $1
-      GROUP BY "variant"
-    ) AS "counts"
-    ORDER BY "conversion" DESC
-    ```
-    
-    ```prisma
-    model User {
-      id             String          @id @default(uuid())
-      email          String          @unique
-      trackingEvents TrackingEvent[]
-    }
-    
-    model TrackingEvent {
-      id        String   @id @default(uuid())
-      timestamp DateTime @default(now())
-      userId    String
-      type      String
-      variant   String
-	    version Int
-      user      User     @relation(fields: [userId], references: [id])
-    }
-    ```
-    
-    
-2. Generate query functions by using the `--sql` flag on `prisma generate`:
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id             String          @id @default(uuid())
+  email          String          @unique
+  trackingEvents TrackingEvent[]
+}
+
+model TrackingEvent {
+  id        String   @id @default(uuid())
+  timestamp DateTime @default(now())
+  userId    String
+  type      String
+  variant   String
+  version   Int
+  user      User     @relation(fields: [userId], references: [id])
+}
 ```
-    npx prisma generate --sql
-    ```
-    
-3. Import the query function from `@prisma/client/sql` …
-    
-    ```typescript
-    import { PrismaClient } from '@prisma/client'
-    import { conversionByVariant } from '@prisma/client/sql'
-    ```
-    
-    … and call it inside the new `$queryRawTyped` function to get fully typed results 😎
-    
-    ```typescript
-    // `result` is fully typed!
-    const result = await prisma.$queryRawTyped(conversionByVariant())
-    ```
-		
-		If your SQL query has arguments, they are provided to the query function passed to `$queryRawTyped`
-		
-		```typescript
-		// only give me conversion results from TrackingEvent version 5
-		const result = await prisma.$queryRawTyped(conversionByVariantByVersion(5))
-		```
-    
-The Prisma Client API together with TypedSQL provides the best experience for both CRUD operations and highly complex queries. With this addition, we hope you will never have to touch a SQL query builder again!
 
+On Prisma ORM 7, the connection URL no longer lives in the `datasource` block. It belongs in [`prisma.config.ts`](https://www.prisma.io/docs/orm/reference/prisma-config-reference), and you load environment variables yourself, for example with `dotenv`:
+
+```typescript
+// prisma.config.ts
+
+import 'dotenv/config'
+import { defineConfig } from 'prisma/config'
+
+export default defineConfig({
+  schema: 'prisma/schema.prisma',
+  datasource: {
+    url: process.env.DATABASE_URL!,
+  },
+})
+```
+
+Sync the schema to your database before generating:
+
+```bash
+npx prisma db push
+```
+
+### 2. Write a SQL query in the `prisma/sql` directory
+
+Put each query into its own `.sql` file inside `prisma/sql`. The file name becomes the name of the generated function:
+
+```sql
+-- prisma/sql/conversionByVariant.sql
+
+SELECT "variant", CAST("checked_out" AS FLOAT) / CAST("opened" AS FLOAT) AS "conversion"
+FROM (
+  SELECT
+    "variant",
+    COUNT(*) FILTER (WHERE "type" = 'PageOpened') AS "opened",
+    COUNT(*) FILTER (WHERE "type" = 'CheckedOut') AS "checked_out"
+  FROM "TrackingEvent"
+  GROUP BY "variant"
+) AS "counts"
+ORDER BY "conversion" DESC
+```
+
+Queries can take arguments. On PostgreSQL you reference them as `$1`, `$2`, and so on (MySQL uses `?`), and an optional `@param` comment names the argument and pins its type:
+
+```sql
+-- prisma/sql/conversionByVariantByVersion.sql
+
+-- @param {Int} $1:version The tracking event version to filter by
+SELECT "variant", CAST("checked_out" AS FLOAT) / CAST("opened" AS FLOAT) AS "conversion"
+FROM (
+  SELECT
+    "variant",
+    COUNT(*) FILTER (WHERE "type" = 'PageOpened') AS "opened",
+    COUNT(*) FILTER (WHERE "type" = 'CheckedOut') AS "checked_out"
+  FROM "TrackingEvent"
+  WHERE "version" = $1
+  GROUP BY "variant"
+) AS "counts"
+ORDER BY "conversion" DESC
+```
+
+### 3. Generate the typed query functions
+
+Run `prisma generate` with the `--sql` flag. TypedSQL needs a live database connection at this point, because Prisma ORM asks the database to infer the types of each query:
+
+```bash
+npx prisma generate --sql
+```
+
+```
+✔ Generated Prisma Client (7.8.0) to ./src/generated/prisma in 28ms
+```
+
+Two Prisma 7 workflow notes:
+
+- `prisma migrate dev` and `prisma db push` no longer regenerate the client automatically, so run `npx prisma generate --sql` explicitly after schema or query changes.
+- During development you can keep the functions in sync with `npx prisma generate --sql --watch`.
+
+For each `.sql` file, Prisma ORM emits a module into the `sql` folder of your generator output. This is the result type it inferred for the query above (shown without its generated namespace wrapper):
+
+```typescript
+// src/generated/prisma/sql/conversionByVariant.ts (generated)
+
+export type Result = {
+  variant: string
+  conversion: number | null
+}
+```
+
+### 4. Import the function and run it with `$queryRawTyped`
+
+With the `prisma-client` generator, you import Prisma Client and the query functions from your generator output directory rather than from `@prisma/client`:
+
+```typescript
+import 'dotenv/config'
+import { PrismaPg } from '@prisma/adapter-pg'
+import { PrismaClient } from './generated/prisma/client'
+import {
+  conversionByVariant,
+  conversionByVariantByVersion,
+} from './generated/prisma/sql'
+
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
+const prisma = new PrismaClient({ adapter })
+
+// `result` is fully typed: { variant: string; conversion: number | null }[]
+const result = await prisma.$queryRawTyped(conversionByVariant())
+console.log(result)
+```
+
+Running this against a seeded database prints:
+
+```
+[
+  { variant: 'A', conversion: 0.6666666666666666 },
+  { variant: 'B', conversion: 0.2 }
+]
+```
+
+If the SQL query has arguments, you pass them to the query function, with full type checking:
+
+```typescript
+// Only conversion results from TrackingEvent version 1
+const v1 = await prisma.$queryRawTyped(conversionByVariantByVersion(1))
+console.log(v1)
+```
+
+```
+[
+  { variant: 'A', conversion: 0.5 },
+  { variant: 'B', conversion: 0.2 }
+]
+```
+
+That is the whole workflow. Rename a column in the schema without updating the query, and `prisma generate --sql` fails; change the query's result shape, and TypeScript flags every call site that relied on the old type.
 
 <Youtube  videoId="ZwYcCti6CEs"/>
 
+## Why raw SQL needs type safety
 
-## High-level abstraction for high productivity
+Raw SQL remains the most flexible way to query a relational database, but writing it inside a TypeScript project has long meant giving up the guarantees the rest of your code enjoys:
 
-Raw SQL still provides the most powerful and flexible way to query your data in a relational database. But it does come with some drawbacks.
+- No auto-completion while writing the query.
+- No type safety for query results.
+- Manually written result types that drift out of date as the schema evolves.
+- A mapping gap between the relational model (rows, foreign keys) and TypeScript (objects, nested references).
 
-### Drawbacks of raw SQL
-
-If you’ve written raw SQL in a TypeScript project before, you likely know it doesn’t exactly provide the best DX:
-
-- No auto-completion when writing SQL queries.
-- No type-safety for query results.
-- Intricacies of writing and debugging complex SQL queries.
-- Development teams often have varying levels of SQL experience and not everyone on the team is proficient in writing SQL.
-- SQL uses a different data model (_relations_) compared to TypeScript (_objects_) which needs to be mapped from one to another; this is especially prevalent when it comes to relationships between your models which are expressed via _foreign keys_ in SQL but as _nested objects_ in TypeScript.
-
-### Application developers should care about _data_ – not SQL
-
-At Prisma, we strongly believe that application developers should care about _data_ – not SQL. 
-
-The majority of queries a typical application developer writes uses a fairly limited set of features, typically related to common CRUD operations, such as _pagination_, _filters_ or _nested queries_.
-
-<TweetEmbedComp tweets={['1815664017781735475']}/>
-
-Our main goal is to ensure that application developers can quickly get the data they need without thinking much about the query and the mapping of rows in their database to the objects in their code.
-
-### Ship fast with Prisma ORM
-
-This is why we’ve built Prisma ORM, to provide developers an abstraction that makes them productive and lets them ship fast! Here’s an overview of the typical workflow for using Prisma ORM.
-
-First, you define your data model in a human-readable schema:
-
-```prisma
-model User {
-  id    Int     @id @default(autoincrement())
-  email String  @unique
-  name  String?
-  posts Post[]
-}
-
-model Post {
-  id        Int     @id @default(autoincrement())
-  title     String
-  content   String?
-  published Boolean @default(false)
-  author    User    @relation(fields: [authorId], references: [id])
-  authorId  Int
-}
-```
-Using the Prisma CLI, you can then generate a (customizable) SQL migration and run the migration against your database. Once the schema has been mapped to your database, you can query it with Prisma Client:
-
-
+Prisma Client has always offered `$queryRaw` as an escape hatch for the queries its high-level API cannot express, or that need hand-tuning for performance:
 
 ```typescript
-// Create new user with posts
+const result = await prisma.$queryRaw`
+SELECT "variant", CAST("checked_out" AS FLOAT) / CAST("opened" AS FLOAT) AS "conversion"
+FROM (
+  SELECT
+    "variant",
+    COUNT(*) FILTER (WHERE "type" = 'PageOpened') AS "opened",
+    COUNT(*) FILTER (WHERE "type" = 'CheckedOut') AS "checked_out"
+  FROM "TrackingEvent"
+  GROUP BY "variant"
+) AS "counts"
+ORDER BY "conversion" DESC
+`
+```
+
+The problem: this query returns `unknown`. To get typed results you have to write the result type by hand, and nothing keeps that type honest when the schema changes. TypedSQL closes that gap by generating the types from the database itself. It is inspired by projects like PgTyped and sqlx that are built on the same idea, and the details are covered in the [raw queries documentation](https://www.prisma.io/docs/orm/prisma-client/using-raw-sql/raw-queries).
+
+## TypedSQL and the Prisma Client API
+
+The Prisma Client API is designed for the common queries that make up the bulk of most applications: CRUD operations, pagination, filters, and nested reads and writes.
+
+```typescript
+// Create a new user with a post
 await prisma.user.create({
   data: {
     name: 'Alice',
@@ -194,65 +237,27 @@ await prisma.user.create({
   },
 })
 ```
-```typescript
-// Query users with posts
-await prisma.user.findMany({
-  include: {
-    posts: true,
-  },
-})
-```
 
+<TweetEmbedComp tweets={['1815664017781735475']}/>
 
-## Escape hatch: Dropping down to raw SQL
+TypedSQL covers the remainder: analytics-style aggregations, window functions, database-specific features, and queries you want to hand-optimize. Together they give a team both options without a trade-off in type safety. Developers who prefer the high-level API keep it, and developers who think in SQL get the same generated types and editor support.
 
-While we believe that this kind of higher-level abstraction makes developers more productive, we have seen that many projects require the option to write raw SQL. This typically happens when:
+## Frequently asked questions
 
-- the Prisma Client API isn’t flexible enough to express a certain query.
-- a query needs to be optimized for speed.
+<Accordions type="single">
+  <Accordion title="Is TypedSQL still a Preview feature?">
+Yes. As of Prisma ORM 7.8, TypedSQL requires `previewFeatures = ["typedSql"]` in the generator block and the `--sql` flag on `prisma generate`. It has been available in Preview since Prisma ORM 5.19.0 (August 2024). Preview status means the API may still change before general availability, so pin your Prisma version and read release notes when upgrading.
+  </Accordion>
+  <Accordion title="Which databases does TypedSQL support?">
+TypedSQL infers types automatically on PostgreSQL (all supported versions) and MySQL 8.0 and later. On MySQL versions older than 8.0 and on SQLite, you must annotate argument types manually with `@param` comments. MongoDB is not supported. Generation also requires an active database connection, because the database performs the type inference.
+  </Accordion>
+  <Accordion title="Can TypedSQL run dynamically constructed queries?">
+No. TypedSQL types each query at generate time, so the SQL text must be static. Arguments are supported through typed placeholders (`$1` on PostgreSQL, `?` on MySQL), but dynamic column lists or table names are not. For queries built at runtime, use `$queryRaw` with tagged templates, which still protects against SQL injection through parameterization.
+  </Accordion>
+</Accordions>
 
-In these cases, Prisma ORM offers an escape hatch for raw SQL by using the `$queryRaw` method of Prisma Client: 
+## Summary
 
-```typescript
-const result = await prisma.$queryRaw`
-SELECT "variant", CAST("checked_out" AS FLOAT) / CAST("opened" AS FLOAT) AS "conversion"
-FROM (
-  SELECT
-    "variant",
-    COUNT(*) FILTER (WHERE "type"='PageOpened') AS "opened",
-    COUNT(*) FILTER (WHERE "type"='CheckedOut') AS "checked_out"
-  FROM "TrackingEvent"
-  GROUP BY "variant"
-) AS "counts"
-ORDER BY "conversion" DESC
-`
-```
-The main problem with this approach is that this query isn’t type-safe. If the developer wants to enjoy the type safety benefits they get from the standard Prisma Client API, they need to manually write the return types of this query, which can be cumbersome and time-consuming. Another problem is that these manually defined types don’t auto-update with schema changes, which introduces another possibility for error.
+TypedSQL gives you raw SQL with the type safety of the Prisma Client API: write a query in `prisma/sql`, run `npx prisma generate --sql` against a live database, and call the generated function with `$queryRawTyped` for fully typed results. On Prisma ORM 7 it stays behind the `typedSql` Preview flag, works with the `prisma-client` generator's custom output directory, and fits any PostgreSQL or modern MySQL setup, including [Prisma Postgres](https://www.prisma.io/docs/postgres). The [TypedSQL documentation](https://www.prisma.io/docs/orm/prisma-client/using-raw-sql/typedsql) covers the full reference, including argument annotations and database support.
 
-While there are ways to improve the DX using Prisma ORM’s raw queries, e.g. by using the [Kysely query builder extension for Prisma Cient](https://github.com/eoin-obrien/prisma-extension-kysely)  or [SafeQL](https://safeql.dev/compatibility/prisma.html), we wanted to address this problem in a native way.
-
-## New in Prisma ORM: TypedSQL 🎉
-
-That’s why we’re excited to introduce [TypedSQL](https://www.prisma.io/docs/orm/prisma-client/using-raw-sql/typedsql), a new workflow in Prisma ORM that gives you type safety for raw SQL queries. TypedSQL is inspired by projects like [PgTyped](https://pgtyped.dev/) and [sqlx](https://github.com/launchbadge/sqlx) that are based on similar ideas.
-
-With TypedSQL, Prisma ORM now gives you the best of both worlds:
-
-- A higher-level abstraction that makes developers productive and can serve the majority of queries in a project.
-- A delightful and type-safe escape hatch for when you need to craft SQL directly.
-
-It also gives development teams, where individual developers have different preferences, the option to choose their favorite approach: Do you have an Engineer on the team who’s a die-hard SQL fan but also some that wouldn’t touch SQL with a ten-foot pole? 
-
-Prisma ORM now gives both groups what they want without sacrificing DX or flexibility!
-
-## Try it out and share your feedback
-
-TypedSQL is your new companion whenever you would have resorted to using `$queryRaw` in the past.
-
-We see TypedSQL as the evolution of SQL query builders, giving developers even more flexibility in their database queries because it removes all abstractions. 
-
-<br />
-[Try TypedSQL](https://pris.ly/typedsql-example)
-
-If you want to go deeper, explore [TypedSQL](https://www.prisma.io/typedsql), read the [TypedSQL docs](https://www.prisma.io/docs/orm/prisma-client/using-raw-sql/typedsql), or see how it fits into the broader [Prisma ORM](https://www.prisma.io/orm) workflow.
-
-We’d love for you to try out TypedSQL and let us know what you think of it on [X](https://pris.ly/x) and on [Discord](https://pris.ly/discord)!
+Looking ahead: [Prisma Next](https://www.prisma.io/docs/orm) is a TypeScript-native rewrite of Prisma ORM, built for AI coding agents and currently in early access. It becomes Prisma 8 at general availability; until then, Prisma 7 stays the production choice. To try it, run `npm create prisma@next` or read the [early access docs](https://pris.ly/pn-ea).
