@@ -139,7 +139,7 @@ export function DecisionTree({ data, label }: { data: DecisionTreeData; label: s
         )}
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto" style={{ overflowAnchor: "none" }}>
         <div
           ref={canvasRef}
           className="relative p-6 sm:p-8"
@@ -169,7 +169,7 @@ export function DecisionTree({ data, label }: { data: DecisionTreeData; label: s
             })}
           </svg>
 
-          <div className="relative flex justify-center">
+          <div className="relative flex justify-start">
             <TreeBranch
               byId={byId}
               nodeId={data.startId}
@@ -250,7 +250,7 @@ function TreeBranch({
   const openOption = node.options.find((o) => expanded.has(`${node.id}::${o.label}`));
 
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-start">
       <div
         ref={(el) => {
           if (el) cardRefs.current.set(cardKey, el);
@@ -297,7 +297,7 @@ function TreeBranch({
       </div>
 
       {openOption && (
-        <div className="mt-12 flex items-start justify-center gap-8 sm:gap-12">
+        <div className="mt-12 flex items-start justify-start gap-8 sm:gap-12 pl-8">
           {targetsOf(openOption.next).map((childId) => (
             <TreeBranch
               key={childId}
