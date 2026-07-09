@@ -14,10 +14,7 @@ import { createRelativeLink } from "fumadocs-ui/mdx";
 import { Badge, InlineTOC, Separator } from "@prisma/eclipse";
 import { formatDate, formatTag } from "@/lib/format";
 import { createPageMetadata } from "@/lib/page-metadata";
-import {
-  changelogSource,
-  getSortedReleaseNotes,
-} from "@/lib/changelog-source";
+import { changelogSource, getSortedReleaseNotes } from "@/lib/changelog-source";
 import { getMDXComponents } from "@/mdx-components";
 
 interface PageParams {
@@ -37,19 +34,15 @@ const changeLabelColors = {
   Fixed: "neutral",
   Breaking: "error",
   Deprecated: "warning",
+  Docs: "ppg",
 } as const;
 
-const changeLabelPrefix = new RegExp(
-  `^(?:${Object.keys(changeLabelColors).join("|")}) · `,
-);
+const changeLabelPrefix = new RegExp(`^(?:${Object.keys(changeLabelColors).join("|")}) · `);
 
 function stripChangeLabels(items: TOCItem[]): TOCItem[] {
   return items.map((item) => ({
     ...item,
-    title:
-      typeof item.title === "string"
-        ? item.title.replace(changeLabelPrefix, "")
-        : item.title,
+    title: typeof item.title === "string" ? item.title.replace(changeLabelPrefix, "") : item.title,
     items: item.items ? stripChangeLabels(item.items) : undefined,
   }));
 }
@@ -65,9 +58,7 @@ function textOf(node: ReactNode): string {
 
 /** Splits "**Label** · rest" list-item children into label + remainder. */
 function parseChangeLabelItem(li: ReactElement) {
-  const kids = Children.toArray(
-    (li.props as { children?: ReactNode }).children,
-  );
+  const kids = Children.toArray((li.props as { children?: ReactNode }).children);
   const label = textOf(kids[0]).trim() as keyof typeof changeLabelColors;
   const second = kids[1];
   if (!isValidElement(kids[0]) || !(label in changeLabelColors)) return null;
@@ -94,10 +85,7 @@ function withChangeLabelGroups(List: ElementType) {
     }[] = [];
     items.forEach((li, i) => {
       const { label, rest } = parsed[i]!;
-      const item = cloneElement(
-        li as ReactElement<{ children?: ReactNode }>,
-        { children: rest },
-      );
+      const item = cloneElement(li as ReactElement<{ children?: ReactNode }>, { children: rest });
       const last = groups[groups.length - 1];
       if (last && last.label === label) last.items.push(item);
       else groups.push({ label, items: [item] });
@@ -106,10 +94,7 @@ function withChangeLabelGroups(List: ElementType) {
       <div className="flex flex-col gap-5 my-5">
         {groups.map((group, i) => (
           <div key={i}>
-            <Badge
-              color={changeLabelColors[group.label]}
-              label={group.label}
-            />
+            <Badge color={changeLabelColors[group.label]} label={group.label} />
             <List {...props} className="mt-2 mb-0">
               {group.items.map((item, j) => cloneElement(item, { key: j }))}
             </List>
@@ -151,21 +136,15 @@ export default async function ReleaseNotesPage({ params }: { params: Promise<Pag
   const MDX = page.data.body;
   const description = page.data.summary ?? page.data.description;
   const tags = page.data.tags ?? [];
-  const toc = stripChangeLabels(
-    (page.data.toc as TOCItem[] | undefined) ?? [],
-  );
+  const toc = stripChangeLabels((page.data.toc as TOCItem[] | undefined) ?? []);
   const sorted = getSortedReleaseNotes();
   const position = sorted.findIndex((entry) => entry.url === page.url);
   const newer = position > 0 ? sorted[position - 1] : null;
-  const older =
-    position >= 0 && position < sorted.length - 1
-      ? sorted[position + 1]
-      : null;
+  const older = position >= 0 && position < sorted.length - 1 ? sorted[position + 1] : null;
 
   // Date-labeled entries set version to the date; showing both repeats it
   const versionLabel =
-    page.data.date &&
-    page.data.version === new Date(page.data.date).toISOString().slice(0, 10)
+    page.data.date && page.data.version === new Date(page.data.date).toISOString().slice(0, 10)
       ? null
       : page.data.version;
 
@@ -225,12 +204,8 @@ export default async function ReleaseNotesPage({ params }: { params: Promise<Pag
                   const components = getMDXComponents({
                     a: createRelativeLink(changelogSource, page),
                   });
-                  components.h3 = withChangeLabelBadge(
-                    (components.h3 ?? "h3") as ElementType,
-                  );
-                  components.ul = withChangeLabelGroups(
-                    (components.ul ?? "ul") as ElementType,
-                  );
+                  components.h3 = withChangeLabelBadge((components.h3 ?? "h3") as ElementType);
+                  components.ul = withChangeLabelGroups((components.ul ?? "ul") as ElementType);
                   return components;
                 })()}
               />
@@ -239,18 +214,10 @@ export default async function ReleaseNotesPage({ params }: { params: Promise<Pag
           <Separator className="my-12" />
 
           {older || newer ? (
-            <nav
-              aria-label="More release notes"
-              className="flex justify-between gap-8 mb-12"
-            >
+            <nav aria-label="More release notes" className="flex justify-between gap-8 mb-12">
               {older ? (
-                <Link
-                  href={older.url}
-                  className="group flex flex-col gap-1 max-w-[45%]"
-                >
-                  <span className="text-sm text-foreground-neutral-weak">
-                    ← Older
-                  </span>
+                <Link href={older.url} className="group flex flex-col gap-1 max-w-[45%]">
+                  <span className="text-sm text-foreground-neutral-weak">← Older</span>
                   <span className="text-foreground-neutral font-semibold group-hover:underline">
                     {older.data.title}
                   </span>
@@ -263,9 +230,7 @@ export default async function ReleaseNotesPage({ params }: { params: Promise<Pag
                   href={newer.url}
                   className="group flex flex-col gap-1 max-w-[45%] text-right items-end"
                 >
-                  <span className="text-sm text-foreground-neutral-weak">
-                    Newer →
-                  </span>
+                  <span className="text-sm text-foreground-neutral-weak">Newer →</span>
                   <span className="text-foreground-neutral font-semibold group-hover:underline">
                     {newer.data.title}
                   </span>
