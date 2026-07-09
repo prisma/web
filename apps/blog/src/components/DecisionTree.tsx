@@ -13,7 +13,7 @@ export type DecisionResult = {
 export type DecisionQuestion = {
   id: string;
   question: string;
-  options: { label: string; next: string }[];
+  options: { label: string; next: string | string[] }[];
 };
 
 export type DecisionNode = DecisionQuestion | DecisionResult;
@@ -25,6 +25,10 @@ export type DecisionTreeData = {
 
 function isResult(node: DecisionNode): node is DecisionResult {
   return !("options" in node);
+}
+
+function targetsOf(next: string | string[]): string[] {
+  return Array.isArray(next) ? next : [next];
 }
 
 type Line = { x1: number; y1: number; x2: number; y2: number };
@@ -46,11 +50,19 @@ export function DecisionTree({ data, label }: { data: DecisionTreeData; label: s
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const rowRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
-  function toggle(edgeKey: string) {
+  function toggle(questionId: string, optionLabel: string) {
+    const edgeKey = `${questionId}::${optionLabel}`;
     setExpanded((prev) => {
       const next = new Set(prev);
-      if (next.has(edgeKey)) next.delete(edgeKey);
-      else next.add(edgeKey);
+      if (next.has(edgeKey)) {
+        next.delete(edgeKey);
+      } else {
+        // Options of the same question are mutually exclusive.
+        for (const k of next) {
+          if (k.startsWith(`${questionId}::`)) next.delete(k);
+        }
+        next.add(edgeKey);
+      }
       return next;
     });
   }
@@ -78,16 +90,18 @@ export function DecisionTree({ data, label }: { data: DecisionTreeData; label: s
       const next: Line[] = [];
       for (const edgeKey of expanded) {
         const row = rowRefs.current.get(edgeKey);
-        const card = cardRefs.current.get(edgeKey);
-        if (!row || !card) continue;
+        if (!row) continue;
         const from = offsetWithin(row, canvas);
-        const to = offsetWithin(card, canvas);
-        next.push({
-          x1: from.x + row.offsetWidth / 2,
-          y1: from.y + row.offsetHeight,
-          x2: to.x + card.offsetWidth / 2,
-          y2: to.y,
-        });
+        for (const [cardKey, card] of cardRefs.current) {
+          if (!cardKey.startsWith(`${edgeKey}>>`)) continue;
+          const to = offsetWithin(card, canvas);
+          next.push({
+            x1: from.x + row.offsetWidth / 2,
+            y1: from.y + row.offsetHeight,
+            x2: to.x + card.offsetWidth / 2,
+            y2: to.y,
+          });
+        }
       }
       setLines((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
     }
@@ -159,8 +173,9 @@ export function DecisionTree({ data, label }: { data: DecisionTreeData; label: s
             <TreeBranch
               byId={byId}
               nodeId={data.startId}
-              edgeKey="root"
+              cardKey="root"
               depth={1}
+              fanSize={1}
               expanded={expanded}
               toggle={toggle}
               cardRefs={cardRefs}
@@ -183,8 +198,9 @@ export function DecisionTree({ data, label }: { data: DecisionTreeData; label: s
 function TreeBranch({
   byId,
   nodeId,
-  edgeKey,
+  cardKey,
   depth,
+  fanSize,
   expanded,
   toggle,
   cardRefs,
@@ -192,10 +208,11 @@ function TreeBranch({
 }: {
   byId: Map<string, DecisionNode>;
   nodeId: string;
-  edgeKey: string;
+  cardKey: string;
   depth: number;
+  fanSize: number;
   expanded: Set<string>;
-  toggle: (edgeKey: string) => void;
+  toggle: (questionId: string, optionLabel: string) => void;
   cardRefs: { current: Map<string, HTMLDivElement> };
   rowRefs: { current: Map<string, HTMLButtonElement> };
 }) {
@@ -206,8 +223,8 @@ function TreeBranch({
     return (
       <div
         ref={(el) => {
-          if (el) cardRefs.current.set(edgeKey, el);
-          else cardRefs.current.delete(edgeKey);
+          if (el) cardRefs.current.set(cardKey, el);
+          else cardRefs.current.delete(cardKey);
         }}
         className="w-72 shrink-0 rounded-lg border border-foreground-ppg bg-background-ppg shadow-sm"
         style={{ animation: "dt-card-in 300ms cubic-bezier(0.2, 0.8, 0.2, 1) both" }}
@@ -215,7 +232,7 @@ function TreeBranch({
         <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-2">
           <span className="font-semibold text-foreground-neutral text-sm">{node.title}</span>
           <span className="shrink-0 rounded-full border border-foreground-ppg px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-foreground-ppg">
-            Match
+            {fanSize > 1 ? "Option" : "Match"}
           </span>
         </div>
         <div className="px-4 pb-4">
@@ -230,14 +247,14 @@ function TreeBranch({
     );
   }
 
-  const openEdges = node.options.filter((o) => expanded.has(`${node.id}::${o.label}`));
+  const openOption = node.options.find((o) => expanded.has(`${node.id}::${o.label}`));
 
   return (
     <div className="flex flex-col items-center">
       <div
         ref={(el) => {
-          if (el) cardRefs.current.set(edgeKey, el);
-          else cardRefs.current.delete(edgeKey);
+          if (el) cardRefs.current.set(cardKey, el);
+          else cardRefs.current.delete(cardKey);
         }}
         className="w-64 shrink-0 rounded-lg border border-stroke-neutral-strong bg-background-neutral shadow-sm"
         style={{ animation: "dt-card-in 300ms cubic-bezier(0.2, 0.8, 0.2, 1) both" }}
@@ -252,11 +269,12 @@ function TreeBranch({
           {node.options.map((opt) => {
             const key = `${node.id}::${opt.label}`;
             const open = expanded.has(key);
+            const dimmed = openOption !== undefined && !open;
             return (
               <button
                 key={opt.label}
                 type="button"
-                onClick={() => toggle(key)}
+                onClick={() => toggle(node.id, opt.label)}
                 aria-expanded={open}
                 ref={(el) => {
                   if (el) rowRefs.current.set(key, el);
@@ -266,7 +284,9 @@ function TreeBranch({
                   "block w-full border-b border-stroke-neutral-strong px-4 py-2 text-left text-xs last:border-b-0 transition-colors duration-150",
                   open
                     ? "bg-background-ppg font-semibold text-foreground-neutral"
-                    : "text-foreground-neutral hover:text-foreground-ppg",
+                    : dimmed
+                      ? "text-foreground-neutral-weak opacity-60 hover:opacity-100 hover:text-foreground-ppg"
+                      : "text-foreground-neutral hover:text-foreground-ppg",
                 ].join(" ")}
               >
                 {opt.label}
@@ -276,15 +296,16 @@ function TreeBranch({
         </div>
       </div>
 
-      {openEdges.length > 0 && (
+      {openOption && (
         <div className="mt-12 flex items-start justify-center gap-8 sm:gap-12">
-          {openEdges.map((opt) => (
+          {targetsOf(openOption.next).map((childId) => (
             <TreeBranch
-              key={opt.label}
+              key={childId}
               byId={byId}
-              nodeId={opt.next}
-              edgeKey={`${node.id}::${opt.label}`}
+              nodeId={childId}
+              cardKey={`${node.id}::${openOption.label}>>${childId}`}
               depth={depth + 1}
+              fanSize={targetsOf(openOption.next).length}
               expanded={expanded}
               toggle={toggle}
               cardRefs={cardRefs}
@@ -321,7 +342,9 @@ function TextTree({
         {node.options.map((opt) => (
           <li key={opt.label} className="my-2 border-l border-stroke-neutral-strong pl-3">
             <span className="text-sm text-foreground-neutral-weak">{opt.label}:</span>
-            <TextTree byId={byId} nodeId={opt.next} />
+            {targetsOf(opt.next).map((childId) => (
+              <TextTree key={childId} byId={byId} nodeId={childId} />
+            ))}
           </li>
         ))}
       </ul>
