@@ -146,15 +146,13 @@ End by giving the operator, in a short block:
 - The path to the post file (within their checkout).
 - The author profile path, if one was scaffolded.
 - A reminder that the repository workflow is theirs: create a feature branch, commit the skeleton (and author profile), push, and open the pull request following the blog repo's contribution process. The pull request should be opened as a **draft** until the post is fleshed out.
-- A clear next-step instruction: _"Edit the post to flesh out each section, keep it consistent with positioning and free of AI slop (see Writing quality), run the `content-seo-geo` skill in this repo to optimize the finished draft for search engines and AI answer engines, run the Adversarial review below on the finished draft, then branch, commit, push, and open a draft PR per the blog repo's contributing guide."_
+- A clear next-step instruction: _"Edit the post to flesh out each section, keep it consistent with positioning and free of AI slop (see Writing quality), run the `content-seo-geo` skill in this repo to optimize the finished draft for search engines and AI answer engines, then complete Step 10 before opening any PR."_
 
 Do not claim the post is "done" or "ready" — it is a skeleton handed back to the operator.
 
-## Adversarial review (required before any PR)
+## Step 10: Adversarial review
 
-Every finished draft is reviewed by agents that did not write it, in separate context windows, before it goes anywhere near a pull request. The author (human or agent) wants the post to ship; a reviewer with a fresh context and a refutation mission does not share that bias. A blog post is a set of falsifiable claims — prices, version numbers, benchmark figures, API behaviors, links — and the reviewers' job is to falsify them.
-
-Run this after the draft is complete and the `content-seo-geo` pass is done, and re-run it after fixing what it finds.
+The final step of the process, and the gate to a pull request: once the skeleton has been fleshed into a finished draft and the `content-seo-geo` pass is done, the draft is reviewed by agents that did not write it, in separate context windows. The author (human or agent) wants the post to ship; a reviewer with a fresh context and a refutation mission does not share that bias. A blog post is a set of falsifiable claims — prices, version numbers, benchmark figures, API behaviors, links — and the reviewers' job is to falsify them.
 
 ### How to run it
 
