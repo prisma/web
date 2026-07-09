@@ -158,11 +158,11 @@ Run this after the draft is complete and the `content-seo-geo` pass is done, and
 
 ### How to run it
 
-Spawn at least two reviewer agents (Claude Code subagents, or a review workflow for larger posts). Rules that make the isolation real:
+Spawn one reviewer agent per applicable lens, every lens that applies, regardless of post length. The fact, reader, and positioning lenses apply to every post; the code lens applies whenever the post contains runnable code. Whether the reviewers run as plain subagents or as an orchestrated review workflow is an implementation choice, not a review-depth choice: a workflow's vote-counting and automated re-review loops pay off when findings are numerous, but the lenses and rules are identical either way. Rules that make the isolation real:
 
 1. **Reviewers receive only the draft file path and their mission.** Never include the writing conversation, the pitch, the outline, or any statement of what the post intends or why it is correct. A prompt that says "review this post, which correctly explains X" has already contaminated the reviewer.
 2. **Each reviewer gets a refutation mission, and skepticism is the default.** "Find reasons this is wrong" outperforms "check whether this is right."
-3. **Distinct lenses, one per reviewer** — diversity catches what redundancy misses. Pick from:
+3. **Distinct lenses, one per reviewer** — diversity catches what redundancy misses. The lenses:
    - **Fact refuter**: attack every number, price, version, date, and named behavior. Verify each against the live primary source (vendor pricing page, official docs), not from memory. Report any claim whose source does not say what the post says.
    - **Code refuter** (posts with code): run every sample fresh against the stated versions. Report anything that does not compile, run, or produce the shown output.
    - **Reader skeptic**: where does the post confuse, overclaim, contradict itself, or read like marketing? Where would a knowledgeable reader stop trusting it?
