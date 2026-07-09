@@ -30,39 +30,35 @@ function isResult(node: DecisionNode): node is DecisionResult {
 type Line = { x1: number; y1: number; x2: number; y2: number };
 
 /**
- * Decision tree rendered as a schema-diagram canvas: cards on a dotted
- * grid, answers as rows inside each card, dashed connectors from the
- * chosen answer to the next card. Every node also ships server-rendered
- * as plain text (the <details> block), so crawlers and AI engines read
- * the complete tree regardless of client-side state.
+ * Decision tree rendered as a schema-diagram canvas that grows downwards:
+ * cards on a dotted grid with answers as field-style rows. Clicking an
+ * answer expands its branch beneath the card, connected by a dashed line;
+ * several branches can be open side by side. Every node also ships
+ * server-rendered as plain text (the <details> block), so crawlers and AI
+ * engines read the complete tree regardless of client-side state.
  */
 export function DecisionTree({ data, label }: { data: DecisionTreeData; label: string }) {
   const byId = new Map(data.nodes.map((n) => [n.id, n]));
-  const [path, setPath] = useState<{ nodeId: string; choice?: string }[]>([
-    { nodeId: data.startId },
-  ]);
+  // Expanded edges, keyed "questionId::optionLabel".
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [lines, setLines] = useState<Line[]>([]);
   const canvasRef = useRef<HTMLDivElement | null>(null);
-  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const chosenRowRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const rowRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
-  function choose(stepIndex: number, optionLabel: string, nextId: string) {
-    setPath((p) => {
-      const step = p[stepIndex];
-      if (step.choice === optionLabel && stepIndex < p.length - 1) return p;
-      return [
-        ...p.slice(0, stepIndex),
-        { nodeId: step.nodeId, choice: optionLabel },
-        { nodeId: nextId },
-      ];
+  function toggle(edgeKey: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(edgeKey)) next.delete(edgeKey);
+      else next.add(edgeKey);
+      return next;
     });
   }
 
   function restart() {
-    setPath([{ nodeId: data.startId }]);
+    setExpanded(new Set());
   }
 
-  // Offset-based measurement (unaffected by entrance transforms).
   function offsetWithin(el: HTMLElement, ancestor: HTMLElement) {
     let x = 0;
     let y = 0;
@@ -80,17 +76,17 @@ export function DecisionTree({ data, label }: { data: DecisionTreeData; label: s
       const canvas = canvasRef.current;
       if (!canvas) return;
       const next: Line[] = [];
-      for (let i = 0; i < path.length - 1; i++) {
-        const row = chosenRowRefs.current[i];
-        const target = cardRefs.current[i + 1];
-        if (!row || !target) continue;
+      for (const edgeKey of expanded) {
+        const row = rowRefs.current.get(edgeKey);
+        const card = cardRefs.current.get(edgeKey);
+        if (!row || !card) continue;
         const from = offsetWithin(row, canvas);
-        const to = offsetWithin(target, canvas);
+        const to = offsetWithin(card, canvas);
         next.push({
-          x1: from.x + row.offsetWidth,
-          y1: from.y + row.offsetHeight / 2,
-          x2: to.x,
-          y2: to.y + 26,
+          x1: from.x + row.offsetWidth / 2,
+          y1: from.y + row.offsetHeight,
+          x2: to.x + card.offsetWidth / 2,
+          y2: to.y,
         });
       }
       setLines((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
@@ -98,13 +94,13 @@ export function DecisionTree({ data, label }: { data: DecisionTreeData; label: s
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
-  }, [path]);
+  }, [expanded]);
 
   return (
     <div className="my-8 rounded-2xl border border-stroke-neutral-strong overflow-hidden">
       <style>{`
         @keyframes dt-card-in {
-          from { opacity: 0; transform: translateY(8px) scale(0.97); }
+          from { opacity: 0; transform: translateY(-6px) scale(0.98); }
           to { opacity: 1; transform: translateY(0) scale(1); }
         }
         @keyframes dt-line-in {
@@ -117,14 +113,14 @@ export function DecisionTree({ data, label }: { data: DecisionTreeData; label: s
         <div className="text-xs uppercase tracking-wide text-foreground-neutral-weak font-semibold">
           {label}
         </div>
-        {path.length > 1 && (
+        {expanded.size > 0 && (
           <button
             type="button"
             onClick={restart}
             className="inline-flex items-center gap-1 text-xs text-foreground-neutral-weak hover:text-foreground-ppg"
           >
             <RotateCcw size={12} aria-hidden />
-            Start over
+            Collapse all
           </button>
         )}
       </div>
@@ -132,7 +128,7 @@ export function DecisionTree({ data, label }: { data: DecisionTreeData; label: s
       <div className="overflow-x-auto">
         <div
           ref={canvasRef}
-          className="relative min-w-max p-6 sm:p-8"
+          className="relative p-6 sm:p-8"
           style={{
             backgroundImage:
               "radial-gradient(circle, color-mix(in srgb, currentColor 18%, transparent) 1px, transparent 1px)",
@@ -144,112 +140,32 @@ export function DecisionTree({ data, label }: { data: DecisionTreeData; label: s
             aria-hidden
           >
             {lines.map((l, i) => {
-              const dx = Math.max(24, (l.x2 - l.x1) / 2);
+              const dy = Math.max(16, (l.y2 - l.y1) / 2);
               return (
                 <path
                   key={i}
-                  d={`M ${l.x1} ${l.y1} C ${l.x1 + dx} ${l.y1}, ${l.x2 - dx} ${l.y2}, ${l.x2} ${l.y2}`}
+                  d={`M ${l.x1} ${l.y1} C ${l.x1} ${l.y1 + dy}, ${l.x2} ${l.y2 - dy}, ${l.x2} ${l.y2}`}
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="1.25"
                   strokeDasharray="4 4"
-                  style={{ animation: "dt-line-in 240ms ease-out both", animationDelay: "220ms" }}
+                  style={{ animation: "dt-line-in 220ms ease-out both", animationDelay: "160ms" }}
                 />
               );
             })}
           </svg>
 
-          <div className="relative flex items-start gap-12 sm:gap-16">
-            {path.map((step, i) => {
-              const node = byId.get(step.nodeId);
-              if (!node) return null;
-              const stagger = (i % 2) * 28;
-
-              if (isResult(node)) {
-                return (
-                  <div
-                    key={`${node.id}-${i}`}
-                    ref={(el) => {
-                      cardRefs.current[i] = el;
-                    }}
-                    className="w-72 shrink-0 rounded-lg border border-foreground-ppg bg-background-ppg shadow-sm"
-                    style={{
-                      marginTop: stagger,
-                      animation: "dt-card-in 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both",
-                    }}
-                  >
-                    <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-2">
-                      <span className="font-semibold text-foreground-neutral text-sm">
-                        {node.title}
-                      </span>
-                      <span className="shrink-0 rounded-full border border-foreground-ppg px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-foreground-ppg">
-                        Match
-                      </span>
-                    </div>
-                    <div className="px-4 pb-4">
-                      <p className="text-xs leading-relaxed text-foreground-neutral my-0">
-                        {node.why}
-                      </p>
-                      {node.caveat && (
-                        <p className="text-xs leading-relaxed text-foreground-neutral-weak mt-2 mb-0">
-                          {node.caveat}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                );
-              }
-
-              return (
-                <div
-                  key={`${node.id}-${i}`}
-                  ref={(el) => {
-                    cardRefs.current[i] = el;
-                  }}
-                  className="w-64 shrink-0 rounded-lg border border-stroke-neutral-strong bg-background-neutral shadow-sm"
-                  style={{
-                    marginTop: stagger,
-                    animation: "dt-card-in 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both",
-                  }}
-                >
-                  <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-2">
-                    <span className="font-semibold text-foreground-neutral text-sm">
-                      {node.question}
-                    </span>
-                    <span className="shrink-0 rounded-full border border-stroke-neutral-strong px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-foreground-neutral-weak">
-                      Q{i + 1}
-                    </span>
-                  </div>
-                  <div className="border-t border-stroke-neutral-strong">
-                    {node.options.map((opt) => {
-                      const chosen = step.choice === opt.label;
-                      const dimmed = step.choice !== undefined && !chosen;
-                      return (
-                        <button
-                          key={opt.label}
-                          type="button"
-                          onClick={() => choose(i, opt.label, opt.next)}
-                          aria-pressed={chosen}
-                          ref={(el) => {
-                            if (chosen) chosenRowRefs.current[i] = el;
-                          }}
-                          className={[
-                            "block w-full border-b border-stroke-neutral-strong px-4 py-2 text-left text-xs last:border-b-0 transition-colors duration-150",
-                            chosen
-                              ? "bg-background-ppg font-semibold text-foreground-neutral"
-                              : dimmed
-                                ? "text-foreground-neutral-weak opacity-60 hover:opacity-100 hover:text-foreground-ppg"
-                                : "text-foreground-neutral hover:text-foreground-ppg",
-                          ].join(" ")}
-                        >
-                          {opt.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
+          <div className="relative flex justify-center">
+            <TreeBranch
+              byId={byId}
+              nodeId={data.startId}
+              edgeKey="root"
+              depth={1}
+              expanded={expanded}
+              toggle={toggle}
+              cardRefs={cardRefs}
+              rowRefs={rowRefs}
+            />
           </div>
         </div>
       </div>
@@ -260,6 +176,123 @@ export function DecisionTree({ data, label }: { data: DecisionTreeData; label: s
         </summary>
         <TextTree byId={byId} nodeId={data.startId} />
       </details>
+    </div>
+  );
+}
+
+function TreeBranch({
+  byId,
+  nodeId,
+  edgeKey,
+  depth,
+  expanded,
+  toggle,
+  cardRefs,
+  rowRefs,
+}: {
+  byId: Map<string, DecisionNode>;
+  nodeId: string;
+  edgeKey: string;
+  depth: number;
+  expanded: Set<string>;
+  toggle: (edgeKey: string) => void;
+  cardRefs: { current: Map<string, HTMLDivElement> };
+  rowRefs: { current: Map<string, HTMLButtonElement> };
+}) {
+  const node = byId.get(nodeId);
+  if (!node) return null;
+
+  if (isResult(node)) {
+    return (
+      <div
+        ref={(el) => {
+          if (el) cardRefs.current.set(edgeKey, el);
+          else cardRefs.current.delete(edgeKey);
+        }}
+        className="w-72 shrink-0 rounded-lg border border-foreground-ppg bg-background-ppg shadow-sm"
+        style={{ animation: "dt-card-in 300ms cubic-bezier(0.2, 0.8, 0.2, 1) both" }}
+      >
+        <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-2">
+          <span className="font-semibold text-foreground-neutral text-sm">{node.title}</span>
+          <span className="shrink-0 rounded-full border border-foreground-ppg px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-foreground-ppg">
+            Match
+          </span>
+        </div>
+        <div className="px-4 pb-4">
+          <p className="text-xs leading-relaxed text-foreground-neutral my-0">{node.why}</p>
+          {node.caveat && (
+            <p className="text-xs leading-relaxed text-foreground-neutral-weak mt-2 mb-0">
+              {node.caveat}
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  const openEdges = node.options.filter((o) => expanded.has(`${node.id}::${o.label}`));
+
+  return (
+    <div className="flex flex-col items-center">
+      <div
+        ref={(el) => {
+          if (el) cardRefs.current.set(edgeKey, el);
+          else cardRefs.current.delete(edgeKey);
+        }}
+        className="w-64 shrink-0 rounded-lg border border-stroke-neutral-strong bg-background-neutral shadow-sm"
+        style={{ animation: "dt-card-in 300ms cubic-bezier(0.2, 0.8, 0.2, 1) both" }}
+      >
+        <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-2">
+          <span className="font-semibold text-foreground-neutral text-sm">{node.question}</span>
+          <span className="shrink-0 rounded-full border border-stroke-neutral-strong px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-foreground-neutral-weak">
+            Q{depth}
+          </span>
+        </div>
+        <div className="border-t border-stroke-neutral-strong">
+          {node.options.map((opt) => {
+            const key = `${node.id}::${opt.label}`;
+            const open = expanded.has(key);
+            return (
+              <button
+                key={opt.label}
+                type="button"
+                onClick={() => toggle(key)}
+                aria-expanded={open}
+                ref={(el) => {
+                  if (el) rowRefs.current.set(key, el);
+                  else rowRefs.current.delete(key);
+                }}
+                className={[
+                  "block w-full border-b border-stroke-neutral-strong px-4 py-2 text-left text-xs last:border-b-0 transition-colors duration-150",
+                  open
+                    ? "bg-background-ppg font-semibold text-foreground-neutral"
+                    : "text-foreground-neutral hover:text-foreground-ppg",
+                ].join(" ")}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {openEdges.length > 0 && (
+        <div className="mt-12 flex items-start justify-center gap-8 sm:gap-12">
+          {openEdges.map((opt) => (
+            <TreeBranch
+              key={opt.label}
+              byId={byId}
+              nodeId={opt.next}
+              edgeKey={`${node.id}::${opt.label}`}
+              depth={depth + 1}
+              expanded={expanded}
+              toggle={toggle}
+              cardRefs={cardRefs}
+              rowRefs={rowRefs}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

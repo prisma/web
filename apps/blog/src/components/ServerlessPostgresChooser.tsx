@@ -11,10 +11,10 @@ const tree: DecisionTreeData = {
   nodes: [
     {
       id: "free",
-      question: "Is this a side project or prototype where a free tier should cover it?",
+      question: "What are you choosing a database for?",
       options: [
-        { label: "Yes", next: "r-free" },
-        { label: "No, this is a workload with a budget", next: "backend" },
+        { label: "A side project or prototype", next: "r-free" },
+        { label: "A production workload", next: "backend" },
       ],
     },
     {
