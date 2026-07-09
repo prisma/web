@@ -111,11 +111,7 @@ export default async function AuthorPage(props: { params: Promise<AuthorPagePara
           </h1>
           {bio ? <p className="mt-3 max-w-2xl text-foreground-neutral-weak">{bio.bio}</p> : null}
           {bio ? (
-            <AuthorSocialLinks
-              socials={bio.socials}
-              name={profile.name}
-              className="mt-4 flex items-center gap-4"
-            />
+            <AuthorSocialLinks socials={bio.socials} name={profile.name} className="mt-3" />
           ) : null}
         </div>
       </header>

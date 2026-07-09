@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Avatar } from "@prisma/eclipse";
+import { Action, Avatar } from "@prisma/eclipse";
+import { cn } from "@prisma-docs/ui/lib/cn";
 
 import { getAuthorImageSrc, toAuthorSlug } from "@/lib/authors";
 import { getAuthorBioByName, type AuthorSocial } from "@/lib/author-bios";
@@ -7,7 +8,7 @@ import { withBlogBasePathForImageSrc } from "@/lib/url";
 
 const SOCIAL_META: Record<AuthorSocial["platform"], { icon: string; label: string }> = {
   x: { icon: "fa-brands fa-x-twitter", label: "X (Twitter)" },
-  linkedin: { icon: "fa-brands fa-linkedin", label: "LinkedIn" },
+  linkedin: { icon: "fa-brands fa-square-linkedin", label: "LinkedIn" },
   github: { icon: "fa-brands fa-github", label: "GitHub" },
   mastodon: { icon: "fa-brands fa-mastodon", label: "Mastodon" },
 };
@@ -27,8 +28,11 @@ export function AuthorSocialLinks({
 }) {
   if (socials.length === 0) return null;
 
+  // Matches the icon-button treatment used by the footer and article share row
+  // (eclipse Action box + gap-2), so social links read as a consistent set.
+  // The -ml offset cancels the first box's padding to align flush-left.
   return (
-    <div className={className ?? "flex items-center gap-3"}>
+    <div className={cn("-ml-2 flex items-center gap-1", className)}>
       {socials.map((social) => {
         const meta = SOCIAL_META[social.platform];
         return (
@@ -39,9 +43,14 @@ export function AuthorSocialLinks({
             rel="me noopener noreferrer"
             aria-label={`${name} on ${meta.label}`}
             title={meta.label}
-            className="text-lg text-foreground-neutral-weak transition-colors hover:text-foreground-neutral"
+            className="text-lg transition-colors hover:[&>div]:bg-background-ppg-strong"
           >
-            <i className={meta.icon} aria-hidden="true" />
+            <Action color="neutral" size="lg">
+              <i
+                className={`${meta.icon} text-current text-foreground-neutral-weak transition-colors`}
+                aria-hidden="true"
+              />
+            </Action>
           </a>
         );
       })}
@@ -50,9 +59,10 @@ export function AuthorSocialLinks({
 }
 
 /**
- * E-E-A-T "About the author" section shown at the end of a blog post. Renders
- * a card per author that has a published bio; authors without a bio are
- * silently skipped.
+ * E-E-A-T "About the author" card surfaced near the top of a blog post, so
+ * both readers and LLM/agent crawlers encounter author credentials early.
+ * Renders one entry per author that has a published bio; authors without a
+ * bio are silently skipped.
  */
 export function AuthorBio({ authors = [] }: { authors?: string[] }) {
   const seen = new Set<string>();
@@ -70,11 +80,14 @@ export function AuthorBio({ authors = [] }: { authors?: string[] }) {
   if (profiles.length === 0) return null;
 
   return (
-    <section className="mt-12 border-t border-stroke-neutral-strong pt-8">
-      <h2 className="type-title-lg text-foreground-neutral mb-6">
+    <section
+      aria-label={profiles.length === 1 ? "About the author" : "About the authors"}
+      className="mt-8 rounded-xl border border-stroke-neutral-strong p-5 sm:p-6"
+    >
+      <h2 className="text-xs uppercase tracking-wide font-semibold text-foreground-neutral-weak mb-5">
         {profiles.length === 1 ? "About the author" : "About the authors"}
       </h2>
-      <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-6">
         {profiles.map(({ name, slug, bio }) => {
           const imageSrc = getAuthorImageSrc(name);
           return (
@@ -96,7 +109,7 @@ export function AuthorBio({ authors = [] }: { authors?: string[] }) {
                 >
                   {name}
                 </Link>
-                <p className="mt-1 mb-3 text-sm text-foreground-neutral-weak">{bio?.bio}</p>
+                <p className="mt-1 mb-2 text-sm text-foreground-neutral-weak">{bio?.bio}</p>
                 <AuthorSocialLinks socials={bio?.socials ?? []} name={name} />
               </div>
             </div>

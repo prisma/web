@@ -237,6 +237,10 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
           {seriesContext ? <SeriesMarker series={seriesContext} /> : null}
         </header>
 
+        {/* About the author(s) — surfaced high in the document for E-E-A-T and
+            so LLMs/agents encounter author credentials early. */}
+        <AuthorBio authors={page.data.authors} />
+
         {/* Body */}
         <article className="w-full flex flex-col pb-8 mt-12">
           <div className="prose min-w-0 [&_figure]:w-full [&_figure]:md:max-w-140 [&_figure]:lg:max-w-200">
@@ -277,9 +281,6 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
             />
           </div>
         </article>
-        {/* About the author(s) — E-E-A-T */}
-        <AuthorBio authors={page.data.authors} />
-
         {seriesContext ? (
           <>
             <SeriesBanner series={seriesContext} />
