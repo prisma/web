@@ -4,6 +4,7 @@ export type BlogCardItem = {
   url: string;
   title: string;
   date: string; // ISO string
+  updatedAt?: string | null; // ISO string
   excerpt?: string | null;
   author?: string | null;
   authors?: string[] | null;

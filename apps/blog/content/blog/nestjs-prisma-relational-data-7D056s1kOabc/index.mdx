@@ -20,29 +20,9 @@ tags:
       <i>10 min read</i>
   </center>
 
-  Welcome to the fourth tutorial in this series about building a REST API with NestJS and Prisma! In this tutorial, you will learn how to handle relational data: you will model a one-to-many relation between users and articles in the Prisma schema, expose it through the API, and keep sensitive fields like passwords out of your responses.
+  Prisma ORM models relations declaratively: you define a relation field in the schema, and queries opt into loading related records with `include`. This tutorial is the fourth part of a five-part series on building a REST API with NestJS and Prisma ORM. In it, you will model a one-to-many relation between users and articles, build CRUD endpoints for users, keep the `password` field out of API responses, and return an article's author along with the article.
 
 > **Updated (July 2026):** This tutorial has been fully revised for **Prisma ORM 7** and **NestJS 11**, and continues from the updated [third part](/nestjs-prisma-error-handling-7D056s1kOop2) of the series. Types and the `Prisma` namespace are imported from your generated Client (`generated/prisma/client`) instead of `@prisma/client`, and the code now passes TypeScript's `strictNullChecks`, which NestJS 11 enables by default. Every command and code block below was run end-to-end against `prisma@7.8`, `@prisma/client@7.8` and `@nestjs/core@11`.
-
-## Table Of Contents
-
-- [Introduction](#introduction)
-  - [Development environment](#development-environment)
-  - [Set up the project](#set-up-the-project)
-  - [Project structure and files](#project-structure-and-files)
-- [Add a `User` model to the database](#add-a-user-model-to-the-database)
-  - [Update your seed script](#update-your-seed-script)
-  - [Add an `authorId` field to `ArticleEntity`](#add-an-authorid-field-to-articleentity)
-- [Implement CRUD endpoints for Users](#implement-crud-endpoints-for-users)
-  - [Generate new `users` REST resource](#generate-new-users-rest-resource)
-  - [Add `PrismaClient` to the `Users` module](#add-prismaclient-to-the-users-module)
-  - [Define the `User` entity and DTO classes](#define-the-user-entity-and-dto-classes)
-  - [Define the `UsersService` class](#define-the-usersservice-class)
-  - [Define the `UsersController` class](#define-the-userscontroller-class)
-- [Exclude `password` field from the response body](#exclude-password-field-from-the-response-body)
-  - [Use the `ClassSerializerInterceptor` to remove a field from the response](#use-the-classserializerinterceptor-to-remove-a-field-from-the-response)
-- [Returning the author along with an article](#returning-the-author-along-with-an-article)
-- [Summary and final remarks](#summary-and-final-remarks)
 
 ## Introduction
 
@@ -61,7 +41,7 @@ This tutorial continues from the end of the [third chapter](/nestjs-prisma-error
 To follow along with this tutorial, you will be expected to:
 
 - ... have [Node.js](https://nodejs.org) (v18 or higher) installed.
-- ... have a PostgreSQL database. The easiest option is [Prisma Postgres](https://www.prisma.io/postgres); you can also run Postgres locally with [Docker](https://www.docker.com/) or a native install.
+- ... have a PostgreSQL database. The easiest option is [Prisma Postgres](https://www.prisma.io/docs/postgres); you can also run Postgres locally with [Docker](https://www.docker.com/) or a native install.
 - ... have the [Prisma VSCode Extension](https://marketplace.visualstudio.com/items?itemName=Prisma.prisma) installed. _(optional)_
 - ... have access to a Unix shell (like the terminal/shell in Linux and macOS) to run the commands provided in this series. _(optional)_
 
@@ -921,10 +901,24 @@ Now, `GET /articles/:id` returns the `author` object without the `password` fiel
 ![`GET /articles/:id` does not reveal password](/nestjs-prisma-relational-data-7D056s1kOabc/imgs/password-omitted-get-articles.png)
 
 
+## Frequently asked questions
+
+<Accordions type="single">
+  <Accordion title="How do I return related records from a NestJS API with Prisma?">
+Add the `include` option to the query, for example `prisma.article.findUnique({ where: { id }, include: { author: true } })`. Prisma loads the related record in the same query and types the result accordingly; the relation field is `User | null` when the relation is optional.
+  </Accordion>
+  <Accordion title="Why is the password still visible after adding @Exclude()?">
+The `ClassSerializerInterceptor` only transforms instances of classes that carry the `@Exclude()` decorator. If your route handlers return plain Prisma objects, nothing is transformed. Wrap the results in your entity class, for example `return new UserEntity(user)`, and the field is stripped from the response.
+  </Accordion>
+  <Accordion title="Does prisma migrate dev regenerate Prisma Client in Prisma 7?">
+No. `migrate dev` applies the migration but does not regenerate the Client into your configured `output` folder. Run `npx prisma generate` after changing the schema; otherwise new models like `prisma.user` are missing at runtime and the seed script fails.
+  </Accordion>
+</Accordions>
+
 ## Summary and final remarks
 
 In this chapter, you learned how to model relational data in a NestJS application using Prisma ORM. You also learned about the `ClassSerializerInterceptor` and how to use entity classes to control the data that is returned to the client.
 
-In the [next part](/nestjs-prisma-authentication-7D056s1s0k3l) of this series, you will secure these endpoints by adding JWT authentication to the API, and replace the plain text passwords with properly hashed ones. If you want to go deeper on relations first, the [Prisma relations docs](https://www.prisma.io/docs/orm/prisma-schema/data-model/relations) cover one-to-many and other relation types in depth, and [Prisma Postgres](https://www.prisma.io/postgres) is an easy way to stand up the database layer for follow-on work.
+In the [next part](/nestjs-prisma-authentication-7D056s1s0k3l) of this series, you will secure these endpoints by adding JWT authentication to the API, and replace the plain text passwords with properly hashed ones. If you want to go deeper on relations first, the [Prisma relations docs](https://www.prisma.io/docs/orm/prisma-schema/data-model/relations) cover one-to-many and other relation types in depth, and Prisma Postgres is an easy way to stand up the database layer for follow-on work.
 
 Looking ahead: [Prisma Next](https://www.prisma.io/docs/orm) is a TypeScript-native rewrite of Prisma ORM, built for AI coding agents and currently in early access. It becomes Prisma 8 at general availability; until then, Prisma 7 stays the production choice. To try it, run `npm create prisma@next` or read the [early access docs](https://pris.ly/pn-ea).
