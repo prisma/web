@@ -8,6 +8,7 @@ export type PostCardItem = {
   url: string;
   title: string;
   date: string;
+  updatedAt?: string | null;
   excerpt?: string | null;
   author?: AuthorProfile | null;
   authors?: AuthorProfile[] | null;
@@ -64,6 +65,14 @@ export function PostCard({
         <div className="eyebrow flex gap-2 items-center">
           {post.badge && <Badge color="success" label={post.badge} className="w-fit text-xs" />}
           {post.date && <span className="text-xs text-foreground-neutral-weak">{post.date}</span>}
+          {post.date && post.updatedAt && (
+            <span className="text-xs text-foreground-neutral-weak" aria-hidden="true">
+              |
+            </span>
+          )}
+          {post.updatedAt && (
+            <span className="text-xs text-foreground-neutral-weak">Updated {post.updatedAt}</span>
+          )}
         </div>
         {post.title && <h2 className={titleClassName}>{post.title}</h2>}
         {post.excerpt && <p className={excerptClassName}>{post.excerpt}</p>}

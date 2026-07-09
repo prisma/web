@@ -20,25 +20,9 @@ tags:
     <i>6 min read</i>
 </center>
 
-Welcome to the third tutorial in this series about building a REST API with NestJS and Prisma! In this tutorial, you will learn how to handle errors in a NestJS application, using two strategies: throwing exceptions directly in your route handlers, and building an exception filter that turns Prisma error codes into meaningful HTTP responses.
+Error handling in NestJS happens at two levels: you throw HTTP exceptions like `NotFoundException` directly in your route handlers, and you catch everything else with exception filters. This tutorial is the third part of a five-part series on building a REST API with NestJS and Prisma ORM. In it, you will return a proper 404 for missing articles and build an exception filter that turns Prisma's `P2002` unique constraint error into a 409 Conflict response.
 
 > **Updated (July 2026):** This tutorial has been fully revised for **Prisma ORM 7** and **NestJS 11**, and continues from the updated [first](/nestjs-prisma-rest-api-7D056s1BmOL0) and [second](/nestjs-prisma-validation-7D056s1kOla1) parts of the series. In Prisma 7 the `Prisma` namespace (including error classes like `PrismaClientKnownRequestError`) is imported from your generated Client instead of `@prisma/client`. Every command and code block below was run end-to-end against `prisma@7.8`, `@prisma/client@7.8` and `@nestjs/core@11`.
-
-## Table Of Contents
-
-- [Introduction](#introduction)
-  - [Development environment](#development-environment)
-  - [Set up the project](#set-up-the-project)
-  - [Project structure and files](#project-structure-and-files)
-- [Detect and throw exceptions directly](#detect-and-throw-exceptions-directly)
-- [Handle exceptions by using exception filters](#handle-exceptions-by-using-exception-filters)
-  - [Advantages of a dedicated exception layer](#advantages-of-a-dedicated-exception-layer)
-  - [NestJS global exception filter](#nestjs-global-exception-filter)
-  - [Create a manual exception filter](#create-a-manual-exception-filter)
-  - [Apply the exception filter to your application](#apply-the-exception-filter-to-your-application)
-- [Bonus: Handle Prisma exceptions with the `nestjs-prisma` package](#bonus-handle-prisma-exceptions-with-the-nestjs-prisma-package)
-- [Summary and final remarks](#summary-and-final-remarks)
-
 
 ## Introduction
 
@@ -56,7 +40,7 @@ This tutorial continues from the end of the [second chapter](/nestjs-prisma-vali
 To follow along with this tutorial, you will be expected to:
 
 - ... have [Node.js](https://nodejs.org) (v18 or higher) installed.
-- ... have a PostgreSQL database. The easiest option is [Prisma Postgres](https://www.prisma.io/postgres); you can also run Postgres locally with [Docker](https://www.docker.com/) or a native install.
+- ... have a PostgreSQL database. The easiest option is [Prisma Postgres](https://www.prisma.io/docs/postgres); you can also run Postgres locally with [Docker](https://www.docker.com/) or a native install.
 - ... have the [Prisma VSCode Extension](https://marketplace.visualstudio.com/items?itemName=Prisma.prisma) installed. _(optional)_
 - ... have access to a Unix shell (like the terminal/shell in Linux and macOS) to run the commands provided in this series. _(optional)_
 
@@ -398,12 +382,26 @@ Instructions on installing and using the package are available in the [`nestjs-p
 You can learn how to use the package to handle Prisma exceptions in the [Exception Filter](https://nestjs-prisma.dev/docs/exception-filter/) section of the documentation.
 
 
+## Frequently asked questions
+
+<Accordions type="single">
+  <Accordion title="What happens to an unhandled Prisma error in NestJS?">
+The built-in global exception filter catches it and returns a generic HTTP 500 "Internal server error" response, while the full error (including the Prisma error code, like `P2002`) is only visible in the server logs. A custom exception filter lets you map specific error codes to meaningful HTTP responses instead.
+  </Accordion>
+  <Accordion title="Where do I import PrismaClientKnownRequestError from in Prisma 7?">
+From the `Prisma` namespace of your generated Client, for example `import { Prisma } from '../../generated/prisma/client'`. Importing it from `@prisma/client` no longer works with the `prisma-client` generator, which outputs the Client into your project.
+  </Accordion>
+  <Accordion title="Which Prisma error code signals a unique constraint violation?">
+`P2002`. The exception filter in this tutorial maps it to an HTTP 409 Conflict response. A related code worth handling is `P2025` (record not found), which fits an HTTP 404 response for update and delete endpoints. The full list is in the [Prisma error reference](https://www.prisma.io/docs/orm/reference/error-reference).
+  </Accordion>
+</Accordions>
+
 ## Summary and final remarks
 
 Congratulations! You took an existing NestJS application in this tutorial and learned how to integrate error handling. You learned two different ways to handle errors: directly in your application code and by creating an exception filter.
 
 In this chapter you learned how to handle Prisma errors, like the `P2002` unique constraint violation. But the techniques themselves are not limited to Prisma. You can use them to handle any type of error in your application.
 
-In the [next part](/nestjs-prisma-relational-data-7D056s1kOabc) of this series, you will add a `User` model and learn how to handle relational data in your API. If you want to go deeper on the Prisma side first, the [Prisma getting started guide](https://www.prisma.io/docs/getting-started), [Prisma Migrate docs](https://www.prisma.io/docs/orm/prisma-migrate/getting-started), and [Prisma Postgres](https://www.prisma.io/postgres) are the best next resources for taking the app from tutorial to production-ready workflow.
+In the [next part](/nestjs-prisma-relational-data-7D056s1kOabc) of this series, you will add a `User` model and learn how to handle relational data in your API. If you want to go deeper on the Prisma side first, the [Prisma getting started guide](https://www.prisma.io/docs/getting-started), [Prisma Migrate docs](https://www.prisma.io/docs/orm/prisma-migrate/getting-started), and Prisma Postgres are the best next resources for taking the app from tutorial to production-ready workflow.
 
 Looking ahead: [Prisma Next](https://www.prisma.io/docs/orm) is a TypeScript-native rewrite of Prisma ORM, built for AI coding agents and currently in early access. It becomes Prisma 8 at general availability; until then, Prisma 7 stays the production choice. To try it, run `npm create prisma@next` or read the [early access docs](https://pris.ly/pn-ea).
