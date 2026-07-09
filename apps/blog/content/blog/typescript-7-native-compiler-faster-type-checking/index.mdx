@@ -1,0 +1,67 @@
+---
+title: "TypeScript 7 Is Here: How the Native Compiler Made Our Type Checking 3x Faster"
+slug: "typescript-7-native-compiler-faster-type-checking"
+date: "2026-07-09"
+authors:
+  - "Ankur Datta"
+  - "Sampo Lahtinen"
+metaTitle: "TypeScript 7 Native Compiler: 3x Faster Type Checking in a Real Monorepo"
+metaDescription: "TypeScript 7 ships the compiler as a native Go port. We migrated a large TypeScript monorepo to it and cut whole-repo type checking to about a third of the time, with no memory tuning. Here's what changed, how we did it, and what to watch for."
+metaImagePath: "/typescript-7-native-compiler-faster-type-checking/imgs/meta.png"
+heroImagePath: "/typescript-7-native-compiler-faster-type-checking/imgs/hero.svg"
+heroImageAlt: "Headline 'Type checking, 3x faster' above a comparison card: a short slate bar labeled TypeScript 5.x at 1x baseline, and a full-width teal bar labeled TypeScript 7 native at 3x type-check speed."
+tags:
+  - "education"
+  - "platform"
+---
+
+TypeScript 7 is officially [released](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/): the compiler and language service are now a native port to Go, and Microsoft measures it at roughly 10x faster than the JavaScript-based compiler. We moved a large TypeScript monorepo onto it as soon as the native compiler was ready. Whole-repo type checking now finishes in about a third of the time, roughly 3x faster, and it no longer needs extra Node memory flags to get through CI.
+
+Here is what actually changed, how we migrated, and where the sharp edges are.
+
+## What changed in TypeScript 7
+
+TypeScript 7 is not a rewrite of the type system. The language, the syntax, and the diagnostics are the same ones you already know. What changed is the engine underneath: the compiler that used to run as JavaScript now runs as native, parallelized Go. Same rules, far less time spent enforcing them.
+
+For a codebase, that shows up in three places:
+
+- **`tsc` in CI.** The whole-repo type check is the headline. Ours dropped to about a third of its previous wall-clock time.
+- **Editor responsiveness.** The language service is part of the same native port, so autocomplete and go-to-definition stay quick as the project grows.
+- **Memory.** The native compiler holds far less in memory, which is why the heap flags we used to pass to finish a type check are now gone.
+
+The catch at this stage is tooling maturity, not the compiler itself. The native compiler does not yet expose the programmatic API that some libraries build on, so a migration is less about your application code and more about the tools around it.
+
+## How we migrated
+
+The application code barely moved. Almost all of the work was configuration and a small number of type-level adjustments. No runtime code paths changed.
+
+**Run a single compiler version.** We adopted one version of the native compiler across the whole repo rather than running it side by side with the old one. That kept the toolchain simple and made the before-and-after comparison honest.
+
+**Replace programmatic use of the compiler.** A few scripts imported TypeScript as a library to walk the AST. Because the native compiler does not ship that programmatic API yet, we moved those scripts onto a standalone parser and deleted one-off tooling we no longer needed. The regenerated output was byte-for-byte identical to what we had before.
+
+**Update `tsconfig` path resolution.** The native compiler resolves path aliases relative to the config file that declares them, so we removed `baseUrl` from the configs that set it and let `paths` resolve on their own. We validated that the resolution was identical on the old compiler first, then bumped the Vite path-alias plugin to the version that understands the new, `baseUrl`-free resolution.
+
+**Fix a handful of type-level divergences.** A recursive mapped type hit the native compiler's recursion handling and was rewritten to an equivalent, non-recursive form. A few crypto call sites needed the newer typed-array generics, and some test fixtures had to be built as `Uint8Array` rather than `Buffer`. These were type-level only; nothing shipped differently at runtime.
+
+The order matters: we made every change pass on the classic compiler before switching engines, so a failing check meant a real problem, never a migration artifact.
+
+## Where the speedup comes from
+
+The gain is not a trick of configuration. It comes from the compiler being native code that parallelizes work the JavaScript compiler did on a single thread. Microsoft's public target for the port is about 10x on build times and editor responsiveness. Our own result, on a real production monorepo with all the usual complications, was roughly 3x on the whole-repo type check, plus the removal of the memory tuning we had accumulated to keep CI green.
+
+Two things worth being honest about. First, your mileage will vary: the multiplier depends on how much of your build time was actually type checking versus bundling, and on the shape of your types. Second, most of the migration cost is paid once, in tooling and config, not in rewriting code.
+
+The practical payoff is the boring kind that compounds. Contributors get feedback sooner in the editor. CI spends less time on the type-check step and less money on the memory it used to demand. And a faster check is a check people are more willing to run before they push.
+
+## Key takeaways
+
+- **TypeScript 7 is the same language on a much faster engine.** For CI type checking it is close to a drop-in; the diagnostics you rely on do not change.
+- **The migration is mostly config, not code.** Expect work in `tsconfig` path resolution, in any tool that imports the compiler as a library, and in a few type-level edge cases around recursion and typed arrays.
+- **Validate on the old compiler first, then switch.** It keeps real errors and migration noise from looking the same.
+- **Measure your own numbers.** A 10x headline is the ceiling on ideal cases; a real repo lands somewhere below it, and that is still a large, free win.
+
+## Why type performance matters to us
+
+Prisma is a TypeScript-first company, so compiler speed is a product concern for us, not only an internal one. Our own [Prisma ORM](https://www.prisma.io/docs/orm) generates types ahead of time precisely so [type checking stays fast](/why-prisma-orm-checks-types-faster-than-drizzle) in your editor and CI, and that same instinct is why we moved to the native compiler the day it was ready. If you build on Prisma ORM, [Prisma Postgres](https://www.prisma.io/docs/postgres), or [Prisma Compute](https://www.prisma.io/docs/compute) (in public beta), faster types are part of what keeps the day-to-day feeling quick.
+
+If you maintain a large TypeScript project, the short version is: TypeScript 7 is out, the speedup is real, and the migration is more approachable than the version number suggests. Install it as `typescript@7`, run your existing type check against it, and measure the difference before you commit to the switch.
