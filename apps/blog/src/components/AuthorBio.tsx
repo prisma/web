@@ -66,7 +66,7 @@ export function AuthorSocialLinks({
  */
 export function AuthorBio({ authors = [] }: { authors?: string[] }) {
   const seen = new Set<string>();
-  const profiles = authors
+  const profiles = (Array.isArray(authors) ? authors : [])
     .filter((name): name is string => typeof name === "string" && name.trim().length > 0)
     .map((name) => name.trim())
     .map((name) => ({ name, slug: toAuthorSlug(name), bio: getAuthorBioByName(name) }))
