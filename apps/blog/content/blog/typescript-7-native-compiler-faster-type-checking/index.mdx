@@ -15,13 +15,13 @@ tags:
   - "platform"
 ---
 
-TypeScript 7 is [out](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/). The compiler and language service have been rewritten in Go, and Microsoft measures the native compiler at roughly 10x faster than the old JavaScript one. We moved a large TypeScript monorepo onto it the day it shipped. Whole-repo type checking dropped from about 74 seconds to about 24 seconds, and we deleted the memory flags CI needed to finish the check.
+TypeScript 7 is [out](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/). Microsoft rewrote the compiler in Go and measures it at roughly 10x faster than the old JavaScript one. We moved a large monorepo onto it the day it shipped. Whole-repo type checking dropped from about 74 seconds to about 24 seconds, and we deleted the memory flags CI needed to finish the job.
 
-Here are the numbers, exactly what we changed, what broke, and how to decide whether to migrate now.
+Here are the numbers, what we changed, what broke, and how to decide whether to migrate now.
 
 ## The numbers
 
-One monorepo, dozens of packages and apps, same machine, same command, median of several runs on GitHub Actions.
+One monorepo, dozens of packages and apps. Same machine, same command, median of several GitHub Actions runs.
 
 | Metric                | Before (TS 5.x)     | After (TS 7)  | Change        |
 | --------------------- | ------------------- | ------------- | ------------- |
@@ -30,11 +30,11 @@ One monorepo, dozens of packages and apps, same machine, same command, median of
 | Command               | `pnpm typecheck`    | same          | same          |
 | CI runner             | GitHub Actions      | same          | same          |
 
-Two honest caveats before you read on. Microsoft's own [benchmarks](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/) land between roughly 8x and 12x on projects like VS Code and Playwright. We got 3x, not 10x, because only part of our CI time was ever spent in `tsc`; the rest is bundling, tests, and code generation, none of which the new compiler touches. And your own number will differ based on how type-heavy your code is. The multiplier is real, but it is not universal.
+We got 3x, not the 10x from Microsoft's [benchmarks](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/). The reason is simple: only part of our CI time was ever spent in `tsc`. The rest goes to bundling, tests, and code generation, and the new compiler touches none of that. Your number will land somewhere else again, depending on how type-heavy your code is. The speedup is real; the exact multiplier is yours to measure.
 
 ## What TypeScript 7 actually is
 
-It is the same TypeScript, running on a faster engine. Same syntax, same type rules, same error messages. What changed is the implementation: the compiler used to run as JavaScript on a single thread, and now it runs as native, parallelized Go. That is where the speed comes from, and it is why the migration is about tooling and config rather than your application code.
+Same TypeScript, faster engine. Same syntax, same type rules, same error messages. The old compiler ran as single-threaded JavaScript; the new one runs as native, parallel Go. That is the whole source of the speedup, and it is why migrating is a tooling-and-config job, not a code rewrite.
 
 ## What we had to change
 
@@ -51,7 +51,7 @@ The two that produce real diffs are worth showing.
 
 ### Remove `baseUrl` from tsconfig
 
-TypeScript 7 resolves `paths` relative to the config file, so `baseUrl` goes away and each alias becomes an explicit relative path. Same resolution, less magic.
+TypeScript 7 resolves `paths` relative to the config file. So `baseUrl` goes away, and each alias becomes an explicit relative path instead. Same result, one fewer moving part.
 
 ```diff
 {
@@ -69,9 +69,9 @@ If you use `vite-tsconfig-paths`, upgrade it to v5 at the same time. Older versi
 
 ### Stop importing the compiler as a library
 
-This is the caveat that matters most, and it is the one people miss. TypeScript 7 does **not** ship the programmatic compiler API yet. Microsoft expects it to arrive in 7.1, and recommends keeping classic TypeScript installed side by side for tools that still need it. So any script that did `import ts from "typescript"` to walk the AST needs a plan.
+This is the one people miss. TypeScript 7 does **not** ship the programmatic compiler API yet. Microsoft expects it in 7.1 and, until then, recommends keeping classic TypeScript installed alongside it for tools that need it. So any script that does `import ts from "typescript"` to walk the AST needs a plan.
 
-We had one script that read component props out of `.tsx` files with the compiler API:
+We had one such script that read component props out of `.tsx` files:
 
 ```ts
 // Before: uses the TypeScript compiler API (unavailable in TS 7)
@@ -99,7 +99,7 @@ for (const node of program.body) {
 }
 ```
 
-The regenerated output was byte-for-byte identical. If you cannot drop the compiler API, the side-by-side option is a pin in the one package that needs it:
+The regenerated output was byte-for-byte identical. If you can't drop the compiler API, pin classic TypeScript in the one package that needs it:
 
 ```jsonc
 // repo default: the native compiler
@@ -111,9 +111,9 @@ The regenerated output was byte-for-byte identical. If you cannot drop the compi
 
 ## Sharp edges
 
-A short punch list of type-level differences the native compiler surfaced. All were type-only; nothing changed at runtime.
+A short list of differences the native compiler flagged. Every one was type-only; nothing changed at runtime.
 
-- **Typed-array generics are stricter.** WebCrypto and `node:crypto` call sites now want an explicit `ArrayBuffer` type argument.
+- **Typed-array generics are stricter.** WebCrypto and `node:crypto` calls now want an explicit `ArrayBuffer` type argument.
 
   ```diff
   - crypto.subtle.importKey("raw", rawKey, { name: "AES-GCM" }, true, ["encrypt"]);
@@ -127,9 +127,9 @@ A short punch list of type-level differences the native compiler surfaced. All w
   + const bytes = new Uint8Array([1, 2, 3]);
   ```
 
-- **Deep recursive mapped types can hit a recursion limit** the old compiler did not enforce. We rewrote one to an equivalent non-recursive form.
+- **Deep recursive mapped types can hit a recursion limit** the old compiler let slide. We rewrote one into an equivalent non-recursive form.
 
-- **The memory flags are gone.** The native compiler holds far less in memory, so the heap tuning we had accumulated to keep CI green is no longer needed.
+- **The memory flags are gone.** The native compiler holds far less in memory, so the heap tuning we'd piled up to keep CI green is no longer needed.
 
   ```diff
   - "typecheck": "NODE_OPTIONS=--max-old-space-size=8192 tsc --noEmit",
@@ -138,15 +138,15 @@ A short punch list of type-level differences the native compiler surfaced. All w
 
 ## What improved, and what did not
 
-The type check got faster and lighter. Editors stay responsive on large projects because the language service is part of the same native port. That is the whole win, and it is worth having.
+The type check got faster and lighter, and editors stay responsive on large projects because the language service ships in the same native port. That is the win, and it is worth having.
 
-It is just as important to say what TypeScript 7 did **not** change:
+What TypeScript 7 did **not** change matters just as much:
 
-- It did not make bundling or the production build faster. Those go through Vite and esbuild, and `tsc` emits nothing in our setup.
-- It did not change anything at runtime. Every fix above was type-level.
-- It did not remove type-level bottlenecks. A pathological type is still slow, just slow in Go.
-- It did not make compiler-API tooling compatible. That is still on you, until the 7.1 API lands.
-- It did not make generated types smaller.
+- Bundling and the production build are no faster. Those run through Vite and esbuild, and `tsc` emits nothing in our setup.
+- Nothing changed at runtime. Every fix above was type-level.
+- Type-level bottlenecks are still bottlenecks. A pathological type is still slow, now slow in Go.
+- Compiler-API tooling is still your problem, until the 7.1 API lands.
+- Generated types are no smaller.
 
 ## Should you migrate now?
 
@@ -154,16 +154,16 @@ It is just as important to say what TypeScript 7 did **not** change:
 
 - Type checking is a meaningful slice of your CI time.
 - Your editor slows down on a large project.
-- Your repo does not depend on the compiler API.
+- Your repo doesn't depend on the compiler API.
 - You can run it in CI before making it the default.
 
 **Wait a bit if:**
 
 - Your tooling imports `typescript` as a library.
 - You rely on custom AST transforms or compiler-API scripts.
-- Your build time is dominated by bundling, tests, or code generation, not type checking.
+- Bundling, tests, or code generation dominate your build, not type checking.
 
-The move is low-risk to trial: TypeScript 7 installs as the normal package, so you can point one CI job at it and keep the old compiler a command away.
+Trialing it is low-risk. TypeScript 7 installs as the normal package, so you can point one CI job at it and keep the old compiler a command away.
 
 ```bash
 npm install -D typescript@latest
@@ -171,6 +171,6 @@ npm install -D typescript@latest
 
 ## Why this matters to us
 
-We care about compiler speed because our users live in exactly these codebases. [Prisma ORM](https://www.prisma.io/docs/orm) generates types that land directly in your editor and CI feedback loop, so we work hard to [keep type checking fast](/why-prisma-orm-checks-types-faster-than-drizzle) as schemas and monorepos grow. A faster compiler makes those generated types cheaper to live with, which is why we moved the moment the native compiler was ready. If your TypeScript app also runs on [Prisma Postgres](https://www.prisma.io/docs/postgres) or [Prisma Compute](https://www.prisma.io/docs/compute) (in public beta), the same feedback loop gets quicker across the board.
+We live in monorepos like this one, so a faster type check is something we feel every day. It is the same instinct behind [Prisma Next](https://www.prisma.io/docs/orm), the next evolution of Prisma ORM: you edit a data contract, Prisma generates the types, and [type checking stays fast](/why-prisma-orm-checks-types-faster-than-drizzle) as your schema grows. TypeScript 7 makes that loop quicker, so we moved the day it shipped.
 
-TypeScript 7 is out, the speedup is real, and for most large projects the migration is mostly config. Point your existing type check at it and compare the timing before you commit.
+The speedup is real and the migration is mostly config. Point your type check at it, compare, then commit.
