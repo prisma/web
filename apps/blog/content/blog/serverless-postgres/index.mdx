@@ -11,149 +11,157 @@ metaTitle: "Serverless Postgres: How It Works and Who Offers It (2026)"
 metaDescription: "Serverless Postgres separates compute from storage and bills for usage instead of provisioned servers. How scale-to-zero, cold starts, and the three pricing models compare across Neon, Prisma Postgres, Supabase, Aurora, and PlanetScale."
 metaImagePath: "/serverless-postgres/imgs/meta.png"
 heroImagePath: "/serverless-postgres/imgs/hero.svg"
-heroImageAlt: "Headline 'Three pricing models wearing one name' above a card listing the three serverless Postgres pricing models: compute-time (Neon, Aurora Serverless v2) metered by the hour, operations (Prisma Postgres) billed per query and highlighted in teal, and instances (PlanetScale, Supabase) as always-on capacity. Prisma wordmark top-right."
+heroImageAlt: "Serverless Postgres providers compared: logos for Prisma Postgres, Neon, Aurora, Supabase, and PlanetScale grouped by the three pricing models — operations, compute-time, and instances. Prisma wordmark top-right."
 ---
 
-Serverless Postgres is PostgreSQL you never provision or manage. The platform allocates compute on demand, scales it with load, and bills you for what you use instead of for an instance size you picked up front.
+Serverless Postgres is PostgreSQL you never provision or manage: the platform allocates compute on demand and bills you for usage, not for a server size you picked up front. One label, though, covers very different products, and they differ on two things that decide your cost and your latency: **what they bill for**, and **whether compute sleeps when idle**.
 
-The catch: one label covers genuinely different architectures. What actually varies between providers is how each handles idle time (scale-to-zero and cold starts) and what it charges for (compute-hours, operations, or instances).
+This guide leads with the comparison and a way to choose, then explains the reasoning. It compares serverless behavior and pricing only; a production decision should also weigh extensions, read replicas, backups, regions, and compliance, which are out of scope here. Every price and behavior was checked against the provider's own pages in July 2026, and vendor claims (including Prisma's) are labeled as such.
 
-This guide explains those moving parts, then profiles the five providers you'll meet on most shortlists: [Prisma Postgres](https://www.prisma.io/docs/postgres), Neon, Supabase, Aurora Serverless v2, and PlanetScale. It maps the rest of the field, from Xata and Nile to DigitalOcean, Cloud SQL, and Heroku, onto the same framework, then helps you choose by workload.
+## The providers at a glance
 
-One scoping note: this compares serverless behavior and pricing only. A production decision should also weigh extensions, read replicas, backups, regions, and compliance, which are out of scope here. Every price and behavior was checked against the provider's own pages in July 2026, and vendor claims (including Prisma's) are labeled as such.
-
-## What does "serverless" mean for a database?
-
-A serverless database separates compute from storage, scales compute automatically with load, and charges for what you use instead of what you provision. For Postgres specifically, providers implement this in three different ways: metered compute that suspends when idle, a managed always-on service metered per query, or dedicated instances that autoscale but never suspend.
-
-That definition hides real disagreement about what "serverless" means:
-
-- **Neon and Aurora** treat it as elastic compute you rent by the hour or second.
-- **Prisma Postgres** treats it as a database you reach purely through queries, with the compute invisible.
-- **Supabase and PlanetScale** sell instance-shaped databases with managed operations; only parts of their offerings behave in a serverless way.
-
-So compare behaviors, not the label.
-
-### The building blocks
-
-- **Compute and storage separation.** Your data lives in a storage layer independent of the Postgres process serving queries. This is what makes everything else possible: compute can stop, restart, resize, or fork without touching the data.
-- **Autoscaling.** Compute grows and shrinks with load. Neon sizes compute in CUs (1 CU is 1 vCPU and 4 GB RAM); Aurora sizes it in ACUs (1 ACU is roughly 2 GB RAM, scaling in half-ACU increments) billed per second.
-- **Scale-to-zero.** Compute suspends entirely after an idle period, so an unused database costs storage only. Neon suspends after 5 minutes by default; Aurora pauses after a configurable interval (5 minutes minimum) when you set minimum capacity to 0 ACUs; Supabase pauses only free-tier projects, after 1 week of inactivity.
-- **Cold starts.** The other side of scale-to-zero: the first query after a suspension has to wait for compute to wake. Concrete numbers are below; on the platforms that suspend, they range from a few hundred milliseconds to about 30 seconds. Several configurations avoid them entirely: PlanetScale on every tier, Supabase on paid plans, Neon with auto-suspend disabled, and Prisma Postgres by design.
-- **Branching.** Because storage is copy-on-write in several of these architectures, you can fork a database like a Git branch: an isolated copy for a preview deployment or a migration test that shares unchanged data with its parent. Neon includes 10 branches per project free; Supabase bills branches at $0.01344 per hour; PlanetScale runs every branch as its own billed cluster. Prisma Postgres has no database branching today; its closest workflow is creating separate databases, which its plans allow in large numbers (50 free, 1,000 on paid).
-- **Connection pooling.** Postgres handles a limited number of direct connections, and serverless functions multiply connections fast. Prisma Postgres, Neon, and Supabase build a pooler into the platform; on Aurora the standard answer is RDS Proxy, a separately billed AWS service with a consequential caveat: it holds connections open, which prevents Aurora's auto-pause from ever engaging.
-
-## The three pricing models
-
-Pricing structure, more than any feature, determines which provider fits a workload. The category has settled into three models:
-
-| Model | Who uses it | You pay for | Favors |
-|---|---|---|---|
-| Compute-time | Neon, Aurora Serverless v2 | Hours (or seconds) of compute, sized to load, plus storage | Bursty or idle-heavy workloads that can scale to zero |
-| Operations | Prisma Postgres | Each query your app makes, regardless of compute time, plus storage | Steady predictability per request; apps that want a bill proportional to traffic |
-| Instances | PlanetScale, Supabase | A dedicated cluster or instance size, always on, prorated by time | Sustained high throughput where dedicated capacity beats metering |
-
-The practical consequences:
-
-- **Compute-time billing rewards idleness.** A database that sleeps 20 hours a day costs a fraction of an always-on one. A traffic spike is billed at the size of the compute that served it, and a workload that never idles loses the model's main advantage.
-- **Operation billing tracks traffic, not time.** The plans are flat monthly tiers with included allowances, so the floor is the plan price ($10/month at entry) rather than zero, and there's no idle-versus-active math to do. The flip side: the query count _is_ the bill. Query-heavy patterns (N+1 queries, chatty polling) cost more, and at sustained high volume the math flips against you. A worked example, with this guide's own numbers: an app doing 30M queries a month costs about $89 on the $49 operations plan (10M included, 20M overage at $0.002 per 1,000). A dedicated always-on 1-CU compute on Neon runs about $77/month ($0.106 × 730 hours) with no per-query component at all. Where your traffic sits relative to that crossover should drive the choice.
-- **Instance billing is the most predictable.** A fixed monthly price per branch or project. You give up the pay-nothing-when-idle property entirely, which is why PlanetScale aims itself at production workloads that are never idle.
-
-## The providers in 2026
-
-All prices below are from the providers' published pricing pages, checked July 2026. Prices change; treat the linked pages as canonical.
-
-| | Free tier | Paid entry | Billing unit | Scale-to-zero | Cold start |
+| | Bills for | Scale-to-zero | Cold start | Free tier | Paid entry |
 |---|---|---|---|---|---|
-| **Prisma Postgres** | 100k operations/mo, 500 MB, 50 databases | $10/mo (1M ops, 10 GB) | Operations | No | None (by design; vendor claim) |
-| **Neon** | 100 CU-hours/project/mo, 0.5 GB, 100 projects | Pay-as-you-go, $0.106/CU-hour | CU-hours | After 5 min (configurable on paid) | A few hundred ms |
-| **Supabase** | 2 projects, 500 MB, pauses after 1 week idle | $25/mo (incl. credit for a Micro instance) | Instance + usage | Free tier only | None on paid; free tier needs restore |
-| **Aurora Serverless v2** | None (standard AWS billing) | Per ACU-second + storage | ACU-seconds | Optional, at 0 ACU minimum | ~15 s typical |
-| **PlanetScale Postgres** | None | $5/mo (single node) | Instance per branch | No, always-on by design | None (never sleeps) |
+| **Prisma Postgres** | Operations (queries) | No (stays ready) | None (by design; vendor claim) | 100k ops, 500 MB, 50 DBs | $10/mo (1M ops, 10 GB) |
+| **Neon** | Compute-hours | After 5 min idle | A few hundred ms | 100 CU-hrs, 0.5 GB × 100 projects | Pay-as-you-go, $0.106/CU-hr |
+| **Aurora Serverless v2** | Compute-seconds | Optional (0 ACU min) | ~15 s | None | Per ACU-second + storage |
+| **Supabase** | Instance + usage | Free tier only | None on paid; restore on free | 2 projects, 500 MB | $25/mo |
+| **PlanetScale Postgres** | Instance per branch | No (always-on) | None (never sleeps) | None | $5/mo (single node) |
 
-### Prisma Postgres
+## Choose by workload
 
-[Prisma Postgres](https://www.prisma.io/docs/postgres) is a managed Postgres platform built on unikernels running in microVMs on bare metal. The architecture is designed so databases are always ready: no cold starts, and no bill for idle compute. (Disclosure: Prisma publishes this guide, the no-cold-start claim is ours, and the architecture is documented but not independently benchmarked.)
-
-You pay per operation, defined on the [pricing page](https://www.prisma.io/pricing) as "each time you interact with your database, no matter the compute time. We count the Prisma ORM queries you make, not the SQL statements you run." If your stack queries mostly outside Prisma ORM, check the pricing docs for how those count before doing the math.
-
-- **Free tier:** 100,000 operations/month, 500 MB, and 50 databases, no credit card. Allowances are account-wide, not per database.
-- **Paid:** from $10/month (1M operations, 10 GB, then $0.008 per 1,000) up to $129/month (50M operations, overage $0.001 per 1,000). Spend limits and egress are included on all plans.
-
-Account-wide metering suits fleets of small databases (per-user, per-agent, per-preview) especially well. The honest trade-offs: there's no database branching yet (separate databases are the substitute), the platform lacks Aurora's or Supabase's operational track record, and at sustained high query volume the per-operation math can exceed always-on billing (see the worked example above). For local development, `npx prisma dev` runs a local instance (powered by PGlite), and `npx create-db` spins up a temporary cloud database in seconds without an account (claim it to keep it beyond 24 hours).
-
-### Neon
-
-Neon popularized serverless Postgres and remains the reference implementation of the compute-time model: compute sized in CUs, metered per hour, suspending after 5 minutes idle. Its [pricing](https://neon.com/pricing) is pay-as-you-go with no monthly minimum: $0.106/CU-hour on Launch, $0.222/CU-hour on Scale, and storage at $0.35/GB-month. The free tier is genuinely per project: each of up to 100 projects gets its own 100 CU-hours and 0.5 GB per month.
-
-Neon's docs are candid that waking a compute from idle "typically takes a few hundred milliseconds," and paid plans can disable auto-suspend to trade idle savings for zero cold starts.
-
-In May 2025, Databricks agreed to acquire Neon (reported at roughly $1 billion) and committed to continued investment. Neon's docs say it "continues as a standalone serverless Postgres platform," positioned alongside Databricks Lakebase, and that is how it operates as of July 2026. The acquisition post carried one striking data point about where the category is heading: by Neon's telemetry, the share of databases created by AI agents rather than humans grew from about 30% around Neon's GA to over 80% by the May 2025 announcement.
-
-### Supabase
-
-Supabase is a backend platform (auth, storage, realtime, edge functions) with Postgres at its center, not a pure database service, and it doesn't primarily market itself as serverless Postgres. Its Postgres is instance-shaped: [plans](https://supabase.com/pricing) include $10/month of compute credits covering one Micro instance (2-core ARM, 1 GB RAM), with larger dedicated instances from $15 to $3,730/month billed hourly. The free tier allows 2 projects at 500 MB each and pauses them after 1 week of inactivity; paid projects never pause, so they have no cold starts. Branching is billed at $0.01344 per branch-hour.
-
-Choose Supabase when you want the bundled backend. Measured against the serverless behaviors above (autoscaling, scale-to-zero, usage billing), it shows the fewest of the five, which matters only if serverless behavior is what you came for.
-
-### Aurora Serverless v2
-
-Aurora Serverless v2 is AWS's elastic Postgres (and MySQL), billing capacity in ACU-seconds within a range you configure. Since late 2024 it supports true scale-to-zero: set minimum capacity to 0 ACUs, and instances auto-pause after a configurable idle interval (5 minutes minimum), with no compute charge while paused.
-
-AWS's [own documentation](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2-auto-pause.html) is precise about the trade-off: "the typical time to resume might be approximately 15 seconds," rising to 30 seconds or more after a pause longer than 24 hours, and it recommends client timeouts above 15 seconds. Watch for configurations that silently defeat auto-pause: an attached RDS Proxy, logical replication, or being the writer in a global database all keep instances awake.
-
-Pricing is per ACU-second and varies by region and configuration; use the [AWS pricing page](https://aws.amazon.com/rds/aurora/pricing/) to model your workload. Aurora fits teams already deep in AWS who need its ecosystem (IAM, VPC peering, global databases) more than they need simplicity.
-
-### PlanetScale Postgres
-
-PlanetScale, long a MySQL/Vitess platform, entered Postgres in 2025: general availability on September 22, 2025, with plans from $5/month. Its Metal tier (locally attached NVMe, storage included) reached GA for Postgres on December 15, 2025 at a new $50/month entry point, down from $589.
-
-On the core question, PlanetScale takes the opposite position from Neon: no scale-to-zero at all. Every branch runs on its own dedicated, always-on cluster, [billed](https://planetscale.com/docs/postgres/pricing) by instance size prorated to the millisecond, from $5/month (single node) and $15/month (highly available) up to five figures for the largest Metal instances. There's no free tier on its current pricing page.
-
-In March 2026, the Drizzle ORM team joined PlanetScale; Drizzle is stated to remain an independent open source project. PlanetScale fits sustained production workloads where predictable dedicated performance justifies paying for every hour.
-
-## The rest of the field
-
-The five profiles above cover the main shapes serverless Postgres takes. Most of the rest of the managed-Postgres market is not serverless at all, and knowing which is which is half the value of the category label. All checked against vendor pages in July 2026.
-
-**Serverless-adjacent players:**
-
-- **Xata** relaunched in 2025 as a Postgres platform built around copy-on-write branching ("one Postgres, thousands of branches"), with idle branches hibernating at no compute cost and waking in about a second on its cloud. Billing is hourly per instance (from $0.012/hour) plus $0.28/GB-month storage; there is no permanent free cloud tier (new signups get $100 in 14-day credits), and Xata open-sourced its core under Apache 2.0 in 2026.
-- **Nile** is serverless Postgres re-engineered for multi-tenant apps: every tenant is a virtual database inside one Postgres, billed in query tokens (free tier with 50M tokens and 1 GB; Pro from $15/month). Its architectural bet is multi-tenant compute that never pauses, so it claims scale-to-zero cost without cold starts.
-- **Tembo**, previously a managed-Postgres platform, pivoted in May 2025 to running AI coding agents and no longer markets a Postgres product. Worth knowing if you shortlisted it from an older comparison.
-
-**Managed instances, fully managed but not serverless.** DigitalOcean (from $15.15/month), Render (from $6/month, billed per second; free databases expire after 30 days), and Heroku Postgres (standard plans from $5/month; its newer Advanced tier decouples storage billing but still neither autoscales nor suspends) all sell instance sizes you pick and resize yourself: no compute autoscaling, no scale-to-zero, and none of the three uses the word serverless for these products. Railway is the interesting edge case: it bills actual usage per minute ($10/GB RAM, $20/vCPU per month) rather than a fixed size, and has an opt-in sleep feature for idle services, though its docs note that open database connections prevent sleeping and don't state whether volume-backed Postgres services can sleep at all.
-
-**The other hyperscaler options.** Aurora Serverless v2 (profiled above) is the only hyperscaler Postgres that suspends automatically. Google Cloud SQL bills fixed machine types per second and supports manual stop only; Google AlloyDB has fixed primary compute and no suspend (read pools can autoscale horizontally, in preview; a 30-day free trial cluster, no permanent free tier); Azure Database for PostgreSQL Flexible Server is fixed SKUs from about $12/month, with a manual stop that Azure automatically reverses after 7 days. None of the three is branded serverless by its own vendor.
-
-The test that sorts the field: if you pick an instance size and the vendor never suspends it for you, that's managed Postgres, which may be exactly what you need. Applied honestly, the test grades even the five profiled providers unevenly. Prisma Postgres, Neon, and Aurora Serverless v2 pass it outright; Xata and Nile pass it at smaller scale; PlanetScale and paid Supabase are instance-shaped and earn their profiles by sitting on the same shortlists, not by passing every serverless test.
-
-## Cold starts: the dividing line
-
-Pricing decides what you pay; cold starts decide what your users feel. If your app has idle periods and latency-sensitive users, this is the difference you'll notice first. Where a provider suspends compute, the number below comes from its own docs; where it has none, the reason is stated instead:
-
-- **Neon:** activating a compute from idle "typically takes a few hundred milliseconds," per Neon's connection-latency documentation. Paid plans can disable auto-suspend entirely.
-- **Aurora Serverless v2:** resume from 0 ACUs takes "approximately 15 seconds" typically, and 30 seconds or more after a pause longer than 24 hours, per AWS's auto-pause documentation.
-- **Supabase:** paid projects never pause, so no cold starts; free-tier projects pause after a week of inactivity and require a restore.
-- **PlanetScale:** no cold starts because nothing ever sleeps; you pay for the always-on instance.
-- **Prisma Postgres:** no cold starts, by architecture rather than by paying for idle time: unikernel microVMs are designed so there is no suspended state to resume from. This is our own claim about our own product, published in our [architecture write-up](https://www.prisma.io/blog/prisma-postgres-the-future-of-serverless-databases) and not independently benchmarked; hold it to the same skepticism as any vendor claim.
-
-The structural point: on compute-time platforms, cold starts are the price of the savings, and eliminating them there means paying for idle time again.
-
-## How to choose
-
-Walk the tree, or read the same guidance as prose below it:
+Walk the tree, or read the guidance beneath it.
 
 <ServerlessPostgresChooser />
 
-Match the provider to the shape of your workload:
-
-- **Side project, prototype, or agent-generated app:** you want a generous free tier and zero setup. All three free tiers here work: Prisma Postgres (100k operations, 50 databases, no card), Neon (100 CU-hours across 100 projects), and Supabase (2 projects, if week-idle pausing is acceptable).
+- **Side project, prototype, or agent-generated app:** you want a generous free tier and zero setup. Prisma Postgres (100k operations, 50 databases, no card), Neon (100 CU-hours across 100 projects), or Supabase (2 projects, if week-idle pausing is acceptable).
 - **Spiky or scheduled workloads (cron jobs, internal tools, dev/test fleets):** compute-time billing with scale-to-zero was built for this. Neon, or Aurora if you're already on AWS and can tolerate ~15-second resumes.
-- **User-facing apps with idle periods but latency-sensitive users:** this is where cold starts hurt. Four ways out, at different price shapes: operation-based billing (Prisma Postgres keeps the database ready and bills the queries), Neon with auto-suspend disabled, or a small always-on instance on PlanetScale ($5) or paid Supabase ($25). Which is cheapest depends on query volume and how small an instance your load fits; the worked example above shows how to compare.
+- **User-facing apps that go idle but have latency-sensitive users:** this is where cold starts hurt. Either keep the database always ready and pay per query (Prisma Postgres), disable auto-suspend on Neon, or run a small always-on instance on PlanetScale ($5) or paid Supabase ($25). The [cost comparison](#the-cost-crossover) below shows how to pick between them.
 - **Steady, high-throughput production:** always-on dedicated capacity wins on price-per-query at sustained load. PlanetScale (from $5 single node, $50 Metal), or Aurora sized for the load.
-- **You want the platform to bundle more than the database:** for auth, storage, and realtime out of the box, Supabase, accepting the instance-shaped economics. If the bundle you want is app hosting rather than auth, Prisma pairs Prisma Postgres with [Prisma Compute](https://www.prisma.io/docs/compute) (TypeScript app hosting, currently in public beta) and the ORM as one platform, with one schema and config across all three.
-- **Many small databases (per-tenant, per-user, per-AI-agent):** account-level metering across a fleet matters more than per-database pricing. Prisma Postgres meters operations across all databases on one plan; Neon's per-project free allowance also stretches far here. This pattern is growing: Neon's telemetry from May 2025 showed the share of databases created on its platform by AI agents rather than humans had passed 80%.
+- **Many small databases (per-tenant, per-user, per-AI-agent):** account-level metering across a fleet beats per-database pricing. Prisma Postgres meters operations across all databases on one plan; Neon's per-project free allowance also stretches far.
+- **You want more than a database:** for auth, storage, and realtime out of the box, Supabase. For app hosting alongside the database, Prisma pairs Prisma Postgres with [Prisma Compute](https://www.prisma.io/docs/compute) (TypeScript app hosting, public beta) and the ORM as one platform.
+
+## The two decisions that matter
+
+Everything else follows from two questions. Answer them and the shortlist above nearly picks itself.
+
+### 1. What do you pay for?
+
+The category has three billing models, and the model matters more than any single feature.
+
+| Model | Who uses it | You pay for | Favors |
+|---|---|---|---|
+| Compute-time | Neon, Aurora Serverless v2 | Hours or seconds of compute, sized to load, plus storage | Bursty or idle-heavy workloads that scale to zero |
+| Operations | Prisma Postgres | Each query, regardless of compute time, plus storage | A bill that tracks traffic, not clock time |
+| Instances | PlanetScale, Supabase | A dedicated instance, always on, prorated by time | Sustained load where dedicated capacity beats metering |
+
+- **Compute-time rewards idleness.** A database that sleeps 20 hours a day costs a fraction of an always-on one. A workload that never idles loses the whole advantage.
+- **Operations track traffic.** The plans are flat monthly tiers with allowances, so the floor is the plan price rather than zero, with no idle-versus-active math. The catch: the query count _is_ the bill, so chatty patterns (N+1, polling) cost more.
+- **Instances are the most predictable.** A fixed monthly price, and you give up paying nothing when idle.
+
+### 2. What happens when the database is idle?
+
+Serverless databases separate compute from storage, so compute can stop while your data stays put. What each provider does with that idle time is what your users feel:
+
+- **Scale-to-zero** suspends compute after an idle period, so an unused database costs storage only.
+- **Cold start** is the price of that nap: the first query after a suspension waits for compute to wake.
+
+Where a provider suspends, the wake time below is from its own docs; where it doesn't, the reason is stated instead:
+
+- **Neon:** activating from idle "typically takes a few hundred milliseconds" (Neon's docs). Paid plans can disable auto-suspend.
+- **Aurora Serverless v2:** resume from 0 ACUs takes "approximately 15 seconds," or 30+ after a pause over 24 hours (AWS's docs).
+- **Supabase:** paid projects never pause (no cold start); free projects pause after a week and need a restore.
+- **PlanetScale:** nothing sleeps, so no cold start; you pay for the always-on instance.
+- **Prisma Postgres:** always ready, so no cold start, by architecture rather than by paying for idle time. This is our own claim about our own product (see the [architecture write-up](https://www.prisma.io/blog/prisma-postgres-the-future-of-serverless-databases)) and isn't independently benchmarked; hold it to the same skepticism as any vendor claim.
+
+On compute-time platforms, cold starts are the price of the savings: eliminate them and you're paying for idle time again.
+
+## Provider profiles
+
+Same attributes for each, so you can scan across them.
+
+### Prisma Postgres
+
+Managed Postgres on unikernels in microVMs, designed so databases are always ready. (Disclosure: Prisma publishes this guide; the no-cold-start claim is ours and is documented but not independently benchmarked.)
+
+- **Best for:** apps that want the bill to track query traffic, and fleets of many small databases.
+- **Bills for:** operations, defined on the [pricing page](https://www.prisma.io/pricing) as "each time you interact with your database, no matter the compute time. We count the Prisma ORM queries you make, not the SQL statements you run." Check the pricing docs for how non-ORM queries count.
+- **Idle behaviour:** no scale-to-zero and no cold starts; databases stay ready.
+- **Free / entry:** 100,000 operations, 500 MB, and 50 databases, no card; paid from $10/mo (1M operations, 10 GB, then $0.008 per 1,000) to $129/mo (50M operations). Allowances are account-wide, not per database.
+- **Watch out for:** no database branching yet (separate databases are the substitute); less operational track record than Aurora or Supabase; at sustained high query volume the per-operation math can exceed always-on billing (see the [cost comparison](#the-cost-crossover)).
+
+### Neon
+
+The reference implementation of the compute-time model, and the provider that popularized serverless Postgres.
+
+- **Best for:** bursty or idle-heavy workloads that can tolerate a sub-second wake.
+- **Bills for:** compute in CUs (1 CU = 1 vCPU + 4 GB), $0.106/CU-hour on Launch, $0.222 on Scale, storage $0.35/GB-month. Pay-as-you-go, no monthly minimum.
+- **Idle behaviour:** suspends after 5 minutes; wakes in "a few hundred milliseconds." Paid plans can disable auto-suspend for zero cold starts.
+- **Free / entry:** genuinely per project: each of up to 100 projects gets 100 CU-hours and 0.5 GB a month.
+- **Watch out for:** Databricks agreed to acquire Neon in May 2025; Neon's docs say it continues as a standalone platform positioned alongside Databricks Lakebase, which is a stated intention worth weighing for long-horizon bets.
+
+### Aurora Serverless v2
+
+AWS's elastic Postgres (and MySQL), billing capacity in ACU-seconds within a range you configure.
+
+- **Best for:** teams already deep in AWS who need its ecosystem (IAM, VPC peering, global databases).
+- **Bills for:** ACU-seconds (1 ACU ≈ 2 GB RAM), per second, varying by region; model it on the [AWS pricing page](https://aws.amazon.com/rds/aurora/pricing/).
+- **Idle behaviour:** optional scale-to-zero at a 0-ACU minimum (since late 2024); resume "approximately 15 seconds," 30+ after a 24-hour pause, per [AWS's docs](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2-auto-pause.html).
+- **Free / entry:** no free tier; standard AWS billing.
+- **Watch out for:** an attached RDS Proxy, logical replication, or being the writer in a global database each silently keeps instances awake and defeats auto-pause.
+
+### Supabase
+
+A backend platform (auth, storage, realtime, edge functions) with Postgres at its center, rather than a pure database service.
+
+- **Best for:** teams who want the bundled backend more than serverless behavior.
+- **Bills for:** an instance plus usage; $10/mo of credits covers one Micro (2-core ARM, 1 GB RAM), with dedicated instances from $15 to $3,730/mo billed hourly.
+- **Idle behaviour:** paid projects never pause (no cold starts); free projects pause after a week of inactivity.
+- **Free / entry:** 2 projects at 500 MB each; paid entry $25/mo.
+- **Watch out for:** measured against the serverless behaviors above, it shows the fewest of the five, which matters only if serverless behavior is what you came for.
+
+### PlanetScale Postgres
+
+Long a MySQL/Vitess platform; it entered Postgres in 2025 and takes the opposite position from Neon: no scale-to-zero at all.
+
+- **Best for:** sustained production workloads where predictable dedicated performance justifies paying every hour.
+- **Bills for:** a dedicated instance per branch, by size, prorated to the millisecond.
+- **Idle behaviour:** nothing sleeps, so no cold starts.
+- **Free / entry:** no free tier; from $5/mo (single node), $15/mo (highly available), and $50/mo for the Metal tier (locally attached NVMe, storage included).
+- **Watch out for:** you pay for every hour, idle or not. (Postgres reached GA on September 22, 2025; Metal on December 15, 2025. The Drizzle ORM team joined PlanetScale in March 2026, with Drizzle stated to stay an independent open source project.)
+
+## The cost crossover
+
+The operations-versus-compute question has a crossover point, and it's worth doing the arithmetic once. Take an app running 30M queries a month:
+
+- **Operations (Prisma Postgres):** about **$89** on the $49 plan (10M operations included, 20M overage at $0.002 per 1,000).
+- **Compute (Neon):** about **$77/mo** for a dedicated, always-on 1-CU compute ($0.106 × 730 hours), with no per-query component.
+
+Below that crossover, operation billing keeps you off always-on costs; above it, a dedicated instance is cheaper per query. A companion post breaks Prisma Postgres and Neon pricing down line by line.
+
+## Secondary considerations
+
+Beyond billing and idle behavior, a production choice touches a few more things. They rarely decide the shortlist, but they can break a tie:
+
+- **Branching.** Copy-on-write storage lets several providers fork a database like a Git branch for previews or migration tests. Neon includes 10 branches per project free; Supabase bills $0.01344 per branch-hour; PlanetScale runs each branch as its own billed cluster. Prisma Postgres has no branching yet (its substitute is separate databases: 50 free, 1,000 on paid).
+- **Connection pooling.** Serverless functions open connections fast, and Postgres tolerates a limited number. Prisma Postgres, Neon, and Supabase build in a pooler. On Aurora the answer is RDS Proxy, a separately billed service that holds connections open and, as a result, prevents auto-pause from ever engaging.
+- **Ecosystem.** Aurora buys into the full AWS stack; Supabase bundles auth, storage, and realtime; PlanetScale brings its Vitess and Metal operational heritage.
+
+## Other providers you may encounter
+
+The five above cover the main shapes. Most of the rest of the managed-Postgres market isn't serverless at all, and knowing which is which is half the value of the label. All checked against vendor pages in July 2026.
+
+**Serverless-adjacent:**
+
+- **Xata** relaunched in 2025 around copy-on-write branching ("one Postgres, thousands of branches"), with idle branches hibernating and waking in about a second. Billing is hourly per instance (from $0.012/hour) plus $0.28/GB-month; no permanent free cloud tier ($100 in 14-day credits), and its core is Apache 2.0 as of 2026.
+- **Nile** is serverless Postgres for multi-tenant apps: every tenant is a virtual database in one Postgres, billed in query tokens (free tier 50M tokens and 1 GB; Pro from $15/mo). Its bet is multi-tenant compute that never pauses.
+- **Tembo** pivoted in May 2025 to running AI coding agents and no longer markets a Postgres product. Worth knowing if you shortlisted it from an older comparison.
+
+**Managed instances (not serverless):** DigitalOcean (from $15.15/mo), Render (from $6/mo, billed per second), and Heroku Postgres (from $5/mo) all sell instance sizes you pick and resize yourself: no autoscaling, no scale-to-zero, and none of them calls the product serverless. Railway is the edge case: it bills usage per minute and offers opt-in sleep for idle services, though its docs don't say whether volume-backed Postgres can sleep.
+
+**Hyperscalers:** Aurora Serverless v2 (above) is the only hyperscaler Postgres that auto-suspends. Google Cloud SQL and AlloyDB, and Azure Database for PostgreSQL Flexible Server (from ~$12/mo), all use fixed compute with manual stop at most, and none is branded serverless by its own vendor.
+
+The test that sorts the field: if you pick an instance size and the vendor never suspends it for you, that's managed Postgres, which may be exactly what you need.
 
 ## Frequently asked questions
 
@@ -178,8 +186,13 @@ Scale-to-zero means compute suspends when idle so you stop paying for it; the co
   </Accordion>
 </Accordions>
 
-## Summary
+## The bottom line
 
-Serverless Postgres in 2026 is three pricing models wearing one name. Compute-time platforms (Neon, Aurora) turn idle time into savings and charge for it in cold starts. Instance platforms (PlanetScale, Supabase) turn predictability into a flat bill and give up idle savings. Operation-based billing (Prisma Postgres) prices the queries themselves, keeping databases always ready, with a flat plan floor and query volume as the number to watch. Pick by workload shape: how idle your database is, how sensitive your users are to a slow first query, and whether your bill should track time or traffic.
+Pick by the shape of your workload:
 
-To try the operation-based model, create a [Prisma Postgres](https://www.prisma.io/docs/postgres) database in seconds with `npx create-db` (no account needed; the database is temporary until you claim it), or read how its [unikernel architecture](https://www.prisma.io/blog/prisma-postgres-the-future-of-serverless-databases) removes cold starts. For the cost side of this comparison in detail, Prisma Postgres and Neon pricing get a dedicated line-by-line breakdown in an upcoming companion post.
+- **Can sleep, tolerant of a sub-second wake?** Neon.
+- **Always-on capacity you want to be predictable?** PlanetScale, or paid Supabase if you also want the bundled backend.
+- **Already committed to AWS?** Aurora Serverless v2.
+- **Want costs tied to query traffic, with no cold starts?** Prisma Postgres.
+
+To try the operation-based model, spin up a [Prisma Postgres](https://www.prisma.io/docs/postgres) database in seconds with `npx create-db` (no account; temporary until you claim it), or use `npx prisma dev` for a local instance. For the money side in depth, a companion post breaks Prisma Postgres and Neon pricing down line by line.
