@@ -10,6 +10,9 @@ import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import { BlogShare } from "@/components/BlogShare";
 import { BlogCTA } from "@/components/BlogCTA";
 import { AuthorAvatarGroup } from "@/components/AuthorAvatarGroup";
+import { AuthorBio } from "@/components/AuthorBio";
+import { getAuthorBioByName } from "@/lib/author-bios";
+import { toAuthorSlug } from "@/lib/authors";
 import { SeriesBanner } from "@/components/SeriesBanner";
 import { SeriesMarker } from "@/components/SeriesMarker";
 import { SeriesNavigation } from "@/components/SeriesNavigation";
@@ -35,6 +38,9 @@ interface PageParams {
 interface PersonSchema {
   "@type": "Person";
   name: string;
+  url?: string;
+  description?: string;
+  sameAs?: string[];
 }
 
 interface ImageObjectSchema {
@@ -75,6 +81,18 @@ function toIsoDate(value: unknown): string | undefined {
   const date = new Date(String(value));
   if (Number.isNaN(date.getTime())) return undefined;
   return date.toISOString();
+}
+
+function buildAuthorSchema(name: string): PersonSchema {
+  const author: PersonSchema = { "@type": "Person", name };
+  const slug = toAuthorSlug(name);
+  const bio = getAuthorBioByName(name);
+  if (slug) author.url = toAbsoluteUrl(withBlogBasePath(`/author/${slug}`));
+  if (bio) {
+    author.description = bio.bio;
+    if (bio.socials.length > 0) author.sameAs = bio.socials.map((s) => s.url);
+  }
+  return author;
 }
 
 function getBlogPostingJsonLd(page: ReturnType<typeof blog.getPage>): BlogPostingSchema | null {
@@ -127,15 +145,9 @@ function getBlogPostingJsonLd(page: ReturnType<typeof blog.getPage>): BlogPostin
   }
 
   if (authorNames.length === 1) {
-    jsonLd.author = {
-      "@type": "Person",
-      name: authorNames[0],
-    };
+    jsonLd.author = buildAuthorSchema(authorNames[0]);
   } else if (authorNames.length > 1) {
-    jsonLd.author = authorNames.map((name) => ({
-      "@type": "Person" as const,
-      name,
-    }));
+    jsonLd.author = authorNames.map(buildAuthorSchema);
   }
 
   if (datePublished) {
@@ -224,6 +236,10 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
           )}
           {seriesContext ? <SeriesMarker series={seriesContext} /> : null}
         </header>
+
+        {/* About the author(s) — surfaced high in the document for E-E-A-T and
+            so LLMs/agents encounter author credentials early. */}
+        <AuthorBio authors={page.data.authors} />
 
         {/* Body */}
         <article className="w-full flex flex-col pb-8 mt-12">

@@ -20,13 +20,13 @@ seriesIndex: 6
 
 If you've ever wanted to integrate your tool, your database, or your library with Prisma, or you tried in Prisma 6 or 7 and gave up, this post is for you. Read the [Prisma Next Early Access announcement](https://www.prisma.io/blog/prisma-next-early-access-write-your-contract-prompt-your-agent-ship-your-app) for the full launch story.
 
-Prisma Next has a deliberately tiny core that knows nothing about any specific database. Postgres support is an extension. Vector search is an extension. JSON-with-schema is an extension. Whatever Prisma Next can do, it does because someone wrote it using the same components that are available to you.
+[Prisma Next](https://www.prisma.io/docs/orm/next) has a deliberately tiny core that knows nothing about any specific database. Postgres support is an extension. Vector search is an extension. JSON-with-schema is an extension. Whatever Prisma Next can do, it does because someone wrote it using the same components that are available to you.
 
 The API surface is real, the same shape we used to build Postgres support ourselves, and ready to build against today.
 
 ## Postgres is an extension
 
-The Prisma Next framework knows about contracts, plans, query lifecycle, and the policies that gate execution. It does _not_ know what Postgres, SQL, Mongo, vectors, or any column type other than `unknown` are.
+The Prisma Next framework knows about [contracts](https://www.prisma.io/docs/orm/next/contract-authoring/the-data-contract), plans, query lifecycle, and the policies that gate execution. It does _not_ know what Postgres, SQL, Mongo, vectors, or any column type other than `unknown` are.
 
 Every database we support and every native feature you've used in Prisma Next was added by an extension package on a public service provider interface (SPI). The Postgres target, the SQL family (its contract shape, operations, and lanes), the Postgres adapter and driver, the pgvector vector type and its similarity operators, and the arktype-JSON codec are all extensions.
 
@@ -34,14 +34,14 @@ There is no "core API" and "plugin API." There is one SPI, used by the team buil
 
 ## What an extension can ship
 
-An extension is a normal npm package: `@yourname/prisma-next-extension-foo`. Your users `pnpm add` it, add one line to `prisma-next.config.ts`, and your additions show up in their contract, their queries, and (if you ship migrations) their migration plans.
+An extension is a normal npm package: `@yourname/prisma-next-extension-foo`. Your users `pnpm add` it, [add one line to `prisma-next.config.ts`](https://www.prisma.io/docs/orm/next/extensions/using-extensions), and your additions show up in their contract, their queries, and (if you ship migrations) their migration plans.
 
 An extension can include any subset of four layers, in any combination:
 
 - **Contract layer**: column types, field builders, index types, and authoring constructs that show up in `contract.ts` and `contract.json` with your namespace and your validation rules. This is how pgvector adds dimensioned vector columns and how ParadeDB adds typed BM25 indexes
 - **Query layer**: typed methods on the query builder. Users discover them through autocomplete; they compile to SQL via lowerers you provide. This is how pgvector adds `cosineDistance` on vector columns
-- **Runtime layer**: codecs that translate between the database wire format and your TypeScript types. Codecs can be synchronous (pgvector vectors decode to `number[]`) or asynchronous (encryption codecs decrypt on read with key material from an external service). Runtime middleware is also part of this slice, covering observability, audit, and policy interception around every query
-- **Migration layer**: custom DDL and data operations with pre/post checks and idempotency declarations, integrated into the migration planner. ParadeDB's planned BM25 index ops land here, and so does anything else that needs to participate in the migration graph rather than ship as a one-off script
+- **Runtime layer**: codecs that translate between the database wire format and your TypeScript types. Codecs can be synchronous (pgvector vectors decode to `number[]`) or asynchronous (encryption codecs decrypt on read with key material from an external service). [Runtime middleware](https://www.prisma.io/docs/orm/next/middleware/how-middleware-works) is also part of this slice, covering observability, audit, and policy interception around every query
+- **Migration layer**: custom DDL and data operations with pre/post checks and idempotency declarations, integrated into the migration planner. ParadeDB's planned BM25 index ops land here, and so does anything else that needs to participate in [the migration graph](https://www.prisma.io/docs/orm/next/migrations/the-migration-graph) rather than ship as a one-off script
 
 Pick the layers you need. A useful extension can be one layer (a single codec, a single index type) or all four for a full vertical slice.
 
