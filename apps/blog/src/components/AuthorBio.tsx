@@ -59,8 +59,8 @@ export function AuthorSocialLinks({
 }
 
 /**
- * E-E-A-T "About the author" card surfaced near the top of a blog post, so
- * both readers and LLM/agent crawlers encounter author credentials early.
+ * E-E-A-T "About the author" card rendered at the end of a blog post, so
+ * readers reach the author credentials right after finishing the article.
  * Renders one entry per author that has a published bio; authors without a
  * bio are silently skipped.
  */
