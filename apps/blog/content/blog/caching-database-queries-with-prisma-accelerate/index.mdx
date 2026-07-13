@@ -1,89 +1,95 @@
 ---
-title: "Speed and Savings: Caching Database Queries with Prisma Accelerate"
+title: "Speed and Savings: Caching Database Queries with Prisma"
 slug: "caching-database-queries-with-prisma-accelerate"
 date: "2024-05-24"
+updatedAt: "2026-07-09"
 authors:
   - "Jon Harrell"
-metaTitle: "Cache your database queries with Prisma Accelerate"
-metaDescription: "Achieve faster performance and cost savings with Prisma Accelerate's easy per-query caching, eliminating the need for maintaining caching infrastructure. Experience faster queries, without the hassle!"
+metaTitle: "Caching Database Queries with Prisma Postgres"
+metaDescription: "Cache database queries per query with Prisma Postgres's built-in TTL and SWR caching: faster reads, lower database load, and no separate caching infrastructure to run."
 metaImagePath: "/caching-database-queries-with-prisma-accelerate/imgs/meta-959743e064c1771e65e078aa6ebee2b402c28578-1266x711.png"
 heroImagePath: "/caching-database-queries-with-prisma-accelerate/imgs/hero-69cd8d277e2307eb14396450817be41bb1e7c305-844x474.svg"
 heroImageAlt: "The word \"caching\" with a starburst behind it, showing that it is important."
 ---
 
-Dive into the benefits of per-query caching, showcasing how it can make queries faster, handle traffic surges, minimize infrastructure costs, and keep your users satisfied. Learn how to easily implement Prisma Accelerate and achieve improved app performance and cost savings.
+Query caching stores the result of a database read so repeated requests are served from the cache instead of hitting your database: faster responses, lower database load, and infrastructure that survives traffic spikes. [Prisma Postgres](https://www.prisma.io/docs/postgres) builds this in at the query level: you add a `cacheStrategy` to an individual Prisma ORM query and choose how long results stay fresh, with no separate caching layer to deploy or invalidate. This post covers why and when to cache, and how per-query caching works in practice.
 
-Picture this: You and your team just released your latest app, SuperWidget. Everyone is excited, and you’re pretty sure it’s going to be a hit… and it is! SuperWidget is all of a sudden used by every major company in the world. However, you quickly realize that the level of traffic far outweighs what you planned for and your app is starting to have degraded performance.
+> **Updated (July 2026):** This post originally covered caching through Prisma Accelerate as a standalone product. Query caching with TTL and SWR is [included as part of Prisma Postgres](https://www.prisma.io/docs/postgres/database/caching), so the post now describes it in that context. The concepts and the per-query API are unchanged.
 
-To solve this, your team jumps into action quickly. You dive into your application monitoring and realize that several queries in your application have a much larger impact than anticipated. After a long night, your team implements a number of infrastructure improvements, most notably a robust caching layer, which takes the load off the rest of your infrastructure. SuperWidget performance is no longer being negatively impacted, and your new customers are happy with their experience.
+Picture this: you and your team just released your latest app, SuperWidget. Everyone is excited, and you're pretty sure it's going to be a hit... and it is! SuperWidget is suddenly used by every major company in the world. However, you quickly realize that the level of traffic far outweighs what you planned for, and your app is starting to have degraded performance.
 
-So, what could you and your team have done better? 
+To solve this, your team jumps into action. You dive into your application monitoring and realize that several queries in your application have a much larger impact than anticipated. After a long night, your team implements a number of infrastructure improvements, most notably a caching layer, which takes the load off the rest of your infrastructure. SuperWidget performance recovers, and your new customers are happy with their experience.
 
-While your team was capable, fire drills and all-nighters are the last thing you want. The solution still required a coordinated effort and a lot of wasted engineering hours. Instead, you could have saved time and frustration by using [Prisma Accelerate](https://www.prisma.io/data-platform/accelerate?utm_source=website&utm_medium=blogpost&utm_campaign=caching) and caching your queries with ease.
+So, what could you and your team have done better?
+
+While your team was capable, fire drills and all-nighters are the last thing you want. The solution still required a coordinated effort and a lot of engineering hours. Per-query caching built into your database layer removes most of that work.
 
 ### Why you should cache database queries
 
-As you saw in the above example, caching is great when you need to reduce database or application load. By caching, you can remove expensive operations from the time it takes to load your application, also known as the “critical path”. Following requests can then use this cached data to avoid spending app or database time computing the result. If improved stability due to reduced app load wasn’t enough, less time spent computing also means your infrastructure can support a higher workload, or your app can run on reduced hardware, saving you money!
+As the example shows, caching helps when you need to reduce database or application load. By caching, you remove expensive operations from the time it takes to load your application, also known as the "critical path". Subsequent requests use the cached data and avoid spending app or database time computing the result. Reduced load also means your infrastructure can support a higher workload, or your app can run on smaller hardware, which saves money.
 
 ![An image showing a large number of connections going from clients, to a server, to a database. The database is overloaded and stuck at 100% CPU. There is an X's for eyes emoji next to the database.](/caching-database-queries-with-prisma-accelerate/imgs/8b295baeeaf620323649d054718900fb542b6042-2888x1110.png)
 
 ![An image showing a large number of connections going from clients, to a server, through a cache, to a database. Thanks to the cache, the database is not overloaded. There is an emoji with sunglasses next to the database.](/caching-database-queries-with-prisma-accelerate/imgs/09cee9fb07d0f6190228e118596eed223a1ea99e-2888x1110.png)
 
-Another reason to cache would be to reduce egress costs. Many cloud providers charge egress costs for data leaving their services. This could be rows being served from your database, static images, even responses to or from other services.
+Another common reason to cache is egress cost: many cloud database providers charge for data leaving their service, so serving repeated reads from a cache cuts that line item. (On Prisma Postgres, egress is included on every plan, so the motivation there is speed and load rather than transfer fees.)
 
-While faster load times and reduced costs are direct benefits of caching, they lead to another benefit: improved perception of your application! Quicker load times lead to a more enjoyable experience and [happier customers](https://www.prnewswire.com/news-releases/akamai-online-retail-performance-report-milliseconds-are-critical-300441498.html). Even if visitors are not paying you, an app that feels sluggish to load can lead to users spamming refresh at best and leaving for good at worst.
+Faster load times and reduced costs lead to a third benefit: improved perception of your application. Quicker loads make a more enjoyable experience, and an app that feels sluggish leads to users spamming refresh at best and leaving for good at worst.
 
-When considering whether or not to cache a query, you should definitely keep these three reasons in mind, among others. Luckily, Prisma Accelerate can help: Accelerate features per-query caching with minimal egress costs. When using Prisma Accelerate, you can easily and quickly cache a problematic query:
+Caching is delivered through the Prisma Postgres client extension; enable it once on your client (see the [caching docs](https://www.prisma.io/docs/postgres/database/caching) for the exact setup for your Prisma version), then caching a problematic query is a per-query decision:
 
-```tsx
+```ts
 const myExpensiveQuery = await prisma.widget.findMany({
   cacheStrategy: {
     ttl: 60 * 5, // serve from cache for 5 minutes
-    swr: 60 * 2, // serve from cache for 2 more minutes and revalidate in the background
+    swr: 60 * 2, // serve stale for 2 more minutes and revalidate in the background
   },
   // [...]
 })
 ```
-In the first case, where expensive or frequently accessed queries can overwhelm your database, a per-query cache will prevent that load for as long as the data is cached. If cost is the concern, your data will be accessed from your database once and then cached in Accelerate’s collection of globally distributed nodes, preventing additional costs from further database reads while also making your app faster!
+
+`ttl` (time to live) controls how long a result is served as fresh. `swr` (stale-while-revalidate) serves the stale result for an additional window while the cache refreshes in the background, so users get fast responses even at the moment the data expires. You can use either alone or combine them; the [caching docs](https://www.prisma.io/docs/postgres/database/caching) cover the trade-offs.
 
 ### When to cache
 
-Now that you know why and how to cache, you may be tempted to begin caching every query. Before you do that, note what happened in our example: you and your team monitored your application *before* implementing caching.
+Now that you know why and how to cache, you may be tempted to cache every query. Before you do, note what happened in the example: the team monitored the application *before* implementing caching.
 
-Caching is great, but any addition can incur a cost or cause unintended side effects. At Prisma, we’re big fans of observability-driven development: instrument your app and make informed decisions. Caching should be a carefully considered option among many. If, for example, you need a certain query to always contain exactly up-to-date data, then caching will probably not be the right fit. On the other hand, cases where data doesn’t change often or doesn’t need to be up-to-date are great fits.
+Caching is a trade, and any addition can incur a cost or cause unintended side effects. At Prisma, we're big fans of observability-driven development: instrument your app and make informed decisions. If a query must always return exactly up-to-date data, caching is probably the wrong fit. Data that changes rarely, or that tolerates a short staleness window, is a great fit.
 
-This isn’t to say that you need to monitor production traffic before implementing any sort of caching. Caching can also be a helpful tool during the development process! If you have automated tests in your dev environment and you see a slow query, use Accelerate to quickly cache that query and measure results. If you see a noticeable improvement, maybe caching is a good fit. Regardless of the environment, the advice remains the same: measure and benchmark, make a change, and then measure again.
+This isn't to say you need production traffic before caching anything. Caching helps during development too: if automated tests reveal a slow query, add a `cacheStrategy` to it and measure the difference. Regardless of environment, the advice is the same: measure and benchmark, make a change, then measure again.
 
-> If you’re interested in query insights and diving deeper into optimizing performance, [check out Prisma Optimize](https://www.prisma.io/blog/prisma-optimize-early-access)!
+### What per-query caching saves you
 
-### How Prisma Accelerate can help
+Because caching is decided per query, the rest of your application continues to run as-is, and you can adopt it one hot spot at a time. The alternative is running your own caching infrastructure: a managed key-value store still leaves you inserting data, managing indexes and replication, and invalidating entries when things change. With caching built into the database layer, you enable the extension once and then add a cache strategy per query, rather than running a cache service of your own.
 
-As you saw above, adding caching with Prisma Accelerate is as easy as adding a `cacheStrategy` option to a query. Since caching queries with Prisma Accelerate is on a **per-query basis**, you are only charged for the queries you _do_ cache. The rest of your application continues to run as-is. As soon as you determine that caching is necessary for a specific query, you can add it with just few lines of code!
+![An image with two emoji. On the left is an emoji that looks dizzy and overwhelmed. Surrounding it are a lot of things that you have to think of when managing caching infrastructure: Redis, memcached, indexes, invalidation, in-memory, sharding, AWS, GCP. The emoji on the right is winking, clearly happy. It has two steps above it: 1. find a query to cache. 2. Use the cacheStrategy feature.](/caching-database-queries-with-prisma-accelerate/imgs/ff3f792f22982a08e1ebad1e81b0cc0d43c30b06-2888x1110.png)
 
-In addition to being able to quickly and easily implement caching, using Prisma Accelerate also means no need to set up additional caching infrastructure. While cloud providers have managed key-value stores, in the best case, you still need to manually insert data, manage indexes and replication, and be sure to invalidate when things change. With Prisma Accelerate, this is all handled for you! Add a cache strategy for the query you would like to cache and move on to building more great things.
-
-![An image with two emoji. On the left is an emoji that looks dizzy and overwhelmed. Surrounding it are a lot of things that you have to think of when managing caching infrastructure: Redis, memcached, indexes, invalidation, in-memory, sharding, AWS, GCP. The emoji on the right is winking, clearly happy. It has two steps above it: 1. find a query to cache. 2. Use the Prisma Accelerate extension's `cacheStrategy` feature.](/caching-database-queries-with-prisma-accelerate/imgs/ff3f792f22982a08e1ebad1e81b0cc0d43c30b06-2888x1110.png)
-
-### Is Prisma Accelerate right for me?
-
-When investigating any software, there are always a lot of options. We’ve found that Accelerate is a great fit for the following kinds of applications:
+### Workloads where query caching shines
 
 - Static content, such as blog posts
-- Complex queries, such as usage calculation for billing related tasks
+- Complex queries, such as usage calculation for billing tasks
 - Read-heavy applications, such as social media platforms, news aggregators, and e-commerce sites
 
-Accelerate is also a great fit for teams that want to onboard engineers fast. Since Accelerate provides managed infrastructure and is built into Prisma Client, even new team members unfamiliar with your codebase can cache queries easily.
+Per-query caching also suits teams that onboard engineers often: because the cache lives in the query itself, a new team member can see exactly what is cached and for how long by reading the code.
 
-<br />
-> Prisma Accelerate is more than just a cache! Accelerate is [edge distributed](https://accelerate-speed-test.prisma.io/) and also handles [connection pooling](https://www.prisma.io/docs/accelerate/connection-pooling). Be sure to check out [the full documentation](https://www.prisma.io/docs/accelerate/what-is-accelerate).
->
+## Frequently asked questions
+
+<Accordions type="single">
+  <Accordion title="Does Prisma Postgres include query caching?">
+Yes. Query caching with TTL and stale-while-revalidate is included as part of Prisma Postgres, configured per query with the `cacheStrategy` option on Prisma ORM queries. There is no separate caching service to deploy, and cache configuration lives in your application code next to the query it affects.
+  </Accordion>
+  <Accordion title="What is the difference between ttl and swr?">
+`ttl` is how long a cached result is served as fresh. `swr` extends that with a window where the stale result is still served instantly while the cache revalidates in the background. TTL alone means a slow refresh hits one unlucky request; adding SWR keeps responses fast through the refresh at the cost of briefly staler data.
+  </Accordion>
+  <Accordion title="When should I not cache a database query?">
+When the query must always reflect the latest write: think balances, inventory checks at checkout, or permission lookups. Caching serves a previous result for its freshness window, so anything where a stale read causes incorrect behavior should stay uncached, and anything tolerant of a short delay is a candidate.
+  </Accordion>
+</Accordions>
 
 ### Wrapping up
 
-Caching is still one of the “hard” problems of software engineering and rightfully so! Simply caching more things won’t solve problems and a team needs to take the time to understand what can be cached and how it will impact their product. 
+Caching remains one of the genuinely hard problems of software engineering. Caching more things won't solve problems by itself; a team needs to understand what can be cached and how it impacts their product.
 
-While there are many different approaches to caching, Prisma Accelerate makes it easy to implement caching on a pre-query basis and gives you more time to focus on building great products. If you’d like to take the next step, [learn more about Accelerate](https://www.prisma.io/data-platform/accelerate?utm_source=website&utm_medium=blogpost&utm_campaign=caching) and [get started](https://www.prisma.io/docs/accelerate/getting-started) caching your Prisma ORM queries today.
+With caching built into [Prisma Postgres](https://www.prisma.io/docs/postgres/database/caching) on a per-query basis, the implementation part stops being the hard part, and you can spend the time on the decisions instead. Create a database with `npx create-db`, add a `cacheStrategy` to your hottest query, and measure the difference.
 
-<br />
-<br />
-[Start caching with Accelerate](https://console.prisma.io/login?utm_source=website&utm_medium=blogpost&utm_campaign=caching)
+Looking ahead: [Prisma Next](https://www.prisma.io/docs/orm) is a TypeScript-native rewrite of Prisma ORM, built for AI coding agents and currently in early access. It becomes Prisma 8 at general availability; until then, Prisma 7 stays the production choice. To try it, run `npm create prisma@next` or read the [early access docs](https://pris.ly/pn-ea).
