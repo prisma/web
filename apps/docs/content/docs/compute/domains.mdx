@@ -16,7 +16,7 @@ You'll need:
 - A production app with a [promoted, running deployment](/compute/deployments).
 - Access to edit DNS records within your DNS provider.
 
-Domain commands target the [production branch](/compute/branching). Pointing them at any other branch fails with [`BRANCH_NOT_DEPLOYABLE`](/compute/cli-reference#error-codes).
+Domain commands target the [production branch](/compute/branching). Pointing them at any other branch fails with [`BRANCH_NOT_DEPLOYABLE`](/compute/cli-reference#error-codes). Every domain subcommand also accepts `--project` and `--branch` flags.
 
 ## Add a custom domain
 
@@ -26,16 +26,18 @@ Domain commands target the [production branch](/compute/branching). Pointing the
 npx @prisma/cli@latest app domain add shop.acme.com --app web
 ```
 
-The command registers the custom domain for your production app. If the **CNAME** record isn't visible yet, it prints the record name and value for you to create.
+Registration verifies DNS up front. If the **CNAME** record isn't visible yet, the command fails with [`DOMAIN_DNS_NOT_CONFIGURED`](/compute/cli-reference#error-codes) and prints the record name and value for you to create. Re-running `add` for a hostname that's already attached is safe: it shows the existing domain instead of failing.
 
 ### 2. Create CNAME Record
 
-Add the printed DNS record which looks like `switchboard.{region}.prisma.build`.
+Add the printed DNS record, which points at `switchboard.{region}.prisma.build`.
 
 Example:
-| Type  | Name   | Value                          | TTL |
-| ----- | ------ | ------------------------------ | --- |
-| CNAME | `shop` | `switchboard.fra.prisma.build` | 300 |
+| Type  | Name            | Value                          | TTL |
+| ----- | --------------- | ------------------------------ | --- |
+| CNAME | `shop.acme.com` | `switchboard.cdg.prisma.build` | 300 |
+
+The CLI prints the record name as the full hostname. If your DNS provider expects a relative name, enter just the label (`shop`).
 
 :::note[What is switchboard?]
 
@@ -43,9 +45,9 @@ Switchboard is the routing layer that sits in front of your Compute app. Switchb
 
 :::
 
-### 3. Wait for DNS propagation
+### 3. Re-run `add`, then wait for provisioning
 
-Verify using:
+Once the CNAME record has propagated, re-run `app domain add`. This time registration succeeds and TLS provisioning starts. Track it with:
 
 ```npm
 npx @prisma/cli@latest app domain wait shop.acme.com --app web
@@ -57,7 +59,7 @@ npx @prisma/cli@latest app domain wait shop.acme.com --app web
 npx @prisma/cli@latest app domain wait shop.acme.com --app web --timeout 0 --json
 ```
 
-In `--json` mode, `wait` streams newline-delimited status events, so an agent can track provisioning as it progresses.
+A single check exits non-zero with `DOMAIN_VERIFICATION_TIMEOUT` while the domain is still provisioning, so automation should read the status event rather than the exit code. In `--json` mode, `wait` streams newline-delimited status events, so an agent can track provisioning as it progresses.
 
 ## Remove a domain
 
@@ -71,18 +73,18 @@ Removing detaches the domain from the app; pass `--yes` to skip the confirmation
 
 A domain moves through these states:
 
-| Status             | Meaning                                                       |
-| ------------------ | ------------------------------------------------------------- |
-| `pending_dns`      | Waiting for your CNAME record to be visible                    |
-| `verifying`        | DNS found; ownership and routing are being verified            |
-| `provisioning_tls` | The TLS certificate is being issued                            |
+| Status             | Meaning                                                         |
+| ------------------ | --------------------------------------------------------------- |
+| `pending_dns`      | The domain is registered; TLS provisioning hasn't started yet   |
+| `provisioning_tls` | The TLS certificate is being issued                             |
 | `active`           | The domain is fully provisioned and routing traffic to your app |
 | `failed`           | Registration or provisioning failed; see the failure reason     |
 
 ## Limits
 
 - Custom domains are only available on production apps.
-- DNS uses CNAME records.
+- DNS uses CNAME records only. Apex domains need a DNS provider that supports CNAME-like records (ALIAS, ANAME, or CNAME flattening) at the apex.
+- Wildcard hostnames such as `*.acme.com` are rejected.
 - Up to 3 custom domains per app; more returns `DOMAIN_QUOTA_EXCEEDED`.
 - There's no workspace-wide domain list in the CLI.
 
