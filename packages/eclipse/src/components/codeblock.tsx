@@ -261,7 +261,6 @@ export function CodeBlockTabs({
 
   // When the primary tab changes, update the state
   function handleTabChange(tab: string) {
-    console.log("handleTabChange called:", { tab, activeTab, activeVariant });
     setInternalActiveTab(tab);
     onValueChange?.(tab);
   }
@@ -270,12 +269,6 @@ export function CodeBlockTabs({
   const availableVariants = useMemo<Set<string>>(() => {
     if (!hasVariants) return new Set();
     const available = new Set(variants!.filter((v) => existingCombos.has(`${activeTab}__${v}`)));
-    console.log("availableVariants calculation:", {
-      activeTab,
-      variants,
-      existingCombos: Array.from(existingCombos),
-      available: Array.from(available),
-    });
     return available;
   }, [variants, activeTab, existingCombos]);
 

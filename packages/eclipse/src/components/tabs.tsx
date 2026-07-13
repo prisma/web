@@ -187,7 +187,7 @@ export function TabsContent({
       value={value}
       forceMount
       className={cn(
-        "text-[0.9375rem] outline-none prose-no-margin data-[state=inactive]:hidden [&>figure:only-child]:-m-4 [&>figure:only-child]:border-none",
+        "text-[0.9375rem] outline-none prose-no-margin data-[state=inactive]:hidden [&>figure:only-child]:mt-2 [&>figure:only-child]:mb-0",
         className,
       )}
       {...props}
