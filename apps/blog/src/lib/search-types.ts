@@ -6,4 +6,5 @@ export type BlogSearchResult = {
   description: string;
   heroImagePath: string;
   tags: string[];
+  date: string;
 };
