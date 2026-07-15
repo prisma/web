@@ -1,25 +1,32 @@
 ---
 title: Keeping instances awake
-description: "Keep a Prisma Compute instance awake so it does not scale to zero while you run background work, long-running jobs, or WebSocket connections."
+description: "Keep a Prisma Compute instance awake so it does not scale to zero while bounded background work completes."
 url: /compute/keeping-instances-awake
 metaTitle: "Keeping instances awake | Prisma Compute"
-metaDescription: Keep a Prisma Compute instance awake and prevent scale-to-zero while you run background work, long-running jobs, or WebSocket connections with waitUntil and KeepAwakeGuard from @prisma/compute.
+metaDescription: Keep a Prisma Compute instance awake while bounded background work completes using waitUntil and KeepAwakeGuard from @prisma/compute.
 ---
 
-By default, Prisma Compute [scales idle instances to zero](/compute/pricing) to save cost: idle instances sleep with a memory snapshot, then resume with memory intact in milliseconds. Some workloads need the instance to keep running instead. Long-running jobs, background processing, and open WebSocket connections all need the instance awake after a request ends or while no request is in flight.
+By default, Prisma Compute [scales idle instances to zero](/compute/pricing) to save cost: idle instances sleep with a memory snapshot, then resume with memory intact in milliseconds. Some bounded background work needs the instance to keep running after a request ends or while no request is in flight.
 
 `@prisma/compute` provides two primitives for these cases:
 
 - `waitUntil`: keeps the current instance awake until a background promise settles.
 - `KeepAwakeGuard`: keeps the current instance awake until you release the guard.
 
+:::warning
+
+These primitives are for best-effort background work. They only prevent the current instance from scaling to zero; they do not make work durable, retry failures, guarantee that work continues through restarts or deployments, or change connection-lifetime limits. Persist progress and design work so it can safely restart.
+
+WebSocket servers are not currently a supported Public Beta capability.
+
+:::
+
 ## When to keep instances awake
 
-Reach for `waitUntil` or `KeepAwakeGuard` when your app must keep running between requests, for example:
+Reach for `waitUntil` or `KeepAwakeGuard` for bounded, best-effort work between requests, for example:
 
-- A long-running job that outlives the request that started it.
+- A bounded job that outlives the request that started it.
 - Background processing you kick off after returning a response.
-- A WebSocket connection that must stay open.
 
 If your work always finishes inside a single request, you do not need either primitive. Let the instance sleep as usual.
 
