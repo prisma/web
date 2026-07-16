@@ -1,9 +1,10 @@
 ---
 title: "See Your Migration History in Prisma Studio"
 slug: "prisma-studio-migrations-view"
-date: "2026-07-16"
+date: "2026-07-17"
 authors:
   - "Ankur Datta"
+  - "Søren Bramer Schmidt"
 metaTitle: "Prisma Studio Migrations View: See Your Migration History"
 metaDescription: "The Prisma Studio Migrations view shows every applied Prisma Next migration as a timeline with a visual diff, the executed SQL, and a schema diff."
 heroImagePath: "/prisma-studio-migrations-view/imgs/hero.svg"
@@ -12,11 +13,15 @@ heroImageAlt: "The Prisma Studio Migrations view: a timeline of applied migratio
 tags:
   - "announcement"
   - "orm"
+series: prisma-next
+seriesIndex: 10
 ---
 
 The Migrations view is a new screen in Prisma Studio, the database GUI bundled with the Prisma CLI. It shows the migration history of a [Prisma Next](https://www.prisma.io/docs/orm/next) database as a timeline: one entry per applied migration, with a visual diff of what changed, the SQL that ran, and a schema diff.
 
 Studio reads that history from the database itself, not from your repo. So it works for any Prisma Next Postgres database you can connect to, including one you have never migrated yourself. The full setup is documented in [Studio with Prisma Next](https://www.prisma.io/docs/studio/prisma-next).
+
+This is the tenth post in the Prisma Next series. The migration model it builds on is the subject of [Rethinking Database Migrations](/rethinking-database-migrations), and the files it visualizes are the ones [TypeScript Migrations in Prisma Next](/typescript-migrations-in-prisma-next) walks through.
 
 ![The Prisma Studio Migrations view showing a timeline of six applied migrations and a visual diff canvas of the selected migration.](/prisma-studio-migrations-view/imgs/studio-migrations-timeline.png)
 
@@ -59,7 +64,7 @@ This provisions a database, writes `DATABASE_URL` into `.env`, and scaffolds a c
 
 ### Step 2: Model, plan, apply
 
-Prisma Next calls your schema a contract:
+Prisma Next calls your schema a [contract](https://www.prisma.io/docs/orm/next/contract-authoring/the-data-contract):
 
 ```prisma
 // use prisma-next
@@ -85,7 +90,7 @@ model Post {
 }
 ```
 
-Compile it, plan a migration, apply it:
+Compile it, [plan a migration](https://www.prisma.io/docs/orm/next/migrations/generating-a-migration), [apply it](https://www.prisma.io/docs/orm/next/migrations/applying-a-migration):
 
 ```bash
 npx prisma-next contract emit
@@ -136,7 +141,7 @@ npx prisma-next migration plan --name add_roles_and_publishing
 npx prisma-next migrate --advance-ref db
 ```
 
-Repeat for whatever your app needs. The history behind the screenshots here has six migrations: an initial pair of models, this enum-and-fields change, a `Category` model with a relation and two unique constraints, a destructive column drop, and two more field additions.
+Repeat for whatever your app needs; when a change needs a backfill, [Data Migrations in Prisma Next](/data-migrations-in-prisma-next) covers that. The history behind the screenshots here has six migrations: an initial pair of models, this enum-and-fields change, a `Category` model with a relation and two unique constraints, a destructive column drop, and two more field additions.
 
 ### Step 4: Add some data
 
@@ -177,7 +182,7 @@ By default the canvas draws only the models a migration touched plus their direc
 
 The selected migration is part of the URL. In Console that means a link drops a reviewer straight onto the change you're asking about. Locally it's a bookmark for yourself.
 
-Your tables are in the same session under **Tables**, so you can go from "what changed" to "what's in there" without leaving the app:
+Your tables are in the same session under **Tables**, so you can go from "what changed" to "what's in there" without leaving the app. [Getting Started with Studio](https://www.prisma.io/docs/studio/getting-started) covers editing, filtering, and exporting:
 
 ![The Prisma Studio table view showing rows in the post table, including the published column added by a migration.](/prisma-studio-migrations-view/imgs/studio-post-table-data.png)
 
@@ -192,7 +197,7 @@ Every ledger row names the contract it started from and the contract it produced
 
 Writing only the destination contract on each apply is enough to cover both ends of every row. The first migration starts from the empty contract. Every origin after that was some earlier apply's destination, so it is already stored.
 
-The practical consequence: a migration applied from CI, from a teammate's laptop, or from a branch you never checked out shows up in your Studio with a full diff. The history belongs to the database.
+The practical consequence: a migration applied from CI, from a teammate's laptop, or from a branch you never checked out shows up in your Studio with a full diff. The history belongs to the database. The hashes are the same ones that make Prisma Next migrations [a graph rather than a numbered list](https://www.prisma.io/docs/orm/next/migrations/the-migration-graph).
 
 ## Where you can use it
 
