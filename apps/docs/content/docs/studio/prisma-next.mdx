@@ -1,0 +1,271 @@
+---
+title: Studio with Prisma Next
+description: Browse your data and read your applied migration history in Prisma Studio, using a Prisma Next project backed by Prisma Postgres.
+url: /studio/prisma-next
+metaTitle: Get started with Prisma Studio and Prisma Next
+metaDescription: Create a Prisma Next project with npm create prisma@next, apply migrations to Prisma Postgres, and use the Studio Migrations view to see what each migration changed.
+badge: early-access
+---
+
+Prisma Studio reads the migration history that [Prisma Next](/orm/next) records in your database and renders it as a **Migrations view**: a timeline of every applied migration, a visual diff of what it changed, the SQL it executed, and a schema diff.
+
+This page walks through the whole workflow, from an empty directory to reading your own migration history in Studio. For general Studio usage — browsing, editing, filtering — see [Getting Started](/studio/getting-started).
+
+:::note[Migrations view is early]
+The Migrations view shipped in `@prisma/studio-core` 0.32.0. The Prisma CLI bundles Studio, and a version new enough to include it is currently only in the CLI's `dev` release — so use `npx prisma@dev studio` to try it locally. Prisma Next itself is in [early access](/orm/next).
+:::
+
+## Prerequisites
+
+**Node.js**, and about ten minutes. Everything else is created below.
+
+## Who this is for
+
+The Migrations view reads the migration ledger that Prisma Next writes into your database, so it appears for a **Prisma Next project on PostgreSQL with at least one applied migration**. Projects that use Prisma ORM's `prisma migrate` record their history differently and do not show this view — see [Where the Migrations view appears](#where-the-migrations-view-appears).
+
+## 1. Create a Prisma Next project
+
+Scaffold a project and provision a Prisma Postgres database in one step:
+
+```bash
+npm create prisma@next
+```
+
+The prompts cover the database target, the authoring style, and whether to provision Prisma Postgres. To skip them:
+
+```bash
+npm create prisma@next -- my-app --yes --provider postgres --authoring psl \
+  --template minimal --prisma-postgres --install --emit
+```
+
+This writes your `DATABASE_URL` into `.env`, scaffolds a contract at `src/prisma/contract.prisma`, and emits the contract artifacts.
+
+:::note[Temporary databases]
+A database provisioned this way is temporary and expires after 24 hours unless you claim it. The setup writes a `CLAIM_URL` into `.env` — open it to keep the database and attach it to your Prisma Console account.
+:::
+
+## 2. Define your data model
+
+Prisma Next calls your schema a **contract**. Open `src/prisma/contract.prisma`:
+
+```prisma title="src/prisma/contract.prisma"
+// use prisma-next
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  username  String?
+  name      String?
+  posts     Post[]
+  createdAt DateTime @default(now())
+  updatedAt temporal.updatedAt()
+}
+
+model Post {
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String?
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  Int
+  createdAt DateTime @default(now())
+  updatedAt temporal.updatedAt()
+}
+```
+
+Compile the contract after every edit:
+
+```bash
+npx prisma-next contract emit
+```
+
+## 3. Create and apply your first migration
+
+Plan the migration, then apply it. Advancing the `db` ref as you apply means later plans know where your database already is:
+
+```bash
+npx prisma-next migration plan --name init_users_posts
+npx prisma-next migrate --advance-ref db
+```
+
+`migration plan` writes a migration directory under `migrations/app/`; `migrate` executes it and records the result in your database. See [Applying a migration](/orm/next/migrations/applying-a-migration) for the full command surface.
+
+## 4. Change the model and migrate again
+
+The Migrations view is only interesting once you have a history, so make a second change. Add an enum and two fields:
+
+```prisma title="src/prisma/contract.prisma"
+enum Role {
+  USER
+  EDITOR
+  ADMIN
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  username  String?
+  name      String?
+  bio       String?
+  role      Role     @default(USER)
+  posts     Post[]
+  createdAt DateTime @default(now())
+  updatedAt temporal.updatedAt()
+}
+
+model Post {
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String?
+  published Boolean  @default(false)
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  Int
+  createdAt DateTime @default(now())
+  updatedAt temporal.updatedAt()
+}
+```
+
+Emit, plan, and apply again. Because you advanced the `db` ref in the previous step, the planner starts from your current database state and plans a delta:
+
+```bash
+npx prisma-next contract emit
+npx prisma-next migration plan --name add_roles_and_publishing
+npx prisma-next migrate --advance-ref db
+```
+
+The planned operations should be `ALTER TABLE ... ADD COLUMN` statements, not `CREATE TABLE`.
+
+:::warning[A wall of `CREATE TABLE` means the plan started from empty]
+Without a `db` ref and without `--from`, `migration plan` plans from an **empty database** and recreates everything. If you see that, pass `--from <previous-migration-dir>` — the directory name under `migrations/app/`, for example `20260716T1155_init_users_posts`. See [Generating a migration](/orm/next/migrations/generating-a-migration#the-db-ref-skipping---from).
+:::
+
+## 5. Add some data
+
+A migration history is easier to read next to real rows. Seed the database:
+
+```bash
+npm run db:seed
+```
+
+:::note[Namespaced ORM access]
+`db.orm` is keyed by **namespace** first, so models are reached as `db.orm.public.User`, not `db.orm.User`. If the scaffolded `seed.ts` uses the shorter form, it fails with `TypeError: Cannot read properties of undefined (reading 'where')`; add the namespace to fix it.
+:::
+
+## 6. Launch Studio
+
+A Prisma Next project has no `schema.prisma`, so pass the connection string with `--url`. Your `DATABASE_URL` lives in `.env` rather than your shell, so load it first:
+
+```bash
+set -a && . ./.env && set +a
+npx prisma@dev studio --url "$DATABASE_URL"
+```
+
+You can also paste the connection string directly. Without one, Studio exits with `No database URL found`.
+
+Studio starts at `http://localhost:5555`.
+
+Once your database has at least one applied migration, a **Migrations** item appears in the left navigation.
+
+## 7. Read your migration history
+
+Open **Migrations**. The list shows every applied migration, newest first, with its number, name, apply time, operation count, and chips summarizing the change — `+1 model`, `~2 models`, `+3 fields`, `+1 enum`, `−1 field`. A ⚠️ marker flags a migration that contains a destructive change.
+
+![The Prisma Studio Migrations view showing a timeline of six applied migrations and a visual diff canvas of the selected migration.](/img/studio/prisma-next-migrations/studio-migrations-timeline.png)
+
+Selecting a migration renders its **diff canvas**:
+
+- **NEW** (green) — a model this migration added.
+- **UPDATED** (amber) — a model whose table changed, with `+`, `−`, and `~` glyphs on the affected fields and `before → after` pills for changed types, nullability, or defaults.
+- **UNCHANGED** (dimmed) — neighboring models drawn for context.
+- Enum cards, and relation edges between visible models.
+
+Amber means *this table's DDL changed*. A model that only gained a back-relation — where the foreign key lives on the other table — stays dimmed, and the new relation edge is emphasized instead.
+
+![The diff canvas for a migration that added a Category model and a relation, showing Category as NEW, Post as UPDATED, and User dimmed as UNCHANGED.](/img/studio/prisma-next-migrations/studio-migrations-add-model-relation.png)
+
+The selected migration is part of the URL, so you can link someone straight to it:
+
+```
+http://localhost:5555/#view=migrations&migration=3
+```
+
+### See the whole schema
+
+By default the canvas shows only the models this migration touched plus their direct neighbors. Toggle **All models** to expand it to the migration's entire schema, including unchanged enums.
+
+![The Migrations view with the All models toggle enabled, showing every model and enum in the schema at that migration.](/img/studio/prisma-next-migrations/studio-migrations-all-models.png)
+
+### Read the executed SQL
+
+The **SQL** panel shows the operations exactly as they ran, each with its label and operation class — `additive` or `destructive`.
+
+![The SQL panel showing the ALTER TABLE statements and check constraint executed by a migration, each labelled with its operation class.](/img/studio/prisma-next-migrations/studio-migrations-sql-panel.png)
+
+### Read the schema diff
+
+The **Schema** panel renders a Prisma-schema-style line diff between the migration's before and after state. Long unchanged runs collapse into folds you can click to expand.
+
+![The Schema panel showing a color-coded diff of the Prisma schema before and after a migration, with collapsed unchanged sections.](/img/studio/prisma-next-migrations/studio-migrations-schema-diff.png)
+
+The schema panel is a projection built for stable diffs, not a copy of your source file — it uses a fixed field order and renders some attributes in their expanded form, such as `@default(dbgenerated("autoincrement()"))`.
+
+### Browse the data those migrations produced
+
+Your tables are in the same Studio session under **Tables**, so you can move between "what changed" and "what's in there" without leaving the app.
+
+![The Prisma Studio table view showing rows in the post table, including the published column added by a migration.](/img/studio/prisma-next-migrations/studio-post-table-data.png)
+
+## How it works
+
+Studio reads your migration history **from the database**, not from the files in your repo. It never reads your `migrations/` directory and never calls the Prisma Next CLI.
+
+Prisma Next records two things when it applies a migration:
+
+- `prisma_contract.ledger` — one row per applied migration: its name, apply time, the executed operations with their SQL, and the contract hashes it moved between.
+- `prisma_contract.contract` — a content-addressed store holding each distinct contract, keyed by its hash.
+
+Every ledger row names the contract it started from and the contract it produced, and Studio looks both up by hash. Because that record lives in the database, Studio shows the history of whichever database you point it at — including migrations you never ran yourself, applied from CI or a teammate's machine.
+
+## Where the Migrations view appears
+
+| Surface | Available |
+|---|---|
+| Local Studio (`npx prisma@dev studio`) | Yes, with `@prisma/studio-core` 0.32.0 or later |
+| [Prisma Console](https://console.prisma.io) (embedded Studio) | Yes, for databases with an applied Prisma Next migration history |
+| Prisma ORM projects using `prisma migrate` | No — a different migration history format |
+
+In Prisma Console, open your database's Studio tab and select **Migrations**. The view is the same one described here, and the selected migration is part of the Console URL too. Console requires no local setup; local Studio works offline against any database you can connect to.
+
+## Limitations
+
+- **Prisma Next on PostgreSQL only.** The view needs the `prisma_contract.ledger` table. A Prisma ORM project managed with `prisma migrate` will not show it, and neither will a Prisma Next MongoDB project — MongoDB [keeps its marker and ledger](/orm/next/migrations/the-migration-graph#database-specific-details) in a `_prisma_migrations` collection, and [Studio does not support MongoDB](/studio) in any case.
+- **Applied migrations only.** A migration you have planned but not applied is not in the database, so it does not appear.
+- **An empty history hides the view.** No `prisma_contract` schema, no ledger table, or no rows means no **Migrations** item.
+- **Older databases lose the diffs.** If your database was migrated by a Prisma Next version that predates the contract store, the migration list and the SQL panel still work, but the canvas is replaced by a notice asking you to update Prisma Next, and the All models toggle and Schema panel are hidden.
+
+## Troubleshooting
+
+### The Migrations item is missing
+
+Check, in order:
+
+1. **Studio version.** `prisma@latest` currently bundles an older Studio without the view. Use `npx prisma@dev studio`.
+2. **Applied migrations.** Run `npx prisma-next migration status`. If nothing is applied, run `npx prisma-next migrate`.
+3. **The right database.** Confirm `--url` points at the database you migrated.
+
+### The canvas says to update Prisma Next
+
+Your ledger has rows, but no contract snapshots to diff. Update Prisma Next and apply a new migration — from then on, new migrations render normally.
+
+### `migration plan` produced `CREATE TABLE` for tables that already exist
+
+The planner diffed against an empty baseline because there was no `db` ref and no `--from`. Delete the planned migration directory, then either re-plan with `--from <previous-migration-dir>` or start advancing the ref with `npx prisma-next migrate --advance-ref db`. See [The db ref](/orm/next/migrations/generating-a-migration#the-db-ref-skipping---from).
+
+### Seeding fails with `Cannot read properties of undefined (reading 'where')`
+
+`db.orm` is keyed by namespace. Use `db.orm.public.User` instead of `db.orm.User`.
+
+## Next steps
+
+- [How migrations work](/orm/next/migrations/how-migrations-work) — the plan-review-apply loop behind the history you just read.
+- [Applying a migration](/orm/next/migrations/applying-a-migration) — targeting refs and hashes, previewing, and checking status.
+- [Getting Started with Studio](/studio/getting-started) — browsing, editing, filtering, and exporting.
