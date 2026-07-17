@@ -1,8 +1,8 @@
 ---
-title: "Database Access in Serverless Environments with the Prisma Data Proxy"
+title: "Database Access in Serverless Environments: Connection Pooling and the Prisma Data Proxy"
 slug: "prisma-data-proxy-xb16ba0p21"
 date: "2021-11-11"
-updatedAt: "2026-07-06"
+updatedAt: "2026-07-09"
 authors:
   - "Nikolas Burk"
   - "Alberto Perdomo"
@@ -16,20 +16,9 @@ tags:
   - "platform"
 ---
 
-Database connection management in serverless functions is a major issue for many developers. The Prisma Data Proxy (Early Access) solved this problem by managing a connection pool.
+Serverless functions are stateless and short-lived, while database connections are stateful and expensive to open, and that mismatch exhausts connection limits the moment traffic spikes. The fix is an external connection pool between your functions and your database. The Prisma Data Proxy, announced in this 2021 post, was Prisma's first product to provide that pool; it has since been **discontinued**, and its job is done today by [Prisma Postgres](https://www.prisma.io/docs/postgres), which includes a built-in connection pool for serverless and edge apps. The problem this post explains is as real as ever; the product answer has changed.
 
-> **Update (July 2026):** Prisma Data Proxy has been discontinued. For connection pooling with Prisma ORM today, use [Prisma Postgres](https://www.prisma.io/postgres): it includes a built-in connection pool for serverless and edge apps out of the box. See the current [deployment docs](https://www.prisma.io/docs/orm/prisma-client/deployment/serverless/deploy-to-vercel) for setup.
-
-## Contents
-
-- [Serverless enables fast development](#serverless-enables-fast-development)
-- [_Stateful_ database connections don't map well to _stateless_ serverless functions](#stateful-database-connections-dont-map-well-to-stateless-serverless-functions)
-- [Connection pooling to the rescue](#connection-pooling-to-the-rescue)
-- [Announcing the Prisma Data Proxy 🎉](#announcing-the-prisma-data-proxy-)
-- [Let us know what you think](#let-us-know-what-you-think)
-
-
----
+> **Updated (July 2026):** The Prisma Data Proxy has been discontinued. For connection pooling with Prisma ORM today, use Prisma Postgres: its connection pool works with serverless and edge functions out of the box, and it supports [direct TCP connections](https://www.prisma.io/docs/postgres/database/connecting-to-your-database) for other tools. The sections below explain the underlying problem (still current) and preserve the original announcement for historical reference.
 
 <Youtube videoId="GWbzyyziH9A" />
 
@@ -37,7 +26,7 @@ Database connection management in serverless functions is a major issue for many
 
 ## Serverless enables fast development
 
-[Serverless](https://www.prisma.io/dataguide/serverless/what-is-serverless) functions are an incredibly convenient tool that allow developers to quickly implement and deploy functionality that can then be invoked via HTTP requests.
+[Serverless](https://www.prisma.io/dataguide/serverless/what-is-serverless) functions are a convenient tool that allow developers to quickly implement and deploy functionality that can then be invoked via HTTP requests.
 
 A drastically reduced operational overhead, easy scaling thanks to the dynamic allocation of computational resources, and a consumption-based pricing model are more features of serverless functions that explain their popularity among developers.
 
@@ -93,25 +82,41 @@ Existing tools like [pgBouncer](https://www.pgbouncer.org/) for PostgreSQL requi
 
 ---
 
-## Announcing the Prisma Data Proxy 🎉
+## The original announcement: the Prisma Data Proxy (2021)
 
-The [Prisma Data Proxy](https://www.prisma.io/docs/data-platform#prisma-data-proxy) is a proxy server for your database that manages a connection pool and ensures existing database connections are reused. This prevents incoming user requests from failing and improves the performance of your app.
+_This section is preserved as history. The Data Proxy has been discontinued; see the alternatives below._
+
+The Prisma Data Proxy was a proxy server for your database that managed a connection pool and ensured existing database connections were reused. This prevented incoming user requests from failing and improved the performance of your app.
 
 ![](/prisma-data-proxy-xb16ba0p21/imgs/6GJ9C84.png)
 
-The Data Proxy integrates nicely with the Prisma ORM and can be enabled in a few simple steps via the [Prisma Data Platform](https://cloud.prisma.io).
+The Data Proxy integrated with Prisma ORM and could be enabled via the Prisma Data Platform. At the time of this announcement it was in Early Access and not yet recommended for production use.
 
-> **Note**: At the time of this announcement, the Prisma Data Proxy was in Early Access and not yet recommended for production use. It has since been discontinued; see the update at the top of this post.
-
-To learn how the Data Proxy works, check out [Daniel Norman's](https://twitter.com/daniel2color) recent talk about it:
+To learn how the Data Proxy worked, check out Daniel Norman's talk about it:
 
 <Youtube videoId="iyGZ8JFPgoY" />
 
-The Data Proxy also enables entirely new use cases, such as accessing a database from limited function environments such as [Cloudflare Workers](https://workers.cloudflare.com/). Follow the [guide](https://www.prisma.io/docs/guides/deployment/deployment-guides/deploying-to-cloudflare-workers) in our docs to learn more or watch the [demo](https://youtu.be/Ufe_tI_jJs8?t=380) from our recent "What's new in Prisma"-livestream.
+The Data Proxy also enabled use cases such as accessing a database from limited function environments like [Cloudflare Workers](https://workers.cloudflare.com/).
 
-## Modern alternatives
+## What to use instead today
 
-This article remains a useful explanation of why serverless workloads need connection pooling, but the product recommendation has changed.
+The problem this post describes has a simpler answer now than it did in 2021:
 
-- Use [Prisma Postgres](https://www.prisma.io/postgres) if you want a managed Postgres database with connection pooling built in; it works with Prisma ORM out of the box and supports [direct TCP connections](https://www.prisma.io/docs/postgres/database/connecting-to-your-database) for other tools.
-- Use the current [Prisma Client deployment docs](https://www.prisma.io/docs/orm/prisma-client/deployment/serverless/deploy-to-vercel) for up-to-date serverless deployment guidance, including connection handling for your own database.
+- Use [Prisma Postgres](https://www.prisma.io/docs/postgres) if you want a managed Postgres database with connection pooling built in. It works with Prisma ORM out of the box, serves serverless and edge functions without connection exhaustion, and supports [direct TCP connections](https://www.prisma.io/docs/postgres/database/connecting-to-your-database) for other tools.
+- If you bring your own database, follow the current [serverless deployment docs](https://www.prisma.io/docs/orm/prisma-client/deployment/serverless/deploy-to-vercel) for up-to-date connection handling guidance, or run an external pooler like pgBouncer in front of your database.
+
+## Frequently asked questions
+
+<Accordions type="single">
+  <Accordion title="What happened to the Prisma Data Proxy?">
+The Prisma Data Proxy has been discontinued. It was Prisma's Early Access connection pooling proxy, announced in 2021. Its role, an external connection pool that lets stateless serverless functions share database connections, is filled today by the pooling built into Prisma Postgres.
+  </Accordion>
+  <Accordion title="Why do serverless functions exhaust database connections?">
+Each serverless function instance opens its own database connection, and traffic spikes spawn many instances at once. Databases like PostgreSQL have a fixed connection limit, so parallel invocations can exhaust it, after which new requests fail until connections free up. A shared external pool solves this by letting many function instances reuse a small set of database connections.
+  </Accordion>
+  <Accordion title="Do I still need a connection pooler with Prisma ORM in serverless environments?">
+You need pooling, but not necessarily a separate pooler. Prisma Postgres includes a connection pool, so serverless and edge functions work without extra infrastructure. With your own database, you still want an external pool (such as pgBouncer) or a provider-managed one, per the Prisma serverless deployment docs.
+  </Accordion>
+</Accordions>
+
+Looking ahead: [Prisma Next](https://www.prisma.io/docs/orm) is a TypeScript-native rewrite of Prisma ORM, built for AI coding agents and currently in early access. It becomes Prisma 8 at general availability; until then, Prisma 7 stays the production choice. To try it, run `npm create prisma@next` or read the [early access docs](https://pris.ly/pn-ea).

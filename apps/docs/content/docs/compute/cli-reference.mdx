@@ -14,7 +14,7 @@ The package installs an executable called `prisma-cli`. Run it without installin
 npx @prisma/cli@latest <command>
 ```
 
-Requires Node.js 22.12 or newer for `npx` and `pnpm`; `bunx` also works. The command groups are `auth`, `project`, `project env`, `git`, `branch`, `database`, `app`, and `version`. There is no `init`, `schema`, or `migrate` command in the beta.
+Requires Node.js 22.12 or newer for `npx` and `pnpm`; `bunx` also works. The command groups are `auth`, `init`, `project`, `project env`, `git`, `branch`, `database`, `app`, `build`, `agent`, and `version`. There is no `schema` or `migrate` command in the beta.
 
 ## `auth`
 
@@ -28,6 +28,22 @@ Manage authentication.
 
 The browser step in `auth login` needs a human. Afterwards, anything running in that environment inherits the session, including coding agents. For CI, set [`PRISMA_SERVICE_TOKEN`](#environment-variables) instead.
 
+## `init`
+
+Scaffold Compute configuration for the current directory. `init` detects your framework and writes `prisma.compute.ts` (or, with `--format json`, a dependency-free `prisma.compute.json`). The `app` commands read this file for app targets, framework, entry point, HTTP port, region, and env inputs.
+
+| Flag                         | Description                                                          |
+| ---------------------------- | --------------------------------------------------------------------- |
+| `--framework <framework>`    | Framework override; detected when omitted                              |
+| `--entry <path>`             | Source entrypoint for entrypoint frameworks (Bun, Hono)                |
+| `--http-port <port>`         | HTTP port the app listens on                                           |
+| `--region <region>`          | Region used when deploy creates the app                                |
+| `--name <app-name>`          | App name                                                               |
+| `--link` / `--no-link`       | Link this directory to a project, or skip that step                    |
+| `--project <id-or-name>`     | Project to link this directory to                                      |
+| `--install` / `--no-install` | Install `@prisma/compute-sdk` for config types, or skip that step      |
+| `--format <ts\|json>`        | `ts` (default) writes `prisma.compute.ts`; `json` writes `prisma.compute.json`; `--format ts` converts an existing `prisma.compute.json` |
+
 ## `app`
 
 Manage apps and deployments for a project.
@@ -35,53 +51,55 @@ Manage apps and deployments for a project.
 | Command                       | Description                                                              |
 | ----------------------------- | ------------------------------------------------------------------------ |
 | `app build`                   | Build the app locally into a deployable artifact                          |
-| `app run`                     | Run your app locally                                                      |
 | `app deploy`                  | Create a new deployment for the app                                       |
 | `app show`                    | Show the app and its current deployment                                   |
 | `app open`                    | Open the app's live URL                                                   |
 | `app logs`                    | Stream logs for the app's current deployment                              |
 | `app list-deploys`            | List deployments for the app                                              |
 | `app show-deploy <deployment>`| Show a deployment in detail                                               |
-| `app promote <deployment>`    | Promote a deployment to production, rebuilding with production env vars   |
+| `app promote <deployment>`    | Make a deployment live behind the app endpoint, starting it first if stopped |
 | `app rollback`                | Roll back production to the previous deployment, without rebuilding       |
 | `app remove`                  | Remove the app from the current branch                                    |
+
+Promote and rollback switch the live endpoint between existing deployments; nothing is rebuilt, and env vars stay as resolved when each deployment was created. Most `app` commands also accept an optional `[app]` positional argument to pick a target from `prisma.compute.ts` when the config defines multiple apps.
 
 ### `app deploy` options
 
 | Flag                      | Description                                                                |
 | ------------------------- | --------------------------------------------------------------------------- |
-| `--app <name>`            | Target a specific app; otherwise inferred from `package.json` name or directory |
+| `--app <name>`            | Target a specific app; otherwise resolved from `PRISMA_APP_ID`, the app name in `prisma.compute.ts`, the `package.json` name, then the directory name |
 | `--project <id-or-name>`  | Target a specific project                                                    |
 | `--create-project <name>` | Create and link a new project before deploying                               |
 | `--branch <name>`         | Deploy to a specific branch; otherwise your active Git branch, then `main`   |
-| `--framework <name>`      | One of `nextjs`, `nuxt`, `astro`, `hono`, `tanstack-start`, `bun`            |
+| `--framework <name>`      | One of `nextjs`, `nuxt`, `astro`, `hono`, `nestjs`, `tanstack-start`, `custom`, `bun` |
 | `--entry <path>`          | Entry point, required for `bun` and useful when detection needs a hand       |
 | `--http-port <port>`      | HTTP port your app listens on                                                |
-| `--env <KEY=value>`       | Set a one-off variable for this deployment (repeatable)                      |
+| `--region <region>`       | Region for a newly created app; existing apps keep their region              |
+| `--env <name=value\|file>`| Environment variable assignment or dotenv file for this deployment (repeatable); `--env` flags replace config env inputs entirely |
 | `--prod`                  | Confirm intent to deploy to the production branch                            |
+| `--no-promote`            | Build the deployment without promoting it to live; promote later with `app promote <id>` |
 
-After the first production deploy, every later production deploy needs `--prod`; without it the deploy fails with `PROD_DEPLOY_REQUIRES_FLAG`. With `--prod`, the CLI asks for confirmation; pass `-y` / `--yes` to accept it up front. In non-interactive mode, a `--prod` deploy without `--yes` fails with `CONFIRMATION_REQUIRED`. The first production deploy is auto-promoted and needs neither flag.
+After the first production deploy, every later production deploy needs `--prod`; without it the deploy fails with `PROD_DEPLOY_REQUIRES_FLAG`. With `--prod`, the CLI asks for confirmation; pass `-y` / `--yes` to accept it up front. In non-interactive mode, a `--prod` deploy without `--yes` fails with `CONFIRMATION_REQUIRED`. The first production deploy is auto-promoted and needs neither flag. A `--no-promote` deploy never replaces the live deployment, so the production gate does not apply.
 
-### `app build` and `app run` options
+### `app build` options
 
 | Flag                  | Description                                                                  |
 | --------------------- | ----------------------------------------------------------------------------- |
 | `--entry <path>`      | Entry point for Bun apps                                                       |
-| `--build-type <type>` | `app build`: `auto`, `bun`, `nextjs`, `nuxt`, `astro`, `tanstack-start`. `app run`: `auto`, `bun`, `nextjs` |
-| `--port <port>`       | Port for `app run`                                                             |
+| `--build-type <type>` | One of `auto`, `nextjs`, `nuxt`, `astro`, `nestjs`, `tanstack-start`, `custom`, `bun` |
 
 ### Other `app` options
 
 | Flag                  | Applies to                       | Description                          |
 | --------------------- | -------------------------------- | ------------------------------------ |
-| `--app`, `--project`  | all inspection and deploy commands | Select the app or project explicitly |
+| `--app`, `--project`  | most inspection and deploy commands (`app show-deploy` takes only the deployment id; `app build` is local) | Select the app or project explicitly |
 | `--deployment <id>`   | `app logs`                       | Stream logs for a specific deployment |
 | `--to <deployment>`   | `app rollback`                   | Roll back to a specific deployment    |
 | `--yes`               | `app remove`, `--prod` deploys   | Accept the confirmation prompt        |
 
 ## `app domain`
 
-Manage custom domains for an app. All commands take a `<hostname>` argument plus `--app` / `--project`. Domains target the production branch; to learn more, see the [Domains docs](/compute/domains).
+Manage custom domains for an app. All commands take a `<hostname>` argument plus `--app` / `--project` / `--branch`, and the optional `[app]` config target. Domains target the production branch; to learn more, see the [Domains docs](/compute/domains).
 
 | Command                       | Description                                                    |
 | ----------------------------- | --------------------------------------------------------------- |
@@ -104,7 +122,7 @@ Manage projects and directory bindings.
 | `project create <name>`      | Create a project and link the directory to it                  |
 | `project link [id-or-name]`  | Link the directory to an existing project                      |
 
-Linking writes `.prisma/local.json`, a gitignored local pin of the workspace and project. It is a cache, not committed config; the CLI never reads or writes committed config files.
+Linking writes `.prisma/local.json`, a gitignored local pin of the workspace and project. It is a cache, not committed config. Committed configuration lives in `prisma.compute.ts` (or `prisma.compute.json`), which [`init`](#init) writes and the `app` commands read.
 
 ## `project env`
 
@@ -113,9 +131,11 @@ Manage environment variables for the active project. Writes require an explicit 
 | Command                          | Description                                                |
 | -------------------------------- | ----------------------------------------------------------- |
 | `project env add <KEY=value\|KEY>` | Create a variable; pass just `KEY` to read the value from your environment |
-| `project env update <KEY=value>` | Replace an existing variable's value                         |
+| `project env update <KEY=value\|KEY>` | Replace an existing variable's value; a bare `KEY` also reads from your environment |
 | `project env list`               | List variable names and metadata for a scope, never values   |
 | `project env remove <key>`       | Remove a variable from a scope (`rm` also works)             |
+
+`add` and `update` also accept `--file <path>` to read `KEY=VALUE` assignments from a dotenv file, and every `project env` command takes `--project <id-or-name>`.
 
 Values are write-only: encrypted at rest and never returned by any surface. They resolve at deploy time; redeploy to apply changes.
 
@@ -127,6 +147,24 @@ Inspect platform branches for the resolved project without creating remote state
 | ------------- | ------------------------------------------------- |
 | `branch list` | List platform branches for the resolved project    |
 
+## `database`
+
+Manage Prisma Postgres databases for the resolved project. Most commands take `--project <id-or-name>` and `--branch <git-name>`.
+
+| Command                                    | Description                                                    |
+| ------------------------------------------ | --------------------------------------------------------------- |
+| `database list`                            | List databases                                                   |
+| `database show <database>`                 | Show a database in detail                                        |
+| `database create <name>`                   | Create a database; `--region` sets the Prisma Postgres region    |
+| `database usage <database>`                | Show usage; `--from` / `--to` bound the period                   |
+| `database restore <database>`              | Restore from a backup (`--backup`, `--source-database`, `--confirm`) |
+| `database remove <database>`               | Remove a database (`--confirm <database-id>`)                    |
+| `database backup list <database>`          | List backups (`--limit <n>`)                                     |
+| `database connection list <database>`      | List connections                                                 |
+| `database connection create <database>`    | Create a connection (`--name <name>`)                            |
+| `database connection rotate <connection>`  | Rotate a connection's credentials (`--confirm`)                  |
+| `database connection remove <connection>`  | Remove a connection (`--confirm`)                                |
+
 ## `git`
 
 Manage the GitHub repository connection. To learn more, see the [GitHub integration docs](/compute/github).
@@ -136,7 +174,27 @@ Manage the GitHub repository connection. To learn more, see the [GitHub integrat
 | `git connect [git-url]`  | Link the project to a GitHub repository; starts the GitHub App install flow if needed |
 | `git disconnect`         | Stop push-triggered automation; keeps the project and existing branches |
 
-In `--json` / `--no-interactive` mode, `git connect` returns an install URL instead of blocking.
+In `--json` / `--no-interactive` mode, `git connect` doesn't block: if the GitHub App isn't installed yet, it fails with `REPO_INSTALLATION_REQUIRED` and gives you the install URL.
+
+## `build`
+
+Inspect builds that run on the platform (git-push and Console deploys).
+
+| Command                | Description                                                                  |
+| ---------------------- | ----------------------------------------------------------------------------- |
+| `build logs <buildId>` | Stream logs for a platform build; `--follow` keeps streaming as the build runs, `--cursor <cursor>` resumes from a prior terminal cursor |
+
+## `agent`
+
+Install and inspect Prisma agent skills; see [Agent skills](#agent-skills) below.
+
+| Command         | Description                                                          |
+| --------------- | ---------------------------------------------------------------------- |
+| `agent install` | Install Prisma skills for coding agents                                |
+| `agent update`  | Update installed Prisma skills                                          |
+| `agent status`  | Show installed Prisma skills; `--global` checks the user directory      |
+
+`agent install` and `agent update` take `--agent <agent>` (repeatable), `--all-agents`, `--skill <skill>` (repeatable), `--global`, `--copy`, and `--dry-run`.
 
 ## `version`
 
@@ -175,7 +233,7 @@ An agent skill teaches a coding agent the Compute deploy workflow. Install it in
 npx skills add prisma/skills --skill prisma-compute
 ```
 
-This adds the `prisma-compute` skill to `.agents/skills/`, where supported agents pick it up. To install every Prisma skill at once, run `npx skills add prisma/skills`. To learn more, see [Agent skills](/compute/getting-started#agent-skills) in the getting started guide.
+This adds the `prisma-compute` skill to `.agents/skills/`, where supported agents pick it up. To install every Prisma skill at once, run `npx skills add prisma/skills`, or use the CLI's [`agent install`](#agent) command, which wraps the same flow. To learn more, see [Agent skills](/compute/getting-started#agent-skills) in the getting started guide.
 
 ## Environment variables
 
@@ -233,6 +291,7 @@ The common codes, grouped by area:
 | `DOMAIN_ALREADY_REGISTERED`   | The hostname is already registered.                    |
 | `DOMAIN_DNS_NOT_CONFIGURED`   | The CNAME record isn't visible yet.                    |
 | `DOMAIN_VERIFICATION_FAILED`  | DNS verification or TLS provisioning failed.           |
+| `DOMAIN_VERIFICATION_TIMEOUT` | `app domain wait` hit its timeout before the domain became active. |
 | `DOMAIN_QUOTA_EXCEEDED`       | The app already has 3 custom domains.                  |
 | `DOMAIN_RETRY_NOT_ELIGIBLE`   | The domain isn't in a retryable state.                 |
 

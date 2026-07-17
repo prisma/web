@@ -2,10 +2,11 @@
 title: "Full Stack Type Safety with Angular, Nest, Nx, and Prisma"
 slug: "full-stack-typesafety-with-angular-nest-nx-and-prisma-CcMK7fbQfTWc"
 date: "2021-01-19"
+updatedAt: "2026-07-10"
 authors:
   - "Ryan Chenkie"
-metaTitle: "Applying Full Stack Type Safety with Angular, Nest, Nx & Prisma"
-metaDescription: "Learn how Angular, NestJS, Nx, and Prisma can deliver full-stack type safety from the frontend to the database in a TypeScript app."
+metaTitle: "Full Stack Type Safety: Angular, NestJS, Nx, Prisma 2 (2021)"
+metaDescription: "A 2021 tutorial on sharing Prisma 2 types across an Angular and NestJS app in an Nx monorepo. The technique still applies; commands and APIs have changed."
 metaImagePath: "/full-stack-typesafety-with-angular-nest-nx-and-prisma-CcMK7fbQfTWc/imgs/meta-6edf92a2f15ffb62ed50e0da3deed2b2908d0156-2398x1208.png"
 heroImagePath: "/full-stack-typesafety-with-angular-nest-nx-and-prisma-CcMK7fbQfTWc/imgs/hero-2e21e72be724fc37acc24f269c8b6a0628ad5a18-870x438.jpg"
 heroImageAlt: "Full Stack Type Safety with Angular, Nest, Nx, and Prisma"
@@ -13,7 +14,9 @@ tags:
   - "education"
 ---
 
-TypeScript really shines when we can extend type safety to all parts of our stack. In this article, we'll look at how to apply type safety to every part of a full stack Angular and NestJS app, including database access. We'll see how to share types across the stack by using an Nx monorepo.
+This 2021 tutorial builds a small ecommerce app with Angular, NestJS, and Prisma 2 inside an Nx monorepo, sharing the types [Prisma](https://www.prisma.io/docs/orm) generates across the whole stack: database, API, and frontend.
+
+> **Updated (July 2026):** This tutorial targets the stack as it existed in early 2021: NgModule-based Angular, NestJS, the `@nrwl/*` Nx plugins, and Prisma 2. Each has shipped several major versions since. The core technique of sharing Prisma-generated types across an Nx monorepo still works, but individual commands and APIs below have changed. For a current setup, start with the [Prisma ORM docs](https://www.prisma.io/docs/orm) and pair the ORM with [Prisma Postgres](https://www.prisma.io/docs/postgres) for the database. For NestJS and Prisma on current versions, follow the updated [Building a REST API with NestJS and Prisma](/nestjs-prisma-rest-api-7D056s1BmOL0) series.
 
 2020 was a great year for TypeScript. Usage surged, developers came to love the benefits of type safety, and the language saw adoption in many different settings.
 
@@ -98,7 +101,7 @@ nx serve api
 
 Once the API is up and running, go to `http://localhost:3333/api` in the browser and make sure you can see the "hello world" message.
 
-![The NestJS application running on localhost:3333./imgs/nx-prisma-3.png)
+![The NestJS application running on localhost:3333](/full-stack-typesafety-with-angular-nest-nx-and-prisma-CcMK7fbQfTWc/imgs/nx-prisma-3.png)
 
 ## Install Prisma and Set Up a Database
 
@@ -113,6 +116,7 @@ npm install @prisma/client
 npm install -D @prisma/cli
 ```
 
+> **Note**: The `@prisma/cli` package used here was renamed to `prisma` in Prisma 2.16.0 (February 2021), two weeks after this article was published. On current versions, install `prisma` as the dev dependency instead.
 
 The Prisma Client is what gives us ORM-style type-safe database access in our code. The Prisma CLI is what gives us a set of commands to initialize Prisma, create database migrations, and more.
 
@@ -127,7 +131,7 @@ npx prisma init
 
 After running this command, a `prisma` directory is created at the workspace root. Inside is a single file called `schema.prisma`.
 
-This file uses the [Prisma Schema Language](https://www.prisma.io/docs/concepts/components/prisma-schema) and is the place where we define the shape of our database. We use it to describe the tables for our databases and their columns, the relationships between tables, and more.
+This file uses the [Prisma Schema Language](https://www.prisma.io/docs/orm/prisma-schema/overview) and is the place where we define the shape of our database. We use it to describe the tables for our databases and their columns, the relationships between tables, and more.
 
 When we create a Prisma model, we need to select a `provider` for our datasource. The default `schema.prisma` file comes with a datasource called `db` which uses PostgreSQL as the provider.
 
@@ -171,14 +175,15 @@ With the model in place, let's run our first migration so that the filesystem da
 npx prisma migrate dev --preview-feature
 ```
 
+> **Note**: Prisma Migrate was in preview when this article was written. It became [generally available in Prisma 2.19](https://www.prisma.io/blog/prisma-migrate-ga-b5eno5g08d0b) (March 2021), and the `--preview-feature` flag no longer exists. On current versions the command is `npx prisma migrate dev`.
 
 An interactive prompt will ask for the name of the migration. Call it whatever you like, something like `init` works fine.
 
-After the migration completes, a `dev.db` file is created in the `prisma` directory, along with a `migrations` directory. It's within the `migrations` directory that all of the SQL that's used to perform our database migrations is stored. Since these files are raw SQL, we have the opportunity to adjust them before they operate on our databases. Read the [migrate docs](https://www.prisma.io/docs/concepts/components/prisma-migrate) to find out more about how you can customize the migration behavior.
+After the migration completes, a `dev.db` file is created in the `prisma` directory, along with a `migrations` directory. It's within the `migrations` directory that all of the SQL that's used to perform our database migrations is stored. Since these files are raw SQL, we have the opportunity to adjust them before they operate on our databases. Read the [migrate docs](https://www.prisma.io/docs/orm/prisma-migrate) to find out more about how you can customize the migration behavior.
 
 ## View the Database with Prisma Studio and Seed Some Data
 
-With the database in place and populated with a table, we can now take a look at it and add some data using [Prisma Studio](https://www.prisma.io/docs/concepts/components/prisma-studio). Prisma Studio is a GUI for viewing and managing our databases and is available in-browser or via a [desktop app](https://github.com/prisma/studio/releases).
+With the database in place and populated with a table, we can now take a look at it and add some data using [Prisma Studio](https://www.prisma.io/studio). Prisma Studio is a GUI for viewing and managing our databases and runs in the browser.
 
 In a new terminal window, use the Prisma CLI to fire up Prisma Studio.
 
@@ -220,7 +225,7 @@ nx generate @nrwl/nest:library products --controller --service
 
 We'll create a method in the service to reach into our database to get the data. Then, in the controller, we'll expose a `GET` endpoint which uses the service to get that data and return it to the client.
 
-Let's start by building out the database query within the service. This is the first spot we'll see Prisma's types really shine!
+Let's start by building out the database query within the service. This is the first spot where Prisma's types shine.
 
 Within `products.service.ts`, import `PrismaClient`, create an instance of it, and expose a `public` method to query for the data.
 
@@ -617,5 +622,5 @@ It should be noted that just type-hinting our `data` parameter here doesn't do a
 
 TypeScript has come a long way since its early days and early adoption in the Angular community. Using TypeScript on both the frontend and backend bodes well for developer experience and confidence. Applying type safety to database access goes one step further in providing teams large and small with a slew of benefits. Wrapping the whole application up in a monorepo like those provided by Nx gives us an easy way of reusing code (including type definitions) across the whole stack.
 
-If you'd like to go even further with Prisma, [check out the docs](https://www.prisma.io/docs), follow us on [X/Twitter](https://pris.ly/x), and join our [Slack community](https://slack.prisma.io/)!
+If you'd like to go even further with Prisma, [check out the docs](https://www.prisma.io/docs), follow us on [X/Twitter](https://pris.ly/x), and join our [Discord community](https://pris.ly/discord)!
 

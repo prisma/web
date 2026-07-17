@@ -7,10 +7,11 @@
 //   - "Recent posts ranked by pageviews"          (insight 9497434 / D2eDZ3eq)
 //
 // Run by .github/workflows/blog-posthog-tiles.yml on every push to main that
-// touches apps/blog/content/blog/**. The first two tiles are driven by a
-// publish-month histogram (frontmatter `date`); the recent-posts tile is driven
-// by the list of posts published OR updated in the last 30 days (frontmatter
-// `date` / `updatedAt`).
+// touches apps/blog/content/blog/**. Posts-per-month is driven by a
+// publish-month histogram (frontmatter `date`); library-age classifies each
+// post by its LAST TOUCH (`updatedAt` when present, else `date`), so refreshed
+// posts count as young again; the recent-posts tile is driven by the list of
+// posts published OR updated in the last 30 days (`date` / `updatedAt`).
 //
 // Local dry run (prints the queries, no API call):
 //   node apps/blog/scripts/update-posthog-blog-tiles.mjs --dry-run
@@ -91,14 +92,33 @@ function postsPerMonthQuery(tuples) {
   };
 }
 
-function libraryAgeQuery(tuples) {
+/**
+ * Per-post (publishMonth, lastTouchMonth) pairs for the library-age tile.
+ * lastTouch = updatedAt when present (a refreshed post counts as "young"
+ * again from its refresh month onward), else the publish date.
+ */
+function agePairsLiteral(posts) {
+  return posts
+    .filter((p) => p.date)
+    .map((p) => {
+      const pub = p.date.slice(0, 7);
+      const touch = p.updatedAt && p.updatedAt > p.date ? p.updatedAt.slice(0, 7) : pub;
+      return `tuple('${pub}','${touch}')`;
+    })
+    .join(",");
+}
+
+function libraryAgeQuery(pairs) {
+  // At each display month M a post exists once published (pub <= M); its age
+  // class comes from its last touch as of M: the refresh date if it had
+  // already happened by M, otherwise the publish date.
   const query =
-    `WITH hist AS (SELECT toDate(concat(t.1, '-01')) AS pub, t.2 AS cnt FROM (SELECT arrayJoin([${tuples}]) AS t)) ` +
+    `WITH posts AS (SELECT toDate(concat(t.1, '-01')) AS pub, toDate(concat(t.2, '-01')) AS touch FROM (SELECT arrayJoin([${pairs}]) AS t)) ` +
     `SELECT M AS month, ` +
-    `sumIf(cnt, pub > M - toIntervalMonth(12) AND pub <= M) AS younger_than_12mo, ` +
-    `sumIf(cnt, pub <= M - toIntervalMonth(12)) AS older_than_12mo ` +
+    `countIf(pub <= M AND if(touch <= M, touch, pub) > M - toIntervalMonth(12)) AS younger_than_12mo, ` +
+    `countIf(pub <= M AND if(touch <= M, touch, pub) <= M - toIntervalMonth(12)) AS older_than_12mo ` +
     `FROM (SELECT arrayJoin(arrayMap(i -> toStartOfMonth(today()) - toIntervalMonth(i), range(0, 36))) AS M) months ` +
-    `CROSS JOIN hist GROUP BY M ORDER BY M`;
+    `CROSS JOIN posts GROUP BY M ORDER BY M`;
   return {
     kind: "DataVisualizationNode",
     display: "ActionsStackedBar",
@@ -155,7 +175,7 @@ console.log(
 if (process.argv.includes("--dry-run")) {
   console.log("\nDRY RUN — queries that would be written (no API call):\n");
   console.log("posts-per-month:\n" + postsPerMonthQuery(tuples).source.query + "\n");
-  console.log("library-age:\n" + libraryAgeQuery(tuples).source.query + "\n");
+  console.log("library-age:\n" + libraryAgeQuery(agePairsLiteral(posts)).source.query + "\n");
   console.log("recent slugs (" + recent.length + "): " + recent.join(", ") + "\n");
   console.log("recent-posts:\n" + recentPostsQuery(recent).source.query);
   process.exit(0);
@@ -168,7 +188,7 @@ if (!process.env.POSTHOG_API_KEY) {
 
 await patchInsight(INSIGHTS.postsPerMonth, postsPerMonthQuery(tuples));
 console.log(`Updated posts-per-month insight (${INSIGHTS.postsPerMonth}).`);
-await patchInsight(INSIGHTS.libraryAge, libraryAgeQuery(tuples));
+await patchInsight(INSIGHTS.libraryAge, libraryAgeQuery(agePairsLiteral(posts)));
 console.log(`Updated library-age insight (${INSIGHTS.libraryAge}).`);
 await patchInsight(INSIGHTS.recentPosts, recentPostsQuery(recent));
 console.log(`Updated recent-posts insight (${INSIGHTS.recentPosts}).`);

@@ -31,16 +31,15 @@ npx @prisma/cli@latest app deploy --env DATABASE_URL=postgresql://example
 
 `--env` is for one-off values at deploy time. For variables that should persist across deploys, set them on the project. To learn more, see the [Environment variables docs](/compute/environment-variables).
 
-## Build and run locally
+## Build locally
 
 Check your app builds before you ship it:
 
 ```npm
 npx @prisma/cli@latest app build
-npx @prisma/cli@latest app run --port 3000
 ```
 
-`app build` supports the build types `auto`, `bun`, `nextjs`, `nuxt`, `astro`, and `tanstack-start`. `app run` currently supports `auto`, `bun`, and `nextjs`.
+`app build` supports the build types `auto`, `nextjs`, `nuxt`, `astro`, `nestjs`, `tanstack-start`, `custom`, and `bun`.
 
 ## Deploy to production
 
@@ -80,19 +79,19 @@ npx @prisma/cli@latest app logs --app web
 npx @prisma/cli@latest app logs --app web --deployment dep_123
 ```
 
-Your app's log lines go to stdout; the CLI's own status and errors go to stderr, so you can pipe them apart. If the platform can't serve logs for the resolved deployment, the command fails with `FEATURE_UNAVAILABLE`.
+Your app's log lines go to stdout; the CLI's own status and errors go to stderr, so you can pipe them apart. If the log stream can't be served for the resolved deployment, the command fails with `DEPLOY_FAILED`.
 
 ## Promote and roll back
 
-Promote an earlier deployment to production:
+Promote an earlier deployment to be the live one:
 
 ```npm
 npx @prisma/cli@latest app promote dep_123 --app web
 ```
 
-Promotion rebuilds the deployment with your production environment variables. The rebuild is necessary because values are baked in at deploy time: a preview build still carries preview config, so it can't serve production as-is.
+Promotion makes an existing deployment live behind the app's endpoint. If the deployment is stopped, it's started first and promoted once it's running. Nothing is rebuilt: environment variables are baked in when a deployment is created, so a promoted deployment keeps the config it was built with. To build a deployment without making it live, deploy with `--no-promote` and promote it later.
 
-Roll back to the previous deployment, or a specific one. Unlike `promote`, rollback reuses an existing build, so there is no rebuild step between you and a known-good state:
+Roll back to the previous deployment, or a specific one. Rollback works the same way — it reuses an existing build and just targets the previous deployment, so there is no rebuild step between you and a known-good state:
 
 ```npm
 npx @prisma/cli@latest app rollback --app web

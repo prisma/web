@@ -1,64 +1,41 @@
 ---
-title: "Prisma Client Just Became a Lot More Flexible: Prisma Client Extensions (Preview)"
+title: "Prisma Client Extensions: 15 Ways to Extend Prisma ORM"
 slug: "client-extensions-preview-8t3w27xkrxxn"
 date: "2022-12-19"
+updatedAt: "2026-07-09"
 authors:
   - "Stephen King"
-metaTitle: "Prisma Client Just Became a Lot More Flexible: Prisma Client Extensions (Preview)"
-metaDescription: "Learn how Prisma Client extensions (Preview) enable a variety of new use cases for the Prisma ORM."
+metaTitle: "Prisma Client Extensions: 15 Practical Examples"
+metaDescription: "Prisma Client extensions add type-safe custom behavior to Prisma ORM: computed fields, validation, RLS, retries and more, with 15 runnable examples."
 metaImagePath: "/client-extensions-preview-8t3w27xkrxxn/imgs/meta-5ca8711a05c2f835cfce511739e46b5f6df982cd-1266x712.png"
 heroImagePath: "/client-extensions-preview-8t3w27xkrxxn/imgs/hero-1b0474b02ed0759af1c6e3f3bcba5d4ebb1d970b-844x474.svg"
-heroImageAlt: "Prisma Client Just Became a Lot More Flexible: Prisma Client Extensions (Preview)"
+heroImageAlt: "Prisma Client Extensions: extending Prisma ORM with custom behavior"
 tags:
   - "announcement"
   - "orm"
 ---
 
-[Prisma Client extensions](https://www.prisma.io/docs/concepts/components/prisma-client/client-extensions) (in Preview) enable many new use cases. This article will explore various ways you can use extensions to add custom functionality to Prisma Client.
+[Prisma Client extensions](https://www.prisma.io/docs/orm/prisma-client/client-extensions) let you add custom, fully type-safe behavior to Prisma ORM: computed fields, validation, query hooks, row-level security, retries, and your own model or client methods, all through one `$extends` call. This article catalogs 15 practical extension patterns with runnable code for each.
 
-## Table Of Contents
-
-- [Introduction](#introduction)
-- [Using Prisma Client extensions](#using-prisma-client-extensions)
-  - [The components of an extension](#the-components-of-an-extension)
-  - [Sharing an extension](#sharing-an-extension)
-- [Sample use cases](#sample-use-cases)
-  - [Example: Computed fields](#example-computed-fields)
-  - [Example: Transformed fields](#example-transformed-fields)
-  - [Example: Obfuscated fields](#example-obfuscated-fields)
-  - [Example: Instance methods](#example-instance-methods)
-  - [Example: Static methods](#example-static-methods)
-  - [Example: Model filters](#example-model-filters)
-  - [Example: Readonly client](#example-readonly-client)
-  - [Example: Input transformation](#example-input-transformation)
-  - [Example: Input validation](#example-input-validation)
-  - [Example: JSON field types](#example-json-field-types)
-  - [Example: Query logging](#example-query-logging)
-  - [Example: Retry transactions](#example-retry-transactions)
-  - [Example: Callback-free interactive transactions](#example-callback-free-interactive-transactions)
-  - [Example: Audit log context](#example-audit-log-context)
-  - [Example: Row level security](#example-row-level-security)
-- [Tell us what you think](#tell-us-what-you-think)
+> **Updated (July 2026):** Prisma Client extensions announced here in Preview have long been **generally available** (since Prisma 4.16.0) and require no preview flag. On Prisma 7, extensions are also the replacement for middleware (`$use`), which was removed. The setup section below reflects Prisma 7; the example catalog is maintained in the [prisma-client-extensions repo](https://github.com/prisma/prisma-client-extensions).
 
 ## Introduction
 
-Prisma Client extensions provide a powerful new way to add functionality to Prisma in a type-safe manner. With them, you'll be able to create simple, flexible solutions to problems that aren't natively supported by the ORM (yet). You can define extensions in TypeScript or JavaScript, compose them, and even create multiple lightweight Prisma Client instances with different extensions.
+Prisma Client extensions add custom functionality to Prisma in a type-safe manner. You can create flexible solutions to problems the ORM does not cover natively, define extensions in TypeScript or JavaScript, compose them, and create multiple lightweight Prisma Client instances with different extensions.
 
 When you're ready, you can share your extensions with the community as code snippets or by packaging them and publishing them to npm. This article will show you what's possible with extensions and hopefully inspires you to create and share your own!
 
-> **Note:** We believe Prisma Client extensions will open up many new possibilities when working with Prisma. However, just because a problem can be solved with an extension doesn't mean it won't ever be addressed with a first-class feature. One of our goals is to experiment and explore solutions with our community before integrating them into Prisma natively.
-
 ## Using Prisma Client extensions
 
-To use Prisma Client extensions, you'll need to first enable the `clientExtensions` preview feature in your Prisma schema file:
+Prisma Client extensions are generally available and need no feature flag. On Prisma 7, your generator block looks like this (the `prisma-client` generator writes the Client into your project, and you import it from that output path rather than from `@prisma/client`):
 
 ```prisma
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["clientExtensions"]
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 ```
-Then, you can call the `$extends` method on a Prisma Client instance. This will return a new, "extended" client instance without modifying the original instance. You can chain calls to `$extends` to use multiple extensions, and create separate instances with different extensions:
+You can then call the `$extends` method on a Prisma Client instance. This will return a new, "extended" client instance without modifying the original instance. You can chain calls to `$extends` to use multiple extensions, and create separate instances with different extensions:
 
 ```typescript
 const prisma = new PrismaClient();
@@ -70,7 +47,7 @@ There are four different types of components that can be included in an extensio
 
 - **Model** components allow you to add new methods to models. This is a convenient way to add new operations alongside default methods like `findMany`, `create`, etc. You can use this as a repository of common query methods, encapsulate business logic for models, or do anything you might do with a static method on a class.
 - **Client** components can be used to add new top-level methods to Prisma Client itself. Use this to extend the client with functionality that isn't tied to specific models.
-- **Query** components let you hook into the query lifecycle and perform side effects, modify query arguments, or alter the results in a type-safe way. These are an alternative to [middleware](https://www.prisma.io/docs/concepts/components/prisma-client/middleware) that provide full type safety and can be applied ad-hoc to different extended client instances.
+- **Query** components let you hook into the query lifecycle and perform side effects, modify query arguments, or alter the results in a type-safe way. They replaced middleware (`$use`), which was removed in Prisma ORM, and provide full type safety while being applicable ad-hoc to different extended client instances.
 - **Result** components add custom fields and methods to query result objects. These allow you to implement virtual / computed fields, define business logic for model instances in a single place, and transform the data returned by your queries.
 
 A single extension can include one or more components, as well as an optional name to display in error messages:
@@ -84,7 +61,7 @@ const prisma = new PrismaClient().$extends({
   result: { /* ... */ },
 });
 ```
-To see the full syntax for defining each type of extension component, please refer to [the docs](https://www.prisma.io/docs/concepts/components/prisma-client/client-extensions).
+To see the full syntax for defining each type of extension component, please refer to [the docs](https://www.prisma.io/docs/orm/prisma-client/client-extensions).
 
 ### Sharing an extension
 
@@ -118,13 +95,13 @@ import findOrCreate from "prisma-extension-find-or-create";
 const prisma = new PrismaClient().$extends(findOrCreate);
 const user = await prisma.user.findOrCreate({ /* ... */ });
 ```
-Read [our documentation on sharing extensions](https://www.prisma.io/docs/concepts/components/prisma-client/client-extensions/shared-extensions) for more details.
+Read [our documentation on sharing extensions](https://www.prisma.io/docs/orm/prisma-client/client-extensions/shared-extensions) for more details.
 
 ## Sample use cases
 
 We have compiled a list of use cases that might be solved with extensions, and we've created some examples of how these extensions could be written. Let's take a look at these use cases and their implementations:
 
-> **Note**: Prisma Client extensions are still in [Preview](https://www.prisma.io/docs/about/prisma/releases#preview), and some of the examples below may have some limitations. Where known, caveats are listed in the example `README` files on GitHub.
+> **Note**: The examples below import from `@prisma/client`, matching the [examples repo](https://github.com/prisma/prisma-client-extensions). On Prisma 7 with the `prisma-client` generator, import `PrismaClient` and `Prisma` from your configured output path instead, and pass a driver adapter. Where an example has caveats, they are listed in its `README` on GitHub.
 
 ### Example: Computed fields
 
@@ -817,11 +794,11 @@ model User {
 
 [View full example on GitHub](https://github.com/prisma/prisma-client-extensions/tree/main/query-logging)
 
-This example shows how to use Prisma Client extensions to perform similar tasks to [middleware](https://www.prisma.io/docs/concepts/components/prisma-client/middleware). In this example, a `query` extension tracks the time it takes to fulfill each query, and logs the results along with the query and arguments themselves.
+This example shows the extension equivalent of what middleware (`$use`) did before its removal. A `query` extension tracks the time it takes to fulfill each query, and logs the results along with the query and arguments themselves.
 
 This technique could be used to perform generic logging, emit events, track usage, etc.
 
-> **Note**: You may be interested in the [OpenTelemetry tracing](https://www.prisma.io/docs/concepts/components/prisma-client/opentelemetry-tracing) and [Metrics](https://www.prisma.io/docs/concepts/components/prisma-client/metrics) features (both in Preview), which provide detailed insights into performance and how Prisma interacts with the database.
+> **Note**: You may also be interested in [tracing](https://www.prisma.io/docs/orm/prisma-client/observability-and-logging/opentelemetry-tracing) and [metrics](https://www.prisma.io/docs/orm/prisma-client/observability-and-logging/metrics), which provide detailed insights into performance and how Prisma interacts with the database.
 
 <Accordions type="single">
   <Accordion title="View example code">
@@ -888,7 +865,7 @@ function RetryTransactions(options?: Partial<IBackOffOptions>) {
           return backOff(() => prisma.$transaction.apply(prisma, args), {
             retry: (e) => {
               // Retry the transaction only if the error was due to a write conflict or deadlock
-              // See: https://www.prisma.io/docs/reference/api-reference/error-reference#p2034
+              // See: https://www.prisma.io/docs/orm/reference/error-reference#p2034
               return e.code === "P2034";
             },
             ...options,
@@ -935,9 +912,9 @@ model User {
 
 [View full example on GitHub](https://github.com/prisma/prisma-client-extensions/tree/main/callback-free-itx)
 
-This example shows a Prisma Client extension which adds a new API for starting [interactive transactions](https://www.prisma.io/docs/concepts/components/prisma-client/transactions#interactive-transactions) without callbacks.
+This example shows a Prisma Client extension which adds a new API for starting [interactive transactions](https://www.prisma.io/docs/orm/prisma-client/queries/transactions#interactive-transactions) without callbacks.
 
-This gives you the full power of [interactive transactions](https://www.prisma.io/docs/concepts/components/prisma-client/transactions#interactive-transactions) (such as read–modify–write cycles), but in a more imperative API. This may be more convenient than the normal callback-style API for interactive transactions in some scenarios.
+This gives you the full power of interactive transactions (such as read-modify-write cycles), but in a more imperative API. This may be more convenient than the normal callback-style API for interactive transactions in some scenarios.
 
 <Accordions type="single">
   <Accordion title="View example code">
@@ -1285,8 +1262,22 @@ CREATE POLICY bypass_rls_policy ON "Task" USING (current_setting('app.bypass_rls
   </Accordion>
 </Accordions>
 
-## Tell us what you think
+## Frequently asked questions
 
-We hope you are as excited as we are about the possibilities that Prisma Client extensions create!
+<Accordions type="single">
+  <Accordion title="Are Prisma Client extensions still in Preview?">
+No. Prisma Client extensions became generally available in Prisma 4.16.0 and need no preview flag. The `$extends` API shown throughout this post is the current, stable API on Prisma 7.
+  </Accordion>
+  <Accordion title="What replaced Prisma middleware ($use)?">
+Query extensions. Middleware was removed from Prisma ORM, and the `query` component of a client extension is its replacement: it hooks into the query lifecycle with full type safety, and unlike middleware it can be applied selectively to different extended client instances.
+  </Accordion>
+  <Accordion title="Do extensions modify the original Prisma Client instance?">
+No. Calling `$extends` returns a new, extended client instance and leaves the original untouched. You can chain `$extends` calls to combine extensions, and keep multiple client instances with different extension sets side by side (for example, a read-only client next to a full one).
+  </Accordion>
+</Accordions>
 
-💡 You can share your feedback with us in [this GitHub issue](https://github.com/prisma/prisma/issues/16500).
+## Wrapping up
+
+Extensions are how you teach Prisma Client the conventions of your codebase: the 15 patterns above are starting points, and the [examples repo](https://github.com/prisma/prisma-client-extensions) keeps runnable versions of each. They work the same against any Postgres, including a [Prisma Postgres](https://www.prisma.io/docs/postgres) database you can create in seconds with `npx create-db`.
+
+Looking ahead: [Prisma Next](https://www.prisma.io/docs/orm) is a TypeScript-native rewrite of Prisma ORM, built for AI coding agents and currently in early access. It becomes Prisma 8 at general availability; until then, Prisma 7 stays the production choice. To try it, run `npm create prisma@next` or read the [early access docs](https://pris.ly/pn-ea).

@@ -21,11 +21,11 @@ Before you start, make sure you have:
 
 - **A JavaScript runtime.** Node.js 22.12 or newer for `npx`/`pnpm dlx`, or Bun for `bunx`.
 - **A [Prisma Data Platform account](https://pris.ly/pdp).** Free to create, and it holds your workspace.
-- **An app, if you are bringing your own.** Compute deploys **Next.js**, **Nuxt**, **Astro**, **Hono**, **TanStack Start**, and plain **Bun** servers today, including **Elysia** (which runs on Bun). Skip this if you are scaffolding a new app below.
+- **An app, if you are bringing your own.** Compute deploys **Next.js**, **Nuxt**, **Astro**, **Hono**, **NestJS**, **TanStack Start**, and plain **Bun** servers today, including **Elysia** (which runs on Bun). Skip this if you are scaffolding a new app below.
 
 :::info
 
-Next.js apps must set `output: "standalone"` in their Next.js config before deploying. The `create-prisma` template already does this for you.
+Next.js apps should set `output: "standalone"` in their Next.js config. The `create-prisma` template already sets this for you.
 
 ```ts title="next.config.ts"
 export default { output: "standalone" };
@@ -87,7 +87,7 @@ npx @prisma/cli@latest app deploy
 
 In one pass, the CLI:
 
-1. **Detects your framework** from your project files, whether that is Next.js, Nuxt, Astro, Hono, TanStack Start, or a plain Bun server. To choose it yourself, pass `--framework` (use `--framework bun` for a Bun or Elysia server).
+1. **Detects your framework** from your project files, whether that is Next.js, Nuxt, Astro, Hono, NestJS, TanStack Start, or a plain Bun server. To choose it yourself, pass `--framework` (use `--framework bun` for a Bun or Elysia server).
 2. **Sets up a project** the first time you deploy from this directory, then writes [`.prisma/local.json`](/compute/getting-started#link-an-existing-project) to pin the directory to that project. That file is a gitignored local cache, not committed config. If your team already has a project, [link it first](/compute/getting-started#link-an-existing-project).
 3. **Resolves the target branch.** Inside a Git repository, the CLI uses your current Git branch name; otherwise it falls back to `main`. Pass `--branch <name>` to choose explicitly. Because each branch is its own isolated environment, this decides where the deploy lands.
 4. **Builds and uploads your app**, provisions it, and prints a live URL.
@@ -114,7 +114,7 @@ If it does not behave the way you expect, stream its logs:
 npx @prisma/cli@latest app logs
 ```
 
-Logs cover both the build and the running app, so a failed build and a runtime error both surface in the same place.
+`app logs` streams the running app's logs. Build failures surface in the deploy output itself, since the CLI builds on your machine; for builds triggered by a GitHub push or from the Console, stream them with `npx @prisma/cli@latest build logs <buildId>`.
 
 You can also inspect everything you have deployed in the [Console](https://pris.ly/pdp) instead of the terminal:
 
@@ -132,7 +132,9 @@ npx @prisma/cli@latest app deploy --prod
 Deploying from a Git feature branch behaves differently. Instead of touching production, the CLI:
 
 - resolves the branch name and creates a matching platform branch if one does not exist yet
-- gives you an isolated [preview deployment](/compute/branching) with its own app, database, and URL
+- gives you an isolated [preview deployment](/compute/branching) with its own app and URL
+
+One caveat: your project's very first deploy defines its production branch, whatever that Git branch is called. Run the first deploy from your default branch (e.g. `main`) so previews land where you expect.
 
 Preview deploys never ask for confirmation, so run them as often as you like. In scripts and CI, add `--yes` to accept the production confirmation up front:
 

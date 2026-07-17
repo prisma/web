@@ -38,6 +38,12 @@ To keep a secret out of your shell history, pass just the key and let the CLI re
 DATABASE_URL=postgresql://example npx @prisma/cli@latest project env add DATABASE_URL --role production
 ```
 
+To import many variables at once, pass a dotenv file with `--file` instead of a `KEY=value` argument (one or the other, not both). It works for `add` and `update`:
+
+```npm
+npx @prisma/cli@latest project env add --file .env.production --role production
+```
+
 ## Connect a database
 
 To give your app a database, set its connection string per scope, then redeploy. Use a different database per scope if you want preview deployments isolated from production data.
@@ -59,6 +65,8 @@ npx @prisma/cli@latest project env remove DATABASE_URL --role preview
 
 `list --role` shows names and metadata, never values. `list --branch` shows the resolved view for one branch. `rm` works as an alias for `remove`.
 
+`add` never overwrites: it fails if the key already exists in that scope, so use `update` to change a value. Every `project env` subcommand also accepts `--project <id-or-name>` to target a project other than the linked one.
+
 ## Values are write-only
 
 Once you save a variable, the platform never gives it back. Values are encrypted at rest and never returned: not by the CLI, the API, or the Console. In practice:
@@ -72,7 +80,7 @@ Keep your own copy of every value in a secret manager. Treat Prisma as the place
 
 ## Rules
 
-- Keys must match `[A-Z_][A-Z0-9_]*`.
+- Keys must match `[A-Z_][A-Z0-9_]*`, up to 256 characters.
 - Values must be non-empty, up to 8 KB.
 - Production variables can't be branch-scoped: use `--role production` for production, and `--branch <name>` only for preview overrides.
 

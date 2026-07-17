@@ -2,10 +2,11 @@
 title: "The Ultimate Guide to Testing with Prisma: CI Pipelines"
 slug: "testing-series-5-xWogenROXm"
 date: "2023-03-24"
+updatedAt: "2026-07-09"
 authors:
   - "Sabin Adams"
-metaTitle: "The Ultimate Guide to Testing with Prisma: CI Pipelines"
-metaDescription: "Learn how to set up a CI pipeline to automatically run tests against your application that uses Prisma."
+metaTitle: "CI for Prisma Tests with GitHub Actions (Prisma 7)"
+metaDescription: "How to run Prisma ORM unit, integration, and end-to-end tests in a GitHub Actions CI pipeline with a Postgres service. Verified with current action versions."
 metaImagePath: "/testing-series-5-xWogenROXm/imgs/meta-1688da94cebe335c8252420b638b7dfa43b135f2-1267x712.png"
 heroImagePath: "/testing-series-5-xWogenROXm/imgs/hero-1f810a93209524174c2aefb95145a831d4c0fd34-844x474.svg"
 heroImageAlt: "The Ultimate Guide to Testing with Prisma: CI Pipelines"
@@ -15,622 +16,223 @@ tags:
   - "education"
 ---
 
-Continuous Integration (CI) refers to the process of safely integrating code changes from various authors into a central repository. In this article, you will learn in more detail what a CI pipeline is, how to configure a CI pipeline and how to use that pipeline to automate your tests.
+To run Prisma ORM tests automatically, you define a GitHub Actions workflow that installs your dependencies, generates Prisma Client, provides a database, and runs your test suites on every pull request. This article builds that workflow step by step, with jobs for unit, integration, and end-to-end tests. This is part 5 of a five-part series on testing with Prisma ORM.
 
-## Table Of Contents
-
-- [Table Of Contents](#table-of-contents)
-- [Introduction](#introduction)
-  - [What are continuous integration pipelines?](#what-are-continuous-integration-pipelines)
-  - [Technologies you will use](#technologies-you-will-use)
-- [Prerequisites](#prerequisites)
-  - [Assumed knowledge](#assumed-knowledge)
-  - [Development environment](#development-environment)
-  - [Clone the repository](#clone-the-repository)
-- [Set up your own GitHub repository](#set-up-your-own-github-repository)
-- [Set up a workflow](#set-up-a-workflow)
-- [Add a unit testing job](#add-a-unit-testing-job)
-- [Add an integration testing job](#add-an-integration-testing-job)
-- [Add an end-to-end testing job](#add-an-end-to-end-testing-job)
-- [Summary & Final thoughts](#summary--final-thoughts)
-
-
+> **Updated (July 2026):** This article was rewritten for Prisma ORM 7 and current GitHub Actions. Action versions were verified against GitHub on 2026-07-09: `actions/checkout@v7`, `actions/setup-node@v6`, and `pnpm/action-setup@v6` are current major versions. The workflow YAML shown here was validated with a YAML parser (`js-yaml`). Two things changed from the original 2023 article: the integration database now uses a GitHub Actions Postgres service container instead of a downloaded Docker Compose binary, and the build step runs `npx prisma generate` because on Prisma 7 the client is generated into your project rather than shipped ready-to-use. The test commands themselves are the ones verified in parts 1 through 4 of this series.
 
 ## Introduction
 
-As you come to the end of this series, take a step back and think about what you have accomplished in the last four articles. You:
+Over the last four articles you mocked Prisma Client, wrote unit tests, wrote integration tests, and wrote end-to-end tests. There is one rough edge left: you run those tests manually.
 
-1. Mocked Prisma Client
-2. Learned about and wrote unit tests
-3. Learned about and wrote integration tests
-4. Learned about and wrote end-to-end tests
-
-The testing strategies and concepts you've learned will allow you to write code and verify new changes work as you hope and expect with an existing codebase. 
-
-This peace of mind is very important, especially on a large team. There is, however, one rough edge in what you've learned: The requirement to run your tests _manually_ as you make changes. 
-
-In this article, you will learn to automate the running of your tests so that changes to your codebase will automatically be tested as pull requests are made to the primary branch.
+In this article you automate them so that changes are tested as pull requests are opened against your main branch.
 
 ### What are continuous integration pipelines?
 
-A continuous integration pipeline describes a set of steps that must be completed before publishing a new version of a piece of software. You have likely seen or heard the acronym CI/CD, which refers to _continuous integration_ as well as _continuous deployment_. Typically, these individual concepts are handled through pipelines like the ones you will look at today. 
+A continuous integration (CI) pipeline is a set of steps that run before a change is merged. You have likely seen the acronym CI/CD, covering _continuous integration_ and _continuous deployment_. This article focuses on CI: building, testing, and merging your code.
 
-For the purposes of this article, you will focus primarily on the _CI_ part, where you will build, test and eventually merge your code.
-
-There are many technologies that allow you to set up your pipelines, and choosing which to use often depends on the stack you are using. For example, you can set up pipelines in:
-
-- Jenkins
-- CircleCI
-- GitLab
-- AWS Codepipeline
-- _so many more..._
-
-In this article, you will learn how to define your pipeline using GitHub Actions, which will allow you to configure your pipeline to run against code changes whenever you create a pull request to your primary branch.
+Many tools can run pipelines: Jenkins, CircleCI, GitLab CI, AWS CodePipeline, and more. This article uses GitHub Actions, which runs your pipeline against code changes whenever you open a pull request.
 
 ### Technologies you will use
 
-- [Node.js](https://nodejs.org/en/)
+- [Node.js](https://nodejs.org/en/) 20 or later
 - [GitHub Actions](https://github.com/features/actions)
-- [Docker](https://www.docker.com/)
-- [Postgres](https://www.postgresql.org/)
-- [PNPM](https://pnpm.io/)
-
-## Prerequisites
+- [Postgres](https://www.postgresql.org/) as a CI service container
+- Prisma ORM 7
+- [pnpm](https://pnpm.io/)
 
 ### Assumed knowledge
 
-The following would be helpful to have when working through the steps below:
+- Basic knowledge of Git and GitHub
+- The unit, integration, and end-to-end tests from [parts 1 through 4](/testing-series-1-8eRB5p0Y8o)
 
-- Basic knowledge of using Git
-- Basic understanding of Docker
-
-### Development environment
-
-To follow along with the examples provided, you will be expected to have:
-
-- [Node.js](https://nodejs.org) installed
-- A code editor of your choice _(we recommend [VSCode](https://code.visualstudio.com/))_
-- [Git](https://github.com/git-guides/install-git) installed
-- [pnpm](https://pnpm.io/installation) installed
-- [Docker](https://www.docker.com/) installed
-
-This series makes heavy use of this [GitHub repository](https://github.com/sabinadams/testing_mono_repo). Make sure to clone the repository.
-
-### Clone the repository
-
-In your terminal head over to a directory where you store your projects. In that directory run the following command:
-
-```shell
-git clone git@github.com:sabinadams/testing_mono_repo.git
-```
-The command above will clone the project into a folder named `testing_mono_repo`. The default branch for that repository is `main`.
-
-You will need to switch to the `e2e-tests` branch, which contains the complete set up end-to-end tests from the previous article:
-
-```shell
-cd testing_mono_repo
-git checkout e2e-tests
-```
-Once you have cloned the repository and checked out the correct branch, there are a few steps involved in setting the project up.
-
-First, install the `node_modules`:
-
-```shell
-pnpm i 
-```
-Next, create a `.env` file at the root of the project:
-
-```shell
-touch .env
-```
-Add the following variables to that new file:
-
-```shell
-# .env
-DATABASE_URL="postgres://postgres:postgres@localhost:5432/quotes"
-API_SECRET="mXXZFmBF03"
-VITE_API_URL="http://localhost:3000"
-```
-In the `.env` file, the following variables were added:
-
-- `API_SECRET`: Provides a _secret key_ used by the authentication services to encrypt your passwords. In a real-world application, this value should be replaced with a long random string with numeric and alphabetic characters. 
-- `DATABASE_URL`: Contains the URL to your database.
-- `VITE_API_URL`: The URL location of the Express API.
-
-
-## Set up your own GitHub repository
-
-In order to begin configuring a pipeline to run in GitHub Actions, you will first need your own GitHub repository with a `main` branch to submit pull requests to. 
-
-Head to the [GitHub](https://github.com/) website and sign in to your account.
-
-> **Note**: If you do not already have a GitHub account, you can create a free one [here](https://github.com/signup).
-
-Once you have signed in, click the **New** button indicated below to create a new repository:
-
-![New repository button in GitHub](/testing-series-5-xWogenROXm/imgs/new-repo-button.png)
-
-On the next page you will be asked for some information about your repository. Fill out the fields indicated below and hit the **Create repository** button at the bottom of the page:
-
-![New repository form in GitHub](/testing-series-5-xWogenROXm/imgs/new-repo-form.png)
-
-You will then be navigated to the new repository's home page. At the top there will be a text field that allows you to copy the repository's URL. Click the copy icon to copy the URL:
-
-![New repository url in GitHub](/testing-series-5-xWogenROXm/imgs/new-repo-url.png)
-
-Now that you have a URL to a new GitHub repository, head into the codebase's root directory in your terminal and change the project's _origin_ to point to the new repository with the following command (be sure to insert the URL you just copied in the second line):
-
-```shell
-git remote remove origin
-git remote add origin <paste-url-here>
-# Example: git remote add origin git@github.com:sabinadams/pnpm-testing-mono.git
-```
-You will be working off of the progress in the `e2e-tests` branch, so that branch should be considered `main`. Merge `e2e-tests` into `main`:
-
-```shell
-git add .
-git commit -m "Reset to main"
-git checkout main
-git merge e2e-tests
-```
-Finally, push the project to your new repository:
-
-```shell
-git push -u origin main
-```
 ## Set up a workflow
 
-You are now set up with a respository that you can push changes to. The next goal is to trigger a set of tasks whenever a pull request is made or updated against the `main` branch you already created.
-
-When using GitHub, you can create [_workflow_](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions) files to define these steps. These files must be created within a `.github/workflows` folder within your project's root directory.
-
-Create a new folder in your project named `.github`:
+GitHub Actions reads [_workflow_](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions) files from a `.github/workflows` folder in your repository. Create one:
 
 ```shell
 mkdir -p .github/workflows
+touch .github/workflows/tests.yml
 ```
-Within the `.github/workflows` folder, create a new file where you will define your test workflow named `test.yml`:
 
-```shell
-touch .github/workflows/test.yml
-```
-Within this file, you will provide the steps GitHub Actions should take to prepare your project and run your suite of tests. 
-
-To start off this workflow, use the `name` attribute to give your workflow a name:
-
-```yml
-# .github/workflows/tests.yml
-name: Tests
-```
-The workflow will now be displayed within GitHub as `'Tests'`. 
-
-The next thing to do is configure this workflow to only run when a pull request is made against the `main` branch of the repository. Add the `on` keyword with the following options to accomplish this:
-
-```yml
-# .github/workflows/tests.yml
-name: Tests
-on:
-  pull_request:
-    branches:
-      - main
-```
-> **Note**: Note the indentation. Indentation is very important in a YAML file and improper indendation will cause the file to fail.
-
-Now you have named your workflow and configured it to only run when a pull request is made or updated against `main`. Next, you will begin to define a job that runs your unit tests.
-
-> **Note**: There are a _ton_ of options to configure within a workflow file that change how the workflow is run, what it does, etc... For a full list, check out GitHub's [documentation](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions).
-
-## Add a unit testing job
-
-To define a set of instructions related to a specific task (called _steps_) within a workflow, you will use the `job` keyword. Each job runs its set of steps within an isolated environment that you configure.
-
-Add a `jobs` section to the `.github/workflows/tests.yml` file and specify a job named `unit-tests`:
-
-```yml
-# .github/workflows/tests.yml
-name: Tests
-on:
-  pull_request:
-    branches:
-      - main
-jobs:        
-  unit-tests:
-```
-As was mentioned previously, each individual job is run in its own environment. In order to run a job, you need to specify which type of machine the job should be run in.
-
-Use the `runs-on` keyword to specify the job should be run on an `ubuntu-latest` machine:
-
-```yml
-# .github/workflows/tests.yml
-name: Tests
-on:
-  pull_request:
-    branches:
-      - main
-jobs:
-  unit-tests:
-    runs-on: ubuntu-latest
-```
-The last section you will define to set up your unit testing job is the `steps` section, where you will define the set of steps the job should take to run your unit tests.
-
-Add the following to the `unit-tests` job:
+Give the workflow a name and configure it to run on pull requests against `main`. Define the environment variables your app needs at the workflow level so every job can use them:
 
 ```yaml
 # .github/workflows/tests.yml
-# ...
-jobs:
-  unit-tests:
-    runs-on: ubuntu-latest
-    steps:                        
-      - uses: actions/checkout@v3
+name: Tests
+on:
+  pull_request:
+    branches:
+      - main
+env:
+  DATABASE_URL: postgres://postgres:postgres@localhost:5432/quotes
+  VITE_API_URL: http://localhost:3000
+  API_SECRET: secretvalue
 ```
-This defines a `steps` section with one step. That one step uses v3 of a pre-built _action_ named [`actions/checkout`](https://github.com/actions/checkout) which checks out your GitHub repository so you can interact with it inside of the job.
 
-> **Note**: An [_action_](https://docs.github.com/en/actions/creating-actions/about-custom-actions) is a set of individual steps you can use within your workflows. They can help break out re-usable sets of steps into a single file.
+> **Note**: Indentation matters in YAML. Improper indentation will cause the file to fail to parse.
 
-Next, you will need to define a set of steps that installs Node.js on the virtual environment, installs PNPM, and installs your repository's packages.
+## A reusable build action
 
-These steps will be needed on every testing job you create, so you will define these within a re-usable custom action.
+Every test job needs the same preparation: install pnpm and Node.js, install dependencies, and generate Prisma Client. On Prisma 7 the client is generated into your project, not shipped inside `@prisma/client`, so `npx prisma generate` must run before any code that imports the client.
 
-Create a new folder named `actions` within the `.github` directory and a `build` folder within the `.github/actions` folder:
-
-```shell
-mkdir -p .github/actions/build
-```
-Then create a file within `.github/actions/build` named `action.yml`:
-
-```shell
-touch .github/actions/build/action.yml
-```
-Within that file, paste the following:
+Put these shared steps in a [composite action](https://docs.github.com/en/actions/creating-actions/creating-a-composite-action). Create `.github/actions/build/action.yml`:
 
 ```yaml
 # .github/actions/build/action.yml
 name: 'Build'
-description: 'Sets up the repository'
+description: 'Sets up the repository and installs dependencies'
 runs:
   using: 'composite'
   steps:
     - name: Set up pnpm
-      uses: pnpm/action-setup@v2
+      uses: pnpm/action-setup@v6
       with:
         version: latest
     - name: Install Node.js
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v6
+      with:
+        node-version: 22
+        cache: pnpm
     - name: Install dependencies
       shell: bash
       run: pnpm install
+    - name: Generate Prisma Client
+      shell: bash
+      run: npx prisma generate
 ```
-This file defines a [composite action](https://docs.github.com/en/actions/creating-actions/creating-a-composite-action), which allows you to use the `steps` defined in this action within a job.
 
-The steps you added above do the following:
+This action sets up pnpm and Node.js 22, installs `node_modules`, and generates Prisma Client.
 
-1. Sets up PNPM in the virtual environment
-2. Sets up Node.js in the virtual environment
-3. Runs `pnpm install` in the repository to install `node_modules`
+## Add a unit testing job
 
-Now that this re-usable action is defined, you can use it in your main workflow file. 
-
-Back in `.github/workflows/tests.yml`, use the `uses` keyword to use that custom action:
+Each job runs its steps in an isolated environment. Add a `jobs` section with a `unit-tests` job that checks out the repo, runs the build action, and runs the unit tests:
 
 ```yaml
 # .github/workflows/tests.yml
-# ...
 jobs:
   unit-tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/build
-```
-At this point, the job will check out the repository, set up the virtual environment and install `node_modules`. All that remains is to actually run the tests.
-
-Add a final step that runs `pnpm test:backend:unit` to run the unit tests:
-
-```yaml
-# .github/workflows/tests.yml
-# ...
-jobs:
-  unit-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: ./.github/actions/build
-      - name: Run tests            
+      - name: Run tests
         run: pnpm test:backend:unit
 ```
-> **Note**: Notice you named this new step `'Run tests'` using the `name` keyword and ran an arbitrary command using the `run` keyword.
 
-
-This job is now complete and ready to be tested. In order to test, first push this code up to the `main` branch in your repository:
-
-```shell
-git add .
-git commit -m "Adds a workflow with a unit testing job"
-git push
-```
-The workflow is now defined on the `main` branch. The workflow will only be triggered, however, if you submit a pull request against that branch. 
-
-Create a new branch named `new-branch`:
-
-```sh
-git checkout -b new-branch
-```
-Within that new branch, make minor change by adding a comment to the `backend/src/index.ts` file:
-
-```ts
-// backend/src/index.ts
-import app from 'lib/createServer'
-
-+ // Starts up the app
-app.listen(3000, () => console.log(`🚀 Server ready at: http://localhost:3000`))
-```
-Now commit and push those changes to the remote repository. The repository is not currently aware of a `new-branch` branch, so you will need to specify the _origin_ should use a branch named `new-branch` to handle these changes:
-
-```shell
-git add .
-git commit -m "Adds a comment"
-git push -u origin new-branch
-```
-The new branch is now available on the remote repository. Create a pull request to merge this branch into the `main` branch.
-
-Head to the repository in your browser. In the **Pull requests** tab at the top of the page, you should see a **Compare & pull request** button because `new-branch` had a recent push:
-
-![GitHub PR tab](/testing-series-5-xWogenROXm/imgs/new-pr.png)
-
-Click that button to open a pull request. You should be navigated to a new page. On that new page, click the **Create pull request** button to open a pull request:
-
-![GitHub create PR page](/testing-series-5-xWogenROXm/imgs/create-pr.png)
-
-After opening the pull request, you should see a yellow box show up above the **Merge pull request** button that shows your **Tests** job running:
-
-![PR page with unit tests running in a job.](/testing-series-5-xWogenROXm/imgs/unit-tests-running.png)
-
-If you click on the **Details** button, you should see each step running along with its console output.
-
-Once the job completes, you will be notified whether or not the checks in your workflows passed:
-
-
-
-![PR page with successful tests.](/testing-series-5-xWogenROXm/imgs/successful-test.png)
-
-{/* ![PR page with failed tests.](/testing-series-5-xWogenROXm/imgs/failed-test.png) */}
-
-
-
-Now that your unit testing job is complete you will move on to creating a job that runs your integration tests.
-
-> **Note**: Do not merge this pull request yet! You will re-use this pull request throughout the rest of the article.
+The [`actions/checkout`](https://github.com/actions/checkout) action checks out your repository so the job can work with it. The `./.github/actions/build` step runs your composite action. The final step runs the unit tests. Because the unit tests use a mocked Prisma Client (see [part 1](/testing-series-1-8eRB5p0Y8o)), this job needs no database.
 
 ## Add an integration testing job
 
-The process of running your integration tests will be very similar to how the unit tests were run. The difference in this job is that your integration tests rely on a test database and environment variables. In this section you will set those up and define a job to run your tests.
+Integration tests need a real database. Rather than downloading and configuring Docker Compose, use a GitHub Actions [service container](https://docs.github.com/en/actions/using-containerized-services/about-service-containers), which starts Postgres alongside the job and exposes it on `localhost`.
 
-Before beginning to make changes, you will need to check out the `main` branch of the repository again:
-
-```shell
-git checkout main
-```
-Start by copying the `unit-tests` job into a new job named `integration-tests`. Also, replace `pnpm test:backend:unit` with `pnpm test:backend:int` in this job's last step:
+Add an `integration-tests` job with a Postgres service. Before running the tests, push the schema to the database with `npx prisma db push`:
 
 ```yaml
 # .github/workflows/tests.yml
-# ...
 jobs:
   # ...
   integration-tests:
-      runs-on: ubuntu-latest
-      steps:
-        - uses: actions/checkout@v3
-        - uses: ./.github/actions/build
-        - name: Run tests
-          run: pnpm run test:backend:int
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: quotes
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/build
+      - name: Push database schema
+        run: npx prisma db push
+      - name: Run tests
+        run: pnpm test:backend:int
 ```
-With this, you already have most of the pieces you need to run your tests, however running the workflow as is will trigger the `scripts/run-integration.sh` file to be run. That script uses Docker Compose to spin up a test database.
 
-The virtual environment GitHub Actions use does not come with Docker Compose by default. To get this to work, you will set up another custom action that installs Docker Compose into the environment.
+A few points:
 
-Create a new folder in `.github/actions` named `docker-compose` with a file inside it named `action.yml`:
+- The `postgres:17` service runs a Postgres database. Its `env` block sets the same credentials and database name as the `DATABASE_URL` at the top of the workflow.
+- The `options` block adds a health check so the job waits for Postgres to be ready. This replaces the `wait-for-it.sh` script the older approach used.
+- `npx prisma db push` applies your schema to the fresh database before the tests run.
 
-```shell
-mkdir .github/actions/docker-compose
-touch .github/actions/docker-compose/action.yml
-```
-This action should do two things:
-
-1. Download the Docker Compose plugin into the virtual environment
-2. Make the plugin executable so the `docker-compose` command can be used
-
-Paste the following into `.github/actions/docker-compose/action.yml` to handle these tasks:
-
-```yaml
-# .github/actions/docker-compose/action.yml
-name: 'Docker-Compose Setup'
-description: 'Sets up docker-compose'
-runs:
-  using: 'composite'
-  steps:
-    - name: Download Docker-Compose plugin
-      shell: bash
-      run: curl -SL https://github.com/docker/compose/releases/download/v2.16.0/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose
-    - name: Make plugin executable
-      shell: bash
-      run: sudo chmod +x /usr/local/bin/docker-compose
-```
-The first step in the snippet above downloads the Docker Compose plugin source into `/usr/local/bin/docker-compose` in the virtual environment. It then uses `chmod` to set this source as an executable file.
-
-With the custom action complete, add it to the `integration-tests` job in `.github/workflows/tests.yml` right before the step where your tests are run:
-
-```yaml
-# .github/workflows/tests.yml
-# ...
-jobs:
-  # ...
-  integration-tests:
-      runs-on: ubuntu-latest
-      steps:
-        - uses: actions/checkout@v3
-        - uses: ./.github/actions/build
-        - uses: ./.github/actions/docker-compose
-        - name: Run tests
-          run: pnpm run test:backend:int
-```
-The last thing this test needs is a set of environment variables. The environment variables your application expects are:
-
-- `DATABASE_URL`: The URL of the database
-- `API_SECRET`: The authentication secret used to sign JWTs
-- `VITE_API_URL`: The URL of the Express API
-
-You can add these to the virtual environment using the `env` keyword. Environment variables can be added at the workflow level, which applies them to every job, or to a specific job. In your case, you will add them at the workflow level so the variables are available in each job.
-
-> **Note**: It would normally be best practice to only expose the required environment variables to each job individually. In this article, the variables will be exposed to every job for simplicity.
-
-Add the `env` key to your workflow and define the three variables you need:
-
-```yaml
-# .github/workflows/tests.yml
-name: Tests
-on:
-  pull_request:
-    branches:
-      - main
-env:
-  DATABASE_URL: postgres://postgres:postgres@localhost:5432/quotes
-  VITE_API_URL: http://localhost:3000
-  API_SECRET: secretvalue
-# ...
-```
-At this point you can commit and push these changes to the `main` branch to publish the changes to the workflow:
-
-```shell
-git add .
-git commit -m "Adds integration tests to the workflow"
-git push
-```
-Then merge those changes into the `new-branch` branch by running the following to trigger the new run of the workflow:
-
-```shell
-git checkout new-branch
-git merge main
-git push
-```
-> **Note**: At the `git merge main` step you will enter an editor in the terminal. Hit `:qa` and `enter` to exit that editor.
-
-This job will take quite a bit longer than the unit tests job because it has to install Docker Compose, spin up a database and then perform all of the tests.
-
-Once the job completes you should see the following success messages:
-
-![Successful integration and unit tests.](/testing-series-5-xWogenROXm/imgs/unit-int-success.png)
+> **Note**: The `env` values here are placeholders for a disposable CI database. Do not put real credentials in a workflow file. Use [GitHub Actions secrets](https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions) for anything sensitive.
 
 ## Add an end-to-end testing job
 
-Now that the unit and integration tests are running in the workflow, the last set of tests to define is the end-to-end tests.
+The end-to-end tests from [part 4](/testing-series-4-OVXtDis201) need Postgres, the Playwright browsers, and the frontend and backend running (Playwright starts those via its `webServer` config).
 
-First, check out the `main` branch again to make changes to the workflow file:
-
-```shell
-git checkout main
-```
-Similar to how the previous section began, copy the contents of the `integration-tests` job into a new job named `e2e-tests`, replacing the `pnpm backend:tests:int` with `pnpm test:e2e`:
+Add an `e2e-tests` job. It uses the same Postgres service, installs the Playwright browsers with `--with-deps`, pushes the schema, and runs the tests:
 
 ```yaml
 # .github/workflows/tests.yml
-# ...
 jobs:
   # ...
   e2e-tests:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: quotes
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/build
-      - uses: ./.github/actions/docker-compose
+      - name: Install Playwright browsers
+        run: cd e2e && npx playwright install --with-deps
+      - name: Push database schema
+        run: npx prisma db push
       - name: Run tests
         run: pnpm test:e2e
 ```
-Before committing the new job, there are a few things to do:
 
-- Install Playwright and its testing browsers in the virtual environment
-- Update `scripts/run-e2e.sh`
+The `npx playwright install --with-deps` step downloads the browsers and their system dependencies inside the runner.
 
-Right after the step in this job that installs Docker Compose, add two new steps that download Playwright and install its testing browsers in the `e2e` folder of the project:
+> **Note**: In CI, do not run `npx playwright show-report` at the end of your end-to-end script. That command serves the report on a local server and would keep the job running until it times out. Remove it from any script the CI job calls.
 
-```yaml
-# .github/workflows/tests.yml
-# ...
-jobs:
-  # ...
-  e2e-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: ./.github/actions/build
-      - uses: ./.github/actions/docker-compose
-      - name: Install Playwright                          
-        run: cd e2e && npx playwright install --with-deps 
-      - run: cd e2e && npx playwright install             
-      - name: Run tests
-        run: pnpm test:e2e
-```
-You will also need to add two new environment variables to the `env` section that Playwright will use when installing Playwright:
+## Verify the workflow
 
-```yaml
-# .github/workflows/tests.yml
-name: Tests
-on:
-  pull_request:
-    branches:
-      - main
-env:
-  DATABASE_URL: postgres://postgres:postgres@localhost:5432/quotes
-  VITE_API_URL: http://localhost:3000
-  API_SECRET: secretvalue
-  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
-  PLAYWRIGHT_BROWSERS_PATH: 0        
-# ...
-```
-Now, when the workflow is run Playwright should be installed and configured properly to allow your tests to run.
+Once the workflow is committed and pushed, open a pull request against `main`. GitHub Actions runs the three jobs and reports their status on the pull request. You can block merges until they pass using branch protection rules in your repository settings.
 
-The next thing to change is the way the `scripts/run-e2e.sh` script runs the end-to-end tests.
+The commands each job runs (`pnpm test:backend:unit`, `pnpm test:backend:int`, and `pnpm test:e2e`) are the same ones verified throughout this series against Prisma ORM 7.8.
 
-Currently, when the end-to-end tests are finished running, the script will automatically serve the resulting report using `npx playwright show-report`. In the CI environment, you do not want this to happen as it would cause the job to endlessly run until manually cancelled.
+## Frequently asked questions
 
-Remove that line from the script:
+<Accordions type="single">
+  <Accordion title="Do I need Docker Compose to run a database in GitHub Actions?">
+No. Use a GitHub Actions service container instead. Declaring a `postgres` service under a job starts Postgres alongside the job and exposes it on `localhost`, with a health check so the job waits until it is ready. This is simpler than downloading a Docker Compose binary and running a readiness script, which the older approach required.
+  </Accordion>
+  <Accordion title="Why must a CI job run prisma generate before running tests?">
+On Prisma ORM 7, Prisma Client is generated into your project rather than shipped ready-to-use inside `@prisma/client`, and `prisma db push` does not generate it. If your CI installs dependencies and immediately runs code that imports the client, the import fails because the client does not exist yet. Run `npx prisma generate` after installing dependencies (a good place is a shared composite build action) so the client is present for every job.
+  </Accordion>
+  <Accordion title="Which GitHub Action versions should I use for a Prisma test pipeline?">
+As of July 2026, current major versions are `actions/checkout@v7`, `actions/setup-node@v6`, and `pnpm/action-setup@v6`, all verified against GitHub. Pinning to a major tag keeps you on the latest patch of that major automatically. The workflow structure shown here was validated with a YAML parser.
+  </Accordion>
+</Accordions>
 
-```diff
-# scripts/run-e2e.sh
-# ...
--npx playwright show-report
-```
-With that problem solved, you are now ready to push your changes to `main` and merge those changes into the `new-branch` branch:
+## Summary & final thoughts
 
-```shell
-git add .
-git commit -m "Adds end-to-end tests to the workflow"
-git push
-git checkout new-branch
-git merge main
-git push
-```
-If you head back into your browser to the pull request, you should now see three jobs running in the checks. 
+In this article you learned:
 
-The new job will take a long time to complete as it has to download Docker Compose and Playwright's browser, spin up the database and perform all of the tests.
+- What continuous integration is and why it helps
+- How to build a GitHub Actions workflow with a reusable build action
+- How to run unit, integration, and end-to-end tests as separate jobs, using a Postgres service container for the tests that need a database
 
-Once the job completes, you should see your completed list of successful tests:
+Over this series you learned the kinds of tests you can write against applications that use Prisma ORM, how to write them, and how to automate them in CI. You can revisit any part: [part 1: Mocking](/testing-series-1-8eRB5p0Y8o), [part 2: Unit Testing](/testing-series-2-xPhjjmIEsM), [part 3: Integration Testing](/testing-series-3-aBUyF8nxAn), and [part 4: End-to-End Testing](/testing-series-4-OVXtDis201).
 
-![A complete set of successful jobs](/testing-series-5-xWogenROXm/imgs/all-success.png)
-
-## Summary & Final thoughts
-
-In this article, you learned about continuous integration. More specifically, you learned:
-
-- What continuous integration is
-- Why it can be useful in your project
-- How to use GitHub Actions to set up a CI pipeline
-
-In the end, you had a CI pipeline that automatically ran your entire suite of tests against any branch that was associated with a pull request against the `main` branch.
-
-This is powerful as it allows you to set up checks on each pull request to ensure the changes in the related branch work as intended. Using GitHub's security settings, you can also prevent merges into `main` when these checks are not successful.
-
-Over the course of this series you learned all about the various kinds of tests you can run against your applications, how to write those tests against functions and apps that use Prisma to interact with a database and how to put those tests to use in your project.
-
-If you have any questions about anything covered in this series, please feel free to reach out to me on [Twitter](https://twitter.com/sabinthedev).
+Looking ahead: Prisma Next is a TypeScript-native rewrite of Prisma ORM, built for AI coding agents and currently in early access. It becomes Prisma 8 at general availability; until then, Prisma 7 stays the production choice. To try it, run `npm create prisma@next` or read the [early access docs](https://pris.ly/pn-ea).
