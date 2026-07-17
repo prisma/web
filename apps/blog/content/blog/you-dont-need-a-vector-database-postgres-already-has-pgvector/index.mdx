@@ -1,0 +1,363 @@
+---
+title: "You Don't Need a Vector Database, Postgres Already Has pgvector"
+slug: "you-dont-need-a-vector-database-postgres-already-has-pgvector"
+date: "2026-07-10"
+authors:
+  - "Ankur Datta"
+metaTitle: "You Don't Need a Vector Database, Postgres Already Has pgvector"
+metaDescription: "pgvector turns Postgres into a vector store; Prisma Next makes it type-safe. Build working semantic search on a temporary Prisma Postgres database in minutes."
+heroImagePath: "/you-dont-need-a-vector-database-postgres-already-has-pgvector/imgs/hero.svg"
+metaImagePath: "/you-dont-need-a-vector-database-postgres-already-has-pgvector/imgs/meta.png"
+heroImageAlt: "You Don't Need a Vector Database, Postgres Already Has pgvector"
+tags:
+  - "prisma-postgres"
+  - "education"
+series: postgres-features
+seriesIndex: 3
+prev: postgres-bloom-index-the-overlooked-postgres-feature
+---
+
+import { VectorSpaceDemo } from "./VectorSpaceDemo";
+import { PgvectorDemoRunner } from "./PgvectorDemoRunner";
+
+This is the third post in a short series on Postgres features you can reach for instead of bolting on another piece of infrastructure. Part one, [You Don't Need Redis, Postgres Already Has Pub/Sub](/you-dont-need-redis-postgres-already-has-pub-sub), built a real-time app on `LISTEN` and `NOTIFY`. Part two covered [the bloom index](/postgres-bloom-index-the-overlooked-postgres-feature). This one is about vectors.
+
+If your app already runs on Postgres, you probably don't need a dedicated vector database. [pgvector](https://github.com/pgvector/pgvector) is an open-source Postgres extension that adds a `vector` column type and similarity-search operators, so embeddings live in a column next to the rows they describe, similarity search is a `SELECT`, and there is no sync pipeline because there is no second store.
+
+The default move is the opposite: the moment semantic search shows up on a roadmap, someone proposes Pinecone, Weaviate, or Qdrant. That means a second data store, a pipeline to keep it consistent with your primary database, and a second set of credentials, backups, and bills, all before the first useful search result.
+
+In this post you'll build a small semantic search demo end to end: a temporary [Prisma Postgres](https://www.prisma.io/docs/postgres) database spawned with `npx create-db`, a schema with a `vector` column, and a type-safe cosine similarity query written with [Prisma Next](https://www.prisma.io/docs/orm/next), the next-generation Prisma ORM, and its `@prisma-next/extension-pgvector` extension pack. Every command and every output in this post comes from a real run.
+
+## What an embedding is
+
+An embedding is a list of numbers that scores a piece of content along some set of axes. Similar content gets similar numbers.
+
+Real embedding models produce vectors with hundreds or thousands of dimensions, and the axes don't have human names. But the idea survives shrinking it down to four axes we can read: how much action, romance, comedy, and sci-fi a movie has.
+
+| Movie              | action | romance | comedy | scifi |
+| ------------------ | ------ | ------- | ------ | ----- |
+| Alien              | 0.6    | 0.05    | 0.02   | 0.95  |
+| The Terminator     | 0.9    | 0.15    | 0.05   | 0.85  |
+| Notting Hill       | 0.05   | 0.95    | 0.7    | 0.02  |
+| Hot Fuzz           | 0.75   | 0.1     | 0.9    | 0.05  |
+| Her                | 0.05   | 0.85    | 0.2    | 0.7   |
+| Mad Max: Fury Road | 0.98   | 0.1     | 0.05   | 0.6   |
+
+Each row is a vector. "Find me something like *The Terminator*" becomes geometry: find the vectors closest to `[0.9, 0.15, 0.05, 0.85]`.
+
+## What cosine similarity measures
+
+The standard way to compare two embeddings is cosine similarity: the cosine of the angle between the two vectors. Two vectors pointing the same way score close to 1, unrelated ones drift toward 0. Direction is what matters, not length, which is why a short vector and a long vector pointing the same way still count as similar.
+
+The demo below plots the movies on two of the four axes so we can draw them. Drag the query point around and watch the ranking reorder. The database runs the same math, just in four dimensions here and 1,536 in production.
+
+<VectorSpaceDemo />
+
+pgvector exposes this as an operator: `a <=> b` is the cosine *distance* between two vectors (1 minus the similarity). Ordering by it puts the closest rows first.
+
+## What pgvector is
+
+pgvector is a Postgres extension that adds a `vector(N)` column type, distance operators for comparing vectors, and index types (HNSW and IVFFlat) for searching them at scale. It isn't in the Postgres core, but nearly every managed Postgres ships it, including Prisma Postgres, where [`CREATE EXTENSION vector`](https://www.prisma.io/docs/postgres/database/postgres-extensions) just works.
+
+The raw SQL version of our search is short:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+
+CREATE TABLE movie (
+  id        uuid PRIMARY KEY,
+  title     text NOT NULL,
+  embedding vector(4) NOT NULL
+);
+
+SELECT
+  title,
+  1 - (embedding <=> '[0.9, 0.1, 0.05, 0.9]') AS similarity
+FROM movie
+ORDER BY embedding <=> '[0.9, 0.1, 0.05, 0.9]'
+LIMIT 3;
+```
+
+This works, and if raw SQL is how your team rolls, you can stop here. But notice what the database can't check for you at build time:
+
+- The vector is a **string literal**. Nothing verifies it has 4 dimensions until the query runs.
+- `<=>` is one of several pgvector distance operators (`<->` is L2 distance, `<#>` negative inner product, `<+>` L1). Pick the wrong sigil and you get a silently different ranking.
+- The result is untyped. Whether `similarity` comes back as a number or a string depends on your driver's type parser.
+
+Those are exactly the mistakes a type system is good at catching, which is where Prisma Next comes in.
+
+## Vectors with a type system
+
+Prisma Next treats pgvector as an **extension pack**: a package that teaches the whole stack about a new column type. `@prisma-next/extension-pgvector` ships three things:
+
+1. **A codec.** `vector(N)` columns map to `number[]` at runtime and to a dimension-carrying `Vector<N>` type in your emitted contract types.
+2. **Typed operations.** `cosineDistance` and `cosineSimilarity` become methods on vector columns in the query builder, and they render to the correct `<=>` SQL.
+3. **Its own migration.** The pack ships a baseline migration that runs `CREATE EXTENSION IF NOT EXISTS vector` in its own contract space, so installing the extension is part of your normal migration flow, not a manual psql step.
+
+The result: the dimension you declare in your schema travels through the contract into your editor, and a query that compiles is a query where the operator, the column, and the result type all line up.
+
+## Build the demo
+
+The whole thing is one contract file, one config file, and one script. Here's the full run, step by step:
+
+<PgvectorDemoRunner />
+
+Now the same thing in copy-paste form.
+
+### Step 1: Create the project
+
+```bash
+mkdir movie-search
+cd movie-search
+bun init -y
+bun add @prisma-next/postgres @prisma-next/extension-pgvector dotenv
+```
+
+`@prisma-next/postgres` bundles the CLI, the Postgres driver, and the query builder. The pgvector extension pack is a separate package, because in Prisma Next Postgres itself is an extension too; the core doesn't know what a `vector` (or a `text`) is until a pack teaches it. Prisma Next requires Node.js 24 or later, and Bun works too, which is what we'll use here.
+
+### Step 2: Spawn a Postgres database
+
+```bash
+npx create-db@latest --json
+```
+
+[`create-db`](https://www.prisma.io/docs/postgres/introduction/npx-create-db) spawns a temporary Prisma Postgres database, no account required. The `--json` flag returns the connection string along with a claim URL. The database is deleted after 24 hours unless you open the claim URL and keep it.
+
+Put the connection string in `.env`:
+
+```bash
+DATABASE_URL="postgres://...@db.prisma.io:5432/postgres?sslmode=verify-full"
+```
+
+> Swap `sslmode=require` for `sslmode=verify-full` to avoid the SSL warning newer `pg` versions print.
+
+### Step 3: Declare the contract
+
+Prisma Next calls your schema a contract. Create `src/prisma/contract.prisma`:
+
+```prisma
+// use prisma-next
+
+types {
+  Uuid = String @db.Uuid
+  Vibe = pgvector.Vector(4)
+}
+
+model Movie {
+  id        Uuid   @id @default(uuid())
+  title     String
+  embedding Vibe
+
+  @@map("movie")
+}
+```
+
+The line that matters is `Vibe = pgvector.Vector(4)`. The dimension is part of the type, and every `Movie.embedding` is a 4-dimensional vector from here on. A real app would write `pgvector.Vector(1536)` to match its embedding model.
+
+Wire the extension into `prisma-next.config.ts` at the project root:
+
+```typescript
+import "dotenv/config";
+import pgvector from "@prisma-next/extension-pgvector/control";
+import { defineConfig } from "@prisma-next/postgres/config";
+
+export default defineConfig({
+  contract: "./src/prisma/contract.prisma",
+  extensions: [pgvector],
+  db: {
+    connection: process.env.DATABASE_URL!,
+  },
+});
+```
+
+### Step 4: Migrate
+
+Three commands take the contract from a `.prisma` file to a live, signed database:
+
+```bash
+bunx prisma-next contract emit
+bunx prisma-next migration plan
+bunx prisma-next db init
+```
+
+`contract emit` compiles the contract to `contract.json` plus a `contract.d.ts` where `Movie.embedding` is typed as `Vector<4>`.
+
+`migration plan` plans the `CREATE TABLE` for `movie` and does something quietly interesting: it copies the pgvector pack's own baseline migration into your repo, under `migrations/pgvector/`. The output says so directly:
+
+```text
+Planned 1 operation(s); materialised 1 extension-space migration
+```
+
+`db init` then applies both migration spaces and signs the database with the contract:
+
+```text
+Applied 2 operation(s) across 2 space(s), database signed
+```
+
+Two spaces, two operations: the pgvector space ran `CREATE EXTENSION IF NOT EXISTS vector`, and the app space created the `movie` table with an `embedding vector(4)` column. You never installed the extension by hand.
+
+### Step 5: Insert and search
+
+Create `index.ts`:
+
+```typescript
+import pgvector from "@prisma-next/extension-pgvector/runtime";
+import postgres from "@prisma-next/postgres/runtime";
+import type { Contract } from "./src/prisma/contract.d";
+import contractJson from "./src/prisma/contract.json" with { type: "json" };
+
+const db = postgres<Contract>({
+  contractJson,
+  extensions: [pgvector],
+});
+
+// A tiny hand-made embedding space so the demo needs no API key.
+// Each movie is scored on four axes: [action, romance, comedy, scifi]
+const movies = [
+  { title: "Alien", embedding: [0.6, 0.05, 0.02, 0.95] },
+  { title: "The Terminator", embedding: [0.9, 0.15, 0.05, 0.85] },
+  { title: "Notting Hill", embedding: [0.05, 0.95, 0.7, 0.02] },
+  { title: "Hot Fuzz", embedding: [0.75, 0.1, 0.9, 0.05] },
+  { title: "Her", embedding: [0.05, 0.85, 0.2, 0.7] },
+  { title: "Mad Max: Fury Road", embedding: [0.98, 0.1, 0.05, 0.6] },
+];
+
+async function main() {
+  const runtime = await db.connect({ url: process.env.DATABASE_URL! });
+
+  await runtime.execute(db.sql.public.movie.insert(movies).build());
+  console.log(`Inserted ${movies.length} movies.\n`);
+
+  // "an action-heavy sci-fi movie"
+  const query = [0.9, 0.1, 0.05, 0.9];
+
+  const plan = db.sql.public.movie
+    .select("title")
+    .select("similarity", (f, fns) => fns.cosineSimilarity(f.embedding, query))
+    .orderBy((f, fns) => fns.cosineDistance(f.embedding, query), {
+      direction: "asc",
+    })
+    .limit(3)
+    .build();
+
+  const rows = await runtime.execute(plan);
+
+  console.log("Closest matches for [action: 0.9, scifi: 0.9]:");
+  for (const row of rows) {
+    console.log(`  ${row.title.padEnd(20)} similarity ${row.similarity.toFixed(3)}`);
+  }
+
+  await runtime.close();
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
+```
+
+Run it:
+
+```bash
+bun index.ts
+```
+
+```text
+Inserted 6 movies.
+
+Closest matches for [action: 0.9, scifi: 0.9]:
+  The Terminator       similarity 0.999
+  Alien                similarity 0.975
+  Mad Max: Fury Road   similarity 0.972
+```
+
+The ranking makes sense: *The Terminator* is the action-heavy sci-fi movie, *Alien* is close behind, and the romantic comedies are nowhere in the top three. Under the hood, `cosineSimilarity(f.embedding, query)` rendered to `1 - (embedding <=> $1)` and `cosineDistance` to `embedding <=> $1`, the same SQL as the raw version, with the vector passed as a proper parameter instead of a string literal.
+
+## What the compiler catches
+
+Everything in that query is checked against the contract. Typo a column name:
+
+```typescript
+db.sql.public.movie.select("titel").build();
+// error: Argument of type '"titel"' is not assignable to
+// parameter of type '"embedding" | "id" | "title"'.
+```
+
+Or try to take the cosine distance of a text column:
+
+```typescript
+fns.cosineDistance(f.title, query);
+// error: Type '"pg/text@1"' is not assignable to type '"pg/vector@1"'.
+```
+
+Both fail at compile time, before a query ever reaches the database. The result rows are typed too: `row.title` is a `string` and `row.similarity` is a `number`, with no `any` in between.
+
+## Swap in real embeddings
+
+The hand-made 4-dimensional vectors exist so the demo runs without an API key. For real content you'd call an embedding model and store what it returns. With the [AI SDK](https://ai-sdk.dev/docs/foundations) that looks like:
+
+```typescript
+import { openai } from "@ai-sdk/openai";
+import { embed } from "ai";
+
+const { embedding } = await embed({
+  model: openai.embedding("text-embedding-3-small"),
+  value: "an action-heavy sci-fi movie",
+});
+```
+
+`text-embedding-3-small` returns 1,536 dimensions, so the contract becomes `Vibe = pgvector.Vector(1536)`, and everything else in this post stays the same: same insert, same `cosineSimilarity` query, same types, just longer vectors.
+
+## Postgres with pgvector vs. a dedicated vector database
+
+|                        | Postgres + pgvector                        | Dedicated vector database                     |
+| ---------------------- | ------------------------------------------ | --------------------------------------------- |
+| Stores to operate      | One                                        | Two, plus a sync pipeline between them        |
+| Vectors and source rows | Same table; deleted and updated together  | Separate systems you reconcile yourself       |
+| Filtering and joins    | Plain SQL `WHERE` and `JOIN`               | Engine-specific metadata filters              |
+| Transactions           | Content and embedding update atomically    | Eventual consistency across two stores        |
+| Comfortable scale      | Up to a few million vectors, indexed       | Billions, with tunable ANN recall and latency |
+| Search features        | Similarity plus everything SQL already does | Hybrid ranking, faceting, re-ranking pipelines |
+
+## When to use it
+
+**Your app already runs on Postgres.** The strongest argument is subtraction: no second store to provision, secure, back up, and keep in sync. Embeddings live in a column, so deleting a row deletes its vector, and a transaction that updates content and its embedding is just a transaction.
+
+**You want to filter and join like it's a database, because it is one.** "Similar movies, but only ones this user can watch, ordered by similarity" is a `WHERE` clause and a join away. In a separate vector store, that's a cross-system merge you write by hand.
+
+**Your collection is thousands to a few million vectors.** In that range Postgres handles similarity search comfortably, and pgvector's HNSW and IVFFlat indexes extend the ceiling well beyond the sequential-scan sizes this demo runs at.
+
+**You want the schema and the extension versioned together.** The extension pack ships `CREATE EXTENSION` as a migration in your repo, so a fresh environment comes up correctly from `db init`, with nothing to remember.
+
+## When not to use it
+
+- **Billion-scale vector search is the product.** Dedicated engines earn their operational cost when approximate-nearest-neighbor search at extreme scale is the core workload, with the recall/latency tuning that comes with it.
+- **You need search features beyond similarity.** Hybrid BM25 ranking, faceting, and re-ranking pipelines are search-engine territory, not a column type.
+- **Your embeddings outlive your rows or belong to another system.** If the vectors aren't describing data in this database, colocating them buys you little.
+- **You need an operator the pack doesn't type yet.** `@prisma-next/extension-pgvector` currently ships the cosine family. L2 distance, inner product, and index DDL like `CREATE INDEX ... USING hnsw` still go through SQL you write yourself, in a manually authored migration.
+
+## Frequently asked questions
+
+<Accordions type="single">
+  <Accordion title="Do I need a vector database for semantic search?">
+Not if your data already lives in Postgres and your collection is in the thousands-to-millions range. The pgvector extension stores embeddings in a regular column and searches them with SQL, so a dedicated vector database only pays off when extreme-scale approximate-nearest-neighbor search or full search-engine features are the core product.
+  </Accordion>
+  <Accordion title="Does Prisma support pgvector?">
+Yes. Prisma Next supports pgvector through the `@prisma-next/extension-pgvector` extension pack: `pgvector.Vector(N)` column types in the schema, typed `cosineDistance` and `cosineSimilarity` query operations, and a baseline migration that runs `CREATE EXTENSION IF NOT EXISTS vector` for you. Prisma Postgres ships the pgvector extension, so this works out of the box.
+  </Accordion>
+  <Accordion title="How many vectors can pgvector handle?">
+Postgres with pgvector handles collections into the millions of vectors comfortably. Small sets work with plain sequential scans, like the demo in this post, and pgvector's HNSW and IVFFlat index types keep similarity queries fast as the table grows. Dedicated engines earn their operational cost at billion-vector scale.
+  </Accordion>
+  <Accordion title="Can I try pgvector without an embedding model or API key?">
+Yes. An embedding is just an array of numbers, so you can insert hand-made vectors and run real similarity queries against them. The demo in this post uses 4-dimensional hand-scored vectors on a free temporary Prisma Postgres database from `npx create-db@latest`, and swapping in a real embedding model later only changes the vector dimension.
+  </Accordion>
+</Accordions>
+
+## Recap
+
+- Embeddings are vectors; semantic search is ordering by the angle between them. pgvector gives Postgres a `vector(N)` column type and a `<=>` cosine distance operator.
+- [`@prisma-next/extension-pgvector`](https://github.com/prisma/prisma-next) is a Prisma Next extension pack: a codec (`Vector<4>` in your types), typed `cosineDistance`/`cosineSimilarity` operations, and a baseline migration that installs the extension for you.
+- The demo ran on a throwaway database from `npx create-db@latest`, and the whole flow is four commands: `contract emit`, `migration plan`, `db init`, `bun index.ts`.
+- Fit: apps already on Postgres with up to a few million vectors that want embeddings, filters, and transactions in one place. Reach for a dedicated engine when extreme-scale ANN or full search-engine features are the product.
+
+Extension packs are the bigger story here: pgvector support isn't a special case hard-coded into the ORM, it's a package anyone could have written. If that sounds like something you want to build, read [Prisma Next: A Call for Extension Authors](/prisma-next-call-for-extension-authors).
