@@ -196,6 +196,14 @@ const AUTHOR_BIOS: AuthorBio[] = [
       { platform: "github", url: "https://github.com/kristof-siket" },
     ],
   },
+  {
+    names: ["Jason Procka"],
+    bio: "Jason is a passionate hobbyist web developer and a longtime Prisma aficionado. Outside of his development projects, he enjoys rock climbing and culinary arts, specifically mastering the perfect steak.",
+    socials: [
+      { platform: "x", url: "https://x.com/pinesheet" },
+      { platform: "github", url: "https://github.com/Slovakian" },
+    ],
+  },
 ];
 
 /**
