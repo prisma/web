@@ -1,0 +1,138 @@
+---
+title: "What to Put in Your AGENTS.md So Your Agent Handles the Database Right"
+slug: "agents-md-for-databases"
+date: "2026-07-17"
+authors:
+  - "Nurul Sundarani"
+metaTitle: "AGENTS.md for Databases: Rules for Safe, Fast Coding Agents"
+metaDescription: "A copy-pasteable AGENTS.md section for database work: ephemeral Postgres via npx create-db, safe migrations, and JSON output for Claude Code, Cursor, and Codex."
+heroImagePath: "/agents-md-for-databases/imgs/hero.svg"
+heroImageAlt: "An AGENTS.md file open in an editor, with database rules highlighted"
+metaImagePath: "/agents-md-for-databases/imgs/meta.png"
+tags:
+  - "ai"
+  - "prisma-postgres"
+---
+
+A coding agent with no database instructions falls back on its training-data habits: mocked data layers, SQLite shortcuts, tests pointed at whatever connection string it finds. This post gives the agent your workflow instead, as five copy-pasteable database rules for [AGENTS.md](https://agents.md), the markdown file in a project's root that gives AI coding agents standing instructions: where scratch databases come from (throwaway instances of [Prisma Postgres](https://www.prisma.io/docs/postgres), a fully managed PostgreSQL service), which commands need a human, how migrations get rehearsed, when to use `--json` output, and where connection strings live.
+
+The rules work in Codex, Cursor, and Claude Code (the last through a one-line import, covered below), and they build on the provisioning workflow from [our ephemeral database post](/give-your-agent-a-database). The full block to copy is [below](#the-complete-block-to-copy); the sections before it explain why each line is there.
+
+## Why your agent needs database rules
+
+Left to its own defaults, an agent handles database work the way its training data does, and the training data is full of shortcuts. Ask for a feature with tests and it will often mock the database or reach for SQLite, hiding the bugs that only real Postgres surfaces. Point it at a repo with a `.env` file and it will happily run its experiments against whatever `DATABASE_URL` it finds there, which is often the shared development database the rest of your team is using. And when a migration conflicts, more than one developer has watched an agent conclude that the cleanest fix is to reset the database.
+
+None of this is the agent misbehaving. It is the agent filling a gap you left. Your team has a database workflow: where scratch databases come from, which commands need a human, how migrations get validated. A rules file is how that workflow becomes the agent's workflow too.
+
+## The rules, one at a time
+
+Each rule below is the why; the exact lines to add are collected in [the complete block](#the-complete-block-to-copy) below. If you just want the file, skip ahead.
+
+### Scratch work gets a throwaway database
+
+Prototypes, bug reproductions, and test runs want a clean database that nobody else is using. The fastest way for an agent to get one is [`create-db`](https://www.prisma.io/docs/postgres/npx-create-db):
+
+```bash
+npx create-db@latest --json
+```
+
+One command provisions a temporary Prisma Postgres database: real PostgreSQL, no account, no Docker daemon, deleted automatically after 24 hours. The `--json` flag makes the output parseable, so the agent takes `connectionString`, sets it as `DATABASE_URL` for the task at hand, and gets to work. The output also includes a `claimUrl`; if the result turns out to matter, opening it converts the database into a permanent instance for free. You can pin one of six regions with `--region`; when the flag is omitted, the CLI picks the region closest to you, falling back to `us-east-1`.
+
+The rule tells the agent this is the default, not a fallback: when a task needs a database, create one, instead of borrowing whichever one is lying around in `.env`.
+
+### Destructive commands require a human
+
+The most expensive thing an agent can do to a database is empty it. So the rule is blunt: never run `prisma migrate reset`, drop a schema, or delete data without explicit confirmation from a human. The one carve-out is a throwaway database provisioned for the current task, where destructive operations are the point: resetting those is fine, resetting anything else is not. Asking first costs one round trip. Not asking costs whatever was in the table.
+
+Prisma ORM enforces a version of this rule on its own. Since [ORM 6.15.0](/orm-6-15-0-ai-safety-guardrails-for-destructive-commands-and-more) (released August 2025), the CLI detects when it is being invoked by popular AI agents, including Claude Code, Gemini CLI, Qwen Code, Cursor, Aider, and Replit. If one of them attempts `prisma migrate reset --force`, the command fails with "Prisma Migrate detected that it was invoked by Cursor" (or whichever agent it caught), followed by instructions written directly to the agent: stop, explain to the user what you were about to do and why it is irreversible, and only proceed once the user's explicit consent is passed back through the `PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION` environment variable.
+
+The guardrail is the backstop, not the instruction, and the two layers overlap on purpose. The guardrail fires on `prisma migrate reset` no matter which database is targeted, including a throwaway the carve-out already covers; when it does, the agent should surface the prompt to you rather than set the consent variable itself. And the guardrail covers only Prisma's own destructive commands: nothing stops an agent from running `DROP TABLE` through a SQL client, which is exactly the gap the written rule closes.
+
+### Migrations get tested before they are proposed
+
+Schema changes are the riskiest edits an agent makes, and the previous two rules already provide a cheap rehearsal. Three steps:
+
+1. Provision a throwaway database with `npx create-db@latest --json`.
+2. Apply the full migration history, ending with the new migration, and run the test suite against the result.
+3. Propose the change only if both succeeded.
+
+If the migration is wrong, the blast radius is a database that was going to delete itself anyway.
+
+Be clear about what the rehearsal proves: the migration applies cleanly to real Postgres, and the code works against the new schema. An empty throwaway cannot surface data-dependent failures, like adding a `NOT NULL` column to a populated table, so the human still reviews the SQL with production data in mind. The rehearsal removes the "does it even apply" class of surprises; it does not replace review.
+
+### Prefer machine-readable output
+
+Terminal output with spinners and box-drawing characters is written for humans. An agent can read it, but it spends tokens on decoration and invites misextraction; a named JSON field is unambiguous. Where a CLI offers structured output, the agent should use it: `create-db` has `--json`, the Prisma CLI supports it on commands like `prisma version --json`, and the [Prisma Next](https://www.prisma.io/docs/cli/next) CLI (the next-generation Prisma ORM, currently in Early Access) carries `--json` across its command surface, from `db schema` to `migration show`. The rule generalizes beyond Prisma: prefer a `--json` flag anywhere one exists, and parse fields instead of scraping text.
+
+### Connection strings live in the environment
+
+Provisioning databases on demand means connection strings flow through the agent's hands constantly, and each one contains credentials. The rule keeps them contained: connection strings live in environment variables only, never in source files, test fixtures, or commits, and a throwaway database's connection string stays scoped to the task at hand instead of overwriting the team's entry in `.env` with a URL that dies in 24 hours. When a throwaway database is worth keeping, the agent surfaces the claim URL to the human instead of quietly promoting scratch credentials into configuration.
+
+## The complete block to copy
+
+Here is the full section, ready to paste into your AGENTS.md:
+
+```markdown
+## Database rules
+
+- When a task needs a database for testing or prototyping, run
+  `npx create-db@latest --json` and use the `connectionString` field as
+  `DATABASE_URL` for that task. The database is temporary and deletes
+  itself after 24 hours. If the work should be kept, show me the `claimUrl`.
+- Never run `prisma migrate reset`, drop a schema or table, or delete
+  data without my explicit confirmation. The only exception is a
+  throwaway database you provisioned for the current task; even there,
+  surface Prisma's guardrail prompt to me, never self-approve it.
+- Before proposing a migration, apply the full migration history, ending
+  with the new migration, to a fresh throwaway database
+  (`npx create-db@latest --json`) and run the tests against it. Only
+  propose migrations that passed this rehearsal.
+- Prefer `--json` output when a CLI offers it, and parse the fields
+  instead of scraping human-formatted terminal output.
+- Keep connection strings in environment variables only. Never put them
+  in source files or commits, and never overwrite an existing
+  `DATABASE_URL` in `.env` with a temporary one.
+```
+
+Five rules, none longer than a few short lines. Rules files are context the agent carries into every task, so shorter is better: state the behavior, not the philosophy.
+
+## Which tools read AGENTS.md?
+
+AGENTS.md emerged from a collaboration across the agent ecosystem, including OpenAI's Codex team, and has become the closest thing to a cross-tool standard: Codex reads it natively, and [Cursor reads a project-root `AGENTS.md`](https://www.prisma.io/docs/ai/tools/cursor) alongside its own Project Rules format.
+
+Claude Code is the notable exception: it reads `CLAUDE.md`, not `AGENTS.md`. The fix is a one-line `CLAUDE.md` containing an import:
+
+```markdown
+@AGENTS.md
+```
+
+Claude Code resolves the `@` import and pulls the whole file in. A symlink from `CLAUDE.md` to `AGENTS.md` works too. Either way, keep one source of truth and point the other files at it; two hand-maintained copies of the same rules will drift apart.
+
+## Beyond the rules file
+
+A rules file tells the agent what to do with the tools it already has. The [Prisma MCP server](https://www.prisma.io/docs/ai/tools/mcp-server) extends what those tools are: connected to `https://mcp.prisma.io/mcp`, an agent can manage the databases in your Prisma workspace, execute SQL, introspect schemas, create and restore backups, and [search the Prisma docs](/search-prisma-docs-from-your-coding-agent) through one endpoint, with structured input and output on every call.
+
+The two compose. The rules file carries your team's judgment: what needs confirmation, where scratch work happens, how migrations get validated. The MCP server carries the capabilities those judgments govern. Start with the rules file, because it costs five minutes and, with the one-line import for Claude Code, covers all three tools; add the MCP server when your agent's database work outgrows the CLI.
+
+## Frequently asked questions
+
+<Accordions type="single">
+  <Accordion title="What is AGENTS.md?">
+AGENTS.md is a markdown file in a project's root that gives AI coding agents project-specific instructions: conventions, commands, and rules the agent should follow. The format came out of a cross-vendor collaboration, OpenAI's Codex team among the contributors, and is read natively by tools including Codex and Cursor. It is plain markdown with no required structure; see [agents.md](https://agents.md) for the spec.
+  </Accordion>
+  <Accordion title="Does Claude Code read AGENTS.md?">
+Not directly. Claude Code reads `CLAUDE.md`. To share one rules file across tools, create a `CLAUDE.md` whose content is the single line `@AGENTS.md`; Claude Code resolves the import and loads the file. A symlink from `CLAUDE.md` to `AGENTS.md` achieves the same result.
+  </Accordion>
+  <Accordion title="Can a rules file stop an agent from wiping my database?">
+Not by itself: a rules file is prose, not enforcement. Prisma ORM adds an enforcement layer on top: since version 6.15.0, the CLI detects popular AI agents and blocks destructive commands like `prisma migrate reset --force` until the user's explicit consent is passed back via an environment variable. Neither layer stops raw SQL such as `DROP TABLE`, so give agents disposable databases for risky work and keep production credentials out of their reach.
+  </Accordion>
+  <Accordion title="Do I still need the Prisma MCP server if I have an AGENTS.md?">
+They solve different problems. AGENTS.md is instructions: how the agent should behave with the tools it has. The [Prisma MCP server](https://www.prisma.io/docs/ai/tools/mcp-server) is capabilities: running SQL, introspecting schemas, managing backups, and searching the docs as callable tools. The rules file is the five-minute win; the MCP server is the upgrade when the agent's database work outgrows what a local CLI offers.
+  </Accordion>
+</Accordions>
+
+## Give your agent the rules
+
+Copy the block, commit it, and the next time your agent touches the database it knows where scratch databases come from, how to rehearse a migration, and when to stop and ask. Five short rules, and "wait, which database did you just reset?" becomes a question you should rarely have to ask again.
+
+To stay up-to-date about everything that's happening in the Prismaverse, keep an eye on our [changelog](https://www.prisma.io/changelog) and [follow us on X](https://pris.ly/x)! And if you have ideas for how Prisma can be improved, always feel free to open an issue on [GitHub](https://github.com/prisma/prisma) or reach out to us on [Discord](https://pris.ly/discord).
