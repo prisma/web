@@ -13,13 +13,13 @@ tags:
   - "prisma-postgres"
   - "education"
 series: postgres-features
-seriesIndex: 3
-prev: postgres-bloom-index-the-overlooked-postgres-feature
+seriesIndex: 4
+prev: you-dont-need-a-vector-database-postgres-already-has-pgvector
 ---
 
 Postgres can run a reliable background job queue, and the key is one clause: `FOR UPDATE SKIP LOCKED`. In this post, you'll build a queue with retries and concurrent workers on [Prisma Postgres](https://www.prisma.io/docs/postgres), a managed PostgreSQL service — one table, a handful of short queries, and no message broker to deploy, monitor, or pay for.
 
-This is the third post in the [Postgres features series](https://www.prisma.io/blog/series/postgres-features), after [Pub/Sub with `LISTEN` and `NOTIFY`](https://www.prisma.io/blog/you-dont-need-redis-postgres-already-has-pub-sub) and [the bloom index](https://www.prisma.io/blog/postgres-bloom-index-the-overlooked-postgres-feature).
+This is the fourth post in the [Postgres features series](https://www.prisma.io/blog/series/postgres-features), after [Pub/Sub with `LISTEN` and `NOTIFY`](https://www.prisma.io/blog/you-dont-need-redis-postgres-already-has-pub-sub), [the bloom index](https://www.prisma.io/blog/postgres-bloom-index-the-overlooked-postgres-feature), and [pgvector](https://www.prisma.io/blog/you-dont-need-a-vector-database-postgres-already-has-pgvector).
 
 Moving work off the request path usually starts with a familiar question: do you need Redis and BullMQ, SQS, or another queueing system?
 
@@ -408,7 +408,7 @@ Any host that keeps a Node or Bun process alive can run the loop: a VM, a contai
 
 [Prisma Compute](https://www.prisma.io/docs/compute), Prisma's TypeScript app hosting built to run alongside Prisma Postgres, is in public beta and focuses on HTTP apps, so it fits a request-triggered drain: its `waitUntil` primitive keeps an instance awake after the response goes out, letting a request handler enqueue a job and work through a bounded batch without a separate worker. The drain is best-effort — a deploy or restart can interrupt it mid-job — so this shape leans harder on idempotent handlers and on the janitor query, which you'd run at the top of each drain: unclaimed jobs simply wait for the next pass, while a job interrupted mid-processing waits out the janitor's timeout first. Drains also only happen when requests arrive — on a quiet app, a due retry sits until the next visitor — so this shape fits apps with steady traffic. For sporadic traffic or an always-on loop, pair your Compute app with any always-on host — the queue state stays in Prisma Postgres either way.
 
-If polling every few hundred milliseconds feels wasteful, combine this pattern with the previous post in this series: use `NOTIFY` to wake the worker the moment a job is enqueued, and keep a slow poll as the fallback. On Prisma Postgres, the listening connection must use the [direct connection string](https://www.prisma.io/docs/postgres/database/connecting-to-your-database), because notifications don't traverse the connection pooler. The table stays the source of truth; the notification is just the doorbell.
+If polling every few hundred milliseconds feels wasteful, combine this pattern with the series' Pub/Sub post: use `NOTIFY` to wake the worker the moment a job is enqueued, and keep a slow poll as the fallback. On Prisma Postgres, the listening connection must use the [direct connection string](https://www.prisma.io/docs/postgres/database/connecting-to-your-database), because notifications don't traverse the connection pooler. The table stays the source of truth; the notification is just the doorbell.
 
 ## When you actually need a dedicated queue
 
