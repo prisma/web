@@ -196,6 +196,14 @@ const AUTHOR_BIOS: AuthorBio[] = [
       { platform: "github", url: "https://github.com/kristof-siket" },
     ],
   },
+  {
+    names: ["Nikolas Burk"],
+    bio: "Nikolas was employee #3 at Prisma and spent 9 years teaching developers about ORMs and databases. He left in October 2025 to focus on his own projects and work as an independent Software Engineer and Developer Educator.",
+    socials: [
+      { platform: "x", url: "https://x.com/nikolasburk" },
+      { platform: "github", url: "https://github.com/nikolasburk" },
+    ],
+  },
 ];
 
 /**
