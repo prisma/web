@@ -17,13 +17,13 @@ seriesIndex: 4
 prev: you-dont-need-a-vector-database-postgres-already-has-pgvector
 ---
 
-Postgres can run a reliable background job queue, and the key is one clause: `FOR UPDATE SKIP LOCKED`. In this post, you'll build a queue with retries and concurrent workers on [Prisma Postgres](https://www.prisma.io/docs/postgres), a managed PostgreSQL service — one table, a handful of short queries, and no message broker to deploy, monitor, or pay for.
+Postgres can run a reliable background job queue, and the key is one clause: `FOR UPDATE SKIP LOCKED`. In this post, you'll build a queue with retries and concurrent workers on [Prisma Postgres](https://www.prisma.io/docs/postgres), a managed PostgreSQL service: one table, a handful of short queries, and no message broker to deploy, monitor, or pay for.
 
 This is the fourth post in the [Postgres features series](https://www.prisma.io/blog/series/postgres-features), after [Pub/Sub with `LISTEN` and `NOTIFY`](https://www.prisma.io/blog/you-dont-need-redis-postgres-already-has-pub-sub), [the bloom index](https://www.prisma.io/blog/postgres-bloom-index-the-overlooked-postgres-feature), and [pgvector](https://www.prisma.io/blog/you-dont-need-a-vector-database-postgres-already-has-pgvector).
 
 Moving work off the request path usually starts with a familiar question: do you need Redis and BullMQ, SQS, or another queueing system?
 
-If your app already uses Postgres, the answer is often no. For the background work most apps actually have — sending emails, delivering webhooks, generating exports, syncing external APIs — a jobs table in Postgres is enough. The part most developers miss is that safe concurrent processing is already built in.
+If your app already uses Postgres, the answer is often no. For the background work most apps actually have (sending emails, delivering webhooks, generating exports, syncing external APIs), a jobs table in Postgres is enough. The part most developers miss is that safe concurrent processing is already built in.
 
 ## Why teams reach for a job queue
 
@@ -36,7 +36,7 @@ A job queue does four things:
 
 The moment a signup handler needs to send a welcome email, the reflex is to add Redis and a queue library. That reflex has a real cost: a second datastore to run, monitor, back up, and pay for.
 
-It also splits your data in two. The job lives in Redis while the row it refers to lives in Postgres, and no transaction spans both. If the insert commits but the enqueue fails, the email never sends. If the enqueue happens first, the worker can grab a job for a row that doesn't exist yet. The standard mitigation, a transactional outbox, is itself a Postgres table feeding the broker — halfway to the queue this post builds.
+It also splits your data in two. The job lives in Redis while the row it refers to lives in Postgres, and no transaction spans both. If the insert commits but the enqueue fails, the email never sends. If the enqueue happens first, the worker can grab a job for a row that doesn't exist yet. The standard mitigation, a transactional outbox, is itself a Postgres table feeding the broker: halfway to the queue this post builds.
 
 Keep the jobs in Postgres and that problem disappears. Your handler inserts the user and the welcome-email job in one transaction. They commit together or roll back together.
 
@@ -68,7 +68,7 @@ FOR UPDATE SKIP LOCKED
 LIMIT 1;
 ```
 
-Now ten workers each see a different row at the same time, and nobody waits. One caveat before you copy this: row locks last only as long as the transaction that holds them, and in autocommit that means the statement itself. `SKIP LOCKED` is half the trick. The other half is flipping the row's status in the same atomic statement — which is exactly what the claim query in the next section does.
+Now ten workers each see a different row at the same time, and nobody waits. One caveat before you copy this: row locks last only as long as the transaction that holds them, and in autocommit that means the statement itself. `SKIP LOCKED` is half the trick. The other half is flipping the row's status in the same atomic statement, which is exactly what the claim query in the next section does.
 
 ## Build the queue: one table, four queries
 
@@ -89,7 +89,7 @@ CREATE TABLE jobs (
 CREATE INDEX jobs_pending_idx ON jobs (run_at) WHERE status = 'pending';
 ```
 
-The partial index only covers pending rows, so the claim query doesn't wade through the pile of completed jobs. It still relies on autovacuum keeping up — every status flip leaves a dead index entry behind, a limit we'll come back to.
+The partial index only covers pending rows, so the claim query doesn't wade through the pile of completed jobs. It still relies on autovacuum keeping up: every status flip leaves a dead index entry behind, a limit we'll come back to.
 
 Enqueueing a job is an `INSERT`:
 
@@ -130,7 +130,7 @@ SET status = CASE WHEN attempts >= max_attempts THEN 'failed' ELSE 'pending' END
 WHERE id = $1;
 ```
 
-Because `run_at` moves into the future, the retry waits out its backoff before any worker picks it up again. Jobs that keep failing land in `status = 'failed'` — a dead-letter state you can inspect or requeue with plain SQL.
+Because `run_at` moves into the future, the retry waits out its backoff before any worker picks it up again. Jobs that keep failing land in `status = 'failed'`, a dead-letter state you can inspect or requeue with plain SQL.
 
 ## Watch two workers share a queue
 
@@ -147,7 +147,7 @@ We'll use:
 - `pg` to connect to Postgres
 - `create-db` to create a temporary Prisma Postgres database
 
-The [`create-db`](https://www.prisma.io/docs/postgres/npx-create-db) CLI creates a temporary Prisma Postgres database — auto-deleted after 24 hours unless you claim it — and supports JSON output, which makes it useful from scripts. Prisma Postgres also works with PostgreSQL-compatible clients like `pg`.
+The [`create-db`](https://www.prisma.io/docs/postgres/npx-create-db) CLI creates a temporary Prisma Postgres database (auto-deleted after 24 hours unless you claim it) and supports JSON output, which makes it useful from scripts. Prisma Postgres also works with PostgreSQL-compatible clients like `pg`.
 
 Everything below was run against PostgreSQL 17, Bun 1.2, and pg 8.22.
 
@@ -294,7 +294,7 @@ async function runWorker(name: string, connectionString: string) {
     } catch (error) {
       await db.query(RETRY_SQL, [job.id]);
       const message = error instanceof Error ? error.message : String(error);
-      console.log(`[${name}] failed: #${job.id} ${job.job_type} (attempt ${job.attempts}) — ${message}`);
+      console.log(`[${name}] failed: #${job.id} ${job.job_type} (attempt ${job.attempts}) - ${message}`);
     }
   }
 
@@ -350,7 +350,7 @@ Enqueued 4 jobs.
 [worker-1] done: #1 send-email (attempt 1)
 [worker-2] done: #2 deliver-webhook (attempt 1)
 [worker-1] done: #3 generate-export (attempt 1)
-[worker-2] failed: #4 sync-crm (attempt 1) — CRM API timed out
+[worker-2] failed: #4 sync-crm (attempt 1) - CRM API timed out
 [worker-1] done: #4 sync-crm (attempt 2)
 ┌───┬────┬─────────────────┬────────┬──────────┐
 │   │ id │ job_type        │ status │ attempts │
@@ -362,7 +362,7 @@ Enqueued 4 jobs.
 └───┴────┴─────────────────┴────────┴──────────┘
 ```
 
-Two workers shared one table, and no job landed in two workers' hands at once. Look at the `sync-crm` job: `worker-2` failed it, the retry waited out its backoff, and `worker-1` — a different worker — picked it up and finished it. The retry didn't belong to the worker that failed it, because the queue state lives in the table: any worker can pick up where another left off.
+Two workers shared one table, and no job landed in two workers' hands at once. Look at the `sync-crm` job: `worker-2` failed it, the retry waited out its backoff, and `worker-1`, a different worker, picked it up and finished it. The retry didn't belong to the worker that failed it, because the queue state lives in the table: any worker can pick up where another left off.
 
 ## How the script works
 
@@ -386,27 +386,27 @@ Each iteration tries to claim one job. If the claim returns a row, the worker ow
 
 The demo workers give up after twenty empty polls so the script terminates. A production worker would loop forever.
 
-`waitUntilReady` exists because a freshly created database can take a few seconds to finish provisioning before it accepts its first query — a one-time cost of creating the database, not something you'll see on an existing one. The script probes with `SELECT 1` until the database answers, then hands the connection string to the rest of the demo.
+`waitUntilReady` exists because a freshly created database can take a few seconds to finish provisioning before it accepts its first query: a one-time cost of creating the database, not something you'll see on an existing one. The script probes with `SELECT 1` until the database answers, then hands the connection string to the rest of the demo.
 
-Both workers fight over the same four rows at the same time, and that is the point. When `worker-1` locks job #1 inside its claim query, `worker-2`'s claim doesn't block behind it — `SKIP LOCKED` moves it straight to job #2.
+Both workers fight over the same four rows at the same time, and that is the point. When `worker-1` locks job #1 inside its claim query, `worker-2`'s claim doesn't block behind it: `SKIP LOCKED` moves it straight to job #2.
 
-The failure path is plain SQL. When `handleJob` throws, the worker runs the retry query: the job's status flips back to `pending`, and `run_at` moves `power(2, attempts)` seconds into the future — 2 seconds after the first failure, 4 after the second. After `max_attempts` failures the `CASE` expression parks it in `failed` instead.
+The failure path is plain SQL. When `handleJob` throws, the worker runs the retry query: the job's status flips back to `pending`, and `run_at` moves `power(2, attempts)` seconds into the future: 2 seconds after the first failure, 4 after the second. After `max_attempts` failures the `CASE` expression parks it in `failed` instead.
 
-One thing this demo skips: crash recovery. If a worker process dies mid-job — the process itself, not a thrown error — the row stays in `running` forever. The claim query committed that status before the crash, no lock is held while a job runs, and nothing in the database knows the worker died.
+One thing this demo skips: crash recovery. If a worker process dies mid-job (the process itself, not a thrown error), the row stays in `running` forever. The claim query committed that status before the crash, no lock is held while a job runs, and nothing in the database knows the worker died.
 
-Production setups fix this one of two ways. The usual one is a lease: add a `started_at` column that the claim query stamps, and run a janitor query that moves `running` jobs older than a timeout back to `pending` — or straight to `failed` once they're out of attempts, so a job that kills its worker can't loop forever. A lease has consequences. A slow-but-alive worker can outlive its timeout, lose the job to another worker, and leave both running it at once — so the completion and retry updates need a guard (`AND status = 'running'` plus the `attempts` value the worker claimed) to stop a stale worker from overwriting a job that was re-claimed. Two more pieces of housekeeping while you're there: `running` rows aren't covered by the pending-only partial index, so give the janitor a small index of its own, and old `done` rows never delete themselves — schedule a periodic purge, or the table grows forever.
+Production setups fix this one of two ways. The usual one is a lease: add a `started_at` column that the claim query stamps, and run a janitor query that moves `running` jobs older than a timeout back to `pending`, or straight to `failed` once they're out of attempts, so a job that kills its worker can't loop forever. A lease has consequences. A slow-but-alive worker can outlive its timeout, lose the job to another worker, and leave both running it at once, so the completion and retry updates need a guard (`AND status = 'running'` plus the `attempts` value the worker claimed) to stop a stale worker from overwriting a job that was re-claimed. Two more pieces of housekeeping while you're there: `running` rows aren't covered by the pending-only partial index, so give the janitor a small index of its own, and old `done` rows never delete themselves: schedule a periodic purge, or the table grows forever.
 
-The alternative holds the claim inside an open transaction for the length of the job, so a crash rolls the row back automatically. That costs a pinned connection per job, undoes the `attempts` increment — a job that crashes its worker retries forever — and holds back vacuum on a busy queue.
+The alternative holds the claim inside an open transaction for the length of the job, so a crash rolls the row back automatically. That costs a pinned connection per job, undoes the `attempts` increment (a job that crashes its worker retries forever), and holds back vacuum on a busy queue.
 
-Either way, this queue delivers at least once, not exactly once — no recovery scheme escapes that. A crash after the work but before the `done` update, a janitor reset of a slow worker, even a connection blip between finishing a job and recording it: each can run a job's side effect twice. Write handlers so that running them twice is safe. For the welcome email that opened this post, that means a dedupe key: an `emails_sent` row written on success and checked before sending, or an idempotency key passed to the email provider, so a repeat run finds the work already done and skips it. The same move covers any side effect — give it a key, check the key first.
+Either way, this queue delivers at least once, not exactly once; no recovery scheme escapes that. A crash after the work but before the `done` update, a janitor reset of a slow worker, even a connection blip between finishing a job and recording it: each can run a job's side effect twice. Write handlers so that running them twice is safe. For the welcome email that opened this post, that means a dedupe key: an `emails_sent` row written on success and checked before sending, or an idempotency key passed to the email provider, so a repeat run finds the work already done and skips it. The same move covers any side effect: give it a key, check the key first.
 
 ## Where to run the worker
 
 The worker is an ordinary process that wants to stay alive, and platforms built around short-lived request handlers make that awkward. Two shapes work: a persistent loop, or a short-lived pass that wakes up, drains what's due, and exits.
 
-Any host that keeps a Node or Bun process alive can run the loop: a VM, a container platform, a Railway or Fly.io service. The queue doesn't care where the worker lives, because the queue state all lives in Postgres. On Prisma Postgres, give production workers the pooled connection string — every queue query in this post is a single atomic statement, which transaction pooling handles fine.
+Any host that keeps a Node or Bun process alive can run the loop: a VM, a container platform, a Railway or Fly.io service. The queue doesn't care where the worker lives, because the queue state all lives in Postgres. On Prisma Postgres, give production workers the pooled connection string: every queue query in this post is a single atomic statement, which transaction pooling handles fine.
 
-[Prisma Compute](https://www.prisma.io/docs/compute), Prisma's TypeScript app hosting built to run alongside Prisma Postgres, is in public beta and focuses on HTTP apps, so it fits a request-triggered drain: its `waitUntil` primitive keeps an instance awake after the response goes out, letting a request handler enqueue a job and work through a bounded batch without a separate worker. The drain is best-effort — a deploy or restart can interrupt it mid-job — so this shape leans harder on idempotent handlers and on the janitor query, which you'd run at the top of each drain: unclaimed jobs simply wait for the next pass, while a job interrupted mid-processing waits out the janitor's timeout first. Drains also only happen when requests arrive — on a quiet app, a due retry sits until the next visitor — so this shape fits apps with steady traffic. For sporadic traffic or an always-on loop, pair your Compute app with any always-on host — the queue state stays in Prisma Postgres either way.
+[Prisma Compute](https://www.prisma.io/docs/compute), Prisma's TypeScript app hosting built to run alongside Prisma Postgres, is in public beta and focuses on HTTP apps, so it fits a request-triggered drain: its `waitUntil` primitive keeps an instance awake after the response goes out, letting a request handler enqueue a job and work through a bounded batch without a separate worker. The drain is best-effort (a deploy or restart can interrupt it mid-job), so this shape leans harder on idempotent handlers and on the janitor query, which you'd run at the top of each drain: unclaimed jobs simply wait for the next pass, while a job interrupted mid-processing waits out the janitor's timeout first. Drains also only happen when requests arrive (on a quiet app, a due retry sits until the next visitor), so this shape fits apps with steady traffic. For sporadic traffic or an always-on loop, pair your Compute app with any always-on host: the queue state stays in Prisma Postgres either way.
 
 If polling every few hundred milliseconds feels wasteful, combine this pattern with the series' Pub/Sub post: use `NOTIFY` to wake the worker the moment a job is enqueued, and keep a slow poll as the fallback. On Prisma Postgres, the listening connection must use the [direct connection string](https://www.prisma.io/docs/postgres/database/connecting-to-your-database), because notifications don't traverse the connection pooler. The table stays the source of truth; the notification is just the doorbell.
 
@@ -416,26 +416,26 @@ A Postgres queue has real limits, and it's worth knowing them before you hit the
 
 - **Very high throughput.** Every claim, retry, and completion is a row update, and each update leaves a dead tuple behind. At sustained thousands of jobs per second, vacuum pressure on the jobs table becomes its own operational problem. Dedicated brokers don't have this failure mode.
 - **Fan-out and streaming.** If many consumers each need their own copy of every event, you want a log like Kafka, not a queue where a claimed job disappears for everyone else.
-- **Queue features as a product.** Rate limiting, per-queue concurrency caps, job priorities, repeatable jobs — [BullMQ](https://bullmq.io) ships all of it. Rebuilding it on a jobs table is possible and rarely worth it.
+- **Queue features as a product.** Rate limiting, per-queue concurrency caps, job priorities, repeatable jobs: [BullMQ](https://bullmq.io) ships all of it. Rebuilding it on a jobs table is possible and rarely worth it.
 
-There's also a middle path: [pg-boss](https://github.com/timgit/pg-boss) is this exact pattern — `SKIP LOCKED` on a Postgres table — packaged as a library with retries, scheduling, and retention policies already written. If your queue needs outgrow a hand-rolled table but your throughput still fits in Postgres, reach for it before reaching for a broker.
+There's also a middle path: [pg-boss](https://github.com/timgit/pg-boss) is this exact pattern, `SKIP LOCKED` on a Postgres table, packaged as a library with retries, scheduling, and retention policies already written. If your queue needs outgrow a hand-rolled table but your throughput still fits in Postgres, reach for it before reaching for a broker.
 
-The rule of thumb: start with the database you already run. Move to a dedicated queue when you can name the limit you're hitting — vacuum pressure, fan-out, or a feature list — not before.
+The rule of thumb: start with the database you already run. Move to a dedicated queue when you can name the limit you're hitting (vacuum pressure, fan-out, or a feature list), not before.
 
 ## Frequently asked questions
 
 <Accordions type="single">
   <Accordion title="What does FOR UPDATE SKIP LOCKED do in Postgres?">
-`FOR UPDATE SKIP LOCKED` locks the rows a `SELECT` returns and skips any rows another transaction has already locked, instead of waiting for those locks to release. Because row locks last only as long as the claiming transaction, job queues pair the clause with a status flip in one atomic statement — `UPDATE ... WHERE id = (SELECT ... FOR UPDATE SKIP LOCKED)` — so concurrent workers neither block each other nor claim the same job. It has shipped with every PostgreSQL version since 9.5.
+`FOR UPDATE SKIP LOCKED` locks the rows a `SELECT` returns and skips any rows another transaction has already locked, instead of waiting for those locks to release. Because row locks last only as long as the claiming transaction, job queues pair the clause with a status flip in one atomic statement (`UPDATE ... WHERE id = (SELECT ... FOR UPDATE SKIP LOCKED)`), so concurrent workers neither block each other nor claim the same job. It has shipped with every PostgreSQL version since 9.5.
   </Accordion>
   <Accordion title="Can Postgres replace Redis or BullMQ as a job queue?">
 For most applications, yes. A jobs table claimed with `FOR UPDATE SKIP LOCKED` gives you durable storage, retries, backoff, and concurrent workers with no extra infrastructure, and enqueueing stays transactional with your application data. Move to a dedicated queue when you sustain very high job throughput, need fan-out to many consumers, or want built-in features like rate limiting, priorities, and dashboards.
   </Accordion>
   <Accordion title="How do you retry failed jobs in a Postgres job queue?">
-Store an `attempts` counter and a `run_at` timestamp on each job row. When a job fails, set its status back to `pending` and move `run_at` into the future — for example `now() + make_interval(secs => power(2, attempts))` for exponential backoff. Workers only claim rows where `run_at <= now()`, so the retry waits out its backoff. After `max_attempts` failures, park the row in a `failed` status instead.
+Store an `attempts` counter and a `run_at` timestamp on each job row. When a job fails, set its status back to `pending` and move `run_at` into the future, for example `now() + make_interval(secs => power(2, attempts))` for exponential backoff. Workers only claim rows where `run_at <= now()`, so the retry waits out its backoff. After `max_attempts` failures, park the row in a `failed` status instead.
   </Accordion>
   <Accordion title="What happens if a worker crashes while holding a job?">
-The job stays in `running` and no worker will claim it again — the claim already committed before the crash, and Postgres has no way to know the worker died. Production queues either stamp a `started_at` column at claim time and run a janitor query that moves `running` jobs older than a timeout back to `pending` (or to `failed` once they exhaust their attempts), or hold the claim transaction open during processing so a crash rolls the row back automatically. Every recovery path can execute a job's side effect twice, so job handlers should be idempotent.
+The job stays in `running` and no worker will claim it again: the claim already committed before the crash, and Postgres has no way to know the worker died. Production queues either stamp a `started_at` column at claim time and run a janitor query that moves `running` jobs older than a timeout back to `pending` (or to `failed` once they exhaust their attempts), or hold the claim transaction open during processing so a crash rolls the row back automatically. Every recovery path can execute a job's side effect twice, so job handlers should be idempotent.
   </Accordion>
 </Accordions>
 
@@ -445,8 +445,8 @@ Postgres can run a real job queue with one table and a handful of short queries.
 
 `FOR UPDATE SKIP LOCKED` is the piece that makes it safe: concurrent workers claim different rows without blocking each other and without claiming the same job twice.
 
-Because jobs live next to your data, enqueueing is transactional — a signup and its welcome-email job commit or roll back together. An external queue needs extra machinery to match that, typically an outbox table, which is itself a jobs table in Postgres.
+Because jobs live next to your data, enqueueing is transactional: a signup and its welcome-email job commit or roll back together. An external queue needs extra machinery to match that, typically an outbox table, which is itself a jobs table in Postgres.
 
-Retries, backoff, and dead-lettering are each one more `UPDATE`. Crash recovery needs a janitor query or a held transaction, plus idempotent handlers — that's the honest cost of rolling your own.
+Retries, backoff, and dead-lettering are each one more `UPDATE`. Crash recovery needs a janitor query or a held transaction, plus idempotent handlers. That's the honest cost of rolling your own.
 
 For most apps, that trade is a good one: background jobs with no new infrastructure to run. Spin up a database with `npx create-db@latest`, paste in the claim query, and you have a working queue before a broker would have finished installing.
