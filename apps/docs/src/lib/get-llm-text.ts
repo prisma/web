@@ -1,5 +1,9 @@
 import { source } from "@/lib/source";
-import { normalizeProcessedMarkdown, protectFencedCodeBlocks } from "@/lib/llm-markdown";
+import {
+  normalizeProcessedMarkdown,
+  protectFencedCodeBlocks,
+  protectInlineCode,
+} from "@/lib/llm-markdown";
 import { getPageTitleText } from "@/lib/page-title";
 import { getBaseUrl, withDocsBasePath } from "@/lib/urls";
 import type { InferPageType } from "fumadocs-core/source";
@@ -199,17 +203,21 @@ function resolveInBodyHref(target: string, page: DocsPage, baseUrl: string) {
 }
 
 function absolutizeInBodyLinks(markdown: string, page: DocsPage, baseUrl: string) {
-  // Protect fenced code blocks so example code containing markdown link syntax is
-  // left untouched. Inline code (single backticks) cannot contain the `](...)` link
-  // syntax we rewrite, so it needs no protection.
-  const protectedCode = protectFencedCodeBlocks(markdown);
+  // Protect fenced code blocks, then inline code spans, so example code AND inline
+  // code containing markdown link syntax (e.g. `[label](/path)`) are left untouched
+  // by the rewrite below. Order matters: fences first, then inline spans.
+  const protectedFences = protectFencedCodeBlocks(markdown);
+  const protectedInline = protectInlineCode(protectedFences.markdown);
 
-  const rewritten = protectedCode.markdown.replace(/\]\((\/[^)\s]*)\)/g, (full, target: string) => {
-    if (target.startsWith("//")) return full;
-    return `](${resolveInBodyHref(target, page, baseUrl)})`;
-  });
+  const rewritten = protectedInline.markdown.replace(
+    /\]\((\/[^)\s]*)\)/g,
+    (full, target: string) => {
+      if (target.startsWith("//")) return full;
+      return `](${resolveInBodyHref(target, page, baseUrl)})`;
+    },
+  );
 
-  return protectedCode.restore(rewritten);
+  return protectedFences.restore(protectedInline.restore(rewritten));
 }
 
 export async function getLLMText(page: DocsPage) {

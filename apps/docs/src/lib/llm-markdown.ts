@@ -396,6 +396,32 @@ export function protectFencedCodeBlocks(markdown: string) {
   };
 }
 
+/**
+ * Protects inline code spans (single or multiple backticks on a single line) so
+ * their literal contents — including markdown link syntax like `[label](/path)` —
+ * are left untouched by downstream text rewrites, then restored afterwards.
+ * Protect fenced code blocks FIRST, then inline spans, so the backticks that open
+ * and close a fence are never mistaken for an inline span.
+ */
+export function protectInlineCode(markdown: string) {
+  const spans: string[] = [];
+  const protectedMarkdown = markdown.replace(/(`+)[^\n]+?\1/g, (match) => {
+    const token = `__LLM_INLINE_CODE_${spans.length}__`;
+    spans.push(match);
+    return token;
+  });
+
+  return {
+    markdown: protectedMarkdown,
+    restore(value: string) {
+      return spans.reduce(
+        (text, span, index) => text.replace(`__LLM_INLINE_CODE_${index}__`, span),
+        value,
+      );
+    },
+  };
+}
+
 export function normalizeProcessedMarkdown(markdown: string) {
   const componentMarkdown = markdown
     .replace(/\{\/\*[\s\S]*?\*\/\}/g, "")

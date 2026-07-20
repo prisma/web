@@ -39,23 +39,47 @@ These are the core commands for a new TypeScript project (copied from the Prisma
    \`\`\`bash
    npm init -y
    npm install typescript tsx @types/node --save-dev
+   npx tsc --init
    npm install prisma @types/pg --save-dev
    npm install @prisma/client @prisma/adapter-pg pg dotenv
    \`\`\`
 
-2. **Scaffold Prisma ORM.** This creates \`prisma/schema.prisma\`, a \`.env\` with \`DATABASE_URL\`, and \`prisma.config.ts\`:
+2. **Configure ESM support.** Update \`tsconfig.json\`:
+
+   \`\`\`json
+   {
+     "compilerOptions": {
+       "module": "ESNext",
+       "moduleResolution": "bundler",
+       "target": "ES2023",
+       "strict": true,
+       "esModuleInterop": true,
+       "ignoreDeprecations": "6.0"
+     }
+   }
+   \`\`\`
+
+   Then enable ESM in \`package.json\`:
+
+   \`\`\`json
+   {
+     "type": "module"
+   }
+   \`\`\`
+
+3. **Scaffold Prisma ORM.** This creates \`prisma/schema.prisma\`, a \`.env\` with \`DATABASE_URL\`, and \`prisma.config.ts\`:
 
    \`\`\`bash
    npx prisma init --output ../generated/prisma
    \`\`\`
 
-3. **Provision a Prisma Postgres database** and replace \`DATABASE_URL\` in \`.env\` with the \`postgres://...\` connection string from the CLI output:
+4. **Provision a Prisma Postgres database.** Ask the user for approval before provisioning a hosted Prisma Postgres database — \`npx create-db\` creates a cloud resource. After approval, run it and replace \`DATABASE_URL\` in \`.env\` with the \`postgres://...\` connection string from the CLI output:
 
    \`\`\`bash
    npx create-db
    \`\`\`
 
-4. **Define your data model** in \`prisma/schema.prisma\`, for example:
+5. **Define your data model** in \`prisma/schema.prisma\`, for example:
 
    \`\`\`prisma
    generator client {
@@ -84,14 +108,14 @@ These are the core commands for a new TypeScript project (copied from the Prisma
    }
    \`\`\`
 
-5. **Create and apply a migration**, then **generate Prisma Client**:
+6. **Create and apply a migration**, then **generate Prisma Client**:
 
    \`\`\`bash
    npx prisma migrate dev --name init
    npx prisma generate
    \`\`\`
 
-6. **Instantiate Prisma Client** with the driver adapter and query your database:
+7. **Instantiate Prisma Client** with the driver adapter and query your database:
 
    \`\`\`typescript
    import "dotenv/config";
@@ -108,7 +132,7 @@ These are the core commands for a new TypeScript project (copied from the Prisma
    const users = await prisma.user.findMany({ include: { posts: true } });
    \`\`\`
 
-7. **Explore your data** visually with Prisma Studio:
+8. **Explore your data** visually with Prisma Studio:
 
    \`\`\`bash
    npx prisma studio

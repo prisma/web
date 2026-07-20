@@ -25,9 +25,13 @@ const { withDocsBasePath } = await import("@/lib/urls");
 const { agentSkillMarkdown } = await import("@/lib/agent-skill");
 const { mcpDiscoveryDocument } = await import("@/lib/mcp-discovery");
 
-// Measure against the production base URL so byte budgets are stable regardless
-// of the local NEXT_PUBLIC_PRISMA_URL, and match the numbers reviewers see live.
-const baseUrl = process.env.NEXT_PUBLIC_PRISMA_URL ?? "https://www.prisma.io";
+// Hardcode the production base URL. Byte budgets must be stable and match what
+// runs in production, so this must NOT read NEXT_PUBLIC_PRISMA_URL — otherwise the
+// budgets would vary by environment and the numbers would not match production.
+const baseUrl = "https://www.prisma.io";
+
+// Directory of this script (apps/docs/scripts); used for source-level guards.
+const scriptDir = dirname(fileURLToPath(import.meta.url));
 
 // Budgets. Agents commonly truncate large text feeds at ~100k chars; we hold a
 // 50k safety budget for any single file, with earlier warnings so a section can
@@ -133,38 +137,93 @@ if (unmatched.length > CATCHALL_WARN) {
   pass("Catch-all creep", `${unmatched.length} unmatched pages`);
 }
 
-// ── Check 5: markdown directive + description on sample pages ─────────────────
-for (const slug of ["orm", "postgres", "guides"]) {
-  const section = llms.llmsSections.find((s) => s.slug === slug);
-  const samplePage = section ? llms.filterPagesForLLMsSection(indexPages, section)[0] : undefined;
-  if (!samplePage) {
-    warn(`Directive (${slug})`, `no page found for section "${slug}" to sample`);
-    continue;
-  }
-
+// ── Check 5: markdown directive placement + description across ALL pages ──────
+// The per-page markdown must carry the llms.txt directive as a blockquote
+// IMMEDIATELY after the H1, so agents fetching any `.md` page get pointed at the
+// index. Assert positionally (H1 line, blank line, directive line) across every
+// index page — not a sample. getLLMText runs on preprocessed content, so this is
+// fast enough to cover the full set.
+const directiveFailures: string[] = [];
+const missingDescription: string[] = [];
+for (const page of indexPages) {
   let text: string;
   try {
     // getLLMText calls page.data.getText("processed"); verified to work under the
     // fumadocs loader used by this script (same loader as lint-links.ts).
-    text = await getLLMText(samplePage);
+    text = await getLLMText(page);
   } catch (error) {
-    fail(`Directive (${slug})`, `getLLMText threw for ${samplePage.url}: ${String(error)}`);
+    directiveFailures.push(`${page.url} (getLLMText threw: ${String(error)})`);
     continue;
   }
 
-  if (!text.includes(DIRECTIVE_MARKER)) {
-    fail(`Directive (${slug})`, `${samplePage.url} markdown is missing the llms.txt directive`);
-  } else {
-    pass(`Directive (${slug})`, samplePage.url);
+  const lines = text.split("\n");
+  const h1Index = lines.findIndex((line) => line.startsWith("# "));
+  // Format is `# Title\n\n> directive…`, so the directive sits two lines below H1.
+  if (h1Index === -1 || !(lines[h1Index + 2] ?? "").startsWith(DIRECTIVE_MARKER)) {
+    directiveFailures.push(page.url);
   }
 
-  const description = samplePage.data.description?.trim();
+  const description = page.data.description?.trim();
   if (description && !text.includes(description)) {
-    warn(
-      `Description (${slug})`,
-      `${samplePage.url} has a frontmatter description not in its markdown`,
-    );
+    missingDescription.push(page.url);
   }
+}
+
+if (directiveFailures.length > 0) {
+  fail(
+    "Directive placement",
+    `${directiveFailures.length} of ${indexPages.length} page(s) missing the llms.txt directive immediately after the H1:\n    ${directiveFailures
+      .slice(0, 10)
+      .join("\n    ")}`,
+  );
+} else {
+  pass("Directive placement", `all ${indexPages.length} pages carry the directive after the H1`);
+}
+
+if (missingDescription.length > 0) {
+  warn(
+    "Description in markdown",
+    `${missingDescription.length} page(s) have a frontmatter description not present in their markdown:\n    ${missingDescription
+      .slice(0, 10)
+      .join("\n    ")}`,
+  );
+} else {
+  pass("Description in markdown", "all frontmatter descriptions present in markdown");
+}
+
+// ── Check 5b: HTML surface source guard ──────────────────────────────────────
+// The rendered HTML page carries the same directive via a hidden element.
+// Rendering React in this script is not worth it; instead guard at the source
+// level that the docs page component emits a hidden element referencing llms.txt
+// BEFORE it renders <DocsPage. This is a source-level guard, not a render test.
+const docsPagePath = join(
+  scriptDir,
+  "..",
+  "src",
+  "app",
+  "(docs)",
+  "(default)",
+  "[[...slug]]",
+  "page.tsx",
+);
+try {
+  const docsPageSource = readFileSync(docsPagePath, "utf8");
+  const docsPageRenderIndex = docsPageSource.indexOf("<DocsPage");
+  const llmsRefIndex = docsPageSource.indexOf("llms.txt");
+  if (docsPageRenderIndex === -1) {
+    fail("HTML directive source guard", `<DocsPage not found in ${docsPagePath}`);
+  } else if (llmsRefIndex === -1) {
+    fail("HTML directive source guard", `page.tsx does not reference llms.txt`);
+  } else if (llmsRefIndex >= docsPageRenderIndex) {
+    fail(
+      "HTML directive source guard",
+      "page.tsx references llms.txt only after <DocsPage; the hidden directive must precede it",
+    );
+  } else {
+    pass("HTML directive source guard", "hidden llms.txt directive precedes <DocsPage");
+  }
+} catch (error) {
+  fail("HTML directive source guard", `could not read ${docsPagePath}: ${String(error)}`);
 }
 
 // ── Check 6: common queries resolve to existing pages ────────────────────────
@@ -215,7 +274,6 @@ if (docsSkillMissing.length > 0) {
 // whose `@/lib/url` import cannot resolve under the docs tsconfig. Read the raw
 // source and check the frontmatter keys directly (they sit at column 0 in the
 // template literal body).
-const scriptDir = dirname(fileURLToPath(import.meta.url));
 const siteSkillPath = join(scriptDir, "..", "..", "site", "src", "lib", "agent-skills.ts");
 try {
   const siteSkillSource = readFileSync(siteSkillPath, "utf8");
@@ -229,14 +287,85 @@ try {
   fail("Site skill frontmatter", `could not read ${siteSkillPath}: ${String(error)}`);
 }
 
-// ── Check 9: MCP discovery document ──────────────────────────────────────────
-const mcpUrlOk = mcpDiscoveryDocument.url === MCP_URL;
-const mcpServersOk =
-  Array.isArray(mcpDiscoveryDocument.servers) && mcpDiscoveryDocument.servers.length > 0;
-if (!mcpUrlOk || !mcpServersOk) {
-  fail("MCP discovery", !mcpUrlOk ? `url is not ${MCP_URL}` : "servers array is missing or empty");
+// ── Check 9: MCP discovery documents (docs + site) ───────────────────────────
+// Field-level validation of both discovery payloads so a wrong URL, transport,
+// missing version, or empty authentication is caught — not just "an object
+// exists". The site payload is built from a template in agent-skills.ts whose
+// `@/lib/url` import cannot resolve under the docs tsconfig, so its static fields
+// are validated from raw source (same approach as check 8).
+const mcpErrors: string[] = [];
+
+// Widen the `as const` literal types to plain strings so the runtime comparisons
+// below are meaningful checks (not always-false literal-vs-literal comparisons).
+const docsMcp = mcpDiscoveryDocument as {
+  url: string;
+  transport: string;
+  version: string;
+  servers: readonly { name: string; url: string; transport: string; authentication: string }[];
+};
+if (docsMcp.url !== MCP_URL) {
+  mcpErrors.push(`docs: top-level url is "${docsMcp.url}", expected "${MCP_URL}"`);
+}
+if (docsMcp.transport !== "http") {
+  mcpErrors.push(`docs: transport is "${docsMcp.transport}", expected "http"`);
+}
+if (typeof docsMcp.version !== "string" || docsMcp.version.trim() === "") {
+  mcpErrors.push("docs: version is missing or empty");
+}
+if (!Array.isArray(docsMcp.servers) || docsMcp.servers.length === 0) {
+  mcpErrors.push("docs: servers array is missing or empty");
 } else {
-  pass("MCP discovery", `url ${MCP_URL}, ${mcpDiscoveryDocument.servers.length} server(s)`);
+  docsMcp.servers.forEach((server, i) => {
+    if (server.url !== MCP_URL) {
+      mcpErrors.push(`docs: servers[${i}].url is "${server.url}", expected "${MCP_URL}"`);
+    }
+    if (server.transport !== "http") {
+      mcpErrors.push(`docs: servers[${i}].transport is "${server.transport}", expected "http"`);
+    }
+    if (typeof server.authentication !== "string" || server.authentication.trim() === "") {
+      mcpErrors.push(`docs: servers[${i}].authentication is missing or empty`);
+    }
+  });
+}
+
+try {
+  const siteSource = readFileSync(siteSkillPath, "utf8");
+  const urlMatch = siteSource.match(/const MCP_SERVER_URL\s*=\s*"([^"]+)"/);
+  if (!urlMatch) {
+    mcpErrors.push("site: could not find the MCP_SERVER_URL constant");
+  } else if (urlMatch[1] !== MCP_URL) {
+    mcpErrors.push(`site: MCP_SERVER_URL is "${urlMatch[1]}", expected "${MCP_URL}"`);
+  }
+
+  // Validate the static fields of the buildMcpDiscovery() payload from source.
+  const discoveryMatch = siteSource.match(
+    /export function buildMcpDiscovery\([^)]*\)\s*\{([\s\S]*?)\n\}/,
+  );
+  const discoveryBody = discoveryMatch?.[1];
+  if (!discoveryBody) {
+    mcpErrors.push("site: could not find the buildMcpDiscovery() function");
+  } else {
+    if (!/\btransport:\s*"http"/.test(discoveryBody)) {
+      mcpErrors.push('site: buildMcpDiscovery transport is not "http"');
+    }
+    if (!/\burl:\s*MCP_SERVER_URL\b/.test(discoveryBody)) {
+      mcpErrors.push("site: buildMcpDiscovery url is not MCP_SERVER_URL");
+    }
+    if (!/\bauthentication:\s*"[^"]+"/.test(discoveryBody)) {
+      mcpErrors.push("site: buildMcpDiscovery server authentication is missing or empty");
+    }
+  }
+} catch (error) {
+  mcpErrors.push(`site: could not read ${siteSkillPath}: ${String(error)}`);
+}
+
+if (mcpErrors.length > 0) {
+  fail("MCP discovery", `field validation failed:\n    ${mcpErrors.join("\n    ")}`);
+} else {
+  pass(
+    "MCP discovery",
+    `docs + site valid: url "${MCP_URL}", transport http, ${docsMcp.servers.length} server(s)`,
+  );
 }
 
 // ── Report ───────────────────────────────────────────────────────────────────

@@ -114,34 +114,52 @@ products:
 
 Run the Prisma CLI with \`npx prisma\`. The typical workflow for a new project:
 
-1. **Initialize Prisma ORM.** Creates the \`prisma/\` directory with a
+1. **Set up a TypeScript project with ESM.** Initialize the project, install
+   dependencies, and enable ESM before scaffolding Prisma:
+
+   \`\`\`bash
+   npm init -y
+   npm install typescript tsx @types/node --save-dev
+   npx tsc --init
+   npm install prisma @types/pg --save-dev
+   npm install @prisma/client @prisma/adapter-pg pg dotenv
+   \`\`\`
+
+   Set \`"module": "ESNext"\` (along with \`"moduleResolution": "bundler"\`,
+   \`"target": "ES2023"\`, \`"strict": true\`, \`"esModuleInterop": true\`, and
+   \`"ignoreDeprecations": "6.0"\`) in \`tsconfig.json\`, and add
+   \`"type": "module"\` to \`package.json\`.
+
+2. **Initialize Prisma ORM.** Creates the \`prisma/\` directory with a
    \`schema.prisma\` file, a \`.env\` file, and a \`prisma.config.ts\` file:
 
    \`\`\`bash
    npx prisma init --output ../generated/prisma
    \`\`\`
 
-2. **Create a Prisma Postgres database** and copy the \`postgres://...\`
+3. **Create a Prisma Postgres database.** Ask the user for approval before
+   provisioning a hosted Prisma Postgres database — \`npx create-db\` creates a
+   cloud resource. After approval, run it and copy the \`postgres://...\`
    connection string into \`DATABASE_URL\` in your \`.env\` file:
 
    \`\`\`bash
    npx create-db
    \`\`\`
 
-3. **Create and apply a migration** after defining models in
+4. **Create and apply a migration** after defining models in
    \`prisma/schema.prisma\`. This creates the database tables based on your schema:
 
    \`\`\`bash
    npx prisma migrate dev --name init
    \`\`\`
 
-4. **Generate Prisma Client** for type-safe database access:
+5. **Generate Prisma Client** for type-safe database access:
 
    \`\`\`bash
    npx prisma generate
    \`\`\`
 
-5. **Explore your data** in Prisma Studio, a visual database editor:
+6. **Explore your data** in Prisma Studio, a visual database editor:
 
    \`\`\`bash
    npx prisma studio
