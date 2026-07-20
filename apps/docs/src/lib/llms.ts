@@ -63,6 +63,12 @@ export const commonQueries: LLMsLink[] = [
     description: "Set up Prisma ORM, Prisma Client, and Prisma Postgres in a new TypeScript app.",
   },
   {
+    title: "Try Prisma Next (Early Access)",
+    href: "/next/getting-started",
+    description:
+      "Choose a Prisma Next quickstart for a new project or add Prisma Next to an existing app.",
+  },
+  {
     title: "Connect to Prisma Postgres",
     href: "/postgres/database/connecting-to-your-database",
     description:
@@ -156,9 +162,9 @@ export const llmsSections: LLMsSection[] = [
     slug: "orm",
     title: "Prisma ORM",
     description:
-      "Current Prisma ORM docs: setup, schema modeling, Prisma Client, migrations, and references (excludes legacy v6).",
+      "Current Prisma ORM docs: setup, schema modeling, Prisma Client, migrations, and references (excludes legacy v6 and Prisma Next).",
     prefixes: ["/orm", "/prisma-orm"],
-    excludePrefixes: ["/orm/v6"],
+    excludePrefixes: ["/orm/v6", "/orm/next"],
   },
   {
     slug: "orm-v6",
@@ -166,6 +172,13 @@ export const llmsSections: LLMsSection[] = [
     description:
       "Legacy Prisma ORM v6 documentation, maintained for backwards compatibility only. Prefer the current Prisma ORM section for new work.",
     prefixes: ["/orm/v6"],
+  },
+  {
+    slug: "next",
+    title: "Prisma Next (Early Access)",
+    description:
+      "Prisma Next, the next major version of Prisma ORM, available in Early Access. A ground-up TypeScript rewrite that keeps the schema-first workflow while making it extensible, composable, and AI-agent friendly. Covers setup, ORM, guides, and CLI docs for Prisma Next.",
+    prefixes: ["/next", "/orm/next", "/guides/next", "/cli/next"],
   },
   {
     slug: "postgres",
@@ -178,8 +191,9 @@ export const llmsSections: LLMsSection[] = [
     slug: "guides",
     title: "Guides",
     description:
-      "End-to-end guides for using Prisma ORM and Prisma Postgres with popular frameworks and runtimes.",
+      "End-to-end guides for using Prisma ORM and Prisma Postgres with popular frameworks and runtimes (Prisma Next guides live in the Prisma Next section).",
     prefixes: ["/guides"],
+    excludePrefixes: ["/guides/next"],
   },
   {
     slug: "ai",
@@ -191,15 +205,24 @@ export const llmsSections: LLMsSection[] = [
   {
     slug: "cli",
     title: "Prisma CLI",
-    description: "Prisma CLI command reference for init, generate, migrate, db, studio, and more.",
+    description:
+      "Prisma CLI command reference for init, generate, migrate, db, studio, and more (Prisma Next CLI docs live in the Prisma Next section).",
     prefixes: ["/cli"],
+    excludePrefixes: ["/cli/next"],
   },
   {
     slug: "platform",
     title: "Prisma Platform",
     description:
-      "Prisma Console, Prisma Compute, and the Management API for managing projects, environments, and deployments.",
-    prefixes: ["/console", "/management-api", "/compute"],
+      "Prisma Console and the Management API for managing projects, environments, and deployments.",
+    prefixes: ["/console", "/management-api"],
+  },
+  {
+    slug: "compute",
+    title: "Prisma Compute",
+    description:
+      "Prisma Compute (Public Beta): TypeScript app hosting that runs alongside Prisma Postgres, with database branches, isolated branch previews, and a CLI-first deploy workflow.",
+    prefixes: ["/compute"],
   },
   {
     slug: "studio",
