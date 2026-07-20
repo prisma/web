@@ -22,7 +22,6 @@ gtag('consent', 'default', {
   wait_for_update: 2000
 });
 gtag('set', 'ads_data_redaction', true);
-gtag('set', 'url_passthrough', true);
 window.dataLayer.push({ site_section: ${JSON.stringify(section)} });
 
 // Bridge CookieYes consent

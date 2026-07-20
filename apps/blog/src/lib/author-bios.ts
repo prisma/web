@@ -197,6 +197,14 @@ const AUTHOR_BIOS: AuthorBio[] = [
     ],
   },
   {
+    names: ["Nikolas Burk"],
+    bio: "Nikolas was employee #3 at Prisma and spent 9 years teaching developers about ORMs and databases. He left in October 2025 to focus on his own projects and work as an independent Software Engineer and Developer Educator.",
+    socials: [
+      { platform: "x", url: "https://x.com/nikolasburk" },
+      { platform: "github", url: "https://github.com/nikolasburk" },
+    ],
+  },
+  {
     names: ["Jason Procka"],
     bio: "Jason is a passionate hobbyist web developer and a longtime Prisma aficionado. Outside of his development projects, he enjoys rock climbing and culinary arts, specifically mastering the perfect steak.",
     socials: [
