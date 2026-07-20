@@ -1,6 +1,6 @@
 import { source } from "@/lib/source";
 import { getLLMText } from "@/lib/get-llm-text";
-import { createLLMsFullResponse, filterPagesForLLMsIndex } from "@/lib/llms";
+import { createLLMsFullResponse, getLLMsFullPages } from "@/lib/llms";
 import { getBaseUrl, withDocsBasePath } from "@/lib/urls";
 
 export const revalidate = false;
@@ -20,9 +20,7 @@ For the documentation index, see ${llmsTxtUrl}.
 
 `;
 
-  const pages = filterPagesForLLMsIndex(source.getPages()).filter(
-    (page) => page.url !== "/orm/v6" && !page.url.startsWith("/orm/v6/"),
-  );
+  const pages = getLLMsFullPages(source.getPages());
 
   return createLLMsFullResponse(description, pages, getLLMText);
 }

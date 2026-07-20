@@ -21,7 +21,7 @@ type LLMsFullPage = {
   };
 };
 
-type LLMsSection = {
+export type LLMsSection = {
   slug: string;
   title: string;
   description: string;
@@ -327,6 +327,100 @@ export function filterAvailableLLMsSections(sections: LLMsSection[], pages: LLMs
 export function getLLMsSection(slug: string, pages?: LLMsPage[]) {
   const sections = pages ? filterAvailableLLMsSections(llmsSections, pages) : llmsSections;
   return sections.find((section) => section.slug === slug);
+}
+
+function sortPagesByTitle<T extends LLMsPage>(pages: T[]) {
+  return [...pages].sort((a, b) =>
+    getPageTitleText(a.data.title, a.url).localeCompare(getPageTitleText(b.data.title, b.url)),
+  );
+}
+
+/**
+ * Builds the full body of the root `llms.txt` file. Shared by the route handler
+ * (`app/llms.txt/route.ts`) and the agent-readiness guard so the guard measures
+ * exactly what the route serves. Accepts the raw source pages; filtering and
+ * sorting happen here.
+ */
+export function buildLLMsIndexContent(pages: LLMsPage[], baseUrl: string): string {
+  const latestPages = sortPagesByTitle(filterPagesForLLMsIndex(pages));
+
+  const availableSections = filterAvailableLLMsSections(llmsSections, latestPages);
+
+  const commonQueriesList = filterAvailableLLMsLinks(commonQueries, latestPages)
+    .map((link) => formatLLMsLink(link, baseUrl))
+    .join("\n");
+  const subIndexList = availableSections
+    .map((section) => formatLLMsSectionLink(section, baseUrl))
+    .join("\n");
+  const otherPages = getUnmatchedLLMsPages(latestPages, availableSections);
+  const otherPagesList = otherPages.map((page) => formatLLMsPageLink(page, baseUrl)).join("\n");
+  const otherPagesSection = otherPagesList
+    ? `
+
+## Other pages
+
+${otherPagesList}`
+    : "";
+
+  return `# Prisma Documentation
+
+> **Prisma changes frequently — verify against the changelog and current docs before implementing.**
+> Do not rely on training data for Prisma features. APIs, configuration, and conventions can change between versions.
+>
+> First, fetch https://www.prisma.io/changelog.md to check for recent or relevant breaking changes,
+> then look up the relevant topic in the documentation below.
+
+> This index links to per-area indexes below. Each area index lists its pages with descriptions.
+> Append \`.md\` to any docs page URL to fetch its Markdown. Legacy Prisma ORM v6 pages are listed under
+> the "Prisma ORM v6 (legacy)" area and are maintained for backwards compatibility only.
+
+## Common Queries
+
+${commonQueriesList}
+
+## Product Area Indexes
+
+${subIndexList}${otherPagesSection}
+
+## Options
+
+- [Full documentation with content](${baseUrl}${withDocsBasePath("/llms-full.txt")})
+`;
+}
+
+/**
+ * Builds the full body of a per-area `llms/<slug>.txt` file. Shared by the route
+ * handler (`app/llms/[...slug]/route.ts`) and the agent-readiness guard. Accepts
+ * the index-filtered pages (`filterPagesForLLMsIndex(source.getPages())`);
+ * section filtering and sorting happen here.
+ */
+export function buildLLMsSectionContent(
+  section: LLMsSection,
+  pages: LLMsPage[],
+  baseUrl: string,
+): string {
+  const sectionPages = sortPagesByTitle(filterPagesForLLMsSection(pages, section));
+  const docsList =
+    sectionPages.map((page) => formatLLMsPageLink(page, baseUrl)).join("\n") ||
+    "_No pages currently match this section._";
+
+  return `# Prisma Documentation - ${section.title}
+
+> ${section.description}
+
+${docsList}
+`;
+}
+
+/**
+ * Pages included in `llms-full.txt`: the index-filtered set (excluded products
+ * removed) minus legacy Prisma ORM v6 pages. Shared by the route handler and the
+ * guard so the exclusion rules cannot drift between them.
+ */
+export function getLLMsFullPages<T extends LLMsPage>(pages: T[]): T[] {
+  return filterPagesForLLMsIndex(pages).filter(
+    (page) => page.url !== "/orm/v6" && !page.url.startsWith("/orm/v6/"),
+  );
 }
 
 export function createLLMsFullResponse<TPage extends LLMsFullPage>(
