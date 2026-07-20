@@ -9,6 +9,7 @@ import {
   formatLLMsLink,
   formatLLMsPageLink,
   formatLLMsSectionLink,
+  getUnmatchedLLMsPages,
   llmsSections,
 } from "@/lib/llms";
 
@@ -20,13 +21,23 @@ export async function GET() {
     getPageTitleText(a.data.title, a.url).localeCompare(getPageTitleText(b.data.title, b.url)),
   );
 
+  const availableSections = filterAvailableLLMsSections(llmsSections, latestPages);
+
   const commonQueriesList = filterAvailableLLMsLinks(commonQueries, latestPages)
     .map((link) => formatLLMsLink(link, baseUrl))
     .join("\n");
-  const subIndexList = filterAvailableLLMsSections(llmsSections, latestPages)
+  const subIndexList = availableSections
     .map((section) => formatLLMsSectionLink(section, baseUrl))
     .join("\n");
-  const latestDocsList = latestPages.map((page) => formatLLMsPageLink(page, baseUrl)).join("\n");
+  const otherPages = getUnmatchedLLMsPages(latestPages, availableSections);
+  const otherPagesList = otherPages.map((page) => formatLLMsPageLink(page, baseUrl)).join("\n");
+  const otherPagesSection = otherPagesList
+    ? `
+
+## Other pages
+
+${otherPagesList}`
+    : "";
 
   const content = `# Prisma Documentation
 
@@ -36,9 +47,9 @@ export async function GET() {
 > First, fetch https://www.prisma.io/changelog.md to check for recent or relevant breaking changes,
 > then look up the relevant topic in the documentation below.
 
-> This documentation covers the current docs plus legacy v6 pages.
-> Prefer the Latest ORM section for current recommendations.
-> v6 pages are maintained for backwards compatibility only.
+> This index links to per-area indexes below. Each area index lists its pages with descriptions.
+> Append \`.md\` to any docs page URL to fetch its Markdown. Legacy Prisma ORM v6 pages are listed under
+> the "Prisma ORM v6 (legacy)" area and are maintained for backwards compatibility only.
 
 ## Common Queries
 
@@ -46,11 +57,7 @@ ${commonQueriesList}
 
 ## Product Area Indexes
 
-${subIndexList}
-
-## Latest
-
-${latestDocsList}
+${subIndexList}${otherPagesSection}
 
 ## Options
 

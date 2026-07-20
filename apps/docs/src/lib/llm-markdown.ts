@@ -374,7 +374,7 @@ function replaceComponentBlocks(
   return result;
 }
 
-function protectFencedCodeBlocks(markdown: string) {
+export function protectFencedCodeBlocks(markdown: string) {
   const blocks: string[] = [];
   const protectedMarkdown = markdown.replace(
     /^([ \t]*)([`~]{3,})[^\n]*\n[\s\S]*?^\1\2\s*$/gm,

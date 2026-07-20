@@ -26,6 +26,7 @@ type LLMsSection = {
   title: string;
   description: string;
   prefixes: string[];
+  excludePrefixes?: string[];
 };
 
 type LLMsExcludedProduct = {
@@ -145,7 +146,8 @@ export const commonQueries: LLMsLink[] = [
   {
     title: "Use Prisma Postgres with Hono on Cloudflare Workers",
     href: "/guides/frameworks/hono",
-    description: "Set up Prisma ORM and Prisma Postgres in a Hono app deployed to Cloudflare Workers.",
+    description:
+      "Set up Prisma ORM and Prisma Postgres in a Hono app deployed to Cloudflare Workers.",
   },
 ];
 
@@ -153,8 +155,17 @@ export const llmsSections: LLMsSection[] = [
   {
     slug: "orm",
     title: "Prisma ORM",
-    description: "Prisma ORM setup, schema modeling, Prisma Client, migrations, and references.",
+    description:
+      "Current Prisma ORM docs: setup, schema modeling, Prisma Client, migrations, and references (excludes legacy v6).",
     prefixes: ["/orm", "/prisma-orm"],
+    excludePrefixes: ["/orm/v6"],
+  },
+  {
+    slug: "orm-v6",
+    title: "Prisma ORM v6 (legacy)",
+    description:
+      "Legacy Prisma ORM v6 documentation, maintained for backwards compatibility only. Prefer the current Prisma ORM section for new work.",
+    prefixes: ["/orm/v6"],
   },
   {
     slug: "postgres",
@@ -162,6 +173,39 @@ export const llmsSections: LLMsSection[] = [
     description:
       "Prisma Postgres setup, connection strings, local development, operations, and guides.",
     prefixes: ["/postgres", "/prisma-postgres"],
+  },
+  {
+    slug: "guides",
+    title: "Guides",
+    description:
+      "End-to-end guides for using Prisma ORM and Prisma Postgres with popular frameworks and runtimes.",
+    prefixes: ["/guides"],
+  },
+  {
+    slug: "ai",
+    title: "Prisma & AI",
+    description:
+      "Using Prisma with AI tools and agents: MCP server, editor integrations, prompts, and tutorials.",
+    prefixes: ["/ai"],
+  },
+  {
+    slug: "cli",
+    title: "Prisma CLI",
+    description: "Prisma CLI command reference for init, generate, migrate, db, studio, and more.",
+    prefixes: ["/cli"],
+  },
+  {
+    slug: "platform",
+    title: "Prisma Platform",
+    description:
+      "Prisma Console, Prisma Compute, and the Management API for managing projects, environments, and deployments.",
+    prefixes: ["/console", "/management-api", "/compute"],
+  },
+  {
+    slug: "studio",
+    title: "Prisma Studio",
+    description: "Prisma Studio for browsing and editing data in your Prisma Postgres database.",
+    prefixes: ["/studio"],
   },
   {
     slug: "query-insights",
@@ -245,12 +289,34 @@ export function formatLLMsSectionLink(section: LLMsSection, baseUrl: string) {
   return `- [\`${section.title}\`](${href}): ${section.description}`;
 }
 
+function matchesPrefixList(url: string, prefixes: string[]) {
+  return prefixes.some((prefix) => url === prefix || url.startsWith(`${prefix}/`));
+}
+
+function pageBelongsToSection(url: string, section: LLMsSection) {
+  if (!matchesPrefixList(url, section.prefixes)) return false;
+  if (section.excludePrefixes && matchesPrefixList(url, section.excludePrefixes)) return false;
+  return true;
+}
+
 export function filterPagesForLLMsSection<T extends { url: string }>(
   pages: T[],
   section: LLMsSection,
 ) {
-  return pages.filter((page) =>
-    section.prefixes.some((prefix) => page.url === prefix || page.url.startsWith(`${prefix}/`)),
+  return pages.filter((page) => pageBelongsToSection(page.url, section));
+}
+
+/**
+ * Returns pages that are not covered by any of the provided sections. Used to
+ * guarantee full coverage in the root llms.txt: every non-excluded page must be
+ * reachable either directly in the root file or via a section file.
+ */
+export function getUnmatchedLLMsPages<T extends { url: string }>(
+  pages: T[],
+  sections: LLMsSection[],
+) {
+  return pages.filter(
+    (page) => !sections.some((section) => pageBelongsToSection(page.url, section)),
   );
 }
 
