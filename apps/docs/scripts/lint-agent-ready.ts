@@ -21,6 +21,7 @@ import { fileURLToPath } from "node:url";
 const { source } = await import("@/lib/source");
 const llms = await import("@/lib/llms");
 const { getLLMText } = await import("@/lib/get-llm-text");
+const { protectFencedCodeBlocks, protectInlineCode } = await import("@/lib/llm-markdown");
 const { withDocsBasePath } = await import("@/lib/urls");
 const { agentSkillMarkdown } = await import("@/lib/agent-skill");
 const { mcpDiscoveryDocument } = await import("@/lib/mcp-discovery");
@@ -366,6 +367,74 @@ if (mcpErrors.length > 0) {
     "MCP discovery",
     `docs + site valid: url "${MCP_URL}", transport http, ${docsMcp.servers.length} server(s)`,
   );
+}
+
+// ── Check 10: placeholder protectors are collision-safe ──────────────────────
+// Regression coverage for the protect/restore pipeline shared by llm-markdown.ts
+// and get-llm-text.ts. Adversarial inputs embed text that LOOKS like the internal
+// placeholders inside inline code and fenced blocks, plus a normal body link. A
+// correct implementation restores every input byte-for-byte and rewrites ONLY the
+// body links that sit outside code. This guards against the old sequential-replace
+// corruption (a protected span reintroducing a later token; the fenced restore
+// consuming a sentinel reintroduced by an inline span).
+{
+  // Mirror absolutizeInBodyLinks exactly: fences first, then inline spans, rewrite
+  // the body links in between, then restore inline then fences.
+  const runPipeline = (markdown: string) => {
+    const fences = protectFencedCodeBlocks(markdown);
+    const inline = protectInlineCode(fences.markdown);
+    const rewritten = inline.markdown.replace(/\]\((\/[^)\s]*)\)/g, (full, target: string) => {
+      if (target.startsWith("//")) return full;
+      return `](https://www.prisma.io${target})`;
+    });
+    return fences.restore(inline.restore(rewritten));
+  };
+
+  const fence = "```";
+  const cases: { name: string; input: string; expected: string }[] = [
+    {
+      name: "inline code containing old-format placeholder text is preserved",
+      input: "Use `__LLM_INLINE_CODE_1__` and `__LLM_FENCED_CODE_BLOCK_0__` literally here.",
+      expected: "Use `__LLM_INLINE_CODE_1__` and `__LLM_FENCED_CODE_BLOCK_0__` literally here.",
+    },
+    {
+      name: "fenced block containing inline-sentinel-looking text + body link is preserved",
+      input: `${fence}\n__LLM_INLINE_CODE_0__ and [x](/orm/a)\n${fence}`,
+      expected: `${fence}\n__LLM_INLINE_CODE_0__ and [x](/orm/a)\n${fence}`,
+    },
+    {
+      name: "link inside inline code is NOT rewritten",
+      input: "See `[label](/orm/foo)` inline.",
+      expected: "See `[label](/orm/foo)` inline.",
+    },
+    {
+      name: "body link outside code IS rewritten",
+      input: "See [label](/orm/foo) here.",
+      expected: "See [label](https://www.prisma.io/orm/foo) here.",
+    },
+    {
+      name: "mixed: body link rewrites while placeholder-looking code stays verbatim",
+      input: `Body [a](/x) then \`__LLM_FENCED_CODE_BLOCK_0__\` then\n${fence}\ncode [b](/y)\n${fence}\nend.`,
+      expected: `Body [a](https://www.prisma.io/x) then \`__LLM_FENCED_CODE_BLOCK_0__\` then\n${fence}\ncode [b](/y)\n${fence}\nend.`,
+    },
+  ];
+
+  const protectorFailures = cases.flatMap((testCase) => {
+    const actual = runPipeline(testCase.input);
+    if (actual === testCase.expected) return [];
+    return [
+      `${testCase.name}\n      expected: ${JSON.stringify(testCase.expected)}\n      actual:   ${JSON.stringify(actual)}`,
+    ];
+  });
+
+  if (protectorFailures.length > 0) {
+    fail(
+      "Protector round-trip",
+      `${protectorFailures.length} of ${cases.length} case(s) failed:\n    ${protectorFailures.join("\n    ")}`,
+    );
+  } else {
+    pass("Protector round-trip", `all ${cases.length} adversarial protect/restore cases pass`);
+  }
 }
 
 // ── Report ───────────────────────────────────────────────────────────────────
