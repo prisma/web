@@ -333,6 +333,7 @@ export async function generateMetadata({
       canonical: withBlogBasePath(page.url),
     },
     openGraph: {
+      siteName: "Prisma",
       title,
       description,
       url: withBlogBasePath(page.url),

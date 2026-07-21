@@ -1,5 +1,5 @@
 import { getBaseUrl } from "@/lib/url";
-import { SITE_HOME_DESCRIPTION } from "@/lib/site-metadata";
+import { SITE_HOME_DESCRIPTION, SITE_NAME } from "@/lib/site-metadata";
 
 type FaqEntry = {
   question: string;
@@ -39,7 +39,7 @@ export function createSiteStructuredData() {
       {
         "@type": "Organization",
         "@id": `${baseUrl}#organization`,
-        name: "Prisma",
+        name: SITE_NAME,
         url: baseUrl,
         description,
         logo: absoluteUrl("/images/logo.svg"),
@@ -52,9 +52,13 @@ export function createSiteStructuredData() {
         ],
       },
       {
+        // The single WebSite entity for prisma.io. Docs and blog deliberately
+        // do not declare their own — competing WebSite nodes on one domain give
+        // Google more than one candidate for the site name.
         "@type": "WebSite",
         "@id": `${baseUrl}#website`,
-        name: "Prisma",
+        name: SITE_NAME,
+        alternateName: "Prisma.io",
         url: baseUrl,
         description,
         publisher: {

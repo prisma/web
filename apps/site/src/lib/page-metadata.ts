@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getBaseUrl } from "@/lib/url";
+import { SITE_NAME } from "@/lib/site-metadata";
 
 type PageMetadataOptions = {
   title: string;
@@ -8,12 +9,23 @@ type PageMetadataOptions = {
   ogImage?: string;
 };
 
+/**
+ * Google rewrites a title link when the title doesn't identify the site,
+ * falling back to whatever inbound links call the page. Titles here are
+ * inconsistent about carrying the brand, so add it where it's missing rather
+ * than blanket-appending and ending up with "Prisma ORM | Prisma".
+ */
+function withSiteName(title: string): string {
+  return title.includes(SITE_NAME) ? title : `${title} | ${SITE_NAME}`;
+}
+
 export function createPageMetadata({
-  title,
+  title: rawTitle,
   description,
   path,
   ogImage = "/og/og-index.png",
 }: PageMetadataOptions): Metadata {
+  const title = withSiteName(rawTitle);
   const pathname = path === "/" ? "/" : path.startsWith("/") ? path : `/${path}`;
   const baseUrl = getBaseUrl();
   const url = new URL(pathname, baseUrl).toString();
