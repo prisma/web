@@ -126,6 +126,7 @@ export async function generateMetadata({
       canonical: withDocsBasePath(page.url),
     },
     openGraph: {
+      siteName: "Prisma",
       title,
       description,
       url: withDocsBasePath(page.url),

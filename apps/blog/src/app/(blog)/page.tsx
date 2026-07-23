@@ -33,6 +33,7 @@ export async function generateMetadata(): Promise<Metadata> {
       canonical: withBlogBasePath("/"),
     },
     openGraph: {
+      siteName: "Prisma",
       type: "website",
       title: BLOG_HOME_TITLE,
       description: BLOG_HOME_DESCRIPTION,
