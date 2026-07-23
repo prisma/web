@@ -218,7 +218,7 @@ export const metadata = createPageMetadata({
 
 const homeStructuredData = createCollectionPageStructuredData({
   path: "/",
-  name: "Agent Infrastructure for TypeScript",
+  name: SITE_HOME_TITLE,
   description: SITE_HOME_DESCRIPTION,
   items: [
     {
