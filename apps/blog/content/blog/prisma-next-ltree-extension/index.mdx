@@ -1,0 +1,189 @@
+---
+title: "Extending Prisma Next with Typed Postgres ltree"
+slug: "prisma-next-ltree-extension"
+date: "2026-07-20"
+authors:
+  - "Jason Procka"
+metaTitle: "Extending Prisma Next with Typed Postgres ltree"
+metaDescription: "Use PostgreSQL ltree in Prisma Next with prisma-ltree: typed path columns plus ancestor and descendant queries."
+heroImagePath: "/prisma-next-ltree-extension/imgs/hero.svg"
+heroImageAlt: "Typed ltree for Prisma Next: the prisma-ltree extension pack shown as a hierarchical path tree"
+metaImagePath: "/prisma-next-ltree-extension/imgs/meta.png"
+tags:
+  - "orm"
+  - "education"
+series: prisma-next
+seriesIndex: 11
+---
+
+I needed nested collections for a personal writing project: texts and collections at arbitrary depth, like a category tree of documents. PostgreSQL's [`ltree`](https://www.postgresql.org/docs/current/ltree.html) extension stores those hierarchical paths (for example `essays.drafts.chapter_1`) with native operators for ancestors, descendants, and shared parents. Prisma never shipped an `ltree` type, so I built [`prisma-ltree`](https://github.com/slovakian/prisma-ltree) for [Prisma Next](https://www.prisma.io/docs/orm/next): typed columns, operators, path validation, and database setup as a community extension pack.
+
+For years, as a Prisma user, a type the ORM didn't model meant reaching for whatever it did support: occasional raw SQL, later typed SQL once that shipped, but mostly just the models Prisma made easy. If the ORM didn't model something, I usually didn't bother with it.
+
+## Common hierarchy patterns (and their costs)
+
+For nested collections I considered three common patterns:
+
+- **Parent references** (`parent_id`): This works for a node's parent or children. Finding every descendant needs a `WITH RECURSIVE` query: fine for shallow trees, heavier once you want the whole subtree in one shot without walking the recursion yourself.
+- **Text paths** (`'essays/drafts/chapter-1'`): `LIKE 'essays/%'` finds descendants in one scan. You skip the recursion, but you also skip hierarchy-specific operators, shared-parent helpers, and a real pattern language. A label with `/` or `%` breaks your predicates.
+- **Nested sets** (`lft`/`rgt`): Subtree reads are cheap, then every insert renumbers a range of rows. Fine for a tree you build once. Rough for anything that keeps changing.
+
+Postgres has had `ltree` since 2002. It stores dotted paths and exposes `@>` / `<@` for ancestor and descendant checks, `lquery` (Postgres's path pattern type) for subtree matches, and `lca` (lowest common ancestor) when you need the shared ancestor. It is also a trusted extension, so on a self-managed Postgres any role with `CREATE` can install it (managed hosts may still gate `CREATE EXTENSION`).
+
+Hierarchies like this show up in category trees, file systems, org charts, and taxonomies. An org chart path like `company.engineering.platform` uses the same shape as `essays.drafts.chapter_1`, and [Prisma users have asked for native `ltree` support](https://github.com/prisma/prisma/issues/2568) since May 2020, alongside plenty of similar requests for other database features.
+
+Once this project needed a real tree type, Prisma Next's extension system let me add `ltree` without waiting for it to land in core, exactly the gap the [call for extension authors](/prisma-next-call-for-extension-authors) invites the community to fill. I leaned on an agent while reading the Prisma Next codebase; that made understanding the extension model, and then writing the pack, faster than digging through it by hand alone.
+
+## Using `ltree` with Prisma Next
+
+A pack is an extension package that contributes types, migrations, and runtime operators to Prisma Next. `prisma-ltree` plugs in the same way other Postgres extension packages do (`pgvector`, `postgis`). Setup is six steps. The samples below match the pack's `examples/family-tree` app: pin `@prisma-next/*` to `0.14.0`.
+
+**1. Install `prisma-ltree`**
+
+```bash
+npm install prisma-ltree
+```
+
+**2. Register the control extension**
+
+Control config and the runtime client both take an `extensions` array. Control is where the pack contributes schema types and migrations:
+
+```typescript
+// prisma-next.config.ts
+import { defineConfig } from "@prisma-next/postgres/config";
+import ltree from "prisma-ltree/control";
+
+export default defineConfig({
+  contract: "./prisma/contract.prisma",
+  extensions: [ltree],
+  db: { connection: process.env.DATABASE_URL! },
+});
+```
+
+**3. Register the runtime extension**
+
+The runtime client registers the same pack so the typed operators show up where queries actually run:
+
+```typescript
+// prisma/db.ts
+import postgres from "@prisma-next/postgres/runtime";
+import ltree from "prisma-ltree/runtime";
+import type { Contract } from "./contract.d";
+import contractJson from "./contract.json" with { type: "json" };
+
+export const db = postgres<Contract>({
+  contractJson,
+  extensions: [ltree],
+  url: process.env.DATABASE_URL!,
+});
+```
+
+**4. Define an `ltree` column**
+
+Columns use the same `pack.Type()` style as the official Postgres packs. Each `Collection` row stores its place in the tree on `path`. Each `Text` row also stores a `path` under that collection (for example a text in Drafts might be `essays.drafts.chapter_1`), and `collectionId` is the ordinary foreign key back to the parent collection. Keeping those two in sync is application code: the pack validates path shape, not relational consistency.
+
+```prisma
+// contract.prisma
+types {
+  Path = ltree.Ltree()
+}
+
+model Collection {
+  id   String @id @default(uuid())
+  name String
+  path Path
+
+  @@map("collection")
+}
+
+model Text {
+  id           String @id @default(uuid())
+  title        String
+  collectionId String
+  path         Path
+
+  @@map("text")
+}
+```
+
+There is a TypeScript schema lane too, with the same compiled output as PSL (Prisma Schema Language). I prefer PSL, but either works.
+
+**5. Initialize the database**
+
+The pack ships a baseline migration that runs `CREATE EXTENSION IF NOT EXISTS ltree`. On a fresh project: `npx prisma-next contract emit`, then `npx prisma-next migration plan`, then `npx prisma-next db init`.
+
+**6. Insert and query paths**
+
+Labels are alphanumeric plus `_` and `-`, joined by dots. Writing them is ordinary insert code; the codec (the converter between TypeScript values and Postgres `ltree`) validates the path shape on the way in:
+
+```typescript
+await db.runtime().execute(
+  db.sql.public.collection
+    .insert([
+      { path: "essays", name: "Essays" },
+      { path: "essays.drafts", name: "Drafts" },
+    ])
+    .returning("id", "path")
+    .build(),
+);
+```
+
+**Everything under a collection** (inclusive of the node itself):
+
+```typescript
+import { db } from "./prisma/db";
+
+const underEssays = await db.orm.public.Collection.where((t) =>
+  t.path.isDescendantOf("essays"),
+).all();
+// SQL: path <@ $1::ltree
+```
+
+`isDescendantOf(prefix)` matches paths that sit under that prefix. `isAncestorOf` is the mirror. Both match Postgres `@>` / `<@` semantics, including the node itself. For my collections model, that fetches a collection and everything nested under it without a recursive CTE.
+
+**Direct children only**, with `lquery`:
+
+```typescript
+await db.orm.public.Collection.where((t) =>
+  t.path.matchesLquery("essays.*{1}"),
+).all();
+// SQL: path ~ $1::lquery
+// essays.*{1} → essays.drafts
+// bare essays.* → also essays.drafts.chapter_1
+```
+
+`*{1}` means exactly one label at that position, so `essays.*{1}` matches direct children such as `essays.drafts` and skips deeper paths like `essays.drafts.chapter_1`. A bare `essays.*` looks almost the same and is easy to type accidentally, but `*` means zero or more labels, so it also matches `essays` itself and deeper paths like that grandchild. That footgun belongs to `lquery`, and the pack does not hide it.
+
+**Where two branches meet**, with `lca`:
+
+```typescript
+const plan = db.sql.public.text
+  .select("branch", (f, fns) =>
+    fns.lca(f.path, "essays.published.chapter_3"),
+  )
+  .where((f, fns) => fns.eq(f.path, "essays.drafts.chapter_1"))
+  .limit(1)
+  .build();
+// SQL: lca(path, $1::ltree)
+await db.runtime().execute(plan);
+```
+
+That call asks Postgres for `lca('essays.drafts.chapter_1', 'essays.published.chapter_3')`, which returns the lowest common ancestor: here `essays`. Note the Postgres quirk: when one path is a prefix of the other, `lca` returns the ancestor *above* the shorter path (`lca('1.2.3', '1.2.3.4.5.6')` → `1.2`), not the shorter path itself. The same operator works for an org chart path like `company.engineering.platform` or a taxonomy path like `animals.primates.hominidae`.
+
+Those three cover the queries I needed for nested collections. The pack also exposes more of the `ltree` operator set, including `matchesLqueryArray` for matching against a list of patterns, `matchesLtxtquery` for full-text-style label search, and casts like `toLtree` for bridging from plain `text` columns. It does not claim every Postgres `ltree` feature (GiST DDL in schema is still out of scope). The [operator reference](https://prisma-ltree.procka.org) lists what ships, with the SQL each one compiles to.
+
+## Early Access
+
+Prisma Next and `prisma-ltree` are both Early Access, so give them a try and share your feedback as we continue improving them. Community packs can still add Postgres types like `ltree` without waiting for every feature to land in core.
+
+The operators above, `isDescendantOf`, `isAncestorOf`, `matchesLquery`, and `lca`, are what I actually use for this tree. Typed `ltree` columns and path validation are there too.
+
+What you cannot do yet is declare GiST indexes for `ltree` columns in your Prisma schema. Those are the indexes that make ancestor and descendant lookups fast. For a small table, scanning every row is fine. Once the table gets large enough that those scans start to hurt, create the index yourself in SQL for now. The typed operators still work either way.
+
+## Try it
+
+You can find docs and the operator reference at [prisma-ltree.procka.org](https://prisma-ltree.procka.org), and the source on [GitHub](https://github.com/slovakian/prisma-ltree).
+
+If you would rather poke at a taxonomy than at writing collections, the repo also contains an [`examples/family-tree` app](https://github.com/slovakian/prisma-ltree/tree/main/examples/family-tree) that seeds a Tree of Life and uses the same operators. The examples run against any Postgres where you can `CREATE EXTENSION`; if you want a hosted database to point them at, [Prisma Postgres](https://www.prisma.io/docs/postgres) has `ltree` on its [supported extensions list](https://www.prisma.io/docs/postgres/database/postgres-extensions).
+
+Try the package, and [open an issue](https://github.com/slovakian/prisma-ltree/issues) if you hit something rough or want something the pack does not cover yet. If you build something cool with it, tag me on X at [@pinesheet](https://x.com/pinesheet).

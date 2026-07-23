@@ -374,12 +374,50 @@ function replaceComponentBlocks(
   return result;
 }
 
-function protectFencedCodeBlocks(markdown: string) {
+// Base sentinel delimiter built from Unicode Private Use Area characters, which
+// cannot legitimately appear in MDX source. Real placeholder text a page might
+// discuss (e.g. `__LLM_INLINE_CODE_1__`) can never look like one of these
+// tokens, so protected content is never mistaken for a placeholder.
+const SENTINEL_DELIMITER = "\uE000\uE001";
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Builds a collision-free placeholder scheme for one protector.
+ *
+ * The delimiter starts from PUA characters that cannot appear in MDX source and
+ * is lengthened deterministically until it is guaranteed absent from `input`, so
+ * a token can never collide with real content — including content that literally
+ * spells out one of these placeholders. `label` keeps the two protectors' tokens
+ * distinct so restoring one protector never touches the other's placeholders
+ * (cross-protector safety). `restore` performs a single left-to-right pass and so
+ * never rescans already-substituted content, which removes the corruption that a
+ * sequential per-token replace loop could introduce.
+ */
+function createProtector(input: string, label: string) {
+  let delimiter = SENTINEL_DELIMITER;
+  while (input.includes(delimiter)) delimiter += "\uE000";
+
+  const boundary = escapeRegExp(delimiter);
+  const pattern = new RegExp(`${boundary}${label}_(\\d+)${boundary}`, "g");
+
+  return {
+    token: (index: number) => `${delimiter}${label}_${index}${delimiter}`,
+    restore(value: string, blocks: readonly string[]) {
+      return value.replace(pattern, (match, index: string) => blocks[Number(index)] ?? match);
+    },
+  };
+}
+
+export function protectFencedCodeBlocks(markdown: string) {
   const blocks: string[] = [];
+  const protector = createProtector(markdown, "LLM_FENCED_CODE_BLOCK");
   const protectedMarkdown = markdown.replace(
     /^([ \t]*)([`~]{3,})[^\n]*\n[\s\S]*?^\1\2\s*$/gm,
     (match) => {
-      const token = `__LLM_FENCED_CODE_BLOCK_${blocks.length}__`;
+      const token = protector.token(blocks.length);
       blocks.push(match);
       return token;
     },
@@ -388,10 +426,31 @@ function protectFencedCodeBlocks(markdown: string) {
   return {
     markdown: protectedMarkdown,
     restore(value: string) {
-      return blocks.reduce(
-        (text, block, index) => text.replace(`__LLM_FENCED_CODE_BLOCK_${index}__`, block),
-        value,
-      );
+      return protector.restore(value, blocks);
+    },
+  };
+}
+
+/**
+ * Protects inline code spans (single or multiple backticks on a single line) so
+ * their literal contents — including markdown link syntax like `[label](/path)` —
+ * are left untouched by downstream text rewrites, then restored afterwards.
+ * Protect fenced code blocks FIRST, then inline spans, so the backticks that open
+ * and close a fence are never mistaken for an inline span.
+ */
+export function protectInlineCode(markdown: string) {
+  const spans: string[] = [];
+  const protector = createProtector(markdown, "LLM_INLINE_CODE");
+  const protectedMarkdown = markdown.replace(/(`+)[^\n]+?\1/g, (match) => {
+    const token = protector.token(spans.length);
+    spans.push(match);
+    return token;
+  });
+
+  return {
+    markdown: protectedMarkdown,
+    restore(value: string) {
+      return protector.restore(value, spans);
     },
   };
 }

@@ -16,6 +16,7 @@ A skill is a folder with a `SKILL.md` (the instructions) and sometimes `referenc
 | [`content-write-blog`](content-write-blog/SKILL.md) | Scaffold a new Prisma blog post (frontmatter + section stubs) | "Draft a blog post about connection pooling" |
 | [`content-create-hero-image`](content-create-hero-image/SKILL.md) | Generate a post's hero (SVG) and social/OG image (PNG) in the Eclipse house style | "Create a cover image for my Compute post" |
 | [`docs-writer`](docs-writer/README.md) | Write or rewrite developer docs (how-to, concept, reference) | "Write a how-to for deploying to Prisma Compute" |
+| [`docs-agent-ready`](docs-agent-ready/SKILL.md) | Hold the docs' agent-readiness invariants (llms.txt budgets, coverage, skill/MCP endpoints) when editing them | "Add a new docs section to llms.txt" |
 
 ---
 

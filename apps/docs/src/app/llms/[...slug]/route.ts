@@ -1,12 +1,10 @@
 import {
+  buildLLMsSectionContent,
   filterAvailableLLMsSections,
   filterPagesForLLMsIndex,
-  filterPagesForLLMsSection,
-  formatLLMsPageLink,
   getLLMsSection,
   llmsSections,
 } from "@/lib/llms";
-import { getPageTitleText } from "@/lib/page-title";
 import { source } from "@/lib/source";
 import { getBaseUrl } from "@/lib/urls";
 import { notFound } from "next/navigation";
@@ -24,20 +22,7 @@ export async function GET(_req: Request, { params }: RouteContext<"/llms/[...slu
   const section = getLLMsSection(parseSectionSlug(slug), sourcePages);
   if (!section) notFound();
 
-  const baseUrl = getBaseUrl();
-  const pages = filterPagesForLLMsSection(sourcePages, section).sort((a, b) =>
-    getPageTitleText(a.data.title, a.url).localeCompare(getPageTitleText(b.data.title, b.url)),
-  );
-  const docsList =
-    pages.map((page) => formatLLMsPageLink(page, baseUrl)).join("\n") ||
-    "_No pages currently match this section._";
-
-  const content = `# Prisma Documentation - ${section.title}
-
-> ${section.description}
-
-${docsList}
-`;
+  const content = buildLLMsSectionContent(section, sourcePages, getBaseUrl());
 
   return new Response(content, {
     headers: {

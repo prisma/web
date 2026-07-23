@@ -21,11 +21,12 @@ type LLMsFullPage = {
   };
 };
 
-type LLMsSection = {
+export type LLMsSection = {
   slug: string;
   title: string;
   description: string;
   prefixes: string[];
+  excludePrefixes?: string[];
 };
 
 type LLMsExcludedProduct = {
@@ -60,6 +61,12 @@ export const commonQueries: LLMsLink[] = [
     title: "Start a new Prisma ORM project",
     href: "/prisma-orm/quickstart/prisma-postgres",
     description: "Set up Prisma ORM, Prisma Client, and Prisma Postgres in a new TypeScript app.",
+  },
+  {
+    title: "Try Prisma Next (Early Access)",
+    href: "/next/getting-started",
+    description:
+      "Choose a Prisma Next quickstart for a new project or add Prisma Next to an existing app.",
   },
   {
     title: "Connect to Prisma Postgres",
@@ -145,7 +152,8 @@ export const commonQueries: LLMsLink[] = [
   {
     title: "Use Prisma Postgres with Hono on Cloudflare Workers",
     href: "/guides/frameworks/hono",
-    description: "Set up Prisma ORM and Prisma Postgres in a Hono app deployed to Cloudflare Workers.",
+    description:
+      "Set up Prisma ORM and Prisma Postgres in a Hono app deployed to Cloudflare Workers.",
   },
 ];
 
@@ -153,8 +161,24 @@ export const llmsSections: LLMsSection[] = [
   {
     slug: "orm",
     title: "Prisma ORM",
-    description: "Prisma ORM setup, schema modeling, Prisma Client, migrations, and references.",
+    description:
+      "Current Prisma ORM docs: setup, schema modeling, Prisma Client, migrations, and references (excludes legacy v6 and Prisma Next).",
     prefixes: ["/orm", "/prisma-orm"],
+    excludePrefixes: ["/orm/v6", "/orm/next"],
+  },
+  {
+    slug: "orm-v6",
+    title: "Prisma ORM v6 (legacy)",
+    description:
+      "Legacy Prisma ORM v6 documentation, maintained for backwards compatibility only. Prefer the current Prisma ORM section for new work.",
+    prefixes: ["/orm/v6"],
+  },
+  {
+    slug: "next",
+    title: "Prisma Next (Early Access)",
+    description:
+      "Prisma Next, the next major version of Prisma ORM, available in Early Access. A ground-up TypeScript rewrite that keeps the schema-first workflow while making it extensible, composable, and AI-agent friendly. Covers setup, ORM, guides, and CLI docs for Prisma Next.",
+    prefixes: ["/next", "/orm/next", "/guides/next", "/cli/next"],
   },
   {
     slug: "postgres",
@@ -162,6 +186,49 @@ export const llmsSections: LLMsSection[] = [
     description:
       "Prisma Postgres setup, connection strings, local development, operations, and guides.",
     prefixes: ["/postgres", "/prisma-postgres"],
+  },
+  {
+    slug: "guides",
+    title: "Guides",
+    description:
+      "End-to-end guides for using Prisma ORM and Prisma Postgres with popular frameworks and runtimes (Prisma Next guides live in the Prisma Next section).",
+    prefixes: ["/guides"],
+    excludePrefixes: ["/guides/next"],
+  },
+  {
+    slug: "ai",
+    title: "Prisma & AI",
+    description:
+      "Using Prisma with AI tools and agents: MCP server, editor integrations, prompts, and tutorials.",
+    prefixes: ["/ai"],
+  },
+  {
+    slug: "cli",
+    title: "Prisma CLI",
+    description:
+      "Prisma CLI command reference for init, generate, migrate, db, studio, and more (Prisma Next CLI docs live in the Prisma Next section).",
+    prefixes: ["/cli"],
+    excludePrefixes: ["/cli/next"],
+  },
+  {
+    slug: "platform",
+    title: "Prisma Platform",
+    description:
+      "Prisma Console and the Management API for managing projects, environments, and deployments.",
+    prefixes: ["/console", "/management-api"],
+  },
+  {
+    slug: "compute",
+    title: "Prisma Compute",
+    description:
+      "Prisma Compute (Public Beta): TypeScript app hosting that runs alongside Prisma Postgres, with database branches, isolated branch previews, and a CLI-first deploy workflow.",
+    prefixes: ["/compute"],
+  },
+  {
+    slug: "studio",
+    title: "Prisma Studio",
+    description: "Prisma Studio for browsing and editing data in your Prisma Postgres database.",
+    prefixes: ["/studio"],
   },
   {
     slug: "query-insights",
@@ -245,12 +312,34 @@ export function formatLLMsSectionLink(section: LLMsSection, baseUrl: string) {
   return `- [\`${section.title}\`](${href}): ${section.description}`;
 }
 
+function matchesPrefixList(url: string, prefixes: string[]) {
+  return prefixes.some((prefix) => url === prefix || url.startsWith(`${prefix}/`));
+}
+
+function pageBelongsToSection(url: string, section: LLMsSection) {
+  if (!matchesPrefixList(url, section.prefixes)) return false;
+  if (section.excludePrefixes && matchesPrefixList(url, section.excludePrefixes)) return false;
+  return true;
+}
+
 export function filterPagesForLLMsSection<T extends { url: string }>(
   pages: T[],
   section: LLMsSection,
 ) {
-  return pages.filter((page) =>
-    section.prefixes.some((prefix) => page.url === prefix || page.url.startsWith(`${prefix}/`)),
+  return pages.filter((page) => pageBelongsToSection(page.url, section));
+}
+
+/**
+ * Returns pages that are not covered by any of the provided sections. Used to
+ * guarantee full coverage in the root llms.txt: every non-excluded page must be
+ * reachable either directly in the root file or via a section file.
+ */
+export function getUnmatchedLLMsPages<T extends { url: string }>(
+  pages: T[],
+  sections: LLMsSection[],
+) {
+  return pages.filter(
+    (page) => !sections.some((section) => pageBelongsToSection(page.url, section)),
   );
 }
 
@@ -261,6 +350,100 @@ export function filterAvailableLLMsSections(sections: LLMsSection[], pages: LLMs
 export function getLLMsSection(slug: string, pages?: LLMsPage[]) {
   const sections = pages ? filterAvailableLLMsSections(llmsSections, pages) : llmsSections;
   return sections.find((section) => section.slug === slug);
+}
+
+function sortPagesByTitle<T extends LLMsPage>(pages: T[]) {
+  return [...pages].sort((a, b) =>
+    getPageTitleText(a.data.title, a.url).localeCompare(getPageTitleText(b.data.title, b.url)),
+  );
+}
+
+/**
+ * Builds the full body of the root `llms.txt` file. Shared by the route handler
+ * (`app/llms.txt/route.ts`) and the agent-readiness guard so the guard measures
+ * exactly what the route serves. Accepts the raw source pages; filtering and
+ * sorting happen here.
+ */
+export function buildLLMsIndexContent(pages: LLMsPage[], baseUrl: string): string {
+  const latestPages = sortPagesByTitle(filterPagesForLLMsIndex(pages));
+
+  const availableSections = filterAvailableLLMsSections(llmsSections, latestPages);
+
+  const commonQueriesList = filterAvailableLLMsLinks(commonQueries, latestPages)
+    .map((link) => formatLLMsLink(link, baseUrl))
+    .join("\n");
+  const subIndexList = availableSections
+    .map((section) => formatLLMsSectionLink(section, baseUrl))
+    .join("\n");
+  const otherPages = getUnmatchedLLMsPages(latestPages, availableSections);
+  const otherPagesList = otherPages.map((page) => formatLLMsPageLink(page, baseUrl)).join("\n");
+  const otherPagesSection = otherPagesList
+    ? `
+
+## Other pages
+
+${otherPagesList}`
+    : "";
+
+  return `# Prisma Documentation
+
+> **Prisma changes frequently — verify against the changelog and current docs before implementing.**
+> Do not rely on training data for Prisma features. APIs, configuration, and conventions can change between versions.
+>
+> First, fetch https://www.prisma.io/changelog.md to check for recent or relevant breaking changes,
+> then look up the relevant topic in the documentation below.
+
+> This index links to per-area indexes below. Each area index lists its pages with descriptions.
+> Append \`.md\` to any docs page URL to fetch its Markdown. Legacy Prisma ORM v6 pages are listed under
+> the "Prisma ORM v6 (legacy)" area and are maintained for backwards compatibility only.
+
+## Common Queries
+
+${commonQueriesList}
+
+## Product Area Indexes
+
+${subIndexList}${otherPagesSection}
+
+## Options
+
+- [Full documentation with content](${baseUrl}${withDocsBasePath("/llms-full.txt")})
+`;
+}
+
+/**
+ * Builds the full body of a per-area `llms/<slug>.txt` file. Shared by the route
+ * handler (`app/llms/[...slug]/route.ts`) and the agent-readiness guard. Accepts
+ * the index-filtered pages (`filterPagesForLLMsIndex(source.getPages())`);
+ * section filtering and sorting happen here.
+ */
+export function buildLLMsSectionContent(
+  section: LLMsSection,
+  pages: LLMsPage[],
+  baseUrl: string,
+): string {
+  const sectionPages = sortPagesByTitle(filterPagesForLLMsSection(pages, section));
+  const docsList =
+    sectionPages.map((page) => formatLLMsPageLink(page, baseUrl)).join("\n") ||
+    "_No pages currently match this section._";
+
+  return `# Prisma Documentation - ${section.title}
+
+> ${section.description}
+
+${docsList}
+`;
+}
+
+/**
+ * Pages included in `llms-full.txt`: the index-filtered set (excluded products
+ * removed) minus legacy Prisma ORM v6 pages. Shared by the route handler and the
+ * guard so the exclusion rules cannot drift between them.
+ */
+export function getLLMsFullPages<T extends LLMsPage>(pages: T[]): T[] {
+  return filterPagesForLLMsIndex(pages).filter(
+    (page) => page.url !== "/orm/v6" && !page.url.startsWith("/orm/v6/"),
+  );
 }
 
 export function createLLMsFullResponse<TPage extends LLMsFullPage>(

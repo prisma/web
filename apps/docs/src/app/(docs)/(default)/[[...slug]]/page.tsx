@@ -31,8 +31,29 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
   const aiPromptSlug = (page.data as { aiPrompt?: string }).aiPrompt;
   const promptContent = aiPromptSlug ? await getPromptContent(aiPromptSlug) : null;
 
+  const pageMarkdownUrl = `https://www.prisma.io${withDocsBasePath(page.url)}.md`;
+
   return (
     <>
+      <div
+        data-markdown-ignore
+        style={{
+          position: "absolute",
+          width: 1,
+          height: 1,
+          padding: 0,
+          margin: -1,
+          overflow: "hidden",
+          clip: "rect(0, 0, 0, 0)",
+          whiteSpace: "nowrap",
+          border: 0,
+        }}
+      >
+        For the complete Prisma documentation index optimized for AI agents, see{" "}
+        <a href="https://www.prisma.io/docs/llms.txt">https://www.prisma.io/docs/llms.txt</a>. A
+        markdown version of this page is available at{" "}
+        <a href={pageMarkdownUrl}>{pageMarkdownUrl}</a> (append <code>.md</code> to any docs URL).
+      </div>
       <TechArticleSchema page={page} />
       <BreadcrumbSchema page={page} />
       <DocsPage
@@ -44,7 +65,7 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
       >
         <div className="flex flex-col md:flex-row items-start gap-4 pt-2 pb-1 md:justify-between">
           <DocsTitle>{page.data.title}</DocsTitle>
-          <div className="flex flex-row gap-2 items-center">
+          <div className="flex flex-row gap-2 items-center" data-markdown-ignore>
             {promptContent && <CopyPromptButton fullPrompt={promptContent.fullPrompt} />}
             {!page.url.startsWith("/management-api/endpoints") && (
               <LLMCopyButton markdownUrl={`${withDocsBasePath(page.url)}.mdx`} />
@@ -64,7 +85,10 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
             })}
           />
         </DocsBody>
-        <div className="flex flex-row flex-wrap items-center justify-between gap-4 border-t pt-6 text-sm">
+        <div
+          className="flex flex-row flex-wrap items-center justify-between gap-4 border-t pt-6 text-sm"
+          data-markdown-ignore
+        >
           <EditOnGitHub
             href={`https://github.com/prisma/docs/edit/main/apps/docs/content/docs/${page.path}`}
           />

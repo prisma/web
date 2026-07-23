@@ -1,5 +1,9 @@
 import { source } from "@/lib/source";
-import { normalizeProcessedMarkdown } from "@/lib/llm-markdown";
+import {
+  normalizeProcessedMarkdown,
+  protectFencedCodeBlocks,
+  protectInlineCode,
+} from "@/lib/llm-markdown";
 import { getPageTitleText } from "@/lib/page-title";
 import { getBaseUrl, withDocsBasePath } from "@/lib/urls";
 import type { InferPageType } from "fumadocs-core/source";
@@ -173,10 +177,57 @@ function formatRelatedPages(relatedPages: RelatedPageLink[]) {
   return `\n\n## Related pages\n\n${links}`;
 }
 
+/**
+ * Rewrites in-body markdown links so the full feed and per-page markdown resolve
+ * correctly when read outside the app. Root-relative links (`/orm/...`) do not
+ * carry the `/docs` base path in the processed markdown, so an agent resolving
+ * them against the feed URL would drop `/docs`. We resolve each link against the
+ * docs source: known docs pages become absolute `<baseUrl>/docs/...` URLs, while
+ * links that are not docs pages (e.g. `/pricing`) become site-root URLs so they
+ * are not wrongly prefixed with `/docs`. Absolute, protocol-relative (`//`),
+ * anchor-only, and relative (`./`, `../`) links are left untouched.
+ */
+function resolveInBodyHref(target: string, page: DocsPage, baseUrl: string) {
+  const hashIndex = target.indexOf("#");
+  const hash = hashIndex === -1 ? "" : target.slice(hashIndex);
+  const path = hashIndex === -1 ? target : target.slice(0, hashIndex);
+
+  const resolved = getPageSource().getPageByHref(path, { dir: dirname(page.path) });
+  if (resolved) {
+    const resolvedHash = resolved.hash ? `#${resolved.hash}` : hash;
+    return `${baseUrl}${withDocsBasePath(resolved.page.url)}${resolvedHash}`;
+  }
+
+  // Not a docs page: treat as a site-root link (do not add the /docs base path).
+  return `${baseUrl}${target}`;
+}
+
+function absolutizeInBodyLinks(markdown: string, page: DocsPage, baseUrl: string) {
+  // Protect fenced code blocks, then inline code spans, so example code AND inline
+  // code containing markdown link syntax (e.g. `[label](/path)`) are left untouched
+  // by the rewrite below. Order matters: fences first, then inline spans.
+  const protectedFences = protectFencedCodeBlocks(markdown);
+  const protectedInline = protectInlineCode(protectedFences.markdown);
+
+  const rewritten = protectedInline.markdown.replace(
+    /\]\((\/[^)\s]*)\)/g,
+    (full, target: string) => {
+      if (target.startsWith("//")) return full;
+      return `](${resolveInBodyHref(target, page, baseUrl)})`;
+    },
+  );
+
+  return protectedFences.restore(protectedInline.restore(rewritten));
+}
+
 export async function getLLMText(page: DocsPage) {
-  const processed = normalizeProcessedMarkdown(await page.data.getText("processed"));
-  const breadcrumbLine = getBreadcrumbLine(page);
   const baseUrl = getBaseUrl();
+  const processed = absolutizeInBodyLinks(
+    normalizeProcessedMarkdown(await page.data.getText("processed")),
+    page,
+    baseUrl,
+  );
+  const breadcrumbLine = getBreadcrumbLine(page);
   const explicitRelatedPages = getExplicitRelatedPages(page, baseUrl);
   const relatedPages =
     explicitRelatedPages.length > 0
@@ -185,7 +236,17 @@ export async function getLLMText(page: DocsPage) {
   const context = breadcrumbLine ? `${breadcrumbLine}\n\n` : "";
   const related = formatRelatedPages(relatedPages);
 
+  const llmsTxtUrl = `${baseUrl}${withDocsBasePath("/llms.txt")}`;
+  const directive = `> For the complete Prisma documentation index, see [llms.txt](${llmsTxtUrl}). A markdown version of any docs page is available by appending \`.md\` to its URL.`;
+
+  const description =
+    typeof page.data.description === "string" && page.data.description.trim().length > 0
+      ? `\n\n${page.data.description.trim()}`
+      : "";
+
   return `# ${getPageTitleText(page.data.title, page.url)} (${withDocsBasePath(page.url)})
+
+${directive}${description}
 
 ${context}${processed}${related}`;
 }

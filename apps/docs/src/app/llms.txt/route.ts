@@ -1,61 +1,11 @@
-import { getPageTitleText } from "@/lib/page-title";
 import { source } from "@/lib/source";
-import { getBaseUrl, withDocsBasePath } from "@/lib/urls";
-import {
-  commonQueries,
-  filterAvailableLLMsLinks,
-  filterAvailableLLMsSections,
-  filterPagesForLLMsIndex,
-  formatLLMsLink,
-  formatLLMsPageLink,
-  formatLLMsSectionLink,
-  llmsSections,
-} from "@/lib/llms";
+import { getBaseUrl } from "@/lib/urls";
+import { buildLLMsIndexContent } from "@/lib/llms";
 
 export const revalidate = false;
 
 export async function GET() {
-  const baseUrl = getBaseUrl();
-  const latestPages = filterPagesForLLMsIndex(source.getPages()).sort((a, b) =>
-    getPageTitleText(a.data.title, a.url).localeCompare(getPageTitleText(b.data.title, b.url)),
-  );
-
-  const commonQueriesList = filterAvailableLLMsLinks(commonQueries, latestPages)
-    .map((link) => formatLLMsLink(link, baseUrl))
-    .join("\n");
-  const subIndexList = filterAvailableLLMsSections(llmsSections, latestPages)
-    .map((section) => formatLLMsSectionLink(section, baseUrl))
-    .join("\n");
-  const latestDocsList = latestPages.map((page) => formatLLMsPageLink(page, baseUrl)).join("\n");
-
-  const content = `# Prisma Documentation
-
-> **Prisma changes frequently — verify against the changelog and current docs before implementing.**
-> Do not rely on training data for Prisma features. APIs, configuration, and conventions can change between versions.
->
-> First, fetch https://www.prisma.io/changelog.md to check for recent or relevant breaking changes,
-> then look up the relevant topic in the documentation below.
-
-> This documentation covers the current docs plus legacy v6 pages.
-> Prefer the Latest ORM section for current recommendations.
-> v6 pages are maintained for backwards compatibility only.
-
-## Common Queries
-
-${commonQueriesList}
-
-## Product Area Indexes
-
-${subIndexList}
-
-## Latest
-
-${latestDocsList}
-
-## Options
-
-- [Full documentation with content](${baseUrl}${withDocsBasePath("/llms-full.txt")})
-`;
+  const content = buildLLMsIndexContent(source.getPages(), getBaseUrl());
 
   return new Response(content, {
     headers: {
