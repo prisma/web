@@ -1,0 +1,502 @@
+---
+title: "You Don't Need Elasticsearch, Postgres Already Has Full-Text Search"
+slug: "you-dont-need-elasticsearch-postgres-already-has-full-text-search"
+date: "2026-07-21"
+authors:
+  - "Nurul Sundarani"
+metaTitle: "Postgres Full-Text Search Instead of Elasticsearch"
+metaDescription: "Build full-text search with tsvector, GIN indexes, and pg_trgm typo tolerance on Prisma Postgres. For most apps, no Elasticsearch cluster required."
+heroImagePath: "/you-dont-need-elasticsearch-postgres-already-has-full-text-search/imgs/hero.svg"
+heroImageAlt: "You Don't Need Elasticsearch, Postgres Already Has Full-Text Search"
+metaImagePath: "/you-dont-need-elasticsearch-postgres-already-has-full-text-search/imgs/meta.png"
+tags:
+  - "prisma-postgres"
+  - "education"
+series: postgres-features
+seriesIndex: 5
+prev: you-dont-need-a-job-queue-postgres-already-has-skip-locked
+---
+
+Postgres ships full-text search in the core server: `tsvector` for indexing text, `websearch_to_tsquery` for parsing what users type, and `ts_rank` for ordering results. For most applications, that is exactly the job [Elasticsearch](https://www.elastic.co/elasticsearch) gets deployed to do. In this post, you'll build ranked, typo-tolerant search on [Prisma Postgres](https://www.prisma.io/docs/postgres), a managed PostgreSQL service, with one generated column, two indexes, and no search cluster to deploy, sync, or pay for.
+
+This is the fifth post in the [Postgres features series](https://www.prisma.io/blog/series/postgres-features), after [Pub/Sub with `LISTEN` and `NOTIFY`](https://www.prisma.io/blog/you-dont-need-redis-postgres-already-has-pub-sub), [the bloom index](https://www.prisma.io/blog/postgres-bloom-index-the-overlooked-postgres-feature), [pgvector](https://www.prisma.io/blog/you-dont-need-a-vector-database-postgres-already-has-pgvector), and [the SKIP LOCKED job queue](https://www.prisma.io/blog/you-dont-need-a-job-queue-postgres-already-has-skip-locked).
+
+Adding search to an app usually starts with a familiar question: do you need Elasticsearch, Algolia, or another dedicated search service?
+
+If your app already uses Postgres, the answer is often no. For the search most apps actually have (finding articles, products, tickets, or customers by what their text says), the database you already run understands stemming, relevance, and highlighting. The part most developers miss is that it has done so since 2008.
+
+## Why teams reach for Elasticsearch
+
+A search engine earns its place by doing four things that `LIKE '%term%'` cannot:
+
+1. Normalizes words, so a search for "pooling" finds "pools" and "pooled"
+2. Ranks results by relevance instead of returning them in table order
+3. Highlights why a result matched, with the search terms in context
+4. Tolerates typos, so "conection" still finds "connection"
+
+The moment a product manager asks for a search box, the reflex is to add Elasticsearch. That reflex has a real cost: a second system to deploy, monitor, secure, upgrade, and pay for, and it is a heavyweight one (a distributed JVM-based engine designed for clusters).
+
+It also splits your data in two. The searchable copy lives in Elasticsearch while the source of truth lives in Postgres, and something has to keep them in sync: a dual-write in application code, a queue, or a change-data-capture pipeline. Every option adds a failure mode. A write that commits in Postgres but never reaches the index is a row your users can see but search can't find. Deleted rows that linger in the index are ghosts that search returns but the app 404s on. None of it is unsolvable, but all of it is work that exists only because the search index lives in a different system than the data.
+
+Keep the search in Postgres and that entire class of problems disappears. The index is a column. It updates in the same transaction as the row it describes, because it is part of the row.
+
+## What Postgres full-text search does
+
+Postgres has shipped full-text search in the core server since version 8.3, released in 2008. No extension is required. The model has two halves: [`tsvector`](https://www.postgresql.org/docs/current/textsearch.html), a normalized representation of a document, and `tsquery`, a normalized representation of a search.
+
+`to_tsvector` turns text into a `tsvector`. It lowercases, strips stop words like "the" and "over", reduces words to their stems, and records where each word appeared:
+
+```sql
+SELECT to_tsvector('english', 'The quick brown foxes jumped over two lazy dogs');
+```
+
+```text
+'brown':3 'dog':9 'fox':4 'jump':5 'lazi':8 'quick':2 'two':7
+```
+
+"foxes" became `fox`, "jumped" became `jump`, and "the" and "over" vanished. This is why full-text search matches the way people think words work: a document that mentions "indexing" matches a search for "indexes", because both normalize to the same stem.
+
+The other half parses the search. Postgres has a few parsers, and the one to reach for is `websearch_to_tsquery`: it accepts the syntax people already type into search boxes (plain words, quoted phrases, `-` to exclude, `or` for alternatives) and it never throws on malformed input, which makes it safe to feed raw user text:
+
+```sql
+SELECT websearch_to_tsquery('english', 'speed up postgres queries');
+```
+
+```text
+'speed' & 'postgr' & 'queri'
+```
+
+Plain words become AND terms. A quoted phrase becomes a positional match, and a leading `-` becomes a negation:
+
+```sql
+SELECT websearch_to_tsquery('english', '"query plans" -mysql');
+```
+
+```text
+'queri' <-> 'plan' & !'mysql'
+```
+
+The `@@` operator asks whether a vector matches a query:
+
+```sql
+SELECT to_tsvector('english', 'Speeding up slow Postgres queries')
+       @@ websearch_to_tsquery('english', 'speed up a query');
+```
+
+```text
+true
+```
+
+"Speeding" matched "speed", "queries" matched "query", and the stop words "up" and "a" dropped out of the query entirely. That is stemming and stop-word handling doing the first job from the list above; ranking and highlighting, the next two, come from `ts_rank` and `ts_headline`.
+
+## Build the search: one column, one index, one query
+
+The search index is a generated column plus a GIN index:
+
+```sql
+CREATE TABLE articles (
+  id     bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  title  text NOT NULL,
+  body   text NOT NULL,
+  search tsvector GENERATED ALWAYS AS (
+    setweight(to_tsvector('english', title), 'A') ||
+    setweight(to_tsvector('english', body), 'B')
+  ) STORED
+);
+
+CREATE INDEX articles_search_idx ON articles USING GIN (search);
+```
+
+Three details carry this schema:
+
+- **The column is generated**, so Postgres recomputes it whenever `title` or `body` changes. There is no indexer to run, no sync pipeline, no drift. (The two-argument `to_tsvector('english', ...)` pins the language, which also makes the expression immutable, a requirement for generated columns.)
+- **`setweight` labels where each word came from.** Words from the title get weight `A`, words from the body get weight `B`, and `||` concatenates the two vectors. Ranking uses the labels: by default a weight-`A` match counts 1.0 and a weight-`B` match 0.4, which is how "title matches beat body matches" falls out of the data instead of application code.
+- **The GIN index makes `@@` fast.** A [GIN index](https://www.postgresql.org/docs/current/textsearch-indexes.html) maps each stem to the rows containing it, so a search reads the handful of index entries for its terms instead of scanning every row.
+
+The search itself is one query:
+
+```sql
+SELECT title, ts_rank(search, query) AS rank
+FROM articles, websearch_to_tsquery('english', $1) AS query
+WHERE search @@ query
+ORDER BY rank DESC;
+```
+
+Putting `websearch_to_tsquery` in the `FROM` clause runs it once and lets both the `WHERE` and the `ORDER BY` reuse it. `ts_rank` scores how well each row's vector matches the query (how many terms hit, how close together, and at what weight), and sorting by it descending puts the best match first.
+
+When you want to show *why* a result matched, `ts_headline` renders a snippet of the original text with the matched words wrapped in markers of your choosing:
+
+```sql
+SELECT ts_headline('english',
+  'Find the slow query with pg_stat_statements, read its plan with EXPLAIN ANALYZE, and fix the sequential scan an index can remove.',
+  websearch_to_tsquery('english', 'slow query'),
+  'StartSel=<mark>, StopSel=</mark>');
+```
+
+```text
+<mark>slow</mark> <mark>query</mark> with pg_stat_statements, read its plan with EXPLAIN ANALYZE, and fix the sequential
+```
+
+One practical note: `ts_headline` works on the original text, not the precomputed vector, so it is the expensive part of a search page. Apply your `LIMIT` first and run it only on the rows you're about to render.
+
+## Watch it rank real queries
+
+Let's watch ranking, phrase search, and typo handling on real data. We'll build a script that does four things:
+
+1. Creates a temporary Prisma Postgres database
+2. Creates the `articles` table and indexes eight articles
+3. Runs three searches that show ranking, stemming, and `websearch` syntax
+4. Sends a misspelled search, gets nothing back, and recovers with a trigram suggestion
+
+We'll use:
+
+- Bun to run the TypeScript script
+- `pg` to connect to Postgres
+- `create-db` to create a temporary Prisma Postgres database
+
+The [`create-db`](https://www.prisma.io/docs/postgres/npx-create-db) CLI creates a temporary Prisma Postgres database (auto-deleted after 24 hours unless you claim it) and supports JSON output, which makes it useful from scripts. Prisma Postgres also works with PostgreSQL-compatible clients like `pg`.
+
+Everything below was run against PostgreSQL 17.2, Bun 1.3, and pg 8.22.
+
+### Step 1: Create a new Bun project
+
+Create a new folder:
+
+```bash
+mkdir postgres-fts-demo
+cd postgres-fts-demo
+```
+
+Initialize the project and install `pg`:
+
+```bash
+bun init -y
+bun add pg
+bun add -d @types/pg
+```
+
+### Step 2: Add the script
+
+Create a file called `index.ts`:
+
+```typescript
+import { $ } from "bun";
+import { Client } from "pg";
+
+async function createDatabase() {
+  console.log("Creating a temporary Prisma Postgres database...");
+
+  const output = await $`bunx create-db@latest --region eu-central-1 --json`
+    .quiet()
+    .json();
+
+  const connectionString = output.connectionString;
+
+  if (!connectionString) {
+    throw new Error("Could not find a connection string.");
+  }
+
+  const url = new URL(connectionString);
+  url.searchParams.set("sslmode", "verify-full");
+
+  await waitUntilReady(url.toString());
+
+  console.log("Database created.");
+
+  return url.toString();
+}
+
+async function waitUntilReady(connectionString: string) {
+  for (let attempt = 1; attempt <= 10; attempt++) {
+    const probe = new Client({ connectionString });
+    probe.on("error", () => {});
+
+    try {
+      await probe.connect();
+      await probe.query("SELECT 1");
+      await probe.end();
+      return;
+    } catch {
+      await probe.end().catch(() => {});
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  }
+
+  throw new Error("Database was not ready after 10 attempts.");
+}
+
+const SETUP_SQL = `
+  CREATE TABLE articles (
+    id     bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    title  text NOT NULL,
+    body   text NOT NULL,
+    search tsvector GENERATED ALWAYS AS (
+      setweight(to_tsvector('english', title), 'A') ||
+      setweight(to_tsvector('english', body), 'B')
+    ) STORED
+  );
+  CREATE INDEX articles_search_idx ON articles USING GIN (search);
+  CREATE EXTENSION IF NOT EXISTS pg_trgm;
+  CREATE INDEX articles_title_trgm_idx ON articles USING GIN (title gin_trgm_ops);
+`;
+
+const SEARCH_SQL = `
+  SELECT title, round(ts_rank(search, query)::numeric, 3) AS rank
+  FROM articles, websearch_to_tsquery('english', $1) AS query
+  WHERE search @@ query
+  ORDER BY rank DESC
+`;
+
+const SUGGEST_SQL = `
+  SELECT title, round(similarity(title, $1)::numeric, 2) AS sim
+  FROM articles
+  WHERE title % $1
+  ORDER BY sim DESC
+  LIMIT 3
+`;
+
+const ARTICLES: [string, string][] = [
+  [
+    "Speeding up slow Postgres queries",
+    "Find the slow query with pg_stat_statements, read its plan with EXPLAIN ANALYZE, and fix the sequential scan an index can remove.",
+  ],
+  [
+    "Query plans explained",
+    "How Postgres chooses between sequential scans, index scans, and bitmap scans, and how join order changes the cost.",
+  ],
+  [
+    "An introduction to SQL basics",
+    "SELECT, INSERT, UPDATE, and DELETE: the four statements every query starts from.",
+  ],
+  [
+    "Connection pooling in production",
+    "Why every serverless function opening its own database connection ends badly, and how a pooler fixes it.",
+  ],
+  [
+    "Indexing strategies that actually work",
+    "B-tree for equality and ranges, GIN for arrays and text search, and when a partial index beats a full one.",
+  ],
+  [
+    "Partial indexes for hot rows",
+    "Index only the rows your Postgres queries actually touch, and reads stay fast as the table grows.",
+  ],
+  [
+    "Backups and point-in-time recovery",
+    "WAL archiving turns a nightly dump into a continuous backup you can restore to any second.",
+  ],
+  [
+    "Migrating from MySQL to Postgres",
+    "Type differences, sequence handling, and the query plans that change when you switch.",
+  ],
+];
+
+async function search(db: Client, query: string) {
+  const { rows } = await db.query(SEARCH_SQL, [query]);
+
+  console.log(`\nsearch: ${JSON.stringify(query)}`);
+
+  if (rows.length === 0) {
+    console.log("(no results)");
+  } else {
+    console.table(rows);
+  }
+
+  return rows;
+}
+
+async function main() {
+  const connectionString = await createDatabase();
+
+  const db = new Client({ connectionString });
+  await db.connect();
+  await db.query(SETUP_SQL);
+
+  for (const [title, body] of ARTICLES) {
+    await db.query("INSERT INTO articles (title, body) VALUES ($1, $2)", [
+      title,
+      body,
+    ]);
+  }
+
+  console.log(`Indexed ${ARTICLES.length} articles.`);
+
+  await search(db, "postgres queries");
+  await search(db, "query plans");
+  await search(db, '"query plans" -mysql');
+
+  const typo = "conection pooling";
+  const missed = await search(db, typo);
+
+  if (missed.length === 0) {
+    const { rows } = await db.query(SUGGEST_SQL, [typo]);
+    console.log("did you mean:");
+    console.table(rows);
+  }
+
+  await db.end();
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
+```
+
+One piece of scaffolding deserves a note: `waitUntilReady` retries the first connection because a freshly created database can take a few seconds before it accepts one. Everything else is plain `pg`: one client, the setup SQL, and the searches run in order.
+
+Run it:
+
+```bash
+bun index.ts
+```
+
+You should see output similar to this:
+
+```text
+Creating a temporary Prisma Postgres database...
+Database created.
+Indexed 8 articles.
+
+search: "postgres queries"
+┌───┬───────────────────────────────────┬───────┐
+│   │ title                             │ rank  │
+├───┼───────────────────────────────────┼───────┤
+│ 0 │ Speeding up slow Postgres queries │ 0.996 │
+│ 1 │ Query plans explained             │ 0.602 │
+│ 2 │ Migrating from MySQL to Postgres  │ 0.482 │
+│ 3 │ Partial indexes for hot rows      │ 0.396 │
+└───┴───────────────────────────────────┴───────┘
+
+search: "query plans"
+┌───┬───────────────────────────────────┬───────┐
+│   │ title                             │ rank  │
+├───┼───────────────────────────────────┼───────┤
+│ 0 │ Query plans explained             │ 0.991 │
+│ 1 │ Speeding up slow Postgres queries │ 0.435 │
+│ 2 │ Migrating from MySQL to Postgres  │ 0.396 │
+└───┴───────────────────────────────────┴───────┘
+
+search: "\"query plans\" -mysql"
+┌───┬───────────────────────┬───────┐
+│   │ title                 │ rank  │
+├───┼───────────────────────┼───────┤
+│ 0 │ Query plans explained │ 0.991 │
+└───┴───────────────────────┴───────┘
+
+search: "conection pooling"
+(no results)
+did you mean:
+┌───┬──────────────────────────────────┬──────┐
+│   │ title                            │ sim  │
+├───┼──────────────────────────────────┼──────┤
+│ 0 │ Connection pooling in production │ 0.59 │
+└───┴──────────────────────────────────┴──────┘
+```
+
+Each search tells its own story.
+
+The first one, `postgres queries`, shows the weights doing the ranking: "Speeding up slow Postgres queries" wins because both terms sit in its weight-`A` title. "Query plans explained" comes second on a title term plus a body term, and "Partial indexes for hot rows" trails with both terms buried in its body. The weights you set in the schema turned into the ranking you'd want a search page to show.
+
+The second search shows stemming at work: "queries", "query", and "Query" are all the same stem, so "Speeding up slow Postgres queries", which never contains the literal string "query plans", still matches. Note what ranking does with them: the article actually titled "Query plans explained" sits far above the two that merely mention both words somewhere.
+
+The third search is the same query with `websearch` syntax turned on. Quoting `"query plans"` demands the words appear next to each other, which drops "Speeding up slow Postgres queries" (its body mentions "query" and "plan", but never side by side). Adding `-mysql` removes the migration article. Three results narrow to the one the searcher meant, using syntax users already know from every search engine they've used.
+
+The fourth search fails, on purpose. Stemming is not typo tolerance: "conection" is not a stem of "connection", it's a misspelling, and the tsquery finds nothing. The script recovers with the trigram index, which is the next section.
+
+## Typo tolerance with pg_trgm
+
+Full-text search normalizes correct words. It does nothing for wrong ones, and search boxes receive wrong ones all day.
+
+The fix ships with Postgres too: [`pg_trgm`](https://www.postgresql.org/docs/current/pgtrgm.html), an extension that compares strings by their **trigrams**, the overlapping three-character windows inside them:
+
+```sql
+SELECT show_trgm('pooling');
+```
+
+```text
+{"  p"," po",ing,lin,"ng ",oli,ool,poo}
+```
+
+Two strings that share most of their trigrams are almost the same string, no dictionary or stemmer involved. `similarity` reduces the comparison to a number between 0 and 1:
+
+```sql
+SELECT similarity('conection', 'connection');
+```
+
+```text
+0.75
+```
+
+The `%` operator returns matches above a similarity threshold (0.3 by default), and a GIN index with `gin_trgm_ops` makes it fast. Both were already in the demo's setup:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE INDEX articles_title_trgm_idx ON articles USING GIN (title gin_trgm_ops);
+```
+
+Stripped of the display rounding, the demo's "did you mean" query is all there is to it:
+
+```sql
+SELECT title, similarity(title, $1) AS sim
+FROM articles
+WHERE title % $1
+ORDER BY sim DESC
+LIMIT 3;
+```
+
+`pg_trgm` is on the [supported extensions list for Prisma Postgres](https://www.prisma.io/docs/postgres/database/postgres-extensions), so `CREATE EXTENSION pg_trgm` is the whole installation.
+
+The pattern that covers a real search box: run the full-text query first, and when it comes back empty, fall back to trigram similarity for a "did you mean" suggestion (what the demo does), or blend a trigram match on the title into the results directly. Full-text search does the linguistics; trigrams catch the typos; both live in the database you already run.
+
+## When you actually need Elasticsearch
+
+Postgres full-text search has real limits, and it's worth knowing them before you hit them. The short version:
+
+| Search need                              | Postgres                              | Elasticsearch                    |
+| ---------------------------------------- | ------------------------------------- | -------------------------------- |
+| Stemming, boolean and phrase queries     | Built in (`tsvector`)                 | Built in                         |
+| Relevance ranking                        | `ts_rank`, scores each doc in isolation | BM25, corpus-wide term statistics |
+| Typo tolerance                           | `pg_trgm` extension                   | Built-in fuzzy queries           |
+| Faceted analytics over millions of docs  | Hand-written `GROUP BY`               | Aggregation engine               |
+| Log and event search at volume           | Wrong tool                            | Built for it (ELK stack)         |
+| Operational cost                         | Already paid: the index is a column   | A cluster plus a sync pipeline   |
+
+Where the right column wins:
+
+- **Relevance tuning as a discipline.** `ts_rank` scores each document against the query in isolation; it doesn't weigh how rare a term is across the whole corpus, which is the insight behind the BM25 scoring Elasticsearch uses. On a focused corpus (your docs, your products) this rarely shows. On large, heterogeneous text where "the best of 40,000 matches" must be right, BM25 and per-field boosting start to earn their keep.
+- **Faceting and aggregations as the product.** If the search page is really an analytics page (counts per category, price histograms, drill-downs over millions of documents), Elasticsearch's aggregation engine is the tool. In Postgres those are `GROUP BY` queries you write and index yourself; that works at app scale but becomes its own project at analytics scale.
+- **Log and event search.** Shipping every request log into Postgres to search it is the wrong tool on both ends. That workload (huge write volume, time-windowed queries, retention policies) is what the ELK stack was actually built for.
+- **Search across many languages at once.** Postgres stems one configured language per vector. Mixed-language corpora with per-language analyzers, synonym pipelines, and custom tokenizers are where a dedicated engine's configurability wins.
+
+There's also a middle path. [Meilisearch](https://www.meilisearch.com) and [Typesense](https://typesense.org) are dedicated search engines at a fraction of Elasticsearch's operational weight, with typo tolerance built in, though they bring back the sync problem. And if you self-host Postgres, [ParadeDB](https://www.paradedb.com)'s `pg_search` extension adds BM25 ranking inside Postgres itself.
+
+The rule of thumb: start with the database that already holds the text. Move to a dedicated engine when you can name the limit you're hitting (corpus-wide relevance, faceted analytics, logs, or multi-language analysis), not because a search box appeared in the mockups.
+
+## Frequently asked questions
+
+<Accordions type="single">
+  <Accordion title="Is Postgres full-text search good enough to replace Elasticsearch?">
+For most applications, yes. Postgres full-text search handles stemming, boolean and phrase queries, relevance ranking, and highlighting, and a generated `tsvector` column with a GIN index keeps it fast without any sync pipeline. Reach for Elasticsearch when you need corpus-wide relevance scoring like BM25, heavy faceted aggregations, log analytics, or per-language analyzer pipelines.
+  </Accordion>
+  <Accordion title="How does Postgres full-text search handle typos?">
+It doesn't: stemming maps real word forms to a common stem, but a misspelling like "conection" is not a form of "connection", so the tsquery finds nothing. Pair full-text search with the `pg_trgm` extension, which measures string similarity by shared three-character trigrams. Run the full-text query first, and when it returns nothing, fall back to a trigram `similarity` query for a "did you mean" suggestion.
+  </Accordion>
+  <Accordion title="Can Prisma ORM query Postgres full-text search?">
+Yes, through the `fullTextSearchPostgres` preview feature. Enabling it in the generator block adds a `search` filter on string fields and `_relevance` ordering, which cover the common case from typed queries. The docs cover the details in [full-text search with Prisma Client](https://www.prisma.io/docs/orm/prisma-client/queries/full-text-search). For the weighted, headline-generating query this post builds, use Prisma's raw SQL escape hatch (`$queryRaw` or TypedSQL); it composes fine with the rest of your Prisma Client code.
+  </Accordion>
+  <Accordion title="What's the difference between full-text search and pgvector semantic search?">
+Full-text search matches the words a document actually contains, normalized by stemming: a search for "pooling" finds "pooled", but not "connection reuse". Vector search with pgvector matches by meaning through embeddings, so "connection reuse" can surface a pooling article that never uses those words, at the cost of running an embedding model. They compose well: full-text search for precise term matches and filters, vectors for conceptual similarity, both in the same Postgres database.
+  </Accordion>
+</Accordions>
+
+## Recap
+
+Postgres does real search: stemming, boolean and phrase queries, relevance ranking, and highlighted snippets, all in the core server with no extension required.
+
+The full-text core is one generated `tsvector` column, one GIN index, and one query with `websearch_to_tsquery` and `ts_rank`. There is no indexer process and no sync pipeline, because the search index is part of the row it describes: they update in the same transaction or not at all.
+
+Typos are the one job full-text search doesn't do, and `pg_trgm` covers it from inside the same database: a trigram index on the title column turns a zero-result search into a "did you mean" suggestion.
+
+Elasticsearch still has its territory: corpus-wide relevance tuning, faceted analytics, logs, multi-language pipelines. Those are limits you can name when you hit them, and most apps never do.
+
+For everything before that point, the search box is one migration away. Spin up a database with `npx create-db@latest`, add the column and its indexes, and search your own data before a search cluster would have finished booting.
