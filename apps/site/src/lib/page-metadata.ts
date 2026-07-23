@@ -14,9 +14,15 @@ type PageMetadataOptions = {
  * falling back to whatever inbound links call the page. Titles here are
  * inconsistent about carrying the brand, so add it where it's missing rather
  * than blanket-appending and ending up with "Prisma ORM | Prisma".
+ *
+ * The brand is matched as a whole word, so a title that already carries it
+ * ("Prisma ORM | Type-Safe ORM…", "…with Prisma & CockroachDB") is left alone,
+ * while a title that merely contains the letters ("Prismatic…") still gets it.
  */
+const SITE_NAME_PATTERN = new RegExp(`\\b${SITE_NAME}\\b`);
+
 function withSiteName(title: string): string {
-  return title.includes(SITE_NAME) ? title : `${title} | ${SITE_NAME}`;
+  return SITE_NAME_PATTERN.test(title) ? title : `${title} | ${SITE_NAME}`;
 }
 
 export function createPageMetadata({
