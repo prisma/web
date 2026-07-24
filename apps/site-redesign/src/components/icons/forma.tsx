@@ -51,6 +51,22 @@ export function CheckBold(props: IconProps) {
   )
 }
 
+export function Shield(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path
+        fillRule="evenodd"
+        d="M 12 2 L 21 5.5 L 21 11 C 21 16.5 17.2 20.6 12 23 C 6.8 20.6 3 16.5 3 11 L 3 5.5 Z M 12 3.07 L 4 6.19 L 4 11 C 4 15.9 7.3 19.6 12 21.9 C 16.7 19.6 20 15.9 20 11 L 20 6.19 Z"
+      />
+    </svg>
+  )
+}
+
+// Filled rating star for testimonial cards.
+export function Star(props: IconProps) {
+  return <svg {...base(props)}><path d="M 12 2 L 14.94 8.34 L 21.88 9.18 L 16.76 13.95 L 18.12 20.81 L 12 17.4 L 5.88 20.81 L 7.24 13.95 L 2.12 9.18 L 9.06 8.34 L 12 2 z"/></svg>
+}
+
 // Forma Bold weight — accent arrow for CTAs (same Forma family, bolder cut).
 export function ArrowRightBold(props: IconProps) {
   return <svg {...base(props)}><path d="M 13.986328 3.9882812 A 1.250125 1.250125 0 0 0 13.115234 6.1347656 L 17.730469 10.75 L 3.25 10.75 A 1.250125 1.250125 0 1 0 3.25 13.25 L 17.730469 13.25 L 13.115234 17.865234 A 1.2512481 1.2512481 0 1 0 14.884766 19.634766 L 21.634766 12.884766 A 1.250125 1.250125 0 0 0 21.634766 11.115234 L 14.884766 4.3652344 A 1.250125 1.250125 0 0 0 13.986328 3.9882812 z"/></svg>
