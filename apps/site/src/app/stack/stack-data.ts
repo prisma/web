@@ -9,31 +9,22 @@ export type StackLayerId = "app" | "compute" | "bun" | "orm" | "postgres";
 
 export type Framework = {
   name: string;
-  /** Short monogram shown in the badge tile */
-  mono: string;
-  /** Accent color for the badge glyph */
-  color: string;
-  /** Badge tile background */
-  bg: string;
+  /** Real logo from /public/icons/technologies, shown on a white tile. */
+  logo: string;
 };
 
 /** Frameworks Prisma Compute runs, cycled in the pyramid's top layer. */
 export const frameworks: Framework[] = [
-  {
-    name: "Next.js",
-    mono: "N",
-    color: "var(--color-foreground-neutral)",
-    bg: "var(--color-background-neutral-weak)",
-  },
-  { name: "React Router", mono: "RR", color: "#f44250", bg: "rgba(244,66,80,0.14)" },
-  { name: "TanStack Start", mono: "TS", color: "#ff6b35", bg: "rgba(255,107,53,0.14)" },
-  { name: "Astro", mono: "A", color: "#ff5d01", bg: "rgba(255,93,1,0.14)" },
-  { name: "SvelteKit", mono: "S", color: "#ff3e00", bg: "rgba(255,62,0,0.14)" },
-  { name: "Nuxt", mono: "V", color: "#00dc82", bg: "rgba(0,220,130,0.14)" },
-  { name: "Hono", mono: "H", color: "#ff5b11", bg: "rgba(255,91,17,0.14)" },
-  { name: "Elysia", mono: "E", color: "#8fa6fb", bg: "rgba(143,166,251,0.16)" },
-  { name: "SolidStart", mono: "So", color: "#4c86c6", bg: "rgba(70,130,200,0.18)" },
-  { name: "Vite + React", mono: "Vt", color: "#bd34fe", bg: "rgba(189,52,254,0.16)" },
+  { name: "Next.js", logo: "/icons/technologies/next.svg" },
+  { name: "React Router", logo: "/icons/technologies/rr7.svg" },
+  { name: "TanStack Start", logo: "/icons/technologies/tanstack.svg" },
+  { name: "Astro", logo: "/icons/technologies/astro.svg" },
+  { name: "SvelteKit", logo: "/icons/technologies/svelte.svg" },
+  { name: "Nuxt", logo: "/icons/technologies/nuxt.svg" },
+  { name: "Hono", logo: "/icons/technologies/hono.svg" },
+  { name: "NestJS", logo: "/icons/technologies/nest.svg" },
+  { name: "SolidStart", logo: "/icons/technologies/solid-start.svg" },
+  { name: "React", logo: "/icons/technologies/react.svg" },
 ];
 
 export type BunApi = {
@@ -87,7 +78,7 @@ export const stackLayers: StackLayer[] = [
     description:
       "The one layer Prisma has no opinion about, on purpose. Every major frontend and backend framework runs on the stack unchanged, with the same runtime, database, and deploy underneath.",
     facts: [
-      "Next.js, TanStack Start, Hono, Elysia, and more",
+      "Next.js, TanStack Start, Hono, NestJS, and more",
       "Change framework without touching the data layer",
       "Plain TypeScript projects, no proprietary app model",
     ],
@@ -180,7 +171,13 @@ export const stackLayers: StackLayer[] = [
 export type SwapLayer = {
   layer: string;
   defaultChoice: string;
+  /** Logo of the default product, shown on a white tile. */
+  logo: string;
+  /** Invert the logo (white-on-transparent marks) so it reads on white. */
+  invertLogo?: boolean;
   swap: string;
+  /** Real logos of what you can swap to. */
+  swapTargets: { src: string; alt: string; invert?: boolean }[];
 };
 
 /** Section 4 owns the replaceability message; it appears nowhere else. */
@@ -188,22 +185,33 @@ export const swapLayers: SwapLayer[] = [
   {
     layer: "Data access",
     defaultChoice: "Prisma Next",
+    logo: "/icons/technologies/prisma_light.svg",
     swap: "Drop to raw SQL with the built-in query builder, or use any Postgres client.",
+    swapTargets: [{ src: "/icons/technologies/postgresql.svg", alt: "Any Postgres client" }],
   },
   {
     layer: "Database",
     defaultChoice: "Prisma Postgres",
+    logo: "/icons/technologies/prisma-postgres.svg",
     swap: "It speaks standard Postgres. Point the ORM at any Postgres database, anywhere.",
+    swapTargets: [{ src: "/icons/technologies/postgresql.svg", alt: "Any PostgreSQL database" }],
   },
   {
     layer: "Hosting",
     defaultChoice: "Prisma Compute",
+    logo: "/icons/technologies/prisma_light.svg",
     swap: "Deploy the same app to Vercel, AWS, or your own servers.",
+    swapTargets: [
+      { src: "/icons/technologies/vercel-icon-dark.svg", alt: "Vercel", invert: true },
+      { src: "/icons/technologies/aws.svg", alt: "AWS" },
+    ],
   },
   {
     layer: "Runtime",
     defaultChoice: "Bun",
+    logo: "/icons/technologies/bun.svg",
     swap: "Your code is standard TypeScript. Run it on Node.js if you prefer.",
+    swapTargets: [{ src: "/icons/technologies/node.svg", alt: "Node.js" }],
   },
 ];
 

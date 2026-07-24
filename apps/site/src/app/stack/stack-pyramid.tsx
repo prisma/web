@@ -120,14 +120,16 @@ export function StackPyramid() {
                   index === active && styles["pyramid-active"],
                 )}
               >
-                <span className={styles["pyramid-icon"]} aria-hidden>
+                <span
+                  className={cn(styles["pyramid-icon"], isApp && styles["pyramid-icon-logo"])}
+                  aria-hidden
+                >
                   {isApp ? (
-                    <span
+                    <img
+                      src={framework.logo}
+                      alt=""
                       className={cn(styles["pyramid-mono"], swapping && styles.swapping)}
-                      style={{ background: framework.bg, color: framework.color }}
-                    >
-                      {framework.mono}
-                    </span>
+                    />
                   ) : (
                     <i className={layer.icon} />
                   )}
@@ -211,11 +213,14 @@ export function StackPyramid() {
                         className="flex items-center gap-2 rounded-square border border-stroke-neutral px-2.5 py-1.5 text-xs text-foreground-neutral"
                       >
                         <span
-                          className="grid size-5 place-items-center rounded-square-low font-sans-display text-[0.6rem] font-black"
-                          style={{ background: fw.bg, color: fw.color }}
+                          className="grid size-5 shrink-0 place-items-center overflow-hidden rounded-square-low border border-stroke-neutral bg-white p-0.5"
                           aria-hidden
                         >
-                          {fw.mono}
+                          <img
+                            src={fw.logo}
+                            alt=""
+                            className="max-h-full max-w-full object-contain"
+                          />
                         </span>
                         {fw.name}
                       </li>

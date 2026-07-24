@@ -207,13 +207,45 @@ export default async function StackPage() {
                     <span className="text-xs font-semibold uppercase tracking-wider text-foreground-neutral-weaker">
                       {item.layer}
                     </span>
-                    <p className="m-0 font-sans-display text-lg font-bold text-foreground-neutral">
-                      {item.defaultChoice}
-                    </p>
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-square border border-stroke-neutral bg-white p-1.5"
+                        aria-hidden
+                      >
+                        <img
+                          src={item.logo}
+                          alt=""
+                          className="max-h-full max-w-full object-contain"
+                        />
+                      </span>
+                      <p className="m-0 font-sans-display text-lg font-bold text-foreground-neutral">
+                        {item.defaultChoice}
+                      </p>
+                    </div>
                     <p className="m-0 text-sm text-foreground-neutral-weak">
                       <span className="font-semibold text-foreground-ppg">Or swap it: </span>
                       {item.swap}
                     </p>
+                    <ul className="m-0 mt-auto flex list-none flex-wrap gap-2 p-0">
+                      {item.swapTargets.map((target) => (
+                        <li
+                          key={target.alt}
+                          className="flex items-center gap-2 rounded-square border border-stroke-neutral px-2.5 py-1.5 text-xs text-foreground-neutral-weak"
+                        >
+                          <span
+                            className="grid size-5 shrink-0 place-items-center overflow-hidden rounded-square-low border border-stroke-neutral bg-white p-0.5"
+                            aria-hidden
+                          >
+                            <img
+                              src={target.src}
+                              alt=""
+                              className={`max-h-full max-w-full object-contain ${target.invert ? "invert" : ""}`}
+                            />
+                          </span>
+                          {target.alt}
+                        </li>
+                      ))}
+                    </ul>
                   </SpotlightCard>
                 </Reveal>
               ))}
