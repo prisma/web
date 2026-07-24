@@ -3,12 +3,12 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  clearStoredUtmParams,
   CONSOLE_HOST,
   getUtmParams,
-  hasUtmParams,
-  syncUtmParams,
-  writeStoredUtmParams,
+  mergeUtmAttribution,
+  readStoredUtmAttribution,
+  syncUtmAttribution,
+  writeStoredUtmAttribution,
 } from "../lib/utm";
 
 interface UtmPersistenceProps {
@@ -24,8 +24,19 @@ interface UtmPersistenceProps {
    * Only relevant for the root app (no basePath).
    */
   proxiedPaths?: string[];
-  /** Session storage key for persisting UTM params. */
+  /** Local storage key for persisting first- and last-touch UTM params. */
   storageKey: string;
+}
+
+function getActiveAttribution(storageKey: string) {
+  const currentUtmParams = getUtmParams(new URLSearchParams(window.location.search));
+  const attribution = mergeUtmAttribution(readStoredUtmAttribution(storageKey), currentUtmParams);
+
+  if (attribution && Object.keys(currentUtmParams).length > 0) {
+    writeStoredUtmAttribution(storageKey, attribution);
+  }
+
+  return attribution;
 }
 
 export function UtmPersistence({ basePath, proxiedPaths = [], storageKey }: UtmPersistenceProps) {
@@ -33,14 +44,7 @@ export function UtmPersistence({ basePath, proxiedPaths = [], storageKey }: UtmP
   const router = useRouter();
 
   useEffect(() => {
-    const currentUtmParams = getUtmParams(new URLSearchParams(window.location.search));
-
-    if (hasUtmParams(currentUtmParams)) {
-      writeStoredUtmParams(storageKey, currentUtmParams);
-      return;
-    }
-
-    clearStoredUtmParams(storageKey);
+    getActiveAttribution(storageKey);
   }, [pathname, storageKey]);
 
   useEffect(() => {
@@ -67,21 +71,26 @@ export function UtmPersistence({ basePath, proxiedPaths = [], storageKey }: UtmP
         return;
       }
 
-      const activeUtmParams = getUtmParams(new URLSearchParams(window.location.search));
-
-      if (!hasUtmParams(activeUtmParams)) {
+      const attribution = getActiveAttribution(storageKey);
+      if (!attribution) {
         return;
       }
 
       const targetUrl = new URL(anchor.href, window.location.href);
       const isInternalLink = targetUrl.origin === window.location.origin;
       const isConsoleLink = targetUrl.hostname === CONSOLE_HOST;
+      const isConsoleRedirect =
+        isInternalLink && (targetUrl.pathname === "/login" || targetUrl.pathname === "/sign-up");
 
       if (!isInternalLink && !isConsoleLink) {
         return;
       }
 
-      if (!syncUtmParams(targetUrl, activeUtmParams)) {
+      if (
+        !syncUtmAttribution(targetUrl, attribution, {
+          includeFirstTouch: isConsoleLink || isConsoleRedirect,
+        })
+      ) {
         return;
       }
 
@@ -115,7 +124,7 @@ export function UtmPersistence({ basePath, proxiedPaths = [], storageKey }: UtmP
 
     document.addEventListener("click", handleClick, true);
     return () => document.removeEventListener("click", handleClick, true);
-  }, [router, basePath, proxiedPaths]);
+  }, [router, basePath, proxiedPaths, storageKey]);
 
   return null;
 }
