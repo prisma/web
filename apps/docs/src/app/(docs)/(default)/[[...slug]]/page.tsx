@@ -31,29 +31,11 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
   const aiPromptSlug = (page.data as { aiPrompt?: string }).aiPrompt;
   const promptContent = aiPromptSlug ? await getPromptContent(aiPromptSlug) : null;
 
-  const pageMarkdownUrl = `https://www.prisma.io${withDocsBasePath(page.url)}.md`;
-
   return (
     <>
-      <div
-        data-markdown-ignore
-        style={{
-          position: "absolute",
-          width: 1,
-          height: 1,
-          padding: 0,
-          margin: -1,
-          overflow: "hidden",
-          clip: "rect(0, 0, 0, 0)",
-          whiteSpace: "nowrap",
-          border: 0,
-        }}
-      >
-        For the complete Prisma documentation index optimized for AI agents, see{" "}
-        <a href="https://www.prisma.io/docs/llms.txt">https://www.prisma.io/docs/llms.txt</a>. A
-        markdown version of this page is available at{" "}
-        <a href={pageMarkdownUrl}>{pageMarkdownUrl}</a> (append <code>.md</code> to any docs URL).
-      </div>
+      {/* The hidden llms.txt directive for AI agents lives in the root layout
+          (src/app/layout.tsx) as the first child of <body> — agent-readiness
+          audits require it near the top of the HTML, before the sidebar. */}
       <TechArticleSchema page={page} />
       <BreadcrumbSchema page={page} />
       <DocsPage
