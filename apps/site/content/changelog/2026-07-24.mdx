@@ -15,27 +15,27 @@ share:
   active: true
   content: "Look at this page: "
 ---
-Prisma projects can now store files. Object Store buckets are S3-compatible storage that lives next to your Prisma Postgres databases and Prisma Compute apps, managed from the Prisma Console, the Management API, and MCP tools.
+Prisma projects can now store files. Object Store buckets are S3-compatible storage that lives next to your Prisma Postgres databases and Prisma Compute apps, managed from the Prisma Console, the Management API, or MCP tools.
 
 The Prisma Console workspace page is now an overview dashboard: usage against your plan, the current invoice, deploy health, and your most active projects on one screen.
 
-Prisma Next 0.16.0 is on npm, making `contract infer` output round-trip cleanly through `contract emit` and adding temporal presets. And the prisma.io docs are now agent-ready, with per-section `llms.txt` indexes and a markdown version of every page.
+Prisma Next 0.16.0 is on npm, and bringing an existing database to Prisma Next is now much smoother. The prisma.io docs are also rebuilt for coding agents, with per-section `llms.txt` indexes and a markdown version of every page.
 
 ## Highlights
 
 ### New · Store files in your project with Object Store buckets
 
-Apps that store user uploads or generated files needed a separate storage vendor, with its own account, credentials, and billing. Every Prisma project can now create Object Store buckets: S3-compatible storage that lives alongside your databases and apps. Create a bucket in the Prisma Console, generate a scoped access key (the secret is shown exactly once), and read and write objects with any S3 client or SDK.
+Apps that store user uploads or generated files needed a separate storage vendor, with its own account, credentials, and billing. Every Prisma project can now create Object Store buckets: S3-compatible storage that lives alongside your databases and apps. Create a bucket in the Prisma Console, generate an access key (the secret is shown exactly once, so store it safely), and read and write objects with any S3 client or SDK.
 
-Buckets can also be managed through the new `/v1/buckets` [Management API endpoints](https://www.prisma.io/docs/management-api/endpoints/buckets/get-buckets) and matching MCP tools, so agents can provision storage the same way they provision databases. Deleting a bucket removes its contents in one step.
+Buckets can also be managed through the new `/v1/buckets` [Management API endpoints](https://www.prisma.io/docs/management-api/endpoints/buckets/get-buckets) and matching MCP tools, so agents can provision storage the same way they provision databases. Deleting a bucket removes its contents in one step, even when it is not empty.
 
 ### New · See your whole workspace at a glance
 
-The Console landing page used to show a usage dashboard, and answering "is everything healthy?" meant clicking through projects. The workspace page is now an overview: billing-cycle usage with your included-limit line, the current invoice with per-line meters, and your top projects with deploy health, repository, latest commit, and usage share. The detailed usage dashboard, including usage-threshold and database-quota alerts, moved to its own Usage page, and the projects list is now paginated.
+The Console landing page used to show a usage dashboard, so answering "is everything healthy?" meant clicking through projects. The workspace page is now an overview: billing-cycle usage with your included-limit line, the current invoice with per-line meters, and your top projects with their deploy health, repository, latest commit, and share of usage. The detailed usage dashboard, including usage-threshold and database-quota alerts, moved to its own Usage page, and the projects list is now paginated.
 
 ### New · Prisma Next 0.16.0
 
-Bringing an existing database to Prisma Next could leave `contract infer` and `contract emit` disagreeing: infer printed output emit rejected, index types like `gin` threw at emit, and a column's exact temporal type and its auto-update behavior could not be spelled together. Prisma Next 0.16.0 makes infer output round-trip cleanly through emit, registers the Postgres built-in index types so `@@index(..., type: "gin")` emits, and adds per-codec temporal presets:
+Pointing Prisma Next at an existing database could produce a schema its own toolchain rejected: `contract infer` printed output that `contract emit` refused, index types like `gin` failed to emit, and a column's exact type and its auto-update behavior could not be declared together. In 0.16.0, inferred schemas work as generated: infer output round-trips cleanly through emit, the built-in Postgres index types (`gin`, `gist`, `brin`, and friends) emit, and new temporal presets let one field declaration carry both the column type and its auto-update behavior:
 
 ```prisma
 model Page {
@@ -51,44 +51,44 @@ Read the [v0.16.0 release notes](https://github.com/prisma/prisma-next/releases/
 
 ## Prisma Next
 
-Beyond the 0.16.0 headline changes, the language server and the ORM query surface picked up improvements.
+Beyond the 0.16.0 headline changes, your editor now gives live schema feedback, and polymorphic queries get more capable.
 
-- **New** · Interpreter diagnostics now appear live in the editor: unresolvable relations, type and codec bindings, and extension-block semantics are checked as you type instead of only at `contract emit`. A config-load failure shows up as a diagnostic on the config file itself, and the language server keeps serving diagnostics from the last working configuration instead of wiping every marker. ([prisma/prisma-next#972](https://github.com/prisma/prisma-next/pull/972), [prisma/prisma-next#974](https://github.com/prisma/prisma-next/pull/974))
-- **Improved** · `.include()` now works with variant-declared relations: narrowing to a variant exposes the relations that variant declares, across the type surface, runtime resolution, and SQL planning. ([prisma/prisma-next#976](https://github.com/prisma/prisma-next/pull/976))
+- **New** · Schema problems show up in your editor as you type. The language server now reports unresolvable relations, type and codec mismatches, and extension-block errors live, instead of waiting for `contract emit`. If your config file fails to load, the error appears on the config file itself, and existing diagnostics stay put instead of disappearing. ([prisma/prisma-next#972](https://github.com/prisma/prisma-next/pull/972), [prisma/prisma-next#974](https://github.com/prisma/prisma-next/pull/974))
+- **Improved** · Polymorphic queries can follow relations declared on a variant: narrow a query with `.variant(...)` and `.include()` the relations that variant declares. ([prisma/prisma-next#976](https://github.com/prisma/prisma-next/pull/976))
 
 <details>
 <summary>Fixes and improvements (4)</summary>
 
-- **Fixed** · Values selected inside an ORM include now decode through their codec; a `Bytes` column inside an include no longer surfaces as raw `bytea` hex text. ([prisma/prisma-next#942](https://github.com/prisma/prisma-next/pull/942))
-- **Fixed** · Migration operations are ordered by a dependency graph over the schema diff, fixing drop-order defects such as a column dropping before its own constraint. ([prisma/prisma-next#992](https://github.com/prisma/prisma-next/pull/992))
-- **Fixed** · Variant-narrowed count writes and include-backed `deleteAll` compile their predicates through a correlated subquery, so the generated SQL no longer references a table that is not in scope. ([prisma/prisma-next#940](https://github.com/prisma/prisma-next/pull/940))
-- **Fixed** · More `contract infer` round-trip fixes: a plain `Decimal` field on Postgres connects without a codec error, literal-shaped `dbgenerated(...)` defaults verify clean instead of reporting permanent drift, and foreign keys pointing outside the introspected scope are explained in the output instead of vanishing silently. ([prisma/prisma-next#1011](https://github.com/prisma/prisma-next/pull/1011))
+- **Fixed** · A `Bytes` column selected inside `.include()` now returns bytes instead of raw `\x...` hex text. ([prisma/prisma-next#942](https://github.com/prisma/prisma-next/pull/942))
+- **Fixed** · Migrations run their operations in dependency order, fixing cases such as a column being dropped before its own constraint. ([prisma/prisma-next#992](https://github.com/prisma/prisma-next/pull/992))
+- **Fixed** · Count-returning updates and deletes on a narrowed variant no longer generate SQL that references a missing table. ([prisma/prisma-next#940](https://github.com/prisma/prisma-next/pull/940))
+- **Fixed** · More `contract infer` fixes: `Decimal` fields connect without a codec error, `dbgenerated(...)` defaults no longer report permanent drift in `db verify`, and foreign keys that point outside the introspected tables are explained in the output instead of silently dropped. ([prisma/prisma-next#1011](https://github.com/prisma/prisma-next/pull/1011))
 </details>
 
 ## Prisma Compute
 
-Prisma Compute's app detection moved into the public SDK, and app endpoint domains are now truthful before the first deploy.
+App detection moved into the public SDK, and app URLs are now correct before your first deploy.
 
-- **New** · `@prisma/compute-sdk` 0.37.0 adds `detectComputeApp`, which detects an app's framework, build type, HTTP port, and entrypoint from a repository snapshot, no local checkout required, and recognizes Elysia, Express, and Fastify as Bun-backed apps.
-- **Improved** · The GitHub repository picker in the Prisma Console now paginates, so installations with more than 100 repositories can reach all of them, and switching accounts mid-load no longer briefly shows the wrong account's repositories.
-- **Fixed** · The endpoint domain returned for an app before its first deployment now names the domain the app will actually serve on. Previously the pre-deploy URL could point at the wrong region and 404 forever.
+- **New** · The Prisma Compute SDK can inspect a repository without cloning it: `detectComputeApp` reads a repository snapshot and reports the app's framework, build type, HTTP port, and entrypoint. Elysia, Express, and Fastify apps are recognized and run on Bun. Available since `@prisma/compute-sdk` 0.37.0.
+- **Improved** · The GitHub repository picker in the Prisma Console loads repositories page by page, so installations with more than 100 repositories can reach all of them, and switching accounts mid-load no longer briefly shows the wrong account's list.
+- **Fixed** · The app URL returned before your first deployment now names the domain your app will actually serve on. Previously it could point at the wrong region and never resolve.
 
 ## Prisma Postgres
 
 One reliability improvement for databases waking from idle.
 
-- **Improved** · Query engine cold starts are now provisioned independently of the regional pool coordinator, so a single degraded coordinator can no longer block databases from waking across its region.
+- **Improved** · Cold starts no longer run through a single per-region coordinator, so one degraded coordinator cannot block databases from waking across its region.
 
 ## Prisma docs
 
-The prisma.io docs are now agent-ready.
+The prisma.io docs are now built for coding agents.
 
-- **New** · The docs are restructured for coding agents: the root `llms.txt` is a compact index linking ten per-section indexes instead of one file too large for agents to read, every page carries a crawler-visible pointer to its markdown version, and MCP server discovery is published. Point your agent at [prisma.io/docs](https://www.prisma.io/docs) and every page is reachable from the root index. ([prisma/web#8087](https://github.com/prisma/web/pull/8087))
+- **New** · The root `llms.txt` is a compact index linking ten per-section indexes instead of one file too large for agents to read, every page carries a crawler-visible pointer to its markdown version, and MCP server discovery is published. Point your agent at [prisma.io/docs](https://www.prisma.io/docs) and every page is reachable from the root index. ([prisma/web#8087](https://github.com/prisma/web/pull/8087))
 - **New** · A [Plasmic integration guide](https://www.prisma.io/docs/guides/integrations/plasmic) walks through connecting a Plasmic-built React app to Prisma, with queries configured visually in Plasmic Studio and credentials staying in your app's environment. ([prisma/web#8095](https://github.com/prisma/web/pull/8095))
 
 ## Breaking changes
 
-> ⚠️ **Breaking:** Prisma Next 0.16.0 changes the emitted contract shape. Foreign keys and their backing indexes are now discrete contract entities, a 1:1 relation over a non-unique foreign key fails emit with `PSL_NON_UNIQUE_BACKRELATION`, `contract infer` declares identity-column defaults, and inferred back-relation names no longer double-pluralize. No DDL changes result. To migrate, re-run `contract emit` and follow the [0.15-to-0.16 upgrade recipe](https://github.com/prisma/prisma-next/blob/v0.16.0/skills/upgrade/prisma-next-upgrade/upgrades/0.15-to-0.16/). ([prisma/prisma-next#989](https://github.com/prisma/prisma-next/pull/989), [prisma/prisma-next#1015](https://github.com/prisma/prisma-next/pull/1015), [prisma/prisma-next#1011](https://github.com/prisma/prisma-next/pull/1011))
+> ⚠️ **Breaking:** Prisma Next 0.16.0 changes the emitted contract shape. Foreign keys and their backing indexes are now separate contract entries, a 1:1 relation over a non-unique foreign key fails emit with `PSL_NON_UNIQUE_BACKRELATION`, `contract infer` declares identity-column defaults, and inferred back-relation names no longer double-pluralize. Your database schema is unaffected. To migrate, re-run `contract emit` and follow the [0.15-to-0.16 upgrade recipe](https://github.com/prisma/prisma-next/blob/v0.16.0/skills/upgrade/prisma-next-upgrade/upgrades/0.15-to-0.16/). ([prisma/prisma-next#989](https://github.com/prisma/prisma-next/pull/989), [prisma/prisma-next#1015](https://github.com/prisma/prisma-next/pull/1015), [prisma/prisma-next#1011](https://github.com/prisma/prisma-next/pull/1011))
 
 > ⚠️ **Breaking:** The deprecated experimental `/v1/compute-services` and `/v1/versions` Management API endpoints are removed. To migrate, use the [`/v1/apps` and `/v1/deployments` endpoints](https://www.prisma.io/docs/management-api), which cover the same operations.
 
