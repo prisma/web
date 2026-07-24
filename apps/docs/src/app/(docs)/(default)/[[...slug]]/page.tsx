@@ -36,6 +36,15 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
 
   return (
     <>
+      {hideSidebar && (
+        // Server-rendered so the sidebar never flashes in. Desktop-only: the
+        // mobile drawer stays available behind the hamburger. Pages remain in
+        // nav, search, sitemap, and llms.txt.
+        <style>{`@media (min-width: 768px){
+#nd-notebook-layout{--fd-sidebar-col:0px !important}
+#nd-sidebar,#nd-notebook-layout div:has(> #nd-sidebar){display:none !important}
+}`}</style>
+      )}
       <div
         data-markdown-ignore
         style={{
@@ -63,7 +72,6 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
         }}
         toc={page.data.toc}
         full={page.data.full}
-        {...(hideSidebar && { sidebar: { enabled: false } })}
       >
         <div className="flex flex-col md:flex-row items-start gap-4 pt-2 pb-1 md:justify-between">
           <DocsTitle>{page.data.title}</DocsTitle>

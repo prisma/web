@@ -278,13 +278,24 @@ function formatButton(_attrs: string, content: string) {
   return stripJsxTags(trimComponentContent(content));
 }
 
-function formatStackStep(attrs: string, content: string) {
-  const step = getAttribute(attrs, "step");
+function formatStackLayer(attrs: string, content: string) {
   const title = getAttribute(attrs, "title") ?? "Step";
   const href = getAttribute(attrs, "href");
   const text = stripJsxTags(trimComponentContent(content)).replace(/\n+/g, " ");
   const label = href ? `[${title}](${href})` : title;
-  return `${step ? `${step}. ` : "- "}**${label}**${text ? `: ${text}` : ""}`;
+  return `- **${label}**${text ? `: ${text}` : ""}`;
+}
+
+function formatHeroPitch(attrs: string, content: string) {
+  const text = stripJsxTags(trimComponentContent(content));
+  const links: string[] = [];
+  const primaryHref = getAttribute(attrs, "primaryHref");
+  const primaryLabel = getAttribute(attrs, "primaryLabel");
+  if (primaryHref && primaryLabel) links.push(`- [${primaryLabel}](${primaryHref})`);
+  const secondaryHref = getAttribute(attrs, "secondaryHref");
+  const secondaryLabel = getAttribute(attrs, "secondaryLabel");
+  if (secondaryHref && secondaryLabel) links.push(`- [${secondaryLabel}](${secondaryHref})`);
+  return [text, links.join("\n")].filter(Boolean).join("\n\n");
 }
 
 function formatIconLink(attrs: string, _content: string) {
@@ -521,9 +532,11 @@ export function normalizeProcessedMarkdown(markdown: string) {
       },
     )
     .replace(
-      /<GetStartedTabs\b([^>]*)>([\s\S]*?)<\/GetStartedTabs>/g,
+      /<GetStartedTabs\b([^>]*?)>([\s\S]*?)<\/GetStartedTabs>/g,
       (_match, attrs: string, content: string) => {
-        const cli = getAttribute(attrs, "cli");
+        // cli may be a quoted string or a multiline template literal.
+        const cli =
+          getAttribute(attrs, "cli") ?? attrs.match(/cli=\{\s*`([\s\S]*?)`\s*\}/)?.[1];
         const text = trimComponentContent(content);
         const cliBlock = cli ? `\`\`\`bash\n${cli}\n\`\`\`` : "";
         return [cliBlock, text].filter(Boolean).join("\n\n");
@@ -539,7 +552,10 @@ export function normalizeProcessedMarkdown(markdown: string) {
       },
     )
     .replace(/<\/?IconGrid[^>]*>/g, "")
-    .replace(/<\/?StackSteps[^>]*>/g, "")
+    .replace(/<\/?StackDiagram[^>]*>/g, "")
+    .replace(/<HeroPitch\b([^>]*)>([\s\S]*?)<\/HeroPitch>/g, (_match, attrs: string, content: string) =>
+      formatHeroPitch(attrs, content),
+    )
     .replace(/<\/?HeroGrid[^>]*>/g, "");
 
   const protectedCode = protectFencedCodeBlocks(componentMarkdown);
@@ -550,8 +566,8 @@ export function normalizeProcessedMarkdown(markdown: string) {
           .replace(/<\/?Cards[^>]*>/g, "")
           .replace(/<APIPage\b([\s\S]*?)\/>/g, (match: string) => formatApiPage(match))
           .replace(/<Youtube\b([\s\S]*?)\/>/g, (_match, attrs: string) => formatYoutube(attrs)),
-        "StackStep",
-        formatStackStep,
+        "StackLayer",
+        formatStackLayer,
       ),
       "IconLink",
       formatIconLink,
@@ -564,6 +580,7 @@ export function normalizeProcessedMarkdown(markdown: string) {
     .restore(withoutJsxComponents)
     .replace(/^[ \t]+(#{3,4} )/gm, "$1")
     .replace(/^[ \t]+(- \[)/gm, "$1")
+    .replace(/^[ \t]+(- \*\*\[)/gm, "$1")
     .replace(/^[ \t]+(\d+\. \*\*\[)/gm, "$1")
     .replace(/\n{3,}/g, "\n\n")
     .trim();

@@ -6,11 +6,12 @@ import {
   AgentPrompt,
   GetStartedTabs,
   HeroGrid,
+  HeroPitch,
   IconGrid,
   IconLink,
   SectionRow,
-  StackStep,
-  StackSteps,
+  StackDiagram,
+  StackLayer,
 } from "@/components/getting-started";
 import { withDocsBasePath } from "@/lib/urls";
 
@@ -120,11 +121,12 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     ConceptAnimation,
     GetStartedTabs,
     HeroGrid,
+    HeroPitch,
     IconGrid,
     IconLink,
     SectionRow,
-    StackStep,
-    StackSteps,
+    StackDiagram,
+    StackLayer,
     TechIcon,
     Youtube,
     img: (props: any) => (
