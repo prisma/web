@@ -52,7 +52,7 @@ function HeroShell({ motif }: { motif?: React.ReactNode }) {
 
       {motif}
 
-      <Texture opacity={0.03} blend="multiply" />
+      <Texture />
 
       <div className="relative px-4 sm:px-8">
         <div className="mx-auto flex max-w-4xl flex-col items-center pt-32 text-center max-md:pt-28">

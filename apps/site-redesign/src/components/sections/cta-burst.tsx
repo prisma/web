@@ -22,7 +22,29 @@ const CHECKS = [
   { label: "Type-safe ORM, free and always will be", color: "text-prism-red-500" },
 ] as const
 
-export function CtaBurst() {
+type Cta = { label: string; href: string }
+
+type CtaBurstProps = {
+  headline?: React.ReactNode
+  /** Override the headline measure (default max-w-[20ch]) when custom copy needs longer lines. */
+  headlineMaxWidth?: string
+  /** Override the body measure (default max-w-[52ch]). */
+  bodyMaxWidth?: string
+  body?: string
+  checks?: readonly { label: string; color: string }[]
+  primaryCta?: Cta
+  secondaryCta?: Cta
+}
+
+export function CtaBurst({
+  headline = "Ready to let your agent run the full loop?",
+  headlineMaxWidth = "max-w-[20ch]",
+  bodyMaxWidth = "max-w-[52ch]",
+  body = "The TypeScript stack 500K+ developers trust. Start with the free ORM, and add the rest of the platform when you need it.",
+  checks = CHECKS,
+  primaryCta = { label: "Get started free", href: "https://console.prisma.io" },
+  secondaryCta = { label: "See pricing", href: "/pricing" },
+}: CtaBurstProps = {}) {
   return (
     <section className="bg-white px-3 py-24 sm:px-4 sm:py-32">
       <div className="mx-auto max-w-[96rem]">
@@ -90,23 +112,22 @@ export function CtaBurst() {
                 the page */}
             <div className="relative flex flex-col items-start px-6 py-16 text-left sm:items-center sm:px-10 sm:py-20 sm:text-center">
               <Reveal>
-                <h2 className="max-w-[20ch] text-balance text-[clamp(2rem,3.2vw,2.75rem)] leading-[1.08]">
-                  Ready to let your agent run the full loop?
+                <h2 className={cn(headlineMaxWidth, "text-balance text-[clamp(2rem,3.2vw,2.75rem)] leading-[1.08]")}>
+                  {headline}
                 </h2>
               </Reveal>
 
               <Reveal delay={0.08}>
-                <p className="mt-5 max-w-[52ch] text-pretty leading-relaxed text-muted-foreground">
-                  The TypeScript stack 500K+ developers trust. Start with the free
-                  ORM, and add the rest of the platform when you need it.
+                <p className={cn("mt-5 text-pretty leading-relaxed text-muted-foreground", bodyMaxWidth)}>
+                  {body}
                 </p>
               </Reveal>
 
               <Reveal delay={0.16}>
                 <ul className="mt-7 flex flex-wrap items-center justify-start gap-x-7 gap-y-3 sm:justify-center">
-                  {CHECKS.map(({ label, color }) => (
+                  {checks.map(({ label, color }, i) => (
                     <li
-                      key={label}
+                      key={i}
                       className="flex items-start gap-2 text-left text-[15px] font-semibold text-foreground"
                     >
                       <CheckBold className={cn("mt-0.5 size-4 shrink-0", color)} aria-hidden />
@@ -117,8 +138,8 @@ export function CtaBurst() {
               </Reveal>
 
               <Reveal delay={0.24} className="mt-9 flex flex-wrap items-center justify-start gap-3 sm:justify-center">
-                <PrismButton href="https://console.prisma.io">Get started free</PrismButton>
-                <PrismButtonOutline href="/pricing">See pricing</PrismButtonOutline>
+                <PrismButton href={primaryCta.href}>{primaryCta.label}</PrismButton>
+                <PrismButtonOutline href={secondaryCta.href}>{secondaryCta.label}</PrismButtonOutline>
               </Reveal>
             </div>
           </div>

@@ -99,7 +99,7 @@ function Media({ t }: { t: Testimonial }) {
   )
 }
 
-export function TestimonialsReveal() {
+export function TestimonialsReveal({ heading = "Real teams, real builds" }: { heading?: string }) {
   const [active, setActive] = useState(0)
   const reduceMotion = useReducedMotion()
   const count = TESTIMONIALS.length
@@ -109,7 +109,7 @@ export function TestimonialsReveal() {
     <section className="bg-white px-4 py-24 sm:px-8 sm:py-32">
       <div className="mx-auto max-w-6xl">
         <h2 className="mx-auto max-w-[24ch] text-balance text-center text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
-          Real teams, real builds
+          {heading}
         </h2>
 
         <motion.div

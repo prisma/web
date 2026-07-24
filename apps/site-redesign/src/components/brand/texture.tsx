@@ -7,10 +7,11 @@ type TextureProps = {
   blend?: "hard-light" | "multiply"
 }
 
-// Brand grain texture overlay. Drop inside any `relative` container —
-// the stylescape applies it at 0.02–0.03 opacity with hard-light blending.
-// On mostly-white surfaces hard-light is nearly invisible; use multiply there.
-export function Texture({ className, opacity = 0.03, blend = "hard-light" }: TextureProps) {
+// Brand grain texture overlay. Drop inside any `relative` container.
+// Standard since the bold pass: 0.06 opacity with multiply blending on
+// color-washed section panels (hard-light is nearly invisible on light
+// surfaces — only reach for it on dark imagery).
+export function Texture({ className, opacity = 0.06, blend = "multiply" }: TextureProps) {
   return (
     <div
       aria-hidden

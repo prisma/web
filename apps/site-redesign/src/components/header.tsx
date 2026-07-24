@@ -2,7 +2,8 @@
 
 import Link from "next/link"
 import { useEffect, useState } from "react"
-import { ArrowRight, Code, Database, Menu, Server } from "@/components/icons/forma"
+import { ArrowRight, Menu } from "@/components/icons/forma"
+import { PLATFORM_PRODUCT_ICONS, PRODUCT_ICONS } from "@/components/product/icons"
 import { Button } from "@/components/ui/button"
 import {
   NavigationMenu,
@@ -17,11 +18,11 @@ import { Logo } from "@/components/logo"
 import { siteConfig } from "@/lib/config"
 import { cn } from "@/lib/utils"
 
-const PLATFORM_ICONS: Record<string, typeof Database> = {
-  "/postgres": Database,
-  "/compute": Server,
-  "/orm": Code,
-}
+// Product glyphs resolve through the canonical shared mapping so the navbar
+// never drifts from the product pages (see product/icons.ts).
+const PLATFORM_ICONS = Object.fromEntries(
+  Object.entries(PLATFORM_PRODUCT_ICONS).map(([href, name]) => [href, PRODUCT_ICONS[name]])
+)
 
 // At the very top of the page the navbar sits docked inside the hero wrapper.
 // From the first scroll it detaches into a sticky floating pill with its own

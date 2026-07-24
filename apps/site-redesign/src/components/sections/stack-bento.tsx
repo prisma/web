@@ -1,10 +1,11 @@
-import { ArrowRightBold, Console, Table } from "@/components/icons/forma"
+import { Console, Table } from "@/components/icons/forma"
+import { IconTile } from "@/components/brand/icon-tile"
+import { LearnMore } from "@/components/brand/learn-more"
 import { ConnectorStrip } from "@/components/sections/connector-strip"
 import { OrmIllustration } from "@/components/sections/orm-illustration"
 import { PostgresIllustration } from "@/components/sections/postgres-illustration"
 import { ComputeIllustration } from "@/components/sections/compute-illustration"
 import { GlassPrismSpin } from "@/components/brand/glass-prism-spin"
-import { PrismButtonOutline } from "@/components/brand/prism-button"
 import { Pattern } from "@/components/brand/pattern"
 import { Texture } from "@/components/brand/texture"
 import { Reveal } from "@/components/motion/reveal"
@@ -37,67 +38,8 @@ function RoleKicker({ color, children }: { color: string; children: React.ReactN
   )
 }
 
-function LearnMore({
-  href,
-  product,
-  outline = false,
-  className,
-}: {
-  href: string
-  product: string
-  outline?: boolean
-  className?: string
-}) {
-  if (outline) {
-    return (
-      <span className="mt-7 inline-flex">
-        <PrismButtonOutline href={href}>
-          Learn more
-          <span className="sr-only"> about {product}</span>
-        </PrismButtonOutline>
-      </span>
-    )
-  }
-  return (
-    <span className={cn("mt-5 inline-flex", className)}>
-      <a
-        href={href}
-        className="spectrum-ink -ml-3.5 inline-flex h-9 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold outline-none transition-all focus-visible:ring-[3px] focus-visible:ring-ring/50 has-[>svg]:px-3.5 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0"
-      >
-        Learn more
-        <span className="sr-only"> about {product}</span>
-        <ArrowRightBold className="size-3.5" aria-hidden />
-      </a>
-    </span>
-  )
-}
-
 // Icon tile for the cross-stack tools: a white tile with a soft prismatic
 // bloom behind the glyph — light dispersing through frosted glass.
-function ToolIcon({ children }: { children: React.ReactNode }) {
-  return (
-    <span
-      aria-hidden
-      className="relative flex size-14 items-center justify-center overflow-hidden rounded-xl border border-black/[0.06] bg-card shadow-[0_1px_2px_rgba(21,21,21,0.04),0_8px_16px_-8px_rgba(21,21,21,0.1)]"
-    >
-      {/* the panel idiom in miniature — the spectral wash collecting along
-          the tile's bottom edge and dispersing to white above, exactly like
-          the wrapped sections' backdrops */}
-      <span
-        className="absolute inset-0"
-        style={{
-          background: [
-            "radial-gradient(80% 55% at 20% 100%, color-mix(in srgb, var(--color-prism-cyan-300) 45%, transparent), transparent 70%)",
-            "radial-gradient(70% 50% at 52% 100%, color-mix(in srgb, var(--color-prism-yellow-300) 40%, transparent), transparent 68%)",
-            "radial-gradient(75% 52% at 84% 100%, color-mix(in srgb, var(--color-prism-red-300) 42%, transparent), transparent 70%)",
-          ].join(","),
-        }}
-      />
-      <span className="relative">{children}</span>
-    </span>
-  )
-}
-
 // The TypeScript stack as a bento: three products as three-steps-style cards
 // (wash illustration + content), joined by the files that integrate them,
 // closed by the cross-stack tools. Wrapped panel with the hero's prismatic
@@ -259,9 +201,9 @@ export function StackBento() {
               <h3 className="text-2xl">Working across the stack</h3>
               <div className="mt-7 grid gap-10 lg:grid-cols-2">
                 <div>
-                  <ToolIcon>
+                  <IconTile className="size-14">
                     <Table className="size-6 text-foreground" />
-                  </ToolIcon>
+                  </IconTile>
                   <h4 className="mt-5 text-xl">Prisma Studio</h4>
                   <em className="mt-0.5 block text-sm text-muted-foreground">
                     to inspect your data
@@ -274,9 +216,9 @@ export function StackBento() {
                   <LearnMore href="/postgres" product="Prisma Studio" />
                 </div>
                 <div>
-                  <ToolIcon>
+                  <IconTile className="size-14">
                     <Console className="size-6 text-foreground" />
-                  </ToolIcon>
+                  </IconTile>
                   <h4 className="mt-5 text-xl">CLI + Management API</h4>
                   <em className="mt-0.5 block text-sm text-muted-foreground">
                     to stay in the loop

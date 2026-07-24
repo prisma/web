@@ -17,6 +17,8 @@ import {
   Settings,
 } from "@/components/icons/forma"
 import { GlassPrism } from "@/components/brand/glass-prism"
+import { IconTile } from "@/components/brand/icon-tile"
+import { LearnMore } from "@/components/brand/learn-more"
 import { Pattern } from "@/components/brand/pattern"
 import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button"
 import { PrismRay, prismBands } from "@/components/brand/prism-ray"
@@ -228,8 +230,9 @@ export default function BrandPage() {
                   <Texture opacity={1} className="mix-blend-normal" />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Shown raw above. In practice it overlays sections at 0.02–0.03 opacity with
-                  hard-light blending — a subtle film grain, never a visible image.
+                  Shown raw above. In practice it overlays color-washed section panels at
+                  0.06 opacity with multiply blending (the component&apos;s default) — a
+                  present but fine film grain, never a visible image.
                 </p>
               </CardContent>
             </Card>
@@ -412,6 +415,27 @@ export default function BrandPage() {
                 Hero, navbar, and brand pages use Forma Thin; remaining starter sections still
                 render Lucide and get swapped as they&apos;re rebuilt.
               </p>
+              <Separator />
+              <p className="text-sm leading-relaxed">
+                <span className="font-semibold">Icon tiles</span> — when an icon anchors a card
+                or feature row, it sits on an <code className="bg-muted px-1 py-0.5 rounded">IconTile</code>{" "}
+                (<code className="bg-muted px-1 py-0.5 rounded">src/components/brand/icon-tile.tsx</code>): a white
+                tile with the panel idiom in miniature — the spectral wash collecting along the
+                tile&apos;s bottom edge, the glyph in <code className="bg-muted px-1 py-0.5 rounded">text-foreground</code> on
+                top. Never flat tinted squares. Default <code className="bg-muted px-1 py-0.5 rounded">size-12</code>;
+                pass <code className="bg-muted px-1 py-0.5 rounded">className</code> to resize
+                (stack-bento uses <code className="bg-muted px-1 py-0.5 rounded">size-14</code>).
+              </p>
+              <div className="flex flex-wrap items-end gap-5 rounded-lg border bg-white p-5">
+                {[Database, Server, Bot, Rocket].map((Icon, i) => (
+                  <IconTile key={i}>
+                    <Icon className="size-5 text-foreground" />
+                  </IconTile>
+                ))}
+                <IconTile className="size-14">
+                  <Layers className="size-6 text-foreground" />
+                </IconTile>
+              </div>
             </CardContent>
           </Card>
         </section>
@@ -533,6 +557,20 @@ export default function BrandPage() {
                 and erupts in a prismatic burst on hover; the secondary is a thin-border pill.
                 Hover them.
               </p>
+              <Separator />
+              <p className="text-sm leading-relaxed">
+                <span className="font-semibold">Learn more links</span> — the standard in-card
+                text CTA is <code className="text-xs bg-muted px-1.5 py-0.5 rounded">&lt;LearnMore /&gt;</code>{" "}
+                (<code className="text-xs bg-muted px-1.5 py-0.5 rounded">src/components/brand/learn-more.tsx</code>):
+                a spectrum-ink pill with the bold arrow. Use it wherever a card or feature row
+                links deeper — never ad-hoc link styles. Pass{" "}
+                <code className="text-xs bg-muted px-1.5 py-0.5 rounded">outline</code> to escalate to the
+                bordered brand button when the link is a section&apos;s single closing CTA.
+              </p>
+              <div className="flex flex-wrap items-center gap-6 rounded-lg border bg-white p-10">
+                <LearnMore href="/docs" product="the example feature" className="mt-0" />
+                <LearnMore href="/docs" product="the example feature" outline className="mt-0" />
+              </div>
             </CardContent>
           </Card>
           <Card>

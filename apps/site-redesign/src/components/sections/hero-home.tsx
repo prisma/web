@@ -1,4 +1,5 @@
 import { CheckBold } from "@/components/icons/forma"
+import { GlassGlide } from "@/components/brand/glass-glide"
 import { GlassPrismSpin } from "@/components/brand/glass-prism-spin"
 import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button"
 import { prismBands } from "@/components/brand/prism-ray"
@@ -57,29 +58,9 @@ export function HeroHome() {
 
         <div className="relative px-4 sm:px-8">
           <div className="mx-auto flex max-w-4xl animate-hero-rise flex-col items-start pt-28 text-left motion-reduce:animate-none md:items-center md:pt-36 md:text-center">
-            <h1 className="max-w-[20ch] text-balance text-[clamp(2.5rem,4.5vw,3.875rem)] leading-[1.06]">
+            <h1 className="isolate max-w-[20ch] text-balance text-[clamp(2.5rem,4.5vw,3.875rem)] leading-[1.06]">
               Your TypeScript app, from{" "}
-              {/* a feathered pocket of glass light glides through the phrase
-                  behind the letters — soft luminance with a faint prism
-                  dispersion inside and a soft shadow for body; the ink stays
-                  crisp on top. Desktop only; hidden for reduced motion. */}
-              <span className="relative md:whitespace-nowrap">
-                <span className="relative z-10">prompt to production</span>
-                <span
-                  aria-hidden
-                  className="pointer-events-none absolute inset-y-[-0.35em] -z-10 w-[42%] animate-glass-glide max-md:hidden motion-reduce:hidden"
-                >
-                  {/* soft shadow beneath — gives the light physical presence */}
-                  <span className="absolute inset-x-[6%] inset-y-[18%] rounded-full bg-black/[0.07] blur-2xl" />
-                  {/* the glass luminance */}
-                  <span className="absolute inset-0 rounded-full bg-white/80 blur-xl" />
-                  {/* prism dispersion inside the light */}
-                  <span
-                    className="absolute inset-x-[8%] top-1/2 h-[60%] -translate-y-1/2 rounded-full opacity-40 blur-2xl"
-                    style={{ background: SPECTRUM }}
-                  />
-                </span>
-              </span>
+              <GlassGlide>prompt to production</GlassGlide>
             </h1>
             <p className="mt-6 max-w-[64ch] text-pretty text-lg leading-relaxed text-muted-foreground">
               Give your coding agent a type-safe ORM, managed Postgres, and app

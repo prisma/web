@@ -1,4 +1,5 @@
 import { Database, Layers, Repeat } from "@/components/icons/forma"
+import { IconTile } from "@/components/brand/icon-tile"
 import { Texture } from "@/components/brand/texture"
 import { Reveal } from "@/components/motion/reveal"
 
@@ -45,32 +46,6 @@ const FEATURES = [
     body: "App and Postgres co-located on the same host.",
   },
 ]
-
-// Icon tile — same idiom as stack-bento's ToolIcon: a white tile with a
-// soft prismatic bloom behind the glyph.
-function IconTile({ children }: { children: React.ReactNode }) {
-  return (
-    <span
-      aria-hidden
-      className="relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-black/[0.06] bg-card shadow-[0_1px_2px_rgba(21,21,21,0.04),0_8px_16px_-8px_rgba(21,21,21,0.1)]"
-    >
-      {/* the panel idiom in miniature — the spectral wash collecting along
-          the tile's bottom edge and dispersing to white above, exactly like
-          the wrapped sections' backdrops */}
-      <span
-        className="absolute inset-0"
-        style={{
-          background: [
-            "radial-gradient(80% 55% at 20% 100%, color-mix(in srgb, var(--color-prism-cyan-300) 45%, transparent), transparent 70%)",
-            "radial-gradient(70% 50% at 52% 100%, color-mix(in srgb, var(--color-prism-yellow-300) 40%, transparent), transparent 68%)",
-            "radial-gradient(75% 52% at 84% 100%, color-mix(in srgb, var(--color-prism-red-300) 42%, transparent), transparent 70%)",
-          ].join(","),
-        }}
-      />
-      <span className="relative">{children}</span>
-    </span>
-  )
-}
 
 // The agent loop: five verb chips on a hairline ring, the agent panel at
 // center driving each via spokes, and a spectrum pulse circling the ring
