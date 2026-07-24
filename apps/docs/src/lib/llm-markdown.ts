@@ -249,6 +249,54 @@ function formatYoutube(attrs: string) {
   return `[${title}](https://www.youtube.com/watch?v=${videoId})`;
 }
 
+/**
+ * Converts a `<details>`/`<summary>` block into plain markdown. The processed
+ * markdown serializes JSX/HTML children with a 2-space indent, which turns the
+ * code fences inside `<details>` into indented fences that markdown consumers
+ * (and the afdocs parity checker) no longer treat as code blocks. Dedenting the
+ * body back to column 0 and collapsing the summary to a single bold line keeps
+ * the content faithful to the rendered page. Must run BEFORE fenced code blocks
+ * are protected, so the dedent applies to the fences themselves.
+ */
+function formatDetails(content: string) {
+  const summaryMatch = content.match(/<summary\b[^>]*>([\s\S]*?)<\/summary>/);
+  const summary = summaryMatch
+    ? stripJsxTags(trimComponentContent(summaryMatch[1])).replace(/\s+/g, " ").trim()
+    : "";
+  const body = trimComponentContent(content.replace(/<summary\b[\s\S]*?<\/summary>/, ""));
+
+  if (!body) return summary ? `**${summary}**` : "";
+  return summary ? `**${summary}**\n\n${body}` : body;
+}
+
+/**
+ * Restores markdown heading markers on lines the processed output emits as
+ * plain `Heading text [#anchor]` lines. Fumadocs' processed markdown drops the
+ * `#` markers from headings, which demotes them to prose for agents and breaks
+ * the afdocs parity check for headings that start with list-like text (e.g.
+ * "## 1. Set up your project" — without the marker, "1. " reads as a list
+ * item). The anchor→depth map built from the page's table of contents decides
+ * which lines are headings and at what level. Run while fenced code blocks are
+ * protected so code lines can never be rewritten.
+ */
+function restoreHeadingMarkers(
+  markdown: string,
+  headingDepths: ReadonlyMap<string, number> | undefined,
+) {
+  if (!headingDepths || headingDepths.size === 0) return markdown;
+
+  return markdown.replace(
+    /^[ \t]*(.+?)[ \t]*\[#([^\]\n]+)\][ \t]*$/gm,
+    (match, text: string, anchor: string) => {
+      const depth = headingDepths.get(anchor);
+      if (!depth || text.startsWith("#")) return match;
+
+      const level = Math.min(Math.max(Math.trunc(depth), 1), 6);
+      return `${"#".repeat(level)} ${text} [#${anchor}]`;
+    },
+  );
+}
+
 function convertHtmlLinks(value: string) {
   return value.replace(/<a\b([^>]*)>([\s\S]*?)<\/a>/g, (_match, attrs: string, content: string) => {
     const href = getAttribute(attrs, "href");
@@ -455,7 +503,10 @@ export function protectInlineCode(markdown: string) {
   };
 }
 
-export function normalizeProcessedMarkdown(markdown: string) {
+export function normalizeProcessedMarkdown(
+  markdown: string,
+  options?: { headingDepths?: ReadonlyMap<string, number> },
+) {
   const componentMarkdown = markdown
     .replace(/\{\/\*[\s\S]*?\*\/\}/g, "")
     .replace(
@@ -487,7 +538,10 @@ export function normalizeProcessedMarkdown(markdown: string) {
     .replace(/<SharedContent\b[^>]*>([\s\S]*?)<\/SharedContent>/g, (_match, content: string) =>
       trimComponentContent(content),
     )
-    .replace(/<SharedContent\b[^>]*\/>/g, "");
+    .replace(/<SharedContent\b[^>]*\/>/g, "")
+    .replace(/<details\b[^>]*>([\s\S]*?)<\/details>/g, (_match, content: string) =>
+      formatDetails(content),
+    );
 
   const protectedCode = protectFencedCodeBlocks(componentMarkdown);
   const withoutJsxComponents = replaceComponentBlocks(
@@ -499,8 +553,21 @@ export function normalizeProcessedMarkdown(markdown: string) {
     formatButton,
   );
 
+  // Undo remark-stringify escapes that have no markdown meaning in prose
+  // (`\_`, `\{`, `\}`): they read as noise to agents consuming the raw
+  // markdown ("snake\_case") and break HTML/markdown parity comparisons.
+  // Underscores are only emphasis at word boundaries, which escaped
+  // identifiers like snake_case never hit. Inline code is protected first so
+  // literal backslashes in code spans survive; fenced blocks are already
+  // placeholders at this point.
+  const withHeadings = restoreHeadingMarkers(withoutJsxComponents, options?.headingDepths);
+  const protectedInline = protectInlineCode(withHeadings);
+  const unescaped = protectedInline.restore(
+    protectedInline.markdown.replace(/\\([_{}])/g, "$1"),
+  );
+
   return protectedCode
-    .restore(withoutJsxComponents)
+    .restore(unescaped)
     .replace(/^[ \t]+(#{3,4} )/gm, "$1")
     .replace(/^[ \t]+(- \[)/gm, "$1")
     .replace(/\n{3,}/g, "\n\n")
