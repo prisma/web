@@ -30,6 +30,7 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
 
   const aiPromptSlug = (page.data as { aiPrompt?: string }).aiPrompt;
   const promptContent = aiPromptSlug ? await getPromptContent(aiPromptSlug) : null;
+  const hideSidebar = (page.data as { hideSidebar?: boolean }).hideSidebar;
 
   const pageMarkdownUrl = `https://www.prisma.io${withDocsBasePath(page.url)}.md`;
 
@@ -62,6 +63,7 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
         }}
         toc={page.data.toc}
         full={page.data.full}
+        {...(hideSidebar && { sidebar: { enabled: false } })}
       >
         <div className="flex flex-col md:flex-row items-start gap-4 pt-2 pb-1 md:justify-between">
           <DocsTitle>{page.data.title}</DocsTitle>

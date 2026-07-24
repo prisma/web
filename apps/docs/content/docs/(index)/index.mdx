@@ -1,66 +1,234 @@
 ---
-title: Introduction to Prisma
-description: Build, deploy, and iterate on TypeScript applications with Prisma ORM, Prisma Postgres, and Prisma Compute.
+title: Get started with Prisma
+description: Scaffold an app with Prisma Next, create or connect Prisma Postgres, and deploy on Prisma Compute. One integrated TypeScript stack, from first query to live URL.
 url: /
 metaTitle: Get started with Prisma
-metaDescription: "Build, deploy, and iterate on TypeScript applications with Prisma ORM, Prisma Postgres, and Prisma Compute."
+metaDescription: Scaffold an app with Prisma Next, create or connect Prisma Postgres, and deploy it on Prisma Compute. Quick setup, guided setup, and agent prompts.
+hideSidebar: true
 ---
 
-[**Prisma ORM**](/orm) is an open-source ORM that provides fast, type-safe access to Postgres, MySQL, SQLite, and other databases, and runs smoothly across Node.js, Bun, and Deno.
+Prisma is one stack for data-backed TypeScript applications. [Prisma Next](/next) is the data layer, the next major version of Prisma ORM in Early Access that becomes Prisma 8 at general availability. [Prisma Postgres](/postgres) is the managed database. [Prisma Compute](/compute) is the hosting that runs your app next to that database. Each piece works on its own, but they are built as one journey:
+
+1. **Scaffold with [Prisma Next](/next)**, picking a framework template.
+2. **Create or connect [Prisma Postgres](/postgres)** at the database prompt.
+3. **Deploy with [Prisma Compute](/compute)**, currently in Public Beta, and get a live URL.
+
+:::note
+
+Building for production on the current generally available release? [Prisma 7](#using-prisma-7) is below. `npx prisma@latest init` installs Prisma 7.
+
+:::
+
+## Quick setup
+
+About 5 minutes. One command scaffolds the app, wires the data layer, and can provision Prisma Postgres for you:
 
 ```npm
-npx prisma@latest init
+npx create-prisma@next
 ```
 
-[**Prisma Postgres**](/postgres) is a fully managed PostgreSQL database that scales to zero, integrates with [Prisma ORM](/orm) and [Prisma Studio](/studio), and includes a [generous free tier](https://www.prisma.io/pricing).
+Pick a framework template, then pick Prisma Postgres at the database prompt or paste your own connection string. From the generated project directory:
 
 ```npm
-npx create-db@latest
-```
-
-[**Prisma Compute**](/compute) is TypeScript app hosting for running your app next to your Prisma Postgres database. It is currently in [Public Beta](/console/more/feature-maturity#public-beta). Deploy Next.js, Hono, TanStack Start, and Bun apps, with an isolated preview for every branch.
-
-```npm
-npx @prisma/cli@latest app deploy
+npm run db:init
+npm run db:seed
+npm run dev
 ```
 
 :::note
 
-Curious what's next? [Prisma Next](/next) is the next major version of Prisma ORM, available now in Early Access. Explore the new developer experience whenever you're ready.
+If `db:seed` fails with `Cannot read properties of undefined (reading 'where')`, the template generated the older unqualified query form. Change `db.orm.User` to `db.orm.public.User` in the files under `src/prisma/` and in the app routes, then rerun.
 
 :::
 
+When the app runs locally, put it on a live URL. The `--env .env` flag passes your `DATABASE_URL` to the deployment. If you picked the Next.js template, set `output: "standalone"` in `next.config.ts` first:
+
+```npm
+npx @prisma/cli@latest app deploy --env .env
+```
+
+## Guided setup
+
+About 10 minutes, with expected output and verification at each step.
+
 <Cards>
-  <Card
-    href="/prisma-compute/deploy"
-    title="Use Prisma Compute"
-    icon={<Rocket className="text-primary" />}
-  >
-    Deploy and run your TypeScript app next to your database, with a live
-    preview for every branch.
+  <Card href="/next/quickstart/postgresql" title="Follow the quickstart" icon={<Rocket className="text-primary" />}>
+    Scaffold a Prisma Next app, initialize and seed the database, and run your
+    first query.
   </Card>
-  <Card
-    href="/prisma-orm/quickstart/prisma-postgres"
-    title="Use Prisma Postgres"
-    icon={
-      <div className="text-primary">
-        <svg
-          aria-hidden="true"
-          xmlns="http://www.w3.org/2000/svg"
-          width="159"
-          height="195"
-          viewBox="0 0 640 640"
-          fill="none"
-        >
-          <path
-            d="M355.2 85C348.2 72.1 334.7 64 320 64C305.3 64 291.8 72.1 284.8 85L209.7 224L430.2 224L355.1 85zM123.3 384L516.6 384L456.1 272L183.7 272L123.2 384zM97.4 432L68.8 485C62.1 497.4 62.4 512.4 69.6 524.5C76.8 536.6 89.9 544 104 544L536 544C550.1 544 563.1 536.6 570.4 524.5C577.7 512.4 577.9 497.4 571.2 485L542.6 432L97.4 432z"
-            fill="currentColor"
-          />
-        </svg>
-      </div>
-    }
-  >
-    Get started with your favorite framework and Prisma Postgres as the
-    database.
+  <Card href="/prisma-compute/deploy" title="Deploy your first app" icon={<CloudUpload className="text-primary" />}>
+    Sign in to Prisma Compute and take an app from your terminal to a live URL.
+  </Card>
+</Cards>
+
+## Use with your agent
+
+Prefer to delegate? Copy this prompt, replace the placeholders, and hand it to your coding agent. The scaffold installs [Prisma Next skills](/ai/tools/skills) into `.claude/skills/` and `.agents/skills/`, so your agent has current, project-level guidance from the first step.
+
+```text
+Create a new [framework] application with Prisma Next, seed it, and run it locally.
+
+1. Scaffold the app: `npx create-prisma@next create my-app --template [next|hono|nuxt|astro|nest|svelte|tanstack-start|elysia] --provider postgres --prisma-postgres --yes`. The `--prisma-postgres` flag provisions a Prisma Postgres database. If I give you a connection string, pass `--database-url "<url>"` instead of `--prisma-postgres`.
+2. From the project directory, apply the starter contract and seed: `npm run db:init`, then `npm run db:seed`. If seeding fails with `Cannot read properties of undefined (reading 'where')`, change `db.orm.User` to `db.orm.public.User` everywhere under `src/` and rerun.
+3. Edit the starter contract under `src/prisma/` into a small schema for my use case, then plan and apply the migration: `npx prisma-next migration plan`, then `npx prisma-next migrate`.
+4. Update the seed script and the app routes to query the new schema, run `npm run dev`, and verify with a request against the running app.
+5. Deploy with Prisma Compute. For the Next.js template, first set `output: "standalone"` in `next.config.ts` (without it the deployed app returns 504s). Check `npx @prisma/cli@latest auth whoami`. If I am not signed in, stop and ask me to run `npx @prisma/cli@latest auth login`, because that step opens a browser. Then run `npx @prisma/cli@latest app deploy --env .env` so DATABASE_URL reaches the deployment, and confirm the deployed URL responds.
+
+Use the installed Prisma Next skills and the current Prisma docs: https://www.prisma.io/docs/llms.txt (append `.md` to any docs URL for a markdown version).
+```
+
+## Add Prisma to your framework
+
+Every guide covers the same journey: scaffold the app, connect Prisma Postgres, run a real query, and deploy where the framework is supported on Compute.
+
+<Cards className="sm:grid-cols-3 lg:grid-cols-4">
+  <Card href="/guides/next/frameworks/nextjs" title="Next.js" icon={<TechIcon src="/img/technologies/nextjs.svg" alt="" invertDark />} />
+  <Card href="/guides/next/frameworks/hono" title="Hono" icon={<TechIcon src="/img/technologies/hono.svg" alt="" />} />
+  <Card href="/guides/next/frameworks/tanstack-start" title="TanStack Start" icon={<TechIcon src="/img/technologies/tanstack.svg" alt="" />} />
+  <Card href="/guides/next/frameworks/nestjs" title="NestJS" icon={<TechIcon src="/img/technologies/nestjs.svg" alt="" />} />
+  <Card href="/guides/next/frameworks/astro" title="Astro" icon={<TechIcon src="/img/technologies/astro.svg" alt="" darkSrc="/img/technologies/astrodark.svg" />} />
+  <Card href="/guides/next/frameworks/nuxt" title="Nuxt" icon={<TechIcon src="/img/technologies/nuxtjs.svg" alt="" />} />
+  <Card href="/guides/next/frameworks/sveltekit" title="SvelteKit" icon={<TechIcon src="/img/technologies/sveltekit.svg" alt="" />} />
+  <Card href="/guides/next/runtimes/bun" title="Bun" icon={<TechIcon src="/img/technologies/bun.svg" alt="" />} />
+</Cards>
+
+Also available: [Elysia](/guides/next/frameworks/elysia) and [Deno](/guides/next/runtimes/deno). Using Express or another Node.js server? Start from the [existing-project path](/next/add-to-existing-project/postgresql).
+
+## More setup paths
+
+Each path has a guide to follow and a prompt to hand to your agent.
+
+<Accordions>
+
+<Accordion title="Add Prisma to an existing project">
+
+Follow the guide: [Add Prisma Next to an existing PostgreSQL project](/next/add-to-existing-project/postgresql) (or [MongoDB](/next/add-to-existing-project/mongodb)).
+
+Or hand it to your agent:
+
+```text
+Add Prisma Next to this existing project.
+
+1. Run `npx prisma-next@latest init`. It writes `prisma-next.config.ts`, a starter contract and `db.ts` under `src/prisma/`, and installs Prisma Next skills for you.
+2. Set `DATABASE_URL` in `.env` to my database. If I did not give you one, create a Prisma Postgres database with `npx create-db@latest` and use its connection string.
+3. If the database already has tables, infer the contract from it: `npx prisma-next contract infer`, then `npx prisma-next contract emit`, then sign it with `npx prisma-next db sign`. If the database is empty, keep the starter contract and run `npx prisma-next db init`.
+4. Write one query with the generated `db` client in an existing code path and verify it runs.
+
+Follow https://www.prisma.io/docs/next/add-to-existing-project/postgresql.md and the installed Prisma Next skills.
+```
+
+</Accordion>
+
+<Accordion title="Use your own PostgreSQL database">
+
+Prisma Next works with any PostgreSQL database, not only Prisma Postgres. Follow the [PostgreSQL quickstart](/next/quickstart/postgresql) and paste your connection string at the database prompt.
+
+Or hand it to your agent:
+
+```text
+Create a new [framework] application with Prisma Next against my existing PostgreSQL database.
+
+1. Scaffold: `npx create-prisma@next create my-app --template [framework] --provider postgres --database-url "<my connection string>" --yes`.
+2. From the project directory: `npm run db:init`, then `npm run db:seed`, then `npm run dev`, and verify the sample query returns data. If seeding fails with `Cannot read properties of undefined (reading 'where')`, change `db.orm.User` to `db.orm.public.User` everywhere under `src/` and rerun.
+3. Evolve the starter contract under `src/prisma/` into my schema, then `npx prisma-next migration plan` and `npx prisma-next migrate`.
+
+Do not provision any hosted database. Use the installed Prisma Next skills and https://www.prisma.io/docs/llms.txt for current docs.
+```
+
+</Accordion>
+
+<Accordion title="Prisma ORM only">
+
+Use Prisma ORM without the rest of the stack. For the generally available version, follow the [Prisma 7 quickstart](/prisma-orm/quickstart/prisma-postgres); for the Early Access version, follow the [Prisma Next quickstart](/next/quickstart/postgresql).
+
+Or hand it to your agent (Prisma 7, the command below installs Prisma 7, not Prisma Next):
+
+```text
+Add Prisma ORM 7 to this project with my existing database.
+
+1. Run `npx prisma@latest init` (Prisma 7). For an existing database, set DATABASE_URL in `.env` and introspect it with `npx prisma db pull`; for a new schema, define models in `prisma/schema.prisma` and run `npx prisma migrate dev --name init`.
+2. Generate the client with `npx prisma generate` and write one query in an existing code path.
+3. Verify the query runs, then show me the schema and the query you added.
+
+Current docs: https://www.prisma.io/docs/orm.md and https://www.prisma.io/docs/llms.txt.
+```
+
+</Accordion>
+
+<Accordion title="Prisma Postgres only">
+
+Prisma Postgres works with any ORM or driver. Follow the [database quickstarts](/prisma-postgres/quickstart/prisma-orm) for Prisma ORM, Kysely, Drizzle, or TypeORM.
+
+Or hand it to your agent:
+
+```text
+Create a Prisma Postgres database for this project.
+
+1. Run `npx create-db@latest`. It creates a temporary Prisma Postgres database without an account and prints a connection string plus a claim URL.
+2. Put the connection string in `.env` as DATABASE_URL and wire it into my existing setup ([Prisma ORM|Kysely|Drizzle|TypeORM|node-postgres]).
+3. Remind me to open the claim URL to keep the database in my Prisma workspace.
+
+Current docs: https://www.prisma.io/docs/postgres.md.
+```
+
+</Accordion>
+
+<Accordion title="Prisma Compute only">
+
+Deploy an app you already have, with or without a database. Follow [Deploy your first app](/prisma-compute/deploy).
+
+Or hand it to your agent (sign in first with `npx @prisma/cli@latest auth login`):
+
+```text
+Deploy this app to Prisma Compute using `npx @prisma/cli@latest`.
+
+1. Confirm I am signed in with `npx @prisma/cli@latest auth whoami`; if not, stop and ask me to run `npx @prisma/cli@latest auth login`.
+2. Run `npx @prisma/cli@latest app deploy` from the project directory. Add `--db` if the app needs a database; Compute provisions Prisma Postgres and wires the connection string.
+3. Open the deployed URL and confirm the app responds. Use `npx @prisma/cli@latest app logs` if it does not.
+
+Current docs: https://www.prisma.io/docs/prisma-compute/deploy.md.
+```
+
+</Accordion>
+
+</Accordions>
+
+## Using Prisma 7?
+
+Prisma 7 is the current generally available release of Prisma ORM, and `npx prisma@latest init` installs it. It pairs with Prisma Postgres and Prisma Compute the same way.
+
+<Cards>
+  <Card href="/getting-started" title="Prisma 7 setup paths" icon={<Milestone className="text-primary" />}>
+    Quickstarts and existing-project guides for all supported databases.
+  </Card>
+  <Card href="/prisma-orm/quickstart/prisma-postgres" title="Prisma 7 quickstart" icon={<Database className="text-primary" />}>
+    Prisma ORM 7 with Prisma Postgres in about 5 minutes.
+  </Card>
+</Cards>
+
+The [Prisma 7 setup paths](/getting-started) page has the full list of database quickstarts, existing-project guides, and a Prisma 7 agent prompt.
+
+## Browse the docs
+
+This page hides the full navigation to keep the first run focused. Everything is still one click away:
+
+<Cards>
+  <Card href="/orm" title="Prisma ORM" icon={<Boxes className="text-primary" />}>
+    Schema, client, and migrations for Prisma 7, plus the Prisma Next docs.
+  </Card>
+  <Card href="/postgres" title="Prisma Postgres" icon={<Database className="text-primary" />}>
+    The managed database: connections, tooling, backups, and operations.
+  </Card>
+  <Card href="/compute" title="Prisma Compute" icon={<Cpu className="text-primary" />}>
+    Hosting, branching, deployments, and the resource model.
+  </Card>
+  <Card href="/cli" title="CLI reference" icon={<Terminal className="text-primary" />}>
+    Every command for the Prisma CLI and the platform CLI.
+  </Card>
+  <Card href="/guides" title="Guides" icon={<BookOpen className="text-primary" />}>
+    Framework, runtime, migration, and deployment guides.
+  </Card>
+  <Card href="/ai" title="AI tools" icon={<Bot className="text-primary" />}>
+    Skills, MCP server, prompts, and editor integrations.
   </Card>
 </Cards>

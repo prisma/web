@@ -41,6 +41,49 @@ function withDocsBasePathForImageSrc(src: unknown): unknown {
   return withDocsBasePath(src);
 }
 
+/**
+ * Small technology logo for use inside Card icons and link grids.
+ * Renders a plain img (no zoom) at a consistent size. Pass `darkSrc` for a
+ * dedicated dark-mode asset, or `invertDark` for monochrome logos that only
+ * need inverting.
+ */
+function TechIcon({
+  src,
+  alt,
+  darkSrc,
+  invertDark,
+}: {
+  src: string;
+  alt: string;
+  darkSrc?: string;
+  invertDark?: boolean;
+}) {
+  const base = "size-6 max-w-6 object-contain";
+  if (darkSrc) {
+    return (
+      <>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={withDocsBasePath(src)} alt={alt} className={`${base} dark:hidden`} />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={withDocsBasePath(darkSrc)}
+          alt={alt}
+          className={`${base} hidden dark:block`}
+          aria-hidden="true"
+        />
+      </>
+    );
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={withDocsBasePath(src)}
+      alt={alt}
+      className={`${base}${invertDark ? " dark:invert" : ""}`}
+    />
+  );
+}
+
 export function getMDXComponents(components?: MDXComponents): MDXComponents {
   const pageContext = (components as any)?._pageContext;
 
@@ -64,6 +107,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     Accordions,
     APIPage,
     ConceptAnimation,
+    TechIcon,
     Youtube,
     img: (props: any) => (
       <ImageZoom {...(props as any)} src={withDocsBasePathForImageSrc((props as any).src)} />
