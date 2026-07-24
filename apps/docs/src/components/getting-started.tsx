@@ -12,6 +12,27 @@ function copyText(container: HTMLElement | null): string {
   return (pre?.textContent ?? container?.textContent ?? "").trim();
 }
 
+/** Renders `backtick` spans in a plain-string prop as styled inline code. */
+function InlineCode({ text }: { text: string }) {
+  const parts = text.split(/`([^`]+)`/g);
+  return (
+    <>
+      {parts.map((part, i) =>
+        i % 2 === 1 ? (
+          <code
+            key={i}
+            className="rounded-md border bg-fd-muted px-1.5 py-0.5 font-mono text-[0.85em] text-fd-foreground"
+          >
+            {part}
+          </code>
+        ) : (
+          part
+        ),
+      )}
+    </>
+  );
+}
+
 /**
  * A collapsed, copyable agent prompt. The prompt itself is authored as a
  * regular fenced code block child, so it stays in the DOM for crawlers and in
@@ -22,11 +43,13 @@ export function AgentPrompt({
   title = "Use with your agent",
   guideHref,
   guideTitle = "Guide",
+  icon,
   children,
 }: {
   title?: string;
   guideHref?: string;
   guideTitle?: string;
+  icon?: ReactNode;
   children: ReactNode;
 }) {
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -38,8 +61,13 @@ export function AgentPrompt({
 
   return (
     <div className="not-prose my-4 rounded-xl border bg-fd-card">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
-        <i className="fa-regular fa-sparkles text-fd-primary text-[0.8rem]" aria-hidden="true" />
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
+        <span
+          className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-fd-background text-fd-primary [&_svg]:size-4"
+          aria-hidden="true"
+        >
+          {icon ?? <i className="fa-regular fa-sparkles text-[0.8rem]" />}
+        </span>
         <span className="grow text-sm font-medium">{title}</span>
         {guideHref && (
           <a
@@ -74,7 +102,10 @@ export function AgentPrompt({
           Copy prompt
         </button>
       </div>
-      <div ref={bodyRef} className={cn("border-t px-3 pb-1 [&_pre]:text-[0.8rem]", !open && "sr-only")}>
+      <div
+        ref={bodyRef}
+        className={cn("border-t px-3 pb-1 [&_pre]:text-[0.8rem]", !open && "sr-only")}
+      >
         {children}
       </div>
     </div>
@@ -152,46 +183,60 @@ export function GetStartedTabs({ cli, children }: { cli: string; children: React
           )}
         </div>
       </div>
-      <div className={cn("relative border-t px-5 pb-2 pt-1", tab !== "prompt" && "hidden")}>
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={onCopy}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              (onCopy as unknown as () => void)();
-            }
-          }}
-          aria-label="Copy prompt to clipboard"
-          className="block w-full cursor-pointer text-start"
-        >
+      <div className={cn("border-t", tab !== "prompt" && "hidden")}>
+        {/* The prompt stays mounted (sr-only when collapsed) so it remains in
+            the HTML for crawlers and agents even before anyone expands it. */}
+        <div className={cn("relative px-5 pb-2 pt-1", !expanded && "sr-only")}>
           <div
-            ref={promptRef}
-            className={cn(
-              "overflow-hidden [&_button]:hidden [&_pre]:text-[0.78rem] [&_pre]:leading-6",
-              !expanded && "max-h-52 [mask-image:linear-gradient(to_bottom,black_55%,transparent)]",
-            )}
+            role="button"
+            tabIndex={0}
+            onClick={onCopy}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                (onCopy as unknown as () => void)();
+              }
+            }}
+            aria-label="Copy prompt to clipboard"
+            className="block w-full cursor-pointer text-start"
           >
-            {children}
+            <div
+              ref={promptRef}
+              className="overflow-hidden [&_button]:hidden [&_pre]:w-full [&_pre]:whitespace-pre-wrap [&_pre]:text-[0.78rem] [&_pre]:leading-6"
+            >
+              {children}
+            </div>
+            <span
+              className={cn(
+                "pointer-events-none absolute end-4 top-4 rounded-md border bg-fd-background px-2 py-1 text-xs font-medium shadow-sm",
+                checked ? "text-fd-primary" : "text-fd-muted-foreground",
+              )}
+            >
+              {checked ? "Copied" : "Click to copy"}
+            </span>
           </div>
-          <span
-            className={cn(
-              "pointer-events-none absolute end-4 top-4 rounded-md border bg-fd-background px-2 py-1 text-xs font-medium shadow-sm",
-              checked ? "text-fd-primary" : "text-fd-muted-foreground",
-            )}
-          >
-            {checked ? "Copied" : "Click to copy"}
-          </span>
         </div>
-        {!expanded && (
-          <button
-            className="absolute inset-x-0 bottom-3 mx-auto w-fit text-sm font-medium text-fd-primary hover:underline"
-            onClick={() => setExpanded(true)}
-          >
-            Show more
-          </button>
-        )}
+        <button
+          className="flex w-full items-center gap-3 px-5 py-3.5 text-start text-sm transition-colors hover:bg-fd-accent/50"
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+        >
+          <span className="grow text-fd-muted-foreground">
+            {expanded
+              ? "One prompt scaffolds, seeds, migrates, and deploys the whole stack."
+              : "One prompt scaffolds, seeds, migrates, and deploys the whole stack. Copy it, or read it first."}
+          </span>
+          <span className="inline-flex shrink-0 items-center gap-1.5 font-medium text-fd-primary">
+            <i
+              className={cn(
+                "fa-regular text-[0.7rem]",
+                expanded ? "fa-chevron-up" : "fa-chevron-down",
+              )}
+              aria-hidden="true"
+            />
+            {expanded ? "Hide prompt" : "View prompt"}
+          </span>
+        </button>
       </div>
     </div>
   );
@@ -225,11 +270,13 @@ export function SectionRow({
         </h2>
         {description && (
           <p className="mt-3 max-w-sm text-[0.9375rem] leading-7 text-fd-foreground/70">
-            {description}
+            <InlineCode text={description} />
           </p>
         )}
       </div>
-      <div className="prose min-w-0 max-w-none">{children}</div>
+      <div className="prose min-w-0 max-w-none [&>div+p]:mt-7 [&>p]:leading-7 [&>p_a]:font-medium [&>p_a]:text-fd-primary [&>p_a]:underline [&>p_a]:decoration-fd-primary/40 [&>p_a]:underline-offset-4 hover:[&>p_a]:decoration-fd-primary">
+        {children}
+      </div>
     </section>
   );
 }
@@ -310,6 +357,7 @@ export function IconLink({
   mono,
   icon,
   description,
+  badge,
 }: {
   href: string;
   title: string;
@@ -319,6 +367,7 @@ export function IconLink({
   mono?: string;
   icon?: ReactNode;
   description?: string;
+  badge?: string;
 }) {
   return (
     <a
@@ -327,8 +376,13 @@ export function IconLink({
     >
       <IconTile src={src} darkSrc={darkSrc} invertDark={invertDark} mono={mono} icon={icon} />
       <span className="min-w-0">
-        <span className="block truncate text-sm font-medium text-fd-foreground group-hover:text-fd-accent-foreground">
-          {title}
+        <span className="flex items-center gap-2 text-sm font-medium text-fd-foreground group-hover:text-fd-accent-foreground">
+          <span className="truncate">{title}</span>
+          {badge && (
+            <span className="inline-flex shrink-0 items-center rounded-full border border-fd-primary/30 bg-fd-primary/10 px-2 py-0.5 text-[0.6875rem] font-medium leading-4 text-fd-primary">
+              {badge}
+            </span>
+          )}
         </span>
         {description && (
           <span className="block truncate text-xs text-fd-muted-foreground">{description}</span>

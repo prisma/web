@@ -350,8 +350,10 @@ function formatIconLink(attrs: string, _content: string) {
   const title = getAttribute(attrs, "title") ?? "Link";
   const href = getAttribute(attrs, "href");
   const description = getAttribute(attrs, "description");
+  const badge = getAttribute(attrs, "badge");
   const label = href ? `[${title}](${href})` : title;
-  return `- ${label}${description ? `: ${description}` : ""}`;
+  const suffix = [description, badge].filter(Boolean).join(", ");
+  return `- ${label}${suffix ? `: ${suffix}` : ""}`;
 }
 
 function findOpeningTagEnd(value: string, startIndex: number) {
@@ -568,7 +570,9 @@ export function normalizeProcessedMarkdown(
     )
     .replace(/<SharedContent\b[^>]*\/>/g, "")
     .replace(
-      /<AgentPrompt\b([^>]*)>([\s\S]*?)<\/AgentPrompt>/g,
+      // Attrs matcher tolerates JSX-element props like icon={<FolderPlus />},
+      // whose ">" would end a naive [^>]* match early.
+      /<AgentPrompt\b((?:[^>"'{]|"[^"]*"|'[^']*'|\{[^{}]*\})*)>([\s\S]*?)<\/AgentPrompt>/g,
       (_match, attrs: string, content: string) => {
         const title = getAttribute(attrs, "title");
         const guideHref = getAttribute(attrs, "guideHref");
@@ -586,8 +590,7 @@ export function normalizeProcessedMarkdown(
       /<GetStartedTabs\b([^>]*?)>([\s\S]*?)<\/GetStartedTabs>/g,
       (_match, attrs: string, content: string) => {
         // cli may be a quoted string or a multiline template literal.
-        const cli =
-          getAttribute(attrs, "cli") ?? attrs.match(/cli=\{\s*`([\s\S]*?)`\s*\}/)?.[1];
+        const cli = getAttribute(attrs, "cli") ?? attrs.match(/cli=\{\s*`([\s\S]*?)`\s*\}/)?.[1];
         const text = trimComponentContent(content);
         const cliBlock = cli ? `\`\`\`bash\n${cli}\n\`\`\`` : "";
         return [cliBlock, text].filter(Boolean).join("\n\n");
@@ -604,8 +607,9 @@ export function normalizeProcessedMarkdown(
     )
     .replace(/<\/?IconGrid[^>]*>/g, "")
     .replace(/<\/?StackDiagram[^>]*>/g, "")
-    .replace(/<HeroPitch\b([^>]*)>([\s\S]*?)<\/HeroPitch>/g, (_match, attrs: string, content: string) =>
-      formatHeroPitch(attrs, content),
+    .replace(
+      /<HeroPitch\b([^>]*)>([\s\S]*?)<\/HeroPitch>/g,
+      (_match, attrs: string, content: string) => formatHeroPitch(attrs, content),
     )
     .replace(/<\/?HeroGrid[^>]*>/g, "")
     .replace(/<details\b[^>]*>([\s\S]*?)<\/details>/g, (_match, content: string) =>
@@ -639,9 +643,7 @@ export function normalizeProcessedMarkdown(
   // placeholders at this point.
   const withHeadings = restoreHeadingMarkers(withoutJsxComponents, options?.headingDepths);
   const protectedInline = protectInlineCode(withHeadings);
-  const unescaped = protectedInline.restore(
-    protectedInline.markdown.replace(/\\([_{}])/g, "$1"),
-  );
+  const unescaped = protectedInline.restore(protectedInline.markdown.replace(/\\([_{}])/g, "$1"));
 
   return protectedCode
     .restore(unescaped)

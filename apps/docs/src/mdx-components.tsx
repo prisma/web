@@ -14,6 +14,7 @@ import {
   StackLayer,
 } from "@/components/getting-started";
 import { withDocsBasePath } from "@/lib/urls";
+import { cn } from "@prisma-docs/ui/lib/cn";
 
 import type { MDXComponents } from "mdx/types";
 import { ImageZoom } from "fumadocs-ui/components/image-zoom";
@@ -147,9 +148,9 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     td: ({ ref: _ref, ...props }) => <TableCell {...props} />,
     caption: ({ ref: _ref, ...props }) => <TableCaption {...props} />,
     // Override Fumadocs Callout components with Eclipse Alert for alerts (:::ppg, :::error, :::success, :::warning)
-    CalloutTitle: ({ children }: any) => <div className="mb-2 font-semibold">{children}</div>,
+    CalloutTitle: ({ children }: any) => <div className="mb-3 font-semibold">{children}</div>,
     CalloutDescription: ({ children }: any) => <>{children}</>,
-    CalloutContainer: ({ type, children, icon, ...props }: any) => {
+    CalloutContainer: ({ type, children, icon, className, ...props }: any) => {
       const variantMap: Record<string, "ppg" | "error" | "success" | "warning"> = {
         ppg: "ppg",
         error: "error",
@@ -162,7 +163,17 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
       };
 
       return (
-        <Alert variant={variantMap[type] || "ppg"} icon={icon} {...props}>
+        <Alert
+          variant={variantMap[type] || "ppg"}
+          icon={icon}
+          // Roomier vertical rhythm: admonition prose was rendering cramped
+          // against the compact type-text-sm default.
+          className={cn(
+            "gap-x-3.5 px-5 py-4 [&_li]:my-1.5 [&_ol]:my-3 [&_p]:my-3 [&_p]:leading-7 [&_ul]:my-3",
+            className,
+          )}
+          {...props}
+        >
           {children}
         </Alert>
       );
