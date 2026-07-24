@@ -37,8 +37,8 @@ export function AgentPrompt({
   });
 
   return (
-    <div className="not-prose my-3 rounded-xl border bg-fd-card">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3.5 py-2.5">
+    <div className="not-prose my-4 rounded-xl border bg-fd-card">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
         <i className="fa-regular fa-sparkles text-fd-primary text-[0.8rem]" aria-hidden="true" />
         <span className="grow text-sm font-medium">{title}</span>
         {guideHref && (
@@ -115,8 +115,8 @@ export function GetStartedTabs({ cli, children }: { cli: string; children: React
   );
 
   return (
-    <div className="not-prose my-2 rounded-xl border bg-fd-card shadow-sm">
-      <div className="flex items-center gap-4 px-4 pt-3" role="tablist">
+    <div className="not-prose my-6 rounded-xl border bg-fd-card shadow-sm">
+      <div className="flex items-center gap-5 px-5 pt-3.5" role="tablist">
         {tabButton("prompt", "fa-sparkles", "AI Prompt")}
         {tabButton("cli", "fa-terminal", "CLI")}
         <button
@@ -133,31 +133,60 @@ export function GetStartedTabs({ cli, children }: { cli: string; children: React
           Copy
         </button>
       </div>
-      <div className={cn("border-t px-5 py-4", tab !== "cli" && "hidden")}>
-        <code className="block font-mono text-sm leading-7 text-fd-foreground">
-          {cli.split("\n").map((line, i) => (
-            <span key={i} className="block">
-              <span className="select-none text-fd-muted-foreground">
-                {line.startsWith("#") ? "" : "$ "}
+      <div className={cn("border-t px-6 py-5", tab !== "cli" && "hidden")}>
+        <div className="flex flex-col gap-1.5 font-mono text-sm text-fd-foreground">
+          {cli.split("\n").map((line, i) =>
+            line.startsWith("#") ? (
+              <span
+                key={i}
+                className="mt-2 font-sans text-xs font-medium uppercase tracking-wide text-fd-muted-foreground first:mt-0"
+              >
+                {line.replace(/^#\s*/, "")}
               </span>
-              <span className={cn(line.startsWith("#") && "text-fd-muted-foreground")}>{line}</span>
-            </span>
-          ))}
-        </code>
-      </div>
-      <div className={cn("relative border-t px-4 pb-1", tab !== "prompt" && "hidden")}>
-        <div
-          ref={promptRef}
-          className={cn(
-            "overflow-hidden [&_pre]:text-[0.78rem]",
-            !expanded && "max-h-52 [mask-image:linear-gradient(to_bottom,black_55%,transparent)]",
+            ) : (
+              <span key={i} className="block leading-7">
+                <span className="select-none text-fd-muted-foreground">$ </span>
+                {line}
+              </span>
+            ),
           )}
+        </div>
+      </div>
+      <div className={cn("relative border-t px-5 pb-2 pt-1", tab !== "prompt" && "hidden")}>
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={onCopy}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              (onCopy as unknown as () => void)();
+            }
+          }}
+          aria-label="Copy prompt to clipboard"
+          className="block w-full cursor-pointer text-start"
         >
-          {children}
+          <div
+            ref={promptRef}
+            className={cn(
+              "overflow-hidden [&_button]:hidden [&_pre]:text-[0.78rem] [&_pre]:leading-6",
+              !expanded && "max-h-52 [mask-image:linear-gradient(to_bottom,black_55%,transparent)]",
+            )}
+          >
+            {children}
+          </div>
+          <span
+            className={cn(
+              "pointer-events-none absolute end-4 top-4 rounded-md border bg-fd-background px-2 py-1 text-xs font-medium shadow-sm",
+              checked ? "text-fd-primary" : "text-fd-muted-foreground",
+            )}
+          >
+            {checked ? "Copied" : "Click to copy"}
+          </span>
         </div>
         {!expanded && (
           <button
-            className="absolute inset-x-0 bottom-2 mx-auto w-fit text-sm font-medium text-fd-primary hover:underline"
+            className="absolute inset-x-0 bottom-3 mx-auto w-fit text-sm font-medium text-fd-primary hover:underline"
             onClick={() => setExpanded(true)}
           >
             Show more
@@ -187,7 +216,7 @@ export function SectionRow({
     .trim()
     .replace(/\s+/g, "-");
   return (
-    <section className="not-prose grid gap-x-10 gap-y-5 border-t py-12 md:grid-cols-[minmax(0,4fr)_minmax(0,8fr)]">
+    <section className="not-prose grid gap-x-12 gap-y-6 border-t py-16 md:grid-cols-[minmax(0,4fr)_minmax(0,8fr)]">
       <div>
         <h2 id={id} className="scroll-m-24 text-xl font-semibold text-fd-foreground">
           <a href={`#${id}`} className="hover:underline">
@@ -195,7 +224,7 @@ export function SectionRow({
           </a>
         </h2>
         {description && (
-          <p className="mt-2.5 text-[0.9375rem] leading-relaxed text-fd-foreground/70">
+          <p className="mt-3 max-w-sm text-[0.9375rem] leading-7 text-fd-foreground/70">
             {description}
           </p>
         )}
@@ -208,7 +237,7 @@ export function SectionRow({
 /** Grid wrapper for IconLink items. */
 export function IconGrid({ columns = 2, children }: { columns?: 2 | 3; children: ReactNode }) {
   return (
-    <div className={cn("grid grid-cols-1 gap-3 sm:grid-cols-2", columns === 3 && "lg:grid-cols-3")}>
+    <div className={cn("grid grid-cols-1 gap-4 sm:grid-cols-2", columns === 3 && "lg:grid-cols-3")}>
       {children}
     </div>
   );
@@ -312,7 +341,7 @@ export function IconLink({
 /** Hero layout: pitch and actions on the left, the stack diagram on the right. */
 export function HeroGrid({ children }: { children: ReactNode }) {
   return (
-    <div className="not-prose grid items-center gap-x-12 gap-y-8 pb-10 pt-2 lg:grid-cols-[minmax(0,6fr)_minmax(0,5fr)]">
+    <div className="not-prose grid items-center gap-x-16 gap-y-10 pb-12 pt-4 lg:grid-cols-[minmax(0,6fr)_minmax(0,5fr)]">
       {children}
     </div>
   );
@@ -337,7 +366,7 @@ export function HeroPitch({
   return (
     <div className="flex flex-col items-start gap-5">
       {badge && (
-        <span className="inline-flex items-center gap-2 rounded-full border border-fd-primary/40 bg-fd-primary/5 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-fd-primary">
+        <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-fd-primary">
           <i className="fa-regular fa-sparkles text-[0.7rem]" aria-hidden="true" />
           {badge}
         </span>
