@@ -26,11 +26,17 @@ export function createBlogStructuredData() {
         ],
       },
       {
-        "@type": "WebSite",
-        "@id": `${blogUrl}#website`,
+        // The blog is a section of prisma.io, not a site of its own. It used to
+        // declare its own WebSite, which competed with the canonical one in
+        // apps/site for the site name Google shows.
+        "@type": "Blog",
+        "@id": `${blogUrl}#blog`,
         name: "Prisma Blog",
         url: blogUrl,
         description: BLOG_HOME_DESCRIPTION,
+        isPartOf: {
+          "@id": `${baseUrl}#website`,
+        },
         publisher: {
           "@id": `${baseUrl}#organization`,
         },

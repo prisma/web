@@ -66,19 +66,20 @@ export default function Layout({ children }: { children: ReactNode }) {
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
+            // Docs is a section of prisma.io, not a site of its own. Declaring
+            // a second WebSite here gave Google a competing candidate for the
+            // site name, so this points at the canonical one in apps/site
+            // instead. (The SearchAction it used to carry drove the sitelinks
+            // search box, which Google retired.)
             __html: JSON.stringify({
               "@context": "https://schema.org",
-              "@type": "WebSite",
+              "@type": "CollectionPage",
               name: "Prisma Documentation",
               url: "https://www.prisma.io/docs",
-              potentialAction: {
-                "@type": "SearchAction",
-                target: {
-                  "@type": "EntryPoint",
-                  urlTemplate: "https://www.prisma.io/docs?q={search_term_string}",
-                },
-                "query-input": "required name=search_term_string",
-              },
+              // @ids must match the nodes apps/site emits verbatim, which build
+              // off an origin with no trailing slash.
+              isPartOf: { "@id": "https://www.prisma.io#website" },
+              publisher: { "@id": "https://www.prisma.io#organization" },
             }),
           }}
         />

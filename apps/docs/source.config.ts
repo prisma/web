@@ -14,6 +14,12 @@ function convertLine(cmd: string, pm: "npm" | "pnpm" | "yarn" | "bun"): string {
   return cmd
     .split("\n")
     .map((line) => {
+      // `pnpm dlx` and `yarn dlx` always download a package, but `tsc` is a
+      // binary from the locally installed `typescript` package.
+      if ((pm === "pnpm" || pm === "yarn") && /^npx tsc\b/.test(line)) {
+        return line.replace(/^npx/, pm);
+      }
+
       // npm-to-yarn strips @latest from `npm create X@latest` and handles the
       // npm-specific `--` separator inconsistently across PMs. Handle this
       // pattern directly instead of fighting the library's output.

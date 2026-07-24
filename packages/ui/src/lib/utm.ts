@@ -1,6 +1,15 @@
 export const CONSOLE_HOST = "console.prisma.io";
+export const UTM_ATTRIBUTION_STORAGE_KEY = "prisma_utm_attribution";
 
 export type UtmParams = Record<string, string>;
+export interface UtmAttribution {
+  first: UtmParams;
+  last: UtmParams;
+}
+
+function isAttributionKey(key: string) {
+  return key.startsWith("utm_") || key === "ref";
+}
 
 function sanitizeUtmParams(input: unknown): UtmParams {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
@@ -9,7 +18,7 @@ function sanitizeUtmParams(input: unknown): UtmParams {
 
   return Object.fromEntries(
     Object.entries(input).filter(
-      ([key, value]) => key.startsWith("utm_") && typeof value === "string" && value.length > 0,
+      ([key, value]) => isAttributionKey(key) && typeof value === "string" && value.length > 0,
     ),
   );
 }
@@ -18,7 +27,7 @@ export function getUtmParams(searchParams: URLSearchParams): UtmParams {
   const utmParams: UtmParams = {};
 
   for (const [key, value] of searchParams.entries()) {
-    if (key.startsWith("utm_") && value) {
+    if (isAttributionKey(key) && value) {
       utmParams[key] = value;
     }
   }
@@ -30,11 +39,40 @@ export function hasUtmParams(utmParams: UtmParams) {
   return Object.keys(utmParams).length > 0;
 }
 
+function sanitizeUtmAttribution(input: unknown): UtmAttribution | undefined {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return undefined;
+  }
+
+  const candidate = input as Partial<UtmAttribution>;
+  const first = sanitizeUtmParams(candidate.first);
+  const last = sanitizeUtmParams(candidate.last);
+
+  return hasUtmParams(first) && hasUtmParams(last) ? { first, last } : undefined;
+}
+
+export function mergeUtmAttribution(
+  existing: UtmAttribution | undefined,
+  latest: UtmParams,
+): UtmAttribution | undefined {
+  const validExisting = sanitizeUtmAttribution(existing);
+  const validLatest = sanitizeUtmParams(latest);
+
+  if (!hasUtmParams(validLatest)) {
+    return validExisting;
+  }
+
+  return {
+    first: validExisting?.first ?? validLatest,
+    last: validLatest,
+  };
+}
+
 export function syncUtmParams(url: URL, utmParams: UtmParams) {
   let updated = false;
 
   for (const key of Array.from(url.searchParams.keys())) {
-    if (key.startsWith("utm_") && !(key in utmParams)) {
+    if (isAttributionKey(key) && !(key in utmParams)) {
       url.searchParams.delete(key);
       updated = true;
     }
@@ -50,49 +88,69 @@ export function syncUtmParams(url: URL, utmParams: UtmParams) {
   return updated;
 }
 
-export function readStoredUtmParams(storageKey: string) {
+export function syncUtmAttribution(
+  url: URL,
+  attribution: UtmAttribution,
+  options: { includeFirstTouch?: boolean } = {},
+) {
+  let updated = syncUtmParams(url, attribution.last);
+
+  if (!options.includeFirstTouch) {
+    return updated;
+  }
+
+  const firstTouchParams = Object.fromEntries(
+    Object.entries(attribution.first).map(([key, value]) => [`first_${key}`, value]),
+  );
+
+  for (const key of Array.from(url.searchParams.keys())) {
+    if ((key.startsWith("first_utm_") || key === "first_ref") && !(key in firstTouchParams)) {
+      url.searchParams.delete(key);
+      updated = true;
+    }
+  }
+
+  for (const [key, value] of Object.entries(firstTouchParams)) {
+    if (url.searchParams.get(key) !== value) {
+      url.searchParams.set(key, value);
+      updated = true;
+    }
+  }
+
+  return updated;
+}
+
+export function readStoredUtmAttribution(storageKey: string) {
   if (typeof window === "undefined") {
-    return {};
+    return undefined;
   }
 
   try {
-    const storedUtmParams = window.sessionStorage.getItem(storageKey);
+    const storedAttribution = window.localStorage.getItem(storageKey);
 
-    if (!storedUtmParams) {
-      return {};
+    if (!storedAttribution) {
+      return undefined;
     }
 
-    return sanitizeUtmParams(JSON.parse(storedUtmParams));
+    return sanitizeUtmAttribution(JSON.parse(storedAttribution));
   } catch {
-    return {};
+    return undefined;
   }
 }
 
-export function writeStoredUtmParams(storageKey: string, utmParams: UtmParams) {
+export function writeStoredUtmAttribution(storageKey: string, attribution: UtmAttribution) {
   if (typeof window === "undefined") {
     return;
   }
 
-  const validUtmParams = sanitizeUtmParams(utmParams);
+  const validAttribution = sanitizeUtmAttribution(attribution);
 
-  if (!hasUtmParams(validUtmParams)) {
+  if (!validAttribution) {
     return;
   }
 
   try {
-    window.sessionStorage.setItem(storageKey, JSON.stringify(validUtmParams));
-  } catch {
-    // Ignore storage failures in restricted environments.
-  }
-}
-
-export function clearStoredUtmParams(storageKey: string) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  try {
-    window.sessionStorage.removeItem(storageKey);
+    window.localStorage.setItem(storageKey, JSON.stringify(validAttribution));
   } catch {
     // Ignore storage failures in restricted environments.
   }
