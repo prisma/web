@@ -72,8 +72,9 @@ export type StackLayer = {
 };
 
 /**
- * The pyramid, top to bottom: your code on top, the database as the
- * foundation. Every layer is inspectable without losing sight of the whole.
+ * The pyramid, top to bottom: your code on top, then the runtime that runs
+ * it, the data flow (ORM, then Postgres), and Prisma Compute hosting it all
+ * as the foundation. Every layer is inspectable without losing the whole.
  */
 export const stackLayers: StackLayer[] = [
   {
@@ -91,22 +92,6 @@ export const stackLayers: StackLayer[] = [
       "Plain TypeScript projects, no proprietary app model",
     ],
     link: { href: "/docs/next", label: "See the framework guides" },
-  },
-  {
-    id: "compute",
-    name: "Prisma Compute",
-    role: "Hosting",
-    sub: "deploy · previews",
-    icon: "fa-regular fa-microchip",
-    accent: "ppg",
-    description:
-      "Serverless hosting for TypeScript applications, currently in public beta. Deploy from one CLI command or a Git push; your app runs right next to its database.",
-    facts: [
-      "One-command deploys from your project directory",
-      "Every Git branch can become a preview environment",
-      "Co-located with Prisma Postgres for sub-ms queries",
-    ],
-    link: { href: "/compute", label: "Explore Prisma Compute" },
   },
   {
     id: "bun",
@@ -158,7 +143,7 @@ export const stackLayers: StackLayer[] = [
     id: "postgres",
     name: "Prisma Postgres",
     role: "Database",
-    sub: "the foundation",
+    sub: "managed database",
     icon: "fa-regular fa-database",
     accent: "ppg",
     description:
@@ -174,6 +159,22 @@ export const stackLayers: StackLayer[] = [
     },
     link: { href: "/postgres", label: "Explore Prisma Postgres" },
   },
+  {
+    id: "compute",
+    name: "Prisma Compute",
+    role: "Hosting",
+    sub: "hosts everything",
+    icon: "fa-regular fa-microchip",
+    accent: "ppg",
+    description:
+      "Serverless hosting for TypeScript applications, currently in public beta. Deploy from one CLI command or a Git push; your app runs right next to its database.",
+    facts: [
+      "One-command deploys from your project directory",
+      "Every Git branch can become a preview environment",
+      "Co-located with Prisma Postgres for sub-ms queries",
+    ],
+    link: { href: "/compute", label: "Explore Prisma Compute" },
+  },
 ];
 
 export type SwapLayer = {
@@ -185,16 +186,6 @@ export type SwapLayer = {
 /** Section 4 owns the replaceability message; it appears nowhere else. */
 export const swapLayers: SwapLayer[] = [
   {
-    layer: "Hosting",
-    defaultChoice: "Prisma Compute",
-    swap: "Deploy the same app to Vercel, AWS, or your own servers.",
-  },
-  {
-    layer: "Runtime",
-    defaultChoice: "Bun",
-    swap: "Your code is standard TypeScript. Run it on Node.js if you prefer.",
-  },
-  {
     layer: "Data access",
     defaultChoice: "Prisma Next",
     swap: "Drop to raw SQL with the built-in query builder, or use any Postgres client.",
@@ -203,6 +194,16 @@ export const swapLayers: SwapLayer[] = [
     layer: "Database",
     defaultChoice: "Prisma Postgres",
     swap: "It speaks standard Postgres. Point the ORM at any Postgres database, anywhere.",
+  },
+  {
+    layer: "Hosting",
+    defaultChoice: "Prisma Compute",
+    swap: "Deploy the same app to Vercel, AWS, or your own servers.",
+  },
+  {
+    layer: "Runtime",
+    defaultChoice: "Bun",
+    swap: "Your code is standard TypeScript. Run it on Node.js if you prefer.",
   },
 ];
 

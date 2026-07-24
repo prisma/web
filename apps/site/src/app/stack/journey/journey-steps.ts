@@ -5,12 +5,12 @@
  * through the stack instead of just highlighting lines.
  */
 
-/** Nodes on the request rail, top to bottom. */
+/** Nodes on the rail, ordered as the developer journey flows. */
 export const RAIL_NODES = [
   { id: "app", label: "Your application" },
-  { id: "compute", label: "Prisma Compute + Bun" },
   { id: "orm", label: "Prisma ORM" },
   { id: "postgres", label: "Prisma Postgres" },
+  { id: "compute", label: "Prisma Compute + Bun" },
 ] as const;
 
 export type RailNodeId = (typeof RAIL_NODES)[number]["id"];
@@ -37,15 +37,15 @@ export const journeySteps: JourneyStep[] = [
     code: `$ npm create prisma@next
 
 ✔ Framework · Hono
-✔ Database  · Prisma Postgres
 ✔ ORM       · Prisma Next
+✔ Database  · Prisma Postgres
 
-Provisioning Prisma Postgres  ✓
 Generating the typed client   ✓
+Provisioning Prisma Postgres  ✓
 Configuring Compute deploys   ✓
 
 cd my-app && npm run dev`,
-    active: ["app", "compute", "orm", "postgres"],
+    active: ["app", "orm", "postgres", "compute"],
   },
   {
     title: "Project",
@@ -53,13 +53,13 @@ cd my-app && npm run dev`,
       "The result is a plain TypeScript project. Two files matter: schema.prisma describes your data, and prisma.config.ts connects the database and the deploy target. Everything else is your application.",
     lang: "text",
     code: `my-app/
-├── prisma/
-│   ├── schema.prisma     ← your data model
-│   └── db.ts             ← typed client, generated
-├── src/
-│   └── index.ts          ← your application
-├── prisma.config.ts      ← database + deploy config
-└── package.json`,
+  prisma/
+    schema.prisma       # your data model
+    db.ts               # typed client, generated
+  src/
+    index.ts            # your application
+  prisma.config.ts      # database + deploy config
+  package.json`,
     active: ["app"],
   },
   {
@@ -116,7 +116,7 @@ Promoting to production
 
 https://my-app.prisma.build
 → same database, same client, no config changes`,
-    active: ["app", "compute", "postgres"],
+    active: ["app", "orm", "postgres", "compute"],
     pulse: true,
   },
   {

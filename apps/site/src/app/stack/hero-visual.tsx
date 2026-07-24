@@ -11,13 +11,6 @@ const heroLayers = [
     accent: "violet" as const,
   },
   {
-    id: "compute",
-    eyebrow: "Runs on",
-    title: "Prisma Compute + Bun",
-    icon: <BunMark className="size-[15px]" />,
-    accent: "ppg" as const,
-  },
-  {
     id: "orm",
     eyebrow: "Talks through",
     title: "Prisma ORM",
@@ -29,6 +22,13 @@ const heroLayers = [
     eyebrow: "Stores in",
     title: "Prisma Postgres",
     icon: <i className="fa-regular fa-database" aria-hidden />,
+    accent: "ppg" as const,
+  },
+  {
+    id: "compute",
+    eyebrow: "Runs on",
+    title: "Prisma Compute + Bun",
+    icon: <BunMark className="size-[15px]" />,
     accent: "ppg" as const,
   },
 ];

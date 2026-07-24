@@ -26,7 +26,18 @@ function toCodeTokens(text: string, color: string, out: CodeToken[]) {
 async function highlightStep(code: string, lang: JourneyStep["lang"]): Promise<HighlightedCode> {
   const tokens: CodeToken[] = [];
   if (lang === "text") {
-    toCodeTokens(code, "var(--color-foreground-neutral-weak)", tokens);
+    // Plain-text steps (the project tree): names in the normal code color,
+    // trailing `# …` annotations dimmed like comments.
+    code.split("\n").forEach((line, index) => {
+      if (index > 0) tokens.push("\n");
+      const hash = line.indexOf("# ");
+      if (hash > -1) {
+        toCodeTokens(line.slice(0, hash), "var(--color-foreground-neutral-weak)", tokens);
+        toCodeTokens(line.slice(hash), "var(--color-disabled)", tokens);
+      } else {
+        toCodeTokens(line, "var(--color-foreground-neutral-weak)", tokens);
+      }
+    });
   } else {
     const highlighter = await prisma_highlighter();
     const lines = highlighter.codeToTokensBase(code, {

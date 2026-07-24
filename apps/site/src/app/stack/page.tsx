@@ -194,15 +194,18 @@ export default async function StackPage() {
           </div>
         </section>
 
-        {/* ===== 5. RUNTIME AND DEPLOYMENT ===== */}
+        {/* ===== 5. DATABASE AND DATA ACCESS ===== */}
         <section className="px-4 py-14 md:py-20">
           <div className="mx-auto flex w-full max-w-296 flex-col gap-10">
-            <SectionHead eyebrow="Prisma Compute + Bun" title="Deploy the way you develop">
-              Prisma Compute runs your app on Bun in production, so the runtime you develop against
-              is the runtime that serves traffic.
+            <SectionHead
+              eyebrow="Prisma Next + Prisma Postgres"
+              title="One schema, typed all the way down"
+            >
+              The data layer is one piece: the database, the migrations, and the client all derive
+              from the same schema.
             </SectionHead>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              {runtimeOutcomes.map((outcome) => (
+              {dataOutcomes.map((outcome) => (
                 <Reveal key={outcome.title}>
                   <OutcomeCard {...outcome} />
                 </Reveal>
@@ -211,18 +214,15 @@ export default async function StackPage() {
           </div>
         </section>
 
-        {/* ===== 6. DATABASE AND DATA ACCESS ===== */}
+        {/* ===== 6. RUNTIME AND DEPLOYMENT ===== */}
         <section className="px-4 py-14 md:py-20">
           <div className="mx-auto flex w-full max-w-296 flex-col gap-10">
-            <SectionHead
-              eyebrow="Prisma Postgres + Prisma Next"
-              title="One schema, typed all the way down"
-            >
-              The data layer is one piece: the database, the migrations, and the client all derive
-              from the same schema.
+            <SectionHead eyebrow="Prisma Compute + Bun" title="Deploy the way you develop">
+              Prisma Compute runs your app on Bun in production, so the runtime you develop against
+              is the runtime that serves traffic.
             </SectionHead>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              {dataOutcomes.map((outcome) => (
+              {runtimeOutcomes.map((outcome) => (
                 <Reveal key={outcome.title}>
                   <OutcomeCard {...outcome} />
                 </Reveal>
