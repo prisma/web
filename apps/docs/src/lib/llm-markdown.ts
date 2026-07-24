@@ -278,6 +278,23 @@ function formatButton(_attrs: string, content: string) {
   return stripJsxTags(trimComponentContent(content));
 }
 
+function formatStackStep(attrs: string, content: string) {
+  const step = getAttribute(attrs, "step");
+  const title = getAttribute(attrs, "title") ?? "Step";
+  const href = getAttribute(attrs, "href");
+  const text = stripJsxTags(trimComponentContent(content)).replace(/\n+/g, " ");
+  const label = href ? `[${title}](${href})` : title;
+  return `${step ? `${step}. ` : "- "}**${label}**${text ? `: ${text}` : ""}`;
+}
+
+function formatIconLink(attrs: string, _content: string) {
+  const title = getAttribute(attrs, "title") ?? "Link";
+  const href = getAttribute(attrs, "href");
+  const description = getAttribute(attrs, "description");
+  const label = href ? `[${title}](${href})` : title;
+  return `- ${label}${description ? `: ${description}` : ""}`;
+}
+
 function findOpeningTagEnd(value: string, startIndex: number) {
   let quote: string | undefined;
   let braceDepth = 0;
@@ -487,14 +504,58 @@ export function normalizeProcessedMarkdown(markdown: string) {
     .replace(/<SharedContent\b[^>]*>([\s\S]*?)<\/SharedContent>/g, (_match, content: string) =>
       trimComponentContent(content),
     )
-    .replace(/<SharedContent\b[^>]*\/>/g, "");
+    .replace(/<SharedContent\b[^>]*\/>/g, "")
+    .replace(
+      /<AgentPrompt\b([^>]*)>([\s\S]*?)<\/AgentPrompt>/g,
+      (_match, attrs: string, content: string) => {
+        const title = getAttribute(attrs, "title");
+        const guideHref = getAttribute(attrs, "guideHref");
+        // Untitled prompts sit under an existing "Use with your agent"
+        // heading in the page, so emit only the content.
+        if (!title && !guideHref) return trimComponentContent(content);
+        const base = formatSectionComponent(attrs, content, "Use with your agent");
+        if (!guideHref) return base;
+        const guideTitle = getAttribute(attrs, "guideTitle") ?? "Follow the guide";
+        const [heading, ...rest] = base.split("\n\n");
+        return [heading, `Follow the guide: [${guideTitle}](${guideHref})`, ...rest].join("\n\n");
+      },
+    )
+    .replace(
+      /<GetStartedTabs\b([^>]*)>([\s\S]*?)<\/GetStartedTabs>/g,
+      (_match, attrs: string, content: string) => {
+        const cli = getAttribute(attrs, "cli");
+        const text = trimComponentContent(content);
+        const cliBlock = cli ? `\`\`\`bash\n${cli}\n\`\`\`` : "";
+        return [cliBlock, text].filter(Boolean).join("\n\n");
+      },
+    )
+    .replace(
+      /<SectionRow\b([^>]*)>([\s\S]*?)<\/SectionRow>/g,
+      (_match, attrs: string, content: string) => {
+        const title = getAttribute(attrs, "title") ?? "Section";
+        const description = getAttribute(attrs, "description");
+        const text = trimComponentContent(content);
+        return ["## " + title, description, text].filter(Boolean).join("\n\n");
+      },
+    )
+    .replace(/<\/?IconGrid[^>]*>/g, "")
+    .replace(/<\/?StackSteps[^>]*>/g, "")
+    .replace(/<\/?HeroGrid[^>]*>/g, "");
 
   const protectedCode = protectFencedCodeBlocks(componentMarkdown);
   const withoutJsxComponents = replaceComponentBlocks(
-    replaceComponentBlocks(protectedCode.markdown, "Card", formatCard)
-      .replace(/<\/?Cards[^>]*>/g, "")
-      .replace(/<APIPage\b([\s\S]*?)\/>/g, (match: string) => formatApiPage(match))
-      .replace(/<Youtube\b([\s\S]*?)\/>/g, (_match, attrs: string) => formatYoutube(attrs)),
+    replaceComponentBlocks(
+      replaceComponentBlocks(
+        replaceComponentBlocks(protectedCode.markdown, "Card", formatCard)
+          .replace(/<\/?Cards[^>]*>/g, "")
+          .replace(/<APIPage\b([\s\S]*?)\/>/g, (match: string) => formatApiPage(match))
+          .replace(/<Youtube\b([\s\S]*?)\/>/g, (_match, attrs: string) => formatYoutube(attrs)),
+        "StackStep",
+        formatStackStep,
+      ),
+      "IconLink",
+      formatIconLink,
+    ),
     "Button",
     formatButton,
   );
@@ -503,6 +564,7 @@ export function normalizeProcessedMarkdown(markdown: string) {
     .restore(withoutJsxComponents)
     .replace(/^[ \t]+(#{3,4} )/gm, "$1")
     .replace(/^[ \t]+(- \[)/gm, "$1")
+    .replace(/^[ \t]+(\d+\. \*\*\[)/gm, "$1")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }

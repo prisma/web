@@ -2,6 +2,16 @@ import defaultMdxComponents from "fumadocs-ui/mdx";
 import { Youtube } from "@prisma-docs/ui/components/youtube";
 import { APIPage } from "@/components/api-page";
 import { ConceptAnimation } from "@/components/concept-animation";
+import {
+  AgentPrompt,
+  GetStartedTabs,
+  HeroGrid,
+  IconGrid,
+  IconLink,
+  SectionRow,
+  StackStep,
+  StackSteps,
+} from "@/components/getting-started";
 import { withDocsBasePath } from "@/lib/urls";
 
 import type { MDXComponents } from "mdx/types";
@@ -106,7 +116,15 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     Accordion,
     Accordions,
     APIPage,
+    AgentPrompt,
     ConceptAnimation,
+    GetStartedTabs,
+    HeroGrid,
+    IconGrid,
+    IconLink,
+    SectionRow,
+    StackStep,
+    StackSteps,
     TechIcon,
     Youtube,
     img: (props: any) => (

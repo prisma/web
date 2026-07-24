@@ -36,34 +36,40 @@ Start with the setup page when you want a guided first run.
 
 Copy this prompt, replace the placeholders, and hand it to your coding agent. The scaffold installs [Prisma Next skills](/ai/tools/skills) into `.claude/skills/` and `.agents/skills/`:
 
+<AgentPrompt>
+
 ```text
 Create a new [framework] application with Prisma Next, seed it, and run it locally.
 
-1. Scaffold the app: `npx create-prisma@next create my-app --template [next|hono|nuxt|astro|nest|svelte|tanstack-start|elysia] --provider postgres --prisma-postgres --yes`. The `--prisma-postgres` flag provisions a Prisma Postgres database. If I give you a connection string, pass `--database-url "<url>"` instead of `--prisma-postgres`.
-2. From the project directory, apply the starter contract and seed: `npm run db:init`, then `npm run db:seed`. If seeding fails with `Cannot read properties of undefined (reading 'where')`, change `db.orm.User` to `db.orm.public.User` everywhere under `src/` and rerun.
-3. Edit the starter contract under `src/prisma/` into a small schema for my use case, then plan and apply the migration: `npx prisma-next migration plan`, then `npx prisma-next migrate`.
-4. Update the seed script and the app routes to query the new schema, run `npm run dev`, and verify with a request against the running app.
-5. Deploy with Prisma Compute. For the Next.js template, first set `output: "standalone"` in `next.config.ts` (without it the deployed app returns 504s). Check `npx @prisma/cli@latest auth whoami`. If I am not signed in, stop and ask me to run `npx @prisma/cli@latest auth login`, because that step opens a browser. Then run `npx @prisma/cli@latest app deploy --env .env` so DATABASE_URL reaches the deployment, and confirm the deployed URL responds.
+If I have not told you which framework, stop and ask before scaffolding. Valid --template values: next, hono, nuxt, astro, nest, svelte, tanstack-start, elysia.
+
+1. Scaffold the app: `npx create-prisma@next create my-app --template [framework] --provider postgres --prisma-postgres --yes`. The `--prisma-postgres` flag provisions a Prisma Postgres database. If I give you a connection string, pass `--database-url "<url>"` instead of `--prisma-postgres`.
+2. From the project directory, apply the starter contract and seed: `npm run db:init`, then `npm run db:seed`. If seeding fails with `Cannot read properties of undefined (reading 'where')`, change `db.orm.User` to `db.orm.public.User` in `src/prisma/seed.ts`, `src/prisma/users.ts`, and any route files that query `db.orm`, then rerun.
+3. Edit the starter contract under `src/prisma/` into a small schema for my use case, then run `npm run contract:emit` and plan and apply the migration: `npx prisma-next migration plan`, then `npx prisma-next migrate --yes`. Migration planning diffs the emitted contract, so the emit step is required.
+4. Update the seed script and the app routes to query the new schema, start `npm run dev` in the background, and verify with a request against the running app. For the `nest` template, if routes return 500s with `reading 'findAll'` in the logs, add explicit `@Inject()` tokens as shown in https://www.prisma.io/docs/guides/next/frameworks/nestjs.md.
+5. Deploy with Prisma Compute. First apply the framework's deploy requirement from https://www.prisma.io/docs/guides/next/frameworks/[framework].md: Next.js needs `output: "standalone"` in `next.config.ts` (without it the deployed app returns 504s), TanStack Start needs the nitro build plugin, Astro needs the `@astrojs/node` adapter plus `--env HOST=0.0.0.0`, and Elysia needs `--framework bun --entry src/index.ts` on the deploy command. If the template is `svelte`, skip this step; Compute does not support SvelteKit yet. Check `npx @prisma/cli@latest auth whoami`. If I am not signed in, stop and ask me to run `npx @prisma/cli@latest auth login`, because that step opens a browser. Then run `npx @prisma/cli@latest app deploy --env .env` so DATABASE_URL reaches the deployment, and verify the deployed URL with curl.
 
 Use the installed Prisma Next skills and the current Prisma docs: https://www.prisma.io/docs/llms.txt (append `.md` to any docs URL for a markdown version).
 ```
+
+</AgentPrompt>
 
 ## Add Prisma Next to your framework
 
 Each guide runs the same journey for a specific framework: scaffold, connect Prisma Postgres, query, and deploy where the framework is supported on Compute.
 
-<Cards className="sm:grid-cols-3 lg:grid-cols-4">
-  <Card href="/guides/next/frameworks/nextjs" title="Next.js" icon={<TechIcon src="/img/technologies/nextjs.svg" alt="" invertDark />} />
-  <Card href="/guides/next/frameworks/hono" title="Hono" icon={<TechIcon src="/img/technologies/hono.svg" alt="" />} />
-  <Card href="/guides/next/frameworks/tanstack-start" title="TanStack Start" icon={<TechIcon src="/img/technologies/tanstack.svg" alt="" />} />
-  <Card href="/guides/next/frameworks/nestjs" title="NestJS" icon={<TechIcon src="/img/technologies/nestjs.svg" alt="" />} />
-  <Card href="/guides/next/frameworks/astro" title="Astro" icon={<TechIcon src="/img/technologies/astro.svg" alt="" darkSrc="/img/technologies/astrodark.svg" />} />
-  <Card href="/guides/next/frameworks/nuxt" title="Nuxt" icon={<TechIcon src="/img/technologies/nuxtjs.svg" alt="" />} />
-  <Card href="/guides/next/frameworks/sveltekit" title="SvelteKit" icon={<TechIcon src="/img/technologies/sveltekit.svg" alt="" />} />
-  <Card href="/guides/next/runtimes/bun" title="Bun" icon={<TechIcon src="/img/technologies/bun.svg" alt="" />} />
-</Cards>
-
-Also available: [Elysia](/guides/next/frameworks/elysia) and [Deno](/guides/next/runtimes/deno).
+<IconGrid columns={3}>
+  <IconLink href="/guides/next/frameworks/nextjs" title="Next.js" src="/img/technologies/nextjs.svg" invertDark />
+  <IconLink href="/guides/next/frameworks/hono" title="Hono" src="/img/technologies/hono.svg" />
+  <IconLink href="/guides/next/frameworks/tanstack-start" title="TanStack Start" src="/img/technologies/tanstack.svg" />
+  <IconLink href="/guides/next/frameworks/nestjs" title="NestJS" src="/img/technologies/nestjs.svg" />
+  <IconLink href="/guides/next/frameworks/astro" title="Astro" src="/img/technologies/astro.svg" darkSrc="/img/technologies/astrodark.svg" />
+  <IconLink href="/guides/next/frameworks/nuxt" title="Nuxt" src="/img/technologies/nuxtjs.svg" />
+  <IconLink href="/guides/next/frameworks/sveltekit" title="SvelteKit" src="/img/technologies/sveltekit.svg" />
+  <IconLink href="/guides/next/runtimes/bun" title="Bun" src="/img/technologies/bun.svg" />
+  <IconLink href="/guides/next/frameworks/elysia" title="Elysia" mono="E" />
+  <IconLink href="/guides/next/runtimes/deno" title="Deno" src="/img/technologies/deno.svg" invertDark />
+</IconGrid>
 
 ## What you can try
 
