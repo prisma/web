@@ -13,7 +13,14 @@ import { JourneyPlayer } from "./journey/journey-player";
 import { Reveal } from "./reveal";
 import { SpotlightCard } from "./spotlight-card";
 import { StackPyramid } from "./stack-pyramid";
-import { agentPoints, dataOutcomes, runtimeOutcomes, stackLayers, swapLayers } from "./stack-data";
+import {
+  agentPoints,
+  dataOutcomes,
+  runtimeOutcomes,
+  stackLayers,
+  swapLayers,
+  type Outcome,
+} from "./stack-data";
 import styles from "./stack.module.css";
 
 const title = "Prisma Stack: the connected TypeScript stack";
@@ -66,7 +73,14 @@ function SectionHead({
   );
 }
 
-function OutcomeCard({ icon, title, body }: { icon: string; title: string; body: string }) {
+const chipTone = {
+  ok: "border-stroke-ppg/40 bg-background-ppg text-foreground-ppg-strong [&>i]:text-foreground-ppg",
+  bad: "border-stroke-error/40 bg-background-error text-foreground-error [&>i]:text-foreground-error",
+  neutral:
+    "border-stroke-neutral bg-background-neutral-weaker text-foreground-neutral-weak [&>i]:text-foreground-ppg",
+};
+
+function OutcomeCard({ icon, title, body, visual }: Outcome) {
   return (
     <Card className="h-full gap-3 bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-ppg)_262.5%)] p-6">
       <div className="flex items-center gap-3">
@@ -79,6 +93,19 @@ function OutcomeCard({ icon, title, body }: { icon: string; title: string; body:
         <h3 className="type-title-lg m-0 text-foreground-neutral">{title}</h3>
       </div>
       <p className="m-0 text-sm text-foreground-neutral-weak">{body}</p>
+      {visual ? (
+        <ul className="m-0 mt-auto flex list-none flex-wrap gap-2 p-0">
+          {visual.map((chip) => (
+            <li
+              key={chip.label}
+              className={`flex items-center gap-2 rounded-square border px-2.5 py-1.5 font-mono text-xs ${chipTone[chip.tone ?? "neutral"]}`}
+            >
+              <i className={chip.icon} aria-hidden />
+              {chip.label}
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </Card>
   );
 }

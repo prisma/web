@@ -211,6 +211,8 @@ export type Outcome = {
   icon: string;
   title: string;
   body: string;
+  /** Compact icon chips that carry the detail visually instead of prose. */
+  visual?: { icon: string; label: string; tone?: "ok" | "bad" }[];
 };
 
 /** Section 5: what Compute + Bun do for you, stated as outcomes. */
@@ -218,17 +220,30 @@ export const runtimeOutcomes: Outcome[] = [
   {
     icon: "fa-regular fa-terminal",
     title: "One command to production",
-    body: "prisma app deploy builds your app, uploads it, and returns a production URL. The first deploy creates the project, the branch, and the database it runs on.",
+    body: "The first deploy creates the project, the branch, and the database it runs on.",
+    visual: [
+      { icon: "fa-regular fa-terminal", label: "prisma app deploy" },
+      { icon: "fa-regular fa-rocket", label: "my-app.prisma.build" },
+    ],
   },
   {
     icon: "fa-regular fa-code-branch",
     title: "A preview per branch",
-    body: "Deploy any Git branch and it gets its own app, URL, and database copy. Reviews happen against real infrastructure, not a shared staging server.",
+    body: "Reviews run against real infrastructure, not a shared staging server.",
+    visual: [
+      { icon: "fa-regular fa-code-branch", label: "feature/search" },
+      { icon: "fa-regular fa-database", label: "own database copy" },
+    ],
   },
   {
     icon: "fa-regular fa-wrench",
     title: "Less tooling to maintain",
-    body: "Bun's built-in server, test runner, and bundler replace the usual pile of dev dependencies. Fewer packages to install, patch, and configure.",
+    body: "The usual pile of dev dependencies is built into the runtime.",
+    visual: [
+      { icon: "fa-regular fa-server", label: "Bun.serve()" },
+      { icon: "fa-regular fa-check", label: "bun test" },
+      { icon: "fa-regular fa-cubes-stacked", label: "bundler" },
+    ],
   },
 ];
 
@@ -237,17 +252,31 @@ export const dataOutcomes: Outcome[] = [
   {
     icon: "fa-regular fa-shield-check",
     title: "Queries that match your schema",
-    body: "The client's types are generated from your schema. A mistyped field or a wrong filter is a compile error in your editor, not a 500 in production.",
+    body: "Types come from the schema, so typos fail in your editor, not in production.",
+    visual: [
+      { icon: "fa-regular fa-check", label: "post.title", tone: "ok" },
+      { icon: "fa-regular fa-triangle-exclamation", label: "post.titel", tone: "bad" },
+    ],
   },
   {
     icon: "fa-regular fa-file-binary",
     title: "Migrations you can review",
-    body: "Schema changes become versioned migration files that ship in pull requests and apply the same way in every environment.",
+    body: "Schema changes become versioned files that apply the same way everywhere.",
+    visual: [
+      { icon: "fa-regular fa-file-binary", label: "0042_add_posts" },
+      { icon: "fa-regular fa-code-branch", label: "review in a PR" },
+    ],
   },
   {
     icon: "fa-regular fa-cubes-stacked",
     title: "Capabilities without extra services",
-    body: "pgvector for embeddings, full-text search, pg_cron for scheduled jobs. Features you would otherwise host separately live inside Postgres.",
+    body: "Features you would otherwise host separately live inside Postgres:",
+    visual: [
+      { icon: "fa-regular fa-stars", label: "pgvector" },
+      { icon: "fa-regular fa-magnifying-glass", label: "pg_search" },
+      { icon: "fa-regular fa-clock-rotate-left", label: "pg_cron" },
+      { icon: "fa-regular fa-chart-line", label: "pg_stat_statements" },
+    ],
   },
 ];
 
@@ -256,21 +285,25 @@ export const agentPoints: Outcome[] = [
   {
     icon: "fa-regular fa-shapes",
     title: "One project shape",
-    body: "Every scaffold has the same layout: the schema in prisma/, the app in src/, the config in prisma.config.ts. An agent that knows one Prisma Stack project knows them all.",
+    body: "An agent that knows one Prisma Stack project knows them all.",
+    visual: [
+      { icon: "fa-regular fa-file-binary", label: "prisma/schema.prisma" },
+      { icon: "fa-regular fa-code", label: "src/index.ts" },
+    ],
   },
   {
     icon: "fa-regular fa-file-contract",
     title: "The schema is the contract",
-    body: "The entire data model lives in one readable file. Agents can inspect it, propose a change as a diff, and regenerate the types to see what breaks.",
+    body: "The data model is one readable file: inspect it, diff it, regenerate the types.",
   },
   {
     icon: "fa-regular fa-clock-rotate-left",
     title: "A typed feedback loop",
-    body: "Because queries are type-checked, agents iterate against the compiler instead of discovering failures at runtime. Wrong code fails before it runs.",
+    body: "Agents iterate against the compiler, not runtime failures.",
   },
   {
     icon: "fa-regular fa-receipt",
     title: "Workflows in plain text",
-    body: "Migrations are files, deploys are CLI commands with readable output. Every action an agent takes can be reviewed before it runs and audited after.",
+    body: "Migrations are files and deploys are commands, reviewable before and after they run.",
   },
 ];
