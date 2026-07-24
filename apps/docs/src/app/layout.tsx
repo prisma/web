@@ -111,6 +111,36 @@ export default function Layout({ children }: { children: ReactNode }) {
         />
       </head>
       <body className="flex flex-col min-h-screen">
+        {/* Hidden llms.txt directive for AI agents. It must be the FIRST child
+            of <body>: agent-readiness audits (afdocs "llms-txt-directive-html")
+            measure the directive's byte position within the body and flag it as
+            "buried" when it sits past 50% — which happens if it renders inside
+            the page content, after the sidebar markup. data-markdown-ignore
+            keeps it out of the HTML/markdown parity comparison; aria-hidden and
+            tabIndex={-1} keep it away from screen readers and the tab order
+            (audits read the raw HTML, not the accessibility tree). */}
+        <div
+          data-markdown-ignore
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            width: 1,
+            height: 1,
+            padding: 0,
+            margin: -1,
+            overflow: "hidden",
+            clip: "rect(0, 0, 0, 0)",
+            whiteSpace: "nowrap",
+            border: 0,
+          }}
+        >
+          For the complete Prisma documentation index optimized for AI agents, see{" "}
+          <a href="https://www.prisma.io/docs/llms.txt" tabIndex={-1}>
+            https://www.prisma.io/docs/llms.txt
+          </a>
+          {". A markdown version of every docs page is available by appending "}
+          <code>.md</code> to its URL.
+        </div>
         <Banner
           id="prisma-next-docs"
           height="3.25rem"
