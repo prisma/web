@@ -34,6 +34,48 @@ const FORWARD_RESPONSE_HEADERS = [
   "www-authenticate",
 ];
 
+// MCP messages are small JSON-RPC payloads; this is a public endpoint, so cap
+// what gets buffered into memory.
+const MAX_BODY_BYTES = 1_048_576;
+
+// Bound on establishing the upstream connection and receiving headers. The
+// timer is cleared once headers arrive so long-lived SSE bodies keep streaming.
+const UPSTREAM_HEADER_TIMEOUT_MS = 30_000;
+
+/**
+ * Reads the request body, rejecting once it exceeds MAX_BODY_BYTES. The
+ * declared Content-Length short-circuits, but the stream is counted too so
+ * chunked requests without a length are equally bounded.
+ */
+async function readBoundedBody(request: Request) {
+  const declared = Number(request.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) return null;
+
+  if (!request.body) return new ArrayBuffer(0);
+
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  const reader = request.body.getReader();
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > MAX_BODY_BYTES) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+
+  const body = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return body.buffer;
+}
+
 async function proxyToMcpServer(request: Request) {
   const headers = new Headers();
   for (const name of FORWARD_REQUEST_HEADERS) {
@@ -41,17 +83,42 @@ async function proxyToMcpServer(request: Request) {
     if (value) headers.set(name, value);
   }
 
-  // MCP messages are small JSON-RPC payloads; buffering avoids the streaming
-  // request-body (duplex) requirements of pass-through fetch.
-  const body =
-    request.method === "GET" || request.method === "HEAD" ? undefined : await request.arrayBuffer();
+  // Buffering (instead of streaming pass-through) avoids fetch's duplex
+  // request-body requirements; readBoundedBody keeps it memory-safe.
+  let body: ArrayBuffer | undefined;
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    const bounded = await readBoundedBody(request);
+    if (bounded === null) {
+      return new Response("Request body exceeds the 1 MiB limit for MCP messages.", {
+        status: 413,
+        headers: { "Cache-Control": "no-store" },
+      });
+    }
+    body = bounded;
+  }
 
-  const upstream = await fetch(MCP_SERVER_URL, {
-    method: request.method,
-    headers,
-    body,
-    redirect: "manual",
-  });
+  const abort = new AbortController();
+  const headerTimer = setTimeout(() => abort.abort(), UPSTREAM_HEADER_TIMEOUT_MS);
+  let upstream: Response;
+  try {
+    upstream = await fetch(MCP_SERVER_URL, {
+      method: request.method,
+      headers,
+      body,
+      redirect: "manual",
+      signal: abort.signal,
+    });
+  } catch (error) {
+    if (abort.signal.aborted) {
+      return new Response("Upstream MCP server timed out.", {
+        status: 504,
+        headers: { "Cache-Control": "no-store" },
+      });
+    }
+    throw error;
+  } finally {
+    clearTimeout(headerTimer);
+  }
 
   const responseHeaders = new Headers({ "Cache-Control": "no-store" });
   for (const name of FORWARD_RESPONSE_HEADERS) {

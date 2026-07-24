@@ -65,9 +65,10 @@ The guard prints a size table with per-file headroom so reviewers see how close 
 **(f) Reproducing the audit.** The audit is the `afdocs` npm CLI (https://afdocs.dev). To reproduce a report locally:
 
 ```bash
-npx afdocs check https://www.prisma.io/docs --sampling deterministic -v
+# version pinned against supply-chain surprises — bump deliberately
+npx afdocs@0.18.7 check https://www.prisma.io/docs --sampling deterministic -v
 # parity needs its upstream checks in the same run:
-npx afdocs check https://www.prisma.io/docs \
+npx afdocs@0.18.7 check https://www.prisma.io/docs \
   --checks markdown-url-support,content-negotiation,markdown-content-parity \
   --sampling deterministic --format json -v
 ```

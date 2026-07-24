@@ -116,9 +116,12 @@ export default function Layout({ children }: { children: ReactNode }) {
             measure the directive's byte position within the body and flag it as
             "buried" when it sits past 50% — which happens if it renders inside
             the page content, after the sidebar markup. data-markdown-ignore
-            keeps it out of the HTML/markdown parity comparison. */}
+            keeps it out of the HTML/markdown parity comparison; aria-hidden and
+            tabIndex={-1} keep it away from screen readers and the tab order
+            (audits read the raw HTML, not the accessibility tree). */}
         <div
           data-markdown-ignore
+          aria-hidden="true"
           style={{
             position: "absolute",
             width: 1,
@@ -132,8 +135,11 @@ export default function Layout({ children }: { children: ReactNode }) {
           }}
         >
           For the complete Prisma documentation index optimized for AI agents, see{" "}
-          <a href="https://www.prisma.io/docs/llms.txt">https://www.prisma.io/docs/llms.txt</a>. A
-          markdown version of every docs page is available by appending <code>.md</code> to its URL.
+          <a href="https://www.prisma.io/docs/llms.txt" tabIndex={-1}>
+            https://www.prisma.io/docs/llms.txt
+          </a>
+          {". A markdown version of every docs page is available by appending "}
+          <code>.md</code> to its URL.
         </div>
         <Banner
           id="prisma-next-docs"

@@ -466,13 +466,20 @@ try {
 const siteNextConfigPath = join(scriptDir, "..", "..", "site", "next.config.mjs");
 try {
   const siteConfigSource = readFileSync(siteNextConfigPath, "utf8");
-  const mcpRewriteCount = (
-    siteConfigSource.match(new RegExp(`source: "/mcp",\\s*\\n\\s*has:`, "g")) ?? []
-  ).length;
-  if (mcpRewriteCount === 0 || !siteConfigSource.includes(`destination: "${MCP_URL}"`)) {
+  // All three header conditions are needed to cover the MCP Streamable HTTP
+  // transport: POST messages (content-type), the server event stream (accept),
+  // and session teardown (mcp-session-id).
+  const requiredMcpHeaderKeys = ["accept", "content-type", "mcp-session-id"];
+  const missingMcpHeaderRewrites = requiredMcpHeaderKeys.filter(
+    (key) => !new RegExp(`source: "/mcp",[\\s\\S]{0,200}?key: "${key}"`).test(siteConfigSource),
+  );
+  if (missingMcpHeaderRewrites.length > 0) {
     mcpEndpointErrors.push(
-      `site: next.config.mjs is missing the header-matched /mcp rewrites to "${MCP_URL}"`,
+      `site: next.config.mjs is missing /mcp rewrite(s) for header key(s): ${missingMcpHeaderRewrites.join(", ")}`,
     );
+  }
+  if (!siteConfigSource.includes(`destination: "${MCP_URL}"`)) {
+    mcpEndpointErrors.push(`site: next.config.mjs /mcp rewrites do not target "${MCP_URL}"`);
   }
 } catch (error) {
   mcpEndpointErrors.push(`site: could not read ${siteNextConfigPath}: ${String(error)}`);
