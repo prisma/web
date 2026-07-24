@@ -9,6 +9,15 @@ import { SmoothPre } from "./smooth-pre";
 
 const AUTOPLAY_INTERVAL = 6500;
 
+function PlayPauseIcon({ playing }: { playing: boolean }) {
+  // Inline SVG: fa-play/fa-pause are not in the site's FontAwesome kit.
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="size-3" aria-hidden>
+      {playing ? <path d="M6 5h4v14H6zM14 5h4v14h-4z" /> : <path d="M8 5v14l11-7z" />}
+    </svg>
+  );
+}
+
 const handlers: AnnotationHandler[] = [
   {
     name: "token-transitions",
@@ -104,7 +113,7 @@ export function JourneyPlayer({ codes }: { codes: HighlightedCode[] }) {
             onClick={() => setAutoplay((on) => !on)}
             className="flex size-6 items-center justify-center rounded-circle border border-stroke-neutral text-foreground-neutral-weak transition-colors hover:border-stroke-ppg hover:text-foreground-ppg"
           >
-            <i className={autoplay ? "fa-solid fa-pause" : "fa-solid fa-play"} aria-hidden />
+            <PlayPauseIcon playing={autoplay} />
           </button>
         </span>
       </div>

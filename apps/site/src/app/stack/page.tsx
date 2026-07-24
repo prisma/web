@@ -12,15 +12,8 @@ import { highlightJourney } from "./journey/highlight";
 import { JourneyPlayer } from "./journey/journey-player";
 import { Reveal } from "./reveal";
 import { SpotlightCard } from "./spotlight-card";
-import { StackOverview } from "./stack-overview";
-import {
-  agentPoints,
-  dataOutcomes,
-  postgresExtensions,
-  runtimeOutcomes,
-  stackLayers,
-  swapLayers,
-} from "./stack-data";
+import { StackPyramid } from "./stack-pyramid";
+import { agentPoints, dataOutcomes, runtimeOutcomes, stackLayers, swapLayers } from "./stack-data";
 import styles from "./stack.module.css";
 
 const title = "Prisma Stack: the connected TypeScript stack";
@@ -104,7 +97,7 @@ export default async function StackPage() {
         <div className="relative z-2 mx-auto grid w-full max-w-296 items-center gap-12 pb-8 lg:grid-cols-[1.15fr_1fr]">
           <div className="flex flex-col items-center gap-6 text-center lg:items-start lg:text-left">
             <span className="type-title-sm flex items-center gap-2 text-foreground-ppg-weak">
-              <i className="fa-solid fa-layer-group" aria-hidden />
+              <i className="fa-regular fa-layer-group" aria-hidden />
               Prisma Stack
             </span>
             <h1
@@ -139,19 +132,20 @@ export default async function StackPage() {
       </div>
 
       <div className={styles.content}>
-        {/* ===== 2. INTERACTIVE STACK OVERVIEW ===== */}
+        {/* ===== 2. INTERACTIVE STACK PYRAMID ===== */}
         <section id="stack" className="scroll-mt-24 px-4 py-14 md:py-20">
           <div className="mx-auto flex w-full max-w-296 flex-col gap-10">
             <SectionHead
-              eyebrow="The problem"
-              title="Most stacks are assembled. This one is connected."
+              eyebrow="The stack, simplified"
+              title="Prisma plus your framework is the whole stack"
             >
-              A typical TypeScript app stitches together a host, a database, an ORM, and a pile of
-              tooling from different vendors. Every seam adds configuration and something new to
-              break. The Prisma Stack ships four layers that already know about each other.
+              Hosting, runtime, data access, and database ship as one connected platform, so the
+              only decision left open is your framework. The alternative is stitching those layers
+              together from four vendors, where every seam adds configuration and something new to
+              break.
             </SectionHead>
             <Reveal>
-              <StackOverview />
+              <StackPyramid />
             </Reveal>
           </div>
         </section>
@@ -207,7 +201,7 @@ export default async function StackPage() {
               Prisma Compute runs your app on Bun in production, so the runtime you develop against
               is the runtime that serves traffic.
             </SectionHead>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               {runtimeOutcomes.map((outcome) => (
                 <Reveal key={outcome.title}>
                   <OutcomeCard {...outcome} />
@@ -234,19 +228,6 @@ export default async function StackPage() {
                 </Reveal>
               ))}
             </div>
-            <Reveal className="flex flex-wrap items-center justify-center gap-2">
-              <span className="mr-1 text-sm text-foreground-neutral-weak">
-                Built-in extensions:
-              </span>
-              {postgresExtensions.map((ext) => (
-                <span
-                  key={ext}
-                  className="rounded-square border border-stroke-ppg/30 bg-background-ppg px-3 py-1.5 font-mono text-xs text-foreground-ppg-strong"
-                >
-                  {ext}
-                </span>
-              ))}
-            </Reveal>
           </div>
         </section>
 
@@ -274,12 +255,12 @@ export default async function StackPage() {
             <div className="mx-auto flex w-full max-w-2xl flex-col items-center justify-center gap-8 text-center">
               <div className="flex flex-col items-center gap-4">
                 <h2 className="type-title-2xl m-0 text-foreground-neutral">
-                  Start with one command
+                  Stop configuring. Start shipping.
                 </h2>
                 <p className="m-0 max-w-lg text-foreground-neutral-weak">
-                  It gives you a running application, a Prisma Postgres database, a typed Prisma
-                  Next client, and a deploy target on Prisma Compute. Connected from the first
-                  minute.
+                  One command gives you a running application, a Prisma Postgres database, a typed
+                  Prisma Next client, and a deploy target on Prisma Compute. Connected from the
+                  first minute.
                 </p>
               </div>
               <CopyCommand command={SCAFFOLD_COMMAND} />

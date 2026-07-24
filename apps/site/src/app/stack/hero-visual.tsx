@@ -7,7 +7,7 @@ const heroLayers = [
     id: "app",
     eyebrow: "You write",
     title: "Your application",
-    icon: <i className="fa-regular fa-browser" aria-hidden />,
+    icon: <i className="fa-regular fa-laptop" aria-hidden />,
     accent: "violet" as const,
   },
   {
