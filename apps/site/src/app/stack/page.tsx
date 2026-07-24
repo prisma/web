@@ -208,16 +208,25 @@ export default async function StackPage() {
                       {item.layer}
                     </span>
                     <div className="flex items-center gap-2.5">
-                      <span
-                        className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-square border border-stroke-neutral bg-white p-1.5"
-                        aria-hidden
-                      >
-                        <img
-                          src={item.logo}
-                          alt=""
-                          className="max-h-full max-w-full object-contain"
-                        />
-                      </span>
+                      {item.logo ? (
+                        <span
+                          className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-square border border-stroke-neutral bg-white p-1.5"
+                          aria-hidden
+                        >
+                          <img
+                            src={item.logo}
+                            alt=""
+                            className="max-h-full max-w-full object-contain"
+                          />
+                        </span>
+                      ) : (
+                        <span
+                          className="grid size-8 shrink-0 place-items-center rounded-square border border-stroke-ppg/40 bg-background-ppg text-foreground-ppg"
+                          aria-hidden
+                        >
+                          <i className={item.icon} />
+                        </span>
+                      )}
                       <p className="m-0 font-sans-display text-lg font-bold text-foreground-neutral">
                         {item.defaultChoice}
                       </p>

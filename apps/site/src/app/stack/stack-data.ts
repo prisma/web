@@ -172,7 +172,9 @@ export type SwapLayer = {
   layer: string;
   defaultChoice: string;
   /** Logo of the default product, shown on a white tile. */
-  logo: string;
+  logo?: string;
+  /** Products without a logo asset (Compute) use their stack icon instead. */
+  icon?: string;
   /** Invert the logo (white-on-transparent marks) so it reads on white. */
   invertLogo?: boolean;
   swap: string;
@@ -199,7 +201,7 @@ export const swapLayers: SwapLayer[] = [
   {
     layer: "Hosting",
     defaultChoice: "Prisma Compute",
-    logo: "/icons/technologies/prisma_light.svg",
+    icon: "fa-regular fa-microchip",
     swap: "Deploy the same app to Vercel, AWS, or your own servers.",
     swapTargets: [
       { src: "/icons/technologies/vercel-icon-dark.svg", alt: "Vercel", invert: true },
