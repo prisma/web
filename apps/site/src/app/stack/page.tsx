@@ -80,10 +80,15 @@ const chipTone = {
     "border-stroke-neutral bg-background-neutral-weaker text-foreground-neutral-weak [&>i]:text-foreground-ppg",
 };
 
-function OutcomeCard({ icon, title, body, visual }: Outcome) {
+/**
+ * One claim, one card, one destination. The icon sits on its own row so the
+ * title and body share a left edge, and the whole card is a link with a
+ * visible CTA naming where it goes.
+ */
+function OutcomeCard({ icon, title, body, visual, link }: Outcome) {
   return (
-    <Card className="h-full gap-3 bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-ppg)_262.5%)] p-6">
-      <div className="flex items-center gap-3">
+    <a href={link.href} className="group block h-full no-underline">
+      <Card className="h-full gap-3 bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-ppg)_262.5%)] p-6 transition-colors group-hover:border-stroke-ppg/50">
         <span
           className="grid size-9 shrink-0 place-items-center rounded-square border border-stroke-ppg/40 bg-background-ppg text-foreground-ppg"
           aria-hidden
@@ -91,22 +96,29 @@ function OutcomeCard({ icon, title, body, visual }: Outcome) {
           <i className={icon} />
         </span>
         <h3 className="type-title-lg m-0 text-foreground-neutral">{title}</h3>
-      </div>
-      <p className="m-0 text-sm text-foreground-neutral-weak">{body}</p>
-      {visual ? (
-        <ul className="m-0 mt-auto flex list-none flex-wrap gap-2 p-0">
-          {visual.map((chip) => (
-            <li
-              key={chip.label}
-              className={`flex items-center gap-2 rounded-square border px-2.5 py-1.5 font-mono text-xs ${chipTone[chip.tone ?? "neutral"]}`}
-            >
-              <i className={chip.icon} aria-hidden />
-              {chip.label}
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </Card>
+        <p className="m-0 text-sm text-foreground-neutral-weak">{body}</p>
+        {visual ? (
+          <ul className="m-0 flex list-none flex-wrap gap-2 p-0">
+            {visual.map((chip) => (
+              <li
+                key={chip.label}
+                className={`flex items-center gap-2 rounded-square border px-2.5 py-1.5 font-mono text-xs ${chipTone[chip.tone ?? "neutral"]}`}
+              >
+                <i className={chip.icon} aria-hidden />
+                {chip.label}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        <span className="mt-auto inline-flex w-fit items-center gap-2 pt-1 text-sm font-medium text-foreground-ppg group-hover:underline">
+          {link.label}
+          <i
+            className="fa-regular fa-arrow-right transition-transform group-hover:translate-x-0.5"
+            aria-hidden
+          />
+        </span>
+      </Card>
+    </a>
   );
 }
 
@@ -203,11 +215,11 @@ export default async function StackPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {swapLayers.map((item) => (
                 <Reveal key={item.layer}>
-                  <SpotlightCard className="flex h-full flex-col gap-3 rounded-square-high border border-stroke-neutral bg-background-default p-6">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-foreground-neutral-weaker">
-                      {item.layer}
-                    </span>
-                    <div className="flex items-center gap-2.5">
+                  <a href={item.link.href} className="group block h-full no-underline">
+                    <SpotlightCard className="flex h-full flex-col gap-3 rounded-square-high border border-stroke-neutral bg-background-default p-6 transition-colors group-hover:border-stroke-ppg/50">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-foreground-neutral-weaker">
+                        {item.layer}
+                      </span>
                       {item.logo ? (
                         <span
                           className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-square border border-stroke-neutral bg-white p-1.5"
@@ -230,32 +242,39 @@ export default async function StackPage() {
                       <p className="m-0 font-sans-display text-lg font-bold text-foreground-neutral">
                         {item.defaultChoice}
                       </p>
-                    </div>
-                    <p className="m-0 text-sm text-foreground-neutral-weak">
-                      <span className="font-semibold text-foreground-ppg">Or swap it: </span>
-                      {item.swap}
-                    </p>
-                    <ul className="m-0 mt-auto flex list-none flex-wrap gap-2 p-0">
-                      {item.swapTargets.map((target) => (
-                        <li
-                          key={target.alt}
-                          className="flex items-center gap-2 rounded-square border border-stroke-neutral px-2.5 py-1.5 text-xs text-foreground-neutral-weak"
-                        >
-                          <span
-                            className="grid size-5 shrink-0 place-items-center overflow-hidden rounded-square-low border border-stroke-neutral bg-white p-0.5"
-                            aria-hidden
+                      <p className="m-0 text-sm text-foreground-neutral-weak">
+                        <span className="font-semibold text-foreground-ppg">Or swap it: </span>
+                        {item.swap}
+                      </p>
+                      <ul className="m-0 flex list-none flex-wrap gap-2 p-0">
+                        {item.swapTargets.map((target) => (
+                          <li
+                            key={target.alt}
+                            className="flex items-center gap-2 rounded-square border border-stroke-neutral px-2.5 py-1.5 text-xs text-foreground-neutral-weak"
                           >
-                            <img
-                              src={target.src}
-                              alt=""
-                              className={`max-h-full max-w-full object-contain ${target.invert ? "invert" : ""}`}
-                            />
-                          </span>
-                          {target.alt}
-                        </li>
-                      ))}
-                    </ul>
-                  </SpotlightCard>
+                            <span
+                              className="grid size-5 shrink-0 place-items-center overflow-hidden rounded-square-low border border-stroke-neutral bg-white p-0.5"
+                              aria-hidden
+                            >
+                              <img
+                                src={target.src}
+                                alt=""
+                                className={`max-h-full max-w-full object-contain ${target.invert ? "invert" : ""}`}
+                              />
+                            </span>
+                            {target.alt}
+                          </li>
+                        ))}
+                      </ul>
+                      <span className="mt-auto inline-flex w-fit items-center gap-2 pt-1 text-sm font-medium text-foreground-ppg group-hover:underline">
+                        {item.link.label}
+                        <i
+                          className="fa-regular fa-arrow-right transition-transform group-hover:translate-x-0.5"
+                          aria-hidden
+                        />
+                      </span>
+                    </SpotlightCard>
+                  </a>
                 </Reveal>
               ))}
             </div>
@@ -314,6 +333,15 @@ export default async function StackPage() {
                 </Reveal>
               ))}
             </div>
+            <Reveal className="flex justify-center">
+              <a
+                href="/docs/ai"
+                className="inline-flex items-center gap-2 text-sm font-medium text-foreground-ppg hover:underline"
+              >
+                See how to build with Prisma and AI tools
+                <i className="fa-regular fa-arrow-right" aria-hidden />
+              </a>
+            </Reveal>
           </div>
         </section>
 

@@ -154,7 +154,10 @@ export function StackPyramid() {
         </p>
       </div>
 
-      {/* One panel per layer; all rendered, one visible. */}
+      {/* One panel per layer, stacked in the same grid cell. Inactive panels
+          stay in the layout (invisible, not display:none) so the section
+          always keeps the tallest panel's height and switching tabs never
+          shifts the content below. */}
       <div className="grid">
         {stackLayers.map((layer, index) => (
           <div
@@ -162,8 +165,11 @@ export function StackPyramid() {
             role="tabpanel"
             id={`stack-panel-${layer.id}`}
             aria-labelledby={`stack-tab-${layer.id}`}
-            hidden={index !== active}
-            className="col-start-1 row-start-1"
+            aria-hidden={index !== active}
+            className={cn(
+              "col-start-1 row-start-1 transition-opacity duration-200",
+              index !== active && "invisible opacity-0",
+            )}
           >
             <SpotlightCard className="flex h-full flex-col gap-5 rounded-square-high border border-stroke-neutral bg-background-default p-6 md:p-8">
               <div className="flex items-center gap-3">
@@ -207,9 +213,13 @@ export function StackPyramid() {
                     Runs unchanged on the stack
                   </span>
                   <ul className="m-0 flex list-none flex-wrap gap-2 p-0">
-                    {frameworks.map((fw) => {
-                      const chip = (
-                        <>
+                    {frameworks.map((fw) => (
+                      <li key={fw.name} className="flex">
+                        <a
+                          href={fw.guide}
+                          title={`${fw.name} guide`}
+                          className="flex items-center gap-2 rounded-square border border-stroke-neutral px-2.5 py-1.5 text-xs text-foreground-neutral no-underline transition-colors hover:border-stroke-ppg/60 hover:bg-background-ppg hover:text-foreground-ppg-strong"
+                        >
                           <span
                             className="grid size-5 shrink-0 place-items-center overflow-hidden rounded-square-low border border-stroke-neutral bg-white p-0.5"
                             aria-hidden
@@ -221,26 +231,9 @@ export function StackPyramid() {
                             />
                           </span>
                           {fw.name}
-                        </>
-                      );
-                      return (
-                        <li key={fw.name} className="flex">
-                          {fw.guide ? (
-                            <a
-                              href={fw.guide}
-                              title={`${fw.name} guide`}
-                              className="flex items-center gap-2 rounded-square border border-stroke-neutral px-2.5 py-1.5 text-xs text-foreground-neutral no-underline transition-colors hover:border-stroke-ppg/60 hover:bg-background-ppg hover:text-foreground-ppg-strong"
-                            >
-                              {chip}
-                            </a>
-                          ) : (
-                            <span className="flex items-center gap-2 rounded-square border border-stroke-neutral px-2.5 py-1.5 text-xs text-foreground-neutral">
-                              {chip}
-                            </span>
-                          )}
-                        </li>
-                      );
-                    })}
+                        </a>
+                      </li>
+                    ))}
                   </ul>
                 </div>
               ) : null}

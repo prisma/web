@@ -11,18 +11,21 @@ export type Framework = {
   name: string;
   /** Real logo from /public/icons/technologies, shown on a white tile. */
   logo: string;
-  /** Prisma Next guide for this framework; frameworks without one render as plain chips. */
-  guide?: string;
+  /** Prisma Next guide for this framework. */
+  guide: string;
 };
 
-/** Frameworks Prisma Compute runs, cycled in the pyramid's top layer. */
+/**
+ * Frameworks cycled in the pyramid's top layer and listed as chips in the app
+ * panel. Only frameworks with a published Prisma Next guide appear here, so
+ * every chip leads somewhere; add one back the moment its guide ships.
+ */
 export const frameworks: Framework[] = [
   {
     name: "Next.js",
     logo: "/icons/technologies/next.svg",
     guide: "/docs/guides/next/frameworks/nextjs",
   },
-  { name: "React Router", logo: "/icons/technologies/rr7.svg" },
   {
     name: "TanStack Start",
     logo: "/icons/technologies/tanstack.svg",
@@ -45,8 +48,6 @@ export const frameworks: Framework[] = [
     logo: "/icons/technologies/nest.svg",
     guide: "/docs/guides/next/frameworks/nestjs",
   },
-  { name: "SolidStart", logo: "/icons/technologies/solid-start.svg" },
-  { name: "React", logo: "/icons/technologies/react.svg" },
 ];
 
 export type StackLayer = {
@@ -185,6 +186,8 @@ export type SwapLayer = {
   swap: string;
   /** Real logos of what you can swap to. */
   swapTargets: { src: string; alt: string; invert?: boolean }[];
+  /** Docs page that shows the swap actually working. */
+  link: { href: string; label: string };
 };
 
 /** Section 4 owns the replaceability message; it appears nowhere else. */
@@ -195,6 +198,7 @@ export const swapLayers: SwapLayer[] = [
     logo: "/icons/technologies/prisma_light.svg",
     swap: "Drop to raw SQL with the built-in query builder, or use any Postgres client.",
     swapTargets: [{ src: "/icons/technologies/postgresql.svg", alt: "Any Postgres client" }],
+    link: { href: "/docs/orm/next/reference/sql-query-builder", label: "SQL query builder docs" },
   },
   {
     layer: "Database",
@@ -202,6 +206,10 @@ export const swapLayers: SwapLayer[] = [
     logo: "/icons/technologies/prisma-postgres.svg",
     swap: "It speaks standard Postgres. Point the ORM at any Postgres database, anywhere.",
     swapTargets: [{ src: "/icons/technologies/postgresql.svg", alt: "Any PostgreSQL database" }],
+    link: {
+      href: "/docs/postgres/database/connecting-to-your-database",
+      label: "Connect any client",
+    },
   },
   {
     layer: "Hosting",
@@ -212,6 +220,10 @@ export const swapLayers: SwapLayer[] = [
       { src: "/icons/technologies/vercel-icon-dark.svg", alt: "Vercel", invert: true },
       { src: "/icons/technologies/aws.svg", alt: "AWS" },
     ],
+    link: {
+      href: "/docs/orm/prisma-client/deployment/deploy-prisma",
+      label: "Deployment guides",
+    },
   },
   {
     layer: "Runtime",
@@ -219,6 +231,10 @@ export const swapLayers: SwapLayer[] = [
     logo: "/icons/technologies/bun.svg",
     swap: "Your code is standard TypeScript. Run it on Node.js if you prefer.",
     swapTargets: [{ src: "/icons/technologies/node.svg", alt: "Node.js" }],
+    link: {
+      href: "/docs/next/add-to-existing-project/postgresql",
+      label: "Add to an existing project",
+    },
   },
 ];
 
@@ -228,6 +244,8 @@ export type Outcome = {
   body: string;
   /** Compact icon chips that carry the detail visually instead of prose. */
   visual?: { icon: string; label: string; tone?: "ok" | "bad" }[];
+  /** Docs page with the real content behind the claim; makes the card a link. */
+  link: { href: string; label: string };
 };
 
 /** Section 5: what Compute + Bun do for you, stated as outcomes. */
@@ -240,6 +258,7 @@ export const runtimeOutcomes: Outcome[] = [
       { icon: "fa-regular fa-terminal", label: "prisma app deploy" },
       { icon: "fa-regular fa-rocket", label: "my-app.prisma.build" },
     ],
+    link: { href: "/docs/compute/deployments", label: "How deploys work" },
   },
   {
     icon: "fa-regular fa-code-branch",
@@ -249,6 +268,7 @@ export const runtimeOutcomes: Outcome[] = [
       { icon: "fa-regular fa-code-branch", label: "feature/search" },
       { icon: "fa-regular fa-database", label: "own database copy" },
     ],
+    link: { href: "/docs/compute/branching", label: "How branching works" },
   },
   {
     icon: "fa-regular fa-wrench",
@@ -259,6 +279,7 @@ export const runtimeOutcomes: Outcome[] = [
       { icon: "fa-regular fa-check", label: "bun test" },
       { icon: "fa-regular fa-cubes-stacked", label: "bundler" },
     ],
+    link: { href: "/docs/guides/next/runtimes/bun", label: "Prisma Next on Bun" },
   },
 ];
 
@@ -272,6 +293,7 @@ export const dataOutcomes: Outcome[] = [
       { icon: "fa-regular fa-check", label: "post.title", tone: "ok" },
       { icon: "fa-regular fa-triangle-exclamation", label: "post.titel", tone: "bad" },
     ],
+    link: { href: "/docs/orm/next/fundamentals/reading-data", label: "How queries work" },
   },
   {
     icon: "fa-regular fa-file-binary",
@@ -281,6 +303,10 @@ export const dataOutcomes: Outcome[] = [
       { icon: "fa-regular fa-file-binary", label: "0042_add_posts" },
       { icon: "fa-regular fa-code-branch", label: "review in a PR" },
     ],
+    link: {
+      href: "/docs/orm/next/migrations/how-migrations-work",
+      label: "How migrations work",
+    },
   },
   {
     icon: "fa-regular fa-cubes-stacked",
@@ -292,6 +318,10 @@ export const dataOutcomes: Outcome[] = [
       { icon: "fa-regular fa-clock-rotate-left", label: "pg_cron" },
       { icon: "fa-regular fa-chart-line", label: "pg_stat_statements" },
     ],
+    link: {
+      href: "/docs/postgres/database/postgres-extensions",
+      label: "Browse the extensions",
+    },
   },
 ];
 
@@ -305,20 +335,24 @@ export const agentPoints: Outcome[] = [
       { icon: "fa-regular fa-file-binary", label: "prisma/schema.prisma" },
       { icon: "fa-regular fa-code", label: "src/index.ts" },
     ],
+    link: { href: "/docs/next/quickstart/postgresql", label: "Scaffold a project" },
   },
   {
     icon: "fa-regular fa-file-contract",
     title: "The schema is the contract",
     body: "The data model is one readable file: inspect it, diff it, regenerate the types.",
+    link: { href: "/docs/orm/next/data-modeling", label: "Model your data" },
   },
   {
     icon: "fa-regular fa-clock-rotate-left",
     title: "A typed feedback loop",
     body: "Agents iterate against the compiler, not runtime failures.",
+    link: { href: "/docs/orm/next", label: "Explore Prisma Next" },
   },
   {
     icon: "fa-regular fa-receipt",
     title: "Workflows in plain text",
     body: "Migrations are files and deploys are commands, reviewable before and after they run.",
+    link: { href: "/docs/compute/github", label: "Deploy from Git" },
   },
 ];
