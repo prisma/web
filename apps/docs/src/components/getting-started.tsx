@@ -117,8 +117,9 @@ export function AgentPrompt({
         ref={bodyRef}
         className={cn(
           // w-full beats the fumadocs pre's w-max so pre-wrap can take effect,
-          // matching the hero prompt; prompts read as prose, not code.
-          "border-t px-3 pb-1 [&_pre]:w-full [&_pre]:whitespace-pre-wrap [&_pre]:text-[0.8rem]",
+          // matching the hero prompt; prompts read as prose, not code. The
+          // max-height bounds how far expanding pushes the content below.
+          "max-h-80 overflow-y-auto border-t px-3 pb-1 [&_pre]:w-full [&_pre]:whitespace-pre-wrap [&_pre]:text-[0.8rem]",
           !open && "sr-only",
         )}
       >
@@ -137,7 +138,6 @@ export function AgentPrompt({
 export function GetStartedTabs({ cli, children }: { cli: string; children: ReactNode }) {
   const [tab, setTab] = useState<"prompt" | "cli">("prompt");
   const promptRef = useRef<HTMLDivElement>(null);
-  const [expanded, setExpanded] = useState(false);
   const [checked, onCopy] = useCopyButton(async () => {
     const text = tab === "cli" ? cli : copyText(promptRef.current);
     await navigator.clipboard.writeText(text);
@@ -181,7 +181,11 @@ export function GetStartedTabs({ cli, children }: { cli: string; children: React
           Copy
         </button>
       </div>
-      <div className={cn("border-t px-6 py-5", tab !== "cli" && "hidden")}>
+      {/* Both panels share a fixed height with internal scrolling, so
+          switching tabs never shifts the content below the card. */}
+      <div
+        className={cn("h-[26rem] overflow-y-auto border-t px-6 py-5", tab !== "cli" && "hidden")}
+      >
         <div className="flex flex-col gap-1.5 font-mono text-sm text-fd-foreground">
           {cli.split("\n").map((line, i) =>
             line.startsWith("#") ? (
@@ -201,9 +205,7 @@ export function GetStartedTabs({ cli, children }: { cli: string; children: React
         </div>
       </div>
       <div className={cn("border-t", tab !== "prompt" && "hidden")}>
-        {/* The prompt stays mounted (sr-only when collapsed) so it remains in
-            the HTML for crawlers and agents even before anyone expands it. */}
-        <div className={cn("relative px-5 pb-2 pt-1", !expanded && "sr-only")}>
+        <div className="relative h-[26rem] px-5 pb-2 pt-1">
           <div
             role="button"
             tabIndex={0}
@@ -219,7 +221,7 @@ export function GetStartedTabs({ cli, children }: { cli: string; children: React
           >
             <div
               ref={promptRef}
-              className="overflow-hidden [&_button]:hidden [&_pre]:w-full [&_pre]:whitespace-pre-wrap [&_pre]:text-[0.78rem] [&_pre]:leading-6"
+              className="h-full overflow-y-auto [&_button]:hidden [&_pre]:w-full [&_pre]:whitespace-pre-wrap [&_pre]:text-[0.78rem] [&_pre]:leading-6"
             >
               {children}
             </div>
@@ -233,25 +235,9 @@ export function GetStartedTabs({ cli, children }: { cli: string; children: React
             </span>
           </div>
         </div>
-        <button
-          className="flex w-full items-center gap-3 px-5 py-3.5 text-start text-sm transition-colors hover:bg-fd-accent/50"
-          onClick={() => setExpanded((v) => !v)}
-          aria-expanded={expanded}
-        >
-          <span className="grow text-fd-muted-foreground">
-            {expanded
-              ? "One prompt scaffolds, seeds, migrates, and deploys the whole stack."
-              : "One prompt scaffolds, seeds, migrates, and deploys the whole stack. Copy it, or read it first."}
-          </span>
-          <span className="inline-flex shrink-0 items-center gap-1.5 font-medium text-fd-primary">
-            {expanded ? (
-              <ChevronUp className="size-3.5" aria-hidden="true" />
-            ) : (
-              <ChevronDown className="size-3.5" aria-hidden="true" />
-            )}
-            {expanded ? "Hide prompt" : "View prompt"}
-          </span>
-        </button>
+      </div>
+      <div className="border-t px-5 py-3 text-sm text-fd-muted-foreground">
+        One journey scaffolds, seeds, migrates, and deploys the whole stack.
       </div>
     </div>
   );
