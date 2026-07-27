@@ -1,14 +1,14 @@
 "use client";
-import { type ReactNode, useRef, useState } from "react";
+import { type MouseEventHandler, type ReactNode, useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   ArrowUpDown,
   Check,
   ChevronDown,
-  ChevronUp,
   Copy,
   Sparkles,
   Terminal,
+  X,
 } from "lucide-react";
 import posthog from "posthog-js";
 import { useCopyButton } from "fumadocs-ui/utils/use-copy-button";
@@ -43,10 +43,75 @@ function InlineCode({ text }: { text: string }) {
 }
 
 /**
+ * Native-dialog modal for reading a full prompt. Overlays the page, so
+ * opening it never shifts the layout. Content stays mounted (display: none
+ * while closed), so prompts remain in the served HTML for crawlers/agents.
+ */
+function PromptModal({
+  open,
+  onClose,
+  title,
+  checked,
+  onCopy,
+  children,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  checked: boolean;
+  onCopy: MouseEventHandler<HTMLButtonElement>;
+  children: ReactNode;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = ref.current;
+    if (!dialog) return;
+    if (open && !dialog.open) dialog.showModal();
+    if (!open && dialog.open) dialog.close();
+  }, [open]);
+  return (
+    <dialog
+      ref={ref}
+      onClose={onClose}
+      onClick={(e) => {
+        if (e.target === ref.current) onClose();
+      }}
+      className="m-auto w-[min(48rem,calc(100vw-2rem))] rounded-xl border bg-fd-card p-0 text-fd-foreground shadow-xl backdrop:bg-black/50"
+    >
+      <div className="flex items-center gap-3 border-b px-4 py-3">
+        <span className="grow text-sm font-medium">{title}</span>
+        <button
+          className={cn(buttonVariants({ color: "primary", size: "sm", className: "gap-2" }))}
+          onClick={onCopy}
+        >
+          {checked ? (
+            <Check className="size-3.5" aria-hidden="true" />
+          ) : (
+            <Copy className="size-3.5" aria-hidden="true" />
+          )}
+          Copy prompt
+        </button>
+        <button
+          aria-label="Close"
+          onClick={onClose}
+          className="inline-flex items-center rounded-lg p-1.5 text-fd-muted-foreground transition-colors hover:bg-fd-accent hover:text-fd-accent-foreground"
+        >
+          <X className="size-4" aria-hidden="true" />
+        </button>
+      </div>
+      <div className="max-h-[70vh] overflow-y-auto px-4 pb-2 [&_button]:hidden [&_pre]:w-full [&_pre]:whitespace-pre-wrap [&_pre]:text-[0.8rem] [&_pre]:leading-6">
+        {children}
+      </div>
+    </dialog>
+  );
+}
+
+/**
  * A collapsed, copyable agent prompt. The prompt itself is authored as a
  * regular fenced code block child, so it stays in the DOM for crawlers and in
  * the generated .md / llms output for agents; visually it collapses into a
- * single row with copy and view actions.
+ * single row with copy and view actions. Viewing opens a modal, so the row
+ * never pushes the content below it around.
  */
 export function AgentPrompt({
   title = "Use with your agent",
@@ -91,15 +156,12 @@ export function AgentPrompt({
           className={cn(
             "inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-fd-muted-foreground transition-colors hover:bg-fd-accent hover:text-fd-accent-foreground",
           )}
-          onClick={() => setOpen((v) => !v)}
+          onClick={() => setOpen(true)}
+          aria-haspopup="dialog"
           aria-expanded={open}
         >
-          {open ? (
-            <ChevronUp className="size-3.5" aria-hidden="true" />
-          ) : (
-            <ChevronDown className="size-3.5" aria-hidden="true" />
-          )}
-          {open ? "Hide" : "View"}
+          <ChevronDown className="size-3.5" aria-hidden="true" />
+          View
         </button>
         <button
           className={cn(buttonVariants({ color: "primary", size: "sm", className: "gap-2" }))}
@@ -113,18 +175,15 @@ export function AgentPrompt({
           Copy prompt
         </button>
       </div>
-      <div
-        ref={bodyRef}
-        className={cn(
-          // w-full beats the fumadocs pre's w-max so pre-wrap can take effect,
-          // matching the hero prompt; prompts read as prose, not code. The
-          // max-height bounds how far expanding pushes the content below.
-          "max-h-80 overflow-y-auto border-t px-3 pb-1 [&_pre]:w-full [&_pre]:whitespace-pre-wrap [&_pre]:text-[0.8rem]",
-          !open && "sr-only",
-        )}
+      <PromptModal
+        open={open}
+        onClose={() => setOpen(false)}
+        title={title}
+        checked={checked}
+        onCopy={onCopy}
       >
-        {children}
-      </div>
+        <div ref={bodyRef}>{children}</div>
+      </PromptModal>
     </div>
   );
 }
@@ -137,6 +196,7 @@ export function AgentPrompt({
  */
 export function GetStartedTabs({ cli, children }: { cli: string; children: ReactNode }) {
   const [tab, setTab] = useState<"prompt" | "cli">("prompt");
+  const [promptOpen, setPromptOpen] = useState(false);
   const promptRef = useRef<HTMLDivElement>(null);
   const [checked, onCopy] = useCopyButton(async () => {
     const text = tab === "cli" ? cli : copyText(promptRef.current);
@@ -205,37 +265,50 @@ export function GetStartedTabs({ cli, children }: { cli: string; children: React
         </div>
       </div>
       <div className={cn("border-t", tab !== "prompt" && "hidden")}>
-        <div className="relative h-[26rem] px-5 pb-2 pt-1">
+        {/* Clipped preview of the prompt; the full text opens in a modal so
+            reading it never reflows the page. The preview holds the complete
+            prompt in the DOM (visually clipped), so copy and crawlers see it. */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setPromptOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setPromptOpen(true);
+            }
+          }}
+          aria-haspopup="dialog"
+          aria-label="View the full prompt"
+          className="relative block h-[26rem] w-full cursor-pointer overflow-hidden px-5 pt-1 text-start"
+        >
           <div
-            role="button"
-            tabIndex={0}
-            onClick={onCopy}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                (onCopy as unknown as () => void)();
-              }
-            }}
-            aria-label="Copy prompt to clipboard"
-            className="block w-full cursor-pointer text-start"
+            ref={promptRef}
+            className="h-full overflow-hidden [&_button]:hidden [&_pre]:w-full [&_pre]:whitespace-pre-wrap [&_pre]:text-[0.78rem] [&_pre]:leading-6"
           >
-            <div
-              ref={promptRef}
-              className="h-full overflow-y-auto [&_button]:hidden [&_pre]:w-full [&_pre]:whitespace-pre-wrap [&_pre]:text-[0.78rem] [&_pre]:leading-6"
-            >
-              {children}
-            </div>
+            {children}
+          </div>
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center bg-gradient-to-t from-fd-card via-fd-card/80 to-transparent pb-6 pt-16">
             <span
               className={cn(
-                "pointer-events-none absolute end-4 top-4 rounded-md border bg-fd-background px-2 py-1 text-xs font-medium shadow-sm",
-                checked ? "text-fd-primary" : "text-fd-muted-foreground",
+                buttonVariants({ color: "secondary", size: "sm", className: "gap-2 shadow-sm" }),
               )}
             >
-              {checked ? "Copied" : "Click to copy"}
+              <ChevronDown className="size-3.5" aria-hidden="true" />
+              View full prompt
             </span>
           </div>
         </div>
       </div>
+      <PromptModal
+        open={promptOpen}
+        onClose={() => setPromptOpen(false)}
+        title="AI prompt"
+        checked={checked}
+        onCopy={onCopy}
+      >
+        {children}
+      </PromptModal>
       <div className="border-t px-5 py-3 text-sm text-fd-muted-foreground">
         One journey scaffolds, seeds, migrates, and deploys the whole stack.
       </div>
