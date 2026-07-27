@@ -176,28 +176,42 @@ Names look similar but parity does not hold. This section breaks down each categ
 
 Prisma Next uses a chained API instead of v6's single options object: you start from a collection (like `db.orm.users`), add filters and options step by step, then finish with a method that runs the query:
 
-```typescript
+```typescript tab="After"
 import { db } from './db';
 
 // Find one
-// v6:  await prisma.user.findFirst({ where: { email } })
 await db.orm.users.where({ email: 'alice@example.com' }).first();
 
 // Create
-// v6:  await prisma.user.create({ data: { email, role: 'author' } })
 const user = await db.orm.users.create({ email: 'a@e.com', role: 'author', address: null });
 
 // Update one
-// v6:  await prisma.user.update({ where: { id }, data: { role: 'author' } })
 await db.orm.users.where({ _id: user._id }).update({ role: 'author' });
 
 // Update many
-// v6:  await prisma.user.updateMany({ where: { role: 'reader' }, data: { role: 'author' } })
 await db.orm.users.where({ role: 'reader' }).updateAll({ role: 'author' });
 
 // Delete one
-// v6:  await prisma.user.delete({ where: { id } })
 await db.orm.users.where({ _id: user._id }).delete();
+```
+
+```typescript tab="Before"
+import { prisma } from './db';
+
+// Find one
+await prisma.user.findFirst({ where: { email } });
+
+// Create
+const user = await prisma.user.create({ data: { email, role: 'author' } });
+
+// Update one
+await prisma.user.update({ where: { id }, data: { role: 'author' } });
+
+// Update many
+await prisma.user.updateMany({ where: { role: 'reader' }, data: { role: 'author' } });
+
+// Delete one
+await prisma.user.delete({ where: { id } });
 ```
 
 **Common mistakes:**
@@ -210,13 +224,24 @@ await db.orm.users.where({ _id: user._id }).delete();
 
 ### 3b. Relations and polymorphism
 
-```typescript
+```typescript tab="After"
+import { db } from './db';
+
 // Eager-load a relation
-// v6:  await prisma.post.findMany({ include: { author: true } })
 const withAuthor = await db.orm.posts.include('author').all();
 
 // Query one variant of a polymorphic collection
 const articles = await db.orm.posts.variant('Article').all();
+```
+
+```typescript tab="Before"
+import { prisma } from './db';
+
+// Eager-load a relation
+const withAuthor = await prisma.post.findMany({ include: { author: true } });
+
+// Query one variant of a polymorphic collection
+const articles = await prisma.post.findMany({ where: { type: 'Article' } });
 ```
 
 ### 3c. Aggregations
