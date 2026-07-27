@@ -1,0 +1,379 @@
+# Migrating a MongoDB project from Prisma v6 to Prisma Next
+
+This guide is for developers moving a Prisma ORM v6 MongoDB project to
+[Prisma Next](https://github.com/prisma/prisma-next). Prisma 7 has **no MongoDB connector**, so
+Prisma Next is the successor path. This is a **code and workflow migration against the same
+database** — your data never moves.
+
+> [!TIP]
+> **Working with an AI coding agent?** Install the companion `prisma-mongodb-upgrade` skill with `npx skills add prisma/skills` to help your agent with this migration.
+
+## Prerequisites
+
+- **Node.js 24+**
+- **TypeScript 5.9+**
+- **MongoDB 8.0+**
+- **The `mongodb` node driver 7.x** is a required peer dependency
+- **A replica set** if your app uses transactions. Prisma Next's ORM doesn't wrap `$transaction` yet, so multi-document atomicity goes through the driver's sessions (see step 3d), which MongoDB only allows on a replica set.
+
+> Prisma Next MongoDB is Early Access (GA planned after Postgres), so details can shift between
+> releases — check anything below against the `@prisma-next/*` version you install.
+
+## Migration Overview
+
+- [ ] **Set up**: scaffold Next and add the MongoDB driver.
+- [ ] **Port the schema**: convert your v6 models to a Prisma Next contract.
+- [ ] **Port the code**: update client calls, transactions, and aggregations.
+- [ ] **Adopt migrations**: replace the `db push` workflow.
+- [ ] **Verify**: check index parity and validators, then soak-test reads.
+- [ ] **Cut over**: a code-only switch; your data never moves.
+
+## 1. Set up Prisma Next
+
+Scaffold the project, then add the MongoDB driver as a peer dependency:
+
+```bash
+npx prisma-next init --yes --target mongodb --authoring psl
+```
+
+`init` writes a `prisma-next.config.ts` at the repo root. MongoDB is selected by importing the
+`@prisma-next/mongo` façade, not by a `provider` string in the schema. Point the connection
+at the **same database** your v6 app uses.
+
+**Before:**
+
+```prisma
+// schema.prisma
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// Rest of schema...
+```
+
+**After:**
+
+```typescript
+// prisma-next.config.ts
+import { defineConfig } from '@prisma-next/mongo/config';
+
+export default defineConfig({
+  contract: './src/prisma/contract.prisma',
+  db: {
+    connection: process.env['DATABASE_URL'],
+  },
+});
+```
+
+> [!IMPORTANT]
+> **MONGODB-AWS auth only:** the `mongodb@^7` driver no longer accepts AWS credentials embedded in the connection string. See the [driver v7 breaking changes](https://github.com/mongodb/node-mongodb-native/blob/HEAD/etc/notes/CHANGES_7.0.0.md#-aws-authentication).
+
+### Import the client
+
+The way to instantiate the Prisma client now is from the emitted contract:
+
+**Before:**
+
+```typescript
+// src/prisma/db.ts
+import { PrismaClient } from '../generated/prisma/client';
+
+const prisma = new PrismaClient();
+
+export { prisma };
+```
+
+**After:**
+
+```typescript
+// src/prisma/db.ts
+import mongo from '@prisma-next/mongo/runtime';
+import type { Contract } from './contract';
+import contractJson from './contract.json' with { type: 'json' };
+
+const db = mongo<Contract>({
+  contractJson,
+  url: process.env['DATABASE_URL'],
+  dbName: 'my-app-db',
+});
+
+export { db };
+```
+
+### Generate the contract
+
+Run `npx prisma-next contract emit` to generate `contract.json` from your `.prisma` contract file. Re-run this whenever you change the contract.
+
+## 2. Port the Schema to a Contract
+
+> [!IMPORTANT]
+> Prisma Next addresses collections by **storage name**, not model name: `db.orm.users` (the `@@map` name, or the lowercased model name), never `db.orm.User`. Whatever you `@@map` in this step is the exact name every client call uses in step 3.
+
+The v6 `schema.prisma` is not consumed as-is; it becomes a **contract**, authored in PSL (shown
+here) or TypeScript. The syntax is close to v6, with a few differences. 
+
+In the table below, the left column is how you wrote it in v6 and the right column is the Prisma Next equivalent:
+
+| Concept | v6 (`schema.prisma`) | Prisma Next (`contract.prisma`) |
+|---------|----------------------|---------------------------------|
+| Datasource | `datasource db { provider = "mongodb" }` | no `provider` (configured in `prisma-next.config.ts`) |
+| Id field | `id String @id @default(auto()) @map("_id") @db.ObjectId` | `id ObjectId @id @map("_id")` |
+| Embedded document | `type Address { ... }` | `type Address { ... }` (unchanged) |
+| Index | `@@index(...)`, synced by `db push` | `@@index(...)` / `@@unique(...)`, applied by migrations |
+| Polymorphism | not supported | `@@discriminator(field)` on the base + `@@base(Base, "value")` on each variant. <br>See the [Base Model and Variants](https://www.prisma.io/docs/orm/next/contract-authoring/psl-syntax#base-models-and-variants) |
+
+A fuller contract putting these together — enum, embedded type, relation, and polymorphism:
+
+```prisma
+// src/prisma/contract.prisma
+enum UserRole {
+  @@type("mongo/string@1")
+  Admin  = "admin"
+  Author = "author"
+  Reader = "reader"
+}
+
+type Address {
+  street  String
+  city    String
+  country String
+}
+
+model User {
+  id      ObjectId @id @map("_id")
+  email   String
+  role    UserRole
+  address Address?
+  posts   Post[]
+  @@map("users")
+}
+
+model Post {
+  id        ObjectId @id @map("_id")
+  title     String
+  kind      String
+  authorId  ObjectId
+  createdAt DateTime
+  author    User @relation(fields: [authorId], references: [id])
+  @@discriminator(kind)
+  @@index([createdAt(sort: Desc), authorId])
+  @@map("posts")
+}
+
+model Article {
+  summary String
+  @@base(Post, "article")
+}
+```
+
+## 3. Port client calls
+
+Names look similar but parity does not hold. This section breaks down each category of operation.
+
+### 3a. Basic CRUD
+
+Prisma Next uses a chained API instead of v6's single options object: you start from a collection
+(like `db.orm.users`), add filters and options step by step, then finish with a method that runs
+the query. Each example shows the v6 call first, then its Prisma Next equivalent (see **Common
+mistakes** below for the two rules that trip people up most):
+
+```typescript
+import { db } from './db';
+
+// Find one
+// v6:  await prisma.user.findFirst({ where: { email } })
+await db.orm.users.where({ email: 'alice@example.com' }).first();
+
+// Create
+// v6:  await prisma.user.create({ data: { email, role: 'author' } })
+const user = await db.orm.users.create({ email: 'a@e.com', role: 'author', address: null });
+
+// Update one
+// v6:  await prisma.user.update({ where: { id }, data: { role: 'author' } })
+await db.orm.users.where({ _id: user._id }).update({ role: 'author' });
+
+// Update many
+// v6:  await prisma.user.updateMany({ where: { role: 'reader' }, data: { role: 'author' } })
+await db.orm.users.where({ role: 'reader' }).updateAll({ role: 'author' });
+
+// Delete one
+// v6:  await prisma.user.delete({ where: { id } })
+await db.orm.users.where({ _id: user._id }).delete();
+```
+
+**Common mistakes:**
+
+| ❌ Don't | ✅ Do | Why |
+|---------|------|-----|
+| `db.orm.User` | `db.orm.users` | address by storage name, not model name |
+| `.where({ email: { equals: 'x' } })` | `.where({ email: 'x' })` | `.where(...)` takes a plain equality object |
+| `.update({ ... })` with no `.where(...)` | `.where(...).update({ ... })` | every mutation except `create` needs a `.where(...)` first |
+
+### 3b. Relations and polymorphism
+
+```typescript
+// Eager-load a relation
+// v6:  await prisma.post.findMany({ include: { author: true } })
+const withAuthor = await db.orm.posts.include('author').all();
+
+// Query one variant of a polymorphic collection
+const articles = await db.orm.posts.variant('Article').all();
+```
+
+### 3c. Aggregations
+
+v6's `groupBy` / `aggregate` become a chain of steps. `acc` provides the group totals
+(`acc.count()`, `acc.max(...)`, etc.) — the equivalent of v6's `_count` / `_sum` / `_max`.
+
+Before:
+
+```typescript
+await prisma.post.groupBy({
+  by: ['kind'],
+  where: { authorId },
+  _count: { _all: true },
+  _max: { createdAt: true },
+  orderBy: { _count: { kind: 'desc' } },
+});
+```
+
+After:
+
+```typescript
+import { acc } from '@prisma-next/mongo-query-builder';
+
+const runtime = await db.runtime();
+const plan = db.query
+  .from('posts')
+  .match((f) => f.authorId.eq(authorId))
+  .group((f) => ({ _id: f.kind, postCount: acc.count(), latest: acc.max(f.createdAt) }))
+  .sort({ postCount: -1 })
+  .build();
+const byKind = await runtime.execute(plan);
+```
+
+### 3d. Transactions
+
+Prisma Next has no `transaction` method for MongoDB yet. For multi-document transactions, use the `mongodb` driver's [Transaction API](https://www.mongodb.com/docs/drivers/node/current/crud/transactions/transaction-conv/).
+
+**Before:**
+
+```typescript
+await prisma.$transaction(async (tx) => {
+  // ...writes...
+});
+```
+
+**After:**
+
+```typescript
+import { MongoClient } from 'mongodb';
+
+const client = new MongoClient(DATABASE_URL);
+const session = client.startSession();
+const mdb = client.db('my-app-db');
+
+try {
+  await session.withTransaction(async () => {
+    // Pass { session } to EVERY operation — an op without it silently runs
+    // outside the transaction.
+    await mdb
+      .collection('users')
+      .insertOne({ email: 'a@e.com', role: 'author' }, { session });
+    await mdb
+      .collection('posts')
+      .updateOne({ _id: postId }, { $set: { authorId } }, { session });
+  });
+} finally {
+  await session.endSession();
+}
+```
+
+### 3e. Raw operations
+
+Use the pipeline builder for aggregations, or drop to the `mongodb` driver for arbitrary commands.
+
+### Quick reference table
+
+| v6 | Prisma Next |
+|----|-------------|
+| `prisma.user.findMany(...)` | `db.orm.users.where({ ... }).all()` |
+| `prisma.user.findFirst(...)` | `db.orm.users.where({ ... }).first()` |
+| `create` / `update` / `delete` / `upsert` | same names on `db.orm.<collection>` |
+| `updateMany` / `deleteMany` | `updateAll` / `deleteAll` |
+| `aggregate` / `groupBy` | `db.query.from(...).group(...).build()` → `runtime.execute(plan)` |
+| `$runCommandRaw` / `findRaw` / `aggregateRaw` | pipeline builder, or the `mongodb` driver directly (arbitrary commands) |
+| `$transaction(...)` | No façade wrapper yet — use driver sessions on a replica set |
+| `$connect` / `$disconnect` | lazy connect on first use; `db.close()` to disconnect |
+
+## 4. Adopt the migration lifecycle
+
+v6 MongoDB had no Prisma Migrate (`db push` only). Prisma Next gives MongoDB first-class,
+contract-driven migrations.
+
+Unlike v6's `db push` (ephemeral, no history), Next migrations are:
+- **Reviewable**: diffs are packages you commit  
+- **Reproducible**: same package → same DB state across envs  
+- **Auditable**: migration history = schema evolution timeline
+
+For local dev, `db update` mimics `db push`. For shared/prod, use the migration workflow.
+
+The CLI reads the target from `prisma-next.config.ts`:
+
+```bash
+# Local dev: diff the contract against the live DB and apply directly (no history kept),
+# the closest analogue to the old `db push`. Mongo dev scaffolds often need ?replicaSet=rs0.
+npx prisma-next contract emit
+npx prisma-next db update --db "$DATABASE_URL"
+
+# Shared branches / production: write a reviewable migration package, then apply it.
+npx prisma-next migration plan --name add_posts_indexes
+npx prisma-next migrate --db "$DATABASE_URL"
+npx prisma-next db verify --db "$DATABASE_URL"   # check the DB matches the contract
+```
+
+**Good to know:**
+
+- You never hand-write migration steps. You declare indexes and validators in the contract
+  (step 2), and `migration plan` works out the changes for you.
+- On a database Prisma Next hasn't managed before, run `db init` once first. If you ever fix
+  something by hand, run `db sign` so Prisma Next knows the current state.
+- If a `migrate` run gets interrupted, just run it again. It picks up where it left off. Run
+  `db verify` any time to check the database still matches your contract.
+- By default, Prisma Next adds strict server-side validators to your collections using MongoDB's `$jsonSchema`. Before running this in
+  production, make sure your existing documents pass them.
+
+## 5. Pre-flight checklist (before production cutover)
+
+Work through this list before you switch production traffic over:
+
+- [ ] Your Prisma Next config points at the **same** database and connection string as v6.
+- [ ] Your MongoDB server is on 8.0 or newer.
+- [ ] **Dry run first.** Rehearse the whole flow on a throwaway copy of your database (`contract
+   emit`, `migration plan`, `migrate`, `db verify`) and make sure `db verify` passes before you
+   touch production.
+- [ ] **Index parity.** The indexes on each collection (`db.collection.getIndexes()`) match your
+   contract.
+- [ ] **Validators.** Your existing documents pass the strict validators Prisma Next adds to each
+   collection (see *Good to know* in step 4).
+- [ ] **Addressing.** Every call site uses storage names like `db.orm.users`, not model names.
+- [ ] **Transactions.** Every v6 `$transaction` now has a driver-session equivalent.
+- [ ] **Raw calls.** Every `$runCommandRaw`, `findRaw`, and `aggregateRaw` has a pipeline-builder
+   or `mongodb`-driver replacement.
+- [ ] **Read-only trial run.** Run Prisma Next read-only alongside your v6 app for a while and
+   compare the results. This surfaces any differences while v6 is still handling all the writes.
+- [ ] **Cutover and rollback.** Switch writes over only once the trial run looks good, and keep the
+   v6 branch deployable. Rolling back is just a code rollback since your data never moved.
+
+Don't delete the v6 client, schema, or dependencies until this checklist passes.
+
+## 6. Post-migration: adopting Next workflows
+
+Once you've cut over, this is the day-to-day workflow:
+
+- **Schema changes.** Edit the contract, then run `contract emit`, `migration plan`, and `migrate` (the same loop from step 4).
+- **Troubleshooting.** `db verify` checks the database against your contract, and `db sign` records any fixes you make by hand.
+- **Performance.** Your aggregations now compile to native MongoDB pipelines, so it's worth benchmarking them against your old v6 raw calls.
+
+See [Prisma Next docs](https://github.com/prisma/prisma-next) for pipeline builder patterns, relation loading strategies, and advanced contract features. This guide gets you across the bridge; Prisma Next's docs are the source of truth from here on.
