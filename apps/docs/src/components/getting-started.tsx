@@ -1,6 +1,15 @@
 "use client";
 import { type ReactNode, useRef, useState } from "react";
-import { ArrowUpDown } from "lucide-react";
+import {
+  ArrowRight,
+  ArrowUpDown,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  Sparkles,
+  Terminal,
+} from "lucide-react";
 import posthog from "posthog-js";
 import { useCopyButton } from "fumadocs-ui/utils/use-copy-button";
 import { buttonVariants } from "@prisma-docs/ui/components/button";
@@ -66,16 +75,16 @@ export function AgentPrompt({
           className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-fd-background text-fd-primary [&_svg]:size-4"
           aria-hidden="true"
         >
-          {icon ?? <i className="fa-regular fa-sparkles text-[0.8rem]" />}
+          {icon ?? <Sparkles />}
         </span>
         <span className="grow text-sm font-medium">{title}</span>
         {guideHref && (
           <a
             href={withDocsBasePath(guideHref)}
-            className="text-sm font-medium text-fd-primary hover:underline"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-fd-primary hover:underline"
           >
-            {guideTitle}{" "}
-            <i className="fa-regular fa-arrow-right text-[0.7rem]" aria-hidden="true" />
+            {guideTitle}
+            <ArrowRight className="size-3.5" aria-hidden="true" />
           </a>
         )}
         <button
@@ -85,26 +94,33 @@ export function AgentPrompt({
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
         >
-          <i
-            className={cn("fa-regular text-[0.7rem]", open ? "fa-chevron-up" : "fa-chevron-down")}
-            aria-hidden="true"
-          />
+          {open ? (
+            <ChevronUp className="size-3.5" aria-hidden="true" />
+          ) : (
+            <ChevronDown className="size-3.5" aria-hidden="true" />
+          )}
           {open ? "Hide" : "View"}
         </button>
         <button
           className={cn(buttonVariants({ color: "primary", size: "sm", className: "gap-2" }))}
           onClick={onCopy}
         >
-          <i
-            className={cn("fa-regular text-[0.8rem]", checked ? "fa-check" : "fa-copy")}
-            aria-hidden="true"
-          />
+          {checked ? (
+            <Check className="size-3.5" aria-hidden="true" />
+          ) : (
+            <Copy className="size-3.5" aria-hidden="true" />
+          )}
           Copy prompt
         </button>
       </div>
       <div
         ref={bodyRef}
-        className={cn("border-t px-3 pb-1 [&_pre]:text-[0.8rem]", !open && "sr-only")}
+        className={cn(
+          // w-full beats the fumadocs pre's w-max so pre-wrap can take effect,
+          // matching the hero prompt; prompts read as prose, not code.
+          "border-t px-3 pb-1 [&_pre]:w-full [&_pre]:whitespace-pre-wrap [&_pre]:text-[0.8rem]",
+          !open && "sr-only",
+        )}
       >
         {children}
       </div>
@@ -128,19 +144,19 @@ export function GetStartedTabs({ cli, children }: { cli: string; children: React
     posthog.capture("docs:copy_prompt", { page_path: window.location.pathname, tab });
   });
 
-  const tabButton = (value: "prompt" | "cli", icon: string, label: string) => (
+  const tabButton = (value: "prompt" | "cli", icon: ReactNode, label: string) => (
     <button
       role="tab"
       aria-selected={tab === value}
       onClick={() => setTab(value)}
       className={cn(
-        "inline-flex items-center gap-2 border-b-2 px-1 pb-2.5 pt-0.5 text-sm font-medium transition-colors",
+        "inline-flex items-center gap-2 border-b-2 px-1 pb-2.5 pt-0.5 text-sm font-medium transition-colors [&_svg]:size-4",
         tab === value
           ? "border-fd-primary text-fd-foreground"
           : "border-transparent text-fd-muted-foreground hover:text-fd-foreground",
       )}
     >
-      <i className={cn("fa-regular", icon, "text-[0.8rem]")} aria-hidden="true" />
+      {icon}
       {label}
     </button>
   );
@@ -148,8 +164,8 @@ export function GetStartedTabs({ cli, children }: { cli: string; children: React
   return (
     <div className="not-prose my-6 rounded-xl border bg-fd-card shadow-sm">
       <div className="flex items-center gap-5 px-5 pt-3.5" role="tablist">
-        {tabButton("prompt", "fa-sparkles", "AI Prompt")}
-        {tabButton("cli", "fa-terminal", "CLI")}
+        {tabButton("prompt", <Sparkles aria-hidden="true" />, "AI Prompt")}
+        {tabButton("cli", <Terminal aria-hidden="true" />, "CLI")}
         <button
           className={cn(
             buttonVariants({ color: "secondary", size: "sm", className: "ms-auto mb-1.5 gap-2" }),
@@ -157,10 +173,11 @@ export function GetStartedTabs({ cli, children }: { cli: string; children: React
           onClick={onCopy}
           aria-label="Copy to clipboard"
         >
-          <i
-            className={cn("fa-regular text-[0.8rem]", checked ? "fa-check" : "fa-copy")}
-            aria-hidden="true"
-          />
+          {checked ? (
+            <Check className="size-3.5" aria-hidden="true" />
+          ) : (
+            <Copy className="size-3.5" aria-hidden="true" />
+          )}
           Copy
         </button>
       </div>
@@ -227,13 +244,11 @@ export function GetStartedTabs({ cli, children }: { cli: string; children: React
               : "One prompt scaffolds, seeds, migrates, and deploys the whole stack. Copy it, or read it first."}
           </span>
           <span className="inline-flex shrink-0 items-center gap-1.5 font-medium text-fd-primary">
-            <i
-              className={cn(
-                "fa-regular text-[0.7rem]",
-                expanded ? "fa-chevron-up" : "fa-chevron-down",
-              )}
-              aria-hidden="true"
-            />
+            {expanded ? (
+              <ChevronUp className="size-3.5" aria-hidden="true" />
+            ) : (
+              <ChevronDown className="size-3.5" aria-hidden="true" />
+            )}
             {expanded ? "Hide prompt" : "View prompt"}
           </span>
         </button>
@@ -421,7 +436,7 @@ export function HeroPitch({
     <div className="flex flex-col items-start gap-5">
       {badge && (
         <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-fd-primary">
-          <i className="fa-regular fa-sparkles text-[0.7rem]" aria-hidden="true" />
+          <Sparkles className="size-3.5" aria-hidden="true" />
           {badge}
         </span>
       )}
@@ -434,7 +449,7 @@ export function HeroPitch({
           className={cn(buttonVariants({ color: "primary", className: "gap-2" }))}
         >
           {primaryLabel}
-          <i className="fa-regular fa-arrow-right text-[0.8rem]" aria-hidden="true" />
+          <ArrowRight className="size-4" aria-hidden="true" />
         </a>
         {secondaryHref && secondaryLabel && (
           <a
@@ -479,8 +494,8 @@ export function StackLayer({
         <span className="block text-sm font-semibold text-fd-foreground">{title}</span>
         <span className="block text-xs text-fd-muted-foreground">{children}</span>
       </span>
-      <i
-        className="fa-regular fa-arrow-right ms-auto text-[0.75rem] text-fd-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+      <ArrowRight
+        className="ms-auto size-3.5 shrink-0 text-fd-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
         aria-hidden="true"
       />
     </a>
