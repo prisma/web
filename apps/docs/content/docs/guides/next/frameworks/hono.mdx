@@ -14,7 +14,7 @@ Every command, route, and response below was run end to end against a live Prism
 
 ## Prerequisites
 
-- Node.js 24 or later, or [Bun](https://bun.sh/) (this guide uses Bun for speed; npm works the same)
+- [Node.js](https://nodejs.org) 24 or later, or [Bun](https://bun.sh/) (this guide uses Bun for speed; npm works the same)
 - A PostgreSQL connection string, or nothing at all: the scaffold can create a [Prisma Postgres](/postgres) database for you
 
 ## Use with your agent
@@ -30,7 +30,7 @@ Create a new Hono API with Prisma Next, seed it, and deploy it to Prisma Compute
 2. In `my-hono-api`, run `npm run db:init`, then `npm run db:seed`. If seeding fails with `Cannot read properties of undefined (reading 'where')`, change `db.orm.User` to `db.orm.public.User` in `src/prisma/seed.ts` and `src/prisma/users.ts`, then rerun.
 3. Start `npm run dev` in the background, wait until it reports ready, verify `curl http://localhost:3000/users` returns the seeded users, then stop the dev server.
 4. Add a POST /users route that creates a user from the request body, following https://www.prisma.io/docs/guides/next/frameworks/hono.md, restart the dev server, and verify it with curl.
-5. Deploy: check `npx @prisma/cli@latest auth whoami`; if I am not signed in, stop and ask me to run `npx @prisma/cli@latest auth login`. Then run `npx @prisma/cli@latest app deploy --env .env` and verify the live URL's /users endpoint.
+5. Deploy: check `npx @prisma/cli@latest auth whoami`; if I am not signed in, stop and ask me to run `npx @prisma/cli@latest auth login`. Then run `npx @prisma/cli@latest app deploy --create-project my-hono-api --env .env` and verify the live URL's /users endpoint.
 
 Use the installed Prisma Next skills.
 ```
@@ -40,7 +40,7 @@ Use the installed Prisma Next skills.
 ## 1. Scaffold the project
 
 ```bash
-bunx create-prisma@next create my-hono-api --provider postgres --template hono
+bunx create-prisma@next create my-hono-api --template hono --provider postgres
 ```
 
 Pick your package manager and database at the prompts. The template generates a Hono server in `src/index.ts` with two routes (`GET /` and `GET /users`), the Prisma Next setup in `src/prisma/`, and package scripts for the database steps.
@@ -149,13 +149,13 @@ Verify the live endpoint returns the seeded users:
 curl https://<your-app>.ewr.prisma.build/users
 ```
 
-The first deploy creates a project, pins the directory to it in a gitignored `.prisma/local.json`, and promotes to production. For previews per Git branch and deploy-on-push, see [Deploy your first app](/prisma-compute/deploy).
+The first deploy asks you to pick or create a project (pass `--create-project my-hono-api` to skip the prompt), pins the directory to it in a gitignored `.prisma/local.json`, and promotes to production. For previews per Git branch and deploy-on-push, see [Deploy your first app](/prisma-compute/deploy).
 
 ## Common gotchas
 
 :::warning
 
-In a long-running server, don't call `db.close()` in route handlers; the client's connection pool is shared across requests. Close it only on process shutdown.
+In a long-running server, don't call `db.runtime().close()` in route handlers; the client's connection pool is shared across requests. Close it only on process shutdown.
 
 :::
 
@@ -164,7 +164,7 @@ In a long-running server, don't call `db.close()` in route handlers; the client'
 The scaffold installs [Prisma Next skills](/ai/tools/skills#available-skills-for-prisma-next) for your coding agent. Prompts that map to this guide:
 
 - "Using the prisma-next-queries skill, add GET /users/:id that returns one user or a 404."
-- "Add a Post model related to User, update the database, and expose GET /users/:id/posts."
+- "Expose GET /users/:id/posts using the Post model that ships with the starter contract."
 - "Wrap the signup route's writes in a [transaction](/orm/next/fundamentals/transactions)."
 
 ## Next steps

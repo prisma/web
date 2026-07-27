@@ -30,7 +30,7 @@ Create a new Bun app with Prisma Next, run a first typed query, and deploy it to
 2. In `my-bun-app`, run `bun run contract:emit`, then `bun run db:init`. If any script fails with `undefined is not an object (evaluating 'db.orm.User.where')`, change `db.orm.User` to `db.orm.public.User` in `src/index.ts`, `src/prisma/seed.ts`, and `src/prisma/users.ts`, then rerun.
 3. Replace `src/index.ts` with a script that creates a user and reads all users back via `db.orm.public.User`, following https://www.prisma.io/docs/guides/next/runtimes/bun.md, and verify `bun run dev` prints the created user.
 4. Add `src/server.ts` with a `Bun.serve` server exposing GET /users, and verify `curl http://localhost:3000/users` returns the users.
-5. Deploy: check `npx @prisma/cli@latest auth whoami`; if I am not signed in, stop and ask me to run `npx @prisma/cli@latest auth login`. Then run `npx @prisma/cli@latest app deploy --env .env --framework bun --entry src/server.ts` and verify the live URL's /users endpoint.
+5. Deploy: check `npx @prisma/cli@latest auth whoami`; if I am not signed in, stop and ask me to run `npx @prisma/cli@latest auth login`. Then run `npx @prisma/cli@latest app deploy --create-project my-bun-app --env .env --framework bun --entry src/server.ts` and verify the live URL's /users endpoint.
 
 Use the installed Prisma Next skills.
 ```
@@ -42,7 +42,7 @@ Use the installed Prisma Next skills.
 Create the project with `create-prisma`. Pick Bun as the package manager when prompted, or pass everything up front:
 
 ```bash
-bunx create-prisma@next create my-bun-app --provider postgres --package-manager bun
+bunx create-prisma@next create my-bun-app --template minimal --provider postgres --package-manager bun
 ```
 
 When the prompt asks about the database, pick Prisma Postgres to have one created for you, or paste your own `DATABASE_URL`. The scaffold writes the connection string to `.env`, sets up `src/prisma/` with a starter schema, and installs dependencies with Bun.
@@ -91,10 +91,10 @@ console.log(`created user ${user.email}`);
 const users = await db.orm.public.User.select("id", "email", "name").all();
 console.log(`there are now ${users.length} users`);
 
-await db.close();
+await db.runtime().close();
 ```
 
-`await db.close()` at the end lets the script exit cleanly; without it, the connection pool keeps the process alive.
+`await db.runtime().close()` at the end lets the script exit cleanly; without it, the connection pool keeps the process alive.
 
 ## 4. Run it
 
@@ -147,7 +147,7 @@ curl http://localhost:3000/users
 [{ "id": 1, "email": "ada+1784893846026@prisma.io", "name": "Ada Lovelace" }]
 ```
 
-The server listens on port 3000; set `PORT` to change it. Unlike the script, the server never calls `db.close()`: the connection pool is shared across requests and closes when the process exits.
+The server listens on port 3000; set `PORT` to change it. Unlike the script, the server never calls `db.runtime().close()`: the connection pool is shared across requests and closes when the process exits.
 
 ## 6. Deploy to Prisma Compute
 
@@ -179,14 +179,14 @@ Verify the live endpoint returns your users:
 curl https://<your-app>.ewr.prisma.build/users
 ```
 
-The first deploy creates a project, pins the directory to it in a gitignored `.prisma/local.json`, and promotes to production. For previews per Git branch and deploy-on-push, see [Deploy your first app](/prisma-compute/deploy).
+The first deploy asks you to pick or create a project (pass `--create-project my-bun-app` to skip the prompt), pins the directory to it in a gitignored `.prisma/local.json`, and promotes to production. For previews per Git branch and deploy-on-push, see [Deploy your first app](/prisma-compute/deploy).
 
 ## Prompt your coding agent
 
 The scaffold installs [Prisma Next skills](/ai/tools/skills#available-skills-for-prisma-next) for your coding agent. Prompts that map to this guide:
 
 - "Using the prisma-next-queries skill, add a script that lists the 10 newest users."
-- "Add a Post model related to User, emit the contract, and update the database."
+- "Add a published flag to the Post model in the starter contract, emit the contract, and update the database."
 
 ## Next steps
 

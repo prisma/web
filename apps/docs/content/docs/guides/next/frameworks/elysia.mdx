@@ -29,7 +29,7 @@ Verify `bun --version` first; if Bun is missing, stop and ask. Create a new Elys
 1. Scaffold: `bunx create-prisma@next create my-elysia-api --template elysia --provider postgres --prisma-postgres --yes` (or pass `--database-url "<url>"` instead of `--prisma-postgres` if I give you a connection string).
 2. In `my-elysia-api`, run `bun run db:init`, then `bun run db:seed`. If seeding fails with `Cannot read properties of undefined (reading 'where')`, change `db.orm.User` to `db.orm.public.User` in `src/prisma/seed.ts` and `src/prisma/users.ts`, then rerun.
 3. Start `bun run dev` in the background, wait until it reports ready, verify `curl http://localhost:3000/users` returns the seeded users, then stop the dev server.
-4. Deploy: check `npx @prisma/cli@latest auth whoami`; if I am not signed in, stop and ask me to run `npx @prisma/cli@latest auth login`. Then run `npx @prisma/cli@latest app deploy --env .env --framework bun --entry src/index.ts` and verify the live URL's /users endpoint.
+4. Deploy: check `npx @prisma/cli@latest auth whoami`; if I am not signed in, stop and ask me to run `npx @prisma/cli@latest auth login`. Then run `npx @prisma/cli@latest app deploy --create-project my-elysia-api --env .env --framework bun --entry src/index.ts` and verify the live URL's /users endpoint.
 
 Use the installed Prisma Next skills.
 ```
@@ -39,7 +39,7 @@ Use the installed Prisma Next skills.
 ## 1. Scaffold the project
 
 ```bash
-bunx create-prisma@next create my-elysia-api --provider postgres --template elysia
+bunx create-prisma@next create my-elysia-api --template elysia --provider postgres
 ```
 
 Pick your database at the prompt. The template generates an Elysia server in `src/index.ts` with `GET /` and `GET /users` routes, the Prisma Next setup in `src/prisma/`, and package scripts for the database steps.
@@ -118,13 +118,13 @@ Verify the live endpoint returns the seeded users:
 curl https://<your-app>.ewr.prisma.build/users
 ```
 
-The first deploy creates a project, pins the directory to it in a gitignored `.prisma/local.json`, and promotes to production. For previews per Git branch and deploy-on-push, see [Deploy your first app](/prisma-compute/deploy).
+The first deploy asks you to pick or create a project (pass `--create-project my-elysia-api` to skip the prompt), pins the directory to it in a gitignored `.prisma/local.json`, and promotes to production. For previews per Git branch and deploy-on-push, see [Deploy your first app](/prisma-compute/deploy).
 
 ## Common gotchas
 
 :::warning
 
-In a long-running server, don't call `db.close()` in route handlers; the client's connection pool is shared across requests. Close it only on process shutdown.
+In a long-running server, don't call `db.runtime().close()` in route handlers; the client's connection pool is shared across requests. Close it only on process shutdown.
 
 :::
 
