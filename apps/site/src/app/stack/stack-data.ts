@@ -49,23 +49,6 @@ export const frameworks: Framework[] = [
   { name: "React", logo: "/icons/technologies/react.svg" },
 ];
 
-export type BunApi = {
-  api: string;
-  role: string;
-};
-
-/** Bun capabilities that ship with Prisma Compute, shown in the Bun panel. */
-export const bunApis: BunApi[] = [
-  { api: "Bun.serve()", role: "HTTP + WebSocket server" },
-  { api: "bun test", role: "Jest-compatible tests" },
-  { api: "Bun bundler", role: "bundle without config" },
-  { api: "Bun.password", role: "Argon2 / bcrypt hashing" },
-  { api: "Bun.s3", role: "object storage client" },
-  { api: "Bun.redis", role: "cache client" },
-  { api: "Bun.file", role: "fast file I/O" },
-  { api: "TS + JSX", role: "runs without a build step" },
-];
-
 export type StackLayer = {
   id: StackLayerId;
   name: string;
