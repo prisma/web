@@ -306,7 +306,47 @@ await prisma.$transaction(async (tx) => {
 
 ### 3e. Raw operations
 
-Use the pipeline builder for aggregations, or drop to the `mongodb` driver for arbitrary commands.
+#### Aggregations
+
+The direct replacement for v6's `findRaw` and `aggregateRaw` is `db.raw`.
+
+```typescript tab="After"
+import { db } from './db';
+
+// Raw aggregation on a collection — replaces v6's aggregateRaw / findRaw.
+const runtime = await db.runtime();
+const plan = db.raw
+  .collection('posts')
+  .aggregate([ ... ])
+  .build();
+const rows = await runtime.execute(plan).toArray();
+```
+
+```typescript tab="Before"
+import { prisma } from './db';
+
+// Raw aggregation on a collection.
+const rows = await prisma.post.aggregateRaw({
+  pipeline: [ ... ],
+});
+```
+
+#### Commands
+
+`db.raw` is collection-scoped, so it has no equivalent for v6's database-level `$runCommandRaw`. For arbitrary commands, construct your own `MongoClient`, pass it to the binding, and use that client directly — the same `db` object keeps giving you the typed ORM.
+
+```typescript tab="After"
+import { MongoClient } from 'mongodb';
+
+const mongoClient = new MongoClient(process.env['DATABASE_URL']);
+await mongoClient.db('my-app-db').command({ ping: 1 });
+```
+
+```typescript tab="Before"
+import { prisma } from './db';
+
+await prisma.$runCommandRaw({ ping: 1 });
+```
 
 ### Quick reference table
 
@@ -317,27 +357,19 @@ Use the pipeline builder for aggregations, or drop to the `mongodb` driver for a
 | `create` / `update` / `delete` / `upsert` | same names on `db.orm.<collection>` |
 | `updateMany` / `deleteMany` | `updateAll` / `deleteAll` |
 | `aggregate` / `groupBy` | `db.query.from(...).group(...).build()` → `runtime.execute(plan)` |
-| `$runCommandRaw` / `findRaw` / `aggregateRaw` | pipeline builder, or the `mongodb` driver directly (arbitrary commands) |
+| `findRaw` / `aggregateRaw` | `db.raw.collection(...).aggregate(...).build()` → `runtime.execute(plan)` |
+| `$runCommandRaw` | `mongo({ mongoClient, dbName, contractJson })` — then `mongoClient.db(dbName).command(...)` |
 | `$transaction(...)` | No façade wrapper yet — use driver sessions on a replica set |
 | `$connect` / `$disconnect` | lazy connect on first use; `db.close()` to disconnect |
 
 ## 4. Adopt the migration lifecycle
 
-v6 MongoDB had no Prisma Migrate (`db push` only). Prisma Next gives MongoDB first-class, contract-driven migrations.
+v6 MongoDB had no Prisma Migrate — only `db push` (ephemeral, no history). Prisma Next gives MongoDB first-class, contract-driven migrations: reviewable diffs you commit, reproducible across environments, and an auditable schema history.
 
-Unlike v6's `db push` (ephemeral, no history), Next migrations are:
-
-- **Reviewable**: diffs are packages you commit
-- **Reproducible**: same package → same DB state across envs
-- **Auditable**: migration history = schema evolution timeline
-
-For local dev, `db update` mimics `db push`. For shared/prod, use the migration workflow.
-
-The CLI reads the target from `prisma-next.config.ts`:
+Use `db update` for local dev (the `db push` analogue) and the migration workflow for shared/prod. The CLI reads the target from `prisma-next.config.ts`:
 
 ```bash
-# Local dev: diff the contract against the live DB and apply directly (no history kept),
-# the closest analogue to the old `db push`. Mongo dev scaffolds often need ?replicaSet=rs0.
+# Local dev: diff the contract against the live DB and apply directly, no history kept.
 npx prisma-next contract emit
 npx prisma-next db update --db "$DATABASE_URL"
 
@@ -349,17 +381,14 @@ npx prisma-next db verify --db "$DATABASE_URL"   # check the DB matches the cont
 
 **Good to know:**
 
-- You never hand-write migration steps. You declare indexes and validators in the contract (step 2), and `migration plan` works out the changes for you.
-- On a database Prisma Next hasn't managed before, run `db init` once first. If you ever fix something by hand, run `db sign` so Prisma Next knows the current state.
-- If a `migrate` run gets interrupted, just run it again. It picks up where it left off. Run `db verify` any time to check the database still matches your contract.
-- By default, Prisma Next adds strict server-side validators to your collections using MongoDB's `$jsonSchema`. Before running this in production, make sure your existing documents pass them.
+- You never hand-write migration steps — declare indexes and validators in the contract (step 2) and `migration plan` derives the changes.
+- Run `db init` once on a database Prisma Next hasn't managed before, and `db sign` after any manual fix. Interrupted `migrate` runs are resumable — just rerun.
+- Prisma Next adds strict `$jsonSchema` validators by default; make sure existing documents pass them before running in production.
 
 ## 5. Pre-flight checklist (before production cutover)
 
 Work through this list before you switch production traffic over:
 
-- [ ] Your Prisma Next config points at the **same** database and connection string as v6.
-- [ ] Your MongoDB server is on 8.0 or newer.
 - [ ] **Dry run first.** Rehearse the whole flow on a throwaway copy of your database (`contract emit`, `migration plan`, `migrate`, `db verify`) and make sure `db verify` passes before you touch production.
 - [ ] **Index parity.** The indexes on each collection (`db.collection.getIndexes()`) match your contract.
 - [ ] **Validators.** Your existing documents pass the strict validators Prisma Next adds to each collection (see *Good to know* in step 4).
@@ -375,7 +404,7 @@ Don't delete the v6 client, schema, or dependencies until this checklist passes.
 
 Once you've cut over, this is the day-to-day workflow:
 
-- **Schema changes.** Edit the contract, then run `contract emit`, `migration plan`, and `migrate` (the same loop from step 4).
+- **Schema changes.** Edit the contract, then run `contract emit`, `migration plan`, and `migrate` (same loop from step 4).
 - **Troubleshooting.** `db verify` checks the database against your contract, and `db sign` records any fixes you make by hand.
 - **Performance.** Your aggregations now compile to native MongoDB pipelines, so it's worth benchmarking them against your old v6 raw calls.
 
