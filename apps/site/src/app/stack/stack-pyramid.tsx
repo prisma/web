@@ -207,24 +207,40 @@ export function StackPyramid() {
                     Runs unchanged on the stack
                   </span>
                   <ul className="m-0 flex list-none flex-wrap gap-2 p-0">
-                    {frameworks.map((fw) => (
-                      <li
-                        key={fw.name}
-                        className="flex items-center gap-2 rounded-square border border-stroke-neutral px-2.5 py-1.5 text-xs text-foreground-neutral"
-                      >
-                        <span
-                          className="grid size-5 shrink-0 place-items-center overflow-hidden rounded-square-low border border-stroke-neutral bg-white p-0.5"
-                          aria-hidden
-                        >
-                          <img
-                            src={fw.logo}
-                            alt=""
-                            className="max-h-full max-w-full object-contain"
-                          />
-                        </span>
-                        {fw.name}
-                      </li>
-                    ))}
+                    {frameworks.map((fw) => {
+                      const chip = (
+                        <>
+                          <span
+                            className="grid size-5 shrink-0 place-items-center overflow-hidden rounded-square-low border border-stroke-neutral bg-white p-0.5"
+                            aria-hidden
+                          >
+                            <img
+                              src={fw.logo}
+                              alt=""
+                              className="max-h-full max-w-full object-contain"
+                            />
+                          </span>
+                          {fw.name}
+                        </>
+                      );
+                      return (
+                        <li key={fw.name} className="flex">
+                          {fw.guide ? (
+                            <a
+                              href={fw.guide}
+                              title={`${fw.name} guide`}
+                              className="flex items-center gap-2 rounded-square border border-stroke-neutral px-2.5 py-1.5 text-xs text-foreground-neutral no-underline transition-colors hover:border-stroke-ppg/60 hover:bg-background-ppg hover:text-foreground-ppg-strong"
+                            >
+                              {chip}
+                            </a>
+                          ) : (
+                            <span className="flex items-center gap-2 rounded-square border border-stroke-neutral px-2.5 py-1.5 text-xs text-foreground-neutral">
+                              {chip}
+                            </span>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               ) : null}

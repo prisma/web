@@ -35,15 +35,21 @@ const heroLayers = [
 
 /**
  * The hero's animated stack: the four layers enter staggered, then a request
- * pulse travels the connectors on a loop. Pure CSS, server-rendered; under
- * prefers-reduced-motion everything is simply visible and static, so the
- * relationship reads the same without animation.
+ * pulse travels the connectors on a loop. The layers widen toward the base so
+ * the visual previews the stack pyramid the reader meets one scroll later.
+ * Pure CSS, server-rendered; under prefers-reduced-motion everything is
+ * simply visible and static, so the relationship reads the same without
+ * animation.
  */
 export function HeroVisual() {
   return (
     <div className={styles["hero-visual"]} aria-hidden>
       {heroLayers.map((layer, index) => (
-        <div key={layer.id} className={styles["hero-layer-slot"]}>
+        <div
+          key={layer.id}
+          className={styles["hero-layer-slot"]}
+          style={{ "--row": index } as React.CSSProperties}
+        >
           {index > 0 && <span className={styles["hero-connector"]} />}
           <div
             className={`${styles["hero-layer"]} ${styles[`accent-${layer.accent}`]}`}

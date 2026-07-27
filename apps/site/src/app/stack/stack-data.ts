@@ -11,18 +11,40 @@ export type Framework = {
   name: string;
   /** Real logo from /public/icons/technologies, shown on a white tile. */
   logo: string;
+  /** Prisma Next guide for this framework; frameworks without one render as plain chips. */
+  guide?: string;
 };
 
 /** Frameworks Prisma Compute runs, cycled in the pyramid's top layer. */
 export const frameworks: Framework[] = [
-  { name: "Next.js", logo: "/icons/technologies/next.svg" },
+  {
+    name: "Next.js",
+    logo: "/icons/technologies/next.svg",
+    guide: "/docs/guides/next/frameworks/nextjs",
+  },
   { name: "React Router", logo: "/icons/technologies/rr7.svg" },
-  { name: "TanStack Start", logo: "/icons/technologies/tanstack.svg" },
-  { name: "Astro", logo: "/icons/technologies/astro.svg" },
-  { name: "SvelteKit", logo: "/icons/technologies/svelte.svg" },
-  { name: "Nuxt", logo: "/icons/technologies/nuxt.svg" },
-  { name: "Hono", logo: "/icons/technologies/hono.svg" },
-  { name: "NestJS", logo: "/icons/technologies/nest.svg" },
+  {
+    name: "TanStack Start",
+    logo: "/icons/technologies/tanstack.svg",
+    guide: "/docs/guides/next/frameworks/tanstack-start",
+  },
+  {
+    name: "Astro",
+    logo: "/icons/technologies/astro.svg",
+    guide: "/docs/guides/next/frameworks/astro",
+  },
+  {
+    name: "SvelteKit",
+    logo: "/icons/technologies/svelte.svg",
+    guide: "/docs/guides/next/frameworks/sveltekit",
+  },
+  { name: "Nuxt", logo: "/icons/technologies/nuxt.svg", guide: "/docs/guides/next/frameworks/nuxt" },
+  { name: "Hono", logo: "/icons/technologies/hono.svg", guide: "/docs/guides/next/frameworks/hono" },
+  {
+    name: "NestJS",
+    logo: "/icons/technologies/nest.svg",
+    guide: "/docs/guides/next/frameworks/nestjs",
+  },
   { name: "SolidStart", logo: "/icons/technologies/solid-start.svg" },
   { name: "React", logo: "/icons/technologies/react.svg" },
 ];
@@ -82,7 +104,7 @@ export const stackLayers: StackLayer[] = [
       "Change framework without touching the data layer",
       "Plain TypeScript projects, no proprietary app model",
     ],
-    link: { href: "/docs/next", label: "See the framework guides" },
+    link: { href: "/docs/guides/next", label: "See the framework guides" },
   },
   {
     id: "bun",
@@ -283,7 +305,7 @@ export const dataOutcomes: Outcome[] = [
     body: "Features you would otherwise host separately live inside Postgres:",
     visual: [
       { icon: "fa-regular fa-stars", label: "pgvector" },
-      { icon: "fa-regular fa-magnifying-glass", label: "pg_search" },
+      { icon: "fa-regular fa-magnifying-glass-arrow-right", label: "pg_search" },
       { icon: "fa-regular fa-clock-rotate-left", label: "pg_cron" },
       { icon: "fa-regular fa-chart-line", label: "pg_stat_statements" },
     ],
