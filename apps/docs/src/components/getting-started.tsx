@@ -189,6 +189,85 @@ export function AgentPrompt({
 }
 
 /**
+ * A row that opens arbitrary content in a modal instead of expanding inline,
+ * so revealing it never shifts the layout below. The content stays mounted
+ * inside the (closed) dialog, so it remains in the served HTML for crawlers
+ * and in the generated .md / llms output.
+ */
+export function ModalRow({
+  title,
+  description,
+  modalTitle,
+  icon,
+  children,
+}: {
+  title: string;
+  description?: string;
+  modalTitle?: string;
+  icon?: ReactNode;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (open && !dialog.open) dialog.showModal();
+    if (!open && dialog.open) dialog.close();
+  }, [open]);
+
+  return (
+    <div className="not-prose my-4 rounded-xl border bg-fd-card">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
+        <span
+          className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-fd-background text-fd-primary [&_svg]:size-4"
+          aria-hidden="true"
+        >
+          {icon ?? <Sparkles />}
+        </span>
+        <span className="min-w-0 grow">
+          <span className="block text-sm font-medium">{title}</span>
+          {description && (
+            <span className="block text-xs text-fd-muted-foreground">{description}</span>
+          )}
+        </span>
+        <button
+          className={cn(buttonVariants({ color: "secondary", size: "sm", className: "gap-2" }))}
+          onClick={() => setOpen(true)}
+          aria-haspopup="dialog"
+          aria-expanded={open}
+        >
+          <ChevronDown className="size-3.5" aria-hidden="true" />
+          View
+        </button>
+      </div>
+      <dialog
+        ref={dialogRef}
+        onClose={() => setOpen(false)}
+        onClick={(e) => {
+          if (e.target === dialogRef.current) setOpen(false);
+        }}
+        className="m-auto w-[min(48rem,calc(100vw-2rem))] rounded-xl border bg-fd-card p-0 text-fd-foreground shadow-xl backdrop:bg-black/50"
+      >
+        <div className="flex items-center gap-3 border-b px-4 py-3">
+          <span className="grow text-sm font-medium">{modalTitle ?? title}</span>
+          <button
+            aria-label="Close"
+            onClick={() => setOpen(false)}
+            className="inline-flex items-center rounded-lg p-1.5 text-fd-muted-foreground transition-colors hover:bg-fd-accent hover:text-fd-accent-foreground"
+          >
+            <X className="size-4" aria-hidden="true" />
+          </button>
+        </div>
+        <div className="max-h-[70vh] overflow-y-auto px-4 py-2 text-sm leading-6 text-fd-foreground/80 [&>p]:my-3 [&>p_a]:font-medium [&>p_a]:text-fd-primary [&>p_a]:underline [&>p_a]:decoration-fd-primary/40 [&>p_a]:underline-offset-4 hover:[&>p_a]:decoration-fd-primary">
+          {children}
+        </div>
+      </dialog>
+    </div>
+  );
+}
+
+/**
  * Compact launcher row for the condensed journey: a button opens a modal with
  * AI Prompt and CLI tabs, and a copy action grabs the prompt without opening
  * anything. The prompt is a fenced code block child that stays mounted inside

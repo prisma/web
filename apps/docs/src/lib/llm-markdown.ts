@@ -659,6 +659,18 @@ export function normalizeProcessedMarkdown(
       (_match, attrs: string, content: string) => formatHeroPitch(attrs, content),
     )
     .replace(/<\/?HeroGrid[^>]*>/g, "")
+    .replace(
+      // Same brace-tolerant attrs matcher as AgentPrompt: ModalRow takes
+      // JSX-element props like icon={<FolderPlus />}. The row's modal content
+      // collapses to a bold title line plus the body, like <details> does.
+      /<ModalRow\b((?:[^>"'{]|"[^"]*"|'[^']*'|\{[^{}]*\})*)>([\s\S]*?)<\/ModalRow>/g,
+      (_match, attrs: string, content: string) => {
+        const title = getAttribute(attrs, "title");
+        const body = trimComponentContent(content);
+        if (!body) return title ? `**${title}**` : "";
+        return title ? `**${title}**\n\n${body}` : body;
+      },
+    )
     .replace(/<details\b[^>]*>([\s\S]*?)<\/details>/g, (_match, content: string) =>
       formatDetails(content),
     );
