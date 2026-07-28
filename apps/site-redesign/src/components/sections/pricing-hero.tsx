@@ -1,9 +1,10 @@
-import { CheckBold } from "@/components/icons/forma"
-import { GlassGlide } from "@/components/brand/glass-glide"
-import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button"
-import { PrismRay } from "@/components/brand/prism-ray"
-import { Texture } from "@/components/brand/texture"
-import { cn } from "@/lib/utils"
+import { CheckBold } from "@/components/icons/forma";
+import { RoleKicker } from "@/components/brand/role-kicker";
+import { GlassGlide } from "@/components/brand/glass-glide";
+import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button";
+import { PrismRay } from "@/components/brand/prism-ray";
+import { Texture } from "@/components/brand/texture";
+import { cn } from "@/lib/utils";
 
 // Hand-drawn double quote — Sora's glyph ink is too small to carry the card,
 // so the mark is an SVG: two comma-bowls with curved stems, fill currentColor.
@@ -13,14 +14,14 @@ function QuoteMark({ className, style }: { className?: string; style?: React.CSS
       <path d="M50 4 C22 10 4 30 4 58 L4 78 C4 88 12 96 22 96 L48 96 C58 96 66 88 66 78 L66 54 C66 44 58 36 48 36 L30 36 C33 22 40 14 54 10 Z" />
       <path d="M130 4 C102 10 84 30 84 58 L84 78 C84 88 92 96 102 96 L128 96 C138 96 146 88 146 78 L146 54 C146 44 138 36 128 36 L110 36 C113 22 120 14 134 10 Z" />
     </svg>
-  )
+  );
 }
 
 const CHECKS = [
   { label: "Free tier, no credit card required", color: "text-prism-cyan-500" },
   { label: "Up to 5x cheaper than Neon + Vercel at scale", color: "text-prism-yellow-400" },
   { label: "One bill, one platform", color: "text-prism-red-500" },
-]
+];
 
 // Quote sourced verbatim from the prisma.io Pearly Plan case study (same pool
 // as testimonials-strip.tsx); light pattern-card idiom, logo from the
@@ -34,7 +35,7 @@ const TESTIMONIAL = {
   name: "Sean Emmer",
   role: "CTO & Co-Founder",
   company: "Pearly Plan",
-}
+};
 
 // Pricing hero: the wrapped prismatic panel in the split idiom — V2 copy on
 // the left, social proof on the right with the crisp triple-band ray crossing
@@ -45,7 +46,10 @@ export function PricingHero() {
       <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
         {/* spectral bottom — wash + beam fan dispersing to white above,
             same values as product-hero.tsx */}
-        <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-[30rem] overflow-hidden">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-[30rem] overflow-hidden"
+        >
           <div
             className="absolute -bottom-1/3 left-1/2 h-[120%] w-[160%] -translate-x-1/2"
             style={{
@@ -67,11 +71,10 @@ export function PricingHero() {
           {/* top padding = bottom padding + the fixed header's footprint,
               so the gap under the navbar matches the wrapper's bottom */}
           <div className="mx-auto grid max-w-6xl items-center gap-12 pb-20 pt-36 md:grid-cols-2 md:pb-28 md:pt-48 lg:gap-16">
-            {/* copy */}
-            <div className="flex flex-col items-start">
-              <p className="text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                Pricing
-              </p>
+            {/* copy — min-w-0 so the grid track can't be forced past the
+                panel's padding box by a child's min-content width */}
+            <div className="flex min-w-0 flex-col items-start">
+              <RoleKicker color="bg-prism-cyan-400">Pricing</RoleKicker>
               <h1 className="isolate mt-4 max-w-[24ch] text-balance text-[clamp(2.25rem,3.4vw,3.125rem)] leading-[1.06]">
                 Usage-based pricing that bills you for{" "}
                 <GlassGlide className="md:whitespace-normal">
@@ -79,14 +82,16 @@ export function PricingHero() {
                 </GlassGlide>
               </h1>
               <p className="mt-6 max-w-[52ch] text-pretty text-lg leading-relaxed text-muted-foreground">
-                Usage-based pricing by operation — an operation is one query your
-                app runs, and that&apos;s what you pay for. Not seats, not deploys,
-                not branches. Every paid plan sets a hard spend limit by default,
-                so your bill stays predictable.
+                Usage-based pricing by operation — an operation is one query your app runs, and
+                that&apos;s what you pay for. Not seats, not deploys, not branches. Every paid plan
+                sets a hard spend limit by default, so your bill stays predictable.
               </p>
               <ul className="mt-8 flex flex-col gap-3">
                 {CHECKS.map(({ label, color }) => (
-                  <li key={label} className="flex items-center gap-2 text-[15px] font-semibold text-foreground">
+                  <li
+                    key={label}
+                    className="flex items-center gap-2 text-[15px] font-semibold text-foreground"
+                  >
                     <CheckBold className={cn("size-4 shrink-0", color)} aria-hidden />
                     {label}
                   </li>
@@ -100,9 +105,9 @@ export function PricingHero() {
 
             {/* social proof: the ray crosses the panel behind the testimonial —
                 light passing through the proof */}
-            <div className="relative max-md:mt-4 md:self-stretch">
+            <div className="relative min-w-0 max-md:mt-4 md:self-stretch">
               <PrismRay
-                className="left-[70%] top-1/2 h-12 w-[32rem] -translate-x-1/2 -translate-y-1/2 md:h-24 md:w-[64rem]"
+                className="left-[70%] top-1/2 h-12 w-[32rem] -translate-x-1/2 -translate-y-1/2 max-md:hidden md:h-24 md:w-[64rem]"
                 angle={-50}
                 intensity="hero"
               />
@@ -111,7 +116,10 @@ export function PricingHero() {
                 <div
                   aria-hidden
                   className="pointer-events-none absolute inset-0 opacity-[0.03] grayscale [mask-image:linear-gradient(to_bottom,black,transparent_40%)]"
-                  style={{ backgroundImage: "url(/brand/pattern.svg)", backgroundSize: "892px 434px" }}
+                  style={{
+                    backgroundImage: "url(/brand/pattern.svg)",
+                    backgroundSize: "892px 434px",
+                  }}
                 />
                 {/* oversized opening quote with a continuous slice glitch
                     (React Bits GlitchText idiom): the ink mark underneath,
@@ -150,7 +158,7 @@ export function PricingHero() {
                 <figcaption className="relative mt-auto flex items-center gap-4 pt-8">
                   <div className="min-w-0">
                     <p className="text-base font-semibold text-foreground">{TESTIMONIAL.name}</p>
-                    <p className="truncate text-base text-muted-foreground">
+                    <p className="text-base text-muted-foreground md:truncate">
                       {TESTIMONIAL.role}, {TESTIMONIAL.company}
                     </p>
                   </div>
@@ -169,5 +177,5 @@ export function PricingHero() {
         </div>
       </div>
     </section>
-  )
+  );
 }

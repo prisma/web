@@ -3,10 +3,12 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@/components/ui/accordion"
-import { Reveal } from "@/components/motion/reveal"
+} from "@/components/ui/accordion";
+import { Reveal } from "@/components/motion/reveal";
 
-const faqs: { question: string; answer: React.ReactNode }[] = [
+export type FaqItem = { question: string; answer: React.ReactNode };
+
+const faqs: FaqItem[] = [
   {
     question: "Do I have to use all three products?",
     answer:
@@ -21,10 +23,9 @@ const faqs: { question: string; answer: React.ReactNode }[] = [
     question: "Is my schema locked in?",
     answer: (
       <>
-        No. <code className="font-mono text-[0.9em]">contract.prisma</code> is
-        yours, your data sits in standard Postgres, and you can migrate away
-        whenever you want. Migration paths from Prisma to other tools are
-        documented.
+        No. <code className="font-mono text-[0.9em]">contract.prisma</code> is yours, your data sits
+        in standard Postgres, and you can migrate away whenever you want. Migration paths from
+        Prisma to other tools are documented.
       </>
     ),
   },
@@ -43,21 +44,29 @@ const faqs: { question: string; answer: React.ReactNode }[] = [
     answer:
       "Prisma 7 isn't going anywhere. Prisma Next (Prisma 8 at GA) is a separate, opinionated product built for agentic workflows — not a forced upgrade. When Prisma 8 reaches GA, we'll provide a smooth migration path for teams who want to move.",
   },
-]
+];
 
-export function Faq() {
+// Defaults are the homepage set; pass `items` and `heading` to reuse the
+// accordion on another page (see /pricing).
+export function Faq({
+  heading = "FAQ",
+  items = faqs,
+}: {
+  heading?: string;
+  items?: readonly FaqItem[];
+} = {}) {
   return (
     <section className="px-6 py-24 lg:px-8">
       <div className="mx-auto max-w-7xl">
         <Reveal className="mx-auto max-w-2xl text-center">
           <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-            FAQ
+            {heading}
           </h2>
         </Reveal>
 
         <Reveal delay={0.1} className="mx-auto mt-16 max-w-3xl">
           <Accordion type="single" collapsible defaultValue="item-0">
-            {faqs.map((faq, index) => (
+            {items.map((faq, index) => (
               <AccordionItem key={faq.question} value={`item-${index}`}>
                 <AccordionTrigger className="text-left text-base hover:no-underline">
                   {faq.question}
@@ -71,5 +80,5 @@ export function Faq() {
         </Reveal>
       </div>
     </section>
-  )
+  );
 }

@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { Agentation } from "agentation"
 import { Inter, Sora } from "next/font/google"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
@@ -60,6 +61,8 @@ export default function RootLayout({
           <Header />
           <main className="min-h-screen">{children}</main>
           <Footer />
+          {/* Dev-only annotation toolbar; tree-shaken out of production builds */}
+          {process.env.NODE_ENV === "development" && <Agentation />}
         </ThemeProvider>
       </body>
     </html>

@@ -1,12 +1,12 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
-import { useReducedMotion } from "framer-motion"
-import { Slot } from "radix-ui"
+import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
+import { useReducedMotion } from "framer-motion";
+import { Slot } from "radix-ui";
 
-import { BurstFill } from "@/components/brand/burst-fill"
-import { cn } from "@/lib/utils"
+import { BurstFill } from "@/components/brand/burst-fill";
+import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
@@ -19,8 +19,7 @@ const buttonVariants = cva(
           "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
         outline:
           "spectrum-border border border-[#646567] bg-background duration-500 hover:border-transparent dark:bg-input/30 dark:border-input",
-        secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "spectrum-ink",
         link: "text-primary",
       },
@@ -39,8 +38,8 @@ const buttonVariants = cva(
       variant: "default",
       size: "default",
     },
-  }
-)
+  },
+);
 
 function Button({
   className,
@@ -53,15 +52,15 @@ function Button({
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
-    asChild?: boolean
+    asChild?: boolean;
   }) {
-  const Comp = asChild ? Slot.Root : "button"
-  const reduce = useReducedMotion()
-  const [hover, setHover] = React.useState(false)
+  const Comp = asChild ? Slot.Root : "button";
+  const reduce = useReducedMotion();
+  const [hover, setHover] = React.useState(false);
 
   // Primary buttons carry the brand's prismatic-burst hover (not available
   // with asChild, where we can't inject the overlay).
-  const burst = variant === "default" && !asChild && !reduce
+  const burst = variant === "default" && !asChild && !reduce;
 
   if (!burst) {
     return (
@@ -80,22 +79,25 @@ function Button({
           children
         )}
       </Comp>
-    )
+    );
   }
 
+  // `burst` implies !asChild, so Comp is "button" here by construction —
+  // rendering the literal element lets the handler args type as
+  // MouseEvent<HTMLButtonElement> instead of a Slot/button union.
   return (
-    <Comp
+    <button
       data-slot="button"
       data-variant={variant}
       data-size={size}
       className={cn(buttonVariants({ variant, size, className }), "relative overflow-hidden")}
       onMouseEnter={(e) => {
-        setHover(true)
-        onMouseEnter?.(e)
+        setHover(true);
+        onMouseEnter?.(e);
       }}
       onMouseLeave={(e) => {
-        setHover(false)
-        onMouseLeave?.(e)
+        setHover(false);
+        onMouseLeave?.(e);
       }}
       {...props}
     >
@@ -103,8 +105,8 @@ function Button({
       <span className="relative z-10 inline-flex items-center gap-2 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0">
         {children}
       </span>
-    </Comp>
-  )
+    </button>
+  );
 }
 
-export { Button, buttonVariants }
+export { Button, buttonVariants };

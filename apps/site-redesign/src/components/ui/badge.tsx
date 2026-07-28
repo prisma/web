@@ -1,3 +1,8 @@
+"use client"
+
+// Slot comes from the aggregate `radix-ui` package, which calls createContext
+// at module scope — so this has to be a client component, same as button.tsx.
+
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { Slot } from "radix-ui"
