@@ -73,10 +73,10 @@ const PLANS = [
 
 export function PricingPlans() {
   return (
-    <section className="bg-white">
+    <section className="bg-white px-4 sm:px-8">
       {/* pt-20 = 80px from the row above; the cards continue that block rather
           than starting a new section. Full rhythm resumes below. */}
-      <div className="mx-auto max-w-6xl px-4 pb-16 pt-20 sm:px-8 sm:pb-24">
+      <div className="mx-auto max-w-6xl pb-16 pt-20 sm:pb-24">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {PLANS.map((plan) => (
             <div

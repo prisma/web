@@ -43,8 +43,8 @@ export function PricingCalculator() {
   const activePreset = PRESETS.find((p) => p.ops === ops && p.gb === gb)?.id;
 
   return (
-    <section className="bg-white">
-      <div className="mx-auto max-w-6xl px-4 py-12 sm:px-8 sm:py-16">
+    <section className="bg-white px-4 sm:px-8">
+      <div className="mx-auto max-w-6xl py-12 sm:py-16">
         <Reveal>
           <h2 className="text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
             Estimate usage before you upgrade

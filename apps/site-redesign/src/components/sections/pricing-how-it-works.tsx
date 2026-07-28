@@ -6,10 +6,10 @@ import { PricingIncludes } from "./pricing-includes";
 // after the plan cards (see pricing-calculator.tsx).
 export function PricingHowItWorks() {
   return (
-    <section className="bg-white">
+    <section className="bg-white px-4 sm:px-8">
       {/* No bottom padding — the plan cards sit 40px below this block and read
           as part of the same story, so the gap is owned by pricing-plans. */}
-      <div className="mx-auto max-w-6xl px-4 pt-16 sm:px-8 sm:pt-24">
+      <div className="mx-auto max-w-6xl pt-16 sm:pt-24">
         <div className="grid gap-x-12 gap-y-12 lg:grid-cols-2 lg:gap-x-16">
           <div>
             <Reveal>
