@@ -55,6 +55,9 @@ export const docs = defineDocs({
       metaDescription: z.string(),
       aiPrompt: z.string().optional(),
       noindex: z.boolean().optional(),
+      // Visually hides the docs sidebar on landing pages; the pages stay in
+      // navigation, search, sitemap, and llms.txt.
+      hideSidebar: z.boolean().optional(),
     }),
     postprocess: {
       includeProcessedMarkdown: true,
