@@ -189,16 +189,30 @@ export function AgentPrompt({
 }
 
 /**
- * Hero card: AI Prompt and CLI tabs with a shared copy action, in the style
- * of the Supabase docs hero. The prompt is a fenced code block child
- * (crawlable + present in .md output); the CLI commands are passed as a
+ * Compact launcher row for the condensed journey: a button opens a modal with
+ * AI Prompt and CLI tabs, and a copy action grabs the prompt without opening
+ * anything. The prompt is a fenced code block child that stays mounted inside
+ * the (closed) dialog, so it remains in the served HTML for crawlers and in
+ * the generated .md / llms output; the CLI commands are passed as a
  * newline-separated string and mirrored into .md by the markdown pipeline.
  */
 export function GetStartedTabs({ cli, children }: { cli: string; children: ReactNode }) {
   const [tab, setTab] = useState<"prompt" | "cli">("prompt");
-  const [promptOpen, setPromptOpen] = useState(false);
+  const [open, setOpen] = useState(false);
   const promptRef = useRef<HTMLDivElement>(null);
-  const [checked, onCopy] = useCopyButton(async () => {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (open && !dialog.open) dialog.showModal();
+    if (!open && dialog.open) dialog.close();
+  }, [open]);
+
+  const [rowChecked, onRowCopy] = useCopyButton(async () => {
+    await navigator.clipboard.writeText(copyText(promptRef.current));
+    posthog.capture("docs:copy_prompt", { page_path: window.location.pathname, tab: "prompt" });
+  });
+  const [modalChecked, onModalCopy] = useCopyButton(async () => {
     const text = tab === "cli" ? cli : copyText(promptRef.current);
     await navigator.clipboard.writeText(text);
     posthog.capture("docs:copy_prompt", { page_path: window.location.pathname, tab });
@@ -223,95 +237,102 @@ export function GetStartedTabs({ cli, children }: { cli: string; children: React
 
   return (
     <div className="not-prose my-6 rounded-xl border bg-fd-card shadow-sm">
-      <div className="flex items-center gap-5 px-5 pt-3.5" role="tablist">
-        {tabButton("prompt", <Sparkles aria-hidden="true" />, "AI Prompt")}
-        {tabButton("cli", <Terminal aria-hidden="true" />, "CLI")}
-        <button
-          className={cn(
-            buttonVariants({ color: "secondary", size: "sm", className: "ms-auto mb-1.5 gap-2" }),
-          )}
-          onClick={onCopy}
-          aria-label="Copy to clipboard"
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
+        <span
+          className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-fd-background text-fd-primary [&_svg]:size-4"
+          aria-hidden="true"
         >
-          {checked ? (
+          <Sparkles />
+        </span>
+        <span className="min-w-0 grow">
+          <span className="block text-sm font-medium">AI prompt and CLI steps</span>
+          <span className="block text-xs text-fd-muted-foreground">
+            One journey scaffolds, seeds, migrates, and deploys the whole stack.
+          </span>
+        </span>
+        <button
+          className={cn(buttonVariants({ color: "secondary", size: "sm", className: "gap-2" }))}
+          onClick={() => setOpen(true)}
+          aria-haspopup="dialog"
+          aria-expanded={open}
+        >
+          <ChevronDown className="size-3.5" aria-hidden="true" />
+          View
+        </button>
+        <button
+          className={cn(buttonVariants({ color: "primary", size: "sm", className: "gap-2" }))}
+          onClick={onRowCopy}
+        >
+          {rowChecked ? (
             <Check className="size-3.5" aria-hidden="true" />
           ) : (
             <Copy className="size-3.5" aria-hidden="true" />
           )}
-          Copy
+          Copy prompt
         </button>
       </div>
-      {/* Both panels share a fixed height with internal scrolling, so
-          switching tabs never shifts the content below the card. */}
-      <div
-        className={cn("h-[26rem] overflow-y-auto border-t px-6 py-5", tab !== "cli" && "hidden")}
+      <dialog
+        ref={dialogRef}
+        onClose={() => setOpen(false)}
+        onClick={(e) => {
+          if (e.target === dialogRef.current) setOpen(false);
+        }}
+        className="m-auto w-[min(48rem,calc(100vw-2rem))] rounded-xl border bg-fd-card p-0 text-fd-foreground shadow-xl backdrop:bg-black/50"
       >
-        <div className="flex flex-col gap-1.5 font-mono text-sm text-fd-foreground">
-          {cli.split("\n").map((line, i) =>
-            line.startsWith("#") ? (
-              <span
-                key={i}
-                className="mt-2 font-sans text-xs font-medium uppercase tracking-wide text-fd-muted-foreground first:mt-0"
-              >
-                {line.replace(/^#\s*/, "")}
-              </span>
-            ) : (
-              <span key={i} className="block leading-7">
-                <span className="select-none text-fd-muted-foreground">$ </span>
-                {line}
-              </span>
-            ),
-          )}
-        </div>
-      </div>
-      <div className={cn("border-t", tab !== "prompt" && "hidden")}>
-        {/* Clipped preview of the prompt; the full text opens in a modal so
-            reading it never reflows the page. The preview holds the complete
-            prompt in the DOM (visually clipped), so copy and crawlers see it. */}
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={() => setPromptOpen(true)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              setPromptOpen(true);
-            }
-          }}
-          aria-haspopup="dialog"
-          aria-label="View the full prompt"
-          className="relative block h-[26rem] w-full cursor-pointer overflow-hidden px-5 pt-1 text-start"
-        >
-          <div
-            ref={promptRef}
-            className="h-full overflow-hidden [&_button]:hidden [&_pre]:w-full [&_pre]:whitespace-pre-wrap [&_pre]:text-[0.78rem] [&_pre]:leading-6"
+        <div className="flex items-center gap-5 border-b px-4 pt-3" role="tablist">
+          {tabButton("prompt", <Sparkles aria-hidden="true" />, "AI Prompt")}
+          {tabButton("cli", <Terminal aria-hidden="true" />, "CLI")}
+          <button
+            className={cn(
+              buttonVariants({ color: "primary", size: "sm", className: "ms-auto mb-1.5 gap-2" }),
+            )}
+            onClick={onModalCopy}
+            aria-label="Copy to clipboard"
           >
-            {children}
-          </div>
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center bg-gradient-to-t from-fd-card via-fd-card/80 to-transparent pb-6 pt-16">
-            <span
-              className={cn(
-                buttonVariants({ color: "secondary", size: "sm", className: "gap-2 shadow-sm" }),
-              )}
-            >
-              <ChevronDown className="size-3.5" aria-hidden="true" />
-              View full prompt
-            </span>
+            {modalChecked ? (
+              <Check className="size-3.5" aria-hidden="true" />
+            ) : (
+              <Copy className="size-3.5" aria-hidden="true" />
+            )}
+            Copy
+          </button>
+          <button
+            aria-label="Close"
+            onClick={() => setOpen(false)}
+            className="mb-1.5 inline-flex items-center rounded-lg p-1.5 text-fd-muted-foreground transition-colors hover:bg-fd-accent hover:text-fd-accent-foreground"
+          >
+            <X className="size-4" aria-hidden="true" />
+          </button>
+        </div>
+        <div className={cn("max-h-[70vh] overflow-y-auto px-6 py-5", tab !== "cli" && "hidden")}>
+          <div className="flex flex-col gap-1.5 font-mono text-sm text-fd-foreground">
+            {cli.split("\n").map((line, i) =>
+              line.startsWith("#") ? (
+                <span
+                  key={i}
+                  className="mt-2 font-sans text-xs font-medium uppercase tracking-wide text-fd-muted-foreground first:mt-0"
+                >
+                  {line.replace(/^#\s*/, "")}
+                </span>
+              ) : (
+                <span key={i} className="block leading-7">
+                  <span className="select-none text-fd-muted-foreground">$ </span>
+                  {line}
+                </span>
+              ),
+            )}
           </div>
         </div>
-      </div>
-      <PromptModal
-        open={promptOpen}
-        onClose={() => setPromptOpen(false)}
-        title="AI prompt"
-        checked={checked}
-        onCopy={onCopy}
-      >
-        {children}
-      </PromptModal>
-      <div className="border-t px-5 py-3 text-sm text-fd-muted-foreground">
-        One journey scaffolds, seeds, migrates, and deploys the whole stack.
-      </div>
+        <div
+          ref={promptRef}
+          className={cn(
+            "max-h-[70vh] overflow-y-auto px-4 pb-2 [&_button]:hidden [&_pre]:w-full [&_pre]:whitespace-pre-wrap [&_pre]:text-[0.8rem] [&_pre]:leading-6",
+            tab !== "prompt" && "hidden",
+          )}
+        >
+          {children}
+        </div>
+      </dialog>
     </div>
   );
 }
@@ -513,7 +534,7 @@ export function HeroPitch({
         {secondaryHref && secondaryLabel && (
           <a
             href={withDocsBasePath(secondaryHref)}
-            className={cn(buttonVariants({ color: "secondary" }))}
+            className="px-1 text-sm font-medium text-fd-muted-foreground underline decoration-fd-border underline-offset-4 transition-colors hover:text-fd-foreground hover:decoration-fd-primary"
           >
             {secondaryLabel}
           </a>
@@ -524,40 +545,32 @@ export function HeroPitch({
 }
 
 /**
- * One product layer inside the StackDiagram. Links straight into that
- * product's getting-started flow; the description is the element's children
- * so it survives into the .md / llms output.
+ * One product layer inside the StackDiagram. Purely illustrative — the hero
+ * copy carries the links — so it renders as a static tile with no click or
+ * hover affordance. The description is the element's children so it survives
+ * into the .md / llms output.
  */
 export function StackLayer({
   title,
-  href,
   src,
   invertDark,
   icon,
   children,
 }: {
   title: string;
-  href: string;
   src?: string;
   invertDark?: boolean;
   icon?: ReactNode;
   children?: ReactNode;
 }) {
   return (
-    <a
-      href={withDocsBasePath(href)}
-      className="group flex items-center gap-3.5 rounded-xl border bg-fd-background/80 p-3.5 shadow-sm transition-colors hover:border-fd-primary/50 hover:bg-fd-accent"
-    >
+    <div className="flex items-center gap-3.5 rounded-xl border bg-fd-background/80 p-3.5 shadow-sm">
       <IconTile src={src} invertDark={invertDark} icon={icon} />
       <span className="min-w-0">
         <span className="block text-sm font-semibold text-fd-foreground">{title}</span>
         <span className="block text-xs text-fd-muted-foreground">{children}</span>
       </span>
-      <ArrowRight
-        className="ms-auto size-3.5 shrink-0 text-fd-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
-        aria-hidden="true"
-      />
-    </a>
+    </div>
   );
 }
 
