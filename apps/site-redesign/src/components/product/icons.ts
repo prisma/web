@@ -12,6 +12,7 @@ import {
   Server,
   Settings,
   Shield,
+  Swap,
 } from "@/components/icons/forma";
 
 // Icons referenced by name in ProductPageContent so content objects stay
@@ -31,6 +32,7 @@ export const PRODUCT_ICONS = {
   server: Server,
   settings: Settings,
   shield: Shield,
+  swap: Swap,
 };
 
 export type ProductIconName = keyof typeof PRODUCT_ICONS;

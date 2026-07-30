@@ -20,13 +20,24 @@ const PHOTOS = [
 
 // Column count per feature count. V4 ships an uneven number per product, and a
 // row of three reads better than two-plus-an-orphan; four stays as two rows of
-// two so the cards keep their portrait proportion.
+// two so the cards keep their portrait proportion. Five gets six tracks — see
+// centreLastPair.
 const COLUMNS: Record<number, string> = {
   1: "md:grid-cols-1",
   2: "md:grid-cols-2",
   3: "md:grid-cols-3",
   4: "md:grid-cols-2",
+  5: "md:grid-cols-6",
 };
+
+// Five is the count with no tidy answer: three-then-two leaves the last row
+// hanging left, and two-two-one leaves a lone card. Six tracks with every card
+// spanning two gives three per row, and starting the fourth card at track two
+// centres the remaining pair under them. Card widths stay identical throughout.
+function centreLastPair(count: number, i: number) {
+  if (count !== 5) return undefined;
+  return cn("md:col-span-2", i === 3 && "md:col-start-2");
+}
 
 // Feature cards in the three-steps idiom, kept still and grown to portrait
 // (~2:3): the prism-tinted illustration block fills the card above the
@@ -90,7 +101,11 @@ export function ProductFeatures({ features }: Pick<ProductPageContent, "features
             {features.items.map(({ name, description, href, illustration }, i) => {
               const Illustration = illustration ? PRODUCT_ILLUSTRATIONS[illustration] : null;
               return (
-                <Reveal key={i} delay={(i % 3) * 0.1} className="h-full">
+                <Reveal
+                  key={i}
+                  delay={(i % 3) * 0.1}
+                  className={cn("h-full", centreLastPair(features.items.length, i))}
+                >
                   <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-black/[0.06] bg-card">
                     {/* illustration and content split the card roughly in half */}
                     <div className="relative flex h-64 select-none items-center justify-center overflow-hidden p-5">
