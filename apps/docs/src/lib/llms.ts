@@ -63,7 +63,7 @@ export const commonQueries: LLMsLink[] = [
     description: "Set up Prisma ORM, Prisma Client, and Prisma Postgres in a new TypeScript app.",
   },
   {
-    title: "Try Prisma 8 (Early Access)",
+    title: "Try Prisma 8 (Release Candidate)",
     href: "/next/getting-started",
     description:
       "Choose a Prisma 8 quickstart for a new project or add Prisma 8 to an existing app.",
@@ -175,9 +175,9 @@ export const llmsSections: LLMsSection[] = [
   },
   {
     slug: "next",
-    title: "Prisma 8 (Early Access)",
+    title: "Prisma 8 (Release Candidate)",
     description:
-      "Prisma 8, the next major version of Prisma ORM, available in Early Access. A ground-up TypeScript rewrite that keeps the schema-first workflow while making it extensible, composable, and AI-agent friendly. Covers setup, ORM, guides, and CLI docs for Prisma 8.",
+      "Prisma 8, the next major version of Prisma ORM, available as a Release Candidate. A ground-up TypeScript rewrite that keeps the schema-first workflow while making it extensible, composable, and AI-agent friendly. Covers setup, ORM, guides, and CLI docs for Prisma 8.",
     prefixes: ["/next", "/orm/next", "/guides/next", "/cli/next"],
   },
   {

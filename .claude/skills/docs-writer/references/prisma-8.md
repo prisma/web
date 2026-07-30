@@ -36,5 +36,5 @@ Every code sample must be executed against the published `@prisma-next` packages
 ## Naming and claims
 
 - The product is "Prisma 8", not "Prisma 8 ORM". The high-level query lane is "the ORM API"; the low-level lanes are "the SQL query builder" and "the pipeline builder".
-- No em dashes. Be honest about Early Access; state limitations in user-facing language ("X is not supported yet. For now, do Y") and show the tested workaround.
+- No em dashes. Be honest about Release Candidate status; state limitations in user-facing language ("X is not supported yet. For now, do Y") and show the tested workaround.
 - Validate with `pnpm --filter docs types:check`, `pnpm lint:links`, `pnpm exec cspell --no-progress "content/docs/orm/next/**/*.mdx"` (use placeholder ids in result blocks; random cuid fragments fail cspell), and a dev-server smoke test.

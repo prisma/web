@@ -169,7 +169,7 @@ export function getVersionLabel(version: Version) {
   }
 
   if (version === "next") {
-    return "v8 (Early Access)";
+    return "v8 (RC)";
   }
   if (version === "v6") {
     return "v6";

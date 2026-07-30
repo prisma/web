@@ -135,7 +135,7 @@ export const stackLayers: StackLayer[] = [
     icon: "fa-regular fa-code",
     accent: "orm",
     description:
-      "Prisma 8, the next major version of Prisma ORM, available in Early Access. Your schema generates a client with exact types, so every query is checked before it runs.",
+      "Prisma 8, the next major version of Prisma ORM, now available as a Release Candidate. Your schema generates a client with exact types, so every query is checked before it runs.",
     facts: [
       "Type-safe queries derived from one schema file",
       "Versioned migrations that ship in pull requests",
