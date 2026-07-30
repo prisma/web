@@ -102,8 +102,9 @@ function getBlogPostingJsonLd(page: ReturnType<typeof blog.getPage>): BlogPostin
   const description = (page.data.metaDescription ?? page.data.description ?? "").trim();
   if (!title || !description) return null;
 
-  const canonicalPath = withBlogBasePath(page.url);
-  const canonicalUrl = toAbsoluteUrl(canonicalPath);
+  // Matches the canonical link tag: a cross-posted article points at the
+  // original rather than at this copy.
+  const canonicalUrl = page.data.canonicalUrl ?? toAbsoluteUrl(withBlogBasePath(page.url));
   const imagePath = page.data.metaImagePath ?? page.data.heroImagePath;
   const imageUrl = imagePath ? toAbsoluteUrl(withBlogBasePathForImageSrc(imagePath)) : undefined;
 
@@ -326,17 +327,21 @@ export async function generateMetadata({
     ? withBlogBasePathForImageSrc(metadataImagePath)
     : undefined;
 
+  // Cross-posted articles credit the original, so search engines index that
+  // copy rather than treating this one as a duplicate.
+  const canonical = page.data.canonicalUrl ?? withBlogBasePath(page.url);
+
   return {
     title,
     description,
     alternates: {
-      canonical: withBlogBasePath(page.url),
+      canonical,
     },
     openGraph: {
       siteName: "Prisma",
       title,
       description,
-      url: withBlogBasePath(page.url),
+      url: canonical,
       images: metadataImage ? [metadataImage] : undefined,
       type: "article",
     },

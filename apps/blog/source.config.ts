@@ -42,6 +42,12 @@ export const blogPosts = defineCollections({
     metaDescription: z.string().optional(),
     metaTitle: z.string().optional(),
     excerpt: z.string().optional(),
+    /**
+     * Absolute URL of the original article, for posts cross-posted from
+     * another site. Search engines are pointed at that copy instead of this
+     * one, so the syndicated version here does not compete with the original.
+     */
+    canonicalUrl: z.string().url().optional(),
   }),
   postprocess: {
     includeProcessedMarkdown: true,
