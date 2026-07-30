@@ -10,6 +10,7 @@ import {
   Repeat,
   Rocket,
   Server,
+  Settings,
   Shield,
 } from "@/components/icons/forma";
 
@@ -28,6 +29,7 @@ export const PRODUCT_ICONS = {
   repeat: Repeat,
   rocket: Rocket,
   server: Server,
+  settings: Settings,
   shield: Shield,
 };
 

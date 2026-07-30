@@ -1,5 +1,10 @@
 import { AgentErrors } from "./agent-errors";
+import { AgentHosting } from "./agent-hosting";
+import { BranchedStack } from "./branched-stack";
+import { CoLocated } from "./co-located";
+import { ConfigJobs } from "./config-jobs";
 import { DenseSchema } from "./dense-schema";
+import { Deployments } from "./deployments";
 import { SchemaFile } from "./schema-file";
 import { TypedClient } from "./typed-client";
 
@@ -8,7 +13,12 @@ import { TypedClient } from "./typed-client";
 // Extend as product pages need more abstractions.
 export const PRODUCT_ILLUSTRATIONS = {
   agentErrors: AgentErrors,
+  agentHosting: AgentHosting,
+  branchedStack: BranchedStack,
+  coLocated: CoLocated,
+  configJobs: ConfigJobs,
   denseSchema: DenseSchema,
+  deployments: Deployments,
   schemaFile: SchemaFile,
   typedClient: TypedClient,
 };
