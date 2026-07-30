@@ -184,56 +184,51 @@ export function fmtUSD(n: number, cents = true) {
   });
 }
 
-// Quick-start presets, values taken from the live calculator
-// (https://www.prisma.io/pricing, read 2026-07-28) so our estimate matches
-// theirs preset-for-preset. All three are 2-significant-digit values, so the
-// log-scale slider lands on them exactly.
+// Quick-start presets. Values chosen so each preset lands on a different plan
+// — Free, then Starter, then Pro — per Shane (2026-07-29): the live
+// calculator's presets (12M / 36M / 84M ops) recommended Pro, Pro, Business,
+// so Starter was never recommended and Free never appeared at all.
 export const PRESETS = [
   {
     id: "hobby",
     label: "Hobby",
     blurb: "Start free while you build, test, and learn your usage patterns.",
-    ops: 12_000_000,
-    gb: 8,
+    ops: 100_000,
+    gb: 0.5,
   },
   {
     id: "startup",
     label: "Startup",
     blurb: "Estimate production usage before you upgrade, then set a spend limit as traffic grows.",
-    ops: 36_000_000,
-    gb: 18,
+    ops: 1_000_000,
+    gb: 8,
   },
   {
     id: "scaleup",
     label: "Scaleup",
     blurb: "Model sustained traffic, compare plan costs, and keep spend capped as usage increases.",
-    ops: 84_000_000,
+    ops: 20_000_000,
     gb: 40,
   },
 ] as const;
 
-// ---- the live calculator's extra behaviours ----
-
-/** It reports operations x5 as "Estimated SQL Queries". */
-export const SQL_PER_OPERATION = 5;
-
-/** Annual billing is 25% off, shown as "per month billed yearly". */
-export const YEARLY_DISCOUNT = 0.25;
-
-/** The live calculator prices only the paid plans — Free is not offered there. */
-export const PAID_PLANS = PLANS.filter((p) => p.id !== "free");
-
 /** Terms line under each plan, phrased as the live calculator phrases it. */
 export function planTerms(plan: Plan) {
+  if (plan.opsOveragePer1K === null || plan.storagePerGB === null) {
+    return `${plan.opsIncluded.toLocaleString("en-US")} ops \u2022 ${plan.storageIncludedGB}GB storage \u2022 free forever`;
+  }
   const ops = `${plan.opsIncluded.toLocaleString("en-US")} ops included, then $${plan.opsOveragePer1K} per 1,000`;
   const gb = `${plan.storageIncludedGB}GB included, then $${plan.storagePerGB}/GB`;
   return `${ops} \u2022 ${gb}`;
 }
 
-/** Every paid plan priced for the given usage, cheapest first. */
-export function priceAllPaid(ops: number, gb: number, yearly = false) {
-  return PAID_PLANS.map((plan) => {
-    const e = estimate(plan, ops, gb);
-    return { ...e, monthly: yearly ? e.total * (1 - YEARLY_DISCOUNT) : e.total };
-  }).sort((a, b) => a.monthly - b.monthly);
+/**
+ * Every plan priced for the given usage — eligible first, then cheapest.
+ * Free is included (Shane: it's the natural starting point) but goes
+ * ineligible above its caps, since it has no overage rates.
+ */
+export function priceAllPlans(ops: number, gb: number) {
+  return PLANS.map((plan) => estimate(plan, ops, gb)).sort(
+    (a, b) => Number(b.eligible) - Number(a.eligible) || a.total - b.total,
+  );
 }

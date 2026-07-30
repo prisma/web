@@ -6,6 +6,7 @@ import { PricingFaq } from "@/components/sections/pricing-faq";
 import { PricingHero } from "@/components/sections/pricing-hero";
 import { PricingHowItWorks } from "@/components/sections/pricing-how-it-works";
 import { PricingPlans } from "@/components/sections/pricing-plans";
+import { PricingSpecTable } from "@/components/sections/pricing-spec-table";
 import { TestimonialsReveal } from "@/components/sections/testimonials-reveal";
 
 export const metadata: Metadata = {
@@ -27,6 +28,7 @@ export default function PricingPage() {
       <PricingPlans />
       <PricingCalculator />
       <PricingComparison />
+      <PricingSpecTable />
       <TestimonialsReveal />
       {/* V2's closing CTA, copy verbatim. CtaBurst is the site's CTA idiom —
           fully parameterised, so this is copy only, no new component. */}

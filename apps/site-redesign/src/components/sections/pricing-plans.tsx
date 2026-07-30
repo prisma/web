@@ -2,14 +2,16 @@ import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button
 import { CheckBold } from "@/components/icons/forma";
 import { cn } from "@/lib/utils";
 
-// V2 plan cards, copy verbatim. One post-V2 correction from the client
-// answers (Gregory, 2026-07-24): Business has an overage rate — $0.0010 per
-// 1,000 — where V2 listed none.
+// V2 plan cards. Corrections applied on top of V2:
+//  - Gregory (2026-07-24): Business has an overage rate, $0.0010 per 1,000
+//  - Shane (2026-07-29): "Most popular" moved from Pro to Starter, to anchor
+//    on the lower price rather than making Prisma read as expensive; Free
+//    states that it is free forever
 const PLANS = [
   {
     name: "Free",
     price: "$0",
-    note: "No credit card required.",
+    note: "Free forever. No credit card required.",
     features: ["100,000 operations / month", "500 MB storage", "50 databases"],
     blurb:
       "Everything you need to build and explore with no clock running. No credit card, no expiry.",
@@ -32,7 +34,7 @@ const PLANS = [
       "Ship your first production app without worrying about the bill. Backups included, spend limits on by default.",
     cta: "Get started",
     href: "https://console.prisma.io",
-    popular: false,
+    popular: true,
   },
   {
     name: "Pro",
@@ -50,7 +52,7 @@ const PLANS = [
       "For production apps with real traffic. More operations, lower overage rates, and headroom to grow without watching the meter.",
     cta: "Get started",
     href: "https://console.prisma.io",
-    popular: true,
+    popular: false,
   },
   {
     name: "Business",

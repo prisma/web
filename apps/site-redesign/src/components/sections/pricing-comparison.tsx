@@ -18,15 +18,36 @@ const SPECTRUM =
 // backing (prisma-compute-vs-vercel-pricing) compares Prisma Compute vs Vercel
 // at 20M requests — ~$98 vs ~$236, about 2.4x — a different product
 // comparison. Do not treat these as approved.
-const TYPICAL = {
-  name: "Typical stack (Neon + Vercel)",
-  cost: "$385–450",
-  rows: [
-    { label: "Billing", value: "Separate database + hosting bills" },
-    { label: "Database data transfer", value: "Pay per GB" },
-    { label: "Spend limits", value: "Not standard" },
-  ],
-};
+// Placeholder marker. Anything using PENDING is awaiting figures from the
+// client — never fill these in with estimates.
+const PENDING = "—";
+
+const ALTERNATIVES = [
+  {
+    id: "neon-vercel",
+    name: "Typical stack (Neon + Vercel)",
+    cost: "$385–450",
+    pending: false,
+    rows: [
+      { label: "Billing", value: "Separate database + hosting bills" },
+      { label: "Database data transfer", value: "Pay per GB" },
+      { label: "Spend limits", value: "Not standard" },
+    ],
+  },
+  {
+    // Shane (2026-07-29) asked to compare against Supabase as well. We have no
+    // Supabase pricing, so this column is a placeholder until they supply it.
+    id: "supabase",
+    name: "Supabase",
+    cost: PENDING,
+    pending: true,
+    rows: [
+      { label: "Billing", value: PENDING },
+      { label: "Database data transfer", value: PENDING },
+      { label: "Spend limits", value: PENDING },
+    ],
+  },
+];
 
 const PRISMA = {
   name: "Prisma Pro",
@@ -110,38 +131,54 @@ export function PricingComparison() {
               </p>
             </Reveal>
 
-            <div className="mx-auto mt-14 grid max-w-5xl gap-8 lg:grid-cols-2 lg:gap-10">
-              {/* the alternative — plain and muted, no card treatment */}
-              <Reveal delay={0.2} className="flex flex-col px-0 py-4 sm:p-8">
-                <RoleKicker color="bg-foreground/20">{TYPICAL.name}</RoleKicker>
-                <p className="mt-5 font-heading text-[clamp(2.25rem,4vw,3rem)] font-medium leading-none tracking-tight text-muted-foreground">
-                  {TYPICAL.cost}
-                  <span className="ml-1.5 align-baseline text-base font-normal">/month</span>
-                </p>
-                <p className="mt-2 text-sm text-muted-foreground">at ~50K MAU</p>
+            <div className="mt-14 grid gap-8 lg:grid-cols-3 lg:gap-8">
+              {/* the alternatives — plain and muted, no card treatment */}
+              {ALTERNATIVES.map((alt, i) => (
+                <Reveal
+                  key={alt.id}
+                  delay={0.2 + i * 0.05}
+                  className="flex flex-col px-0 py-4 sm:p-6"
+                >
+                  <RoleKicker color="bg-foreground/20">{alt.name}</RoleKicker>
+                  <p className="mt-5 font-heading text-[clamp(2rem,3.4vw,2.75rem)] font-medium leading-none tracking-tight text-muted-foreground">
+                    {alt.cost}
+                    {!alt.pending && (
+                      <span className="ml-1.5 align-baseline text-base font-normal">/month</span>
+                    )}
+                  </p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {alt.pending ? "Awaiting figures" : "at ~50K MAU"}
+                  </p>
 
-                <dl className="mt-9 flex flex-col gap-5 border-t border-black/[0.06] pt-7">
-                  {TYPICAL.rows.map((r) => (
-                    <div key={r.label}>
-                      <dt className="text-sm font-semibold text-foreground/70">{r.label}</dt>
-                      <dd className="mt-1.5 flex items-start gap-3 text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground">
-                        <X
-                          className="mt-1 size-4 shrink-0 text-foreground/35"
-                          strokeWidth={3}
-                          aria-hidden
-                        />
-                        {r.value}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-              </Reveal>
+                  <dl className="mt-9 flex flex-col gap-5 border-t border-black/[0.06] pt-7">
+                    {alt.rows.map((r) => (
+                      <div key={r.label}>
+                        <dt className="text-sm font-semibold text-foreground/70">{r.label}</dt>
+                        <dd className="mt-1.5 flex items-start gap-3 text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground">
+                          {alt.pending ? (
+                            <span className="text-muted-foreground/60">{r.value}</span>
+                          ) : (
+                            <>
+                              <X
+                                className="mt-1 size-4 shrink-0 text-foreground/35"
+                                strokeWidth={3}
+                                aria-hidden
+                              />
+                              {r.value}
+                            </>
+                          )}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                </Reveal>
+              ))}
 
               {/* Prisma — lifted on white with the always-on spectrum ring and
                   the brand cube pattern greyscaled behind it */}
               <Reveal
                 delay={0.3}
-                className="spectrum-border spectrum-border-on relative flex flex-col overflow-hidden rounded-[1.25rem] border border-transparent bg-white p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_48px_-24px_rgba(21,21,21,0.25)] sm:p-8"
+                className="spectrum-border spectrum-border-on relative flex flex-col overflow-hidden rounded-[1.25rem] border border-transparent bg-white p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_48px_-24px_rgba(21,21,21,0.25)]"
               >
                 <div
                   aria-hidden
@@ -153,7 +190,7 @@ export function PricingComparison() {
                 <RoleKicker color="bg-prism-cyan-400" className="relative">
                   {PRISMA.name}
                 </RoleKicker>
-                <p className="relative mt-5 font-heading text-[clamp(2.25rem,4vw,3rem)] font-medium leading-none tracking-tight text-foreground">
+                <p className="relative mt-5 font-heading text-[clamp(2rem,3.4vw,2.75rem)] font-medium leading-none tracking-tight text-foreground">
                   {PRISMA.cost}
                   <span className="ml-1.5 align-baseline text-base font-normal text-muted-foreground">
                     /month
