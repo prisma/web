@@ -1,4 +1,4 @@
-import type { ProductPageContent } from "./types"
+import type { ProductPageContent } from "./types";
 
 // Placeholder instance mirroring the Notion outline's bracketed copy slots.
 // Replace every [bracketed] string when instantiating a real product page.
@@ -17,7 +17,10 @@ export const placeholderContent: ProductPageContent = {
   },
   problem: {
     headline: "[Problem headline — name the friction]",
-    body: "[2–3 sentences. Describe the pain state before this product. Be specific and name exactly what developers have to do manually, stitch together, or go without. End with: “[Product name] exists to change that.” or similar.]",
+    body: [
+      "[2–3 sentences. Describe the pain state before this product. Be specific and name exactly what developers have to do manually, stitch together, or go without.]",
+      "[Product name] exists to change that.",
+    ],
     outcomes: [
       { icon: "rocket", label: "[Outcome label — e.g. “Ship without the setup overhead”]" },
       { icon: "layers", label: "[Outcome label]" },
@@ -59,8 +62,14 @@ export const placeholderContent: ProductPageContent = {
     ],
   },
   cta: {
-    benefits: ["[Product-specific benefit]", "[Product-specific benefit]"],
+    headline: "[Closing headline — specific to this product, not shared]",
+    body: "[1–2 sentences. How this product sits in the wider stack, in this product's own words.]",
+    benefits: [
+      "[Product-specific benefit]",
+      "[Product-specific benefit]",
+      "[Trust line — spell it out, it is not appended for you]",
+    ],
     primaryCta: { label: "[Primary CTA]", href: "https://console.prisma.io" },
     secondaryCta: { label: "[Secondary CTA]", href: "/pricing" },
   },
-}
+};

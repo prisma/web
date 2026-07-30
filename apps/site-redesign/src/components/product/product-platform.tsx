@@ -1,24 +1,24 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { motion, useReducedMotion } from "framer-motion"
-import { IconTile } from "@/components/brand/icon-tile"
-import { LearnMore } from "@/components/brand/learn-more"
-import { Reveal } from "@/components/motion/reveal"
-import { PRODUCT_ICONS } from "./icons"
-import type { ProductPageContent } from "./types"
+import { useEffect, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import { IconTile } from "@/components/brand/icon-tile";
+import { LearnMore } from "@/components/brand/learn-more";
+import { Reveal } from "@/components/motion/reveal";
+import { PRODUCT_ICONS } from "./icons";
+import type { ProductPageContent } from "./types";
 
 // Seconds each product stays highlighted before the pulse moves on.
-const HOLD = 2.8
+const HOLD = 2.8;
 
 // Node x-positions inside the 1152-wide canvas — the centers of the three
 // card columns below (1/6, 1/2, 5/6).
-const XS = [192, 576, 960]
+const XS = [192, 576, 960];
 const CURVES = [
   "M576,44 C576,132 192,104 192,192",
   "M576,44 L576,192",
   "M576,44 C576,132 960,104 960,192",
-]
+];
 
 function PrismaMark({ className }: { className?: string }) {
   return (
@@ -27,7 +27,7 @@ function PrismaMark({ className }: { className?: string }) {
       <path d="M76.817 0H47.7408L0 47.721V76.817H29.0473L76.817 29.0657V0Z" fill="#FE4352" />
       <path d="M33.1143 76.8175H61.2454L76.8175 61.2504V33.1309L33.1143 76.8175Z" fill="#FEBE29" />
     </svg>
-  )
+  );
 }
 
 // The cross-sell as one connected system: a full-bleed rail carries a
@@ -35,15 +35,15 @@ function PrismaMark({ className }: { className?: string }) {
 // cards, and the Prisma mark above feeds each of them in turn — the active
 // connection draws in, its node and card light up together.
 export function ProductPlatform({ platform }: Pick<ProductPageContent, "platform">) {
-  const reduce = useReducedMotion()
-  const [active, setActive] = useState(0)
-  const count = platform.integrations.length
+  const reduce = useReducedMotion();
+  const [active, setActive] = useState(0);
+  const count = platform.integrations.length;
 
   useEffect(() => {
-    if (reduce) return
-    const t = setInterval(() => setActive((a) => (a + 1) % count), HOLD * 1000)
-    return () => clearInterval(t)
-  }, [reduce, count])
+    if (reduce) return;
+    const t = setInterval(() => setActive((a) => (a + 1) % count), HOLD * 1000);
+    return () => clearInterval(t);
+  }, [reduce, count]);
 
   return (
     <section className="relative overflow-hidden bg-white px-4 py-24 sm:px-8 sm:py-32">
@@ -66,7 +66,10 @@ export function ProductPlatform({ platform }: Pick<ProductPageContent, "platform
         <Reveal className="relative mt-4 hidden h-60 md:block">
           {/* full-bleed rail through the product nodes, shimmering with a
               traveling band of spectrum */}
-          <div aria-hidden className="absolute left-1/2 top-[80%] h-px w-screen -translate-x-1/2 overflow-visible bg-black/[0.08]">
+          <div
+            aria-hidden
+            className="absolute left-1/2 top-[80%] h-px w-screen -translate-x-1/2 overflow-visible bg-black/[0.08]"
+          >
             {!reduce && (
               <motion.span
                 className="absolute -top-px h-[3px] w-48 rounded-full opacity-70 blur-[1px]"
@@ -97,7 +100,13 @@ export function ProductPlatform({ platform }: Pick<ProductPageContent, "platform
               </linearGradient>
             </defs>
             {CURVES.map((d, i) => (
-              <path key={i} d={d} stroke="var(--color-border)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+              <path
+                key={i}
+                d={d}
+                stroke="var(--color-border)"
+                strokeWidth="1"
+                vectorEffect="non-scaling-stroke"
+              />
             ))}
             {/* active connection draws in with the spectrum */}
             {!reduce && (
@@ -124,8 +133,8 @@ export function ProductPlatform({ platform }: Pick<ProductPageContent, "platform
 
           {/* product nodes on the rail */}
           {platform.integrations.map(({ icon }, i) => {
-            const Icon = PRODUCT_ICONS[icon]
-            const isActive = reduce || i === active
+            const Icon = PRODUCT_ICONS[icon];
+            const isActive = reduce || i === active;
             return (
               <motion.div
                 key={i}
@@ -138,13 +147,13 @@ export function ProductPlatform({ platform }: Pick<ProductPageContent, "platform
                   <Icon className="size-5 text-foreground" />
                 </IconTile>
               </motion.div>
-            )
+            );
           })}
         </Reveal>
 
         <div className="mt-10 grid grid-cols-1 gap-4 max-md:mt-14 md:grid-cols-3">
           {platform.integrations.map(({ icon, product, benefit, href }, i) => {
-            const Icon = PRODUCT_ICONS[icon]
+            const Icon = PRODUCT_ICONS[icon];
             return (
               <Reveal key={i} delay={i * 0.1} className="h-full">
                 <div className="flex h-full flex-col items-start gap-4 rounded-xl border border-black/[0.06] bg-white p-7">
@@ -157,13 +166,13 @@ export function ProductPlatform({ platform }: Pick<ProductPageContent, "platform
                       {benefit}
                     </p>
                   </div>
-                  <LearnMore href={href} product={product} className="mt-0" />
+                  {href ? <LearnMore href={href} product={product} className="mt-0" /> : null}
                 </div>
               </Reveal>
-            )
+            );
           })}
         </div>
       </div>
     </section>
-  )
+  );
 }
