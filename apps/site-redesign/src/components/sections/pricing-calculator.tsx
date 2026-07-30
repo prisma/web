@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Marker } from "@/components/brand/marker";
 import { RoleKicker } from "@/components/brand/role-kicker";
 import { CheckBold, XCircle } from "@/components/icons/forma";
 import { Reveal } from "@/components/motion/reveal";
@@ -152,11 +153,7 @@ export function PricingCalculator() {
                   >
                     <div className="flex items-center justify-between gap-3">
                       <p className="text-sm font-semibold text-foreground">{e.plan.name} plan</p>
-                      {isRec && (
-                        <span className="rounded-full bg-foreground px-2.5 py-0.5 text-xs font-semibold text-white">
-                          Recommended
-                        </span>
-                      )}
+                      {isRec && <Marker>Recommended</Marker>}
                     </div>
                     {e.eligible ? (
                       <p className="mt-1.5 flex items-baseline gap-2 font-heading text-3xl font-medium tracking-tight text-foreground">

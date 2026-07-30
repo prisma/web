@@ -1,3 +1,4 @@
+import { Marker } from "@/components/brand/marker";
 import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button";
 import { CheckBold } from "@/components/icons/forma";
 import { cn } from "@/lib/utils";
@@ -76,9 +77,11 @@ const PLANS = [
 export function PricingPlans() {
   return (
     <section className="bg-white px-4 sm:px-8">
-      {/* pt-20 = 80px from the row above; the cards continue that block rather
-          than starting a new section. Full rhythm resumes below. */}
-      <div className="mx-auto max-w-6xl pb-16 pt-20 sm:pb-24">
+      {/* Tighter than the site's py-16/24 on purpose: the cards hug the hero
+          panel above them rather than starting a new section, which is what
+          gets them as close to the fold as the layout allows. No bottom
+          padding — the how-it-works block below owns that gap. */}
+      <div className="mx-auto max-w-6xl pt-12 sm:pt-16">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {PLANS.map((plan) => (
             <div
@@ -91,9 +94,7 @@ export function PricingPlans() {
               )}
             >
               {plan.popular && (
-                <span className="absolute -top-3 left-6 rounded-full bg-foreground px-3 py-1 text-xs font-semibold text-white">
-                  Most popular
-                </span>
+                <Marker className="absolute -top-3 left-1/2 -translate-x-1/2">Most popular</Marker>
               )}
               <p className="text-sm font-semibold text-foreground">{plan.name}</p>
               <p className="mt-3 font-heading text-4xl font-medium tracking-tight text-foreground">

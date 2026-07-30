@@ -3,13 +3,18 @@ import { PricingIncludes } from "./pricing-includes";
 
 // "How Prisma pricing works" — V2 copy verbatim on the left, the every-plan
 // -includes list stacked on the right. The calculator lives in its own section
-// after the plan cards (see pricing-calculator.tsx).
+// after this one (see pricing-calculator.tsx).
+//
+// Sits *below* the plan cards as of 2026-07-30 (client request). Reads as the
+// explanation of the cards above it, and "Every plan includes" now lands as a
+// footnote to them, which is where it belongs.
 export function PricingHowItWorks() {
   return (
     <section className="bg-white px-4 sm:px-8">
-      {/* No bottom padding — the plan cards sit 40px below this block and read
-          as part of the same story, so the gap is owned by pricing-plans. */}
-      <div className="mx-auto max-w-6xl pt-16 sm:pt-24">
+      {/* pt-20 = 80px from the plan cards above; this block explains the cards
+          rather than starting a new section, so the gap stays tight. Full
+          rhythm resumes below. */}
+      <div className="mx-auto max-w-6xl pb-16 pt-20 sm:pb-24">
         <div className="grid gap-x-12 gap-y-12 lg:grid-cols-2 lg:gap-x-16">
           <div>
             <Reveal>
