@@ -154,7 +154,7 @@ canvas.
 typographic thesis vs comparison), each fully on-brand, and present them together for selection.
 
 **Graphic-led variant.** When a single chart/diagram is the whole message, you can drop the
-headline and **center the module**, with the standalone product logo (e.g. `prisma-next-logo.svg`)
+headline and **center the module**, with the standalone product logo (e.g. `prisma-8-logo.svg`)
 centered on top as the only brand mark.
 
 ## Formats

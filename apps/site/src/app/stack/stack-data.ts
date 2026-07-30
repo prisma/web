@@ -11,13 +11,13 @@ export type Framework = {
   name: string;
   /** Real logo from /public/icons/technologies, shown on a white tile. */
   logo: string;
-  /** Prisma Next guide for this framework. */
+  /** Prisma 8 guide for this framework. */
   guide: string;
 };
 
 /**
  * Frameworks cycled in the pyramid's top layer and listed as chips in the app
- * panel. Only frameworks with a published Prisma Next guide appear here, so
+ * panel. Only frameworks with a published Prisma 8 guide appear here, so
  * every chip leads somewhere; add one back the moment its guide ships.
  */
 export const frameworks: Framework[] = [
@@ -41,8 +41,16 @@ export const frameworks: Framework[] = [
     logo: "/icons/technologies/svelte.svg",
     guide: "/docs/guides/next/frameworks/sveltekit",
   },
-  { name: "Nuxt", logo: "/icons/technologies/nuxt.svg", guide: "/docs/guides/next/frameworks/nuxt" },
-  { name: "Hono", logo: "/icons/technologies/hono.svg", guide: "/docs/guides/next/frameworks/hono" },
+  {
+    name: "Nuxt",
+    logo: "/icons/technologies/nuxt.svg",
+    guide: "/docs/guides/next/frameworks/nuxt",
+  },
+  {
+    name: "Hono",
+    logo: "/icons/technologies/hono.svg",
+    guide: "/docs/guides/next/frameworks/hono",
+  },
   {
     name: "NestJS",
     logo: "/icons/technologies/nest.svg",
@@ -127,14 +135,14 @@ export const stackLayers: StackLayer[] = [
     icon: "fa-regular fa-code",
     accent: "orm",
     description:
-      "Prisma Next, the next major version of Prisma ORM, available in Early Access. Your schema generates a client with exact types, so every query is checked before it runs.",
+      "Prisma 8, the next major version of Prisma ORM, available in Early Access. Your schema generates a client with exact types, so every query is checked before it runs.",
     facts: [
       "Type-safe queries derived from one schema file",
       "Versioned migrations that ship in pull requests",
       "Guardrails that keep agents from unsafe writes",
       "A SQL query builder for when you need full control",
     ],
-    link: { href: "/docs/orm/next", label: "Explore Prisma Next" },
+    link: { href: "/docs/orm/next", label: "Explore Prisma 8" },
   },
   {
     id: "postgres",
@@ -194,7 +202,7 @@ export type SwapLayer = {
 export const swapLayers: SwapLayer[] = [
   {
     layer: "Data access",
-    defaultChoice: "Prisma Next",
+    defaultChoice: "Prisma 8",
     logo: "/icons/technologies/prisma_light.svg",
     swap: "Drop to raw SQL with the built-in query builder, or use any Postgres client.",
     swapTargets: [{ src: "/icons/technologies/postgresql.svg", alt: "Any Postgres client" }],
@@ -279,11 +287,11 @@ export const runtimeOutcomes: Outcome[] = [
       { icon: "fa-regular fa-check", label: "bun test" },
       { icon: "fa-regular fa-cubes-stacked", label: "bundler" },
     ],
-    link: { href: "/docs/guides/next/runtimes/bun", label: "Prisma Next on Bun" },
+    link: { href: "/docs/guides/next/runtimes/bun", label: "Prisma 8 on Bun" },
   },
 ];
 
-/** Section 6: what Postgres + Prisma Next provide together. */
+/** Section 6: what Postgres + Prisma 8 provide together. */
 export const dataOutcomes: Outcome[] = [
   {
     icon: "fa-regular fa-shield-check",
@@ -347,7 +355,7 @@ export const agentPoints: Outcome[] = [
     icon: "fa-regular fa-clock-rotate-left",
     title: "A typed feedback loop",
     body: "Agents iterate against the compiler, not runtime failures.",
-    link: { href: "/docs/orm/next", label: "Explore Prisma Next" },
+    link: { href: "/docs/orm/next", label: "Explore Prisma 8" },
   },
   {
     icon: "fa-regular fa-receipt",

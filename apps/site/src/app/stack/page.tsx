@@ -285,7 +285,7 @@ export default async function StackPage() {
         <section className="px-4 py-14 md:py-20">
           <div className="mx-auto flex w-full max-w-296 flex-col gap-10">
             <SectionHead
-              eyebrow="Prisma Next + Prisma Postgres"
+              eyebrow="Prisma 8 + Prisma Postgres"
               title="One schema, typed all the way down"
             >
               The data layer is one piece: the database, the migrations, and the client all derive
@@ -355,8 +355,8 @@ export default async function StackPage() {
                 </h2>
                 <p className="m-0 max-w-lg text-foreground-neutral-weak">
                   One command gives you a running application, a Prisma Postgres database, a typed
-                  Prisma Next client, and a deploy target on Prisma Compute. Connected from the
-                  first minute.
+                  Prisma 8 client, and a deploy target on Prisma Compute. Connected from the first
+                  minute.
                 </p>
               </div>
               <CopyCommand command={SCAFFOLD_COMMAND} />

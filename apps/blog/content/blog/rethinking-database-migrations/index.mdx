@@ -6,7 +6,7 @@ authors:
   - "Mike Hartington"
   - "Will Madden"
 metaTitle: "Rethinking Database Migrations"
-metaDescription: "Database migrations are brittle and they break when you're most vulnerable; when you're deploying to production. Prisma Next migrations make them explicit, verifiable and safe to retry."
+metaDescription: "Database migrations are brittle and they break when you're most vulnerable; when you're deploying to production. Prisma 8 migrations make them explicit, verifiable and safe to retry."
 metaImagePath: "/rethinking-database-migrations/imgs/meta.png"
 heroImagePath: "/rethinking-database-migrations/imgs/hero.svg"
 heroImageAlt: "Rethinking Database Migrations"
@@ -16,7 +16,7 @@ series: prisma-next
 seriesIndex: 3
 ---
 
-Database migrations are brittle and they break when you're most vulnerable; when you're deploying to production. [Prisma Next migrations](https://www.prisma.io/docs/orm/next) make them explicit, verifiable and safe to retry. Here's how.
+Database migrations are brittle and they break when you're most vulnerable; when you're deploying to production. [Prisma 8 migrations](https://www.prisma.io/docs/orm/next) make them explicit, verifiable and safe to retry. Here's how.
 
 ## The problem with migrations today
 
@@ -50,11 +50,11 @@ You'll notice a common thread: this typical migration model **puts the responsib
 
 This matters more now than ever. As AI tools increasingly generate and run migrations on your behalf, the system handling those migrations needs stronger guardrails than a careful human would. It needs to verify its own assumptions, recover from failures, and never leave a database in an unknown state.
 
-With Prisma Next, we set out to build a migration system that handles all of these cases, including automatically resolving branch conflicts.
+With Prisma 8, we set out to build a migration system that handles all of these cases, including automatically resolving branch conflicts.
 
-## Prisma Next migrations
+## Prisma 8 migrations
 
-In Prisma Next, [a migration](https://www.prisma.io/docs/orm/next/migrations/how-migrations-work) is explicit about what it needs to do and how it does it. Every migration knows:
+In Prisma 8, [a migration](https://www.prisma.io/docs/orm/next/migrations/how-migrations-work) is explicit about what it needs to do and how it does it. Every migration knows:
 
 - The expected DB schema **before** it's executed.
 - The DB schema **after** it's executed.
@@ -87,7 +87,7 @@ migrations/
 
 #### How `from` and `to` work
 
-In Prisma Next, your [`schema.prisma`](https://www.prisma.io/docs/orm/next/contract-authoring/the-data-contract) is converted into a [JSON file](https://www.prisma.io/docs/orm/next/contract-authoring/the-contract-artifact) which lists every table, column and relation that's expected to be present in your database, similar to a `package-lock.json`. Hashing that file gives us a simple identifier that describes a specific database state, like a git commit hash.
+In Prisma 8, your [`schema.prisma`](https://www.prisma.io/docs/orm/next/contract-authoring/the-data-contract) is converted into a [JSON file](https://www.prisma.io/docs/orm/next/contract-authoring/the-contract-artifact) which lists every table, column and relation that's expected to be present in your database, similar to a `package-lock.json`. Hashing that file gives us a simple identifier that describes a specific database state, like a git commit hash.
 
 Migrations promise to transition your database from one schema to another, which is recorded as a `from` hash and a `to` hash in the JSON example above. This works the same way as applying a git commit to your filesystem: it moves your filesystem from one state to the next.
 
@@ -139,11 +139,11 @@ Here's what that looks like in practice. Two developers have branched from the s
 
 This means the ordering-conflict scenario from earlier simply doesn't apply. Timestamps don't determine execution order, the graph does.
 
-This idea isn't entirely new, tools like [Sqitch](https://sqitch.org/) and [Atlas](https://atlasgo.io/) have explored dependency-based and state-based approaches to migrations. Prisma Next builds on these ideas by deriving the graph automatically from schema state hashes and combining state verification with idempotent operations, so migrations are safe to retry without manual intervention.
+This idea isn't entirely new, tools like [Sqitch](https://sqitch.org/) and [Atlas](https://atlasgo.io/) have explored dependency-based and state-based approaches to migrations. Prisma 8 builds on these ideas by deriving the graph automatically from schema state hashes and combining state verification with idempotent operations, so migrations are safe to retry without manual intervention.
 
 ## Migrations verify their assumptions
 
-Remember the local-drift scenario? You iterate on a migration locally, your DB ends up in a slightly different state, and the migration fails in CI. With Prisma Next, the runner checks the database's current schema hash against the migration's `from` hash before doing anything. If they don't match, the migration stops immediately with a clear error. Not halfway through, leaving the database in an unknown state.
+Remember the local-drift scenario? You iterate on a migration locally, your DB ends up in a slightly different state, and the migration fails in CI. With Prisma 8, the runner checks the database's current schema hash against the migration's `from` hash before doing anything. If they don't match, the migration stops immediately with a clear error. Not halfway through, leaving the database in an unknown state.
 
 What if a migration *does* fail partway through? Because every operation carries a precheck and a postcheck, the migration is [safe to retry](https://www.prisma.io/docs/orm/next/migrations/rollbacks-and-recovery). Operations whose postchecks already pass are skipped; operations whose prechecks fail produce a clear error. The database never ends up in a state the system can't reason about.
 
@@ -151,13 +151,13 @@ What if a migration *does* fail partway through? Because every operation carries
 
 This is where the graph structure really pays off. Branch conflicts are the most common and most painful migration problem, and they're the hardest to fix by hand.
 
-In Prisma Next, migrations are cheap and planned automatically. Consider this situation:
+In Prisma 8, migrations are cheap and planned automatically. Consider this situation:
 
 - Bob and Alice both branch off `main` at schema state `C1`.
 - Bob adds an `email` column to `users`, reaching state `C2` on his branch.
 - Alice adds a `name` column, reaches `C3`, and merges to `main` first.
 
-Bob now needs to catch up. He updates his schema to `C4`, incorporating both his `email` column and Alice's `name` column, and Prisma Next generates two migrations automatically:
+Bob now needs to catch up. He updates his schema to `C4`, incorporating both his `email` column and Alice's `name` column, and Prisma 8 generates two migrations automatically:
 
 - **C2 -> C4:** applies to any database on Bob's branch state (his local machine, a dev environment, a staging instance seeded from his branch).
 - **C3 -> C4:** applies to any database already on `main` (production, CI, teammates who pulled Alice's work).
@@ -168,7 +168,7 @@ Those of you familiar with Git will recognize these as the same techniques we us
 
 ## What else does this enable?
 
-Because the system knows the schema state at every point and the operations that connect them, you get a few more things for free. As your project grows, the list of migrations in your repo keeps growing. In Prisma Next, you can:
+Because the system knows the schema state at every point and the operations that connect them, you get a few more things for free. As your project grows, the list of migrations in your repo keeps growing. In Prisma 8, you can:
 
 - **squash** a sequence of migrations into a single migration.
 - **baseline** your migration history by replacing it with one migration that constructs the current schema from scratch.
@@ -176,9 +176,9 @@ Because the system knows the schema state at every point and the operations that
 
 ## What's next
 
-Prisma Next aims to make your database operations explicit, simple and reliable. We're still working on this migration system but you can check out the repo and try it for yourself if you'd like to get a feel for it.
+Prisma 8 aims to make your database operations explicit, simple and reliable. We're still working on this migration system but you can check out the repo and try it for yourself if you'd like to get a feel for it.
 
-For a closer look, read [TypeScript Migrations in Prisma Next](https://pris.ly/ts-migrations-pn) and [Data Migrations in Prisma Next](/data-migrations-in-prisma-next).
+For a closer look, read [TypeScript Migrations in Prisma 8](https://pris.ly/ts-migrations-pn) and [Data Migrations in Prisma 8](/data-migrations-in-prisma-next).
 
 If you'd like to receive updates as we make changes, [star and watch the repo](https://github.com/prisma/prisma-next).
 

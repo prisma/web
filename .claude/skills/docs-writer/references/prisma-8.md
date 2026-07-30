@@ -1,6 +1,6 @@
-# Prisma Next docs conventions
+# Prisma 8 docs conventions
 
-Follow these when writing or reviewing a Prisma Next docs section in `apps/docs` (the Fundamentals, Middleware, Extensions, Reference, and Guides trees). They encode decisions from DR-8681/DR-8687/DR-8688 and PR #8011 review rounds so parallel section PRs stay consistent.
+Follow these when writing or reviewing a Prisma 8 docs section in `apps/docs` (the Fundamentals, Middleware, Extensions, Reference, and Guides trees). They encode decisions from DR-8681/DR-8687/DR-8688 and PR #8011 review rounds so parallel section PRs stay consistent.
 
 ## Where pages live
 
@@ -10,9 +10,9 @@ Follow these when writing or reviewing a Prisma Next docs section in `apps/docs`
 
 ## Redirects: commented out until the cutover
 
-Do not add live Prisma 7 → Prisma Next redirects yet. They retire live URLs, and they ship together when the `/orm/next` tree becomes `/orm` (DR-8687).
+Do not add live Prisma 7 → Prisma 8 redirects yet. They retire live URLs, and they ship together when the `/orm/next` tree becomes `/orm` (DR-8687).
 
-Instead, append your section's redirect map to the commented block in `apps/docs/next.config.mjs` (search for "Prisma Next URL cutover"). Keep the entries commented, one per line, `permanent: false`, with your DR reference. Pages with no Prisma Next equivalent stay live on the Prisma 7 tree; list them in the same comment block for the SEO owner.
+Instead, append your section's redirect map to the commented block in `apps/docs/next.config.mjs` (search for "Prisma 8 URL cutover"). Keep the entries commented, one per line, `permanent: false`, with your DR reference. Pages with no Prisma 8 equivalent stay live on the Prisma 7 tree; list them in the same comment block for the SEO owner.
 
 ## Accuracy: test before you write
 
@@ -35,6 +35,6 @@ Every code sample must be executed against the published `@prisma-next` packages
 
 ## Naming and claims
 
-- The product is "Prisma Next", not "Prisma Next ORM". The high-level query lane is "the ORM API"; the low-level lanes are "the SQL query builder" and "the pipeline builder".
+- The product is "Prisma 8", not "Prisma 8 ORM". The high-level query lane is "the ORM API"; the low-level lanes are "the SQL query builder" and "the pipeline builder".
 - No em dashes. Be honest about Early Access; state limitations in user-facing language ("X is not supported yet. For now, do Y") and show the tested workaround.
 - Validate with `pnpm --filter docs types:check`, `pnpm lint:links`, `pnpm exec cspell --no-progress "content/docs/orm/next/**/*.mdx"` (use placeholder ids in result blocks; random cuid fragments fail cspell), and a dev-server smoke test.

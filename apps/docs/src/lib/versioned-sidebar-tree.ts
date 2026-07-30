@@ -52,7 +52,8 @@ function isGettingStartedVersionNode(node: TreeNode, version: Version) {
   if (version === "next") {
     return (
       name === "next" ||
-      name === "prisma next" ||
+      name === "prisma 8" ||
+      name === "v8 (early access)" ||
       node.url === "/next" ||
       node.index?.url === "/next"
     );
@@ -69,7 +70,7 @@ function isCliVersionNode(node: TreeNode, version: Version) {
   const name = String(node.name ?? "").toLowerCase();
 
   if (version === "next") {
-    return name === "next" || node.index?.url === "/cli/next";
+    return name === "next" || name === "v8 (early access)" || node.index?.url === "/cli/next";
   }
 
   return false;
@@ -83,7 +84,7 @@ function isGuidesVersionNode(node: TreeNode, version: Version) {
   const name = String(node.name ?? "").toLowerCase();
 
   if (version === "next") {
-    return name === "next" || node.index?.url === "/guides/next";
+    return name === "next" || name === "v8 (early access)" || node.index?.url === "/guides/next";
   }
 
   return false;
@@ -106,6 +107,7 @@ function isVersionNode(node: TreeNode, version: Version) {
 
   return (
     name === version ||
+    (version === "next" && name === "v8 (early access)") ||
     node.index?.url === getVersionRoot(version) ||
     node.index?.url === `/${version}/orm`
   );

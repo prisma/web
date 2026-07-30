@@ -158,7 +158,11 @@ export function HashDemoClient({ baseCode, phases }: Props) {
             })}
           </div>
 
-          <div className="hash-demo-array" role="img" aria-label="Bit positions chosen by the three hashes">
+          <div
+            className="hash-demo-array"
+            role="img"
+            aria-label="Bit positions chosen by the three hashes"
+          >
             {Array.from({ length: SIZE }, (_, i) => {
               const isLit = litBits.includes(i);
               const isProbing = phase.activeHash !== null && HASHES[phase.activeHash].bit === i;

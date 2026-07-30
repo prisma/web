@@ -281,7 +281,7 @@ const config = {
         destination: "/prisma-postgres/quickstart/prisma-next",
         permanent: false,
       },
-      // The Prisma Next + Prisma Postgres quickstart now lives in the Prisma Postgres
+      // The Prisma 8 + Prisma Postgres quickstart now lives in the Prisma Postgres
       // Quickstart dropdown alongside the other ORMs.
       {
         source: "/next/prisma-postgres/quickstart/prisma-next",
@@ -298,9 +298,9 @@ const config = {
         destination: "/next/add-to-existing-project/:path*",
         permanent: false,
       },
-      // ── Prisma Next URL cutover (DR-8687) — DO NOT ENABLE YET ─────────────
+      // ── Prisma 8 URL cutover (DR-8687) — DO NOT ENABLE YET ─────────────
       // The redirects below retire live Prisma 7 URLs, so they ship only when
-      // Prisma Next becomes the default docs version (the /orm/next tree moves
+      // Prisma 8 becomes the default docs version (the /orm/next tree moves
       // to /orm). Until then, keep your section's redirects here, commented
       // out, so the full cutover map builds up in one reviewable place.
       // Section owners: append your block below with a DR reference.
@@ -323,7 +323,7 @@ const config = {
       // { source: "/orm/prisma-schema/overview/location", destination: "/orm/next/contract-authoring/psl-syntax", permanent: false },
       // { source: "/orm/prisma-client/type-safety", destination: "/orm/next/contract-authoring/the-data-contract", permanent: false },
       //
-      // No Prisma Next equivalent yet (stay on the Prisma 7 tree, flag to the
+      // No Prisma 8 equivalent yet (stay on the Prisma 7 tree, flag to the
       // SEO owner at cutover): /orm/prisma-client/queries/full-text-search,
       // /orm/prisma-client/queries/advanced/query-optimization-performance,
       // /orm/prisma-client/queries/excluding-fields.
@@ -340,19 +340,19 @@ const config = {
       // { source: "/orm/prisma-migrate/workflows/development-and-production", destination: "/orm/next/migrations/applying-a-migration", permanent: false },
       // { source: "/orm/prisma-migrate/workflows/customizing-migrations", destination: "/orm/next/migrations/editing-a-migration", permanent: false },
       //
-      // No Prisma Next equivalent yet (stay on the Prisma 7 tree, flag to the
+      // No Prisma 8 equivalent yet (stay on the Prisma 7 tree, flag to the
       // SEO owner at cutover): /orm/prisma-migrate/understanding-prisma-migrate/shadow-database,
       // .../migration-histories, .../limitations-and-known-issues, and the
       // /orm/prisma-migrate/workflows/ pages for seeding, baselining,
       // squashing-migrations, generating-down-migrations, patching-and-hotfixing,
       // native-database-functions, native-database-types, prototyping-your-schema,
-      // troubleshooting — reassess as matching Prisma Next pages land.
+      // troubleshooting — reassess as matching Prisma 8 pages land.
       //
       // ── Guides URL cutover (DR-8689 / DR-8687) — DO NOT ENABLE YET ────────
-      // Today: Prisma 7 guides live at /guides/* and Prisma Next guides at
+      // Today: Prisma 7 guides live at /guides/* and Prisma 8 guides at
       // /guides/next/* (the "Guides version" dropdown switches between them).
-      // When Prisma Next becomes the default docs version ("/" becomes the
-      // Prisma Next docs and Prisma 7 moves to v7), the guides flip the same
+      // When Prisma 8 becomes the default docs version ("/" becomes the
+      // Prisma 8 docs and Prisma 7 moves to v7), the guides flip the same
       // way: the Prisma 7 guide tree moves under /guides/v7, and the
       // /guides/next tree is promoted to /guides. The redirects to enable at
       // that cutover, kept here so the map builds up in one reviewable place:
@@ -362,7 +362,7 @@ const config = {
       // { source: "/guides/next/:path*", destination: "/guides/:path*", permanent: false },
       //
       // Park the Prisma 7 versions under /guides/v7 (only for guides that
-      // have a Prisma Next replacement; unconverted guides keep their URL):
+      // have a Prisma 8 replacement; unconverted guides keep their URL):
       // { source: "/guides/runtimes/bun", destination: "/guides/v7/runtimes/bun", permanent: false },
       // { source: "/guides/runtimes/deno", destination: "/guides/v7/runtimes/deno", permanent: false },
       // { source: "/guides/frameworks/nextjs", destination: "/guides/v7/frameworks/nextjs", permanent: false },

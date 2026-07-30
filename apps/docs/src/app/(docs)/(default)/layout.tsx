@@ -17,11 +17,11 @@ const SIDEBAR_SLIDES = [
   {
     title: "The Next Evolution of Prisma ORM",
     description:
-      "Prisma Next: a full TypeScript rewrite with a new query API, SQL builder, and extensible architecture.",
+      "Prisma 8: a full TypeScript rewrite with a new query API, SQL builder, and extensible architecture.",
     href: "https://pris.ly/pn-anouncement",
     gradient: "orm" as const,
     badge: "New",
-    image: "/imgs/sidebar-banners/prisma-next.png",
+    image: "/imgs/sidebar-banners/prisma-8.png",
   },
 ];
 

@@ -63,10 +63,10 @@ export const commonQueries: LLMsLink[] = [
     description: "Set up Prisma ORM, Prisma Client, and Prisma Postgres in a new TypeScript app.",
   },
   {
-    title: "Try Prisma Next (Early Access)",
+    title: "Try Prisma 8 (Early Access)",
     href: "/next/getting-started",
     description:
-      "Choose a Prisma Next quickstart for a new project or add Prisma Next to an existing app.",
+      "Choose a Prisma 8 quickstart for a new project or add Prisma 8 to an existing app.",
   },
   {
     title: "Connect to Prisma Postgres",
@@ -162,7 +162,7 @@ export const llmsSections: LLMsSection[] = [
     slug: "orm",
     title: "Prisma ORM",
     description:
-      "Current Prisma ORM docs: setup, schema modeling, Prisma Client, migrations, and references (excludes legacy v6 and Prisma Next).",
+      "Current Prisma ORM docs: setup, schema modeling, Prisma Client, migrations, and references (excludes legacy v6 and Prisma 8).",
     prefixes: ["/orm", "/prisma-orm"],
     excludePrefixes: ["/orm/v6", "/orm/next"],
   },
@@ -175,9 +175,9 @@ export const llmsSections: LLMsSection[] = [
   },
   {
     slug: "next",
-    title: "Prisma Next (Early Access)",
+    title: "Prisma 8 (Early Access)",
     description:
-      "Prisma Next, the next major version of Prisma ORM, available in Early Access. A ground-up TypeScript rewrite that keeps the schema-first workflow while making it extensible, composable, and AI-agent friendly. Covers setup, ORM, guides, and CLI docs for Prisma Next.",
+      "Prisma 8, the next major version of Prisma ORM, available in Early Access. A ground-up TypeScript rewrite that keeps the schema-first workflow while making it extensible, composable, and AI-agent friendly. Covers setup, ORM, guides, and CLI docs for Prisma 8.",
     prefixes: ["/next", "/orm/next", "/guides/next", "/cli/next"],
   },
   {
@@ -191,7 +191,7 @@ export const llmsSections: LLMsSection[] = [
     slug: "guides",
     title: "Guides",
     description:
-      "End-to-end guides for using Prisma ORM and Prisma Postgres with popular frameworks and runtimes (Prisma Next guides live in the Prisma Next section).",
+      "End-to-end guides for using Prisma ORM and Prisma Postgres with popular frameworks and runtimes (Prisma 8 guides live in the Prisma 8 section).",
     prefixes: ["/guides"],
     excludePrefixes: ["/guides/next"],
   },
@@ -206,7 +206,7 @@ export const llmsSections: LLMsSection[] = [
     slug: "cli",
     title: "Prisma CLI",
     description:
-      "Prisma CLI command reference for init, generate, migrate, db, studio, and more (Prisma Next CLI docs live in the Prisma Next section).",
+      "Prisma CLI command reference for init, generate, migrate, db, studio, and more (Prisma 8 CLI docs live in the Prisma 8 section).",
     prefixes: ["/cli"],
     excludePrefixes: ["/cli/next"],
   },
