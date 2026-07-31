@@ -10,11 +10,16 @@ The Deploy Button lets anyone deploy your project in one click. Clicking it open
 
 Add it to your README, a blog post, or your own site:
 
-[![Deploy with Prisma](/img/deploy-button.svg)](https://console.prisma.io/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fprisma%2Fcompute-deploy-example&utm_source=docs)
+<a href="https://console.prisma.io/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fprisma%2Fcompute-deploy-example&utm_source=docs">
+  <img
+    src="/docs/img/deploy-button.svg"
+    alt="Deploy with Prisma"
+    width="172"
+    height="36"
+  />
+</a>
 
-:::note
-The Deploy Button is in early access. It supports public GitHub repositories; support for private repositories is planned.
-:::
+The button supports public GitHub repositories; support for private repositories is planned.
 
 ## Make your repository deployable
 
@@ -23,6 +28,7 @@ Any public GitHub repository works with the Deploy Button when it meets this min
 - **Public GitHub repository.** The button deploys the repository's default branch.
 - **A `prisma.compute.json` file at the repository root.** This is the same file Prisma Compute reads for any connected repository — it names the app and sets its HTTP port. It must describe a single app, and it must not set a `region`: the person deploying picks the region, which is used for both the database and the app. See [configuration](/compute/configuration).
 - **A TypeScript project with a `package.json` and a lockfile** (`bun.lock`, `package-lock.json`, `pnpm-lock.yaml`, or `yarn.lock`) at the root.
+- **A runnable app.** The project must build and start under the normal Compute build: it listens on the `httpPort` declared in `prisma.compute.json`, and anything it needs beyond `DATABASE_URL` is declared as [required environment variables](#environment-variables) on the button link.
 
 The repository is validated before it is copied, so a few shapes are rejected:
 
@@ -46,7 +52,7 @@ A minimal `prisma.compute.json`:
 ## How it works
 
 1. **Click the button.** The user lands on the clone page in the Prisma Console, which shows what will be deployed: your repository's name — and, once a GitHub account is connected, the resolved commit — linked back to the source on GitHub. If they're signed out, they sign in first and return to the same page automatically.
-2. **Choose where it goes.** They pick a workspace (when they have more than one), a GitHub account or organization, a name and visibility for their new repository (private by default), and a deployment region. If the Prisma GitHub App isn't installed yet, the flow walks them through installing it.
+2. **Choose where it goes.** They pick a workspace (when they have more than one), a GitHub account or organization, a name and visibility for their new repository (private by default), and a deployment region. If the button link declares [required environment variables](#environment-variables), the form prompts for their values here. If the Prisma GitHub App isn't installed yet, the flow walks them through installing it.
 3. **Authorize once.** GitHub asks the user to authorize the repository creation. This authorization is used for that single deployment and is not stored.
 4. **Prisma sets everything up.** Your code is copied — pinned to the default-branch commit resolved when they click Deploy — into a new repository under the user's account. A project with a Prisma Postgres database is provisioned, the database connection is configured automatically, and the first deployment starts.
 5. **Push to deploy.** The new repository is connected to the project, so every later push deploys through the normal Git workflow.
@@ -63,7 +69,7 @@ For the user clicking the button:
 - A GitHub account with the Prisma GitHub App installed on the account or organization that will own the new repository — the flow offers the installation step when it's missing.
 - Permission to create repositories under the selected account or organization.
 
-No environment variables need to be configured up front: `DATABASE_URL` is provisioned and wired automatically. Anything app-specific can be added in the Console after the first deployment — see [environment variables](/compute/environment-variables).
+`DATABASE_URL` never needs to be configured: it is provisioned and wired automatically. If your app needs other variables, declare their names on the button link and the Console prompts the user for values during the flow; see [environment variables](#environment-variables) below.
 
 ## URL format
 
@@ -73,19 +79,38 @@ A Deploy Button is a link to:
 https://console.prisma.io/new/clone?repository-url=<your repository URL>
 ```
 
-| Parameter | Required | Description |
-| --- | --- | --- |
-| `repository-url` | Yes | The public GitHub repository to deploy, in the form `https://github.com/owner/repo`. URL-encode it when composing the link. |
-| `project-name` | No | Prefills the name of the repository the user creates (they can change it). Defaults to your repository's name. |
-| `utm_source` | No | Attribution for where the click came from, for example `github-readme`. This is the value Prisma's own funnel reporting records. |
-| `utm_medium` | No | Attribution for the kind of placement, for example `button`. Carried on the link for your own analytics. |
-| `utm_campaign` | No | Attribution for a specific campaign or launch. Carried on the link for your own analytics. |
+| Parameter            | Required | Description                                                                                                                                                                                                                                                                 |
+| -------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `repository-url`     | Yes      | The public GitHub repository to deploy, in the form `https://github.com/owner/repo`. URL-encode it when composing the link.                                                                                                                                                 |
+| `project-name`       | No       | Prefills the name of the repository the user creates (they can change it). Defaults to your repository's name.                                                                                                                                                              |
+| `env`                | No       | Comma-separated names of environment variables your app requires, for example `env=OPENAI_API_KEY,RESEND_API_KEY`. The Console prompts the user for each value during the flow. Up to 10 names of uppercase letters, numbers, and underscores. Never put values in the URL. |
+| `env-example-<NAME>` | No       | A safe, non-secret example value that prefills the input for `<NAME>`, for example `env-example-RESEND_API_KEY=re_example_123`. Only use placeholder values that are safe to publish.                                                                                       |
+| `utm_source`         | No       | Attribution for where the click came from, for example `github-readme`. This is the value Prisma's own funnel reporting records.                                                                                                                                            |
+| `utm_medium`         | No       | Attribution for the kind of placement, for example `button`. Carried on the link for your own analytics.                                                                                                                                                                    |
+| `utm_campaign`       | No       | Attribution for a specific campaign or launch. Carried on the link for your own analytics.                                                                                                                                                                                  |
 
 Example with a project name and attribution:
 
 ```text
 https://console.prisma.io/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Facme%2Fshop-api&project-name=shop-api&utm_source=github-readme
 ```
+
+## Environment variables
+
+If your app needs configuration beyond the database connection, declare the variable names on the button link:
+
+```text
+https://console.prisma.io/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Facme%2Fshop-api&env=OPENAI_API_KEY,RESEND_API_KEY&env-example-RESEND_API_KEY=re_example_123
+```
+
+The Console then prompts the user for a value for each declared variable before the deployment starts. The values are stored encrypted in the user's new project and applied to the first deployment, so the app boots fully configured. The user can change them later in the project's [environment variables](/compute/environment-variables) settings.
+
+Two rules keep this safe:
+
+- **The URL carries names, never values.** The user types each value (or accepts your example) in the Console form. Values never appear in the link, in browser history, or in the GitHub authorization round-trip.
+- **Examples must be safe to publish.** An `env-example-<NAME>` value appears in your README for anyone to read, so use obvious placeholders like `re_example_123`, never a real key.
+
+`DATABASE_URL` and `DATABASE_URL_POOLED` are provisioned automatically. If you list them in `env`, the Console shows them as "Added automatically" instead of prompting, which is a useful way to signal that your app uses the database. A deploy link with no `env` parameter works exactly as before.
 
 ## Create your button
 
@@ -104,8 +129,15 @@ A complete Markdown example for a README:
 The same button in HTML:
 
 ```html
-<a href="https://console.prisma.io/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Facme%2Fshop-api&amp;utm_source=github-readme">
-  <img src="https://www.prisma.io/docs/img/deploy-button.svg" alt="Deploy with Prisma" width="172" height="36" />
+<a
+  href="https://console.prisma.io/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Facme%2Fshop-api&amp;utm_source=github-readme"
+>
+  <img
+    src="https://www.prisma.io/docs/img/deploy-button.svg"
+    alt="Deploy with Prisma"
+    width="172"
+    height="36"
+  />
 </a>
 ```
 
@@ -113,9 +145,11 @@ The same button in HTML:
 
 **"This repository cannot be deployed" with a message about `prisma.compute.json`.** The repository is missing the root configuration file. Add a `prisma.compute.json` at the repository root — see [make your repository deployable](#make-your-repository-deployable).
 
-**The clone page says the repository must be public.** The button only supports public source repositories today. The user's *copy* can still be private — that's their choice in the deploy form.
+**The clone page says the repository must be public.** The button only supports public source repositories today. The user's _copy_ can still be private — that's their choice in the deploy form.
 
 **"The repository changed before Prisma could copy the template. Choose another repository name and try again."** The chosen name usually collides with a repository the user already has. Picking a different name in the form and deploying again resolves it.
+
+**"This deploy link's environment variable list is not valid."** A name in the `env` parameter doesn't match the required shape. Names use uppercase letters, numbers, and underscores (like `MY_API_KEY`), up to 10 per link. Regenerate the link with valid names.
 
 **GitHub authorization was canceled or expired.** The authorization step must be completed within 15 minutes. Returning to the clone page and clicking Deploy again starts a fresh attempt.
 
