@@ -29,8 +29,11 @@ export const metadata: Metadata = {
 export default function PricingPage() {
   return (
     <>
-      <PricingHero />
-      <PricingPlans />
+      {/* The headline and the plan cards share the hero's wrapped panel, per the
+          client (2026-07-30) — the page resumes outside it from how-it-works on. */}
+      <PricingHero>
+        <PricingPlans />
+      </PricingHero>
       <PricingHowItWorks />
       <PricingCalculator />
       <PricingComparison />

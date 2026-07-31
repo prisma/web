@@ -11,10 +11,10 @@ import { PricingIncludes } from "./pricing-includes";
 export function PricingHowItWorks() {
   return (
     <section className="bg-white px-4 sm:px-8">
-      {/* pt-20 = 80px from the plan cards above; this block explains the cards
-          rather than starting a new section, so the gap stays tight. Full
-          rhythm resumes below. */}
-      <div className="mx-auto max-w-6xl pb-16 pt-20 sm:pb-24">
+      {/* Standard section rhythm: the plan cards now sit inside the hero panel,
+          so this is the first block outside it rather than a continuation of the
+          card row, and the tight pt-20 coupling no longer applies. */}
+      <div className="mx-auto max-w-6xl py-16 sm:py-24">
         <div className="grid gap-x-12 gap-y-12 lg:grid-cols-2 lg:gap-x-16">
           <div>
             <Reveal>

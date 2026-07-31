@@ -8,6 +8,14 @@ import { cn } from "@/lib/utils";
 //  - Shane (2026-07-29): "Most popular" moved from Pro to Starter, to anchor
 //    on the lower price rather than making Prisma read as expensive; Free
 //    states that it is free forever
+//
+// `blurb` is kept in the data but NOT rendered (2026-07-30). Shane asked to land
+// on the plans with no preamble, and trimming the cards is what buys the last
+// 40px: at 1440x800 the blurb pushed each card to 494px and the CTA fell below
+// the fold. Left in place rather than deleted because it is approved V2 copy and
+// this is the one piece of it with nowhere else to live — restoring it is a
+// one-line change if the client would rather have the copy than the fold.
+// Verify the fold if you do.
 const PLANS = [
   {
     name: "Free",
@@ -74,79 +82,73 @@ const PLANS = [
   },
 ];
 
+// Renders bare — no <section>, no gutter, no max-width. These cards live inside
+// the hero panel (PricingHero takes them as children), which already provides
+// all three. Rendering it standalone would have no horizontal padding.
 export function PricingPlans() {
   return (
-    <section className="bg-white px-4 sm:px-8">
-      {/* Tighter than the site's py-16/24 on purpose: the cards hug the hero
-          panel above them rather than starting a new section, which is what
-          gets them as close to the fold as the layout allows. No bottom
-          padding — the how-it-works block below owns that gap. */}
-      <div className="mx-auto max-w-6xl pt-12 sm:pt-16">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {PLANS.map((plan) => (
-            <div
-              key={plan.name}
-              className={cn(
-                "relative flex flex-col rounded-2xl border bg-white p-6",
-                plan.popular
-                  ? "spectrum-border spectrum-border-on border-transparent shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_48px_-24px_rgba(21,21,21,0.25)]"
-                  : "border-black/[0.06]",
-              )}
-            >
-              {plan.popular && (
-                <Marker className="absolute -top-3 left-1/2 -translate-x-1/2">Most popular</Marker>
-              )}
-              <p className="text-sm font-semibold text-foreground">{plan.name}</p>
-              <p className="mt-3 font-heading text-4xl font-medium tracking-tight text-foreground">
-                {plan.price}
-                <span className="ml-1 text-base font-normal text-muted-foreground">/ month</span>
-              </p>
-              {plan.note && <p className="mt-2 text-sm text-muted-foreground">{plan.note}</p>}
-              <ul className="mt-6 space-y-2.5 border-t border-black/[0.06] pt-5">
-                {plan.features.map((feature) => (
-                  <li
-                    key={feature}
-                    className="flex gap-2.5 text-sm leading-relaxed text-foreground"
-                  >
-                    <CheckBold className="mt-0.5 size-4 shrink-0 text-prism-cyan-500" aria-hidden />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-5 text-pretty text-sm leading-relaxed text-muted-foreground">
-                {plan.blurb}
-              </p>
-              <div className="mt-6 flex flex-1 items-end">
-                {/* Brand CTAs, not the shadcn pair: the recommended plan gets
+    <>
+      <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4 lg:gap-6">
+        {PLANS.map((plan) => (
+          <div
+            key={plan.name}
+            className={cn(
+              "relative flex flex-col rounded-2xl border bg-white p-6 sm:p-7",
+              plan.popular
+                ? "spectrum-border spectrum-border-on border-transparent shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_48px_-24px_rgba(21,21,21,0.25)]"
+                : "border-black/[0.06]",
+            )}
+          >
+            {plan.popular && (
+              <Marker className="absolute -top-3 left-1/2 -translate-x-1/2">Most popular</Marker>
+            )}
+            <p className="text-sm font-semibold text-foreground">{plan.name}</p>
+            <p className="mt-4 font-heading text-4xl font-medium tracking-tight text-foreground">
+              {plan.price}
+              <span className="ml-1 text-base font-normal text-muted-foreground">/ month</span>
+            </p>
+            {plan.note && <p className="mt-2.5 text-sm text-muted-foreground">{plan.note}</p>}
+            <ul className="mt-6 space-y-3 border-t border-black/[0.06] pt-6">
+              {plan.features.map((feature) => (
+                <li key={feature} className="flex gap-2.5 text-sm leading-relaxed text-foreground">
+                  <CheckBold className="mt-0.5 size-4 shrink-0 text-prism-cyan-500" aria-hidden />
+                  {feature}
+                </li>
+              ))}
+            </ul>
+            {/* plan.blurb is deliberately not rendered — see the note on PLANS */}
+            <div className="mt-8 flex flex-1 items-end">
+              {/* Brand CTAs, not the shadcn pair: the recommended plan gets
                     the prismatic fill, the rest the spectrum-on-hover outline,
                     so only one CTA in the row reads as primary. */}
-                {plan.popular ? (
-                  <PrismButton href={plan.href} fullWidth>
-                    {plan.cta}
-                  </PrismButton>
-                ) : (
-                  <PrismButtonOutline href={plan.href} className="w-full">
-                    {plan.cta}
-                  </PrismButtonOutline>
-                )}
-              </div>
+              {plan.popular ? (
+                <PrismButton href={plan.href} fullWidth>
+                  {plan.cta}
+                </PrismButton>
+              ) : (
+                <PrismButtonOutline href={plan.href} className="w-full">
+                  {plan.cta}
+                </PrismButtonOutline>
+              )}
             </div>
-          ))}
-        </div>
-
-        {/* Need more? */}
-        <div className="mt-4 flex flex-col items-start justify-between gap-4 rounded-2xl border border-black/[0.06] bg-card p-6 sm:flex-row sm:items-center">
-          <div>
-            <p className="font-heading text-lg font-medium text-foreground">Need more?</p>
-            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-              Custom pricing is available for high-volume teams.
-            </p>
           </div>
-          <PrismButtonOutline href="/contact" className="shrink-0">
-            Contact us
-          </PrismButtonOutline>
-        </div>
+        ))}
       </div>
-    </section>
+
+      {/* Need more? — sits inside the panel with the cards, since it's part of
+          the pricing block rather than the start of the next section. It falls
+          below the fold, which is fine; the four cards are what had to clear it. */}
+      <div className="mt-6 flex flex-col items-start justify-between gap-5 rounded-2xl border border-black/[0.06] bg-white p-7 sm:flex-row sm:items-center sm:p-8">
+        <div>
+          <p className="font-heading text-lg font-medium text-foreground">Need more?</p>
+          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+            Custom pricing is available for high-volume teams.
+          </p>
+        </div>
+        <PrismButtonOutline href="/contact" className="shrink-0">
+          Contact us
+        </PrismButtonOutline>
+      </div>
+    </>
   );
 }

@@ -16,14 +16,20 @@ const SPECTRUM =
 // V2 copy verbatim, with "No connection limits" removed — Gregory confirmed
 // pooled limits do exist (10/100/500/1000).
 //
-// ⚠️ The $385–450 / $70–90 figures and the "up to 5x less" claim are NOT
-// verified. Only the ~50K MAU column came from the client, and the pricing
-// thread flagged it as never confirmed with us. The blog post offered as
-// backing (prisma-compute-vs-vercel-pricing) compares Prisma Compute vs Vercel
-// at 20M requests — ~$98 vs ~$236, about 2.4x — a different product
-// comparison. Do not treat these as approved. The cost bars and the savings
-// marker below are derived from these same figures, so this section now leans on
-// them harder than it did — getting them confirmed matters more than it used to.
+// Figure provenance, as of 2026-07-30:
+//  - Supabase Pro $95–145 and Prisma Pro $72–90 are CLIENT-SUPPLIED, from their
+//    "Recommended website comparison" (fair 50K MAU model). Both trustworthy.
+//  - Neon + Vercel $385–450 is still NOT verified. It has never been confirmed,
+//    and the blog post once offered as backing compares Prisma Compute vs Vercel
+//    at 20M requests (~$98 vs ~$236, about 2.4x) — a different comparison.
+//
+// ⚠️ This is now an inconsistency the client needs to resolve, not just a gap.
+// SAVINGS_MULTIPLE is derived from the widest column, so it renders "Up to 5x
+// less" off the back of the unverified $385–450 — while the client's own freshly
+// supplied Supabase column sits beside it at only ~1.5x. Two competitor
+// comparisons in one section implying wildly different savings, with the
+// aggressive one being the unsourced one, is the kind of thing a competitor
+// checks. Flagged to André 2026-07-30; do not quietly keep shipping the 5x.
 
 // Placeholder marker. Anything using PENDING is awaiting figures from the
 // client — never fill these in with estimates.
@@ -40,6 +46,7 @@ const ALTERNATIVES = [
   {
     id: "neon-vercel",
     name: "Typical stack (Neon + Vercel)",
+    shortName: "Neon + Vercel",
     cost: "$385–450",
     pending: false,
     rows: [
@@ -49,23 +56,40 @@ const ALTERNATIVES = [
     ],
   },
   {
-    // Shane (2026-07-29) asked to compare against Supabase as well. We have no
-    // Supabase pricing, so this column is a placeholder until they supply it.
+    // Shane (2026-07-29) asked to compare against Supabase as well. Figures
+    // supplied by the client 2026-07-30 ("Recommended website comparison",
+    // Supabase vs Prisma fair 50K MAU model) and used verbatim — basis is
+    // ~50K MAU, 10M requests, 40 GB database, Medium–Large database compute.
     id: "supabase",
-    name: "Supabase",
-    cost: PENDING,
-    pending: true,
+    name: "Supabase Pro",
+    shortName: "Supabase",
+    cost: "$95–145",
+    pending: false,
     rows: [
-      { label: "Billing", value: PENDING },
-      { label: "Database data transfer", value: PENDING },
-      { label: "Spend limits", value: PENDING },
+      { label: "Billing", value: "Platform subscription + Postgres compute + function usage" },
+      { label: "Database data transfer", value: "250 GB egress included, then $0.09/GB" },
+      // The "database compute excluded" caveat is the client's own wording and
+      // is the point of the row — a spend cap that doesn't cover compute is not
+      // the same promise as Prisma's. Don't trim it.
+      {
+        label: "Spend limits",
+        value: "Spend cap on by default for covered usage; database compute excluded",
+      },
     ],
   },
 ];
 
+// Prisma's own column keeps the approved V2 marketing copy for the three rows.
+// The client's comparison doc phrases them analytically ("Postgres operations
+// and storage + application Compute usage", "Unlimited database data transfer",
+// "Spend limits included on paid plans") — same substance, so V2 wins on voice.
+//
+// ⚠️ The cost moved: V2 had $70–90, the client's 2026-07-30 doc says $72–90.
+// Taking theirs — the old figure was never verified in the first place (it was
+// open item 2), and this is the first time they have put a number in writing.
 const PRISMA = {
   name: "Prisma Pro",
-  cost: "$70–90",
+  cost: "$72–90",
   rows: [
     { label: "Billing", value: "One bill, one platform" },
     { label: "Database data transfer", value: "Included" },
@@ -98,8 +122,16 @@ function costFraction(cost: string): number | null {
 // can never drift from the bars or from the sentence above them. The V2 copy
 // says "up to 5x less"; if this ever renders something else, the figures moved
 // and the copy needs re-checking with the client.
+//
+// It names its basis. Unqualified, "Up to 5x less" sits on the Prisma card right
+// next to a Supabase column that is only ~1.5x more expensive, so it reads as a
+// claim about Supabase and is wrong by more than 3x. The multiple only ever
+// describes the widest column, so it says which one that is.
 const PRISMA_MID = costMidpoint(PRISMA.cost);
 const SAVINGS_MULTIPLE = PRISMA_MID && MAX_COST ? Math.round(MAX_COST / PRISMA_MID) : null;
+const WIDEST = ALTERNATIVES.reduce((a, b) =>
+  (costMidpoint(b.cost) ?? 0) > (costMidpoint(a.cost) ?? 0) ? b : a,
+);
 
 // Same dashed badge the spec table uses, so "we don't have this yet" looks
 // identical in both places on the page.
@@ -273,10 +305,12 @@ export function PricingComparison() {
                     <Pattern className="h-full w-full" scale={2.5} />
                   </div>
 
-                  <div className="relative flex items-start justify-between gap-3">
+                  <div className="relative flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
                     <RoleKicker color="bg-prism-cyan-400">{PRISMA.name}</RoleKicker>
                     {SAVINGS_MULTIPLE !== null && (
-                      <Marker className="-mt-0.5 shrink-0">Up to {SAVINGS_MULTIPLE}x less</Marker>
+                      <Marker className="-mt-0.5 shrink-0">
+                        Up to {SAVINGS_MULTIPLE}x less vs {WIDEST.shortName}
+                      </Marker>
                     )}
                   </div>
                   <p className="relative mt-5 font-heading text-[clamp(2rem,3.4vw,2.75rem)] font-medium leading-none tracking-tight text-foreground">
