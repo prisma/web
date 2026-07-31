@@ -139,7 +139,7 @@ export default defineConfig({
 });
 ```
 
-The `url` line is the only change; keep whatever else your config already declares. That snippet is the Prisma ORM 7 setup, where connection config lives in `prisma.config.ts`. On Prisma ORM 6 the same job is done by `directUrl` in the schema's `datasource` block; that field is deprecated in 7, and its value belongs in the config's `url` as above. For local development, set `DIRECT_URL` to the same value as `DATABASE_URL`; the local server has no pooler, so the two are one URL.
+The `url` line is the only change; keep whatever else your config already declares. That snippet is the Prisma ORM 7 setup, where connection config lives in `prisma.config.ts`. On Prisma ORM 6 the same job is done by `directUrl` in the schema's `datasource` block. Prisma ORM 7 moves connection URLs out of the schema entirely, and the direct string goes in the config's `url`, as above. For local development, set `DIRECT_URL` to the same value as `DATABASE_URL`; the local server has no pooler, so the two are one URL.
 
 That is the entire change: two environment values and one config line. No query rewrites, no driver swap, no schema edits. The app reads `DATABASE_URL` from the environment at runtime, and the CLI reads `prisma.config.ts` on every run.
 
@@ -149,7 +149,22 @@ Leave `.env` pointing at production for now: every Prisma CLI command in the res
 
 There are two situations, and they need different commands.
 
-**Starting fresh in production.** If your local data is disposable prototype data, replay the migration history against the hosted database and reseed. This assumes you have a `prisma/migrations` folder. If you prototyped with `npx prisma db push` and never created migrations, make one first: point `.env` back at your local database, run `npx prisma migrate dev --name init` there to turn the current schema into an initial migration, then point `.env` at production again before continuing. The deploy pipeline at the end of this post needs migration files to replay.
+**Starting fresh in production.** If your local data is disposable prototype data, replay the migration history against the hosted database and reseed.
+
+This assumes you have a `prisma/migrations` folder. If you prototyped with `npx prisma db push`, you do not: `db push` never writes migration files, and `migrate dev` will not create them retroactively against a database that already has your tables, it stops with `P3005, The database schema is not empty`. Baseline instead, with `.env` pointing at your local database:
+
+```bash
+mkdir -p prisma/migrations/0_init
+
+npx prisma migrate diff \
+  --from-empty \
+  --to-schema prisma/schema.prisma \
+  --script > prisma/migrations/0_init/migration.sql
+
+npx prisma migrate resolve --applied 0_init
+```
+
+That writes the migration your schema implies and records it as already applied locally, without touching your data. Point `.env` back at production before continuing. The [baselining docs](https://www.prisma.io/docs/orm/prisma-migrate/workflows/baselining) cover the workflow in full. Do this before dumping, too, if you are taking the data path below: it gives the dump a migration history to carry.
 
 With `.env` on production, the CLI applies your migrations to the hosted database, over the direct connection:
 
@@ -167,18 +182,13 @@ All migrations have been successfully applied.
 
 **Bringing the data along.** If the local data matters, copy it with the standard Postgres tools. The dump and restore below both take their database on the command line with `-d`, so neither reads `.env`; it does not matter that `.env` currently points at production.
 
-The flow is the same whether the source is Docker Postgres or a local `prisma dev` instance; both accept direct `postgres://` connections, and `pg_dump` handles a `prisma dev` database like any other Postgres. Two caveats for the `prisma dev` case. It serves one connection at a time, so close anything holding that connection (your app, Prisma Studio) before dumping, or `pg_dump` will wait behind it; `prisma dev` itself stays running. And trim the printed connection string back to `?sslmode=disable`, because `pg_dump` rejects Prisma's own pool-tuning parameters with `invalid URI query parameter: "connection_limit"`.
+This is the Docker path. If your data lives in a local `prisma dev` instance instead, use the [Prisma VS Code extension](https://marketplace.visualstudio.com/items?itemName=Prisma.prisma), whose push-to-cloud action moves a local database to a remote Prisma Postgres instance without any dump file. A local instance is PGlite rather than a full Postgres server, and dumping one is not the well-trodden path: it serves a single connection, so anything else holding it blocks the dump, and `pg_dump` rejects Prisma's pool-tuning parameters unless you trim the printed URL back to `?sslmode=disable`.
 
-Export from the local database. Use the compose URL for Docker, or the trimmed `prisma dev` URL, where a database named `template1` is normal, since that is the one `prisma dev` serves:
+Export from the Docker database:
 
 ```bash
-# Docker
 pg_dump -Fc -v -n public -f db_dump.bak \
   -d "postgresql://postgres:postgres@localhost:5432/postgres"
-
-# prisma dev (port from `npx prisma dev ls`)
-pg_dump -Fc -v -n public -f db_dump.bak \
-  -d "postgres://postgres:postgres@localhost:51214/template1?sslmode=disable"
 ```
 
 Import into Prisma Postgres using the direct connection string. `--no-owner` and `--no-acl` skip the ownership and grant statements that name your local roles, which do not exist in Prisma Postgres:
@@ -193,8 +203,6 @@ pg_restore \
 ```
 
 Three details worth knowing. First, Prisma Postgres runs PostgreSQL 17, so your `pg_dump` and `pg_restore` need to be version 17; check with `pg_dump --version`, and install the matching client tools if they are older. Second, `-n public` dumps the `public` schema, which is where Prisma puts your tables by default, including the `_prisma_migrations` table. Your migration history travels with the data, so you do not replay it separately; the `migrate status` check below is how you confirm it arrived. If you use `multiSchema` or keep tables outside `public`, add a `-n` flag per schema, or the restore will look clean while those tables are missing. Third, a restore prints a `schema "public" already exists` warning, which is safe to ignore. Take the two branches above as mutually exclusive: restoring on top of a database you already ran `migrate deploy` against produces genuine `already exists` errors, and that is a different situation. The [PostgreSQL import guide](https://www.prisma.io/docs/prisma-postgres/import-from-existing-database-postgresql) covers this flow end to end, including provider-specific connection notes.
-
-If you develop with `prisma dev` and prefer clicking over dumping, the [Prisma VS Code extension](https://marketplace.visualstudio.com/items?itemName=Prisma.prisma) has a push-to-cloud action that moves a local database to a remote Prisma Postgres instance directly.
 
 ## Validate, then deploy
 
