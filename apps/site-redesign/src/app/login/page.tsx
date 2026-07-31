@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 export default function LoginPage() {
   return (
     <section className="py-20">
-      <div className="container mx-auto px-4 flex justify-center">
+      <div className="mx-auto max-w-site px-4 flex justify-center">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">Welcome back</CardTitle>

@@ -24,7 +24,7 @@ const stats = [
 export function Stats() {
   return (
     <section className="bg-muted/50 py-24 px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl">
+      <div className="mx-auto max-w-site">
         {/* Section heading */}
         <div className="text-center">
           <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">

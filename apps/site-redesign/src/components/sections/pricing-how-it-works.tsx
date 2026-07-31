@@ -14,7 +14,7 @@ export function PricingHowItWorks() {
       {/* Standard section rhythm: the plan cards now sit inside the hero panel,
           so this is the first block outside it rather than a continuation of the
           card row, and the tight pt-20 coupling no longer applies. */}
-      <div className="mx-auto max-w-6xl py-16 sm:py-24">
+      <div className="mx-auto max-w-site py-16 sm:py-24">
         <div className="grid gap-x-12 gap-y-12 lg:grid-cols-2 lg:gap-x-16">
           <div>
             <Reveal>

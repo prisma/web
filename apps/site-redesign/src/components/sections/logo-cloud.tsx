@@ -86,7 +86,7 @@ function Track({ hidden = false }: { hidden?: boolean }) {
 export function LogoCloud() {
   return (
     <section className="px-6 py-16 lg:px-8 lg:py-24">
-      <div className="mx-auto max-w-7xl">
+      <div className="mx-auto max-w-site">
         <Reveal>
           <p className="text-center text-sm font-medium uppercase tracking-wider text-muted-foreground">
             Trusted by leading companies

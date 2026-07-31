@@ -64,15 +64,15 @@ export function PricingHero({ children }: { children?: React.ReactNode }) {
       {/* Generous top padding: the fixed header is 100px, and the rest is
           deliberate air above the headline — the reference page leads with space
           rather than getting straight into content. */}
-      {/* 84rem, wider than the site's max-w-6xl which the rest of the page keeps.
-          The cramped feeling was column width, not just spacing: four cards of
-          dense feature text at 1152px left each one 270px wide and wrapped
+      {/* max-w-site is the site-wide content width (see globals.css). The cramped
+          feeling here was column width, not just spacing: four cards of dense
+          feature text at the old 1152px left each one 270px wide and wrapped
           "1,000,000 operations / month, then $0.0080 per 1,000" onto three lines.
-          At 84rem the cards are 318px and two feature lines unwrap, so they come
-          out both roomier AND 46px shorter — which is the only reason the extra
-          padding here still leaves the CTAs above the fold at 1440x800.
-          Measured: 6xl/270px/528px tall -> 84rem/318px/482px tall. */}
-      <div className="relative mx-auto max-w-[84rem] pb-20 pt-32 sm:pb-24 md:pt-36">
+          At the site width the cards are 326px and two feature lines unwrap, so
+          they come out both roomier AND 46px shorter — which is the only reason
+          the padding here still leaves the CTAs above the fold at 1440x800.
+          Measured at 1440: 270px wide / 528px tall -> 326px / 482px. */}
+      <div className="relative mx-auto max-w-site pb-20 pt-32 sm:pb-24 md:pt-36">
         <div className="flex min-w-0 flex-col items-start">
           <RoleKicker color="bg-prism-cyan-400">Pricing</RoleKicker>
           <h1 className="isolate mt-5 max-w-[34ch] text-balance text-[clamp(2.25rem,3.4vw,3.125rem)] leading-[1.06]">

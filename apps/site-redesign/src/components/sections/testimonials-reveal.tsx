@@ -107,7 +107,7 @@ export function TestimonialsReveal({ heading = "Real teams, real builds" }: { he
 
   return (
     <section className="bg-white px-4 py-24 sm:px-8 sm:py-32">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-site">
         <h2 className="mx-auto max-w-[24ch] text-balance text-center text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
           {heading}
         </h2>

@@ -53,7 +53,7 @@ export function ProductHero({ name, hero }: Pick<ProductPageContent, "name" | "h
         <div className="relative px-4 sm:px-8">
           {/* top padding = bottom padding + the fixed header's footprint,
               so the gap under the navbar matches the wrapper's bottom */}
-          <div className="mx-auto grid max-w-6xl items-center gap-12 pb-20 pt-36 md:grid-cols-2 md:pb-28 md:pt-48 lg:gap-16">
+          <div className="mx-auto grid max-w-site items-center gap-12 pb-20 pt-36 md:grid-cols-2 md:pb-28 md:pt-48 lg:gap-16">
             {/* copy */}
             <div className="flex flex-col items-start">
               <p className="text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">

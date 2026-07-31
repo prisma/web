@@ -85,7 +85,7 @@ export function StackBento() {
             </p>
           </Reveal>
 
-          <div className="mx-auto mt-16 flex max-w-6xl flex-col">
+          <div className="mx-auto mt-16 flex max-w-site flex-col">
             {/* Prisma ORM — the foundation, full width */}
             <Reveal className="overflow-hidden rounded-2xl border border-black/[0.06] bg-card">
               <div className="grid lg:grid-cols-2">

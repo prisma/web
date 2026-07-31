@@ -45,7 +45,7 @@ export function PricingCalculator() {
 
   return (
     <section className="bg-white px-4 sm:px-8">
-      <div className="mx-auto max-w-6xl py-12 sm:py-16">
+      <div className="mx-auto max-w-site py-12 sm:py-16">
         <Reveal>
           <h2 className="text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
             Estimate usage before you upgrade

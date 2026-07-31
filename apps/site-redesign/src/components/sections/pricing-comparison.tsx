@@ -195,7 +195,7 @@ export function PricingComparison() {
         <Texture />
 
         <div className="relative px-4 pb-12 pt-16 sm:px-8 sm:pb-14 sm:pt-24">
-          <div className="mx-auto max-w-6xl">
+          <div className="mx-auto max-w-site">
             <Reveal>
               <h2 className="mx-auto max-w-[24ch] text-balance text-center text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
                 See how Prisma compares at scale

@@ -25,7 +25,7 @@ const AFTER = [
 export function Comparison() {
   return (
     <section className="bg-white px-4 py-24 sm:px-8 sm:py-32">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-site">
         <Reveal>
           <h2 className="mx-auto max-w-[24ch] text-balance text-center text-[clamp(2.125rem,3.5vw,3rem)] leading-[1.1]">
             The stack your agent has been waiting for

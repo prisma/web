@@ -196,7 +196,7 @@ function Cell({ value, highlight }: { value: string; highlight: boolean }) {
 export function PricingSpecTable() {
   return (
     <section className="overflow-x-clip bg-white px-4 sm:px-8">
-      <div className="mx-auto max-w-6xl py-16 sm:py-24">
+      <div className="mx-auto max-w-site py-16 sm:py-24">
         <Reveal>
           <h2 className="text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
             Compare plans

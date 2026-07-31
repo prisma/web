@@ -14,7 +14,7 @@ export default function BlogPage() {
 
   return (
     <section className="py-20">
-      <div className="container mx-auto px-4">
+      <div className="mx-auto max-w-site px-4">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
             Blog
@@ -24,7 +24,7 @@ export default function BlogPage() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-site mx-auto">
           {posts.map((post) => (
             <Link key={post.slug} href={`/blog/${post.slug}`}>
               <Card className="h-full hover:shadow-md transition-shadow">

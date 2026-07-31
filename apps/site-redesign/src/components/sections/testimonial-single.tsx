@@ -3,7 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 export function TestimonialSingle() {
   return (
     <section className="px-6 py-24 lg:px-8">
-      <div className="mx-auto max-w-7xl">
+      <div className="mx-auto max-w-site">
         <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
           {/* Decorative quote mark */}
           <span className="text-6xl font-serif leading-none text-muted-foreground/30 sm:text-8xl">

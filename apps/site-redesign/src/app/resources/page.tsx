@@ -159,7 +159,7 @@ export default function ResourcesPage() {
   return (
     <>
       <section className="py-20">
-        <div className="container mx-auto px-4">
+        <div className="mx-auto max-w-site px-4">
           <div className="text-center mb-16">
             <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
               Resources
@@ -169,7 +169,7 @@ export default function ResourcesPage() {
             </p>
           </div>
 
-          <div className="space-y-20 max-w-6xl mx-auto">
+          <div className="space-y-20 max-w-site mx-auto">
             {sections.map((section) => {
               const SectionIcon = section.icon
               return (
