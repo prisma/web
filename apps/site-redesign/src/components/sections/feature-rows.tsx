@@ -36,7 +36,7 @@ const features = [
 export function FeatureRows() {
   return (
     <section className="py-24 px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl">
+      <div className="mx-auto max-w-site">
         <div className="flex flex-col gap-24">
           {features.map((feature, index) => {
             const isReversed = index % 2 !== 0

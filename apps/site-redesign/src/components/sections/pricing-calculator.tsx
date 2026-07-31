@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Marker } from "@/components/brand/marker";
 import { RoleKicker } from "@/components/brand/role-kicker";
 import { CheckBold, XCircle } from "@/components/icons/forma";
 import { Reveal } from "@/components/motion/reveal";
@@ -44,7 +45,7 @@ export function PricingCalculator() {
 
   return (
     <section className="bg-white px-4 sm:px-8">
-      <div className="mx-auto max-w-6xl py-12 sm:py-16">
+      <div className="mx-auto max-w-site py-12 sm:py-16">
         <Reveal>
           <h2 className="text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
             Estimate usage before you upgrade
@@ -152,11 +153,7 @@ export function PricingCalculator() {
                   >
                     <div className="flex items-center justify-between gap-3">
                       <p className="text-sm font-semibold text-foreground">{e.plan.name} plan</p>
-                      {isRec && (
-                        <span className="rounded-full bg-foreground px-2.5 py-0.5 text-xs font-semibold text-white">
-                          Recommended
-                        </span>
-                      )}
+                      {isRec && <Marker>Recommended</Marker>}
                     </div>
                     {e.eligible ? (
                       <p className="mt-1.5 flex items-baseline gap-2 font-heading text-3xl font-medium tracking-tight text-foreground">

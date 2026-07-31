@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 export function HeroCentered() {
   return (
     <section className="px-6 pt-24 pb-16 lg:px-8 lg:pt-32 lg:pb-24">
-      <div className="mx-auto max-w-7xl">
+      <div className="mx-auto max-w-site">
         <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
           <Badge variant="secondary" className="mb-6 px-3 py-1 text-sm">
             Now in public beta

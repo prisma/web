@@ -1,6 +1,18 @@
-import { CheckBold } from "@/components/icons/forma";
+import { Marker } from "@/components/brand/marker";
+import { CheckBold, Database, Layers, Server, Shield, Table } from "@/components/icons/forma";
 import { Reveal } from "@/components/motion/reveal";
 import { cn } from "@/lib/utils";
+
+// Spectrum gradient matching the brand CTA glow (see prism-button.tsx).
+const SPECTRUM =
+  "linear-gradient(85deg, #01d7e4 0%, #f3c306 25%, #f37a03 50%, #f43531 74%, #f00e5c 100%)";
+
+// The site's prismatic halo, lifted verbatim from hero-home.tsx. Conic rather
+// than linear is the whole point: it wraps the perimeter, so a single layer
+// gives an even glow on all four sides. An earlier attempt here stacked ten
+// radial gradients to fake that and read as separate coloured blobs.
+const HALO =
+  "conic-gradient(var(--color-prism-yellow-300), var(--color-prism-red-500) 32%, var(--color-prism-cyan-400) 64%, var(--color-prism-yellow-300))";
 
 // Detailed spec table — Shane (2026-07-29): "we'd need to bring back the
 // detailed spec tables further down the page, these tend to be quite
@@ -20,15 +32,34 @@ import { cn } from "@/lib/utils";
 //  - SUPPORT reads Community / Community / Standard / Premium on the live
 //    page, where Gregory's May notes said Community / Community / 24h / 2h.
 //    The live page wins here, as with every other figure.
+//
+// The reader-facing legend under this table ("TBC — awaiting confirmation…, an
+// em dash means not included") was removed on the client's instruction
+// (2026-07-30). It was half internal note anyway and shouldn't ship to Prisma's
+// users. Consequence: nothing on the page now spells out the TBC-vs-em-dash
+// distinction, so the badge's title tooltip is the only affordance left. The
+// three open questions above are tracked here and in the project's open-items
+// list — they are NOT resolved just because the note is gone.
 const PENDING = "TBC";
 
 const YES = "yes";
 
 type Row = { label: string; values: [string, string, string, string] };
 
-const GROUPS: { label: string; rows: Row[] }[] = [
+type Group = {
+  label: string;
+  /** Glyph + brand colour, cycling the prism trio down the table so the group
+      bands give a long table some rhythm to navigate by. */
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
+  rows: Row[];
+};
+
+const GROUPS: Group[] = [
   {
     label: "Usage",
+    icon: Database,
+    color: "text-prism-cyan-500",
     rows: [
       { label: "Monthly price", values: ["$0", "$10", "$49", "$129"] },
       {
@@ -48,6 +79,10 @@ const GROUPS: { label: string; rows: Row[] }[] = [
   },
   {
     label: "Managed connection pool",
+    icon: Server,
+    // -500 rather than -400: at 16px on white the lighter amber reads as washed
+    // out next to the cyan and red glyphs.
+    color: "text-prism-yellow-500",
     rows: [
       { label: "Connection limit (pooled)", values: ["10", "100", "500", "1,000"] },
       { label: "Connection limit (direct)", values: ["10", "10", "50", "100"] },
@@ -72,6 +107,8 @@ const GROUPS: { label: string; rows: Row[] }[] = [
   },
   {
     label: "Global cache",
+    icon: Layers,
+    color: "text-prism-red-500",
     rows: [
       // Live values are $0.0020 / $0.0010 per 1,000 and 5/5/10/20 purges per
       // hour, but Gregory said Accelerate is being deprecated — so whether
@@ -82,6 +119,8 @@ const GROUPS: { label: string; rows: Row[] }[] = [
   },
   {
     label: "Data",
+    icon: Table,
+    color: "text-prism-cyan-500",
     rows: [
       { label: "Query insights", values: [YES, YES, YES, YES] },
       { label: "View and edit your data", values: [YES, YES, YES, YES] },
@@ -98,6 +137,10 @@ const GROUPS: { label: string; rows: Row[] }[] = [
   },
   {
     label: "Platform",
+    icon: Shield,
+    // -500 rather than -400: at 16px on white the lighter amber reads as washed
+    // out next to the cyan and red glyphs.
+    color: "text-prism-yellow-500",
     rows: [
       // live page: Community / Community / Standard / Premium
       // Gregory (May): Community / Community / 24h / 2h — unresolved, so placeholder
@@ -147,10 +190,13 @@ function Cell({ value, highlight }: { value: string; highlight: boolean }) {
   );
 }
 
+// overflow-x-clip on the section contains the glow's horizontal bleed:
+// -inset-x-10 is wider than the mobile gutter and pushed the document 24px
+// sideways. `clip` rather than `hidden` so it doesn't become a scroll container.
 export function PricingSpecTable() {
   return (
-    <section className="bg-white px-4 sm:px-8">
-      <div className="mx-auto max-w-6xl py-16 sm:py-24">
+    <section className="overflow-x-clip bg-white px-4 sm:px-8">
+      <div className="mx-auto max-w-site py-16 sm:py-24">
         <Reveal>
           <h2 className="text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
             Compare plans
@@ -162,8 +208,109 @@ export function PricingSpecTable() {
           </p>
         </Reveal>
 
-        <Reveal delay={0.15}>
-          <div className="mt-10 overflow-x-auto rounded-2xl border border-black/[0.06]">
+        {/* The table was the only block on the page with no brand presence at
+            all — bare white, while every other section sits in a panel with the
+            spectral wash. */}
+        <Reveal delay={0.15} className="relative mt-10">
+          {/* The hero's prismatic halo — same two layers and geometry: a tight
+              inner edge plus a soft outer bloom, hugging the table rather than
+              spreading into the copy around it.
+              Opacity is a third of the hero's 60/40. The hero's card is the
+              focal point of the page and earns a bright halo; this is a dense
+              data table where the glow should only suggest the brand, so at the
+              hero's values it competed with the content. Dialled down twice on
+              the client's eye — don't "resync" it with the hero. */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -inset-px rounded-2xl opacity-20 blur-[20px]"
+            style={{ background: HALO }}
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -inset-4 rounded-3xl opacity-10 blur-[56px]"
+            style={{ background: HALO }}
+          />
+          {/* Mobile and tablet: every plan visible at once, nothing to open.
+              The table is 832px wide against a ~356px viewport, so Pro and
+              Business sat outside a horizontal scroller with nothing to signal
+              they were there, and values clipped mid-word. Four columns of spec
+              text cannot fit that width, so the data is pivoted feature-first
+              instead of plan-first: each feature states its four values
+              together, which keeps the comparison the table exists to make.
+              The uniform-row collapse is what makes that affordable. 12 of the
+              21 rows are identical across all four plans (every "Unlimited",
+              every all-plans check, every four-way TBC), so those render as one
+              line instead of a four-cell grid. Without it the pivot would be
+              roughly twice as long for no added information — and it has the
+              side effect of making the rows where plans actually DIFFER the
+              visually prominent ones.
+              The crossover is lg, not md: the table needs its 832px min-width
+              plus the section's 64px of gutter, so at md (768px) it still hid
+              130px inside the scroller. It fits cleanly from ~900px, and lg is
+              the first standard breakpoint past that. */}
+          <div className="relative overflow-hidden rounded-2xl border border-black/[0.06] bg-white lg:hidden">
+            {GROUPS.map((group) => (
+              <div key={group.label} className="border-b border-black/[0.06] last:border-b-0">
+                <p className="flex items-center gap-2.5 bg-foreground/[0.03] px-5 py-3 text-sm font-semibold text-foreground">
+                  <group.icon className={cn("size-4 shrink-0", group.color)} />
+                  {group.label}
+                </p>
+                <dl>
+                  {group.rows.map((row) => {
+                    const uniform = row.values.every((v) => v === row.values[0]);
+                    return (
+                      <div
+                        key={row.label}
+                        className="border-t border-black/[0.06] px-5 py-3.5 first:border-t-0"
+                      >
+                        {uniform ? (
+                          <div className="flex items-start justify-between gap-4">
+                            <dt className="text-sm leading-relaxed text-muted-foreground">
+                              {row.label}
+                            </dt>
+                            <dd className="shrink-0 text-right">
+                              <Cell value={row.values[0]} highlight />
+                            </dd>
+                          </div>
+                        ) : (
+                          <>
+                            <dt className="text-sm leading-relaxed text-muted-foreground">
+                              {row.label}
+                            </dt>
+                            <dd className="mt-2.5 grid grid-cols-2 gap-2">
+                              {row.values.map((v, i) => (
+                                <div
+                                  key={PLAN_NAMES[i]}
+                                  className={cn(
+                                    "rounded-lg px-3 py-2",
+                                    // Recommended plan lifted on white, the rest
+                                    // recessed — the site's before/after language
+                                    // from pricing-comparison.tsx.
+                                    i === HIGHLIGHT
+                                      ? "bg-white ring-1 ring-black/[0.09]"
+                                      : "bg-foreground/[0.03]",
+                                  )}
+                                >
+                                  <p className="text-[0.6875rem] font-medium text-muted-foreground">
+                                    {PLAN_NAMES[i]}
+                                  </p>
+                                  <div className="mt-1">
+                                    <Cell value={v} highlight={i === HIGHLIGHT} />
+                                  </div>
+                                </div>
+                              ))}
+                            </dd>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+                </dl>
+              </div>
+            ))}
+          </div>
+
+          <div className="relative hidden overflow-x-auto rounded-2xl border border-black/[0.06] bg-white lg:block">
             <table className="w-full min-w-[52rem] border-collapse text-left">
               <caption className="sr-only">
                 Feature and limit comparison across the Free, Starter, Pro and Business plans
@@ -181,14 +328,26 @@ export function PricingSpecTable() {
                     <span className="sr-only">Feature</span>
                   </th>
                   {PLAN_NAMES.map((name, i) => (
-                    <th key={name} scope="col" className="px-5 pb-4 pt-5">
-                      <span
-                        className={cn(
-                          "text-sm font-semibold",
-                          i === HIGHLIGHT ? "text-foreground" : "text-muted-foreground",
-                        )}
-                      >
-                        {name}
+                    <th key={name} scope="col" className="relative px-5 pb-4 pt-5">
+                      {/* The lit column gets a spectrum cap rather than relying
+                          on the paper tint alone, which was almost invisible. */}
+                      {i === HIGHLIGHT && (
+                        <span
+                          aria-hidden
+                          className="absolute inset-x-0 top-0 h-[3px]"
+                          style={{ backgroundImage: SPECTRUM }}
+                        />
+                      )}
+                      <span className="flex items-center gap-2">
+                        <span
+                          className={cn(
+                            "text-sm font-semibold",
+                            i === HIGHLIGHT ? "text-foreground" : "text-muted-foreground",
+                          )}
+                        >
+                          {name}
+                        </span>
+                        {i === HIGHLIGHT && <Marker>Most popular</Marker>}
                       </span>
                     </th>
                   ))}
@@ -197,12 +356,19 @@ export function PricingSpecTable() {
               {GROUPS.map((group) => (
                 <tbody key={group.label}>
                   <tr>
+                    {/* Sentence case with the group's glyph in a brand colour.
+                        Not uppercase or letter-spaced: role-kicker.tsx sets that
+                        rule for the site's labels, and this table was the one
+                        place still breaking it. */}
                     <th
                       scope="colgroup"
                       colSpan={5}
-                      className="border-t border-black/[0.06] bg-card px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+                      className="border-t border-black/[0.06] bg-card px-5 py-3"
                     >
-                      {group.label}
+                      <span className="flex items-center gap-2.5 text-sm font-semibold text-foreground">
+                        <group.icon className={cn("size-4 shrink-0", group.color)} />
+                        {group.label}
+                      </span>
                     </th>
                   </tr>
                   {group.rows.map((row) => (
@@ -224,14 +390,6 @@ export function PricingSpecTable() {
               ))}
             </table>
           </div>
-        </Reveal>
-
-        <Reveal delay={0.2}>
-          <p className="mt-4 text-sm text-muted-foreground/70">
-            <span className="font-medium">TBC</span> — awaiting confirmation: Free-tier backup
-            retention, support tiers, and whether the global cache rows stay now that Accelerate is
-            being deprecated. An em dash (—) means not included on that plan.
-          </p>
         </Reveal>
       </div>
     </section>

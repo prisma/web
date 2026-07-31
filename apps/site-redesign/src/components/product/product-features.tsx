@@ -82,7 +82,7 @@ export function ProductFeatures({ features }: Pick<ProductPageContent, "features
         </div>
         <Texture opacity={0.06} blend="multiply" />
 
-        <div className="relative mx-auto max-w-6xl px-4 py-20 sm:px-8 sm:py-24">
+        <div className="relative mx-auto max-w-site px-4 py-20 sm:px-8 sm:py-24">
           <div className="mx-auto max-w-3xl text-center max-md:text-left">
             <Reveal>
               <h2 className="text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">

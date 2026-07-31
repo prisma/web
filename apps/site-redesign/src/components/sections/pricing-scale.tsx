@@ -306,7 +306,7 @@ function ScenarioCarousel() {
 export function PricingScale() {
   return (
     <section className="bg-white px-4 py-24 sm:px-8 sm:py-32">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-site">
         {/* Top: heading + description (left), bullets + CTA (right) */}
         <div className="grid gap-10 lg:grid-cols-2 lg:items-start lg:gap-16">
           <div>

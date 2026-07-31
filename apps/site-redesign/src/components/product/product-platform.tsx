@@ -47,7 +47,7 @@ export function ProductPlatform({ platform }: Pick<ProductPageContent, "platform
 
   return (
     <section className="relative overflow-hidden bg-white px-4 py-24 sm:px-8 sm:py-32">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-site">
         <div className="mx-auto max-w-3xl text-center max-md:text-left">
           <Reveal>
             <h2 className="text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">

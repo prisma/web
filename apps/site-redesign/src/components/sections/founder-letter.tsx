@@ -3,7 +3,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 export function FounderLetter() {
   return (
     <section className="bg-muted/50 px-6 py-16 lg:px-8 lg:py-24">
-      <div className="mx-auto max-w-7xl">
+      <div className="mx-auto max-w-site">
         <div className="grid gap-12 lg:grid-cols-[280px_1fr] lg:gap-16">
           {/* Left: founder info */}
           <div className="flex flex-col items-center text-center lg:items-start lg:text-left">

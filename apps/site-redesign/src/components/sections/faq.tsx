@@ -57,7 +57,7 @@ export function Faq({
 } = {}) {
   return (
     <section className="px-6 py-24 lg:px-8">
-      <div className="mx-auto max-w-7xl">
+      <div className="mx-auto max-w-site">
         <Reveal className="mx-auto max-w-2xl text-center">
           <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
             {heading}

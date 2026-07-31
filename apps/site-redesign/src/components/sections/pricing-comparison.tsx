@@ -1,9 +1,13 @@
 import { GlassPrismSpin } from "@/components/brand/glass-prism-spin";
+import { Marker } from "@/components/brand/marker";
 import { Pattern } from "@/components/brand/pattern";
 import { RoleKicker } from "@/components/brand/role-kicker";
 import { Texture } from "@/components/brand/texture";
 import { CheckBold, X } from "@/components/icons/forma";
+import { CountUp } from "@/components/motion/count-up";
 import { Reveal } from "@/components/motion/reveal";
+import { cn } from "@/lib/utils";
+import { CostBar } from "./pricing-cost-bar";
 
 // Spectrum gradient matching the brand CTA glow (see prism-button.tsx).
 const SPECTRUM =
@@ -12,20 +16,37 @@ const SPECTRUM =
 // V2 copy verbatim, with "No connection limits" removed — Gregory confirmed
 // pooled limits do exist (10/100/500/1000).
 //
-// ⚠️ The $385–450 / $70–90 figures and the "up to 5x less" claim are NOT
-// verified. Only the ~50K MAU column came from the client, and the pricing
-// thread flagged it as never confirmed with us. The blog post offered as
-// backing (prisma-compute-vs-vercel-pricing) compares Prisma Compute vs Vercel
-// at 20M requests — ~$98 vs ~$236, about 2.4x — a different product
-// comparison. Do not treat these as approved.
+// Figure provenance, as of 2026-07-30:
+//  - Supabase Pro $95–145 and Prisma Pro $72–90 are CLIENT-SUPPLIED, from their
+//    "Recommended website comparison" (fair 50K MAU model). Both trustworthy.
+//  - Neon + Vercel $385–450 is still NOT verified. It has never been confirmed,
+//    and the blog post once offered as backing compares Prisma Compute vs Vercel
+//    at 20M requests (~$98 vs ~$236, about 2.4x) — a different comparison.
+//
+// ⚠️ This is now an inconsistency the client needs to resolve, not just a gap.
+// SAVINGS_MULTIPLE is derived from the widest column, so it renders "Up to 5x
+// less" off the back of the unverified $385–450 — while the client's own freshly
+// supplied Supabase column sits beside it at only ~1.5x. Two competitor
+// comparisons in one section implying wildly different savings, with the
+// aggressive one being the unsourced one, is the kind of thing a competitor
+// checks. Flagged to André 2026-07-30; do not quietly keep shipping the 5x.
+
 // Placeholder marker. Anything using PENDING is awaiting figures from the
 // client — never fill these in with estimates.
-const PENDING = "—";
+//
+// This is the dashed "TBC" badge, NOT an em dash. The spec table lower down
+// this same page tells the reader in print that an em dash means "not included
+// on that plan", so using one here made the Supabase column read as a claim
+// that Supabase has no billing model and no spend limits. It means we have not
+// been given their figures. See pricing-spec-table.tsx, which draws the same
+// distinction.
+const PENDING = "TBC";
 
 const ALTERNATIVES = [
   {
     id: "neon-vercel",
     name: "Typical stack (Neon + Vercel)",
+    shortName: "Neon + Vercel",
     cost: "$385–450",
     pending: false,
     rows: [
@@ -35,29 +56,95 @@ const ALTERNATIVES = [
     ],
   },
   {
-    // Shane (2026-07-29) asked to compare against Supabase as well. We have no
-    // Supabase pricing, so this column is a placeholder until they supply it.
+    // Shane (2026-07-29) asked to compare against Supabase as well. Figures
+    // supplied by the client 2026-07-30 ("Recommended website comparison",
+    // Supabase vs Prisma fair 50K MAU model) and used verbatim — basis is
+    // ~50K MAU, 10M requests, 40 GB database, Medium–Large database compute.
     id: "supabase",
-    name: "Supabase",
-    cost: PENDING,
-    pending: true,
+    name: "Supabase Pro",
+    shortName: "Supabase",
+    cost: "$95–145",
+    pending: false,
     rows: [
-      { label: "Billing", value: PENDING },
-      { label: "Database data transfer", value: PENDING },
-      { label: "Spend limits", value: PENDING },
+      { label: "Billing", value: "Platform subscription + Postgres compute + function usage" },
+      { label: "Database data transfer", value: "250 GB egress included, then $0.09/GB" },
+      // The "database compute excluded" caveat is the client's own wording and
+      // is the point of the row — a spend cap that doesn't cover compute is not
+      // the same promise as Prisma's. Don't trim it.
+      {
+        label: "Spend limits",
+        value: "Spend cap on by default for covered usage; database compute excluded",
+      },
     ],
   },
 ];
 
+// Prisma's own column keeps the approved V2 marketing copy for the three rows.
+// The client's comparison doc phrases them analytically ("Postgres operations
+// and storage + application Compute usage", "Unlimited database data transfer",
+// "Spend limits included on paid plans") — same substance, so V2 wins on voice.
+//
+// ⚠️ The cost moved: V2 had $70–90, the client's 2026-07-30 doc says $72–90.
+// Taking theirs — the old figure was never verified in the first place (it was
+// open item 2), and this is the first time they have put a number in writing.
 const PRISMA = {
   name: "Prisma Pro",
-  cost: "$70–90",
+  cost: "$72–90",
   rows: [
     { label: "Billing", value: "One bill, one platform" },
     { label: "Database data transfer", value: "Included" },
     { label: "Spend limits", value: "On by default" },
   ],
 };
+
+// Bar length and the savings multiple are both derived from the cost strings
+// above, so the figures stay a single source of truth: correct "$385–450" and
+// the bar and the multiple follow it. Nothing here introduces a number that
+// isn't already in the copy.
+//
+// Returns null when a column has no figure yet (the Supabase placeholder) —
+// null is "unknown", which the bar draws as a dashed empty track, not as zero.
+function costMidpoint(cost: string): number | null {
+  const nums = cost.match(/\d[\d,]*/g)?.map((n) => Number(n.replace(/,/g, "")));
+  if (!nums?.length) return null;
+  return nums.reduce((a, b) => a + b, 0) / nums.length;
+}
+
+const COSTS = [...ALTERNATIVES.map((a) => a.cost), PRISMA.cost];
+const MAX_COST = Math.max(...COSTS.map((c) => costMidpoint(c) ?? 0));
+
+function costFraction(cost: string): number | null {
+  const mid = costMidpoint(cost);
+  return mid === null || !MAX_COST ? null : mid / MAX_COST;
+}
+
+// The headline multiple, rounded from the figures rather than hardcoded, so it
+// can never drift from the bars or from the sentence above them. The V2 copy
+// says "up to 5x less"; if this ever renders something else, the figures moved
+// and the copy needs re-checking with the client.
+//
+// It names its basis. Unqualified, "Up to 5x less" sits on the Prisma card right
+// next to a Supabase column that is only ~1.5x more expensive, so it reads as a
+// claim about Supabase and is wrong by more than 3x. The multiple only ever
+// describes the widest column, so it says which one that is.
+const PRISMA_MID = costMidpoint(PRISMA.cost);
+const SAVINGS_MULTIPLE = PRISMA_MID && MAX_COST ? Math.round(MAX_COST / PRISMA_MID) : null;
+const WIDEST = ALTERNATIVES.reduce((a, b) =>
+  (costMidpoint(b.cost) ?? 0) > (costMidpoint(a.cost) ?? 0) ? b : a,
+);
+
+// Same dashed badge the spec table uses, so "we don't have this yet" looks
+// identical in both places on the page.
+function PendingBadge() {
+  return (
+    <span
+      title="Awaiting figures from Prisma"
+      className="inline-flex rounded border border-dashed border-black/20 px-1.5 py-0.5 text-xs font-medium text-muted-foreground/70"
+    >
+      {PENDING}
+    </span>
+  );
+}
 
 // "See how Prisma compares at scale" — wrapped prismatic panel (hero idiom:
 // beam fan and a turning glass prism cropped by the bottom edge).
@@ -108,7 +195,7 @@ export function PricingComparison() {
         <Texture />
 
         <div className="relative px-4 pb-12 pt-16 sm:px-8 sm:pb-14 sm:pt-24">
-          <div className="mx-auto max-w-6xl">
+          <div className="mx-auto max-w-site">
             <Reveal>
               <h2 className="mx-auto max-w-[24ch] text-balance text-center text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
                 See how Prisma compares at scale
@@ -131,32 +218,55 @@ export function PricingComparison() {
               </p>
             </Reveal>
 
-            <div className="mt-14 grid gap-8 lg:grid-cols-3 lg:gap-8">
-              {/* the alternatives — plain and muted, no card treatment */}
+            {/* Columns stretch to a shared height so the three read as one
+                comparison rather than three stacks of different length. */}
+            <div className="mt-14 grid gap-5 lg:grid-cols-3 lg:gap-6">
+              {/* The alternatives. Recessed translucent glass rather than bare
+                  text: it gives the three columns one shared rhythm so they
+                  read as a comparison, and stays transparent enough for the
+                  spectral wash to carry through from the panel behind. */}
               {ALTERNATIVES.map((alt, i) => (
                 <Reveal
                   key={alt.id}
                   delay={0.2 + i * 0.05}
-                  className="flex flex-col px-0 py-4 sm:p-6"
+                  className={cn(
+                    "flex flex-col rounded-[1.25rem] border p-6 backdrop-blur-[2px]",
+                    alt.pending
+                      ? "border-dashed border-black/15 bg-white/25"
+                      : "border-black/[0.05] bg-white/45",
+                  )}
                 >
                   <RoleKicker color="bg-foreground/20">{alt.name}</RoleKicker>
-                  <p className="mt-5 font-heading text-[clamp(2rem,3.4vw,2.75rem)] font-medium leading-none tracking-tight text-muted-foreground">
-                    {alt.cost}
-                    {!alt.pending && (
+                  {/* A pending column shows the badge at label size, not the
+                      price at display size — a 2.75rem "TBC" reads as a broken
+                      column rather than a reserved one. */}
+                  {alt.pending ? (
+                    <p className="mt-5 flex h-[clamp(2rem,3.4vw,2.75rem)] items-center">
+                      <PendingBadge />
+                    </p>
+                  ) : (
+                    <p className="mt-5 font-heading text-[clamp(2rem,3.4vw,2.75rem)] font-medium leading-none tracking-tight text-muted-foreground">
+                      <CountUp value={alt.cost} />
                       <span className="ml-1.5 align-baseline text-base font-normal">/month</span>
-                    )}
-                  </p>
+                    </p>
+                  )}
                   <p className="mt-2 text-sm text-muted-foreground">
                     {alt.pending ? "Awaiting figures" : "at ~50K MAU"}
                   </p>
 
-                  <dl className="mt-9 flex flex-col gap-5 border-t border-black/[0.06] pt-7">
+                  <CostBar
+                    className="mt-5"
+                    fraction={costFraction(alt.cost)}
+                    delay={0.3 + i * 0.05}
+                  />
+
+                  <dl className="mt-7 flex flex-col gap-5 border-t border-black/[0.06] pt-6">
                     {alt.rows.map((r) => (
                       <div key={r.label}>
                         <dt className="text-sm font-semibold text-foreground/70">{r.label}</dt>
                         <dd className="mt-1.5 flex items-start gap-3 text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground">
                           {alt.pending ? (
-                            <span className="text-muted-foreground/60">{r.value}</span>
+                            <PendingBadge />
                           ) : (
                             <>
                               <X
@@ -174,45 +284,66 @@ export function PricingComparison() {
                 </Reveal>
               ))}
 
-              {/* Prisma — lifted on white with the always-on spectrum ring and
-                  the brand cube pattern greyscaled behind it */}
-              <Reveal
-                delay={0.3}
-                className="spectrum-border spectrum-border-on relative flex flex-col overflow-hidden rounded-[1.25rem] border border-transparent bg-white p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_48px_-24px_rgba(21,21,21,0.25)]"
-              >
+              {/* Prisma — lifted on white with the always-on spectrum ring, the
+                  brand cube pattern greyscaled behind it, and a soft spectrum
+                  glow underneath so the winning column sits above the other
+                  two rather than merely beside them. */}
+              <div className="relative">
                 <div
                   aria-hidden
-                  className="pointer-events-none absolute inset-0 opacity-[0.04] grayscale [mask-image:linear-gradient(to_bottom,black,transparent_55%)]"
+                  className="pointer-events-none absolute -inset-x-4 -bottom-6 top-8 rounded-full opacity-25 blur-[52px]"
+                  style={{ backgroundImage: SPECTRUM }}
+                />
+                <Reveal
+                  delay={0.3}
+                  className="spectrum-border spectrum-border-on relative flex h-full flex-col overflow-hidden rounded-[1.25rem] border border-transparent bg-white p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_48px_-24px_rgba(21,21,21,0.25)]"
                 >
-                  <Pattern className="h-full w-full" scale={2.5} />
-                </div>
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 opacity-[0.04] grayscale [mask-image:linear-gradient(to_bottom,black,transparent_55%)]"
+                  >
+                    <Pattern className="h-full w-full" scale={2.5} />
+                  </div>
 
-                <RoleKicker color="bg-prism-cyan-400" className="relative">
-                  {PRISMA.name}
-                </RoleKicker>
-                <p className="relative mt-5 font-heading text-[clamp(2rem,3.4vw,2.75rem)] font-medium leading-none tracking-tight text-foreground">
-                  {PRISMA.cost}
-                  <span className="ml-1.5 align-baseline text-base font-normal text-muted-foreground">
-                    /month
-                  </span>
-                </p>
-                <p className="relative mt-2 text-sm text-muted-foreground">at ~50K MAU</p>
+                  <div className="relative flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+                    <RoleKicker color="bg-prism-cyan-400">{PRISMA.name}</RoleKicker>
+                    {SAVINGS_MULTIPLE !== null && (
+                      <Marker className="-mt-0.5 shrink-0">
+                        Up to {SAVINGS_MULTIPLE}x less vs {WIDEST.shortName}
+                      </Marker>
+                    )}
+                  </div>
+                  <p className="relative mt-5 font-heading text-[clamp(2rem,3.4vw,2.75rem)] font-medium leading-none tracking-tight text-foreground">
+                    <CountUp value={PRISMA.cost} />
+                    <span className="ml-1.5 align-baseline text-base font-normal text-muted-foreground">
+                      /month
+                    </span>
+                  </p>
+                  <p className="relative mt-2 text-sm text-muted-foreground">at ~50K MAU</p>
 
-                <dl className="relative mt-9 flex flex-col gap-5 border-t border-black/[0.06] pt-7">
-                  {PRISMA.rows.map((r) => (
-                    <div key={r.label}>
-                      <dt className="text-sm font-semibold text-foreground/70">{r.label}</dt>
-                      <dd className="mt-1.5 flex items-start gap-3 text-pretty text-[0.9375rem] font-semibold leading-relaxed text-foreground">
-                        <CheckBold
-                          className="mt-1 size-4 shrink-0 text-prism-cyan-500"
-                          aria-hidden
-                        />
-                        {r.value}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-              </Reveal>
+                  <CostBar
+                    className="relative mt-5"
+                    fraction={costFraction(PRISMA.cost)}
+                    spectrum
+                    delay={0.4}
+                  />
+
+                  <dl className="relative mt-7 flex flex-col gap-5 border-t border-black/[0.06] pt-6">
+                    {PRISMA.rows.map((r) => (
+                      <div key={r.label}>
+                        <dt className="text-sm font-semibold text-foreground/70">{r.label}</dt>
+                        <dd className="mt-1.5 flex items-start gap-3 text-pretty text-[0.9375rem] font-semibold leading-relaxed text-foreground">
+                          <CheckBold
+                            className="mt-1 size-4 shrink-0 text-prism-cyan-500"
+                            aria-hidden
+                          />
+                          {r.value}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                </Reveal>
+              </div>
             </div>
           </div>
         </div>

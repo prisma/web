@@ -18,14 +18,23 @@ export const metadata: Metadata = {
 // Built from the approved V2 pricing copy, in V2's order (CTA then FAQs).
 // "Every plan includes" is the right-hand column of PricingHowItWorks; the
 // calculator's three entry points double as its preset selector.
+//
+// Plan cards sit directly under the hero panel, ahead of the how-it-works
+// copy, per the client (2026-07-30) — Shane asked for the table to be
+// reachable without scrolling. The hero subhead still defines an operation
+// before the cards quote operation counts, so the definition precedes the
+// number even though the full explanation now follows the cards.
 // Still to come: the full limits table Ankur asked for — blocked on the
 // unanswered rows (Free-tier backups, compliance on Free/Starter, support).
 export default function PricingPage() {
   return (
     <>
-      <PricingHero />
+      {/* The headline and the plan cards share the hero's wrapped panel, per the
+          client (2026-07-30) — the page resumes outside it from how-it-works on. */}
+      <PricingHero>
+        <PricingPlans />
+      </PricingHero>
       <PricingHowItWorks />
-      <PricingPlans />
       <PricingCalculator />
       <PricingComparison />
       <PricingSpecTable />
