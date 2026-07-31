@@ -14,6 +14,7 @@ const DOCS = "/docs";
 
 export const computeContent: ProductPageContent = {
   name: "Prisma Compute",
+  accent: "compute",
   hero: {
     headline: "One platform for your app and its database",
     headlineEmphasis: "One platform",

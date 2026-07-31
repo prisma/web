@@ -2,8 +2,10 @@ import { CheckBold } from "@/components/icons/forma";
 import { GlassGlide } from "@/components/brand/glass-glide";
 import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button";
 import { PrismRay } from "@/components/brand/prism-ray";
+import { RoleKicker } from "@/components/brand/role-kicker";
 import { Texture } from "@/components/brand/texture";
 import { cn } from "@/lib/utils";
+import { PLATFORM_PRODUCT_ACCENTS } from "./icons";
 import { PRODUCT_ILLUSTRATIONS } from "./illustrations";
 import type { ProductPageContent } from "./types";
 
@@ -27,7 +29,11 @@ function Headline({ headline, emphasis }: { headline: string; emphasis?: string 
 // layout — copy on the left, the product abstraction on the right with the
 // crisp triple-band ray crossing behind it (light passing through the
 // product, same idiom as the homepage console).
-export function ProductHero({ name, hero }: Pick<ProductPageContent, "name" | "hero">) {
+export function ProductHero({
+  name,
+  accent,
+  hero,
+}: Pick<ProductPageContent, "name" | "accent" | "hero">) {
   const Illustration = hero.illustration ? PRODUCT_ILLUSTRATIONS[hero.illustration] : null;
 
   return (
@@ -62,9 +68,10 @@ export function ProductHero({ name, hero }: Pick<ProductPageContent, "name" | "h
           <div className="mx-auto grid max-w-6xl items-center gap-12 pb-20 pt-36 md:grid-cols-2 md:pb-28 md:pt-48 lg:gap-16">
             {/* copy */}
             <div className="flex flex-col items-start">
-              <p className="text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                {name}
-              </p>
+              {/* the site's standard tagline: sentence case, ink at 70%, colour
+                  carried by the dot — never uppercase, letter-spaced or grey
+                  (documented on /brand) */}
+              <RoleKicker color={PLATFORM_PRODUCT_ACCENTS[accent]}>{name}</RoleKicker>
               <h1 className="isolate mt-4 max-w-[16ch] text-balance text-[clamp(2.5rem,4vw,3.5rem)] leading-[1.06]">
                 <Headline headline={hero.headline} emphasis={hero.headlineEmphasis} />
               </h1>

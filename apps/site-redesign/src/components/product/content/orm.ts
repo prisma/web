@@ -15,6 +15,7 @@ const DOCS = "/docs";
 
 export const ormContent: ProductPageContent = {
   name: "Prisma ORM",
+  accent: "orm",
   hero: {
     headline: "Give your agent database access it can't get wrong",
     headlineEmphasis: "can't get wrong",

@@ -6,6 +6,7 @@ import type { ProductPageContent } from "./types";
 // destinations are decided.
 export const placeholderContent: ProductPageContent = {
   name: "[Product name]",
+  accent: "orm",
   hero: {
     headline: "[Hero headline — outcome-focused, 6–10 words]",
     headlineEmphasis: "6–10 words",

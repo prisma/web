@@ -45,3 +45,15 @@ export const PLATFORM_PRODUCT_ICONS: Record<string, ProductIconName> = {
   "/compute": "server",
   "/orm": "code",
 };
+
+// Canonical tagline dot colour per Platform product. Every surface that shows a
+// product tagline resolves through this so the identities can't drift apart.
+// Pairings are the ones the homepage stack uses (stack-bento.tsx) and the ones
+// the tagline examples on /brand are documented with.
+export const PLATFORM_PRODUCT_ACCENTS = {
+  orm: "bg-prism-cyan-400",
+  postgres: "bg-prism-yellow-400",
+  compute: "bg-prism-red-500",
+} as const;
+
+export type ProductAccentName = keyof typeof PLATFORM_PRODUCT_ACCENTS;

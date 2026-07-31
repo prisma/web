@@ -1,4 +1,4 @@
-import type { ProductIconName } from "./icons";
+import type { ProductAccentName, ProductIconName } from "./icons";
 import type { ProductIllustrationName } from "./illustrations";
 
 type Cta = { label: string; href: string };
@@ -16,6 +16,11 @@ type Illustration = ProductIllustrationName;
 export type ProductPageContent = {
   /** Product name, prefixed ("Prisma ORM"). Either all three pages prefix or none do. */
   name: string;
+  /**
+   * Which product's canonical colour the hero tagline dot carries. Resolved
+   * through PLATFORM_PRODUCT_ACCENTS so it matches the homepage and /brand.
+   */
+  accent: ProductAccentName;
   hero: {
     /** Outcome-focused, 6–10 words. */
     headline: string;

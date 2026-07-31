@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 export default function OrmPage() {
   return (
     <>
-      <ProductHero name={ormContent.name} hero={ormContent.hero} />
+      <ProductHero name={ormContent.name} accent={ormContent.accent} hero={ormContent.hero} />
       <ProductProblem problem={ormContent.problem} />
       <ProductNarrative
         headline={ormMigrations.headline}

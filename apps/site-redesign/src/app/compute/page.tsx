@@ -17,7 +17,11 @@ export const metadata: Metadata = {
 export default function ComputePage() {
   return (
     <>
-      <ProductHero name={computeContent.name} hero={computeContent.hero} />
+      <ProductHero
+        name={computeContent.name}
+        accent={computeContent.accent}
+        hero={computeContent.hero}
+      />
       <ProductProblem problem={computeContent.problem} />
       <ProductFeatures features={computeContent.features} />
       <ProductPlatform platform={computeContent.platform} />

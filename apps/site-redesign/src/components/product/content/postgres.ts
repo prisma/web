@@ -14,6 +14,7 @@ const PRICING = "/pricing";
 
 export const postgresContent: ProductPageContent = {
   name: "Prisma Postgres",
+  accent: "postgres",
   hero: {
     headline: "Production-ready Postgres, already wired to your stack",
     headlineEmphasis: "already wired to your stack",

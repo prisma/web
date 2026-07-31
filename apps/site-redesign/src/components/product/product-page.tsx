@@ -13,7 +13,7 @@ import type { ProductPageContent } from "./types";
 export function ProductPage({ content }: { content: ProductPageContent }) {
   return (
     <>
-      <ProductHero name={content.name} hero={content.hero} />
+      <ProductHero name={content.name} accent={content.accent} hero={content.hero} />
       <ProductProblem problem={content.problem} />
       <ProductFeatures features={content.features} />
       <ProductPlatform platform={content.platform} />
