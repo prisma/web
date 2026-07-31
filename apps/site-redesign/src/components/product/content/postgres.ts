@@ -17,7 +17,7 @@ export const postgresContent: ProductPageContent = {
   accent: "postgres",
   hero: {
     headline: "Production-ready Postgres, already wired to your stack",
-    headlineEmphasis: "already wired to your stack",
+    headlineEmphasis: "already",
     subheadline:
       "Prisma Postgres is a production-ready managed database that works with any TypeScript stack. Pair it with Compute and you get one platform for your app and its data, branched and deployed as a unit.",
     benefits: [

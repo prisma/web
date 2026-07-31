@@ -24,7 +24,13 @@ export type ProductPageContent = {
   hero: {
     /** Outcome-focused, 6–10 words. */
     headline: string;
-    /** Substring of headline that gets the glass-light glide (the phrase that matters most). */
+    /**
+     * Substring of the headline that gets the glass-light glide (the phrase
+     * that matters most). Keep it short — GlassGlide is deliberately
+     * whitespace-nowrap from md up so the light travels an unbroken phrase, so
+     * a long emphasis becomes one unbreakable token and overflows the column.
+     * Roughly three words at the top of the headline clamp.
+     */
     headlineEmphasis?: string;
     /** 1–2 sentences: what it does, who it's for. */
     subheadline: string;

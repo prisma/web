@@ -72,7 +72,11 @@ export function ProductHero({
                   carried by the dot — never uppercase, letter-spaced or grey
                   (documented on /brand) */}
               <RoleKicker color={PLATFORM_PRODUCT_ACCENTS[accent]}>{name}</RoleKicker>
-              <h1 className="isolate mt-4 max-w-[16ch] text-balance text-[clamp(2.5rem,4vw,3.5rem)] leading-[1.06]">
+              {/* 16ch is the intended measure, but at the top of the clamp it
+                  resolves wider than this column, so the column has to be the
+                  hard limit — otherwise a headline with a long nowrap emphasis
+                  runs into the illustration beside it. */}
+              <h1 className="isolate mt-4 max-w-[min(16ch,100%)] text-balance text-[clamp(2.5rem,4vw,3.5rem)] leading-[1.06]">
                 <Headline headline={hero.headline} emphasis={hero.headlineEmphasis} />
               </h1>
               <p className="mt-6 max-w-[52ch] text-pretty text-lg leading-relaxed text-muted-foreground">

@@ -115,7 +115,7 @@ export function Deployments() {
             <CheckBold className="size-3 shrink-0 text-prism-cyan-500" />
             <Bar className="w-10" />
           </p>
-          <ThreeDSlot className="h-24 w-28 shrink-0 max-md:hidden" label="3D element" />
+          <ThreeDSlot src="/brand/cpu-3d.png" className="h-28 w-28 shrink-0 max-md:hidden" />
         </div>
       </div>
     </div>

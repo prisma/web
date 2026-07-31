@@ -85,8 +85,8 @@ export function SchemaFile() {
 
       {/* the 3D element floats over the file's lower-right, homepage idiom */}
       <ThreeDSlot
-        className="absolute bottom-6 right-5 h-28 w-36 max-md:hidden"
-        label="3D element"
+        src="/brand/cards-3d.png"
+        className="absolute bottom-5 right-4 h-32 w-44 max-md:hidden"
       />
     </div>
   );

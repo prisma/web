@@ -91,7 +91,7 @@ export function DatabasePanel() {
             <span className="text-foreground">daily backup</span>
             <Bar className="w-10" />
           </p>
-          <ThreeDSlot className="h-24 w-28 shrink-0 max-md:hidden" label="3D element" />
+          <ThreeDSlot src="/brand/database-3d.png" className="h-28 w-28 shrink-0 max-md:hidden" />
         </div>
       </div>
     </div>

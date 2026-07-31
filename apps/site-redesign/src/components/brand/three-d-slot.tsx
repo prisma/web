@@ -36,7 +36,9 @@ export function ThreeDSlot({
         src={src}
         alt=""
         aria-hidden
-        className={cn("drop-shadow-[0_18px_26px_rgba(21,21,21,0.24)]", className)}
+        // object-contain so the render keeps its aspect inside whatever
+        // footprint the placeholder reserved, whatever shape that box is
+        className={cn("object-contain drop-shadow-[0_18px_26px_rgba(21,21,21,0.24)]", className)}
         initial={false}
         animate={animate}
         transition={transition}
