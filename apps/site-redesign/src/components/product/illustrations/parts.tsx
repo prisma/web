@@ -11,13 +11,10 @@ export function Bar({ className }: { className?: string }) {
   return <span className={cn("inline-block h-1.5 rounded-full bg-foreground/10", className)} />;
 }
 
-/**
- * Window chrome with a real filename. `relative` so it stacks above any
- * absolutely-positioned brand ray behind the card's content.
- */
+/** Window chrome with a real filename. */
 export function CardChrome({ file, right }: { file: string; right?: React.ReactNode }) {
   return (
-    <div className="relative flex items-center gap-2 border-b border-border/70 px-4 py-3">
+    <div className="flex items-center gap-2 border-b border-border/70 px-4 py-3">
       <span className="size-2 rounded-full bg-border" />
       <span className="size-2 rounded-full bg-border" />
       <span className="ml-1.5 font-mono text-xs text-foreground">{file}</span>

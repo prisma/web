@@ -1,6 +1,4 @@
 import { CheckBold, GitBranch } from "@/components/icons/forma";
-import { PrismRay } from "@/components/brand/prism-ray";
-import { ThreeDSlot } from "@/components/brand/three-d-slot";
 import { cn } from "@/lib/utils";
 import { CardChrome, RayFrame } from "./parts";
 
@@ -56,24 +54,11 @@ export function MigrationGraph() {
         aria-label="Illustration of a Prisma migration history tracked as a graph: a trunk of migrations with production tagged on its head, a branch peeling off it carrying three more migrations, and preview tagged on the newest — driven by the plan, apply and inspect commands"
         className="pointer-events-none relative flex min-w-0 flex-1 select-none flex-col overflow-hidden rounded-xl border border-border bg-card text-left shadow-[0_12px_32px_-14px_rgba(21,21,21,0.18)]"
       >
-        {/* the brand ray crossing the card behind the 3D element, the way it
-            crosses the chip in the homepage's compute abstraction. Held static
-            rather than masked in on scroll, so this stays a server component. */}
-        {/* Centred on the 3D element so the light passes through it. `hero`
-            intensity (0.9) rather than `structural` (0.6) — the homepage's
-            compute abstraction runs its band at 0.85, and anything lower reads
-            washed out against the white card. */}
-        <PrismRay
-          className="left-[83%] top-1/2 h-14 w-[150%] -translate-x-1/2 -translate-y-1/2 max-md:hidden"
-          angle={74}
-          intensity="hero"
-        />
-
         <CardChrome file="migrations" />
 
         {/* rows share the card's height equally, so the connectors between them
           stay continuous however tall the column gets */}
-        <ul className="relative flex flex-1 flex-col px-4 py-4 sm:px-5">
+        <ul className="flex flex-1 flex-col px-4 py-4 sm:px-5">
           {ROWS.map((row, i) => {
             const prev = ROWS[i - 1];
             const next = ROWS[i + 1];
@@ -128,8 +113,7 @@ export function MigrationGraph() {
                 </span>
 
                 {/* refs sit right after the migration they point at, the way a
-                  git log prints them — which also keeps the card's right side
-                  clear for the 3D element */}
+                    git log prints them */}
                 {row.ref && <RefPill accent={onBranch}>{row.ref}</RefPill>}
                 {row.verified && (
                   <CheckBold className="size-3 shrink-0 text-prism-cyan-500" aria-hidden />
@@ -140,7 +124,7 @@ export function MigrationGraph() {
         </ul>
 
         {/* the lifecycle the agent drives */}
-        <div className="relative px-4 pb-5 sm:px-5">
+        <div className="px-4 pb-5 sm:px-5">
           <div className="flex items-center gap-2 rounded-lg bg-primary px-3.5 py-2.5 font-mono text-[0.6875rem] text-primary-foreground/90">
             <span className="text-prism-cyan-400">$</span>
             <span>prisma migrate</span>
@@ -156,14 +140,6 @@ export function MigrationGraph() {
             </span>
           </div>
         </div>
-
-        {/* the 3D element floats over the card's free right side, vertically
-            centred — the same placement the homepage abstraction uses for its
-            schema stack (orm-illustration.tsx) */}
-        <ThreeDSlot
-          className="absolute right-5 top-1/2 size-28 -translate-y-1/2 max-lg:hidden"
-          label="3D element"
-        />
       </div>
     </RayFrame>
   );
