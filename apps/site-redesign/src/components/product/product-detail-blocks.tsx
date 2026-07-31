@@ -19,7 +19,7 @@ export function ProductDetailBlocks({
 }) {
   return (
     <section className="bg-white px-4 py-24 sm:px-8 sm:py-32">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-site">
         {/* headline holds the left column, the bridge sits beside it rather than
             under it, so the visual starts higher up the section */}
         <div className="grid items-start gap-6 md:grid-cols-2 md:gap-16">
