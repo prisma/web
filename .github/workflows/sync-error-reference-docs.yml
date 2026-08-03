@@ -11,6 +11,9 @@ concurrency:
   group: sync-error-reference-docs
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   sync:
     name: Sync Error Reference Documentation
@@ -27,6 +30,7 @@ jobs:
           repository: prisma/prisma
           ref: main
           path: prisma-src
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -54,12 +58,16 @@ jobs:
 
       - name: Commit and push
         if: steps.changes.outputs.changed == 'true'
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN_DOCS_COMMIT }}
+          TARGET_REPO: ${{ github.repository }}
+          TARGET_REF: ${{ github.ref_name }}
         run: |
           git config user.email "prismabots@gmail.com"
           git config user.name "Prismo"
           git add apps/docs/content/docs/orm/next/reference/error-reference.mdx
           git commit -m "chore(docs): sync Prisma Next error reference"
-          git push "https://x-access-token:${{ secrets.BOT_TOKEN_DOCS_COMMIT }}@github.com/${{ github.repository }}.git" HEAD:${{ github.ref_name }}
+          git push "https://x-access-token:${BOT_TOKEN}@github.com/${TARGET_REPO}.git" "HEAD:${TARGET_REF}"
 
       - name: Trigger Vercel deploy
         if: steps.changes.outputs.changed == 'true'

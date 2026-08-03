@@ -57,6 +57,16 @@ function transform(markdown) {
 
   let body = markdown.replace(/^# Error reference\s*\n/, "");
 
+  // The source intro describes itself from the prisma/prisma repo's point of
+  // view ("canonical source", its own CI check). Reworded for readers of the
+  // hosted page; if upstream rewrites the sentence the original is kept.
+  body = body.replace(
+    /It is the canonical source for the hosted reference at[\s\S]*?missing from this page\./,
+    "Each code anchors as `#<CODE>` — the exact fragment every emitted error carries in its " +
+      "`docsUrl`. This page is generated from the canonical reference in the `prisma/prisma` " +
+      "repository, whose CI requires every code in production source to be documented before it ships.",
+  );
+
   // Repo-relative links point at files that only exist in prisma/prisma.
   body = body.replace(/\]\((\.\.?\/[^)]+)\)/g, (_, target) => {
     const url = new URL(target, `${GITHUB_BLOB_BASE}error-reference.md`);
