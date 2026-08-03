@@ -212,6 +212,15 @@ const AUTHOR_BIOS: AuthorBio[] = [
       { platform: "github", url: "https://github.com/Slovakian" },
     ],
   },
+  {
+    names: ["Dan Draper"],
+    bio: "Dan is the founder and CEO of CipherStash, a Sydney-based data security company building searchable encryption and data-level access control. He writes about applied cryptography, Rust, and the practical side of protecting sensitive data in production systems.",
+    socials: [
+      { platform: "x", url: "https://x.com/danieldraper" },
+      { platform: "linkedin", url: "https://www.linkedin.com/in/ddraper/" },
+      { platform: "github", url: "https://github.com/coderdan" },
+    ],
+  },
 ];
 
 /**
