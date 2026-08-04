@@ -16,8 +16,8 @@ Use [Alchemy](https://alchemy.run/) to create Prisma Postgres databases and depl
 
 ### 1. Install and authenticate
 
-```bash title="Terminal"
-bun add alchemy@next effect@beta @effect/platform-bun@beta @effect/platform-node@beta
+```npm title="Terminal"
+npm install alchemy@next effect@beta @effect/platform-bun@beta @effect/platform-node@beta
 echo ".alchemy/" >> .gitignore
 ```
 
@@ -25,8 +25,8 @@ Create a Prisma [service token](/management-api/authentication#service-tokens), 
 
 To store the token in your local Alchemy profile:
 
-```bash title="Terminal"
-bun alchemy login --configure
+```npm title="Terminal"
+npx alchemy login --configure
 ```
 
 Choose **Service Token** for Prisma and paste the token when prompted. Alchemy stores it under `~/.alchemy/credentials/<profile>/`.
@@ -37,7 +37,7 @@ For CI or an ephemeral shell, choose **Environment Variable** and export the tok
 export PRISMA_SERVICE_TOKEN="<your-service-token>"
 ```
 
-If the profile uses **Environment Variable**, plain `bun alchemy login` only verifies that the variable is available. Run `bun alchemy login --configure` to switch the profile to a stored token.
+If the profile uses **Environment Variable**, `alchemy login` only verifies that the variable is available. Run `alchemy login --configure` to switch the profile to a stored token.
 
 ### 2. Create the stack
 
@@ -81,22 +81,34 @@ export default Alchemy.Stack(
 
 `build: "auto"` detects and builds Bun, Next.js, Nuxt, Astro, TanStack Start, and NestJS applications from the current directory. It expects deployable server output: Next.js needs standalone output, Astro needs the Node adapter in standalone mode, and TanStack Start needs its Nitro deployment adapter (`bunx @tanstack/cli@latest add nitro`). Plain Bun servers must listen on `process.env.PORT` and bind to `0.0.0.0`.
 
-Alchemy provisions the database but does not infer or run production schema migrations. Run migrations separately or model them as a dependency before Compute, as shown in the linked TanStack Start example.
+Alchemy provisions the database but does not infer or run production schema migrations. For Prisma ORM 7, pass `connection.directConnectionString` to the migration process as `DIRECT_URL` and read it from `prisma.config.ts`:
+
+```ts title="prisma.config.ts"
+import { defineConfig, env } from "prisma/config";
+
+export default defineConfig({
+  datasource: {
+    url: env("DIRECT_URL"),
+  },
+});
+```
+
+Keep `connection.databaseUrl` as the application's pooled `DATABASE_URL`. Run migrations separately or model them as a dependency before Compute, as shown in the linked TanStack Start example.
 
 ### 3. Deploy and verify
 
-```bash title="Terminal"
-bun alchemy deploy
-curl "https://<url-from-stack-output>"
+```npm title="Terminal"
+npx alchemy deploy
+curl "<url-from-stack-output>"
 ```
 
 Alchemy shows the plan before creating the project, database, connection, and Compute deployment. Copy the printed `url` into the `curl` command.
 
 After changing your application or infrastructure, run the same commands again:
 
-```bash title="Terminal"
-bun alchemy deploy
-curl "https://<url-from-stack-output>"
+```npm title="Terminal"
+npx alchemy deploy
+curl "<url-from-stack-output>"
 ```
 
 ## Default or explicit database
@@ -166,8 +178,8 @@ const app = yield* Prisma.Compute("app", {
 });
 ```
 
-```bash title="Terminal"
-bun alchemy dev
+```npm title="Terminal"
+npx alchemy dev
 ```
 
 Alchemy starts a local Prisma Postgres server, passes its connection string to the application, and runs the configured development command. Use `dev.migrate` on `Prisma.Postgres` when the local database needs a setup command before the application starts.
@@ -205,10 +217,12 @@ Your application must return a successful response from the configured health-ch
 
 ## CI and cleanup
 
-```bash title="CI"
-CI=true bun alchemy deploy --stage prod --yes
-bun alchemy destroy --stage prod
+```npm title="CI"
+npx alchemy deploy --stage "pr-${PR_NUMBER}" --yes
+npx alchemy destroy --stage "pr-${PR_NUMBER}" --yes
 ```
+
+Use a unique preview stage for each pull request and destroy that same stage when it closes. Cleanup must never target `prod`.
 
 Use a shared [Alchemy state store](https://alchemy.run/state-store/) for team and CI deployments. State can contain database credentials, so never commit `.alchemy/`.
 
