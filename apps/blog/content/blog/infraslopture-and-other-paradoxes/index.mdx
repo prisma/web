@@ -5,10 +5,15 @@ date: "2026-08-03"
 authors:
   - "Gemma Anible"
 metaTitle: "Infraslopture and Other Paradoxes"
-metaDescription: "How to combine agents and infrastructure without burning down your servers"
+metaDescription: "How we're combining untrustable agents and production infrastructure without burning down our servers"
+heroImagePath: "/infraslopture-and-other-paradoxes/imgs/hero.svg"
+heroImageAlt: "A terminal where the prompt 'i need reproducible server configs' resolves into a checklist: NixOS with flakes, colmena with sops-nix, Incus with Tailscale"
+metaImagePath: "/infraslopture-and-other-paradoxes/imgs/meta.png"
 tags:
   - "ai"
-  - "infrastructure"
+  - "platform"
+series: agentic-engineering
+seriesIndex: 5
 ---
 
 We start with research.
@@ -17,7 +22,7 @@ We start with research.
 > i need a system for creating and maintaining deterministic, reproducible server configurations, so i can maintain a fleet of bare metal, linux-based hosts without worrying about configuration drift. what are some solutions in the modern infra ecosystem?
 ```
 
-Claude glues my query to the end of my global instructions and spins away, recombining water, power, and human creativity and intellectual property into a slurry of Markdown (the universal engineering language in 2026). We walk through each category it identified: immutable operating systems, declarative configuration systems like Nix and Puppet, and the imperative systems like Ansible that I have come to loathe.
+Claude glues my query to the end of my global instructions and spins away, recombining water, power, and human creativity and intellectual property into a slurry of Markdown (the universal engineering language in 2026). We walk through each category it identified: immutable operating systems, declarative configuration systems like [Nix](https://nix.dev) and [Puppet](https://www.puppet.com), and the imperative systems like [Ansible](https://www.ansible.com) that I have come to loathe.
 
 _[Immutable Linux](https://justingarrison.com/blog/state-of-immutable-linux/) is your best bet_, it tells me.
 
@@ -27,7 +32,7 @@ Oh honey. Honey no. Don't worry, it just needs more context. I'm holding it wron
 > these hosts will be running thousands of customer-owned production workloads, so we don't reboot them unless we need to update the kernel. i need something declarative and reproducible that can apply configuration changes to a live system without downtime.
 ```
 
-More spinning. Imagine creating persistent hosts in 2026. Imagine defining what Claude has started calling a "substrate" without Terraform or Kubernetes. _[NixOS](https://nixos.org) and [Guix](https://guix.gnu.org/) are the only tools that meet your constraints of declarative, reproducible systems that apply updates without a system reboot and are not based on proprietary tech._ Good bot.
+More spinning. Imagine creating persistent hosts in 2026. Imagine defining what Claude has started calling a "substrate" without [Terraform](https://developer.hashicorp.com/terraform) or [Kubernetes](https://kubernetes.io). _[NixOS](https://nixos.org) and [Guix](https://guix.gnu.org/) are the only tools that meet your constraints of declarative, reproducible systems that apply updates without a system reboot and are not based on proprietary tech._ Good bot.
 
 Armed with a new perspective into the modern IaC/config management landscape, I go hunting myself and find nothing additionally useful. NixOS does sound great, so close to what I was looking for that it seems too good to be true: an entire Linux specified in a config file and checked into source control. The ecosystem around it might be [chaotic neutral](https://discourse.nixos.org/t/a-call-for-the-nix-team-to-present-a-unified-front-on-the-outcome-and-strategy-around-nix-flakes/54959), but if I can restrict my own configs with clear rules and conventions to follow, entry point [`flake.nix`](https://nixos-and-flakes.thiscute.world/preface) consuming [NixOS modules](https://nixos-and-flakes.thiscute.world/nixos-with-flakes/modularize-the-configuration), [new `nix`](https://nix.dev/manual/nix/2.35/command-ref/new-cli/nix.html) instead of [old nix](https://nix.dev/manual/nix/2.35/command-ref/nix-shell.html), maybe it'll be fine. We can keep our own house in order and build a moat around it. With Markdown.
 
@@ -41,7 +46,7 @@ More spinning ends in a recommendation I'd never heard of: [Incus](https://linux
 
 Claude hands me a bunch of [sources](https://www.xda-developers.com/who-needs-proxmox-im-finally-trying-out-incus/) that it has mechanically verified to be actual sources and not fabrications, so I go skim, and what do you know, Incus does sound like a winner. Give each dev a _project_ with resource guardrails they can define and let them launch/destroy VMs as much as they want. Nice interfaces on the command line, or on the web, scriptable. Support for [nested virtualization](https://docs.kernel.org/virt/kvm/x86/running-nested-guests.html). Supports NixOS images. Easy to wire into a [Skill™](https://agentskills.io/home). Sold.
 
-The robot and I walk through a few more choices — [colmena](https://colmena.cli.rs/unstable/) instead of [deploy-rs](https://github.com/serokell/deploy-rs) to push NixOS configs because it has better support for grouping, [sops-nix](https://github.com/Mic92/sops-nix) for secrets management with dedicated keys so we don't have to re-encrypt everything if we rotate host keys — but the party really takes a turn with Tailscale. Surely there's no reason to dump all these disposable VMs into my tailnet, and consign myself to accumulated weeks of fighting with `tailscale up`, but if I don't force them into my tailnet, how do I restrict access without managing individual SSH keys?
+The robot and I walk through a few more choices -- [colmena](https://colmena.cli.rs/unstable/) instead of [deploy-rs](https://github.com/serokell/deploy-rs) to push NixOS configs because it has better support for grouping, [sops-nix](https://github.com/Mic92/sops-nix) for secrets management with dedicated keys so we don't have to re-encrypt everything if we rotate host keys -- but the party really takes a turn with [Tailscale](https://tailscale.com). Surely there's no reason to dump all these disposable VMs into my tailnet, and consign myself to accumulated weeks of fighting with `tailscale up`, but if I don't force them into my tailnet, how do I restrict access without managing individual SSH keys?
 
 (I need to make clear at this point that I am not a network engineer. I'm *arguably* a sysadmin. I can only imagine the deafening peals of laughter that would emanate forth were I to tell my old boss, an actual sysadmin, what my job is now.)
 
