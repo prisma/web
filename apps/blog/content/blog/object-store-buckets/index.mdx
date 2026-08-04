@@ -1,0 +1,228 @@
+---
+title: "Your AI Agent Needs File Storage. Now It Can Get Its Own"
+slug: "object-store-buckets"
+date: "2026-07-28"
+authors:
+  - "Nurul Sundarani"
+metaTitle: "Prisma Object Store Buckets: S3-Compatible File Storage"
+metaDescription: "Object Store buckets add S3-compatible file storage to every Prisma project. Two Management API calls take an agent from nothing to reading and writing files."
+heroImagePath: "/object-store-buckets/imgs/hero.svg"
+heroImageAlt: "An agent provisions an Object Store bucket via the Management API and writes its first file"
+metaImagePath: "/object-store-buckets/imgs/meta.png"
+tags:
+  - "announcement"
+  - "ai"
+---
+
+Every Prisma project can now store files. Object Store buckets are S3-compatible storage that lives alongside your [Prisma Postgres](https://www.prisma.io/docs/postgres) databases, managed from the Prisma Console or the [Management API](https://www.prisma.io/docs/management-api). Two API calls take you from nothing to reading and writing objects, which means a coding agent, handed a service token once, can provision storage the same way it already provisions databases: mid-task, without waiting for a human to click through a dashboard.
+
+This post covers what shipped, then walks the exact path an agent takes: create a bucket, mint a key, write a file, serve it, and tear everything down, every step an API call, output included.
+
+## The step where an agent had to stop
+
+An app that stores anything beyond rows has always needed a second vendor. User avatars, PDF exports, uploaded CSVs, generated images: the data lived in an S3 bucket or an R2 account with its own signup, its own credential dance, and its own bill, stitched to the rest of the stack by hand. For a human, that is an afternoon of setup. For a coding agent, it is usually a hard stop, because the agent cannot open a new vendor account or complete a checkout flow.
+
+Object Store buckets remove that stop: storage is now a resource inside a Prisma project, next to the database, under the same account, on the same API surface.
+
+## What shipped
+
+Object Store buckets, [announced July 24](https://www.prisma.io/changelog/2026-07-24) and available in every Prisma project:
+
+- **S3-compatible.** Buckets speak the S3 API, so any S3 client or SDK works; this post uses Bun's built-in S3 client. There is no proprietary client to learn.
+- **Managed from the Console and the API.** The Prisma Console for humans, and the `/v1/buckets` [Management API endpoints](https://www.prisma.io/docs/management-api/endpoints/buckets/get-buckets) for scripts and agents.
+- **Access keys with roles.** Keys are minted per bucket with a `read` or `read_write` role. The `secretAccessKey` is returned exactly once and is not retrievable afterward; capturing it into your environment at mint time is your half of the handshake.
+- **Branch-aware.** A bucket belongs to a project and can be associated with a branch at creation, via `branchId` or `branchGitName` (the list endpoint also accepts `branchId=unassigned`, so buckets without a branch exist in the model). Omit both fields and the bucket attaches to the project's default branch.
+- **One-step teardown.** Deleting a bucket removes its contents in the same call, even when it is not empty. No empty-the-bucket-first ritual.
+
+The full API surface is small enough to read in one sitting:
+
+| Operation           | Endpoint                                  |
+| ------------------- | ----------------------------------------- |
+| Create a bucket     | `POST /v1/buckets`                        |
+| List buckets        | `GET /v1/buckets`                         |
+| Get a bucket        | `GET /v1/buckets/{bucketId}`              |
+| Delete a bucket     | `DELETE /v1/buckets/{bucketId}`           |
+| Mint an access key  | `POST /v1/buckets/{bucketId}/keys`        |
+| List keys           | `GET /v1/buckets/{bucketId}/keys`         |
+| Revoke a key        | `DELETE /v1/buckets/{bucketId}/keys/{keyId}` |
+
+Object Store pricing and plan limits are not published yet; keep that in mind before an agent provisions storage unattended.
+
+## From nothing to a served file, the agent way
+
+Here is the whole lifecycle as one Bun script: create a bucket, mint a read-write key, write an object, read it back, serve it over a presigned URL, prove what a read-only key can and cannot do, and tear everything down with the object still inside. Every step is a plain HTTP call or an S3 operation, which is the point: an agent with a service token can run this without a human in the loop.
+
+Authentication is a [service token](https://www.prisma.io/docs/management-api/authentication), created once in the Console (your workspace, then **Settings → Service Tokens**) and handed to the agent as an environment variable. Set `PRISMA_SERVICE_TOKEN` and `PRISMA_PROJECT_ID` in a `.env` file; the project id sits in the project's Console URL, or one `GET /v1/projects` call away. (An agent starting from an empty workspace can create the project too, with `POST /v1/projects`; this walkthrough uses an existing project.)
+
+```typescript
+import { S3Client } from "bun";
+
+const API = "https://api.prisma.io";
+const token = process.env.PRISMA_SERVICE_TOKEN;
+const projectId = process.env.PRISMA_PROJECT_ID;
+
+async function api<T = any>(
+  method: string,
+  path: string,
+  body?: unknown,
+): Promise<T | null> {
+  const res = await fetch(`${API}${path}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  if (!res.ok) {
+    throw new Error(`${method} ${path} -> ${res.status}: ${await res.text()}`);
+  }
+
+  return res.status === 204 ? null : ((await res.json()) as T);
+}
+
+async function main() {
+  // 1. Create the bucket
+  const bucket = await api<any>("POST", "/v1/buckets", {
+    projectId,
+    name: "uploads",
+  });
+  const bucketId = bucket.data.id;
+  console.log(
+    `Created bucket ${bucketId} (name: ${bucket.data.name}, status: ${bucket.data.status}, branchId: ${bucket.data.branchId})`,
+  );
+
+  // 2. Mint a read-write key: the response carries everything this client needs
+  const key = await api<any>("POST", `/v1/buckets/${bucketId}/keys`, {
+    name: "demo-key",
+    role: "read_write",
+  });
+  const { accessKeyId, secretAccessKey, endpoint, bucketName } = key.data;
+  console.log(`Minted key ${key.data.id} (role: ${key.data.role})`);
+
+  // 3. Write and read with Bun's built-in S3 client
+  const s3 = new S3Client({
+    accessKeyId,
+    secretAccessKey,
+    endpoint,
+    bucket: bucketName,
+  });
+
+  const object = s3.file("hello/first-upload.txt");
+  await object.write("Uploaded by an agent, no dashboard required.");
+  const stat = await object.stat();
+  console.log(`Wrote hello/first-upload.txt (${stat.size} bytes)`);
+  console.log(`Read back: "${await object.text()}"`);
+
+  // 4. Serve it: a presigned URL anyone can GET, no credentials
+  const url = object.presign({ expiresIn: 3600 });
+  const served = await fetch(url);
+  console.log(
+    `Presigned GET (valid 1h): HTTP ${served.status}, body: "${await served.text()}"`,
+  );
+
+  // 5. A read-only key cannot write
+  const readKey = await api<any>("POST", `/v1/buckets/${bucketId}/keys`, {
+    name: "readonly-key",
+    role: "read",
+  });
+  const s3ro = new S3Client({
+    accessKeyId: readKey.data.accessKeyId,
+    secretAccessKey: readKey.data.secretAccessKey,
+    endpoint: readKey.data.endpoint,
+    bucket: readKey.data.bucketName,
+  });
+  console.log(
+    `Read-only key: read works ("${(await s3ro.file("hello/first-upload.txt").text()).slice(0, 8)}…")`,
+  );
+  try {
+    await s3ro.file("hello/should-fail.txt").write("nope");
+    console.log("Read-only key write: SUCCEEDED (unexpected)");
+  } catch (error) {
+    const msg = (error as Error & { code?: string }).code ?? (error as Error).message;
+    console.log(`Read-only key write rejected: ${msg}`);
+  }
+
+  // 6. Teardown: delete the bucket with the object still inside
+  await api("DELETE", `/v1/buckets/${bucketId}`);
+  console.log(`Deleted bucket ${bucketId} (object still inside went with it)`);
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
+```
+
+Run it:
+
+```bash
+bun index.ts
+```
+
+You should see output similar to this:
+
+```text
+Created bucket bkt_p02jezy07sfhgarm2900mp28 (name: uploads, status: ready, branchId: br_cmq7z1dis13hq04gxzchpulf8)
+Minted key bkey_fl0gz1p3slbduf3ysy5lwpbn (role: read_write)
+Wrote hello/first-upload.txt (44 bytes)
+Read back: "Uploaded by an agent, no dashboard required."
+Presigned GET (valid 1h): HTTP 200, body: "Uploaded by an agent, no dashboard required."
+Read-only key: read works ("Uploaded…")
+Read-only key write rejected: AccessDenied
+Deleted bucket bkt_p02jezy07sfhgarm2900mp28 (object still inside went with it)
+```
+
+Five moments in that output are worth pausing on.
+
+The bucket came back with `status: ready`, already attached to the project's default branch (that is the `branchId` in the output; `GET /v1/projects/{projectId}/branches` lists it with `isDefault: true`). There was no propagation delay to wait out; the first S3 write, moments later, succeeded.
+
+The key-minting response is the entire configuration handoff: `accessKeyId`, `secretAccessKey`, `endpoint`, `bucketName` map one-for-one onto the constructor of Bun's built-in `S3Client`, with a single rename (`bucketName` becomes the `bucket` option). Other S3 clients accept the same values in their own configuration shapes. An agent does not need to assemble configuration from three dashboard pages.
+
+The served file is real. The presigned URL answered an unauthenticated `GET` with HTTP 200 and the exact body: a time-boxed link (an hour here) your app can hand to a browser without shipping credentials to the client.
+
+The role on a key is enforced at the storage layer, not by convention: the `read` key read the object fine and got `AccessDenied` the moment it tried to write.
+
+And the teardown deleted a bucket that still had an object in it. Deleting a bucket takes its contents and its access keys with it in one call: no empty-the-bucket-first ritual, which cuts both ways, as the next section says. (The script tears down on the success path; if a step fails partway, one `DELETE /v1/buckets/{bucketId}` cleans up whatever it left.)
+
+## Wiring it into your agent
+
+The service token is the one secret a human creates up front; everything downstream is the agent's to manage. Three habits keep that safe and repeatable:
+
+- **Know what the token is before handing it over.** A service token never expires, it is minted at workspace level, and it carries the Management API surface that this post just demonstrated, including the one-call, contents-included bucket deletion. That convenience is also the blast radius: give agent work its own workspace so a wrong call lands in a sandbox rather than next to production data, and use one token per purpose so you can retire a token later without breaking everything else.
+- **Scope the keys you ship, not the agent.** A `read` key is what a file-serving deployment should hold: it can read objects, and a write with it comes back `AccessDenied`. But roles constrain the key, not the agent, because an agent holding the service token can mint itself a `read_write` key at any time. Key roles protect the credentials you hand onward, and the service token's containment (the first habit) protects everything else.
+- **Give the agent the workflow, not just the capability.** A rules file entry, in the style of [our AGENTS.md for databases post](/agents-md-for-databases), turns bucket handling from improvisation into procedure: where the service token lives, what to name buckets, which role to mint for which purpose, and that teardown is `DELETE /v1/buckets/{id}`, contents included, so it belongs in the confirm-with-a-human list.
+
+This is the same shape as [giving your agent a database](/give-your-agent-a-database): the resource a task needs stops being a human errand and becomes a call the agent makes mid-task, uses, and cleans up.
+
+## One project, database and files together
+
+The quiet part of this launch is architectural. A bucket is a resource inside the project, next to the databases, visible in the same Console, and reachable through the same Management API and token that already manage everything else: no second account and no second credential system to stitch in.
+
+Branch association is where that points. Prisma Postgres gives branches their own databases, and a bucket can be tied to a branch at creation with `branchId` or `branchGitName`, so a branch environment can carry its files next to its data. The association happens when the bucket is created: pass a branch to choose one, or omit it and the bucket lands on the project's default branch. And when the environment goes away, its bucket goes with one `DELETE`, contents included, behind the same human confirmation the previous section put on it.
+
+## Frequently asked questions
+
+<Accordions type="single">
+  <Accordion title="Are Object Store buckets S3-compatible with existing SDKs and tools?">
+Yes. Buckets expose the S3 API and work with any S3 client or SDK. The key-minting response returns `accessKeyId`, `secretAccessKey`, `endpoint`, and `bucketName`. Bun's built-in client takes them nearly verbatim (its `bucket` option is the response's `bucketName`); other clients shape the same values their own way and may want extras of their own, like a region setting. In the walkthrough above, Bun's `S3Client` writes, reads, and serves objects against a fresh bucket with no additional configuration.
+  </Accordion>
+  <Accordion title="How does a coding agent authenticate to provision buckets?">
+With a Management API service token, sent as a `Bearer` token in the `Authorization` header. A human creates the token once in the Prisma Console (workspace **Settings → Service Tokens**) and provides it to the agent as an environment variable; from there the agent can create buckets, mint keys, and delete both via the `/v1/buckets` endpoints. The token never expires and reaches well beyond buckets, so give agent work its own workspace.
+  </Accordion>
+  <Accordion title="What roles do bucket access keys support?">
+Two: `read` and `read_write`, set when the key is minted via `POST /v1/buckets/{bucketId}/keys`. The roles are enforced by the storage layer: a `read` key can fetch objects, and a write with it is rejected with `AccessDenied`. The response includes the `secretAccessKey` exactly once; it is not retrievable afterward, so capture it into your environment at mint time. Keys can be revoked individually with `DELETE /v1/buckets/{bucketId}/keys/{keyId}`.
+  </Accordion>
+  <Accordion title="Do buckets work with database branches?">
+Yes. A bucket belongs to a project and can be associated with a branch at creation by passing `branchId` or `branchGitName`; the list endpoint also accepts `branchId=unassigned`, so buckets without a branch exist in the model. Create a bucket with neither field and it attaches to the project's default branch. Paired with per-branch Prisma Postgres databases, this lets a branch environment carry its files next to its data.
+  </Accordion>
+</Accordions>
+
+## Recap
+
+Object Store buckets put S3-compatible file storage inside every Prisma project: created from the Console or the Management API, secured with per-bucket keys in `read` and `read_write` roles enforced at the storage layer, branch-associable, served over presigned URLs, and deleted contents-and-all in one call.
+
+For agents, the shape matters more than the feature. Storage used to be the step where an agent stopped and waited for a human to open an account. Now it is `POST /v1/buckets`, `POST /v1/buckets/{id}/keys`, and four fields into an S3 client, the whole path walked above, serving included.
+
+Give your agent the service token and the rules, and the next time a task needs somewhere to put files, it will not need to stop and wait for you. (Until Object Store pricing is published, keep an eye on what it provisions.) Create a bucket from the [Console](https://console.prisma.io) if you prefer clicking; point your agent at the [Management API docs](https://www.prisma.io/docs/management-api) if you do not.
