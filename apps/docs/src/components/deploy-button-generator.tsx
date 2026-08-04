@@ -23,6 +23,17 @@ interface EnvVarRow {
   example: string;
 }
 
+// The Console rejects example values with control characters, so a pasted
+// tab or newline must fail here, for the author, not later for their users.
+function exampleValid(example: string): boolean {
+  if (example.length > MAX_ENV_EXAMPLE_LENGTH) return false;
+  for (const character of example) {
+    const code = character.codePointAt(0) ?? 0;
+    if (code < 0x20 || code === 0x7f) return false;
+  }
+  return true;
+}
+
 function envRowValid(row: EnvVarRow): boolean {
   const name = row.name.trim();
   const example = row.example.trim();
@@ -30,7 +41,7 @@ function envRowValid(row: EnvVarRow): boolean {
   return (
     name.length <= MAX_ENV_NAME_LENGTH &&
     ENV_NAME_PATTERN.test(name) &&
-    example.length <= MAX_ENV_EXAMPLE_LENGTH
+    exampleValid(example)
   );
 }
 
