@@ -10,37 +10,10 @@ import { cva } from "class-variance-authority";
 const cache = new Map<string, string>();
 
 function toIndexMarkdownUrl(markdownUrl: string): string | null {
-  console.log(markdownUrl);
-
-  // if (!markdownUrl.endsWith('.mdx')) return `${markdownUrl.replace(/\/$/, '')}/index.mdx`;
-
   const withoutExtension = markdownUrl.slice(0, -".mdx".length);
   if (withoutExtension.endsWith("/index")) return null;
 
   return `${withoutExtension}/index.mdx`;
-}
-
-async function fetchMarkdownWithFallback(
-  markdownUrl: string,
-): Promise<{ content: string; resolvedUrl: string }> {
-  const res = await fetch(markdownUrl);
-  if (res.ok) {
-    return { content: await res.text(), resolvedUrl: markdownUrl };
-  }
-
-  const fallbackUrl = toIndexMarkdownUrl(markdownUrl);
-  if (!fallbackUrl) {
-    throw new Error(`Failed to fetch markdown from ${markdownUrl} (${res.status})`);
-  }
-
-  const fallbackRes = await fetch(fallbackUrl);
-  if (fallbackRes.ok) {
-    return { content: await fallbackRes.text(), resolvedUrl: fallbackUrl };
-  }
-
-  throw new Error(
-    `Failed to fetch markdown from ${markdownUrl} (${res.status}) and ${fallbackUrl} (${fallbackRes.status})`,
-  );
 }
 
 export function CopyPromptButton({ fullPrompt }: { fullPrompt: string }) {
@@ -177,6 +150,9 @@ export function ViewOptions({
       {
         title: "Open in Claude",
         tool: "claude",
+        // claude.ai shows a caution banner on any link-prefilled prompt and
+        // waits for the user to confirm; the description sets that expectation.
+        description: "Claude previews the prompt and asks you to confirm",
         href: `https://claude.ai/new?${new URLSearchParams({
           q,
         })}`,
@@ -195,8 +171,11 @@ export function ViewOptions({
       {
         title: "Open in T3 Chat",
         tool: "t3_chat",
+        // T3 Chat's default model can't fetch URLs on its own; search=true
+        // turns on web search so the "Read <url>" prompt actually works.
         href: `https://t3.chat/new?${new URLSearchParams({
           q,
+          search: "true",
         })}`,
         icon: <i className="fa-regular fa-message" />,
       },
@@ -233,7 +212,14 @@ export function ViewOptions({
             }
           >
             {item.icon}
-            {item.title}
+            <span className="flex min-w-0 flex-col text-start">
+              <span>{item.title}</span>
+              {"description" in item && item.description && (
+                <span className="text-xs font-normal text-fd-muted-foreground">
+                  {item.description}
+                </span>
+              )}
+            </span>
             <i className="fa-regular fa-arrow-up-right-from-square text-fd-muted-foreground text-[0.875rem] ms-auto" />
           </a>
         ))}

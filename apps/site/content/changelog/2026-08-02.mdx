@@ -1,0 +1,117 @@
+---
+title: "Author expression and partial indexes in Prisma 8 and import any GitHub repository to Prisma Compute"
+date: "2026-08-02"
+version: "2026-08-02"
+slug: "2026-08-02"
+headline: "Author expression and partial indexes in Prisma 8 and import any GitHub repository to Prisma Compute"
+tags:
+  - "Prisma"
+  - "Prisma 8"
+  - "Prisma Compute"
+  - "Prisma Postgres"
+  - "Prisma ORM"
+canonical: "/changelog#log2026-08-02"
+metaDescription: "Prisma 8 makes expression, partial, and unique indexes authorable in schema and TypeScript, Prisma Compute opens GitHub repository import to every workspace, and Prisma ORM stops wrapping single-statement writes in transactions."
+share:
+  active: true
+  content: "Look at this page: "
+---
+You can now author expression, partial, and unique indexes directly in Prisma 8, in Prisma Schema Language or TypeScript. Prisma 8 also reads an existing database's indexes and row-level security policies into a contract. The legacy `@db.*` attributes are removed; see breaking changes below.
+
+You can now import any GitHub repository to Prisma Compute from any workspace, including apps that live in a subdirectory of a monorepo.
+
+Prisma ORM `updateMany` and `createMany` now work on driver adapters without transaction support. New guides cover agent safety, searchable encryption, Object Store buckets, and moving a local database to Prisma Postgres.
+
+## Highlights
+
+### New · Author expression, partial, and unique indexes in Prisma 8
+
+You can now define expression, partial (`where`), and unique indexes in your Prisma 8 schema. Until now these indexes lived in raw SQL outside the schema, where migrations could not create, rename, or verify them.
+
+Declare the index in Prisma Schema Language or TypeScript. Prisma 8 generates the exact DDL, applies it, and verifies it. Renaming an index plans a single `ALTER INDEX` statement; editing its expression plans the rebuild.
+
+```prisma
+model User {
+  id    Int    @id
+  email String
+
+  @@index(expression: "lower(email)", name: "users_email_lower", type: "btree")
+}
+```
+
+The same index in TypeScript is `constraints.index({ expression: "lower(email)", name: "users_email_lower", type: "btree" })`.
+
+> **Note:** Prisma 8 (previously announced as Prisma Next) is in Early Access. Scope and behavior may still change. This release also removes the `@db.*` attributes, listed under breaking changes below.
+
+Shipped in [prisma/prisma-next#1048](https://github.com/prisma/prisma-next/pull/1048).
+
+### New · Import any GitHub repository to Prisma Compute
+
+You can now import any GitHub repository to Prisma Compute (Public Beta) from any workspace. Until now the import flow was limited to selected workspaces.
+
+Connect a repository in the Prisma Console. Prisma opens a setup pull request that adds the app configuration. Merge it, and your app deploys.
+
+Apps in a subdirectory of a monorepo build correctly: the configuration names the directory to build.
+
+```json
+{ "app": { "name": "orders-api", "root": "backend", "framework": "bun" } }
+```
+
+### Docs · Follow one getting-started path through the Prisma stack
+
+The Prisma docs now recommend a single getting-started path: scaffold with Prisma 8, store data in Prisma Postgres, deploy on Prisma Compute. Each flow has a quick path, a guided path, and a copyable agent prompt. Prisma 7, the current GA release, stays one click away.
+
+Start at the [Prisma docs](https://www.prisma.io/docs). Shipped in [prisma/web#8106](https://github.com/prisma/web/pull/8106).
+
+## Prisma 8
+
+Prisma 8 pairs the new index authoring with full-fidelity inference from existing databases.
+
+- **Improved** · `contract infer` now captures expression, partial, and unique indexes and row-level security policies (permissive and restrictive, as `@@rls` blocks) from an existing database. The emitted contract verifies with zero issues and plans zero operations. ([prisma/prisma-next#1052](https://github.com/prisma/prisma-next/pull/1052))
+
+## Prisma Compute
+
+Prisma Compute makes the repository import flow visible while setup is in progress.
+
+- **Improved** · While a setup pull request is open, the Prisma Console shows its status and the preview deploys from the setup branch. It no longer reports the repository as not connected.
+
+## Breaking changes
+
+> **Breaking:** Prisma 8 removes the `@db.*` native-type attributes. Write storage types in type position instead: `String @db.Uuid` becomes `Uuid`, and `String @db.VarChar(191)` becomes `VarChar(191)`. Each removed attribute produces a diagnostic naming its replacement. ([prisma/prisma-next#1054](https://github.com/prisma/prisma-next/pull/1054))
+
+## Fixes and improvements
+
+**Prisma Compute**
+
+- **Fixed** · Apps in a subdirectory of a pnpm or yarn workspace now deploy. Builds install dependencies in the configured app directory and detect the package manager from the repository root, instead of failing on a missing `package.json` or an `EUNSUPPORTEDPROTOCOL` error.
+- **Improved** · Prisma Compute addresses with no deployed app now show a branded not-found page instead of a bare 404.
+
+**Prisma Console**
+
+- **Fixed** · Prisma Console account deletion no longer fails for workspaces that ever connected a GitHub repository.
+- **Fixed** · Long resource names no longer break the Prisma Console sidebar. Names truncate, show in full on hover, and the list scrolls.
+
+**Prisma Postgres**
+
+- **Fixed** · Prisma Postgres databases transferred through the Vercel Marketplace no longer stay suspended under the previous workspace's plan limit. Their usage now counts against the new workspace.
+- **Fixed** · Vercel Marketplace flexible-billing invoices no longer fail on proration line items.
+
+**Management API**
+
+- **Improved** · `GET /v1/databases/{databaseId}/usage` is now rate limited. Rate-limited responses include retry guidance.
+
+**Prisma ORM**
+
+- **Fixed** · Prisma ORM `updateMany` and `createMany` now work on driver adapters without transaction support, such as the Neon HTTP adapter. Their single SQL statement is no longer wrapped in `BEGIN`/`COMMIT`, which also removes two round trips. ([prisma/prisma-engines#5840](https://github.com/prisma/prisma-engines/pull/5840))
+
+## Guides and articles
+
+- [Don't Let Your AI Agent Delete Your Production Database](https://www.prisma.io/blog/stop-your-ai-agent-dropping-your-database): how coding agents end up dropping production data, and the safeguards to put between an agent and your database.
+- [Search encrypted data with Prisma 8 and CipherStash](https://www.prisma.io/blog/search-encrypted-data-with-prisma-next-and-cipherstash): query encrypted columns through expression indexes with CipherStash's Prisma support.
+- [Give Your Agent File Storage: Object Store Buckets](https://www.prisma.io/blog/object-store-buckets): the Object Store buckets launch post, walking the full lifecycle from `POST /v1/buckets` to serving objects with an S3 client.
+- [From Local Development to Production with Prisma Postgres](https://www.prisma.io/blog/from-local-to-production-with-prisma-postgres): a five-step checklist for moving an app from local Postgres to hosted Prisma Postgres.
+- [Migrate a MongoDB project from Prisma ORM v6 to Prisma 8](https://www.prisma.io/docs/guides/next/upgrade-prisma-orm/mongodb): schema conversion, client API changes, and a production cutover checklist.
+
+---
+
+*Need help applying these changes in production? [Prisma Enterprise Support](https://prisma.io/enterprise) can help with schema design, performance, security, and compliance.*

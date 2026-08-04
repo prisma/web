@@ -255,8 +255,9 @@ function formatYoutube(attrs: string) {
  * code fences inside `<details>` into indented fences that markdown consumers
  * (and the afdocs parity checker) no longer treat as code blocks. Dedenting the
  * body back to column 0 and collapsing the summary to a single bold line keeps
- * the content faithful to the rendered page. Must run BEFORE fenced code blocks
- * are protected, so the dedent applies to the fences themselves.
+ * the content faithful to the rendered page. Fences are already protected as
+ * indented placeholder tokens here; the prefix-aware restore in
+ * `protectFencedCodeBlocks` replays this dedent on the fence lines.
  */
 function formatDetails(content: string) {
   const summaryMatch = content.match(/<summary\b[^>]*>([\s\S]*?)<\/summary>/);
@@ -324,6 +325,44 @@ function formatCard(attrs: string, content: string) {
 
 function formatButton(_attrs: string, content: string) {
   return stripJsxTags(trimComponentContent(content));
+}
+
+function formatStackLayer(attrs: string, content: string) {
+  const title = getAttribute(attrs, "title") ?? "Step";
+  const href = getAttribute(attrs, "href");
+  const text = stripJsxTags(trimComponentContent(content)).replace(/\n+/g, " ");
+  const label = href ? `[${title}](${href})` : title;
+  return `- **${label}**${text ? `: ${text}` : ""}`;
+}
+
+function formatHeroPitch(attrs: string, content: string) {
+  const text = stripJsxTags(trimComponentContent(content));
+  const links: string[] = [];
+  const primaryHref = getAttribute(attrs, "primaryHref");
+  const primaryLabel = getAttribute(attrs, "primaryLabel");
+  if (primaryHref && primaryLabel) links.push(`- [${primaryLabel}](${primaryHref})`);
+  const secondaryHref = getAttribute(attrs, "secondaryHref");
+  const secondaryLabel = getAttribute(attrs, "secondaryLabel");
+  if (secondaryHref && secondaryLabel) links.push(`- [${secondaryLabel}](${secondaryHref})`);
+  return [text, links.join("\n")].filter(Boolean).join("\n\n");
+}
+
+function formatGetStartedTabs(attrs: string, content: string) {
+  // cli may be a quoted string or a multiline template literal.
+  const cli = getAttribute(attrs, "cli") ?? attrs.match(/cli=\{\s*`([\s\S]*?)`\s*\}/)?.[1];
+  const text = trimComponentContent(content);
+  const cliBlock = cli ? `\`\`\`bash\n${cli}\n\`\`\`` : "";
+  return [cliBlock, text].filter(Boolean).join("\n\n");
+}
+
+function formatIconLink(attrs: string, _content: string) {
+  const title = getAttribute(attrs, "title") ?? "Link";
+  const href = getAttribute(attrs, "href");
+  const description = getAttribute(attrs, "description");
+  const badge = getAttribute(attrs, "badge");
+  const label = href ? `[${title}](${href})` : title;
+  const suffix = [description, badge].filter(Boolean).join(", ");
+  return `- ${label}${suffix ? `: ${suffix}` : ""}`;
 }
 
 function findOpeningTagEnd(value: string, startIndex: number) {
@@ -456,25 +495,68 @@ function createProtector(input: string, label: string) {
     restore(value: string, blocks: readonly string[]) {
       return value.replace(pattern, (match, index: string) => blocks[Number(index)] ?? match);
     },
+    restoreLines(value: string, replace: (index: number, linePrefix: string) => string) {
+      const linePattern = new RegExp(`^(.*?)${boundary}${label}_(\\d+)${boundary}`, "gm");
+      return value.replace(linePattern, (_match, prefix: string, index: string) =>
+        replace(Number(index), prefix),
+      );
+    },
   };
 }
 
+/**
+ * Replaces every fenced code block with a single-line placeholder token so the
+ * component pipeline can never rewrite code samples (e.g. a fenced example that
+ * mentions `<AgentPrompt>` or `<Tabs>`). The token keeps the fence's leading
+ * indentation, so line-level transforms — the dedent in `trimComponentContent`,
+ * the `> ` prefix in `formatCallout` — act on the token line like on any other
+ * line. `restore` reads what happened to the token line's prefix and applies
+ * the same shift to every line of the fence, which preserves the dedent and
+ * blockquote behavior the pipeline previously applied to raw fences.
+ */
 export function protectFencedCodeBlocks(markdown: string) {
-  const blocks: string[] = [];
+  const blocks: { text: string; indent: string }[] = [];
   const protector = createProtector(markdown, "LLM_FENCED_CODE_BLOCK");
   const protectedMarkdown = markdown.replace(
     /^([ \t]*)([`~]{3,})[^\n]*\n[\s\S]*?^\1\2\s*$/gm,
-    (match) => {
+    (match, indent: string) => {
       const token = protector.token(blocks.length);
-      blocks.push(match);
-      return token;
+      blocks.push({ text: match, indent });
+      return indent + token;
     },
   );
 
   return {
     markdown: protectedMarkdown,
     restore(value: string) {
-      return protector.restore(value, blocks);
+      const restored = protector.restoreLines(value, (index, linePrefix) => {
+        const block = blocks[index];
+        if (!block) return linePrefix;
+        // Only whitespace shifts and blockquote markers are line transforms we
+        // can mirror; any other prefix (a fence collapsed into prose) is left
+        // in place with the block substituted verbatim.
+        if (!/^[>\s]*$/.test(linePrefix)) return linePrefix + block.text.slice(block.indent.length);
+        const removable = Math.min(
+          linePrefix.match(/[ \t]*$/)?.[0].length ?? 0,
+          block.indent.length,
+        );
+        const removed = block.indent.length - removable;
+        const prefix = linePrefix.slice(0, linePrefix.length - removable);
+        return block.text
+          .split("\n")
+          .map((line) => {
+            const leading = line.match(/^[ \t]*/)?.[0].length ?? 0;
+            return prefix + line.slice(Math.min(removed, leading));
+          })
+          .join("\n");
+      });
+      // A token that ended up mid-line (its line start consumed by an earlier
+      // token on the same line) misses the line-anchored pass; substitute it
+      // verbatim so no placeholder ever leaks into the output.
+      return protector.restore(
+        restored,
+        blocks.map((block) => block.text),
+      );
     },
   };
 }
@@ -507,7 +589,12 @@ export function normalizeProcessedMarkdown(
   markdown: string,
   options?: { headingDepths?: ReadonlyMap<string, number> },
 ) {
-  const componentMarkdown = markdown
+  // Protect fenced code before any component transform so code samples that
+  // mention component tags (or MDX comments) are never rewritten as live
+  // content. The prefix-aware restore keeps the dedent/blockquote behavior for
+  // fences nested inside <details>, callouts, tabs, and steps.
+  const protectedCode = protectFencedCodeBlocks(markdown);
+  const componentMarkdown = protectedCode.markdown
     .replace(/\{\/\*[\s\S]*?\*\/\}/g, "")
     .replace(
       /<CalloutContainer\s+type="([^"]+)"[^>]*>([\s\S]*?)<\/CalloutContainer>/g,
@@ -539,16 +626,75 @@ export function normalizeProcessedMarkdown(
       trimComponentContent(content),
     )
     .replace(/<SharedContent\b[^>]*\/>/g, "")
+    .replace(
+      // Attrs matcher tolerates JSX-element props like icon={<FolderPlus />},
+      // whose ">" would end a naive [^>]* match early.
+      /<AgentPrompt\b((?:[^>"'{]|"[^"]*"|'[^']*'|\{[^{}]*\})*)>([\s\S]*?)<\/AgentPrompt>/g,
+      (_match, attrs: string, content: string) => {
+        const title = getAttribute(attrs, "title");
+        const guideHref = getAttribute(attrs, "guideHref");
+        // Untitled prompts sit under an existing "Use with your agent"
+        // heading in the page, so emit only the content.
+        if (!title && !guideHref) return trimComponentContent(content);
+        const base = formatSectionComponent(attrs, content, "Use with your agent");
+        if (!guideHref) return base;
+        const guideTitle = getAttribute(attrs, "guideTitle") ?? "Follow the guide";
+        const [heading, ...rest] = base.split("\n\n");
+        return [heading, `Follow the guide: [${guideTitle}](${guideHref})`, ...rest].join("\n\n");
+      },
+    )
+    .replace(
+      /<SectionRow\b([^>]*)>([\s\S]*?)<\/SectionRow>/g,
+      (_match, attrs: string, content: string) => {
+        const title = getAttribute(attrs, "title") ?? "Section";
+        const description = getAttribute(attrs, "description");
+        const text = trimComponentContent(content);
+        return ["## " + title, description, text].filter(Boolean).join("\n\n");
+      },
+    )
+    .replace(/<\/?IconGrid[^>]*>/g, "")
+    .replace(/<\/?StackDiagram[^>]*>/g, "")
+    .replace(
+      /<HeroPitch\b([^>]*)>([\s\S]*?)<\/HeroPitch>/g,
+      (_match, attrs: string, content: string) => formatHeroPitch(attrs, content),
+    )
+    .replace(/<\/?HeroGrid[^>]*>/g, "")
+    .replace(
+      // Same brace-tolerant attrs matcher as AgentPrompt: ModalRow takes
+      // JSX-element props like icon={<FolderPlus />}. The row's modal content
+      // collapses to a bold title line plus the body, like <details> does.
+      /<ModalRow\b((?:[^>"'{]|"[^"]*"|'[^']*'|\{[^{}]*\})*)>([\s\S]*?)<\/ModalRow>/g,
+      (_match, attrs: string, content: string) => {
+        const title = getAttribute(attrs, "title");
+        const body = trimComponentContent(content);
+        if (!body) return title ? `**${title}**` : "";
+        return title ? `**${title}**\n\n${body}` : body;
+      },
+    )
     .replace(/<details\b[^>]*>([\s\S]*?)<\/details>/g, (_match, content: string) =>
       formatDetails(content),
     );
 
-  const protectedCode = protectFencedCodeBlocks(componentMarkdown);
   const withoutJsxComponents = replaceComponentBlocks(
-    replaceComponentBlocks(protectedCode.markdown, "Card", formatCard)
-      .replace(/<\/?Cards[^>]*>/g, "")
-      .replace(/<APIPage\b([\s\S]*?)\/>/g, (match: string) => formatApiPage(match))
-      .replace(/<Youtube\b([\s\S]*?)\/>/g, (_match, attrs: string) => formatYoutube(attrs)),
+    replaceComponentBlocks(
+      replaceComponentBlocks(
+        replaceComponentBlocks(
+          // GetStartedTabs goes through the brace-aware parser because its
+          // `cli` prop is a template literal that can contain ">" (e.g. shell
+          // redirections), which would end a naive [^>]* attrs match early.
+          replaceComponentBlocks(componentMarkdown, "GetStartedTabs", formatGetStartedTabs),
+          "Card",
+          formatCard,
+        )
+          .replace(/<\/?Cards[^>]*>/g, "")
+          .replace(/<APIPage\b([\s\S]*?)\/>/g, (match: string) => formatApiPage(match))
+          .replace(/<Youtube\b([\s\S]*?)\/>/g, (_match, attrs: string) => formatYoutube(attrs)),
+        "StackLayer",
+        formatStackLayer,
+      ),
+      "IconLink",
+      formatIconLink,
+    ),
     "Button",
     formatButton,
   );
@@ -562,14 +708,14 @@ export function normalizeProcessedMarkdown(
   // placeholders at this point.
   const withHeadings = restoreHeadingMarkers(withoutJsxComponents, options?.headingDepths);
   const protectedInline = protectInlineCode(withHeadings);
-  const unescaped = protectedInline.restore(
-    protectedInline.markdown.replace(/\\([_{}])/g, "$1"),
-  );
+  const unescaped = protectedInline.restore(protectedInline.markdown.replace(/\\([_{}])/g, "$1"));
 
   return protectedCode
     .restore(unescaped)
     .replace(/^[ \t]+(#{3,4} )/gm, "$1")
     .replace(/^[ \t]+(- \[)/gm, "$1")
+    .replace(/^[ \t]+(- \*\*\[)/gm, "$1")
+    .replace(/^[ \t]+(\d+\. \*\*\[)/gm, "$1")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
