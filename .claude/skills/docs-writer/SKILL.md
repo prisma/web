@@ -14,7 +14,7 @@ If a rule here conflicts with house style, follow the house style and flag the c
 
 For a step-by-step example of writing each kind of page (how-to, concept, reference) and rewriting an existing one, see `references/how-to-use.md`.
 
-For a Prisma 8 docs page or section (anything under `content/docs/orm/next/` or `content/docs/(index)/next/`), also read `references/prisma-8.md`: page location, redirect handling (commented out until the URL cutover), tested-example requirements, tab and diagram conventions, and naming rules.
+For a Prisma 8 docs page or section (anything under `content/docs/orm/v8/` or `content/docs/(index)/next/`), also read `references/prisma-8.md`: page location, redirect handling (commented out until the URL cutover), tested-example requirements, tab and diagram conventions, and naming rules.
 
 ## Foundation
 

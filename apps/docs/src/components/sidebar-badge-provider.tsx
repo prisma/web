@@ -43,12 +43,12 @@ function shouldHideSidebarBadge(url: string, badge: BadgeType | undefined) {
   const docsPathname = url.replace(/^\/docs(?=\/|$)/, "") || "/";
 
   return (
-    docsPathname === "/next" ||
-    docsPathname.startsWith("/next/") ||
-    docsPathname === "/orm/next" ||
-    docsPathname.startsWith("/orm/next/") ||
-    docsPathname === "/cli/next" ||
-    docsPathname.startsWith("/cli/next/")
+    docsPathname === "/v8" ||
+    docsPathname.startsWith("/v8/") ||
+    docsPathname === "/orm/v8" ||
+    docsPathname.startsWith("/orm/v8/") ||
+    docsPathname === "/cli/v8" ||
+    docsPathname.startsWith("/cli/v8/")
   );
 }
 

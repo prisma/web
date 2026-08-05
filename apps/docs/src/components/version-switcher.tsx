@@ -52,7 +52,7 @@ export function VersionSwitcher({
   const currentVersion = detectedVersion ?? null;
   const usesScopedVersions = isGettingStartedVersion || isCliVersion || isGuidesVersion;
   const visibleVersions = usesScopedVersions
-    ? versions.filter((version) => version === LATEST_VERSION || version === "next")
+    ? versions.filter((version) => version === LATEST_VERSION || version === "v8")
     : versions;
   const label = isGettingStartedVersion
     ? "Docs version"

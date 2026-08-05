@@ -152,7 +152,7 @@ export default function Layout({ children }: { children: ReactNode }) {
               Explore the next Prisma ORM workflow.
             </span>
             <Link
-              href="/next"
+              href="/v8"
               className={cn(
                 buttonVariants({ variant: "secondary", size: "sm" }),
                 "prisma-next-banner-cta h-7 shrink-0 whitespace-nowrap px-2 py-1 text-xs",
