@@ -1,0 +1,337 @@
+---
+title: "Your Supabase RLS policies and auth.users, in your Prisma contract"
+slug: "prisma-8-supabase-rls-and-auth"
+date: "2026-08-05"
+authors:
+  - "Will Madden"
+  - "Ankur Datta"
+metaTitle: "Prisma 8 + Supabase: RLS and Auth in your Prisma contract"
+metaDescription: "Prisma 8 makes Row Level Security and the Supabase auth.users table part of your Prisma contract. Declare policies next to your models, migrate them, and verify them against a real Supabase project."
+metaImagePath: "/prisma-8-supabase-rls-and-auth/imgs/meta.png"
+heroImagePath: "/prisma-8-supabase-rls-and-auth/imgs/hero.svg"
+---
+
+**Prisma 8 makes Row Level Security and the Supabase Auth schema part of your application's data contract. Declare policies next to your models, point foreign keys at auth.users, and let Prisma migrate and verify all of it.**
+
+## What changed in Prisma 8
+
+Prisma 8 is the next major version of Prisma ORM, available now in Early Access. It replaces the schema-plus-generated-client model with a single typed data contract that describes your database: tables, relations, indexes, and now the two things Supabase developers have always had to manage outside their ORM.
+
+First, **RLS lives in your contract**. You declare Row Level Security policies in your Prisma schema, right next to the model they protect. Prisma creates them, migrates them, renames them without drop-and-recreate, and reads them back when it introspects a database.
+
+Second, **your contract can reference Supabase's `auth.users` table**. A model can declare a real foreign key to the Supabase Auth user, with cascade behavior, without Prisma trying to own or migrate Supabase's internal schema.
+
+Together they close the gap that made ORMs awkward on Supabase: the parts of your data model that involve auth and authorization no longer live in hand-written SQL migrations that your ORM cannot see. Your schema, your policies, and your auth relationships are one reviewable, diffable, type-checked artifact.
+
+In this post we build and deploy a small notes API that uses both: every note belongs to a Supabase user, users only ever see their own notes, and the policies enforcing that are written in the Prisma schema. Everything below ran against a real hosted Supabase project, and the finished app is deployed on Prisma Compute.
+
+:::note[Early Access]
+Prisma 8 ships today as the `prisma-next` CLI and `@prisma/orm-*` packages at version 0.17.0. It is cutting-edge and evolving with user feedback; the API surface won't change drastically. If you want to stay on the current generally available version, continue with [Prisma 7](https://www.prisma.io/docs). Try Prisma 8 and [share feedback in Discord](https://pris.ly/discord).
+:::
+
+## What you can build with this
+
+The pattern in this post is the foundation of most multi-tenant Supabase apps: rows owned by a user, enforced by the database rather than by application code. With policies and the auth relationship in the contract, you get:
+
+- Authorization that is enforced in Postgres and reviewed in pull requests. A policy change is a schema diff, not a surprise in the dashboard.
+- Referential integrity with Supabase Auth. Deleting a user cascades to their rows because the database guarantees it.
+- A typed client that makes the security model explicit. You cannot run a query without first choosing who is running it.
+
+## Architecture
+
+The app is a Hono HTTP API on Node.js. It connects to Supabase Postgres directly (no PostgREST, no `supabase-js` for data access) through Prisma 8's Supabase runtime, which binds every request to a database role:
+
+```
+Browser/client ──JWT──▶ Hono API ──▶ Prisma 8 Supabase runtime ──▶ Supabase Postgres
+                                       asUser(jwt)  → role authenticated + auth.uid()
+                                       asAnon()     → role anon
+                                       asServiceRole() → service_role (BYPASSRLS)
+```
+
+Supabase Auth (GoTrue) issues the JWTs. Prisma verifies each token against the project's JWKS endpoint before any connection is touched, then sets the Postgres role and JWT claims for the session, below the middleware layer, so RLS policies see the same `auth.uid()` they would under PostgREST.
+
+## Prerequisites
+
+- Node.js 24 or later
+- A Supabase project (any current hosted project works; we used a fresh free-tier project on supabase-postgres 17.6.1)
+- The project's session pooler connection string, project URL, and anon key
+
+## Project setup
+
+Scaffold a Prisma 8 project with the real initialization command:
+
+```bash
+npx prisma-next@0.17.0 init --yes --target postgres --authoring psl
+```
+
+This writes `prisma-next.config.ts`, a starter schema, a runtime file, and installs the Postgres facade. Then add the Supabase extension and the app dependencies:
+
+```bash
+npm install @prisma/orm-extension-supabase@0.17.0 hono @hono/node-server tsx
+```
+
+## Exact versions
+
+Everything in this post ran with these packages, pinned in the example's lockfile:
+
+| Package | Version |
+|---|---|
+| `prisma-next` (CLI) | 0.17.0 |
+| `@prisma/orm-postgres` | 0.17.0 |
+| `@prisma/orm-extension-supabase` | 0.17.0 |
+
+A note on naming: Prisma 8 does not install as `prisma@8` or `@prisma/client@8`. The Prisma 7 line continues on the `prisma` package; Prisma 8 is the `prisma-next` CLI plus one `@prisma/orm-*` database facade per app.
+
+## The config
+
+`prisma-next.config.ts` composes the Supabase extension into your contract:
+
+```ts
+import 'dotenv/config';
+import supabasePack from '@prisma/orm-extension-supabase/pack';
+import { defineConfig } from '@prisma/orm-postgres/config';
+
+export default defineConfig({
+  contract: './src/prisma/contract.prisma',
+  extensions: [supabasePack],
+  migrations: {
+    dir: 'migrations',
+  },
+  db: {
+    connection: process.env['DATABASE_URL']!,
+  },
+});
+```
+
+The extension ships a complete contract of what Supabase owns in your database: every `auth` and `storage` table plus the `anon`, `authenticated`, and `service_role` roles, all marked external. Prisma will never generate DDL for them, but it knows their exact shape, which is what makes the next two sections possible.
+
+## The contract: referencing auth.users
+
+Here is the whole schema. The interesting line is the `user` field:
+
+```prisma
+namespace public {
+  model Note {
+    id        Uuid        @id @default(uuid())
+    title     String
+    body      String?
+    userId    Uuid
+    user      supabase:auth.AuthUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+    createdAt Timestamptz @default(now())
+
+    @@map("note")
+    @@rls
+  }
+```
+
+`supabase:auth.AuthUser` names a model in another contract space: the `supabase:` prefix points at the extension, `auth` is its namespace, `AuthUser` is Supabase's `auth.users` table. At migration time this lowers to a real constraint:
+
+```sql
+ALTER TABLE "public"."note"
+  ADD CONSTRAINT "note_userId_fkey"
+  FOREIGN KEY ("userId") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+```
+
+Delete a user and their notes go with them, guaranteed by Postgres. One honest caveat: the relation is declared, not navigable. You cannot `include` the user from a note query; the point is the constraint and the cascade, and Prisma makes traversal a compile-time error rather than a runtime surprise.
+
+## The contract: declaring RLS
+
+`@@rls` enables Row Level Security on the model. The policies sit right below it, in the same file:
+
+```prisma
+  // A signed-in user reads only their own notes. There is no anon policy:
+  // with RLS enabled and no matching policy, anon sees zero rows.
+  policy_select note_owner_read {
+    target = Note
+    roles  = [authenticated]
+    using  = "\"userId\"::uuid = auth.uid()"
+  }
+
+  // A signed-in user may only insert notes they own.
+  policy_insert note_owner_create {
+    target    = Note
+    roles     = [authenticated]
+    withCheck = "\"userId\"::uuid = auth.uid()"
+  }
+
+  // A signed-in user may update only their own notes (USING) and may not
+  // reassign a note to another owner (WITH CHECK).
+  policy_update note_owner_update {
+    target    = Note
+    roles     = [authenticated]
+    using     = "\"userId\"::uuid = auth.uid()"
+    withCheck = "\"userId\"::uuid = auth.uid()"
+  }
+
+  // A signed-in user may delete only their own notes.
+  policy_delete note_owner_delete {
+    target = Note
+    roles  = [authenticated]
+    using  = "\"userId\"::uuid = auth.uid()"
+  }
+}
+```
+
+Each policy has a name, a command, target roles, and the `USING` and `WITH CHECK` predicates you would write in SQL. `policy_all` exists too, and the same policies can be authored in the TypeScript builder via `.rls([...])` if you prefer TS authoring; the emitted result is identical.
+
+Because policies are named contract entities, they show up wherever the contract does: `prisma-next contract infer` reads existing policies back out of a live database, so adopting a database you already have works too. We verified that round-trip: introspecting our migrated database returned the model, the `auth.users` relation, `@@rls`, and all four policies, each with its exact live policy name.
+
+## Applying it
+
+```bash
+npx prisma-next contract emit
+npx prisma-next migration plan --name init
+npx prisma-next migrate
+```
+
+`contract emit` type-checks and emits the contract. `migration plan` diffs it against the previous state and writes a migration; the first run also pins the Supabase extension's contract under `migrations/supabase/` so CI and production can verify without the package installed. `migrate` applies it. For our schema that was 9 operations: create table, foreign key, `ENABLE ROW LEVEL SECURITY`, and four `CREATE POLICY` statements, for example:
+
+```sql
+CREATE POLICY "note_owner_read_9f8e536e" ON "public"."note"
+  AS PERMISSIVE FOR SELECT TO authenticated
+  USING ("userId"::uuid = auth.uid())
+```
+
+No SQL was written by hand at any point.
+
+## The application code
+
+The runtime has a property worth pausing on: there is no default query surface. `supabase()` returns a client you cannot query until you bind a role, which removes the classic footgun of accidentally running app queries as the connection's login role and silently bypassing RLS.
+
+```ts
+// src/prisma/db.ts
+import { type SupabaseDb, supabase } from '@prisma/orm-extension-supabase/runtime';
+import type { Contract } from './contract.d';
+import contractJson from './contract.json' with { type: 'json' };
+
+let instance: Promise<SupabaseDb<Contract>> | undefined;
+
+export function getDb(): Promise<SupabaseDb<Contract>> {
+  instance ??= supabase<Contract>({
+    contractJson,
+    url: process.env['DATABASE_URL']!,
+    // Current Supabase projects sign JWTs with asymmetric keys (ES256).
+    // The client verifies tokens against the project's JWKS endpoint.
+    jwksUrl: `${process.env['SUPABASE_URL']!}/auth/v1/.well-known/jwks.json`,
+  });
+  return instance;
+}
+```
+
+The API binds a role per request. A Bearer token means `asUser`, which verifies the JWT and scopes every query to that user; no token means `asAnon`:
+
+```ts
+// src/app.ts
+async function bindRole(authorization: string | undefined): Promise<RoleBoundDb<Contract>> {
+  const db = await getDb();
+  const token = authorization?.startsWith('Bearer ') ? authorization.slice(7) : undefined;
+  return token ? db.asUser(token) : db.asAnon();
+}
+
+app.get('/notes', async (c) => {
+  try {
+    const bound = await bindRole(c.req.header('authorization'));
+    const notes = await bound.orm.public.Note.select('id', 'title', 'body', 'userId', 'createdAt')
+      .all()
+      .toArray();
+    return c.json({ notes });
+  } catch (e) {
+    if (isStructuredError(e) && e.code === 'SUPABASE.JWT_INVALID') {
+      return c.json({ error: 'invalid token' }, 401);
+    }
+    throw e;
+  }
+});
+```
+
+Notice what is missing: no `where userId = ...` filter. The SELECT policy is the filter. The create path is the same shape, and a forged `userId` comes back as a database error the API maps to 403:
+
+```ts
+const note = await bound.orm.public.Note.select('id', 'title', 'userId').create({
+  title,
+  body: body ?? null,
+  userId,
+});
+```
+
+## Testing it
+
+The example ships a 15-test vitest suite that runs against a real Supabase project. It signs up two users through GoTrue (real ES256 tokens, verified through the project's JWKS endpoint) and checks both directions of every rule:
+
+| Scenario | Identity | Result |
+|---|---|---|
+| Create a note you own | authenticated (A) | created, `userId` = A |
+| Insert a note owned by someone else | authenticated (A) | rejected by `WITH CHECK` |
+| List notes | A, then B | each sees exactly their own |
+| List notes | anon | zero rows |
+| Insert | anon | rejected |
+| Update another user's note | authenticated (A) | 0 rows affected |
+| Reassign your note to another user | authenticated (A) | rejected by `WITH CHECK` |
+| List notes | service_role | all rows (BYPASSRLS, admin only) |
+| Insert with a nonexistent userId | service_role | foreign key violation |
+| Garbage JWT | n/a | `SUPABASE.JWT_INVALID`, no connection touched |
+| Delete users in auth.users | admin SQL | notes cascade-deleted |
+
+All 15 pass in about 12 seconds. The suite deliberately never uses `service_role` to set up state it then asserts through user bindings, so the BYPASSRLS role cannot mask a broken policy.
+
+## Deploying to Compute
+
+[Prisma Compute](https://www.prisma.io/compute) (public beta) is serverless TypeScript hosting that runs your app on the same infrastructure as your Prisma Postgres database. Install the config SDK (`npm install @prisma/compute-sdk`), then a committed `prisma.compute.ts` describes the app:
+
+```ts
+import { defineComputeConfig } from '@prisma/compute-sdk/config';
+
+export default defineComputeConfig({
+  app: {
+    name: 'prisma8-supabase-rls',
+    framework: 'hono',
+    httpPort: 8080,
+    env: '.env',
+  },
+});
+```
+
+```bash
+npx @prisma/cli app deploy --create-project prisma8-supabase-rls
+```
+
+Our deploy was live in 7.2 seconds. We then re-ran the access checks against the deployed URL: anon requests return zero notes, a user creating their own note gets 201, forging another owner gets 403, a second user sees nothing of the first user's data, and a garbage token gets 401. The deployed app behaves exactly like the local one because the enforcement lives in Postgres, not in the process.
+
+## How this compares
+
+The honest comparison is not against another ORM; it is against how Supabase apps are usually built, with authorization split across tools. Capabilities verified in this post:
+
+| Capability | Prisma 8 contract workflow | Typical split workflow |
+|---|---|---|
+| Where the data model lives | one contract file, type-checked | SQL migrations + client-side types |
+| Where RLS policies live | in the contract, next to the model | hand-written SQL or dashboard |
+| Policy review | schema diff in the PR | migration archaeology |
+| Policy renames | planner emits a rename | drop and recreate by hand |
+| FK into `auth.users` | declared in the schema, cascade included | hand-written SQL migration |
+| Introspecting existing policies | `contract infer` round-trips them | n/a |
+| Who runs a query | explicit role binding, no default surface | per-client convention |
+| JWT verification | in the client, JWKS or legacy secret | delegated to PostgREST |
+| Typed results | from the contract | generated separately |
+
+Where another tool covers ground Prisma 8 does not: PostgREST/`supabase-js` gives you Realtime subscriptions, Storage uploads, and edge runtime support, none of which the Supabase extension covers today. The two compose fine; Prisma 8 talks to Postgres directly and does not replace `supabase-js` for those subsystems.
+
+## Current limitations
+
+Prisma 8 is in Early Access, and the Supabase extension is honest about its boundaries:
+
+- The `auth.users` relation is a constraint, not a navigable relation. `include`-style traversal across contract spaces is a compile-time error.
+- App queries cannot reach `auth.*` tables. Admin reads go through the `service_role`-only secondary root (`db.asServiceRole().supabase`), and on a hosted project that additionally needs a one-time `GRANT SELECT` because Supabase grants `service_role` no table privileges on `auth.*` over direct SQL.
+- No transaction can span your tables and `auth.*` tables.
+- The runtime needs a real Postgres driver: Node.js and Bun today, no edge runtimes.
+- Realtime, Storage uploads, and PostgREST interop are out of scope; keep using `supabase-js` for those.
+- Use the session pooler (port 5432). The transaction pooler cannot carry the session-scoped role binding.
+- Policy predicates are strings, not a typed expression language. Prisma migrates and names them but does not parse `auth.uid()` semantics.
+- One defect we hit: `prisma-next db verify` currently fails against new hosted Supabase projects because the extension's contract still declares two `storage` catalog tables (`iceberg_namespaces`, `iceberg_tables`) that current hosted projects no longer ship. Migrations and runtime behavior are unaffected; `db verify --marker-only` is the interim workaround, and we have filed [the issue upstream](https://github.com/prisma/prisma/issues/29896).
+
+## Try it
+
+The full example (contract, migrations, API, tests, Compute config) works from a clean clone: `npm install`, set three env vars, `npx prisma-next migrate`, `npm test`.
+
+{/* TODO before publish: add the public example repo link */}
+
+If you build on Supabase, this is the shortest path yet to a data model where your schema, your auth relationships, and your authorization rules live in one reviewed file. Try Prisma 8 with your Supabase project and tell us what you hit in [Discord](https://pris.ly/discord).
