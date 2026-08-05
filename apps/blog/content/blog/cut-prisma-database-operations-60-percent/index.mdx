@@ -1,0 +1,491 @@
+---
+title: "How I Cut Prisma Database Operations by 60% Without Upgrading My Database"
+slug: "cut-prisma-database-operations-60-percent"
+date: "2026-08-05"
+authors:
+  - "Aman Kumar Bind"
+metaTitle: "How I Cut Prisma Database Operations by 60% Without Upgrading My Database"
+metaDescription: "Profile, index, and fix the Prisma ORM patterns that silently multiply database operations: N+1 queries, over-fetching, write loops, soft-delete bloat, and JSONB anti-patterns."
+heroImagePath: "/cut-prisma-database-operations-60-percent/imgs/hero.png"
+metaImagePath: "/cut-prisma-database-operations-60-percent/imgs/meta.png"
+heroImageAlt: "A dashboard graph showing database operations dropping by 60% over one weekend of optimization"
+tags:
+  - "education"
+  - "orm"
+---
+
+Sellary was running fine until it wasn't.
+
+As the platform grew, my daily [Prisma Postgres](https://www.prisma.io/docs/postgres) operations climbed to 5k–6k per day — enough that I was about to exceed the free tier before month-end.
+
+My first instinct was to upgrade the database.
+
+Instead, I spent a weekend profiling every query.
+
+The surprising part? The database wasn't the bottleneck. A handful of inefficient query patterns were quietly multiplying database operations.
+
+By fixing those patterns — better indexes, eliminating unnecessary aggregations, reducing over-fetching, batching writes, and a few small schema changes — I reduced database operations by more than 60% without upgrading a single plan. None of the improvements required a database upgrade. Most came from small [Prisma ORM](https://www.prisma.io/docs/orm) changes, better indexing, and a few schema optimizations.
+
+This article walks through the techniques that made the biggest difference and explains how you can apply the same ideas to your own Prisma applications.
+
+## 1. Profile before you optimize
+
+Optimization without measurement is mostly guesswork. The most common mistake is jumping straight to fixes for queries that aren't actually the problem. Measuring sends you to the three or four queries that account for most of the load — guessing rarely does.
+
+Two tools did the work here:
+
+**`EXPLAIN ANALYZE`** shows PostgreSQL's execution plan: which indexes it used, how many rows it scanned, and how long each step took.
+
+```sql
+EXPLAIN ANALYZE
+SELECT * FROM orders WHERE seller_id = 123;
+```
+
+A query that looks fine in Prisma can still produce a sequential scan over an entire table. `EXPLAIN ANALYZE` makes that visible.
+
+**Prisma query logging** reveals the exact SQL Prisma generates. Enable it in development to confirm that your Prisma API calls are producing the queries you expect:
+
+```typescript
+const prisma = new PrismaClient({
+  log: ["query", "info", "warn", "error"],
+});
+```
+
+For ongoing visibility in production, [Prisma Postgres](https://www.prisma.io/docs/postgres) includes Query Insights, which shows query counts, latency percentiles, and slow query logs across your whole application. [Prisma Optimize](https://www.prisma.io/docs/optimize) goes further, surfacing expensive query patterns and concrete recommendations before they become production problems. For self-hosted PostgreSQL, `pg_stat_statements` gives you the same raw information:
+
+```sql
+SELECT query,
+       calls,
+       total_exec_time / calls AS avg_ms,
+       rows / calls             AS avg_rows
+FROM   pg_stat_statements
+ORDER  BY total_exec_time DESC
+LIMIT  20;
+```
+
+Run this after a period of real traffic, sort by `total_exec_time`, and fix the top entries before touching anything else.
+
+## 2. Index the columns you actually filter on
+
+Indexes are the highest-impact single change you can make. Without one, PostgreSQL inspects every row in the table to satisfy a filter. With one, it jumps directly to the matching rows.
+
+The difference on a query that runs thousands of times a day is large.
+
+```sql
+-- Without an index: full table scan, every row inspected
+SELECT * FROM orders WHERE seller_id = 123;
+
+-- After adding an index: seeks directly to the matching rows
+CREATE INDEX idx_orders_seller ON orders(seller_id);
+```
+
+When your application filters on multiple columns together, a composite index handles both at once:
+
+```sql
+CREATE INDEX idx_orders_seller_status ON orders(seller_id, status);
+```
+
+This makes the combined filter fast without needing two separate single-column indexes. The leftmost prefix rule also means this index satisfies a filter on `seller_id` alone.
+
+In a Prisma schema, indexes are declared directly on the model, which means they're code-reviewed, version-controlled, and applied consistently across every environment:
+
+```prisma
+model Order {
+  id        Int      @id @default(autoincrement())
+  sellerId  Int
+  status    String
+  createdAt DateTime @default(now())
+
+  @@index([sellerId, status])
+  @@index([createdAt])
+}
+```
+
+Run `prisma migrate dev` and Prisma generates the `CREATE INDEX` migration for you.
+
+The rule: index the columns you filter, sort, or join on. Don't index every column. Indexes add write overhead and storage — add them when you have a slow query to justify them. The [improving query performance series](/improving-query-performance-using-indexes-1-zuLNZwBkuL) on this blog covers B-tree and hash indexes with `EXPLAIN ANALYZE` measurements before and after.
+
+## 3. Eliminate N+1 queries
+
+The N+1 problem is the most common source of unnecessary database operations in Prisma applications, and one of the easiest to miss when reading code rather than watching queries run.
+
+The pattern: load a list of records, then loop and query for a related record on each one.
+
+```typescript
+// 1 query for orders + 1 query per order for its user = N+1 total
+const orders = await prisma.order.findMany();
+
+for (const order of orders) {
+  const user = await prisma.user.findUnique({
+    where: { id: order.userId },
+  });
+  console.log(`${order.id} placed by ${user.name}`);
+}
+```
+
+For 100 orders that is 101 queries. For 1,000 orders, 1,001. The fix is to load the relation in the same query using `include`:
+
+```typescript
+// 1 query, all orders and their users loaded together
+const orders = await prisma.order.findMany({
+  include: {
+    user: true,
+  },
+});
+```
+
+Prisma handles the join. One query, one round trip, regardless of how many orders exist.
+
+To limit which fields are returned from the relation, use `select` inside `include`:
+
+```typescript
+const orders = await prisma.order.findMany({
+  include: {
+    user: {
+      select: { id: true, name: true, email: true },
+    },
+  },
+});
+```
+
+Any loop where you issue a Prisma query per iteration is an N+1. Look for them anywhere you map or `for...of` over a result set.
+
+## 4. Fetch only the columns you need
+
+`findMany` with no `select` returns every column in the row. For tables with JSONB blobs, markdown bodies, image data, or large text fields, this means transferring data that the handler never reads.
+
+```typescript
+// Returns every column on every user
+const users = await prisma.user.findMany();
+
+// Returns only what the handler uses
+const users = await prisma.user.findMany({
+  select: {
+    id: true,
+    name: true,
+    email: true,
+  },
+});
+```
+
+Less data serialized by Postgres, less data transferred over the wire, less memory allocated in your application. On wide tables the difference is measurable. The habit also keeps query shapes explicit as schemas grow, which prevents accidental over-fetching when new columns are added.
+
+## 5. Use `findUnique` for exact lookups
+
+When a query matches at most one row — by `id`, by a unique email, by any unique constraint — `findUnique` is the right call. It maps to a point lookup on the unique index. `findFirst` adds an implicit scan with `LIMIT 1`.
+
+```typescript
+// Scan + LIMIT 1
+const user = await prisma.user.findFirst({
+  where: { id: userId },
+});
+
+// Point lookup on the unique index — faster and semantically accurate
+const user = await prisma.user.findUnique({
+  where: { id: userId },
+});
+```
+
+The difference is small on tiny tables, but it compounds across high-frequency endpoints and grows with table size.
+
+## 6. Replace heavy aggregations with counter fields
+
+`COUNT(*)`, `SUM(amount)`, and `AVG(...)` are fine for small tables. On large ones, they scan the index or the table on every call. If you display totals on a dashboard or a list card, and those totals update less often than they're read, each page load is paying for a full aggregation.
+
+The fix: store the aggregate value on the parent record and update it during writes.
+
+```prisma
+model User {
+  id           Int     @id @default(autoincrement())
+  name         String
+  totalOrders  Int     @default(0)
+  totalRevenue Float   @default(0)
+  orders       Order[]
+}
+```
+
+When an order is created, update the counters in the same transaction:
+
+```typescript
+await prisma.$transaction([
+  prisma.order.create({
+    data: { sellerId, amount, status: "PENDING" },
+  }),
+  prisma.user.update({
+    where: { id: sellerId },
+    data: {
+      totalOrders: { increment: 1 },
+      totalRevenue: { increment: amount },
+    },
+  }),
+]);
+```
+
+Reading totals is now a field access on the user record instead of an aggregation query. The read goes from O(n rows) to O(1).
+
+This was one of the largest single reductions in Sellary's operation count. Counters can drift if a transaction rolls back, so it's worth verifying them periodically against the actual aggregate for anything correctness-sensitive.
+
+## 7. Paginate every list endpoint
+
+A query without a `LIMIT` returns every matching row. On a growing table, "every row" becomes a larger number every week, and eventually a serious problem: more data serialized by Postgres, more transferred over the wire, more memory allocated in your application, and a slower response.
+
+Add limits to every list endpoint, from the beginning:
+
+```typescript
+const PAGE_SIZE = 20;
+
+const products = await prisma.product.findMany({
+  skip: page * PAGE_SIZE,
+  take: PAGE_SIZE,
+  orderBy: { createdAt: "desc" },
+});
+```
+
+For large tables where deep offset pagination is too slow (`SKIP n` reads and discards `n` rows before returning results), cursor-based pagination is more efficient:
+
+```typescript
+const products = await prisma.product.findMany({
+  take: PAGE_SIZE,
+  cursor: lastSeenId ? { id: lastSeenId } : undefined,
+  skip: lastSeenId ? 1 : 0,
+  orderBy: { id: "asc" },
+});
+```
+
+Cursor pagination uses an index seek to find the starting record, so the cost stays constant regardless of page number. It's the right default for infinite-scroll UIs and any table that will grow large over time.
+
+## 8. Cache reads that don't need to be live
+
+The fastest query is the one you never execute.
+
+Some data changes rarely but is read constantly: product pages, public storefronts, application settings, category lists, price tables. Running a database query for each request that reads this data adds latency and load without meaningful benefit.
+
+[Prisma Postgres](https://www.prisma.io/docs/postgres) includes per-query caching through a `cacheStrategy` option:
+
+```typescript
+const categories = await prisma.category.findMany({
+  cacheStrategy: {
+    ttl: 60 * 5, // serve from cache for 5 minutes
+    swr: 60 * 2, // serve stale for 2 more minutes while refreshing
+  },
+});
+```
+
+`ttl` controls how long a result is served as fresh. `swr` (stale-while-revalidate) serves the stale result while the cache refreshes in the background, so requests at the moment of expiry still get a fast response.
+
+For self-hosted setups, the same pattern applies with Redis, Next.js `unstable_cache`, or an in-process LRU cache. The discipline is the same: decide which queries can tolerate some staleness, measure how often they run, and cache those specifically. The [caching guide](/caching-database-queries-with-prisma-accelerate) covers TTL trade-offs in more detail.
+
+## 9. Batch writes instead of looping
+
+Network latency accumulates. A loop that creates records one at a time sends one query per record:
+
+```typescript
+// 500 items → 500 INSERT queries, 500 round trips
+for (const item of items) {
+  await prisma.orderItem.create({ data: item });
+}
+```
+
+`createMany` sends one query for the entire batch:
+
+```typescript
+// 500 items → 1 INSERT query, 1 round trip
+await prisma.orderItem.createMany({ data: items });
+```
+
+For upserts across a batch, wrap an array of `upsert` calls in a transaction:
+
+```typescript
+await prisma.$transaction(
+  items.map((item) =>
+    prisma.orderItem.upsert({
+      where: { id: item.id },
+      update: { quantity: item.quantity },
+      create: item,
+    })
+  )
+);
+```
+
+One round trip is always cheaper than hundreds.
+
+## 10. Use transactions for related operations
+
+Operations that must succeed or fail together should always run inside a transaction. When an order is placed, the inventory update and the balance adjustment need to either both commit or both roll back. Without a transaction, a failure partway through leaves the database in an inconsistent state.
+
+Transactions also reduce round trips: Prisma sends the grouped operations as a single unit.
+
+```typescript
+// Two separate round trips, inconsistent if the second fails
+await prisma.order.update({ where: { id }, data: { status: "PAID" } });
+await prisma.inventory.update({ where: { productId }, data: { stock: { decrement: qty } } });
+
+// One transaction: both succeed or both roll back
+await prisma.$transaction([
+  prisma.order.update({ where: { id }, data: { status: "PAID" } }),
+  prisma.inventory.update({ where: { productId }, data: { stock: { decrement: qty } } }),
+  prisma.balance.update({ where: { sellerId }, data: { total: { increment: amount } } }),
+]);
+```
+
+For sequences that need to read from the database mid-transaction, interactive transactions give you a client scoped to the transaction:
+
+```typescript
+await prisma.$transaction(async (tx) => {
+  const order = await tx.order.findUniqueOrThrow({ where: { id } });
+
+  if (order.status !== "PENDING") {
+    throw new Error("Order is not in a payable state");
+  }
+
+  await tx.order.update({ where: { id }, data: { status: "PAID" } });
+  await tx.inventory.update({
+    where: { productId: order.productId },
+    data: { stock: { decrement: order.quantity } },
+  });
+});
+```
+
+## 11. Reuse the Prisma Client
+
+Each `new PrismaClient()` call creates a new connection pool. In development, hot-reload creates a new instance on every file change. In serverless functions, a new instance on every cold start exhausts your database's connection limit faster than CPU becomes a bottleneck.
+
+The standard fix is a singleton:
+
+```typescript
+// lib/prisma.ts
+import { PrismaClient } from "@prisma/client";
+
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
+
+export const prisma =
+  globalForPrisma.prisma ?? new PrismaClient();
+
+if (process.env.NODE_ENV !== "production") {
+  globalForPrisma.prisma = prisma;
+}
+```
+
+Import `prisma` from this module everywhere in your application. The `globalForPrisma` pattern prevents development hot-reload from leaking client instances.
+
+For serverless deployments at scale, [Prisma Postgres](https://www.prisma.io/docs/postgres) includes built-in connection pooling, which means you don't need to operate a separate PgBouncer instance to stay within your database's connection limit.
+
+## 12. Use connection pooling
+
+Serverless environments can spin up thousands of concurrent function invocations. Without connection pooling, each function tries to open its own database connection, and PostgreSQL runs out of available connections before CPU becomes a constraint.
+
+Options for managing this:
+
+- **[Prisma Postgres](https://www.prisma.io/docs/postgres)**: pooling is included in the platform — no separate setup.
+- **[Prisma Accelerate](https://www.prisma.io/docs/accelerate)**: a connection pooling and caching edge layer for any PostgreSQL database.
+- **PgBouncer**: self-hosted pooler, widely used with managed PostgreSQL providers.
+
+Connection pooling allows thousands of requests to share a small number of long-lived PostgreSQL connections.
+
+## 13. Optimize JSONB queries
+
+PostgreSQL's JSONB is useful for semi-structured data. Querying it without a GIN index often causes full table scans, because the database applies operators to the raw binary representation row by row.
+
+If you filter on JSONB keys frequently, add a GIN index:
+
+```prisma
+model Product {
+  id       Int  @id @default(autoincrement())
+  metadata Json
+
+  @@index([metadata], type: Gin)
+}
+```
+
+This makes queries that filter on JSONB keys fast:
+
+```typescript
+const products = await prisma.product.findMany({
+  where: {
+    metadata: {
+      path: ["category"],
+      equals: "electronics",
+    },
+  },
+});
+```
+
+If you only ever query one or two keys from a JSONB column, promoting those keys to real columns is worth considering. Real columns are cheaper to index, simpler to query, and easier for the query planner to reason about.
+
+## 14. Archive instead of accumulating soft deletes
+
+Soft deletes (an `isDeleted` flag or a `deletedAt` timestamp, with every query filtered to exclude them) are convenient for preserving history. The problem is that deleted rows never leave the table. Every query that filters `WHERE deleted_at IS NULL` still scans them to exclude them, and over time the table accumulates rows that are never returned but always touched.
+
+For high-volume tables, move old deleted records into an archive table. The active table stays small. Its indexes stay small. Its queries stay fast.
+
+```typescript
+await prisma.$transaction(async (tx) => {
+  const record = await tx.order.findUniqueOrThrow({
+    where: { id: orderId },
+  });
+
+  await tx.archivedOrder.create({ data: record });
+  await tx.order.delete({ where: { id: orderId } });
+});
+```
+
+If soft deletes are the right model for your use case, a partial index limits the index to only the rows your queries actually touch:
+
+```sql
+CREATE INDEX orders_active_idx ON orders (seller_id, status)
+WHERE deleted_at IS NULL;
+```
+
+The index only includes active rows, so its size stays proportional to active records rather than total records ever written. In a Prisma schema, this is a `@@index` with a `where` clause parameter, applied through a raw migration.
+
+## 15. Keep autovacuum healthy
+
+PostgreSQL uses MVCC (multi-version concurrency control). Deleted or updated rows are not immediately removed — they become dead tuples. Autovacuum reclaims that space, updates planner statistics, and keeps index efficiency high.
+
+A healthy autovacuum configuration keeps query plans accurate. When autovacuum falls behind, dead tuple bloat causes indexes to grow, query plans to drift, and queries to slow down. On managed PostgreSQL (including Prisma Postgres), autovacuum is managed for you. On self-hosted instances, check `pg_stat_user_tables` to confirm it's running:
+
+```sql
+SELECT relname,
+       n_dead_tup,
+       last_autovacuum,
+       last_autoanalyze
+FROM   pg_stat_user_tables
+ORDER  BY n_dead_tup DESC;
+```
+
+If `n_dead_tup` is high and `last_autovacuum` is old or null on a frequently written table, autovacuum is not keeping up. Tune `autovacuum_vacuum_scale_factor` down on those specific tables so it triggers more often.
+
+## Results
+
+Profiling first made this tractable. Most of the 60% reduction in operations came from eight of these fifteen patterns. The four largest wins:
+
+1. **Eliminating N+1 queries** in dashboard and order-list endpoints — the largest single reduction
+2. **Replacing `COUNT(*)` aggregations with counter fields** on views read thousands of times per day
+3. **Adding composite indexes** on two high-traffic queries that were doing full table scans
+4. **Batching write loops** that were inserting records one at a time across import operations
+
+The remaining fixes contributed smaller improvements that added up. None required a schema rewrite. The indexing and counter field changes were the only migrations. Everything else was an API adjustment in application code.
+
+Before upgrading your database, spend a weekend understanding how it's actually being used. Profile under real traffic, fix the top queries, and measure the difference. Most database performance problems are solved by better architecture, not larger hardware.
+
+---
+
+## Frequently asked questions
+
+<Accordions type="single">
+  <Accordion title="How do I find which queries are causing the most load?">
+On [Prisma Postgres](https://www.prisma.io/docs/postgres), Query Insights shows query counts, latency percentiles, and slow query logs. On self-hosted PostgreSQL, enable `pg_stat_statements` and query it after a period of real traffic: sort by `total_exec_time` descending and focus on the top entries. Always profile under production-representative load — development traffic rarely reveals the same hot paths.
+  </Accordion>
+  <Accordion title="When should I use select vs include?">
+`include` loads a relation and returns all fields on both the parent and the related model. `select` lets you choose exactly which fields to return, including nested fields inside relations. Use `select` when you know which fields a handler uses, especially on wide tables. Use `include: true` only when you genuinely need all fields on the related model.
+  </Accordion>
+  <Accordion title="Is cursor pagination always better than offset pagination?">
+Cursor pagination has constant cost regardless of page number, because it uses an index seek on the cursor value. Offset pagination (`skip: n`) discards `n` rows before returning results, so deep pages do more work. Cursor pagination is the right default for large tables and infinite-scroll UIs. Offset pagination is simpler to implement and works fine when result sets are small or when users need random access to specific page numbers.
+  </Accordion>
+  <Accordion title="Can counter fields get out of sync?">
+Yes, if a transaction rolls back after the counter increment is already reflected somewhere else, or if rows are inserted or deleted outside the application layer (a migration, a manual fix). Verify counters periodically against the actual aggregate for anything correctness-sensitive. One approach: a scheduled job that reconciles the counter column against a `COUNT(*)` on a sample of records.
+  </Accordion>
+  <Accordion title="How do I add a GIN index for JSONB through Prisma?">
+Use `@@index([fieldName], type: Gin)` on the model. Run `prisma migrate dev` and Prisma generates the `CREATE INDEX ... USING GIN` migration. The index is then version-controlled alongside the rest of your schema and applied consistently in every environment.
+  </Accordion>
+</Accordions>
