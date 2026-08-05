@@ -147,7 +147,7 @@ function baseOptions() {
           {
             text: "Templates",
             url: "/templates",
-            icon: "fa-regular fa-layer-group",
+            icon: "fa-regular fa-file-code",
           },
           {
             text: "Stack",
