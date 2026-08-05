@@ -18,7 +18,7 @@ export function NewsletterSignup() {
     ? { text: error, className: "text-foreground-error" }
     : isSubmitted
       ? {
-          text: "Please check your email to confirm your subscription!",
+          text: "You're subscribed. Welcome to the Prisma newsletter!",
           className: "text-foreground-success",
         }
       : isAlreadySubscribed
