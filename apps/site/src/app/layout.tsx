@@ -9,7 +9,6 @@ import Script from "next/script";
 import type React from "react";
 import { SITE_HOME_DESCRIPTION, SITE_HOME_TITLE } from "@/lib/site-metadata";
 import { NavigationWrapper, FooterWrapper } from "@/components/navigation-wrapper";
-import { Footer } from "@prisma-docs/ui/components/footer";
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import { GoogleTagManager } from "@prisma-docs/ui/components/google-tag-manager";
 import { ThemeProvider } from "@prisma-docs/ui/components/theme-provider";
@@ -144,6 +143,11 @@ function baseOptions() {
             url: "https://github.com/prisma/prisma-examples",
             icon: "fa-regular fa-grid-2",
             external: true,
+          },
+          {
+            text: "Templates",
+            url: "/templates",
+            icon: "fa-regular fa-layer-group",
           },
           {
             text: "Stack",
