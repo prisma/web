@@ -51,16 +51,7 @@ export default async function TemplatesPage() {
 
       <section className="relative px-4 pb-16 pt-48 md:pb-20 md:pt-56">
         <div className="mx-auto flex w-full max-w-[800px] flex-col items-center gap-6 text-center">
-          <Badge
-            color="ppg"
-            size="lg"
-            label={
-              <span className="flex items-center gap-2">
-                <i className="fa-regular fa-sparkles text-xs" aria-hidden />
-                PRISMA COMPUTE TEMPLATES
-              </span>
-            }
-          />
+          <Badge color="ppg" size="lg" label="PRISMA COMPUTE TEMPLATES" />
           <h1 className="m-0 max-w-[760px] text-pretty font-sans-display text-4xl font-bold stretch-display sm:text-5xl md:text-6xl">
             Start with working code. Deploy in minutes.
           </h1>
