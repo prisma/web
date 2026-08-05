@@ -28,6 +28,7 @@ async function getTemplates() {
   try {
     const response = await fetch(TEMPLATE_MANIFEST_URL, {
       next: { revalidate: 300 },
+      signal: AbortSignal.timeout(10_000),
     });
     if (!response.ok) return [];
 
@@ -70,7 +71,7 @@ export default async function TemplatesPage() {
           <ul className="m-0 grid w-full max-w-[760px] list-none grid-cols-2 gap-3 p-0 text-left md:grid-cols-4">
             {[
               ["fa-brands fa-github", "GitHub repository"],
-              ["fa-regular fa-cube", "Prisma project"],
+              ["fa-regular fa-cubes-stacked", "Prisma project"],
               ["fa-regular fa-database", "Postgres database"],
               ["fa-regular fa-rocket", "Compute deployment"],
             ].map(([icon, label]) => (
@@ -129,7 +130,12 @@ export default async function TemplatesPage() {
                     </div>
 
                     <div className="flex flex-col gap-3 sm:flex-row lg:flex-col xl:flex-row">
-                      <Button asChild variant="ppg" size="xl" className="flex-1">
+                      <Button
+                        asChild
+                        variant="ppg"
+                        size="xl"
+                        className="w-full sm:flex-1 lg:flex-none xl:flex-1"
+                      >
                         <a
                           href={deployUrl.toString()}
                           aria-label={`Use the ${template.name} template`}
