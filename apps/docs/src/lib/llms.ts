@@ -64,7 +64,7 @@ export const commonQueries: LLMsLink[] = [
   },
   {
     title: "Try Prisma 8 (Release Candidate)",
-    href: "/next/getting-started",
+    href: "/v8/getting-started",
     description:
       "Choose a Prisma 8 quickstart for a new project or add Prisma 8 to an existing app.",
   },
@@ -164,7 +164,7 @@ export const llmsSections: LLMsSection[] = [
     description:
       "Current Prisma ORM docs: setup, schema modeling, Prisma Client, migrations, and references (excludes legacy v6 and Prisma 8).",
     prefixes: ["/orm", "/prisma-orm"],
-    excludePrefixes: ["/orm/v6", "/orm/next"],
+    excludePrefixes: ["/orm/v6", "/orm/v8"],
   },
   {
     slug: "orm-v6",
@@ -174,11 +174,11 @@ export const llmsSections: LLMsSection[] = [
     prefixes: ["/orm/v6"],
   },
   {
-    slug: "next",
+    slug: "v8",
     title: "Prisma 8 (Release Candidate)",
     description:
       "Prisma 8, the next major version of Prisma ORM, available as a Release Candidate. A ground-up TypeScript rewrite that keeps the schema-first workflow while making it extensible, composable, and AI-agent friendly. Covers setup, ORM, guides, and CLI docs for Prisma 8.",
-    prefixes: ["/next", "/orm/next", "/guides/next", "/cli/next"],
+    prefixes: ["/v8", "/orm/v8", "/guides/v8", "/cli/v8"],
   },
   {
     slug: "postgres",
@@ -193,7 +193,7 @@ export const llmsSections: LLMsSection[] = [
     description:
       "End-to-end guides for using Prisma ORM and Prisma Postgres with popular frameworks and runtimes (Prisma 8 guides live in the Prisma 8 section).",
     prefixes: ["/guides"],
-    excludePrefixes: ["/guides/next"],
+    excludePrefixes: ["/guides/v8"],
   },
   {
     slug: "ai",
@@ -208,7 +208,7 @@ export const llmsSections: LLMsSection[] = [
     description:
       "Prisma CLI command reference for init, generate, migrate, db, studio, and more (Prisma 8 CLI docs live in the Prisma 8 section).",
     prefixes: ["/cli"],
-    excludePrefixes: ["/cli/next"],
+    excludePrefixes: ["/cli/v8"],
   },
   {
     slug: "platform",

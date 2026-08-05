@@ -1,0 +1,89 @@
+---
+title: 'Built-in: budgets'
+description: The budgets middleware caps row counts and makes over-latency queries visible.
+url: /orm/v8/middleware/built-in-budgets
+metaTitle: 'Prisma 8 built-in middleware: budgets'
+metaDescription: Wire and configure the budgets middleware in Prisma 8 to cap row counts, report query latency, and understand the errors it raises.
+badge: release-candidate
+---
+
+The `budgets` middleware puts a cost ceiling on every query: it rejects or warns on queries that would read more rows than you allow, counts rows while they stream, and reports queries that run longer than your latency budget.
+
+Register it on the runtime with the row and latency limits you want to enforce:
+
+```ts title="src/prisma/db.ts"
+import postgres from '@prisma/orm-postgres/runtime';
+import { budgets } from '@prisma/orm-postgres/family-runtime';
+import type { Contract } from './contract.d';
+import contractJson from './contract.json' with { type: 'json' };
+
+export const db = postgres<Contract>({
+  contractJson,
+  url: process.env['DATABASE_URL']!,
+  middleware: [
+    budgets({
+      maxRows: 10_000,
+      defaultTableRows: 10_000,
+      tableRows: { user: 10_000, post: 10_000 },
+      maxLatencyMs: 1_000,
+    }),
+  ],
+});
+```
+
+`budgets` is SQL-family middleware (it declares `familyId: 'sql'`), so it registers on PostgreSQL runtimes. It ships with `@prisma/orm-postgres/family-runtime`, which comes in through `@prisma/orm-postgres`; you do not install anything extra.
+
+## Options
+
+All options are optional.
+
+| Option | Type | Default | What it controls |
+| --- | --- | --- | --- |
+| `maxRows` | `number` | `10_000` | The most rows a single query may produce, checked against both the pre-execution estimate and the observed row stream |
+| `defaultTableRows` | `number` | `10_000` | Assumed row count for tables not listed in `tableRows`, used by the estimator |
+| `tableRows` | `Record<string, number>` | `{}` | Per-table row-count assumptions for the estimator, keyed by table name |
+| `maxLatencyMs` | `number` | `1_000` | Latency budget for one query, checked after execution |
+| `severities.rowCount` | `'warn' \| 'error'` | `'error'` | Whether pre-execution row-budget violations block the query or log a warning in permissive mode. Strict mode always blocks |
+| `severities.latency` | `'warn' \| 'error'` | (none) | Accepted by the options type but not read by the middleware in v0.14; latency behavior follows the runtime mode (see below) |
+
+The runtime defaults to strict mode. In strict mode, over-budget latency throws `BUDGET.TIME_EXCEEDED`; in permissive mode, the same event is logged as a warning. The latency check happens after execution, so it is a visibility tool rather than a cancellation mechanism. Setting `severities.latency` does not change this in v0.14: the key exists on the options type, but the middleware does not consult it yet.
+
+## How it enforces the budget
+
+The middleware checks at three points in the query lifecycle:
+
+1. **Before execution**, it inspects the query plan's AST. A `SELECT` with no `LIMIT` (and no aggregation that collapses the result) is treated as unbounded, and a bounded query whose estimated rows exceed `maxRows` is over budget. The estimate comes from `tableRows` and `defaultTableRows`, so tune those to your data. Violations raise `BUDGET.ROWS_EXCEEDED` before the driver runs, or warn in permissive mode when `severities.rowCount` is set to `'warn'`.
+2. **While rows stream**, it counts what the database actually returns. If the observed count passes `maxRows`, it throws `BUDGET.ROWS_EXCEEDED` and aborts the stream, which protects you when the estimate was wrong.
+3. **After execution**, it compares the measured `latencyMs` against `maxLatencyMs` and reports `BUDGET.TIME_EXCEEDED` when the query ran too long. This check runs after the work is done, so it cannot save the slow query itself; it exists to make slow queries loud instead of invisible.
+
+## What you see when a budget trips
+
+A blocked query rejects with a runtime error carrying the budget code and details:
+
+```text title="Row budget error"
+BUDGET.ROWS_EXCEEDED: Unbounded SELECT query exceeds budget
+  { source: 'ast', maxRows: 10000 }
+```
+
+The `source` field tells you whether the violation came from the pre-execution estimate (`'ast'`) or the observed row stream (`'observed'`). In strict mode, latency violations carry the measured and allowed values:
+
+```text title="Latency budget error"
+BUDGET.TIME_EXCEEDED: Query latency exceeds budget
+  { latencyMs: 2481, maxLatencyMs: 1000 }
+```
+
+In permissive mode, the same information is emitted through the runtime logger as a warning. To fix an unbounded-select violation, add a limit to the query ([`take(...)` on the ORM API](/orm/v8/fundamentals/reading-data#sort-and-paginate), `.limit(...)` on the SQL query builder) or raise the budget deliberately.
+
+## Common gotchas
+
+:::warning
+
+The pre-execution row check estimates from `tableRows` and `defaultTableRows`, not from live table statistics. If your real tables are much larger than the configured assumptions, a query can pass the estimate and still hit the observed-row limit mid-stream. Keep `tableRows` roughly honest for the tables you query most.
+
+:::
+
+## See also
+
+- [How middleware works](/orm/v8/middleware/how-middleware-works)
+- [Built-in: lints](/orm/v8/middleware/built-in-lints) for structural query checks that complement budgets
+- [Authoring custom middleware](/orm/v8/middleware/authoring-custom-middleware)

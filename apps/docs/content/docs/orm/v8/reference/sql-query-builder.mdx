@@ -1,0 +1,1009 @@
+---
+title: SQL query builder reference
+description: Reference for the Prisma 8 SQL query builder's select, mutation, and grouped query methods.
+url: /orm/v8/reference/sql-query-builder
+metaTitle: Prisma 8 SQL query builder reference
+metaDescription: Reference for the Prisma 8 SQL query builder's select, mutation, and grouped query methods.
+badge: release-candidate
+---
+
+The SQL query builder gives you table-level, SQL-shaped methods for building typed queries: `select()`, `innerJoin()`, `groupBy()`, and the rest. It's the lower-level escape hatch that sits alongside the [ORM client](/orm/v8/reference/orm-client). Reach for it when you need a join, aggregate, or SQL feature the ORM client doesn't expose, or when you want direct control over the generated SQL.
+
+This page documents every method, its options, and its return type. Where a method is capability-gated or has a runtime caveat, the Remarks call that out. For a task-oriented guide to when and how to reach for the builder, see [Advanced queries](/orm/v8/fundamentals/advanced-queries).
+
+:::note[This is the SQL-family builder]
+The SQL query builder targets SQL databases; PostgreSQL is supported today. MongoDB has no SQL builder: use the [ORM client](/orm/v8/reference/orm-client) for MongoDB queries, and the [pipeline builder](/orm/v8/reference/pipeline-builder) for aggregation pipelines.
+:::
+
+## Example schema
+
+All examples on this page run against the following schema, and every example is transcribed from an executable test suite that runs against a live PostgreSQL database. The select and mutation examples use this `user` / `post` / `post_tag` / `tag` schema; the grouped-query examples use a separate `customer` / `order` schema, shown under [Grouped queries](#grouped-queries).
+
+<details>
+
+<summary>Expand for the example schema</summary>
+
+```prisma
+types {
+  Embedding1536 = pgvector.Vector(1536)
+  Uuid          = String @db.Uuid
+}
+
+type Address {
+  street  String
+  city    String
+  zip     String?
+  country String
+}
+
+enum user_type {
+  @@type("pg/text@1")
+  admin
+  user
+}
+
+enum Priority {
+  @@type("pg/text@1")
+  Low    = "low"
+  High   = "high"
+  Urgent = "urgent"
+}
+
+model User {
+  id          Uuid      @id @default(uuid())
+  email       String
+  displayName String
+  createdAt   DateTime  @default(now())
+  kind        user_type
+  address     Address?
+  posts       Post[]
+  tasks       Task[]
+
+  @@map("user")
+}
+
+model Post {
+  id        Uuid           @id @default(uuid())
+  title     String
+  userId    Uuid
+  priority  Priority       @default(Low)
+  createdAt DateTime       @default(now())
+  embedding Embedding1536?
+
+  user User  @relation(fields: [userId], references: [id])
+  tags Tag[]
+
+  @@map("post")
+}
+
+model Tag {
+  id    Uuid   @id @default(uuid())
+  label String @unique
+
+  posts Post[]
+
+  @@map("tag")
+}
+
+model PostTag {
+  postId Uuid
+  tagId  Uuid
+
+  post Post @relation(fields: [postId], references: [id])
+  tag  Tag  @relation(fields: [tagId], references: [id])
+
+  @@id([postId, tagId])
+  @@map("post_tag")
+}
+
+model Task {
+  id          Uuid     @id @default(uuid())
+  title       String
+  description String?
+  status      String   @default("open")
+  type        String
+  userId      Uuid
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@discriminator(type)
+  @@map("task")
+}
+
+model Bug {
+  severity     String
+  stepsToRepro String?
+  @@base(Task, "bug")
+  @@map("bug")
+}
+
+model Feature {
+  priority      String
+  targetRelease String?
+  @@base(Task, "feature")
+  @@map("feature")
+}
+```
+
+</details>
+
+## Entry points
+
+You build queries from the client's `sql` facet, which carries your contract's execution context. Create a Postgres client with `postgres(...)`, then reach tables through `db.sql.public`. Table accessors use the contract's **mapped table names** (snake_case), so a `User` model mapped to `user` is reached as `db.sql.public.user`, and a `Post`/`Tag` junction mapped to `post_tag` is reached as `db.sql.public.post_tag`. `public` is the default PostgreSQL schema namespace.
+
+### The `db.sql` facet
+
+Create the client with `postgres(...)`, connect it to get a runtime, and build queries off `db.sql.public`. A `select()`, `insert()`, `update()`, or `delete()` call starts a query; you finish it with [`build()`](#build) and run the resulting plan with `runtime.execute(...)`.
+
+```ts
+import postgres from '@prisma/orm-postgres/runtime';
+import type { Contract } from './contract.d';
+import contractJson from './contract.json' with { type: 'json' };
+
+const db = postgres<Contract>({ contractJson, url: process.env.DATABASE_URL });
+const runtime = await db.connect();
+
+const plan = db.sql.public.user.select('id', 'email').build();
+const users = await runtime.execute(plan);
+```
+
+The facet is built from the `sql()` factory: `db.sql` holds the result of an internal `sql({ context, rawCodecInferer })` call, wired to the client's execution context and the adapter's codec inferer. You call `sql(...)` directly only when you're building your own database wrapper instead of using the `postgres()` client's facet. Pass your execution `context` (from your database client) and a `rawCodecInferer` (a fallback codec for raw expressions that have no column to infer one from):
+
+```ts
+import { sql } from '@prisma/orm-postgres/builder/runtime';
+
+const publicSql = sql({ context, rawCodecInferer: { inferCodec: () => 'pg/text' } }).public;
+```
+
+This page reaches tables through the client facet and refers to the root as `db.sql.public`.
+
+### Table access
+
+Every table on `db.sql.public` exposes the query-building methods. A `select()`, `insert()`, `update()`, or `delete()` call starts a query; you finish it with [`build()`](#build) and run the resulting plan with `runtime.execute(...)`.
+
+```ts
+db.sql.public.user.select('id', 'email'); // start a SELECT
+db.sql.public.tag.insert([{ id, label: 'typescript' }]); // start an INSERT
+```
+
+### Aliasing a query with `.as()`
+
+A completed `SELECT` query can be used as a subquery source by calling `.as(alias)` on it. The aliased query becomes a join source you can pass to `innerJoin()`, `outerLeftJoin()`, and the other join methods. See [Subquery via `.as()`](#subquery-via-as).
+
+```ts
+const highPriorityPosts = db.sql.public.post
+  .select('id', 'userId')
+  .where((f, fns) => fns.eq(f.priority, 'high'))
+  .as('hp');
+```
+
+:::warning[`.as()` is not for lateral joins]
+`.as()` returns a plain join source. A [`lateralJoin()`](#lateraljoin) callback must return the query chain directly, not the result of `.as()`. See that method's Remarks.
+:::
+
+## SELECT queries
+
+These methods build and refine a `SELECT`. They chain, and you resolve the query with [`build()`](#build) followed by `runtime.execute(...)`.
+
+The `where()`, `select()`, `orderBy()`, `update()`, and other callback forms receive two arguments: a field accessor `f` (columns keyed by name, or namespace-qualified after a join, such as `f.post.id`) and a function bag `fns` (the [expression helpers](#expressions-and-functions)).
+
+### `select()`
+
+Project a row down to a chosen set of columns or computed expressions.
+
+#### Options
+
+`select()` has three forms:
+
+| Form | Signature | Description |
+|---|---|---|
+| Column names | `select('col', 'col2', ...)` | Keep the named columns. Each name resolves against the current scope; an unknown name throws `Column "x" not found in scope`. |
+| Aliased expression | `select(alias, (f, fns) => expr)` | Add one computed column under `alias`. |
+| Object of expressions | `select((f, fns) => ({ alias: expr, ... }))` | Add several computed columns at once. The row type is inferred from the object's shape. |
+
+A computed expression's result type comes from `.returns(...)` on `fns.raw`, or from the operation's own declared return type. See [`fns.raw` and `.returns()`](#fnsraw-and-returns).
+
+#### Return type
+
+| Return type | Example | Description |
+|---|---|---|
+| `SelectQuery` | `db.sql.public.user.select('id', 'email')` | A query projected to the named columns or expressions, chainable and buildable. |
+
+#### Examples
+
+##### Project a subset of columns
+
+```ts
+const plan = db.sql.public.user.select('id', 'email').build();
+const rows = await runtime.execute(plan);
+// rows[0] is { id, email } — no displayName
+```
+
+##### Add an aliased computed column
+
+```ts
+const plan = db.sql.public.user
+  .select('id', 'displayName')
+  .select('emailLength', (f, fns) => fns.raw`LENGTH(${f.email})`.returns('pg/int4@1'))
+  .where((f, fns) => fns.eq(f.id, aliceId))
+  .build();
+const rows = await runtime.execute(plan);
+```
+
+##### Project multiple computed columns at once
+
+```ts
+const plan = db.sql.public.user
+  .select((f, fns) => ({
+    id: f.id,
+    upperEmail: fns.raw`UPPER(${f.email})`.returns('pg/text@1'),
+    emailLength: fns.raw`LENGTH(${f.email})`.returns('pg/int4@1'),
+  }))
+  .where((f, fns) => fns.eq(f.id, aliceId))
+  .build();
+const rows = await runtime.execute(plan);
+// rows === [{ id: aliceId, upperEmail: 'ALICE@EXAMPLE.COM', emailLength: 17 }]
+```
+
+### `where()`
+
+Restrict a query to rows matching an expression.
+
+#### Options
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `predicate` | `(f, fns) => Expression` | Yes | A boolean expression built from the field accessor and function bag. Combine comparisons with `fns.and(...)` and `fns.or(...)`, nested freely. |
+
+#### Return type
+
+| Return type | Example | Description |
+|---|---|---|
+| `SelectQuery` | `db.sql.public.post.where(...)` | A query narrowed by the predicate. |
+
+#### Examples
+
+##### Combine comparisons with `and()` and `or()`
+
+```ts
+const plan = db.sql.public.post
+  .select('id', 'title', 'priority')
+  .where((f, fns) =>
+    fns.or(
+      fns.and(fns.eq(f.userId, aliceId), fns.eq(f.priority, 'high')),
+      fns.eq(f.userId, carolId),
+    ),
+  )
+  .build();
+const rows = await runtime.execute(plan);
+```
+
+### `innerJoin()`
+
+Combine matching rows from two tables. After a join, address columns with their table namespace (`f.post.id`, `f.user.email`) to avoid ambiguity.
+
+#### Options
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `other` | A table (`db.sql.public.<table>`) or an aliased subquery ([`.as()`](#aliasing-a-query-with-as)) | Yes | The table or subquery to join. |
+| `on` | `(f, fns) => Expression` | Yes | The join condition. |
+
+#### Return type
+
+| Return type | Example | Description |
+|---|---|---|
+| `SelectQuery` | `db.sql.public.post.innerJoin(db.sql.public.user, ...)` | A query over the joined tables, with both tables' columns in scope under their namespaces. |
+
+#### Examples
+
+##### Join posts to their authors
+
+```ts
+const plan = db.sql.public.post
+  .innerJoin(db.sql.public.user, (f, fns) => fns.eq(f.post.userId, f.user.id))
+  .select((f) => ({ postId: f.post.id, authorEmail: f.user.email }))
+  .where((f, fns) => fns.eq(f.post.id, helloWorldId))
+  .build();
+const rows = await runtime.execute(plan);
+// rows === [{ postId: helloWorldId, authorEmail: 'alice@example.com' }]
+```
+
+### `outerLeftJoin()`, `outerRightJoin()`, `outerFullJoin()`
+
+Keep unmatched rows from one or both sides, filling the missing side's columns with `null`. Each takes the same `(other, on)` arguments and returns a `SelectQuery` as [`innerJoin()`](#innerjoin) does.
+
+- `outerLeftJoin()` keeps every left-table row; unmatched right columns are `null`.
+- `outerRightJoin()` keeps every right-table row; unmatched left columns are `null`.
+- `outerFullJoin()` keeps unmatched rows from both sides.
+
+#### Examples
+
+##### Left join keeps rows with no match
+
+```ts
+const plan = db.sql.public.post
+  .outerLeftJoin(db.sql.public.post_tag, (f, fns) => fns.eq(f.post.id, f.post_tag.postId))
+  .select((f) => ({ postId: f.post.id, tagId: f.post_tag.tagId }))
+  .where((f, fns) => fns.eq(f.post.id, untaggedPostId))
+  .build();
+const rows = await runtime.execute(plan);
+// rows === [{ postId: untaggedPostId, tagId: null }]
+```
+
+### `lateralJoin()`
+
+Correlate a per-row subquery against the outer row: for each outer row, the joined subquery can reference that row's columns. Useful for a top-N-per-group query, such as each user's most recent post.
+
+#### Remarks
+
+- **Availability:** `lateralJoin()` requires the adapter to report the `sql.lateral` capability. Prisma 8's PostgreSQL adapter reports it, so the method is available on PostgreSQL. Adapters that don't report `sql.lateral` won't expose the method.
+- The callback receives a `lateral` builder. Start its subquery with `lateral.from(otherTable)`, then chain the usual `SELECT` methods. The subquery can filter on the outer row's columns (`f.user.id`).
+- Return the query chain **directly** from the callback. Do **not** call `.as(...)` on it: `lateralJoin()`'s own first argument already names the derived table, and `.as(...)` returns the wrong shape (a bare join source), which throws `subquery.getRowFields is not a function`.
+- When the outer table and the lateral table share a column name (for example both have `id` and `createdAt`), the merged scope **drops** the ambiguous names. Reach them through their table namespace instead (`f.post.id`, `f.post.createdAt`); a bare `select('id')` or `orderBy((f) => f.createdAt, ...)` throws because the ambiguous name isn't in scope.
+
+#### Options
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `alias` | `string` | Yes | Names the derived table. Address its columns as `f.<alias>.<col>` in later `select()`/`where()` calls. |
+| `build` | `(lateral) => SelectQuery` | Yes | Builds the correlated subquery. Return the query chain directly. |
+
+#### Return type
+
+| Return type | Example | Description |
+|---|---|---|
+| `SelectQuery` | `db.sql.public.user.lateralJoin('latestPost', ...)` | A query with the lateral subquery's columns in scope under `alias`. |
+
+#### Examples
+
+##### Each user's most recent post
+
+```ts
+const plan = db.sql.public.user
+  .lateralJoin('latestPost', (lateral) =>
+    lateral
+      .from(db.sql.public.post)
+      .select((f) => ({ id: f.post.id, title: f.post.title }))
+      .where((f, fns) => fns.eq(f.post.userId, f.user.id))
+      .orderBy((f) => f.post.createdAt, { direction: 'desc' })
+      .limit(1),
+  )
+  .select((f) => ({ userId: f.user.id, latestPostId: f.latestPost.id }))
+  .where((f, fns) => fns.eq(f.user.id, aliceId))
+  .build();
+const rows = await runtime.execute(plan);
+// rows === [{ userId: aliceId, latestPostId: newestPostId }]
+```
+
+### `orderBy()`
+
+Sort the result set by a column, a computed expression, or with explicit direction and null placement.
+
+#### Options
+
+`orderBy()` accepts a column name or an expression callback, followed by options.
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `key` | Column name (`string`) or `(f, fns) => Expression` | Yes | The column or computed value to sort by. |
+| `options.direction` | `'asc' \| 'desc'` | No | Sort direction. |
+| `options.nulls` | `'first' \| 'last'` | No | Where nulls sort relative to non-null values. |
+
+#### Return type
+
+| Return type | Example | Description |
+|---|---|---|
+| `SelectQuery` | `db.sql.public.user.orderBy('email', ...)` | A query with the sort key applied. Call `orderBy()` again to add secondary keys. |
+
+#### Examples
+
+##### Sort by a column
+
+```ts
+const plan = db.sql.public.user.select('id', 'email').orderBy('email', { direction: 'asc' }).build();
+const rows = await runtime.execute(plan);
+```
+
+##### Sort by a computed value
+
+```ts
+const plan = db.sql.public.user
+  .select('id', 'email')
+  .orderBy((f, fns) => fns.raw`LENGTH(${f.email})`.returns('pg/int4@1'), { direction: 'asc' })
+  .build();
+const rows = await runtime.execute(plan);
+```
+
+##### Control direction and null placement
+
+```ts
+const plan = db.sql.public.post
+  .select('id', 'embedding')
+  .orderBy('embedding', { direction: 'asc', nulls: 'first' })
+  .build();
+const rows = await runtime.execute(plan);
+```
+
+### `distinct()`
+
+De-duplicate identical projected rows (`SELECT DISTINCT`).
+
+#### Return type
+
+| Return type | Example | Description |
+|---|---|---|
+| `SelectQuery` | `db.sql.public.post.select('priority').distinct()` | A query returning only distinct projected rows. |
+
+#### Examples
+
+##### De-duplicate projected rows
+
+```ts
+const plan = db.sql.public.post.select('priority').distinct().build();
+const rows = await runtime.execute(plan);
+// distinct priorities: ['high', 'low', 'urgent']
+```
+
+### `distinctOn()`
+
+Keep the first row per distinct key, according to the query's `orderBy()` (`DISTINCT ON`).
+
+#### Remarks
+
+- **Availability:** `distinctOn()` requires the adapter to report the `postgres.distinctOn` capability. `DISTINCT ON` is a PostgreSQL-only SQL extension, so it lives under the `postgres` capability namespace rather than the shared `sql` one. It's available on Prisma 8's PostgreSQL adapter.
+- Pair it with an `orderBy()` on the same key(s) to control which row is kept per key. This ordering requirement is not type-enforced; supply it yourself for a meaningful result.
+
+#### Options
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `...keys` | Column names (`string`) | Yes | The columns whose distinct combinations are kept. |
+
+#### Return type
+
+| Return type | Example | Description |
+|---|---|---|
+| `SelectQuery` | `db.sql.public.post.distinctOn('userId')` | A query keeping the first row per distinct key. |
+
+#### Examples
+
+##### First post per user by date
+
+```ts
+const plan = db.sql.public.post
+  .select('id', 'userId', 'createdAt')
+  .orderBy('userId', { direction: 'asc' })
+  .orderBy('createdAt', { direction: 'asc' })
+  .distinctOn('userId')
+  .build();
+const rows = await runtime.execute(plan);
+// one row per user, each the earliest post by createdAt
+```
+
+### `limit()` and `offset()`
+
+Cap the number of returned rows and skip rows in the ordered result set.
+
+#### Options
+
+| Method | Argument | Description |
+|---|---|---|
+| `limit(n)` | `number` | Return at most `n` rows. |
+| `offset(n)` | `number` | Skip the first `n` rows. |
+
+#### Return type
+
+| Return type | Example | Description |
+|---|---|---|
+| `SelectQuery` | `db.sql.public.user.limit(2)` | A query with the row cap or offset applied. |
+
+#### Examples
+
+##### Page through results
+
+```ts
+const plan = db.sql.public.user
+  .select('id')
+  .orderBy('email', { direction: 'asc' })
+  .limit(1)
+  .offset(1)
+  .build();
+const rows = await runtime.execute(plan);
+```
+
+### Subquery via `.as()`
+
+Alias a completed `SELECT` query with `.as(alias)` to use it as a join source. The aliased query can be passed to any join method as the `other` argument.
+
+#### Options
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `alias` | `string` | Yes | Names the subquery. Address its columns as `f.<alias>.<col>` after the join. |
+
+#### Return type
+
+| Return type | Example | Description |
+|---|---|---|
+| Join source | `db.sql.public.post.select(...).as('hp')` | A subquery usable as a join `other`. This is not a buildable query; join it into an outer query first. |
+
+#### Examples
+
+##### Join against a subquery
+
+```ts
+const highPriorityPosts = db.sql.public.post
+  .select('id', 'userId')
+  .where((f, fns) => fns.eq(f.priority, 'high'))
+  .as('hp');
+
+const plan = db.sql.public.user
+  .innerJoin(highPriorityPosts, (f, fns) => fns.eq(f.user.id, f.hp.userId))
+  .select((f) => ({ userId: f.user.id, postId: f.hp.id }))
+  .build();
+const rows = await runtime.execute(plan);
+```
+
+## Grouped queries
+
+Grouping starts with [`groupBy()`](#groupby), which turns a query into a `GroupedQuery`. A grouped query supports `having()` for group-level filtering, the aggregate functions, and the same `orderBy()` / `limit()` / `offset()` / `distinct()` surface as a `SelectQuery`.
+
+The examples below use a separate `customer` / `order` schema, where `order.amount` and `order.quantity` are numeric columns:
+
+<details>
+
+<summary>Expand for the aggregate example schema</summary>
+
+```prisma
+types {
+  Uuid = String @db.Uuid
+}
+
+model Customer {
+  id      Uuid   @id @default(uuid())
+  name    String
+  segment String
+
+  orders Order[]
+
+  @@map("customer")
+}
+
+model Order {
+  id         Uuid     @id @default(uuid())
+  customerId Uuid
+  amount     Int
+  quantity   Int
+  placedAt   DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id])
+
+  @@map("order")
+}
+```
+
+</details>
+
+:::warning[Aggregate results can decode as strings]
+At this raw SQL layer there is no ORM decode step, so the PostgreSQL driver's default parsers apply. `COUNT()` (bigint) and `SUM()` / `AVG()` over an integer column (PostgreSQL promotes these to `numeric`) decode as JavaScript **strings**, not numbers, to avoid precision loss. `MIN()` and `MAX()` over an integer column stay integers and decode as numbers. Call `Number(...)` on `COUNT` / `SUM` / `AVG` results before doing arithmetic. A `.returns(...)` codec annotation does not change this: it's a compile-time type declaration, not a runtime cast, so a raw `EXTRACT(...)` typed `.returns('pg/int4@1')` still decodes as a string. Comparisons inside `having()` and `where()` are unaffected, because PostgreSQL evaluates them server-side.
+:::
+
+### `groupBy()`
+
+Group rows by one or more columns or by a computed expression, producing one row per distinct group.
+
+#### Options
+
+| Form | Signature | Description |
+|---|---|---|
+| Field names | `groupBy('col', 'col2', ...)` | Group by the named columns. |
+| Expression | `groupBy((f, fns) => expr)` | Group by a computed value. |
+
+#### Return type
+
+| Return type | Example | Description |
+|---|---|---|
+| `GroupedQuery` | `db.sql.public.order.groupBy('customerId')` | A grouped query supporting `having()`, aggregates, ordering, and limits. |
+
+#### Examples
+
+##### Group by a column with a count
+
+```ts
+const plan = db.sql.public.order
+  .select('customerId')
+  .select('orderCount', (f, fns) => fns.count(f.id))
+  .groupBy('customerId')
+  .orderBy('customerId', { direction: 'asc' })
+  .build();
+const rows = await runtime.execute(plan);
+// orderCount decodes as a string: e.g. { customerId: acmeId, orderCount: '5' }
+```
+
+##### Group by a computed value
+
+```ts
+const plan = db.sql.public.order
+  .select('yearPlaced', (f, fns) => fns.raw`EXTRACT(YEAR FROM ${f.placedAt})`.returns('pg/int4@1'))
+  .select('orderCount', (f, fns) => fns.count(f.id))
+  .groupBy((f, fns) => fns.raw`EXTRACT(YEAR FROM ${f.placedAt})`.returns('pg/int4@1'))
+  .build();
+const rows = await runtime.execute(plan);
+// rows === [{ yearPlaced: '2024', orderCount: '10' }] — both decode as strings
+```
+
+### `having()`
+
+Filter groups by an aggregate comparison. Build the predicate from the aggregate functions (`fns.count`, `fns.sum`, `fns.avg`, `fns.min`, `fns.max`) and the comparison functions, comparing against a JavaScript literal.
+
+#### Remarks
+
+- PostgreSQL evaluates the comparison server-side, so it works correctly even though the aggregate value would decode as a string on the JavaScript side (see the warning above).
+
+#### Options
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `predicate` | `(f, fns) => Expression` | Yes | A boolean expression over aggregate functions, for example `fns.gt(fns.sum(f.amount), 1000)`. |
+
+#### Return type
+
+| Return type | Example | Description |
+|---|---|---|
+| `GroupedQuery` | `db.sql.public.order.groupBy('customerId').having(...)` | A grouped query filtered to the groups matching the predicate. |
+
+#### Examples
+
+##### Filter groups by a sum threshold
+
+```ts
+const plan = db.sql.public.order
+  .select('customerId')
+  .select('totalAmount', (f, fns) => fns.sum(f.amount))
+  .groupBy('customerId')
+  .having((f, fns) => fns.gt(fns.sum(f.amount), 1000))
+  .build();
+const rows = await runtime.execute(plan);
+// only the customer whose orders sum over 1000; totalAmount decodes as '1500'
+```
+
+##### Compare with `count()`, `avg()`, `min()`, `max()`
+
+```ts
+const avgPlan = db.sql.public.order
+  .select('customerId')
+  .select('avgAmount', (f, fns) => fns.avg(f.amount))
+  .groupBy('customerId')
+  .having((f, fns) => fns.gt(fns.avg(f.amount), 100))
+  .build();
+
+const minMaxPlan = db.sql.public.order
+  .select('customerId')
+  .select('minAmount', (f, fns) => fns.min(f.amount))
+  .select('maxAmount', (f, fns) => fns.max(f.amount))
+  .groupBy('customerId')
+  .having((f, fns) => fns.eq(fns.min(f.amount), 100))
+  .build();
+
+const avgRows = await runtime.execute(avgPlan);
+const minMaxRows = await runtime.execute(minMaxPlan);
+// avgAmount decodes as a string ('300.0000000000000000');
+// minAmount / maxAmount decode as numbers (100 / 500)
+```
+
+### Ordering and limiting a grouped query
+
+A `GroupedQuery` supports the same `orderBy()`, `limit()`, `offset()`, `distinct()`, and `distinctOn()` methods as a `SelectQuery`. Sort by an aggregate alias to order groups.
+
+#### Examples
+
+##### Order groups by total, keep the top one
+
+```ts
+const plan = db.sql.public.order
+  .select('customerId')
+  .select('totalAmount', (f, fns) => fns.sum(f.amount))
+  .groupBy('customerId')
+  .orderBy('totalAmount', { direction: 'desc' })
+  .limit(1)
+  .build();
+const rows = await runtime.execute(plan);
+// the single highest-spending customer
+```
+
+## Mutations
+
+Mutations start from a table with `insert()`, `update()`, or `delete()`, and end with [`build()`](#build). Add [`returning()`](#returning) to get the affected rows back.
+
+### `insert()`
+
+Insert one or more rows in a single statement.
+
+#### Remarks
+
+- `insert()` always takes an **array**. A single-row insert is a one-element array; there is no separate single-row overload.
+- Multiple rows are inserted in one `INSERT ... VALUES (...), (...)` statement, not one round-trip per row.
+
+#### Options
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `rows` | Array of row objects | Yes | The rows to insert. Values are auto-parameterized; their codecs are inferred from the target columns. |
+
+#### Return type
+
+| Return type | Example | Description |
+|---|---|---|
+| `InsertQuery` | `db.sql.public.tag.insert([...])` | An insert query. Buildable directly, or chain [`returning()`](#returning). |
+
+#### Examples
+
+##### Insert a single row
+
+```ts
+const plan = db.sql.public.tag.insert([{ id: crypto.randomUUID(), label: 'single-row-tag' }]).build();
+await runtime.execute(plan);
+```
+
+##### Insert multiple rows in one statement
+
+```ts
+const plan = db.sql.public.tag
+  .insert([
+    { id: crypto.randomUUID(), label: 'multi-row-a' },
+    { id: crypto.randomUUID(), label: 'multi-row-b' },
+  ])
+  .build();
+await runtime.execute(plan);
+```
+
+### `returning()`
+
+Return columns from the rows affected by an `insert()`, `update()`, or `delete()`.
+
+#### Remarks
+
+- **Availability:** `returning()` requires the adapter to report the `sql.returning` capability. Prisma 8's PostgreSQL adapter reports it. Adapters that don't (for example a SQL target without `RETURNING`) won't expose the method.
+
+#### Options
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `...columns` | Column names (`string`) | Yes | The columns to return from each affected row. |
+
+#### Return type
+
+| Return type | Example | Description |
+|---|---|---|
+| Mutation query | `db.sql.public.tag.insert([...]).returning('id', 'label')` | The mutation query, now typed to resolve to the returned rows. |
+
+#### Examples
+
+##### Return the inserted row
+
+```ts
+const id = crypto.randomUUID();
+const plan = db.sql.public.tag.insert([{ id, label: 'returned-tag' }]).returning('id', 'label').build();
+const rows = await runtime.execute(plan);
+// rows === [{ id, label: 'returned-tag' }]
+```
+
+### `update()`
+
+Update matched rows. Set columns with a values object, or derive new values from existing columns with an expression callback. Gate the update with `where()`, and use [`returning()`](#returning) to get the updated rows.
+
+#### Options
+
+`update()` accepts a values object or an expression callback.
+
+| Form | Signature | Description |
+|---|---|---|
+| Values object | `update({ col: value, ... })` | Set columns to fixed values. |
+| Expression callback | `update((f, fns) => ({ col: expr }))` | Set columns to expressions computed from existing columns. |
+
+#### Return type
+
+| Return type | Example | Description |
+|---|---|---|
+| `UpdateQuery` | `db.sql.public.user.update({ ... })` | An update query. Chain `where()` and optionally [`returning()`](#returning). |
+
+#### Examples
+
+##### Update with a values object
+
+```ts
+const plan = db.sql.public.user
+  .update({ displayName: 'Bobby' })
+  .where((f, fns) => fns.eq(f.id, bobId))
+  .returning('id', 'displayName')
+  .build();
+const rows = await runtime.execute(plan);
+// rows === [{ id: bobId, displayName: 'Bobby' }]
+```
+
+##### Derive a value from an existing column
+
+```ts
+const plan = db.sql.public.user
+  .update((f, fns) => ({ displayName: fns.raw`UPPER(${f.displayName})`.returns('pg/text@1') }))
+  .where((f, fns) => fns.eq(f.id, carolId))
+  .returning('id', 'displayName')
+  .build();
+const rows = await runtime.execute(plan);
+// rows === [{ id: carolId, displayName: 'CAROL' }]
+```
+
+### `delete()`
+
+Delete matched rows. Gate the delete with `where()`, and use [`returning()`](#returning) to get the deleted rows back.
+
+#### Return type
+
+| Return type | Example | Description |
+|---|---|---|
+| `DeleteQuery` | `db.sql.public.tag.delete()` | A delete query. Chain `where()` and optionally [`returning()`](#returning). |
+
+#### Examples
+
+##### Delete and return the removed row
+
+```ts
+const plan = db.sql.public.tag
+  .delete()
+  .where((f, fns) => fns.eq(f.id, id))
+  .returning('id', 'label')
+  .build();
+const rows = await runtime.execute(plan);
+// rows === [{ id, label: 'to-delete' }]
+```
+
+### `param()`
+
+Force an explicit codec on a raw value that has no column context to infer one from, for example a literal interpolated into `fns.raw`.
+
+#### Remarks
+
+- Import `param` from `@prisma/orm-postgres/relational-core/expression`.
+- You rarely need `param()`. Values passed to `insert()`, `update()`, and comparison functions such as `fns.eq(f.col, value)` are already auto-parameterized, with codecs inferred from the target column. `param()` is the manual escape hatch for a bound value with no adjacent column to derive a codec from.
+- There is **no** `build({ params })` form. Parameter values are embedded into the query where they're supplied. See [`build()`](#build).
+
+#### Options
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `value` | `T` | Yes | The value to bind. |
+| `opts.codecId` | `string` | Yes | The codec id to encode the value with, for example `'pg/text@1'`. |
+
+#### Return type
+
+| Return type | Example | Description |
+|---|---|---|
+| `ParamRef` | `param('%@example.com', { codecId: 'pg/text@1' })` | A bound-parameter reference usable inside `fns.raw`. |
+
+#### Examples
+
+##### Bind a literal inside a raw fragment
+
+```ts
+import { param } from '@prisma/orm-postgres/relational-core/expression';
+
+const targetEmailDomain = param('%@example.com', { codecId: 'pg/text@1' });
+const plan = db.sql.public.user
+  .select('id', 'email')
+  .where((f, fns) => fns.raw`${f.email} LIKE ${targetEmailDomain}`.returns('pg/bool@1'))
+  .orderBy('email', { direction: 'asc' })
+  .build();
+const rows = await runtime.execute(plan);
+```
+
+## Expressions and functions
+
+Callback forms receive a function bag `fns` alongside the field accessor. `fns` holds the built-in expression helpers you use to build comparisons, boolean combinators, aggregates, and raw SQL.
+
+### Built-in functions
+
+The complete built-in set is fixed:
+
+| Category | Functions |
+|---|---|
+| Comparison | `eq`, `ne`, `gt`, `gte`, `lt`, `lte` |
+| Membership | `in`, `notIn` |
+| Boolean | `and`, `or` |
+| Existence | `exists`, `notExists` |
+| Raw SQL | `raw` |
+| Aggregate (grouped queries) | `count`, `sum`, `avg`, `min`, `max` |
+
+Nothing else is built in. Any further function is registered dynamically: `ilike` is registered by the Postgres adapter for textual columns, while functions like `cosineDistance` come from an extension pack (pgvector) registered for your contract; without the matching adapter or extension pack, those functions are absent.
+
+:::note[No `COALESCE` or `CAST` helpers]
+There is no `fns.coalesce` or `fns.cast`. Express `COALESCE`, `CAST`, and any other SQL function you need with [`fns.raw`](#fnsraw-and-returns) and an explicit `.returns(...)` codec.
+:::
+
+### `fns.raw` and `.returns()`
+
+Write a raw SQL fragment as a tagged template. Interpolate columns and typed expressions with `${...}`; each interpolation is parameterized. For bare JavaScript values, always wrap them in `param(...)` with an explicit codec id: bare-scalar interpolation is currently broken on PostgreSQL (see the [raw queries reference](/orm/v8/reference/raw-queries#binding-a-bare-value-with-param) for the verified details). Call `.returns(codecId)` to declare the fragment's result type.
+
+#### Options
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| SQL fragment | Tagged template | Yes | The raw SQL, with `${...}` interpolations for columns and values. |
+| `.returns(codecId)` | `string` | Yes for a projected or compared value | Declares the result codec, for example `'pg/int4@1'`, `'pg/text@1'`, `'pg/bool@1'`. |
+
+#### Remarks
+
+- `.returns(codecId)` is a **compile-time type annotation only**. It does not cast the value in SQL or change how the driver decodes it. A raw expression PostgreSQL computes as `numeric` still decodes as a string even when annotated `'pg/int4@1'` (see the [grouped-query warning](#grouped-queries)).
+- Use `fns.raw` for any SQL feature without a dedicated helper: `COALESCE`, `CAST`, `LENGTH`, `UPPER`, `EXTRACT`, and so on.
+
+#### Examples
+
+##### Compute a column with a SQL function
+
+```ts
+const plan = db.sql.public.user
+  .select('emailLength', (f, fns) => fns.raw`LENGTH(${f.email})`.returns('pg/int4@1'))
+  .build();
+const rows = await runtime.execute(plan);
+```
+
+##### `COALESCE` via `fns.raw`
+
+```ts
+const plan = db.sql.public.order
+  .select('amountOrZero', (f, fns) => fns.raw`COALESCE(${f.amount}, 0)`.returns('pg/int4@1'))
+  .build();
+const rows = await runtime.execute(plan);
+```
+
+## Compiling and executing
+
+### `build()`
+
+Compile a query into an executable plan.
+
+#### Remarks
+
+- `build()` takes **zero arguments** on every query type: select, insert, update, delete, and grouped. Parameter values are embedded into the plan where they're supplied (inside `insert([...])`, a `where()` callback, or a [`param()`](#param) call), not passed to `build()`. There is no `build({ params })` form.
+
+#### Return type
+
+| Return type | Example | Description |
+|---|---|---|
+| Query plan | `db.sql.public.user.select('id').build()` | A plan you run with `runtime.execute(...)`. Its per-row type is recoverable with [`ResultType`](#resulttype). |
+
+### Executing a plan
+
+Run a plan with `runtime.execute(plan)`, where `runtime` is the runtime you got from connecting your database client (`const runtime = await db.connect()`). It resolves to an array of rows (`Row[]`).
+
+```ts
+const plan = db.sql.public.user.select('id', 'email').build();
+const rows = await runtime.execute(plan); // Row[]
+```
+
+### `ResultType`
+
+Recover a plan's row type at the type level.
+
+#### Remarks
+
+- Import `ResultType` from `@prisma/orm-postgres/components/runtime`. It's a family-agnostic utility, not specific to the SQL builder.
+- `ResultType<typeof plan>` is the **per-row** shape, not an array. `runtime.execute(plan)` resolves to `Row[]`, but `ResultType<typeof plan>` is `Row`.
+
+#### Examples
+
+##### Recover the row type from a plan
+
+```ts
+import type { ResultType } from '@prisma/orm-postgres/components/runtime';
+
+const plan = db.sql.public.user.select('id', 'email').build();
+type Row = ResultType<typeof plan>; // { id: string; email: string }
+
+const rows = await runtime.execute(plan); // Row[]
+```
+
+### Streaming vs. collecting
+
+`runtime.execute(plan)` collects every row into an array. This is the common case and what every example on this page uses. For large result sets that you'd rather process incrementally, use the ORM client's streaming terminals, documented under [`AsyncIterableResult`](/orm/v8/reference/orm-client#asynciterableresult).

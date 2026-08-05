@@ -152,7 +152,7 @@ export default async function StackPage() {
               <CopyCommand command={SCAFFOLD_COMMAND} />
               <div className="flex flex-wrap items-center justify-center gap-3">
                 <Button asChild variant="ppg" size="xl">
-                  <a href="/docs/next" className="flex items-center gap-2">
+                  <a href="/docs/v8" className="flex items-center gap-2">
                     Start building
                     <i className="fa-regular fa-arrow-right" aria-hidden />
                   </a>
@@ -362,7 +362,7 @@ export default async function StackPage() {
               <CopyCommand command={SCAFFOLD_COMMAND} />
               <div className="flex flex-col gap-4 md:flex-row">
                 <Button asChild variant="ppg" size="2xl">
-                  <a href="/docs/next" className="flex items-center gap-2">
+                  <a href="/docs/v8" className="flex items-center gap-2">
                     Read the docs
                     <i className="fa-regular fa-book-open" aria-hidden />
                   </a>

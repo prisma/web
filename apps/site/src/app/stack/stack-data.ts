@@ -24,37 +24,37 @@ export const frameworks: Framework[] = [
   {
     name: "Next.js",
     logo: "/icons/technologies/next.svg",
-    guide: "/docs/guides/next/frameworks/nextjs",
+    guide: "/docs/guides/v8/frameworks/nextjs",
   },
   {
     name: "TanStack Start",
     logo: "/icons/technologies/tanstack.svg",
-    guide: "/docs/guides/next/frameworks/tanstack-start",
+    guide: "/docs/guides/v8/frameworks/tanstack-start",
   },
   {
     name: "Astro",
     logo: "/icons/technologies/astro.svg",
-    guide: "/docs/guides/next/frameworks/astro",
+    guide: "/docs/guides/v8/frameworks/astro",
   },
   {
     name: "SvelteKit",
     logo: "/icons/technologies/svelte.svg",
-    guide: "/docs/guides/next/frameworks/sveltekit",
+    guide: "/docs/guides/v8/frameworks/sveltekit",
   },
   {
     name: "Nuxt",
     logo: "/icons/technologies/nuxt.svg",
-    guide: "/docs/guides/next/frameworks/nuxt",
+    guide: "/docs/guides/v8/frameworks/nuxt",
   },
   {
     name: "Hono",
     logo: "/icons/technologies/hono.svg",
-    guide: "/docs/guides/next/frameworks/hono",
+    guide: "/docs/guides/v8/frameworks/hono",
   },
   {
     name: "NestJS",
     logo: "/icons/technologies/nest.svg",
-    guide: "/docs/guides/next/frameworks/nestjs",
+    guide: "/docs/guides/v8/frameworks/nestjs",
   },
 ];
 
@@ -96,7 +96,7 @@ export const stackLayers: StackLayer[] = [
       "Change framework without touching the data layer",
       "Plain TypeScript projects, no proprietary app model",
     ],
-    link: { href: "/docs/guides/next", label: "See the framework guides" },
+    link: { href: "/docs/guides/v8", label: "See the framework guides" },
   },
   {
     id: "bun",
@@ -142,7 +142,7 @@ export const stackLayers: StackLayer[] = [
       "Guardrails that keep agents from unsafe writes",
       "A SQL query builder for when you need full control",
     ],
-    link: { href: "/docs/orm/next", label: "Explore Prisma 8" },
+    link: { href: "/docs/orm/v8", label: "Explore Prisma 8" },
   },
   {
     id: "postgres",
@@ -206,7 +206,7 @@ export const swapLayers: SwapLayer[] = [
     logo: "/icons/technologies/prisma_light.svg",
     swap: "Drop to raw SQL with the built-in query builder, or use any Postgres client.",
     swapTargets: [{ src: "/icons/technologies/postgresql.svg", alt: "Any Postgres client" }],
-    link: { href: "/docs/orm/next/reference/sql-query-builder", label: "SQL query builder docs" },
+    link: { href: "/docs/orm/v8/reference/sql-query-builder", label: "SQL query builder docs" },
   },
   {
     layer: "Database",
@@ -240,7 +240,7 @@ export const swapLayers: SwapLayer[] = [
     swap: "Your code is standard TypeScript. Run it on Node.js if you prefer.",
     swapTargets: [{ src: "/icons/technologies/node.svg", alt: "Node.js" }],
     link: {
-      href: "/docs/next/add-to-existing-project/postgresql",
+      href: "/docs/v8/add-to-existing-project/postgresql",
       label: "Add to an existing project",
     },
   },
@@ -287,7 +287,7 @@ export const runtimeOutcomes: Outcome[] = [
       { icon: "fa-regular fa-check", label: "bun test" },
       { icon: "fa-regular fa-cubes-stacked", label: "bundler" },
     ],
-    link: { href: "/docs/guides/next/runtimes/bun", label: "Prisma 8 on Bun" },
+    link: { href: "/docs/guides/v8/runtimes/bun", label: "Prisma 8 on Bun" },
   },
 ];
 
@@ -301,7 +301,7 @@ export const dataOutcomes: Outcome[] = [
       { icon: "fa-regular fa-check", label: "post.title", tone: "ok" },
       { icon: "fa-regular fa-triangle-exclamation", label: "post.titel", tone: "bad" },
     ],
-    link: { href: "/docs/orm/next/fundamentals/reading-data", label: "How queries work" },
+    link: { href: "/docs/orm/v8/fundamentals/reading-data", label: "How queries work" },
   },
   {
     icon: "fa-regular fa-file-binary",
@@ -312,7 +312,7 @@ export const dataOutcomes: Outcome[] = [
       { icon: "fa-regular fa-code-branch", label: "review in a PR" },
     ],
     link: {
-      href: "/docs/orm/next/migrations/how-migrations-work",
+      href: "/docs/orm/v8/migrations/how-migrations-work",
       label: "How migrations work",
     },
   },
@@ -343,19 +343,19 @@ export const agentPoints: Outcome[] = [
       { icon: "fa-regular fa-file-binary", label: "prisma/schema.prisma" },
       { icon: "fa-regular fa-code", label: "src/index.ts" },
     ],
-    link: { href: "/docs/next/quickstart/postgresql", label: "Scaffold a project" },
+    link: { href: "/docs/v8/quickstart/postgresql", label: "Scaffold a project" },
   },
   {
     icon: "fa-regular fa-file-contract",
     title: "The schema is the contract",
     body: "The data model is one readable file: inspect it, diff it, regenerate the types.",
-    link: { href: "/docs/orm/next/data-modeling", label: "Model your data" },
+    link: { href: "/docs/orm/v8/data-modeling", label: "Model your data" },
   },
   {
     icon: "fa-regular fa-clock-rotate-left",
     title: "A typed feedback loop",
     body: "Agents iterate against the compiler, not runtime failures.",
-    link: { href: "/docs/orm/next", label: "Explore Prisma 8" },
+    link: { href: "/docs/orm/v8", label: "Explore Prisma 8" },
   },
   {
     icon: "fa-regular fa-receipt",

@@ -1,0 +1,134 @@
+---
+title: Build and deploy the full Prisma stack
+description: A single tutorial from empty directory to live URL, with Prisma 8, Prisma Postgres, and Prisma Compute.
+url: /v8/full-stack-tutorial
+metaTitle: "Tutorial: the full Prisma stack"
+metaDescription: Scaffold an app with Prisma 8, provision Prisma Postgres, seed and query it, then deploy to Prisma Compute for a live URL. Every step verified.
+badge: release-candidate
+---
+
+This tutorial takes you through the whole recommended stack in one sitting: scaffold an app with [Prisma 8](/v8), store data in [Prisma Postgres](/postgres), query it over HTTP, and deploy to [Prisma Compute](/compute) for a live URL. About 15 minutes.
+
+It uses the `hono` template so you get a small API you can verify with curl at every step. The same journey works for the other templates; the [framework guides](/guides/v8) cover each one.
+
+## Prerequisites
+
+- Node.js 24 or later (or Bun)
+- A [Prisma Data Platform account](https://pris.ly/pdp) for the deploy step, free to create
+- No database needed: setup provisions Prisma Postgres for you
+
+## Use with your agent
+
+Prefer to delegate? This is the same journey as the prompt on the [getting started page](/), with the `hono` template chosen for you:
+
+<AgentPrompt>
+
+```text
+Create a new Hono API with Prisma 8, seed it, and deploy it to Prisma Compute.
+
+1. Scaffold: `npx create-prisma@next create my-app --template hono --provider postgres --prisma-postgres --yes` (or pass `--database-url "<url>"` instead of `--prisma-postgres` if I give you a connection string).
+2. In `my-app`, run `npm run db:init`, then `npm run db:seed`. If seeding fails with `Cannot read properties of undefined (reading 'where')`, change `db.orm.User` to `db.orm.public.User` in `src/prisma/seed.ts` and `src/prisma/users.ts`, then rerun.
+3. Start `npm run dev` in the background and verify `curl http://localhost:3000/users` returns the seeded users.
+4. Deploy: check `npx @prisma/cli@latest auth whoami`; if I am not signed in, stop and ask me to run `npx @prisma/cli@latest auth login`. Then run `npx @prisma/cli@latest app deploy --create-project my-app --env .env` and verify the live URL's /users endpoint with curl.
+
+Use the installed Prisma 8 skills.
+```
+
+</AgentPrompt>
+
+## 1. Scaffold the app
+
+One command creates the app, wires up Prisma 8, and can provision the database:
+
+```npm
+npx create-prisma@next create my-app --template hono --provider postgres
+```
+
+Pick **Prisma Postgres** at the database prompt to have a database created for you, or paste your own connection string. Then enter the project:
+
+```npm
+cd my-app
+```
+
+The scaffold writes `DATABASE_URL` to `.env`, generates a Hono server in `src/index.ts` with `GET /` and `GET /users` routes, puts the Prisma 8 setup under `src/prisma/`, and installs [Prisma 8 skills](/ai/tools/skills) for your coding agent. If the database was provisioned without a signed-in CLI, `.env` also contains a `CLAIM_URL`; open it within 24 hours to claim the database into your account and keep it.
+
+## 2. Initialize and seed the database
+
+`db:init` applies the starter contract to Prisma Postgres and signs the database; `db:seed` inserts sample users:
+
+```npm
+npm run db:init
+npm run db:seed
+```
+
+```text no-copy
+"summary": "Applied 5 operation(s) across 1 space(s), database signed"
+Seeded 3 users.
+```
+
+:::note
+
+Seeing `Cannot read properties of undefined (reading 'where')`? The current template still generates the older unqualified query form. Update `db.orm.User` to `db.orm.public.User` in `src/prisma/seed.ts` and `src/prisma/users.ts`, then rerun `db:seed`.
+
+:::
+
+## 3. Run it and query your data
+
+```npm
+npm run dev
+```
+
+The server starts on port 3000 (set `PORT` if something else is already using it). Confirm the API serves the seeded rows from Prisma Postgres:
+
+```bash
+curl http://localhost:3000/users
+```
+
+```json no-copy
+[
+  { "id": "1", "email": "alice@prisma.io", "username": "alice", "name": "Alice", "createdAt": "2026-07-27T13:31:56.993Z" },
+  { "id": "2", "email": "bob@prisma.io", "username": "bob", "name": "Bob", "createdAt": "2026-07-27T13:31:57.021Z" },
+  { "id": "3", "email": "carol@prisma.io", "username": "carol", "name": "Carol", "createdAt": "2026-07-27T13:31:57.049Z" }
+]
+```
+
+The route handler in `src/index.ts` is ordinary Hono code calling an ordinary Prisma 8 query. Change the starter contract in `src/prisma/` when you are ready to model your own data; the [fundamentals](/orm/v8/fundamentals/reading-data) cover the query patterns.
+
+## 4. Deploy to Prisma Compute
+
+Sign in once (it opens your browser):
+
+```npm
+npx @prisma/cli@latest auth login
+```
+
+Deploy from the project directory. The first deploy asks you to pick or create a project; pass `--create-project my-app` to skip the prompt (agents and CI need it, since there is no interactive picker). The `--env .env` flag passes your `DATABASE_URL` to the deployment, so the live API talks to the same database:
+
+```npm
+npx @prisma/cli@latest app deploy --env .env
+```
+
+```text no-copy
+First deploy of "my-app" -- promoting to production.
+Building locally...
+  Built      0.9 MB
+Uploading...
+Deploying...
+Live in 7.5s
+https://<your-app>.ewr.prisma.build
+```
+
+## 5. Verify the live URL
+
+```bash
+curl https://<your-app>.ewr.prisma.build/users
+```
+
+The same three users come back, now served from production next to your database. The first deploy pins the directory to your project in a gitignored `.prisma/local.json` and promotes to production automatically.
+
+## Next steps
+
+- [Pick your framework](/guides/v8): the same journey for Next.js, Nuxt, Astro, NestJS, TanStack Start, and more.
+- [Branching and previews](/compute/branching): every Git branch gets an isolated deployment.
+- [Learn the fundamentals](/orm/v8/fundamentals/reading-data): reading, writing, relations, and transactions.
+- [Deploy on push](/compute/github): connect GitHub so every commit deploys itself.
