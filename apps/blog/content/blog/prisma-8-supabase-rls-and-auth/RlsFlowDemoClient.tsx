@@ -177,7 +177,10 @@ export function RlsFlowDemoClient({ snippets }: Props) {
 
       <div className="bloom-demo-body">
         <div className="bloom-demo-code">
-          <SmoothPre code={code} />
+          {/* Token transitions across languages (ts -> sql) lock up the main
+              thread in codehike's calculateTransitions; remounting on language
+              change swaps instantly instead of animating. */}
+          <SmoothPre key={code.lang} code={code} />
         </div>
 
         <div className="rls-flow-captions">

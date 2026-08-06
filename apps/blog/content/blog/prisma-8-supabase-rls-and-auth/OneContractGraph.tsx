@@ -1,12 +1,12 @@
 import { highlight, Pre, type HighlightedCode } from "codehike/code";
 
-const BEFORE = `schema.prisma      // models only
-migrations/*.sql   // RLS policies, written by hand
-dashboard          // policy edits, unreviewed`;
+const BEFORE = `schema.prisma     // models only
+migrations/*.sql  // RLS, written by hand
+dashboard         // unreviewed edits`;
 
-const AFTER = `contract.prisma    // models
-                   // auth.users references
-                   // RLS policies`;
+const AFTER = `contract.prisma   // models
+                  // auth.users references
+                  // RLS policies`;
 
 async function hl(value: string): Promise<HighlightedCode> {
   return (await highlight({ value, lang: "prisma", meta: "" }, "github-from-css")) as HighlightedCode;
