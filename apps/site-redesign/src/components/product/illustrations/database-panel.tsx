@@ -1,6 +1,6 @@
 import { CheckBold, Copy, Database, GitBranch, Swap } from "@/components/icons/forma";
 import { ThreeDSlot } from "@/components/brand/three-d-slot";
-import { Bar, CardChrome, SectionLabel } from "./parts";
+import { Bar, CardChrome, HeroPanel, SectionLabel } from "./parts";
 
 // The /postgres hero abstraction: a managed database that is already wired to
 // something. Real: the postgres:// connection-string shape, the region, and the
@@ -15,11 +15,7 @@ const BRANCHES = [
 
 export function DatabasePanel() {
   return (
-    <div
-      role="img"
-      aria-label="Illustration of a Prisma Postgres database: a primary database with autoscaling on, its connection string, and per-pull-request branches alongside the main branch"
-      className="pointer-events-none relative flex h-full select-none flex-col overflow-hidden rounded-2xl border border-border bg-card text-left shadow-[0_1px_2px_rgba(21,21,21,0.04),0_8px_16px_-4px_rgba(21,21,21,0.06),0_32px_64px_-16px_rgba(21,21,21,0.14)]"
-    >
+    <HeroPanel label="Illustration of a Prisma Postgres database: a primary database with autoscaling on, its connection string, and per-pull-request branches alongside the main branch">
       <CardChrome
         file="database"
         right={
@@ -94,6 +90,6 @@ export function DatabasePanel() {
           <ThreeDSlot src="/brand/database-3d.png" className="h-28 w-28 shrink-0 max-md:hidden" />
         </div>
       </div>
-    </div>
+    </HeroPanel>
   );
 }

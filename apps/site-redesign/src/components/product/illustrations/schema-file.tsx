@@ -1,6 +1,6 @@
 import { CheckBold } from "@/components/icons/forma";
 import { ThreeDSlot } from "@/components/brand/three-d-slot";
-import { Bar, CardChrome } from "./parts";
+import { Bar, CardChrome, HeroPanel } from "./parts";
 
 // The hero's [schema code sample]: schema.prisma as the one file the whole
 // stack reads. Real Prisma syntax — model/relation keywords, scalar types and
@@ -21,11 +21,7 @@ function Type({ children }: { children: React.ReactNode }) {
 
 export function SchemaFile() {
   return (
-    <div
-      role="img"
-      aria-label="Illustration of a Prisma schema file: a User model and a Post model with typed fields and a relation between them"
-      className="pointer-events-none relative flex h-full select-none flex-col overflow-hidden rounded-2xl border border-border bg-card text-left shadow-[0_1px_2px_rgba(21,21,21,0.04),0_8px_16px_-4px_rgba(21,21,21,0.06),0_32px_64px_-16px_rgba(21,21,21,0.14)]"
-    >
+    <HeroPanel label="Illustration of a Prisma schema file: a User model and a Post model with typed fields and a relation between them">
       <CardChrome file="schema.prisma" />
 
       <div className="flex flex-1 flex-col justify-between gap-6 px-5 py-5 font-mono text-[0.6875rem] leading-none text-foreground sm:text-xs">
@@ -88,6 +84,6 @@ export function SchemaFile() {
         src="/brand/cards-3d.png"
         className="absolute bottom-5 right-4 h-32 w-44 max-md:hidden"
       />
-    </div>
+    </HeroPanel>
   );
 }

@@ -1,7 +1,7 @@
 import { AppWindow, CheckBold, Database, GitBranch } from "@/components/icons/forma";
 import { ThreeDSlot } from "@/components/brand/three-d-slot";
 import { cn } from "@/lib/utils";
-import { Bar, CardChrome, SectionLabel } from "./parts";
+import { Bar, CardChrome, HeroPanel, SectionLabel } from "./parts";
 
 // The /compute hero abstraction: the platform's core claim in one frame — a
 // production deploy and a per-PR preview, each carrying an app and a database
@@ -40,11 +40,7 @@ function Pair({ accent }: { accent?: boolean }) {
 
 export function Deployments() {
   return (
-    <div
-      role="img"
-      aria-label="Illustration of Prisma Compute deployments: a production deploy and a per-PR preview deploy, each pairing an app with its own branched database, deployed with one command"
-      className="pointer-events-none relative flex h-full select-none flex-col overflow-hidden rounded-2xl border border-border bg-card text-left shadow-[0_1px_2px_rgba(21,21,21,0.04),0_8px_16px_-4px_rgba(21,21,21,0.06),0_32px_64px_-16px_rgba(21,21,21,0.14)]"
-    >
+    <HeroPanel label="Illustration of Prisma Compute deployments: a production deploy and a per-PR preview deploy, each pairing an app with its own branched database, deployed with one command">
       <CardChrome
         file="deployments"
         right={
@@ -118,6 +114,6 @@ export function Deployments() {
           <ThreeDSlot src="/brand/cpu-3d.png" className="h-28 w-28 shrink-0 max-md:hidden" />
         </div>
       </div>
-    </div>
+    </HeroPanel>
   );
 }

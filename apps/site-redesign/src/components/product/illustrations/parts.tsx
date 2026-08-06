@@ -71,10 +71,12 @@ export function RayFrame({
 }
 
 /**
- * The full-size panel a hero abstraction fills — the deeper shadow and the
- * larger radius that separate a hero frame from a feature card's SurfaceCard.
- * Extracted from database-panel/schema-file/deployments, which each open with
- * this exact wrapper.
+ * The full-size surface a hero abstraction fills.
+ *
+ * Deliberately flush — no border, radius or shadow. These panels are only ever
+ * rendered as stops inside ProductTour, and the tour is one card whose chrome
+ * (the tab strip, the frame, the caption bar) belongs to the tour rather than
+ * to each stop. A panel carrying its own frame would nest a card in a card.
  */
 export function HeroPanel({
   className,
@@ -91,7 +93,7 @@ export function HeroPanel({
       role="img"
       aria-label={label}
       className={cn(
-        "pointer-events-none relative flex h-full select-none flex-col overflow-hidden rounded-2xl border border-border bg-card text-left shadow-[0_1px_2px_rgba(21,21,21,0.04),0_8px_16px_-4px_rgba(21,21,21,0.06),0_32px_64px_-16px_rgba(21,21,21,0.14)]",
+        "pointer-events-none relative flex h-full select-none flex-col overflow-hidden bg-card text-left",
         className,
       )}
     >

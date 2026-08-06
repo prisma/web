@@ -105,12 +105,18 @@ export function ProductHero({
               {hero.microline ? (
                 <p className="mt-3.5 text-sm text-muted-foreground">{hero.microline}</p>
               ) : null}
-              {/* benefits support the CTA rather than delaying it */}
+              {/* Benefits support the CTA rather than delaying it. They sit
+                  below it now, so they can carry their original weight without
+                  competing — it's the position that was pushing the CTA down,
+                  not the type. */}
               <ul className="mt-8 flex flex-col gap-2.5 border-t border-black/[0.07] pt-7">
                 {hero.benefits.map((label, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <li
+                    key={i}
+                    className="flex items-start gap-2 text-[0.9375rem] font-semibold text-foreground"
+                  >
                     <CheckBold
-                      className={cn("mt-0.5 size-3.5 shrink-0", CHECK_COLORS[i % 3])}
+                      className={cn("mt-0.5 size-4 shrink-0", CHECK_COLORS[i % 3])}
                       aria-hidden
                     />
                     {label}

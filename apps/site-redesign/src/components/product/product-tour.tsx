@@ -39,7 +39,13 @@ export function ProductTour({
 
   return (
     <figure
-      className={cn("flex h-full flex-col gap-3", className)}
+      className={cn(
+        // one card: tab strip, stage and caption all live inside the same
+        // frame, so the tour reads as a single instrument rather than three
+        // loose pieces floating on the hero's background
+        "flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card text-left shadow-[0_1px_2px_rgba(21,21,21,0.04),0_8px_16px_-4px_rgba(21,21,21,0.06),0_32px_64px_-16px_rgba(21,21,21,0.14)]",
+        className,
+      )}
       onMouseEnter={() => {
         paused.current = true;
       }}
@@ -47,9 +53,14 @@ export function ProductTour({
         paused.current = false;
       }}
     >
-      {/* tab strip — the tour's table of contents, and the fastest read of
-          what the product actually does */}
-      <div role="tablist" className="flex flex-wrap items-center gap-1.5">
+      {/* The tab strip is the card's header — the tour's table of contents,
+          and the fastest read of what the product actually does. It sits on a
+          tinted track above the stage, the way a browser's tabs sit above the
+          page; each stop then brings its own window chrome underneath. */}
+      <div
+        role="tablist"
+        className="flex flex-wrap items-center gap-1 border-b border-border/70 bg-muted/40 px-2 py-2"
+      >
         {stops.map(({ label }, i) => {
           const isActive = i === active;
           return (
@@ -63,9 +74,9 @@ export function ProductTour({
                 setDriving(true);
               }}
               className={cn(
-                "relative overflow-hidden rounded-full px-3 py-1.5 text-[0.8125rem] font-semibold transition-colors duration-300 cursor-pointer",
+                "relative overflow-hidden rounded-lg px-3 py-1.5 text-[0.8125rem] font-semibold transition-colors duration-300 cursor-pointer",
                 isActive
-                  ? "bg-card text-foreground shadow-[0_1px_2px_rgba(21,21,21,0.06),0_6px_16px_-8px_rgba(21,21,21,0.24)]"
+                  ? "bg-card text-foreground shadow-[0_1px_2px_rgba(21,21,21,0.07)]"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
@@ -87,17 +98,9 @@ export function ProductTour({
         })}
       </div>
 
-      {/* The caption sits above the panel, not below it: below, it landed on
-          the hero's spectral bottom and the ray graphic, which made it hard to
-          read. Fixed min-height so a one-line and a two-line caption don't
-          shift the panel as the tour advances. */}
-      <figcaption className="min-h-[2.75rem] max-w-[62ch] text-[0.9375rem] leading-snug text-muted-foreground">
-        {stops[active].caption}
-      </figcaption>
-
-      {/* The panel itself. Every stop is laid into the same single grid cell
-          rather than absolutely positioned, so the frame takes the height of
-          its TALLEST stop: the hero never reflows as the tour advances, and no
+      {/* The stage. Every stop is laid into the same single grid cell rather
+          than absolutely positioned, so the frame takes the height of its
+          TALLEST stop: the hero never reflows as the tour advances, and no
           stop is clipped on mobile, where the narrower column makes the dense
           panels much taller than any fixed height would allow for. */}
       <div className="grid flex-1 grid-cols-1 [&>*]:col-start-1 [&>*]:row-start-1">
@@ -119,6 +122,28 @@ export function ProductTour({
           );
         })}
       </div>
+
+      {/* The caption closes the card, on the same tinted track as the tabs so
+          the frame reads as top-and-tailed, and where it can't collide with
+          the hero's ray the way it did when it floated outside the frame.
+          Every caption is stacked into one grid cell, same trick as the stage
+          above: a fixed min-height only holds until a caption wraps to an
+          extra line at some viewport, whereas this is always exactly as tall
+          as the longest one and never resizes the card mid-tour. */}
+      <figcaption className="grid items-center border-t border-border/70 bg-muted/40 px-4 py-3 [&>*]:col-start-1 [&>*]:row-start-1">
+        {stops.map(({ label, caption }, i) => (
+          <span
+            key={label}
+            aria-hidden={i !== active}
+            className={cn(
+              "text-[0.875rem] leading-snug text-muted-foreground transition-opacity duration-300 motion-reduce:transition-none",
+              i === active ? "opacity-100" : "opacity-0",
+            )}
+          >
+            {caption}
+          </span>
+        ))}
+      </figcaption>
     </figure>
   );
 }
