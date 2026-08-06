@@ -236,8 +236,6 @@ export function PlatformStack() {
   // layers swapped away from Prisma, oldest first — the queue the floor rule
   // below draws from
   const [swapOrder, setSwapOrder] = useState<number[]>([]);
-  // set briefly when the floor rule pulls a layer back, so the slot can pop
-  const [restored, setRestored] = useState<number | null>(null);
   const [agent, setAgent] = useState(0);
   const [agentDriven, setAgentDriven] = useState(false);
   // which layer is being dragged over, so its slot can advertise the drop
@@ -267,13 +265,6 @@ export function PlatformStack() {
     return () => clearInterval(t);
   }, [reduce, agentDriven]);
 
-  // clear the pop so restoring the same layer twice re-triggers it
-  useEffect(() => {
-    if (restored === null) return;
-    const t = setTimeout(() => setRestored(null), 700);
-    return () => clearTimeout(t);
-  }, [restored]);
-
   const choose = (layer: number, option: number) => {
     const next = picked.map((v, i) => (i === layer ? option : v));
     // queue the layer if it just left Prisma, drop it if it just came back
@@ -281,25 +272,25 @@ export function PlatformStack() {
     if (option !== 0) order = [...order, layer];
 
     // The floor: never let the stack reach zero Prisma layers. Swapping the
-    // last one out gets the longest-ago swap pulled back instead — never the
+    // last one out quietly pulls the longest-ago swap back instead — never the
     // layer just clicked, which would read as the control refusing the input.
-    let pulledBack: number | null = null;
+    //
+    // Do NOT announce this. Copy calling the rule out ("we'll swap out any
+    // layer, just not all of them") tells the visitor the control is rigged to
+    // protect us, which is the exact opposite of what this section is for. The
+    // restored layer runs the same exchange animation as any other swap, so it
+    // reads as the stack rebalancing rather than as a correction.
     if (next.every((v) => v !== 0)) {
-      pulledBack = order.find((i) => i !== layer) ?? next.findIndex((_, i) => i !== layer);
+      const pulledBack = order.find((i) => i !== layer) ?? next.findIndex((_, i) => i !== layer);
       next[pulledBack] = 0;
       order = order.filter((i) => i !== pulledBack);
     }
 
     setPicked(next);
     setSwapOrder(order);
-    setRestored(pulledBack);
-    setNote(
-      pulledBack === null
-        ? LAYERS[layer].options[option].note
-        : // Said plainly rather than dressed up as a technical constraint —
-          // a control that quietly overrides you is worse than one that owns it.
-          `${LAYERS[pulledBack].options[0].name} slid back in — we'll swap out any layer, just not all of them at once.`,
-    );
+    // always the note for what the visitor actually picked — their choice did
+    // take effect, and it's the only thing they're expecting an answer about
+    setNote(LAYERS[layer].options[option].note);
   };
 
   return (
@@ -315,7 +306,6 @@ export function PlatformStack() {
               onClick={() => {
                 setPicked(LAYERS.map(() => 0));
                 setSwapOrder([]);
-                setRestored(null);
                 setNote(null);
               }}
               className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.8125rem] font-semibold text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
@@ -371,15 +361,11 @@ export function PlatformStack() {
                 {layer.label}
               </p>
 
-              {/* the slot. One per layer, and the only thing here at full size.
-                  It pops when the floor rule pulls this layer back, so the
-                  change never happens somewhere the eye isn't looking. */}
-              <motion.div
+              {/* the slot. One per layer, and the only thing here at full size */}
+              <div
                 ref={(el) => {
                   slotRefs.current[li] = el;
                 }}
-                animate={restored === li && !reduce ? { scale: [1, 1.04, 1] } : { scale: 1 }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
                 className={cn(
                   "mt-2 flex h-[3.75rem] items-center rounded-xl border px-4 transition-shadow duration-500",
                   lit
@@ -407,7 +393,7 @@ export function PlatformStack() {
                     {current.name}
                   </motion.span>
                 </AnimatePresence>
-              </motion.div>
+              </div>
 
               <p className="mt-4 flex items-center gap-1.5 text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground/60">
                 <Swap className="size-3" aria-hidden />
