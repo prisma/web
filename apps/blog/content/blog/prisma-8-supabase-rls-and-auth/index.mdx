@@ -20,6 +20,28 @@ import { OneContractGraph } from "./OneContractGraph";
 
 **Prisma 8 Release Candidate 1 lets you define your Supabase tables, auth relationships, and RLS policies next to each other in one Prisma schema. Prisma migrates all of it, and Postgres enforces it on every query.**
 
+## Your RLS policy, right next to your model
+
+Imagine defining a Row Level Security policy directly next to the model it protects:
+
+```prisma
+model Note {
+  // ...your fields
+  @@rls
+}
+
+// A signed-in user reads only their own notes.
+policy_select note_owner_read {
+  target = Note
+  roles  = [authenticated]
+  using  = "\"userId\"::uuid = auth.uid()"
+}
+```
+
+Good news: you can. This is real Prisma 8 syntax. You edit the policy where you edit the model, run one migrate command, and Postgres enforces the rule on every query your app makes.
+
+If that sounds like a small thing, let's look at what you probably do today.
+
 ## Where is your current RLS policy?
 
 Think about the last time you needed to know what the authorization policy for a table actually is. Not what it was when someone first wrote it. What it is right now, in production.
@@ -36,13 +58,11 @@ supabase/migrations/
 
 Which one contains the current policy? You open the most likely file. It creates a policy, but a later migration replaced it. You open that one. Altered again, two weeks after. The current state of the most security-critical part of your data model is the sum of every migration that ever touched it, and the only way to read it is to replay them in your head. And if someone adjusted the policy in the Supabase dashboard along the way, it isn't in any of these files at all.
 
-Imagine if you could define your RLS policy directly next to your model instead, and read the current state in one place.
-
-Good news: now you can.
+That's the workflow Prisma 8's Supabase extension replaces. Instead of reconstructing the current policy from history, you read it in one place: your schema.
 
 ## Your schema is the source of truth
 
-With Prisma 8's Supabase extension, your models, your auth relationships, and your RLS policies live in the same file. Here is a notes app where every note belongs to a Supabase user:
+Here is the full schema for a notes app where every note belongs to a Supabase user:
 
 ```prisma
 namespace public {
@@ -67,9 +87,15 @@ namespace public {
 }
 ```
 
-This one block answers every question you were hunting through the migrations directory for. `@@rls` turns on Row Level Security for the table, so no role sees any row unless a policy grants it. The policy block is the current read policy, carrying the same `USING` and `WITH CHECK` conditions you would otherwise write in SQL. Insert, update, and delete policies follow the same shape, with `withCheck` stopping users from writing rows they don't own; the full set is four short blocks in the [Supabase extension guide](https://www.prisma.io/docs/orm/next/extensions/supabase). There is deliberately no anon policy, because with RLS enabled and no matching policy, anonymous visitors see zero rows. And the `user` field is a real reference to Supabase's `auth.users` table, which we'll come back to below.
+This one block answers every question you were hunting through the migrations directory for. Three things are happening, so let's take them one at a time.
 
-This is where your application is defined. It is the file you edit, and the file you read. It is also [the most-requested Supabase feature in Prisma's history](https://github.com/prisma/prisma/issues/12735), with over 400 reactions on the GitHub issue since 2022.
+`@@rls` turns on Row Level Security for the table. From that moment, no role sees any row unless a policy grants it, which is exactly the deny-by-default posture you want for user data.
+
+The `policy_select` block is the current read policy. It carries the same `USING` condition you would otherwise write in SQL, so nothing about how you think in RLS changes; only where the rule lives does. Insert, update, and delete policies follow the same shape, with `withCheck` stopping users from writing rows they don't own. The full set is four short blocks in the [Supabase extension guide](https://www.prisma.io/docs/orm/next/extensions/supabase). There is deliberately no anon policy here, because with RLS enabled and no matching policy, anonymous visitors see zero rows.
+
+And the `user` field is a real reference to Supabase's `auth.users` table. We'll come back to that one below.
+
+This file is where your application is defined. It is the file you edit, and the file you read. It is also [the most-requested Supabase feature in Prisma's history](https://github.com/prisma/prisma/issues/12735), with over 400 reactions on the GitHub issue since 2022.
 
 ## One command migrates everything
 
@@ -106,7 +132,7 @@ For public traffic there is `db.asAnon()`, and for admin jobs `db.asServiceRole(
 
 ## A real foreign key into auth.users
 
-The `user` field from the schema deserves a closer look:
+Back to the `user` field from the schema:
 
 ```prisma
 user supabase:auth.AuthUser @relation(fields: [userId], references: [id], onDelete: Cascade)
