@@ -218,8 +218,10 @@ export function ProductPlatform({ platform }: Pick<ProductPageContent, "platform
                 <div
                   onMouseEnter={() => drive(i)}
                   className={cn(
-                    "flex h-full flex-col items-start gap-4 rounded-xl border bg-white p-6 transition-colors duration-500",
-                    isActive ? "border-black/[0.14]" : "border-black/[0.06]",
+                    "flex h-full flex-col items-start gap-4 rounded-xl border bg-white p-6 transition-all duration-500",
+                    isActive
+                      ? "border-black/[0.14] shadow-[0_1px_2px_rgba(21,21,21,0.04),0_14px_36px_-18px_rgba(21,21,21,0.28)]"
+                      : "border-black/[0.06]",
                   )}
                 >
                   <IconTile className="lg:hidden">
@@ -236,7 +238,12 @@ export function ProductPlatform({ platform }: Pick<ProductPageContent, "platform
                       behind the interaction — the point is that a visitor who
                       never clicks anything still sees the exits. */}
                   <div className="w-full border-t border-black/[0.06] pt-4">
-                    <p className="flex items-center gap-1.5 text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70">
+                    <p
+                      className={cn(
+                        "flex items-center gap-1.5 text-[0.6875rem] font-semibold uppercase tracking-[0.1em] transition-colors duration-500",
+                        isActive ? "text-foreground" : "text-muted-foreground/70",
+                      )}
+                    >
                       <Swap className="size-3" aria-hidden />
                       Swaps for
                     </p>
@@ -248,10 +255,10 @@ export function ProductPlatform({ platform }: Pick<ProductPageContent, "platform
                         <li
                           key={alt}
                           className={cn(
-                            "rounded-md border px-2 py-1 text-[0.75rem] font-medium transition-colors duration-500",
+                            "rounded-md border px-2 py-1 text-[0.75rem] font-medium transition-all duration-500",
                             isActive
-                              ? "border-black/[0.1] bg-card text-foreground"
-                              : "border-black/[0.05] bg-card text-muted-foreground",
+                              ? "border-black/[0.12] bg-card text-foreground shadow-[0_1px_2px_rgba(21,21,21,0.05)]"
+                              : "border-transparent bg-muted/50 text-muted-foreground/70",
                           )}
                         >
                           {alt}
