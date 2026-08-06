@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRightBold,
   Bot,
@@ -154,6 +154,19 @@ const GOLDEN_NOTE =
 const AGENT_HOLD = 2.2;
 
 const SWAP_SPRING = { type: "spring", stiffness: 380, damping: 32 } as const;
+
+// The slot exchange. Deliberately NOT a `layoutId` flight from the bench up
+// into the slot: the two nodes sit in very different parents, and framer treats
+// that pairing as a crossfade — measured, it drove the incoming element to
+// opacity 0 at the OLD position and held it there for about a second before
+// snapping into place, which read as the whole control freezing on click.
+//
+// Directional slides get the same reading for free and are deterministic: the
+// bench is below the slot, so an incoming pick rises from below and the outgoing
+// one drops toward the bench it's about to join.
+const RISE = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } };
+const SLOT_EXIT = { opacity: 0, y: 12 };
+const SLOT_TWEEN = { duration: 0.26, ease: [0.22, 1, 0.36, 1] } as const;
 
 function PrismaMark({ className }: { className?: string }) {
   return (
@@ -308,17 +321,22 @@ export function PlatformStack() {
                     : "border-black/[0.12] bg-muted/40",
                 )}
               >
-                <motion.span
-                  layoutId={`chip-${layer.key}-${current.name}`}
-                  transition={reduce ? { duration: 0 } : SWAP_SPRING}
-                  className={cn(
-                    "flex items-center gap-2 text-[0.9375rem] font-semibold",
-                    lit ? layer.lit.text : "text-foreground",
-                  )}
-                >
-                  {current.prisma ? <PrismaMark className="size-4" /> : null}
-                  {current.name}
-                </motion.span>
+                <AnimatePresence mode="popLayout" initial={false}>
+                  <motion.span
+                    key={current.name}
+                    initial={reduce ? false : RISE.initial}
+                    animate={RISE.animate}
+                    exit={reduce ? undefined : SLOT_EXIT}
+                    transition={reduce ? { duration: 0 } : SLOT_TWEEN}
+                    className={cn(
+                      "flex items-center gap-2 text-[0.9375rem] font-semibold",
+                      lit ? layer.lit.text : "text-foreground",
+                    )}
+                  >
+                    {current.prisma ? <PrismaMark className="size-4" /> : null}
+                    {current.name}
+                  </motion.span>
+                </AnimatePresence>
               </div>
 
               <p className="mt-4 flex items-center gap-1.5 text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground/60">
@@ -328,32 +346,36 @@ export function PlatformStack() {
 
               {/* the bench. Clicking one promotes it into the slot above and
                   drops the current occupant down here in its place */}
+              {/* `initial={false}` so the bench doesn't animate itself in on
+                  first paint — only the item displaced by a later swap does,
+                  dropping in from the slot it just left */}
               <div className="mt-2 flex flex-col gap-1.5">
-                {layer.options.map((option, oi) =>
-                  oi === picked[li] ? null : (
-                    <button
-                      key={option.name}
-                      type="button"
-                      onClick={() => choose(li, oi)}
-                      className="group flex items-center gap-2 rounded-lg border border-black/[0.09] bg-white px-3 py-2 text-left text-[0.875rem] font-medium text-muted-foreground transition-all duration-200 hover:-translate-y-px hover:border-black/20 hover:text-foreground hover:shadow-[0_4px_12px_-4px_rgba(21,21,21,0.16)] cursor-pointer"
-                    >
-                      <motion.span
-                        layoutId={`chip-${layer.key}-${option.name}`}
+                <AnimatePresence initial={false}>
+                  {layer.options.map((option, oi) =>
+                    oi === picked[li] ? null : (
+                      <motion.button
+                        key={option.name}
+                        layout={reduce ? false : "position"}
+                        initial={reduce ? false : { opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={reduce ? undefined : { opacity: 0, transition: { duration: 0.12 } }}
                         transition={reduce ? { duration: 0 } : SWAP_SPRING}
-                        className="flex items-center gap-2"
+                        type="button"
+                        onClick={() => choose(li, oi)}
+                        className="group flex items-center gap-2 rounded-lg border border-black/[0.09] bg-white px-3 py-2 text-left text-[0.875rem] font-medium text-muted-foreground transition-colors duration-200 hover:border-black/20 hover:text-foreground cursor-pointer"
                       >
                         {option.prisma ? <PrismaMark className="size-3.5" /> : null}
                         {option.name}
-                      </motion.span>
-                      {/* faintly present at rest so the row reads as a
-                          control, not a list item; it firms up on hover */}
-                      <ArrowRightBold
-                        className="ml-auto size-3.5 -rotate-90 text-foreground/20 transition-colors duration-200 group-hover:text-foreground/60"
-                        aria-hidden
-                      />
-                    </button>
-                  ),
-                )}
+                        {/* faintly present at rest so the row reads as a
+                            control, not a list item; it firms up on hover */}
+                        <ArrowRightBold
+                          className="ml-auto size-3.5 -rotate-90 text-foreground/20 transition-colors duration-200 group-hover:text-foreground/60"
+                          aria-hidden
+                        />
+                      </motion.button>
+                    ),
+                  )}
+                </AnimatePresence>
               </div>
             </div>,
             layer.pipe ? (
