@@ -5,40 +5,152 @@
 @import "@prisma-docs/ui/styles";
 
 #nd-sidebar {
-    @apply border-e;
-    background-color: var(--color-background);
+  @apply border-e;
+  background-color: var(--color-background);
 }
 
 header &[data-search-full] {
-    @apply rounded-xl;
+  @apply rounded-xl;
 }
 
 /* [data-header-tabs], */
 [data-header-body] {
-    @apply border-none;
+  @apply border-none;
 }
 
 #nd-page {
-    @apply @container;
+  @apply @container;
 }
+
+/* Brand heading rule: display face, Medium weight, natural tracking on every
+   heading. Deliberately unlayered — fumadocs' `prose` typography emits into
+   @layer utilities with its own heading weights (800/700/600), and unlayered
+   declarations outrank every layer regardless of specificity. This is the same
+   position the font-family rule already occupied. */
 h1,
 h2,
 h3,
 h4,
-h5 {
-    font-family: var(--font-sans-display);
+h5,
+h6 {
+  font-family: var(--font-sans-display);
+  font-weight: 500;
+  letter-spacing: normal;
 }
 
 /* Wire next/font/local preloaded fonts into the design-token variables.
    Declared after the @import so this :root wins on cascade order (same
-   specificity, later position). Falls back to the @font-face family names
-   from fonts.css if the CSS variables haven't been set yet. */
+   specificity, later position). The bare family name after each variable is
+   the @font-face from the package's fonts.css — it both backstops a missing
+   next/font variable and supplies the subsets next/font does not preload
+   (Sora latin-ext). */
 :root {
-    --font-sans-display:
-        var(--font-mona-sans, "Mona Sans VF"), "Inter", "Roboto",
-        "Helvetica Neue", "Arial Nova", "Nimbus Sans", "Arial", sans-serif;
-    --font-mono:
-        var(--font-mona-mono, "Mona Sans Mono VF"), ui-monospace,
-        "Cascadia Code", "Source Code Pro", "Menlo", "Consolas",
-        "DejaVu Sans Mono", monospace;
+  --font-sans-display:
+    var(--font-sora, "Sora"), "Sora", "Inter", "Roboto", "Helvetica Neue", "Arial Nova",
+    "Nimbus Sans", "Arial", sans-serif;
+  --font-sans:
+    var(--font-inter, "Inter"), "Inter", "Roboto", "Helvetica Neue", "Arial Nova", "Nimbus Sans",
+    "Arial", sans-serif;
+  --font-mono:
+    var(--font-mona-mono, "Mona Sans Mono VF"), ui-monospace, "Cascadia Code", "Source Code Pro",
+    "Menlo", "Consolas", "DejaVu Sans Mono", monospace;
+}
+
+/* ---------------------------------------------------------------------------
+   App chrome retheme — remap the shadcn/fumadocs shell variables onto prism.
+
+   `@prisma-docs/ui` (out of scope for this rebrand: apps/site, apps/blog and
+   apps/docs consume it) still ships the previous identity in these variables —
+   teal #16a394 accents, a #131420 blue-navy dark, and cool blue-gray text. The
+   package cannot be edited, so the app remaps the same variable names here.
+   Every `--color-fd-*` alias fumadocs reads is defined by
+   `fumadocs-ui/css/shadcn.css` as `var(--<name>)` against exactly these
+   variables, so overriding the base set carries the whole shell: sidebar,
+   TOC, breadcrumbs, tabs, buttons, popovers.
+
+   Placement and shape matter. These blocks sit after the @imports so they win
+   on source order at equal specificity, and `:root` and `.dark` are BOTH
+   declared in full: an unpaired `:root` here would also outrank the package's
+   earlier `.dark`, leaking light values into dark mode.
+
+   Values are eclipse tokens, never literals, so the shell tracks the package.
+--------------------------------------------------------------------------- */
+:root {
+  /* CF's base radius is 10px; fumadocs derives sm/md/xl/2xl.. from this. */
+  --radius: 0.625rem;
+
+  --background: var(--color-background-default); /* #ffffff */
+  --foreground: var(--color-foreground-neutral); /* #3a3b3c */
+  --card: var(--color-background-default);
+  --card-foreground: var(--color-foreground-neutral);
+  --popover: var(--color-background-default);
+  --popover-foreground: var(--color-foreground-neutral);
+
+  /* Brand accent: sidebar active item, TOC thumb + active link, section links,
+     active tab underline. `bg-fd-primary/10` derives the active-item tint. */
+  --primary: var(--color-prism-cyan-600); /* #009aaa */
+  --primary-foreground: #ffffff;
+
+  --secondary: var(--color-background-neutral-weak); /* paper #f9faf5 */
+  --secondary-foreground: var(--color-foreground-neutral);
+  --muted: var(--color-background-neutral); /* #f5f5f4 */
+  --muted-foreground: var(--color-foreground-neutral-weak); /* #646567 */
+
+  /* Hover wash + hover text. cyan-100 holds the luminance the previous teal
+     tint had, so hover feedback keeps its weight and only changes hue. */
+  --accent: var(--color-prism-cyan-100); /* #dcfdff */
+  --accent-foreground: var(--color-prism-cyan-700); /* #007f8d */
+
+  --destructive: var(--color-foreground-error); /* prism red #d02344 */
+  --border: var(--color-stroke-neutral); /* #e5e5e4 */
+  --input: var(--color-stroke-neutral);
+  --ring: var(--color-prism-cyan-600);
+
+  /* `#nd-sidebar` above paints its background from `--color-background`, so
+     `--sidebar` is kept in agreement rather than fighting it. */
+  --sidebar: var(--color-background-default);
+  --sidebar-foreground: var(--color-foreground-neutral);
+  --sidebar-primary: var(--color-prism-cyan-600);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--color-prism-cyan-100);
+  --sidebar-accent-foreground: var(--color-prism-cyan-700);
+  --sidebar-border: var(--color-stroke-neutral);
+  --sidebar-ring: var(--color-prism-cyan-600);
+}
+
+.dark {
+  /* The neutral dark ramp, chroma-0 off the brand ink — not the old blue-gray. */
+  --background: var(--color-background-default); /* #0f0f0f */
+  --foreground: var(--color-foreground-neutral); /* #f5f5f4 */
+  --card: var(--color-background-neutral-weak); /* #1a1a1a */
+  --card-foreground: var(--color-foreground-neutral);
+  --popover: var(--color-background-neutral-weak);
+  --popover-foreground: var(--color-foreground-neutral);
+
+  /* Cyan lifts to 400 on dark for legible accents; its foreground goes to ink,
+     because white on #01d7e4 does not carry. */
+  --primary: var(--color-prism-cyan-400); /* #01d7e4 */
+  --primary-foreground: var(--color-background-default); /* #0f0f0f */
+
+  --secondary: var(--color-background-neutral); /* #232323 */
+  --secondary-foreground: var(--color-foreground-neutral);
+  --muted: var(--color-background-neutral); /* #232323 */
+  --muted-foreground: var(--color-foreground-neutral-weak); /* #a5a5a6 */
+
+  --accent: var(--color-prism-cyan-950); /* #00353c */
+  --accent-foreground: var(--color-prism-cyan-300); /* #7be7f0 */
+
+  --destructive: var(--color-foreground-error); /* prism red #f34a60 */
+  --border: var(--color-stroke-neutral); /* #2a2a2a */
+  --input: var(--color-stroke-neutral);
+  --ring: var(--color-prism-cyan-400);
+
+  --sidebar: var(--color-background-default);
+  --sidebar-foreground: var(--color-foreground-neutral);
+  --sidebar-primary: var(--color-prism-cyan-400);
+  --sidebar-primary-foreground: var(--color-background-default);
+  --sidebar-accent: var(--color-prism-cyan-950);
+  --sidebar-accent-foreground: var(--color-prism-cyan-300);
+  --sidebar-border: var(--color-stroke-neutral);
+  --sidebar-ring: var(--color-prism-cyan-400);
 }
