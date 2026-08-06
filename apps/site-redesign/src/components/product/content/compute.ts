@@ -113,32 +113,6 @@ export const computeContent: ProductPageContent = {
   },
   platform: {
     body: "Prisma Compute is where the stack comes together: your app, your database, and your data model on one platform.",
-    integrations: [
-      {
-        icon: "database",
-        product: "Prisma Postgres",
-        benefit: "Branched together, deployed together, and co-located on the same machine.",
-        alternatives: ["Supabase", "Neon", "Amazon RDS", "any Postgres"],
-      },
-      {
-        icon: "code",
-        product: "Prisma ORM",
-        benefit: "Deploy an app already wired to your schema and its migrations.",
-        alternatives: ["Drizzle", "Kysely", "TypeORM", "raw SQL"],
-      },
-      {
-        icon: "layoutGrid",
-        product: "your framework",
-        benefit: "Standard TypeScript on Bun, so what runs locally is what runs here.",
-        alternatives: ["Next.js", "Hono", "Express", "tRPC", "Nitro"],
-      },
-      {
-        icon: "bot",
-        product: "any coding agent",
-        benefit: "A CLI and Management API your agent can drive, with full parity between them.",
-        alternatives: ["Claude Code", "Codex", "Cursor", "Windsurf"],
-      },
-    ],
   },
   cta: {
     headline: "One platform. Both layers. Features only possible because of it.",

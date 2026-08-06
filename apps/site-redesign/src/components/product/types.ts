@@ -96,28 +96,13 @@ export type ProductPageContent = {
     }[];
   };
   platform: {
-    /** How this product shares a common layer with the rest of Prisma. */
-    body: string;
     /**
-     * Four per page — the other two products, a coding-agent row, and one
-     * ecosystem row. V4 shipped three and no alternatives, and client review
-     * found the resulting diagram read as "you must adopt all of Prisma",
-     * i.e. as lock-in. Every row now carries what it swaps out for, so the
-     * section says best-together AND open.
+     * How this product shares a common layer with the rest of Prisma. The only
+     * per-page copy in this section now — the layers, their alternatives and
+     * the trade-off each swap carries are page-independent and live in
+     * platform-stack.tsx.
      */
-    integrations: {
-      icon: Icon;
-      product: string;
-      /** Why this pairing is better than wiring it yourself. */
-      benefit: string;
-      /**
-       * What this layer can be replaced with. Names only, no logos — we have
-       * no marks for these and inventing them would misrepresent partnerships.
-       * Required: a row without alternatives is the lock-in read we're fixing.
-       */
-      alternatives: string[];
-      href?: string;
-    }[];
+    body: string;
   };
   cta: {
     /**

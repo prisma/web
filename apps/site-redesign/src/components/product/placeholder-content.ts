@@ -41,35 +41,6 @@ export const placeholderContent: ProductPageContent = {
   },
   platform: {
     body: "[1–2 sentences. Explain how this product shares a common layer with the other Prisma products. The value is that adopting this product makes the rest of the platform more useful.]",
-    integrations: [
-      {
-        icon: "database",
-        product: "Postgres",
-        benefit: "[One-line integration benefit. Be specific.]",
-        alternatives: ["[Alternative]", "[Alternative]", "[Alternative]"],
-        href: "/postgres",
-      },
-      {
-        icon: "server",
-        product: "Compute",
-        benefit: "[One-line integration benefit. Be specific.]",
-        alternatives: ["[Alternative]", "[Alternative]", "[Alternative]"],
-        href: "/compute",
-      },
-      {
-        icon: "code",
-        product: "ORM",
-        benefit: "[One-line integration benefit. Be specific.]",
-        alternatives: ["[Alternative]", "[Alternative]", "[Alternative]"],
-        href: "/orm",
-      },
-      {
-        icon: "bot",
-        product: "any coding agent",
-        benefit: "[One-line integration benefit. Be specific.]",
-        alternatives: ["[Alternative]", "[Alternative]", "[Alternative]"],
-      },
-    ],
   },
   cta: {
     headline: "[Closing headline — specific to this product, not shared]",

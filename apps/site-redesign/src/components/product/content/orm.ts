@@ -111,33 +111,6 @@ export const ormContent: ProductPageContent = {
   },
   platform: {
     body: "The schema you write for the ORM is the same schema your database and hosting read. Adopt the ORM and you've already laid the foundation for the rest of the stack, with no rework when you're ready to expand.",
-    integrations: [
-      {
-        icon: "database",
-        product: "Prisma Postgres",
-        benefit: "Your schema provisions a production database that already understands it.",
-        alternatives: ["Supabase", "Neon", "Amazon RDS", "self-hosted"],
-      },
-      {
-        icon: "server",
-        product: "Prisma Compute",
-        benefit: "Deploy an app that's already wired to your schema and database.",
-        alternatives: ["Vercel", "Railway", "Fly.io", "your own host"],
-      },
-      {
-        icon: "layoutGrid",
-        product: "your database",
-        benefit: "The same schema and the same generated client, whatever you're already running.",
-        alternatives: ["PostgreSQL", "MySQL", "SQLite", "MongoDB", "SQL Server", "CockroachDB"],
-      },
-      {
-        icon: "bot",
-        product: "any coding agent",
-        benefit:
-          "Prisma skills install with your project, and errors carry codes and remediation hints an agent can act on.",
-        alternatives: ["Claude Code", "Codex", "Cursor", "Windsurf"],
-      },
-    ],
   },
   cta: {
     headline: "Start with the ORM. Keep everything else within reach.",

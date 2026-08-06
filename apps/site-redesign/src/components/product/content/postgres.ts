@@ -116,34 +116,6 @@ export const postgresContent: ProductPageContent = {
   },
   platform: {
     body: "Prisma Postgres runs on the same platform as Compute, and the schema you define in Prisma ORM drives your migrations and your typed client. The more of the stack you use, the less there is to wire together.",
-    integrations: [
-      {
-        icon: "server",
-        product: "Prisma Compute",
-        benefit:
-          "Branched together, deployed together, and co-located, so app-to-database queries skip the cross-vendor network hop.",
-        alternatives: ["Vercel", "Railway", "Fly.io", "your own host"],
-      },
-      {
-        icon: "code",
-        product: "any ORM",
-        benefit: "Prisma ORM drives your migrations and typed client straight from your schema.",
-        alternatives: ["Drizzle", "Kysely", "TypeORM", "raw SQL"],
-      },
-      {
-        icon: "checkCircle",
-        product: "any auth",
-        benefit: "Standard Postgres underneath, so any auth provider connects the usual way.",
-        alternatives: ["BetterAuth", "Clerk", "NextAuth", "Auth0"],
-      },
-      {
-        icon: "bot",
-        product: "any coding agent",
-        benefit:
-          "A CLI and Management API with full parity, so your agent can provision and inspect databases itself.",
-        alternatives: ["Claude Code", "Codex", "Cursor", "Windsurf"],
-      },
-    ],
   },
   cta: {
     headline: "Postgres that ships with the rest of your stack",
