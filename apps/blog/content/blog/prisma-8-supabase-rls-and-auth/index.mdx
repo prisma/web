@@ -5,8 +5,8 @@ date: "2026-08-05"
 authors:
   - "Will Madden"
   - "Ankur Datta"
-metaTitle: "Supabase RLS in your Prisma schema | Prisma 8"
-metaDescription: "Prisma 8 lets you declare Supabase RLS policies and auth.users relationships in your Prisma schema. One file, one migration, enforced by Postgres."
+metaTitle: "Supabase RLS in your Prisma schema | Prisma 8 RC1"
+metaDescription: "Prisma 8 Release Candidate 1 lets you declare Supabase RLS policies and auth.users relationships in one Prisma schema. Try the release candidate and share feedback before GA."
 metaImagePath: "/prisma-8-supabase-rls-and-auth/imgs/meta.png"
 heroImagePath: "/prisma-8-supabase-rls-and-auth/imgs/hero.svg"
 heroImageAlt: "Supabase RLS policies and auth.users, declared in a Prisma schema"
@@ -15,15 +15,11 @@ tags:
   - "announcement"
 ---
 
-**You can now define your Supabase tables, auth relationships, and RLS policies in one Prisma schema. Prisma 8 migrates all of it, and Postgres enforces it.**
+**Prisma 8 Release Candidate 1 lets you define your Supabase tables, auth relationships, and RLS policies in one Prisma schema. Prisma migrates all of it, Postgres enforces it, and we want your feedback before general availability.**
 
-## Two versions of your schema
+## Why Supabase projects end up with two sources of truth
 
-Every Supabase app eventually ends up with two versions of its database schema.
-
-One lives in your ORM. It describes your tables and relations, and it generates your types.
-
-The other lives in handwritten SQL migrations. That is where your Row Level Security policies go, and the foreign keys into `auth.users`, because your ORM cannot see the `auth` schema:
+Every Supabase app eventually splits its database schema across two homes. Your ORM holds the tables and relations and generates your types, while your Row Level Security policies and the foreign keys into `auth.users` live in handwritten SQL migrations, because no ORM could see the `auth` schema:
 
 ```sql
 -- 20240301_rls.sql: written by hand, invisible to your ORM
@@ -36,23 +32,23 @@ ALTER TABLE notes
   ADD FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 ```
 
-The two drift apart. The policy running in production is whatever the dashboard says, no pull request ever showed the change, and your ORM happily generates queries as if none of it exists.
+That split is where authorization bugs come from. When a production policy changes in the Supabase dashboard instead of your codebase, the update bypasses code review, and your ORM keeps generating queries with no awareness of the rules that now govern them. The most security-critical part of your data model is the one part no pull request ever shows.
 
-Prisma 8 fixes that.
+Prisma 8 removes the split.
 
-## What changed
+## One schema for models, auth, and RLS
 
-Prisma 8 is the next major version of Prisma ORM, available now in Early Access. Its schema can declare two things no Prisma schema could before: RLS policies, written next to the model they protect, and real foreign keys into Supabase's `auth.users` table. Prisma migrates both, so SQL like the block above never gets written by hand again.
+Prisma 8, now in Release Candidate 1, extends the Prisma schema to cover the two things Supabase developers have always managed outside their ORM: RLS policies, declared next to the model they protect, and real foreign keys into Supabase's `auth.users` table. Prisma migrates both, so authorization changes travel through the same pull requests, diffs, and reviews as every other schema change.
 
 ![Before: models in Prisma, RLS in SQL migrations, auth wiring in the dashboard. After: one Prisma schema, one migration, reviewed in one pull request.](/prisma-8-supabase-rls-and-auth/imgs/one-schema.svg)
 
-:::note[Early Access]
-Prisma 8 ships today as the `prisma-next` CLI and `@prisma/orm-*` packages. It is cutting-edge and evolving with user feedback; the API surface won't change drastically. If you want to stay on the current generally available version, continue with [Prisma 7](https://www.prisma.io/docs). Try Prisma 8 and [share feedback in Discord](https://pris.ly/discord).
+:::note[Release Candidate 1]
+Prisma 8 ships today as Release Candidate 1 of the `prisma-next` CLI and `@prisma/orm-*` packages. The API surface is stable, and we are collecting feedback before general availability. If you want to stay on the current generally available version, continue with [Prisma 7](https://www.prisma.io/docs). Try RC1 and [tell us what you find in Discord](https://pris.ly/discord).
 :::
 
-## The schema
+## Define tables, auth relationships, and RLS together
 
-Here is a notes app where every note belongs to a Supabase user:
+Consider a notes application where every note belongs to a Supabase user:
 
 ```prisma
 namespace public {
@@ -70,15 +66,13 @@ namespace public {
 }
 ```
 
-Two lines do the new work.
+The `user` relation exists so that ownership is a fact the database guarantees rather than a convention your code follows. It becomes a real foreign key into `auth.users`, which means a note can never reference a user that doesn't exist, and deleting a user cascades to their notes without a cleanup script. Prisma understands the exact shape of `auth.users` because the Supabase extension ships a complete description of everything Supabase owns in your database, marked external so Prisma will reference it but never try to migrate or modify it.
 
-`user supabase:auth.AuthUser @relation(...)` references your auth user table from your Prisma schema. It becomes a real foreign key into `auth.users`, so deleting a user cascades to their notes and Postgres guarantees it. Prisma knows the exact shape of `auth.users` through the Supabase extension, and it will never try to migrate or modify anything Supabase owns.
+`@@rls` enables Row Level Security on the table, which tells Postgres that no role sees any row unless a policy grants it. That is the foundation the next section builds on.
 
-`@@rls` enables Row Level Security on the table. The policies come next.
+## Write RLS policies next to your models
 
-## The policy
-
-Policies are named blocks in the same file, right below the model:
+Policies are named blocks in the same file, right below the model they protect:
 
 ```prisma
 // A signed-in user reads only their own notes.
@@ -89,15 +83,15 @@ policy_select note_owner_read {
 }
 ```
 
-The insert, update, and delete policies look the same: `policy_insert` and `policy_update` add a `withCheck` predicate so a user cannot write rows they don't own. The full set is four short blocks, shown in the [Supabase extension guide](https://www.prisma.io/docs/orm/next/extensions/supabase). There is deliberately no anon policy: with RLS enabled and no matching policy, anonymous users see zero rows.
+The insert, update, and delete policies follow the same shape, with a `withCheck` predicate so a user cannot write rows they don't own; the full set is four short blocks in the [Supabase extension guide](https://www.prisma.io/docs/orm/next/extensions/supabase). There is deliberately no anon policy, because with RLS enabled and no matching policy, anonymous users see zero rows.
 
-One command turns all of it into DDL and applies it:
+One command turns the schema and its policies into DDL and applies them:
 
 ```bash
 npx prisma-next migrate
 ```
 
-The generated migration enables RLS and creates each policy, for example:
+The generated migration enables RLS and creates each policy:
 
 ```sql
 CREATE POLICY "note_owner_read_9f8e536e" ON "public"."note"
@@ -105,11 +99,11 @@ CREATE POLICY "note_owner_read_9f8e536e" ON "public"."note"
   USING ("userId"::uuid = auth.uid())
 ```
 
-No SQL written by hand, and the policy now shows up in every schema diff. If you already have policies in a live database, it works in the other direction too: `prisma-next contract infer` reads existing policies back into your schema.
+You never write this SQL, and from now on every policy change appears in a schema diff. The workflow also runs in reverse: if you already have policies in a live database, `prisma-next contract infer` reads them back into your schema, so adopting Prisma 8 on an existing Supabase project doesn't mean rewriting your authorization from scratch.
 
-## Query without filters
+## Let Postgres enforce access, not your application
 
-This is the part that feels like magic. Here is the route handler that lists a user's notes:
+Here is the route handler that lists a user's notes:
 
 ```ts
 const notes = await bound.orm.public.Note
@@ -118,9 +112,9 @@ const notes = await bound.orm.public.Note
   .toArray();
 ```
 
-There is no `where userId = ...` filter. The SELECT policy is the filter. Postgres runs the query as the signed-in user and returns only their rows, so an entire class of forgotten-filter bugs stops being possible in application code.
+There is no `where userId = ...` filter, because the SELECT policy is the filter. Postgres runs the query as the signed-in user and returns only their rows, which means the forgotten-filter bug, the one where a single missing `where` clause leaks every user's data, stops being possible in application code.
 
-Where does `bound` come from? You bind a role per request. Prisma verifies the JWT from Supabase Auth and runs every query as that user:
+The `bound` client carries the user's identity. You bind a role per request, and Prisma verifies the JWT from Supabase Auth before any query runs:
 
 ```ts
 const db = await getDb();          // supabase({ contractJson, url, jwksUrl })
@@ -132,40 +126,32 @@ const bound = await db.asUser(jwt); // verified JWT, queries run as this user
 
 ![A request's JWT is verified by Prisma, the query runs as that user, and Postgres RLS filters the rows.](/prisma-8-supabase-rls-and-auth/imgs/request-flow.svg)
 
-The client has no default query surface. Until you choose `asUser`, `asAnon`, or `asServiceRole`, there is nothing to call. That removes the classic footgun of running app queries as the connection's login role and silently bypassing RLS.
+The client has no default query surface: until you choose `asUser`, `asAnon`, or `asServiceRole`, there is nothing to call. That design removes the classic footgun of running application queries as the connection's login role and silently bypassing RLS, because the compiler forces every query to name the identity it runs as.
 
-Writes get the same treatment. A request that tries to insert a note owned by someone else is rejected by the database's `WITH CHECK` predicate, no matter what the application code says:
+Writes get the same protection. A request that tries to insert a note owned by someone else is rejected by the database's `WITH CHECK` predicate, regardless of what the application code says:
 
 ```ts
 await bound.orm.public.Note.select('id').create({ title, body, userId: someoneElse });
 // => rejected by Postgres, not by an if-statement
 ```
 
-## Why this matters
+## What you gain from schema-defined authorization
 
-Your authorization rules become part of the artifact you already review. A policy change is a schema diff in a pull request, not a surprise in the dashboard.
+Your authorization rules become part of the artifact you already review, so a policy change is a schema diff in a pull request instead of a surprise in the dashboard. Your auth relationships become real constraints that Postgres enforces, so referential integrity with Supabase Auth stops depending on cleanup scripts. And your security model becomes explicit in the types, so every query names the role it runs as and a reviewer can see who runs what at a glance.
 
-Your auth relationships become real constraints. Deleting a user cascades through `auth.users` foreign keys because the database enforces it, not a cleanup script.
+The common thread is that schema and security evolve together. When a new model needs a policy, both land in the same commit, get reviewed by the same person, and ship in the same migration.
 
-Your security model becomes explicit in the types. Every query names the role it runs as, and the compiler won't let you skip that choice.
+## Current limitations and supported scenarios
 
-## Verified against a real project
-
-Everything above ran against a hosted Supabase project, with two real users signed up through Supabase Auth and real JWTs verified against the project's JWKS endpoint. Each user sees only their own notes and anonymous requests see none. Forging another user's `userId` on insert or update is rejected by Postgres. Deleting a user cascade-deletes their notes. The example ships a full test suite covering every rule in both directions.
-
-## Current limitations
-
-Prisma 8 is in Early Access, and the Supabase extension has clear boundaries today:
+Prisma 8 RC1 with the Supabase extension supports Node.js and Bun, connecting through your project's session pooler (port 5432); the transaction pooler cannot carry the per-request role binding, and edge runtimes are not supported yet. Within that setup, a few boundaries to know:
 
 - The `auth.users` relation is a constraint, not a navigable relation, so you cannot `include` the user from a note query. Traversal is a compile-time error rather than a runtime surprise.
-- The runtime needs a real Postgres driver: Node.js and Bun today, no edge runtimes.
 - Policy predicates are strings, not a typed expression language.
 - Realtime subscriptions and Storage are out of scope; keep using `supabase-js` for those. Prisma talks to Postgres directly and composes fine alongside it.
-- Use the session pooler (port 5432). The transaction pooler cannot carry the per-request role binding.
 
 The [extension guide](https://www.prisma.io/docs/orm/next/extensions/supabase) documents the remaining edge cases.
 
-## Try it
+## Get started with Prisma 8 RC1 and Supabase
 
 Spin up a free Supabase project as a sandbox and validate all of this yourself in a few minutes:
 
@@ -178,4 +164,4 @@ Add the extension to `prisma-next.config.ts` with `extensions: [supabasePack]`, 
 
 {/* TODO before publish: add the public example repo link */}
 
-Your Supabase authorization no longer has to live outside your schema in handwritten SQL. It lives next to your models, ships in a migration, and gets reviewed in the same pull request as everything else. Try it against your own project and tell us what you hit in [Discord](https://pris.ly/discord).
+Your Supabase authorization no longer has to live outside your schema in handwritten SQL. It lives next to your models, ships in a migration, and gets reviewed in the same pull request as everything else. This is exactly the workflow we want to pressure-test before general availability, so try RC1 against your own project and [tell us what you hit in Discord](https://pris.ly/discord).
