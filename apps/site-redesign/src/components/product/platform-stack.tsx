@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRightBold,
@@ -153,6 +153,10 @@ const GOLDEN_NOTE =
 /** Seconds the agent row holds each name. */
 const AGENT_HOLD = 2.2;
 
+// Drag is a mouse enhancement only. On touch, framer would capture the gesture
+// and the page would stop scrolling wherever the bench is under your thumb.
+const FINE_POINTER = "(pointer: fine)";
+
 const SWAP_SPRING = { type: "spring", stiffness: 380, damping: 32 } as const;
 
 // The slot exchange. Deliberately NOT a `layoutId` flight from the bench up
@@ -236,8 +240,26 @@ export function PlatformStack() {
   const [restored, setRestored] = useState<number | null>(null);
   const [agent, setAgent] = useState(0);
   const [agentDriven, setAgentDriven] = useState(false);
+  // which layer is being dragged over, so its slot can advertise the drop
+  const [dragging, setDragging] = useState<number | null>(null);
+  const slotRefs = useRef<(HTMLDivElement | null)[]>([]);
+  /** True between a drag release and the next pointerdown — see the bench. */
+  const didDrag = useRef(false);
 
   const isGolden = picked.every((i) => i === 0);
+
+  // Subscribed rather than set from an effect: it's external state, the server
+  // snapshot is a plain `false` so hydration matches, and it keeps up if the
+  // pointer type changes under us (a tablet gaining a trackpad).
+  const canDrag = useSyncExternalStore(
+    (onChange) => {
+      const mq = window.matchMedia(FINE_POINTER);
+      mq.addEventListener("change", onChange);
+      return () => mq.removeEventListener("change", onChange);
+    },
+    () => window.matchMedia(FINE_POINTER).matches,
+    () => false,
+  );
 
   useEffect(() => {
     if (reduce || agentDriven) return;
@@ -353,6 +375,9 @@ export function PlatformStack() {
                   It pops when the floor rule pulls this layer back, so the
                   change never happens somewhere the eye isn't looking. */}
               <motion.div
+                ref={(el) => {
+                  slotRefs.current[li] = el;
+                }}
                 animate={restored === li && !reduce ? { scale: [1, 1.04, 1] } : { scale: 1 }}
                 transition={{ duration: 0.5, ease: "easeOut" }}
                 className={cn(
@@ -360,6 +385,10 @@ export function PlatformStack() {
                   lit
                     ? cn(layer.lit.border, layer.lit.bg, layer.lit.glow)
                     : "border-black/[0.12] bg-muted/40",
+                  // advertise the target the moment a drag starts, so the
+                  // gesture has somewhere obvious to land
+                  dragging === li &&
+                    "outline outline-2 outline-offset-2 outline-dashed outline-foreground/30",
                 )}
               >
                 <AnimatePresence mode="popLayout" initial={false}>
@@ -385,25 +414,70 @@ export function PlatformStack() {
                 Swap for
               </p>
 
-              {/* the bench. Clicking one promotes it into the slot above and
-                  drops the current occupant down here in its place */}
-              {/* `initial={false}` so the bench doesn't animate itself in on
-                  first paint — only the item displaced by a later swap does,
-                  dropping in from the slot it just left */}
+              {/* The bench. Click promotes into the slot above; so does
+                  dragging one up onto it, which is the reflex most people
+                  reach for first. Click stays the primary path — it's the
+                  keyboard-reachable one, and the only one on touch. */}
               <div className="mt-2 flex flex-col gap-1.5">
                 <AnimatePresence initial={false}>
                   {layer.options.map((option, oi) =>
                     oi === picked[li] ? null : (
                       <motion.button
                         key={option.name}
-                        layout={reduce ? false : "position"}
+                        // `layout` is deliberately absent: combining it with
+                        // `drag` on one element makes framer fight itself over
+                        // the transform, and the exit is quick enough that the
+                        // remaining rows closing up reads fine without it.
                         initial={reduce ? false : { opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={reduce ? undefined : { opacity: 0, transition: { duration: 0.12 } }}
                         transition={reduce ? { duration: 0 } : SWAP_SPRING}
+                        drag={canDrag}
+                        dragSnapToOrigin
+                        dragMomentum={false}
+                        dragElastic={0.18}
+                        whileDrag={{ scale: 1.04, zIndex: 40 }}
+                        onDragStart={() => {
+                          setDragging(li);
+                          // Framer does NOT swallow the click a drag release
+                          // fires, and the element has travelled under the
+                          // cursor, so releasing anywhere lands a click on it —
+                          // measured, dropping on empty space swapped the layer
+                          // anyway. The flag has to be raised on drag START:
+                          // onDragEnd runs AFTER the click, so setting it there
+                          // was already too late. Cleared on the next
+                          // pointerdown, which is deterministic and survives
+                          // this button unmounting after a successful drop.
+                          didDrag.current = true;
+                        }}
+                        onDragEnd={(event) => {
+                          setDragging(null);
+                          const slot = slotRefs.current[li];
+                          const p = event as PointerEvent;
+                          if (!slot || p.clientX == null) return;
+                          const r = slot.getBoundingClientRect();
+                          const hit =
+                            p.clientX >= r.left &&
+                            p.clientX <= r.right &&
+                            p.clientY >= r.top &&
+                            p.clientY <= r.bottom;
+                          if (!hit) return;
+                          choose(li, oi);
+                        }}
                         type="button"
-                        onClick={() => choose(li, oi)}
-                        className="group flex items-center gap-2 rounded-lg border border-black/[0.09] bg-white px-3 py-2 text-left text-[0.875rem] font-medium text-muted-foreground transition-colors duration-200 hover:border-black/20 hover:text-foreground cursor-pointer"
+                        // every fresh gesture clears the flag, so a drag can
+                        // only ever suppress its own trailing click
+                        onPointerDown={() => {
+                          didDrag.current = false;
+                        }}
+                        onClick={() => {
+                          if (didDrag.current) return;
+                          choose(li, oi);
+                        }}
+                        className={cn(
+                          "group relative flex items-center gap-2 rounded-lg border border-black/[0.09] bg-white px-3 py-2 text-left text-[0.875rem] font-medium text-muted-foreground transition-colors duration-200 hover:border-black/20 hover:text-foreground",
+                          canDrag ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
+                        )}
                       >
                         {option.prisma ? <PrismaMark className="size-3.5" /> : null}
                         {option.name}
