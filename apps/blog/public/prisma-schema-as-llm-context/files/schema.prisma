@@ -1,0 +1,140 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+
+  @@map("role")
+}
+
+enum InvoiceStatus {
+  DRAFT
+  OPEN
+  PAID
+  VOID
+
+  @@map("invoice_status")
+}
+
+model User {
+  id          String       @id @default(uuid())
+  email       String       @unique
+  name        String?
+  createdAt   DateTime     @default(now()) @map("created_at")
+  memberships Membership[]
+  auditLogs   AuditLog[]
+
+  @@map("users")
+}
+
+model Organization {
+  id           String        @id @default(uuid())
+  slug         String        @unique
+  name         String
+  createdAt    DateTime      @default(now()) @map("created_at")
+  memberships  Membership[]
+  projects     Project[]
+  invoices     Invoice[]
+  subscription Subscription?
+  auditLogs    AuditLog[]
+
+  @@map("organizations")
+}
+
+model Membership {
+  id             String       @id @default(uuid())
+  role           Role         @default(MEMBER)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String       @map("user_id")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String       @map("organization_id")
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+  @@map("memberships")
+}
+
+model Project {
+  id             String       @id @default(uuid())
+  name           String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String       @map("organization_id")
+  apiKeys        ApiKey[]
+  webhooks       Webhook[]
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  @@index([organizationId])
+  @@map("projects")
+}
+
+model ApiKey {
+  id         String    @id @default(uuid())
+  hash       String    @unique
+  project    Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId  String    @map("project_id")
+  lastUsedAt DateTime? @map("last_used_at")
+  expiresAt  DateTime? @map("expires_at")
+
+  @@index([projectId])
+  @@map("api_keys")
+}
+
+model Webhook {
+  id        String   @id @default(uuid())
+  url       String
+  secret    String
+  events    String[]
+  active    Boolean  @default(true)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String   @map("project_id")
+
+  @@index([projectId])
+  @@map("webhooks")
+}
+
+model Invoice {
+  id             String        @id @default(uuid())
+  number         String        @unique
+  status         InvoiceStatus @default(DRAFT)
+  amountCents    Int           @map("amount_cents")
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  organizationId String        @map("organization_id")
+  issuedAt       DateTime      @default(now()) @map("issued_at")
+  paidAt         DateTime?     @map("paid_at")
+
+  @@index([organizationId, status])
+  @@map("invoices")
+}
+
+model Subscription {
+  id                String       @id @default(uuid())
+  plan              String
+  currentPeriodEnd  DateTime     @map("current_period_end")
+  cancelAtPeriodEnd Boolean      @default(false) @map("cancel_at_period_end")
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId    String       @unique @map("organization_id")
+
+  @@map("subscriptions")
+}
+
+model AuditLog {
+  id             String       @id @default(uuid())
+  action         String
+  payload        Json
+  user           User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId         String?      @map("user_id")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String       @map("organization_id")
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  @@index([organizationId, createdAt])
+  @@map("audit_logs")
+}
