@@ -11,44 +11,48 @@ export function SeriesBanner({ series }: { series: SeriesContext }) {
     >
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
         <div>
-          <div className="text-xs uppercase tracking-wide text-foreground-neutral-weak font-semibold mb-1">
-            Series
-          </div>
+          <div className="type-heading-2xs mb-1 text-foreground-neutral-weak">Series</div>
           <Link
             href={seriesUrl}
-            className="type-title-lg font-semibold text-foreground-neutral hover:text-foreground-ppg"
+            className="type-title-lg text-foreground-neutral-strong transition-colors duration-300 hover:text-foreground-ppg motion-reduce:transition-none"
           >
             {series.title}
           </Link>
         </div>
         <Link
           href={seriesUrl}
-          className="text-sm text-foreground-ppg hover:underline whitespace-nowrap"
+          className="text-sm font-medium whitespace-nowrap text-foreground-ppg transition-colors duration-300 hover:text-foreground-ppg-strong motion-reduce:transition-none"
         >
           View series page →
         </Link>
       </div>
       {series.description ? (
-        <p className="text-sm text-foreground-neutral-weak mb-4">{series.description}</p>
+        <p className="mb-4 text-sm leading-relaxed text-foreground-neutral-weak">
+          {series.description}
+        </p>
       ) : null}
-      <ol className="divide-y divide-stroke-neutral-strong/40 rounded-square border border-stroke-neutral-strong/60">
+      {/* Paper surface, hairline ring — a quiet index that sits under the
+          article rather than competing with it. */}
+      <ol className="divide-y divide-stroke-neutral overflow-hidden rounded-square-high border border-stroke-neutral bg-paper">
         {series.posts.map((post, i) => {
           const isCurrent = i + 1 === series.index;
           const label = (post.seriesIndex ?? i + 1).toString().padStart(2, "0");
           const inner = (
-            <span className="flex items-baseline gap-3 px-4 py-2.5">
+            <span className="flex items-baseline gap-3 px-4 py-3">
               <span className="shrink-0 text-xs tabular-nums text-foreground-neutral-weak">
                 {label}
               </span>
               <span
                 className={
-                  isCurrent ? "font-semibold text-foreground-neutral" : "text-foreground-neutral"
+                  isCurrent
+                    ? "font-medium text-foreground-neutral-strong"
+                    : "text-foreground-neutral"
                 }
               >
                 {post.title}
               </span>
               {isCurrent ? (
-                <span className="ml-auto text-xs uppercase tracking-wide text-foreground-ppg">
+                <span className="type-heading-2xs ml-auto shrink-0 rounded-circle bg-background-ppg px-2 py-0.5 text-foreground-ppg">
                   Reading
                 </span>
               ) : null}
@@ -63,7 +67,7 @@ export function SeriesBanner({ series }: { series: SeriesContext }) {
               ) : (
                 <Link
                   href={post.url}
-                  className="block hover:bg-background-ppg/5 hover:text-foreground-ppg"
+                  className="block transition-colors duration-300 hover:bg-background-neutral hover:text-foreground-ppg motion-reduce:transition-none"
                 >
                   {inner}
                 </Link>

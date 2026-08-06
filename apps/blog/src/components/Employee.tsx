@@ -2,7 +2,7 @@
 import Image from "next/image";
 
 const employeeWrapperClasses = [
-  "w-full rounded-lg p-8 mb-8",
+  "w-full rounded-square-high border border-stroke-neutral p-8 mb-8",
   "shadow-[0px_0px_2.4px_rgba(0,0,0,0.01),0px_1.51px_6.64px_rgba(0,0,0,0.02),0px_5.44px_15.98px_rgba(0,0,0,0.04),0px_22px_53px_rgba(0,0,0,0.07)]",
   "[&>strong]:block [&>strong]:mt-4 [&>strong]:ml-[72px] max-md:[&>strong]:ml-0",
   "[&>p]:my-2 [&>p]:ml-[72px] max-md:[&>p]:ml-0",
@@ -11,14 +11,14 @@ const employeeWrapperClasses = [
 const employeeHeaderClasses = "flex max-md:flex-col";
 
 const employeeNamePlateClasses = [
-  "flex flex-[2] items-center text-gray-500",
+  "flex flex-[2] items-center text-foreground-neutral-weak",
   "[&>img]:w-14 [&>img]:h-14 [&>img]:rounded-full [&>img]:mr-4",
-  "[&>div>strong]:font-bold [&>div>strong]:text-xl [&>div>strong]:block [&>div>strong]:mb-1 [&>div>strong]:text-gray-800",
+  "[&>div>strong]:font-bold [&>div>strong]:text-xl [&>div>strong]:block [&>div>strong]:mb-1 [&>div>strong]:text-foreground-neutral-strong",
 ].join(" ");
 
 const employeeSocialsClasses = [
   "flex max-md:mt-4 max-md:-ml-2",
-  "[&>a]:bg-gray-300 [&>a]:text-gray-700 [&>a]:block [&>a]:w-8 [&>a]:h-8 [&>a]:rounded-full [&>a]:p-2 [&>a]:ml-2",
+  "[&>a]:bg-background-neutral [&>a]:text-foreground-neutral [&>a]:block [&>a]:w-8 [&>a]:h-8 [&>a]:rounded-full [&>a]:p-2 [&>a]:ml-2",
   "[&>a>svg]:w-4 [&>a>svg]:h-4",
 ].join(" ");
 

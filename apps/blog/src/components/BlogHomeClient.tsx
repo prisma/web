@@ -95,14 +95,16 @@ export function BlogHomeClient({ items, uniqueTags, seriesShelf }: BlogHomeClien
   const paginationSequence = getPaginationSequence(totalPages, currentPage);
 
   return (
-    <div className="pt-6 pb-12 mt-10">
-      <div className="flex justify-between items-center gap-4 mb-4">
+    <div className="pb-20">
+      {/* Filter row: chips wrap on the left, the search trigger holds the
+          right edge and drops full-width on mobile. */}
+      <div className="mb-8 flex flex-col items-stretch gap-4 md:flex-row md:items-center md:justify-between">
         <CategoryTagFilter
           uniqueTags={uniqueTags}
           currentCategory={currentCategory}
-          className="flex justify-start flex-wrap gap-1"
+          className="flex min-w-0 flex-wrap justify-start gap-2"
         />
-        <LargeSearchToggle className="w-20 h-full md:w-52" />
+        <LargeSearchToggle className="w-full shrink-0 md:w-56" />
       </div>
 
       {seriesShelf}
@@ -113,7 +115,7 @@ export function BlogHomeClient({ items, uniqueTags, seriesShelf }: BlogHomeClien
         currentCategory={currentCategory}
       />
 
-      <div className="mt-8">
+      <div className="mt-12">
         {totalPages > 1 ? (
           <Pagination>
             <PaginationContent>
@@ -131,10 +133,12 @@ export function BlogHomeClient({ items, uniqueTags, seriesShelf }: BlogHomeClien
                     <PaginationLink
                       href={buildBlogHref(currentCategory, entry)}
                       isActive={entry === currentPage}
+                      // Current page is an ink pill; the rest stay ghost and
+                      // only pick up the paper wash on hover.
                       className={
                         entry === currentPage
-                          ? "bg-background-neutral border border-stroke-neutral shadow-box-low hover:bg-background-neutral-strong"
-                          : undefined
+                          ? "bg-background-neutral-reverse-strong text-foreground-neutral-reverse shadow-box-low hover:bg-background-neutral-reverse"
+                          : "hover:bg-background-neutral"
                       }
                     >
                       {entry}

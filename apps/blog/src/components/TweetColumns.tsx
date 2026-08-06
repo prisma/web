@@ -1,28 +1,10 @@
 import type { CSSProperties, ReactNode } from "react";
 import { getTweet, type Tweet } from "react-tweet/api";
 import { EmbeddedTweet } from "react-tweet";
-import { TweetBoundary } from "./TweetBoundary";
+import { TweetBoundary, TweetFallbackLink } from "./TweetBoundary";
+import { sanitizeTweet } from "@/lib/sanitize-tweet";
 
 const isTweetId = (value: string) => /^\d+$/.test(value);
-
-// react-tweet 3.3.0's getEntities() iterates entities.hashtags / user_mentions
-// / urls / symbols without guarding undefined, so a tweet whose syndication
-// payload omits one of those (common on newer tweets with media or cards)
-// throws "undefined is not iterable" and crashes the page. Backfill the arrays
-// before handing the tweet to <EmbeddedTweet>.
-function sanitizeTweet(tweet: Tweet): Tweet {
-  const entities = tweet.entities ?? ({} as Tweet["entities"]);
-  return {
-    ...tweet,
-    entities: {
-      ...entities,
-      hashtags: entities.hashtags ?? [],
-      user_mentions: entities.user_mentions ?? [],
-      urls: entities.urls ?? [],
-      symbols: entities.symbols ?? [],
-    },
-  };
-}
 
 async function TweetCard({ tweetId }: { tweetId: string }) {
   let tweet: Tweet | undefined;
@@ -33,16 +15,7 @@ async function TweetCard({ tweetId }: { tweetId: string }) {
   }
 
   if (!tweet) {
-    return (
-      <a
-        href={`https://x.com/i/status/${tweetId}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="block w-full rounded-xl border border-gray-200 bg-gray-50 p-6 text-center text-sm text-gray-600 no-underline hover:border-gray-300 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-300"
-      >
-        View this post on X →
-      </a>
-    );
+    return <TweetFallbackLink tweetId={tweetId} />;
   }
 
   return (
@@ -76,9 +49,7 @@ export async function TweetColumns({
 
   return (
     <div className={`${wrapperBase} ${direction}`}>
-      <div className="flex-1 min-w-0 [&>p:first-child]:mt-0 [&>p:last-child]:mb-0">
-        {children}
-      </div>
+      <div className="flex-1 min-w-0 [&>p:first-child]:mt-0 [&>p:last-child]:mb-0">{children}</div>
       <div
         className="w-full md:w-[360px] md:shrink-0 flex justify-center [&_.react-tweet-theme]:!my-0"
         style={{ "--tweet-container-margin": "0" } as CSSProperties}
@@ -86,7 +57,7 @@ export async function TweetColumns({
         {isTweetId(tweetId) ? (
           <TweetCard tweetId={tweetId} />
         ) : (
-          <div className="w-full rounded-xl border border-dashed border-gray-300 bg-gray-50 p-6 text-center text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-400">
+          <div className="w-full rounded-square-high border border-dashed border-stroke-neutral-strong bg-paper p-6 text-center text-sm text-foreground-neutral-weak">
             Tweet embed pending — set <code>tweetId</code> to <code>{tweetId}</code>
           </div>
         )}
