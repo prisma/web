@@ -1,14 +1,19 @@
 import type { ProductPageContent } from "../types";
 
-// /postgres copy, verbatim from the approved V4 of the Notion card "Product Page
-// Batch One (3-5) - Copy". Nothing here is paraphrased, reordered or padded.
+// /postgres copy, from the approved V4 of the Notion card "Product Page Batch
+// One (3-5) - Copy", with the deviations the 2026-08-06 client review asked for
+// marked inline. Everything unmarked is still V4 verbatim.
 //
-// Two notes on this page specifically:
+// Three notes on this page specifically:
 //  - Five features, which is the awkward count: they render three across with
 //    the last pair centred beneath (see product-features.tsx).
 //  - "no cold starts" stays where V4 put it — the tail of the compliance
 //    feature. A standing guardrail says not to promote it to a headline claim,
 //    so it is deliberately absent from the illustrations.
+//  - The review asked the first screen to answer "why Prisma Postgres and not
+//    any other Postgres?". The hero tour is that answer: branching, Studio and
+//    Query Insights are the three things a bare managed Postgres doesn't give
+//    you, so they lead rather than sitting in feature cards further down.
 const CONSOLE = "https://console.prisma.io";
 const PRICING = "/pricing";
 
@@ -18,8 +23,12 @@ export const postgresContent: ProductPageContent = {
   hero: {
     headline: "Production-ready Postgres, already wired to your stack",
     headlineEmphasis: "already",
+    // V4's second sentence ("Pair it with Compute and you get one platform…")
+    // is dropped here and left to the Compute card in the platform section —
+    // it was pushing the CTA below the fold and the section under the hero
+    // already made the same point.
     subheadline:
-      "Prisma Postgres is a production-ready managed database that works with any TypeScript stack. Pair it with Compute and you get one platform for your app and its data, branched and deployed as a unit.",
+      "Prisma Postgres is a production-ready managed database that works with any TypeScript stack.",
     benefits: [
       "Branch your database alongside your app, free, per PR",
       "Autoscaling that handles spikes without capacity planning",
@@ -27,13 +36,34 @@ export const postgresContent: ProductPageContent = {
     ],
     primaryCta: { label: "Get started free", href: CONSOLE },
     secondaryCta: { label: "See pricing", href: PRICING },
-    illustration: "databasePanel",
+    microline: "Free tier with a hard cap. No credit card.",
+    tour: [
+      {
+        label: "Database",
+        caption:
+          "A production Postgres in seconds, with a per-PR branch beside it that carries its own isolated data.",
+        illustration: "databasePanel",
+      },
+      {
+        label: "Studio",
+        caption:
+          "Browse and edit real rows in the browser. No psql, no local client to set up first.",
+        illustration: "studioTable",
+      },
+      {
+        label: "Query Insights",
+        caption: "See which queries are slow and why, without standing up your own tracing stack.",
+        illustration: "queryInsights",
+      },
+    ],
   },
   problem: {
     headline: "A database that ships with the rest of your stack",
+    // V4 ran two paragraphs here. The review found the first scroll was a wall
+    // of prose that mostly restated the hero, so the second paragraph's point
+    // now lives in the hero tour's captions and the platform section.
     body: [
-      "When your database and your hosting come from separate vendors, the things that should be automatic (preview environments with real data, end-to-end test setups, single-config deploys) turn into work you have to do.",
-      "Prisma Postgres works with any TypeScript stack out of the box. And when you host on Compute, it stops being a separate vendor you connect and becomes the data half of the platform you're already deploying to.",
+      "When your database and your hosting come from separate vendors, the things that should be automatic — preview environments with real data, end-to-end test setups, single-config deploys — turn into work you have to do.",
     ],
     outcomes: [
       { icon: "gitBranch", label: "Branch with your app, per PR" },
@@ -47,34 +77,39 @@ export const postgresContent: ProductPageContent = {
     bridge:
       "Prisma Postgres runs on the same platform as Compute, so the features below come from one platform doing what two vendors can't.",
     items: [
+      // Descriptions are cut to roughly one sentence each. The review asked
+      // for the visuals to carry more of the explaining, and the card
+      // illustrations already show the specifics the trimmed clauses spelled
+      // out (branch names, the config file, the spend cap, the compliance
+      // list, the pg_dump path).
       {
         name: "Branch with your app",
         description:
-          "When Compute branches a deploy, Prisma Postgres branches with it. Every preview environment gets a dedicated, fully-isolated database, not a shared test DB that lies about how production behaves.",
+          "When Compute branches a deploy, Prisma Postgres branches with it — every preview gets a dedicated, fully-isolated database.",
         illustration: "isolatedBranches",
       },
       {
         name: "One config for both halves",
         description:
-          "The same prisma.config.ts declares your app and your database. No two-vendor wiring, no separate dashboards to keep in sync.",
+          "The same prisma.config.ts declares your app and your database. No two-vendor wiring, no dashboards to keep in sync.",
         illustration: "configBoth",
       },
       {
         name: "Predictable pricing",
         description:
-          "Operation-based pricing with spend limits you set yourself. A quiet month costs almost nothing, a busy one never surprises you. Free tier with a hard cap, no credit card.",
+          "Operation-based pricing with spend limits you set yourself. A quiet month costs almost nothing, a busy one never surprises you.",
         illustration: "spendLimits",
       },
       {
         name: "Production-ready from day one",
         description:
-          "Automated daily backups, SOC 2, HIPAA, ISO 27001, and GDPR at the Business tier, encryption at rest and in transit, full tenant isolation, no cold starts.",
+          "Daily backups, encryption at rest and in transit, full tenant isolation, and SOC 2, HIPAA, ISO 27001 and GDPR at the Business tier.",
         illustration: "compliance",
       },
       {
         name: "Standard Postgres, no lock-in",
         description:
-          "Standard SQL and wire protocol, extensions like pgvector, migrate in or out with pg_dump. Connect any ORM (Drizzle, Kysely, or raw SQL) and any auth (BetterAuth, Clerk, NextAuth).",
+          "Standard SQL and wire protocol, extensions like pgvector, and migration in or out with pg_dump.",
         illustration: "noLockIn",
       },
     ],
@@ -85,18 +120,28 @@ export const postgresContent: ProductPageContent = {
       {
         icon: "server",
         product: "Prisma Compute",
-        benefit: "branched together, deployed together, microsecond query latency",
+        benefit:
+          "Branched together, deployed together, and co-located, so app-to-database queries skip the cross-vendor network hop.",
+        alternatives: ["Vercel", "Railway", "Fly.io", "your own host"],
       },
       {
         icon: "code",
         product: "any ORM",
-        benefit:
-          "Prisma ORM drives your migrations and typed client from your schema, or bring raw SQL, Kysely, TypeORM, or Drizzle",
+        benefit: "Prisma ORM drives your migrations and typed client straight from your schema.",
+        alternatives: ["Drizzle", "Kysely", "TypeORM", "raw SQL"],
       },
       {
         icon: "checkCircle",
         product: "any auth",
-        benefit: "use any auth provider, including BetterAuth, Clerk, or NextAuth",
+        benefit: "Standard Postgres underneath, so any auth provider connects the usual way.",
+        alternatives: ["BetterAuth", "Clerk", "NextAuth", "Auth0"],
+      },
+      {
+        icon: "bot",
+        product: "any coding agent",
+        benefit:
+          "A CLI and Management API with full parity, so your agent can provision and inspect databases itself.",
+        alternatives: ["Claude Code", "Codex", "Cursor", "Windsurf"],
       },
     ],
   },

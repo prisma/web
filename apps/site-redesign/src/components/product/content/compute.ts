@@ -1,7 +1,12 @@
 import type { ProductPageContent } from "../types";
 
-// /compute copy, verbatim from the approved V4 of the Notion card "Product Page
-// Batch One (3-5) - Copy". Nothing here is paraphrased, reordered or padded.
+// /compute copy, from the approved V4 of the Notion card "Product Page Batch
+// One (3-5) - Copy", with the 2026-08-06 client review's changes marked inline.
+//
+// The review asked this page for three things, and the hero tour answers all
+// three: show the deployment experience immediately (Connect → Deploy → Live),
+// bring starter templates far higher, and name what actually runs here instead
+// of leaving it abstract.
 //
 // Three things V4 deliberately does on this page:
 //  - No testimonial section. /orm and /postgres carry one; Compute does not,
@@ -18,8 +23,10 @@ export const computeContent: ProductPageContent = {
   hero: {
     headline: "One platform for your app and its database",
     headlineEmphasis: "One platform",
+    // V4's second sentence is dropped from the hero — it pushed the CTA down,
+    // and the tour beside this copy now demonstrates both halves of it.
     subheadline:
-      "Prisma Compute is the easiest way to host TypeScript apps built for the agentic era, with Postgres and the rest of your infrastructure built in. Every deploy can come with its own branched database, and your agent can drive the full loop end-to-end.",
+      "Prisma Compute is the easiest way to host TypeScript apps, with Postgres and the rest of your infrastructure built in.",
     benefits: [
       "Every PR gets a dedicated app and database, branched together",
       "Microsecond app-to-database latency, no cross-vendor network hop",
@@ -27,7 +34,35 @@ export const computeContent: ProductPageContent = {
     ],
     primaryCta: { label: "Get started free", href: CONSOLE },
     secondaryCta: { label: "Read the docs", href: DOCS },
-    illustration: "deployments",
+    // Deliberately not "free while in public beta" — see the note at the top
+    // of this file. This says the same encouraging thing without the label.
+    microline: "Deploy from GitHub or the CLI. Free tier, no credit card.",
+    tour: [
+      {
+        label: "Connect",
+        caption:
+          "Point Compute at a GitHub repo, or deploy straight from your machine with one command.",
+        illustration: "repoConnect",
+      },
+      {
+        label: "Deploy",
+        caption:
+          "One deploy ships the app and its branched database together, migrations included.",
+        illustration: "deployLog",
+      },
+      {
+        label: "Live",
+        caption:
+          "Production and a per-PR preview, each with its own app and its own isolated database.",
+        illustration: "deployments",
+      },
+      {
+        label: "Templates",
+        caption:
+          "Start from a template — Next.js, Hono, an API, an agent — and deploy it as it is.",
+        illustration: "runTemplates",
+      },
+    ],
   },
   problem: {
     headline: "One platform can ship features two never could",
@@ -47,22 +82,25 @@ export const computeContent: ProductPageContent = {
     bridge:
       "Compute and Prisma Postgres run as a single platform. The features below are only possible because of that.",
     items: [
+      // Descriptions trimmed to roughly two sentences. The review asked the
+      // visuals to carry more of the explaining, and each card's illustration
+      // already shows the specifics the cut clauses spelled out.
       {
         name: "Built for hosting AI agents",
         description:
-          "Agents need long-lived processes, streaming responses, and durable memory. Compute supports all three in one place. Run your own agents alongside your app, on the same platform that runs your data.",
+          "Agents need long-lived processes, streaming responses and durable memory. Compute supports all three, on the same platform that runs your data.",
         illustration: "agentHosting",
       },
       {
         name: "Branch your stack per PR",
         description:
-          "Every preview environment gets a dedicated database, branched from production and tied to that deploy. No shared test DBs that pass tests production fails, no spinning up an external DB host for each environment.",
+          "Every preview environment gets a dedicated database, branched from production and tied to that deploy. No shared test DB that passes tests production fails.",
         illustration: "branchedStack",
       },
       {
         name: "Microsecond queries, no code changes",
         description:
-          "ORMs make many small queries, and on most stacks each one pays a network round trip between two vendors. Compute runs on the same machine as Prisma Postgres, so that round trip disappears. App-to-database latency drops to microseconds, with no code changes.",
+          "ORMs make many small queries, and on most stacks each one pays a network round trip between two vendors. Compute runs on the same machine as Prisma Postgres, so that round trip disappears.",
         illustration: "coLocated",
       },
       {
@@ -79,17 +117,26 @@ export const computeContent: ProductPageContent = {
       {
         icon: "database",
         product: "Prisma Postgres",
-        benefit: "branched together, deployed together, microsecond query latency",
+        benefit: "Branched together, deployed together, and co-located on the same machine.",
+        alternatives: ["Supabase", "Neon", "Amazon RDS", "any Postgres"],
       },
       {
         icon: "code",
         product: "Prisma ORM",
-        benefit: "deploy an app already wired to your schema and migrations",
+        benefit: "Deploy an app already wired to your schema and its migrations.",
+        alternatives: ["Drizzle", "Kysely", "TypeORM", "raw SQL"],
+      },
+      {
+        icon: "layoutGrid",
+        product: "your framework",
+        benefit: "Standard TypeScript on Bun, so what runs locally is what runs here.",
+        alternatives: ["Next.js", "Hono", "Express", "tRPC", "Nitro"],
       },
       {
         icon: "bot",
         product: "any coding agent",
-        benefit: "a CLI and Management API your agent can drive, with full parity between them",
+        benefit: "A CLI and Management API your agent can drive, with full parity between them.",
+        alternatives: ["Claude Code", "Codex", "Cursor", "Windsurf"],
       },
     ],
   },

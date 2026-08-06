@@ -71,6 +71,61 @@ export function RayFrame({
 }
 
 /**
+ * The full-size panel a hero abstraction fills — the deeper shadow and the
+ * larger radius that separate a hero frame from a feature card's SurfaceCard.
+ * Extracted from database-panel/schema-file/deployments, which each open with
+ * this exact wrapper.
+ */
+export function HeroPanel({
+  className,
+  label,
+  children,
+}: {
+  className?: string;
+  /** Describes the illustration for assistive tech. */
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      role="img"
+      aria-label={label}
+      className={cn(
+        "pointer-events-none relative flex h-full select-none flex-col overflow-hidden rounded-2xl border border-border bg-card text-left shadow-[0_1px_2px_rgba(21,21,21,0.04),0_8px_16px_-4px_rgba(21,21,21,0.06),0_32px_64px_-16px_rgba(21,21,21,0.14)]",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+/**
+ * A metric or status row: a label on the left, a real value on the right. The
+ * hero panels lean on these to read as a product surface rather than a diagram.
+ */
+export function StatRow({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: React.ReactNode;
+  accent?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-2 border-t border-border/60 py-2 font-mono text-[0.625rem] first:border-t-0">
+      <span className="text-muted-foreground">{label}</span>
+      <span
+        className={cn("ml-auto font-semibold", accent ? "text-prism-cyan-700" : "text-foreground")}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
+/**
  * The white surface each illustration sits on, floating over the ray photo its
  * container provides (matching stack-bento's illustration columns). The photo
  * and its saturation filter stay in the container so they never touch content.

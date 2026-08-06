@@ -1,10 +1,18 @@
 import type { ProductIconName } from "../icons";
 import type { ProductPageContent } from "../types";
 
-// /orm copy, verbatim from the approved V4 of the Notion card "Product Page
-// Batch One (3-5) - Copy". Nothing here is paraphrased, reordered or padded.
+// /orm copy, from the approved V4 of the Notion card "Product Page Batch One
+// (3-5) - Copy", with the 2026-08-06 client review's changes marked inline.
 //
-// Two notes on what V4 deliberately does NOT do:
+// The review's headline note on this page: "The redesign leans heavily into
+// AI/agents immediately. I'd first establish the core ORM value (schema →
+// generated client → type-safe queries) since that's still what most users
+// come for." V4's hero led with the agent, so the hero has been rewritten to
+// lead with the schema and the typed client. The agent argument is not
+// removed — it keeps the migrations narrative and the whole feedback-loop
+// section below, it just no longer arrives before the ORM has been explained.
+//
+// Two notes on what V4 deliberately does NOT do, both still honoured:
 //  - There is no signup CTA. The open-source ORM leads with GitHub and the
 //    docs; "free to start" framing was ruled out for this page.
 //  - The features and integrations carry no "Learn more" destinations, so none
@@ -17,30 +25,63 @@ export const ormContent: ProductPageContent = {
   name: "Prisma ORM",
   accent: "orm",
   hero: {
-    headline: "Give your agent database access it can't get wrong",
-    headlineEmphasis: "can't get wrong",
+    // Rewritten from V4's "Give your agent database access it can't get wrong"
+    // — see the note at the top of this file.
+    headline: "One schema. Every query type-safe.",
+    headlineEmphasis: "type-safe",
     subheadline:
-      "Prisma ORM lets your agent work with your database through a typed schema it can read, edit, and verify against, so it ships data changes fast without the fear of breaking production. You define your data model once; every query, migration, and type is checked against it.",
+      "Define your data model once, and Prisma ORM generates a typed client where every query, migration and type is checked against it.",
     benefits: [
-      "Let your agent verify its own work before it ships",
-      "Safe migrations your agent can run without risking your data",
+      "Autocomplete over your own models, and mistakes caught before they ship",
+      "Migrations that refuse to run when they would destroy data",
       "Free, open source, trusted by 500K+ developers",
     ],
     primaryCta: { label: "View on GitHub", href: GITHUB },
     secondaryCta: { label: "Read the docs", href: DOCS },
-    illustration: "schemaFile",
+    // Keeps the review's "works across many databases" note visible in the
+    // first screen, not just in the tour's last tab.
+    microline: "Works with Postgres, MySQL, SQLite, MongoDB and more.",
+    tour: [
+      {
+        label: "Schema",
+        caption:
+          "One file your whole stack reads: models, field types and relations declared in one place.",
+        illustration: "schemaFile",
+      },
+      {
+        label: "Client",
+        caption:
+          "A typed client generated from that schema, so a wrong field name fails in your editor, not in production.",
+        illustration: "clientAutocomplete",
+      },
+      {
+        label: "Migrations",
+        caption:
+          "Prisma refuses a migration that would destroy data, and tells you what it would have dropped.",
+        illustration: "migrationBlocked",
+      },
+      {
+        label: "Any database",
+        caption:
+          "The same schema and the same generated client over Postgres, MySQL, SQLite, MongoDB and more.",
+        illustration: "anyDatabase",
+      },
+    ],
   },
   problem: {
-    headline: "Without a typed schema, your agent is working blind",
+    // Reframed from V4's agent-first "Without a typed schema, your agent is
+    // working blind". Same argument, but the developer's problem leads and the
+    // agent arrives as the second beat rather than the premise.
+    headline: "Without a typed schema, your data layer is guesswork",
     body: [
-      "When your schema lives across loosely-typed files, type mismatches surface at runtime and your agent can't reliably reason about the data layer. Worse, an agent making changes to an untyped database has no way to check its own work before it runs — and the biggest fear with agentic development is an agent that alters or deletes data it can't get back.",
+      "When your data model lives across loosely-typed files and hand-written SQL, mismatches surface at runtime instead of in your editor, and nothing can check a change against the schema before it runs. That is true when you write the change, and it is far more dangerous when an agent does.",
       "Prisma ORM exists to change that.",
     ],
     outcomes: [
-      { icon: "checkCircle", label: "Let your agent verify before it ships" },
-      { icon: "code", label: "Give your agent a schema it can read" },
-      { icon: "shield", label: "Run migrations without risking your data" },
-      { icon: "rocket", label: "Type-check fast, even at scale" },
+      { icon: "code", label: "One schema your whole stack reads" },
+      { icon: "checkCircle", label: "Every query checked before it ships" },
+      { icon: "shield", label: "Migrations that refuse to destroy data" },
+      { icon: "layoutGrid", label: "The same client over any database" },
     ],
   },
   features: {
@@ -74,17 +115,27 @@ export const ormContent: ProductPageContent = {
       {
         icon: "database",
         product: "Prisma Postgres",
-        benefit: "your schema provisions a production database that already understands it",
+        benefit: "Your schema provisions a production database that already understands it.",
+        alternatives: ["Supabase", "Neon", "Amazon RDS", "self-hosted"],
       },
       {
         icon: "server",
         product: "Prisma Compute",
-        benefit: "deploy an app that's already wired to your schema and database",
+        benefit: "Deploy an app that's already wired to your schema and database.",
+        alternatives: ["Vercel", "Railway", "Fly.io", "your own host"],
       },
       {
         icon: "layoutGrid",
-        product: "your favorite databases and frameworks",
-        benefit: "Postgres, MySQL, SQLite, MongoDB, and tools like Next.js, Bun, and BetterAuth",
+        product: "your database",
+        benefit: "The same schema and the same generated client, whatever you're already running.",
+        alternatives: ["PostgreSQL", "MySQL", "SQLite", "MongoDB", "SQL Server", "CockroachDB"],
+      },
+      {
+        icon: "bot",
+        product: "any coding agent",
+        benefit:
+          "Prisma skills install with your project, and errors carry codes and remediation hints an agent can act on.",
+        alternatives: ["Claude Code", "Codex", "Cursor", "Windsurf"],
       },
     ],
   },
