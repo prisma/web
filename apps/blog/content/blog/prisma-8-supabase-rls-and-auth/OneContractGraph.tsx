@@ -1,8 +1,10 @@
 import { highlight, Pre, type HighlightedCode } from "codehike/code";
 
-const BEFORE = `schema.prisma     // models only
-migrations/*.sql  // RLS, written by hand
-dashboard         // unreviewed edits`;
+const BEFORE = `supabase/migrations/
+  20250514_add_policy.sql
+  20250602_update_policy.sql
+  20250618_fix_policy.sql  // current?
+dashboard                  // edits outside git`;
 
 const AFTER = `contract.prisma   // models
                   // auth.users references
@@ -18,13 +20,13 @@ export async function OneContractGraph() {
     <div className="contract-graph not-prose">
       <div className="contract-graph-cols">
         <div className="contract-graph-col">
-          <span className="contract-graph-tag">Before</span>
+          <span className="contract-graph-tag">Supabase today</span>
           <div className="contract-graph-card">
             <Pre code={before} />
           </div>
         </div>
         <div className="contract-graph-col" data-after="true">
-          <span className="contract-graph-tag">After</span>
+          <span className="contract-graph-tag">With Prisma 8</span>
           <div className="contract-graph-card">
             <Pre code={after} />
           </div>
