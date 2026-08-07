@@ -222,14 +222,14 @@ const AUTHOR_BIOS: AuthorBio[] = [
     ],
   },
   {
-  names: ["Aman Bind"],
-  bio: "Aman Bind is a Software Developer at Ingenuity Gaming and a Computer Science graduate from the Indian Institute of Information Technology (IIIT) Bhagalpur. He builds backend systems with TypeScript, Prisma ORM, and PostgreSQL, with a focus on database performance, scalable architectures, and developer tooling.",
-  socials: [
-    { platform: "x", url: "https://x.com/akbx898" },
-    {platform:"linkedin",url:"https://www.linkedin.com/in/amankumarbind"},
-     { platform: "github", url: "https://github.com/akb898" }
-  ],
-},
+    names: ["Aman Bind", "Aman Kumar Bind"],
+    bio: "Aman Bind is a Software Developer at Ingenuity Gaming and a Computer Science graduate from the Indian Institute of Information Technology (IIIT) Bhagalpur. He builds backend systems with TypeScript, Prisma ORM, and PostgreSQL, with a focus on database performance, scalable architectures, and developer tooling.",
+    socials: [
+      { platform: "x", url: "https://x.com/akbx898" },
+      { platform: "linkedin", url: "https://www.linkedin.com/in/amankumarbind" },
+      { platform: "github", url: "https://github.com/akb898" },
+    ],
+  },
 ];
 
 /**
