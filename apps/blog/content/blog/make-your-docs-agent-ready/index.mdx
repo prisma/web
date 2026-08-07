@@ -1,0 +1,187 @@
+---
+title: "How to Make Your Docs Agent-Ready"
+slug: "make-your-docs-agent-ready"
+date: "2026-07-24"
+authors:
+  - "Ankur Datta"
+metaTitle: "How to Make Your Docs Agent-Ready: llms.txt, Parity, MCP"
+metaDescription: "Coding agents fail silently on truncated indexes, broken links, and missing metadata. What we fixed in the Prisma docs, and how to audit yours."
+heroImagePath: "/make-your-docs-agent-ready/imgs/hero.svg"
+metaImagePath: "/make-your-docs-agent-ready/imgs/meta.png"
+heroImageAlt: "A documentation site restructured so a coding agent can discover, fetch, and parse it"
+tags:
+  - "ai"
+  - "education"
+---
+
+Agent-ready documentation is documentation an AI coding agent can discover, fetch, and parse without human help. In practice, that means four things:
+
+- an index small enough to survive a single request, with a route back to it from every page
+- a Markdown version of every page that says what the HTML says
+- links that resolve from wherever an agent finds them
+- machine-readable metadata at the paths agents check
+
+We audited the [Prisma docs](https://www.prisma.io/docs) against the [Agent Readiness Score](https://www.mintlify.com/score/prisma), a public audit from the docs-platform company Mintlify that grades a site on 30 checks (as of this writing), and fixed most of what it found. This post walks through the failures and fixes, then gives you the process to run on your own docs.
+
+The stakes are quiet. A coding agent fetches a docs page mid-task, on behalf of a developer who never sees the request. If the file comes back truncated, or a link leads to a dead end, nothing stops the task. The agent answers from what it got, and the wrong answer shows up in someone's editor with your docs' name on it.
+
+## Why agents read docs differently than people
+
+A human reader recovers from a bad docs site. They scroll past the cookie banner, notice the version switcher, and open a second tab when a link breaks.
+
+An agent does none of that. For each page it needs, it makes a request, takes what comes back, and moves on:
+
+- If the index file is cut off partway through, the agent loses everything after the cut, with no reliable way to tell.
+- If a link resolves to the wrong path, it hits a dead end or reads the wrong page.
+- If the Markdown version of a page is missing a paragraph the HTML has, it answers from the shorter version.
+
+So agent-ready is a different engineering target than readable.
+
+## What we fixed in the Prisma docs
+
+When we started, the audit scored the Prisma docs 85 out of 100. Grouped by cause, the missing points came down to five problems, one per row below. (Two terms first: an agent skill is a workflow file an agent can load, and MCP, the Model Context Protocol, is the standard coding agents use to call external tools.)
+
+| What was broken | What we changed | What an agent gains |
+| --- | --- | --- |
+| `llms.txt`, the index file agents fetch first, listed every docs page inline: about 116,000 characters, more than double the audit's limit | Split it into per-area indexes; the root file is now a table of contents | The whole index survives one fetch, and an agent can pull only the area it needs |
+| A page fetched on its own had no route back to the index | Added a pointer to `llms.txt` on every page: at the top of the Markdown, as a hidden element in the HTML | An agent that lands on one page can find the rest of the docs |
+| The Markdown version of a page dropped the description the HTML showed | Carried the description through to the Markdown output | The summary a human sees is in the `.md` an agent reads |
+| `llms-full.txt`, the all-content feed, was about 7 MB with about 2,500 links that only resolve inside the rendered site | Rewrote links as absolute URLs and dropped legacy content, shrinking the feed to 4.5 MB | Links land on the page they name, in a feed small enough to hold |
+| No agent skill and no MCP discovery document existed | Published `skill.md` and `/.well-known/mcp` | A defined setup workflow, and a pointer to the Prisma MCP server |
+
+The five subsections below take these one at a time.
+
+### Keep the index small enough to survive one fetch
+
+The `llms.txt` convention gives agents an entry point: a plain-text file at a fixed URL that lists what the site contains, so an agent can find pages without crawling.
+
+Ours listed every docs page inline, about 116,000 characters. Mintlify's audit currently fails any `llms.txt` over 50,000 characters, and the limit maps onto a real failure mode: clients cap how much of a feed they read, the caps vary and are rarely documented, and a file this large can be cut off.
+
+The fix was to split it. Each product area now has its own index at `/docs/llms/<area>.txt`, and the root file is a table of contents pointing at them. Fetching [www.prisma.io/docs/llms.txt](https://www.prisma.io/docs/llms.txt) gives a short list of task-shaped links (start a project, connect a database, check the changelog), then one line per area. Three of the twelve area lines:
+
+```markdown
+## Product Area Indexes
+
+- [`Prisma ORM`](https://www.prisma.io/docs/llms/orm.txt): Current Prisma ORM docs: setup, schema modeling, Prisma Client, migrations, and references (excludes legacy v6 and Prisma Next).
+- [`Prisma ORM v6 (legacy)`](https://www.prisma.io/docs/llms/orm-v6.txt): Legacy Prisma ORM v6 documentation, maintained for backwards compatibility only. Prefer the current Prisma ORM section for new work.
+…
+- [`Prisma Postgres`](https://www.prisma.io/docs/llms/postgres.txt): Prisma Postgres setup, connection strings, local development, operations, and guides.
+```
+
+The root file now serves at about 7,000 characters. CI holds it and every area index under a 50,000-byte budget: bytes are the stricter unit, so staying under it keeps us under the audit's character limit too. The largest index, `orm-v6.txt`, sits at 37 KB.
+
+### Give every page a way back to the index
+
+An agent following a search result or a pasted link lands on a single docs page. Before this work, that page gave it no pointer to the rest of the docs.
+
+Every page now carries one: at the top of the Markdown version, and as a hidden element in the HTML. Hidden, because it is machine housekeeping rather than content; in both formats, because the audit checks both. Fetch [www.prisma.io/docs/postgres.md](https://www.prisma.io/docs/postgres.md) and the first lines are:
+
+```markdown
+# Prisma Postgres (/docs/postgres)
+
+> For the complete Prisma documentation index, see [llms.txt](https://www.prisma.io/docs/llms.txt). A markdown version of any docs page is available by appending `.md` to its URL.
+```
+
+Two sentences, and an agent holding one page can now reach all of them.
+
+One caveat on placement: the checker wants the HTML copy near the top of the page too, and ours renders past the halfway mark. The report flags that as a warning we have not yet cleared.
+
+### Make the Markdown match the HTML
+
+Every Prisma docs page is also served as plain Markdown: append `.md` to its URL. That only helps if the two formats say the same thing, a property audits call Markdown parity.
+
+Ours had drifted in one spot. The build dropped the page description that the HTML rendered, so the `.md` an agent read was missing the summary a human saw. The fix carries the description through to the Markdown output.
+
+We also tagged HTML-only interface elements, like copy buttons and the "Edit on GitHub" footer, with a `data-markdown-ignore` attribute. Our Markdown is generated from the MDX source, so those elements were never in the Markdown to begin with, and nothing in our build reads the attribute. It exists for parity checkers: tools that diff the HTML against the Markdown need a way to tell that a missing copy button is interface rather than missing content. It is also the signal Mintlify's parity check asks for when the divergence is intentional, with remediation text that says to "add data-markdown-ignore to human-only HTML elements".
+
+An honest caveat: these changes did not flip the audit's Markdown Content Parity check, which still flags one of its fifteen sampled pages. We have not found which page or what it is missing. The description gap is closed; the check is not.
+
+### Make links resolve from anywhere
+
+`llms-full.txt` is the counterpart to the index: the entire documentation concatenated into one machine-readable file, for an agent that wants everything at once. Ours had two problems, and the link one is the sneakier.
+
+The feed contained about 2,500 links written the way they appear in our source, as root-relative paths like `/orm/prisma-client/queries`. Those work on the rendered site, because the docs app is served under the `/docs` base path and the framework prefixes every internal link when it renders HTML. The raw feed gets no such help. Its links appear exactly as written, without the `/docs` prefix, so a client that follows one lands on `prisma.io/orm/...`, a page that does not exist.
+
+The fix: rewrite in-body links as full absolute URLs, in the feed and in every per-page `.md`, so they resolve the same from everywhere.
+
+The feed was also about 7 MB. We dropped legacy Prisma ORM v6 pages and deprecated product pages from it, which took it to 4.5 MB and absorbed the bytes the absolute URLs added. Dropping content is not the same as fixing it, so to be precise: the dropped pages are out of the concatenated feed, not out of the docs. Each one, the 191 Prisma ORM v6 pages included, is still fetchable individually by appending `.md` to its URL.
+
+### Publish the metadata agents look for
+
+Two audit checks scored zero because the documents they look for did not exist at all.
+
+The first is an agent skill: a Markdown file that describes a workflow an agent can load and follow, instead of inferring it from prose. Ours covers Prisma setup and lives at [prisma.io/skill.md](https://www.prisma.io/skill.md) and [prisma.io/docs/skill.md](https://www.prisma.io/docs/skill.md), with a listing at `/.well-known/agent-skills` that names the skills the site publishes. It carries six frontmatter fields (`name`, `description`, `license`, `compatibility`, `metadata`, and `allowed-tools`), and our CI checks that they stay present. If you want to publish one, ours is a worked example.
+
+The second is discovery for our MCP server. The [Prisma MCP server](https://www.prisma.io/blog/search-prisma-docs-from-your-coding-agent) already runs at `mcp.prisma.io/mcp`; what was missing was a way for an agent on prisma.io to find it. One convention is a small JSON document at a well-known path. `curl https://www.prisma.io/.well-known/mcp` (the same document serves at `/.well-known/mcp.json`) now returns:
+
+```json
+{
+  "version": "1.0.0",
+  "transport": "http",
+  "url": "https://mcp.prisma.io/mcp",
+  "servers": [
+    {
+      "name": "prisma",
+      "url": "https://mcp.prisma.io/mcp",
+      "transport": "http",
+      "authentication": "oauth"
+    }
+  ]
+}
+```
+
+The same honesty applies here: the audit's MCP Server Discoverable check did not flip. Publishing a discovery document was not enough, and when we dug in, the reason was that the check probes the site's own `/mcp` path with an MCP initialize request, so a document pointing at a server elsewhere does not count. We are addressing that separately, with an `/mcp` endpoint on prisma.io that proxies to the same server.
+
+The discovery document cost one route handler and we would publish it again. But treat any fix you have not re-measured as a bet, not a result.
+
+## Put the checks in CI, because the score is a snapshot
+
+The most durable change is not any single fix. It is the CI check that keeps them true: [`lint-agent-ready.ts`](https://github.com/prisma/web/blob/main/apps/docs/scripts/lint-agent-ready.ts) runs on every pull request into `main` as `pnpm --filter docs lint:agent-ready`, asserting among other invariants:
+
+- size budgets on every index file
+- every page reachable from the index
+- the `llms.txt` pointer present on every page
+- the task-shaped links resolving
+- excluded pages staying out of the full feed
+- the skill and MCP documents keeping their required fields
+
+An audit tells you where the docs stood on the day it crawled; it does not watch the repository. Without something enforcing these invariants on every pull request, the next few hundred pages of content would undo this work quietly, and nothing would tell you.
+
+As for the score: it moved from 85 to 99 as the fixes landed, and read 100 out of 100 when we checked on July 24, 2026, with no further agent-readiness change from us in between. We would not build a headline on that number. The same report that shows 100 still lists the two failing checks named above, plus the pointer-placement warning, and does not say how the headline number and that detail relate. Rely on the per-check results, which map to things you can fix and verify, and treat the headline as a derived number on someone else's scale.
+
+The lesson that transfers: two of our fixes did not flip their checks on the first pass, and we only knew because we reran the audit. Measure, fix, measure again, then let CI hold the line.
+
+## How to audit your own docs
+
+1. **Run the audit.** Put your docs through the [Agent Readiness Score](https://www.mintlify.com/score). It crawls the site and reports per-check results, so you start from concrete failures instead of a general sense that things could be better.
+
+2. **Group the failures by cause before fixing anything.** A report with dozens of checks reads like dozens of problems. Ours reduced to five: an oversized index, a missing per-page pointer, a build gap, a bloated feed with broken links, and missing metadata documents. Fix causes, not checks.
+
+3. **Work through the four areas.** Our five problems collapse into them: the index and the per-page pointer are both discoverability, and the rest map one each.
+   - **Discoverability**: keep `llms.txt` small enough to survive a fetch. If yours lists every page inline, move the lists into per-area indexes and leave the root as a table of contents. Then give every page a one-line pointer back to the index, in the Markdown and near the top of the HTML, so an agent that lands mid-site can navigate out; audits check both formats and the placement.
+   - **Parity**: fetch a few of your `.md` pages and diff them against the rendered HTML. Anything present in one and missing from the other is a divergence an agent inherits. A likely culprit is a frontmatter field the Markdown build never carries through; that was ours. Mark genuinely HTML-only interface elements with `data-markdown-ignore` so parity tools can tell them apart from missing content.
+   - **Links**: follow the links in your own feeds and confirm they resolve. A link that depends on your framework's base path, or on the URL of the page it sits on, breaks as soon as a client reads it from a feed instead; the fix is to rewrite in-body links as absolute URLs in anything you serve as a feed. While you are there, check the feed's size and prune legacy content an agent does not need by default; ours went from about 7 MB to 4.5 MB.
+   - **Metadata**: publish a skill at `/skill.md`, and an MCP discovery document at `/.well-known/mcp` if you run a server. Expect audits to probe for a live MCP endpoint on your origin too, not just the document.
+
+4. **Rerun the audit and confirm the checks you targeted actually flipped.** Two of ours did not, which we would not have known without rerunning.
+
+5. **Put the invariants in CI.** Size budgets, reachability, the per-page pointer, link resolution, and your metadata documents' required fields are all cheap to assert, and they catch the regressions that content growth causes.
+
+The finished shape is public if you want to poke at it: [llms.txt](https://www.prisma.io/docs/llms.txt), [skill.md](https://www.prisma.io/docs/skill.md), and [the MCP discovery document](https://www.prisma.io/.well-known/mcp). Point your agent at them and see what it does.
+
+## Frequently asked questions
+
+<Accordions type="single">
+  <Accordion title="What does agent-ready documentation mean?">
+Agent-ready documentation is documentation an AI coding agent can discover, fetch, and parse without human help. Concretely: a compact `llms.txt` index, a Markdown version of every page that matches the HTML, links that resolve from any context, and machine-readable metadata such as an agent skill and an MCP discovery document.
+  </Accordion>
+  <Accordion title="How large can an llms.txt file be?">
+As of July 2026, Mintlify's Agent Readiness Score fails an `llms.txt` over 50,000 characters. Prisma's reached about 116,000 characters in mid-2026, more than double that limit. Prisma now enforces a 50,000-byte CI budget on the root index and every per-area index, and the root file serves at roughly 7,000 characters.
+  </Accordion>
+  <Accordion title="What is the difference between llms.txt and llms-full.txt?">
+`llms.txt` is an index: a short file listing what the documentation contains, with links. `llms-full.txt` is the content itself, the whole documentation concatenated into one machine-readable file. An agent fetches the index to navigate and the full feed when it wants everything at once. As of July 2026 the Prisma index is about 7 KB and the full feed is about 4.5 MB.
+  </Accordion>
+  <Accordion title="Where do agents look for an MCP server?">
+One convention places a discovery document at `/.well-known/mcp` or `/.well-known/mcp.json` on the site's root domain, and Prisma serves a JSON document at both paths naming `https://mcp.prisma.io/mcp`, its HTTP transport, and OAuth authentication. In our testing, Mintlify's audit instead probes the site's own `/mcp` path with an MCP initialize request, and as of July 2026 discovery documents alone had not satisfied it on the Prisma docs. Publish the document, but expect checks to want a live endpoint too.
+  </Accordion>
+</Accordions>

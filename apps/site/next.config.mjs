@@ -746,6 +746,31 @@ const config = {
           source: "/:path*.mdx",
           destination: "/llms.mdx/:path*",
         },
+        // MCP protocol traffic on the conventional /mcp endpoint goes to the
+        // real Prisma MCP server (OAuth-gated); plain browser GETs fall
+        // through to the /mcp marketing page. The three header conditions
+        // cover the MCP Streamable HTTP transport: POST messages send
+        // `Accept: application/json, text/event-stream`, the server event
+        // stream is opened with a text/event-stream GET, and session teardown
+        // is a DELETE carrying only `Mcp-Session-Id`. Agent-readiness audits
+        // probe this endpoint with an initialize request to decide whether an
+        // MCP server is discoverable. /docs/mcp is the equivalent endpoint in
+        // apps/docs (src/app/mcp/route.ts).
+        {
+          source: "/mcp",
+          has: [{ type: "header", key: "accept", value: ".*text/event-stream.*" }],
+          destination: "https://mcp.prisma.io/mcp",
+        },
+        {
+          source: "/mcp",
+          has: [{ type: "header", key: "content-type", value: "application/json.*" }],
+          destination: "https://mcp.prisma.io/mcp",
+        },
+        {
+          source: "/mcp",
+          has: [{ type: "header", key: "mcp-session-id" }],
+          destination: "https://mcp.prisma.io/mcp",
+        },
         // subdomains
         {
           source: "/:path*",

@@ -3,7 +3,7 @@ name: docs-agent-ready
 description: Use when adding a new docs section or product area, editing llms.ts / the llms.txt or llms/[...slug] / llms-full.txt routes / get-llm-text / skill.md / .well-known endpoints, or working on the "agent score", "llms.txt", or anything "agent-ready" in the docs and site apps. Explains the invariants the Mintlify agent-readiness audit measures and how to hold them.
 metadata:
   author: Prisma
-  version: "2026.7.21"
+  version: "2026.7.24"
 ---
 
 # Docs agent-readiness
@@ -15,8 +15,10 @@ Keep Prisma's docs machine-readable so the Mintlify **agent-score** audit does n
 - **Root `llms.txt` < 50k bytes** (warn at 35k). It links to per-area section indexes, not every page.
 - **Each section index < 50k bytes** (warn at 40k). Over budget means split the section.
 - **Every page is reachable** — each `filterPagesForLLMsIndex` page appears in a section file or the root "Other pages" list. The guard asserts against the generated content, not just membership.
-- **Directives in HTML + Markdown** — every page's Markdown (`getLLMText`) starts with the hidden `llms.txt` directive blockquote; the HTML page keeps a hidden directive as its first child.
-- **HTML/Markdown parity** via `data-markdown-ignore` on human-only chrome so the Markdown mirrors the page.
+- **Directives in HTML + Markdown** — every page's Markdown (`getLLMText`) starts with the hidden `llms.txt` directive blockquote; the HTML keeps a hidden directive as the **first child of `<body>` in the root layout** (`apps/docs/src/app/layout.tsx`), NOT inside the page component. Audits measure the directive's byte position in the body and warn when it sits past 50%, which is where it lands if rendered after the sidebar markup.
+- **HTML/Markdown parity** via `data-markdown-ignore` on human-only chrome so the Markdown mirrors the page. The OpenAPI explorer (`APIPage` wrapper in `src/components/api-page.tsx`) carries `data-markdown-ignore` because the interactive reference has no markdown equivalent — the `.md` serves the generated API summary instead.
+- **Markdown keeps real headings** — fumadocs' processed output emits headings as bare `Text [#anchor]` lines; `getLLMText` restores `##` markers from the page toc (`restoreHeadingMarkers` in `llm-markdown.ts`). Without them, parity checkers strip list-like heading text ("## 1. Set up …") and agents see prose instead of structure.
+- **`<details>` blocks are converted** to a bold summary line + dedented body (`formatDetails` in `llm-markdown.ts`); serialized `<details>` children are 2-space indented, which silently breaks the code fences inside for markdown consumers.
 - **`llms-full.txt` excludes** legacy `/orm/v6` and the Accelerate/Optimize products (`getLLMsFullPages`).
 - **Skill + MCP endpoints live at BOTH roots**: `www.prisma.io` (apps/site) and `/docs` (apps/docs).
 
@@ -32,6 +34,8 @@ Keep Prisma's docs machine-readable so the Mintlify **agent-score** audit does n
 | `/docs/.well-known/mcp[.json]` | `apps/docs/src/lib/mcp-discovery.ts` |
 | `/skill.md`, `/.well-known/agent-skills/*` | `apps/site/src/lib/agent-skills.ts` (`buildSkillMarkdown`) |
 | `/.well-known/mcp*` (site) | `apps/site/src/lib/agent-skills.ts` (`buildMcpDiscovery`, server cards) |
+| `/docs/mcp` (MCP proxy) | `apps/docs/src/app/mcp/route.ts` → proxies protocol traffic to `mcp.prisma.io/mcp` |
+| `/mcp` (site, MCP traffic) | header-matched `beforeFiles` rewrites in `apps/site/next.config.mjs` (browser GETs still get the marketing page) |
 
 The route handlers are thin wrappers: shared builders in `llms.ts` are the single source of truth, so the guard measures exactly what the routes serve.
 
@@ -41,7 +45,7 @@ The route handlers are thin wrappers: shared builders in `llms.ts` are the singl
 
 **(b) Section over budget.** When a section fails/warns on size, split it into two sections in `llmsSections` (narrower `prefixes`, or carve a sub-tree out with a new slug). Re-run the guard.
 
-**(c) Changing page chrome** in `apps/docs/src/app/(docs)/(default)/[[...slug]]/page.tsx`: keep the hidden `llms.txt` directive as the first child, and put `data-markdown-ignore` on any human-only chrome (banners, nav, badges) so it stays out of the Markdown.
+**(c) Changing page chrome.** The hidden `llms.txt` directive lives in `apps/docs/src/app/layout.tsx` as the first child of `<body>` — keep it there (before `<Banner`), never move it into the page component where the sidebar markup would push it past 50% of the HTML. In `[[...slug]]/page.tsx`, put `data-markdown-ignore` on any human-only chrome (banners, nav, badges) so it stays out of the parity comparison. New interactive/human-only MDX components should get `data-markdown-ignore` on their wrapper plus a markdown fallback in `normalizeProcessedMarkdown` (`llm-markdown.ts`), following `APIPage`/`formatApiPage`.
 
 **(d) Changing the CLI workflow or MCP tools** in docs content: update the skill copy in `apps/site/src/lib/agent-skills.ts` AND `apps/docs/src/lib/agent-skill.ts` — they quote real commands and tool names. Keep them in sync with the Prisma Postgres quickstart and `content/docs/ai/tools/mcp-server.mdx`. The `commonQueries` links in `llms.ts` must point to existing pages (the guard fails on stale links).
 
@@ -49,6 +53,7 @@ The route handlers are thin wrappers: shared builders in `llms.ts` are the singl
 
 ```bash
 pnpm --filter docs lint:agent-ready       # all invariants + size table
+pnpm --filter docs test:llm-markdown      # markdown pipeline fidelity snapshots
 pnpm --filter docs types:check            # types
 curl -s https://www.prisma.io/docs/llms.txt | head
 curl -s https://www.prisma.io/docs/skill.md | head
@@ -56,3 +61,16 @@ curl -s https://www.prisma.io/.well-known/mcp
 ```
 
 The guard prints a size table with per-file headroom so reviewers see how close each file is to its budget.
+
+**(f) Reproducing the audit.** The audit is the `afdocs` npm CLI (https://afdocs.dev). To reproduce a report locally:
+
+```bash
+# version pinned against supply-chain surprises — bump deliberately
+npx afdocs@0.18.7 check https://www.prisma.io/docs --sampling deterministic -v
+# parity needs its upstream checks in the same run:
+npx afdocs@0.18.7 check https://www.prisma.io/docs \
+  --checks markdown-url-support,content-negotiation,markdown-content-parity \
+  --sampling deterministic --format json -v
+```
+
+Audit gotchas encoded in the invariants above: the HTML directive check needs an `<a href*="/llms.txt">` within the first 10% of the (nav/script/style-stripped) `<body>` on sampled pages and warns when every match sits past 50%; the parity check compares HTML text segments against the `.md`, strips `data-markdown-ignore` elements from the HTML side, and only treats a fenced code block as protected when the fence starts at column 0 — which is why `<details>` bodies must be dedented and headings must keep their `#` markers. The separate "MCP Server Discoverable" check probes `<origin>/mcp` with an MCP initialize request (discovery documents alone do not count), which is what the `/docs/mcp` proxy route and the site `/mcp` rewrites are for.

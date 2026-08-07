@@ -3,7 +3,7 @@ title: Deploy your first app
 description: Take a TypeScript app from your terminal to a live URL on Prisma Compute, either by scaffolding a new one or deploying a project you already have.
 url: /prisma-compute/deploy
 metaTitle: "Quickstart: Deploy your first app on Prisma Compute"
-metaDescription: Deploy a TypeScript app to Prisma Compute with the @prisma/cli beta package. Scaffold a new app with create-prisma or deploy an existing project, then verify it at a live URL.
+metaDescription: Deploy a TypeScript app to Prisma Compute with @prisma/cli. Scaffold a new app with create-prisma or deploy an existing project, then verify the live URL.
 ---
 
 [Prisma Compute](/compute) is serverless hosting for TypeScript apps. It runs your app right next to your Prisma Postgres database, so the trip from app to data stays short.
@@ -25,7 +25,7 @@ Before you start, make sure you have:
 
 :::info
 
-Next.js apps should set `output: "standalone"` in their Next.js config. The `create-prisma` template already sets this for you.
+Next.js apps must set `output: "standalone"` in their Next.js config, or the deployed app never boots and every request returns a 504. The `create-prisma@latest` (Prisma 7) template already sets this for you; the `create-prisma@next` (Prisma Next) template does not yet, so add it before deploying.
 
 ```ts title="next.config.ts"
 export default { output: "standalone" };
@@ -69,7 +69,7 @@ It asks for a template, a database provider, and a few options, then asks **"Dep
 
 So your deployed app has a database from its first request.
 
-To skip the prompts, pass your choices as flags. Compute deploys are available for the `hono`, `elysia`, `next`, and `tanstack-start` templates:
+To skip the prompts, pass your choices as flags. Compute deploys are available for every template except `svelte` (that is `hono`, `elysia`, `nest`, `next`, `astro`, `nuxt`, `tanstack-start`, and `turborepo`):
 
 ```npm
 npx create-prisma@latest --name my-api --template hono --provider postgresql --deploy
@@ -88,7 +88,7 @@ npx @prisma/cli@latest app deploy
 In one pass, the CLI:
 
 1. **Detects your framework** from your project files, whether that is Next.js, Nuxt, Astro, Hono, NestJS, TanStack Start, or a plain Bun server. To choose it yourself, pass `--framework` (use `--framework bun` for a Bun or Elysia server).
-2. **Sets up a project** the first time you deploy from this directory, then writes [`.prisma/local.json`](/compute/getting-started#link-an-existing-project) to pin the directory to that project. That file is a gitignored local cache, not committed config. If your team already has a project, [link it first](/compute/getting-started#link-an-existing-project).
+2. **Sets up a project** the first time you deploy from this directory: it asks you to pick or create one (pass `--create-project <name>` to skip the prompt, which non-interactive runs need), then writes [`.prisma/local.json`](/compute/getting-started#link-an-existing-project) to pin the directory to that project. That file is a gitignored local cache, not committed config. If your team already has a project, [link it first](/compute/getting-started#link-an-existing-project).
 3. **Resolves the target branch.** Inside a Git repository, the CLI uses your current Git branch name; otherwise it falls back to `main`. Pass `--branch <name>` to choose explicitly. Because each branch is its own isolated environment, this decides where the deploy lands.
 4. **Builds and uploads your app**, provisions it, and prints a live URL.
 
@@ -164,6 +164,14 @@ You can let a coding agent do the deploying. Sign in once yourself ([step 1](#1-
 
 ```text
 Build [what you want] in [framework] and deploy it to Prisma Compute using `npx @prisma/cli@latest`.
+
+Notes:
+- Before deploying, run `npx @prisma/cli@latest auth whoami`; if I am not signed in, stop and ask me to run `npx @prisma/cli@latest auth login` (it opens a browser).
+- Run every CLI command as `npx @prisma/cli@latest <command>`, and add `--json` for structured output.
+- Compute supports Next.js, Nuxt, Astro, Hono, NestJS, TanStack Start, and plain Bun servers. If you build a Next.js app, set `output: "standalone"` in its config before deploying. For a Bun or Elysia server pass `--framework bun --entry <server file>` on the deploy.
+- On the first deploy, the CLI creates the project and prints a live URL. Fetch it with curl and confirm the app responds. The first deploy is promoted to production automatically.
+- To give the app a database, add `--db` to the deploy so Compute provisions and wires a Prisma Postgres database.
+- If the app needs config or secrets, scope them to the environment you are deploying: `npx @prisma/cli@latest project env add KEY=value --role production` (or `--role preview`), then redeploy. Full scoping rules: https://www.prisma.io/docs/compute/environment-variables.md
 ```
 
 For example:
@@ -172,13 +180,7 @@ For example:
 Build a Hono API with a /todos endpoint backed by an in-memory list. Deploy it to Prisma Compute using `npx @prisma/cli@latest`.
 ```
 
-Notes for your agent:
-
-- Run every CLI command as `npx @prisma/cli@latest <command>`, and add `--json` for structured output.
-- Check login state with `npx @prisma/cli@latest auth whoami`.
-- On the first deploy, the CLI creates the project and prints a live URL. Open it and confirm the app responds. The first deploy is promoted to production automatically.
-- To give the app a database, add `--db` to the deploy so Compute provisions and wires a Prisma Postgres database.
-- If the app needs config or secrets, scope them to the environment you're deploying. Use `--role production` for production deploys and `--role preview` for preview branches, then redeploy: `npx @prisma/cli@latest project env add KEY=value --role production` (or `--role preview`). Don't write production config to the preview scope. For the full scoping rules, see [Environment variables](/compute/environment-variables).
+The notes travel with the prompt, so your agent checks sign-in state, verifies the live URL, and scopes environment variables correctly. For the full scoping rules in the docs, see [Environment variables](/compute/environment-variables).
 
 ## What's next
 
