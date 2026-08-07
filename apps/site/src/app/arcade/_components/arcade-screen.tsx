@@ -9,6 +9,7 @@ import { InvadersGame } from "./invaders-game";
 import { StackerGame } from "./stacker-game";
 import { MuncherGame } from "./muncher-game";
 import { MeteorsGame } from "./meteors-game";
+import { CometCatGame } from "./comet-cat-game";
 import styles from "./arcade.module.css";
 
 const HI_SCORE_STORAGE_KEY = "prisma-arcade-hiscores";
@@ -21,6 +22,7 @@ const GAME_COMPONENTS: Record<string, React.ComponentType<GameProps>> = {
   stacker: StackerGame,
   muncher: MuncherGame,
   meteors: MeteorsGame,
+  comet: CometCatGame,
 };
 
 const KONAMI = [
@@ -38,7 +40,7 @@ const KONAMI = [
 
 const TICKER_ITEMS = [
   "★ WELCOME TO THE PRISMA ARCADE ★",
-  "5 GAMES ★ FREE PLAY",
+  "6 GAMES ★ FREE PLAY",
   "GLOBAL HIGH SCORES COMING SOON",
   "NO QUARTERS REQUIRED",
   "TYPE-SAFE SINCE 2016",
