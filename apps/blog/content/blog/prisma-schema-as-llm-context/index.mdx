@@ -26,7 +26,7 @@ The failure is quiet. An agent that misreads nullability or a cascade rule write
 
 ## One file that answers the questions that matter
 
-A Prisma schema is a declarative file, `schema.prisma`, that defines an application's relational data model in one place: models, field types, relations, key constraints, indexes, and defaults. Prisma ORM, a type-safe TypeScript ORM, generates both the client API and the database migrations from this one file, which is what makes it trustworthy context. Here is one model from a schema we'll use throughout this post, a standard multi-tenant SaaS app:
+A Prisma schema is a declarative file, `schema.prisma`, that defines an application's relational data model in one place: models, field types, relations, key constraints, indexes, and defaults. Prisma ORM, a type-safe TypeScript ORM, generates the client API from this one file and drafts the SQL migrations from its changes, which is what makes it trustworthy context. Here is one model from a schema we'll use throughout this post, a standard multi-tenant SaaS app:
 
 ```prisma
 model Membership {
@@ -52,7 +52,7 @@ Twelve lines, and an agent can answer the questions that matter about this table
 
 The same holds for the whole file: relations point both ways, optionality is a `?` on the field, and defaults sit next to the columns they apply to. Not everything lives here; `CHECK` constraints, triggers, and row-level security policies stay in SQL, and the file opens with two short config blocks. Larger schemas can also split across a folder of files; the single source is the point, not the single file. But the tables, relations, and indexes an agent needs for everyday feature work are all in one place, with no import graph to chase.
 
-Because migrations are generated from schema changes, the schema stays in step with the database as long as changes flow through it. And when someone changes the database out-of-band, a manual hotfix, say, Prisma's migrate tooling flags the drift the next time it runs. Schema-first code tools like drizzle-kit offer similar diffs; the tripwire exists wherever a canonical schema artifact does, which is the point of having one.
+Because migrations are generated from schema changes, the schema stays in step with the database as long as changes flow through it. And when someone changes the database out-of-band, a manual hotfix, say, `prisma migrate dev` flags the drift the next time it runs in development. Schema-first code tools like drizzle-kit offer similar diffs; the tripwire exists wherever a canonical schema artifact does, which is the point of having one.
 
 ## Declarative states, code composes
 
@@ -92,7 +92,7 @@ To put numbers on the context cost, we modeled the same application twice: nine 
 | Characters | 3,983         | 6,109          |
 | Tokens     | 968           | 1,543          |
 
-Same models, constraints, and indexes, though not byte-identical DDL: each tool keeps its own default column types, `text` against `uuid` for the IDs, and matching those exactly would add `@db.Uuid` annotations, and tokens, to the Prisma side. The declarative version costs about a third fewer tokens, and the gap runs both ways: skip the relational query API and its `relations()` blocks and a bare Drizzle schema drops to 1,088 tokens, close to parity. The token savings are real but they are not the headline. The headline is that the schema is one canonical artifact: the same file feeds the client, the migrations, and the agent, so what the agent reads is what the migrations create.
+Same models, constraints, and indexes, though not byte-identical DDL: each tool keeps its own default column types, `text` against `uuid` for the IDs, and matching those exactly would add `@db.Uuid` annotations, and tokens, to the Prisma side. The declarative version costs about a third fewer tokens, and the gap runs both ways: skip the relational query API and its `relations()` blocks and a bare Drizzle schema drops to 1,088 tokens, close to parity. The token savings are real but they are not the headline. The headline is that the schema is one canonical artifact: the same file feeds the client, the migration drafts, and the agent. One caveat comes with that: generated migrations are committed SQL you can customize, and deploys apply that SQL as written. If your migrations carry hand-written DDL, the `CHECK` constraints and policies from earlier, give the agent the migrations directory alongside the schema.
 
 You can test the qualitative half on your own project in five minutes. Give your agent only the schema file and ask:
 
@@ -110,7 +110,7 @@ The schema answers "what is the data model." The other half, "how do we change i
 
 ## Where to go from here
 
-Your agent reasons about your data about as well as the context you hand it. A declarative schema is cheap, high-quality context: one parseable file that the client, the migrations, and the agent all share, kept in step with the database by the migration workflow.
+Your agent reasons about your data about as well as the context you hand it. A declarative schema is cheap, high-quality context: one parseable file that the client, the migrations, and the agent all start from, kept in step with the database by the migration workflow.
 
 If you already use Prisma, try the three prompts above against your own schema. If your model lives in code today, `npx prisma init` and an introspection run will give you a schema file to compare against, and the [Prisma ORM docs](https://www.prisma.io/docs/orm) cover the path from there.
 
@@ -118,7 +118,7 @@ If you already use Prisma, try the three prompts above against your own schema. 
 
 <Accordions type="single">
   <Accordion title="Why is a Prisma schema good context for an AI coding agent?">
-It puts the relational data model, including relations, key constraints, indexes, and defaults, in one declarative source, and that same source generates the client and the migrations, so what the agent reads is what the migrations create. Code-based definitions spread the same facts across table objects, relation helpers, and imports.
+It puts the relational data model, including relations, key constraints, indexes, and defaults, in one declarative source, and the client and migration drafts are generated from that same source, so the schema and the database move together in the normal workflow. Code-based definitions spread the same facts across table objects, relation helpers, and imports.
   </Accordion>
   <Accordion title="How many tokens does a Prisma schema cost in an agent's context window?">
 A 9-model SaaS schema measures 968 tokens with gpt-tokenizer 3.4.0 (`o200k_base` encoding). The equivalent idiomatic Drizzle definitions measure 1,543 tokens with the `relations()` blocks the relational query API expects, or 1,088 without them.
