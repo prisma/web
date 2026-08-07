@@ -110,7 +110,10 @@ function extractFrontmatterUrl(raw) {
 
   const value = match[1].trim();
 
-  if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+  if (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  ) {
     return value.slice(1, -1);
   }
 
@@ -151,9 +154,7 @@ async function collectDocsRoutes() {
 async function main() {
   const strict = process.argv.includes("--strict");
   const routes = await collectDocsRoutes();
-  const vercelConfig = JSON.parse(
-    await readFile(path.join(docsRoot, "vercel.json"), "utf8"),
-  );
+  const vercelConfig = JSON.parse(await readFile(path.join(docsRoot, "vercel.json"), "utf8"));
 
   const missing = [];
   const broad = [];
@@ -174,7 +175,9 @@ async function main() {
     }
   }
 
-  console.log(`Checked ${vercelConfig.redirects.length} redirects against ${routes.size} docs routes.`);
+  console.log(
+    `Checked ${vercelConfig.redirects.length} redirects against ${routes.size} docs routes.`,
+  );
 
   if (missing.length > 0) {
     console.log("\nMissing redirect destinations:");

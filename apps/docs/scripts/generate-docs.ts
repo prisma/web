@@ -30,7 +30,10 @@ function escapeRegExp(s: string) {
 
 // Remove compact single-line redirect entries by source without touching the rest of the file.
 // Returns the modified string and the count of lines actually removed.
-function removeRedirectLines(raw: string, sources: Set<string>): { result: string; removed: number } {
+function removeRedirectLines(
+  raw: string,
+  sources: Set<string>,
+): { result: string; removed: number } {
   let removed = 0;
   for (const source of sources) {
     const pattern = new RegExp(
@@ -217,9 +220,7 @@ async function main() {
   {
     const removedUrls = [...oldUrlToFile.keys()].filter((url) => !newUrlToRelPath.has(url));
     // Endpoints that were previously redirected but are now live again
-    const restoredSources = new Set(
-      [...newUrlToRelPath.keys()].map((url) => `/docs${url}`),
-    );
+    const restoredSources = new Set([...newUrlToRelPath.keys()].map((url) => `/docs${url}`));
 
     const toAdd = removedUrls.map((url) => {
       const tag = url.split("/")[3];
@@ -244,7 +245,10 @@ async function main() {
     // Prepend new entries for removed endpoints, compact single-line format
     if (toAdd.length > 0) {
       const lines = toAdd
-        .map((r) => `    { "source": "${r.source}", "destination": "${r.destination}", "permanent": true },`)
+        .map(
+          (r) =>
+            `    { "source": "${r.source}", "destination": "${r.destination}", "permanent": true },`,
+        )
         .join("\n");
       raw = raw.replace(/("redirects"\s*:\s*\[)/, `$1\n${lines}`);
       console.log(`Prepended ${toAdd.length} redirects to vercel.json`);
@@ -278,9 +282,7 @@ async function main() {
 
   // Sync endpoints/meta.json: keep existing order, append new dirs alphabetically, [experimental] last
   const afterDirEntries = await readdir(endpointsDir, { withFileTypes: true });
-  const currentTagDirs = new Set(
-    afterDirEntries.filter((d) => d.isDirectory()).map((d) => d.name),
-  );
+  const currentTagDirs = new Set(afterDirEntries.filter((d) => d.isDirectory()).map((d) => d.name));
 
   const currentMeta = JSON.parse(await readFile(metaJsonPath, "utf-8"));
   const existingPages: string[] = currentMeta.pages ?? [];

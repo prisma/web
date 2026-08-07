@@ -16,10 +16,7 @@ export function normalize(urlOrPath: string) {
 }
 
 export function normalizeLatestOrmPath(urlOrPath: string): string {
-  return urlOrPath.replace(
-    /^(https?:\/\/[^/?#]+)?(\/docs)?\/orm\/latest(?=\/|$|[?#])/,
-    "$1$2/orm",
-  );
+  return urlOrPath.replace(/^(https?:\/\/[^/?#]+)?(\/docs)?\/orm\/latest(?=\/|$|[?#])/, "$1$2/orm");
 }
 
 export const DOCS_PREFIX = "/docs";

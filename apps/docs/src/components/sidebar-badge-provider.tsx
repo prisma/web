@@ -26,11 +26,14 @@ const BADGE_LABEL: Record<BadgeType, string> = {
   deprecated: "Deprecated",
 };
 
-const BADGE_COLOR: Record<BadgeType, "ppg" | "warning" | "neutral"> = {
+// Semantic triads, all of them soft washes so the badges sit quietly in the
+// sidebar: cyan for the forward-looking states, the ORM amber for preview, red
+// for deprecated. `beta` is left neutral — it is not a brand signal.
+const BADGE_COLOR: Record<BadgeType, "ppg" | "orm-reverse" | "error" | "neutral"> = {
   "early-access": "ppg",
   beta: "neutral",
-  preview: "neutral",
-  deprecated: "warning",
+  preview: "orm-reverse",
+  deprecated: "error",
 };
 
 function shouldHideSidebarBadge(url: string, badge: BadgeType | undefined) {
@@ -64,7 +67,10 @@ export const SidebarBadgeItem: FC<{ item: PageTree.Item }> = ({ item }) => {
             color={BADGE_COLOR[visibleBadge]}
             label={BADGE_LABEL[visibleBadge]}
             size="md"
-            className="ml-auto shrink-0"
+            // `rounded-full!`: the eclipse badge ships `rounded-square`, which
+            // tailwind-merge does not recognise as a radius class and therefore
+            // will not collapse — the important flag is what makes the pill win.
+            className="ml-auto shrink-0 rounded-full!"
           />
         )}
       </span>

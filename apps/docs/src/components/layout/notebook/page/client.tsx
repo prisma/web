@@ -100,9 +100,12 @@ export function PageTOCPopover({ className, children, ...rest }: ComponentProps<
         <header
           ref={ref}
           className={cn(
-            "border-b backdrop-blur-sm transition-colors",
+            // Hairline stays; when the panel drops open it becomes a card —
+            // brand radius on the two bottom corners only, since the strip is
+            // full-bleed and pinned under the header.
+            "border-b border-stroke-neutral backdrop-blur-sm transition-colors duration-300 motion-reduce:transition-none",
             (!isNavTransparent || open) && "bg-fd-background/80",
-            open && "shadow-lg",
+            open && "rounded-b-(--radius-square-high) shadow-lg",
           )}
         >
           {children}
@@ -306,7 +309,7 @@ function FooterItem({ item, index }: { item: Item; index: 0 | 1 }) {
     <Link
       href={item.url}
       className={cn(
-        "flex flex-col gap-2 rounded-lg border p-4 text-sm transition-colors hover:bg-fd-accent/80 hover:text-fd-accent-foreground @max-lg:col-span-full",
+        "flex flex-col gap-2 rounded-square border p-4 text-sm transition-colors duration-300 hover:bg-fd-accent/80 hover:text-fd-accent-foreground motion-reduce:transition-none @max-lg:col-span-full",
         index === 1 && "text-end",
       )}
     >

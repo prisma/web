@@ -77,11 +77,9 @@ export function SidebarBannerCarousel({ slides }: SidebarBannerCarouselProps) {
           height: hovered ? 10 : 7,
           marginLeft: inset,
           marginRight: inset,
-          borderRadius: "12px 12px 0 0",
+          borderRadius: "var(--radius-square-high) var(--radius-square-high) 0 0",
           borderBottom: "none",
-          opacity: hovered
-            ? 0.4 + (arr.length - i) * 0.15
-            : 0.25 + (arr.length - i) * 0.1,
+          opacity: hovered ? 0.4 + (arr.length - i) * 0.15 : 0.25 + (arr.length - i) * 0.1,
         }}
       />
     );
@@ -99,7 +97,12 @@ export function SidebarBannerCarousel({ slides }: SidebarBannerCarouselProps) {
       {/* Front card */}
       <div
         className={cn(
-          "relative rounded-high border border-stroke-neutral overflow-hidden shadow-drop-low",
+          // `rounded-high` was never a real utility (eclipse only defines
+          // --radius-square-{low,,high} + --radius-circle), so this card had no
+          // radius at all. `spectrum-border` is the shell's one spectrum moment:
+          // a gradient hairline that lights up on hover, animation guarded by
+          // the reduced-motion rule inside eclipse's globals.
+          "spectrum-border relative rounded-square-high border border-stroke-neutral overflow-hidden shadow-drop-low",
           "bg-background-default transition-shadow hover:shadow-drop",
         )}
       >
@@ -122,29 +125,20 @@ export function SidebarBannerCarousel({ slides }: SidebarBannerCarouselProps) {
               </span>
             )}
           </div>
-          <p className="text-xs text-foreground-neutral-weak truncate">
-            {front.description}
-          </p>
+          <p className="text-xs text-foreground-neutral-weak truncate">{front.description}</p>
         </div>
 
         {/* Image preview */}
         <div
           className={cn(
             "relative mx-3 mt-2 rounded-square overflow-hidden aspect-video",
-            !front.image &&
-              (front.gradient === "ppg"
-                ? "bg-gradient-ppg"
-                : "bg-gradient-orm"),
+            !front.image && (front.gradient === "ppg" ? "bg-gradient-ppg" : "bg-gradient-orm"),
           )}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           {front.image ? (
             <img
-              src={
-                front.image.startsWith("http")
-                  ? front.image
-                  : `/docs${front.image}`
-              }
+              src={front.image.startsWith("http") ? front.image : `/docs${front.image}`}
               alt={front.imageAlt ?? front.title ?? ""}
               className="absolute inset-0 size-full object-cover"
             />
@@ -201,12 +195,7 @@ export function SidebarBannerCarousel({ slides }: SidebarBannerCarouselProps) {
         </div>
 
         {/* Bottom padding when action bar is hidden */}
-        <div
-          className={cn(
-            "transition-all duration-300 ease-out",
-            hovered ? "h-0" : "h-3",
-          )}
-        />
+        <div className={cn("transition-all duration-300 ease-out", hovered ? "h-0" : "h-3")} />
       </div>
     </div>
   );

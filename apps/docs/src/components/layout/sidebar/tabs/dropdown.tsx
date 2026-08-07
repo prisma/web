@@ -88,7 +88,7 @@ export function SidebarTabsDropdown({
         <PopoverTrigger
           {...props}
           className={cn(
-            "flex items-center gap-2 rounded-lg p-2 border bg-fd-secondary/50 text-start text-fd-secondary-foreground transition-colors hover:bg-fd-accent data-open:bg-fd-accent data-open:text-fd-accent-foreground",
+            "flex items-center gap-2 rounded-square p-2 border border-stroke-neutral bg-fd-secondary/50 text-start text-fd-secondary-foreground transition-colors duration-300 hover:bg-fd-accent data-open:bg-fd-accent data-open:text-fd-accent-foreground motion-reduce:transition-none",
             props.className,
           )}
         >
@@ -106,7 +106,7 @@ export function SidebarTabsDropdown({
                 item={opt as any}
                 onClick={onClick}
                 className={cn(
-                  "flex items-center gap-2 rounded-lg p-1.5 hover:bg-fd-accent hover:text-fd-accent-foreground",
+                  "flex items-center gap-2 rounded-square p-1.5 transition-colors duration-300 hover:bg-fd-accent hover:text-fd-accent-foreground motion-reduce:transition-none",
                 )}
               >
                 {"icon" in opt && (opt as any).icon && (
@@ -148,7 +148,7 @@ export function SidebarTabsDropdown({
                       item={child as any}
                       onClick={onClick}
                       className={cn(
-                        "flex items-center gap-2 rounded-lg p-1.5 hover:bg-fd-accent hover:text-fd-accent-foreground",
+                        "flex items-center gap-2 rounded-square p-1.5 transition-colors duration-300 hover:bg-fd-accent hover:text-fd-accent-foreground motion-reduce:transition-none",
                       )}
                     >
                       {"icon" in child && (child as any).icon && (
