@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { cn } from "@prisma-docs/ui/lib/cn";
+import { PrismRay } from "@/components/chrome/prism-ray";
 
-interface BannerSlide {
+export interface BannerSlide {
   title: string;
   description: string;
   href: string;
@@ -12,6 +13,8 @@ interface BannerSlide {
   badge?: string;
   image?: string;
   imageAlt?: string;
+  /** Brand-drawn tile instead of a raster — stays on-palette by construction. */
+  visual?: "prism";
 }
 
 interface SidebarBannerCarouselProps {
@@ -136,7 +139,20 @@ export function SidebarBannerCarousel({ slides }: SidebarBannerCarouselProps) {
           )}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          {front.image ? (
+          {front.visual === "prism" ? (
+            // The brand tile: ink panel, the triple-band ray crossing behind a
+            // small wordmark — the sidebar-scale echo of the reference hero.
+            // Deliberately ink in both themes (it is artwork, not surface).
+            <div className="relative flex size-full items-center justify-center overflow-hidden bg-[#151515]">
+              <PrismRay
+                intensity="hero"
+                className="left-1/2 top-[58%] h-9 w-[30rem] -translate-x-1/2 -translate-y-1/2"
+              />
+              <span className="relative font-sans-display text-lg font-medium text-white">
+                Prisma Next
+              </span>
+            </div>
+          ) : front.image ? (
             <img
               src={front.image.startsWith("http") ? front.image : `/docs${front.image}`}
               alt={front.imageAlt ?? front.title ?? ""}

@@ -105,7 +105,9 @@ export function PageTOCPopover({ className, children, ...rest }: ComponentProps<
             // full-bleed and pinned under the header.
             "border-b border-stroke-neutral backdrop-blur-sm transition-colors duration-300 motion-reduce:transition-none",
             (!isNavTransparent || open) && "bg-fd-background/80",
-            open && "rounded-b-(--radius-square-high) shadow-lg",
+            // Open panel goes fully opaque: at 80% the page ghosts through the
+            // rows and the panel's bottom edge, hurting scanability.
+            open && "bg-fd-background rounded-b-(--radius-square-high) shadow-lg",
           )}
         >
           {children}

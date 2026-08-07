@@ -105,6 +105,7 @@ const FeedbackButtons = ({
             <button
               {...props}
               type="button"
+              aria-label="Mark answer as helpful"
               onClick={() => onFeedback(qaId, "upvote")}
               disabled={disabled || currentReaction === "upvote"}
               className={cn(
@@ -130,6 +131,7 @@ const FeedbackButtons = ({
             <button
               {...props}
               type="button"
+              aria-label="Mark answer as not helpful"
               onClick={() => onFeedback(qaId, "downvote")}
               disabled={disabled || currentReaction === "downvote"}
               className={cn(
@@ -260,6 +262,7 @@ const ChatInner = ({
               render={(props) => (
                 <button
                   {...props}
+                  aria-label="Clear chat"
                   onClick={handleClearChat}
                   disabled={(!hasActiveConversation && !hasPersistedMessages) || isGeneratingAnswer}
                   className={cn(
@@ -278,6 +281,7 @@ const ChatInner = ({
               render={(props) => (
                 <button
                   {...props}
+                  aria-label="Close chat"
                   onClick={onClose}
                   className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }))}
                 >
@@ -467,6 +471,11 @@ export const AIChatSidebar = ({
       ) {
         event.preventDefault();
         setIsOpen((prev) => !prev);
+      }
+      // Escape closes the drawer — previously only the chevron or the
+      // shortcut could, and the open drawer persisted across navigations.
+      if (event.key === "Escape") {
+        setIsOpen(false);
       }
     };
 

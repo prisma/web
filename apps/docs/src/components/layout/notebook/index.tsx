@@ -243,11 +243,20 @@ export function DocsLayout(props: DocsLayoutProps) {
                 <Languages className="size-4.5 text-fd-muted-foreground" />
               </LanguageToggle>
             )}
-            {themeSwitch.enabled !== false &&
-              (themeSwitch.component ?? (
-                <ThemeToggle mode={themeSwitch.mode ?? "light-dark-system"} />
-              ))}
           </Footer>
+          {/* The theme toggle gets its own row instead of riding in Footer's
+              children: when the layout supplies a custom `footer` (docs does —
+              banner carousel + status), that component renders its own content
+              and drops the children, which silently removed the only mobile
+              theme control. */}
+          {themeSwitch.enabled !== false && (
+            <div className="flex items-center justify-between border-t border-stroke-neutral px-4 py-3">
+              <span className="text-sm text-fd-muted-foreground">Theme</span>
+              {themeSwitch.component ?? (
+                <ThemeToggle mode={themeSwitch.mode ?? "light-dark-system"} />
+              )}
+            </div>
+          )}
         </SidebarDrawer>
       </>
     );
