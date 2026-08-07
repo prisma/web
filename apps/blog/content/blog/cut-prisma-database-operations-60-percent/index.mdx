@@ -176,7 +176,7 @@ Less data serialized by Postgres, less data transferred over the wire, less memo
 
 ## 5. Use `findUnique` for exact lookups
 
-When a query matches at most one row (by `id`, by a unique email, by any unique constraint), `findUnique` is the right call. It only accepts unique fields, so it states the lookup's intent in the type system, and Prisma batches concurrent `findUnique` calls on the same table into a single query.
+When a query matches at most one row (by `id`, by a unique email, by any unique constraint), `findUnique` is the right call. It only accepts unique fields, so it states the lookup's intent in the type system, and Prisma batches concurrent `findUnique` calls that share the same shape (same model, identical `select` and `include`, simple unique filters) into a single query.
 
 ```typescript
 // Works, but accepts any filter, unique or not
@@ -273,7 +273,7 @@ import { withAccelerate } from "@prisma/extension-accelerate";
 const prisma = new PrismaClient().$extends(withAccelerate());
 ```
 
-Every read query then accepts a `cacheStrategy`:
+Supported read operations (`findUnique`, `findFirst`, `findMany`, `count`, `aggregate`, and `groupBy`) then accept a `cacheStrategy`:
 
 ```typescript
 const categories = await prisma.category.findMany({
@@ -350,23 +350,31 @@ await prisma.$transaction([
 ]);
 ```
 
-For sequences that need to read from the database mid-transaction, interactive transactions give you a client scoped to the transaction:
+Atomicity is not the whole story, though. The array form runs its mutations unconditionally: a retried request that arrives after the order is already `"PAID"` would decrement the stock and increment the balance a second time, and nothing stops `stock` from going negative. For state transitions like a payment, guard the mutations so the transaction only commits when the invariants hold. Interactive transactions give you a client scoped to the transaction for exactly this:
 
 ```typescript
 await prisma.$transaction(async (tx) => {
-  const order = await tx.order.findUniqueOrThrow({ where: { id } });
-
-  if (order.status !== "PENDING") {
+  // Guard the PENDING -> PAID transition; 0 rows means already paid
+  const paid = await tx.order.updateMany({
+    where: { id, status: "PENDING" },
+    data: { status: "PAID" },
+  });
+  if (paid.count === 0) {
     throw new Error("Order is not in a payable state");
   }
 
-  await tx.order.update({ where: { id }, data: { status: "PAID" } });
-  await tx.inventory.update({
-    where: { productId: order.productId },
-    data: { stock: { decrement: order.quantity } },
+  // Guard the stock decrement; 0 rows means insufficient stock
+  const stocked = await tx.inventory.updateMany({
+    where: { productId, stock: { gte: qty } },
+    data: { stock: { decrement: qty } },
   });
+  if (stocked.count === 0) {
+    throw new Error("Insufficient stock");
+  }
 });
 ```
+
+Each `updateMany` includes its precondition in the `where` clause and reports how many rows it touched. Throwing on a zero count rolls the whole transaction back, so a retry or a race cannot double-charge or oversell.
 
 ## 11. Reuse the Prisma Client
 
@@ -512,7 +520,7 @@ On Prisma Postgres, Query Insights shows query counts, latency percentiles, and 
 `include` loads a relation and returns all fields on both the parent and the related model. `select` lets you choose exactly which fields to return, including nested fields inside relations. Use `select` when you know which fields a handler uses, especially on wide tables. Use `include: true` only when you need all fields on the related model.
   </Accordion>
   <Accordion title="Is cursor pagination always better than offset pagination?">
-Cursor pagination has constant cost regardless of page number, because it uses an index seek on the cursor value. Offset pagination (`skip: n`) discards `n` rows before returning results, so deep pages do more work. Cursor pagination is the right default for large tables and infinite-scroll UIs. Offset pagination is simpler to implement and works fine when result sets are small or when users need random access to specific page numbers.
+Cursor pagination has constant cost regardless of page number, because it uses an index seek on the cursor value. That holds only when the query orders by the cursor field (or includes it as a unique tiebreaker) and an index backs that order, which is why a primary key or another unique, sequential column makes the best cursor. Offset pagination (`skip: n`) discards `n` rows before returning results, so deep pages do more work. Cursor pagination is the right default for large tables and infinite-scroll UIs. Offset pagination is simpler to implement and works fine when result sets are small or when users need random access to specific page numbers.
   </Accordion>
   <Accordion title="Can counter fields get out of sync?">
 Yes, but not from transaction rollbacks: a failed `prisma.$transaction` rolls back the record write and the counter update together. Drift comes from writes that bypass the counter logic, such as rows inserted or deleted by a migration, a manual fix in a database console, or incorrect reconciliation code. Verify counters periodically against the actual aggregate for anything correctness-sensitive, for example with a scheduled job that reconciles the counter column against a `COUNT(*)` on a sample of records.
