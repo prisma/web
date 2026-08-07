@@ -1,0 +1,132 @@
+---
+title: "Why Your Agent Reads a Prisma Schema Better Than Your Codebase"
+slug: "prisma-schema-as-llm-context"
+date: "2026-08-06"
+authors:
+  - "Nurul Sundarani"
+metaTitle: "Prisma Schema as LLM Context: Why Agents Read It Best"
+metaDescription: "Your data model in one declarative file. We measure what a Prisma schema costs an AI coding agent in tokens and type-check time, and what it buys."
+heroImagePath: "/prisma-schema-as-llm-context/imgs/hero.svg"
+heroImageAlt: "A coding agent reading a compact Prisma schema beside a sprawling codebase"
+metaImagePath: "/prisma-schema-as-llm-context/imgs/meta.png"
+tags:
+  - "ai"
+  - "orm"
+---
+
+Point a coding agent at a repo and ask how the data model works. The agent usually cannot read the whole codebase, so it greps, opens a few files, and builds a working theory from whatever fits in its context window. [Prisma ORM](https://www.prisma.io/docs/orm)'s schema collapses that search into one file: your models, relations, key constraints, and indexes, in a format built to be parsed. In this post we measure the context cost, in tokens and in type-check time, and mark where the limits are.
+
+## Agents don't read your codebase, they sample it
+
+Claude Code, Cursor, and Codex work broadly the same way at the file level: search for something that looks relevant, open it, read a slice, decide what to open next. Context is a budget. Every file the agent reads to understand your data model is capacity it no longer has for the actual task.
+
+That sampling gets expensive when the data model has no single source of truth: entity classes in one directory, hand-written migrations in another, conventions enforced only at query call sites. There, answering "can a user belong to two organizations?" means finding the join entity, checking its constraints, then confirming nothing in the migration history overrides them. Each hop costs tokens, and each hop is a chance to build the theory on the wrong file.
+
+The failure is quiet. An agent that misreads nullability or a cascade rule writes plausible code that compiles, passes a shallow review, and breaks at runtime when the foreign key it assumed was optional turns out not to be. The agent didn't misbehave; it filled a gap in its context with a guess, the same way it fills every gap.
+
+## One file that answers the questions that matter
+
+A Prisma schema is a declarative file, `schema.prisma`, that defines an application's relational data model in one place: models, field types, relations, key constraints, indexes, and defaults. Prisma ORM, a type-safe TypeScript ORM, generates the client API from this one file and drafts the SQL migrations from its changes, which is what makes it trustworthy context. Here is one model from a schema we'll use throughout this post, a standard multi-tenant SaaS app:
+
+```prisma
+model Membership {
+  id             String       @id @default(uuid())
+  role           Role         @default(MEMBER)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String       @map("user_id")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String       @map("organization_id")
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+  @@map("memberships")
+}
+```
+
+Twelve lines, and an agent can answer the questions that matter about this table without opening another file:
+
+- A user can belong to many organizations, but only once each (`@@unique`)
+- Deleting a user or an organization removes their memberships (`onDelete: Cascade`)
+- New members default to `MEMBER`, and the valid roles live in one enum
+- Lookups by organization are indexed; lookups by role are not
+
+The same holds for the whole file: relations point both ways, optionality is a `?` on the field, and defaults sit next to the columns they apply to. Not everything lives here; `CHECK` constraints, triggers, and row-level security policies stay in SQL, and the file opens with two short config blocks. Larger schemas can also split across a folder of files; the single source is the point, not the single file. But the tables, relations, and indexes an agent needs for everyday feature work are all in one place, with no import graph to chase.
+
+Because migrations are generated from schema changes, the schema stays in step with the database as long as changes flow through it. And when someone changes the database out-of-band, a manual hotfix, say, `prisma migrate dev` flags the drift the next time it runs in development. Schema-first code tools like drizzle-kit offer similar diffs; the tripwire exists wherever a canonical schema artifact does, which is the point of having one.
+
+## Declarative states, code composes
+
+Code-based ORMs like Drizzle and TypeORM express the same information as TypeScript, and, to be fair, Drizzle consolidates it too: an idiomatic Drizzle project keeps its tables in one schema file, not scattered across the repo. The difference is the form the facts arrive in. The membership table above looks like this in idiomatic Drizzle:
+
+```ts
+export const memberships = pgTable(
+  "memberships",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    role: roleEnum("role").notNull().default("MEMBER"),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+  },
+  (t) => [
+    uniqueIndex("memberships_user_org_unique").on(t.userId, t.organizationId),
+    index("memberships_org_idx").on(t.organizationId),
+  ],
+);
+```
+
+The foreign keys are right there in the `.references()` calls, so a bare table definition already shows how `memberships` points outward. What it leaves implicit is the reverse direction: nothing in this block says a user has memberships. In Drizzle's stable 0.x line, that half lives in a second `relations()` block per table, which the relational query API also needs before an agent can traverse the links in queries (Drizzle 1.0, at release-candidate stage as this is written, consolidates these into a single `defineRelations` block). An LLM parses TypeScript fluently, so this is not about readability. It is about reconstruction: the same facts arrive in two halves, wrapped in function calls and threaded through an import list, and they cost more tokens.
+
+The form shows up again when the agent verifies its work. Prisma front-loads most of its type cost into a generate step after each schema change, shipping concrete declarations; a code-based schema makes the compiler re-infer the model whenever it checks cold. [We benchmarked this with `@ark/attest`](/why-prisma-orm-checks-types-faster-than-drizzle): type-checking both ORMs' definitions of the classic Northwind schema triggered 428 type instantiations with Prisma ORM against 41,150 with Drizzle 0.44.4, with check times of 205ms against 602ms. Drizzle's 1.0 beta improves that to 5,017 instantiations and 369ms, against Prisma's 191ms on the same machine (measured on `1.0.0-beta.1`; the current release candidate may differ). The per-check gap is modest in absolute terms; whether it matters depends on how often your agent type-checks, and whether the check runs warm or cold.
+
+## Put it to the test
+
+To put numbers on the context cost, we modeled the same application twice: nine models and two enums covering users, organizations, memberships, projects, API keys, webhooks, invoices, subscriptions, and an audit log, both aiming at the same snake_case Postgres layout. The Prisma version carries the `@map` annotations that naming parity requires and validates on current Prisma ORM; the Drizzle version is idiomatic 0.x with the `relations()` blocks the relational query API expects. Token counts use [gpt-tokenizer](https://github.com/niieani/gpt-tokenizer) 3.4.0 with the `o200k_base` encoding; line counts partly reflect formatter wrapping, and absolute token counts vary by tokenizer, so read the ratio, not the digits.
+
+|            | Prisma schema | Drizzle schema |
+| ---------- | ------------- | -------------- |
+| Lines      | 140           | 212            |
+| Characters | 3,983         | 6,109          |
+| Tokens     | 968           | 1,543          |
+
+Same models, constraints, and indexes, though not byte-identical DDL: each tool keeps its own default column types, `text` against `uuid` for the IDs, and matching those exactly would add `@db.Uuid` annotations, and tokens, to the Prisma side. The declarative version costs about a third fewer tokens, and the gap runs both ways: skip the relational query API and its `relations()` blocks and a bare Drizzle schema drops to 1,088 tokens, close to parity. The token savings are real but they are not the headline. The headline is that the schema is one canonical artifact: the same file feeds the client, the migration drafts, and the agent. One caveat comes with that: generated migrations are committed SQL you can customize, and deploys apply that SQL as written. If your migrations carry hand-written DDL, the `CHECK` constraints and policies from earlier, give the agent the migrations directory alongside the schema.
+
+You can test the qualitative half on your own project in five minutes. Give your agent only the schema file and ask:
+
+1. "Which deletes cascade, and what happens if I delete an organization that still has invoices?"
+2. "Which fields on `Invoice` are optional, and which lookups are indexed?"
+3. "Can the same user join the same organization twice?"
+
+All three are answerable from the schema plus the ORM's documented defaults, including the trap in the first: `Invoice.organization` declares no `onDelete`, and Prisma's default for a required relation is `Restrict`, so an organization with invoices cannot be deleted at all. To be clear about what this test shows: a single-file Drizzle schema passes it too. It separates agents that have the data model in context from agents reconstructing it from application code; the sections above are about what that context costs.
+
+## Prisma Next treats schema-as-context as a feature
+
+[Prisma Next](https://www.prisma.io/docs/orm/next), the next generation of the ORM currently in early access, makes this a design goal rather than a side effect: the schema stays small, dense, and machine-readable, treated as first-class LLM context rather than an implementation detail, and errors are structured for agent consumption, carrying documentation URLs that resolve to a stable reference for the exact error.
+
+The schema answers "what is the data model." The other half, "how do we change it safely here," belongs in your agent rules file; we covered a copy-pasteable version in [What to Put in Your AGENTS.md](/agents-md-for-databases).
+
+## Where to go from here
+
+Your agent reasons about your data about as well as the context you hand it. A declarative schema is cheap, high-quality context: one parseable file that the client, the migrations, and the agent all start from, kept in step with the database by the migration workflow.
+
+If you already use Prisma, try the three prompts above against your own schema. If your model lives in code today, `npx prisma init` and an introspection run will give you a schema file to compare against, and the [Prisma ORM docs](https://www.prisma.io/docs/orm) cover the path from there.
+
+## Frequently asked questions
+
+<Accordions type="single">
+  <Accordion title="Why is a Prisma schema good context for an AI coding agent?">
+It puts the relational data model, including relations, key constraints, indexes, and defaults, in one declarative source, and the client and migration drafts are generated from that same source, so the schema and the database move together in the normal workflow. Code-based definitions spread the same facts across table objects, relation helpers, and imports.
+  </Accordion>
+  <Accordion title="How many tokens does a Prisma schema cost in an agent's context window?">
+A 9-model SaaS schema measures 968 tokens with gpt-tokenizer 3.4.0 (`o200k_base` encoding). The equivalent idiomatic Drizzle definitions measure 1,543 tokens with the `relations()` blocks the relational query API expects, or 1,088 without them.
+  </Accordion>
+  <Accordion title="Is a declarative schema faster for TypeScript to type-check than a code-based one?">
+In our benchmark, yes. Type-checking both ORMs' definitions of the Northwind schema with `@ark/attest` triggered 428 type instantiations for Prisma ORM against 41,150 for Drizzle 0.44.4, with check times of 205ms against 602ms. Drizzle's 1.0 beta improves to 5,017 instantiations and 369ms, against Prisma's 191ms.
+  </Accordion>
+  <Accordion title="What should I give a coding agent so it understands my database?">
+Two files: the `schema.prisma` for what the data model is, and a rules file such as AGENTS.md for how to change it safely. This post covers the schema half; the companion post on AGENTS.md database rules covers the other.
+  </Accordion>
+</Accordions>
