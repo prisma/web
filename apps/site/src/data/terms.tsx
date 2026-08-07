@@ -16,9 +16,11 @@ export const termsSections: TermsSection[] = [
           Your use of the Prisma service is governed by this agreement (the &quot;Terms&quot;).
           &quot;Prisma&quot; means Prisma Data, Inc and its subsidiaries or affiliates involved in
           providing the Prisma Service. The &quot;Prisma Service&quot; means the services Prisma
-          makes available through this website, including the website itself, the Prisma cloud
-          computing platform, the Prisma API, add-ons, and any other software or services offered by
-          Prisma, including Early Access releases.
+          makes available through this website, including the website itself, the Prisma Console,
+          Prisma Postgres, Prisma Compute, Query Insights, Prisma Accelerate, Prisma Studio
+          (including Embeddable Prisma Studio as described in Section 19), the Prisma API, add-ons,
+          and any other software or services offered by Prisma, including Beta Services and Early
+          Access releases.
         </p>
         <p>
           &quot;Free Tier&quot; refers to the no-cost access tier of the Prisma Services, which
@@ -30,6 +32,9 @@ export const termsSections: TermsSection[] = [
           In order to use the Prisma Services, you must first agree to the Terms. You can agree to
           the Terms by actually using the Prisma Services. You understand and agree that Prisma will
           treat your use of the Prisma Services as acceptance of the Terms from that point onwards.
+          Use of the Prisma Services includes provisioning resources through the Prisma
+          command-line interface or other programmatic means, such as creating a database with{" "}
+          <code>npx create-db</code>.
         </p>
         <p>
           You may not use the Prisma Services if (a) you are not of legal age to form a binding
@@ -42,12 +47,31 @@ export const termsSections: TermsSection[] = [
           functionality or features.
         </p>
         <p>
-          Early Access products or features are provided &quot;as is&quot; and may contain bugs,
-          errors, or other issues. They are subject to significant changes during the development
-          period, and any data stored during this period may be wiped upon the conclusion of the
-          Early Access phase. Prisma Optimize is intended for testing and development purposes only
-          and should not be used in production environments due to potential data loss risks.
+          Early Access, Beta, or Public Beta products or features (&quot;Beta Services&quot;) are
+          provided &quot;as is&quot; and may contain bugs, errors, or other issues. They are subject
+          to significant changes during the development period, may be modified or discontinued at
+          any time, are not recommended for mission-critical workloads, and any data stored during
+          this period may be wiped upon the conclusion of the Beta or Early Access phase.
         </p>
+        <p>The following defined terms are used throughout these Terms:</p>
+        <ul>
+          <li>
+            &quot;Application&quot; means any software, code, service, or workload that you develop,
+            deploy, or run using the Prisma Services, including applications hosted on Prisma
+            Compute.
+          </li>
+          <li>
+            &quot;Content&quot; has the meaning given in Section 5, and comprises &quot;Customer
+            Content&quot; (data, code, and materials that you or your end users submit to, store
+            in, or process through the Prisma Services, including data stored in Prisma Postgres)
+            and &quot;Prisma Content&quot; (materials that Prisma makes available through the
+            Prisma Services).
+          </li>
+          <li>
+            &quot;Beta Services&quot; means products or features identified as Beta, Public Beta,
+            or Early Access, including Prisma Compute while in Public Beta.
+          </li>
+        </ul>
       </>
     ),
   },
@@ -77,6 +101,10 @@ export const termsSections: TermsSection[] = [
           infrastructure. You may not use the Prisma Services for the purpose of bringing an
           intellectual property infringement claim against Prisma or for the purpose of creating a
           product or service competitive with the Prisma Services.
+        </p>
+        <p>
+          You are responsible for your end users&apos; use of your Applications and for ensuring
+          that their use complies with these Terms, including Section 14 (Acceptable Use).
         </p>
       </>
     ),
@@ -141,6 +169,18 @@ export const termsSections: TermsSection[] = [
           Free Tier access depends on usage limits and feature availability. Prisma may suspend
           abusive users and restrict support or premium features to paid plans.
         </p>
+        <p>
+          Beta Services, including Prisma Compute while in Public Beta, are currently provided free
+          of charge. Prisma may introduce fees for Beta Services with advance notice, and may meter
+          usage of such services, including by request volume, provisioned memory, active CPU time,
+          and outbound bandwidth, when billing begins.
+        </p>
+        <p>
+          Fees for the Prisma Services may also be billed through authorized resellers or
+          marketplace partners (for example, Prisma Postgres purchased through Vercel). In such
+          cases, the reseller&apos;s payment terms govern billing and payment mechanics, while
+          these Terms continue to govern your use of the Prisma Services.
+        </p>
       </>
     ),
   },
@@ -157,10 +197,13 @@ export const termsSections: TermsSection[] = [
         </p>
         <p>
           Prisma reserves the right (but shall have no obligation) to remove any or all Content from
-          the Prisma Services. You agree to immediately take down any Content that violates the
-          Acceptable Use Policy, including pursuant to a take down request from Prisma. In the event
-          that you elect not to comply with a request from Prisma to take down certain Content,
-          Prisma reserves the right to directly take down such Content or to disable Applications.
+          the Prisma Services. You agree to immediately take down any Content that violates{" "}
+          <a href="#14.-acceptable-use">Section 14 (Acceptable Use)</a>, including pursuant to a
+          take down request from Prisma. In the event that you elect not to comply with a request
+          from Prisma to take down certain Content, Prisma reserves the right to directly take down
+          such Content or to disable Applications. Where required by applicable law, removals of
+          Content and disablement of Applications are subject to the statement of reasons described
+          in Section 21.
         </p>
         <p>
           You agree that you are solely responsible for (and that Prisma has no responsibility to
@@ -280,7 +323,7 @@ export const termsSections: TermsSection[] = [
           Prisma is constantly innovating in order to provide the best possible experience for its
           users. You acknowledge and agree that the form and nature of the Prisma Services which
           Prisma provides may change from time to time without prior notice to you, subject to the
-          terms in Section 4.3. Changes to the form and nature of the Prisma Services will be
+          terms in Section 4. Changes to the form and nature of the Prisma Services will be
           effective with respect to all versions of the Prisma Services; examples of changes to the
           form and nature of the Prisma Services include without limitation changes to fee and
           payment policies, security patches, added functionality, and other enhancements.
@@ -296,6 +339,15 @@ export const termsSections: TermsSection[] = [
           or any third party for such termination.
         </p>
         <p>
+          Prisma may suspend or disable an Application, a Prisma Compute deployment, or a Prisma
+          Postgres database that violates Section 14 (Acceptable Use), poses a security or
+          operational risk to the Prisma Services or to other customers, or exposes Prisma to legal
+          liability. Where required by applicable law, Prisma will provide notice and a statement
+          of reasons as described in Section 21. Prisma may act immediately and without prior
+          notice where the risk is severe, such as child sexual abuse material or active attack
+          infrastructure.
+        </p>
+        <p>
           For Free Tier users, Prisma may discontinue access with reasonable opportunities for
           upgrade or data export. You are solely responsible for exporting your Content prior to
           termination of your account for any reason, provided that if Prisma terminates your
@@ -303,7 +355,7 @@ export const termsSections: TermsSection[] = [
         </p>
         <p>
           Upon any termination of the Prisma Services or your account these Terms will also
-          terminate, but Sections 6.1, 9, 10, 11, 12, and 16 shall continue to be effective after
+          terminate, but Sections 6, 9, 10, 11, 12, 16, and 18 shall continue to be effective after
           these Terms are terminated.
         </p>
       </>
@@ -386,14 +438,46 @@ export const termsSections: TermsSection[] = [
     content: (
       <>
         <p>
-          You agree to set up a process to respond to notices of alleged infringement that comply
-          with the United States&apos; Digital Millennium Copyright Act (DMCA).
+          It is Prisma&apos;s policy to respond to notices of alleged copyright infringement that
+          comply with the United States&apos; Digital Millennium Copyright Act (DMCA) or other
+          applicable copyright laws, and to terminate, in appropriate circumstances, the accounts
+          of repeat infringers. Prisma reserves the right to remove Content or disable Applications
+          upon receiving valid infringement notices.
         </p>
         <p>
-          It is Prisma&apos;s policy to respond to notices of alleged infringement that comply with
-          the DMCA or other applicable copyright laws and to terminate the accounts of repeat
-          infringers. Prisma reserves the right to remove content or disable applications upon
-          receiving valid DMCA notices.
+          To report claimed copyright infringement, please send an email to{" "}
+          <a href="mailto:report@prisma.io">report@prisma.io</a> or contact Prisma&apos;s
+          designated Copyright Agent: [COPYRIGHT AGENT NAME AND POSTAL ADDRESS TO BE CONFIRMED BY
+          LEGAL — must match the agent registered with the US Copyright Office].
+        </p>
+        <p>A copyright infringement notice must include:</p>
+        <ul>
+          <li>Identification of the copyrighted work claimed to have been infringed</li>
+          <li>
+            Identification of the material claimed to be infringing and information reasonably
+            sufficient to permit Prisma to locate it, such as a URL
+          </li>
+          <li>
+            Your contact information, including your name, address, telephone number, and email
+            address
+          </li>
+          <li>
+            A statement that you have a good-faith belief that use of the material in the manner
+            complained of is not authorized by the copyright owner, its agent, or the law
+          </li>
+          <li>
+            A statement that the information in the notice is accurate and, under penalty of
+            perjury, that you are authorized to act on behalf of the copyright owner
+          </li>
+          <li>Your physical or electronic signature</li>
+        </ul>
+        <p>
+          If your Content or Application was removed or disabled as a result of an infringement
+          notice and you believe this was the result of a mistake or misidentification, you may
+          submit a counter-notice to the same contact containing the information required by 17
+          U.S.C. § 512(g)(3). Unless the original claimant files a court action, Prisma may restore
+          the removed material within ten (10) to fourteen (14) business days after receiving a
+          valid counter-notice.
         </p>
       </>
     ),
@@ -416,6 +500,11 @@ export const termsSections: TermsSection[] = [
           <li>Content furthering illegal activity</li>
           <li>Drug paraphernalia content</li>
           <li>Phishing or malicious content</li>
+          <li>
+            Child sexual abuse material (CSAM) or any content that sexualizes minors. Prisma
+            applies a zero-tolerance policy and reports apparent CSAM to the relevant authorities
+          </li>
+          <li>Content that promotes or facilitates terrorism or violent extremism</li>
           <li>Any other material that violates criminal laws or third-party rights</li>
         </ul>
         <p>Prohibited Actions include:</p>
@@ -429,7 +518,31 @@ export const termsSections: TermsSection[] = [
           <li>Interfering with or disrupting the Prisma Services</li>
           <li>Circumventing security measures</li>
           <li>Generating spam</li>
+          <li>
+            Cryptocurrency mining or other proof-of-work computation without Prisma&apos;s prior
+            written authorization
+          </li>
+          <li>Operating open proxies, open mail relays, or VPN or Tor exit nodes</li>
+          <li>Originating denial-of-service attacks or operating booter or stresser services</li>
+          <li>Operating spam infrastructure or sending bulk unsolicited messages</li>
+          <li>
+            Hosting phishing pages, distributing malware, or operating command-and-control
+            infrastructure
+          </li>
+          <li>Scanning or testing the security of third-party systems without authorization</li>
+          <li>
+            Abusing bandwidth or egress, such as operating proxy farms or large-scale scraping
+            relays
+          </li>
+          <li>Circumventing usage metering or quotas</li>
         </ul>
+        <p>
+          This section applies to Applications deployed on Prisma Compute, to data stored in
+          Prisma Postgres, and to your end users&apos; use of your Applications; you are
+          responsible for your end users&apos; compliance. To report abuse, please send an email to{" "}
+          <a href="mailto:report@prisma.io">report@prisma.io</a>. See Section 21 for how Prisma
+          handles reports of illegal content.
+        </p>
         <p>Early Access products are also subject to these restrictions.</p>
       </>
     ),
@@ -441,7 +554,8 @@ export const termsSections: TermsSection[] = [
         <p>
           Fair Use guidelines ensure equitable access for all customers, applying to primary account
           holders, administrators, and end-users. Usage limits may apply to API calls, storage, user
-          accounts, and data processing to optimize performance.
+          accounts, data processing, request volume, provisioned memory, active CPU time, outbound
+          bandwidth, and connection counts to optimize performance.
         </p>
         <p>Prohibited activities include:</p>
         <ul>
@@ -462,7 +576,8 @@ export const termsSections: TermsSection[] = [
         </p>
         <p>
           Policy updates appear on the website and users receive notifications. Questions may be
-          directed to <a href="mailto:legal@prisma.io">legal@prisma.io</a>.
+          directed to <a href="mailto:legal@prisma.io">legal@prisma.io</a>. To report abuse, please
+          send an email to <a href="mailto:report@prisma.io">report@prisma.io</a>.
         </p>
       </>
     ),
@@ -589,6 +704,118 @@ export const termsSections: TermsSection[] = [
           The free version includes telemetry collection to support service improvements. Repository
           contributors license their contributions under Apache 2.0, granting Prisma usage,
           modification, and distribution rights.
+        </p>
+      </>
+    ),
+  },
+  {
+    title: "20. Hosting Services: Prisma Compute and Prisma Postgres",
+    content: (
+      <>
+        <p>
+          Prisma Compute allows you to deploy and run Applications on infrastructure managed by
+          Prisma. You are solely responsible for the code you deploy, including its dependencies,
+          security patches and updates, its behavior, and its end users. Prisma manages the
+          underlying infrastructure only and does not review, monitor, or endorse the Applications
+          you deploy.
+        </p>
+        <p>
+          Default application URLs, such as subdomains of prisma.build, are provided at
+          Prisma&apos;s discretion and may be changed or reclaimed upon termination or suspension
+          of your account or Application. By connecting a custom domain, you represent and warrant
+          that you own or control that domain.
+        </p>
+        <p>
+          Prisma Postgres provides managed database services. You control, and are solely
+          responsible for, the Customer Content stored in your databases, including any personal
+          data of your end users and any consents or notices required to collect and process it.
+          Backup and point-in-time recovery features are provided as operational features of the
+          service and do not constitute a warranty or guarantee of data durability; Sections 10 and
+          11 apply.
+        </p>
+        <p>
+          Prisma Compute is a Beta Service as described in Section 1: it is provided free of charge
+          during the Public Beta, is provided &quot;as is,&quot; is not recommended for
+          mission-critical workloads, and its features, regions, and limits may change.
+        </p>
+        <p>
+          The Prisma Services are offered from the regions listed in the documentation. Region
+          selection determines where your resources are provisioned but does not by itself create a
+          data-residency commitment.
+        </p>
+        <p>
+          Prisma may suspend or disable Applications and databases as described in Section 9.
+        </p>
+      </>
+    ),
+  },
+  {
+    title: "21. Illegal Content: Reporting, Moderation, and Contact Points",
+    content: (
+      <>
+        <p>
+          To report abuse, illegal content, or copyright infringement on the Prisma Services,
+          please send an email to <a href="mailto:report@prisma.io">report@prisma.io</a>. Anyone
+          may submit a report, whether or not they are a Prisma customer.
+        </p>
+        <p>To help Prisma act on your report, please include:</p>
+        <ul>
+          <li>
+            The location of the content, such as the URL of the Application or resource concerned
+          </li>
+          <li>
+            An explanation of why you believe the content is illegal or violates these Terms
+          </li>
+          <li>
+            Your name and email address, unless the report concerns child sexual abuse material or
+            another category for which anonymous reporting is permitted
+          </li>
+          <li>
+            A statement that you believe, in good faith, that the information in your report is
+            accurate and complete
+          </li>
+        </ul>
+        <p>
+          When Prisma removes Content or suspends or disables an Application or account because of
+          illegal content or a violation of Section 14 (Acceptable Use), Prisma will, where
+          required by applicable law, provide the affected user with a statement of the facts and
+          grounds for the decision and information about available redress options.
+        </p>
+        <p>
+          Sections 5, 14, and this Section 21 together describe Prisma&apos;s content moderation
+          policies for the purposes of applicable law, including the EU Digital Services Act.{" "}
+          <a href="mailto:report@prisma.io">report@prisma.io</a> serves as Prisma&apos;s electronic
+          point of contact for communications from member state authorities, the European
+          Commission, and recipients of the service. [CONTACT POINT DESIGNATION TO BE CONFIRMED BY
+          LEGAL]
+        </p>
+        <p>
+          Prisma reports apparent child sexual abuse material to the National Center for Missing
+          &amp; Exploited Children (NCMEC) and to other authorities as required by applicable law,
+          including 18 U.S.C. § 2258A.
+        </p>
+      </>
+    ),
+  },
+  {
+    title: "22. Switching and Data Portability",
+    content: (
+      <>
+        <p>
+          You may export your Customer Content at any time. Customer Content stored in Prisma
+          Postgres can be exported using standard PostgreSQL tooling, such as{" "}
+          <code>pg_dump</code>. For Applications deployed on Prisma Compute, you retain your source
+          code and may retrieve your deployed assets and configuration. Prisma will provide exports
+          in structured, commonly used, machine-readable formats and will provide reasonable
+          assistance for migrations to another provider or to on-premises infrastructure.
+        </p>
+        <p>
+          Prisma does not currently charge fees specific to switching providers; standard usage
+          fees, such as outbound bandwidth, may apply. [SWITCHING CHARGE POSITION AND NOTICE
+          PERIODS TO BE CONFIRMED BY LEGAL] Where the EU Data Act or other applicable law applies
+          to your use of the Prisma Services, Prisma will comply with its obligations regarding
+          switching, including the phase-out of switching charges and the maximum notice periods
+          for switching or termination provided by that law.
         </p>
       </>
     ),

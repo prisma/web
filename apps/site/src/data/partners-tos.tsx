@@ -20,8 +20,9 @@ export const partnersTosSections: PartnersTosSection[] = [
         </p>
         <p>
           Prisma reserves the right to modify this Agreement at any time with reasonable notice.
-          Partners must also accept and comply with the Privacy Policy, Acceptable Use Policy, and
-          any Additional Terms that may apply.
+          Partners must also accept and comply with the Privacy Policy, the Acceptable Use terms in{" "}
+          <a href="/terms#14.-acceptable-use">Section 14 of the Terms of Service</a>, and any
+          Additional Terms that may apply.
         </p>
         <p>
           For questions about this Agreement, contact{" "}

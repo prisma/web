@@ -80,6 +80,24 @@ export function LegalAccordion({
     });
   };
 
+  useEffect(() => {
+    const openFromHash = () => {
+      const hash = decodeURIComponent(window.location.hash.slice(1));
+      if (!hash) return;
+      const idx = sections.findIndex(
+        (section) => section.title.trim().toLowerCase().replace(/\s+/g, "-") === hash,
+      );
+      if (idx === -1) return;
+      setOpenItems((prev) => new Set(prev).add(idx));
+      requestAnimationFrame(() => {
+        document.getElementById(hash)?.scrollIntoView();
+      });
+    };
+    openFromHash();
+    window.addEventListener("hashchange", openFromHash);
+    return () => window.removeEventListener("hashchange", openFromHash);
+  }, [sections]);
+
   const [isPrinting, setIsPrinting] = useState(false);
 
   const printPage = () => {
