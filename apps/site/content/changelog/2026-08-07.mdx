@@ -1,0 +1,167 @@
+---
+title: "Deploy a template to Prisma Compute in one click and install Prisma 8 as a single package"
+date: "2026-08-07"
+version: "2026-08-07"
+slug: "2026-08-07"
+headline: "Deploy a template to Prisma Compute in one click and install Prisma 8 as a single package"
+tags:
+  - "Prisma"
+  - "Prisma Compute"
+  - "Prisma Postgres"
+  - "Prisma 8"
+  - "Prisma ORM"
+canonical: "/changelog#log2026-08-07"
+metaDescription: "Prisma Compute adds one-click template deployment and a Deploy Button for any public repository, Prisma 8 ships its first release candidate installable as a single package, and the Management API adds workspace service token management."
+share:
+  active: true
+  content: "Look at this page: "
+---
+You can now deploy a production-ready template to Prisma Compute in one click, from any workspace. A new Deploy Button gives any public GitHub repository the same one-click setup from its README.
+
+Prisma 8 (Early Access, previously announced as Prisma Next) has its first release candidate: releases are now versioned `8.0.0-rc.N`, and an application installs one package, such as `@prisma/orm-postgres`, instead of a dozen.
+
+The Management API now creates and revokes workspace service tokens, previously a Console-only workflow, and reports a workspace's subscription plan.
+
+Prisma Migrate now refuses a shadow database URL that points at the main database, closing a data-loss path. Prisma Studio's local server no longer accepts requests from other network clients or websites.
+
+## Highlights
+
+### New · Deploy a template to Prisma Compute in one click
+
+You can now deploy a production-ready starter app to Prisma Compute (Public Beta) in one click. Pick Hono API, Next.js, or TanStack Start from the template catalog, and Prisma creates the GitHub repository, provisions a Prisma Postgres database, and starts the first deployment. Template deployment was previously limited to selected workspaces; every signed-in workspace member can now use it.
+
+![Prisma Compute template catalog in the Prisma Console, showing Hono API, Next.js, and TanStack Start templates](/changelog/prisma-compute-template-catalog.png)
+
+Browse the [template catalog](https://console.prisma.io/templates) to start.
+
+### New · Give your repository a Prisma Compute Deploy Button
+
+You can now add a Deploy Button to any public GitHub repository. A visitor who clicks it gets a copy of the repository in their own GitHub account, a Prisma project with a Prisma Postgres database, and a first deployment, all from one link.
+
+The link carries environment variable names only. Values are typed into the Prisma Console form and never appear in a URL.
+
+```text
+https://console.prisma.io/new/clone
+  ?repository-url=https://github.com/<owner>/<repo>
+  &env=DATABASE_URL,WEBHOOK_SECRET
+```
+
+### New · Install Prisma 8 as a single package
+
+The first Prisma 8 release candidate is out, and an application now installs one Prisma package. Until now an app that talks to PostgreSQL installed a dozen `@prisma-next/*` packages; everything now arrives as dependencies of one database package under the `@prisma` scope.
+
+```jsonc
+// package.json: the only Prisma dependency your app needs
+{
+  "dependencies": {
+    "@prisma/orm-postgres": "8.0.0-rc.1"
+  }
+}
+```
+
+Releases are now versioned `8.0.0-rc.N`, with no further `0.x` minors. Existing installs are not moved onto the release-candidate line by `npm update`: a `^0.x` range never matches a pre-release, so only a fresh install or an explicit version change lands on it.
+
+Shipped in [prisma/prisma#29864](https://github.com/prisma/prisma/pull/29864); versioning policy in [prisma/prisma#29899](https://github.com/prisma/prisma/pull/29899).
+
+## Prisma Compute
+
+Prisma Compute adds template deployment, the Deploy Button, package manager detection from `devEngines`, and a startup warning for apps that cannot receive traffic.
+
+- **Improved** · Prisma Compute builds now resolve the package manager from the `devEngines.packageManager` field in `package.json`, including semver ranges. Apps that declare pnpm only through `devEngines` no longer fall back to npm and fail on `workspace:` protocols.
+- **Improved** · Prisma Compute now warns at startup when an application binds only to localhost and cannot receive ingress traffic, instead of deploying silently and serving nothing.
+
+```json
+{
+  "devEngines": {
+    "packageManager": { "name": "pnpm", "version": "^11.0.4" }
+  }
+}
+```
+
+## Prisma Postgres
+
+Prisma Postgres places new Object Store buckets closer to their project and labels incremental backups.
+
+- **Improved** · New Object Store buckets are now provisioned in a region near the project's database region instead of a global location, which removes cross-region latency from bucket metadata requests. Existing buckets are unchanged.
+- **Improved** · Backup lists now distinguish incremental backups from full backups and report backup sizes in the correct unit.
+
+## Management API
+
+The Management API adds workspace service token management and a workspace subscription endpoint.
+
+- **New** · Workspace service tokens, previously manageable only in the Prisma Console under Workspace Settings, can now be created, listed, and revoked through `/v1/workspaces/{workspaceId}/service-tokens`. The token value is returned exactly once, at creation, and is never stored.
+- **New** · `GET /v1/workspaces/{workspaceId}/subscription` returns the workspace's plan name, whether usage is currently blocked, and the Console upgrade URL, so CLI tools and integrations can point users at the right recovery path.
+
+```bash
+# Create a token; the value is returned once, never stored
+curl -X POST https://api.prisma.io/v1/workspaces/$WORKSPACE/service-tokens \
+  -H "Authorization: Bearer $TOKEN" -d '{"name":"ci"}'
+
+# Revoke it
+curl -X DELETE https://api.prisma.io/v1/workspaces/$WORKSPACE/service-tokens/$TOKEN_ID \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Prisma 8
+
+Prisma 8 serves a complete error reference from the docs and consolidates its agent skills into one install.
+
+- **Docs** · Every error Prisma 8 emits carries a `docsUrl` that now resolves: the [error reference](https://www.prisma.io/docs/orm/next/reference/error-reference) renders all 244 error codes, and each link scrolls to its exact code. ([prisma/web#8125](https://github.com/prisma/web/pull/8125))
+- **Improved** · `prisma-next init` now installs one `prisma-8` agent skill instead of eleven per-workflow skills, and removes the retired skill directories from each agent's install root. ([prisma/prisma#29853](https://github.com/prisma/prisma/pull/29853))
+
+## Breaking changes
+
+> **Breaking:** Prisma 8 aggregate results now decode through the codec their target declares, so aggregate types change in `8.0.0-rc.1`: `count()` returns a `bigint` (`count === 2` is false when the value is `2n`), `sum` over 64-bit integers reads as an exact decimal string, and `JSON.stringify` throws on a bigint result. To migrate, sweep code for equality, arithmetic, and serialization against aggregate results, then regenerate contracts with `prisma-next contract emit`. ([prisma/prisma#29867](https://github.com/prisma/prisma/pull/29867))
+
+> **Breaking:** The Prisma 8 SQL driver interface is now two methods: `query()` streams rows and `execute()` returns statement statistics, with prepared execution expressed by an optional `preparedStatementHandle` on the request. Application code and query results are unaffected. To migrate a custom driver, implement the two-method shape. ([prisma/prisma#29907](https://github.com/prisma/prisma/pull/29907))
+
+## Fixes and improvements
+
+**Prisma Compute**
+
+- **Fixed** · Prisma Compute template and repository deployments now show progress immediately: the deploy button disables and reads `Preparing template` while GitHub authorization is prepared, instead of appearing unresponsive for several seconds.
+- **Fixed** · Prisma Compute template deployments that hit an already-used repository name now say so and ask for another name, instead of reporting that the repository changed during the copy.
+- **Fixed** · A race during repository creation no longer strands a freshly created repository and fails the deployment.
+
+**Prisma Console**
+
+- **Improved** · The Prisma Console billing page now shows Prisma Postgres operations remaining in the current cycle and when the allowance resets, instead of a calendar countdown.
+- **Improved** · A workspace paused at its operations limit now gets a recovery flow: the plan picker names the minimum plan that unblocks it, confirms operations are restored after the upgrade, and clears the resolved warning banners without a page reload.
+- **Improved** · An `Upgrade plan` action is now available from the account menu on every Prisma Console page.
+- **Improved** · Prisma Console signup keeps an entered email and password when moving between login and signup, and accepts 15-character browser-generated passwords.
+- **Fixed** · A billing upgrade link opened while signed out now returns to the requested upgrade dialog after password, GitHub, or Google sign-in.
+- **Fixed** · Workspaces suspended over unpaid invoices on a canceled subscription now unsuspend automatically once the invoices are paid.
+
+**Prisma Postgres**
+
+- **Improved** · Spend limits are now enforced for workspaces billed through the Vercel Marketplace: threshold emails and usage holds work the same as for directly billed workspaces.
+- **Fixed** · Object Store bucket creation no longer fails for projects whose display names exceed 50 characters.
+
+**Prisma MCP server**
+
+- **Fixed** · Connecting the Prisma MCP server from the Claude apps no longer fails with "Couldn't register with Prisma's sign-in service": client registration now accepts the `client_secret_post` authentication method.
+
+**Prisma ORM**
+
+- **Fixed** · Prisma Migrate now refuses a shadow database URL that denotes the main database, with the new error code `P3025`, before touching any database. Previously `prisma migrate diff --from-migrations` with such a configuration could drop the real schema and report success. ([prisma/prisma-engines#5851](https://github.com/prisma/prisma-engines/pull/5851))
+
+**Prisma Studio**
+
+- **Fixed** · Prisma Studio's local server now listens only on `127.0.0.1` and rejects browser requests from origins other than the active Studio URL. Previously a reachable network client, or a malicious website visited while Prisma Studio was open, could query the connected database. ([prisma/prisma#29890](https://github.com/prisma/prisma/pull/29890))
+
+**Prisma 8**
+
+- **Fixed** · Nested `some`/`every`/`none` predicates over self-referential relations now keep a distinct SQL scope at every level, so an inner filter no longer shadows the parent it correlates against. ([prisma/prisma#29900](https://github.com/prisma/prisma/pull/29900))
+- **Fixed** · `count()`, `sum()`, `avg()`, `min()`, and `max()` on a many-to-many include now traverse the junction table and return correct results for filtered relations. ([prisma/prisma#29888](https://github.com/prisma/prisma/pull/29888))
+- **Fixed** · Repeated upserts keyed on a `Bytes` column no longer fail with `ORM.MUTATION_ROW_MISSING`. ([prisma/prisma#29910](https://github.com/prisma/prisma/pull/29910))
+- **Fixed** · MongoDB `create()`, `update()`, `delete()`, and `upsert()` results now decode through codecs, so a created row's `_id` matches the value read back later. ([prisma/prisma#29879](https://github.com/prisma/prisma/pull/29879))
+- **Fixed** · Schemas that `@map` a column, table, or model to a name that is not a bare identifier now emit valid `contract.d.ts` with quoted keys. ([prisma/prisma#29889](https://github.com/prisma/prisma/pull/29889))
+- **Fixed** · Driver-level reads issued while a connection holds an open transaction no longer commit the caller's transaction on the PostgreSQL direct driver. ([prisma/prisma#29920](https://github.com/prisma/prisma/pull/29920))
+
+## Guides and articles
+
+- [Deploy with Alchemy](https://www.prisma.io/docs/compute/alchemy): an end-to-end infrastructure-as-code guide covering Prisma Postgres provisioning and Prisma Compute deployment, including authentication, custom domains, CI workflows, migrations, and cleanup.
+
+---
+
+*Need help applying these changes in production? [Prisma Enterprise Support](https://prisma.io/enterprise) can help with schema design, performance, security, and compliance.*
