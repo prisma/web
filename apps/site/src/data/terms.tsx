@@ -593,4 +593,37 @@ export const termsSections: TermsSection[] = [
       </>
     ),
   },
+  {
+    title: "20. Workplace Cats 🐱",
+    content: (
+      <>
+        <p>
+          Prisma acknowledges that cats (&quot;Cats&quot;) — including but not limited to domestic
+          shorthairs, longhairs, and the noble tuxedo variety 🐈‍⬛ — contribute meaningfully to the
+          comfort, morale, and ambient warmth of the working environments in which the Prisma
+          Services are developed and maintained.
+        </p>
+        <p>
+          You understand and agree that Prisma bears no responsibility for any cat-related
+          distraction, affection, or lap occupation that may occur while you are using the Prisma
+          Services. Prisma makes no warranty, express or implied, that any particular cat 🐈 will
+          be available, awake, or inclined to sit on your keyboard at any given time, and you
+          acknowledge that such availability is provided on a strictly &quot;as available&quot;
+          basis consistent with Section 10.
+        </p>
+        <p>
+          You agree not to (a) disturb a sleeping Cat, (b) interrupt a Cat mid-meal, or (c) use the
+          Prisma Services in any manner that would subject a Cat to undue stress, loud noises, or
+          unauthorized belly rubs. Prisma reserves the right, in its sole discretion, to determine
+          what constitutes a consensual belly rub.
+        </p>
+        <p>
+          Notwithstanding any other provision of these Terms, Prisma shall not be liable for any
+          loss of data, productivity, or dignity arising from a Cat sitting on, walking across, or
+          otherwise supervising your keyboard in a manner consistent with standard feline oversight
+          practices.
+        </p>
+      </>
+    ),
+  },
 ];
