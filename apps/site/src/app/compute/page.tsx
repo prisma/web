@@ -321,7 +321,7 @@ export default async function Page() {
             <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
               <Button asChild variant="ppg" size="2xl">
                 <a
-                  href="https://pris.ly/pdp?utm_source=site&utm_campaign=compute&utm_term=devrel"
+                  href="https://console.prisma.io/sign-up"
                   className="flex items-center gap-2"
                 >
                   <span>Try Prisma Compute</span>
@@ -330,7 +330,7 @@ export default async function Page() {
               </Button>
               <Button asChild variant="default-strong" size="2xl">
                 <a
-                  href="https://pris.ly/pricing-compute?utm_source=site&utm_campaign=compute&utm_term=devrel"
+                  href="https://www.prisma.io/docs/compute/pricing"
                   className="flex items-center gap-2"
                 >
                   <span>See pricing</span>
@@ -491,7 +491,7 @@ export default async function Page() {
             <div className="flex flex-col md:flex-row gap-6">
               <Button asChild variant="ppg" size="2xl">
                 <a
-                  href="https://pris.ly/compute-blog-pb?utm_source=site&utm_campaign=compute&utm_term=devrel"
+                  href="https://www.prisma.io/blog/launching-prisma-compute-public-beta"
                   className="flex gap-2 items-center"
                 >
                   <span>Read the launch post</span>
@@ -500,7 +500,7 @@ export default async function Page() {
               </Button>
               <Button asChild variant="default-strong" size="2xl">
                 <a
-                  href="https://pris.ly/compute-docs?utm_source=site&utm_campaign=compute&utm_term=devrel"
+                  href="https://www.prisma.io/docs/compute"
                   className="flex gap-2 items-center"
                 >
                   <span>Read the docs</span>

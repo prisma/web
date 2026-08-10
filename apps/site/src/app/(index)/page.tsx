@@ -284,7 +284,7 @@ export default function SiteHome() {
           </p>
           <div className="flex flex-col gap-6 items-center justify-center">
             <Button asChild variant="ppg" size="3xl" className="font-sans-display! font-[650]">
-              <a href="https://pris.ly/pdp?utm_source=site&utm_campaign=home&utm_term=devrel">
+              <a href="https://console.prisma.io/sign-up">
                 <span>Try Prisma</span>
                 <i className="fa-regular fa-arrow-right ml-2" />
               </a>
@@ -451,7 +451,7 @@ export default function SiteHome() {
               </div>
               <div className="flex flex-col gap-6 md:flex-row">
                 <Button asChild variant="ppg" size="2xl">
-                  <a href="https://pris.ly/pdp?utm_source=site&utm_campaign=home&utm_term=devrel">
+                  <a href="https://console.prisma.io/sign-up">
                     Try it out in the Console
                     <i className="fa-regular fa-arrow-right ml-2" />
                   </a>
