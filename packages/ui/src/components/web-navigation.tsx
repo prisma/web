@@ -54,11 +54,7 @@ function buildHref(base: string, utm?: WebNavigationProps["utm"]) {
   return isAbsolute ? url.toString() : `${url.pathname}${url.search}${url.hash}`;
 }
 
-function buildConsoleHref(
-  pathname: "/login" | "/sign-up",
-  utm?: WebNavigationProps["utm"],
-  preserveExactUtm = false,
-) {
+function buildConsoleHref(pathname: "/login" | "/sign-up", utm?: WebNavigationProps["utm"]) {
   if (!utm) {
     return `https://console.prisma.io${pathname}`;
   }
@@ -71,10 +67,6 @@ function buildConsoleHref(
     }
   }
 
-  if (!preserveExactUtm && !href.searchParams.has("utm_campaign")) {
-    href.searchParams.set("utm_campaign", pathname === "/login" ? "login" : "signup");
-  }
-
   return href.toString();
 }
 
@@ -85,8 +77,8 @@ export function WebNavigation({
   buttonVariant = "ppg",
 }: WebNavigationProps) {
   const [mobileView, setMobileView] = useState(false);
-  const loginHref = buildConsoleHref("/login", utm, preserveExactUtm);
-  const signupHref = buildConsoleHref("/sign-up", utm, preserveExactUtm);
+  const loginHref = buildConsoleHref("/login", utm);
+  const signupHref = buildConsoleHref("/sign-up", utm);
   const logoHref = preserveExactUtm
     ? buildHref("https://www.prisma.io", utm)
     : "https://www.prisma.io";
