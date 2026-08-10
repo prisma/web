@@ -236,7 +236,7 @@ export function PricingHeroPlans({
                     className="mt-4 w-full"
                   >
                     <a
-                      href="https://console.prisma.io/login?utm_source=website&utm_medium=pricing"
+                      href="https://console.prisma.io/login"
                       target="_blank"
                       rel="noopener noreferrer"
                     >

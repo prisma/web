@@ -65,7 +65,7 @@ export default function PricingPage() {
               </div>
               <div className="flex flex-col gap-6 md:flex-row">
                 <Button asChild variant="ppg" size="2xl">
-                  <a href="https://console.prisma.io/sign-up?utm_source=website&utm_medium=pricing&utm_campaign=cta">
+                  <a href="https://console.prisma.io/sign-up">
                     Create your first Database
                     <i className="fa-regular fa-arrow-right" />
                   </a>

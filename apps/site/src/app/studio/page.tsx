@@ -7,7 +7,7 @@ import { CopyCode } from "@/components/homepage/copy-btn";
 import { Youtube } from "@prisma-docs/ui/components/youtube";
 
 const CONSOLE_URL =
-  "https://console.prisma.io/login?utm_source=website&utm_medium=studio&utm_campaign=cta";
+  "https://console.prisma.io/login";
 const STUDIO_DOCS_URL = "https://www.prisma.io/docs/studio";
 const TRY_STUDIO_COMMAND = `npx try-prisma@latest --template orm/starter \\
 && cd hello-prisma \\

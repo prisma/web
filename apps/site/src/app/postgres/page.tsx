@@ -12,7 +12,7 @@ import { CarouselItem } from "@/components/enterprise/carousel-item";
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 
 const CONSOLE_URL =
-  "https://console.prisma.io/login?utm_source=website&utm_medium=postgres&utm_campaign=cta";
+  "https://console.prisma.io/login";
 
 const postgresStructuredData = createSoftwareApplicationStructuredData({
   path: "/postgres",
