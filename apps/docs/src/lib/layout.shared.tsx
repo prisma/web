@@ -1,15 +1,24 @@
 import type { LinkItemType } from "@/components/layout/link-item";
 import type { BaseLayoutProps } from "@/components/layout/shared";
 import Image from "next/image";
-import logoDark from "../../public/img/logo-dark.svg";
-import logoWhite from "../../public/img/logo-white.svg";
+import logoLight from "../../public/logo/full-color.svg";
+import logoDark from "../../public/logo/full-color-white.svg";
 import { DiscordIcon } from "@/components/icons/discord";
 import Link from "next/link";
 
+// The full-colour lockup (prism mark + wordmark) from the redesign. Two files
+// rather than one recoloured file: the wordmark is solid black in the light
+// asset and solid white in the dark one, while the prism mark keeps its own
+// cyan/yellow/red in both.
 export const logo = (
   <>
-    <Image alt="Prisma" src={logoDark} aria-label="Prisma" className="dark:hidden" />
-    <Image alt="Prisma" src={logoWhite} aria-label="Prisma" className="hidden dark:block" />
+    <Image alt="Prisma" src={logoLight} aria-label="Prisma" className="h-7 w-auto dark:hidden" />
+    <Image
+      alt="Prisma"
+      src={logoDark}
+      aria-label="Prisma"
+      className="hidden h-7 w-auto dark:block"
+    />
   </>
 );
 

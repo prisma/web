@@ -38,7 +38,7 @@ export function VersionSwitcher({
   const isCliVersion = isCliVersionPathname(pathname);
   const isGuidesVersion = isGuidesVersionPathname(pathname);
 
-  // Getting Started no longer has a version toggle: Prisma Next lives inline in the
+  // Getting Started no longer has a version toggle: Prisma 8 lives inline in the
   // getting-started sidebar as its own sections, so there is no "Docs version" dropdown.
   if (isGettingStartedVersion) {
     return null;
@@ -52,7 +52,7 @@ export function VersionSwitcher({
   const currentVersion = detectedVersion ?? null;
   const usesScopedVersions = isGettingStartedVersion || isCliVersion || isGuidesVersion;
   const visibleVersions = usesScopedVersions
-    ? versions.filter((version) => version === LATEST_VERSION || version === "next")
+    ? versions.filter((version) => version === LATEST_VERSION || version === "v8")
     : versions;
   const label = isGettingStartedVersion
     ? "Docs version"

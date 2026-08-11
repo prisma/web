@@ -3,7 +3,7 @@
 import { Button } from "@prisma/eclipse";
 import { trackCTA } from "@prisma-docs/ui/lib/analytics";
 
-const CTA_HREF = "https://pris.ly/pdp?utm_source=blog&utm_medium=blog_cta&utm_campaign=blog_post";
+const CTA_HREF = "https://console.prisma.io/sign-up";
 
 /**
  * The end-of-post conversion panel, and the one place in the reading flow

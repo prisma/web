@@ -14,13 +14,13 @@ If a rule here conflicts with house style, follow the house style and flag the c
 
 For a step-by-step example of writing each kind of page (how-to, concept, reference) and rewriting an existing one, see `references/how-to-use.md`.
 
-For a Prisma Next docs page or section (anything under `content/docs/orm/next/` or `content/docs/(index)/next/`), also read `references/prisma-next.md`: page location, redirect handling (commented out until the URL cutover), tested-example requirements, tab and diagram conventions, and naming rules.
+For a Prisma 8 docs page or section (anything under `content/docs/orm/v8/` or `content/docs/(index)/next/`), also read `references/prisma-8.md`: page location, redirect handling (commented out until the URL cutover), tested-example requirements, tab and diagram conventions, and naming rules.
 
 ## Foundation
 
 These come from Prisma's positioning. They shape how docs frame the product, without turning a page into marketing.
 
-- **Prisma is one integrated platform, not three separate tools.** Prisma Next, Prisma Postgres, and Prisma Compute are built to work together for TypeScript teams. When a page spans more than one, show how they connect; the integration is the reason to use them together, so make it the spine of the page rather than a footnote.
+- **Prisma is one integrated platform, not three separate tools.** Prisma 8, Prisma Postgres, and Prisma Compute are built to work together for TypeScript teams. When a page spans more than one, show how they connect; the integration is the reason to use them together, so make it the spine of the page rather than a footnote.
 - **Write for a TypeScript developer, often one building with an AI coding agent.** They want fewer moving parts and a working path, not a tour of features.
 - **Be honest about maturity.** Don't claim general availability or production readiness for early-stage products (Prisma Compute is early-stage). Don't call a product best-in-class or claim feature parity across products. When the source material is unsure, use narrower wording and flag it.
 
@@ -117,7 +117,7 @@ Better:
 - Prefer one complete, real example over an abstract description of options. Show the common case; link to the reference for the rest.
 - State a limitation where the reader will hit it, inline with the relevant step, not in a footnote.
 - Link the first mention of a concept the reader may not know. Don't re-link it every time.
-- Use exact product names: Prisma Postgres, Prisma Compute, Prisma Next. Don't shorten "Prisma Postgres" to "the database" or "Prisma Next" to "the ORM" once a page covers more than one product.
+- Use exact product names: Prisma Postgres, Prisma Compute, Prisma 8. Don't shorten "Prisma Postgres" to "the database" or "Prisma 8" to "the ORM" once a page covers more than one product.
 - When you tell the reader something is automatic, show the trigger that makes it happen and how to confirm it did. "Compute injects `DATABASE_URL` automatically" needs a follow-up: "Run `prisma compute env` to confirm it's set."
 
 ## Teach in plain language
@@ -134,7 +134,7 @@ Better (idea first, example second, terms last):
 >
 > For example, a blog has users, posts, and comments. A user has fields like an email and a name. These models also relate to each other: a user can write many posts, and a post can have many comments.
 >
-> In Prisma Next, you define this structure in a `contract.prisma` file. This file becomes the shared contract between your application code, database migrations, and developer tools.
+> In Prisma 8, you define this structure in a `contract.prisma` file. This file becomes the shared contract between your application code, database migrations, and developer tools.
 
 The same rule applies inside sections: when a paragraph packs several decisions together, split it into short subsections, one decision each, and show a code block for every option you name. Guidance that lives only in inline code (`Int @id @default(autoincrement())` mid-sentence) belongs in a fenced block with a sentence of its own.
 

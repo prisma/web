@@ -1,14 +1,15 @@
-import type { Metadata } from "next"
-import { placeholderContent } from "@/components/product/placeholder-content"
-import { ProductPage } from "@/components/product/product-page"
+import type { Metadata } from "next";
+import { postgresContent } from "@/components/product/content/postgres";
+import { ProductPage } from "@/components/product/product-page";
 
-// First instance of the product page template (design-ref/sitemap.md,
-// Platform group). Placeholder copy until the Postgres content lands.
 export const metadata: Metadata = {
-  title: "Postgres",
-  description: "Managed Postgres, provisioned in seconds.",
-}
+  title: "Prisma Postgres",
+  description: "Production-ready Postgres, already wired to your stack.",
+};
 
+// /postgres is the one page whose approved copy matches the standard shape
+// exactly — hero, problem, features, cross-sell, testimonials, closer — so it
+// goes through ProductPage rather than composing the sections itself.
 export default function PostgresPage() {
-  return <ProductPage content={placeholderContent} />
+  return <ProductPage content={postgresContent} />;
 }

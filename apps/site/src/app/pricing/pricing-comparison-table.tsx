@@ -9,11 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@prisma/eclipse";
-import {
-  type ComparisonCell,
-  type Symbol,
-  comparisonSections,
-} from "./pricing-data";
+import { type ComparisonCell, type Symbol, comparisonSections } from "./pricing-data";
 
 function renderCell(cell: ComparisonCell, currency: Symbol): string {
   if (typeof cell === "string") return cell;
@@ -68,9 +64,7 @@ export function PricingComparisonTable({ currency }: { currency: Symbol }) {
                   key={label}
                   className="hover:bg-transparent border-b border-background-neutral-reverse-weak"
                 >
-                  <TableCell className="type-text-sm text-foreground-neutral">
-                    {label}
-                  </TableCell>
+                  <TableCell className="type-text-sm text-foreground-neutral">{label}</TableCell>
                   {row.slice(1).map((cell, valueIndex) => (
                     <TableCell
                       key={`${label}-${valueIndex}-${renderCell(cell, currency)}`}

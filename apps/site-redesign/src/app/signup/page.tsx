@@ -48,8 +48,8 @@ export default function SignupPage() {
               </Button>
               <p className="text-xs text-muted-foreground text-center">
                 By signing up, you agree to our{" "}
-                <Link href="/terms" className="underline">Terms</Link> and{" "}
-                <Link href="/privacy" className="underline">Privacy Policy</Link>.
+                <Link href="/legal/terms" className="underline">Terms</Link> and{" "}
+                <Link href="/legal/privacy" className="underline">Privacy Policy</Link>.
               </p>
             </form>
 

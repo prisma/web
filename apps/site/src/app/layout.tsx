@@ -219,7 +219,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <Provider>
           <ThemeProvider defaultTheme="system" storageKey="theme">
             <UtmPersistence />
-            <NavigationWrapper links={baseOptions().links} utm={{ source: "website" }} />
+            <NavigationWrapper links={baseOptions().links} />
             {children}
             <FooterWrapper />
           </ThemeProvider>

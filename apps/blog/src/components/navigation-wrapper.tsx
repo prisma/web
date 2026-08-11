@@ -7,14 +7,12 @@ import { Header, type NavLink } from "@/components/chrome/Header";
 
 interface NavigationWrapperProps {
   links: NavLink[];
-  utm: {
-    source: string;
-    medium: string;
-  };
 }
 
 // UTM propagation, lifted verbatim out of @prisma-docs/ui's WebNavigation so
 // swapping in the blog-local CF header does not change a single outbound URL.
+// Outbound links only ever carry UTMs the visitor arrived with — no defaults
+// are added (matching the site-wide drop of default console-CTA UTMs).
 function buildHref(base: string, utm?: UtmParams) {
   if (!utm) return base;
   const isAbsolute = base.startsWith("http");
@@ -27,11 +25,7 @@ function buildHref(base: string, utm?: UtmParams) {
   return isAbsolute ? url.toString() : `${url.pathname}${url.search}${url.hash}`;
 }
 
-function buildConsoleHref(
-  pathname: "/login" | "/sign-up",
-  utm?: UtmParams,
-  preserveExactUtm = false,
-) {
+function buildConsoleHref(pathname: "/login" | "/sign-up", utm?: UtmParams) {
   if (!utm) return `https://console.prisma.io${pathname}`;
 
   const href = new URL(`https://console.prisma.io${pathname}`);
@@ -42,19 +36,11 @@ function buildConsoleHref(
     }
   }
 
-  if (!preserveExactUtm && !href.searchParams.has("utm_campaign")) {
-    href.searchParams.set("utm_campaign", pathname === "/login" ? "login" : "signup");
-  }
-
   return href.toString();
 }
 
-export function NavigationWrapper({ links, utm }: NavigationWrapperProps) {
+export function NavigationWrapper({ links }: NavigationWrapperProps) {
   const [mounted, setMounted] = useState(false);
-  const defaultUtmParams = {
-    utm_source: utm.source,
-    utm_medium: utm.medium,
-  };
 
   useEffect(() => {
     setMounted(true);
@@ -64,18 +50,16 @@ export function NavigationWrapper({ links, utm }: NavigationWrapperProps) {
     ? getUtmParams(new URLSearchParams(window.location.search))
     : {};
   const preserveExactUtm = hasUtmParams(currentUtmParams);
-  const resolvedUtmParams = preserveExactUtm ? currentUtmParams : defaultUtmParams;
+  const utmForLinks = preserveExactUtm ? currentUtmParams : undefined;
 
-  const logoHref = preserveExactUtm
-    ? buildHref("https://www.prisma.io", resolvedUtmParams)
-    : "https://www.prisma.io";
+  const logoHref = buildHref("https://www.prisma.io", utmForLinks);
   const resolvedLinks = preserveExactUtm
     ? links.map((link) => ({
         ...link,
-        url: link.url && !link.external ? buildHref(link.url, resolvedUtmParams) : link.url,
+        url: link.url && !link.external ? buildHref(link.url, utmForLinks) : link.url,
         sub: link.sub?.map((sub) => ({
           ...sub,
-          url: sub.external ? sub.url : buildHref(sub.url, resolvedUtmParams),
+          url: sub.external ? sub.url : buildHref(sub.url, utmForLinks),
         })),
       }))
     : links;
@@ -90,8 +74,8 @@ export function NavigationWrapper({ links, utm }: NavigationWrapperProps) {
       <Header
         links={resolvedLinks}
         logoHref={logoHref}
-        loginHref={buildConsoleHref("/login", resolvedUtmParams, preserveExactUtm)}
-        signupHref={buildConsoleHref("/sign-up", resolvedUtmParams, preserveExactUtm)}
+        loginHref={buildConsoleHref("/login", utmForLinks)}
+        signupHref={buildConsoleHref("/sign-up", utmForLinks)}
       />
     </>
   );

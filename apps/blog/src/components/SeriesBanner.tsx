@@ -37,6 +37,10 @@ export function SeriesBanner({ series }: { series: SeriesContext }) {
         {series.posts.map((post, i) => {
           const isCurrent = i + 1 === series.index;
           const label = (post.seriesIndex ?? i + 1).toString().padStart(2, "0");
+          // Hover on non-current rows is the docs sidebar's move: the row
+          // washes in `fd-accent` cyan and the title answers in
+          // `fd-accent-foreground` via group-hover (the title carries an
+          // explicit ink colour, so the wash alone would not recolour it).
           const inner = (
             <span className="flex items-baseline gap-3 px-4 py-3">
               <span className="shrink-0 text-xs tabular-nums text-foreground-neutral-weak">
@@ -46,7 +50,7 @@ export function SeriesBanner({ series }: { series: SeriesContext }) {
                 className={
                   isCurrent
                     ? "font-medium text-foreground-neutral-strong"
-                    : "text-foreground-neutral"
+                    : "text-foreground-neutral transition-colors duration-300 group-hover:text-fd-accent-foreground motion-reduce:transition-none"
                 }
               >
                 {post.title}
@@ -67,7 +71,7 @@ export function SeriesBanner({ series }: { series: SeriesContext }) {
               ) : (
                 <Link
                   href={post.url}
-                  className="block transition-colors duration-300 hover:bg-background-neutral hover:text-foreground-ppg motion-reduce:transition-none"
+                  className="group block transition-colors duration-300 hover:bg-fd-accent motion-reduce:transition-none"
                 >
                   {inner}
                 </Link>

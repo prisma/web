@@ -961,7 +961,7 @@ const relationManyToMany: FlowScene = {
     {
       id: "post1",
       label: "Post",
-      sub: "Hello Prisma Next",
+      sub: "Hello Prisma 8",
       variant: "project",
       x: 24,
       y: 46,

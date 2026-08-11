@@ -133,9 +133,7 @@ const twoCol_2 = [
     content: (
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
-          <h5 className="text-foreground-orm type-title-sm">
-            Prisma Benchmarks
-          </h5>
+          <h5 className="text-foreground-orm type-title-sm">Prisma Benchmarks</h5>
           <h2 className="text-foreground-neutral stretch-display text-3xl font-sans-display">
             Prisma vs other ORMs
           </h2>
@@ -243,7 +241,7 @@ const features = [
     image: "/illustrations/orm/collaborative",
     alt: "Collaborative work",
     icon: "fa-light fa-screen-users",
-    link: "https://console.prisma.io/login?utm_source=website&utm_medium=orm&utm_campaign=cta",
+    link: "https://console.prisma.io/login",
   },
   {
     title: "Browse your data",
@@ -299,7 +297,7 @@ export default function ORM() {
             </Button>
             {/*<Button
               variant="default-strong"
-              href="https://console.prisma.io/sign-up?utm_source=website&utm_medium=index&utm_campaign=cta"
+              href="https://console.prisma.io/sign-up"
               size="3xl"
               target="_blank"
               rel="noopener noreferrer"

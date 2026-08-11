@@ -46,8 +46,8 @@ model Movie {
     filename: "prisma-next.config.ts",
     lang: "typescript",
     source: `import "dotenv/config";
-import pgvector from "@prisma-next/extension-pgvector/control";
-import { defineConfig } from "@prisma-next/postgres/config";
+import pgvector from "@prisma/orm-extension-pgvector/control";
+import { defineConfig } from "@prisma/orm-postgres/config";
 
 export default defineConfig({
   contract: "./src/prisma/contract.prisma",

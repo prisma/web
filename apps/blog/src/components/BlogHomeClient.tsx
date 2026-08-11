@@ -134,11 +134,11 @@ export function BlogHomeClient({ items, uniqueTags, seriesShelf }: BlogHomeClien
                       href={buildBlogHref(currentCategory, entry)}
                       isActive={entry === currentPage}
                       // Current page is an ink pill; the rest stay ghost and
-                      // only pick up the paper wash on hover.
+                      // answer hover with the docs shell's cyan accent wash.
                       className={
                         entry === currentPage
                           ? "bg-background-neutral-reverse-strong text-foreground-neutral-reverse shadow-box-low hover:bg-background-neutral-reverse"
-                          : "hover:bg-background-neutral"
+                          : "hover:bg-fd-accent hover:text-fd-accent-foreground"
                       }
                     >
                       {entry}

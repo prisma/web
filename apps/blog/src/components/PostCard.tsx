@@ -135,11 +135,15 @@ export function PostCard({
         "spectrum-border group flex h-full flex-col overflow-hidden rounded-square-high border border-stroke-neutral shadow-box-low",
         "transition-[box-shadow,border-color] duration-500 hover:border-transparent hover:shadow-box",
         "motion-reduce:transition-none",
+        // In dark mode the card lifts to the docs' surface step —
+        // `background-neutral-weak` is #1a1a1a on the #0f0f0f page, the same
+        // pairing the docs shell uses for `--card` — instead of dissolving
+        // into the page at the same #0f0f0f.
         isSplit
           ? "bg-card-wash md:grid md:grid-cols-2 md:items-stretch"
           : featured
             ? "bg-card-wash"
-            : "bg-background-default",
+            : "bg-background-default dark:bg-background-neutral-weak",
       )}
     >
       {imageSrc ? (

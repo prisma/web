@@ -4,6 +4,7 @@ import { SITE_HOME_DESCRIPTION, SITE_HOME_TITLE } from "@/lib/site-metadata";
 import { Button } from "@prisma/eclipse";
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import Image from "next/image";
+import { ConsoleCtaButton } from "@/components/console-cta-button";
 import { CardSection } from "@/components/homepage/card-section/card-section";
 import LogoParade from "@/components/logo-parade";
 import review from "../../data/homepage.json";
@@ -283,12 +284,19 @@ export default function SiteHome() {
             Compute designed to work together natively.
           </p>
           <div className="flex flex-col gap-6 items-center justify-center">
-            <Button asChild variant="ppg" size="3xl" className="font-sans-display! font-[650]">
-              <a href="https://pris.ly/pdp?utm_source=site&utm_campaign=home&utm_term=devrel">
+            <ConsoleCtaButton
+              consolePath="/sign-up"
+              variant="ppg"
+              size="3xl"
+              className="font-sans-display! font-[650]"
+              ctaLocation="hero"
+              ctaText="Try Prisma"
+            >
+              <>
                 <span>Try Prisma</span>
                 <i className="fa-regular fa-arrow-right ml-2" />
-              </a>
-            </Button>
+              </>
+            </ConsoleCtaButton>
           </div>
         </div>
       </section>
@@ -450,12 +458,18 @@ export default function SiteHome() {
                 </p>
               </div>
               <div className="flex flex-col gap-6 md:flex-row">
-                <Button asChild variant="ppg" size="2xl">
-                  <a href="https://pris.ly/pdp?utm_source=site&utm_campaign=home&utm_term=devrel">
+                <ConsoleCtaButton
+                  consolePath="/sign-up"
+                  variant="ppg"
+                  size="2xl"
+                  ctaLocation="footer_cta"
+                  ctaText="Try it out in the Console"
+                >
+                  <>
                     Try it out in the Console
                     <i className="fa-regular fa-arrow-right ml-2" />
-                  </a>
-                </Button>
+                  </>
+                </ConsoleCtaButton>
               </div>
               <p className="mb-0! -mt-4 text-xs text-foreground-neutral-weaker">
                 Free to get started, no credit card needed.
