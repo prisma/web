@@ -49,12 +49,13 @@ function isGettingStartedVersionNode(node: TreeNode, version: Version) {
 
   const name = String(node.name ?? "").toLowerCase();
 
-  if (version === "next") {
+  if (version === "v8") {
     return (
-      name === "next" ||
-      name === "prisma next" ||
-      node.url === "/next" ||
-      node.index?.url === "/next"
+      name === "v8" ||
+      name === "prisma 8" ||
+      name === "v8 (rc)" ||
+      node.url === "/v8" ||
+      node.index?.url === "/v8"
     );
   }
 
@@ -68,8 +69,8 @@ function isCliVersionNode(node: TreeNode, version: Version) {
 
   const name = String(node.name ?? "").toLowerCase();
 
-  if (version === "next") {
-    return name === "next" || node.index?.url === "/cli/next";
+  if (version === "v8") {
+    return name === "v8" || name === "v8 (rc)" || node.index?.url === "/cli/v8";
   }
 
   return false;
@@ -82,8 +83,8 @@ function isGuidesVersionNode(node: TreeNode, version: Version) {
 
   const name = String(node.name ?? "").toLowerCase();
 
-  if (version === "next") {
-    return name === "next" || node.index?.url === "/guides/next";
+  if (version === "v8") {
+    return name === "v8" || name === "v8 (rc)" || node.index?.url === "/guides/v8";
   }
 
   return false;
@@ -106,6 +107,7 @@ function isVersionNode(node: TreeNode, version: Version) {
 
   return (
     name === version ||
+    (version === "v8" && name === "v8 (rc)") ||
     node.index?.url === getVersionRoot(version) ||
     node.index?.url === `/${version}/orm`
   );
@@ -140,9 +142,9 @@ function filterGettingStartedSidebarTree(node: TreeNode, version: Version): Tree
   }
 
   if (isGettingStartedNode(node)) {
-    const versionChildren = children.filter((child) => isGettingStartedVersionNode(child, "next"));
+    const versionChildren = children.filter((child) => isGettingStartedVersionNode(child, "v8"));
 
-    if (version === "next") {
+    if (version === "v8") {
       const selectedVersion = versionChildren.find((child) =>
         isGettingStartedVersionNode(child, version),
       );
@@ -176,9 +178,9 @@ function filterCliSidebarTree(node: TreeNode, version: Version): TreeNode {
   }
 
   if (isCliNode(node)) {
-    const versionChildren = children.filter((child) => isCliVersionNode(child, "next"));
+    const versionChildren = children.filter((child) => isCliVersionNode(child, "v8"));
 
-    if (version === "next") {
+    if (version === "v8") {
       const selectedVersion = versionChildren.find((child) => isCliVersionNode(child, version));
 
       if (selectedVersion?.children) {
@@ -210,9 +212,9 @@ function filterGuidesSidebarTree(node: TreeNode, version: Version): TreeNode {
   }
 
   if (isGuidesNode(node)) {
-    const versionChildren = children.filter((child) => isGuidesVersionNode(child, "next"));
+    const versionChildren = children.filter((child) => isGuidesVersionNode(child, "v8"));
 
-    if (version === "next") {
+    if (version === "v8") {
       const selectedVersion = versionChildren.find((child) => isGuidesVersionNode(child, version));
 
       if (selectedVersion?.children) {

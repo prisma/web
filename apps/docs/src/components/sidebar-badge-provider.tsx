@@ -21,6 +21,7 @@ export function BadgeProvider({
 
 const BADGE_LABEL: Record<BadgeType, string> = {
   "early-access": "Early Access",
+  "release-candidate": "Release Candidate",
   beta: "Beta",
   preview: "Preview",
   deprecated: "Deprecated",
@@ -28,25 +29,26 @@ const BADGE_LABEL: Record<BadgeType, string> = {
 
 const BADGE_COLOR: Record<BadgeType, "ppg" | "warning" | "neutral"> = {
   "early-access": "ppg",
+  "release-candidate": "ppg",
   beta: "neutral",
   preview: "neutral",
   deprecated: "warning",
 };
 
 function shouldHideSidebarBadge(url: string, badge: BadgeType | undefined) {
-  if (badge !== "early-access") {
+  if (badge !== "early-access" && badge !== "release-candidate") {
     return false;
   }
 
   const docsPathname = url.replace(/^\/docs(?=\/|$)/, "") || "/";
 
   return (
-    docsPathname === "/next" ||
-    docsPathname.startsWith("/next/") ||
-    docsPathname === "/orm/next" ||
-    docsPathname.startsWith("/orm/next/") ||
-    docsPathname === "/cli/next" ||
-    docsPathname.startsWith("/cli/next/")
+    docsPathname === "/v8" ||
+    docsPathname.startsWith("/v8/") ||
+    docsPathname === "/orm/v8" ||
+    docsPathname.startsWith("/orm/v8/") ||
+    docsPathname === "/cli/v8" ||
+    docsPathname.startsWith("/cli/v8/")
   );
 }
 

@@ -42,7 +42,7 @@ const faqs: FaqItem[] = [
   {
     question: "What about Prisma 7 / Prisma ORM users today?",
     answer:
-      "Prisma 7 isn't going anywhere. Prisma Next (Prisma 8 at GA) is a separate, opinionated product built for agentic workflows — not a forced upgrade. When Prisma 8 reaches GA, we'll provide a smooth migration path for teams who want to move.",
+      "Prisma 7 isn't going anywhere. Prisma 8, currently a release candidate, is a separate, opinionated product built for agentic workflows, not a forced upgrade. When Prisma 8 reaches GA, we'll provide a smooth migration path for teams who want to move.",
   },
 ];
 

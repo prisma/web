@@ -29,7 +29,7 @@ Use [`README.md`](README.md) for usage and sample prompts; this `SKILL.md` is th
 - [`assets/tokens.json`](assets/tokens.json) — machine-readable tokens; the source of truth for hex/font values.
 - [`references/figma-source.md`](references/figma-source.md) — what `SOCIALS.fig` contains and how it was extracted.
 - [`references/figma-mcp.md`](references/figma-mcp.md) — **optional**: pull live specs/assets from the Prisma Figma workspace when a Figma MCP is connected.
-- [`assets/logos/`](assets/logos/) — official Prisma logo/symbol, Prisma Next mark + lockup, Postgres/Compute icons (`README.md`).
+- [`assets/logos/`](assets/logos/) — official Prisma logo/symbol, Prisma 8 mark + lockup, Postgres/Compute icons (`README.md`).
 - [`assets/fonts/`](assets/fonts/) — bundled brand fonts (Mona Sans, Inter, Geist Mono); used by the scripts.
 - [`assets/templates/cover.svg`](assets/templates/cover.svg) — parameterized starting template.
 - [`assets/examples/`](assets/examples/) — one worked hero/meta pair per house content module; the quality bar for new work.

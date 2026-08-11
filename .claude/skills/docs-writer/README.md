@@ -10,7 +10,7 @@ You don't have to read the whole guide to contribute. Follow these and your page
 2. **Say what, then why, then how.** Before every command, one sentence on what it does and why it matters.
 3. **Show one real example,** not a list of every option. Use real code that runs as written.
 4. **Give a way to verify.** End with a command the reader runs to confirm it worked, and the output they should see.
-5. **Name the products precisely.** Prisma Postgres, Prisma Compute, Prisma Next. Show how they connect, don't describe each in isolation.
+5. **Name the products precisely.** Prisma Postgres, Prisma Compute, Prisma 8. Show how they connect, don't describe each in isolation.
 6. **Cut the hype.** No "powerful", "seamless", "unlock". The reader already chose Prisma; they want it to work.
 
 That's the whole philosophy. `SKILL.md` is the detailed version.
@@ -19,9 +19,9 @@ That's the whole philosophy. `SKILL.md` is the detailed version.
 
 - **Prisma Postgres**: managed PostgreSQL in the Prisma platform.
 - **Prisma Compute**: serverless TypeScript hosting that runs next to Prisma Postgres.
-- **Prisma Next**: the TypeScript-native Prisma ORM (schema, client, migrations).
+- **Prisma 8**: the TypeScript-native Prisma ORM (schema, client, migrations).
 
-They're designed to work together: an app on Prisma Compute queries Prisma Postgres through Prisma Next. Make that connection the spine of a page, not a footnote.
+They're designed to work together: an app on Prisma Compute queries Prisma Postgres through Prisma 8. Make that connection the spine of a page, not a footnote.
 
 ## Using it
 

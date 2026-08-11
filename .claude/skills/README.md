@@ -30,7 +30,7 @@ Produces a blog-post **skeleton** (frontmatter, section headings, short stubs), 
 2. Point it at your local checkout of this repo so it can read current blog conventions.
 3. Give it your author slug. If you're a first-time author, it scaffolds an author profile too.
 4. Confirm the proposed slug, filename, date, and frontmatter.
-5. It writes the skeleton, then adds contextual links: the first mention of Prisma Postgres, Prisma Compute, and Prisma Next links to docs for SEO, and topic mentions cross-link to related posts (for example, a bloom-filter mention links to the bloom-index post).
+5. It writes the skeleton, then adds contextual links: the first mention of Prisma Postgres, Prisma Compute, and Prisma 8 links to docs for SEO, and topic mentions cross-link to related posts (for example, a bloom-filter mention links to the bloom-index post).
 6. It hands back a link inventory and a next-step reminder. You flesh out the prose and open a draft PR.
 
 **Note:** the skill reads `content-write-blog/assets/positioning.md`, Prisma's internal positioning doc. It is **not committed to this public repo** (it's gitignored). Place it locally before drafting, or the skill will ask for it.

@@ -32,12 +32,12 @@ export const journeySteps: JourneyStep[] = [
   {
     title: "Scaffold",
     caption:
-      "One command creates the application, provisions a Prisma Postgres database, sets up Prisma Next, and configures the project for Prisma Compute. Nothing to wire together by hand.",
+      "One command creates the application, provisions a Prisma Postgres database, sets up Prisma 8, and configures the project for Prisma Compute. Nothing to wire together by hand.",
     lang: "bash",
     code: `$ npm create prisma@next
 
 ✔ Framework · Hono
-✔ ORM       · Prisma Next
+✔ ORM       · Prisma 8
 ✔ Database  · Prisma Postgres
 
 Generating the typed client   ✓
@@ -65,7 +65,7 @@ cd my-app && npm run dev`,
   {
     title: "Model",
     caption:
-      "The schema is the contract. From these lines, Prisma Next generates a client whose types match your models exactly, migrations included. Change the schema and the types change with it.",
+      "The schema is the contract. From these lines, Prisma 8 generates a client whose types match your models exactly, migrations included. Change the schema and the types change with it.",
     lang: "prisma",
     code: `model User {
   id    String  @id @default(cuid(2))

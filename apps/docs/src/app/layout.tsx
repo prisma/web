@@ -161,12 +161,12 @@ export default function Layout({ children }: { children: ReactNode }) {
           className="prisma-next-banner text-fd-foreground"
         >
           <div className="prisma-next-banner-content flex w-full items-center justify-center gap-2 pr-8 text-xs sm:text-sm">
-            <span className="font-semibold">Prisma Next is in early access.</span>
+            <span className="font-semibold">The Prisma 8 Release Candidate is available.</span>
             <span className="hidden text-fd-muted-foreground sm:inline">
               Explore the next Prisma ORM workflow.
             </span>
             <Link
-              href="/next"
+              href="/v8"
               className={cn(
                 buttonVariants({ variant: "secondary", size: "sm" }),
                 "prisma-next-banner-cta h-7 shrink-0 whitespace-nowrap px-2 py-1 text-xs",

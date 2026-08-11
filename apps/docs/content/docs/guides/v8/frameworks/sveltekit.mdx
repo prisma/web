@@ -1,0 +1,100 @@
+---
+title: SvelteKit
+description: Set up Prisma 8 in a SvelteKit app with create-prisma, from scaffold to rendered data.
+url: /guides/v8/frameworks/sveltekit
+metaTitle: How to use Prisma 8 with SvelteKit
+metaDescription: Scaffold a SvelteKit project with Prisma 8 and Prisma Postgres, initialize the database, seed it, and see your data, with tested commands.
+---
+
+## Introduction
+
+This guide shows you how to use Prisma 8 in a SvelteKit app. You scaffold a project where a server load function queries your database, initialize the schema, and see your data render.
+
+Every command below was run end to end against a live [Prisma Postgres](/postgres) database.
+
+## Quick start
+
+One command scaffolds the project with Prisma 8 wired in:
+
+```npm
+npx create-prisma@next create my-app --template svelte --provider postgres
+```
+
+Pick Prisma Postgres at the database prompt to have a database created for you, or paste your own `DATABASE_URL`.
+
+## Prerequisites
+
+- [Node.js](https://nodejs.org) 24 or later
+- A PostgreSQL connection string, or nothing at all: the scaffold can create the database for you
+
+## Use with your agent
+
+Prefer to delegate this guide? Copy the prompt and hand it to your coding agent:
+
+<AgentPrompt>
+
+```text
+Create a new SvelteKit app with Prisma 8, seed it, and verify the page renders.
+
+1. Scaffold: `npx create-prisma@next create my-app --template svelte --provider postgres --prisma-postgres --yes` (or pass `--database-url "<url>"` instead of `--prisma-postgres` if I give you a connection string).
+2. In `my-app`, run `npm run db:init`, then `npm run db:seed`. If seeding fails with `Cannot read properties of undefined (reading 'where')`, change `db.orm.User` to `db.orm.public.User` in `src/prisma/seed.ts` and `src/prisma/users.ts`, then rerun.
+3. Do not deploy to Prisma Compute; it does not support SvelteKit yet. Start `npm run dev` in the background, wait until it reports ready, verify http://localhost:5173 lists the three seeded users, then stop the dev server, following https://www.prisma.io/docs/guides/v8/frameworks/sveltekit.md.
+
+Use the installed Prisma 8 skills.
+```
+
+</AgentPrompt>
+
+## 1. Scaffold and enter the project
+
+```npm
+npx create-prisma@next create my-app --template svelte --provider postgres
+cd my-app
+```
+
+The scaffold writes your connection string to `.env`, generates the SvelteKit app with Prisma 8 wired in, installs dependencies, and emits the contract your queries are type-checked against.
+
+## 2. Initialize and seed the database
+
+```npm
+npm run db:init
+npm run db:seed
+```
+
+```text no-copy
+"summary": "Applied 5 operation(s) across 1 space(s), database signed"
+Seeded 3 users.
+```
+
+:::note
+
+Seeing `Cannot read properties of undefined (reading 'where')`? The current `svelte` template still generates the older unqualified query form. Update `db.orm.User` to `db.orm.public.User` in `src/prisma/seed.ts` and `src/prisma/users.ts`, then rerun `db:seed`.
+
+:::
+
+`db:init` applies your schema (`src/prisma/contract.prisma`) to the database and signs it; the seed gives the first page something to show.
+
+## 3. Run and verify
+
+```npm
+npm run dev
+```
+
+Open [http://localhost:5173](http://localhost:5173). The page lists the seeded users, loaded on the server by the `+page.server.ts` load function.
+
+## Where things live
+
+- `src/routes/+page.server.ts`: the server `load` function that fetches users
+- `src/routes/+page.svelte`: the page that renders them
+- `src/prisma/users.ts`: the `listUsers` query helper the load function imports
+- `src/prisma/db.ts`: the Prisma 8 client behind that helper
+
+Model access is namespace-qualified on PostgreSQL: `db.orm.public.User`. The [Prisma 8 overview](/orm/v8) covers the contract-first model behind it.
+
+[Prisma Compute](/compute) does not support SvelteKit deployments yet; see [Deploy your first app](/prisma-compute/deploy) for what is currently supported. In the meantime, the app deploys to SvelteKit's usual hosts through its standard adapters.
+
+## Next steps
+
+- Change the schema in `src/prisma/contract.prisma`, then run `npm run contract:emit` and `npm run db:update`.
+- [Learn the fundamentals](/orm/v8/fundamentals/reading-data): filtering, sorting, pagination, and writes.
+- [Read the Prisma 8 overview](/orm/v8) for the concepts behind contracts and typed queries.
