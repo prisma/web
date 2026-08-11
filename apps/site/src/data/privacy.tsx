@@ -13,9 +13,9 @@ export const privacySections: PrivacySection[] = [
     content: (
       <p>
         This privacy policy applies to the following Prisma websites: prisma.io, console.prisma.io,
-        cloud.prisma.io, cloudprojects.prisma.io, and graph.cool. It is issued
-        by Prisma Data, Inc., which acts as the data controller for personal data described in this
-        policy. Questions may be directed to <a href="mailto:dpo@prisma.io">dpo@prisma.io</a>.
+        cloud.prisma.io, cloudprojects.prisma.io, and graph.cool. It is issued by Prisma Data, Inc.,
+        which acts as the data controller for personal data described in this policy. Questions may
+        be directed to <a href="mailto:dpo@prisma.io">dpo@prisma.io</a>.
       </p>
     ),
   },

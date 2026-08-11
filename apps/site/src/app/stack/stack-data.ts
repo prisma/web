@@ -41,8 +41,16 @@ export const frameworks: Framework[] = [
     logo: "/icons/technologies/svelte.svg",
     guide: "/docs/guides/next/frameworks/sveltekit",
   },
-  { name: "Nuxt", logo: "/icons/technologies/nuxt.svg", guide: "/docs/guides/next/frameworks/nuxt" },
-  { name: "Hono", logo: "/icons/technologies/hono.svg", guide: "/docs/guides/next/frameworks/hono" },
+  {
+    name: "Nuxt",
+    logo: "/icons/technologies/nuxt.svg",
+    guide: "/docs/guides/next/frameworks/nuxt",
+  },
+  {
+    name: "Hono",
+    logo: "/icons/technologies/hono.svg",
+    guide: "/docs/guides/next/frameworks/hono",
+  },
   {
     name: "NestJS",
     logo: "/icons/technologies/nest.svg",

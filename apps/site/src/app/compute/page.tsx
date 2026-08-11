@@ -196,7 +196,8 @@ const WHY_FEATURES = [
     title: "Push code, it runs",
     children: (
       <div className="px-4 pb-4 text-sm text-foreground-neutral-weak">
-        Deploy from the CLI, then connect a GitHub branch to ship on every push. No build pipelines to configure.
+        Deploy from the CLI, then connect a GitHub branch to ship on every push. No build pipelines
+        to configure.
       </div>
     ),
     icon: "fa-regular fa-rocket",
@@ -240,8 +241,7 @@ const WHY_FEATURES = [
     title: "Pairs with Prisma Postgres",
     children: (
       <div className="px-4 pb-4 text-sm text-foreground-neutral-weak">
-        Auto-wires Prisma Postgres and runs in the same environment. Also works with
-        any database.
+        Auto-wires Prisma Postgres and runs in the same environment. Also works with any database.
       </div>
     ),
     icon: "fa-regular fa-database",
@@ -330,7 +330,10 @@ export default async function Page() {
               >
                 <>
                   <span>Try Prisma Compute</span>
-                  <i className="flex items-center fa-regular fa-arrow-up-right" aria-hidden="true" />
+                  <i
+                    className="flex items-center fa-regular fa-arrow-up-right"
+                    aria-hidden="true"
+                  />
                 </>
               </ConsoleCtaButton>
               <Button asChild variant="default-strong" size="2xl">
@@ -343,9 +346,7 @@ export default async function Page() {
                 </a>
               </Button>
             </div>
-            <p className="text-sm text-foreground-neutral-weaker m-0">
-              Free while in public beta.
-            </p>
+            <p className="text-sm text-foreground-neutral-weaker m-0">Free while in public beta.</p>
           </div>
         </div>
       </div>
@@ -418,7 +419,7 @@ export default async function Page() {
                       color={item.badgeColor}
                       className={cn(
                         item.badgeColor === "ppg" &&
-                        "bg-background-ppg-reverse-strong text-foreground-neutral-reverse font-bold!",
+                          "bg-background-ppg-reverse-strong text-foreground-neutral-reverse font-bold!",
                       )}
                       size={item.badgeColor === "ppg" ? "lg" : "md"}
                       label={
@@ -504,10 +505,7 @@ export default async function Page() {
                 </a>
               </Button>
               <Button asChild variant="default-strong" size="2xl">
-                <a
-                  href="https://www.prisma.io/docs/compute"
-                  className="flex gap-2 items-center"
-                >
+                <a href="https://www.prisma.io/docs/compute" className="flex gap-2 items-center">
                   <span>Read the docs</span>
                   <i className="fa-regular h-auto fa-book-open" aria-hidden="true" />
                 </a>
