@@ -77,10 +77,14 @@ in-post hero. The thumbnail-next-to-title context drives the hardest rules:
    - Other canvases (in-post hero `844×474`, YouTube `1280×720`, custom) are produced on request
      — change `width`/`height`/`viewBox` and scale font sizes proportionally (≈ ×0.70 for the
      844-wide hero).
-3. **Size budget.** Keep the meta PNG **under 1 MB** (1x normally lands ~200–500 KB; re-export
-   at 1x if a denser export overshoots). Keep the SVG lean: **subset, embedded fonts** (see step
-   6) land each hero around ~20–30 KB. Prefer vector paths over embedded raster; flag any SVG
-   over ~1 MB.
+3. **Size budget.** Keep the meta PNG **under 1 MB**. A 1x export normally lands ~200–500 KB;
+   a cover whose art is mostly smooth wash gradients can overshoot (one landed at 1.4 MB), so
+   check the file and re-export at 1x, or flatten a redundant wash layer, if it does. Keep the
+   SVG lean with **subset, embedded fonts** (step 6): a typographic cover lands ~30–55 KB, and
+   a code/terminal-heavy one ~55–75 KB because the mono glyph subset is larger. Above ~120 KB,
+   check that fonts actually subset (the venv python needs `fonttools` + `brotli`; without them
+   `embed-fonts.py` silently falls back to embedding whole WOFF2 files). Prefer vector paths
+   over embedded raster; flag any SVG over ~1 MB.
 4. **Naming.** Base names `hero` and `meta`, extension following the format: `hero.svg` (or
    `hero.png` when raster) and `meta.png`. **No content hashes, no dimensions** in filenames.
    For N explored directions, suffix the base name (`hero-a.svg`/`meta-a.png`, …).
@@ -229,8 +233,14 @@ Tie any header number to the data it labels, and highlight the "live"/current el
 - **Whitespace between `<tspan>`s is stripped.** With the default `xml:space`, librsvg trims
   whitespace on each `tspan`, so `export default` + `<tspan> defineComputeConfig` renders as
   `export defaultdefineComputeConfig`. For any multi-`tspan` line that needs internal spaces (code
-  snippets especially), put **`xml:space="preserve"`** on the parent `<text>`/`<g>`, and keep the
+  snippets especially), put **`xml:space="preserve"` on each `<text>` element itself**, and keep the
   text content on a single source line so `preserve` doesn't pull in indentation.
+  **Put it on the `<text>`, never only on a wrapping `<g>`:** Chrome does not inherit
+  `xml:space` from a group, so a `<g xml:space="preserve">` around code `<text>` nodes **fails
+  silently** — the SVG looks right in source and every leading space and column alignment
+  vanishes in the exported PNG. This is the single most expensive gotcha in the pipeline because
+  nothing errors; it is only visible by opening the raster. Grep your finished SVG for
+  `<g[^>]*xml:space` and move any hit down onto the individual `<text>` elements.
 - **Long words don't wrap.** SVG `<text>` has no auto-wrap — hand-split into `<tspan>` lines with
   explicit `x`/`dy`.
 - **Centering: avoid `text-anchor="middle"` + `dx`.** For a bold-name + quiet-label pair (e.g.
