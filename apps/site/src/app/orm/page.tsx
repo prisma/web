@@ -133,9 +133,7 @@ const twoCol_2 = [
     content: (
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
-          <h5 className="text-foreground-orm type-title-sm">
-            Prisma Benchmarks
-          </h5>
+          <h5 className="text-foreground-orm type-title-sm">Prisma Benchmarks</h5>
           <h2 className="text-foreground-neutral stretch-display text-3xl font-sans-display">
             Prisma vs other ORMs
           </h2>

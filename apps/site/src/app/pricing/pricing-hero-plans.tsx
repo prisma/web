@@ -149,10 +149,7 @@ export function PricingHeroPlans({
             </div>
           )}
           <div className="mb-6 flex justify-end">
-            <Select
-              value={currency}
-              onValueChange={(value) => onCurrencyChange(value as Symbol)}
-            >
+            <Select value={currency} onValueChange={(value) => onCurrencyChange(value as Symbol)}>
               <SelectTrigger className="h-10 min-w-[90px] border-stroke-neutral bg-background-default text-sm text-foreground-neutral-weak">
                 <SelectValue />
               </SelectTrigger>
@@ -174,9 +171,7 @@ export function PricingHeroPlans({
                 <article
                   key={planKey}
                   className={`relative rounded-2xl border ${
-                    highlighted
-                      ? "border-stroke-ppg mt-4 md:mt-0"
-                      : "border-stroke-neutral-weak"
+                    highlighted ? "border-stroke-ppg mt-4 md:mt-0" : "border-stroke-neutral-weak"
                   } bg-background-default p-5 text-foreground-neutral shadow-[0px_18px_42px_0px_rgba(23,43,77,0.08)]`}
                 >
                   {highlighted && (
@@ -189,12 +184,7 @@ export function PricingHeroPlans({
                   <div className="flex items-center justify-between gap-4">
                     <p className="m-0 type-title-sm">{plan.title}</p>
                     {(planKey === "pro" || planKey === "business") && (
-                      <Button
-                        asChild
-                        variant="default"
-                        size="lg"
-                        className="gap-2 px-2"
-                      >
+                      <Button asChild variant="default" size="lg" className="gap-2 px-2">
                         <a
                           href="https://pris.ly/pay-via-aws"
                           target="_blank"
@@ -219,15 +209,10 @@ export function PricingHeroPlans({
                       </Button>
                     )}
                   </div>
-                  <p className="m-0 mt-1 text-sm text-foreground-neutral-weak">
-                    {plan.subtitle}
-                  </p>
+                  <p className="m-0 mt-1 text-sm text-foreground-neutral-weak">{plan.subtitle}</p>
                   <p className="m-0 mt-3 text-4xl leading-tight font-sans-display slashed-zero tabular-nums [font-variation-settings:'wght'_800] text-foreground-neutral">
                     {plan.price[currency]}
-                    <span className="text-2xl text-foreground-neutral-weak">
-                      {" "}
-                      / month
-                    </span>
+                    <span className="text-2xl text-foreground-neutral-weak"> / month</span>
                   </p>
                   <Button
                     asChild
@@ -259,10 +244,7 @@ export function PricingHeroPlans({
                         <p className="m-0 mt-1 text-sm text-foreground-neutral-weak">
                           Bring your own database
                         </p>
-                        {renderPlanPointList(
-                          `${planKey}-accelerate`,
-                          plan.acceleratePoints,
-                        )}
+                        {renderPlanPointList(`${planKey}-accelerate`, plan.acceleratePoints)}
                       </div>
                     )}
                   </div>
@@ -271,11 +253,9 @@ export function PricingHeroPlans({
             })}
           </div>
           <div className="mt-8 text-center text-xs text-foreground-ppg-weak">
-            *An operation is each time you interact with your database, no
-            matter the compute time.
+            *An operation is each time you interact with your database, no matter the compute time.
             <br />
-            We count the Prisma ORM queries you make, not the SQL statements you
-            run.{" "}
+            We count the Prisma ORM queries you make, not the SQL statements you run.{" "}
             <a
               href="https://www.prisma.io/blog/operations-based-billing"
               target="_blank"
@@ -287,8 +267,7 @@ export function PricingHeroPlans({
             about our pricing model.
           </div>
           <p className="mt-2 mb-0 text-center text-xs text-foreground-neutral-weak">
-            All quotas and limits are shared across all databases in your
-            account.
+            All quotas and limits are shared across all databases in your account.
           </p>
         </div>
       </section>

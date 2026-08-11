@@ -27,11 +27,7 @@ import {
 } from "./client";
 import { LargeSearchToggle, SearchToggle } from "../search-toggle";
 import { isLinkItemVisibleOn } from "../link-item-visibility";
-import {
-  LinkItem,
-  type ButtonItemType,
-  type LinkItemType,
-} from "../link-item";
+import { LinkItem, type ButtonItemType, type LinkItemType } from "../link-item";
 import type { SidebarPageTreeComponents } from "../sidebar/page-tree";
 import { getSidebarTabs } from "../sidebar/tabs";
 import { SidebarTabsDropdown, type SidebarTabWithProps } from "../sidebar/tabs/dropdown";
@@ -100,18 +96,14 @@ export function DocsLayout(props: DocsLayoutProps) {
     const { banner, footer, components, collapsible = true, ...rest } = sidebarProps;
 
     const menuLinks = links.filter(
-      (item) =>
-        item.type !== "icon" &&
-        item.type !== "button" &&
-        isLinkItemVisibleOn(item, "menu"),
+      (item) => item.type !== "icon" && item.type !== "button" && isLinkItemVisibleOn(item, "menu"),
     );
     const iconLinks = links.filter(
       (item): item is Extract<LinkItemType, { type: "icon" }> =>
         item.type === "icon" && isLinkItemVisibleOn(item, "nav"),
     );
     const navButtons = links.filter(
-      (item): item is ButtonItemType =>
-        item.type === "button" && isLinkItemVisibleOn(item, "nav"),
+      (item): item is ButtonItemType => item.type === "button" && isLinkItemVisibleOn(item, "nav"),
     );
     const Header =
       typeof banner === "function"
@@ -148,10 +140,7 @@ export function DocsLayout(props: DocsLayoutProps) {
       <>
         <SidebarContent {...rest}>
           <Header>
-            <SidebarTabsDropdown
-              links={menuLinks}
-              className={cn("lg:hidden")}
-            />
+            <SidebarTabsDropdown links={menuLinks} className={cn("lg:hidden")} />
           </Header>
           {viewport}
           <Footer>
@@ -292,8 +281,7 @@ function DocsNavbar({
     )
     .reverse();
   const navButtons = links.filter(
-      (item): item is ButtonItemType =>
-        item.type === "button" && isLinkItemVisibleOn(item, "nav"),
+    (item): item is ButtonItemType => item.type === "button" && isLinkItemVisibleOn(item, "nav"),
   );
   const showLayoutTabs = menuLinks.length > 0;
 

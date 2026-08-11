@@ -148,7 +148,9 @@ export function LayoutHeaderTabs({
 
     if (
       visibleItems.length <= 6 ||
-      visibleItems.some((item): item is Extract<LinkItemType, { type: "menu" }> => item.type === "menu")
+      visibleItems.some(
+        (item): item is Extract<LinkItemType, { type: "menu" }> => item.type === "menu",
+      )
     ) {
       return visibleItems;
     }
@@ -156,7 +158,10 @@ export function LayoutHeaderTabs({
     const primaryItems = visibleItems.slice(0, 5);
     const overflowItems = visibleItems
       .slice(5)
-      .filter((item): item is MainItemType => "url" in item && item.type !== "menu" && item.type !== "button");
+      .filter(
+        (item): item is MainItemType =>
+          "url" in item && item.type !== "menu" && item.type !== "button",
+      );
 
     return [
       ...primaryItems,

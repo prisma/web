@@ -167,9 +167,7 @@ export default function StudioPage() {
                   <i className={`${card.icon} text-lg text-foreground-orm`} aria-hidden="true" />
                 </div>
                 <div>
-                  <h2 className="m-0 text-foreground-neutral type-title-lg">
-                    {card.title}
-                  </h2>
+                  <h2 className="m-0 text-foreground-neutral type-title-lg">{card.title}</h2>
                   <p className="m-0 mt-3 text-base leading-6 text-foreground-neutral-weak">
                     {card.description}
                   </p>
@@ -204,9 +202,7 @@ export default function StudioPage() {
         <div className="mx-auto flex max-w-[683px] flex-col gap-12">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div className="max-w-[420px]">
-              <h2 className="m-0 text-foreground-neutral type-title-3xl">
-                See how Studio works
-              </h2>
+              <h2 className="m-0 text-foreground-neutral type-title-3xl">See how Studio works</h2>
               <p className="m-0 mt-4 text-base leading-6 text-foreground-neutral-weak">
                 Access Prisma Studio on your local machine during development, or in the Prisma
                 Console to collaborate on data with your team.
@@ -241,9 +237,7 @@ export default function StudioPage() {
           <div className="p-4 md:p-8">
             <div className="mx-auto flex max-w-[580px] flex-col items-center gap-8 text-center">
               <div>
-                <h2 className="m-0 text-foreground-neutral type-title-3xl">
-                  Try it out!
-                </h2>
+                <h2 className="m-0 text-foreground-neutral type-title-3xl">Try it out!</h2>
                 <p className="m-0 mt-4 text-base leading-6 text-foreground-neutral-weak">
                   Take Studio for a spin with a local pre-seeded database and example project.
                 </p>
@@ -299,9 +293,7 @@ function FeatureRow({
     >
       <div className="max-w-[546px]">
         <SectionEyebrow>{eyebrow}</SectionEyebrow>
-        <h2 className="m-0 mt-2 text-foreground-neutral type-title-3xl">
-          {title}
-        </h2>
+        <h2 className="m-0 mt-2 text-foreground-neutral type-title-3xl">{title}</h2>
         <p className="m-0 mt-4 text-base leading-8 text-foreground-neutral-weak">{description}</p>
       </div>
 
@@ -335,9 +327,5 @@ function StudioFeatureImage({
 }
 
 function SectionEyebrow({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="m-0 text-base text-foreground-orm type-title-sm">
-      {children}
-    </p>
-  );
+  return <p className="m-0 text-base text-foreground-orm type-title-sm">{children}</p>;
 }

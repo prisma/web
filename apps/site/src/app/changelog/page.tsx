@@ -1,9 +1,6 @@
 import Link from "next/link";
 import { Badge } from "@prisma/eclipse";
-import {
-  getReleaseNotePreview,
-  getSortedReleaseNotes,
-} from "@/lib/changelog-source";
+import { getReleaseNotePreview, getSortedReleaseNotes } from "@/lib/changelog-source";
 import { createPageMetadata } from "@/lib/page-metadata";
 import { formatDate, formatTag } from "@/lib/format";
 
@@ -40,8 +37,7 @@ export default async function ChangelogPage() {
             The Latest News from Prisma
           </h1>
           <p className="m-0 max-w-[640px] text-base text-foreground-neutral md:text-lg">
-            Here you’ll find all improvements and updates we’ve made to our
-            products.
+            Here you’ll find all improvements and updates we’ve made to our products.
           </p>
         </section>
       </div>
@@ -53,8 +49,7 @@ export default async function ChangelogPage() {
             // Date-labeled entries set version to the date; showing both repeats it
             const versionLabel =
               entry.data.date &&
-              entry.data.version ===
-                new Date(entry.data.date).toISOString().slice(0, 10)
+              entry.data.version === new Date(entry.data.date).toISOString().slice(0, 10)
                 ? null
                 : entry.data.version;
 
@@ -68,18 +63,10 @@ export default async function ChangelogPage() {
                   <div>
                     <div className="eyebrow flex gap-2 items-center flex-wrap">
                       {versionLabel ? (
-                        <Badge
-                          color="neutral"
-                          label={versionLabel}
-                          className="w-fit"
-                        />
+                        <Badge color="neutral" label={versionLabel} className="w-fit" />
                       ) : null}
                       {tags.length > 0 ? (
-                        <Badge
-                          color="success"
-                          label={formatTag(tags[0])}
-                          className="w-fit"
-                        />
+                        <Badge color="success" label={formatTag(tags[0])} className="w-fit" />
                       ) : null}
                       <span className="text-xs text-foreground-neutral-weak">
                         {formatDate(new Date(entry.data.date).toISOString())}
@@ -89,9 +76,7 @@ export default async function ChangelogPage() {
                       {entry.data.title}
                     </h2>
                     {summary ? (
-                      <p className="text-sm text-foreground-neutral-weak line-clamp-2">
-                        {summary}
-                      </p>
+                      <p className="text-sm text-foreground-neutral-weak line-clamp-2">{summary}</p>
                     ) : null}
                   </div>
                 </div>

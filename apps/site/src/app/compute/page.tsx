@@ -195,7 +195,8 @@ const WHY_FEATURES = [
     title: "Push code, it runs",
     children: (
       <div className="px-4 pb-4 text-sm text-foreground-neutral-weak">
-        Deploy from the CLI, then connect a GitHub branch to ship on every push. No build pipelines to configure.
+        Deploy from the CLI, then connect a GitHub branch to ship on every push. No build pipelines
+        to configure.
       </div>
     ),
     icon: "fa-regular fa-rocket",
@@ -239,8 +240,7 @@ const WHY_FEATURES = [
     title: "Pairs with Prisma Postgres",
     children: (
       <div className="px-4 pb-4 text-sm text-foreground-neutral-weak">
-        Auto-wires Prisma Postgres and runs in the same environment. Also works with
-        any database.
+        Auto-wires Prisma Postgres and runs in the same environment. Also works with any database.
       </div>
     ),
     icon: "fa-regular fa-database",
@@ -325,7 +325,10 @@ export default async function Page() {
                   className="flex items-center gap-2"
                 >
                   <span>Try Prisma Compute</span>
-                  <i className="flex items-center fa-regular fa-arrow-up-right" aria-hidden="true" />
+                  <i
+                    className="flex items-center fa-regular fa-arrow-up-right"
+                    aria-hidden="true"
+                  />
                 </a>
               </Button>
               <Button asChild variant="default-strong" size="2xl">
@@ -338,9 +341,7 @@ export default async function Page() {
                 </a>
               </Button>
             </div>
-            <p className="text-sm text-foreground-neutral-weaker m-0">
-              Free while in public beta.
-            </p>
+            <p className="text-sm text-foreground-neutral-weaker m-0">Free while in public beta.</p>
           </div>
         </div>
       </div>
@@ -413,7 +414,7 @@ export default async function Page() {
                       color={item.badgeColor}
                       className={cn(
                         item.badgeColor === "ppg" &&
-                        "bg-background-ppg-reverse-strong text-foreground-neutral-reverse font-bold!",
+                          "bg-background-ppg-reverse-strong text-foreground-neutral-reverse font-bold!",
                       )}
                       size={item.badgeColor === "ppg" ? "lg" : "md"}
                       label={

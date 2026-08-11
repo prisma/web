@@ -116,10 +116,7 @@ export const metadata = createPageMetadata({
 export default async function SiteHome() {
   return (
     <main className="flex-1 w-full z-1 bg-background-default">
-      <JsonLd
-        id="postgres-software-application"
-        data={postgresStructuredData}
-      />
+      <JsonLd id="postgres-software-application" data={postgresStructuredData} />
       <div className="hero -mt-24 pt-40 flex items-end justify-center px-4 relative">
         <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-ppg)_0%,var(--color-background-default)_100%)] opacity-20" />
         <div className="content relative z-2 flex flex-col gap-8">

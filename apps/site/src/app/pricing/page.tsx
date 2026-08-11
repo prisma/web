@@ -19,9 +19,7 @@ export default function PricingPage() {
       {/* FAQ */}
       <section className="px-4 py-16">
         <div className="max-w-[996px] mx-auto">
-          <h4 className="m-0 text-center text-foreground-neutral type-title-4xl">
-            FAQ
-          </h4>
+          <h4 className="m-0 text-center text-foreground-neutral type-title-4xl">FAQ</h4>
           <Accordions
             type="single"
             className="mt-10 border border-stroke-neutral-weak rounded-md overflow-hidden"
