@@ -1,0 +1,740 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  /* ---- Layout ----------------------------------------------------------
+     The site's one content width. Before this existed every section picked
+     its own, and four values had drifted in: 1152px (max-w-6xl) on the
+     redesign sections, 1280px (max-w-7xl) on the older ones, another 1280px
+     from Tailwind's built-in `container` on the secondary pages, and 1536px
+     on the wrapped-panel shells — so the widest thing on a page was a
+     decorative shell while the content sat in the middle third.
+
+     87.5rem = 1400px, matching Vercel's pricing page (measured in headless
+     Chromium: a hard 1400px cap at both 1440 and 1920). Tuned for the 1440
+     viewport this project designs against: with the usual `px-4 sm:px-8`
+     section gutter the content renders 1376px there, reaching the full 1400
+     past a 1464px viewport.
+
+     Use `max-w-site` for every section's content container. Do NOT use it for
+     prose — text measure stays on max-w-2xl / max-w-3xl / max-w-[62ch], and
+     matters more at this width, not less. `--container-panel` is the outer
+     shell of the wrapped-panel sections, which sits wider by design. */
+  --container-site: 87.5rem;
+  --container-panel: 96rem;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-sora);
+  --font-mono: var(--font-inter);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-paper: var(--paper);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+
+  --color-prism-cyan-50: #eeffff;
+  --color-prism-cyan-100: #dcfdff;
+  --color-prism-cyan-200: #b3f4f9;
+  --color-prism-cyan-300: #7be7f0;
+  --color-prism-cyan-400: #01d7e4;
+  --color-prism-cyan-500: #00bbcb;
+  --color-prism-cyan-600: #009aaa;
+  --color-prism-cyan-700: #007f8d;
+  --color-prism-cyan-800: #006772;
+  --color-prism-cyan-900: #00545d;
+  --color-prism-cyan-950: #00353c;
+
+  --color-prism-red-50: #ffeeee;
+  --color-prism-red-100: #ffdfdf;
+  --color-prism-red-200: #ffc2c4;
+  --color-prism-red-300: #ff9fa4;
+  --color-prism-red-400: #ff7682;
+  --color-prism-red-500: #f34a60;
+  --color-prism-red-600: #d02344;
+  --color-prism-red-700: #af0a33;
+  --color-prism-red-800: #8e0b29;
+  --color-prism-red-900: #740f22;
+  --color-prism-red-950: #4b0211;
+
+  --color-prism-yellow-50: #fff7e0;
+  --color-prism-yellow-100: #fcedc2;
+  --color-prism-yellow-200: #f8da85;
+  --color-prism-yellow-300: #f3c306;
+  --color-prism-yellow-400: #eaa700;
+  --color-prism-yellow-500: #d48700;
+  --color-prism-yellow-600: #b46700;
+  --color-prism-yellow-700: #965100;
+  --color-prism-yellow-800: #7a4200;
+  --color-prism-yellow-900: #633700;
+  --color-prism-yellow-950: #402000;
+
+  /* Brand card surface — the light blue-grey wash for content cards that sit
+     on white panels (e.g. the homepage before/after "After" card). */
+  --color-card-wash: color-mix(in srgb, var(--color-prism-cyan-50) 18%, var(--color-muted));
+
+  /* Ray sweep — one ray crossing a full card row in a single continuous
+     movement (see how-it-works: each card clips the same full-row track).
+     Travel percentages assume the beam is 1/4 of its track's width:
+     -100% → 400% moves it from fully left of the track to fully right. */
+  --animate-ray-sweep: ray-sweep 7s linear infinite;
+  @keyframes ray-sweep {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(400%);
+    }
+  }
+
+  /* Step-card borders tint with their brand color as the ray sweep passes
+     through them (same 7s clock as ray-sweep; windows match the beam's
+     overlap with each third of the row): gray → color → gray, in sequence. */
+  --animate-step-border-1: step-border-1 7s linear infinite;
+  --animate-step-border-2: step-border-2 7s linear infinite;
+  --animate-step-border-3: step-border-3 7s linear infinite;
+  @keyframes step-border-1 {
+    0% {
+      border-color: rgb(0 0 0 / 0.06);
+    }
+    8%,
+    30% {
+      border-color: var(--color-prism-cyan-400);
+    }
+    42%,
+    100% {
+      border-color: rgb(0 0 0 / 0.06);
+    }
+  }
+  @keyframes step-border-2 {
+    0%,
+    25% {
+      border-color: rgb(0 0 0 / 0.06);
+    }
+    36%,
+    56% {
+      border-color: var(--color-prism-yellow-400);
+    }
+    68%,
+    100% {
+      border-color: rgb(0 0 0 / 0.06);
+    }
+  }
+  @keyframes step-border-3 {
+    0%,
+    51% {
+      border-color: rgb(0 0 0 / 0.06);
+    }
+    62%,
+    82% {
+      border-color: var(--color-prism-red-400);
+    }
+    94%,
+    100% {
+      border-color: rgb(0 0 0 / 0.06);
+    }
+  }
+
+  /* Config pulse — the prisma.config.ts connector breathing in and out
+     (see stack-bento: appears, holds, disappears, repeats). */
+  --animate-config-pulse: config-pulse 8s ease-in-out infinite;
+  @keyframes config-pulse {
+    0%,
+    82%,
+    100% {
+      opacity: 0;
+    }
+    12%,
+    62% {
+      opacity: 1;
+    }
+  }
+
+  /* Loop flare — a node lighting up prismatic as the orbiting comet passes
+     (see agent-loop: duration matches the comet's orbit, offset per node via
+     animation-delay so 0% is the moment the comet's head reaches the node;
+     the comet body takes ~14% of the orbit to clear it). */
+  --animate-loop-flare: loop-flare 14s linear infinite;
+  @keyframes loop-flare {
+    0% {
+      opacity: 0;
+    }
+    4% {
+      opacity: 0.3;
+    }
+    9% {
+      opacity: 0.9;
+    }
+    20%,
+    100% {
+      opacity: 0;
+    }
+  }
+
+  /* Loop breathe — the agent card's spectrum glow slowly swelling
+     (see agent-loop center panel). */
+  --animate-loop-breathe: loop-breathe 7s ease-in-out infinite;
+  @keyframes loop-breathe {
+    0%,
+    100% {
+      opacity: 0.14;
+    }
+    50% {
+      opacity: 0.3;
+    }
+  }
+
+  /* Testimonials marquee — the card strip drifting continuously; the track
+     holds two copies of the row, so -50% loops seamlessly. */
+  --animate-testimonials-marquee: testimonials-marquee 55s linear infinite;
+  @keyframes testimonials-marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  /* Logo marquee — trusted-by strip drifting right-to-left; the track holds
+     two copies of the row, so -50% loops seamlessly. */
+  --animate-logo-marquee: logo-marquee 45s linear infinite;
+  @keyframes logo-marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  /* Hero prism ray — masks in on load. A soft-edged reveal mask (a feathered
+     black→transparent gradient) is composited with the ray's end-fade and
+     slid across via mask-position, so the triple-band ray is progressively
+     uncovered left-to-right. Only the ray's own mask moves — the geometry is
+     static, so it stays smooth. */
+  --animate-hero-ray-mask: hero-ray-mask 1.2s cubic-bezier(0.33, 0, 0.2, 1) 0.15s both;
+
+  /* Headline glass light — a feathered pocket of glass light glides through
+     the key phrase behind the letters: soft luminance, faint prism
+     dispersion, soft shadow for body; no borders or clip edges anywhere.
+     Long tail of the loop is the resting pause; first pass starts after the
+     entrance (1.8s delay in the var). */
+  /* Testimonial quote-mark glitch (React Bits GlitchText idiom, adapted to
+     the SVG mark): colored offset copies sit on opaque card-colored layers
+     clipped to a horizontal band; the band jumps continuously through the
+     inset list, so slices of the glyph read as displaced in cyan/red/yellow.
+     One shared keyframe, three durations — the desync makes it feel alive. */
+  --animate-quote-slice-cyan: quote-slice 3.6s infinite linear alternate-reverse;
+  --animate-quote-slice-red: quote-slice 5.2s infinite linear alternate-reverse;
+  --animate-quote-slice-yellow: quote-slice 7s infinite linear alternate-reverse;
+  /* inset(50% 0 50% 0) collapses the band — the mark rests clean for most of
+     the loop, with two short flickers of thin (8-18%) slices. */
+  @keyframes quote-slice {
+    0%,
+    28% {
+      clip-path: inset(50% 0 50% 0);
+    }
+    29% {
+      clip-path: inset(18% 0 74% 0);
+    }
+    31% {
+      clip-path: inset(32% 0 60% 0);
+    }
+    33% {
+      clip-path: inset(10% 0 80% 0);
+    }
+    35%,
+    54% {
+      clip-path: inset(50% 0 50% 0);
+    }
+    55% {
+      clip-path: inset(62% 0 26% 0);
+    }
+    57% {
+      clip-path: inset(44% 0 44% 0);
+    }
+    59%,
+    100% {
+      clip-path: inset(50% 0 50% 0);
+    }
+  }
+
+  --animate-glass-glide: glass-glide 9s 1.8s both infinite;
+  @keyframes glass-glide {
+    0% {
+      left: -20%;
+      opacity: 0;
+      animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1);
+    }
+    5% {
+      opacity: 1;
+    }
+    25% {
+      opacity: 1;
+    }
+    30%,
+    100% {
+      left: 80%;
+      opacity: 0;
+    }
+  }
+  @keyframes hero-ray-mask {
+    from {
+      -webkit-mask-position:
+        100% 50%,
+        50% 50%;
+      mask-position:
+        100% 50%,
+        50% 50%;
+    }
+    to {
+      -webkit-mask-position:
+        0% 50%,
+        50% 50%;
+      mask-position:
+        0% 50%,
+        50% 50%;
+    }
+  }
+
+  /* Hero entrance — the ray powers the page on. As the hero ray sweeps in
+     (hero-ray-mask, 0.15s→1.35s), the copy rises into place behind it, the
+     spectral backdrop blooms up from the bottom edge, and the console with
+     its halo arrives last. One-time, both-fill; reduced motion shows the
+     settled state via animate-none. */
+  --animate-hero-rise: hero-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.45s both;
+  --animate-hero-rise-late: hero-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.75s both;
+  @keyframes hero-rise {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  --animate-hero-bloom: hero-bloom 1.1s ease-out 0.55s both;
+  @keyframes hero-bloom {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  /* Console abstraction idle life — the elements inside the card come alive:
+     the "Get started" rocket lifts off gently, the skeleton lines shimmer like
+     they're loading, a terminal caret blinks on the deploy command, and the
+     "database ready" status dots breathe. */
+  --animate-rocket-bob: rocket-bob 2.6s ease-in-out infinite;
+  @keyframes rocket-bob {
+    0%,
+    100% {
+      transform: translateY(0) rotate(0deg);
+    }
+    50% {
+      transform: translateY(-2.5px) rotate(-8deg);
+    }
+  }
+
+  /* A light highlight sweeping across a skeleton line, then a beat of rest.
+     Runs on an overlay inside each Bar (transform only, so it stays smooth). */
+  --animate-line-shimmer: line-shimmer 2.2s ease-in-out infinite;
+  @keyframes line-shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+    55%,
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  /* Compute ray — the brand ray masking in from top to bottom, holding, then
+     fading out before it re-reveals (the mask reset happens while invisible,
+     so there's no jump). Rotated ~74deg, so "to right" along its length reads
+     as top-to-bottom on screen. */
+  --animate-compute-ray: compute-ray 3s ease-in-out infinite;
+  @keyframes compute-ray {
+    0% {
+      -webkit-mask-position: 100% 50%;
+      mask-position: 100% 50%;
+      opacity: 0;
+    }
+    16% {
+      opacity: 0.85;
+    }
+    42%,
+    68% {
+      -webkit-mask-position: 0% 50%;
+      mask-position: 0% 50%;
+      opacity: 0.85;
+    }
+    88%,
+    100% {
+      -webkit-mask-position: 0% 50%;
+      mask-position: 0% 50%;
+      opacity: 0;
+    }
+  }
+
+  /* Mascot look-around — the agent head swivels (rotateY, in perspective) with
+     a slight tilt, pivoting at the neck: glances left, holds, centers, glances
+     right, holds. Reads as the mascot looking around. */
+  --animate-mascot-look: mascot-look 8s ease-in-out infinite;
+  @keyframes mascot-look {
+    0%,
+    100% {
+      transform: perspective(600px) rotateY(0deg) rotateZ(0deg);
+    }
+    12%,
+    26% {
+      transform: perspective(600px) rotateY(-16deg) rotateZ(-2.5deg);
+    }
+    40% {
+      transform: perspective(600px) rotateY(0deg) rotateZ(0deg);
+    }
+    56%,
+    72% {
+      transform: perspective(600px) rotateY(18deg) rotateZ(2.5deg);
+    }
+    88% {
+      transform: perspective(600px) rotateY(0deg) rotateZ(0deg);
+    }
+  }
+
+  --animate-caret-blink: caret-blink 1.1s step-end infinite;
+  @keyframes caret-blink {
+    0%,
+    55% {
+      opacity: 1;
+    }
+    56%,
+    100% {
+      opacity: 0;
+    }
+  }
+
+  --animate-status-pulse: status-pulse 2.6s ease-in-out infinite;
+  @keyframes status-pulse {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.45;
+      transform: scale(0.82);
+    }
+  }
+}
+
+:root {
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: #3a3b3c; /* brand text primary */
+  --card: oklch(1 0 0);
+  /* Brand paper. Opt-in resting surface (bg-paper) for places that need a
+     level between the white page and a white elevated card. Not the default
+     card colour — applying it globally changes every surface on the site. */
+  --paper: #f9faf5;
+  --card-foreground: #3a3b3c;
+  --popover: oklch(1 0 0);
+  --popover-foreground: #3a3b3c;
+  --primary: #151515; /* brand ink */
+  --primary-foreground: #f9faf5; /* brand paper */
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: #3a3b3c;
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: #646567; /* brand text secondary */
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: #3a3b3c;
+  --destructive: #d02344; /* prism-red-600 */
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: #3a3b3c;
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: #3a3b3c;
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --paper: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    /* Inter renders optically darker than SF Pro at 400; the variable font
+       lets us pull regular text back to 380 to match SF's lighter color. */
+    font-weight: 380;
+  }
+}
+
+/* Brand rule: headings are always the heading face at Medium (the variable
+   axis midpoint between Regular and SemiBold — 600 read too heavy) and
+   natural letter-spacing — the bold pass from client feedback (2026-07):
+   darker, heavier headline presence. Unlayered so it overrides font-weight
+   and tracking utilities (font-bold, tracking-tight etc.) left in starter
+   sections. Color lives in @layer base below so surface overrides
+   (text-white on dark panels) still win. */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading);
+  font-weight: 500;
+  letter-spacing: normal;
+}
+
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: var(--primary); /* brand ink */
+  }
+}
+
+/* Animated spectrum ring — the brand gradient sliding along an element's
+   border on hover. The gradient is masked to the 1px border ring only. */
+@keyframes spectrum-slide {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: 200% 50%;
+  }
+}
+
+.spectrum-border {
+  position: relative;
+}
+
+.spectrum-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background-image: linear-gradient(85deg, #01d7e4, #f3c306, #f37a03, #f43531, #f00e5c, #01d7e4);
+  background-size: 200% 100%;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+  animation: spectrum-slide 2.5s linear infinite;
+}
+
+.spectrum-border:hover::before {
+  opacity: 1;
+}
+
+/* Always-on variant — the ring stays lit without needing hover. */
+.spectrum-border-on::before {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spectrum-border::before {
+    animation: none;
+  }
+}
+
+/* Animated spectrum ink — the brand gradient sliding through an element's
+   dark pixels (text, icons, underlines) on hover. A gradient overlay with
+   lighten blending is invisible over light backgrounds and colors every
+   ink-dark pixel underneath it. Light-theme only by design. */
+.spectrum-ink {
+  position: relative;
+}
+
+.spectrum-ink::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image: linear-gradient(85deg, #01d7e4, #f3c306, #f37a03, #f43531, #f00e5c, #01d7e4);
+  background-size: 200% 100%;
+  animation: spectrum-slide 2.5s linear infinite;
+  mix-blend-mode: lighten;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+}
+
+.spectrum-ink:hover::after {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spectrum-ink::after {
+    animation: none;
+  }
+}
+
+/* Ghost hover for non-white surfaces: the same spectrum sweep, but clipped
+   to the text itself instead of lighten-blended over the backdrop — the
+   blend needs pure white behind it, this works on any background. The
+   gradient layer is always present under the ink; hover crossfades the ink
+   to transparent so both directions ease smoothly. Pair with
+   variant="ghost"; it disables the blend overlay it inherits. */
+.spectrum-ink-text {
+  background-image: linear-gradient(85deg, #01d7e4, #f3c306, #f37a03, #f43531, #f00e5c, #01d7e4);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: spectrum-slide 2.5s linear infinite;
+  transition: color 0.4s ease;
+}
+
+.spectrum-ink-text::after {
+  display: none;
+}
+
+.spectrum-ink-text:hover {
+  color: transparent;
+}
+
+/* Icons can't take background-clip — ease their fill to the red end of the
+   spectrum on the same curve as the text crossfade, so label and icon move
+   together. */
+.spectrum-ink-text svg {
+  transition: color 0.4s ease;
+}
+
+.spectrum-ink-text:hover svg {
+  color: var(--color-prism-red-500);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spectrum-ink-text {
+    animation: none;
+  }
+}
+
+/* Animated spectrum underline — for link-style buttons: the label keeps its
+   ink color; a gradient underline slides beneath it on parent hover. */
+.spectrum-underline {
+  position: relative;
+}
+
+.spectrum-underline::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: -3px;
+  height: 1.5px;
+  background-image: linear-gradient(85deg, #01d7e4, #f3c306, #f37a03, #f43531, #f00e5c, #01d7e4);
+  background-size: 200% 100%;
+  animation: spectrum-slide 2.5s linear infinite;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+}
+
+:hover > .spectrum-underline::after {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spectrum-underline::after {
+    animation: none;
+  }
+}

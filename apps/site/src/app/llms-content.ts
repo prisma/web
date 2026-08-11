@@ -1,6 +1,6 @@
 import { SITE_HOME_DESCRIPTION, SITE_HOME_TITLE } from "@/lib/site-metadata";
 import { getBaseUrl } from "@/lib/url";
-import { plans, usagePricing } from "./pricing/pricing-data";
+import { plans, usagePricing } from "@/lib/pricing-data";
 
 type LlmsPage = {
   path: string;

@@ -1,73 +1,64 @@
-import { createPageMetadata } from "@/lib/page-metadata";
-import Image from "next/image";
-import { Action, Button, Card } from "@prisma/eclipse";
-import { meetups, type Meetup } from "../events/events-data";
+import type { Metadata } from "next";
+import { ArrowRight } from "@/components/icons/forma";
+import { RoleKicker } from "@/components/brand/role-kicker";
+import { Texture } from "@/components/brand/texture";
+import { PrismButton } from "@/components/brand/prism-button";
 
-export const metadata = createPageMetadata({
-  title: "Community | Prisma",
+export const metadata: Metadata = {
+  title: "Community",
   description:
     "Have a question, idea, or contribution for Prisma ORM? You are not alone. Join hundreds of thousands of Prisma developers.",
-  path: "/community",
-  ogImage: "/og/og-community.png",
-});
+};
 
-const channels = [
+// Ported from the old site's /community page (apps/site).
+
+const CHANNELS = [
   {
-    icon: "fa-brands fa-github",
     name: "GitHub",
     description: "Browse the source code, open issues, and contribute to Prisma and its ecosystem.",
     link: "https://github.com/prisma",
     cta: "View on GitHub",
   },
   {
-    icon: "fa-brands fa-x-twitter",
     name: "X (Twitter)",
     description: "Follow @prisma for the latest updates, releases, and community highlights.",
     link: "https://twitter.com/prisma",
     cta: "Follow us",
   },
   {
-    icon: "fa-brands fa-youtube",
     name: "YouTube",
     description:
       "Watch tutorials, conference talks, and live streams on the official Prisma channel.",
     link: "https://www.youtube.com/c/PrismaData",
     cta: "Watch videos",
   },
-] as const;
+];
 
-const starterKit = [
+const STARTER_KIT = [
   {
-    icon: "fa-regular fa-book-open",
     title: "Read the docs",
     description: "Get started with Prisma ORM, Prisma Postgres, and all other Prisma products.",
     link: "/docs",
     cta: "Open docs",
-    external: false,
   },
   {
-    icon: "fa-brands fa-github",
     title: "Browse examples",
     description:
       "Explore ready-to-run example projects for REST, GraphQL, fullstack apps, and more.",
     link: "https://github.com/prisma/prisma-examples",
     cta: "See examples",
-    external: true,
   },
   {
-    icon: "fa-brands fa-youtube",
     title: "Watch & learn",
     description:
       "Livestreams, tutorials, and tech talks covering TypeScript, Node.js, and databases.",
     link: "https://www.youtube.com/c/PrismaData",
     cta: "Visit channel",
-    external: true,
   },
-] as const;
+];
 
-const contributingLinks = [
+const CONTRIBUTING = [
   {
-    icon: "fa-brands fa-github",
     title: "Open an issue",
     description:
       "Found a bug or have a feature request? Open an issue on the Prisma GitHub repository.",
@@ -75,7 +66,6 @@ const contributingLinks = [
     cta: "Open issue",
   },
   {
-    icon: "fa-regular fa-messages",
     title: "Join the discussion",
     description:
       "Ask questions, share ideas, and connect with the Prisma team on GitHub Discussions.",
@@ -83,281 +73,164 @@ const contributingLinks = [
     cta: "Start discussion",
   },
   {
-    icon: "fa-regular fa-code-branch",
     title: "Contributing guide",
     description: "Learn how to contribute code, docs, and improvements to the Prisma project.",
     link: "https://github.com/prisma/prisma/blob/main/CONTRIBUTING.md",
     cta: "Read guide",
   },
-] as const;
+];
+
+const MEETUPS = [
+  {
+    title: "Berlin Prisma Meetup",
+    description:
+      "Join with other local engineers to discuss the latest database and API developments and learn more about Prisma best practices.",
+    image: "https://secure.meetupstatic.com/photos/event/9/9/b/2/clean_498279346.jpeg",
+    link: "https://www.meetup.com/Berlin-Prisma-Meetup/",
+  },
+  {
+    title: "TypeScript Berlin Meetup",
+    description:
+      "For anyone interested in JavaScript frameworks and TypeScript in particular. A Meetup to share knowledge, use cases and solve real problems using technology.",
+    image: "https://secure.meetupstatic.com/photos/event/8/6/8/b/600_498214443.jpeg",
+    link: "https://www.meetup.com/TypeScript-Berlin/",
+  },
+  {
+    title: "GraphQL Berlin Meetup",
+    description:
+      "A regular meetup of people interested in GraphQL and its ecosystem, with speakers from all around the globe on the latest developments in the GraphQL world.",
+    image: "https://secure.meetupstatic.com/photos/event/d/4/5/c/clean_498234364.jpeg",
+    link: "https://www.meetup.com/graphql-berlin/",
+  },
+];
+
+function LinkCardGrid({
+  items,
+}: {
+  items: { title: string; description: string; link: string; cta: string }[];
+}) {
+  return (
+    <div className="grid gap-5 md:grid-cols-3">
+      {items.map((item) => (
+        <a
+          key={item.title}
+          href={item.link}
+          className="group flex flex-col gap-3 rounded-2xl border border-black/[0.06] bg-white p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04)] transition-[border-color,box-shadow] duration-300 hover:border-black/[0.12] hover:shadow-[0_6px_20px_rgba(21,21,21,0.07)] sm:p-7"
+        >
+          <h3 className="text-lg leading-snug">{item.title}</h3>
+          <p className="text-sm leading-relaxed text-muted-foreground">{item.description}</p>
+          <span className="mt-auto flex items-center gap-1.5 pt-2 text-sm font-semibold text-foreground">
+            {item.cta}
+            <ArrowRight
+              className="size-4 transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transition-none"
+              aria-hidden
+            />
+          </span>
+        </a>
+      ))}
+    </div>
+  );
+}
 
 export default function CommunityPage() {
   return (
-    <main className="flex-1 w-full -mt-24 bg-background-default text-foreground-neutral">
-      {/* Hero */}
-      <section className="relative overflow-hidden px-4 pt-36 pb-12 md:pb-16">
-        <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20" />
-        <div className="relative z-1 mx-auto flex w-full max-w-[720px] flex-col items-center gap-6 text-center">
-          <p className="m-0 flex items-center justify-center gap-2 text-base font-semibold uppercase tracking-[1.6px] text-foreground-orm-strong font-sans">
-            <i className="fa-regular fa-users" aria-hidden />
-            Community
-          </p>
-          <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
-            Join the Prisma Community
-          </h1>
-          <p className="m-0 text-lg text-foreground-neutral-weak max-w-[560px]">
-            Connect with thousands of developers building with Prisma. Ask questions, share your
-            work, and help shape the future of the project.
-          </p>
-        </div>
-      </section>
-
-      {/* Connect with Prisma */}
-      <section className="px-4 pb-12 md:pb-16">
-        <div className="mx-auto max-w-[1024px]">
-          <h2 className="text-3xl font-sans-display [font-variation-settings:'wght'_900] text-foreground-neutral mb-6 mt-0">
-            Connect with Prisma
-          </h2>
-
-          {/* Discord — featured */}
-          <div className="group mb-4">
-            <Card className="flex flex-col items-center text-center gap-4 p-6 transition-colors bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-orm)_262.5%)] sm:flex-row sm:items-center sm:text-left sm:justify-between">
-              <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:gap-4">
-                <Action color="orm" size="4xl" className="shrink-0">
-                  <i className="fa-brands fa-discord text-xl" aria-hidden />
-                </Action>
-                <div>
-                  <h3 className="m-0 text-lg font-semibold text-foreground-neutral">Discord</h3>
-                  <p className="m-0 mt-1 text-sm text-foreground-neutral-weak max-w-[540px]">
-                    The heart of the Prisma community. Get help, share your projects, and connect
-                    with thousands of developers.
-                  </p>
-                </div>
+    <>
+      <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
+        <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
+          <Texture opacity={0.06} blend="multiply" />
+          <div className="relative px-4 sm:px-8">
+            <div className="mx-auto flex max-w-site flex-col items-center pb-14 pt-32 text-center md:pb-16 md:pt-44">
+              <RoleKicker color="bg-prism-yellow-300" className="justify-center">
+                Community
+              </RoleKicker>
+              <h1 className="isolate mt-4 max-w-[20ch] text-balance text-[clamp(2.5rem,4vw,3.5rem)] leading-[1.06]">
+                Join the Prisma community
+              </h1>
+              <p className="mt-6 max-w-[48ch] text-pretty text-lg leading-relaxed text-muted-foreground">
+                Connect with thousands of developers building with Prisma. Ask questions, share your
+                work, and help shape the future of the project.
+              </p>
+              <div className="mt-8">
+                <PrismButton href="https://pris.ly/discord">Join us on Discord</PrismButton>
               </div>
-              <Button asChild variant="orm" size="lg" className="shrink-0 w-fit">
-                <a href="https://pris.ly/discord" target="_blank" rel="noopener noreferrer">
-                  Join Discord
-                  <i className="fa-regular fa-arrow-up-right" aria-hidden />
-                </a>
-              </Button>
-            </Card>
-          </div>
-
-          {/* Other channels */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {channels.map((channel) => (
-              <a
-                key={channel.name}
-                href={channel.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group"
-              >
-                <Card className="flex h-full flex-col items-center text-center p-5 transition-colors bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-orm)_262.5%)] hover:border-stroke-neutral-strong sm:items-start sm:text-left">
-                  <div className="flex items-center gap-3">
-                    <Action color="orm" size="4xl">
-                      <i className={`${channel.icon} text-xl`} aria-hidden />
-                    </Action>
-                    <h3 className="m-0 text-base font-semibold text-foreground-neutral">
-                      {channel.name}
-                    </h3>
-                  </div>
-                  <p className="m-0 mt-3 text-sm leading-relaxed text-foreground-neutral-weak flex-1">
-                    {channel.description}
-                  </p>
-                  <span className="mt-3 flex items-center gap-1 text-sm font-medium text-foreground-orm-strong">
-                    {channel.cta}
-                    <i
-                      className="fa-regular fa-arrow-right text-xs ml-1 transition-transform duration-200 group-hover:translate-x-1"
-                      aria-hidden
-                    />
-                  </span>
-                </Card>
-              </a>
-            ))}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Starter kit */}
-      <section className="px-4 pb-12 md:pb-16">
-        <div className="mx-auto max-w-[1024px]">
-          <div className="mb-6">
-            <p className="m-0 text-sm font-semibold uppercase tracking-[1.6px] text-foreground-neutral-weaker font-sans">
-              New to Prisma?
-            </p>
-            <h2 className="text-3xl font-sans-display [font-variation-settings:'wght'_900] text-foreground-neutral mt-1 mb-0">
-              Here&apos;s a starter kit
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {starterKit.map((item) => (
-              <a
-                key={item.title}
-                href={item.link}
-                target={item.external ? "_blank" : undefined}
-                rel={item.external ? "noopener noreferrer" : undefined}
-                className="group"
-              >
-                <Card className="flex h-full flex-col items-center text-center p-5 transition-colors bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-orm)_262.5%)] hover:border-stroke-neutral-strong sm:items-start sm:text-left">
-                  <div className="flex items-center gap-3">
-                    <Action color="orm" size="4xl">
-                      <i className={`${item.icon} text-xl`} aria-hidden />
-                    </Action>
-                    <h3 className="m-0 text-base font-semibold text-foreground-neutral">
-                      {item.title}
-                    </h3>
-                  </div>
-                  <p className="m-0 mt-3 text-sm leading-relaxed text-foreground-neutral-weak flex-1">
-                    {item.description}
-                  </p>
-                  <span className="mt-3 flex items-center gap-1 text-sm font-medium text-foreground-orm-strong">
-                    {item.cta}
-                    <i
-                      className="fa-regular fa-arrow-right text-xs ml-1 transition-transform duration-200 group-hover:translate-x-1"
-                      aria-hidden
-                    />
-                  </span>
-                </Card>
-              </a>
-            ))}
+      <section className="bg-white px-4 pt-14 sm:px-8">
+        <div className="mx-auto max-w-site">
+          <h2 className="text-[clamp(1.5rem,2.25vw,2rem)] leading-[1.15]">Connect with Prisma</h2>
+          <div className="mt-8">
+            <LinkCardGrid
+              items={CHANNELS.map((c) => ({
+                title: c.name,
+                description: c.description,
+                link: c.link,
+                cta: c.cta,
+              }))}
+            />
           </div>
         </div>
       </section>
 
-      {/* Meetups */}
-      <section className="px-4 pb-12 md:pb-16">
-        <div className="mx-auto max-w-[1024px]">
-          <h2 className="text-3xl font-sans-display [font-variation-settings:'wght'_900] text-foreground-neutral mb-6 mt-0">
-            Join us for regular meetups and events
-          </h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {meetups.map((meetup: Meetup) => (
+      <section className="bg-white px-4 pt-16 sm:px-8">
+        <div className="mx-auto max-w-site">
+          <h2 className="text-[clamp(1.5rem,2.25vw,2rem)] leading-[1.15]">New here? Start with</h2>
+          <div className="mt-8">
+            <LinkCardGrid items={STARTER_KIT} />
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-white px-4 pt-16 sm:px-8">
+        <div className="mx-auto max-w-site">
+          <h2 className="text-[clamp(1.5rem,2.25vw,2rem)] leading-[1.15]">Meetups and events</h2>
+          <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {MEETUPS.map((meetup) => (
               <a
                 key={meetup.title}
                 href={meetup.link}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group"
+                className="group flex flex-col overflow-hidden rounded-2xl border border-black/[0.06] bg-white shadow-[0_1px_2px_rgba(21,21,21,0.04)] transition-[border-color,box-shadow] duration-300 hover:border-black/[0.12] hover:shadow-[0_6px_20px_rgba(21,21,21,0.07)]"
               >
-                <Card className="flex h-full flex-col overflow-hidden p-0 transition-colors hover:border-stroke-neutral-strong">
-                  <div className="relative aspect-video w-full overflow-hidden">
-                    <Image
-                      src={meetup.image}
-                      alt={meetup.title}
-                      fill
-                      unoptimized
-                      className="object-cover"
-                    />
-                  </div>
-                  <div className="flex flex-1 flex-col gap-2 p-5">
-                    <h3 className="text-base font-semibold text-foreground-neutral mt-0 mb-0">
-                      {meetup.title}
-                    </h3>
-                    <p className="text-sm leading-relaxed text-foreground-neutral-weak line-clamp-3">
-                      {meetup.description}
-                    </p>
-                    <span className="mt-auto flex items-center gap-1 pt-2 text-sm font-medium text-foreground-orm-strong">
-                      Join Meetup
-                      <i
-                        className="fa-regular fa-arrow-right text-xs ml-1 transition-transform duration-200 group-hover:translate-x-1"
-                        aria-hidden
-                      />
-                    </span>
-                  </div>
-                </Card>
-              </a>
-            ))}
-          </div>
-          <div className="mt-6">
-            <Button asChild variant="orm" size="lg">
-              <a href="/events">
-                See all events
-                <i className="fa-regular fa-arrow-right" aria-hidden />
-              </a>
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      {/* Contributing */}
-      <section className="px-4 pb-16 md:pb-20">
-        <div className="mx-auto max-w-[1024px]">
-          <div className="mb-6">
-            <h2 className="text-3xl font-sans-display [font-variation-settings:'wght'_900] text-foreground-neutral mt-0 mb-2">
-              Contributing to Prisma
-            </h2>
-            <p className="m-0 text-base text-foreground-neutral-weak max-w-[600px]">
-              We welcome contributions of all forms from experienced developers and beginners alike.
-              Showcase your projects, share your ideas, or help us improve Prisma with your
-              feedback.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {contributingLinks.map((item) => (
-              <a
-                key={item.title}
-                href={item.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group"
-              >
-                <Card className="flex h-full flex-col items-center text-center p-5 transition-colors bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-orm)_262.5%)] hover:border-stroke-neutral-strong sm:items-start sm:text-left">
-                  <div className="flex items-center gap-3">
-                    <Action color="orm" size="4xl">
-                      <i className={`${item.icon} text-xl`} aria-hidden />
-                    </Action>
-                    <h3 className="m-0 text-base font-semibold text-foreground-neutral">
-                      {item.title}
-                    </h3>
-                  </div>
-                  <p className="m-0 mt-3 text-sm leading-relaxed text-foreground-neutral-weak flex-1">
-                    {item.description}
+                <div className="relative aspect-video w-full overflow-hidden bg-card-wash">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={meetup.image}
+                    alt=""
+                    loading="lazy"
+                    className="absolute inset-0 size-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:scale-[1.03] motion-reduce:transition-none"
+                  />
+                </div>
+                <div className="flex flex-1 flex-col gap-2 p-6">
+                  <h3 className="text-lg leading-snug">{meetup.title}</h3>
+                  <p className="line-clamp-3 text-sm leading-relaxed text-muted-foreground">
+                    {meetup.description}
                   </p>
-                  <span className="mt-3 flex items-center gap-1 text-sm font-medium text-foreground-orm-strong">
-                    {item.cta}
-                    <i
-                      className="fa-regular fa-arrow-right text-xs ml-1 transition-transform duration-200 group-hover:translate-x-1"
+                  <span className="mt-auto flex items-center gap-1.5 pt-2 text-sm font-semibold text-foreground">
+                    Join meetup
+                    <ArrowRight
+                      className="size-4 transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transition-none"
                       aria-hidden
                     />
                   </span>
-                </Card>
+                </div>
               </a>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Footer CTA */}
-      <div className="bg-[url('/illustrations/homepage/footer_grid.svg')] bg-contain bg-center before:inset-x-30 before:inset-y-[45%] before:absolute relative before:content-[''] before:pointer-events-none before:-z-1 rounded-full before:bg-indigo-400 before:blur-[100px]">
-        <div className="my-8 p-6 md:my-12 md:p-12">
-          <div className="flex flex-col mx-auto w-fit items-center justify-center gap-8">
-            <div className="flex flex-col items-center text-center gap-4">
-              <h2 className="text-3xl text-foreground-neutral font-sans-display [font-variation-settings:'wght'_900]">
-                Be part of the community
-              </h2>
-              <p className="text-foreground-neutral-weak max-w-xl">
-                Whether you&apos;re just getting started or have been building with Prisma for
-                years, there&apos;s a place for you.
-              </p>
-            </div>
-            <div className="flex flex-col md:flex-row gap-6">
-              <Button asChild variant="orm" size="2xl">
-                <a href="https://pris.ly/discord" target="_blank" rel="noopener noreferrer">
-                  Join Discord
-                  <i className="fa-brands fa-discord" aria-hidden />
-                </a>
-              </Button>
-              <Button asChild variant="default-strong" size="2xl">
-                <a href="/newsletter">
-                  Subscribe to newsletter
-                  <i className="fa-regular fa-arrow-right" aria-hidden />
-                </a>
-              </Button>
-            </div>
+      <section className="bg-white px-4 py-16 pb-24 sm:px-8 sm:pb-32">
+        <div className="mx-auto max-w-site">
+          <h2 className="text-[clamp(1.5rem,2.25vw,2rem)] leading-[1.15]">Contribute to Prisma</h2>
+          <div className="mt-8">
+            <LinkCardGrid items={CONTRIBUTING} />
           </div>
         </div>
-      </div>
-    </main>
+      </section>
+    </>
   );
 }

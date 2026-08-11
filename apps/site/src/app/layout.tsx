@@ -1,48 +1,34 @@
-import { Provider } from "@/components/provider";
-import { createSiteStructuredData } from "@/lib/structured-data";
-import { getBaseUrl } from "@/lib/url";
-import "./global.css";
-import localFont from "next/font/local";
-import { Inter } from "next/font/google";
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import type React from "react";
+import { Inter, Sora } from "next/font/google";
+import { Header } from "@/components/header";
+import { Footer } from "@/components/footer";
+import { ThemeProvider } from "@/components/theme-provider";
+import { UtmPersistence } from "@/components/utm-persistence";
+import { siteConfig } from "@/lib/config";
+import { createSiteStructuredData } from "@/lib/structured-data";
+import { getBaseUrl } from "@/lib/url";
 import { SITE_HOME_DESCRIPTION, SITE_HOME_TITLE } from "@/lib/site-metadata";
-import { NavigationWrapper, FooterWrapper } from "@/components/navigation-wrapper";
-import { Footer } from "@prisma-docs/ui/components/footer";
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import { GoogleTagManager } from "@prisma-docs/ui/components/google-tag-manager";
-import { ThemeProvider } from "@prisma-docs/ui/components/theme-provider";
 import { FontAwesomeScript as WebFA } from "@prisma/eclipse";
-import { UtmPersistence } from "@/components/utm-persistence";
+import "./globals.css";
+
+// The 2026-rebrand shell (Sora/Inter, redesign Header/Footer) carrying the
+// production analytics stack unchanged: CookieYes consent, GTM (Consent Mode),
+// Tolt affiliate, PostHog (src/instrumentation-client.ts), UTM persistence,
+// and site structured data. FontAwesome stays mounted while pages that still
+// use fa-* glyphs are being rebuilt in the new system.
+
+const sora = Sora({
+  subsets: ["latin"],
+  variable: "--font-sora",
+});
 
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
-});
-
-const monaSans = localFont({
-  src: [
-    {
-      path: "../../../../packages/eclipse/src/static/fonts/MonaSansVF[wdth,wght,opsz,ital].woff2",
-      weight: "200 900",
-      style: "normal",
-    },
-    {
-      path: "../../../../packages/eclipse/src/static/fonts/MonaSansVF[wdth,wght,opsz,ital].woff2",
-      weight: "200 900",
-      style: "italic",
-    },
-  ],
-  variable: "--font-mona-sans",
-  display: "swap",
-});
-
-const monaSansMono = localFont({
-  src: "../../../../packages/eclipse/src/static/fonts/MonaSansMonoVF[wght].woff2",
-  variable: "--font-mona-mono",
-  display: "swap",
-  weight: "200 900",
 });
 
 export const viewport: Viewport = {
@@ -53,142 +39,38 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL(getBaseUrl()),
-  title: SITE_HOME_TITLE,
+  title: {
+    default: SITE_HOME_TITLE,
+    template: `%s | Prisma`,
+  },
   description: SITE_HOME_DESCRIPTION,
+  openGraph: {
+    title: SITE_HOME_TITLE,
+    description: SITE_HOME_DESCRIPTION,
+    url: siteConfig.url,
+    siteName: siteConfig.name,
+    images: [siteConfig.ogImage],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_HOME_TITLE,
+    description: SITE_HOME_DESCRIPTION,
+    images: [siteConfig.ogImage],
+  },
 };
-
-const themeInitScript = `
-(() => {
-  try {
-    const storageKey = "theme";
-    const stored = localStorage.getItem(storageKey);
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const resolved =
-      stored === "light" || stored === "dark"
-        ? stored
-        : prefersDark
-          ? "dark"
-          : "light";
-
-    const root = document.documentElement;
-    root.setAttribute("data-theme", resolved);
-    root.classList.toggle("dark", resolved === "dark");
-  } catch {
-    // Ignore storage/media-query failures and use CSS defaults.
-  }
-})();
-`;
 
 const siteStructuredData = createSiteStructuredData();
 
-function baseOptions() {
-  return {
-    nav: {
-      title: "My App",
-    },
-    links: [
-      {
-        text: "Products",
-        sub: [
-          {
-            text: "Compute",
-            url: "/compute",
-            desc: "Deploy TypeScript to production",
-            icon: "fa-regular fa-microchip",
-          },
-          {
-            text: "Postgres",
-            url: "/postgres",
-            desc: "Managed Postgres for global workloads",
-            icon: "fa-regular fa-chart-pyramid",
-          },
-          {
-            text: "ORM",
-            url: "/docs/orm/next",
-            desc: "Type-safe ORM for TypeScript and Node.js",
-            icon: "fa-regular fa-database",
-          },
-          {
-            text: "Studio",
-            icon: "fa-regular fa-table",
-            url: "/studio",
-            desc: "Explore and manipulate your data",
-          },
-        ],
-      },
-      {
-        url: "/pricing",
-        text: "Pricing",
-      },
-      {
-        text: "Resources",
-        col: 2,
-        sub: [
-          {
-            text: "MCP",
-            url: "/mcp",
-            icon: "fa-regular fa-message-code",
-          },
-          {
-            text: "Prisma Partners",
-            url: "/partners",
-            icon: "fa-regular fa-lightbulb",
-          },
-          {
-            text: "Tutorials",
-            url: "https://www.prisma.io/docs/guides",
-            icon: "fa-regular fa-clapperboard-play",
-          },
-          {
-            text: "Examples",
-            url: "https://github.com/prisma/prisma-examples",
-            icon: "fa-regular fa-grid-2",
-            external: true,
-          },
-          {
-            text: "Stack",
-            url: "/stack",
-            icon: "fa-regular fa-layer-group",
-          },
-          {
-            text: "Ecosystem",
-            url: "/ecosystem",
-            icon: "fa-regular fa-globe",
-          },
-          {
-            text: "Customer stories",
-            url: "/showcase",
-            icon: "fa-regular fa-users",
-          },
-          {
-            text: "Data guide",
-            url: "https://www.prisma.io/dataguide",
-            icon: "fa-regular fa-file-binary",
-            external: true,
-          },
-        ],
-      },
-      {
-        url: "https://www.prisma.io/docs/orm",
-        text: "Docs",
-      },
-      {
-        url: "https://www.prisma.io/blog",
-        text: "Blog",
-      },
-    ],
-  };
-}
-
-export default function Layout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html
-      lang="en"
-      className={`${inter.variable} ${monaSans.variable} ${monaSansMono.variable}`}
-      suppressHydrationWarning
-    >
+    <html lang="en" suppressHydrationWarning className={`${sora.variable} ${inter.variable}`}>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <Script
           id="fontawesome"
           src={WebFA}
@@ -202,7 +84,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           src="https://cdn-cookieyes.com/client_data/96980f76df67ad5235fc3f0d/script.js"
           strategy="lazyOnload"
         />
-
         <script
           async
           type="text/plain"
@@ -214,16 +95,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <GoogleTagManager section="website" />
         <JsonLd id="site-structured-data" data={siteStructuredData} />
       </head>
-      <body className="flex flex-col min-h-screen relative">
-        <div className="bg-background-default absolute inset-0 -z-1 overflow-hidden" />
-        <Provider>
-          <ThemeProvider defaultTheme="system" storageKey="theme">
-            <UtmPersistence />
-            <NavigationWrapper links={baseOptions().links} />
-            {children}
-            <FooterWrapper />
-          </ThemeProvider>
-        </Provider>
+      <body className="antialiased">
+        <ThemeProvider>
+          <UtmPersistence />
+          <Header />
+          <main className="min-h-screen">{children}</main>
+          <Footer />
+        </ThemeProvider>
       </body>
     </html>
   );
