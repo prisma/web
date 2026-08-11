@@ -1,98 +1,96 @@
-import type { Metadata } from "next"
-import { Badge } from "@/components/ui/badge"
+import type { Metadata } from "next";
+import Link from "next/link";
+import { ArrowRight } from "@/components/icons/forma";
+import { RoleKicker } from "@/components/brand/role-kicker";
+import { Texture } from "@/components/brand/texture";
+import {
+  extractPreview,
+  formatChangelogDate,
+  getChangelogEntries,
+} from "@/lib/changelog";
 
 export const metadata: Metadata = {
   title: "Changelog",
-  description: "See what's new and improved.",
-}
+  description:
+    "New features, improvements, and fixes across Prisma ORM, Prisma Postgres, and the Prisma platform.",
+};
 
-const entries = [
-  {
-    date: "2025-02-01",
-    version: "1.2.0",
-    title: "Dark Mode & Blog",
-    changes: [
-      "Added dark mode with system preference detection",
-      "Launched MDX-powered blog",
-      "Added sitemap and robots.txt for SEO",
-      "New privacy policy and terms of service pages",
-    ],
-  },
-  {
-    date: "2025-01-15",
-    version: "1.1.0",
-    title: "Component Library",
-    changes: [
-      "Added 24 reusable section components",
-      "Built component showcase page",
-      "Improved responsive design across all sections",
-      "Added integration logos section",
-    ],
-  },
-  {
-    date: "2025-01-01",
-    version: "1.0.0",
-    title: "Initial Release",
-    changes: [
-      "Core SaaS starter with Next.js 16 and Tailwind CSS",
-      "Landing page with hero, features, and pricing sections",
-      "Authentication pages (login, signup)",
-      "Contact page with form",
-    ],
-  },
-]
-
+// Ported from the old site's /changelog (apps/site): same MDX entries, listed
+// newest first as a single timeline.
 export default function ChangelogPage() {
+  const entries = getChangelogEntries();
+
   return (
-    <section className="py-20">
-      <div className="container mx-auto px-4 max-w-3xl">
-        <div className="text-center mb-16">
-          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
-            Changelog
-          </h1>
-          <p className="mt-6 text-lg text-muted-foreground">
-            See what&apos;s new and improved.
-          </p>
-        </div>
-
-        <div className="relative">
-          <div className="absolute left-4 top-0 bottom-0 w-px bg-border md:left-1/2 md:-translate-x-px" />
-
-          <div className="space-y-12">
-            {entries.map((entry) => (
-              <div key={entry.version} className="relative pl-12 md:pl-0">
-                <div className="absolute left-2.5 top-1.5 h-3 w-3 rounded-full border-2 border-primary bg-background md:left-1/2 md:-translate-x-1.5" />
-
-                <div className="md:ml-[calc(50%+2rem)]">
-                  <div className="flex items-center gap-3 mb-2">
-                    <Badge variant="outline">{entry.version}</Badge>
-                    <span className="text-sm text-muted-foreground">
-                      {new Date(entry.date).toLocaleDateString("en-US", {
-                        month: "long",
-                        day: "numeric",
-                        year: "numeric",
-                        timeZone: "UTC",
-                      })}
-                    </span>
-                  </div>
-                  <h2 className="text-xl font-semibold">{entry.title}</h2>
-                  <ul className="mt-3 space-y-1.5">
-                    {entry.changes.map((change) => (
-                      <li
-                        key={change}
-                        className="text-muted-foreground text-sm flex gap-2"
-                      >
-                        <span className="text-primary mt-0.5">-</span>
-                        {change}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            ))}
+    <>
+      <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
+        <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
+          <Texture opacity={0.06} blend="multiply" />
+          <div className="relative px-4 sm:px-8">
+            <div className="mx-auto flex max-w-site flex-col items-center pb-14 pt-32 text-center md:pb-16 md:pt-44">
+              <RoleKicker color="bg-prism-cyan-400" className="justify-center">
+                Changelog
+              </RoleKicker>
+              <h1 className="isolate mt-4 max-w-[20ch] text-balance text-[clamp(2.5rem,4vw,3.5rem)] leading-[1.06]">
+                What&apos;s new in Prisma
+              </h1>
+              <p className="mt-6 max-w-[52ch] text-pretty text-lg leading-relaxed text-muted-foreground">
+                New features, improvements, and fixes across Prisma ORM, Prisma Postgres, and the
+                platform.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
-    </section>
-  )
+      </section>
+
+      <section className="bg-white px-4 pb-24 pt-14 sm:px-8 sm:pb-32">
+        <div className="mx-auto max-w-3xl">
+          <ol className="flex flex-col">
+            {entries.map((entry) => {
+              const preview = extractPreview(entry.content);
+              return (
+                <li
+                  key={entry.slug}
+                  className="group relative border-l border-black/[0.08] pb-12 pl-8 last:pb-0"
+                >
+                  <span
+                    aria-hidden
+                    className="absolute -left-[5px] top-[0.4rem] size-[9px] rounded-full bg-prism-cyan-400 ring-4 ring-white"
+                  />
+                  <time
+                    dateTime={entry.frontmatter.date}
+                    className="text-sm font-semibold text-foreground/60"
+                  >
+                    {formatChangelogDate(entry.frontmatter.date)}
+                  </time>
+                  <h2 className="mt-2 text-xl leading-snug sm:text-2xl">
+                    <Link
+                      href={`/changelog/${entry.slug}`}
+                      className="transition-colors hover:text-prism-cyan-700"
+                    >
+                      {entry.frontmatter.headline ?? entry.frontmatter.title}
+                    </Link>
+                  </h2>
+                  {preview && (
+                    <p className="mt-3 text-[0.9375rem] leading-relaxed text-muted-foreground">
+                      {preview}
+                    </p>
+                  )}
+                  <Link
+                    href={`/changelog/${entry.slug}`}
+                    className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-foreground"
+                  >
+                    Read more
+                    <ArrowRight
+                      className="size-4 transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transition-none"
+                      aria-hidden
+                    />
+                  </Link>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      </section>
+    </>
+  );
 }

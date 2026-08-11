@@ -1,0 +1,144 @@
+---
+title: "Use Prisma Next with Supabase and pin Prisma Compute preview branches"
+date: "2026-07-17"
+version: "2026-07-17"
+slug: "2026-07-17"
+headline: "Use Prisma Next with Supabase and pin Prisma Compute preview branches"
+tags:
+  - "Prisma"
+  - "Prisma Next"
+  - "Prisma Compute"
+  - "Prisma Postgres"
+  - "Prisma Studio"
+  - "Prisma ORM"
+canonical: "/changelog#log2026-07-17"
+metaDescription: "Prisma Next runs Supabase projects end to end, Prisma Compute reclaims idle preview environments with pinning to keep them, and Prisma Studio adds a visual Migrations view."
+share:
+  active: true
+  content: "Look at this page: "
+---
+Prisma Next now runs a stock Supabase project end to end through `@prisma-next/extension-supabase`, and adds Row-Level Security policy authoring in the schema and in TypeScript, plus managed native PostgreSQL enum migrations.
+
+Prisma Compute reclaims preview environments that have been idle for 48 hours and lets you pin the ones you want to keep. Projects now set their region once at creation, and databases and apps inherit it.
+
+Prisma Postgres warns you before you hit your database limit, with a dashboard banner and emails at 75% and at the limit. Prisma Studio adds a Migrations view that renders Prisma Next migration history as visual contract diffs. Prisma ORM extends its AI safety checkpoint to `prisma db push --accept-data-loss`.
+
+## Highlights
+
+### New · Prisma Next runs Supabase projects end to end
+
+Using Prisma Next against Supabase used to fail on first contact: generated Row-Level Security migrations could not be imported, `migrate` rejected its own remediation, and JWKS and grants needed manual repair. The `@prisma-next/extension-supabase` package now takes a stock Supabase project from plan to migrate to verify without intervention, declares Supabase roles in the schema, and ships with a complete Supabase contract introspected from a reference instance.
+
+> **Note:** Prisma Next is in Early Access. Scope and behavior may still change.
+
+```console
+$ npx prisma-next migration plan --name init
+$ npx prisma-next migrate --yes
+$ npx prisma-next db verify
+```
+
+Shipped in [prisma/prisma-next#960](https://github.com/prisma/prisma-next/pull/960), [prisma/prisma-next#987](https://github.com/prisma/prisma-next/pull/987), and [prisma/prisma-next#997](https://github.com/prisma/prisma-next/pull/997).
+
+### New · Prisma Compute reclaims idle preview environments, and pinning keeps them
+
+Stale preview environments used to accumulate until you deleted them by hand, holding database quota the whole time. Prisma Compute now reclaims a preview environment, both the app and its database, after 48 hours without a push, and the Prisma Console branches view gains a Pin control that exempts a branch from cleanup. Production branches are never reclaimed.
+
+> **Note:** Prisma Compute is in Public Beta.
+
+Read the [branching docs](https://www.prisma.io/docs/compute/branching) for how production and preview branches differ.
+
+### New · Prisma Studio shows Prisma Next migration history as visual diffs
+
+Inspecting an applied Prisma Next migration meant reading its ledger rows by hand. Prisma Studio now shows a Migrations view whenever the connected database carries a `prisma_contract` ledger: a newest-first timeline of every applied migration with its name, apply time, operation count, and destructive-change marker, plus a visual diff of what each migration did to models, fields, enums, and indexes, the SQL that ran, and a schema diff. Prisma Studio reads the history from the database itself, so it works for any Prisma Next PostgreSQL database you can connect to.
+
+![The Prisma Studio Migrations view showing a timeline of applied migrations and a visual diff canvas of the selected migration.](/changelog/studio-migrations-timeline.png)
+
+Read the [launch post](https://www.prisma.io/blog/prisma-studio-migrations-view) for a tour of the timeline, SQL, and schema panels, and the [Studio with Prisma Next docs](https://www.prisma.io/docs/studio/prisma-next) for setup. Shipped in [prisma/studio#1533](https://github.com/prisma/studio/pull/1533).
+
+## Prisma Next
+
+Prisma Next adds Row-Level Security policy authoring in the schema and in TypeScript, and manages the full lifecycle of native PostgreSQL enums in migrations.
+
+- **New** · Prisma Next schemas can now author Row-Level Security policies for every operation, not just `SELECT`. A model marked `@@rls` stays fail-closed until you remove the marker, `db verify` checks that every role a policy names actually exists, and renaming a policy plans `ALTER POLICY … RENAME TO` instead of drop-and-recreate. ([prisma/prisma-next#945](https://github.com/prisma/prisma-next/pull/945), [prisma/prisma-next#950](https://github.com/prisma/prisma-next/pull/950))
+- **New** · Prisma Next TypeScript contracts author the same policies with `rlsEnabled`, `policySelect`, and `policyUpdate` from the contract builder, using wire names identical to the schema surface. ([prisma/prisma-next#959](https://github.com/prisma/prisma-next/pull/959))
+- **New** · Prisma Next now owns the create and delete lifecycle of managed native PostgreSQL enums: `migrate` plans `CREATE TYPE` before the dependent table and `DROP TYPE` after the column is gone. Appending a member plans one `ALTER TYPE … ADD VALUE` per value with no table rewrite; any other member change is refused rather than guessed at. ([prisma/prisma-next#949](https://github.com/prisma/prisma-next/pull/949), [prisma/prisma-next#970](https://github.com/prisma/prisma-next/pull/970))
+- **Improved** · `typeof contract` now types native-enum columns as their member-value union, matching the emitted `contract.d.ts`. ([prisma/prisma-next#958](https://github.com/prisma/prisma-next/pull/958))
+
+```prisma
+namespace public {
+  model Profile { id String @id; userId String; @@rls }
+
+  // anyone may read the public directory; owners may always read their own row
+  policy_select profile_public_read { target = Profile; roles = [anon];          using = "true" }
+  policy_select profile_owner_read  { target = Profile; roles = [authenticated]; using = "userId::uuid = auth.uid()" }
+}
+```
+
+## Prisma Compute
+
+Prisma Compute sets a project's region once at creation, inherits it across databases and apps, and reworks custom-domain setup around the CNAME record.
+
+- **New** · Prisma Compute projects now carry a default region, chosen once during project creation in the Prisma Console and immutable afterward. New databases and apps inherit it, the Management API returns a read-only `defaultRegion` on project responses, and `POST /v1/apps` resolves an omitted region server-side: an explicit region wins, then the project default, then `us-east-1`. The Prisma Compute SDK no longer requires a region for app creation.
+- **Improved** · Prisma Compute custom-domain setup now shows the exact CNAME record to create, targeting `switchboard.<region>.prisma.build`, before registration, and keeps the dialog open with an inline error until the record is visible. The [custom domains docs](https://www.prisma.io/docs/compute/domains) now walk through the flow step by step and explain what switchboard is. ([prisma/web#8042](https://github.com/prisma/web/pull/8042))
+- **Improved** · Prisma Compute git integration controls moved into the integration card: Manage access and Unlink repository live under its menu, repository replacement is no longer possible, and branches are created through GitHub pull requests rather than manually.
+- **Docs** · Prisma Compute docs now state the scope of keep-awake precisely: it prevents scale-to-zero for bounded background work but does not provide durable execution or WebSocket lifecycle guarantees. Read the [keep-awake docs](https://www.prisma.io/docs/compute/keeping-instances-awake) before relying on long-lived connections. ([prisma/web#8070](https://github.com/prisma/web/pull/8070))
+
+## Prisma Postgres
+
+Prisma Postgres now warns you before database creation hits your plan's limit.
+
+- **New** · Prisma Postgres workspaces show a dashboard banner when the database count reaches 75% of the plan's database-creation limit and a stronger one when the limit is reached, and all workspace members receive an email at both thresholds. Preview-branch databases count toward the limit, so the new idle-preview reclamation frees quota automatically.
+
+## Prisma Console
+
+The Prisma Console adds a workspace support portal.
+
+- **New** · Prisma Console workspaces on Pro and Business plans get a support portal at `/support`: list your support requests, open a conversation, create a request with attachments, and reply without leaving the Console. Replies file into the same conversation as email. Free and Starter workspaces see community support options with an upgrade path.
+
+## Prisma ORM
+
+Prisma ORM closes a gap in its AI agent safety checkpoint.
+
+- **Improved** · `prisma db push --accept-data-loss` now runs the AI safety confirmation checkpoint before applying a destructive schema push, the same checkpoint `--force-reset` already used. An AI agent can no longer opt into data loss without explicit user consent. ([prisma/prisma#29713](https://github.com/prisma/prisma/pull/29713))
+
+## Prisma Studio
+
+Prisma Studio 0.33.0 is now bundled in the Prisma CLI.
+
+- **Improved** · The Prisma CLI now bundles Prisma Studio 0.33.0, which includes the new Migrations view, and no longer prints aborted-response errors when a Prisma Studio tab closes mid-request. ([prisma/prisma#29720](https://github.com/prisma/prisma/pull/29720))
+
+## Fixes and improvements
+
+**Prisma Next**
+
+- **Fixed** · Apps whose bundler ships two copies of the `pg` package no longer crash at client construction: `@prisma-next/postgres` identifies a caller-supplied `pg` handle by shape instead of `instanceof`. ([prisma/prisma-next#969](https://github.com/prisma/prisma-next/pull/969))
+- **Fixed** · `@default(false)` on a `Boolean` field now survives `contract emit`; the emitted artifact was previously rejected at client construction with `CONTRACT.VALIDATION_FAILED`. ([prisma/prisma-next#904](https://github.com/prisma/prisma-next/pull/904))
+- **Fixed** · An explicit `select` on a polymorphic `include` now restricts results to the selected fields. ([prisma/prisma-next#984](https://github.com/prisma/prisma-next/pull/984))
+- **Fixed** · The `PN-MIG-2007` and `PN-MIG-2008` migration errors now name the operation that actually failed instead of a hardcoded one. ([prisma/prisma-next#953](https://github.com/prisma/prisma-next/pull/953))
+
+**Prisma ORM**
+
+- **Fixed** · An invalid `Date` passed to `$queryRaw` or `$executeRaw` now raises a validation error instead of being silently sent to the database as the string `"null"`. ([prisma/prisma#29697](https://github.com/prisma/prisma/pull/29697))
+- **Fixed** · Query masking in error reports now masks each quoted string independently, so a list like `name_in: ["a", "b", "c"]` no longer collapses into a single masked value. ([prisma/prisma#29723](https://github.com/prisma/prisma/pull/29723))
+- **Fixed** · Prisma Migrate now renders constraint renames as separate SQL statements. ([prisma/prisma-engines#4906](https://github.com/prisma/prisma-engines/pull/4906))
+
+**Prisma Studio**
+
+- **Fixed** · Prisma Studio no longer sends duplicate introspection requests at startup, which surfaced as `ERR_STREAM_PREMATURE_CLOSE` errors from the Prisma ORM Node server. ([prisma/studio#1539](https://github.com/prisma/studio/pull/1539))
+
+**Prisma Compute**
+
+- **Fixed** · Creating a custom domain through the Management API no longer succeeds against a deployment that was deleted concurrently.
+
+## Guides and articles
+
+- [Your AI Agent Needs a Database. Give It One in Five Seconds](https://www.prisma.io/blog/give-your-agent-a-database): how coding agents can provision a temporary Prisma Postgres database with `npx create-db`, no sign-up, with `--json` output agents can parse.
+- [Serverless Postgres: the definitive guide](https://www.prisma.io/blog/serverless-postgres): a category guide comparing serverless PostgreSQL providers and their pricing models, with an interactive decision tree and a worked cost-crossover example.
+- [TypeScript 7 native compiler: faster type checking](https://www.prisma.io/blog/typescript-7-native-compiler-faster-type-checking): migrating a large TypeScript monorepo to the native Go compiler cut whole-repo type checking to roughly a third of the time.
+- [You Don't Need a Vector Database, Postgres Already Has pgvector](https://www.prisma.io/blog/you-dont-need-a-vector-database-postgres-already-has-pgvector): builds working semantic search on a temporary Prisma Postgres database with `pgvector`, with type-safe queries through Prisma Next.
+- [You Don't Need a Job Queue, Postgres Already Has SKIP LOCKED](https://www.prisma.io/blog/you-dont-need-a-job-queue-postgres-already-has-skip-locked): builds a reliable background job queue with retries on Prisma Postgres using `FOR UPDATE SKIP LOCKED`, no separate broker required.
+- [What to Put in Your AGENTS.md So Your Agent Handles the Database Right](https://www.prisma.io/blog/agents-md-for-databases): a copy-pasteable `AGENTS.md` section for database work: ephemeral PostgreSQL via `npx create-db`, safe migrations, and JSON output for coding agents.
+
+---
+
+_Need help applying these changes in production? [Prisma Enterprise Support](https://prisma.io/enterprise) can help with schema design, performance, security, and compliance._
