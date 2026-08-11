@@ -17,6 +17,7 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/s
 import { Logo } from "@/components/logo";
 import { siteConfig } from "@/lib/config";
 import { cn } from "@/lib/utils";
+import { trackCTA } from "@prisma-docs/ui/lib/analytics";
 
 // Product glyphs resolve through the canonical shared mapping so the navbar
 // never drifts from the product pages (see product/icons.ts).
@@ -109,10 +110,34 @@ export function Header() {
 
         <div className="hidden md:flex items-center gap-3">
           <Button variant="ghost" asChild className="spectrum-ink-text">
-            <a href="https://console.prisma.io/login">Log in</a>
+            <a
+              href="https://console.prisma.io/login"
+              onClick={() =>
+                trackCTA({
+                  cta_text: "Log in",
+                  cta_location: "navbar",
+                  cta_destination: "https://console.prisma.io/login",
+                  section: "website",
+                })
+              }
+            >
+              Log in
+            </a>
           </Button>
           <Button asChild>
-            <a href="https://console.prisma.io">Get Started</a>
+            <a
+              href="https://console.prisma.io"
+              onClick={() =>
+                trackCTA({
+                  cta_text: "Get Started",
+                  cta_location: "navbar",
+                  cta_destination: "https://console.prisma.io",
+                  section: "website",
+                })
+              }
+            >
+              Get Started
+            </a>
           </Button>
         </div>
 
@@ -152,10 +177,34 @@ export function Header() {
               </div>
               <div className="flex flex-col gap-2 mt-4 pt-4 border-t">
                 <Button variant="outline" asChild>
-                  <a href="https://console.prisma.io/login">Log in</a>
+                  <a
+                    href="https://console.prisma.io/login"
+                    onClick={() =>
+                      trackCTA({
+                        cta_text: "Log in",
+                        cta_location: "navbar",
+                        cta_destination: "https://console.prisma.io/login",
+                        section: "website",
+                      })
+                    }
+                  >
+                    Log in
+                  </a>
                 </Button>
                 <Button asChild>
-                  <a href="https://console.prisma.io">Get Started</a>
+                  <a
+                    href="https://console.prisma.io"
+                    onClick={() =>
+                      trackCTA({
+                        cta_text: "Get Started",
+                        cta_location: "navbar",
+                        cta_destination: "https://console.prisma.io",
+                        section: "website",
+                      })
+                    }
+                  >
+                    Get Started
+                  </a>
                 </Button>
               </div>
             </nav>

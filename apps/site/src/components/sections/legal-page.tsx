@@ -14,10 +14,12 @@ export function LegalPage({
   title,
   lastUpdated,
   sections,
+  intro,
 }: {
   title: string;
   lastUpdated: string;
   sections: LegalSection[];
+  intro?: ReactNode;
 }) {
   return (
     <article className="bg-white px-4 pb-24 pt-32 sm:px-8 sm:pb-32 md:pt-40">
@@ -27,6 +29,11 @@ export function LegalPage({
           <h1 className="mt-4 text-balance text-3xl leading-[1.1] sm:text-4xl md:text-5xl">
             {title}
           </h1>
+          {intro && (
+            <p className="mt-5 max-w-[58ch] text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground">
+              {intro}
+            </p>
+          )}
           <p className="mt-4 text-sm text-muted-foreground">
             <strong className="font-semibold text-foreground">Last updated:</strong> {lastUpdated}
           </p>

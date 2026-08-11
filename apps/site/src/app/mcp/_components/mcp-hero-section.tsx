@@ -1,19 +1,15 @@
-import type { ReactNode } from "react";
-
-import { Button } from "@prisma/eclipse";
-
-import { McpBubble } from "./mcp-bubble";
-import { McpTypeText } from "./mcp-type-text";
+import { RoleKicker } from "@/components/brand/role-kicker";
+import { Texture } from "@/components/brand/texture";
+import { PrismButton } from "@/components/brand/prism-button";
+import { CheckBold } from "@/components/icons/forma";
 
 export type McpHeroFeature = {
-  icon: string;
-  line1: string;
-  line2: string;
-  mobileText?: ReactNode;
+  text: string;
 };
 
-const heroFeatureIconClass = "text-[24px] text-foreground-ppg";
-
+// Wrapped-panel hero in the redesign language: paper surface, hairline
+// border, a single cyan wash along the bottom edge (one accent per page),
+// and the feature list as a quiet checked row instead of icon tiles.
 export function McpHeroSection({
   docsHref,
   features,
@@ -22,85 +18,51 @@ export function McpHeroSection({
   features: readonly McpHeroFeature[];
 }) {
   return (
-    <section className="relative overflow-hidden px-4 pb-12 pt-20 md:pb-16 md:pt-30">
-      <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-ppg)_0%,var(--color-background-default)_100%)] opacity-20" />
-      <div className="relative mx-auto flex w-full max-w-5xl flex-col items-center gap-10 md:gap-16 my-10">
-        <div className="flex w-full flex-col items-center gap-8 md:gap-15">
-          <div className="flex w-full flex-col items-center gap-8 md:gap-10">
-            <p className="flex items-center justify-center gap-2 type-title-sm text-foreground-ppg">
-              <i className="fa-solid fa-message-code text-[16px]" aria-hidden />
-              Prisma MCP Server
-            </p>
-            <div className="flex w-full max-w-[910px] flex-col items-center gap-4 sm:gap-5 md:gap-6">
-              <div className="w-full max-w-[872px]">
-                <McpBubble variant="hero-desktop-title">
-                  <h1 className="relative z-10 w-full text-balance text-center font-sans-display stretch-display text-[30px] leading-10 font-black text-foreground-neutral dark:text-foreground-ppg-reverse">
-                    <span className="sm:hidden">
-                      <McpTypeText
-                        text={"Your Database Workflow,\nPowered by AI"}
-                        speed={14}
-                        className="whitespace-pre-wrap"
-                      />
-                    </span>
-                    <span className="hidden sm:inline">
-                      <McpTypeText text="Your Database Workflow, Powered by AI" speed={14} />
-                    </span>
-                    <span className="mcp-type-cursor text-foreground-neutral-weaker dark:text-foreground-neutral-weak">
-                      _
-                    </span>
-                  </h1>
-                </McpBubble>
-              </div>
-              <div className="w-full max-w-218">
-                <McpBubble variant="hero-desktop-description">
-                  <p className="relative z-10 w-full text-pretty text-left font-mono text-[clamp(0.9375rem,2vw,1rem)] font-medium leading-normal text-foreground-ppg-strong dark:text-foreground-ppg-reverse-weak">
-                    <span className="sm:hidden">
-                      <McpTypeText
-                        text="Manage your databases with natural language via MCP using your AI tool of choice. Works great with Prisma Postgres"
-                        speed={7}
-                        delay={480}
-                      />
-                    </span>
-                    <span className="hidden sm:inline">
-                      <McpTypeText
-                        text="Manage your databases with natural language via MCP in Claude, Codex, Cursor, Warp, ChatGPT, and other AI agents. Works great with Prisma Postgres"
-                        speed={7}
-                        delay={480}
-                      />
-                    </span>
-                    <span className="mcp-type-cursor text-foreground-ppg-strong dark:text-foreground-ppg-reverse-weak">
-                      _
-                    </span>
-                  </p>
-                </McpBubble>
-              </div>
-            </div>
-          </div>
-
-          <Button asChild variant={"ppg"} size={"3xl"} className="gap-3">
-            <a href={docsHref}>
-              Add MCP Server
-              <i className="fa-regular fa-arrow-right shrink-0 text-[16px]" aria-hidden />
-            </a>
-          </Button>
+    <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
+      <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-[16rem] overflow-hidden"
+        >
+          <div
+            className="absolute -bottom-1/2 left-1/2 h-full w-[140%] -translate-x-1/2"
+            style={{
+              background:
+                "radial-gradient(52% 60% at 50% 100%, color-mix(in srgb, var(--color-prism-cyan-400) 18%, transparent), transparent 70%)",
+            }}
+          />
+          <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-t from-transparent to-white" />
         </div>
+        <Texture opacity={0.06} blend="multiply" />
 
-        <div className="grid w-full max-w-5xl grid-cols-1 gap-12 sm:grid-cols-2 md:gap-8 lg:grid-cols-4">
-          {features.map(({ icon, line1, line2, mobileText }) => (
-            <div key={line1} className="flex items-center gap-4 text-left">
-              <div className="flex size-12 shrink-0 items-center justify-center rounded-square bg-background-ppg">
-                <i className={`${icon} ${heroFeatureIconClass}`} aria-hidden />
-              </div>
-              <p className="font-mono text-sm font-medium leading-5 text-foreground-neutral-weak sm:min-w-[175px] dark:text-white/70">
-                <span className="sm:hidden">{mobileText ?? `${line1} ${line2}`}</span>
-                <span className="hidden sm:inline">
-                  {line1}
-                  <br />
-                  {line2}
-                </span>
-              </p>
+        <div className="relative px-4 sm:px-8">
+          <div className="mx-auto flex max-w-site flex-col items-center pb-14 pt-32 text-center md:pb-16 md:pt-44">
+            <RoleKicker color="bg-prism-cyan-400" className="justify-center">
+              Prisma MCP server
+            </RoleKicker>
+            <h1 className="isolate mt-4 max-w-[22ch] text-balance text-[clamp(2.5rem,4vw,3.5rem)] leading-[1.06]">
+              Your database workflow, powered by AI
+            </h1>
+            <p className="mt-6 max-w-[56ch] text-pretty text-lg leading-relaxed text-muted-foreground">
+              Manage your databases with natural language via MCP in Claude, Codex, Cursor, Warp,
+              ChatGPT, and other AI agents. Works great with Prisma Postgres.
+            </p>
+            <div className="mt-8">
+              <PrismButton href={docsHref}>Add MCP server</PrismButton>
             </div>
-          ))}
+
+            <ul className="mt-12 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
+              {features.map((feature) => (
+                <li
+                  key={feature.text}
+                  className="flex items-center gap-2 text-sm text-muted-foreground"
+                >
+                  <CheckBold className="size-3.5 shrink-0 text-prism-cyan-700" aria-hidden />
+                  {feature.text}
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </div>
     </section>

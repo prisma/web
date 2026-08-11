@@ -2,11 +2,26 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { useState } from "react";
+import { trackCTA } from "@prisma-docs/ui/lib/analytics";
 import { BurstFill } from "@/components/brand/burst-fill";
 import { cn } from "@/lib/utils";
 
 const SPECTRUM =
   "linear-gradient(85deg, #01d7e4 0%, #f3c306 25%, #f37a03 50%, #f43531 74%, #f00e5c 100%)";
+
+// Console-bound CTAs record the cta_click GTM event (GA4 + Google Ads import),
+// matching the pre-rebrand ConsoleCtaButton so the conversion series survives
+// the redesign. Fires only for console.prisma.io destinations; UTM decoration
+// is handled separately by the document-level UtmPersistence listener.
+function trackConsoleCta(href: string | undefined, label: React.ReactNode, location?: string) {
+  if (!href || !href.includes("console.prisma.io")) return;
+  trackCTA({
+    cta_text: typeof label === "string" ? label : new URL(href).pathname.replace("/", ""),
+    cta_location: location ?? "cta",
+    cta_destination: href,
+    section: "website",
+  });
+}
 
 type PrismButtonProps = {
   children: React.ReactNode;
@@ -16,6 +31,8 @@ type PrismButtonProps = {
   type?: "button" | "submit";
   /** Stretch to the container's width — for card CTAs. Default is intrinsic. */
   fullWidth?: boolean;
+  /** Where the CTA lives, for cta_click analytics (e.g. "hero", "navbar"). */
+  ctaLocation?: string;
   /**
    * `lg` is for page heroes. The navbar's Get Started is the same black pill at
    * 109x36, so a default-size hero CTA reads as a repeat of it rather than as
@@ -46,6 +63,7 @@ export function PrismButton({
   onClick,
   type = "button",
   fullWidth = false,
+  ctaLocation,
   size = "default",
 }: PrismButtonProps) {
   const reduce = useReducedMotion();
@@ -87,7 +105,10 @@ export function PrismButton({
       <MotionComp
         href={href}
         type={href ? undefined : type}
-        onClick={onClick}
+        onClick={(event: React.MouseEvent<HTMLElement>) => {
+          trackConsoleCta(href, children, ctaLocation);
+          onClick?.(event);
+        }}
         className={cn(
           "relative flex items-center justify-center overflow-hidden rounded-full bg-black cursor-pointer",
           SIZES[size],
@@ -115,6 +136,7 @@ export function PrismButtonOutline({
   href,
   onClick,
   type = "button",
+  ctaLocation,
   size = "default",
 }: PrismButtonProps) {
   const Comp = href ? "a" : "button";
@@ -122,7 +144,10 @@ export function PrismButtonOutline({
     <Comp
       href={href}
       type={href ? undefined : type}
-      onClick={onClick}
+      onClick={(event: React.MouseEvent<HTMLElement>) => {
+        trackConsoleCta(href, children, ctaLocation);
+        onClick?.(event);
+      }}
       className={cn(
         "spectrum-border flex items-center justify-center rounded-full border border-[#646567] cursor-pointer transition-colors duration-500 hover:border-transparent",
         OUTLINE_SIZES[size],

@@ -55,7 +55,7 @@ const SUPPORT_CARDS: SupportCard[] = [
 const MORE_LINKS = [
   { label: "Documentation", url: "/docs" },
   { label: "Prisma examples", url: "https://github.com/prisma/prisma-examples" },
-  { label: "Support policy", url: "https://www.prisma.io/support-policy" },
+  { label: "Support policy", url: "/support-policy" },
   { label: "Enterprise support", url: "/enterprise" },
 ];
 
