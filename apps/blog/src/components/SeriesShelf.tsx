@@ -78,9 +78,9 @@ function SeriesChip({ item }: { item: SeriesShelfItem }) {
 }
 
 function FeaturedHighlight({ item }: { item: SeriesShelfItem }) {
-  // The docs landing's path-card treatment: a soft prismatic wash pooling in
-  // the card's corners and a whisper ray crossing behind the copy, in place
-  // of the old flat card-wash fill. `isolate` keeps the light under the text.
+  // The page's single prismatic surface: soft washes pooling in the corners
+  // and ONE ray as a clipped top-right corner bleed (the cover-art stripe
+  // gesture). `isolate` keeps the light under the text.
   return (
     <Link
       href={`/series/${item.key}`}
@@ -98,9 +98,14 @@ function FeaturedHighlight({ item }: { item: SeriesShelfItem }) {
             ].join(","),
           }}
         />
+        {/* The page's one ray: a corner bleed clipped by the card's own
+            bounds (the cover-art stripe gesture), pinned top-right where the
+            text never reaches — not a band across the copy. Fades in from
+            the left; the card edge crops its exit. */}
         <PrismRay
-          intensity="whisper"
-          className="left-[10%] top-[70%] h-8 w-[60rem] -translate-y-1/2"
+          intensity="structural"
+          mask="start"
+          className="-right-24 top-[8%] h-9 w-[34rem]"
         />
       </div>
       <div className="type-heading-2xs flex items-center gap-2">
@@ -114,7 +119,9 @@ function FeaturedHighlight({ item }: { item: SeriesShelfItem }) {
       </div>
       <div className="type-title-lg text-foreground-neutral-strong">{item.title}</div>
       {item.description ? (
-        <p className="text-sm leading-relaxed text-foreground-neutral-weak">{item.description}</p>
+        <p className="max-w-[72ch] text-sm leading-relaxed text-foreground-neutral-weak">
+          {item.description}
+        </p>
       ) : null}
       <div className="mt-1 text-sm font-medium text-foreground-ppg">Explore the series →</div>
     </Link>
