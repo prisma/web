@@ -135,7 +135,11 @@ export function ProductHero({
                 intensity="hero"
               />
               <div className="relative md:h-full">
-                {hero.tour ? (
+                {/* length, not truthiness: `tour: []` is a plausible
+                    intermediate state while editing content, and it is truthy —
+                    it would render a tour whose `% stops.length` is NaN, giving
+                    an empty card with no tabs instead of falling through here */}
+                {hero.tour?.length ? (
                   <ProductTour stops={hero.tour} />
                 ) : Illustration ? (
                   <div className="max-md:aspect-[4/3] md:h-full">
