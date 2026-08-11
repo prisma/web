@@ -244,6 +244,11 @@ const config = {
         destination: "/how-xeito-builds-features-not-database-infrastructure-with-prisma",
         permanent: true,
       },
+      {
+        source: "/series/agentic-software-development",
+        destination: "/series/agentic-engineering",
+        permanent: true,
+      },
       ...tagSlugs.map((tag) => ({
         source: `/${tag}`,
         destination: `/?tag=${tag}`,

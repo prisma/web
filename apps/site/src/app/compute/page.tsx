@@ -265,6 +265,9 @@ export async function generateMetadata(): Promise<Metadata> {
     title: "Prisma Compute: Deploy TypeScript apps on Bun",
     description:
       "Deploy TypeScript apps from your repo. APIs and AI agents run as long-lived Bun processes next to Prisma Postgres, with long-running requests and streaming.",
+    alternates: {
+      canonical: "https://www.prisma.io/compute",
+    },
     openGraph: {
       title: "Prisma Compute: Deploy TypeScript apps on Bun",
       description:
