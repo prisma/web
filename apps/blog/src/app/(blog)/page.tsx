@@ -2,6 +2,7 @@ import { blog, getPageImage } from "@/lib/source";
 import { getSeriesMetadata, seriesRegistry } from "@/lib/series-registry";
 import { type BlogCardItem } from "@/components/BlogGrid";
 import { FeaturedSeriesShelf, type SeriesShelfItem } from "@/components/SeriesShelf";
+import { PrismRay } from "@/components/chrome/prism-ray";
 import { BLOG_HOME_DESCRIPTION, BLOG_HOME_TITLE } from "@/lib/blog-metadata";
 import type { Metadata } from "next";
 import { withBlogBasePath, withBlogBasePathForImageSrc } from "@/lib/url";
@@ -154,9 +155,33 @@ export default async function BlogHome() {
     // Site width (1400px) — the same container the rebranded marketing pages
     // use, so the blog's grid lines up with the rest of prisma.io.
     <main className="z-1 mx-auto w-full max-w-[87.5rem] flex-1 px-4 sm:px-6 lg:px-8">
-      {/* CF's centered hero: display title, one muted line on a 2xl measure,
-          generous vertical rhythm before the feed starts. */}
-      <header className="mx-auto max-w-2xl py-16 text-center sm:py-20">
+      {/* CF's centered hero, carrying the docs landing's brand moment:
+          spectral washes bloom behind the title and the structural prism ray
+          crosses beneath it. `isolate` + `-z-10` keep the light strictly
+          under the text; static by design, so no reduced-motion variant. */}
+      <header className="relative isolate mx-auto max-w-2xl py-16 text-center sm:py-20">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -inset-x-24 -inset-y-8 -z-10 overflow-hidden dark:opacity-70"
+        >
+          <div
+            className="absolute inset-0"
+            style={{
+              background: [
+                "radial-gradient(34% 48% at 18% 30%, color-mix(in srgb, var(--color-prism-cyan-400) 16%, transparent), transparent 68%)",
+                "radial-gradient(30% 42% at 84% 24%, color-mix(in srgb, var(--color-prism-yellow-300) 13%, transparent), transparent 66%)",
+                "radial-gradient(30% 44% at 70% 88%, color-mix(in srgb, var(--color-prism-red-500) 12%, transparent), transparent 68%)",
+              ].join(","),
+            }}
+          />
+          {/* Below the text block, gliding through the gap before the filter
+              row — never through the copy itself (the docs put theirs behind a
+              card; text can't take a structural band). */}
+          <PrismRay
+            intensity="whisper"
+            className="left-1/2 top-[94%] h-7 w-[52rem] -translate-x-1/2 -translate-y-1/2"
+          />
+        </div>
         <h1 className="landing-h1">Blog</h1>
         <p className="mt-6 text-lg leading-relaxed text-foreground-neutral-weak text-balance">
           {BLOG_HOME_DESCRIPTION}

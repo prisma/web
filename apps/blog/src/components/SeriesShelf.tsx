@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { cn } from "@prisma-docs/ui/lib/cn";
+import { PrismRay } from "@/components/chrome/prism-ray";
 
 export type SeriesShelfItem = {
   key: string;
@@ -77,12 +78,31 @@ function SeriesChip({ item }: { item: SeriesShelfItem }) {
 }
 
 function FeaturedHighlight({ item }: { item: SeriesShelfItem }) {
+  // The docs landing's path-card treatment: a soft prismatic wash pooling in
+  // the card's corners and a whisper ray crossing behind the copy, in place
+  // of the old flat card-wash fill. `isolate` keeps the light under the text.
   return (
     <Link
       href={`/series/${item.key}`}
-      className="spectrum-border group mt-4 flex flex-col gap-2 rounded-square-high border border-stroke-neutral bg-card-wash p-5 shadow-box-low transition-[box-shadow,border-color] duration-500 hover:border-transparent hover:shadow-box motion-reduce:transition-none sm:p-6"
+      className="spectrum-border group relative isolate mt-4 flex flex-col gap-2 overflow-hidden rounded-square-high border border-stroke-neutral bg-background-default p-5 shadow-box-low transition-[box-shadow,border-color] duration-500 hover:border-transparent hover:shadow-box motion-reduce:transition-none sm:p-6"
       aria-label={`Featured series: ${item.title}`}
     >
+      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 dark:opacity-70">
+        <div
+          className="absolute inset-0"
+          style={{
+            background: [
+              "radial-gradient(42% 90% at 4% 0%, color-mix(in srgb, var(--color-prism-cyan-400) 13%, transparent), transparent 70%)",
+              "radial-gradient(36% 80% at 55% 110%, color-mix(in srgb, var(--color-prism-yellow-300) 10%, transparent), transparent 68%)",
+              "radial-gradient(38% 90% at 100% 10%, color-mix(in srgb, var(--color-prism-red-500) 10%, transparent), transparent 70%)",
+            ].join(","),
+          }}
+        />
+        <PrismRay
+          intensity="whisper"
+          className="left-[10%] top-[70%] h-8 w-[60rem] -translate-y-1/2"
+        />
+      </div>
       <div className="type-heading-2xs flex items-center gap-2">
         <span className="text-foreground-ppg">Featured series</span>
         <span aria-hidden className="text-foreground-neutral-weaker">
