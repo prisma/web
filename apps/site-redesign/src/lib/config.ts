@@ -36,7 +36,6 @@ export const siteConfig = {
       { label: "ORM", href: "/orm" },
       { label: "Stack", href: "/stack" },
       { label: "Pricing", href: "/pricing" },
-      { label: "Demo", href: "/demo" },
       { label: "Changelog", href: "/changelog" },
     ],
     company: [

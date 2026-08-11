@@ -19,10 +19,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/changelog",
     "/support",
     "/community",
-    "/demo",
     "/legal/privacy",
     "/legal/terms",
     "/legal/sla",
+    "/legal/security-and-compliance",
   ].map((route) => ({
     url: `${siteConfig.url}${route}`,
     lastModified: new Date(),

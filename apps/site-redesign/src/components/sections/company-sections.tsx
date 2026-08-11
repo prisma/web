@@ -80,19 +80,17 @@ export function CompanyHero() {
   )
 }
 
-// Shared with /company/careers — a single scrolling strip keeps the team
-// photography without the old masonry's height (14 stacked images).
+// Shared with /company/careers. A grid rather than a bleed strip: every
+// photo shows in full at any viewport (the strip clipped whatever fell past
+// the right edge), and it keeps well under the old masonry's height.
 export function TeamPhotos() {
   return (
-    <section className="overflow-hidden bg-white py-14 sm:py-20">
-      <div className="flex gap-4 pl-4 sm:pl-8 [mask-image:linear-gradient(to_right,transparent,black_3%,black_97%,transparent)]">
-        {TEAM_PHOTOS.map((photo, i) => (
+    <section className="bg-white px-4 py-14 sm:px-8 sm:py-20">
+      <div className="mx-auto grid max-w-site grid-cols-2 gap-4 lg:grid-cols-3">
+        {TEAM_PHOTOS.map((photo) => (
           <div
             key={photo.src}
-            className={
-              "relative shrink-0 overflow-hidden rounded-2xl border border-black/[0.06] " +
-              (i % 3 === 0 ? "aspect-[4/3] w-[26rem] max-w-[80vw]" : "aspect-[3/4] w-[18rem] max-w-[60vw]")
-            }
+            className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-black/[0.06]"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
