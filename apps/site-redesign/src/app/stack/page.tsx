@@ -7,7 +7,7 @@ import { Texture } from "@/components/brand/texture";
 export const metadata: Metadata = {
   title: "The Prisma Stack",
   description:
-    "ORM, Postgres, and Compute — one platform for your app and its database, with one shared context across your stack.",
+    "ORM, Postgres, and Compute, one platform for your app and its database, with one shared context across your stack.",
 };
 
 // Interim /stack page: the header's "Explore the stack" link needs a real
@@ -28,7 +28,7 @@ export default function StackPage() {
                 One platform, from schema to production
               </h1>
               <p className="mt-6 max-w-[52ch] text-pretty text-lg leading-relaxed text-muted-foreground">
-                ORM, Postgres, and Compute work together natively — one shared context across your
+                ORM, Postgres, and Compute work together natively, one shared context across your
                 stack, one bill, and nothing to glue together.
               </p>
             </div>

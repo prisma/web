@@ -56,6 +56,7 @@ const MORE_LINKS = [
   { label: "Documentation", url: "/docs" },
   { label: "Prisma examples", url: "https://github.com/prisma/prisma-examples" },
   { label: "Support policy", url: "https://www.prisma.io/support-policy" },
+  { label: "Enterprise support", url: "/enterprise" },
 ];
 
 export default function SupportPage() {

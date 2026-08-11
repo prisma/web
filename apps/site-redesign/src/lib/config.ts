@@ -48,11 +48,11 @@ export const siteConfig = {
     ],
     resources: [
       { label: "Docs", href: "/docs" },
-      { label: "Data Guide", href: "/dataguide" },
+      { label: "Data Guide", href: "https://www.prisma.io/dataguide" },
       { label: "Support", href: "/support" },
       { label: "Community", href: "/community" },
-      { label: "Status", href: "/prisma-status" },
-      { label: "Trust Center", href: "/trust-center" },
+      { label: "Status", href: "https://www.prisma-status.com" },
+      { label: "Trust Center", href: "https://trust.prisma.io/" },
     ],
     legal: [
       { label: "Privacy", href: "/legal/privacy" },

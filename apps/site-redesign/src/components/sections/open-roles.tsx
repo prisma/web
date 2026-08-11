@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { ArrowRight } from "@/components/icons/forma"
 
-// Open roles, fetched client-side from the Rippling ATS board — same source
+// Open roles, fetched client-side from the Rippling ATS board, same source
 // as the old site's careers page. Needs NEXT_PUBLIC_BOARD_ID at build time;
 // without it (e.g. local dev) the section degrades to a quiet empty state.
 
@@ -71,7 +71,7 @@ export function OpenRoles() {
 
         {jobs !== null && depts.length === 0 && (
           <p className="mt-12 text-center text-sm text-muted-foreground">
-            No open roles listed right now — check back soon.
+            No open roles listed right now, check back soon.
           </p>
         )}
 

@@ -88,7 +88,7 @@ export const CARE_ABOUT = [
   {
     title: "Open source",
     description:
-      "To support the OSS community and help fund the ecosystem around Prisma, we started our Free and Open Source Software (FOSS) Fund in April 2022. Each month Prisma donates $500 to a selected open-source project — nominated by the team, reviewed across the company, and announced on social media.",
+      "To support the OSS community and help fund the ecosystem around Prisma, we started our Free and Open Source Software (FOSS) Fund in April 2022. Each month Prisma donates $500 to a selected open-source project, nominated by the team, reviewed across the company, and announced on social media.",
   },
   {
     title: "Climate change",

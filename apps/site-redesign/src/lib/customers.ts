@@ -1,5 +1,5 @@
 // Customer case studies, ported from apps/site (src/data/showcase.ts stories).
-// Story URLs point at the blog app, which serves /blog in production — kept
+// Story URLs point at the blog app, which serves /blog in production, kept
 // relative so they resolve on any deploy of the combined site.
 
 export type CustomerStory = {
@@ -15,7 +15,7 @@ export const CUSTOMER_STORIES: CustomerStory[] = [
     company: "Bucket",
     title: "How Bucket uses Prisma ORM to make shipping feature releases faster",
     excerpt:
-      "Bucket, a fast-growing feature management platform, uses Prisma ORM to simplify complex relational queries and accelerate feature releases — a lean team delivering high-quality features faster while managing evolving database needs.",
+      "Bucket, a fast-growing feature management platform, uses Prisma ORM to simplify complex relational queries and accelerate feature releases, a lean team delivering high-quality features faster while managing evolving database needs.",
     href: "/blog/how-bucket-uses-prisma-orm",
     image: "/customers/stories/bucket.png",
   },
@@ -31,7 +31,7 @@ export const CUSTOMER_STORIES: CustomerStory[] = [
     company: "Formbricks",
     title: "Formbricks and Prisma Accelerate: solving scalability together",
     excerpt:
-      "Formbricks, an open-source survey platform, tackled scalability challenges with Prisma Accelerate — managing growing user demand while maintaining high performance.",
+      "Formbricks, an open-source survey platform, tackled scalability challenges with Prisma Accelerate, managing growing user demand while maintaining high performance.",
     href: "/blog/formbricks-and-prisma-accelerate-solving-scalability-together",
     image: "/customers/stories/formbricks.svg",
   },
@@ -55,7 +55,7 @@ export const CUSTOMER_STORIES: CustomerStory[] = [
     company: "Tryg",
     title: "How Tryg has leveraged Prisma to democratize data",
     excerpt:
-      "Tryg's \"360\" Data Broker platform accelerated development cycles by removing manual environment configuration — Prisma was the critical technology that let them democratize billions of records across data sources.",
+      "Tryg's \"360\" Data Broker platform accelerated development cycles by removing manual environment configuration. Prisma was the critical technology that let them democratize billions of records across data sources.",
     href: "/blog/tryg-customer-story-pdmdrRhTupvd",
     image: "/customers/stories/tryg.png",
   },
@@ -79,7 +79,7 @@ export const CUSTOMER_STORIES: CustomerStory[] = [
     company: "Grover",
     title: "How Grover moves faster with Prisma",
     excerpt:
-      "Grover offers monthly tech product subscriptions across many teams — several found huge productivity gains by adopting Prisma.",
+      "Grover offers monthly tech product subscriptions across many teams. Several found huge productivity gains by adopting Prisma.",
     href: "/blog/grover-customer-success-story-nxkWGcGNuvFd",
     image: "/customers/stories/grover.png",
   },
@@ -87,7 +87,7 @@ export const CUSTOMER_STORIES: CustomerStory[] = [
     company: "Invisible",
     title: "How migrating from Sequelize to Prisma allowed Invisible to scale",
     excerpt:
-      "Invisible, a B2B productivity startup, future-proofed its tech stack with Prisma — a crucial role in supporting the company's scale.",
+      "Invisible, a B2B productivity startup, future-proofed its tech stack with Prisma, which played a crucial role in supporting the company's scale.",
     href: "/blog/how-migrating-from-Sequelize-to-Prisma-allowed-Invisible-to-scale-i4pz2mwu6q",
     image: "/customers/stories/invisible.png",
   },
@@ -95,7 +95,7 @@ export const CUSTOMER_STORIES: CustomerStory[] = [
     company: "Pearly",
     title: "How Prisma allowed Pearly to scale quickly with an ultra-lean team",
     excerpt:
-      "Pearly provides a platform for dentists to create reliable revenue streams and affordable care plans — scaling quickly with an ultra-lean team.",
+      "Pearly provides a platform for dentists to create reliable revenue streams and affordable care plans, scaling quickly with an ultra-lean team.",
     href: "/blog/pearly-plan-customer-success-pdmdrRhTupve",
     image: "/customers/stories/pearly.png",
   },
@@ -103,7 +103,7 @@ export const CUSTOMER_STORIES: CustomerStory[] = [
     company: "Poppy",
     title: "How Poppy uses Prisma Client to ship confidently",
     excerpt:
-      "Poppy offers shared rides of all kinds through its mobile app. Prisma plays a vital role in shipping quickly and confidently — a big reason they've hit 1.5 million total rides.",
+      "Poppy offers shared rides of all kinds through its mobile app. Prisma plays a vital role in shipping quickly and confidently, a big reason they've hit 1.5 million total rides.",
     href: "/blog/poppy-customer-success-story-swnWQcGRRvpd",
     image: "/customers/stories/poppy.png",
   },
@@ -111,7 +111,7 @@ export const CUSTOMER_STORIES: CustomerStory[] = [
     company: "iopool",
     title: "How iopool refactored their app in less than 6 months with Prisma",
     excerpt:
-      "iopool's architecture was slowing them down, so they switched to Lambda functions and PostgreSQL powered by Prisma — moving fast with confidence and a greatly simplified process.",
+      "iopool's architecture was slowing them down, so they switched to Lambda functions and PostgreSQL powered by Prisma, moving fast with confidence and a greatly simplified process.",
     href: "/blog/iopool-customer-success-story-uLsCWvaqzXoa",
     image: "/customers/stories/iopool.png",
   },
