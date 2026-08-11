@@ -20,7 +20,7 @@ async function TweetCard({ tweetId }: { tweetId: string }) {
 
   return (
     <TweetBoundary tweetId={tweetId}>
-      <EmbeddedTweet tweet={sanitizeTweet(tweet)} />
+      <EmbeddedTweet tweet={tweet} />
     </TweetBoundary>
   );
 }

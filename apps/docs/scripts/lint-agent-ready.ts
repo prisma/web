@@ -146,6 +146,8 @@ if (unmatched.length > CATCHALL_WARN) {
 // fast enough to cover the full set.
 const directiveFailures: string[] = [];
 const missingDescription: string[] = [];
+const headingMarkerFailures: string[] = [];
+const detailsLeaks: string[] = [];
 for (const page of indexPages) {
   let text: string;
   try {
@@ -167,6 +169,27 @@ for (const page of indexPages) {
   const description = page.data.description?.trim();
   if (description && !text.includes(description)) {
     missingDescription.push(page.url);
+  }
+
+  // Heading markers: the processed markdown emits headings as bare
+  // "Text [#anchor]" lines; getLLMText restores the `#` markers from the toc.
+  // If a toc anchor appears in the output, the line carrying it must be a real
+  // markdown heading — otherwise agents see prose and the afdocs parity check
+  // strips list-like heading text ("## 1. Set up …") on the markdown side.
+  for (const item of page.data.toc ?? []) {
+    if (typeof item.url !== "string" || !item.url.startsWith("#")) continue;
+    const anchorRef = `[${item.url}]`;
+    const anchorLine = lines.find((line) => line.includes(anchorRef));
+    if (anchorLine !== undefined && !/^#{1,6} /.test(anchorLine)) {
+      headingMarkerFailures.push(`${page.url} (${item.url})`);
+    }
+  }
+
+  // <details> blocks must be converted to plain markdown (formatDetails in
+  // llm-markdown.ts); a leaked <details> means its body is still 2-space
+  // indented, which breaks code fences for markdown consumers.
+  if (text.includes("<details")) {
+    detailsLeaks.push(page.url);
   }
 }
 
@@ -192,39 +215,88 @@ if (missingDescription.length > 0) {
   pass("Description in markdown", "all frontmatter descriptions present in markdown");
 }
 
+if (headingMarkerFailures.length > 0) {
+  fail(
+    "Heading markers restored",
+    `${headingMarkerFailures.length} toc heading(s) rendered without markdown markers (restoreHeadingMarkers in llm-markdown.ts regressed):\n    ${headingMarkerFailures
+      .slice(0, 10)
+      .join("\n    ")}`,
+  );
+} else {
+  pass("Heading markers restored", "all toc anchors in markdown output sit on real headings");
+}
+
+if (detailsLeaks.length > 0) {
+  fail(
+    "No <details> leakage",
+    `${detailsLeaks.length} page(s) leak raw <details> into markdown (formatDetails in llm-markdown.ts regressed):\n    ${detailsLeaks
+      .slice(0, 10)
+      .join("\n    ")}`,
+  );
+} else {
+  pass("No <details> leakage", "all <details> blocks converted to plain markdown");
+}
+
 // ── Check 5b: HTML surface source guard ──────────────────────────────────────
-// The rendered HTML page carries the same directive via a hidden element.
-// Rendering React in this script is not worth it; instead guard at the source
-// level that the docs page component emits a hidden element referencing llms.txt
-// BEFORE it renders <DocsPage. This is a source-level guard, not a render test.
-const docsPagePath = join(
-  scriptDir,
-  "..",
-  "src",
-  "app",
-  "(docs)",
-  "(default)",
-  "[[...slug]]",
-  "page.tsx",
-);
+// The rendered HTML page carries the same directive via a hidden element that
+// must be the FIRST child of <body> in the ROOT LAYOUT — not inside the page
+// component. Agent-readiness audits (afdocs "llms-txt-directive-html") measure
+// the directive's byte position within the body and warn when it sits past 50%,
+// which is where it lands if it renders inside the content area after the
+// sidebar markup. Rendering React in this script is not worth it; instead guard
+// at the source level that layout.tsx links llms.txt between <body> and the
+// first real child (<Banner). This is a source-level guard, not a render test.
+const docsLayoutPath = join(scriptDir, "..", "src", "app", "layout.tsx");
 try {
-  const docsPageSource = readFileSync(docsPagePath, "utf8");
-  const docsPageRenderIndex = docsPageSource.indexOf("<DocsPage");
-  const llmsRefIndex = docsPageSource.indexOf("llms.txt");
-  if (docsPageRenderIndex === -1) {
-    fail("HTML directive source guard", `<DocsPage not found in ${docsPagePath}`);
+  const layoutSource = readFileSync(docsLayoutPath, "utf8");
+  const bodyIndex = layoutSource.indexOf("<body");
+  const llmsRefIndex = layoutSource.indexOf('href="https://www.prisma.io/docs/llms.txt"');
+  const bannerIndex = layoutSource.indexOf("<Banner");
+  const ignoreIndex = layoutSource.indexOf("data-markdown-ignore");
+  if (bodyIndex === -1) {
+    fail("HTML directive source guard", `<body not found in ${docsLayoutPath}`);
   } else if (llmsRefIndex === -1) {
-    fail("HTML directive source guard", `page.tsx does not reference llms.txt`);
-  } else if (llmsRefIndex >= docsPageRenderIndex) {
+    fail("HTML directive source guard", "layout.tsx does not link llms.txt");
+  } else if (llmsRefIndex < bodyIndex) {
     fail(
       "HTML directive source guard",
-      "page.tsx references llms.txt only after <DocsPage; the hidden directive must precede it",
+      "layout.tsx links llms.txt before <body>; the hidden directive must be the first child of <body>",
+    );
+  } else if (bannerIndex !== -1 && llmsRefIndex > bannerIndex) {
+    fail(
+      "HTML directive source guard",
+      "layout.tsx links llms.txt after <Banner; the hidden directive must be the first child of <body> so audits find it near the top of the HTML",
+    );
+  } else if (ignoreIndex === -1 || ignoreIndex > llmsRefIndex) {
+    fail(
+      "HTML directive source guard",
+      "the hidden directive in layout.tsx must carry data-markdown-ignore so it stays out of the HTML/markdown parity comparison",
     );
   } else {
-    pass("HTML directive source guard", "hidden llms.txt directive precedes <DocsPage");
+    pass("HTML directive source guard", "hidden llms.txt directive is the first child of <body>");
   }
 } catch (error) {
-  fail("HTML directive source guard", `could not read ${docsPagePath}: ${String(error)}`);
+  fail("HTML directive source guard", `could not read ${docsLayoutPath}: ${String(error)}`);
+}
+
+// ── Check 5c: APIPage parity guard ───────────────────────────────────────────
+// The interactive OpenAPI explorer on /management-api/endpoints/* has no
+// markdown equivalent (per-language code samples, auth widgets); the wrapper in
+// api-page.tsx must carry data-markdown-ignore so parity checkers compare only
+// the generated markdown API reference.
+const apiPagePath = join(scriptDir, "..", "src", "components", "api-page.tsx");
+try {
+  const apiPageSource = readFileSync(apiPagePath, "utf8");
+  if (!apiPageSource.includes("data-markdown-ignore")) {
+    fail(
+      "APIPage parity guard",
+      "api-page.tsx no longer wraps the OpenAPI explorer in data-markdown-ignore; management-api endpoint pages will fail markdown/HTML parity",
+    );
+  } else {
+    pass("APIPage parity guard", "OpenAPI explorer is excluded from parity comparison");
+  }
+} catch (error) {
+  fail("APIPage parity guard", `could not read ${apiPagePath}: ${String(error)}`);
 }
 
 // ── Check 6: common queries resolve to existing pages ────────────────────────
@@ -367,6 +439,63 @@ if (mcpErrors.length > 0) {
     "MCP discovery",
     `docs + site valid: url "${MCP_URL}", transport http, ${docsMcp.servers.length} server(s)`,
   );
+}
+
+// ── Check 9b: MCP protocol endpoints (docs + site) ───────────────────────────
+// Discovery documents alone do not satisfy "MCP server discoverable" audits —
+// they probe the conventional `<origin>/mcp` endpoints with an MCP initialize
+// request. /docs/mcp is a proxy route in this app; www.prisma.io/mcp is a
+// marketing page, so MCP traffic there is routed by header-matched rewrites in
+// the site next.config. Guard both at the source level.
+const mcpEndpointErrors: string[] = [];
+const docsMcpRoutePath = join(scriptDir, "..", "src", "app", "mcp", "route.ts");
+try {
+  const routeSource = readFileSync(docsMcpRoutePath, "utf8");
+  if (!routeSource.includes(`"${MCP_URL}"`)) {
+    mcpEndpointErrors.push(`docs: src/app/mcp/route.ts does not proxy to "${MCP_URL}"`);
+  }
+  for (const handler of ["GET", "POST", "DELETE"]) {
+    if (!new RegExp(`export (async )?function ${handler}\\b`).test(routeSource)) {
+      mcpEndpointErrors.push(`docs: src/app/mcp/route.ts is missing the ${handler} handler`);
+    }
+  }
+} catch (error) {
+  mcpEndpointErrors.push(`docs: could not read ${docsMcpRoutePath}: ${String(error)}`);
+}
+
+const siteNextConfigPath = join(scriptDir, "..", "..", "site", "next.config.mjs");
+try {
+  const siteConfigSource = readFileSync(siteNextConfigPath, "utf8");
+  // All three header conditions are needed to cover the MCP Streamable HTTP
+  // transport: POST messages (content-type), the server event stream (accept),
+  // and session teardown (mcp-session-id). Split the config into per-rewrite
+  // chunks (each starts at its `source:` and ends before the next one) so a
+  // header key and the MCP destination must appear together in the SAME
+  // rewrite entry — matching across neighbouring entries would let a dropped
+  // header condition slip through.
+  const mcpRewriteChunks = siteConfigSource
+    .split(/(?=source: ")/)
+    .filter((chunk) => chunk.startsWith('source: "/mcp"'));
+  const requiredMcpHeaderKeys = ["accept", "content-type", "mcp-session-id"];
+  const missingMcpHeaderRewrites = requiredMcpHeaderKeys.filter(
+    (key) =>
+      !mcpRewriteChunks.some(
+        (chunk) => chunk.includes(`key: "${key}"`) && chunk.includes(`destination: "${MCP_URL}"`),
+      ),
+  );
+  if (missingMcpHeaderRewrites.length > 0) {
+    mcpEndpointErrors.push(
+      `site: next.config.mjs is missing a /mcp rewrite to "${MCP_URL}" for header key(s): ${missingMcpHeaderRewrites.join(", ")}`,
+    );
+  }
+} catch (error) {
+  mcpEndpointErrors.push(`site: could not read ${siteNextConfigPath}: ${String(error)}`);
+}
+
+if (mcpEndpointErrors.length > 0) {
+  fail("MCP protocol endpoints", `\n    ${mcpEndpointErrors.join("\n    ")}`);
+} else {
+  pass("MCP protocol endpoints", "/docs/mcp proxy route + site /mcp rewrites present");
 }
 
 // ── Check 10: placeholder protectors are collision-safe ──────────────────────

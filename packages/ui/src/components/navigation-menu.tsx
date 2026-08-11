@@ -9,6 +9,7 @@ import { StarCount } from "./star-count";
 import { Fragment, useLayoutEffect, useRef, useState } from "react";
 import { Action, Button } from "@prisma/eclipse";
 import type { Link as WebNavigationLink } from "./web-navigation";
+import { trackCTA } from "../lib/analytics";
 
 const Logo = (
   <svg
@@ -72,7 +73,11 @@ function NavigationMenu({
 
   return (
     <Fragment>
-      <div aria-hidden="true" ref={sentinelRef} className="pointer-events-none h-px -mb-px" />
+      <div
+        aria-hidden="true"
+        ref={sentinelRef}
+        className="pointer-events-none h-px -mb-px"
+      />
       <NavigationMenuPrimitive.Root
         data-slot="navigation-menu"
         data-stuck={isStuck ? "true" : "false"}
@@ -100,7 +105,8 @@ function NavigationWrapper({
       data-slot="navigation-wrapper"
       className={cn(
         "max-w-7xl w-full mx-auto py-3 px-6 shadow-box-high bg-background-default/50 [backdrop-filter:blur(3)] rounded-square-high flex justify-between align-center transition-[max-width] duration-500 ease-[cubic-bezier(0.075,0.82,0.165,1)] group-data-[stuck=true]/navigation-menu:max-w-235",
-        mobileOpen && "py-7 px-10 rounded-none md:py-3! md:px-6! md:rounded-square-high",
+        mobileOpen &&
+          "py-7 px-10 rounded-none md:py-3! md:px-6! md:rounded-square-high",
         className,
       )}
       {...props}
@@ -117,7 +123,10 @@ function NavigationMenuList({
   return (
     <NavigationMenuPrimitive.List
       data-slot="navigation-menu-list"
-      className={cn("gap-4 group flex flex-1 list-none items-center last:justify-end", className)}
+      className={cn(
+        "gap-4 group flex flex-1 list-none items-center last:justify-end",
+        className,
+      )}
       {...props}
     />
   );
@@ -162,7 +171,11 @@ function NavigationMenuTrigger({
   return (
     <NavigationMenuPrimitive.Trigger
       data-slot="navigation-menu-trigger text-foreground-neutral"
-      className={cn(navigationMenuTriggerStyle({ variant }), "group", className)}
+      className={cn(
+        navigationMenuTriggerStyle({ variant }),
+        "group",
+        className,
+      )}
       {...props}
     >
       {children}{" "}
@@ -174,7 +187,10 @@ function NavigationMenuTrigger({
   );
 }
 
-function NavigationMenuContent({ className, ...props }: NavigationMenuPrimitive.Content.Props) {
+function NavigationMenuContent({
+  className,
+  ...props
+}: NavigationMenuPrimitive.Content.Props) {
   return (
     <NavigationMenuPrimitive.Content
       data-slot="navigation-menu-content"
@@ -347,9 +363,13 @@ function MenuNavigationItem({
   variant?: "ppg" | "orm";
 }) {
   const hoverClass =
-    variant === "orm" ? "hover:bg-background-orm-strong" : "hover:bg-background-ppg-strong";
+    variant === "orm"
+      ? "hover:bg-background-orm-strong"
+      : "hover:bg-background-ppg-strong";
   const iconColor =
-    variant === "orm" ? "text-background-orm-reverse" : "text-background-ppg-reverse";
+    variant === "orm"
+      ? "text-background-orm-reverse"
+      : "text-background-ppg-reverse";
 
   return (
     <NavigationMenuLink
@@ -375,7 +395,9 @@ function MenuNavigationItem({
             <i className=" ml-1 fa-regular fa-arrow-up-right text-foreground-neutral text-sm" />
           )}
         </span>
-        {link.desc ? <p className="text-xs text-foreground-neutral-weaker">{link.desc}</p> : null}
+        {link.desc ? (
+          <p className="text-xs text-foreground-neutral-weaker">{link.desc}</p>
+        ) : null}
       </div>
     </NavigationMenuLink>
   );
@@ -395,7 +417,10 @@ function MobileMenuItemWithSubmenu({
     variant === "orm"
       ? "hover:bg-background-orm-strong! data-open:hover:bg-background-orm-strong! data-open:bg-background-orm-strong! data-popup-open:bg-background-orm-strong! data-popup-open:hover:bg-background-orm-strong!"
       : "hover:bg-background-ppg-strong! data-open:hover:bg-background-ppg-strong! data-open:bg-background-ppg-strong! data-popup-open:bg-background-ppg-strong! data-popup-open:hover:bg-background-ppg-strong!";
-  const openClass = variant === "orm" ? "bg-background-orm-strong!" : "bg-background-ppg-strong!";
+  const openClass =
+    variant === "orm"
+      ? "bg-background-orm-strong!"
+      : "bg-background-ppg-strong!";
 
   return (
     <NavigationMenuItem key={link.text}>
@@ -413,7 +438,11 @@ function MobileMenuItemWithSubmenu({
       {isOpen && link.sub && (
         <NavigationMenuList className="flex-col items-start bg-background-neutral-weaker p-2 gap-0 border-b border-stroke-neutral">
           {link.sub.map((sublink) => (
-            <MenuNavigationItem link={sublink} key={sublink.url} variant={variant} />
+            <MenuNavigationItem
+              link={sublink}
+              key={sublink.url}
+              variant={variant}
+            />
           ))}
         </NavigationMenuList>
       )}
@@ -446,7 +475,11 @@ function NavigationMobileMenu({
               </NavigationMenuLink>
             </NavigationMenuItem>
           ) : link.sub?.length ? (
-            <MobileMenuItemWithSubmenu key={link.text} link={link} variant={buttonVariant} />
+            <MobileMenuItemWithSubmenu
+              key={link.text}
+              link={link}
+              variant={buttonVariant}
+            />
           ) : null,
         )}
       </div>
@@ -454,13 +487,45 @@ function NavigationMobileMenu({
         <Socials className="flex items-center justify-center" include="all" />
         <div className="grid gap-2 grid-cols-2 w-full">
           <NavigationMenuItem className="w-full">
-            <Button asChild size="xl" variant="default-strong" className="w-full">
-              <a href={loginHref}>Login</a>
+            <Button
+              asChild
+              size="xl"
+              variant="default-strong"
+              className="w-full"
+            >
+              <a
+                href={loginHref}
+                onClick={() =>
+                  trackCTA({
+                    cta_text: "Login",
+                    cta_location: "navbar_mobile",
+                    cta_destination: loginHref,
+                  })
+                }
+              >
+                Login
+              </a>
             </Button>
           </NavigationMenuItem>
           <NavigationMenuItem className="w-full">
-            <Button asChild size="xl" variant={buttonVariant} className="whitespace-nowrap w-full">
-              <a href={signupHref}>Get started</a>
+            <Button
+              asChild
+              size="xl"
+              variant={buttonVariant}
+              className="whitespace-nowrap w-full"
+            >
+              <a
+                href={signupHref}
+                onClick={() =>
+                  trackCTA({
+                    cta_text: "Get started",
+                    cta_location: "navbar_mobile",
+                    cta_destination: signupHref,
+                  })
+                }
+              >
+                Get started
+              </a>
             </Button>
           </NavigationMenuItem>
         </div>

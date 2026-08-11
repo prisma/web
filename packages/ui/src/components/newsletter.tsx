@@ -42,7 +42,7 @@ export const FooterNewsletterForm = ({
     ? { text: error, className: "text-red-500" }
     : isSubmitted
       ? {
-          text: "Please check your email to confirm your subscription!",
+          text: "You're subscribed. Welcome to the Prisma newsletter!",
           className: "text-green-500",
         }
       : isAlreadySubscribed
