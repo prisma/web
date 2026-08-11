@@ -43,6 +43,25 @@ Use [`README.md`](README.md) for usage and sample prompts; this `SKILL.md` is th
 Two images: a `hero` shown on the post itself, and a `meta` image for Open Graph and social
 cards. A single design may serve both files.
 
+**Contexts of use — design for all three.** A cover lives as (1) a **grid thumbnail** in the
+blog index, cropped to ~16:9 by `object-cover` and rendered ~400px wide **directly beside the
+post's real title**, on light AND dark card surfaces; (2) the full-size social/OG card; (3) the
+in-post hero. The thumbnail-next-to-title context drives the hardest rules:
+
+- **Headline**: a compressed thesis of ≤6 words, or no copy at all — never a restatement of the
+  post title it will sit beside. Across a batch, vary composition (no-copy graphic-led,
+  corner-stripe brand moment, headline+module) so adjacent covers don't read as one template.
+- **Kicker**: ≥20px with a ≥5.5px dot, or omit it — a 17px kicker is noise at thumbnail scale.
+- **Sign-off**: prefer the **full-color lockup** (`assets/logos/prisma-lockup-color.svg`,
+  ~112px wide, inlined as a group) over the plain-text wordmark; the mark carries at thumbnail
+  scale where small grey type disappears.
+- **Crop-safe zone**: every critical element (lockup, kicker, headline, module edges) stays
+  ≥72px from every canvas edge and must survive a centered 16:9 crop of the 1200×630 frame.
+- **Dual-surface**: the artwork never theme-switches; it must read as an intentional object on
+  both white and ink (#1a1a1a) surrounds. Avoid vast empty pure-white regions — washes on
+  covers run a step stronger than page washes (~0.18–0.28 per stop) so the piece carries color
+  at small sizes and on dark.
+
 1. **Format.**
    - **hero: SVG by default** — the prisma.io/blog standard, and it suits the typographic,
      geometric heroes the blog favours. The SVG is the editable source of truth; always export
@@ -308,6 +327,11 @@ Visually inspect the rendered PNG, then verify:
 - [ ] Code/snippet text renders its spaces correctly (multi-`tspan` lines carry
       `xml:space="preserve"`).
 - [ ] Title text is legible as a small thumbnail **and** at full 1200px social-preview size.
+- [ ] The cover reads as intentional artwork on BOTH white and ink (#1a1a1a) surrounds (render
+      the PNG onto each and look); no vast empty pure-white regions; critical elements are ≥72px
+      from every edge and survive a centered 16:9 crop.
+- [ ] The headline (if any) is ≤6 words and does not restate the post title; the kicker (if any)
+      is ≥20px; the sign-off is the full-color lockup unless there's a reason for text.
 - [ ] Any logo/lockup is intentional, correctly colored, not stretched, and not paired with extra
       label text. The `Prisma` wordmark, if used, sits bottom-left with no mark beside it.
 - [ ] Any data/chart uses real numbers and the framing the prompt asked for.
