@@ -2,35 +2,31 @@
 
 Official, reusable brand marks for covers. Prefer these over re-extracting each time.
 
-## Sources
+## Current brand (2026 — use these)
 
-- **Prisma logo + symbol** — official press kit [`prisma/presskit`](https://github.com/prisma/presskit).
-- **Prisma 8 mark** — the layered-prism brand mark, vectorized to white/dark.
-- **Prisma Postgres icon** — FontAwesome [`chart-pyramid`](https://fontawesome.com/icons/chart-pyramid) (solid).
-- **Prisma Compute icon** — FontAwesome [`microchip`](https://fontawesome.com/icons/microchip) (solid).
+| File                       | What                                                              | Use                                                |
+| -------------------------- | ----------------------------------------------------------------- | -------------------------------------------------- |
+| `prisma-lockup-color.svg`  | Full-color lockup: prism-stripe mark + ink wordmark (304×77)      | Brand sign-off on light covers (~110px wide)       |
+| `prisma-lockup-white.svg`  | Full-color mark + white wordmark                                  | Brand sign-off on the rare dark cover              |
+| `prisma-mark-prism.svg`    | The square prism mark alone (45° cyan/red/yellow stripes, 76×76)  | Standalone brand mark; favicon-style corner glyph  |
 
-## Inventory
+Sourced from `prisma/web` → `apps/blog/public/logo/` and the marketing site app's icon. These
+carry the prism colors (`#01d7e4` cyan, red `#f34a60` family, yellow `#f3c306` family) — never
+recolor, stretch, or add effects. The plain-text alternative sign-off is the word `Prisma` set
+in Sora 600 ink (no mark beside it).
 
-| File                         | What                                          | Use                            |
-| ---------------------------- | --------------------------------------------- | ------------------------------ |
-| `prisma-logo-white.svg`      | Official Prisma logo (mark + wordmark), white | Brand sign-off on dark covers  |
-| `prisma-logo-dark.svg`       | Official Prisma logo, dark                    | Brand sign-off on light covers |
-| `prisma-logo-indigo.svg`     | Official Prisma logo, brand indigo            | Indigo-on-light contexts       |
-| `prisma-symbol-white.svg`    | Prisma prism symbol, white                    | Brand mark, dark covers        |
-| `prisma-symbol-indigo.svg`   | Prisma prism symbol, indigo                   | Brand mark, light contexts     |
-| `prisma-8-mark-white.svg`    | Prisma 8 layered-prism mark, white            | Prisma 8 mark on dark          |
-| `prisma-8-mark-dark.svg`     | Prisma 8 mark, dark                           | Prisma 8 mark on light         |
-| `prisma-8-logo.svg`          | Prisma 8 mark + "Prisma 8" (Mona Sans)        | Prisma 8 lockup                |
-| `prisma-postgres-icon.svg`   | Chart-pyramid, teal `#71e8df`                 | Prisma Postgres covers         |
-| `prisma-compute-icon.svg`    | Microchip, teal `#71e8df`                     | Prisma Compute covers          |
+## Legacy (pre-rebrand — do not use on new covers)
+
+`prisma-logo-white/dark/indigo.svg` and `prisma-symbol-white/indigo.svg` are the old
+triangle-logo era marks. `prisma-8-mark-*.svg` / `prisma-8-logo.svg` are the interim Prisma 8
+launch marks (Mona Sans lockup). `prisma-postgres-icon.svg` / `prisma-compute-icon.svg` are the
+old teal FontAwesome product chips. Kept only so legacy covers can be re-rendered faithfully.
 
 ## Rules
 
-- **Intentional, not decorative.** One brand mark per cover. Product icons/lockups are for
-  product-focused covers where the product is the subject.
-- Use the official `prisma-logo-*` / `prisma-symbol-*` and the Prisma 8 mark as-is — do not
-  recolor (beyond the white/dark variants), stretch, rotate, or add effects.
-- Product accents: Postgres = teal `#71e8df`, Compute = teal, Prisma 8 pairs the white mark with
-  a Mona Sans wordmark, ORM = indigo `#4f46e5`.
-- The lockup uses live Mona Sans text; render/commit it with the brand fonts embedded
-  (`scripts/embed-fonts.py`) so it stays correct standalone.
+- **Intentional, not decorative.** One brand mark per cover — the lockup as sign-off or the
+  prism mark as a deliberate subject; never wallpaper.
+- Product accents on the new brand: ORM / Prisma 8 = prism cyan `#01d7e4`, Postgres = prism
+  yellow `#eaa700`/`#f3c306`, Compute = prism red `#f34a60`. There are no per-product icons in
+  the new system — the kicker dot in the product's accent does that work.
+- Never pair a mark with extra "Prisma" text, and never place `prisma.io/blog` on the canvas.

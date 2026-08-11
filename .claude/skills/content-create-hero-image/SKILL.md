@@ -1,16 +1,17 @@
 ---
 name: content-create-hero-image
-description: Use when the operator wants a hero or meta image for a Prisma blog post; asks to create or generate a blog hero, cover, social card, Open Graph, or YouTube image; mentions cover art, a blog thumbnail, cover.svg/hero.svg/meta.png; references content-create-hero-image; or wants to interactively design cover imagery in Prisma's Eclipse house style. Produces an editable SVG hero plus a pixel-exact PNG meta image, and includes an interactive mode and a built-in design-review pass.
+description: Use when the operator wants a hero or meta image for a Prisma blog post; asks to create or generate a blog hero, cover, social card, Open Graph, or YouTube image; mentions cover art, a blog thumbnail, cover.svg/hero.svg/meta.png; references content-create-hero-image; or wants to interactively design cover imagery in Prisma's 2026 brand (light paper, prism accents, Sora). Produces an editable SVG hero plus a pixel-exact PNG meta image, and includes an interactive mode and a built-in design-review pass.
 metadata:
   author: Prisma
-  version: "2026.6.23"
+  version: "2026.8.11"
 ---
 
 # Create blog hero & meta images
 
-Produce the **hero** and **meta** (Open Graph) images for a Prisma blog post in the Eclipse
-house style, styled from the bundled reference assets and from the most recent posts in the
-operator's checkout, then wire them into the post's frontmatter.
+Produce the **hero** and **meta** (Open Graph) images for a Prisma blog post in the **2026
+brand** — light paper surfaces, the prism accent family (cyan/yellow/red), Sora display type —
+styled from the bundled reference assets and from the most recent posts in the operator's
+checkout, then wire them into the post's frontmatter.
 
 The hero is a hand-authored, layered **SVG** — the editable source of truth — rendered to a
 **pixel-exact PNG**. The meta image is **raster (PNG)** because social platforms do not render
@@ -32,8 +33,8 @@ Use [`README.md`](README.md) for usage and sample prompts; this `SKILL.md` is th
 - [`assets/logos/`](assets/logos/) — official Prisma logo/symbol, Prisma 8 mark + lockup, Postgres/Compute icons (`README.md`).
 - [`assets/fonts/`](assets/fonts/) — bundled brand fonts (Mona Sans, Inter, Geist Mono); used by the scripts.
 - [`assets/templates/cover.svg`](assets/templates/cover.svg) — parameterized starting template.
-- [`assets/examples/`](assets/examples/) — one worked hero/meta pair per house content module; the quality bar for new work.
-- [`assets/hero1.svg`](assets/hero1.svg)–[`hero4.svg`](assets/hero4.svg) — abstract reference heroes in the house style; study for palette, type, and motif alongside the worked examples.
+- [`assets/examples/`](assets/examples/) — worked hero/meta pairs per content module. **Pre-rebrand (dark Eclipse era): study for composition and module structure ONLY — their palette, fonts, and surfaces are retired.** The current quality bar is the newest committed covers in `apps/blog/public/*/imgs/`.
+- [`assets/hero1.svg`](assets/hero1.svg)–[`hero4.svg`](assets/hero4.svg) — abstract reference heroes, also pre-rebrand; same structure-only caveat.
 - [`scripts/embed-fonts.py`](scripts/embed-fonts.py) — inline the brand fonts into the SVG as base64 `@font-face`. **Run first.**
 - [`scripts/export-png.sh`](scripts/export-png.sh) — render the font-embedded SVG to PNG via headless Chrome so the PNG matches the SVG in a browser exactly. **Run second.**
 
@@ -141,8 +142,8 @@ the Workflow'"_.
 | 3 | **Custom copy** (if text)              | quote the post's own thesis as the suggestion                                                                                                                  | the post's thesis verbatim; blank = no text                                |
 | 4 | **What should the graphic symbolise?** | restate the post's core idea in concrete terms                                                                                                                 | the literal mechanism from the post                                        |
 | 5 | **Isometric skew on the graphic?**     | "Default yes for card/table modules; flow/loop diagrams usually read best **flat**."                                                                           | yes for cards/tables, flat for flows                                       |
-| 6 | **Background family**                  | name the product's surface                                                                                                                                     | teal (Postgres/Compute/Next/platform); indigo only for ORM                 |
-| 7 | **Mood**                               | launch / educational / conceptual / editorial / technical                                                                                                      | educational, dark                                                          |
+| 6 | **Accent color**                       | name the owning product                                                                                                                                        | cyan (ORM / Prisma 8 / platform); yellow (Postgres); red (Compute)         |
+| 7 | **Mood**                               | launch / educational / conceptual / editorial / technical                                                                                                      | educational, light paper                                                   |
 | 8 | **Product logo**                       | which mark, if any                                                                                                                                             | the post's product mark when it clarifies; else just the `Prisma` wordmark |
 | 9 | **How many directions to explore?**    | 1–4 distinct concepts                                                                                                                                          | 1 (offer up to 4)                                                          |
 
@@ -154,8 +155,8 @@ obeys the anti-patterns and the design-review bar — creative ≠ slop.
 
 ### 3. Choose a visual direction
 
-Decide a concept that's literal-but-elegant, never generic. Pick: surface (dark default / light
-editorial), product accent, eyebrow label, the **content module** that fits the content (see
+Decide a concept that's literal-but-elegant, never generic. Pick: surface (light paper default /
+ink dark only with a stated reason), product accent, kicker label, the **content module** that fits the content (see
 `design-system.md` → _Content modules_: pipeline/flow, data/log panel, terminal, code card,
 comparison card), and whether a product lockup belongs in the composition. Anchor every choice in
 `design-system.md`. One accent, one idea, strong hierarchy, generous space.
@@ -185,9 +186,10 @@ the message (e.g. a chart) — keep the layer groups (`background`, `badge`, `he
 chars). Set the eyebrow/badge pill width to roughly `(label length × 14) + 48`. Include the
 `<title>`/`<desc>` metadata.
 
-**Fonts (avoid the #1 off-brand bug):** the brand faces are **Mona Sans** (headings/display, 800),
-**Inter** (body, 400), and **Geist Mono** (data/code, 500), bundled in `assets/fonts/`. Do **not**
-use Barlow — it is the legacy docs face and reads off-brand. A wrong family/weight falls back to a
+**Fonts (avoid the #1 off-brand bug):** the brand faces are **Sora** (headings/display, weight
+500, emphasis 600 — never 700+), **Inter** (body 400, kicker labels 600), and **Mona Sans Mono**
+(data/code, 500), bundled in `assets/fonts/`. Do **not** use Mona Sans display, Geist Mono, or
+Barlow — those are the retired pre-rebrand faces. A wrong family/weight falls back to a
 generic sans. For emphasis, change colour or size, **not** weight. When the graphic _is_ the
 message, let it own the canvas — center it, drop competing chrome, use the standalone product logo
 as the brand mark, and label data with real numbers.
@@ -226,7 +228,7 @@ python3 scripts/embed-fonts.py <hero.svg>                          # 1. inline b
 bash scripts/export-png.sh <hero.svg> <meta.png> 1200 630          # 2. render PNG (Chrome)
 ```
 
-`embed-fonts.py` inlines Mona Sans/Inter/Geist Mono as base64 `@font-face` — subsetting to the
+`embed-fonts.py` inlines Sora/Inter/Mona Sans Mono as base64 `@font-face` — subsetting to the
 glyphs the SVG uses (with `fonttools` + `brotli`, ~20–30 KB) or embedding the whole WOFF2 when
 those are unavailable (larger, still self-contained). `export-png.sh` renders with **headless
 Chrome/Chromium**, which honors `@font-face`, so the PNG looks exactly like the SVG in a
@@ -281,8 +283,9 @@ product, why the metaphor fits). Example:
 ```text
 hero: apps/blog/public/query-insights-ga/imgs/hero.svg
 meta: apps/blog/public/query-insights-ga/imgs/meta.png
-Direction: Dark Eclipse surface with the Postgres teal accent; Query Insights framed as a GA
-launch via the pill eyebrow; restraint keeps it premium and thumbnail-legible.
+Direction: Paper surface with a bottom spectral wash and the Postgres yellow accent; Query
+Insights framed as a GA launch via the kicker dot; one white metric card carries the idea and
+restraint keeps it premium and thumbnail-legible.
 ```
 
 ## Validation — must pass before finalizing
@@ -293,9 +296,11 @@ Visually inspect the rendered PNG, then verify:
       preserved). SVG declares `viewBox="0 0 1200 630"` with matching `width`/`height`.
 - [ ] The meta image is **PNG**; the hero is **SVG** (raster hero only on an explicit photographic
       request). Each asset is self-contained — the SVG resolves with no external references.
-- [ ] Colors and gradient match `tokens.json` exactly — no off-system values.
-- [ ] Fonts render in real Mona Sans/Inter/Geist Mono (not a fallback sans, and **not Barlow**);
-      heed the export warning. The committed SVG has embedded `@font-face` (ran `embed-fonts.py`).
+- [ ] Colors match `tokens.json` exactly — no off-system values, and **no retired dark-aurora
+      teal/navy surfaces**. The surface is light paper unless a dark cover was explicitly chosen.
+- [ ] Fonts render in real Sora/Inter/Mona Sans Mono (not a fallback sans; **not Mona Sans
+      display, Geist Mono, or Barlow** — all retired); heed the export warning. The committed SVG
+      has embedded `@font-face` (ran `embed-fonts.py`). Headlines are Sora **500**, sentence case.
 - [ ] One accent, one idea. Clear hierarchy; generous negative space. If a graphic is the message,
       it is centered and uncluttered.
 - [ ] Diagram cards sit ≥ 48px off the canvas edge; arrows are full-length; no node is jammed
@@ -322,13 +327,17 @@ creative and brand traps a checklist can't catch.)
   filenames, and frontmatter fields from recent posts; the documented standard is a fallback.
 - **Generic AI look.** Glows everywhere, faux-3D blobs, busy gradients, literal robots. Prisma
   covers are restrained and typographic. When in doubt, remove an element.
-- **Off-system styling.** Inventing colors, or swapping the Mona Sans + Inter pairing (Barlow is
-  off-brand).
+- **Off-system styling.** Inventing colors, or swapping the Sora + Inter pairing (Mona Sans
+  display, Geist Mono, and Barlow are all retired/off-brand).
+- **Reaching for the retired look.** The dark teal aurora surface, Mona Sans 800 headlines,
+  uppercase dash eyebrows, and glow-heavy cards are the pre-2026 style — old committed covers and
+  `assets/examples/` show it; do not reproduce their skin.
 - **Decorative logos.** Marks are a footer sign-off or the subject — never wallpaper.
 - **Centering text-only layouts.** Default covers are left-anchored with right-side breathing room.
   Center only a single graphic-led composition.
-- **Fabricating product palettes.** Postgres = teal, ORM = indigo. Compute/Next have no official
-  tokens yet — use the platform teal and say so; don't invent a brand color.
+- **Fabricating product palettes.** ORM / Prisma 8 = prism cyan, Postgres = prism yellow,
+  Compute = prism red (see `tokens.json → products`). One accent per cover; don't invent hues or
+  revive the old teal/indigo mapping.
 - **Tagline filler.** Avoid lines like `Resize. Encode. Cache.` If a secondary line is needed,
   make it concrete and informational.
 - **Copying a single reference.** Synthesise the house style from across the examples and recent
