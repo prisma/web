@@ -22,7 +22,12 @@ function SeriesCard({ item, variant }: { item: SeriesShelfItem; variant: "compac
   return (
     <Link
       href={`/series/${item.key}`}
-      className={cn(seriesSurface, featured ? "bg-card-wash" : "bg-background-default")}
+      // Dark cards take the docs' surface step (#1a1a1a on the #0f0f0f page)
+      // so they read as raised panels, matching PostCard.
+      className={cn(
+        seriesSurface,
+        featured ? "bg-card-wash" : "bg-background-default dark:bg-background-neutral-weak",
+      )}
     >
       <div className="type-heading-2xs mb-2 flex items-center gap-2">
         {featured ? <span className="text-foreground-ppg">Featured</span> : null}
@@ -56,7 +61,7 @@ function SeriesChip({ item }: { item: SeriesShelfItem }) {
         "group inline-flex max-w-full items-center gap-2 rounded-circle border px-3 py-1 text-xs font-medium transition-colors duration-300 motion-reduce:transition-none",
         featured
           ? "border-stroke-ppg bg-background-ppg text-foreground-neutral hover:bg-background-ppg-strong"
-          : "border-stroke-neutral text-foreground-neutral-weak hover:border-stroke-neutral-strong hover:bg-background-neutral hover:text-foreground-neutral",
+          : "border-stroke-neutral text-foreground-neutral-weak hover:border-stroke-ppg-weak hover:bg-fd-accent hover:text-fd-accent-foreground",
       )}
     >
       {featured ? (

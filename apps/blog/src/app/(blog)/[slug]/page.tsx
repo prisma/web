@@ -219,13 +219,15 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
           </div>
           {page.data.tags && page.data.tags.length > 0 && (
             // Same ghost pill as the home page's category chips, so a tag reads
-            // identically wherever it appears.
+            // identically wherever it appears. Hover is the docs shell's accent
+            // wash (`fd-accent` = cyan-100 light / cyan-950 dark) rather than a
+            // grey tint, so pointing at a pill answers in the brand hue.
             <div className="filter-badge flex flex-wrap gap-2">
               {page.data?.tags?.map((tag) => (
                 <Link
                   href={{ pathname: "/", query: { tag } }}
                   key={tag}
-                  className="inline-flex items-center rounded-circle border border-stroke-neutral px-3 py-1 text-xs font-medium capitalize text-foreground-neutral-weak transition-colors duration-300 hover:border-stroke-neutral-strong hover:bg-background-neutral hover:text-foreground-neutral motion-reduce:transition-none"
+                  className="inline-flex items-center rounded-circle border border-stroke-neutral px-3 py-1 text-xs font-medium capitalize text-foreground-neutral-weak transition-colors duration-300 hover:border-stroke-ppg-weak hover:bg-fd-accent hover:text-fd-accent-foreground motion-reduce:transition-none"
                 >
                   {formatTag(tag)}
                 </Link>
@@ -292,7 +294,12 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
         <BlogShare desc={page.data.metaDescription as string} />
       </div>
       <div className="toc max-md:hidden">
-        <div className="sticky top-28 max-h-[calc(100vh-8rem)] overflow-y-auto [&_a[data-state=active]]:text-foreground-neutral! [&_a[data-state=inactive]]:text-foreground-neutral-weak!">
+        {/* InlineTOC ships the docs shell's own treatment — cyan `fd-primary`
+            rail segment and `fd-accent-foreground` text on the active item,
+            cyan hover on the rest — via the same variables this app remaps in
+            global.css. No overrides, so the blog TOC reads exactly like the
+            docs TOC in both modes. */}
+        <div className="fd-scroll-container sticky top-28 max-h-[calc(100vh-8rem)] overflow-y-auto">
           <span className="type-heading-2xs mt-0 mb-4 block text-foreground-neutral-weak">
             On this page
           </span>

@@ -68,7 +68,11 @@ function FooterLinkAnchor({ link }: { link: FooterLink }) {
 
 export function Footer({ newsletterComponent }: { newsletterComponent?: ReactNode }) {
   return (
-    <footer className="bg-background-default relative z-1 mt-24 w-full overflow-hidden pt-16">
+    // The footer sits on the brand paper tone (#f9faf5 light / #1a1a1a dark)
+    // behind a hairline — the same one-step-off-the-page surface the docs
+    // sidebar rests on — so every page closes on the tone the hero wash opens
+    // with instead of dissolving into flat white/ink.
+    <footer className="bg-paper border-stroke-neutral relative z-1 mt-24 w-full overflow-hidden border-t pt-16">
       <div className="mx-auto max-w-[87.5rem] px-6 sm:px-10">
         <div className="grid gap-12 lg:grid-cols-[1.1fr_2.4fr] lg:gap-20">
           <div className="max-w-xs">

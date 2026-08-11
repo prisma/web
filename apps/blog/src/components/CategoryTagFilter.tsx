@@ -10,13 +10,18 @@ import { cn } from "@prisma-docs/ui/lib/cn";
 /**
  * Chip states: selected is an ink pill (the same ink the primary button and
  * the current pagination page use), unselected is a ghost pill on a hairline.
+ * Unselected hover takes the docs shell's accent wash — `fd-accent` /
+ * `fd-accent-foreground` are the very variables the docs sidebar and tabs
+ * hover with (cyan-100/cyan-700 light, cyan-950/cyan-300 dark), remapped in
+ * this app's global.css — so pointing at a chip here feels like pointing at a
+ * docs nav item.
  */
 const chipBase =
   "inline-flex cursor-pointer items-center rounded-circle border px-3 py-1.5 text-sm font-medium capitalize whitespace-nowrap transition-colors duration-300 motion-reduce:transition-none";
 const chipSelected =
   "border-transparent bg-background-neutral-reverse-strong text-foreground-neutral-reverse shadow-box-low hover:bg-background-neutral-reverse";
 const chipUnselected =
-  "border-stroke-neutral bg-transparent text-foreground-neutral-weak hover:border-stroke-neutral-strong hover:bg-background-neutral hover:text-foreground-neutral";
+  "border-stroke-neutral bg-transparent text-foreground-neutral-weak hover:border-stroke-ppg-weak hover:bg-fd-accent hover:text-fd-accent-foreground";
 
 type CategoryTagFilterProps = {
   uniqueTags: string[];
@@ -69,7 +74,7 @@ export function CategoryTagFilter({
     <>
       <div className="md:hidden w-full">
         <Popover open={isOpen} onOpenChange={setIsOpen}>
-          <PopoverTrigger className="inline-flex w-full items-center justify-between rounded-circle border border-stroke-neutral bg-background-default px-4 py-2 text-sm text-foreground-neutral shadow-box-low transition-colors duration-300 hover:bg-background-neutral motion-reduce:transition-none">
+          <PopoverTrigger className="inline-flex w-full items-center justify-between rounded-circle border border-stroke-neutral bg-background-default px-4 py-2 text-sm text-foreground-neutral shadow-box-low transition-colors duration-300 hover:bg-fd-accent dark:bg-background-neutral-weak motion-reduce:transition-none">
             <span className="capitalize">{formatTag(currentCategory)}</span>
             <ChevronDown className="size-4 text-foreground-neutral-weak" />
           </PopoverTrigger>
@@ -83,13 +88,11 @@ export function CategoryTagFilter({
                 type="button"
                 aria-pressed={currentCategory === "show-all"}
                 onClick={() => handleSelect("show-all")}
-                className="inline-flex w-full items-center gap-2 rounded-square px-2 py-2 text-left text-sm capitalize transition-colors hover:bg-background-neutral motion-reduce:transition-none"
+                className="inline-flex w-full items-center gap-2 rounded-square px-2 py-2 text-left text-sm capitalize transition-colors hover:bg-fd-accent hover:text-fd-accent-foreground motion-reduce:transition-none"
               >
                 <Check
                   className={`size-4 ${
-                    currentCategory === "show-all"
-                      ? "opacity-100 text-foreground-neutral"
-                      : "opacity-0"
+                    currentCategory === "show-all" ? "opacity-100 text-foreground-ppg" : "opacity-0"
                   }`}
                 />
                 <span>Show all</span>
@@ -100,13 +103,11 @@ export function CategoryTagFilter({
                   type="button"
                   aria-pressed={currentCategory === category}
                   onClick={() => handleSelect(category)}
-                  className="inline-flex w-full items-center gap-2 rounded-square px-2 py-2 text-left text-sm capitalize transition-colors hover:bg-background-neutral motion-reduce:transition-none"
+                  className="inline-flex w-full items-center gap-2 rounded-square px-2 py-2 text-left text-sm capitalize transition-colors hover:bg-fd-accent hover:text-fd-accent-foreground motion-reduce:transition-none"
                 >
                   <Check
                     className={`size-4 ${
-                      currentCategory === category
-                        ? "opacity-100 text-foreground-neutral"
-                        : "opacity-0"
+                      currentCategory === category ? "opacity-100 text-foreground-ppg" : "opacity-0"
                     }`}
                   />
                   <span>{formatTag(category)}</span>
