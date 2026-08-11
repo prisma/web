@@ -5,13 +5,13 @@ const prismaTheme: ThemeRegistration = {
   type: "dark",
   colors: {
     "editor.background": "transparent",
-    "editor.foreground": "var(--color-foreground-neutral-weak)",
+    "editor.foreground": "#d5d5d4",
   },
   settings: [
     {
       scope: ["comment", "punctuation.definition.comment"],
       settings: {
-        foreground: "var(--color-disabled)",
+        foreground: "#646567",
       },
     },
     {
@@ -23,13 +23,13 @@ const prismaTheme: ThemeRegistration = {
         "support.variable",
       ],
       settings: {
-        foreground: "var(--color-foreground-neutral-weak)",
+        foreground: "#d5d5d4",
       },
     },
     {
       scope: ["variable.other.constant", "variable.language.this", "variable.language.super"],
       settings: {
-        foreground: "var(--color-background-ppg-reverse-strong)",
+        foreground: "#f8da85",
       },
     },
     {
@@ -53,7 +53,7 @@ const prismaTheme: ThemeRegistration = {
         "storage.type.var",
       ],
       settings: {
-        foreground: "var(--color-background-orm-reverse-strong)",
+        foreground: "#7be7f0",
       },
     },
     {
@@ -64,7 +64,7 @@ const prismaTheme: ThemeRegistration = {
         "entity.name.method",
       ],
       settings: {
-        foreground: "var(--color-background-ppg-reverse-strong)",
+        foreground: "#f8da85",
       },
     },
     {
@@ -77,7 +77,7 @@ const prismaTheme: ThemeRegistration = {
         "meta.export variable.other.readwrite",
       ],
       settings: {
-        foreground: "var(--color-background-orm-reverse-strong)",
+        foreground: "#7be7f0",
       },
     },
     {
@@ -90,19 +90,19 @@ const prismaTheme: ThemeRegistration = {
         "punctuation.definition.string.end",
       ],
       settings: {
-        foreground: "var(--color-background-ppg-reverse-strong)",
+        foreground: "#f8da85",
       },
     },
     {
       scope: ["constant.numeric", "constant.language", "constant.character"],
       settings: {
-        foreground: "var(--color-background-warning-reverse-strong)",
+        foreground: "#ff9fa4",
       },
     },
     {
       scope: ["constant.language.boolean", "constant.language.null", "constant.language.undefined"],
       settings: {
-        foreground: "var(--color-background-orm-reverse-strong)",
+        foreground: "#7be7f0",
       },
     },
     {
@@ -114,13 +114,13 @@ const prismaTheme: ThemeRegistration = {
         "keyword.operator.logical",
       ],
       settings: {
-        foreground: "var(--color-background-orm-reverse-strong)",
+        foreground: "#7be7f0",
       },
     },
     {
       scope: ["keyword.operator.type", "keyword.operator.expression"],
       settings: {
-        foreground: "var(--color-background-orm-reverse-strong)",
+        foreground: "#7be7f0",
       },
     },
     {
@@ -136,73 +136,73 @@ const prismaTheme: ThemeRegistration = {
         "meta.brace.curly",
       ],
       settings: {
-        foreground: "var(--color-foreground-neutral-weak)",
+        foreground: "#d5d5d4",
       },
     },
     {
       scope: ["entity.name.tag", "punctuation.definition.tag"],
       settings: {
-        foreground: "var(--color-foreground-neutral-weak)",
+        foreground: "#d5d5d4",
       },
     },
     {
       scope: ["entity.other.attribute-name"],
       settings: {
-        foreground: "var(--color-background-ppg-reverse-strong)",
+        foreground: "#f8da85",
       },
     },
     {
       scope: ["meta.tag.attributes string.quoted"],
       settings: {
-        foreground: "#96E072",
+        foreground: "#f8da85",
       },
     },
     {
       scope: ["punctuation.definition.template-expression", "punctuation.section.embedded"],
       settings: {
-        foreground: "var(--color-foreground-neutral-weak)",
+        foreground: "#d5d5d4",
       },
     },
     {
       scope: ["meta.template.expression"],
       settings: {
-        foreground: "#D5CED9",
+        foreground: "#d5d5d4",
       },
     },
     {
       scope: ["support.type.primitive", "support.type.builtin"],
       settings: {
-        foreground: "#7cb7ff",
+        foreground: "#b3f4f9",
       },
     },
     {
       scope: ["variable.parameter", "meta.parameters variable"],
       settings: {
-        foreground: "var(--color-background-warning-reverse-strong)",
+        foreground: "#ff9fa4",
       },
     },
     {
       scope: ["invalid", "invalid.illegal"],
       settings: {
-        foreground: "#FC644D",
+        foreground: "#ff9fa4",
       },
     },
     {
       scope: ["markup.inserted", "markup.inserted.diff"],
       settings: {
-        background: "var(--color-background-success-reverse-strong)",
+        background: "#00353c",
       },
     },
     {
       scope: ["markup.deleted", "markup.deleted.diff"],
       settings: {
-        background: "var(--color-background-error-reverse-strong)",
+        background: "#4b0211",
       },
     },
     {
       scope: ["meta.diff.header"],
       settings: {
-        background: "var(--color-foreground-neutral-weak)",
+        background: "#d5d5d4",
       },
     },
   ],
