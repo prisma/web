@@ -17,6 +17,7 @@ import {
 import { useEffect, useState } from "react";
 import { FontAwesomeScript as WebFA } from "./fontawesome-web";
 import { cn } from "../lib/cn";
+import { trackCTA } from "../lib/analytics";
 
 export interface Link {
   text: string;
@@ -152,12 +153,34 @@ export function WebNavigation({
               <Socials include={["discord"]} />
               <NavigationMenuItem className="ml-2 -mr-2 hidden sm:block">
                 <Button asChild variant="default-strong">
-                  <a href={loginHref}>Login</a>
+                  <a
+                    href={loginHref}
+                    onClick={() =>
+                      trackCTA({
+                        cta_text: "Login",
+                        cta_location: "navbar",
+                        cta_destination: loginHref,
+                      })
+                    }
+                  >
+                    Login
+                  </a>
                 </Button>
               </NavigationMenuItem>
               <NavigationMenuItem className="hidden sm:block">
                 <Button asChild variant={buttonVariant} className="whitespace-nowrap">
-                  <a href={signupHref}>Get started</a>
+                  <a
+                    href={signupHref}
+                    onClick={() =>
+                      trackCTA({
+                        cta_text: "Get started",
+                        cta_location: "navbar",
+                        cta_destination: signupHref,
+                      })
+                    }
+                  >
+                    Get started
+                  </a>
                 </Button>
               </NavigationMenuItem>
             </div>
