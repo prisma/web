@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { cn } from "@prisma-docs/ui/lib/cn";
+import { PrismRay } from "@/components/chrome/prism-ray";
 
-interface BannerSlide {
+export interface BannerSlide {
   title: string;
   description: string;
   href: string;
@@ -12,6 +13,8 @@ interface BannerSlide {
   badge?: string;
   image?: string;
   imageAlt?: string;
+  /** Brand-drawn tile instead of a raster — stays on-palette by construction. */
+  visual?: "prism";
 }
 
 interface SidebarBannerCarouselProps {
@@ -77,7 +80,7 @@ export function SidebarBannerCarousel({ slides }: SidebarBannerCarouselProps) {
           height: hovered ? 10 : 7,
           marginLeft: inset,
           marginRight: inset,
-          borderRadius: "12px 12px 0 0",
+          borderRadius: "var(--radius-square-high) var(--radius-square-high) 0 0",
           borderBottom: "none",
           opacity: hovered ? 0.4 + (arr.length - i) * 0.15 : 0.25 + (arr.length - i) * 0.1,
         }}
@@ -97,7 +100,12 @@ export function SidebarBannerCarousel({ slides }: SidebarBannerCarouselProps) {
       {/* Front card */}
       <div
         className={cn(
-          "relative rounded-high border border-stroke-neutral overflow-hidden shadow-drop-low",
+          // `rounded-high` was never a real utility (eclipse only defines
+          // --radius-square-{low,,high} + --radius-circle), so this card had no
+          // radius at all. `spectrum-border` is the shell's one spectrum moment:
+          // a gradient hairline that lights up on hover, animation guarded by
+          // the reduced-motion rule inside eclipse's globals.
+          "spectrum-border relative rounded-square-high border border-stroke-neutral overflow-hidden shadow-drop-low",
           "bg-background-default transition-shadow hover:shadow-drop",
         )}
       >
@@ -131,7 +139,20 @@ export function SidebarBannerCarousel({ slides }: SidebarBannerCarouselProps) {
           )}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          {front.image ? (
+          {front.visual === "prism" ? (
+            // The brand tile: ink panel, the triple-band ray crossing behind a
+            // small wordmark — the sidebar-scale echo of the reference hero.
+            // Deliberately ink in both themes (it is artwork, not surface).
+            <div className="relative flex size-full items-center justify-center overflow-hidden bg-[#151515]">
+              <PrismRay
+                intensity="hero"
+                className="left-1/2 top-[58%] h-9 w-[30rem] -translate-x-1/2 -translate-y-1/2"
+              />
+              <span className="relative font-sans-display text-lg font-medium text-white">
+                Prisma Next
+              </span>
+            </div>
+          ) : front.image ? (
             <img
               src={front.image.startsWith("http") ? front.image : `/docs${front.image}`}
               alt={front.imageAlt ?? front.title ?? ""}

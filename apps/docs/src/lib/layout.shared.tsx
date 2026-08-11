@@ -100,7 +100,10 @@ export function baseOptions(): BaseLayoutProps {
     nav: {
       title: (
         <>
-          <Link href="https://www.prisma.io" className="mb-0 hover:mb-1 transition-[margin]">
+          <Link
+            href="https://www.prisma.io"
+            className="mb-0 hover:mb-1 transition-[margin] duration-300 motion-reduce:transition-none"
+          >
             {logo}
           </Link>
           <span className="text-fd-muted-foreground">/</span>

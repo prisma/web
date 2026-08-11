@@ -3,7 +3,6 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@prisma-docs/ui/lib/cn";
 import { getBaseUrl } from "@/lib/urls";
 import "./global.css";
-import { Barlow } from "next/font/google";
 import localFont from "next/font/local";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
@@ -31,12 +30,6 @@ const inter = localFont({
   ],
   variable: "--font-inter",
   display: "swap",
-});
-
-const barlow = Barlow({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-barlow",
 });
 
 // Sora replaces Mona Sans VF as the display face. next/font/local has no
@@ -73,7 +66,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${barlow.variable} ${sora.variable} ${monaSansMono.variable}`}
+      className={`${sora.variable} ${inter.variable} ${monaSansMono.variable}`}
       suppressHydrationWarning
     >
       <head>

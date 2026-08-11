@@ -46,17 +46,30 @@ body {
   font-weight: 380;
 }
 
+/* `.stretch-display` (from `@prisma-docs/ui`, out of scope for this rebrand)
+   drives the Mona Sans VF `wdth`/`wght` axes. Sora has neither, so the axis
+   settings are cleared and the brand display weight applied instead. */
+.stretch-display {
+  font-variation-settings: normal;
+  font-weight: 500;
+}
+
 /* ---------------------------------------------------------------------------
    App chrome retheme — remap the shadcn/fumadocs shell variables onto prism.
 
-   `@prisma-docs/ui` (shared by four apps, out of scope for this rebrand)
-   still ships the previous identity in these variables — teal #16a394
-   accents, a #131420 blue-navy dark, and cool blue-gray text. The package
-   cannot be edited, so the app remaps the same variable names here. Every
-   `--color-fd-*` alias fumadocs reads is defined by
+   `@prisma-docs/ui` (out of scope for this rebrand: apps/site, apps/blog and
+   apps/docs consume it) still ships the previous identity in these variables —
+   teal #16a394 accents, a #131420 blue-navy dark, and cool blue-gray text. The
+   package cannot be edited, so the app remaps the same variable names here.
+   Every `--color-fd-*` alias fumadocs reads is defined by
    `fumadocs-ui/css/shadcn.css` as `var(--<name>)` against exactly these
-   variables, so overriding the base set carries the whole shell: header,
-   sidebar, TOC, breadcrumbs, tabs, buttons, popovers, search dialog.
+   variables, so overriding the base set carries the whole shell: sidebar,
+   TOC, breadcrumbs, tabs, buttons, popovers.
+
+   `fumadocs-openapi/css/preset.css` is imported alongside them here, but it
+   defines no colour of its own — it is utility classes resolving against the
+   same `--color-fd-*` aliases — so the remap below carries the API reference
+   surfaces too, and there is nothing extra to override for it.
 
    Placement and shape matter. These blocks sit after the @imports so they win
    on source order at equal specificity, and `:root` and `.dark` are BOTH
@@ -76,8 +89,8 @@ body {
   --popover: var(--color-background-default);
   --popover-foreground: var(--color-foreground-neutral);
 
-  /* Brand accent: sidebar active item, TOC thumb + active link, section
-       links, active tab underline. `bg-fd-primary/10` derives the tint. */
+  /* Brand accent: sidebar active item, TOC thumb + active link, section links,
+     active tab underline. `bg-fd-primary/10` derives the active-item tint. */
   --primary: var(--color-prism-cyan-600); /* #009aaa */
   --primary-foreground: #ffffff;
 
@@ -87,7 +100,7 @@ body {
   --muted-foreground: var(--color-foreground-neutral-weak); /* #646567 */
 
   /* Hover wash + hover text. cyan-100 holds the luminance the previous teal
-       tint had, so hover feedback keeps its weight and only changes hue. */
+     tint had, so hover feedback keeps its weight and only changes hue. */
   --accent: var(--color-prism-cyan-100); /* #dcfdff */
   --accent-foreground: var(--color-prism-cyan-700); /* #007f8d */
 
@@ -96,9 +109,9 @@ body {
   --input: var(--color-stroke-neutral);
   --ring: var(--color-prism-cyan-600);
 
-  /* The sidebar rests on the brand paper tone, one step off the white page;
-       `#nd-sidebar` below paints from `--color-sidebar`. */
-  --sidebar: var(--color-background-neutral-weak); /* paper #f9faf5 */
+  /* `#nd-sidebar` above paints its background from `--color-background`, so
+     `--sidebar` is kept in agreement rather than fighting it. */
+  --sidebar: var(--color-background-default);
   --sidebar-foreground: var(--color-foreground-neutral);
   --sidebar-primary: var(--color-prism-cyan-600);
   --sidebar-primary-foreground: #ffffff;
@@ -109,8 +122,7 @@ body {
 }
 
 .dark {
-  /* The neutral dark ramp, chroma-0 off the brand ink — not the old
-       blue-navy. */
+  /* The neutral dark ramp, chroma-0 off the brand ink — not the old blue-gray. */
   --background: var(--color-background-default); /* #0f0f0f */
   --foreground: var(--color-foreground-neutral); /* #f5f5f4 */
   --card: var(--color-background-neutral-weak); /* #1a1a1a */
@@ -118,8 +130,8 @@ body {
   --popover: var(--color-background-neutral-weak);
   --popover-foreground: var(--color-foreground-neutral);
 
-  /* Cyan lifts to 400 on dark for legible accents; its foreground goes to
-       ink, because white on #01d7e4 does not carry. */
+  /* Cyan lifts to 400 on dark for legible accents; its foreground goes to ink,
+     because white on #01d7e4 does not carry. */
   --primary: var(--color-prism-cyan-400); /* #01d7e4 */
   --primary-foreground: var(--color-background-default); /* #0f0f0f */
 
@@ -136,7 +148,7 @@ body {
   --input: var(--color-stroke-neutral);
   --ring: var(--color-prism-cyan-400);
 
-  --sidebar: var(--color-background-neutral-weak); /* #1a1a1a */
+  --sidebar: var(--color-background-default);
   --sidebar-foreground: var(--color-foreground-neutral);
   --sidebar-primary: var(--color-prism-cyan-400);
   --sidebar-primary-foreground: var(--color-background-default);
@@ -146,9 +158,11 @@ body {
   --sidebar-ring: var(--color-prism-cyan-400);
 }
 
+/* The sidebar lives directly on the paper ground (shell v2, end of file) —
+   no wall, no fill of its own. Active items carry their own sheet-white
+   pills instead. */
 #nd-sidebar {
-  @apply border-e;
-  background-color: var(--color-sidebar);
+  background-color: transparent;
 }
 
 header &[data-search-full] {
@@ -169,15 +183,37 @@ header &[data-search-full] {
   visibility: hidden !important;
 }
 
+/* ---------------------------------------------------------------------------
+   Prisma Next banner — the one loud brand moment in an otherwise quiet shell.
+
+   Structure is unchanged (flow / sweep / grid keyframes, reduced-motion
+   guard); only the palette moved. The old teal becomes prism cyan-500
+   (`0 187 203` where an rgba() is needed, since custom properties cannot be
+   spliced into an rgba channel list), the old indigo-blue is dropped
+   entirely rather than re-hued, and the navy base ramp is rebuilt as ink with
+   faint prism tints. The result reads spectrum, not rainbow: cyan dominates
+   the resting surface, and yellow / orange / pink appear only as the sweep's
+   passing highlights.
+--------------------------------------------------------------------------- */
 #prisma-next-docs.prisma-next-banner {
   isolation: isolate;
   overflow: hidden;
-  color: #f8fffd;
-  border-bottom: 1px solid color-mix(in oklab, #00ccb4 45%, #6385ff);
+  color: #fafafa;
+  border-bottom: 1px solid
+    color-mix(in oklab, var(--color-prism-cyan-500) 55%, var(--color-prism-cyan-900));
   background:
-    linear-gradient(100deg, rgba(0, 204, 180, 0.32), transparent 28%),
-    linear-gradient(260deg, rgba(255, 188, 63, 0.28), transparent 30%),
-    linear-gradient(90deg, #061615 0%, #101936 36%, #25152d 68%, #081816 100%),
+    linear-gradient(100deg, rgba(0, 187, 203, 0.32), transparent 28%),
+    /* prism yellow-300 is markedly more saturated than the amber it replaces,
+       so its wash is dialled back from 0.28 to keep the surface cyan-dominant
+       rather than tipping olive on the right-hand third. */
+    linear-gradient(260deg, rgba(243, 195, 6, 0.2), transparent 30%),
+    linear-gradient(
+      90deg,
+      #0f0f0f 0%,
+      color-mix(in srgb, var(--color-prism-cyan-950) 40%, #0f0f0f) 36%,
+      color-mix(in srgb, var(--color-prism-yellow-950) 30%, #0f0f0f) 68%,
+      #0f0f0f 100%
+    ),
     repeating-linear-gradient(
       115deg,
       rgba(255, 255, 255, 0.14) 0,
@@ -196,7 +232,7 @@ header &[data-search-full] {
     220% 100%,
     48px 48px;
   box-shadow:
-    0 8px 32px rgba(0, 204, 180, 0.16),
+    0 8px 32px rgba(0, 187, 203, 0.16),
     inset 0 1px 0 rgba(255, 255, 255, 0.12),
     inset 0 -1px 0 rgba(0, 0, 0, 0.32);
   animation: prisma-next-banner-flow 16s ease-in-out infinite alternate;
@@ -210,18 +246,23 @@ header &[data-search-full] {
   pointer-events: none;
 }
 
+/* Layer 1 is the travelling highlight — four spectrum stops in gradient order
+   (cyan → yellow → orange → pink) replacing the old teal/indigo/amber/rose
+   run. Layer 2 is the 2px rule along the bottom edge, and it takes
+   `--gradient-spectrum` verbatim: a full-width spectrum hairline is exactly
+   the brand's interaction signature. */
 #prisma-next-docs.prisma-next-banner::before {
   background:
     linear-gradient(
       90deg,
       transparent 0%,
-      rgba(0, 204, 180, 0.28) 18%,
-      rgba(99, 133, 255, 0.44) 38%,
-      rgba(255, 188, 63, 0.4) 56%,
-      rgba(255, 111, 145, 0.28) 74%,
+      rgba(1, 215, 228, 0.28) 18%,
+      rgba(243, 195, 6, 0.44) 38%,
+      rgba(243, 122, 3, 0.4) 56%,
+      rgba(240, 14, 92, 0.28) 74%,
       transparent 100%
     ),
-    linear-gradient(90deg, #00ccb4, #6385ff 34%, #ffbc3f 68%, #ff6f91);
+    var(--gradient-spectrum);
   background-position:
     -42rem 0,
     0 0;
@@ -258,21 +299,41 @@ header &[data-search-full] {
   z-index: 1;
 }
 
+/* The banner surface is dark in either theme, so its secondary copy cannot
+   ride `--fd-muted-foreground` — in light mode that resolves to #646567 and
+   all but disappears against the ink. It takes the dark ramp's weak neutral
+   directly instead. */
+#prisma-next-docs .prisma-next-banner-content .text-fd-muted-foreground {
+  color: #a5a5a6;
+}
+
+/* The CTA sits on the same always-dark surface as the banner, so it is built
+   from the same ink + prism-tint logic rather than the mode-aware tokens. */
 #prisma-next-docs .prisma-next-banner-cta {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  border-color: color-mix(in oklab, #00ccb4 48%, #ffffff);
-  color: #f8fffd;
-  background: linear-gradient(135deg, #05201d, #172036 60%, #2a2030);
+  border-color: color-mix(in oklab, var(--color-prism-cyan-500) 48%, #ffffff);
+  color: #fafafa;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-prism-cyan-950) 55%, #0f0f0f),
+    #1a1a1a 60%,
+    color-mix(in srgb, var(--color-prism-yellow-950) 30%, #0f0f0f)
+  );
   box-shadow:
-    0 4px 18px rgba(0, 204, 180, 0.22),
+    0 4px 18px rgba(0, 187, 203, 0.22),
     inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
 #prisma-next-docs .prisma-next-banner-cta:hover {
   color: #ffffff;
-  background: linear-gradient(135deg, #06302b, #1d2b52 58%, #3b243c);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-prism-cyan-900) 65%, #0f0f0f),
+    #232323 58%,
+    color-mix(in srgb, var(--color-prism-yellow-900) 40%, #0f0f0f)
+  );
 }
 
 @keyframes prisma-next-banner-flow {
@@ -340,15 +401,18 @@ header &[data-search-full] {
     overflow: hidden;
   }
 
+  /* Chromatic-aberration fringes. The CSS keywords `red` / `cyan` were
+       arbitrary primaries; the prism red and cyan land in the same two
+       directions and read as the brand instead. */
   .glitch::before {
     left: 2px;
-    text-shadow: -2px 0 red;
+    text-shadow: -2px 0 var(--color-prism-red-500);
     animation: glitch-1 2s infinite linear alternate-reverse;
   }
 
   .glitch::after {
     left: -2px;
-    text-shadow: -2px 0 cyan;
+    text-shadow: -2px 0 var(--color-prism-cyan-400);
     animation: glitch-2 1.5s infinite linear alternate-reverse;
   }
 
@@ -399,4 +463,83 @@ header &[data-search-full] {
   .glitch::after {
     animation: none;
   }
+}
+
+/* chrome overrides (builder B) appended below */
+
+/* ---------------------------------------------------------------------------
+   Chrome — the floating-morph header.
+
+   The morph itself is all classes (see `notebook/client.tsx`): the strip stays
+   sticky in `[grid-area:header]` so `--fd-header-height` keeps describing its
+   real height for the sidebar/TOC sticky math, and the container inside it is
+   what dock/float cross-fades. Only what a class cannot reach from there lives
+   here. `[data-header-body] { border-none }` above is now the right
+   behaviour rather than an override to fight: the docked hairline belongs to the
+   strip and the floating one to the glass panel, so neither row draws its own.
+--------------------------------------------------------------------------- */
+
+/* The large search field is now the navbar's pill. An earlier unlayered rule in
+   this file pins `[data-search-full]` to `rounded-xl`; scoping by the header's
+   id outranks it wherever it applies, in either state of the morph. */
+#nd-subnav [data-search-full] {
+  border-radius: var(--radius-circle);
+}
+
+/* ---------------------------------------------------------------------------
+   Shell v2 — "the reading sheet". The compositional layer of the rebrand:
+   site-redesign's pages put content on floating white panels over a warm,
+   grain-textured paper ground, with the triple-band prism ray crossing behind
+   them (see hero-home.tsx). The docs shell mirrors that at reading volume:
+   the app ground is paper (grain + ray render from PaperGround in the layout),
+   the article floats as a rounded sheet, and the sidebar/TOC sit directly on
+   the paper with no walls.
+
+   Ground and sheet are a mode-flipping pair: light keeps CF's paper ground
+   under a white sheet; dark inverts the depth cue instead (elevated surfaces
+   lighten), so the ground is the ink base and the sheet lifts one step off it.
+--------------------------------------------------------------------------- */
+:root {
+  --shell-ground: var(--color-paper); /* #f9faf5 */
+  --shell-sheet: var(--color-background-default); /* #ffffff */
+  --shell-sheet-shadow: 0 1px 2px rgba(21, 21, 21, 0.04), 0 16px 40px -16px rgba(21, 21, 21, 0.12);
+}
+
+.dark {
+  --shell-ground: var(--color-background-default); /* #0f0f0f */
+  --shell-sheet: var(--color-background-neutral-weaker); /* #141414 */
+  --shell-sheet-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 16px 40px -16px rgba(0, 0, 0, 0.8);
+}
+
+/* `position: relative` anchors PaperGround's ray layer to the grid;
+   `isolation: isolate` gives its negative-z layers a floor, so they paint
+   above this paper fill but under every in-flow surface (sheet, header,
+   sidebar pills) — light behind panels, never over content. */
+#nd-notebook-layout {
+  position: relative;
+  isolation: isolate;
+  background-color: var(--shell-ground);
+}
+
+/* The reading sheet. Unlayered, so these margins/paddings outrank the
+   component's utility classes at equal specificity. */
+#nd-page {
+  background-color: var(--shell-sheet);
+  border: 1px solid var(--color-stroke-neutral);
+  border-radius: 1.25rem;
+  box-shadow: var(--shell-sheet-shadow);
+  margin: 0.5rem 0.5rem 2rem;
+  padding: clamp(2rem, 3vw, 3.25rem) clamp(1.25rem, 4vw, 4rem) 4rem;
+}
+
+@media (min-width: 768px) {
+  #nd-page {
+    margin: 0.75rem 1.25rem 3rem;
+  }
+}
+
+/* Docked header sits on the paper, not on white. Same translucency+blur as
+   before; only the tint follows the ground. */
+#nd-subnav[data-floating="false"][data-transparent="false"] {
+  background-color: color-mix(in srgb, var(--shell-ground) 85%, transparent);
 }

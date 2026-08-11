@@ -11,11 +11,13 @@ import { mergeRefs } from "../../../lib/merge-refs";
 import { getVersionedSidebarTree } from "../../../lib/versioned-sidebar-tree";
 
 const itemVariants = cva(
-  "relative flex flex-row items-center gap-2 rounded-lg p-2 text-start text-fd-muted-foreground wrap-anywhere [&_svg]:size-4 [&_svg]:shrink-0",
+  // `rounded-square` (10px) is the brand's soft-pill geometry — the active item
+  // reads as a tinted pill rather than a boxy row.
+  "relative flex flex-row items-center gap-2 rounded-square p-2 text-start text-fd-muted-foreground wrap-anywhere [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        link: "transition-colors hover:bg-fd-accent/50 hover:text-fd-accent-foreground/80 hover:transition-none data-[active=true]:bg-fd-primary/10 data-[active=true]:text-fd-primary data-[active=true]:hover:transition-colors",
+        link: "transition-colors hover:bg-fd-accent/50 hover:text-fd-accent-foreground/80 hover:transition-none data-[active=true]:bg-(--shell-sheet) data-[active=true]:text-fd-primary data-[active=true]:shadow-[0_0_0_1px_var(--color-stroke-neutral),0_1px_2px_rgba(21,21,21,0.05)] data-[active=true]:hover:transition-colors",
         button:
           "transition-colors hover:bg-fd-accent/50 hover:text-fd-accent-foreground/80 hover:transition-none",
       },
@@ -65,7 +67,7 @@ export function SidebarContent({
             className={cn(
               "absolute flex flex-col w-full inset-s-0 inset-y-0 items-end text-sm duration-250 *:w-(--fd-sidebar-width)",
               collapsed && [
-                "inset-y-2 rounded-xl bg-fd-card transition-transform border w-(--fd-sidebar-width)",
+                "inset-y-2 rounded-square-high bg-fd-card transition-transform border w-(--fd-sidebar-width)",
                 hovered
                   ? "shadow-lg translate-x-2 rtl:-translate-x-2"
                   : "-translate-x-(--fd-sidebar-width) rtl:translate-x-full",

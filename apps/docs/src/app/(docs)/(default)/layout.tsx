@@ -4,7 +4,7 @@ import { authLinks, baseOptions, links } from "@/lib/layout.shared";
 import type { LinkItemType } from "@/components/layout/link-item";
 import { DocsLayout } from "@/components/layout/notebook";
 import { StatusIndicator } from "@/components/status-indicator";
-import { SidebarBannerCarousel } from "@/components/sidebar-banner";
+import { SidebarBannerCarousel, type BannerSlide } from "@/components/sidebar-banner";
 import { fetchOgImage } from "@/lib/og-image";
 import { cn } from "@prisma-docs/ui/lib/cn";
 import { getPageBadges } from "@/lib/page-badges";
@@ -13,7 +13,7 @@ import { getOrmVersions } from "@/lib/version";
 import { VersionSwitcher } from "@/components/version-switcher";
 
 // Sidebar announcement slides — set to [] to hide the banner
-const SIDEBAR_SLIDES = [
+const SIDEBAR_SLIDES: BannerSlide[] = [
   {
     title: "The Next Evolution of Prisma ORM",
     description:
@@ -21,7 +21,9 @@ const SIDEBAR_SLIDES = [
     href: "https://pris.ly/pn-anouncement",
     gradient: "orm" as const,
     badge: "New",
-    image: "/imgs/sidebar-banners/prisma-8.png",
+    // Brand-drawn tile (see sidebar-banner.tsx) — the previous raster was
+    // old-brand navy/indigo artwork, the last off-palette element in the shell.
+    visual: "prism" as const,
   },
 ];
 
@@ -33,7 +35,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
   // Resolve OG images server-side for slides that don't have a hardcoded image
   const slides = await Promise.all(
     SIDEBAR_SLIDES.map(async (slide) => {
-      if (!slide.image && slide.href.startsWith("http")) {
+      if (!slide.image && !slide.visual && slide.href.startsWith("http")) {
         const ogImage = await fetchOgImage(slide.href);
         if (ogImage) return { ...slide, image: ogImage };
       }

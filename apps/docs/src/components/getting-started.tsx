@@ -15,6 +15,7 @@ import { useCopyButton } from "fumadocs-ui/utils/use-copy-button";
 import { buttonVariants } from "@prisma-docs/ui/components/button";
 import { cn } from "@prisma-docs/ui/lib/cn";
 import { withDocsBasePath } from "@/lib/urls";
+import { PrismRay } from "@/components/chrome/prism-ray";
 
 function copyText(container: HTMLElement | null): string {
   const pre = container?.querySelector("pre");
@@ -568,8 +569,33 @@ export function IconLink({
 
 /** Hero layout: pitch and actions on the left, the stack diagram on the right. */
 export function HeroGrid({ children }: { children: ReactNode }) {
+  // The landing's brand moment, in site-redesign's hero grammar (hero-home.tsx):
+  // spectral washes bloom behind the product column and the structural prism
+  // ray crosses behind it. `isolate` + `-z-10` keep the light strictly under
+  // the content; the overflow box lets it spill a little into the sheet's
+  // padding without escaping onto neighbouring columns. Static by design —
+  // nothing here moves, so no reduced-motion variant is needed.
   return (
-    <div className="not-prose grid items-center gap-x-16 gap-y-10 pb-12 pt-4 lg:grid-cols-[minmax(0,6fr)_minmax(0,5fr)]">
+    <div className="not-prose relative isolate grid items-center gap-x-16 gap-y-10 pb-12 pt-4 lg:grid-cols-[minmax(0,6fr)_minmax(0,5fr)]">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -inset-x-10 -inset-y-8 -z-10 overflow-hidden"
+      >
+        <div
+          className="absolute inset-0"
+          style={{
+            background: [
+              "radial-gradient(38% 45% at 78% 16%, color-mix(in srgb, var(--color-prism-cyan-400) 20%, transparent), transparent 68%)",
+              "radial-gradient(30% 38% at 94% 55%, color-mix(in srgb, var(--color-prism-yellow-300) 15%, transparent), transparent 66%)",
+              "radial-gradient(32% 40% at 72% 92%, color-mix(in srgb, var(--color-prism-red-500) 14%, transparent), transparent 68%)",
+            ].join(","),
+          }}
+        />
+        <PrismRay
+          intensity="structural"
+          className="left-[24%] top-[48%] h-12 w-[90rem] -translate-y-1/2"
+        />
+      </div>
       {children}
     </div>
   );
@@ -603,9 +629,15 @@ export function HeroPitch({
         {children}
       </div>
       <div className="flex flex-wrap items-center gap-3">
+        {/* CF's hero primary is the ink pill, not an accent-filled button —
+            cyan stays the accent, ink carries the action. Eclipse tokens flip
+            it to a light pill on dark automatically. */}
         <a
           href={withDocsBasePath(primaryHref)}
-          className={cn(buttonVariants({ color: "primary", className: "gap-2" }))}
+          className={cn(
+            buttonVariants({ className: "gap-2" }),
+            "rounded-full border-transparent bg-background-neutral-reverse-strong text-foreground-neutral-reverse transition-transform duration-300 hover:scale-[1.04] hover:bg-background-neutral-reverse-strong hover:text-foreground-neutral-reverse motion-reduce:transition-none motion-reduce:hover:scale-100",
+          )}
         >
           {primaryLabel}
           <ArrowRight className="size-4" aria-hidden="true" />
@@ -659,8 +691,26 @@ export function StackLayer({
  */
 export function StackDiagram({ caption, children }: { caption?: string; children: ReactNode }) {
   const layers = Array.isArray(children) ? children : [children];
+  // The prismatic halo from the reference hero (hero-home.tsx HALO): the
+  // spectrum swept around the product card's perimeter — yellow up top, red
+  // right, cyan below — radiating out as a soft glow behind the card.
+  const halo =
+    "conic-gradient(var(--color-prism-yellow-300), var(--color-prism-red-500) 32%, var(--color-prism-cyan-400) 64%, var(--color-prism-yellow-300))";
   return (
-    <div className="relative rounded-2xl border bg-gradient-to-br from-fd-primary/[0.06] via-fd-card to-fd-card p-5 sm:p-6">
+    <div className="relative isolate rounded-2xl border bg-gradient-to-br from-fd-primary/[0.06] via-fd-card to-fd-card p-5 sm:p-6">
+      {/* The card's own gradient is translucent toward its top-left corner, so
+          the tight ring bleeds into the panel — kept subtle in light, where it
+          reads as tint; dark gets the fuller glassy glow. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -inset-px -z-10 rounded-2xl opacity-20 blur-[18px] dark:opacity-40"
+        style={{ background: halo }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -inset-3 -z-10 rounded-3xl opacity-15 blur-[44px] dark:opacity-25"
+        style={{ background: halo }}
+      />
       <div className="flex flex-col items-stretch">
         {layers
           .filter((child) => child != null && child !== "\n")

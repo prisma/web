@@ -13,7 +13,7 @@ export function TOCItems({ ref, className, ...props }: ComponentProps<"div">) {
 
   if (items.length === 0)
     return (
-      <div className="rounded-lg border bg-fd-card p-3 text-xs text-fd-muted-foreground">
+      <div className="rounded-square border bg-fd-card p-3 text-xs text-fd-muted-foreground">
         {text.tocNoHeadings}
       </div>
     );
