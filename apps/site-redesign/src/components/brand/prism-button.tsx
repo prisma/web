@@ -16,7 +16,25 @@ type PrismButtonProps = {
   type?: "button" | "submit";
   /** Stretch to the container's width — for card CTAs. Default is intrinsic. */
   fullWidth?: boolean;
+  /**
+   * `lg` is for page heroes. The navbar's Get Started is the same black pill at
+   * 109x36, so a default-size hero CTA reads as a repeat of it rather than as
+   * the page's action — client review flagged exactly that.
+   */
+  size?: "default" | "lg";
 };
+
+const SIZES = {
+  default: "px-6 py-3 text-[16px]",
+  lg: "px-8 py-4 text-[17px]",
+} as const;
+
+// The outline pill gives a pixel of padding back to its border on each axis, so
+// its box matches the filled pill's at the same size.
+const OUTLINE_SIZES = {
+  default: "px-[22px] py-[11px] text-[16px]",
+  lg: "px-[30px] py-[15px] text-[17px]",
+} as const;
 
 // The brand's primary CTA, ported from the approved stylescape: a living
 // spectrum glow that drifts at rest, and a prismatic burst that fills the
@@ -28,6 +46,7 @@ export function PrismButton({
   onClick,
   type = "button",
   fullWidth = false,
+  size = "default",
 }: PrismButtonProps) {
   const reduce = useReducedMotion();
   const [hover, setHover] = useState(false);
@@ -70,7 +89,8 @@ export function PrismButton({
         type={href ? undefined : type}
         onClick={onClick}
         className={cn(
-          "relative flex items-center justify-center overflow-hidden rounded-full bg-black px-6 py-3 cursor-pointer",
+          "relative flex items-center justify-center overflow-hidden rounded-full bg-black cursor-pointer",
+          SIZES[size],
           fullWidth && "w-full",
         )}
         animate={{ scale: burstOn ? 1.04 : 1 }}
@@ -79,7 +99,7 @@ export function PrismButton({
         {/* prismatic burst — erupts from the centre via an expanding radial reveal */}
         <BurstFill on={burstOn} />
 
-        <span className="relative z-10 whitespace-nowrap text-[16px] font-semibold leading-[1.5] text-white">
+        <span className="relative z-10 whitespace-nowrap font-semibold leading-[1.5] text-white">
           {children}
         </span>
       </MotionComp>
@@ -95,6 +115,7 @@ export function PrismButtonOutline({
   href,
   onClick,
   type = "button",
+  size = "default",
 }: PrismButtonProps) {
   const Comp = href ? "a" : "button";
   return (
@@ -103,11 +124,12 @@ export function PrismButtonOutline({
       type={href ? undefined : type}
       onClick={onClick}
       className={cn(
-        "spectrum-border flex items-center justify-center rounded-full border border-[#646567] px-[22px] py-[11px] cursor-pointer transition-colors duration-500 hover:border-transparent",
+        "spectrum-border flex items-center justify-center rounded-full border border-[#646567] cursor-pointer transition-colors duration-500 hover:border-transparent",
+        OUTLINE_SIZES[size],
         className,
       )}
     >
-      <span className="whitespace-nowrap text-[16px] font-semibold leading-[1.5] text-foreground">
+      <span className="whitespace-nowrap font-semibold leading-[1.5] text-foreground">
         {children}
       </span>
     </Comp>
