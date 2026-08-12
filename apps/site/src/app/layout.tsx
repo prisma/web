@@ -9,6 +9,7 @@ import Script from "next/script";
 import type React from "react";
 import { SITE_HOME_DESCRIPTION, SITE_HOME_TITLE } from "@/lib/site-metadata";
 import { NavigationWrapper, FooterWrapper } from "@/components/navigation-wrapper";
+import { BuildersDayBanner } from "@/components/builders-day-banner";
 import { Footer } from "@prisma-docs/ui/components/footer";
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import { GoogleTagManager } from "@prisma-docs/ui/components/google-tag-manager";
@@ -219,6 +220,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <Provider>
           <ThemeProvider defaultTheme="system" storageKey="theme">
             <UtmPersistence />
+            <BuildersDayBanner />
             <NavigationWrapper links={baseOptions().links} />
             {children}
             <FooterWrapper />
