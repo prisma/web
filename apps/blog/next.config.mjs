@@ -229,6 +229,20 @@ const config = {
         permanent: false,
         basePath: false,
       },
+      // Direct hits on the blog origin host (blog.prisma.io/robots.txt) get a
+      // disallow-all robots.txt so the duplicate host is not crawled. Search
+      // Console shows blog.prisma.io URLs indexed with impressions but zero
+      // clicks. Google follows robots.txt redirects and treats the target as
+      // this host's robots file. A basePath-free rewrite is not allowed for
+      // internal destinations, hence the redirect. The canonical
+      // www.prisma.io/robots.txt is served by apps/site and never reaches
+      // this app.
+      {
+        source: "/robots.txt",
+        destination: "/blog/robots-origin.txt",
+        permanent: false,
+        basePath: false,
+      },
       {
         source: "/optimize-now-generally-available",
         destination: "/",
@@ -272,16 +286,6 @@ const config = {
       {
         source: "/:path*.md",
         destination: "/llms.mdx/:path*",
-      },
-      // Direct hits on the blog origin host (blog.prisma.io/robots.txt) get a
-      // disallow-all robots.txt so the duplicate host is not crawled. Search
-      // Console shows blog.prisma.io URLs indexed with impressions but zero
-      // clicks. The canonical www.prisma.io/robots.txt is served by apps/site
-      // and never reaches this app.
-      {
-        source: "/robots.txt",
-        destination: "/blog/robots-origin.txt",
-        basePath: false,
       },
     ];
   },
