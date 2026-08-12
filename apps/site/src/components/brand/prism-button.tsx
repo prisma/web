@@ -9,16 +9,39 @@ import { cn } from "@/lib/utils";
 const SPECTRUM =
   "linear-gradient(85deg, #01d7e4 0%, #f3c306 25%, #f37a03 50%, #f43531 74%, #f00e5c 100%)";
 
+const CONSOLE_HOST = "console.prisma.io";
+
+/**
+ * Resolves an href to the console URL it points at, or null.
+ *
+ * Matches on the parsed hostname, not a substring: `includes("console.prisma.io")`
+ * also matches `https://evil.com/?next=console.prisma.io` and
+ * `https://console.prisma.io.evil.com`, which would fire the conversion event on
+ * a non-console link and pollute the GA4/Ads series this tracking exists to keep.
+ * The base makes relative hrefs parse instead of throwing; they resolve to the
+ * site's own host and are correctly rejected.
+ */
+function consoleDestination(href: string | undefined): URL | null {
+  if (!href) return null;
+  try {
+    const url = new URL(href, "https://www.prisma.io");
+    return url.hostname === CONSOLE_HOST ? url : null;
+  } catch {
+    return null;
+  }
+}
+
 // Console-bound CTAs record the cta_click GTM event (GA4 + Google Ads import),
 // matching the pre-rebrand ConsoleCtaButton so the conversion series survives
-// the redesign. Fires only for console.prisma.io destinations; UTM decoration
-// is handled separately by the document-level UtmPersistence listener.
+// the redesign. UTM decoration is handled separately by the document-level
+// UtmPersistence listener.
 function trackConsoleCta(href: string | undefined, label: React.ReactNode, location?: string) {
-  if (!href || !href.includes("console.prisma.io")) return;
+  const url = consoleDestination(href);
+  if (!url) return;
   trackCTA({
-    cta_text: typeof label === "string" ? label : new URL(href).pathname.replace("/", ""),
+    cta_text: typeof label === "string" ? label : url.pathname.replace("/", ""),
     cta_location: location ?? "cta",
-    cta_destination: href,
+    cta_destination: url.toString(),
     section: "website",
   });
 }
