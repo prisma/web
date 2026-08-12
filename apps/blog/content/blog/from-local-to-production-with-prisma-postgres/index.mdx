@@ -1,0 +1,257 @@
+---
+title: "From Local Development to Production with Prisma Postgres"
+slug: "from-local-to-production-with-prisma-postgres"
+date: "2026-07-31"
+authors:
+  - "Søren Bramer Schmidt"
+metaTitle: "From Local Development to Production with Prisma Postgres"
+metaDescription: "The exact checklist for moving a Prisma app from local Postgres, Docker or prisma dev, to hosted Prisma Postgres: schema, data, config, and validation."
+heroImagePath: "/from-local-to-production-with-prisma-postgres/imgs/hero.svg"
+heroImageAlt: "A .env file swaps a local Postgres connection string for a hosted Prisma Postgres one, fanning out to local and production targets"
+metaImagePath: "/from-local-to-production-with-prisma-postgres/imgs/meta.png"
+tags:
+  - "prisma-postgres"
+  - "education"
+---
+
+Prototyping against a local Postgres is the easy part; the awkward step is moving the working app to a hosted database. This guide is the checklist for that move: take a Prisma project running on Docker Postgres or a local `prisma dev` instance, and land it on [Prisma Postgres](https://www.prisma.io/docs/postgres), a managed PostgreSQL database, with the schema, data, and migration history intact. The whole transition is five steps, and the only thing that changes for your application is where its connection strings point.
+
+## The local-to-production gap
+
+Most Prisma projects start the same way: a schema, a local database, and a tight iteration loop. The trouble starts when the app is ready for other people. Production needs a database that is not your laptop, and most tutorials end right before the part where the data has to live somewhere real.
+
+The move is smaller than it looks. Your schema does not change. Your queries do not change. Prisma Client does not change. Three things move: where the database runs, the connection strings that point at it, and the schema and data that have to arrive there. As a checklist:
+
+1. Develop against a local database, with `prisma dev` or Docker.
+2. Create the hosted Prisma Postgres database.
+3. Point your config at it.
+4. Replay the schema, and move the data if it matters.
+5. Validate, deploy, and keep the local loop.
+
+The rest of this post walks through each step with the exact commands.
+
+## Start local: `prisma dev` or Docker
+
+The classic local setup is [Docker](https://www.docker.com). You write a compose file, pick a port, mount a volume so data survives restarts, and start the container:
+
+```yaml
+# docker-compose.yml
+services:
+  postgres:
+    image: postgres:17
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+volumes:
+  pgdata:
+```
+
+```text
+# .env
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/postgres"
+```
+
+This works, and if you already have it, keep it: the rest of the checklist is identical. But it carries baggage that has nothing to do with your app. A container runtime has to be installed and running (Docker Desktop, OrbStack, Colima, or another). The compose file has to be maintained. Port 5432 collides the moment a second project does the same thing. And the whole arrangement exists to run one process.
+
+The lighter route is `prisma dev`, which ships with the Prisma CLI:
+
+```bash
+npx prisma dev
+```
+
+That one command starts a local Prisma Postgres instance, powered by [PGlite](https://pglite.dev), an embedded Postgres engine. There is no daemon to install, no image to pull, and no container to manage. When the server is up, it prints connection strings ready to paste into `.env`:
+
+```text
+✔  Your local Prisma Postgres server default is now running
+
+🔌 To connect with Prisma ORM use the following connection strings:
+
+   DATABASE_URL="postgres://postgres:postgres@localhost:51214/template1?sslmode=disable&..."
+```
+
+Compared to the Docker setup, `prisma dev` is easier on four counts:
+
+- **No extra infrastructure.** No Docker daemon, no compose file, no volumes, no port mapping. Node.js 20 or later is the only requirement.
+- **Per-project instances.** `npx prisma dev --name myapp` gives every project its own named database with a stable connection string, so nothing collides.
+- **A built-in lifecycle.** `npx prisma dev --detach` runs the server in the background, `prisma dev ls` lists your instances, and `prisma dev stop <name>` and `prisma dev rm <name>` shut down and delete them. No orphaned containers, no stale volumes.
+- **The same tooling in both places.** Local `prisma dev` and hosted Prisma Postgres take the same connection-string interface and the same CLI, so what you learn locally is what you run against production.
+
+It speaks standard Postgres on the wire, so `psql`, GUIs, and standard Postgres drivers connect to it. The trade-offs: the local server accepts one connection at a time, so a second client waits for the first to let go rather than failing outright, and it is a development tool, ideal for iteration and tests rather than something you self-host. The [local development docs](https://www.prisma.io/docs/postgres/database/local-development) cover the full instance-management reference.
+
+Whichever route you chose, finish the local loop by creating the schema and, if your config defines a seed script, seeding:
+
+```bash
+npx prisma migrate dev
+npx prisma db seed
+```
+
+From here, both starting points follow the same checklist.
+
+## Create the hosted database
+
+Create the production database in the [Prisma Console](https://console.prisma.io):
+
+1. Open the Console and click **New project** in your workspace.
+2. Name the project, click **Get started** under Prisma Postgres, and pick the region closest to your users.
+3. Click **Create project**, and wait for the database to finish provisioning.
+
+Then grab the connection strings you will need:
+
+1. Select the database and click **Connect to your database**.
+2. Click **Generate new connection string** and copy both strings it gives you.
+
+Every Prisma Postgres database has [two connection strings](https://www.prisma.io/docs/postgres/database/connecting-to-your-database): a **pooled** one (hostname `pooled.db.prisma.io`) for application traffic, and a **direct** one (`db.prisma.io`) for migrations and standard Postgres tools like `pg_restore`. You will use both in the next steps.
+
+Two CLI alternatives, depending on where you are: for a brand-new project, `npx prisma init --db` scaffolds the schema and provisions a Prisma Postgres database in one go, and [`npx create-db@latest`](https://www.prisma.io/docs/postgres/npx-create-db) creates a temporary database with no sign-up; claim it within 24 hours to keep it, or it is deleted.
+
+## Update env and config
+
+Two things before you touch `.env`. Check that it is gitignored, because production credentials are about to live in it. And keep your local URLs somewhere you can get them back, because the steps after this one need them twice; for a `prisma dev` instance, `npx prisma dev ls` shows the connection string again.
+
+Now point the app at the hosted database by swapping the connection strings:
+
+```text
+# .env (before)
+DATABASE_URL="postgres://postgres:postgres@localhost:51214/template1?sslmode=disable&..."
+
+# .env (after)
+DATABASE_URL="postgres://USER:PASSWORD@pooled.db.prisma.io:5432/postgres?sslmode=require"
+DIRECT_URL="postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require"
+```
+
+The pooled string is what the app reads through `DATABASE_URL` at runtime. The direct string is for the Prisma CLI. The pooler runs PgBouncer in transaction mode: it lends a backend connection for the length of each transaction, then takes it back. Ordinary application queries do not notice, which is why your app code stays the same. Work that spans transactions does: session-level `SET`, `LISTEN`/`NOTIFY`, and queries running longer than ten minutes want the direct string. Migrations want it too, because they hold advisory locks and session state across statements, and fail through the pooler.
+
+So each side gets its own variable: the CLI on the direct string, application traffic on the pooled one. Running the app on the direct string instead quietly exhausts connections under load. Add `DIRECT_URL` and point the datasource in `prisma.config.ts` at it:
+
+```ts
+// prisma.config.ts
+import "dotenv/config";
+import { defineConfig, env } from "prisma/config";
+
+export default defineConfig({
+  schema: "prisma/schema.prisma",
+  datasource: {
+    url: env("DIRECT_URL"),
+  },
+});
+```
+
+The `url` line is the only change; keep whatever else your config already declares. That snippet is the Prisma ORM 7 setup, where connection config lives in `prisma.config.ts`. On Prisma ORM 6 the same job is done by `directUrl` in the schema's `datasource` block. Prisma ORM 7 moves connection URLs out of the schema entirely, and the direct string goes in the config's `url`, as above. For local development, set `DIRECT_URL` to the same value as `DATABASE_URL`; the local server has no pooler, so the two are one URL.
+
+That is the entire change: two environment values and one config line. No query rewrites, no driver swap, no schema edits. The app reads `DATABASE_URL` from the environment at runtime, and the CLI reads `prisma.config.ts` on every run.
+
+Leave `.env` pointing at production for now: every Prisma CLI command in the rest of this checklist runs against the hosted database, and the last step switches local development back. Treat that window carefully. Anything that loads `.env` now talks to production, including your test suite and any seed script that starts by clearing tables, and `migrate dev` and `migrate reset` will do to production exactly what their names say. If a command in this window is not on the checklist, check which database it will hit before you run it. The permanent home for these credentials is your hosting platform's environment settings, not the file.
+
+## Move the schema and the data
+
+There are two situations, and they need different commands.
+
+**Starting fresh in production.** If your local data is disposable prototype data, replay the migration history against the hosted database and reseed.
+
+This assumes you have a `prisma/migrations` folder. If you prototyped with `npx prisma db push`, you do not: `db push` never writes migration files, and `migrate dev` will not create them retroactively against a database that already has your tables, it stops with `P3005, The database schema is not empty`. Baseline instead, with `.env` pointing at your local database:
+
+```bash
+mkdir -p prisma/migrations/0_init
+
+npx prisma migrate diff \
+  --from-empty \
+  --to-schema prisma/schema.prisma \
+  --script > prisma/migrations/0_init/migration.sql
+
+npx prisma migrate resolve --applied 0_init
+```
+
+That writes the migration your schema implies and records it as already applied locally, without touching your data. Point `.env` back at production before continuing. The [baselining docs](https://www.prisma.io/docs/orm/prisma-migrate/workflows/baselining) cover the workflow in full. Do this before dumping, too, if you are taking the data path below: it gives the dump a migration history to carry.
+
+With `.env` on production, the CLI applies your migrations to the hosted database, over the direct connection:
+
+```bash
+npx prisma migrate deploy
+```
+
+```text
+2 migrations found in prisma/migrations
+
+All migrations have been successfully applied.
+```
+
+`migrate deploy` is the production counterpart of `migrate dev`: it applies the committed migration files in order, with no schema drafting, no prompts, and no drift detection. That makes it safe to put in CI or your deploy pipeline, where it belongs. The [development and production workflows docs](https://www.prisma.io/docs/orm/prisma-migrate/workflows/development-and-production) explain the split. If you have a seed script for production defaults, run it once now, while `.env` points at production.
+
+**Bringing the data along.** If the local data matters, copy it with the standard Postgres tools. The dump and restore below both take their database on the command line with `-d`, so neither reads `.env`; it does not matter that `.env` currently points at production.
+
+This is the Docker path. If your data lives in a local `prisma dev` instance instead, use the [Prisma VS Code extension](https://marketplace.visualstudio.com/items?itemName=Prisma.prisma), whose push-to-cloud action moves a local database to a remote Prisma Postgres instance without any dump file. A local instance is PGlite rather than a full Postgres server, and dumping one is not the well-trodden path: it serves a single connection, so anything else holding it blocks the dump, and `pg_dump` rejects Prisma's pool-tuning parameters unless you trim the printed URL back to `?sslmode=disable`.
+
+Export from the Docker database:
+
+```bash
+pg_dump -Fc -v -n public -f db_dump.bak \
+  -d "postgresql://postgres:postgres@localhost:5432/postgres"
+```
+
+Import into Prisma Postgres using the direct connection string. `--no-owner` and `--no-acl` skip the ownership and grant statements that name your local roles, which do not exist in Prisma Postgres:
+
+```bash
+pg_restore \
+  --no-owner \
+  --no-acl \
+  -d "postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require" \
+  -v \
+  ./db_dump.bak
+```
+
+Three details worth knowing. First, Prisma Postgres runs PostgreSQL 17, so your `pg_dump` and `pg_restore` need to be version 17; check with `pg_dump --version`, and install the matching client tools if they are older. Second, `-n public` dumps the `public` schema, which is where Prisma puts your tables by default, including the `_prisma_migrations` table. Your migration history travels with the data, so you do not replay it separately; the `migrate status` check below is how you confirm it arrived. If you use `multiSchema` or keep tables outside `public`, add a `-n` flag per schema, or the restore will look clean while those tables are missing. Third, a restore prints a `schema "public" already exists` warning, which is safe to ignore. Take the two branches above as mutually exclusive: restoring on top of a database you already ran `migrate deploy` against produces genuine `already exists` errors, and that is a different situation. The [PostgreSQL import guide](https://www.prisma.io/docs/prisma-postgres/import-from-existing-database-postgresql) covers this flow end to end, including provider-specific connection notes.
+
+## Validate, then deploy
+
+Do not declare victory on a successful restore. Three checks, then the switch:
+
+1. **Migration status.** Run `npx prisma migrate status` against the hosted database. It compares your migration files against the `_prisma_migrations` table, so it confirms the history arrived intact, not that every column matches your schema:
+
+   ```text
+   Database schema is up to date!
+   ```
+
+2. **Row counts.** Spot-check that the data arrived. Open the **Studio** tab in the Console to browse the hosted data, or run a count against the direct connection:
+
+   ```bash
+   psql "postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require" \
+     -c 'SELECT count(*) FROM "User";'
+   ```
+
+3. **Smoke test.** Start the app locally; `.env` still points at the hosted database. Click through the main flows. You are verifying config, not code, so the reads carry most of the signal. If you imported real data, keep the writes to records you are willing to clean up afterwards, or exercise them before the import instead: cascades, sequence values, and anything that sends mail do not come back with a `DELETE`.
+
+4. **Deploy.** Set `DATABASE_URL` and `DIRECT_URL` in the hosting platform, add `npx prisma migrate deploy` to the deploy pipeline so future migrations apply automatically, and ship.
+
+Then put the local URLs back in `.env`, both `DATABASE_URL` and `DIRECT_URL`, and keep the loop you started with: iterate locally against `prisma dev` with `migrate dev`, commit the migration files, and let the pipeline replay them in production. Change both lines in the same edit. A leftover `DIRECT_URL` points the CLI at production while your app runs local, and the reverse, a leftover `DATABASE_URL`, is worse: the app reads and writes production while everything looks local, with no error to tip you off. Keep the old local database until production has run for a while, too. `db_dump.bak` is a file you can lose, and `docker compose down -v` or `npx prisma dev rm <name>` deletes the last live copy of that data.
+
+## Frequently asked questions
+
+<Accordions type="single">
+  <Accordion title="Do I have to move my local data to production?">
+Only if it matters. Prototype data is usually better left behind: run `npx prisma migrate deploy` against the hosted database to recreate the schema from your committed migration files, then reseed. Copy the data with `pg_dump` and `pg_restore` when it is real: content you authored, imported records, or anything users would miss.
+  </Accordion>
+  <Accordion title="Does my application code change when I move to Prisma Postgres?">
+No. The schema, the generated client, and the queries you wrote stay the same. The changes are two environment variables, the pooled `DATABASE_URL` and the direct `DIRECT_URL`, plus the one config line that points the Prisma CLI at the direct connection. That is what developing against local Prisma Postgres buys you: local and hosted take the same tooling behind the same environment variables. The one thing to check is workloads that hold session state across transactions, such as `LISTEN`/`NOTIFY` or queries running over ten minutes; in production those belong on the direct connection.
+  </Accordion>
+  <Accordion title="What happens to my migration history when I import with pg_dump?">
+It travels with the data. Prisma Migrate records applied migrations in a `_prisma_migrations` table inside your database, in whichever schema your connection targets, `public` by default, and a dump of that schema includes it. After the restore, `npx prisma migrate status` reports the hosted database as up to date, and future `migrate deploy` runs continue from the same history.
+  </Accordion>
+  <Accordion title="Should I keep using prisma dev after production exists?">
+Yes, that is the intended workflow. Production traffic hits hosted Prisma Postgres while daily development stays on a local `prisma dev` instance: fast and disposable. Schema changes flow one way, from `migrate dev` locally, through git, to `migrate deploy` in your pipeline. Named instances (`npx prisma dev --name myapp`) keep several projects from colliding.
+  </Accordion>
+</Accordions>
+
+## Recap
+
+The checklist, condensed:
+
+1. **Develop locally.** `npx prisma dev` for a one-command local Prisma Postgres, or keep your Docker Postgres. Apply schema changes with `npx prisma migrate dev`.
+2. **Create the hosted database.** Console **New project**, or `npx prisma init --db` for a brand-new project, or `npx create-db@latest` and claim it within 24 hours. Copy the pooled and direct connection strings.
+3. **Update config.** Set the pooled `DATABASE_URL` and the direct `DIRECT_URL`, point the config's datasource at `DIRECT_URL`, and store the production URLs in your platform's env settings.
+4. **Move schema and data.** Fresh start: `npx prisma migrate deploy` plus your seed. With data: `pg_dump -Fc` locally, `pg_restore` over the direct connection, history included.
+5. **Validate.** `npx prisma migrate status`, row counts in Prisma Studio, one smoke test, then deploy with `migrate deploy` in the pipeline.
+
+For your application code, the gap between local and production is a connection-string swap. Start local with `npx prisma dev`, and when the app is ready for other people, provision the hosted database in the [Console](https://console.prisma.io) and work the five steps above.

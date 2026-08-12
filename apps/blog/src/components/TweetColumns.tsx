@@ -5,25 +5,6 @@ import { TweetBoundary } from "./TweetBoundary";
 
 const isTweetId = (value: string) => /^\d+$/.test(value);
 
-// react-tweet 3.3.0's getEntities() iterates entities.hashtags / user_mentions
-// / urls / symbols without guarding undefined, so a tweet whose syndication
-// payload omits one of those (common on newer tweets with media or cards)
-// throws "undefined is not iterable" and crashes the page. Backfill the arrays
-// before handing the tweet to <EmbeddedTweet>.
-function sanitizeTweet(tweet: Tweet): Tweet {
-  const entities = tweet.entities ?? ({} as Tweet["entities"]);
-  return {
-    ...tweet,
-    entities: {
-      ...entities,
-      hashtags: entities.hashtags ?? [],
-      user_mentions: entities.user_mentions ?? [],
-      urls: entities.urls ?? [],
-      symbols: entities.symbols ?? [],
-    },
-  };
-}
-
 async function TweetCard({ tweetId }: { tweetId: string }) {
   let tweet: Tweet | undefined;
   try {
@@ -47,7 +28,7 @@ async function TweetCard({ tweetId }: { tweetId: string }) {
 
   return (
     <TweetBoundary tweetId={tweetId}>
-      <EmbeddedTweet tweet={sanitizeTweet(tweet)} />
+      <EmbeddedTweet tweet={tweet} />
     </TweetBoundary>
   );
 }

@@ -1,0 +1,147 @@
+---
+title: Plasmic
+description: Create websites and apps visually with Prisma and Plasmic
+image: /img/guides/prisma-plasmic-cover.png
+url: /guides/integrations/plasmic
+metaTitle: Building with Prisma in a no-code way using Plasmic
+metaDescription: Set up the Plasmic Prisma integration, configure queries from Plasmic Studio, and connect it to your UI
+---
+
+## Introduction
+
+[Plasmic](https://www.plasmic.app/) is a visual builder for React websites and applications. In this guide, you will connect Plasmic to Prisma using the [starter blog application](https://github.com/plasmicapp/plasmic-prisma-starter) and display query results in a UI created in Plasmic Studio.
+
+Your Prisma connection credentials remain in the application environment and are not sent to Plasmic. Queries run through server functions hosted by your Next.js application. In Plasmic Studio, you configure each query by selecting the Prisma model, operation, filters, and related options.
+
+## Prerequisites
+
+- [Node.js 20 or later](https://nodejs.org/en/download/)
+- [pnpm](https://pnpm.io/installation)
+- A [Prisma account](https://console.prisma.io/)
+- A [Plasmic account](https://studio.plasmic.app/)
+- [Git](https://git-scm.com/downloads)
+
+## 1. Clone the starter
+
+Clone the starter so you have the registered Plasmic data query, Prisma schema, seed data, and example Next.js routes used in this guide.
+
+```bash title="Terminal"
+git clone https://github.com/plasmicapp/plasmic-prisma-starter.git
+cd plasmic-prisma-starter
+pnpm install
+```
+
+The project includes `prisma/schema.prisma`, `functions/prismaQuery.tsx`, and the Plasmic registration in `plasmic-init.ts`.
+
+## 2. Create a Prisma Postgres database
+
+Provision a Prisma Postgres database for the starter. The command signs you in to the Prisma Console, asks for a region and project name, and prints a connection string.
+
+```bash title="Terminal"
+pnpm exec prisma init --db
+```
+
+Copy the `postgres://...` connection string from the command output. You will add it to the starter in the next step.
+
+## 3. Configure the environment and seed the database
+
+Create the local environment file from the example so the application can connect to Prisma Postgres and initialize Auth.js.
+
+```bash title="Terminal"
+cp .env.example .env
+pnpm dlx auth secret
+```
+
+Open `.env`, replace the placeholder `DATABASE_URL` with the connection string from the previous step, and confirm that `AUTH_SECRET` contains the generated value:
+
+```text title=".env"
+DATABASE_URL="postgres://USER:PASSWORD@HOST:5432/postgres?sslmode=require"
+AUTH_SECRET="YOUR_GENERATED_SECRET"
+```
+
+Apply the included schema, generate Prisma Client, and load the sample roles, users, and posts:
+
+```bash title="Terminal"
+pnpm exec prisma migrate dev --name init
+pnpm exec prisma generate
+pnpm exec prisma db seed
+```
+
+The final command should print:
+
+```text no-copy title="Expected output"
+Seeding completed.
+```
+
+If `prisma migrate dev` reports error `P3005` because the database schema is not empty, follow the [baselining workflow](/orm/prisma-migrate/workflows/baselining) before applying migrations.
+
+## 4. Connect your Plasmic project
+
+Create an empty project in [Plasmic Studio](https://studio.plasmic.app/). Copy the project ID from the Studio URL and the public project token from the **Code** panel, then add both values to `.env`:
+
+```text title=".env"
+DATABASE_URL="postgres://USER:PASSWORD@HOST:5432/postgres?sslmode=require"
+AUTH_SECRET="YOUR_GENERATED_SECRET"
+NEXT_PUBLIC_PLASMIC_PROJECT_ID="YOUR_PROJECT_ID"
+NEXT_PUBLIC_PLASMIC_PROJECT_TOKEN="YOUR_PUBLIC_PROJECT_TOKEN"
+```
+
+The starter reads these variables in `plasmic-init.ts`. Its loader has `preview: true` so Studio can render unpublished changes during development. Set `preview` to `false` before using the application in production.
+
+## 5. Run the app and set the app host
+
+Start the Next.js development server so Plasmic Studio can load the registered data query from your application.
+
+```bash title="Terminal"
+pnpm dev
+```
+
+In your browser, verify that the Plasmic host page is available by visiting this URL:
+
+```text no-copy title="Plasmic host URL"
+http://localhost:3000/plasmic-host
+```
+
+Follow Plasmic's [app host setup guide](https://docs.plasmic.app/learn/app-hosting/#3-set-your-plasmic-project-to-use-your-app-host) and set your project's app host to:
+
+```text no-copy title="App host URL"
+http://localhost:3000/plasmic-host
+```
+
+![App host configuration modal](/img/guides/plasmic/plasmic-host.png)
+
+Studio reloads after you save the host. The **Prisma Query** function is now available under **Data Queries** in the page data panel.
+
+## 6. Query published posts in Plasmic Studio
+
+Create or open a page that will display the seeded posts. Add a page data query named `Get Recent Posts` with these settings:
+
+- **Function:** `Prisma Query` (`prismaQuery`)
+- **Table:** `Post`
+- **Operation:** `findMany`
+- **Where:** `published` equals `true`
+- **Include Relations:** `author`
+- **Order By Field:** `createdAt`
+- **Order Direction:** `desc`
+
+![Query results preview](/img/guides/plasmic/posts-query.png)
+
+Select **Execute** to preview the query in Studio. The result under `$q.getRecentPosts?.data` should be an array of published posts with their authors.
+
+Add a container to the page and repeat it over `$q.getRecentPosts?.data`. Inside the repeated item, bind text elements to the current post's `title`, `content`, and `author.name` fields.
+
+:::note
+
+The starter checks every operation in `functions/prismaQuery.tsx` against the current user's role before it reaches Prisma Client. The seeded `guest` role can read data, so this `findMany` query works without signing in. Keep authorization checks in application code when you adapt the starter.
+
+:::
+
+## Verify the integration
+
+Preview the page in Plasmic Studio. You should see the published sample posts created by `prisma db seed`, ordered with the newest post first. Change a post in [Prisma Studio](/studio) and execute `Get Recent Posts` again to confirm that the page reads from your Prisma Postgres database.
+
+## Next steps
+
+- Read the detailed [Using Prisma with Plasmic](https://www.plasmic.app/blog/prisma-plasmic-integration) article for dynamic routes, write operations, authentication, and permissions.
+- Review the complete [Plasmic Prisma starter](https://github.com/plasmicapp/plasmic-prisma-starter) implementation.
+- Learn how to [filter and sort with Prisma Client](/orm/prisma-client/queries/filtering-and-sorting).

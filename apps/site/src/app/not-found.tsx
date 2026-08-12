@@ -3,7 +3,7 @@ import { NotFoundTracker } from "@/components/not-found-tracker";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "404 - Page Not Found",
+  title: "404 - Page Not Found | Prisma",
   description: "The page you were looking for could not be found.",
 };
 

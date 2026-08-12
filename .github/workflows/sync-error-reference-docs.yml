@@ -1,0 +1,74 @@
+name: Sync Error Reference Docs
+
+on:
+  repository_dispatch:
+    types: [error-reference-updated]
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: sync-error-reference-docs
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    name: Sync Error Reference Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Checkout prisma/prisma (main)
+        uses: actions/checkout@v4
+        with:
+          repository: prisma/prisma
+          ref: main
+          path: prisma-src
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Generate error reference page
+        working-directory: apps/docs
+        run: node ./scripts/generate-error-reference.mjs --source ../../prisma-src/docs/reference/error-reference.md
+
+      - name: Verify page lists every known error code
+        run: node prisma-src/scripts/list-error-codes.mjs --root prisma-src --verify apps/docs/content/docs/orm/next/reference/error-reference.mdx
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if [[ -z "$(git status --porcelain --untracked-files=all -- apps/docs/content/docs/orm/next/reference/error-reference.mdx)" ]]; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "No changes detected"
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Changes detected:"
+            git status --short -- apps/docs/content/docs/orm/next/reference/error-reference.mdx
+          fi
+
+      - name: Commit and push
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN_DOCS_COMMIT }}
+          TARGET_REPO: ${{ github.repository }}
+          TARGET_REF: ${{ github.ref_name }}
+        run: |
+          git config user.email "prismabots@gmail.com"
+          git config user.name "Prismo"
+          git add apps/docs/content/docs/orm/next/reference/error-reference.mdx
+          git commit -m "chore(docs): sync Prisma Next error reference"
+          git push "https://x-access-token:${BOT_TOKEN}@github.com/${TARGET_REPO}.git" "HEAD:${TARGET_REF}"
+
+      - name: Trigger Vercel deploy
+        if: steps.changes.outputs.changed == 'true'
+        run: curl --fail -X POST "${{ secrets.VERCEL_DEPLOY_HOOK_URL }}"

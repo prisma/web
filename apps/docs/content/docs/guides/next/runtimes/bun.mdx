@@ -1,14 +1,14 @@
 ---
 title: Bun
-description: Scaffold a Prisma Next app with Bun, initialize your database, and run your first typed query.
+description: Scaffold a Prisma Next app with Bun, run your first typed query, serve users over HTTP, and deploy to Prisma Compute.
 url: /guides/next/runtimes/bun
 metaTitle: How to use Prisma Next with Bun
-metaDescription: Set up a Prisma Next project with Bun and Prisma Postgres, from scaffold to first query, with tested commands and real output.
+metaDescription: Set up a Prisma Next project with Bun and Prisma Postgres, from scaffold to first typed query, then serve users over HTTP and deploy to Prisma Compute.
 ---
 
 ## Introduction
 
-In this guide, you scaffold a Prisma Next project with Bun, initialize a PostgreSQL database from your schema, and run your first typed query. Bun runs TypeScript directly, so there is no build step anywhere in the flow.
+In this guide, you scaffold a Prisma Next project with Bun, initialize a PostgreSQL database from your schema, run your first typed query, serve query results over HTTP with `Bun.serve`, and deploy the server to [Prisma Compute](/compute). Bun runs TypeScript directly, so there is no build step anywhere in the flow.
 
 Every command and code sample below was run end to end against a live Prisma Postgres database.
 
@@ -17,12 +17,32 @@ Every command and code sample below was run end to end against a live Prisma Pos
 - [Bun](https://bun.sh/) 1.1 or later (`bun --version`)
 - A PostgreSQL connection string, or nothing at all: the scaffold can create a [Prisma Postgres](/postgres) database for you
 
+## Use with your agent
+
+Prefer to delegate this guide? Copy the prompt and hand it to your coding agent:
+
+<AgentPrompt>
+
+```text
+Create a new Bun app with Prisma Next, run a first typed query, and deploy it to Prisma Compute.
+
+1. Scaffold: `bunx create-prisma@next create my-bun-app --template minimal --provider postgres --package-manager bun --prisma-postgres --yes` (or pass `--database-url "<url>"` instead of `--prisma-postgres` if I give you a connection string).
+2. In `my-bun-app`, run `bun run contract:emit`, then `bun run db:init`. If any script fails with `undefined is not an object (evaluating 'db.orm.User.where')`, change `db.orm.User` to `db.orm.public.User` in `src/index.ts`, `src/prisma/seed.ts`, and `src/prisma/users.ts`, then rerun.
+3. Replace `src/index.ts` with a script that creates a user and reads all users back via `db.orm.public.User`, following https://www.prisma.io/docs/guides/next/runtimes/bun.md, and verify `bun run dev` prints the created user.
+4. Add `src/server.ts` with a `Bun.serve` server exposing GET /users, and verify `curl http://localhost:3000/users` returns the users.
+5. Deploy: check `npx @prisma/cli@latest auth whoami`; if I am not signed in, stop and ask me to run `npx @prisma/cli@latest auth login`. Then run `npx @prisma/cli@latest app deploy --create-project my-bun-app --env .env --framework bun --entry src/server.ts` and verify the live URL's /users endpoint.
+
+Use the installed Prisma Next skills.
+```
+
+</AgentPrompt>
+
 ## 1. Scaffold the project
 
 Create the project with `create-prisma`. Pick Bun as the package manager when prompted, or pass everything up front:
 
 ```bash
-bunx create-prisma@next create my-bun-app --provider postgres --package-manager bun
+bunx create-prisma@next create my-bun-app --template minimal --provider postgres --package-manager bun
 ```
 
 When the prompt asks about the database, pick Prisma Postgres to have one created for you, or paste your own `DATABASE_URL`. The scaffold writes the connection string to `.env`, sets up `src/prisma/` with a starter schema, and installs dependencies with Bun.
@@ -52,6 +72,12 @@ If `db:init` reports that the contract file is missing, run `bun run contract:em
 
 Replace `src/index.ts` with a script that creates a user and reads every user back. Model access is namespace-qualified on PostgreSQL: `db.orm.public.User`, where `public` is the default schema.
 
+:::note
+
+The scaffolded `src/index.ts`, `src/prisma/seed.ts`, and `src/prisma/users.ts` still use the older unqualified form `db.orm.User`, which fails under Bun with `TypeError: undefined is not an object (evaluating 'db.orm.User.where')`. Replacing `src/index.ts` below fixes the script you run here; if you also want `bun run db:seed`, update `db.orm.User` to `db.orm.public.User` in the other two files first.
+
+:::
+
 ```ts title="src/index.ts"
 import { db } from "./prisma/db";
 
@@ -65,10 +91,10 @@ console.log(`created user ${user.email}`);
 const users = await db.orm.public.User.select("id", "email", "name").all();
 console.log(`there are now ${users.length} users`);
 
-await db.close();
+await db.runtime().close();
 ```
 
-`await db.close()` at the end lets the script exit cleanly; without it, the connection pool keeps the process alive.
+`await db.runtime().close()` at the end lets the script exit cleanly; without it, the connection pool keeps the process alive.
 
 ## 4. Run it
 
@@ -77,18 +103,90 @@ bun run dev
 ```
 
 ```text no-copy
-created user ada+1783380852695@prisma.io
-there are now 2 users
+created user ada+1784893846026@prisma.io
+there are now 1 users
 ```
 
+The `pg` driver may print an SSL mode deprecation warning above the output; it comes from the `sslmode=require` setting in the generated connection string and does not affect the query.
+
 That is the whole loop: schema to contract, contract to database, typed queries against both.
+
+## 5. Serve it over HTTP
+
+The script pattern works for one-off jobs. To keep the app running and serve query results, add a small HTTP server with `Bun.serve`. Create `src/server.ts`:
+
+```ts title="src/server.ts"
+import { db } from "./prisma/db";
+
+const server = Bun.serve({
+  port: Number(process.env.PORT ?? 3000),
+  async fetch(req) {
+    const { pathname } = new URL(req.url);
+    if (pathname === "/users") {
+      const users = await db.orm.public.User.select("id", "email", "name").all();
+      return Response.json(users);
+    }
+    return new Response("Not found", { status: 404 });
+  },
+});
+
+console.log(`Listening on http://localhost:${server.port}`);
+```
+
+Start it and check the endpoint:
+
+```bash
+bun src/server.ts
+```
+
+```bash
+curl http://localhost:3000/users
+```
+
+```json no-copy
+[{ "id": 1, "email": "ada+1784893846026@prisma.io", "name": "Ada Lovelace" }]
+```
+
+The server listens on port 3000; set `PORT` to change it. Unlike the script, the server never calls `db.runtime().close()`: the connection pool is shared across requests and closes when the process exits.
+
+## 6. Deploy to Prisma Compute
+
+Plain Bun servers are supported on [Prisma Compute](/compute), so the server can go from your terminal to a live URL in one command. Sign in once (it opens a browser):
+
+```npm
+npx @prisma/cli@latest auth login
+```
+
+Then deploy from the project directory. A plain Bun app has no framework for the CLI to detect, so pass the entrypoint explicitly. The `--env .env` flag passes your `DATABASE_URL` to the deployment, so the live server talks to the same database:
+
+```npm
+npx @prisma/cli@latest app deploy --env .env --framework bun --entry src/server.ts
+```
+
+```text no-copy
+First deploy of "my-bun-app" -- promoting to production.
+Building locally...
+  Built      0.8 MB
+Uploading...
+Deploying...
+Live in 6.1s
+https://<your-app>.ewr.prisma.build
+```
+
+Verify the live endpoint returns your users:
+
+```bash
+curl https://<your-app>.ewr.prisma.build/users
+```
+
+The first deploy asks you to pick or create a project (pass `--create-project my-bun-app` to skip the prompt), pins the directory to it in a gitignored `.prisma/local.json`, and promotes to production. For previews per Git branch and deploy-on-push, see [Deploy your first app](/prisma-compute/deploy).
 
 ## Prompt your coding agent
 
 The scaffold installs [Prisma Next skills](/ai/tools/skills#available-skills-for-prisma-next) for your coding agent. Prompts that map to this guide:
 
 - "Using the prisma-next-queries skill, add a script that lists the 10 newest users."
-- "Add a Post model related to User, emit the contract, and update the database."
+- "Add a published flag to the Post model in the starter contract, emit the contract, and update the database."
 
 ## Next steps
 

@@ -61,6 +61,7 @@ const ContentSecurityPolicy = `
     https://*.fontawesome.com;
 
   img-src 'self' data:
+    https://www.googletagmanager.com
     https://cdn.sanity.io
     https://prismalens.vercel.app
     https://api.producthunt.com
