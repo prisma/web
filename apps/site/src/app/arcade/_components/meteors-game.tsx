@@ -2,6 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { beep } from "./arcade-audio";
+import {
+  GameShell,
+  PhaseOverlay,
+  useGameCore,
+  useGameLoop,
+  useHeldKeys,
+  type GameProps,
+} from "./game-kit";
 import styles from "./arcade.module.css";
 
 const W = 480;
@@ -20,6 +28,7 @@ const SHIP_RADIUS = 11;
 const INVULN_TIME = 2000; // ms of blinking immunity after respawn
 const DEATH_FREEZE = 1500; // ms the ship stays shattered before it can respawn
 const SAFE_RADIUS = 90; // center must be clear of rocks within this to respawn
+const RESPAWN_FORCE_MS = 2500; // stop waiting for a clear center after this long
 
 // The classic bracket ship, pointing along +x at angle 0.
 const SHIP_SHAPE: [number, number][] = [
@@ -50,7 +59,6 @@ const SAUCER_BULLET_LIFE = 1400;
 const BIG_SAUCER = { r: 16, points: 200, fireEvery: 1200 };
 const SMALL_SAUCER = { r: 10, points: 1000, fireEvery: 1000 };
 
-type Phase = "ready" | "playing" | "paused" | "over";
 type RockSize = "large" | "medium" | "small";
 
 const ROCK_SPECS: Record<
@@ -114,10 +122,6 @@ type Debris = {
   bx: number;
   by: number;
 };
-
-function formatScore(score: number) {
-  return score.toString().padStart(6, "0");
-}
 
 const wrap = (v: number, max: number) => ((v % max) + max) % max;
 
@@ -191,14 +195,20 @@ function makeRock(size: RockSize, x: number, y: number): Rock {
   };
 }
 
-export function MeteorsGame({
-  hiScore,
-  onGameOver,
-}: {
-  hiScore: number;
-  onGameOver: (score: number) => void;
-}) {
+export function MeteorsGame({ hiScore, onGameOver }: GameProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const {
+    phase,
+    phaseRef,
+    changePhase,
+    score,
+    scoreRef,
+    addScore: coreAddScore,
+    startRound,
+    endGame,
+    isNewBest,
+  } = useGameCore({ hiScore, onGameOver });
 
   const ship = useRef<Ship>({
     x: W / 2,
@@ -216,13 +226,14 @@ export function MeteorsGame({
   const saucerBullets = useRef<Bullet[]>([]);
   const debris = useRef<Debris[]>([]);
 
-  const keys = useRef(new Set<string>());
+  const keys = useHeldKeys();
   const touch = useRef({ left: false, right: false, thrust: false });
   const tapInfo = useRef<{ t: number; x: number; y: number; moved: boolean } | null>(null);
 
   const fireCooldown = useRef(0);
   const hyperCooldown = useRef(0);
   const deathTimer = useRef(0);
+  const respawnWait = useRef(0);
   const waveDelay = useRef(0);
   const nextExtraLife = useRef(EXTRA_LIFE_EVERY);
   const saucerTimer = useRef(SAUCER_MIN_DELAY);
@@ -231,27 +242,13 @@ export function MeteorsGame({
   const beatTimer = useRef(0);
   const beatHigh = useRef(false);
 
-  const scoreRef = useRef(0);
   const livesRef = useRef(3);
   const waveRef = useRef(1);
-  const phaseRef = useRef<Phase>("ready");
-  const bestAtRoundStart = useRef(0);
-  const hiScoreRef = useRef(hiScore);
-  hiScoreRef.current = hiScore;
-  const onGameOverRef = useRef(onGameOver);
-  onGameOverRef.current = onGameOver;
 
-  const [phase, setPhase] = useState<Phase>("ready");
-  const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
   const [wave, setWave] = useState(1);
   const [banner, setBanner] = useState<string | null>(null);
   const bannerTimeout = useRef<number | undefined>(undefined);
-
-  const changePhase = useCallback((next: Phase) => {
-    phaseRef.current = next;
-    setPhase(next);
-  }, []);
 
   const showBanner = useCallback((text: string) => {
     setBanner(text);
@@ -279,13 +276,12 @@ export function MeteorsGame({
   }, []);
 
   const reset = useCallback(() => {
-    scoreRef.current = 0;
+    startRound();
     livesRef.current = 3;
     waveRef.current = 1;
-    setScore(0);
     setLives(3);
     setWave(1);
-    bestAtRoundStart.current = hiScoreRef.current;
+    keys.current.clear();
     ship.current = {
       x: W / 2,
       y: H / 2,
@@ -303,6 +299,7 @@ export function MeteorsGame({
     fireCooldown.current = 0;
     hyperCooldown.current = 0;
     deathTimer.current = 0;
+    respawnWait.current = 0;
     waveDelay.current = 0;
     nextExtraLife.current = EXTRA_LIFE_EVERY;
     saucerTimer.current = SAUCER_MIN_DELAY + Math.random() * (SAUCER_MAX_DELAY - SAUCER_MIN_DELAY);
@@ -312,18 +309,16 @@ export function MeteorsGame({
     beatHigh.current = false;
     spawnWave(1);
     changePhase("ready");
-  }, [spawnWave, changePhase]);
+  }, [spawnWave, changePhase, startRound, keys]);
 
   const gameOver = useCallback(() => {
     beep(300, 40, 0.7, 0.09, "sawtooth");
-    changePhase("over");
-    onGameOverRef.current(scoreRef.current);
-  }, [changePhase]);
+    endGame();
+  }, [endGame]);
 
   const addScore = useCallback(
     (points: number) => {
-      scoreRef.current += points;
-      setScore(scoreRef.current);
+      coreAddScore(points);
       while (scoreRef.current >= nextExtraLife.current) {
         nextExtraLife.current += EXTRA_LIFE_EVERY;
         livesRef.current += 1;
@@ -332,7 +327,7 @@ export function MeteorsGame({
         beep(784, 1568, 0.25, 0.07, "triangle");
       }
     },
-    [showBanner],
+    [coreAddScore, scoreRef, showBanner],
   );
 
   const tryFire = useCallback(() => {
@@ -394,11 +389,15 @@ export function MeteorsGame({
     s.alive = false;
     s.thrusting = false;
     touch.current = { left: false, right: false, thrust: false };
+    // Drop held keys so e.g. a Space held through the death can't auto-fire
+    // the moment the ship respawns.
+    keys.current.clear();
     deathTimer.current = DEATH_FREEZE;
+    respawnWait.current = 0;
     livesRef.current -= 1;
     setLives(livesRef.current);
     beep(400, 40, 0.6, 0.09, "sawtooth");
-  }, [createDebris]);
+  }, [createDebris, keys]);
 
   const respawn = useCallback((invuln: number) => {
     const s = ship.current;
@@ -455,7 +454,7 @@ export function MeteorsGame({
       crossed: 0,
     };
     beep(500, 900, 0.3, 0.04, "sine");
-  }, []);
+  }, [scoreRef]);
 
   const saucerFire = useCallback(() => {
     const u = saucer.current;
@@ -510,239 +509,234 @@ export function MeteorsGame({
     return true;
   }, []);
 
-  const tick = useCallback(
-    (dt: number) => {
-      const dts = dt / 1000;
-      const s = ship.current;
+  const tick = (dt: number) => {
+    const dts = dt / 1000;
+    const s = ship.current;
 
-      fireCooldown.current = Math.max(0, fireCooldown.current - dt);
-      hyperCooldown.current = Math.max(0, hyperCooldown.current - dt);
+    fireCooldown.current = Math.max(0, fireCooldown.current - dt);
+    hyperCooldown.current = Math.max(0, hyperCooldown.current - dt);
 
-      // --- ship control / physics ---
-      if (s.alive) {
-        if (s.invuln > 0) s.invuln = Math.max(0, s.invuln - dt);
-        const k = keys.current;
-        const left = k.has("arrowleft") || k.has("a") || touch.current.left;
-        const right = k.has("arrowright") || k.has("d") || touch.current.right;
-        if (left) s.angle -= SHIP_ROT * dts;
-        if (right) s.angle += SHIP_ROT * dts;
+    // --- ship control / physics ---
+    if (s.alive) {
+      if (s.invuln > 0) s.invuln = Math.max(0, s.invuln - dt);
+      const k = keys.current;
+      const left = k.has("arrowleft") || k.has("a") || touch.current.left;
+      const right = k.has("arrowright") || k.has("d") || touch.current.right;
+      if (left) s.angle -= SHIP_ROT * dts;
+      if (right) s.angle += SHIP_ROT * dts;
 
-        s.thrusting = k.has("arrowup") || k.has("w") || touch.current.thrust;
-        if (s.thrusting) {
-          s.vx += Math.cos(s.angle) * SHIP_THRUST * dts;
-          s.vy += Math.sin(s.angle) * SHIP_THRUST * dts;
-          thrustSound.current -= dt;
-          if (thrustSound.current <= 0) {
-            thrustSound.current = 150;
-            beep(70, 55, 0.12, 0.04, "sawtooth");
-          }
+      s.thrusting = k.has("arrowup") || k.has("w") || touch.current.thrust;
+      if (s.thrusting) {
+        s.vx += Math.cos(s.angle) * SHIP_THRUST * dts;
+        s.vy += Math.sin(s.angle) * SHIP_THRUST * dts;
+        thrustSound.current -= dt;
+        if (thrustSound.current <= 0) {
+          thrustSound.current = 150;
+          beep(70, 55, 0.12, 0.04, "sawtooth");
         }
-        // Exponential drift damping, then hard speed cap.
-        const damp = Math.exp(-SHIP_FRICTION * dts);
-        s.vx *= damp;
-        s.vy *= damp;
-        const sp = Math.hypot(s.vx, s.vy);
-        if (sp > SHIP_MAX_SPEED) {
-          s.vx = (s.vx / sp) * SHIP_MAX_SPEED;
-          s.vy = (s.vy / sp) * SHIP_MAX_SPEED;
-        }
-        s.x = wrap(s.x + s.vx * dts, W);
-        s.y = wrap(s.y + s.vy * dts, H);
+      }
+      // Exponential drift damping, then hard speed cap.
+      const damp = Math.exp(-SHIP_FRICTION * dts);
+      s.vx *= damp;
+      s.vy *= damp;
+      const sp = Math.hypot(s.vx, s.vy);
+      if (sp > SHIP_MAX_SPEED) {
+        s.vx = (s.vx / sp) * SHIP_MAX_SPEED;
+        s.vy = (s.vy / sp) * SHIP_MAX_SPEED;
+      }
+      s.x = wrap(s.x + s.vx * dts, W);
+      s.y = wrap(s.y + s.vy * dts, H);
 
-        if (k.has(" ")) tryFire();
+      if (k.has(" ")) tryFire();
+    } else {
+      // Shattered — count down, then wait for a clear center to respawn.
+      if (deathTimer.current > 0) {
+        deathTimer.current -= dt;
+      } else if (livesRef.current <= 0) {
+        gameOver();
+        return;
       } else {
-        // Shattered — count down, then wait for a clear center to respawn.
-        if (deathTimer.current > 0) {
-          deathTimer.current -= dt;
-        } else if (livesRef.current <= 0) {
-          gameOver();
-          return;
-        } else if (centerClear()) {
+        // Wait for a clear center, but never forever — a rock orbiting the
+        // middle would otherwise stall the respawn indefinitely.
+        respawnWait.current += dt;
+        if (centerClear() || respawnWait.current >= RESPAWN_FORCE_MS) {
           respawn(INVULN_TIME);
         }
       }
+    }
 
-      // --- debris ---
-      if (debris.current.length > 0) {
-        for (const d of debris.current) {
-          d.x = wrap(d.x + d.vx * dts, W);
-          d.y = wrap(d.y + d.vy * dts, H);
-          d.angle += d.spin * dts;
-          d.ttl -= dt;
-        }
-        debris.current = debris.current.filter((d) => d.ttl > 0);
+    // --- debris ---
+    if (debris.current.length > 0) {
+      for (const d of debris.current) {
+        d.x = wrap(d.x + d.vx * dts, W);
+        d.y = wrap(d.y + d.vy * dts, H);
+        d.angle += d.spin * dts;
+        d.ttl -= dt;
       }
+      debris.current = debris.current.filter((d) => d.ttl > 0);
+    }
 
-      // --- bullets ---
+    // --- bullets ---
+    for (const b of bullets.current) {
+      b.x = wrap(b.x + b.vx * dts, W);
+      b.y = wrap(b.y + b.vy * dts, H);
+      b.ttl -= dt;
+    }
+    bullets.current = bullets.current.filter((b) => b.ttl > 0);
+
+    // --- rocks ---
+    for (const rock of rocks.current) {
+      rock.x = wrap(rock.x + rock.vx * dts, W);
+      rock.y = wrap(rock.y + rock.vy * dts, H);
+      rock.angle += rock.spin * dts;
+    }
+
+    // --- saucer ---
+    if (saucer.current) {
+      const u = saucer.current;
+      u.x += u.vx * dts;
+      u.crossed += Math.abs(u.vx) * dts;
+      u.y = wrap(u.y + u.vy * dts, H);
+      warbleSound.current -= dt;
+      if (warbleSound.current <= 0) {
+        warbleSound.current = 550;
+        beep(u.big ? 440 : 620, u.big ? 620 : 440, 0.14, 0.035, "sine");
+      }
+      u.fireTimer -= dt;
+      if (u.fireTimer <= 0) {
+        u.fireTimer = u.fireEvery * (0.7 + Math.random() * 0.6);
+        saucerFire();
+      }
+      // Leave once it has travelled the full width plus a margin.
+      if (u.crossed > W + u.r * 2) {
+        saucer.current = null;
+        saucerTimer.current =
+          SAUCER_MIN_DELAY + Math.random() * (SAUCER_MAX_DELAY - SAUCER_MIN_DELAY);
+      }
+    } else {
+      saucerTimer.current -= dt;
+      if (saucerTimer.current <= 0) spawnSaucer();
+    }
+
+    // --- saucer bullets ---
+    for (const b of saucerBullets.current) {
+      b.x = wrap(b.x + b.vx * dts, W);
+      b.y = wrap(b.y + b.vy * dts, H);
+      b.ttl -= dt;
+    }
+    saucerBullets.current = saucerBullets.current.filter((b) => b.ttl > 0);
+
+    // --- collisions: player bullets vs rocks / saucer ---
+    const survivingRocks: Rock[] = [];
+    const spentBullets = new Set<Bullet>();
+    for (const rock of rocks.current) {
+      let hit = false;
       for (const b of bullets.current) {
-        b.x = wrap(b.x + b.vx * dts, W);
-        b.y = wrap(b.y + b.vy * dts, H);
-        b.ttl -= dt;
+        if (spentBullets.has(b)) continue;
+        if (sweptDist2(b.x, b.y, b.vx, b.vy, dts, rock.x, rock.y) < rock.radius ** 2) {
+          hit = true;
+          spentBullets.add(b);
+          survivingRocks.push(...splitRock(rock, true));
+          break;
+        }
       }
-      bullets.current = bullets.current.filter((b) => b.ttl > 0);
+      if (!hit) survivingRocks.push(rock);
+    }
+    rocks.current = survivingRocks;
 
-      // --- rocks ---
+    if (saucer.current) {
+      const u = saucer.current;
+      for (const b of bullets.current) {
+        if (spentBullets.has(b)) continue;
+        if (sweptDist2(b.x, b.y, b.vx, b.vy, dts, u.x, u.y) < u.r ** 2) {
+          spentBullets.add(b);
+          addScore(u.points);
+          beep(900, 120, 0.35, 0.08, "sawtooth");
+          saucer.current = null;
+          saucerTimer.current =
+            SAUCER_MIN_DELAY + Math.random() * (SAUCER_MAX_DELAY - SAUCER_MIN_DELAY);
+          break;
+        }
+      }
+    }
+    if (spentBullets.size > 0) {
+      bullets.current = bullets.current.filter((b) => !spentBullets.has(b));
+    }
+
+    // --- collisions: saucer vs rocks (splits, no points) ---
+    if (saucer.current) {
+      const u = saucer.current;
+      const kept: Rock[] = [];
+      let smashed = false;
       for (const rock of rocks.current) {
-        rock.x = wrap(rock.x + rock.vx * dts, W);
-        rock.y = wrap(rock.y + rock.vy * dts, H);
-        rock.angle += rock.spin * dts;
-      }
-
-      // --- saucer ---
-      if (saucer.current) {
-        const u = saucer.current;
-        u.x += u.vx * dts;
-        u.crossed += Math.abs(u.vx) * dts;
-        u.y = wrap(u.y + u.vy * dts, H);
-        warbleSound.current -= dt;
-        if (warbleSound.current <= 0) {
-          warbleSound.current = 550;
-          beep(u.big ? 440 : 620, u.big ? 620 : 440, 0.14, 0.035, "sine");
+        if (!smashed && torDist2(u.x, u.y, rock.x, rock.y) < (u.r + rock.radius) ** 2) {
+          smashed = true;
+          kept.push(...splitRock(rock, false));
+        } else {
+          kept.push(rock);
         }
-        u.fireTimer -= dt;
-        if (u.fireTimer <= 0) {
-          u.fireTimer = u.fireEvery * (0.7 + Math.random() * 0.6);
-          saucerFire();
-        }
-        // Leave once it has travelled the full width plus a margin.
-        if (u.crossed > W + u.r * 2) {
-          saucer.current = null;
-          saucerTimer.current =
-            SAUCER_MIN_DELAY + Math.random() * (SAUCER_MAX_DELAY - SAUCER_MIN_DELAY);
-        }
-      } else {
-        saucerTimer.current -= dt;
-        if (saucerTimer.current <= 0) spawnSaucer();
       }
-
-      // --- saucer bullets ---
-      for (const b of saucerBullets.current) {
-        b.x = wrap(b.x + b.vx * dts, W);
-        b.y = wrap(b.y + b.vy * dts, H);
-        b.ttl -= dt;
+      rocks.current = kept;
+      if (smashed) {
+        saucer.current = null;
+        saucerTimer.current =
+          SAUCER_MIN_DELAY + Math.random() * (SAUCER_MAX_DELAY - SAUCER_MIN_DELAY);
       }
-      saucerBullets.current = saucerBullets.current.filter((b) => b.ttl > 0);
+    }
 
-      // --- collisions: player bullets vs rocks / saucer ---
-      const survivingRocks: Rock[] = [];
-      const spentBullets = new Set<Bullet>();
+    // --- collisions vs ship ---
+    if (s.alive && s.invuln <= 0) {
       for (const rock of rocks.current) {
-        let hit = false;
-        for (const b of bullets.current) {
-          if (spentBullets.has(b)) continue;
-          if (sweptDist2(b.x, b.y, b.vx, b.vy, dts, rock.x, rock.y) < rock.radius ** 2) {
-            hit = true;
-            spentBullets.add(b);
-            survivingRocks.push(...splitRock(rock, true));
-            break;
-          }
-        }
-        if (!hit) survivingRocks.push(rock);
-      }
-      rocks.current = survivingRocks;
-
-      if (saucer.current) {
-        const u = saucer.current;
-        for (const b of bullets.current) {
-          if (spentBullets.has(b)) continue;
-          if (sweptDist2(b.x, b.y, b.vx, b.vy, dts, u.x, u.y) < u.r ** 2) {
-            spentBullets.add(b);
-            addScore(u.points);
-            beep(900, 120, 0.35, 0.08, "sawtooth");
-            saucer.current = null;
-            saucerTimer.current =
-              SAUCER_MIN_DELAY + Math.random() * (SAUCER_MAX_DELAY - SAUCER_MIN_DELAY);
-            break;
-          }
-        }
-      }
-      if (spentBullets.size > 0) {
-        bullets.current = bullets.current.filter((b) => !spentBullets.has(b));
-      }
-
-      // --- collisions: saucer vs rocks (splits, no points) ---
-      if (saucer.current) {
-        const u = saucer.current;
-        const kept: Rock[] = [];
-        let smashed = false;
-        for (const rock of rocks.current) {
-          if (!smashed && torDist2(u.x, u.y, rock.x, rock.y) < (u.r + rock.radius) ** 2) {
-            smashed = true;
-            kept.push(...splitRock(rock, false));
-          } else {
-            kept.push(rock);
-          }
-        }
-        rocks.current = kept;
-        if (smashed) {
-          saucer.current = null;
-          saucerTimer.current =
-            SAUCER_MIN_DELAY + Math.random() * (SAUCER_MAX_DELAY - SAUCER_MIN_DELAY);
-        }
-      }
-
-      // --- collisions vs ship ---
-      if (s.alive && s.invuln <= 0) {
-        for (const rock of rocks.current) {
-          if (torDist2(s.x, s.y, rock.x, rock.y) < (rock.radius + SHIP_RADIUS) ** 2) {
-            killShip();
-            break;
-          }
-        }
-      }
-      if (s.alive && s.invuln <= 0) {
-        for (const b of saucerBullets.current) {
-          if (sweptDist2(b.x, b.y, b.vx, b.vy, dts, s.x, s.y) < (SHIP_RADIUS + 3) ** 2) {
-            saucerBullets.current = saucerBullets.current.filter((x) => x !== b);
-            killShip();
-            break;
-          }
-        }
-      }
-      if (s.alive && s.invuln <= 0 && saucer.current) {
-        const u = saucer.current;
-        if (torDist2(s.x, s.y, u.x, u.y) < (u.r + SHIP_RADIUS) ** 2) {
-          saucer.current = null;
-          saucerTimer.current =
-            SAUCER_MIN_DELAY + Math.random() * (SAUCER_MAX_DELAY - SAUCER_MIN_DELAY);
+        if (torDist2(s.x, s.y, rock.x, rock.y) < (rock.radius + SHIP_RADIUS) ** 2) {
           killShip();
+          break;
         }
       }
-
-      // --- wave progression ---
-      if (rocks.current.length === 0) {
-        if (waveDelay.current <= 0) waveDelay.current = 1600;
-        else {
-          waveDelay.current -= dt;
-          if (waveDelay.current <= 0) {
-            waveDelay.current = 0;
-            nextWave();
-          }
+    }
+    if (s.alive && s.invuln <= 0) {
+      const spentSaucerBullets = new Set<Bullet>();
+      for (const b of saucerBullets.current) {
+        if (sweptDist2(b.x, b.y, b.vx, b.vy, dts, s.x, s.y) < (SHIP_RADIUS + 3) ** 2) {
+          spentSaucerBullets.add(b);
+          killShip();
+          break;
         }
       }
-
-      // --- two-tone heartbeat, faster as the field thins out ---
-      const mass = rocks.current.reduce((sum, r) => sum + ROCK_SPECS[r.size].mass, 0);
-      beatTimer.current -= dt;
-      if (beatTimer.current <= 0 && mass > 0 && phaseRef.current === "playing") {
-        beatTimer.current = Math.max(240, 200 + mass * 28);
-        beatHigh.current = !beatHigh.current;
-        beep(beatHigh.current ? 60 : 44, beatHigh.current ? 60 : 44, 0.12, 0.05, "triangle");
+      if (spentSaucerBullets.size > 0) {
+        saucerBullets.current = saucerBullets.current.filter((b) => !spentSaucerBullets.has(b));
       }
-    },
-    [
-      tryFire,
-      gameOver,
-      centerClear,
-      respawn,
-      splitRock,
-      addScore,
-      spawnSaucer,
-      saucerFire,
-      killShip,
-      nextWave,
-    ],
-  );
+    }
+    if (s.alive && s.invuln <= 0 && saucer.current) {
+      const u = saucer.current;
+      if (torDist2(s.x, s.y, u.x, u.y) < (u.r + SHIP_RADIUS) ** 2) {
+        saucer.current = null;
+        saucerTimer.current =
+          SAUCER_MIN_DELAY + Math.random() * (SAUCER_MAX_DELAY - SAUCER_MIN_DELAY);
+        killShip();
+      }
+    }
+
+    // --- wave progression ---
+    if (rocks.current.length === 0) {
+      if (waveDelay.current <= 0) waveDelay.current = 1600;
+      else {
+        waveDelay.current -= dt;
+        if (waveDelay.current <= 0) {
+          waveDelay.current = 0;
+          nextWave();
+        }
+      }
+    }
+
+    // --- two-tone heartbeat, faster as the field thins out ---
+    const mass = rocks.current.reduce((sum, r) => sum + ROCK_SPECS[r.size].mass, 0);
+    beatTimer.current -= dt;
+    if (beatTimer.current <= 0 && mass > 0 && phaseRef.current === "playing") {
+      beatTimer.current = Math.max(240, 200 + mass * 28);
+      beatHigh.current = !beatHigh.current;
+      beep(beatHigh.current ? 60 : 44, beatHigh.current ? 60 : 44, 0.12, 0.05, "triangle");
+    }
+  };
 
   // --- drawing ------------------------------------------------------------
 
@@ -900,36 +894,14 @@ export function MeteorsGame({
     reset();
   }, [reset]);
 
-  // Bank the running score if the player closes the overlay mid-game — a death
-  // reports through gameOver(), so this only covers the quit path.
-  useEffect(
-    () => () => {
-      if (phaseRef.current !== "over" && scoreRef.current > 0) {
-        onGameOverRef.current(scoreRef.current);
-      }
-    },
-    [],
-  );
+  useGameLoop(phase === "playing", (dt) => {
+    tick(dt);
+    draw();
+  });
 
   useEffect(() => {
-    if (phase !== "playing") {
-      draw();
-      return;
-    }
-    let raf = 0;
-    let last = performance.now();
-    const frame = (now: number) => {
-      const dt = Math.min(50, now - last);
-      last = now;
-      tick(dt);
-      draw();
-      if (phaseRef.current === "playing") {
-        raf = requestAnimationFrame(frame);
-      }
-    };
-    raf = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(raf);
-  }, [phase, tick, draw]);
+    if (phase !== "playing") draw();
+  }, [phase, draw]);
 
   const start = useCallback(() => {
     beep(440, 880, 0.12);
@@ -960,6 +932,10 @@ export function MeteorsGame({
           start();
           return;
         }
+        if (currentPhase === "over") {
+          if (key === " " && !event.repeat) reset();
+          return;
+        }
         if (currentPhase === "playing") {
           if (key === " " && !event.repeat) tryFire();
           if ((key === "shift" || key === "arrowdown") && !event.repeat) doHyperspace();
@@ -979,17 +955,9 @@ export function MeteorsGame({
         else if (currentPhase === "paused") changePhase("playing");
       }
     };
-    const onKeyUp = (event: KeyboardEvent) => {
-      keys.current.delete(event.key.toLowerCase());
-    };
-
     window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("keyup", onKeyUp);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("keyup", onKeyUp);
-    };
-  }, [start, changePhase, reset, tryFire, doHyperspace]);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [phaseRef, keys, start, changePhase, reset, tryFire, doHyperspace]);
 
   const canvasX = useCallback((clientX: number) => {
     const canvas = canvasRef.current;
@@ -1048,7 +1016,7 @@ export function MeteorsGame({
       tapInfo.current = { t: performance.now(), x: t.clientX, y: t.clientY, moved: false };
       applyZones(event.touches);
     },
-    [start, reset, changePhase, doHyperspace, applyZones],
+    [phaseRef, start, reset, changePhase, doHyperspace, applyZones],
   );
 
   const onTouchMove = useCallback(
@@ -1062,7 +1030,7 @@ export function MeteorsGame({
       }
       if (phaseRef.current === "playing") applyZones(event.touches);
     },
-    [applyZones],
+    [phaseRef, applyZones],
   );
 
   const onTouchEnd = useCallback(
@@ -1084,59 +1052,40 @@ export function MeteorsGame({
         applyZones(event.touches);
       }
     },
-    [tryFire, applyZones],
+    [phaseRef, tryFire, applyZones],
   );
 
-  const isNewBest = phase === "over" && score > 0 && score > bestAtRoundStart.current;
-
   return (
-    <div className={styles.gameWrap}>
-      <div className={styles.gameHud}>
-        <span>
-          SCORE <b>{formatScore(score)}</b>
-        </span>
-        <span>
-          WAVE <b>{wave.toString().padStart(2, "0")}</b>
-        </span>
-        <span className={styles.gameLives}>{"▲".repeat(Math.max(0, lives))}</span>
-        <span>
-          HI <b>{formatScore(Math.max(hiScore, score))}</b>
-        </span>
-      </div>
-      <div className={styles.gameScreen}>
-        <canvas
-          ref={canvasRef}
-          width={W}
-          height={H}
-          className={styles.gameCanvas}
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
-          onTouchCancel={onTouchEnd}
-        />
-        {banner && phase === "playing" && <div className={styles.waveBanner}>{banner}</div>}
-        {phase !== "playing" && (
-          <div className={styles.gameMsg}>
-            {phase === "ready" && (
-              <>
-                <span>READY?</span>
-                <span className={styles.gameMsgSub}>Press any key to launch — or tap</span>
-              </>
-            )}
-            {phase === "paused" && <span className={styles.blink}>PAUSED</span>}
-            {phase === "over" && (
-              <>
-                <span>GAME OVER</span>
-                <span>SCORE {formatScore(score)}</span>
-                {isNewBest && <span className={styles.newBest}>★ NEW HI-SCORE ★</span>}
-                <span className={styles.gameMsgSub}>Press Enter or tap to play again</span>
-              </>
-            )}
-          </div>
-        )}
-        <div className={styles.gameScanlines} aria-hidden />
-      </div>
-      <p className={styles.gameControls}>◀ ▶ TURN — ▲ THRUST — SPACE FIRE — ⇧ JUMP — P PAUSE</p>
-    </div>
+    <GameShell
+      score={score}
+      hiScore={Math.max(hiScore, score)}
+      hudExtra={
+        <>
+          <span>
+            WAVE <b>{wave.toString().padStart(2, "0")}</b>
+          </span>
+          <span className={styles.gameLives}>{"▲".repeat(Math.max(0, lives))}</span>
+        </>
+      }
+      controls="◀ ▶ TURN — ▲ THRUST — SPACE FIRE — ⇧ JUMP — P PAUSE"
+    >
+      <canvas
+        ref={canvasRef}
+        width={W}
+        height={H}
+        className={styles.gameCanvas}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onTouchCancel={onTouchEnd}
+      />
+      {banner && phase === "playing" && <div className={styles.waveBanner}>{banner}</div>}
+      <PhaseOverlay
+        phase={phase}
+        score={score}
+        isNewBest={isNewBest}
+        readyHint="Press any key to launch — or tap"
+      />
+    </GameShell>
   );
 }

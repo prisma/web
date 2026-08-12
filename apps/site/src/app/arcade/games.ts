@@ -1,10 +1,10 @@
 /**
- * The Prisma Arcade game registry.
+ * The Prisma Arcade game registry for the secondary "free play" grid.
+ * Comet Cat is the featured game and lives directly in the page hero.
  *
- * Each game will get its own playable canvas implementation; for now each
- * entry is a placeholder cabinet. Sprites are tiny pixel-art grids rendered
- * by <PixelSprite /> — one character per pixel, "." is transparent, every
- * other character is looked up in the sprite's palette.
+ * Sprites are tiny pixel-art grids rendered by <PixelSprite /> — one character
+ * per pixel, "." is transparent, every other character is looked up in the
+ * sprite's palette.
  */
 
 export type PixelGrid = {
@@ -12,28 +12,26 @@ export type PixelGrid = {
   palette: Record<string, string>;
 };
 
+export type ArcadeGameId = "snake" | "invaders" | "stacker" | "muncher" | "meteors";
+
 export type ArcadeGame = {
-  id: string;
+  id: ArcadeGameId;
   title: string;
   tagline: string;
-  /** Accent color used for the cabinet glow, per-game. */
+  /** Accent color used for the sprite glow on the card screen. */
   color: string;
-  /** Placeholder until global persistence lands. */
-  hiScore: number;
-  status: "playable" | "coming-soon";
+  /** One-line control summary shown on the card and in the play dialog. */
+  controls: string;
   sprite: PixelGrid;
-  blurb: string;
 };
 
 export const GAMES: ArcadeGame[] = [
   {
     id: "snake",
-    title: "SNAKE",
-    tagline: "The one from your childhood.",
-    blurb: "Eat the apples. Grow the tail. Don't hit the walls — and don't bite yourself.",
+    title: "Snake",
+    tagline: "Eat the apples. Don't bite yourself.",
+    controls: "Arrow keys or swipe to steer",
     color: "#4ade80",
-    hiScore: 0,
-    status: "playable",
     sprite: {
       palette: { G: "#4ade80", D: "#16a34a", R: "#f87171", W: "#f8fafc" },
       rows: [
@@ -54,12 +52,10 @@ export const GAMES: ArcadeGame[] = [
   },
   {
     id: "invaders",
-    title: "INVADERS",
+    title: "Invaders",
     tagline: "Defend the planet. Again.",
-    blurb: "Wave after wave of aliens descend. Shoot them down before they reach the ground.",
+    controls: "Arrows move, Space fires",
     color: "#22d3ee",
-    hiScore: 0,
-    status: "playable",
     sprite: {
       palette: { M: "#22d3ee", E: "#0f172a" },
       rows: [
@@ -78,12 +74,10 @@ export const GAMES: ArcadeGame[] = [
   },
   {
     id: "stacker",
-    title: "STACKER",
+    title: "Stacker",
     tagline: "The falling blocks. You know the ones.",
-    blurb: "Stack the falling pieces, clear the lines, chase the elusive four-at-once.",
+    controls: "Arrows move, Up rotates, Space drops",
     color: "#c084fc",
-    hiScore: 0,
-    status: "playable",
     sprite: {
       palette: {
         P: "#c084fc",
@@ -110,12 +104,10 @@ export const GAMES: ArcadeGame[] = [
   },
   {
     id: "muncher",
-    title: "MUNCHER",
+    title: "Muncher",
     tagline: "Chomp the maze. Dodge the critters.",
-    blurb: "Gobble every dot, grab a power pellet, and turn the tables on the bugs chasing you.",
+    controls: "Arrow keys or swipe to steer",
     color: "#facc15",
-    hiScore: 0,
-    status: "playable",
     sprite: {
       palette: { Y: "#facc15", W: "#fde68a" },
       rows: [
@@ -136,12 +128,10 @@ export const GAMES: ArcadeGame[] = [
   },
   {
     id: "meteors",
-    title: "METEORS",
+    title: "Meteors",
     tagline: "Drift, spin, shoot the rocks.",
-    blurb: "Blast the tumbling rocks to bits, dodge the flying saucer, and don't get boxed in.",
+    controls: "Arrows steer, Space fires, H hyperspace",
     color: "#f8fafc",
-    hiScore: 0,
-    status: "playable",
     sprite: {
       palette: { W: "#f8fafc", D: "#94a3b8" },
       rows: [
@@ -156,37 +146,6 @@ export const GAMES: ArcadeGame[] = [
         "D....D.D..DD",
         "DD..DD.DDDD.",
         ".DDDD...DD..",
-        "............",
-      ],
-    },
-  },
-  {
-    id: "comet",
-    title: "COMET CAT",
-    tagline: "Flap. Drift. Leave a trail.",
-    blurb: "One cat, endless pillars, and a brand-new comet tail. How far can you fly?",
-    color: "#7cdae1",
-    hiScore: 0,
-    status: "playable",
-    sprite: {
-      palette: {
-        T: "#7cdae1",
-        Y: "#edcd5f",
-        R: "#e37780",
-        G: "#9ca3af",
-        D: "#4b5563",
-        K: "#1f2937",
-        P: "#f2a0ac",
-      },
-      rows: [
-        "............",
-        "......DD.DD.",
-        "......DGDGD.",
-        "TTTTTDGGGGGD",
-        "YYYYYDGKGKGD",
-        "RRRRRDGGPGGD",
-        "......DGGGD.",
-        ".......DDD..",
         "............",
       ],
     },

@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { beep } from "./arcade-audio";
+import { GameShell, PhaseOverlay, useGameCore, useGameLoop, type GameProps } from "./game-kit";
 import styles from "./arcade.module.css";
 
 const COLS = 21;
@@ -13,7 +14,6 @@ const SPEEDUP_MS = 3;
 const POINTS_PER_APPLE = 10;
 
 type Vec = { x: number; y: number };
-type Phase = "ready" | "playing" | "paused" | "over";
 
 const KEY_DIRS: Record<string, Vec> = {
   arrowup: { x: 0, y: -1 },
@@ -26,18 +26,11 @@ const KEY_DIRS: Record<string, Vec> = {
   d: { x: 1, y: 0 },
 };
 
-function formatScore(score: number) {
-  return score.toString().padStart(6, "0");
-}
-
-export function SnakeGame({
-  hiScore,
-  onGameOver,
-}: {
-  hiScore: number;
-  onGameOver: (score: number) => void;
-}) {
+export function SnakeGame({ hiScore, onGameOver }: GameProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const { phase, phaseRef, changePhase, score, addScore, startRound, endGame, isNewBest } =
+    useGameCore({ hiScore, onGameOver });
 
   // Game state lives in refs — the rAF loop mutates it every tick without
   // paying for a React render. Only phase/score cross into React state.
@@ -46,30 +39,22 @@ export function SnakeGame({
   const queueRef = useRef<Vec[]>([]);
   const foodRef = useRef<Vec>({ x: 0, y: 0 });
   const tickRef = useRef(START_TICK_MS);
-  const scoreRef = useRef(0);
-  const phaseRef = useRef<Phase>("ready");
+  const accRef = useRef(0);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
-  // Snapshot of the hi-score when the round began — the live prop updates
-  // as soon as onGameOver fires, so it can't be used to detect a new best.
-  const bestAtRoundStart = useRef(0);
-  const hiScoreRef = useRef(hiScore);
-  hiScoreRef.current = hiScore;
 
-  const [phase, setPhase] = useState<Phase>("ready");
-  const [score, setScore] = useState(0);
-
-  const changePhase = useCallback((next: Phase) => {
-    phaseRef.current = next;
-    setPhase(next);
-  }, []);
-
+  /** Moves the food to a random free cell; false when the snake fills the board. */
   const placeFood = useCallback(() => {
     const snake = snakeRef.current;
-    let food: Vec;
-    do {
-      food = { x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS) };
-    } while (snake.some((cell) => cell.x === food.x && cell.y === food.y));
-    foodRef.current = food;
+    const occupied = new Set(snake.map((cell) => cell.y * COLS + cell.x));
+    const free: Vec[] = [];
+    for (let y = 0; y < ROWS; y++) {
+      for (let x = 0; x < COLS; x++) {
+        if (!occupied.has(y * COLS + x)) free.push({ x, y });
+      }
+    }
+    if (free.length === 0) return false;
+    foodRef.current = free[Math.floor(Math.random() * free.length)];
+    return true;
   }, []);
 
   const draw = useCallback(() => {
@@ -139,12 +124,11 @@ export function SnakeGame({
     dirRef.current = { x: 1, y: 0 };
     queueRef.current = [];
     tickRef.current = START_TICK_MS;
-    scoreRef.current = 0;
-    setScore(0);
-    bestAtRoundStart.current = hiScoreRef.current;
+    accRef.current = 0;
+    startRound();
     placeFood();
     changePhase("ready");
-  }, [placeFood, changePhase]);
+  }, [placeFood, changePhase, startRound]);
 
   const queueDirection = useCallback((dir: Vec) => {
     const queue = queueRef.current;
@@ -173,27 +157,28 @@ export function SnakeGame({
 
     if (hitWall || hitSelf) {
       beep(220, 55, 0.5, 0.08);
-      changePhase("over");
-      onGameOver(scoreRef.current);
+      endGame();
       return;
     }
 
     snake.unshift(head);
     if (eating) {
-      scoreRef.current += POINTS_PER_APPLE;
-      setScore(scoreRef.current);
+      addScore(POINTS_PER_APPLE);
       tickRef.current = Math.max(MIN_TICK_MS, tickRef.current - SPEEDUP_MS);
-      placeFood();
       beep(660, 990, 0.09);
+      if (!placeFood()) {
+        // The snake fills the whole board — nothing left to eat.
+        endGame();
+      }
     } else {
       snake.pop();
     }
-  }, [changePhase, onGameOver, placeFood]);
+  }, [addScore, endGame, placeFood]);
 
   const start = useCallback(
     (dir?: Vec) => {
-      if (dir) {
-        dirRef.current = dir.x + dirRef.current.x === 0 ? dirRef.current : dir;
+      if (dir && !(dir.x === -dirRef.current.x && dir.y === -dirRef.current.y)) {
+        dirRef.current = dir;
       }
       beep(440, 880, 0.12);
       changePhase("playing");
@@ -205,43 +190,18 @@ export function SnakeGame({
     reset();
   }, [reset]);
 
-  // Bank the running score if the player closes the overlay mid-game —
-  // death already reports via step(), so only cover the quit path here.
-  const onGameOverRef = useRef(onGameOver);
-  onGameOverRef.current = onGameOver;
-  useEffect(
-    () => () => {
-      if (phaseRef.current !== "over" && scoreRef.current > 0) {
-        onGameOverRef.current(scoreRef.current);
-      }
-    },
-    [],
-  );
+  useGameLoop(phase === "playing", (dt) => {
+    accRef.current += dt;
+    while (accRef.current >= tickRef.current && phaseRef.current === "playing") {
+      accRef.current -= tickRef.current;
+      step();
+    }
+    draw();
+  });
 
   useEffect(() => {
-    if (phase !== "playing") {
-      draw();
-      return;
-    }
-
-    let raf = 0;
-    let last = performance.now();
-    let acc = 0;
-    const frame = (now: number) => {
-      acc += now - last;
-      last = now;
-      while (acc >= tickRef.current && phaseRef.current === "playing") {
-        acc -= tickRef.current;
-        step();
-      }
-      draw();
-      if (phaseRef.current === "playing") {
-        raf = requestAnimationFrame(frame);
-      }
-    };
-    raf = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(raf);
-  }, [phase, step, draw]);
+    if (phase !== "playing") draw();
+  }, [phase, draw]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -271,7 +231,14 @@ export function SnakeGame({
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [start, queueDirection, changePhase, reset]);
+  }, [phaseRef, start, queueDirection, changePhase, reset]);
+
+  const onMouseDown = useCallback(() => {
+    const currentPhase = phaseRef.current;
+    if (currentPhase === "ready") start();
+    else if (currentPhase === "over") reset();
+    else if (currentPhase === "paused") changePhase("playing");
+  }, [phaseRef, start, reset, changePhase]);
 
   const onTouchStart = useCallback((event: React.TouchEvent) => {
     const touch = event.touches[0];
@@ -305,52 +272,30 @@ export function SnakeGame({
       if (currentPhase === "ready") start(dir);
       else if (currentPhase === "playing") queueDirection(dir);
     },
-    [start, queueDirection, changePhase, reset],
+    [phaseRef, start, queueDirection, changePhase, reset],
   );
 
-  const isNewBest = phase === "over" && score > 0 && score > bestAtRoundStart.current;
-
   return (
-    <div className={styles.gameWrap}>
-      <div className={styles.gameHud}>
-        <span>
-          SCORE <b>{formatScore(score)}</b>
-        </span>
-        <span>
-          HI <b>{formatScore(Math.max(hiScore, score))}</b>
-        </span>
-      </div>
-      <div className={styles.gameScreen}>
-        <canvas
-          ref={canvasRef}
-          width={COLS * CELL}
-          height={ROWS * CELL}
-          className={styles.gameCanvas}
-          onTouchStart={onTouchStart}
-          onTouchEnd={onTouchEnd}
-        />
-        {phase !== "playing" && (
-          <div className={styles.gameMsg}>
-            {phase === "ready" && (
-              <>
-                <span>READY?</span>
-                <span className={styles.gameMsgSub}>Press an arrow key or swipe to move</span>
-              </>
-            )}
-            {phase === "paused" && <span className={styles.blink}>PAUSED</span>}
-            {phase === "over" && (
-              <>
-                <span>GAME OVER</span>
-                <span>SCORE {formatScore(score)}</span>
-                {isNewBest && <span className={styles.newBest}>★ NEW HI-SCORE ★</span>}
-                <span className={styles.gameMsgSub}>Press Enter or tap to play again</span>
-              </>
-            )}
-          </div>
-        )}
-        <div className={styles.gameScanlines} aria-hidden />
-      </div>
-      <p className={styles.gameControls}>ARROWS / WASD MOVE — P PAUSE</p>
-    </div>
+    <GameShell
+      score={score}
+      hiScore={Math.max(hiScore, score)}
+      controls="ARROWS / WASD MOVE — P PAUSE"
+    >
+      <canvas
+        ref={canvasRef}
+        width={COLS * CELL}
+        height={ROWS * CELL}
+        className={styles.gameCanvas}
+        onMouseDown={onMouseDown}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      />
+      <PhaseOverlay
+        phase={phase}
+        score={score}
+        isNewBest={isNewBest}
+        readyHint="Press an arrow key, swipe, or tap to move"
+      />
+    </GameShell>
   );
 }

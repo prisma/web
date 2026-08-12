@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { beep } from "./arcade-audio";
+import { GameShell, PhaseOverlay, useGameCore, useGameLoop, type GameProps } from "./game-kit";
 import styles from "./arcade.module.css";
 
 const W = 420;
@@ -21,11 +22,10 @@ const PILLAR_SPACING = 230;
 const BASE_GAP = 150;
 const BASE_SPEED = 145;
 
-// The new brand stripes, top to bottom — the comet tail.
+// The comet tail stripes, top to bottom.
 const TAIL_COLORS = ["#7cdae1", "#edcd5f", "#e37780"];
 const TAIL_STRIPE_H = 7;
 
-type Phase = "ready" | "playing" | "paused" | "over";
 type Pillar = { x: number; gapY: number; passed: boolean };
 type TrailPoint = { x: number; y: number };
 type Star = { x: number; y: number; speed: number; size: number };
@@ -52,18 +52,26 @@ const CAT_PALETTE: Record<string, string> = {
   P: "#f2a0ac",
 };
 
-function formatScore(score: number) {
-  return score.toString().padStart(6, "0");
-}
-
-export function CometCatGame({
-  hiScore,
-  onGameOver,
-}: {
-  hiScore: number;
-  onGameOver: (score: number) => void;
-}) {
+/**
+ * The featured game. Unlike the dialog games, it is embedded directly in the
+ * page, so keyboard input is scoped to the focusable screen element instead of
+ * `window` — the page keeps scrolling normally until the player clicks in.
+ */
+export function CometCatGame({ hiScore, onGameOver }: GameProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const screenRef = useRef<HTMLDivElement>(null);
+
+  const {
+    phase,
+    phaseRef,
+    changePhase,
+    score,
+    scoreRef,
+    addScore,
+    startRound,
+    endGame,
+    isNewBest,
+  } = useGameCore({ hiScore, onGameOver });
 
   const cat = useRef({ y: H / 2, vy: 0 });
   const pillars = useRef<Pillar[]>([]);
@@ -73,24 +81,8 @@ export function CometCatGame({
   // Countdown for the post-collision tumble before the GAME OVER screen.
   const dying = useRef(0);
 
-  const scoreRef = useRef(0);
-  const phaseRef = useRef<Phase>("ready");
-  const bestAtRoundStart = useRef(0);
-  const hiScoreRef = useRef(hiScore);
-  hiScoreRef.current = hiScore;
-  const onGameOverRef = useRef(onGameOver);
-  onGameOverRef.current = onGameOver;
-
-  const [phase, setPhase] = useState<Phase>("ready");
-  const [score, setScore] = useState(0);
-
-  const changePhase = useCallback((next: Phase) => {
-    phaseRef.current = next;
-    setPhase(next);
-  }, []);
-
-  const speed = useCallback(() => Math.min(220, BASE_SPEED + scoreRef.current * 1.5), []);
-  const gap = useCallback(() => Math.max(120, BASE_GAP - scoreRef.current * 0.5), []);
+  const speed = () => Math.min(220, BASE_SPEED + scoreRef.current * 1.5);
+  const gap = () => Math.max(120, BASE_GAP - scoreRef.current * 0.5);
 
   const spawnPillar = useCallback((x: number) => {
     const margin = 90;
@@ -107,9 +99,7 @@ export function CometCatGame({
     trail.current = [];
     worldX.current = 0;
     dying.current = 0;
-    scoreRef.current = 0;
-    setScore(0);
-    bestAtRoundStart.current = hiScoreRef.current;
+    startRound();
     spawnPillar(W + 120);
     stars.current = Array.from({ length: 40 }, () => ({
       x: Math.random() * W,
@@ -118,7 +108,7 @@ export function CometCatGame({
       size: Math.random() < 0.25 ? 2 : 1,
     }));
     changePhase("ready");
-  }, [spawnPillar, changePhase]);
+  }, [spawnPillar, changePhase, startRound]);
 
   const flap = useCallback(() => {
     if (dying.current > 0) return;
@@ -137,86 +127,81 @@ export function CometCatGame({
     beep(300, 60, 0.5, 0.08, "sawtooth");
   }, []);
 
-  const tick = useCallback(
-    (dt: number) => {
-      const dts = dt / 1000;
-      const c = cat.current;
+  const tick = (dt: number) => {
+    const dts = dt / 1000;
+    const c = cat.current;
 
-      if (dying.current > 0) {
-        // Tumble off screen, then call it.
-        dying.current -= dt;
-        c.vy = Math.min(MAX_FALL, c.vy + GRAVITY * dts);
-        c.y += c.vy * dts;
-        if (dying.current <= 0 || c.y > H + 60) {
-          changePhase("over");
-          onGameOverRef.current(scoreRef.current);
-        }
-        return;
-      }
-
-      const v = speed();
-      worldX.current += v * dts;
-
+    if (dying.current > 0) {
+      // Tumble off screen, then call it.
+      dying.current -= dt;
       c.vy = Math.min(MAX_FALL, c.vy + GRAVITY * dts);
       c.y += c.vy * dts;
-      if (c.y < 4) {
-        c.y = 4;
-        c.vy = 0;
+      if (dying.current <= 0 || c.y > H + 60) {
+        endGame();
       }
+      return;
+    }
 
-      // Trail follows the cat's path and scrolls with the world.
-      for (const p of trail.current) p.x -= v * dts;
-      trail.current.push({ x: CAT_X - 6, y: c.y + CAT_H / 2 });
-      while (trail.current.length > 0 && trail.current[0].x < -30) {
-        trail.current.shift();
-      }
+    const v = speed();
+    worldX.current += v * dts;
 
-      for (const star of stars.current) {
-        star.x -= star.speed * dts;
-        if (star.x < 0) {
-          star.x += W;
-          star.y = Math.random() * H;
-        }
-      }
+    c.vy = Math.min(MAX_FALL, c.vy + GRAVITY * dts);
+    c.y += c.vy * dts;
+    if (c.y < 4) {
+      c.y = 4;
+      c.vy = 0;
+    }
 
-      const g = gap();
-      for (const pillar of pillars.current) {
-        pillar.x -= v * dts;
-        if (!pillar.passed && pillar.x + PILLAR_W < CAT_X) {
-          pillar.passed = true;
-          scoreRef.current += 1;
-          setScore(scoreRef.current);
-          beep(880, 1320, 0.08, 0.05);
-        }
-      }
-      if (pillars.current[0] && pillars.current[0].x < -PILLAR_W) {
-        pillars.current.shift();
-      }
-      const last = pillars.current[pillars.current.length - 1];
-      if (!last || last.x < W - PILLAR_SPACING) {
-        spawnPillar(W + PILLAR_W);
-      }
+    // Trail follows the cat's path and scrolls with the world.
+    for (const p of trail.current) p.x -= v * dts;
+    trail.current.push({ x: CAT_X - 6, y: c.y + CAT_H / 2 });
+    while (trail.current.length > 0 && trail.current[0].x < -30) {
+      trail.current.shift();
+    }
 
-      // Collisions: ground, then pillars.
-      if (c.y + CAT_H >= GROUND_Y) {
-        c.y = GROUND_Y - CAT_H;
+    for (const star of stars.current) {
+      star.x -= star.speed * dts;
+      if (star.x < 0) {
+        star.x += W;
+        star.y = Math.random() * H;
+      }
+    }
+
+    const g = gap();
+    for (const pillar of pillars.current) {
+      pillar.x -= v * dts;
+      if (!pillar.passed && pillar.x + PILLAR_W < CAT_X) {
+        pillar.passed = true;
+        addScore(1);
+        beep(880, 1320, 0.08, 0.05);
+      }
+    }
+    if (pillars.current[0] && pillars.current[0].x < -PILLAR_W) {
+      pillars.current.shift();
+    }
+    const last = pillars.current[pillars.current.length - 1];
+    if (!last || last.x < W - PILLAR_SPACING) {
+      spawnPillar(W + PILLAR_W);
+    }
+
+    // Collisions: ground, then pillars.
+    if (c.y + CAT_H >= GROUND_Y) {
+      c.y = GROUND_Y - CAT_H;
+      die();
+      return;
+    }
+    const catLeft = CAT_X - CAT_W / 2 + 3;
+    const catRight = CAT_X + CAT_W / 2 - 3;
+    for (const pillar of pillars.current) {
+      if (catRight < pillar.x || catLeft > pillar.x + PILLAR_W) continue;
+      const gapTop = pillar.gapY - g / 2;
+      const gapBottom = pillar.gapY + g / 2;
+      if (c.y + 3 < gapTop || c.y + CAT_H - 3 > gapBottom) {
         die();
         return;
       }
-      const catLeft = CAT_X - CAT_W / 2 + 3;
-      const catRight = CAT_X + CAT_W / 2 - 3;
-      for (const pillar of pillars.current) {
-        if (catRight < pillar.x || catLeft > pillar.x + PILLAR_W) continue;
-        const gapTop = pillar.gapY - g / 2;
-        const gapBottom = pillar.gapY + g / 2;
-        if (c.y + 3 < gapTop || c.y + CAT_H - 3 > gapBottom) {
-          die();
-          return;
-        }
-      }
-    },
-    [speed, gap, spawnPillar, die, changePhase],
-  );
+    }
+  };
 
   const draw = useCallback(() => {
     const ctx = canvasRef.current?.getContext("2d");
@@ -231,8 +216,8 @@ export function CometCatGame({
       ctx.fillRect(star.x, star.y, star.size, star.size);
     }
 
-    // Comet tail: three brand stripes tracing the flight path, with the
-    // classic chunky zigzag — segments alternate a 2px offset in 12px blocks.
+    // Comet tail: three stripes tracing the flight path, with the classic
+    // chunky zigzag — segments alternate a 2px offset in 12px blocks.
     const points = trail.current;
     for (let i = 0; i < points.length - 1; i++) {
       const a = points[i];
@@ -286,128 +271,84 @@ export function CometCatGame({
       }
     }
     ctx.restore();
-  }, [gap]);
+  }, []);
 
   useEffect(() => {
     reset();
   }, [reset]);
 
-  // Bank the running score if the player closes the overlay mid-game —
-  // death already reports via the dying countdown, so only cover quit here.
-  useEffect(
-    () => () => {
-      if (phaseRef.current !== "over" && scoreRef.current > 0) {
-        onGameOverRef.current(scoreRef.current);
-      }
-    },
-    [],
-  );
+  useGameLoop(phase === "playing", (dt) => {
+    tick(dt);
+    draw();
+  });
 
   useEffect(() => {
-    if (phase !== "playing") {
-      draw();
-      return;
-    }
-    let raf = 0;
-    let last = performance.now();
-    const frame = (now: number) => {
-      const dt = Math.min(50, now - last);
-      last = now;
-      tick(dt);
-      draw();
-      if (phaseRef.current === "playing") {
-        raf = requestAnimationFrame(frame);
-      }
-    };
-    raf = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(raf);
-  }, [phase, tick, draw]);
+    if (phase !== "playing") draw();
+  }, [phase, draw]);
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      const key = event.key.toLowerCase();
-      const currentPhase = phaseRef.current;
-
-      if (key === " " || key === "arrowup" || key === "w") {
-        event.preventDefault();
-        if (event.repeat) return;
-        if (currentPhase === "ready") start();
-        else if (currentPhase === "playing") flap();
-        else if (currentPhase === "over") reset();
-        return;
-      }
-
-      if (key === "p" && (currentPhase === "playing" || currentPhase === "paused")) {
-        changePhase(currentPhase === "playing" ? "paused" : "playing");
-        return;
-      }
-
-      if (key === "enter") {
-        event.preventDefault();
-        if (currentPhase === "ready") start();
-        else if (currentPhase === "over") reset();
-        else if (currentPhase === "paused") changePhase("playing");
-      }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [start, flap, reset, changePhase]);
-
-  const onPointer = useCallback(() => {
+  const advance = useCallback(() => {
     const currentPhase = phaseRef.current;
     if (currentPhase === "ready") start();
     else if (currentPhase === "playing") flap();
     else if (currentPhase === "over") reset();
     else if (currentPhase === "paused") changePhase("playing");
-  }, [start, flap, reset, changePhase]);
+  }, [phaseRef, start, flap, reset, changePhase]);
 
-  const isNewBest = phase === "over" && score > 0 && score > bestAtRoundStart.current;
+  const onKeyDown = useCallback(
+    (event: React.KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+
+      if (key === " " || key === "arrowup" || key === "w" || key === "enter") {
+        event.preventDefault();
+        if (event.repeat) return;
+        advance();
+        return;
+      }
+
+      if (key === "p") {
+        const currentPhase = phaseRef.current;
+        if (currentPhase === "playing" || currentPhase === "paused") {
+          changePhase(currentPhase === "playing" ? "paused" : "playing");
+        }
+      }
+    },
+    [advance, phaseRef, changePhase],
+  );
+
+  const onPointer = useCallback(() => {
+    screenRef.current?.focus();
+    advance();
+  }, [advance]);
 
   return (
-    <div className={styles.gameWrap}>
-      <div className={styles.gameHud}>
-        <span>
-          SCORE <b>{formatScore(score)}</b>
-        </span>
-        <span>
-          HI <b>{formatScore(Math.max(hiScore, score))}</b>
-        </span>
-      </div>
-      <div className={styles.gameScreen}>
+    <GameShell
+      score={score}
+      hiScore={Math.max(hiScore, score)}
+      controls="SPACE / TAP FLAP — P PAUSE"
+    >
+      <div
+        ref={screenRef}
+        tabIndex={0}
+        role="application"
+        aria-label="Comet Cat game. Tap, click, or press Space to flap."
+        className={styles.focusScreen}
+        onKeyDown={onKeyDown}
+      >
         <canvas
           ref={canvasRef}
           width={W}
           height={H}
           className={styles.gameCanvas}
           onMouseDown={onPointer}
-          onTouchStart={(event) => {
-            event.preventDefault();
-            onPointer();
-          }}
+          onTouchStart={onPointer}
         />
-        {phase !== "playing" && (
-          <div className={styles.gameMsg}>
-            {phase === "ready" && (
-              <>
-                <span>READY?</span>
-                <span className={styles.gameMsgSub}>Tap, click, or press Space to flap</span>
-              </>
-            )}
-            {phase === "paused" && <span className={styles.blink}>PAUSED</span>}
-            {phase === "over" && (
-              <>
-                <span>GAME OVER</span>
-                <span>SCORE {formatScore(score)}</span>
-                {isNewBest && <span className={styles.newBest}>★ NEW HI-SCORE ★</span>}
-                <span className={styles.gameMsgSub}>Press Space or tap to fly again</span>
-              </>
-            )}
-          </div>
-        )}
-        <div className={styles.gameScanlines} aria-hidden />
+        <PhaseOverlay
+          phase={phase}
+          score={score}
+          isNewBest={isNewBest}
+          readyHint="Tap, click, or press Space to flap"
+        />
       </div>
-      <p className={styles.gameControls}>SPACE / TAP FLAP — P PAUSE</p>
-    </div>
+    </GameShell>
   );
 }

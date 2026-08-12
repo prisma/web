@@ -2,6 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { beep } from "./arcade-audio";
+import {
+  GameShell,
+  PhaseOverlay,
+  useGameCore,
+  useGameLoop,
+  useHeldKeys,
+  type GameProps,
+} from "./game-kit";
 import styles from "./arcade.module.css";
 
 const W = 480;
@@ -37,8 +45,7 @@ const MARCH_NOTES = [110, 98, 87, 78];
 const INVASION_Y = H - 96;
 
 type Vec = { x: number; y: number };
-type Phase = "ready" | "playing" | "paused" | "over";
-type Explosion = { x: number; y: number; ttl: number };
+type Explosion = { x: number; y: number; ttl: number; ttl0: number };
 type Ufo = { x: number; dir: number; points: number };
 type Bunker = { x: number; y: number; cells: boolean[][] };
 
@@ -169,10 +176,6 @@ const BUNKER_SHAPE = [
   "XXX.....XXX",
 ];
 
-function formatScore(score: number) {
-  return score.toString().padStart(6, "0");
-}
-
 function makeBunkers(): Bunker[] {
   const width = BUNKER_SHAPE[0].length * BUNKER_CELL;
   return [96, 192, 288, 384].map((center) => ({
@@ -199,17 +202,14 @@ function drawSprite(
   }
 }
 
-export function InvadersGame({
-  hiScore,
-  onGameOver,
-}: {
-  hiScore: number;
-  onGameOver: (score: number) => void;
-}) {
+export function InvadersGame({ hiScore, onGameOver }: GameProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  const { phase, phaseRef, changePhase, score, addScore, startRound, endGame, isNewBest } =
+    useGameCore({ hiScore, onGameOver });
+
   const playerX = useRef(W / 2);
-  const keys = useRef(new Set<string>());
+  const keys = useHeldKeys();
   const touchTargetX = useRef<number | null>(null);
   const playerBullet = useRef<Vec | null>(null);
   const enemyBullets = useRef<Vec[]>([]);
@@ -226,27 +226,13 @@ export function InvadersGame({
   const freeze = useRef(0);
   const pendingWave = useRef(false);
 
-  const scoreRef = useRef(0);
   const livesRef = useRef(3);
   const waveRef = useRef(1);
-  const phaseRef = useRef<Phase>("ready");
-  const bestAtRoundStart = useRef(0);
-  const hiScoreRef = useRef(hiScore);
-  hiScoreRef.current = hiScore;
-  const onGameOverRef = useRef(onGameOver);
-  onGameOverRef.current = onGameOver;
 
-  const [phase, setPhase] = useState<Phase>("ready");
-  const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
   const [wave, setWave] = useState(1);
   const [waveBanner, setWaveBanner] = useState<string | null>(null);
   const bannerTimeout = useRef<number | undefined>(undefined);
-
-  const changePhase = useCallback((next: Phase) => {
-    phaseRef.current = next;
-    setPhase(next);
-  }, []);
 
   const showWaveBanner = useCallback((n: number) => {
     setWaveBanner(`WAVE ${n.toString().padStart(2, "0")}`);
@@ -270,13 +256,12 @@ export function InvadersGame({
   }, []);
 
   const reset = useCallback(() => {
-    scoreRef.current = 0;
     livesRef.current = 3;
     waveRef.current = 1;
-    setScore(0);
     setLives(3);
     setWave(1);
-    bestAtRoundStart.current = hiScoreRef.current;
+    startRound();
+    keys.current.clear();
     playerX.current = W / 2;
     playerBullet.current = null;
     enemyBullets.current = [];
@@ -290,13 +275,12 @@ export function InvadersGame({
     bunkers.current = makeBunkers();
     resetGrid(1);
     changePhase("ready");
-  }, [resetGrid, changePhase]);
+  }, [startRound, keys, resetGrid, changePhase]);
 
   const gameOver = useCallback(() => {
     beep(300, 40, 0.7, 0.09, "sawtooth");
-    changePhase("over");
-    onGameOverRef.current(scoreRef.current);
-  }, [changePhase]);
+    endGame();
+  }, [endGame]);
 
   const invaderRect = useCallback((row: number, col: number) => {
     const type = ROW_TYPES[row];
@@ -338,7 +322,7 @@ export function InvadersGame({
   );
 
   const playerHit = useCallback(() => {
-    explosions.current.push({ x: playerX.current, y: PLAYER_Y + 8, ttl: 400 });
+    explosions.current.push({ x: playerX.current, y: PLAYER_Y + 8, ttl: 400, ttl0: 400 });
     enemyBullets.current = [];
     playerBullet.current = null;
     livesRef.current -= 1;
@@ -415,55 +399,55 @@ export function InvadersGame({
     beep(900, 300, 0.07, 0.04);
   }, []);
 
-  const tick = useCallback(
-    (dt: number) => {
-      const g = grid.current;
+  const tick = (dt: number) => {
+    const g = grid.current;
 
-      if (freeze.current > 0) {
-        freeze.current -= dt;
-        if (freeze.current <= 0 && pendingWave.current) {
-          pendingWave.current = false;
-          resetGrid(waveRef.current);
-        }
-        return;
+    if (freeze.current > 0) {
+      freeze.current -= dt;
+      if (freeze.current <= 0 && pendingWave.current) {
+        pendingWave.current = false;
+        resetGrid(waveRef.current);
       }
+      return;
+    }
 
-      // Player movement — keyboard or touch drag.
-      const k = keys.current;
-      let vx = 0;
-      if (k.has("arrowleft") || k.has("a")) vx -= 1;
-      if (k.has("arrowright") || k.has("d")) vx += 1;
-      if (vx !== 0) {
-        touchTargetX.current = null;
-        playerX.current += vx * PLAYER_SPEED * (dt / 1000);
-      } else if (touchTargetX.current !== null) {
-        const delta = touchTargetX.current - playerX.current;
-        const step = PLAYER_SPEED * 1.4 * (dt / 1000);
-        playerX.current += Math.abs(delta) <= step ? delta : Math.sign(delta) * step;
-      }
-      playerX.current = Math.min(
-        W - EDGE - PLAYER_HALF_W,
-        Math.max(EDGE + PLAYER_HALF_W, playerX.current),
-      );
+    // Player movement — keyboard or touch drag.
+    const k = keys.current;
+    let vx = 0;
+    if (k.has("arrowleft") || k.has("a")) vx -= 1;
+    if (k.has("arrowright") || k.has("d")) vx += 1;
+    if (vx !== 0) {
+      touchTargetX.current = null;
+      playerX.current += vx * PLAYER_SPEED * (dt / 1000);
+    } else if (touchTargetX.current !== null) {
+      const delta = touchTargetX.current - playerX.current;
+      const step = PLAYER_SPEED * 1.4 * (dt / 1000);
+      playerX.current += Math.abs(delta) <= step ? delta : Math.sign(delta) * step;
+    }
+    playerX.current = Math.min(
+      W - EDGE - PLAYER_HALF_W,
+      Math.max(EDGE + PLAYER_HALF_W, playerX.current),
+    );
 
-      if (k.has(" ") || k.has("arrowup") || k.has("w")) tryFire();
+    if (k.has(" ") || k.has("arrowup") || k.has("w")) tryFire();
 
-      // March.
-      const alive = aliveCount();
-      marchAcc.current += dt;
-      const interval = Math.max(60, (70 + alive * 13) * Math.pow(0.95, waveRef.current - 1));
-      if (marchAcc.current >= interval) {
-        marchAcc.current = 0;
-        marchStep();
-        if (phaseRef.current === "over") return;
-      }
+    // March.
+    const alive = aliveCount();
+    marchAcc.current += dt;
+    const interval = Math.max(60, (70 + alive * 13) * Math.pow(0.95, waveRef.current - 1));
+    if (marchAcc.current >= interval) {
+      marchAcc.current = 0;
+      marchStep();
+      if (phaseRef.current === "over") return;
+    }
 
-      // Enemy fire.
-      fireAcc.current += dt;
-      if (
-        fireAcc.current >= nextFireIn.current &&
-        enemyBullets.current.length < MAX_ENEMY_BULLETS
-      ) {
+    // Enemy fire.
+    fireAcc.current += dt;
+    if (fireAcc.current >= nextFireIn.current) {
+      if (enemyBullets.current.length >= MAX_ENEMY_BULLETS) {
+        // Cap reached — restart the timer so a freed slot doesn't fire instantly.
+        fireAcc.current = 0;
+      } else {
         fireAcc.current = 0;
         nextFireIn.current = (500 + Math.random() * 800) * Math.pow(0.93, waveRef.current - 1);
         const columns: number[] = [];
@@ -485,113 +469,111 @@ export function InvadersGame({
           }
         }
       }
+    }
 
-      // UFO.
-      if (ufo.current) {
-        ufo.current.x += ufo.current.dir * UFO_SPEED * (dt / 1000);
-        if (ufo.current.x < -40 || ufo.current.x > W + 40) ufo.current = null;
-      } else {
-        ufoTimer.current -= dt;
-        if (ufoTimer.current <= 0) {
-          const dir = Math.random() < 0.5 ? 1 : -1;
-          ufo.current = {
-            x: dir === 1 ? -32 : W + 32,
-            dir,
-            points: [50, 100, 150][Math.floor(Math.random() * 3)],
-          };
-          ufoTimer.current = 14000 + Math.random() * 10000;
-          beep(600, 900, 0.25, 0.03, "triangle");
-        }
+    // UFO.
+    if (ufo.current) {
+      ufo.current.x += ufo.current.dir * UFO_SPEED * (dt / 1000);
+      if (ufo.current.x < -40 || ufo.current.x > W + 40) ufo.current = null;
+    } else {
+      ufoTimer.current -= dt;
+      if (ufoTimer.current <= 0) {
+        const dir = Math.random() < 0.5 ? 1 : -1;
+        ufo.current = {
+          x: dir === 1 ? -32 : W + 32,
+          dir,
+          points: [50, 100, 150][Math.floor(Math.random() * 3)],
+        };
+        ufoTimer.current = 14000 + Math.random() * 10000;
+        beep(600, 900, 0.25, 0.03, "triangle");
       }
+    }
 
-      // Player bullet.
-      const pb = playerBullet.current;
-      if (pb) {
-        pb.y -= BULLET_SPEED * (dt / 1000);
-        if (pb.y < 30) {
+    // Player bullet.
+    const pb = playerBullet.current;
+    if (pb) {
+      pb.y -= BULLET_SPEED * (dt / 1000);
+      if (pb.y < 30) {
+        playerBullet.current = null;
+      } else if (hitBunker(pb.x, pb.y, 2.4)) {
+        playerBullet.current = null;
+      } else {
+        const u = ufo.current;
+        if (u && pb.x > u.x - 16 && pb.x < u.x + 16 && pb.y > UFO_Y && pb.y < UFO_Y + 14) {
+          addScore(u.points);
+          explosions.current.push({ x: u.x, y: UFO_Y + 7, ttl: 300, ttl0: 300 });
+          ufo.current = null;
           playerBullet.current = null;
-        } else if (hitBunker(pb.x, pb.y, 2.4)) {
-          playerBullet.current = null;
+          beep(1200, 200, 0.3, 0.07);
         } else {
-          const u = ufo.current;
-          if (u && pb.x > u.x - 16 && pb.x < u.x + 16 && pb.y > UFO_Y && pb.y < UFO_Y + 14) {
-            scoreRef.current += u.points;
-            setScore(scoreRef.current);
-            explosions.current.push({ x: u.x, y: UFO_Y + 7, ttl: 300 });
-            ufo.current = null;
-            playerBullet.current = null;
-            beep(1200, 200, 0.3, 0.07);
-          } else {
-            outer: for (let r = 0; r < ROWS; r++) {
-              for (let c = 0; c < COLS; c++) {
-                if (!g.alive[r][c]) continue;
-                const rect = invaderRect(r, c);
-                if (
-                  pb.x > rect.x &&
-                  pb.x < rect.x + rect.w &&
-                  pb.y > rect.y &&
-                  pb.y < rect.y + rect.h
-                ) {
-                  g.alive[r][c] = false;
-                  scoreRef.current += ROW_TYPES[r].points;
-                  setScore(scoreRef.current);
-                  explosions.current.push({
-                    x: rect.x + rect.w / 2,
-                    y: rect.y + rect.h / 2,
-                    ttl: 250,
-                  });
-                  playerBullet.current = null;
-                  beep(200, 40, 0.15, 0.07);
-                  break outer;
-                }
+          outer: for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+              if (!g.alive[r][c]) continue;
+              const rect = invaderRect(r, c);
+              if (
+                pb.x > rect.x &&
+                pb.x < rect.x + rect.w &&
+                pb.y > rect.y &&
+                pb.y < rect.y + rect.h
+              ) {
+                g.alive[r][c] = false;
+                addScore(ROW_TYPES[r].points);
+                explosions.current.push({
+                  x: rect.x + rect.w / 2,
+                  y: rect.y + rect.h / 2,
+                  ttl: 250,
+                  ttl0: 250,
+                });
+                playerBullet.current = null;
+                beep(200, 40, 0.15, 0.07);
+                break outer;
               }
             }
           }
         }
       }
+    }
 
-      // Enemy bullets.
-      const remaining: Vec[] = [];
-      for (const bullet of enemyBullets.current) {
-        bullet.y += ENEMY_BULLET_SPEED * (dt / 1000);
-        const pBullet = playerBullet.current;
-        if (pBullet && Math.abs(bullet.x - pBullet.x) < 5 && Math.abs(bullet.y - pBullet.y) < 10) {
-          explosions.current.push({ x: bullet.x, y: bullet.y, ttl: 200 });
-          playerBullet.current = null;
-          continue;
-        }
-        if (bullet.y > H - 24) continue;
-        if (hitBunker(bullet.x, bullet.y + 8, 1.8)) continue;
-        if (
-          bullet.x > playerX.current - PLAYER_HALF_W &&
-          bullet.x < playerX.current + PLAYER_HALF_W &&
-          bullet.y + 8 > PLAYER_Y &&
-          bullet.y < PLAYER_Y + PLAYER_H
-        ) {
-          playerHit();
-          return;
-        }
-        remaining.push(bullet);
-      }
-      enemyBullets.current = remaining;
-
-      // Explosions decay.
-      explosions.current = explosions.current.filter((e) => (e.ttl -= dt) > 0);
-
-      // Wave cleared.
-      if (aliveCount() === 0 && !pendingWave.current) {
-        waveRef.current += 1;
-        setWave(waveRef.current);
-        showWaveBanner(waveRef.current);
+    // Enemy bullets.
+    const remaining: Vec[] = [];
+    for (const bullet of enemyBullets.current) {
+      bullet.y += ENEMY_BULLET_SPEED * (dt / 1000);
+      const pBullet = playerBullet.current;
+      if (pBullet && Math.abs(bullet.x - pBullet.x) < 5 && Math.abs(bullet.y - pBullet.y) < 10) {
+        explosions.current.push({ x: bullet.x, y: bullet.y, ttl: 200, ttl0: 200 });
         playerBullet.current = null;
-        enemyBullets.current = [];
-        pendingWave.current = true;
-        freeze.current = 1400;
-        beep(440, 1320, 0.4, 0.06);
+        continue;
       }
-    },
-    [aliveCount, marchStep, invaderRect, hitBunker, playerHit, tryFire, resetGrid, showWaveBanner],
-  );
+      if (bullet.y > H - 24) continue;
+      if (hitBunker(bullet.x, bullet.y + 8, 1.8)) continue;
+      if (
+        bullet.x > playerX.current - PLAYER_HALF_W &&
+        bullet.x < playerX.current + PLAYER_HALF_W &&
+        bullet.y + 8 > PLAYER_Y &&
+        bullet.y < PLAYER_Y + PLAYER_H
+      ) {
+        playerHit();
+        return;
+      }
+      remaining.push(bullet);
+    }
+    enemyBullets.current = remaining;
+
+    // Explosions decay.
+    explosions.current = explosions.current.filter((e) => (e.ttl -= dt) > 0);
+
+    // Wave cleared.
+    if (aliveCount() === 0 && !pendingWave.current) {
+      waveRef.current += 1;
+      setWave(waveRef.current);
+      showWaveBanner(waveRef.current);
+      playerBullet.current = null;
+      enemyBullets.current = [];
+      pendingWave.current = true;
+      freeze.current = 1400;
+      beep(440, 1320, 0.4, 0.06);
+    }
+  };
 
   const draw = useCallback(() => {
     const ctx = canvasRef.current?.getContext("2d");
@@ -655,7 +637,7 @@ export function InvadersGame({
 
     // Explosions — expanding pixel bursts.
     for (const e of explosions.current) {
-      const progress = 1 - e.ttl / 300;
+      const progress = 1 - e.ttl / e.ttl0;
       const radius = 4 + progress * 10;
       ctx.fillStyle = progress < 0.5 ? "#facc15" : "#f87171";
       for (let i = 0; i < 8; i++) {
@@ -668,42 +650,20 @@ export function InvadersGame({
         );
       }
     }
-  }, [invaderRect]);
+  }, [invaderRect, phaseRef]);
 
   useEffect(() => {
     reset();
   }, [reset]);
 
-  // Bank the running score if the player closes the overlay mid-game —
-  // death already reports via gameOver(), so only cover the quit path here.
-  useEffect(
-    () => () => {
-      if (phaseRef.current !== "over" && scoreRef.current > 0) {
-        onGameOverRef.current(scoreRef.current);
-      }
-    },
-    [],
-  );
+  useGameLoop(phase === "playing", (dt) => {
+    tick(dt);
+    draw();
+  });
 
   useEffect(() => {
-    if (phase !== "playing") {
-      draw();
-      return;
-    }
-    let raf = 0;
-    let last = performance.now();
-    const frame = (now: number) => {
-      const dt = Math.min(50, now - last);
-      last = now;
-      tick(dt);
-      draw();
-      if (phaseRef.current === "playing") {
-        raf = requestAnimationFrame(frame);
-      }
-    };
-    raf = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(raf);
-  }, [phase, tick, draw]);
+    if (phase !== "playing") draw();
+  }, [phase, draw]);
 
   const start = useCallback(() => {
     beep(440, 880, 0.12);
@@ -716,10 +676,13 @@ export function InvadersGame({
       const key = event.key.toLowerCase();
       const currentPhase = phaseRef.current;
 
-      if (["arrowleft", "arrowright", "arrowup", "a", "d", "w", " "].includes(key)) {
+      if (
+        ["arrowleft", "arrowright", "arrowup", "arrowdown", "a", "d", "w", "s", " "].includes(key)
+      ) {
         event.preventDefault();
         keys.current.add(key);
         if (currentPhase === "ready") start();
+        else if (currentPhase === "over" && key === " ") reset();
         return;
       }
 
@@ -735,17 +698,10 @@ export function InvadersGame({
         else if (currentPhase === "paused") changePhase("playing");
       }
     };
-    const onKeyUp = (event: KeyboardEvent) => {
-      keys.current.delete(event.key.toLowerCase());
-    };
 
     window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("keyup", onKeyUp);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("keyup", onKeyUp);
-    };
-  }, [start, changePhase, reset]);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [phaseRef, keys, start, changePhase, reset]);
 
   const canvasX = useCallback((clientX: number) => {
     const canvas = canvasRef.current;
@@ -763,7 +719,7 @@ export function InvadersGame({
       else if (currentPhase === "playing") tryFire();
       touchTargetX.current = canvasX(event.touches[0].clientX);
     },
-    [start, reset, changePhase, tryFire, canvasX],
+    [phaseRef, start, reset, changePhase, tryFire, canvasX],
   );
 
   const onTouchMove = useCallback(
@@ -773,56 +729,41 @@ export function InvadersGame({
     [canvasX],
   );
 
-  const isNewBest = phase === "over" && score > 0 && score > bestAtRoundStart.current;
+  const onTouchStop = useCallback(() => {
+    touchTargetX.current = null;
+  }, []);
 
   return (
-    <div className={styles.gameWrap}>
-      <div className={styles.gameHud}>
-        <span>
-          SCORE <b>{formatScore(score)}</b>
-        </span>
-        <span>
-          WAVE <b>{wave.toString().padStart(2, "0")}</b>
-        </span>
-        <span className={styles.gameLives}>{"▲".repeat(Math.max(0, lives))}</span>
-        <span>
-          HI <b>{formatScore(Math.max(hiScore, score))}</b>
-        </span>
-      </div>
-      <div className={styles.gameScreen}>
-        <canvas
-          ref={canvasRef}
-          width={W}
-          height={H}
-          className={styles.gameCanvas}
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-        />
-        {waveBanner && phase === "playing" && <div className={styles.waveBanner}>{waveBanner}</div>}
-        {phase !== "playing" && (
-          <div className={styles.gameMsg}>
-            {phase === "ready" && (
-              <>
-                <span>READY?</span>
-                <span className={styles.gameMsgSub}>
-                  Press any key to defend the planet — or tap
-                </span>
-              </>
-            )}
-            {phase === "paused" && <span className={styles.blink}>PAUSED</span>}
-            {phase === "over" && (
-              <>
-                <span>GAME OVER</span>
-                <span>SCORE {formatScore(score)}</span>
-                {isNewBest && <span className={styles.newBest}>★ NEW HI-SCORE ★</span>}
-                <span className={styles.gameMsgSub}>Press Enter or tap to play again</span>
-              </>
-            )}
-          </div>
-        )}
-        <div className={styles.gameScanlines} aria-hidden />
-      </div>
-      <p className={styles.gameControls}>◀ ▶ MOVE — SPACE FIRE — P PAUSE</p>
-    </div>
+    <GameShell
+      score={score}
+      hiScore={Math.max(hiScore, score)}
+      hudExtra={
+        <>
+          <span>
+            WAVE <b>{wave.toString().padStart(2, "0")}</b>
+          </span>
+          <span className={styles.gameLives}>{"▲".repeat(Math.max(0, lives))}</span>
+        </>
+      }
+      controls="◀ ▶ MOVE — SPACE FIRE — P PAUSE"
+    >
+      <canvas
+        ref={canvasRef}
+        width={W}
+        height={H}
+        className={styles.gameCanvas}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchStop}
+        onTouchCancel={onTouchStop}
+      />
+      {waveBanner && phase === "playing" && <div className={styles.waveBanner}>{waveBanner}</div>}
+      <PhaseOverlay
+        phase={phase}
+        score={score}
+        isNewBest={isNewBest}
+        readyHint="Press any key to defend the planet — or tap"
+      />
+    </GameShell>
   );
 }

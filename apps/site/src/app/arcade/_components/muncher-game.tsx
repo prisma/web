@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { beep } from "./arcade-audio";
+import { GameShell, PhaseOverlay, useGameCore, useGameLoop, type GameProps } from "./game-kit";
 import styles from "./arcade.module.css";
 
 const TILE = 24;
@@ -55,7 +56,6 @@ const FRIGHT_SPEED = 4.5;
 const EYES_SPEED = 13;
 const DEN_SPEED = 5;
 
-type Phase = "ready" | "playing" | "paused" | "over";
 type DirName = "up" | "down" | "left" | "right";
 type EnemyKind = "chaser" | "ambusher" | "wanderer" | "patroller";
 type EnemyMode = "chase" | "frightened" | "eyes";
@@ -184,10 +184,6 @@ const ENEMY_DEFS: Omit<Enemy, "prog" | "dir" | "mode" | "state">[] = [
   },
 ];
 
-function formatScore(score: number) {
-  return score.toString().padStart(6, "0");
-}
-
 function makeEnemy(def: (typeof ENEMY_DEFS)[number]): Enemy {
   return {
     ...def,
@@ -208,14 +204,11 @@ function frightenedDuration(level: number) {
   return Math.max(2000, 6000 - 500 * (level - 1));
 }
 
-export function MuncherGame({
-  hiScore,
-  onGameOver,
-}: {
-  hiScore: number;
-  onGameOver: (score: number) => void;
-}) {
+export function MuncherGame({ hiScore, onGameOver }: GameProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const { phase, phaseRef, changePhase, score, addScore, startRound, endGame, isNewBest } =
+    useGameCore({ hiScore, onGameOver });
 
   const player = useRef<Player>({ ...PLAYER_SPAWN, prog: 0, dir: "left", desired: "left" });
   const enemies = useRef<Enemy[]>(ENEMY_DEFS.map(makeEnemy));
@@ -233,27 +226,13 @@ export function MuncherGame({
   const pending = useRef<"death" | null>(null);
   const anim = useRef(0);
 
-  const scoreRef = useRef(0);
   const livesRef = useRef(3);
   const levelRef = useRef(1);
-  const phaseRef = useRef<Phase>("ready");
-  const bestAtRoundStart = useRef(0);
-  const hiScoreRef = useRef(hiScore);
-  hiScoreRef.current = hiScore;
-  const onGameOverRef = useRef(onGameOver);
-  onGameOverRef.current = onGameOver;
 
-  const [phase, setPhase] = useState<Phase>("ready");
-  const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
   const [level, setLevel] = useState(1);
   const [banner, setBanner] = useState<string | null>(null);
   const bannerTimeout = useRef<number | undefined>(undefined);
-
-  const changePhase = useCallback((next: Phase) => {
-    phaseRef.current = next;
-    setPhase(next);
-  }, []);
 
   const showBanner = useCallback((text: string) => {
     setBanner(text);
@@ -297,13 +276,11 @@ export function MuncherGame({
   }, []);
 
   const reset = useCallback(() => {
-    scoreRef.current = 0;
     livesRef.current = 3;
     levelRef.current = 1;
-    setScore(0);
     setLives(3);
     setLevel(1);
-    bestAtRoundStart.current = hiScoreRef.current;
+    startRound();
     buildDots();
     fruit.current = null;
     fruitStage.current = 0;
@@ -312,13 +289,12 @@ export function MuncherGame({
     anim.current = 0;
     placeActors();
     changePhase("ready");
-  }, [buildDots, placeActors, changePhase]);
+  }, [startRound, buildDots, placeActors, changePhase]);
 
   const gameOver = useCallback(() => {
     beep(300, 40, 0.7, 0.09, "sawtooth");
-    changePhase("over");
-    onGameOverRef.current(scoreRef.current);
-  }, [changePhase]);
+    endGame();
+  }, [endGame]);
 
   const start = useCallback(() => {
     beep(440, 880, 0.12);
@@ -329,43 +305,45 @@ export function MuncherGame({
   // Alternating two-note "waka" as dots are eaten.
   const wakaHigh = useRef(false);
 
-  const eatAt = useCallback((c: number, r: number) => {
-    const cell = dots.current[r]?.[c];
-    if (!cell) return;
-    if (cell === 1) {
-      scoreRef.current += 10;
-      wakaHigh.current = !wakaHigh.current;
-      beep(wakaHigh.current ? 320 : 240, wakaHigh.current ? 260 : 200, 0.05, 0.04, "square");
-    } else {
-      scoreRef.current += 50;
-      // Power pellet — frighten every active enemy and reverse it.
-      frightTimer.current = frightenedDuration(levelRef.current);
-      eatValue.current = 200;
-      for (const e of enemies.current) {
-        if (e.state === "out" && e.mode !== "eyes") {
-          e.mode = "frightened";
-          reverseActor(e);
+  const eatAt = useCallback(
+    (c: number, r: number) => {
+      const cell = dots.current[r]?.[c];
+      if (!cell) return;
+      if (cell === 1) {
+        addScore(10);
+        wakaHigh.current = !wakaHigh.current;
+        beep(wakaHigh.current ? 320 : 240, wakaHigh.current ? 260 : 200, 0.05, 0.04, "square");
+      } else {
+        addScore(50);
+        // Power pellet — frighten every active enemy and reverse it.
+        frightTimer.current = frightenedDuration(levelRef.current);
+        eatValue.current = 200;
+        for (const e of enemies.current) {
+          if (e.state === "out" && e.mode !== "eyes") {
+            e.mode = "frightened";
+            reverseActor(e);
+          }
         }
+        beep(180, 520, 0.3, 0.07, "square");
       }
-      beep(180, 520, 0.3, 0.07, "square");
-    }
-    dots.current[r][c] = 0;
-    dotCount.current -= 1;
-    setScore(scoreRef.current);
+      dots.current[r][c] = 0;
+      dotCount.current -= 1;
 
-    // Fruit surfaces twice per level, at roughly a third and two thirds eaten.
-    const eaten = TOTAL_DOTS - dotCount.current;
-    const thresholds = [Math.floor(TOTAL_DOTS * 0.32), Math.floor(TOTAL_DOTS * 0.66)];
-    if (fruitStage.current < 2 && eaten >= thresholds[fruitStage.current] && !fruit.current) {
-      fruit.current = {
-        c: DEN_C,
-        r: 13,
-        ttl: 9000,
-        value: 100 + 100 * levelRef.current,
-      };
-      fruitStage.current += 1;
-    }
-  }, []);
+      // Fruit surfaces twice per level, at roughly a third and two thirds eaten.
+      const eaten = TOTAL_DOTS - dotCount.current;
+      const thresholds = [Math.floor(TOTAL_DOTS * 0.32), Math.floor(TOTAL_DOTS * 0.66)];
+      if (fruitStage.current < 2 && eaten >= thresholds[fruitStage.current] && !fruit.current) {
+        fruit.current = {
+          c: DEN_C,
+          r: 13,
+          ttl: 9000,
+          value: 100 + 100 * levelRef.current,
+        };
+        fruitStage.current += 1;
+      }
+    },
+    [addScore],
+  );
 
   // --- movement -----------------------------------------------------------
 
@@ -409,8 +387,7 @@ export function MuncherGame({
           const f = fruit.current;
           eatAt(pl.c, pl.r);
           if (f && f === fruit.current && f.c === pl.c && f.r === pl.r) {
-            scoreRef.current += f.value;
-            setScore(scoreRef.current);
+            addScore(f.value);
             fruit.current = null;
             beep(700, 1200, 0.25, 0.07, "triangle");
           }
@@ -418,7 +395,7 @@ export function MuncherGame({
         },
       );
     },
-    [advance, eatAt],
+    [advance, eatAt, addScore],
   );
 
   const chooseEnemyDir = useCallback((e: Enemy) => {
@@ -547,8 +524,7 @@ export function MuncherGame({
       const dx = Math.min(rawDx, W - rawDx);
       if (dx > TILE * 0.55 || Math.abs(pp.y - ep.y) > TILE * 0.55) continue;
       if (e.mode === "frightened") {
-        scoreRef.current += eatValue.current;
-        setScore(scoreRef.current);
+        addScore(eatValue.current);
         eatValue.current = Math.min(1600, eatValue.current * 2);
         e.mode = "eyes";
         beep(1000, 1600, 0.18, 0.07, "square");
@@ -557,73 +533,60 @@ export function MuncherGame({
         return;
       }
     }
-  }, [actorPixel, killPlayer]);
+  }, [actorPixel, killPlayer, addScore]);
 
-  const tick = useCallback(
-    (dt: number) => {
-      if (freeze.current > 0) {
-        freeze.current -= dt;
-        if (freeze.current <= 0 && pending.current === "death") {
-          pending.current = null;
-          if (livesRef.current <= 0) {
-            gameOver();
-            return;
-          }
-          placeActors();
+  const tick = (dt: number) => {
+    if (freeze.current > 0) {
+      freeze.current -= dt;
+      if (freeze.current <= 0 && pending.current === "death") {
+        pending.current = null;
+        if (livesRef.current <= 0) {
+          gameOver();
+          return;
         }
-        return;
+        placeActors();
       }
+      return;
+    }
 
-      anim.current += dt;
-      denClock.current += dt;
+    anim.current += dt;
+    denClock.current += dt;
 
-      patrolTimer.current += dt;
-      if (patrolTimer.current >= 8000) {
-        patrolTimer.current -= 8000;
-        patrolChase.current = !patrolChase.current;
-      }
+    patrolTimer.current += dt;
+    if (patrolTimer.current >= 8000) {
+      patrolTimer.current -= 8000;
+      patrolChase.current = !patrolChase.current;
+    }
 
-      if (frightTimer.current > 0) {
-        frightTimer.current -= dt;
-        if (frightTimer.current <= 0) {
-          for (const e of enemies.current) {
-            if (e.mode === "frightened") e.mode = "chase";
-          }
+    if (frightTimer.current > 0) {
+      frightTimer.current -= dt;
+      if (frightTimer.current <= 0) {
+        for (const e of enemies.current) {
+          if (e.mode === "frightened") e.mode = "chase";
         }
       }
+    }
 
-      // Staggered release from the den.
-      for (const e of enemies.current) {
-        if (e.state === "den" && denClock.current >= e.release) e.state = "leaving";
-      }
+    // Staggered release from the den.
+    for (const e of enemies.current) {
+      if (e.state === "den" && denClock.current >= e.release) e.state = "leaving";
+    }
 
-      updatePlayer(dt);
-      for (const e of enemies.current) {
-        advance(e, enemySpeed(e), dt, enemyAllowDen, (a) => onEnemyArrive(a as Enemy));
-      }
+    updatePlayer(dt);
+    for (const e of enemies.current) {
+      advance(e, enemySpeed(e), dt, enemyAllowDen, (a) => onEnemyArrive(a as Enemy));
+    }
 
-      checkCollisions();
-      if (freeze.current > 0) return; // a death was just triggered
+    checkCollisions();
+    if (freeze.current > 0) return; // a death was just triggered
 
-      if (fruit.current) {
-        fruit.current.ttl -= dt;
-        if (fruit.current.ttl <= 0) fruit.current = null;
-      }
+    if (fruit.current) {
+      fruit.current.ttl -= dt;
+      if (fruit.current.ttl <= 0) fruit.current = null;
+    }
 
-      if (dotCount.current <= 0) nextLevel();
-    },
-    [
-      updatePlayer,
-      advance,
-      enemySpeed,
-      enemyAllowDen,
-      onEnemyArrive,
-      checkCollisions,
-      gameOver,
-      placeActors,
-      nextLevel,
-    ],
-  );
+    if (dotCount.current <= 0) nextLevel();
+  };
 
   // --- drawing ------------------------------------------------------------
 
@@ -820,36 +783,14 @@ export function MuncherGame({
     reset();
   }, [reset]);
 
-  // Bank the running score if the player closes the overlay mid-game — a death
-  // reports through gameOver(), so this only covers the quit path.
-  useEffect(
-    () => () => {
-      if (phaseRef.current !== "over" && scoreRef.current > 0) {
-        onGameOverRef.current(scoreRef.current);
-      }
-    },
-    [],
-  );
+  useGameLoop(phase === "playing", (dt) => {
+    tick(dt);
+    draw();
+  });
 
   useEffect(() => {
-    if (phase !== "playing") {
-      draw();
-      return;
-    }
-    let raf = 0;
-    let last = performance.now();
-    const frame = (now: number) => {
-      const dt = Math.min(50, now - last);
-      last = now;
-      tick(dt);
-      draw();
-      if (phaseRef.current === "playing") {
-        raf = requestAnimationFrame(frame);
-      }
-    };
-    raf = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(raf);
-  }, [phase, tick, draw]);
+    if (phase !== "playing") draw();
+  }, [phase, draw]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -881,7 +822,7 @@ export function MuncherGame({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [start, changePhase, reset]);
+  }, [phaseRef, start, changePhase, reset]);
 
   const touchStart = useRef<{ x: number; y: number } | null>(null);
 
@@ -903,74 +844,58 @@ export function MuncherGame({
       const t = event.touches[0];
       touchStart.current = { x: t.clientX, y: t.clientY };
     },
-    [start, reset, changePhase],
+    [phaseRef, start, reset, changePhase],
   );
 
-  const onTouchMove = useCallback((event: React.TouchEvent) => {
-    const s = touchStart.current;
-    if (!s || phaseRef.current !== "playing") return;
-    const t = event.touches[0];
-    const dx = t.clientX - s.x;
-    const dy = t.clientY - s.y;
-    if (Math.abs(dx) < 14 && Math.abs(dy) < 14) return;
-    player.current.desired =
-      Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : dy > 0 ? "down" : "up";
-    touchStart.current = { x: t.clientX, y: t.clientY };
-  }, []);
+  const onTouchMove = useCallback(
+    (event: React.TouchEvent) => {
+      const s = touchStart.current;
+      if (!s || phaseRef.current !== "playing") return;
+      const t = event.touches[0];
+      const dx = t.clientX - s.x;
+      const dy = t.clientY - s.y;
+      if (Math.abs(dx) < 14 && Math.abs(dy) < 14) return;
+      player.current.desired =
+        Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : dy > 0 ? "down" : "up";
+      touchStart.current = { x: t.clientX, y: t.clientY };
+    },
+    [phaseRef],
+  );
 
   const onTouchEnd = useCallback(() => {
     touchStart.current = null;
   }, []);
 
-  const isNewBest = phase === "over" && score > 0 && score > bestAtRoundStart.current;
-
   return (
-    <div className={styles.gameWrap}>
-      <div className={styles.gameHud}>
-        <span>
-          SCORE <b>{formatScore(score)}</b>
-        </span>
-        <span>
-          LV <b>{level.toString().padStart(2, "0")}</b>
-        </span>
-        <span className={styles.gameLives}>{"▲".repeat(Math.max(0, lives))}</span>
-        <span>
-          HI <b>{formatScore(Math.max(hiScore, score))}</b>
-        </span>
-      </div>
-      <div className={styles.gameScreen}>
-        <canvas
-          ref={canvasRef}
-          width={W}
-          height={H}
-          className={styles.gameCanvas}
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
-        />
-        {banner && phase === "playing" && <div className={styles.waveBanner}>{banner}</div>}
-        {phase !== "playing" && (
-          <div className={styles.gameMsg}>
-            {phase === "ready" && (
-              <>
-                <span>READY?</span>
-                <span className={styles.gameMsgSub}>Press any key to munch — or tap</span>
-              </>
-            )}
-            {phase === "paused" && <span className={styles.blink}>PAUSED</span>}
-            {phase === "over" && (
-              <>
-                <span>GAME OVER</span>
-                <span>SCORE {formatScore(score)}</span>
-                {isNewBest && <span className={styles.newBest}>★ NEW HI-SCORE ★</span>}
-                <span className={styles.gameMsgSub}>Press Enter or tap to play again</span>
-              </>
-            )}
-          </div>
-        )}
-        <div className={styles.gameScanlines} aria-hidden />
-      </div>
-      <p className={styles.gameControls}>◀ ▶ ▲ ▼ MOVE — P PAUSE</p>
-    </div>
+    <GameShell
+      score={score}
+      hiScore={Math.max(hiScore, score)}
+      hudExtra={
+        <>
+          <span>
+            LV <b>{level.toString().padStart(2, "0")}</b>
+          </span>
+          <span className={styles.gameLives}>{"▲".repeat(Math.max(0, lives))}</span>
+        </>
+      }
+      controls="◀ ▶ ▲ ▼ MOVE — P PAUSE"
+    >
+      <canvas
+        ref={canvasRef}
+        width={W}
+        height={H}
+        className={styles.gameCanvas}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+      />
+      {banner && phase === "playing" && <div className={styles.waveBanner}>{banner}</div>}
+      <PhaseOverlay
+        phase={phase}
+        score={score}
+        isNewBest={isNewBest}
+        readyHint="Press any key or tap to munch"
+      />
+    </GameShell>
   );
 }
