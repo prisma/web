@@ -4,6 +4,14 @@ export const siteConfig = {
     "Prisma is the data platform for modern applications — ORM, Postgres, and the tools to build with data.",
   url: "https://www.prisma.io",
   ogImage: "/og.png",
+  // The hero proof line, shared by the homepage and /contact so the numbers
+  // can't drift apart — the star count in particular dates fast. The first
+  // entry is rendered as "Trusted by <stat> <label>".
+  proof: [
+    { stat: "500,000+", label: "developers" },
+    { stat: "28%", label: "of the TypeScript ORM market" },
+    { stat: "46,500+", label: "GitHub stars" },
+  ],
   // Routes per design-ref/sitemap.md (Phase 1)
   platform: [
     {

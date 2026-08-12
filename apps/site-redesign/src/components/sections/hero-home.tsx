@@ -6,6 +6,7 @@ import { prismBands } from "@/components/brand/prism-ray"
 import { Texture } from "@/components/brand/texture"
 import { ConsoleIllustration } from "@/components/sections/console-illustration"
 import { HeroBackdrop } from "@/components/sections/hero-backdrop"
+import { siteConfig } from "@/lib/config"
 import { cn } from "@/lib/utils"
 
 // Spectrum gradient matching the brand CTA glow (see prism-button.tsx).
@@ -23,11 +24,8 @@ const CHECKS = [
   { label: "The ORM is free, always", color: "text-prism-red-500" },
 ]
 
-const PROOF = [
-  { stat: "500,000+", label: "developers" },
-  { stat: "28%", label: "of the TypeScript ORM market" },
-  { stat: "46,500+", label: "GitHub stars" },
-]
+// Shared with /contact's hero — see siteConfig.proof.
+const PROOF = siteConfig.proof
 
 // Homepage hero: a wrapped prismatic panel — light enters as the brand's
 // triple-band prism ray, disperses into a spectral wash behind the copy, and
