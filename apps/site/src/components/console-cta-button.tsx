@@ -2,12 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { Button, type ButtonProps } from "@prisma/eclipse";
-import { getUtmParams, hasUtmParams, type UtmParams } from "@prisma-docs/ui/lib/utm";
+import { getUtmParams, type UtmParams } from "@prisma-docs/ui/lib/utm";
 import { trackCTA } from "@prisma-docs/ui/lib/analytics";
 
 interface ConsoleCtaButtonProps extends Omit<ButtonProps, "asChild"> {
   consolePath: "/login" | "/sign-up";
-  defaultUtm: UtmParams;
   target?: string;
   rel?: string;
   /** Where this CTA sits, e.g. "navbar", "hero", "pricing". Sent with the cta_click event. */
@@ -30,7 +29,6 @@ function buildConsoleHref(consolePath: "/login" | "/sign-up", utmParams: UtmPara
 
 export function ConsoleCtaButton({
   consolePath,
-  defaultUtm,
   children,
   target,
   rel,
@@ -38,15 +36,13 @@ export function ConsoleCtaButton({
   ctaText,
   ...props
 }: ConsoleCtaButtonProps) {
-  const [href, setHref] = useState(() => buildConsoleHref(consolePath, defaultUtm));
+  const [href, setHref] = useState(() => buildConsoleHref(consolePath, {}));
 
   useEffect(() => {
     const currentUtmParams = getUtmParams(new URLSearchParams(window.location.search));
 
-    setHref(
-      buildConsoleHref(consolePath, hasUtmParams(currentUtmParams) ? currentUtmParams : defaultUtm),
-    );
-  }, [consolePath, defaultUtm]);
+    setHref(buildConsoleHref(consolePath, currentUtmParams));
+  }, [consolePath]);
 
   return (
     <Button asChild {...props}>

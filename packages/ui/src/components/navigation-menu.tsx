@@ -9,6 +9,7 @@ import { StarCount } from "./star-count";
 import { Fragment, useLayoutEffect, useRef, useState } from "react";
 import { Action, Button } from "@prisma/eclipse";
 import type { Link as WebNavigationLink } from "./web-navigation";
+import { trackCTA } from "../lib/analytics";
 
 const Logo = (
   <svg
@@ -492,7 +493,18 @@ function NavigationMobileMenu({
               variant="default-strong"
               className="w-full"
             >
-              <a href={loginHref}>Login</a>
+              <a
+                href={loginHref}
+                onClick={() =>
+                  trackCTA({
+                    cta_text: "Login",
+                    cta_location: "navbar_mobile",
+                    cta_destination: loginHref,
+                  })
+                }
+              >
+                Login
+              </a>
             </Button>
           </NavigationMenuItem>
           <NavigationMenuItem className="w-full">
@@ -502,7 +514,18 @@ function NavigationMobileMenu({
               variant={buttonVariant}
               className="whitespace-nowrap w-full"
             >
-              <a href={signupHref}>Get started</a>
+              <a
+                href={signupHref}
+                onClick={() =>
+                  trackCTA({
+                    cta_text: "Get started",
+                    cta_location: "navbar_mobile",
+                    cta_destination: signupHref,
+                  })
+                }
+              >
+                Get started
+              </a>
             </Button>
           </NavigationMenuItem>
         </div>

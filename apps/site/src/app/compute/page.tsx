@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import { Button, Card, Action, Badge } from "@prisma/eclipse";
+import { ConsoleCtaButton } from "@/components/console-cta-button";
 import { Card as BentoCard } from "@/components/homepage/bento";
 import { cn } from "@/lib/cn";
 import { CardSection } from "@/components/homepage/card-section/card-section";
@@ -319,18 +320,22 @@ export default async function Page() {
           </p>
           <div className="flex flex-col gap-3 items-center">
             <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
-              <Button asChild variant="ppg" size="2xl">
-                <a
-                  href="https://pris.ly/pdp?utm_source=site&utm_campaign=compute&utm_term=devrel"
-                  className="flex items-center gap-2"
-                >
+              <ConsoleCtaButton
+                consolePath="/sign-up"
+                variant="ppg"
+                size="2xl"
+                className="flex items-center gap-2"
+                ctaLocation="hero"
+                ctaText="Try Prisma Compute"
+              >
+                <>
                   <span>Try Prisma Compute</span>
                   <i className="flex items-center fa-regular fa-arrow-up-right" aria-hidden="true" />
-                </a>
-              </Button>
+                </>
+              </ConsoleCtaButton>
               <Button asChild variant="default-strong" size="2xl">
                 <a
-                  href="https://pris.ly/pricing-compute?utm_source=site&utm_campaign=compute&utm_term=devrel"
+                  href="https://www.prisma.io/docs/compute/pricing"
                   className="flex items-center gap-2"
                 >
                   <span>See pricing</span>
@@ -491,7 +496,7 @@ export default async function Page() {
             <div className="flex flex-col md:flex-row gap-6">
               <Button asChild variant="ppg" size="2xl">
                 <a
-                  href="https://pris.ly/compute-blog-pb?utm_source=site&utm_campaign=compute&utm_term=devrel"
+                  href="https://www.prisma.io/blog/launching-prisma-compute-public-beta"
                   className="flex gap-2 items-center"
                 >
                   <span>Read the launch post</span>
@@ -500,7 +505,7 @@ export default async function Page() {
               </Button>
               <Button asChild variant="default-strong" size="2xl">
                 <a
-                  href="https://pris.ly/compute-docs?utm_source=site&utm_campaign=compute&utm_term=devrel"
+                  href="https://www.prisma.io/docs/compute"
                   className="flex gap-2 items-center"
                 >
                   <span>Read the docs</span>

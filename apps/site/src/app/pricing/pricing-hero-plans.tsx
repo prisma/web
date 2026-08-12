@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@prisma/eclipse";
+import { ConsoleCtaButton } from "@/components/console-cta-button";
 import {
   type Symbol,
   type PlanPoint,
@@ -229,20 +230,18 @@ export function PricingHeroPlans({
                       / month
                     </span>
                   </p>
-                  <Button
-                    asChild
+                  <ConsoleCtaButton
+                    consolePath="/login"
                     variant={highlighted ? "ppg" : "default-strong"}
                     size="xl"
                     className="mt-4 w-full"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    ctaLocation="pricing_plan_card"
+                    ctaText={planActions[planKey]}
                   >
-                    <a
-                      href="https://console.prisma.io/login?utm_source=website&utm_medium=pricing"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {planActions[planKey]}
-                    </a>
-                  </Button>
+                    {planActions[planKey]}
+                  </ConsoleCtaButton>
                   <div className="mt-5 space-y-5">
                     <div>
                       <p className="m-0 text-xs uppercase tracking-[1.2px] text-foreground-neutral-weak">

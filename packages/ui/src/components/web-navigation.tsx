@@ -17,6 +17,7 @@ import {
 import { useEffect, useState } from "react";
 import { FontAwesomeScript as WebFA } from "./fontawesome-web";
 import { cn } from "../lib/cn";
+import { trackCTA } from "../lib/analytics";
 
 export interface Link {
   text: string;
@@ -54,11 +55,7 @@ function buildHref(base: string, utm?: WebNavigationProps["utm"]) {
   return isAbsolute ? url.toString() : `${url.pathname}${url.search}${url.hash}`;
 }
 
-function buildConsoleHref(
-  pathname: "/login" | "/sign-up",
-  utm?: WebNavigationProps["utm"],
-  preserveExactUtm = false,
-) {
+function buildConsoleHref(pathname: "/login" | "/sign-up", utm?: WebNavigationProps["utm"]) {
   if (!utm) {
     return `https://console.prisma.io${pathname}`;
   }
@@ -71,10 +68,6 @@ function buildConsoleHref(
     }
   }
 
-  if (!preserveExactUtm && !href.searchParams.has("utm_campaign")) {
-    href.searchParams.set("utm_campaign", pathname === "/login" ? "login" : "signup");
-  }
-
   return href.toString();
 }
 
@@ -85,8 +78,8 @@ export function WebNavigation({
   buttonVariant = "ppg",
 }: WebNavigationProps) {
   const [mobileView, setMobileView] = useState(false);
-  const loginHref = buildConsoleHref("/login", utm, preserveExactUtm);
-  const signupHref = buildConsoleHref("/sign-up", utm, preserveExactUtm);
+  const loginHref = buildConsoleHref("/login", utm);
+  const signupHref = buildConsoleHref("/sign-up", utm);
   const logoHref = preserveExactUtm
     ? buildHref("https://www.prisma.io", utm)
     : "https://www.prisma.io";
@@ -160,12 +153,34 @@ export function WebNavigation({
               <Socials include={["discord"]} />
               <NavigationMenuItem className="ml-2 -mr-2 hidden sm:block">
                 <Button asChild variant="default-strong">
-                  <a href={loginHref}>Login</a>
+                  <a
+                    href={loginHref}
+                    onClick={() =>
+                      trackCTA({
+                        cta_text: "Login",
+                        cta_location: "navbar",
+                        cta_destination: loginHref,
+                      })
+                    }
+                  >
+                    Login
+                  </a>
                 </Button>
               </NavigationMenuItem>
               <NavigationMenuItem className="hidden sm:block">
                 <Button asChild variant={buttonVariant} className="whitespace-nowrap">
-                  <a href={signupHref}>Get started</a>
+                  <a
+                    href={signupHref}
+                    onClick={() =>
+                      trackCTA({
+                        cta_text: "Get started",
+                        cta_location: "navbar",
+                        cta_destination: signupHref,
+                      })
+                    }
+                  >
+                    Get started
+                  </a>
                 </Button>
               </NavigationMenuItem>
             </div>
