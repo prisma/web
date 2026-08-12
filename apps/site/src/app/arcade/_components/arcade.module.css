@@ -1,18 +1,607 @@
 /* ==========================================================================
-   PRISMA ARCADE
-   Page chrome (hero, cards, leaderboard) is Tailwind + @prisma/eclipse
-   tokens in the components. This module holds only what utilities can't
-   express: the game-screen treatment and its keyframes.
-
-   Everything INSIDE .gameScreen / .cardScreen is a lit CRT: it stays dark in
-   both site themes on purpose, so those colors are fixed. Everything outside
-   the screen uses semantic tokens and themes normally.
+   PRISMA ARCADE — deliberately off-brand. CRT glow, scanlines, pixel type.
+   The page is a full-screen takeover: always dark, no site chrome, and every
+   color is fixed rather than themed. Structure lives in the components; this
+   module owns the whole retro treatment.
    ========================================================================== */
+
+.arcade {
+  --arcade-bg: #08010f;
+  --arcade-magenta: #f472b6;
+  --arcade-cyan: #22d3ee;
+  --arcade-yellow: #facc15;
+  --arcade-text: #e2e8f0;
+  position: relative;
+  min-height: 100svh;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 120% 80% at 50% -20%, #2b0a4e 0%, transparent 60%), var(--arcade-bg);
+  color: var(--arcade-text);
+  font-family: var(--font-arcade), "Courier New", monospace;
+  image-rendering: pixelated;
+  cursor: crosshair;
+}
+
+.arcade *::selection {
+  background: var(--arcade-magenta);
+  color: #08010f;
+}
+
+/* --- background layers ------------------------------------------------- */
+
+.stars,
+.starsFar {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.stars {
+  background-image:
+    radial-gradient(1px 1px at 20% 30%, #fff 100%, transparent),
+    radial-gradient(2px 2px at 60% 70%, var(--arcade-cyan) 100%, transparent),
+    radial-gradient(1px 1px at 50% 50%, #fff 100%, transparent),
+    radial-gradient(2px 2px at 80% 10%, var(--arcade-magenta) 100%, transparent),
+    radial-gradient(1px 1px at 90% 60%, #fff 100%, transparent),
+    radial-gradient(1px 1px at 33% 80%, #fff 100%, transparent),
+    radial-gradient(2px 2px at 15% 65%, #fff 100%, transparent);
+  background-size: 550px 550px;
+  animation: twinkle 4s steps(2) infinite;
+}
+
+.starsFar {
+  background-image:
+    radial-gradient(1px 1px at 10% 10%, #ffffffaa 100%, transparent),
+    radial-gradient(1px 1px at 40% 60%, #ffffff88 100%, transparent),
+    radial-gradient(1px 1px at 70% 40%, #ffffffaa 100%, transparent),
+    radial-gradient(1px 1px at 95% 85%, #ffffff88 100%, transparent);
+  background-size: 350px 350px;
+  animation: twinkle 3s steps(2) infinite reverse;
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.gridFloor {
+  position: absolute;
+  left: -25%;
+  right: -25%;
+  bottom: -2%;
+  height: 42%;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to top, rgba(244, 114, 182, 0.45) 2px, transparent 2px),
+    linear-gradient(to right, rgba(34, 211, 238, 0.35) 2px, transparent 2px);
+  background-size: 64px 64px;
+  transform: perspective(320px) rotateX(62deg);
+  transform-origin: center top;
+  animation: floorScroll 1.4s linear infinite;
+  mask-image: linear-gradient(to bottom, transparent, black 30%);
+}
+
+@keyframes floorScroll {
+  from {
+    background-position:
+      0 0,
+      0 0;
+  }
+  to {
+    background-position:
+      0 64px,
+      0 0;
+  }
+}
+
+/* --- CRT overlay -------------------------------------------------------- */
+
+.crt {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 2px,
+    rgba(0, 0, 0, 0.22) 3px,
+    rgba(0, 0, 0, 0.22) 4px
+  );
+  animation: flicker 0.12s steps(2) infinite;
+}
+
+.vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 51;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 90% 90% at 50% 50%,
+    transparent 55%,
+    rgba(0, 0, 0, 0.55) 100%
+  );
+}
+
+@keyframes flicker {
+  0%,
+  100% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* --- header -------------------------------------------------------------- */
+
+.content {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3rem;
+  padding: 4rem 1.5rem 6rem;
+  max-width: 76rem;
+  margin: 0 auto;
+}
+
+.pretitle {
+  font-size: 0.75rem;
+  letter-spacing: 0.35em;
+  color: var(--arcade-cyan);
+  text-shadow: 0 0 8px var(--arcade-cyan);
+}
+
+.title {
+  font-size: clamp(1.75rem, 6vw, 4rem);
+  text-align: center;
+  line-height: 1.2;
+  color: #fff;
+  text-shadow:
+    3px 3px 0 var(--arcade-magenta),
+    -3px -3px 0 var(--arcade-cyan),
+    0 0 24px rgba(244, 114, 182, 0.8),
+    0 0 64px rgba(34, 211, 238, 0.5);
+  animation: titlePulse 2.4s ease-in-out infinite;
+}
+
+@keyframes titlePulse {
+  0%,
+  100% {
+    text-shadow:
+      3px 3px 0 var(--arcade-magenta),
+      -3px -3px 0 var(--arcade-cyan),
+      0 0 24px rgba(244, 114, 182, 0.8),
+      0 0 64px rgba(34, 211, 238, 0.5);
+  }
+  50% {
+    text-shadow:
+      3px 3px 0 var(--arcade-magenta),
+      -3px -3px 0 var(--arcade-cyan),
+      0 0 40px rgba(244, 114, 182, 1),
+      0 0 96px rgba(34, 211, 238, 0.8);
+  }
+}
+
+.blink {
+  animation: blink 1.1s steps(2, start) infinite;
+}
+
+@keyframes blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+.freePlay {
+  font-size: clamp(0.7rem, 2vw, 1rem);
+  letter-spacing: 0.2em;
+  color: var(--arcade-yellow);
+  text-shadow: 0 0 12px var(--arcade-yellow);
+}
+
+.heroCopy {
+  font-family: var(--font-arcade-alt), monospace;
+  font-size: 1.25rem;
+  line-height: 1.4;
+  text-align: center;
+  max-width: 34rem;
+  color: #94a3b8;
+}
+
+/* --- featured game + leaderboard ------------------------------------------ */
+
+.featuredGrid {
+  display: grid;
+  gap: 2rem;
+  width: 100%;
+  align-items: stretch;
+}
+
+@media (min-width: 64rem) {
+  .featuredGrid {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  }
+}
+
+.featuredPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem 1.25rem;
+  border: 3px solid var(--game-color, var(--arcade-cyan));
+  background: rgba(10, 1, 24, 0.85);
+  box-shadow: 0 0 24px rgba(34, 211, 238, 0.25);
+}
+
+.panelHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.panelTitle {
+  font-size: 1rem;
+  letter-spacing: 0.1em;
+  color: var(--game-color, var(--arcade-cyan));
+  text-shadow: 0 0 12px var(--game-color, var(--arcade-cyan));
+}
+
+.panelTagline {
+  font-family: var(--font-arcade-alt), monospace;
+  font-size: 1.1rem;
+  color: #94a3b8;
+}
+
+/* --- hall of fame (leaderboard) -------------------------------------------- */
+
+.hallOfFame {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+  border: 3px solid var(--arcade-magenta);
+  padding: 1.5rem 1.25rem;
+  background: rgba(20, 5, 37, 0.8);
+  box-shadow: 0 0 24px rgba(244, 114, 182, 0.3);
+}
+
+.hallHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.hallTitle {
+  font-size: 0.85rem;
+  letter-spacing: 0.25em;
+  color: var(--arcade-magenta);
+  text-shadow: 0 0 12px var(--arcade-magenta);
+}
+
+.hallGame {
+  font-size: 0.6rem;
+  letter-spacing: 0.25em;
+  color: #64748b;
+}
+
+.prizeBanner {
+  display: flex;
+  gap: 0.75rem;
+  align-items: baseline;
+  border: 2px dashed var(--arcade-yellow);
+  padding: 0.85rem 1rem;
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  line-height: 1.8;
+  color: var(--arcade-yellow);
+  text-shadow: 0 0 8px rgba(250, 204, 21, 0.6);
+}
+
+.claimForm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  border: 2px solid var(--arcade-cyan);
+  padding: 0.85rem 1rem;
+  background: rgba(34, 211, 238, 0.08);
+}
+
+.claimLabel {
+  flex: 1;
+  min-width: 12rem;
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  line-height: 1.8;
+  color: var(--arcade-cyan);
+}
+
+.claimScore {
+  color: #fff;
+  text-shadow: 0 0 8px var(--arcade-cyan);
+}
+
+.initialsInput {
+  width: 5rem;
+  padding: 0.6rem 0.4rem;
+  font-family: inherit;
+  font-size: 0.8rem;
+  letter-spacing: 0.35em;
+  text-align: center;
+  text-transform: uppercase;
+  color: #fff;
+  background: #08010f;
+  border: 2px solid var(--arcade-cyan);
+  outline: none;
+}
+
+.initialsInput:focus-visible {
+  border-color: var(--arcade-yellow);
+  box-shadow: 0 0 12px rgba(250, 204, 21, 0.5);
+}
+
+.claimBtn {
+  font-family: inherit;
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  color: #08010f;
+  background: var(--arcade-yellow);
+  border: none;
+  padding: 0.7rem 1.1rem;
+  cursor: pointer;
+  box-shadow: 0 0 16px rgba(250, 204, 21, 0.5);
+  transition: transform 0.05s steps(1);
+}
+
+.claimBtn:active {
+  transform: translateY(2px);
+}
+
+.hallRows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hallRow {
+  display: grid;
+  grid-template-columns: 2.5rem 1fr auto;
+  gap: 0.75rem;
+  align-items: baseline;
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  padding: 0.5rem 0;
+  color: #94a3b8;
+}
+
+.hallRow.empty {
+  color: #475569;
+}
+
+.hallRow.top {
+  color: var(--arcade-yellow);
+  text-shadow: 0 0 8px var(--arcade-yellow);
+}
+
+.hallRow.claimed {
+  color: var(--arcade-cyan);
+  text-shadow: 0 0 8px var(--arcade-cyan);
+}
+
+.hallInitials {
+  letter-spacing: 0.35em;
+}
+
+.hallNote {
+  margin-top: auto;
+  font-family: var(--font-arcade-alt), monospace;
+  font-size: 1rem;
+  line-height: 1.35;
+  color: #64748b;
+}
+
+/* --- cabinets (secondary games) --------------------------------------------- */
+
+.sectionTitle {
+  font-size: 0.85rem;
+  letter-spacing: 0.25em;
+  text-align: center;
+  color: var(--arcade-cyan);
+  text-shadow: 0 0 12px var(--arcade-cyan);
+}
+
+.cabinets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: 2rem;
+  width: 100%;
+}
+
+.cabinet {
+  --game-color: #fff;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem 1.25rem 1.75rem;
+  background: linear-gradient(180deg, #140525 0%, #0b0217 100%);
+  border: 3px solid var(--game-color);
+  clip-path: polygon(
+    0 12px,
+    12px 12px,
+    12px 0,
+    calc(100% - 12px) 0,
+    calc(100% - 12px) 12px,
+    100% 12px,
+    100% calc(100% - 12px),
+    calc(100% - 12px) calc(100% - 12px),
+    calc(100% - 12px) 100%,
+    12px 100%,
+    12px calc(100% - 12px),
+    0 calc(100% - 12px)
+  );
+  cursor: pointer;
+  text-align: center;
+  font-family: inherit;
+  color: inherit;
+  transition: transform 0.1s steps(2);
+}
+
+.cabinet:hover,
+.cabinet:focus-visible {
+  transform: translateY(-6px);
+  filter: drop-shadow(0 0 18px var(--game-color));
+  outline: none;
+}
+
+.cabinetMarquee {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--game-color);
+  text-shadow: 0 0 12px var(--game-color);
+  letter-spacing: 0.08em;
+}
+
+.cabinetScreen {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 4 / 3;
+  background:
+    repeating-linear-gradient(to bottom, transparent 0 2px, rgba(0, 0, 0, 0.35) 2px 4px),
+    radial-gradient(ellipse at 50% 40%, #1e0b38 0%, #05010a 80%);
+  border: 3px solid #2c1b45;
+  overflow: hidden;
+}
+
+.cabinetScreen svg {
+  width: 55%;
+  height: auto;
+  filter: drop-shadow(0 0 10px var(--game-color));
+  animation: spriteBob 1.2s steps(2) infinite;
+}
+
+@keyframes spriteBob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.tagline {
+  font-family: var(--font-arcade-alt), monospace;
+  font-size: 1.15rem;
+  line-height: 1.3;
+  color: #94a3b8;
+}
+
+.hiScore {
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  color: var(--arcade-cyan);
+}
+
+.hiScoreValue {
+  color: #fff;
+  text-shadow: 0 0 8px var(--arcade-cyan);
+}
+
+.startHint {
+  font-size: 0.6rem;
+  letter-spacing: 0.25em;
+  color: var(--game-color);
+}
+
+/* --- ticker ---------------------------------------------------------------- */
+
+.ticker {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  overflow: hidden;
+  border-top: 3px solid var(--arcade-cyan);
+  background: rgba(5, 1, 10, 0.92);
+  padding: 0.65rem 0;
+}
+
+.tickerTrack {
+  display: flex;
+  width: max-content;
+  gap: 3rem;
+  white-space: nowrap;
+  font-size: 0.65rem;
+  letter-spacing: 0.25em;
+  color: var(--arcade-cyan);
+  animation: tickerScroll 22s linear infinite;
+}
+
+@keyframes tickerScroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* --- play dialog ------------------------------------------------------------ */
+
+/* Applied on top of the design-system dialog: same behavior (portal, focus
+   trap, Esc), retro shell. */
+.retroDialog {
+  border: 4px solid var(--game-color, #fff);
+  border-radius: 0;
+  background:
+    repeating-linear-gradient(to bottom, transparent 0 2px, rgba(0, 0, 0, 0.3) 2px 4px), #0a0118;
+  box-shadow: 0 0 40px var(--game-color, #fff);
+  color: var(--arcade-text);
+  font-family: var(--font-arcade), "Courier New", monospace;
+  image-rendering: pixelated;
+}
+
+.dialogTitle {
+  font-family: var(--font-arcade), "Courier New", monospace;
+  font-size: 1rem;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-align: center;
+  color: var(--game-color, #fff);
+  text-shadow: 0 0 16px var(--game-color, #fff);
+}
+
+.dialogTagline {
+  font-family: var(--font-arcade-alt), monospace;
+  font-size: 1.1rem;
+  text-align: center;
+  color: #94a3b8;
+}
+
+/* --- playable game ----------------------------------------------------------- */
 
 .gameWrap {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
   width: 100%;
   font-family: var(--font-arcade), "Courier New", monospace;
 }
@@ -23,25 +612,25 @@
   gap: 1rem;
   font-size: 0.65rem;
   letter-spacing: 0.15em;
-  color: var(--color-foreground-neutral-weak);
+  color: var(--arcade-cyan, #22d3ee);
 }
 
 .gameHud b {
   font-weight: 400;
-  color: var(--color-foreground-neutral);
+  color: #fff;
+  text-shadow: 0 0 8px var(--arcade-cyan, #22d3ee);
 }
 
 .gameLives {
-  color: var(--color-foreground-success);
+  color: #4ade80;
   letter-spacing: 0.3em;
+  text-shadow: 0 0 8px #4ade80;
 }
 
 .gameScreen {
   position: relative;
-  border: 1px solid var(--color-stroke-neutral);
-  border-radius: var(--radius-square);
+  border: 3px solid var(--game-color, #4ade80);
   overflow: hidden;
-  background: #060210;
 }
 
 .gameCanvas {
@@ -75,19 +664,21 @@
   line-height: 1.6;
   text-align: center;
   color: #fff;
+  text-shadow: 0 0 14px var(--game-color, #4ade80);
   padding: 1rem;
 }
 
 .gameMsgSub {
-  font-family: var(--font-mono, monospace);
-  font-size: 0.85rem;
-  letter-spacing: 0.02em;
-  text-transform: none;
+  font-family: var(--font-arcade-alt), monospace;
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
   color: #94a3b8;
+  text-shadow: none;
 }
 
 .newBest {
-  color: #facc15;
+  color: var(--arcade-yellow, #facc15);
+  text-shadow: 0 0 14px var(--arcade-yellow, #facc15);
   animation: blink 0.6s steps(2, start) infinite;
 }
 
@@ -96,7 +687,7 @@
   font-size: 0.55rem;
   letter-spacing: 0.2em;
   text-align: center;
-  color: var(--color-foreground-neutral-weaker);
+  color: #64748b;
 }
 
 .waveBanner {
@@ -107,67 +698,38 @@
   align-items: center;
   justify-content: center;
   pointer-events: none;
-  font-family: var(--font-arcade), monospace;
   font-size: 1.1rem;
   letter-spacing: 0.3em;
-  color: #7cdae1;
-  text-shadow: 0 0 18px #7cdae1;
+  color: var(--game-color, #22d3ee);
+  text-shadow: 0 0 18px var(--game-color, #22d3ee);
   animation: blink 0.7s steps(2, start) infinite;
-}
-
-.blink {
-  animation: blink 1.1s steps(2, start) infinite;
-}
-
-@keyframes blink {
-  to {
-    visibility: hidden;
-  }
 }
 
 /* Focusable hero game: the whole screen is the keyboard target. */
 .focusScreen {
-  border-radius: var(--radius-square);
   outline: none;
 }
 
 .focusScreen:focus-visible {
-  outline: 2px solid var(--color-stroke-ppg);
+  outline: 3px solid var(--arcade-yellow, #facc15);
   outline-offset: 3px;
 }
 
-/* --- secondary game cards -------------------------------------------------- */
+/* --- misc -------------------------------------------------------------------- */
 
-/* Mini "attract mode" screen on the game cards; dark in both themes. */
-.cardScreen {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  aspect-ratio: 16 / 9;
-  border-radius: var(--radius-square);
-  border: 1px solid var(--color-stroke-neutral);
-  overflow: hidden;
-  background:
-    repeating-linear-gradient(to bottom, transparent 0 2px, rgba(0, 0, 0, 0.35) 2px 4px),
-    radial-gradient(ellipse at 50% 40%, #17103a 0%, #060210 80%);
+.exitLink {
+  font-size: 0.6rem;
+  letter-spacing: 0.25em;
+  color: #64748b;
+  text-decoration: none;
+  border-bottom: 2px dotted #64748b;
+  padding-bottom: 0.2rem;
 }
 
-.cardScreen svg {
-  width: 34%;
-  height: auto;
-  filter: drop-shadow(0 0 10px var(--game-color, #7cdae1));
-  animation: spriteBob 1.2s steps(2) infinite;
-}
-
-@keyframes spriteBob {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-4px);
-  }
+.exitLink:hover {
+  color: var(--arcade-cyan);
+  border-color: var(--arcade-cyan);
+  text-shadow: 0 0 8px var(--arcade-cyan);
 }
 
 /* --- scroll reveal ---------------------------------------------------------- */
@@ -186,10 +748,12 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .blink,
-  .newBest,
-  .waveBanner,
-  .cardScreen svg {
+  .arcade *,
+  .crt,
+  .stars,
+  .starsFar,
+  .gridFloor,
+  .tickerTrack {
     animation: none !important;
   }
 

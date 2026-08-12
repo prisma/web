@@ -33,6 +33,7 @@ import styles from "./arcade.module.css";
 const HI_SCORE_STORAGE_KEY = "prisma-arcade-hiscores";
 /** The featured game's key in the hi-score record. */
 const COMET_ID = "comet";
+const COMET_COLOR = "#7cdae1";
 
 const GAME_COMPONENTS: Record<ArcadeGameId, ComponentType<GameProps>> = {
   snake: SnakeGame,
@@ -42,12 +43,18 @@ const GAME_COMPONENTS: Record<ArcadeGameId, ComponentType<GameProps>> = {
   meteors: MeteorsGame,
 };
 
-const CARD_SURFACE =
-  "rounded-square-high border border-stroke-neutral bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-ppg)_262.5%)]";
+const TICKER_ITEMS = [
+  "★ WELCOME TO THE PRISMA ARCADE ★",
+  "6 GAMES ★ FREE PLAY",
+  "TOP PILOT WINS $500 IN PRISMA CREDITS",
+  "NO QUARTERS REQUIRED",
+  "TYPE-SAFE SINCE 2016",
+  "WINNERS DON'T USE RAW SQL... USUALLY",
+];
 
 export function ArcadeExperience({
-  /** next/font variable class providing --font-arcade; also applied to the
-   *  play dialog, which portals outside this subtree. */
+  /** next/font variable classes providing --font-arcade / --font-arcade-alt;
+   *  also applied to the play dialog, which portals outside this subtree. */
   fontClass,
 }: {
   fontClass: string;
@@ -108,114 +115,108 @@ export function ArcadeExperience({
   );
 
   const ActiveGame = activeGame ? GAME_COMPONENTS[activeGame.id] : null;
+  const tickerText = [...TICKER_ITEMS, ...TICKER_ITEMS];
 
   return (
-    <main className={`${fontClass} flex-1 bg-background-default text-foreground-neutral`}>
-      {/* ===== 1. HERO + FEATURED GAME + LEADERBOARD ===== */}
-      <section className="relative -mt-24 overflow-hidden px-4 pb-14 pt-40 md:pb-20">
-        <div className="pointer-events-none absolute inset-0 z-0 bg-[linear-gradient(180deg,var(--color-foreground-ppg)_0%,var(--color-background-default)_100%)] opacity-20" />
-        <div className="pointer-events-none absolute inset-0 z-0 bg-[url('/illustrations/homepage/footer_grid.svg')] opacity-60" />
-        <div className="relative z-2 mx-auto flex w-full max-w-296 flex-col gap-12">
-          <div className="mx-auto flex max-w-2xl flex-col items-center gap-4 text-center">
-            <span className="type-title-sm flex items-center gap-2 text-foreground-ppg">
-              <i className="fa-regular fa-gamepad" aria-hidden />
-              Prisma Arcade
-            </span>
-            <h1 className="type-title-5xl m-0 text-balance">Take a break. Set a record.</h1>
-            <p className="m-0 text-lg text-foreground-neutral-weak">
-              Six tiny games built by the Prisma team. Fly Comet Cat, climb the leaderboard, and
-              keep an eye on the $500 Prisma-credits high-score contest.
-            </p>
-          </div>
+    <main className={`${fontClass} ${styles.arcade}`}>
+      <div className={styles.starsFar} aria-hidden />
+      <div className={styles.stars} aria-hidden />
+      <div className={styles.gridFloor} aria-hidden />
 
-          <div className="grid items-stretch gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:gap-8">
-            <div className={`flex flex-col gap-4 p-5 shadow-box-low md:p-6 ${CARD_SURFACE}`}>
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h2 className="type-title-lg m-0 text-foreground-neutral">Comet Cat</h2>
-                <p className="m-0 text-sm text-foreground-neutral-weak">
-                  Flap. Drift. Leave a trail.
-                </p>
-              </div>
-              <CometCatGame hiScore={hiScores[COMET_ID] ?? 0} onGameOver={onCometGameOver} />
+      <div className={styles.content}>
+        <header className="flex flex-col items-center gap-5">
+          <p className={styles.pretitle}>PRISMA PRESENTS</p>
+          <h1 className={styles.title}>
+            PRISMA
+            <br />
+            ARCADE
+          </h1>
+          <p className={`${styles.freePlay} ${styles.blink}`}>FREE PLAY ★ NO QUARTERS REQUIRED</p>
+          <p className={styles.heroCopy}>
+            Fly Comet Cat, climb the leaderboard, and warm up for the high-score contest: $500 in
+            Prisma credits.
+          </p>
+        </header>
+
+        <div className={styles.featuredGrid}>
+          <section
+            className={styles.featuredPanel}
+            style={{ "--game-color": COMET_COLOR } as React.CSSProperties}
+            aria-label="Comet Cat, the featured game"
+          >
+            <div className={styles.panelHead}>
+              <h2 className={styles.panelTitle}>COMET CAT</h2>
+              <p className={styles.panelTagline}>Flap. Drift. Leave a trail.</p>
             </div>
+            <CometCatGame hiScore={hiScores[COMET_ID] ?? 0} onGameOver={onCometGameOver} />
+          </section>
 
-            <Leaderboard
-              entries={entries}
-              pendingScore={pendingScore}
-              lastClaimedAt={lastClaimedAt}
-              onClaim={claimScore}
-            />
-          </div>
+          <Leaderboard
+            entries={entries}
+            pendingScore={pendingScore}
+            lastClaimedAt={lastClaimedAt}
+            onClaim={claimScore}
+          />
         </div>
-      </section>
 
-      {/* ===== 2. MORE GAMES ===== */}
-      <section className="px-4 py-14 md:py-20" aria-label="More games">
-        <div className="mx-auto flex w-full max-w-296 flex-col gap-10">
-          <Reveal className="mx-auto flex max-w-2xl flex-col items-center gap-4 text-center">
-            <span className="type-title-sm text-foreground-ppg">Free play</span>
-            <h2 className="type-title-4xl m-0 text-balance text-foreground-neutral">
-              The back row
-            </h2>
-            <p className="m-0 text-lg text-foreground-neutral-weak">
-              Five more machines, no quarters required. Personal bests live in your browser.
-            </p>
-          </Reveal>
-
-          <Reveal>
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <section className="flex w-full flex-col items-center gap-8" aria-label="More games">
+          <h2 className={styles.sectionTitle}>★ THE BACK ROW ★</h2>
+          <Reveal className="w-full">
+            <div className={styles.cabinets}>
               {GAMES.map((game) => (
                 <button
                   key={game.id}
                   type="button"
                   onClick={() => setActiveGame(game)}
+                  className={styles.cabinet}
                   style={{ "--game-color": game.color } as React.CSSProperties}
-                  className={`group flex cursor-pointer flex-col gap-3 p-5 text-left transition-colors hover:border-stroke-ppg/50 focus-visible:outline-2 focus-visible:outline-stroke-ppg ${CARD_SURFACE}`}
                 >
-                  <span className={styles.cardScreen}>
+                  <span className={styles.cabinetMarquee}>{game.title.toUpperCase()}</span>
+                  <span className={styles.cabinetScreen}>
                     <PixelSprite sprite={game.sprite} label={`${game.title} pixel art`} />
                   </span>
-                  <span className="flex items-baseline justify-between gap-2">
-                    <span className="type-heading-md text-foreground-neutral">{game.title}</span>
-                    <span className="font-mono text-xs text-foreground-neutral-weak">
-                      BEST {formatScore(hiScores[game.id] ?? 0)}
+                  <span className={styles.tagline}>{game.tagline}</span>
+                  <span className={styles.hiScore}>
+                    HI-SCORE{" "}
+                    <span className={styles.hiScoreValue}>
+                      {formatScore(hiScores[game.id] ?? 0)}
                     </span>
                   </span>
-                  <span className="text-sm text-foreground-neutral-weak">{game.tagline}</span>
-                  <span className="mt-auto inline-flex items-center gap-2 text-sm font-medium text-foreground-ppg">
-                    Play
-                    <i
-                      className="fa-regular fa-arrow-right transition-transform group-hover:translate-x-0.5"
-                      aria-hidden
-                    />
-                  </span>
+                  <span className={styles.startHint}>▶ PRESS START</span>
                 </button>
               ))}
             </div>
           </Reveal>
-        </div>
-      </section>
+        </section>
 
-      {/* ===== 3. CLOSING ===== */}
-      <section className="px-4 pb-20">
-        <Reveal className="mx-auto flex w-full max-w-296 flex-col items-center gap-3 text-center">
-          <p className="m-0 text-sm text-foreground-neutral-weak">
-            Shipped between deploys. When you're done playing,{" "}
-            <Link href="/stack" className="text-foreground-ppg underline underline-offset-2">
-              see what we build the rest of the time
-            </Link>
-            .
-          </p>
-        </Reveal>
-      </section>
+        <Link href="/" className={styles.exitLink}>
+          ◀ EXIT TO PRISMA.IO
+        </Link>
+      </div>
+
+      <div className={styles.ticker} aria-hidden>
+        <div className={styles.tickerTrack}>
+          {tickerText.map((item, i) => (
+            <span key={i}>{item}</span>
+          ))}
+        </div>
+      </div>
+
+      <div className={styles.crt} aria-hidden />
+      <div className={styles.vignette} aria-hidden />
 
       <Dialog open={activeGame !== null} onOpenChange={(open) => !open && setActiveGame(null)}>
-        <DialogContent className={`${fontClass} max-w-[600px] gap-4`}>
+        <DialogContent
+          className={`${fontClass} ${styles.retroDialog} max-w-[600px] gap-4`}
+          style={{ "--game-color": activeGame?.color } as React.CSSProperties}
+        >
           {activeGame && ActiveGame && (
             <>
               <DialogHeader>
-                <DialogTitle>{activeGame.title}</DialogTitle>
-                <DialogDescription>
+                <DialogTitle className={styles.dialogTitle}>
+                  {activeGame.title.toUpperCase()}
+                </DialogTitle>
+                <DialogDescription className={styles.dialogTagline}>
                   {activeGame.tagline} {activeGame.controls}.
                 </DialogDescription>
               </DialogHeader>

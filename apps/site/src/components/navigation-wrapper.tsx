@@ -49,6 +49,11 @@ export function NavigationWrapper({ links }: NavigationWrapperProps) {
     setMounted(true);
   }, []);
 
+  // /arcade is a full-screen takeover experience with no site chrome
+  if (pathname.startsWith("/arcade")) {
+    return null;
+  }
+
   const currentUtmParams: UtmParams = mounted
     ? getUtmParams(new URLSearchParams(window.location.search))
     : {};
@@ -75,6 +80,10 @@ export function NavigationWrapper({ links }: NavigationWrapperProps) {
 
 export function FooterWrapper() {
   const pathname = usePathname();
+
+  if (pathname.startsWith("/arcade")) {
+    return null;
+  }
 
   // Determine button variant based on pathname
   const getButtonVariant = (): ColorType => {
