@@ -14,11 +14,10 @@ import { CometCatGame } from "./comet-cat-game";
 import { formatScore, type GameProps } from "./game-kit";
 import { InvadersGame } from "./invaders-game";
 import {
+  fetchLeaderboard,
   Leaderboard,
-  loadLeaderboard,
-  MAX_ENTRIES,
   qualifies,
-  saveLeaderboard,
+  submitScore,
   type LeaderboardEntry,
 } from "./leaderboard";
 import { MeteorsGame } from "./meteors-game";
@@ -72,7 +71,7 @@ export function ArcadeExperience({
     } catch {
       // Corrupt or unavailable storage — start from zero.
     }
-    setEntries(loadLeaderboard());
+    void fetchLeaderboard().then(setEntries);
   }, []);
 
   useEffect(() => {
@@ -103,15 +102,11 @@ export function ArcadeExperience({
     (initials: string) => {
       if (pendingScore === null) return;
       const at = Date.now();
-      const next = [...entries, { initials, score: pendingScore, at }]
-        .sort((a, b) => b.score - a.score || a.at - b.at)
-        .slice(0, MAX_ENTRIES);
-      setEntries(next);
-      saveLeaderboard(next);
+      void submitScore({ initials, score: pendingScore, at }).then(setEntries);
       setPendingScore(null);
       setLastClaimedAt(at);
     },
-    [pendingScore, entries],
+    [pendingScore],
   );
 
   const ActiveGame = activeGame ? GAME_COMPONENTS[activeGame.id] : null;
@@ -125,16 +120,13 @@ export function ArcadeExperience({
 
       <div className={styles.content}>
         <header className="flex flex-col items-center gap-5">
-          <p className={styles.pretitle}>PRISMA PRESENTS</p>
           <h1 className={styles.title}>
             PRISMA
             <br />
             ARCADE
           </h1>
-          <p className={`${styles.freePlay} ${styles.blink}`}>FREE PLAY ★ NO QUARTERS REQUIRED</p>
           <p className={styles.heroCopy}>
-            Fly Comet Cat, climb the leaderboard, and warm up for the high-score contest: $500 in
-            Prisma credits.
+            Free play, no quarters required. Fly Comet Cat and chase the high score.
           </p>
         </header>
 
@@ -159,7 +151,22 @@ export function ArcadeExperience({
           />
         </div>
 
-        <section className="flex w-full flex-col items-center gap-8" aria-label="More games">
+        <a
+          href="#back-row"
+          className={styles.moreCue}
+          onClick={(event) => {
+            event.preventDefault();
+            document.getElementById("back-row")?.scrollIntoView({ behavior: "smooth" });
+          }}
+        >
+          ▼ 5 MORE GAMES IN THE BACK ROW
+        </a>
+
+        <section
+          id="back-row"
+          className={`${styles.backRow} flex w-full flex-col items-center gap-8`}
+          aria-label="More games"
+        >
           <h2 className={styles.sectionTitle}>★ THE BACK ROW ★</h2>
           <Reveal className="w-full">
             <div className={styles.cabinets}>

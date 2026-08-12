@@ -1,20 +1,20 @@
 "use client";
 
 /**
- * The Comet Cat hall of fame. Scores are stored in localStorage for now — the
- * site has no database, and the global leaderboard is planned to land together
- * with the prize contest. The panel is written so only the storage helpers
- * need to change when a backend arrives: the UI already deals in ranked
- * {initials, score} entries.
+ * The Comet Cat hall of fame. This is designed as a global leaderboard; until
+ * the backend lands, the two async storage functions below are backed by
+ * localStorage and are the exact seam where the API calls will plug in. The
+ * panel itself is compact (top three) and expands to the full top ten.
  */
 
-import { useCallback, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { formatScore } from "./game-kit";
 import styles from "./arcade.module.css";
 
 const LEADERBOARD_KEY = "prisma-arcade-comet-leaderboard";
 const INITIALS_KEY = "prisma-arcade-initials";
 export const MAX_ENTRIES = 10;
+const COMPACT_ROWS = 3;
 
 const ORDINALS = ["1ST", "2ND", "3RD", "4TH", "5TH", "6TH", "7TH", "8TH", "9TH", "10TH"];
 
@@ -25,7 +25,7 @@ export type LeaderboardEntry = {
   at: number;
 };
 
-export function loadLeaderboard(): LeaderboardEntry[] {
+function readEntries(): LeaderboardEntry[] {
   try {
     const raw = localStorage.getItem(LEADERBOARD_KEY);
     if (!raw) return [];
@@ -47,12 +47,22 @@ export function loadLeaderboard(): LeaderboardEntry[] {
   }
 }
 
-export function saveLeaderboard(entries: LeaderboardEntry[]) {
+/** Becomes a GET against the leaderboard API when the backend lands. */
+export async function fetchLeaderboard(): Promise<LeaderboardEntry[]> {
+  return readEntries();
+}
+
+/** Becomes a POST against the leaderboard API when the backend lands. */
+export async function submitScore(entry: LeaderboardEntry): Promise<LeaderboardEntry[]> {
+  const next = [...readEntries(), entry]
+    .sort((a, b) => b.score - a.score || a.at - b.at)
+    .slice(0, MAX_ENTRIES);
   try {
-    localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(entries));
+    localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(next));
   } catch {
     // Storage unavailable — the board still works for this session.
   }
+  return next;
 }
 
 export function loadInitials(): string {
@@ -99,6 +109,13 @@ export function Leaderboard({
   onClaim: (initials: string) => void;
 }) {
   const [initials, setInitials] = useState(loadInitials);
+  const [expanded, setExpanded] = useState(false);
+
+  // If a claim lands below the compact rows, expand so the player sees it.
+  const claimedIndex = entries.findIndex((entry) => entry.at === lastClaimedAt);
+  useEffect(() => {
+    if (claimedIndex >= COMPACT_ROWS) setExpanded(true);
+  }, [claimedIndex]);
 
   const submit = useCallback(
     (event: FormEvent) => {
@@ -111,7 +128,8 @@ export function Leaderboard({
     [initials, onClaim],
   );
 
-  const rows = Array.from({ length: MAX_ENTRIES }, (_, i) => entries[i] ?? null);
+  const visibleRows = expanded ? MAX_ENTRIES : COMPACT_ROWS;
+  const rows = Array.from({ length: visibleRows }, (_, i) => entries[i] ?? null);
 
   return (
     <aside aria-label="Comet Cat hall of fame" className={styles.hallOfFame}>
@@ -120,12 +138,7 @@ export function Leaderboard({
         <span className={styles.hallGame}>COMET CAT</span>
       </div>
 
-      <p className={styles.prizeBanner}>
-        <span aria-hidden>🏆</span>
-        <span>
-          WIN $500 IN PRISMA CREDITS. TOP PILOT TAKES THE PRIZE WHEN THE CONTEST GOES LIVE.
-        </span>
-      </p>
+      <p className={styles.prizeLine}>TOP PILOT WINS $500 IN PRISMA CREDITS.</p>
 
       {pendingScore !== null && (
         <form onSubmit={submit} className={styles.claimForm}>
@@ -149,7 +162,7 @@ export function Leaderboard({
         </form>
       )}
 
-      <ol className={styles.hallRows} aria-label="Top ten scores">
+      <ol className={styles.hallRows} aria-label="Top scores">
         {rows.map((entry, i) => {
           const rowClass = [
             styles.hallRow,
@@ -169,9 +182,19 @@ export function Leaderboard({
         })}
       </ol>
 
+      <button
+        type="button"
+        className={styles.expandBtn}
+        onClick={() => setExpanded((value) => !value)}
+        aria-expanded={expanded}
+      >
+        {expanded ? "▲ SHOW TOP 3" : "▼ SHOW TOP 10"}
+      </button>
+
+      <p className={styles.globalSoon}>GLOBAL LEADERBOARD COMING SOON</p>
       <p className={styles.hallNote}>
-        Scores are saved in your browser for now; the global leaderboard arrives with the contest.
-        The prize is awarded as Prisma Data Platform credit, with contest details to follow.
+        Scores live on this device until then. The prize is awarded as Prisma Data Platform credit,
+        with contest details to follow.
       </p>
     </aside>
   );

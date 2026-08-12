@@ -140,7 +140,7 @@ export function useHeldKeys() {
   return keys;
 }
 
-/** HUD + screen frame + controls hint shared by every game. */
+/** HUD + screen frame + controls hint + fullscreen toggle shared by every game. */
 export function GameShell({
   score,
   hiScore,
@@ -155,8 +155,32 @@ export function GameShell({
   controls: string;
   children: ReactNode;
 }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  // Resolved after mount so the server render never guesses at support.
+  const [fullscreenSupported, setFullscreenSupported] = useState(false);
+
+  useEffect(() => {
+    setFullscreenSupported(document.fullscreenEnabled ?? false);
+    const onChange = () => setIsFullscreen(document.fullscreenElement === wrapRef.current);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  const toggleFullscreen = useCallback(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    if (document.fullscreenElement) {
+      void document.exitFullscreen();
+    } else {
+      el.requestFullscreen().catch(() => {
+        // Denied or unsupported — the inline view keeps working.
+      });
+    }
+  }, []);
+
   return (
-    <div className={styles.gameWrap}>
+    <div ref={wrapRef} className={styles.gameWrap}>
       <div className={styles.gameHud}>
         <span>
           SCORE <b>{formatScore(score)}</b>
@@ -170,7 +194,14 @@ export function GameShell({
         {children}
         <div className={styles.gameScanlines} aria-hidden />
       </div>
-      <p className={styles.gameControls}>{controls}</p>
+      <div className={styles.shellBar}>
+        <p className={styles.gameControls}>{controls}</p>
+        {fullscreenSupported && (
+          <button type="button" className={styles.fsBtn} onClick={toggleFullscreen}>
+            {isFullscreen ? "⤡ EXIT FULL SCREEN" : "⤢ FULL SCREEN"}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
