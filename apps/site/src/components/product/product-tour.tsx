@@ -20,22 +20,56 @@ const HOLD = 5;
 export function ProductTour({
   stops,
   className,
+  /** Distinguishes this tour's tab/panel ids from any other on the page. */
+  id = "tour",
 }: {
   stops: ProductTourStop[];
   className?: string;
+  id?: string;
 }) {
   const reduce = useReducedMotion();
   const [active, setActive] = useState(0);
   const [driving, setDriving] = useState(false);
-  const paused = useRef(false);
+  // Hovering holds the tour on its current stop. This is state, not a ref, so
+  // the dwell bar unmounts with it — as a ref it kept tweening while the tour
+  // stood still, so the bar sat full under a stop that wasn't advancing.
+  const [paused, setPaused] = useState(false);
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
+  // Keyed on `active` and `paused`, so the interval restarts whenever either
+  // changes: dwell always measures from the moment the stop actually became
+  // current, which is what the bar is drawing.
   useEffect(() => {
-    if (reduce || driving) return;
-    const id = setInterval(() => {
-      if (!paused.current) setActive((a) => (a + 1) % stops.length);
-    }, HOLD * 1000);
-    return () => clearInterval(id);
-  }, [reduce, driving, stops.length]);
+    if (reduce || driving || paused) return;
+    const id = setTimeout(() => setActive((a) => (a + 1) % stops.length), HOLD * 1000);
+    return () => clearTimeout(id);
+  }, [reduce, driving, paused, active, stops.length]);
+
+  const select = (i: number) => {
+    setActive(i);
+    setDriving(true);
+  };
+
+  // Arrow keys are the only interaction the ARIA tabs pattern defines, so a
+  // strip that announces itself as tabs has to honour them. Roving tabIndex
+  // below keeps the strip a single tab stop, per the same pattern.
+  const onTabKeyDown = (event: React.KeyboardEvent) => {
+    const delta =
+      event.key === "ArrowRight" || event.key === "ArrowDown"
+        ? 1
+        : event.key === "ArrowLeft" || event.key === "ArrowUp"
+          ? -1
+          : event.key === "Home"
+            ? -active
+            : event.key === "End"
+              ? stops.length - 1 - active
+              : 0;
+    if (!delta) return;
+    event.preventDefault();
+    const next = (active + delta + stops.length) % stops.length;
+    select(next);
+    tabRefs.current[next]?.focus();
+  };
 
   return (
     <figure
@@ -46,12 +80,8 @@ export function ProductTour({
         "flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card text-left shadow-[0_1px_2px_rgba(21,21,21,0.04),0_8px_16px_-4px_rgba(21,21,21,0.06),0_32px_64px_-16px_rgba(21,21,21,0.14)]",
         className,
       )}
-      onMouseEnter={() => {
-        paused.current = true;
-      }}
-      onMouseLeave={() => {
-        paused.current = false;
-      }}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
     >
       {/* The tab strip is the card's header — the tour's table of contents,
           and the fastest read of what the product actually does. It sits on a
@@ -59,6 +89,8 @@ export function ProductTour({
           page; each stop then brings its own window chrome underneath. */}
       <div
         role="tablist"
+        aria-label="Product tour"
+        onKeyDown={onTabKeyDown}
         className="flex flex-wrap items-center gap-1 border-b border-border/70 bg-muted/40 px-2 py-2"
       >
         {stops.map(({ label }, i) => {
@@ -66,13 +98,16 @@ export function ProductTour({
           return (
             <button
               key={label}
+              ref={(el) => {
+                tabRefs.current[i] = el;
+              }}
               type="button"
               role="tab"
+              id={`${id}-tab-${i}`}
+              aria-controls={`${id}-panel-${i}`}
               aria-selected={isActive}
-              onClick={() => {
-                setActive(i);
-                setDriving(true);
-              }}
+              tabIndex={isActive ? 0 : -1}
+              onClick={() => select(i)}
               className={cn(
                 "relative overflow-hidden rounded-lg px-3 py-1.5 text-[0.8125rem] font-semibold transition-colors duration-300 cursor-pointer",
                 isActive
@@ -82,7 +117,7 @@ export function ProductTour({
             >
               {/* dwell bar, so the strip reads as a tour in progress rather
                   than a control that changed on its own */}
-              {isActive && !reduce && !driving ? (
+              {isActive && !reduce && !driving && !paused ? (
                 <motion.span
                   key={active}
                   aria-hidden
@@ -111,6 +146,8 @@ export function ProductTour({
             <div
               key={label}
               role="tabpanel"
+              id={`${id}-panel-${i}`}
+              aria-labelledby={`${id}-tab-${i}`}
               aria-hidden={!isActive}
               className={cn(
                 "transition-all duration-500 ease-out motion-reduce:transition-none",

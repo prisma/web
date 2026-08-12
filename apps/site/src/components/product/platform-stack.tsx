@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRightBold,
@@ -47,12 +48,20 @@ type Layer = {
   lit: { text: string; bg: string; border: string; glow: string };
   /** Gradient for the pipe leaving this layer. Absent on the last one. */
   pipe?: string;
+  /**
+   * Where this layer's Prisma product lives. The section this replaced carried
+   * a "Learn more" per product, and losing it left the whole section — and
+   * therefore /orm and /compute entirely — with no in-body link to a sibling
+   * product page. The slot links out when it's holding the Prisma option.
+   */
+  href: string;
   options: Option[];
 };
 
 const LAYERS: Layer[] = [
   {
     key: "orm",
+    href: "/orm",
     label: "ORM",
     Icon: Code,
     lit: {
@@ -84,6 +93,7 @@ const LAYERS: Layer[] = [
   },
   {
     key: "database",
+    href: "/postgres",
     label: "Database",
     Icon: Database,
     lit: {
@@ -115,6 +125,7 @@ const LAYERS: Layer[] = [
   },
   {
     key: "hosting",
+    href: "/compute",
     label: "Hosting",
     Icon: Server,
     lit: {
@@ -281,9 +292,16 @@ export function PlatformStack() {
     // restored layer runs the same exchange animation as any other swap, so it
     // reads as the stack rebalancing rather than as a correction.
     if (next.every((v) => v !== 0)) {
-      const pulledBack = order.find((i) => i !== layer) ?? next.findIndex((_, i) => i !== layer);
-      next[pulledBack] = 0;
-      order = order.filter((i) => i !== pulledBack);
+      // swapOrder holds exactly the indices where picked[i] !== 0, so once
+      // every layer is non-Prisma it holds them all and this always resolves.
+      // No `??` fallback: the only candidate was next.findIndex(...), which
+      // returns -1 for a single-layer stack and would assign next[-1] — a stray
+      // property, leaving zero Prisma layers, the one thing this guards.
+      const pulledBack = order.find((i) => i !== layer);
+      if (pulledBack !== undefined) {
+        next[pulledBack] = 0;
+        order = order.filter((i) => i !== pulledBack);
+      }
     }
 
     setPicked(next);
@@ -366,7 +384,11 @@ export function PlatformStack() {
                 ref={(el) => {
                   slotRefs.current[li] = el;
                 }}
+                // -1 so it's never in the tab order but can still be handed
+                // focus when the option a keyboard user activated unmounts
+                tabIndex={-1}
                 className={cn(
+                  "outline-none",
                   "mt-2 flex h-[3.75rem] items-center rounded-xl border px-4 transition-shadow duration-500",
                   lit
                     ? cn(layer.lit.border, layer.lit.bg, layer.lit.glow)
@@ -393,6 +415,24 @@ export function PlatformStack() {
                     {current.name}
                   </motion.span>
                 </AnimatePresence>
+
+                {/* The section's only way out. Shown while the slot holds its
+                    Prisma option, since that's the only state where there's a
+                    product page to go to. */}
+                {current.prisma ? (
+                  <Link
+                    href={layer.href}
+                    className={cn(
+                      "ml-auto flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[0.8125rem] font-semibold transition-colors",
+                      layer.lit.text,
+                      "hover:underline",
+                    )}
+                  >
+                    Learn more
+                    <ArrowRightBold className="size-3" aria-hidden />
+                    <span className="sr-only">about {current.name}</span>
+                  </Link>
+                ) : null}
               </div>
 
               <p className="mt-4 flex items-center gap-1.5 text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground/60">
@@ -429,15 +469,17 @@ export function PlatformStack() {
                           // fires, and the element has travelled under the
                           // cursor, so releasing anywhere lands a click on it —
                           // measured, dropping on empty space swapped the layer
-                          // anyway. The flag has to be raised on drag START:
-                          // onDragEnd runs AFTER the click, so setting it there
-                          // was already too late. Cleared on the next
-                          // pointerdown, which is deterministic and survives
-                          // this button unmounting after a successful drop.
+                          // anyway. Raise the flag on drag START and drop it on
+                          // drag END: the trailing click fires between the two,
+                          // so that window brackets exactly the one click that
+                          // needs suppressing and nothing else.
                           didDrag.current = true;
                         }}
                         onDragEnd={(event) => {
                           setDragging(null);
+                          // by now the trailing click has fired and been
+                          // suppressed, so the guard is spent
+                          didDrag.current = false;
                           const slot = slotRefs.current[li];
                           const p = event as PointerEvent;
                           if (!slot || p.clientX == null) return;
@@ -451,14 +493,16 @@ export function PlatformStack() {
                           choose(li, oi);
                         }}
                         type="button"
-                        // every fresh gesture clears the flag, so a drag can
-                        // only ever suppress its own trailing click
-                        onPointerDown={() => {
-                          didDrag.current = false;
-                        }}
-                        onClick={() => {
+                        onClick={(event) => {
                           if (didDrag.current) return;
                           choose(li, oi);
+                          // Activating this option unmounts it (it moves into
+                          // the slot), which would drop focus to <body> and
+                          // send the next Tab back to the top of the page. Hand
+                          // focus to the slot it just filled. detail === 0
+                          // means the click came from Enter/Space, so a mouse
+                          // user doesn't get a focus ring they didn't ask for.
+                          if (event.detail === 0) slotRefs.current[li]?.focus();
                         }}
                         className={cn(
                           "group relative flex items-center gap-2 rounded-lg border border-black/[0.09] bg-white px-3 py-2 text-left text-[0.875rem] font-medium text-muted-foreground transition-colors duration-200 hover:border-black/20 hover:text-foreground",
