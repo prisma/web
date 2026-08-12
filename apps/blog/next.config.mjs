@@ -266,6 +266,23 @@ const config = {
         source: "/:path*.mdx",
         destination: "/llms.mdx/:path*",
       },
+      // Match docs: agents request the conventional .md suffix too, and the
+      // docs Link headers advertise it. Both suffixes serve the same
+      // markdown rendition.
+      {
+        source: "/:path*.md",
+        destination: "/llms.mdx/:path*",
+      },
+      // Direct hits on the blog origin host (blog.prisma.io/robots.txt) get a
+      // disallow-all robots.txt so the duplicate host is not crawled. Search
+      // Console shows blog.prisma.io URLs indexed with impressions but zero
+      // clicks. The canonical www.prisma.io/robots.txt is served by apps/site
+      // and never reaches this app.
+      {
+        source: "/robots.txt",
+        destination: "/blog/robots-origin.txt",
+        basePath: false,
+      },
     ];
   },
   basePath: "/blog",

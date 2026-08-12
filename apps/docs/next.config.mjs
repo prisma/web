@@ -396,6 +396,15 @@ const config = {
         source: "/:path*.md",
         destination: "/llms.mdx/:path*",
       },
+      // Direct hits on the docs origin host (docs.prisma.io/robots.txt) get a
+      // disallow-all robots.txt so the duplicate host is not crawled. The
+      // canonical www.prisma.io/robots.txt is served by apps/site and never
+      // reaches this app.
+      {
+        source: "/robots.txt",
+        destination: "/docs/robots-origin.txt",
+        basePath: false,
+      },
     ];
   },
   basePath: "/docs",
