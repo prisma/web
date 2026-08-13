@@ -31,7 +31,7 @@ Any public GitHub repository deploys when it meets this contract:
 
 - **Public GitHub repository.** The button deploys the default branch. Private repository support is planned.
 - **A `prisma.compute.json` file at the repository root.** The same configuration Prisma Compute reads for any connected repository: it names the app and sets its HTTP port. It must describe a single app and must not set a `region`, because the person deploying picks the region for both the database and the app. The file must use the JSON form with exactly this name — connected repositories also accept a typed `prisma.compute.ts`, but the Deploy Button does not yet. See [configuration](/compute/configuration).
-- **A TypeScript project** with a `package.json` and a lockfile (`bun.lock`, `package-lock.json`, `pnpm-lock.yaml`, or `yarn.lock`) at the root.
+- **A JavaScript or TypeScript project** with a `package.json` and a lockfile (`bun.lock`, `package-lock.json`, `pnpm-lock.yaml`, or `yarn.lock`) at the root.
 - **A runnable app.** It must build and start under the normal Compute build, listen on the `httpPort` declared in `prisma.compute.json`, and declare anything it needs beyond `DATABASE_URL` as [required environment variables](#environment-variables) on the button link.
 
 A minimal `prisma.compute.json`:
@@ -40,10 +40,14 @@ A minimal `prisma.compute.json`:
 {
   "app": {
     "name": "my-app",
+    "framework": "hono",
+    "entry": "src/index.ts",
     "httpPort": 3000
   }
 }
 ```
+
+`framework` and `entry` tell Compute how to build and start the app. You can omit them — Compute then detects the framework from your dependencies — but setting them makes deploys predictable. The full key reference is on the [configuration](/compute/configuration) page. You can also generate this file by running `npx -y @prisma/cli@next init --config-format json` in your project.
 
 The repository is validated before it is copied. Validation rejects repositories with more than 100 files, a file over 5 MB, more than 25 MB in total, GitHub Actions workflows, symlinks, or Git submodules.
 
@@ -100,12 +104,12 @@ The Console prompts the user for a value for each declared variable before the d
 
 Two rules keep this safe:
 
-- **The URL carries names, never values.** The user types each value (or accepts your example) in the Console form. Values never appear in the link, in browser history, or in the GitHub authorization round-trip.
+- **The URL carries names and public example values, never secrets.** The user types each real value (or accepts your example) in the Console form. Real values never appear in the link, in browser history, or in the GitHub authorization round-trip — only the names and any `env-example` placeholders you chose to publish.
 - **Examples must be safe to publish.** An `env-example-<NAME>` value appears in your README for anyone to read, so use obvious placeholders like `re_example_123`, never a real key.
 
 If you list `DATABASE_URL` or `DATABASE_URL_POOLED` in `env`, the Console shows them as "Added automatically" instead of prompting, which is a useful way to signal that your app uses the database.
 
-You can also declare variables in your repository instead of the link: entries under `app.env.vars` in `prisma.compute.json` show up in the deploy form automatically, with the committed value as the prefill.
+You can also declare variables in your repository instead of the link: entries under `app.env.vars` in `prisma.compute.json` show up in the deploy form automatically, with the committed value as the prefill. The snippet below shows only the `env` addition — merge it into your full config, which still needs `name` and `httpPort`.
 
 ```json
 {

@@ -157,7 +157,12 @@ export function DeployButtonGenerator() {
   const repositoryUrlValid = repositoryUrl.trim() === "" || parsed !== null;
   const projectNameValid =
     projectName.trim() === "" || PROJECT_NAME_PATTERN.test(projectName.trim());
-  const envRowValidity = envVars.map(envRowValid);
+  const envRowValidity = envVars.map((row, index) => {
+    if (!envRowValid(row)) return false;
+    const name = row.name.trim();
+    if (name === "") return true;
+    return !envVars.some((other, i) => i < index && other.name.trim() === name);
+  });
   const envVarsValid = envRowValidity.every(Boolean);
   const utmSourceValid = utmValid(utmSource);
   const utmCampaignValid = utmValid(utmCampaign);
@@ -274,8 +279,8 @@ export function DeployButtonGenerator() {
           ))}
           {!envVarsValid ? (
             <span className="text-xs text-fd-muted-foreground">
-              Names use uppercase letters, numbers, and underscores, like MY_API_KEY. An example
-              needs a name next to it.
+              Names use uppercase letters, numbers, and underscores, like MY_API_KEY, and each
+              name may appear only once. An example needs a name next to it.
             </span>
           ) : null}
           {envVars.length < MAX_ENV_VARS ? (
