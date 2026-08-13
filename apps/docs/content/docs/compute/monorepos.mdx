@@ -1,0 +1,181 @@
+---
+title: Monorepos
+description: Deploy several apps from one repository with a root-level Prisma Compute config.
+url: /compute/monorepos
+metaTitle: Deploy a monorepo | Prisma Compute
+metaDescription: Configure, build, and deploy multiple apps from a monorepo with prisma.compute.ts and Prisma Compute.
+---
+
+Prisma Compute can deploy several apps from one repository. Put one `prisma.compute.ts` at the repository root, declare each deployable app under `apps`, and use the app's key as its CLI target.
+
+Each target becomes a separate Compute app with its own deployments and URL. The targets share one Prisma project and deploy to the same branch, so a preview branch can contain your whole application.
+
+Before you start, install the monorepo's dependencies and complete the sign-in and project-linking steps in [Get started](/compute/getting-started). Run commands from the repository root unless a step says otherwise.
+
+## Example repository
+
+This guide uses a Next.js frontend and a Hono API:
+
+```text title="Repository structure"
+acme-shop/
+├── apps/
+│   ├── api/
+│   │   ├── src/index.ts
+│   │   └── package.json
+│   └── web/
+│       ├── app/
+│       ├── next.config.ts
+│       └── package.json
+├── package.json
+├── pnpm-workspace.yaml
+└── prisma.compute.ts
+```
+
+Your apps can use different supported frameworks and can depend on shared workspace packages. Each app must still have a working build from its configured root.
+
+## 1. Add the Compute config
+
+Create `prisma.compute.ts` at the monorepo root:
+
+```ts title="prisma.compute.ts"
+import { defineComputeConfig } from "@prisma/compute-sdk/config";
+
+export default defineComputeConfig({
+  apps: {
+    web: {
+      root: "apps/web",
+      framework: "nextjs",
+    },
+    api: {
+      root: "apps/api",
+      framework: "hono",
+      entry: "src/index.ts",
+      httpPort: 3000,
+    },
+  },
+});
+```
+
+Here, `web` and `api` are **target keys**. They identify the apps in CLI commands and become the deployed app names unless you set `name` explicitly.
+
+Paths have two different bases:
+
+- `root` is relative to `prisma.compute.ts`.
+- `entry` and build output paths are relative to that app's `root`.
+
+`httpPort` must match the port the deployed server listens on. A server you start yourself must also listen on `0.0.0.0`, not only `localhost`.
+
+The Next.js app in this example also enables standalone output:
+
+```ts title="apps/web/next.config.ts"
+export default { output: "standalone" };
+```
+
+The CLI can load this config without a local SDK installation. Install `@prisma/compute-sdk` as a root development dependency if you want editor autocomplete and type checking. See the [configuration reference](/compute/configuration) for every field, environment inputs, custom build settings, and the JSON config format.
+
+## 2. Verify every app locally
+
+Build each target from the repository root before deploying:
+
+```npm title="Terminal"
+npx @prisma/cli@latest app build web
+npx @prisma/cli@latest app build api
+```
+
+`app build` always builds one target. If you omit the target at the monorepo root, the CLI returns `COMPUTE_CONFIG_TARGET_REQUIRED` and lists the available targets.
+
+From inside a configured `root`, the CLI infers the target, so this builds `api` too:
+
+```npm title="Terminal"
+cd apps/api
+npx @prisma/cli@latest app build
+```
+
+If roots overlap, the deepest matching root wins. Prefer non-overlapping roots unless that behavior is intentional.
+
+## 3. Deploy one app
+
+Pass the target key as the positional argument:
+
+```npm title="Terminal"
+npx @prisma/cli@latest app deploy web
+```
+
+To deploy the API instead:
+
+```npm title="Terminal"
+npx @prisma/cli@latest app deploy api
+```
+
+You can also run the command from inside an app's `root` and omit the target:
+
+```npm title="Terminal"
+cd apps/web
+npx @prisma/cli@latest app deploy
+```
+
+:::warning
+
+The positional `web` in `app deploy web` selects `apps.web` from the config. `--app web` has a different purpose: it overrides the deployed app name. It does not select a config target.
+
+:::
+
+## 4. Deploy the whole monorepo
+
+When your current directory is not inside a configured app root, a bare deploy covers the whole config. With the example structure, run this from the monorepo root:
+
+```npm title="Terminal"
+npx @prisma/cli@latest app deploy
+```
+
+The CLI deploys every target in config order. Project-, branch-, database-, and production-level options apply to the whole run. For example, this deploys every app to the same preview branch:
+
+```npm title="Terminal"
+npx @prisma/cli@latest app deploy --branch feature/search
+```
+
+A deploy-all run rejects per-app overrides such as `--app`, `--framework`, `--entry`, `--http-port`, `--region`, `--env`, and `PRISMA_APP_ID`. Put stable per-app values in `prisma.compute.ts`, or select one target before using an override:
+
+```npm title="Terminal"
+npx @prisma/cli@latest app deploy api --env apps/api/.env.preview
+```
+
+Targets deploy in order and the run stops at the first failure. The error tells you which targets are already live, which target failed, and which targets were not attempted. Fix the failure and rerun the command to converge the repository.
+
+## Command summary
+
+| Goal | Run from the monorepo root |
+| --- | --- |
+| Build one app | `npx @prisma/cli@latest app build web` |
+| Deploy one app | `npx @prisma/cli@latest app deploy web` |
+| Deploy every app | `npx @prisma/cli@latest app deploy` |
+| Deploy every app to a preview branch | `npx @prisma/cli@latest app deploy --branch feature/search` |
+
+## Deploy on push with GitHub
+
+The [GitHub integration](/compute/github) reads the same root config. On each push, Prisma discovers the targets and starts one build per app. Each build uses its target's `root`, framework, entrypoint, port, region, and build settings.
+
+Connect the linked project once:
+
+```npm title="Terminal"
+npx @prisma/cli@latest git connect
+```
+
+For a custom CI pipeline, set `PRISMA_SERVICE_TOKEN` and `PRISMA_PROJECT_ID`, then name the config target positionally:
+
+```bash title="CI"
+PRISMA_SERVICE_TOKEN=... PRISMA_PROJECT_ID=... \
+  npx @prisma/cli@latest app deploy web \
+  --branch "${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}" \
+  --json \
+  --no-interactive
+```
+
+Run one command per target when your pipeline needs independent jobs. Use a bare `app deploy` when one job should deploy the entire monorepo.
+
+## What to read next
+
+- [Configuration](/compute/configuration): all config fields and precedence rules.
+- [GitHub integration](/compute/github): deploy-on-push and preview branches.
+- [Environment variables](/compute/environment-variables): production, preview, and branch-specific values.
+- [Deployments](/compute/deployments): inspect, promote, and roll back deployments.

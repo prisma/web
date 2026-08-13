@@ -9,7 +9,7 @@ metaDescription: "Reference for the prisma.compute.ts file: declare your app's f
 `prisma.compute.ts` is an optional, committed file that declares what you deploy. [`app deploy`](/compute/cli-reference#app) already works with zero config (it detects your framework and builds), so reach for a config file when you want one of these:
 
 - **Reproducible deploys.** Pin the framework, port, and build settings so every deploy (yours, a teammate's, or [deploy-on-push](/compute/github)) does the same thing without re-passing flags.
-- **A monorepo.** Declare several apps in one repository and deploy them together, or one at a time.
+- **A monorepo.** [Declare several apps](/compute/monorepos) in one repository and deploy them together, or one at a time.
 - **Type safety.** Catch a typo'd field or an invalid framework in your editor, before you deploy.
 
 The file is read by `app deploy` and `app build`. It never selects your project, branch, or production; those stay explicit. It also does not configure a database; that stays on the [`--db` flag](/compute/cli-reference#app-deploy-options).
@@ -143,47 +143,7 @@ The config file's directory is treated as the project directory: the [`.prisma/l
 
 ## Monorepos
 
-Use `apps` instead of `app` to declare several apps in one repository, keyed by a target name:
-
-```ts title="prisma.compute.ts"
-import { defineComputeConfig } from "@prisma/compute-sdk/config";
-
-export default defineComputeConfig({
-  apps: {
-    api: {
-      root: "apps/api",
-      framework: "hono",
-      entry: "src/index.ts",
-    },
-    web: {
-      root: "apps/web",
-      framework: "nextjs",
-    },
-  },
-});
-```
-
-All the apps live in one project, deploying to the same branch. From here:
-
-- **Deploy everything** with a bare `app deploy`, which deploys every app in order. This is the default when no target is named or inferred:
-
-  ```npm
-  npx @prisma/cli@latest app deploy
-  ```
-
-- **Deploy one app** by naming its target, or by running from inside its `root` (the deepest matching root wins):
-
-  ```npm
-  npx @prisma/cli@latest app deploy api
-  ```
-
-  ```npm
-  cd apps/api && npx @prisma/cli@latest app deploy
-  ```
-
-When you deploy everything at once, per-app flags like `--framework` or `--entry` are rejected as ambiguous. Pass a target to apply them to one app. Project- and branch-level flags (`--branch`, `--db`, `--prod`, `--yes`) apply to the whole run.
-
-`app build` always targets a single app in a multi-app config. Unlike `deploy`, it has no all-apps form, so pass a target or run from inside the app's `root`.
+Use `apps` instead of `app` to declare several apps in one repository. Each map key is a CLI target, and every target accepts the same fields listed above. See [Deploy a monorepo](/compute/monorepos) for the complete config, directory layout, target selection, local builds, deploy-all behavior, and GitHub automation.
 
 ## How config and flags interact
 
@@ -199,7 +159,8 @@ A config that fails to load or validate stops the deploy before any remote work,
 
 ## What's next
 
+- [Deploy a monorepo](/compute/monorepos): configure, verify, and deploy several apps from one repository.
 - [CLI reference](/compute/cli-reference): every command, flag, and error code.
 - [Deploy your first app](/prisma-compute/deploy): the end-to-end quickstart.
 - [Environment variables](/compute/environment-variables): scoped configuration, secrets, and your database connection string.
-- [GitHub integration](/compute/github): deploy-on-push, including monorepos.
+- [GitHub integration](/compute/github): deploy-on-push and branch previews.
