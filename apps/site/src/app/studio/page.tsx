@@ -3,11 +3,10 @@ import { createPageMetadata } from "@/lib/page-metadata";
 import { Button } from "@prisma/eclipse";
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import Image from "next/image";
+import { ConsoleCtaButton } from "@/components/console-cta-button";
 import { CopyCode } from "@/components/homepage/copy-btn";
 import { Youtube } from "@prisma-docs/ui/components/youtube";
 
-const CONSOLE_URL =
-  "https://console.prisma.io/login?utm_source=website&utm_medium=studio&utm_campaign=cta";
 const STUDIO_DOCS_URL = "https://www.prisma.io/docs/studio";
 const TRY_STUDIO_COMMAND = `npx try-prisma@latest --template orm/starter \\
 && cd hello-prisma \\
@@ -130,12 +129,20 @@ export default function StudioPage() {
           </p>
 
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
-            <Button asChild variant="orm" size="2xl">
-              <a href={CONSOLE_URL} target="_blank" rel="noopener noreferrer">
+            <ConsoleCtaButton
+              consolePath="/login"
+              variant="orm"
+              size="2xl"
+              target="_blank"
+              rel="noopener noreferrer"
+              ctaLocation="hero"
+              ctaText="Explore Studio in Prisma Console"
+            >
+              <>
                 Explore Studio in Prisma Console
                 <i className="fa-regular fa-arrow-up-right" />
-              </a>
-            </Button>
+              </>
+            </ConsoleCtaButton>
             <Button asChild variant="default-strong" size="2xl">
               <a href={STUDIO_DOCS_URL}>
                 Try locally
@@ -213,12 +220,20 @@ export default function StudioPage() {
               </p>
             </div>
 
-            <Button asChild variant="orm" size="xl">
-              <a href={CONSOLE_URL} target="_blank" rel="noopener noreferrer">
+            <ConsoleCtaButton
+              consolePath="/login"
+              variant="orm"
+              size="xl"
+              target="_blank"
+              rel="noopener noreferrer"
+              ctaLocation="body_cta"
+              ctaText="Explore Studio in Console"
+            >
+              <>
                 Explore Studio in Console
                 <i className="fa-regular fa-arrow-right" />
-              </a>
-            </Button>
+              </>
+            </ConsoleCtaButton>
           </div>
 
           <div className="relative overflow-hidden rounded-lg shadow-box-low">

@@ -1,5 +1,6 @@
 import { createPageMetadata } from "@/lib/page-metadata";
 import { Accordion, Accordions, Button } from "@prisma/eclipse";
+import { ConsoleCtaButton } from "@/components/console-cta-button";
 import { faqs } from "./pricing-data";
 import { PricingPageContent } from "./pricing-page-content";
 
@@ -64,12 +65,18 @@ export default function PricingPage() {
                 </p>
               </div>
               <div className="flex flex-col gap-6 md:flex-row">
-                <Button asChild variant="ppg" size="2xl">
-                  <a href="https://console.prisma.io/sign-up?utm_source=website&utm_medium=pricing&utm_campaign=cta">
+                <ConsoleCtaButton
+                  consolePath="/sign-up"
+                  variant="ppg"
+                  size="2xl"
+                  ctaLocation="footer_cta"
+                  ctaText="Create your first Database"
+                >
+                  <>
                     Create your first Database
                     <i className="fa-regular fa-arrow-right" />
-                  </a>
-                </Button>
+                  </>
+                </ConsoleCtaButton>
                 <Button asChild variant="default-strong" size="2xl">
                   <a href="https://www.prisma.io/docs/">
                     Read the docs
