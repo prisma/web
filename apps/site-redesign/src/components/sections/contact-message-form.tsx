@@ -56,7 +56,16 @@ export function ContactMessageForm() {
       {sent ? (
         // The confirmation copy was never supplied, so it stays a visible
         // placeholder rather than a guess — same convention as /pricing.
-        <div className="flex min-h-[24rem] flex-col items-center justify-center gap-5 text-center">
+        //
+        // role="status" because submitting REPLACES the form: without a live
+        // region a screen reader announces nothing, and focus is destroyed along
+        // with the submit button and falls back to <body>. Nothing else on the
+        // site does this swap yet, so this is the precedent.
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex min-h-[24rem] flex-col items-center justify-center gap-5 text-center"
+        >
           <IconTile className="size-14">
             <CheckCircle className="size-6 text-foreground" aria-hidden />
           </IconTile>
