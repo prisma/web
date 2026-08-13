@@ -6,7 +6,7 @@ metaTitle: 'Get started with Prisma Compute via @prisma/cli'
 metaDescription: Install the @prisma/cli beta package, deploy an app to Prisma Compute, and learn the variations for frameworks, production, and CI.
 ---
 
-Deploy an app to [Prisma Compute](/compute) in two commands: sign in, then `app deploy`. This guide takes you from your code to a live URL, then covers the variations you'll need next. For every command, flag, and error code, see the [CLI reference](/compute/cli-reference).
+Deploy an app to [Prisma Compute](/compute) in two commands: sign in, then `composer deploy`. This guide takes you from your code to a live URL, then covers the variations you'll need next. For every command, flag, and error code, see the [CLI reference](/compute/cli-reference).
 
 Install nothing up front: run the [`@prisma/cli`](https://github.com/prisma/prisma-cli) beta package directly with `npx`. The package installs an executable called `prisma-cli`.
 
@@ -21,7 +21,7 @@ Install nothing up front: run the [`@prisma/cli`](https://github.com/prisma/pris
 Deploys fail without a session, so authenticate first:
 
 ```npm
-npx @prisma/cli@latest auth login
+npx @prisma/cli@next auth login
 ```
 
 This opens a browser to sign you in, then stores a session that every later command inherits, including any coding agent working in your directory. The browser step needs a human; in CI or other headless environments, use a [service token](#automation-and-ci) instead. To check who you're signed in as, run `auth whoami`.
@@ -31,7 +31,7 @@ This opens a browser to sign you in, then stores a session that every later comm
 From your app directory, run:
 
 ```npm
-npx @prisma/cli@latest app deploy
+npx @prisma/cli@next composer deploy
 ```
 
 Then the CLI sets up the project, builds your app, and deploys it. After it finishes, you get a live URL.
@@ -39,13 +39,13 @@ Then the CLI sets up the project, builds your app, and deploys it. After it fini
 To stream the app's logs:
 
 ```npm
-npx @prisma/cli@latest app logs
+npx @prisma/cli@next build logs <id>
 ```
 
 To open the live URL in your browser:
 
 ```npm
-npx @prisma/cli@latest app open
+npx @prisma/cli@next service open
 ```
 
 That is the core deploy loop. The sections below cover variations on it.
@@ -54,7 +54,7 @@ That is the core deploy loop. The sections below cover variations on it.
 
 The binary is `prisma-cli`, not `prisma`. That's deliberate: many projects already have the `prisma` binary from [Prisma ORM](/orm), and the beta package doesn't shadow it.
 
-To avoid typing `npx @prisma/cli@latest` each time, install the package and add your own script:
+To avoid typing `npx @prisma/cli@next` each time, install the package and add your own script:
 
 ```npm
 npm install --save-dev @prisma/cli
@@ -63,7 +63,7 @@ npm install --save-dev @prisma/cli
 ```json title="package.json"
 {
   "scripts": {
-    "deploy": "prisma-cli app deploy"
+    "deploy": "prisma-cli composer deploy"
   }
 }
 ```
@@ -75,14 +75,14 @@ Now `npm run deploy` does the same thing.
 On your first deploy, the CLI asks you to pick or create a project; pass `--create-project <name>` to skip the prompt. If your team already has one, link to it before you deploy instead:
 
 ```npm
-npx @prisma/cli@latest project link my-app
+npx @prisma/cli@next project link my-app
 ```
 
 Either path writes `.prisma/local.json`, a gitignored file that pins this directory to a project. It's a local cache, not committed config. Two commands to check your wiring:
 
 ```npm
-npx @prisma/cli@latest project show
-npx @prisma/cli@latest project list
+npx @prisma/cli@next project show
+npx @prisma/cli@next project list
 ```
 
 `project show` tells you what this directory is linked to; `project list` shows the projects you can see.
@@ -92,15 +92,15 @@ npx @prisma/cli@latest project list
 The CLI detects your framework automatically. Today there is first-class support for **Next.js**, **Nuxt**, **Astro**, **Hono**, **NestJS**, and **TanStack Start**:
 
 ```npm
-npx @prisma/cli@latest app deploy --framework nextjs
-npx @prisma/cli@latest app deploy --framework hono --entry src/index.ts
-npx @prisma/cli@latest app deploy --framework tanstack-start
+npx @prisma/cli@next composer deploy --framework nextjs
+npx @prisma/cli@next composer deploy --framework hono --entry src/index.ts
+npx @prisma/cli@next composer deploy --framework tanstack-start
 ```
 
 Deploy a plain Bun server by pointing `--entry` at your server file:
 
 ```npm
-npx @prisma/cli@latest app deploy --framework bun --entry src/server.ts
+npx @prisma/cli@next composer deploy --framework bun --entry src/server.ts
 ```
 
 :::note
@@ -118,7 +118,7 @@ export default { output: "standalone" };
 Before you deploy, you can build the app on your machine:
 
 ```npm
-npx @prisma/cli@latest app build
+npx @prisma/cli@next app build
 ```
 
 ## Deploy to production
@@ -126,7 +126,7 @@ npx @prisma/cli@latest app build
 Your first deployment is promoted to production automatically. After that, every production deploy needs an explicit `--prod` flag, so you don't ship to production by accident:
 
 ```npm
-npx @prisma/cli@latest app deploy --prod
+npx @prisma/cli@next composer deploy --prod
 ```
 
 Without `--prod`, a deploy that resolves to the production branch and already has a live production deployment fails with the error code `PROD_DEPLOY_REQUIRES_FLAG`. With `--prod`, the CLI shows the current live deployment and asks you to confirm before replacing it.
@@ -134,7 +134,7 @@ Without `--prod`, a deploy that resolves to the production branch and already ha
 For scripts and CI, pass both `--prod` and `-y` / `--yes` to accept the confirmation up front:
 
 ```npm
-npx @prisma/cli@latest app deploy --prod --yes
+npx @prisma/cli@next composer deploy --prod --yes
 ```
 
 In non-interactive mode, a `--prod` deploy without `--yes` can't prompt, so it fails with `CONFIRMATION_REQUIRED`; re-run with `--prod --yes`.
@@ -148,13 +148,13 @@ The CLI is built for agents and CI, not just terminals.
 If you've already signed in with `auth login`, anything running in that environment inherits your session, including an agent working in your directory. Check the session:
 
 ```npm
-npx @prisma/cli@latest auth whoami
+npx @prisma/cli@next auth whoami
 ```
 
 For CI, or any environment where the browser sign-in isn't an option, authenticate with a **service token** instead. Set `PRISMA_SERVICE_TOKEN` and the CLI uses it before any stored session:
 
 ```bash
-PRISMA_SERVICE_TOKEN=... npx @prisma/cli@latest app deploy \
+PRISMA_SERVICE_TOKEN=... npx @prisma/cli@next composer deploy \
   --project my-app \
   --app web \
   --branch feature/search \
@@ -165,7 +165,7 @@ PRISMA_SERVICE_TOKEN=... npx @prisma/cli@latest app deploy \
 Pass targets explicitly so nothing depends on a prompt. `--json` gives you structured output to parse; `--no-interactive` makes the CLI fail instead of asking. In non-interactive mode the CLI won't set up a project for you, so create it inline when you need a self-contained run:
 
 ```npm
-npx @prisma/cli@latest app deploy --create-project my-app --app web
+npx @prisma/cli@next composer deploy --create-project my-app --app web
 ```
 
 ### Agent skills
@@ -190,7 +190,7 @@ In `--json` mode, every result is an envelope with an `ok` flag. On failure, `er
 | `APP_AMBIGUOUS`          | More than one app matched. Pass `--app <name>`.                        |
 | `PROD_DEPLOY_REQUIRES_FLAG` | A production deploy is missing explicit intent. Re-run with `--prod`.  |
 | `CONFIRMATION_REQUIRED`  | A `--prod` deploy can't prompt for confirmation here. Pass `--prod --yes`. |
-| `FEATURE_UNAVAILABLE`    | The platform can't serve this yet (e.g. the app has no live URL yet for `app open`). |
+| `FEATURE_UNAVAILABLE`    | The platform can't serve this yet (e.g. the app has no live URL yet for `service open`). |
 
 For the full list, see the [error codes reference](/compute/cli-reference#error-codes).
 
