@@ -287,10 +287,9 @@ function getCliSwitchPathname(
   targetVersion: Version,
   availablePathnames: Iterable<string>,
 ) {
-  if (targetVersion !== LATEST_VERSION && targetVersion !== "v8") {
-    return getVersionRoot(targetVersion);
-  }
-
+  // The classic `prisma` CLI serves every pre-v8 version, so any non-v8 target
+  // (Latest, v6, ...) stays in the CLI section on the latest tree instead of
+  // jumping to that version's ORM docs.
   const targetRoot = targetVersion === "v8" ? V8_CLI_ROOT : LATEST_CLI_ROOT;
   const currentRoot = isV8CliPathname(docsPathname) ? V8_CLI_ROOT : LATEST_CLI_ROOT;
   const suffix =

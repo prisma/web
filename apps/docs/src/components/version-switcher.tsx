@@ -50,8 +50,10 @@ export function VersionSwitcher({
     getGuidesVersionFromPathname(pathname) ??
     getOrmVersionFromPathname(pathname);
   const currentVersion = detectedVersion ?? null;
-  const usesScopedVersions = isGettingStartedVersion || isCliVersion || isGuidesVersion;
-  const visibleVersions = usesScopedVersions
+  // Guides exist only for Latest and v8. The CLI section lists every version:
+  // v8 routes to the unified CLI tree, while older versions (Latest, v6) all
+  // resolve to the classic `prisma` CLI docs.
+  const visibleVersions = isGuidesVersion
     ? versions.filter((version) => version === LATEST_VERSION || version === "v8")
     : versions;
   const label = isGettingStartedVersion
