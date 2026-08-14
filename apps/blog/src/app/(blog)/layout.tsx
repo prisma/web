@@ -107,7 +107,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider defaultTheme="system" storageKey="theme">
       <UtmPersistence />
-      <NavigationWrapper links={baseOptions().links} utm={{ source: "website", medium: "blog" }} />
+      <NavigationWrapper links={baseOptions().links} />
       {children}
       <Footer
         basePath="/blog"

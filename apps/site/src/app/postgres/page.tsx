@@ -1,6 +1,7 @@
 import { createSoftwareApplicationStructuredData } from "@/lib/structured-data";
 import { createPageMetadata } from "@/lib/page-metadata";
 import { Button, Card, Action } from "@prisma/eclipse";
+import { ConsoleCtaButton } from "@/components/console-cta-button";
 import { cn } from "@/lib/cn";
 import { CardSection } from "@/components/homepage/card-section/card-section";
 import { PostgresTabs } from "../../components/postgres";
@@ -10,9 +11,6 @@ import { ScrollCarousel } from "@/components/scroll-carousel";
 import { Youtube } from "@prisma-docs/ui/components/youtube";
 import { CarouselItem } from "@/components/enterprise/carousel-item";
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
-
-const CONSOLE_URL =
-  "https://console.prisma.io/login?utm_source=website&utm_medium=postgres&utm_campaign=cta";
 
 const postgresStructuredData = createSoftwareApplicationStructuredData({
   path: "/postgres",
@@ -137,12 +135,21 @@ export default async function SiteHome() {
             Build, test and ship faster with zero infrastructure to manage.
           </p>
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
-            <Button asChild variant="ppg" size="3xl" className="font-sans-display! font-[650]">
-              <a href={CONSOLE_URL} target="_blank" rel="noopener noreferrer">
+            <ConsoleCtaButton
+              consolePath="/login"
+              variant="ppg"
+              size="3xl"
+              className="font-sans-display! font-[650]"
+              target="_blank"
+              rel="noopener noreferrer"
+              ctaLocation="hero"
+              ctaText="Create database"
+            >
+              <>
                 Create database
                 <i className="fa-regular fa-database" />
-              </a>
-            </Button>
+              </>
+            </ConsoleCtaButton>
             <Button
               asChild
               variant="default-strong"
@@ -280,12 +287,20 @@ export default async function SiteHome() {
               </p>
             </div>
 
-            <Button asChild variant="ppg" size="xl">
-              <a href={CONSOLE_URL} target="_blank" rel="noopener noreferrer">
+            <ConsoleCtaButton
+              consolePath="/login"
+              variant="ppg"
+              size="xl"
+              target="_blank"
+              rel="noopener noreferrer"
+              ctaLocation="body_cta"
+              ctaText="Create your first database"
+            >
+              <>
                 Create your first database
                 <i className="fa-regular fa-arrow-right" />
-              </a>
-            </Button>
+              </>
+            </ConsoleCtaButton>
           </div>
 
           <div className="relative overflow-hidden rounded-lg shadow-box-low">
@@ -308,12 +323,20 @@ export default async function SiteHome() {
               <p className="text-foreground-neutral-weak">Deploy a Postgres database instantly.</p>
             </div>
             <div className="flex flex-col md:flex-row gap-6">
-              <Button asChild variant="ppg" size="2xl">
-                <a href={CONSOLE_URL} target="_blank" rel="noopener noreferrer">
+              <ConsoleCtaButton
+                consolePath="/login"
+                variant="ppg"
+                size="2xl"
+                target="_blank"
+                rel="noopener noreferrer"
+                ctaLocation="footer_cta"
+                ctaText="Create your first database"
+              >
+                <>
                   Create your first database
                   <i className="fa-regular fa-arrow-right" />
-                </a>
-              </Button>
+                </>
+              </ConsoleCtaButton>
               <Button asChild variant="default-strong" size="2xl">
                 <a href="https://www.prisma.io/docs">
                   Read the docs

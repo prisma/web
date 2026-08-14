@@ -22,18 +22,10 @@ interface Link {
 
 interface NavigationWrapperProps {
   links: Link[];
-  utm: {
-    source: string;
-    medium: string;
-  };
 }
 
-export function NavigationWrapper({ links, utm }: NavigationWrapperProps) {
+export function NavigationWrapper({ links }: NavigationWrapperProps) {
   const [mounted, setMounted] = useState(false);
-  const defaultUtmParams = {
-    utm_source: utm.source,
-    utm_medium: utm.medium,
-  };
 
   useEffect(() => {
     setMounted(true);
@@ -43,9 +35,12 @@ export function NavigationWrapper({ links, utm }: NavigationWrapperProps) {
     ? getUtmParams(new URLSearchParams(window.location.search))
     : {};
   const preserveExactUtm = hasUtmParams(currentUtmParams);
-  const resolvedUtmParams = preserveExactUtm ? currentUtmParams : defaultUtmParams;
 
   return (
-    <WebNavigation links={links} utm={resolvedUtmParams} preserveExactUtm={preserveExactUtm} />
+    <WebNavigation
+      links={links}
+      utm={preserveExactUtm ? currentUtmParams : undefined}
+      preserveExactUtm={preserveExactUtm}
+    />
   );
 }
