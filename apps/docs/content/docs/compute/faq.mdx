@@ -3,20 +3,20 @@ title: FAQ
 description: Quick answers to common questions about Prisma Compute.
 url: /compute/faq
 metaTitle: FAQ | Prisma Compute
-metaDescription: Answers to common questions about Prisma Compute, the @prisma/cli beta package, branches, environment variables, and domains.
+metaDescription: Answers to common questions about Prisma Compute, the unified Prisma CLI, branches, environment variables, and domains.
 ---
 
 ## Which package do I install?
 
-You install [`@prisma/cli`](/compute/getting-started), which provides an executable called `prisma-cli`. The quickest way to run it without installing anything is:
+Compute is part of the unified Prisma CLI. Until launch it is published as the `next` tag of the `@prisma/cli` package; the quickest way to run it without installing anything is:
 
 ```npm
-npx @prisma/cli@latest app deploy
+npx @prisma/cli@next service show
 ```
 
-## Why `prisma-cli` and not `prisma`?
+## How do I deploy?
 
-It avoids shadowing the `prisma` binary from [Prisma ORM](/orm), which many projects already have installed. To set up a shorter command, add your own package script; see [A shorter command](/compute/getting-started#a-shorter-command) in the getting started guide.
+Deployments come from a git push, the [Console](https://pris.ly/pdp), or [Prisma Composer](/composer); the CLI has no standalone `deploy` command for a single service. [Connect a GitHub repository](/compute/github) and push, or use [`composer deploy`](/composer/deploying) for CLI-driven deploys of multi-service apps.
 
 ## What's the difference between a project and an app?
 
@@ -30,7 +30,7 @@ A branch is an isolated environment for one line of work. It usually matches a G
 
 ## Does `git connect` deploy my app?
 
-No, it links a project to a GitHub repository and turns on automation for future branch and push events. It does not deploy anything by itself, so if you want to ship right now, run `app deploy`. To set the connection up, see the [GitHub integration docs](/compute/github).
+No, it links a project to a GitHub repository and turns on automation for future branch and push events. It does not deploy anything by itself; push a commit to trigger the first build. To set the connection up, see the [GitHub integration docs](/compute/github).
 
 ## What does a GitHub push do?
 
@@ -42,57 +42,41 @@ In beta, variable values are encrypted and never returned by any surface. `proje
 
 ## How do I rotate a secret?
 
-Update it, then redeploy to production:
+Update it, then redeploy production (push to your default branch, or promote a deployment, which rebuilds with production environment variables):
 
 ```npm
-npx @prisma/cli@latest project env update DATABASE_URL=postgresql://new --role production
-npx @prisma/cli@latest app deploy --prod --yes
+npx @prisma/cli@next project env update DATABASE_URL=postgresql://new --role production
 ```
-
-`--prod` signals intent to deploy to production, and `--yes` accepts the confirmation up front.
 
 ## Does changing a variable redeploy my app?
 
 No. Variables resolve at deploy time, so you need to redeploy for the app to pick up a new value.
 
-## How do I deploy from CI?
+## How do I run the CLI from CI?
 
 Use a service token and explicit targets:
 
 ```bash
-PRISMA_SERVICE_TOKEN=... npx @prisma/cli@latest app deploy \
+PRISMA_SERVICE_TOKEN=... npx @prisma/cli@next service show \
   --project my-app \
-  --app web \
-  --branch "$GITHUB_HEAD_REF" \
+  --service web \
   --json \
   --no-interactive
 ```
 
 Passing every target explicitly keeps the run self-contained; `--json` makes the result parseable, and `--no-interactive` turns any would-be prompt into a structured error.
 
-## Why did my production deploy fail with `PROD_DEPLOY_REQUIRES_FLAG`?
+## Why `SERVICE.PROJECT_SETUP_REQUIRED`?
 
-Your first deploy is promoted to production automatically. After that, deploying to the production branch needs an explicit `--prod` flag. Re-run with `npx @prisma/cli@latest app deploy --prod`, or deploy from a preview branch instead.
-
-## Why did my production deploy fail with `CONFIRMATION_REQUIRED`?
-
-A `--prod` deploy asks you to confirm before replacing the live deployment, and that prompt can't run in non-interactive mode. Pass both flags, `--prod --yes`, to accept the confirmation up front. (`app remove` uses the same `--yes` confirmation.)
-
-## Why `PROJECT_SETUP_REQUIRED`?
-
-This means the CLI couldn't work out which project to deploy to, because the current directory isn't linked to one yet. Create or link a project first with `project create` or `project link`, or name one directly on the command with `--project` or `--create-project`.
-
-## Why `APP_AMBIGUOUS`?
-
-This means your project holds more than one app, so the CLI can't tell which one you meant. Tell it explicitly by passing `--app <name>` with the name of the app you want to deploy.
+The current directory isn't linked to a project, and the CLI won't guess one from package or directory names. Create or link a project first with `project create` or `project link`, or name one directly on the command with `--project`.
 
 ## How do I add a custom domain?
 
-Promote a production app, then:
+Once the service has a running production deployment:
 
 ```npm
-npx @prisma/cli@latest app domain add shop.acme.com --app web
-npx @prisma/cli@latest app domain wait shop.acme.com --app web
+npx @prisma/cli@next service domain add shop.acme.com --service web
+npx @prisma/cli@next service domain wait shop.acme.com --service web
 ```
 
 Add the CNAME record the command returns at your DNS provider. To learn more, see the [Domains docs](/compute/domains).

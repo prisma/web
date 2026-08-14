@@ -6,13 +6,13 @@ metaTitle: "prisma.compute.ts configuration | Prisma Compute"
 metaDescription: "Reference for the prisma.compute.ts file: declare your app's framework, root, port, environment, and build settings, or several apps in a monorepo, with full type safety."
 ---
 
-`prisma.compute.ts` is an optional, committed file that declares what you deploy. [`app deploy`](/compute/cli-reference#app) already works with zero config (it detects your framework and builds), so reach for a config file when you want one of these:
+`prisma.compute.ts` is an optional, committed file that declares what you deploy. Builds already work with zero config (the platform detects your framework), so reach for a config file when you want one of these:
 
 - **Reproducible deploys.** Pin the framework, port, and build settings so every deploy (yours, a teammate's, or [deploy-on-push](/compute/github)) does the same thing without re-passing flags.
 - **A monorepo.** Declare several apps in one repository and deploy them together, or one at a time.
 - **Type safety.** Catch a typo'd field or an invalid framework in your editor, before you deploy.
 
-The file is read by `app deploy` and `app build`. It never selects your project, branch, or production; those stay explicit. It also does not configure a database; that stays on the [`--db` flag](/compute/cli-reference#app-deploy-options).
+The file is read by platform builds and the [`service` commands](/compute/cli-reference#service). It never selects your project, branch, or production; those stay explicit. It also does not configure a database; see [Environment variables](/compute/environment-variables) for the connection string.
 
 ## A minimal config
 
@@ -30,7 +30,7 @@ export default defineComputeConfig({
 });
 ```
 
-Every field is optional. An empty `app: {}` is valid and defers entirely to detection. The values you do set become the defaults for `app deploy`; explicit flags still win over them.
+Every field is optional. An empty `app: {}` is valid and defers entirely to detection. The values you do set become the defaults for builds and the `service` commands; explicit flags still win over them.
 
 :::info
 
@@ -135,11 +135,11 @@ Without a `build` block, the CLI infers everything (running your `package.json` 
 
 ## Where the file lives
 
-`app deploy` reads the **nearest** config file, searching from your current directory up to the repository or workspace root (the closest ancestor with a `.git`, `pnpm-workspace.yaml`, `bun.lock`, `bun.lockb`, or a `workspaces` field). Discovery never escapes the repository.
+The CLI reads the **nearest** config file, searching from your current directory up to the repository or workspace root (the closest ancestor with a `.git`, `pnpm-workspace.yaml`, `bun.lock`, `bun.lockb`, or a `workspaces` field). Discovery never escapes the repository.
 
 Per directory, exactly one of `prisma.compute.ts`, `prisma.compute.mts`, `prisma.compute.js`, `prisma.compute.mjs`, `prisma.compute.cjs`, or `prisma.compute.json` may exist.
 
-The config file's directory is treated as the project directory: the [`.prisma/local.json`](/compute/getting-started#link-an-existing-project) project pin lives there, and paths in the config (`root`, `env.file`) resolve from there. That means the config means the same thing no matter which subdirectory you run the command from.
+The config file's directory is treated as the project directory: the [`.prisma/local.json`](/compute/getting-started#create-or-link-a-project) project pin lives there, and paths in the config (`root`, `env.file`) resolve from there. That means the config means the same thing no matter which subdirectory you run the command from.
 
 ## Monorepos
 
@@ -163,43 +163,17 @@ export default defineComputeConfig({
 });
 ```
 
-All the apps live in one project, deploying to the same branch. From here:
-
-- **Deploy everything** with a bare `app deploy`, which deploys every app in order. This is the default when no target is named or inferred:
-
-  ```npm
-  npx @prisma/cli@latest app deploy
-  ```
-
-- **Deploy one app** by naming its target, or by running from inside its `root` (the deepest matching root wins):
-
-  ```npm
-  npx @prisma/cli@latest app deploy api
-  ```
-
-  ```npm
-  cd apps/api && npx @prisma/cli@latest app deploy
-  ```
-
-When you deploy everything at once, per-app flags like `--framework` or `--entry` are rejected as ambiguous. Pass a target to apply them to one app. Project- and branch-level flags (`--branch`, `--db`, `--prod`, `--yes`) apply to the whole run.
-
-`app build` always targets a single app in a multi-app config. Unlike `deploy`, it has no all-apps form, so pass a target or run from inside the app's `root`.
+All the apps live in one project, deploying to the same branch. A push builds every declared app, fanned out into a targeted build per app. The `service` commands accept the target name as a positional (`service show api`) or resolve it from the directory you run them in (the deepest matching `root` wins).
 
 ## How config and flags interact
 
-Config values are deploy **defaults**. Explicit flags always win:
+Config values are **defaults**. Explicit flags always win: `--service` outranks the config's app `name` for service selection, and a command run with explicit selectors never depends on the file.
 
-- `--framework`, `--entry`, and `--http-port` override their config value.
-- Any `--env` flag replaces the config's env inputs entirely.
-- `--app` and `PRISMA_APP_ID` outrank the config's app `name` for app selection.
-
-The config never sets your project, branch, or production target; those are always resolved the same way, [from the directory's project link and your Git branch](/compute/cli-reference#app-deploy-options). Settings that did come from the file are labeled `set by prisma.compute.ts` in the deploy output, so you can always see where a value came from.
-
-A config that fails to load or validate stops the deploy before any remote work, with a clear message pointing at the field to fix.
+The config never sets your project, branch, or production target; those are always resolved the same way, from the directory's project link and your Git branch. A config that fails to load or validate stops the build before any remote work, with a clear message pointing at the field to fix.
 
 ## What's next
 
-- [CLI reference](/compute/cli-reference): every command, flag, and error code.
+- [CLI reference](/compute/cli-reference): every command and flag.
 - [Deploy your first app](/prisma-compute/deploy): the end-to-end quickstart.
 - [Environment variables](/compute/environment-variables): scoped configuration, secrets, and your database connection string.
 - [GitHub integration](/compute/github): deploy-on-push, including monorepos.
