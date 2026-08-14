@@ -1,0 +1,102 @@
+---
+title: CLI reference
+description: Every Composer command and flag in the Prisma CLI, plus the in-process control API.
+url: /composer/cli-reference
+metaTitle: CLI reference | Prisma Composer
+metaDescription: Complete reference for the prisma composer command group, including deploy, destroy, dev, and log, their flags, credentials, and the in-process control API.
+---
+
+Composer ships as the `composer` command group of the Prisma CLI. Until the unified `prisma` CLI ships, run it through the `@prisma/cli` package's `next` tag:
+
+```npm
+npx @prisma/cli@next composer <command>
+```
+
+Every command takes an `<entry>` argument: the module whose default export is the application root, typically `module.ts`. All four commands hand the terminal to the underlying pipeline and do not support `--json`.
+
+| Command | Description |
+| --- | --- |
+| [`composer deploy <entry>`](#composer-deploy) | Deploy the application to production or a stage |
+| [`composer destroy <entry>`](#composer-destroy) | Tear down a deployed environment |
+| [`composer dev <entry>`](#composer-dev) | Bring the application up entirely on this machine |
+| [`composer log <entry> [address]`](#composer-log) | Tail the merged logs of the locally running application |
+
+## `composer deploy`
+
+Deploys the application whose root node is `<entry>`'s default export. Requires `PRISMA_SERVICE_TOKEN` and `PRISMA_WORKSPACE_ID` in the environment; see [Deploying](/composer/deploying#credentials). Deploy does not build your code first; run your build before it.
+
+| Flag | Description |
+| --- | --- |
+| `--name <name>` | Override the root node's name, which is the deploy's application name |
+| `--stage <stage>` | Deploy scope to target; omit for production |
+
+```npm
+npx @prisma/cli@next composer deploy module.ts
+npx @prisma/cli@next composer deploy module.ts --stage feat-auth
+```
+
+## `composer destroy`
+
+Tears down the application's deployed resources. Requires an explicit target: `--stage <name>` for a branch environment, or `--production` for the production environment. A bare `destroy` is an error, and so is combining `--stage` with `--production`.
+
+| Flag | Description |
+| --- | --- |
+| `--name <name>` | Override the root node's name, the application name to tear down |
+| `--stage <stage>` | Tear down this branch environment |
+| `--production` | Tear down the project-level production environment |
+
+```npm
+npx @prisma/cli@next composer destroy module.ts --stage feat-auth
+npx @prisma/cli@next composer destroy module.ts --production
+```
+
+## `composer dev`
+
+Brings the application up entirely on this machine. Runs credential-free against local emulators, watches the built output, and restarts a service when its build changes. Logs are a separate command; run `composer log <entry>` to tail them. See [Local development](/composer/local-development).
+
+| Flag | Description |
+| --- | --- |
+| `--name <name>` | Override the root node's name, the dev instance's application name |
+| `--fresh` | Destroy the dev stack and wipe the dev state directory before starting |
+
+```npm
+npx @prisma/cli@next composer dev module.ts
+npx @prisma/cli@next composer dev module.ts --fresh
+```
+
+## `composer log`
+
+Tails the merged logs of the locally running application. It only reads; it never builds, provisions, starts, or stops anything.
+
+| Argument or flag | Description |
+| --- | --- |
+| `[address]` | Only this service's lines, by its dotted address (for example `catalog.service`); every service when absent |
+| `--name <name>` | Override the root node's name, the dev instance's application name |
+| `--tail <lines>` | How many trailing history lines to show before live output (default 20; `0` for live-only) |
+
+```npm
+npx @prisma/cli@next composer log module.ts
+npx @prisma/cli@next composer log module.ts catalog.service
+```
+
+## Global flags
+
+The Prisma CLI's global flags also apply: `--format`, `--json`, `--log-level`, `--verbose`, `--quiet`, `--yes`, `--confirm`, `--interactive`, `--color`, and `--config`. The four Composer commands stream the pipeline's own output and ignore `--json`.
+
+## Environment variables
+
+| Variable | Used by | Description |
+| --- | --- | --- |
+| `PRISMA_SERVICE_TOKEN` | `deploy`, `destroy` | A workspace service token from the [Prisma Console](https://console.prisma.io) |
+| `PRISMA_WORKSPACE_ID` | `deploy`, `destroy` | The workspace ID from the workspace's settings |
+
+`dev` and `log` need neither; local runs never talk to the platform.
+
+## The control API
+
+Everything the CLI does is also callable in-process from `@prisma/composer/control`: typed `deploy`, `destroy`, `dev`, and `log` operations that return `{ ok: true, value }` or `{ ok: false, failure }` instead of printing and exiting. The CLI commands are renderers over these operations. See [Driving deploys from code](/composer/deploying#driving-deploys-from-code).
+
+## Next steps
+
+- [Getting started](/composer/getting-started): the commands in a working flow.
+- [Deploying](/composer/deploying): stages, CI, and what a deploy prints.

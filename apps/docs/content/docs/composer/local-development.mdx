@@ -1,0 +1,76 @@
+---
+title: Local development
+description: Run the whole app on your machine with composer dev, and tail its logs with composer log, with no cloud credentials.
+url: /composer/local-development
+metaTitle: Local development | Prisma Composer
+metaDescription: Run a Prisma Composer app locally with composer dev, tail merged service logs with composer log, and understand warm restarts, --fresh, and local emulators.
+---
+
+One command brings your whole app up on your machine, every service, its databases and buckets, wired together, with no cloud credentials. `composer dev` runs the same pipeline a deploy runs, but against local stand-ins for Prisma Compute and Prisma Postgres, so what you run locally is what you ship. A second command, `composer log`, shows you the logs.
+
+| You want to... | Run |
+| --- | --- |
+| Bring the app up locally | `npx @prisma/cli@next composer dev module.ts` |
+| Start clean (wipe local data first) | `npx @prisma/cli@next composer dev module.ts --fresh` |
+| Watch every service's logs | `npx @prisma/cli@next composer log module.ts` |
+| Watch one service | `npx @prisma/cli@next composer log module.ts catalog.service` |
+| Show more history first | `npx @prisma/cli@next composer log module.ts --tail 200` |
+
+`module.ts` is your entry file, the one whose default export is the root module, the same file you pass to `deploy`. No `PRISMA_*` variables are needed; local dev never talks to the platform.
+
+## Bring it up
+
+Like deploy, `dev` runs your *built* output, so build first:
+
+```npm
+npm run build
+npx @prisma/cli@next composer dev module.ts
+```
+
+It stands the app up and prints the front door, every service's local URL:
+
+```text no-copy
+dev: ready
+gateway: http://localhost:3001
+quotes: http://localhost:3000
+```
+
+From here `dev` keeps running: it watches your built output and, when a service's build changes, restarts just that service. Rebuild in another terminal and the affected service picks up the change.
+
+`Ctrl-C` stops your app's service processes and exits. The local databases, buckets, and their data stay up, so the next `dev` is a warm start: same ports, same data. `--fresh` wipes this app's local instances and data before starting.
+
+`dev` does not print service logs. With several services running, streaming them all inline would bury the front door and the restart notices, so logs are their own command.
+
+## Logs
+
+```npm
+npx @prisma/cli@next composer log module.ts
+```
+
+This tails the merged logs of the already-running app: one stream, each line prefixed with the service it came from:
+
+```text no-copy
+[quotes] serving a quote
+[quotes] serving a quote
+```
+
+It follows live, like `tail -f`; `Ctrl-C` stops watching. It only reads the running app. It never builds, provisions, starts, or stops anything, so you can open and close it freely alongside a running `dev`.
+
+- **One service:** pass its address, for example `composer log module.ts cron.runner`. A nested Module's service address is dotted, exactly as the front door prints it.
+- **How much history:** `--tail <n>` sets how many recent lines to show before going live (default 20; `--tail 0` for live-only). Each service's log is cleared when it starts fresh, so you are never scrolling back through past sessions.
+- **Nothing running yet?** If you have not run `dev` (or you stopped it), `log` says so and points you at `dev`.
+
+## What's local vs. what's real
+
+Everything above the cloud boundary is real: your actual service code, real databases you can migrate and query, real object storage, and the same wiring a deploy creates, including [service keys](/composer/services-and-contracts#calls-are-authenticated-for-you). What is swapped are the providers underneath: local emulators stand in for Prisma Compute and Prisma Postgres, so no token, workspace, or network is involved. Three consequences worth knowing:
+
+- **Direct RPC probes get `401` here too.** `dev` runs the deploy pipeline, so providers only accept their wired consumers, exactly as in production. Exercise a provider through a consumer, or in [tests](/composer/testing), where nothing is provisioned and every call passes through.
+- **Unset secrets do not stop the app.** A secret you have not set in your shell gets a local placeholder and a one-line warning; the app boots and serves, and only the code path that actually spends that secret fails, at the real external service it calls. Set the secret in your shell to exercise that path.
+- **The emulators outlive a session.** They are shared, machine-wide daemons, so your data survives `Ctrl-C` and even a reboot until you pass `--fresh`. That is what makes restarts warm.
+
+Windows is not supported yet; see [Limitations](/composer/limitations).
+
+## Next steps
+
+- [Deploying](/composer/deploying): the same app, on Prisma Compute.
+- [Testing](/composer/testing): drive a service in-process instead of running the whole app.

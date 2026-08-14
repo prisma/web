@@ -1,0 +1,48 @@
+---
+title: Object storage
+description: Provision an S3-compatible object-store bucket and use it from a service with any S3 client.
+url: /composer/object-storage
+metaTitle: Object storage | Prisma Composer
+metaDescription: Provision an S3-compatible bucket in a Prisma Composer app with bucket(), receive typed credentials through service.load(), and use any S3-compatible client.
+---
+
+`bucket` is a raw S3-compatible object-store bucket: a flat key-value store with no higher-level abstractions attached. Like [`postgres()`](/composer/databases), it is a resource with two ends: the service declares the need, and the module that owns the bucket provisions it.
+
+```ts title="src/uploads/service.ts"
+import { bucket, compute } from '@prisma/composer-prisma-cloud';
+
+export default compute({
+  name: 'uploads',
+  deps: { store: bucket() }, // dependency end: receives credentials
+  // ...
+});
+```
+
+```ts title="module.ts"
+const store = provision(bucket({ name: 'uploads' })); // resource end: provisions + mints a keypair
+provision(uploadsService, { deps: { store } });
+```
+
+Inside the service entry, `load()` hands back `{ url, bucket, accessKeyId, secretAccessKey }`, the standard S3 config set. Use any S3-compatible client (`@aws-sdk/client-s3`, `minio`, Bun's S3 API):
+
+```ts title="src/uploads/server.ts"
+import { S3Client } from '@aws-sdk/client-s3';
+
+const { store } = service.load();
+const s3 = new S3Client({
+  endpoint: store.url,
+  bucket: store.bucket,
+  credentials: { accessKeyId: store.accessKeyId, secretAccessKey: store.secretAccessKey },
+});
+```
+
+## Buckets and the storage Module
+
+A bucket resource uses the same S3 contract kind as the [`storage` Module's](/composer/building-blocks) blob store. A service declared with `deps: { store: s3() }`, where `s3` is imported from `@prisma/composer-prisma-cloud/storage`, can be rewired to a `bucket` resource without changing the service declaration. Reach for the `storage` Module when you want a managed blob store with its own internals; reach for `bucket` when you want the raw S3 surface.
+
+`composer dev` provisions a local stand-in bucket with working credentials, so upload code runs locally without an account. See [Local development](/composer/local-development).
+
+## Next steps
+
+- [Building blocks](/composer/building-blocks): the storage and streams Modules built on the same contract.
+- [Service input](/composer/service-input): when a credential should be input instead of a dependency.

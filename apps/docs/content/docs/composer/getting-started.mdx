@@ -1,0 +1,301 @@
+---
+title: Getting started
+description: Build a two-service Prisma App from an empty directory and run it on your machine with one command.
+url: /composer/getting-started
+metaTitle: Get started with Prisma Composer
+metaDescription: Build a two-service Prisma Composer app from scratch, wire the services with a typed contract, and run the whole app locally with one command.
+---
+
+By the end of this page you will have a working Prisma App: a `quotes` API and a public `gateway` that calls it, wired together by a typed contract and running on your machine with one command. It meets every core Composer idea once: a contract, a service, a root module, a build, and a local run.
+
+The app is deliberately tiny, with no database, so you can see the whole shape at once. Adding a Postgres is the natural next step, and [Databases](/composer/databases) covers it.
+
+:::note[Working with a coding agent?]
+
+Add the Composer skill first, even if you plan to write every line yourself. It costs one command and stops your agent from inventing an API that does not exist:
+
+```npm
+npx skills add prisma/composer
+```
+
+:::
+
+## Prerequisites
+
+- **Node.js 22.18 or newer.** Check with `node --version`. Composer hands your TypeScript entry file straight to Node, and Node runs `.ts` files directly only from 22.18.0, the release that turns type stripping on by default. On anything older, Composer commands stop at `ERR_UNKNOWN_FILE_EXTENSION` naming your own entry file; 22.17 is not close enough.
+- **[Bun](https://bun.sh).** Prisma Compute runs Bun, so that is what the server code targets (`Bun.serve`), and `bun build` is the fastest way to produce the built output.
+- **npm or pnpm.**
+
+You do not need a Prisma account for this page. Local runs never talk to the platform; you only need credentials when you [deploy](/composer/deploying).
+
+## 1. Set up the project
+
+Create a directory and install the two Composer packages, plus [arktype](https://arktype.io) for the contract schemas:
+
+```npm
+npm init -y
+npm install @prisma/composer @prisma/composer-prisma-cloud arktype
+npm install -D typescript @types/bun
+```
+
+Then pin the `effect` family in your `package.json`. This works around an upstream bug in Composer's deploy engine, whose own version ranges float past the versions its code supports; without the pins, a fresh install ends up with two conflicting copies of `effect` and every Composer command refuses to run. Match the version to the one your installed `@prisma/composer` pins (check `dependencies.effect` in `node_modules/@prisma/composer/package.json`; for `@prisma/composer` 0.6.0 it is `4.0.0-beta.93`):
+
+```json title="package.json"
+{
+  "overrides": {
+    "effect": "4.0.0-beta.93",
+    "@effect/sql-d1": "4.0.0-beta.93",
+    "@effect/sql-pg": "4.0.0-beta.93",
+    "@effect/vitest": "4.0.0-beta.93",
+    "@effect/platform-bun": "4.0.0-beta.93",
+    "@effect/platform-node": "4.0.0-beta.93",
+    "@effect/platform-node-shared": "4.0.0-beta.93"
+  }
+}
+```
+
+npm reads `overrides`, yarn calls it `resolutions`, and pnpm nests it under `"pnpm"`. Run your install again after adding the block.
+
+Add a `tsconfig.json` so the compiler checks your wiring the same way the deploy will:
+
+```json title="tsconfig.json"
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "Preserve",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "types": ["bun"]
+  },
+  "include": ["module.ts", "src"]
+}
+```
+
+This is what you are about to create:
+
+```text no-copy
+my-app/
+├── module.ts                  # the root module: the app itself
+├── prisma-composer.config.ts  # deploy config (read only by the CLI)
+└── src/
+    ├── quotes/
+    │   ├── contract.ts        # the quotes service's public API, as types
+    │   ├── service.ts         # what quotes is: deps + build + what it exposes
+    │   └── server.ts          # the code that actually runs
+    └── gateway/
+        ├── service.ts
+        └── server.ts
+```
+
+## 2. Create the quotes service
+
+A service is three files. First, the **contract**: the API other services will call, written as schemas. It lives with the service that owns it. Any [Standard Schema](https://standardschema.dev) validator works (arktype, zod, valibot); these examples use arktype:
+
+```ts title="src/quotes/contract.ts"
+import { contract, rpc } from '@prisma/composer/service-rpc';
+import { type } from 'arktype';
+
+export const quotesContract = contract({
+  random: rpc({ input: type({}), output: type({ quote: 'string' }) }),
+});
+```
+
+Second, the **service declaration**. This is pure data with no behavior. It says what the service is called, what it depends on (nothing yet), how it is built, and which contract it exposes:
+
+```ts title="src/quotes/service.ts"
+import node from '@prisma/composer/node';
+import { compute } from '@prisma/composer-prisma-cloud';
+import { quotesContract } from './contract.ts';
+
+export default compute({
+  name: 'quotes',
+  deps: {},
+  build: node({ module: import.meta.url, entry: '../../dist/quotes/server.mjs' }),
+  expose: { rpc: quotesContract },
+});
+```
+
+Third, the **server**: the code your build turns into `dist/quotes/server.mjs` and the platform boots. `serve()` generates the HTTP handler from the contract; if you forget a handler or return the wrong shape, it does not compile:
+
+```ts title="src/quotes/server.ts"
+import { serve } from '@prisma/composer/service-rpc';
+import service from './service.ts';
+
+const port = service.port(); // the reserved port, resolved (default 3000)
+
+const QUOTES = [
+  'Simplicity is prerequisite for reliability.',
+  'Make it work, make it right, make it fast.',
+];
+
+const handler = serve(service, {
+  rpc: {
+    random: async () => ({ quote: QUOTES[Math.floor(Math.random() * QUOTES.length)]! }),
+  },
+});
+export default handler;
+
+// Bind all interfaces. Compute routes external HTTP to the VM, so a
+// loopback-only listener would be unreachable.
+Bun.serve({ port, hostname: '0.0.0.0', fetch: handler });
+```
+
+Notice what is missing: no URL of anything and no `process.env`. Every service gets a port for free, read through `service.port()`; dependencies arrive through `service.load()`; and any configuration of your own arrives through `service.input()` (see [Service input](/composer/service-input)). Those three typed accessors are the whole framework contract with your code.
+
+## 3. Create the gateway service
+
+The gateway depends on the quotes contract. Note the asymmetry with step 2: the quotes service *exposed* the bare contract (its offer), while the gateway wraps it in `rpc()` (its need, "a client of this contract"). Declaring `deps: { quotes: rpc(quotesContract) }` means `service.load()` hands the server a ready-made typed client:
+
+```ts title="src/gateway/service.ts"
+import node from '@prisma/composer/node';
+import { rpc } from '@prisma/composer/service-rpc';
+import { compute } from '@prisma/composer-prisma-cloud';
+import { quotesContract } from '../quotes/contract.ts';
+
+export default compute({
+  name: 'gateway',
+  deps: { quotes: rpc(quotesContract) },
+  build: node({ module: import.meta.url, entry: '../../dist/gateway/server.mjs' }),
+});
+```
+
+```ts title="src/gateway/server.ts"
+import service from './service.ts';
+
+const { quotes } = service.load();
+const port = service.port();
+
+Bun.serve({
+  port,
+  hostname: '0.0.0.0',
+  fetch: async () => {
+    const { quote } = await quotes.random({});
+    return new Response(quote);
+  },
+});
+```
+
+The gateway exposes no contract of its own, so there is no `serve()` here. It is an ordinary HTTP server that happens to receive a typed client, and calling `quotes.random({})` is just an async function call.
+
+## 4. Compose the app
+
+The root module is the app. It provisions both services and wires the quotes service's exposed port into the gateway's dependency slot. `provision()` returns a ref carrying one port per exposed contract, so `quotes.rpc` exists because the service declared `expose: { rpc: ... }`:
+
+```ts title="module.ts"
+import { module } from '@prisma/composer';
+import gatewayService from './src/gateway/service.ts';
+import quotesService from './src/quotes/service.ts';
+
+export default module('my-app', ({ provision }) => {
+  const quotes = provision(quotesService);
+  provision(gatewayService, { deps: { quotes: quotes.rpc } });
+});
+```
+
+Next to it goes the deploy config. Only the Composer CLI reads this file; your app code never imports it:
+
+```ts title="prisma-composer.config.ts"
+import { defineConfig } from '@prisma/composer/config';
+import { nodeBuild } from '@prisma/composer/node/control';
+import { prismaCloud, prismaState } from '@prisma/composer-prisma-cloud/control';
+
+export default defineConfig({
+  extensions: [prismaCloud(), nodeBuild()],
+  state: prismaState(),
+});
+```
+
+## 5. Build
+
+You own the build; the framework only assembles what you built. It asks one thing: each entry must be a single self-contained file, with everything inlined except the runtime's own built-ins (`bun`, `bun:*`, `node:*`). Any bundler that produces such a file works; this guide uses Bun. Two services means two separate builds, not one multi-entry build, which would split the shared contract code into a chunk neither output contains:
+
+```json title="package.json"
+{
+  "scripts": {
+    "build": "bun build src/quotes/server.ts --target=bun --outfile dist/quotes/server.mjs && bun build src/gateway/server.ts --target=bun --outfile dist/gateway/server.mjs"
+  }
+}
+```
+
+```npm
+npm run build
+```
+
+This is also a good moment to typecheck. The compiler checks the whole wiring, so a dependency wired to the wrong producer or a missing RPC handler fails here, in seconds:
+
+```npm
+npx tsc --noEmit
+```
+
+## 6. Run it locally
+
+One command brings the whole app up on your machine, both services wired together, with no cloud credentials:
+
+```npm
+npx @prisma/cli@next composer dev module.ts
+```
+
+It runs the same pipeline a deploy runs, against local stand-ins for Prisma Compute and Prisma Postgres, and prints each service's local URL:
+
+```text no-copy
+dev: ready
+gateway: http://localhost:3001
+quotes: http://localhost:3000
+```
+
+Verify it works by calling the gateway:
+
+```bash
+curl localhost:3001
+```
+
+```text no-copy
+Make it work, make it right, make it fast.
+```
+
+That response traveled over one typed RPC hop: the gateway received your request, called `quotes.random({})` through its injected client, and returned the result.
+
+`dev` keeps running, watches your built output, and restarts a service when its build changes (run `npm run build` in another terminal and the affected service restarts). `Ctrl-C` stops it; your local data stays, so the next start is warm. See [Local development](/composer/local-development) for logs, `--fresh`, and what persists.
+
+Now try the quotes service directly:
+
+```bash
+curl -X POST localhost:3000/rpc/random -H 'content-type: application/json' -d '{}'
+```
+
+You get `401 Unauthorized`. That is deliberate: Composer mints a **service key** for each dependency edge and the quotes service accepts only calls from the gateway. Neither service's code mentions a key. See [Services and contracts](/composer/services-and-contracts#calls-are-authenticated-for-you) for how this works.
+
+## 7. Deploy it (optional)
+
+Local dev needed no account. Deploying the same app to [Prisma Compute](/compute) needs exactly two environment variables: a service token and your workspace ID, both from the [Prisma Console](https://console.prisma.io):
+
+```bash
+export PRISMA_SERVICE_TOKEN=<your service token>
+export PRISMA_WORKSPACE_ID=<your workspace id>
+```
+
+```npm
+npx @prisma/cli@next composer deploy module.ts
+```
+
+The CLI creates a project named `my-app` in your workspace, provisions both services on Prisma Compute, points the gateway's `quotes` dependency at the deployed quotes service, and starts everything. The deploy finishes by printing what it made: your module names, the platform resource each became, and the public URLs. Open the gateway's URL and you get a quote.
+
+Re-deploying is idempotent. For an isolated copy of the whole app, deploy a stage and tear it down when you are done:
+
+```npm
+npx @prisma/cli@next composer deploy module.ts --stage demo
+npx @prisma/cli@next composer destroy module.ts --stage demo
+```
+
+See [Deploying](/composer/deploying) for stages, CI, and teardown in full.
+
+## Where to go next
+
+- [Apps and Modules](/composer/apps-and-modules): package a service and its database as a reusable Module.
+- [Databases](/composer/databases): add a Postgres, plain or typed by a Prisma 8 contract.
+- [Building blocks](/composer/building-blocks): compose the ready-made cron, storage, and streams Modules.
+- [Testing](/composer/testing): unit tests with `mockService`, integration tests with `bootstrapService`.
+- [Porting an existing app](/composer/porting-an-app): keep your server code and declare the app around it.

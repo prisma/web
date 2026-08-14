@@ -42,6 +42,11 @@ export const links: LinkItemTypeWithActivePaths[] = [
     active: "nested-url",
   },
   {
+    text: "Composer",
+    url: "/composer",
+    active: "nested-url",
+  },
+  {
     text: "CLI",
     url: "/cli",
     active: "nested-url",
