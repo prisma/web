@@ -10,6 +10,7 @@ import { siteConfig } from "@/lib/config";
 import { createSiteStructuredData } from "@/lib/structured-data";
 import { getBaseUrl } from "@/lib/url";
 import { SITE_HOME_DESCRIPTION, SITE_HOME_TITLE } from "@/lib/site-metadata";
+import { BuildersDayBanner } from "@/components/builders-day-banner";
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import { GoogleTagManager } from "@prisma-docs/ui/components/google-tag-manager";
 import { FontAwesomeScript as WebFA } from "@prisma/eclipse";
@@ -98,6 +99,7 @@ export default function RootLayout({
       <body className="antialiased">
         <ThemeProvider>
           <UtmPersistence />
+          <BuildersDayBanner />
           <Header />
           <main className="min-h-screen">{children}</main>
           <Footer />
