@@ -1,0 +1,103 @@
+---
+title: Apps and Modules
+description: How services, resources, and Modules compose into a Prisma App, and how provision() wires them together.
+url: /composer/apps-and-modules
+metaTitle: Apps and Modules | Prisma Composer
+metaDescription: Understand the Prisma App tree, how provision() wires services and resources together, and how to package a service and its database as a reusable Module.
+---
+
+A **Prisma App** is a tree of Modules composed in TypeScript. At the leaves are **services**, the units that run your code, and **resources**, stateful things like a Postgres database. A parent Module wires them together; your code never participates in the wiring, it just receives the results.
+
+For example, a store app might be one root module containing a `catalog` Module (an API service plus its own database), an `orders` Module, and a `storefront` Next.js service that calls both. Each piece declares what it needs, and the root wires the pieces together.
+
+This matters because the wiring is data the compiler can check. A dependency wired to the wrong producer, or a missing one, fails `tsc` and fails the deploy, instead of failing at runtime in production.
+
+## The service declaration
+
+A service declares everything about itself in one `compute()` call. It is pure data, with no behavior:
+
+```ts
+compute({
+  name: 'auth',                  // the service's name in the app graph
+  deps: { db: postgres() },      // what it needs         -> read via service.load()
+  input: authInput,              // its incoming config   -> read via service.input()
+  build: node({ module: import.meta.url, entry: '../dist/server.mjs' }),
+  expose: { rpc: authContract }, // what it offers to other services
+});
+```
+
+Dependencies and input are two deliberately separate channels with two separate accessors. A dependency is a live connection to another node; input is data, plain values and credentials together, declared as one schema (see [Service input](/composer/service-input)). Your code contains no configuration reads and no URLs, which is what makes every environment (production, a stage, a test) just a different set of injected values.
+
+## The root module
+
+The root module is the app. The Composer CLI loads its default export:
+
+```ts title="module.ts"
+import { module } from '@prisma/composer';
+import authModule from './src/auth/module.ts';
+import storefrontService from './src/storefront/service.ts';
+
+export default module('my-app', ({ provision }) => {
+  const auth = provision(authModule);
+  provision(storefrontService, { deps: { auth: auth.rpc } });
+});
+```
+
+`provision(node, opts?)` places a node in the graph and returns a ref carrying one port per exposed contract. Its options:
+
+- `id`: the node's name in the graph, defaulting to its own `name`. Set it explicitly when the default stutters; a service named `auth` inside a module named `auth` would read as `auth.auth`.
+- `deps`: a value for each declared dependency slot, either another provisioned ref or an exposed port.
+- `input`: the service's input binding, required exactly when the service declares an input schema. See [Service input](/composer/service-input).
+- `secrets`: for a Module boundary, a binding for each forwarded secret need.
+
+Two naming rules the platform enforces: provision names must be at least three characters (call a database `'database'`, not `'db'`; the wiring key on the service side can still be `db`), and ids must be unique within their module.
+
+## Reusable Modules
+
+When a service and its database belong together, package them as a **Module**: a unit that owns its internals and offers only typed ports. A consumer provisions the Module and wires its exposed contract; it never sees, and can never reach, the database inside.
+
+A Module declares its boundary (what it needs, what it offers) in the second argument, wires its internals in the builder function, and returns the ports it promised:
+
+```ts title="src/auth/module.ts"
+import { module, secret } from '@prisma/composer';
+import { postgres } from '@prisma/composer-prisma-cloud';
+import { authContract } from './contract.ts';
+import authService from './service.ts';
+
+export default module(
+  'auth',
+  { secrets: { signingKey: secret() }, expose: { rpc: authContract } },
+  ({ secrets, provision }) => {
+    const db = provision(postgres({ name: 'database' }));
+    const service = provision(authService, {
+      id: 'service',
+      deps: { db },
+      input: { signingKey: secrets.signingKey },
+    });
+    return { rpc: service.rpc };
+  },
+);
+```
+
+The boundary declares `secrets: { signingKey: secret() }`: a nameless need the Module forwards without ever learning the platform variable's name. The root binds it:
+
+```ts title="module.ts"
+const auth = provision(authModule, {
+  secrets: { signingKey: envSecret('AUTH_SIGNING_SECRET') },
+});
+provision(storefrontService, { deps: { auth: auth.rpc } });
+```
+
+A Module can also declare boundary `deps`: inputs its parent must supply, wired exactly like a service's. The root module you already have is just the outermost Module, with no boundary at all.
+
+## When to reach for a Module
+
+- **Compose before you write.** Ready-made Modules for scheduled jobs, blob storage, and event streams ship with the framework; wiring one in is a couple of lines. See [Building blocks](/composer/building-blocks).
+- **Package what belongs together.** A service that owns a database, or a pair of services that only make sense as a unit, is a Module.
+- **Keep the app graph readable.** The deploy prints the module tree with dotted addresses (`auth.service`), so the structure you author is the structure you operate.
+
+## Next steps
+
+- [Services and contracts](/composer/services-and-contracts): what happens on the wire between services.
+- [Service input](/composer/service-input): configuration and secrets as one schema.
+- [Building blocks](/composer/building-blocks): the Modules that ship with the framework.

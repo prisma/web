@@ -1,0 +1,93 @@
+---
+title: Prisma Composer
+description: "Build apps made of multiple services in TypeScript, then deploy services, databases, and the wiring between them with one command."
+url: /composer
+badge: early-access
+metaTitle: Prisma Composer | Compose and deploy multi-service TypeScript apps
+metaDescription: Learn how Prisma Composer lets you declare services, databases, and their connections in TypeScript, and deploy the whole app to Prisma Compute and Prisma Postgres with one command.
+---
+
+Prisma Composer is a TypeScript framework for apps made of more than one piece. You declare each service and what it depends on, such as other services, databases, schedules, and secrets, compose them into a **Prisma App**, and deploy the whole thing to [Prisma Compute](/compute) and [Prisma Postgres](/postgres) with one command. There is no infrastructure configuration to write or maintain.
+
+:::info[Early Access]
+
+Prisma Composer is in [Early Access](/console/more/feature-maturity#early-access). APIs and commands can change between releases. Until the unified `prisma` CLI ships, run Composer commands with `npx @prisma/cli@next composer <command>`.
+
+:::
+
+## Get started
+
+The fastest way to understand Composer is to build a small app with it. The quickstart takes you from an empty directory to two services calling each other over a typed contract, running on your machine.
+
+<Cards>
+  <Card href="/composer/getting-started" title="Build your first Prisma App" icon={<Rocket className="text-primary" />}>
+    Two services, one typed contract, one command to run them together.
+  </Card>
+  <Card href="/composer/porting-an-app" title="Port an app you already have" icon={<Milestone className="text-primary" />}>
+    Keep your server code and add the declarations around it.
+  </Card>
+</Cards>
+
+## Built for agents
+
+Composer is designed to be driven by an AI coding agent. Before you or your agent write any code, add the Composer skill:
+
+```npm
+npx skills add prisma/composer
+```
+
+Your agent now knows the whole API, including the ready-made Modules for scheduled jobs, blob storage, and event streams. Describe what you want, for example "a Next.js storefront calling an orders API with its own Postgres", and review TypeScript instead of infrastructure config.
+
+Three properties make this reliable rather than plausible:
+
+- **Modules snap together.** A capability arrives as a [Module](/composer/apps-and-modules) that owns its internals and exposes a typed port. Adding scheduled jobs or a blob store is a couple of lines of composition, not an integration your agent has to invent.
+- **The compiler checks the wiring.** A dependency wired to the wrong producer, a missing RPC handler, or a config value of the wrong shape does not compile. Mistakes fail `tsc` in seconds, not a deploy ten minutes later.
+- **Deploys are deterministic.** One command, no infrastructure config, and re-running it converges instead of drifting.
+
+## Two rules shape everything
+
+- **Your code never reaches for its environment.** No `process.env`, no URLs. Every dependency arrives typed through one call, `service.load()`, which is why any environment (production, a staging copy, a test) is just a different set of injected values.
+- **The framework never bundles or transforms your code.** You build with the bundler you already use; the deploy assembles what you built.
+
+## What it looks like
+
+A service declares its dependencies as data; app code receives them from `service.load()`:
+
+```ts
+// service.ts, the declaration: pure data
+export default compute({
+  name: 'storefront',
+  deps: { catalog: rpc(catalogContract) },   // "I call catalog's API"
+  build: nextjs({ module: import.meta.url, appDir: '..' }),
+});
+```
+
+```ts
+// app code: load() returns a client typed by that contract
+const { catalog } = service.load();
+const { products } = await catalog.listProducts({});
+```
+
+The root module is the app. It provisions the pieces and wires the typed ports:
+
+```ts
+// module.ts
+export default module('store', ({ provision }) => {
+  const catalog = provision(catalogModule);      // owns its own Postgres
+  const orders = provision(ordersModule, { deps: { catalog: catalog.rpc } });
+  provision(storefrontService, { deps: { catalog: catalog.rpc, orders: orders.rpc } });
+});
+```
+
+Running `npx @prisma/cli@next composer deploy module.ts` provisions all of it: the services on Prisma Compute, the databases on Prisma Postgres, and the authenticated connections between them.
+
+## What to read next
+
+- [Getting started](/composer/getting-started): build and run a two-service app from scratch.
+- [Apps and Modules](/composer/apps-and-modules): how services, resources, and Modules compose into an app.
+- [Services and contracts](/composer/services-and-contracts): typed RPC between services, with authentication and retries handled for you.
+- [Databases](/composer/databases): give a service a Postgres database, plain or typed by a Prisma 8 contract.
+- [Local development](/composer/local-development): run the whole app on your machine with no cloud credentials.
+- [Deploying](/composer/deploying): production, isolated stages, CI, and teardown.
+- [CLI reference](/composer/cli-reference): every Composer command and flag.
+- [Limitations](/composer/limitations): what Composer does not do yet.

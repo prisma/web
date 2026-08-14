@@ -1,0 +1,101 @@
+---
+title: Services and contracts
+description: Define a service's API as a typed contract, serve it, and call it from other services with authentication and retries handled for you.
+url: /composer/services-and-contracts
+metaTitle: Services and contracts | Prisma Composer
+metaDescription: Define typed RPC contracts between Prisma Composer services, serve them with compile-time checked handlers, and understand the built-in service authentication and retry behavior.
+---
+
+A **contract** is a service's API written as schemas, and it types both ends of the edge: the producer's handlers and the consumer's client. Define it once, in the package of the service that owns it.
+
+For example, an `auth` service that verifies tokens declares one `verify` method:
+
+```ts title="src/auth/contract.ts"
+import { contract, rpc } from '@prisma/composer/service-rpc';
+import { type } from 'arktype';
+
+export const authContract = contract({
+  verify: rpc({ input: type({ token: 'string' }), output: type({ ok: 'boolean' }) }),
+});
+```
+
+Any [Standard Schema](https://standardschema.dev) validator types the messages; arktype, zod, and valibot all work. The only contract kind today is RPC over HTTP; there are no gRPC, WebSocket, or streaming contracts yet (see [Limitations](/composer/limitations)).
+
+## Serve a contract
+
+On the producer, declare the contract under `expose` and turn it into an HTTP handler with `serve()`. The handler map must cover every method; a missing or wrong-shaped handler does not compile:
+
+```ts title="src/auth/server.ts"
+import { serve } from '@prisma/composer/service-rpc';
+import service from './service.ts';
+
+const handler = serve(service, {
+  rpc: {
+    verify: async ({ token }) => ({ ok: await check(token) }),
+  },
+});
+export default handler;
+
+Bun.serve({ port: service.port(), hostname: '0.0.0.0', fetch: handler });
+```
+
+Each handler receives the validated input, the service's own loaded deps as a second argument, and an optional third argument carrying the call's [idempotency key](#calls-retry-safely-for-you). Most handlers only use the first.
+
+## Call a contract
+
+On the consumer, declare the dependency as `rpc(contract)`. `service.load()` then returns a ready-made typed client, and calling it is an async function call:
+
+```ts title="src/storefront/service.ts"
+import { rpc } from '@prisma/composer/service-rpc';
+
+export default compute({
+  name: 'storefront',
+  deps: { auth: rpc(authContract) },
+  // ...
+});
+```
+
+```ts
+const { auth } = service.load();
+const { ok } = await auth.verify({ token });
+```
+
+Note the asymmetry: the producer exposes the bare contract (its offer), while the consumer wraps it in `rpc()` (its need, "a client of this contract"). Inputs and outputs are validated at runtime at the boundary, against the same schemas that typed them.
+
+## Calls are authenticated for you
+
+You do not write anything for this. When you deploy, the framework mints a distinct, unguessable **service key** for each consumer-to-provider edge you declared, gives it to the consumer's client, and tells the provider to accept it. Every call carries the key, and `serve()` answers anything else with `401` before your handler runs. A deployed service has a public URL; the key is what makes it answer only the services your app connected to it.
+
+Two rules follow:
+
+- **Do not build your own service-to-service auth** on top of this.
+- **Do not `curl` a deployed `/rpc/<method>` to check it works.** You are not one of the services wired to it, so you always get `401`. That looks like a broken deploy and is not. Debug through a consumer instead.
+
+`composer dev` runs the same pipeline as a deploy, so local runs enforce the keys too: a direct `curl` to a provider's RPC endpoint returns `401` even on `localhost`. Only bare runs and [tests](/composer/testing) skip enforcement, because nothing is provisioned there.
+
+The details that matter operationally:
+
+| | |
+| --- | --- |
+| Scope | Service-level: any valid key reaches every method that service exposes. Split into two services to gate separately. |
+| Per edge | Two consumers of one provider hold different keys, so one leaking cannot impersonate the other. |
+| Rotation | Remove the dependency (or destroy the stack) and redeploy. A plain redeploy keeps the same keys. |
+| Storage | `COMPOSER_*` variables the deploy owns and rewrites. Never hand-edit one. |
+
+## Calls retry safely for you
+
+You do not write anything for this either. A provider that has scaled to zero has to boot before it answers, and a first call can be dropped while it does. The generated client absorbs that: every call carries an idempotency key, a dropped call is retried with a backoff, and `serve()` runs one call per key. A retry that arrives after the first call already ran gets the first answer back instead of running your handler twice. So `await auth.verify(...)` works across a cold start, whether or not the call changes state.
+
+The deduplication rides on the key, so a hand-rolled request without one is served once without deduplication rather than rejected. Do not add an "is this idempotent" flag to a contract; the framework does not have one. If a handler needs exactly-once guarantees beyond one instance's memory (surviving a crash mid-call), its optional third argument carries the key to write into its own transaction:
+
+```ts
+verify: async (input, deps, ctx) => {
+  // ctx.idempotencyKey: string | undefined (absent for keyless callers)
+},
+```
+
+## Next steps
+
+- [Service input](/composer/service-input): the other channel, for configuration and credentials.
+- [Testing](/composer/testing): fake a contract in unit tests, or boot the real entry against a stand-in.
+- [Apps and Modules](/composer/apps-and-modules): wire contracts across Module boundaries.

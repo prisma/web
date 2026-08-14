@@ -1,0 +1,84 @@
+---
+title: Port an existing app
+description: Bring an app you already have to Prisma Composer by declaring it, keeping your server code and your build.
+url: /composer/porting-an-app
+metaTitle: Port an existing app | Prisma Composer
+metaDescription: Port an existing Node.js, Bun, or Next.js app to Prisma Composer by adding service declarations around the server code you already have.
+---
+
+You do not rewrite an app to put it on Composer; you declare it. The server code you already have stays the server, and you add the declaration around it. This page covers the three common cases.
+
+## A Node.js or Bun service
+
+Add a `service.ts` with `compute({ name, deps, build: node({ module, entry }) })` pointing `entry` at your built server file, then make three changes to the server itself:
+
+1. **Read the port from `service.port()`**, never `process.env`, and bind `0.0.0.0`:
+
+   ```ts
+   Bun.serve({ port: service.port(), hostname: '0.0.0.0', fetch: handler });
+   ```
+
+2. **Replace every other `process.env` read** with what it really is: a field of the service's [input schema](/composer/service-input) for config and credentials, or a [dependency](/composer/services-and-contracts) for anything another service provides. If a value differs per stage (an app origin, an external URL), bind it with `envParam`; a credential, with `envSecret`.
+
+3. **If it talks to Postgres**: declare `deps: { db: postgres() }` and build your existing client (`pg`, Bun's `SQL`, whatever you use today) from the injected `db.url` instead of a connection-string env var. See [Databases](/composer/databases).
+
+Your build must produce a self-contained entry file, with everything inlined except runtime built-ins. Keep your own build if it already does; otherwise a one-line `bun build --target=bun` gets you there (see [Getting started](/composer/getting-started#5-build)).
+
+## A Next.js app
+
+Use the `nextjs` build adapter instead of `node`; `next build` with `output: 'standalone'` is the whole build:
+
+```ts title="src/service.ts"
+import nextjs from '@prisma/composer/nextjs';
+import { rpc } from '@prisma/composer/service-rpc';
+import { compute } from '@prisma/composer-prisma-cloud';
+import { apiContract } from '../api/contract.ts';
+
+export default compute({
+  name: 'web',
+  deps: { api: rpc(apiContract) },
+  build: nextjs({ module: import.meta.url, appDir: '..' }),
+});
+```
+
+```ts title="next.config.ts"
+export default { output: 'standalone' };
+```
+
+Add `nextjsBuild()` from `@prisma/composer/nextjs/control` to the deploy config's `extensions`:
+
+```ts title="prisma-composer.config.ts"
+import { defineConfig } from '@prisma/composer/config';
+import { nextjsBuild } from '@prisma/composer/nextjs/control';
+import { nodeBuild } from '@prisma/composer/node/control';
+import { prismaCloud, prismaState } from '@prisma/composer-prisma-cloud/control';
+
+export default defineConfig({
+  extensions: [prismaCloud(), nodeBuild(), nextjsBuild()],
+  state: prismaState(),
+});
+```
+
+Any page or server action that calls `service.load()` needs `export const dynamic = 'force-dynamic'`, because the runtime environment does not exist at build time and Next.js will not re-read it for prerendered routes.
+
+[`examples/storefront-auth`](https://github.com/prisma/composer/tree/main/examples/storefront-auth) in the Composer repository is a complete ported-shaped app: a Next.js frontend calling a Bun API service that owns a Postgres.
+
+## More than one service
+
+Port them into one `module.ts` and replace the URLs they used to reach each other with [contracts](/composer/services-and-contracts). That is the payoff: the edges become typed, and every environment (production, stages, tests) gets the wiring for free.
+
+## Verify the port
+
+Build, then run the app locally before you deploy:
+
+```npm
+npm run build
+npx @prisma/cli@next composer dev module.ts
+```
+
+Every service should appear in the front-door list with a local URL. If a service fails at boot with a module-resolution error, its build left something un-inlined; check that the entry file is self-contained.
+
+## Next steps
+
+- [Getting started](/composer/getting-started): the same shape, built from scratch.
+- [Deploying](/composer/deploying): take the ported app to production.
