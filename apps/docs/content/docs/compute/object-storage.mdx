@@ -6,9 +6,9 @@ metaTitle: Object Storage | Prisma Compute
 metaDescription: Learn how to create an Object Store bucket, mint scoped access keys, and read, write, and serve files from a Prisma Compute app with any S3-compatible client.
 ---
 
-Object Store buckets give every Prisma project S3-compatible file storage: user avatars, PDF exports, uploaded CSVs, generated images. A bucket is a resource inside your project, next to its [Prisma Postgres](/postgres) databases, managed from the [Console](https://pris.ly/pdp) or the [Management API](/management-api). There is no second storage vendor to sign up for and no separate credential system to wire in.
+Object Store buckets are S3-compatible file storage for your Prisma project: a place for user avatars, PDF exports, uploaded CSVs, generated images. A bucket lives inside the project, next to its [Prisma Postgres](/postgres) databases, and is managed from the same [Console](https://pris.ly/pdp) and [Management API](/management-api), so you don't need a separate storage provider or a second set of credentials.
 
-By the end of this page you will have created a bucket, minted an access key, and deployed a Compute route that writes a file and serves it back over a presigned URL.
+This page walks the whole path: create a bucket, mint an access key, and deploy a Compute route that writes a file and serves it back over a presigned URL.
 
 Buckets speak the S3 API, so any S3 client or SDK works. Compute apps run on Bun, and Bun ships a [built-in S3 client](https://bun.com/docs/api/s3), so the examples below need no extra dependency.
 
@@ -18,10 +18,11 @@ Buckets speak the S3 API, so any S3 client or SDK works. Compute apps run on Bun
 - **Access keys are minted per bucket** with a `read` or `read_write` role, enforced by the storage layer: a write with a `read` key is rejected with `AccessDenied`. The `secretAccessKey` is returned exactly once at mint time and is not retrievable afterward.
 - **Deleting a bucket removes its contents and keys in the same call**, even when it is not empty. There is no empty-the-bucket-first step, so treat deletion as destructive and confirm it deliberately.
 
-You can manage buckets three ways: in the [Console](https://pris.ly/pdp), with the unified Prisma CLI's [`bucket` commands](/compute/cli-reference#bucket) (`bucket list`, `bucket create`, `bucket delete`, `bucket key`), or through the [Management API](/management-api), authenticated with a [service token](/management-api/authentication). This page uses the Management API so every step is a copyable call; it is also the path a script or coding agent takes.
+You can manage buckets from the [Console](https://pris.ly/pdp), with the CLI's [`bucket` commands](/compute/cli-reference#bucket), or over the [Management API](/management-api) with a [service token](/management-api/authentication). This page uses the API, since that is what you would automate against. The Console and CLI cover the same operations, so the steps map one to one.
+
+The whole API surface is seven endpoints:
 
 | Operation          | Endpoint                                                                                              |
-
 | ------------------ | ----------------------------------------------------------------------------------------------------- |
 | Create a bucket    | [`POST /v1/buckets`](/management-api/endpoints/buckets/post-buckets)                                   |
 | List buckets       | [`GET /v1/buckets`](/management-api/endpoints/buckets/get-buckets)                                     |
@@ -54,11 +55,11 @@ curl -X POST https://api.prisma.io/v1/buckets \
   -d '{"projectId": "<your project id>", "name": "uploads"}'
 ```
 
-The response comes back with `"status": "ready"` and a `branchId` pointing at your project's default branch. There is no propagation delay to wait out: the first S3 write can follow immediately. To tie the bucket to a specific branch instead, pass `branchId` or `branchGitName` in the request body.
+The response comes back with `"status": "ready"` and a `branchId` pointing at your project's default branch. There is nothing to wait for; you can write to the bucket right away. To tie it to a specific branch instead, pass `branchId` or `branchGitName` in the request body.
 
 ## 2. Mint an access key
 
-Mint a key for the bucket. The response is the entire configuration handoff for an S3 client: `accessKeyId`, `secretAccessKey`, `endpoint`, and `bucketName`.
+Mint a key for the bucket. The response contains everything an S3 client needs: `accessKeyId`, `secretAccessKey`, `endpoint`, and `bucketName`.
 
 ```bash title="Mint a read-write key"
 curl -X POST https://api.prisma.io/v1/buckets/<bucketId>/keys \
@@ -67,9 +68,9 @@ curl -X POST https://api.prisma.io/v1/buckets/<bucketId>/keys \
   -d '{"name": "app-key", "role": "read_write"}'
 ```
 
-Capture the `secretAccessKey` now: it is returned only in this response. If you lose it, revoke the key and mint a new one.
+Save the `secretAccessKey` now; this is the only time the API returns it. If you lose it, revoke the key and mint a new one.
 
-Mint the narrowest role each consumer needs. A deployment that only serves files should hold a `read` key; keep `read_write` for the code paths that upload.
+Give each key the narrowest role that works: a deployment that only serves files should hold a `read` key, and `read_write` stays with the code paths that upload.
 
 ## 3. Add the credentials to your Compute app
 
@@ -148,7 +149,7 @@ curl -X DELETE https://api.prisma.io/v1/buckets/<bucketId> \
   -H "Authorization: Bearer $PRISMA_SERVICE_TOKEN"
 ```
 
-This succeeds even when the bucket still contains objects, which makes environment teardown one call, and also makes this the call to double-check before running. If an agent manages your buckets, put bucket deletion on its confirm-with-a-human list.
+This succeeds even when the bucket still contains objects. That makes tearing down an environment a single call, but it also means there is no undo, so double-check the bucket id before running it. If an agent manages your buckets, have it confirm deletions with you first.
 
 ## What to read next
 
