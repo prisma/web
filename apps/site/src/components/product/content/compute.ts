@@ -13,7 +13,9 @@ import type { ProductPageContent } from "../types";
 //    which is why this page composes its sections directly.
 //  - No "in public beta" callout. V3 had one and V4 removed it — don't
 //    reintroduce it from the homepage, which still labels Compute as beta.
-//  - Four features, so they render as two rows of two.
+//  - Five features (V4 shipped four; Object Store buckets, launched 2026-07-24,
+//    were added after the review), rendered three-then-two with the last pair
+//    centred — see product-features.tsx.
 const CONSOLE = "https://console.prisma.io";
 const DOCS = "/docs";
 
@@ -108,6 +110,13 @@ export const computeContent: ProductPageContent = {
         description:
           "Scheduled execution and background jobs are declared in prisma.config.ts, alongside the rest of your app. No external schedulers, no separate sidecar service.",
         illustration: "configJobs",
+      },
+      {
+        name: "S3-compatible file storage built in",
+        description:
+          "Object Store buckets live inside your project, next to its databases, managed from the same Console and API. Any S3 client works, with per-bucket keys scoped to read or read-write.",
+        href: "/docs/compute/object-storage",
+        illustration: "objectStore",
       },
     ],
   },

@@ -14,6 +14,7 @@ import { Deployments } from "./deployments";
 import { IsolatedBranches } from "./isolated-branches";
 import { MigrationBlocked } from "./migration-blocked";
 import { NoLockIn } from "./no-lock-in";
+import { ObjectStore } from "./object-store";
 import { QueryInsights } from "./query-insights";
 import { RepoConnect } from "./repo-connect";
 import { RunTemplates } from "./run-templates";
@@ -47,6 +48,7 @@ export const PRODUCT_ILLUSTRATIONS = {
   isolatedBranches: IsolatedBranches,
   migrationBlocked: MigrationBlocked,
   noLockIn: NoLockIn,
+  objectStore: ObjectStore,
   queryInsights: QueryInsights,
   repoConnect: RepoConnect,
   runTemplates: RunTemplates,
