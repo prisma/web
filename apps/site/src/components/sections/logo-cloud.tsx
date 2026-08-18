@@ -1,95 +1,65 @@
 import { Reveal } from "@/components/motion/reveal";
 
-type Logo = {
+type CompanyLogo = {
   name: string;
-  /** File in /public/logos. Omit to render a text wordmark fallback. */
-  src?: string;
-  /** Where the tile links out to. */
-  href: string;
-  /** Visual size correction so every mark reads at the same optical weight:
-      "sm" reins in dense/wide marks, "lg" boosts small-drawn icons. */
-  fit?: "sm" | "lg";
+  /** File in /public/logos/companies, in official brand colors. */
+  src: string;
+  /** Rendered height in px. Every file's viewBox is cropped to its ink
+      (Accenture excepted: its box is extended below the wordmark so the
+      wordmark, not the ">" symbol above it, sits on the row's centerline),
+      so height alone controls optical size. Heights are chosen so each mark
+      covers roughly the same ink area — equal visual mass, not equal height. */
+  height: number;
 };
 
-// Logos pulled from the "Prisma ORM" section on prisma.io, in the same order.
-// Next.js and Vercel use icon-only marks so they sit square in the tiles.
-const logos: Logo[] = [
-  {
-    name: "Cloudflare D1",
-    src: "/logos/cloudflare-d1.svg",
-    href: "https://developers.cloudflare.com/d1/",
-  },
-  {
-    name: "Cloudflare",
-    src: "/logos/cloudflare-icon-only.svg",
-    href: "https://www.cloudflare.com",
-    fit: "sm",
-  },
-  { name: "Astro", src: "/logos/astro.svg", href: "https://astro.build" },
-  { name: "Better Auth", href: "https://www.better-auth.com" },
-  { name: "Bun", src: "/logos/bun.svg", href: "https://bun.sh" },
-  { name: "Clerk", src: "/logos/clerk.jpeg", href: "https://clerk.com" },
-  { name: "Datadog", src: "/logos/datadog.svg", href: "https://www.datadoghq.com" },
-  { name: "Docker", src: "/logos/docker-blue.svg", href: "https://www.docker.com", fit: "sm" },
-  { name: "Deno", src: "/logos/deno-deploy.svg", href: "https://deno.com/deploy" },
-  { name: "Vercel", src: "/logos/vercel-icon.svg", href: "https://vercel.com" },
-  { name: "Next.js", src: "/logos/nextjs-icon.svg", href: "https://nextjs.org" },
-  { name: "Hono", src: "/logos/hono.svg", href: "https://hono.dev" },
-  { name: "GitHub", src: "/logos/github.svg", href: "https://github.com" },
-  { name: "Railway", src: "/logos/railway.svg", href: "https://railway.com" },
-  { name: "React Router", src: "/logos/rr7.svg", href: "https://reactrouter.com" },
-  {
-    name: "Solid Start",
-    src: "/logos/solid-start.svg",
-    href: "https://start.solidjs.com",
-    fit: "lg",
-  },
-  { name: "SvelteKit", src: "/logos/svelte.svg", href: "https://svelte.dev", fit: "lg" },
-  { name: "TanStack", src: "/logos/tanstack.svg", href: "https://tanstack.com" },
-  { name: "Turborepo", src: "/logos/turborepo-icon-only.svg", href: "https://turborepo.com" },
-  { name: "Nuxt", src: "/logos/nuxt.svg", href: "https://nuxt.com" },
-  { name: "Shopify", src: "/logos/shopify.svg", href: "https://www.shopify.com", fit: "sm" },
+// Companies verified as Prisma users: customer stories on /blog and the
+// showcase (Cal.com, Gamma, Elsevier, Grover, Rapha, Formbricks), confirmed
+// in Slack (Cursor, ClickHouse), well-known open-source Prisma codebases
+// (Dub, Documenso, Papermark, Inbox Zero), and the customer wall of the
+// previous prisma.io homepage (Reddit, Okta, Accenture, Lush, Kapa.ai — those
+// assets are the old wall's own files, recolored from white to ink).
+const companies: CompanyLogo[] = [
+  { name: "Cursor", src: "/logos/companies/cursor.svg", height: 20 },
+  { name: "Reddit", src: "/logos/companies/reddit.svg", height: 26 },
+  { name: "Okta", src: "/logos/companies/okta.svg", height: 26 },
+  { name: "Lush", src: "/logos/companies/lush.svg", height: 26 },
+  { name: "ClickHouse", src: "/logos/companies/clickhouse.svg", height: 20 },
+  { name: "Cal.com", src: "/logos/companies/cal.svg", height: 23 },
+  { name: "Accenture", src: "/logos/companies/accenture.svg", height: 38 },
+  { name: "Dub", src: "/logos/companies/dub.svg", height: 24 },
+  { name: "Rapha", src: "/logos/companies/rapha.svg", height: 30 },
+  { name: "Gamma", src: "/logos/companies/gamma.svg", height: 20 },
+  { name: "Kapa.ai", src: "/logos/companies/kapa.svg", height: 26 },
+  { name: "Documenso", src: "/logos/companies/documenso.svg", height: 18 },
+  { name: "Elsevier", src: "/logos/companies/elsevier.svg", height: 26 },
+  { name: "Grover", src: "/logos/companies/grover.svg", height: 26 },
+  { name: "Formbricks", src: "/logos/companies/formbricks.svg", height: 19 },
+  { name: "Papermark", src: "/logos/companies/papermark.svg", height: 23 },
+  { name: "Inbox Zero", src: "/logos/companies/inboxzero.svg", height: 18 },
 ];
 
-const FIT_CLASS = {
-  sm: "max-h-8 w-auto max-w-[3.25rem] object-contain",
-  md: "max-h-10 w-auto max-w-12 object-contain",
-  lg: "max-h-12 w-auto max-w-14 object-contain",
-};
-
-function LogoTile({ logo }: { logo: Logo }) {
-  return (
-    <a
-      href={logo.href}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label={logo.name}
-      className="spectrum-border flex size-24 shrink-0 items-center justify-center rounded-2xl border border-neutral-200 bg-white p-4 transition-[transform,border-color] duration-500 ease-out hover:scale-[0.97] hover:border-transparent motion-reduce:hover:scale-100"
-    >
-      {logo.src ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={logo.src}
-          alt={logo.name}
-          className={FIT_CLASS[logo.fit ?? "md"]}
-          loading="lazy"
-          draggable={false}
-        />
-      ) : (
-        <span className="select-none text-center text-[0.7rem] font-semibold leading-tight tracking-tight text-foreground">
-          {logo.name}
-        </span>
-      )}
-    </a>
-  );
-}
-
+/* The row is rendered twice per track (and the track twice) so the strip is
+   wider than any viewport and the -50% marquee loop is seamless. */
 function Track({ hidden = false }: { hidden?: boolean }) {
   return (
-    <div className="flex shrink-0 items-center gap-x-5 pr-5" aria-hidden={hidden || undefined}>
-      {logos.map((logo) => (
-        <LogoTile key={logo.name} logo={logo} />
-      ))}
+    <div
+      className="flex shrink-0 items-center gap-x-14 pr-14 lg:gap-x-20 lg:pr-20"
+      aria-hidden={hidden || undefined}
+    >
+      {[0, 1].map((copy) =>
+        companies.map((company) => (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            key={`${copy}-${company.name}`}
+            src={company.src}
+            alt={hidden || copy === 1 ? "" : company.name}
+            className="w-auto shrink-0"
+            style={{ height: company.height }}
+            loading="lazy"
+            draggable={false}
+          />
+        )),
+      )}
     </div>
   );
 }
@@ -106,13 +76,13 @@ export function LogoCloud() {
 
         <Reveal
           delay={0.1}
-          className="group relative mt-10 overflow-hidden motion-reduce:overflow-x-auto"
+          className="group relative mt-12 overflow-hidden motion-reduce:overflow-x-auto"
         >
-          {/* Edge fades so tiles dissolve rather than clip at the margins */}
+          {/* Edge fades so wordmarks dissolve rather than clip at the margins */}
           <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-background to-transparent sm:w-24" />
           <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-background to-transparent sm:w-24" />
 
-          <div className="flex w-max animate-logo-marquee hover:[animation-play-state:paused] motion-reduce:animate-none">
+          <div className="flex w-max animate-logo-marquee items-center hover:[animation-play-state:paused] motion-reduce:animate-none">
             <Track />
             <Track hidden />
           </div>
