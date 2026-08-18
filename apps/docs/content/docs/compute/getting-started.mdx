@@ -28,7 +28,7 @@ Authenticate first; everything else needs a session:
 npx prisma@next auth login
 ```
 
-This opens a browser to sign you in, then stores a session that every later command inherits, including any coding agent working in your directory. The browser step needs a human; in CI or other headless environments, use a [service token](#automation-and-ci) instead. To check who you are signed in as, run `auth whoami`.
+This opens a browser to sign you in, then stores a session that every later command inherits. Because the browser step is interactive, CI and other headless environments use a [service token](#automation-and-ci) instead. To check who you are signed in as, run `auth whoami`.
 
 ## Describe your app
 
@@ -38,7 +38,7 @@ From your app directory, write the committed compute config:
 npx prisma@next init
 ```
 
-`init` detects your framework and writes `prisma.compute.ts` (or, with `--config-format json`, a dependency-free `prisma.compute.json`). The service commands read this file for the service name, framework, entry point, HTTP port, and region. The file is optional for a simple single-service repository (builds detect the framework without it), but committing one makes deploys reproducible and is required for monorepos; [Configuration](/compute/configuration) documents every field. Today there is first-class support for **Next.js**, **Nuxt**, **Astro**, **Hono**, **NestJS**, and **TanStack Start**, plus `bun` and `custom` entry points:
+`init` detects your framework and writes `prisma.compute.ts` (or, with `--config-format json`, a dependency-free `prisma.compute.json`). The service commands read this file for the service name, framework, entry point, HTTP port, and region; [Configuration](/compute/configuration) documents every field. A simple single-service repository can skip the file, since builds detect the framework without it. Committing one makes deploys reproducible, and monorepos require it. Today there is first-class support for **Next.js**, **Nuxt**, **Astro**, **Hono**, **NestJS**, and **TanStack Start**, plus `bun` and `custom` entry points:
 
 ```npm
 npx prisma@next init --framework hono --entry src/index.ts
@@ -118,7 +118,7 @@ Values are write-only and resolve at deploy time; see [Environment variables](/c
 
 ## Automation and CI
 
-The CLI is built for agents and CI, not just terminals.
+The same commands run unattended in CI or under a coding agent.
 
 If you have signed in with `auth login`, anything running in that environment inherits your session, including an agent working in your directory. Check the session:
 
@@ -148,17 +148,14 @@ The `prisma-compute` skill teaches your agent the Compute workflow (auth, config
 
 ### Structured output
 
-In `--json` mode, every command emits an envelope with an `ok` flag. On failure, `error.code` is a dotted `NAMESPACE.SUBCODE` (for example `SERVICE.PROJECT_SETUP_REQUIRED`), `error.summary` and `error.why` explain the problem, and `nextActions` lists concrete follow-up commands, which is what makes the CLI drivable by agents. Branch on the code, not the message: codes are a stable contract, while wording can change between releases.
+In `--json` mode, every command emits an envelope with an `ok` flag. On failure, `error.code` is a dotted `NAMESPACE.SUBCODE` (for example `SERVICE.PROJECT_SETUP_REQUIRED`), `error.summary` and `error.why` explain the problem, and `nextActions` lists concrete follow-up commands. Scripts and agents should branch on the code rather than the message: codes are a stable contract, while wording can change between releases.
 
 ## Console
 
-To view your resources instead of running commands, use the [Console](https://pris.ly/pdp) for projects, branches, services, deployments, integrations, and domains. It shows them in a visual way and lets you manage them with buttons instead of commands.
+To browse and manage the same resources without the CLI, open the [Console](https://pris.ly/pdp). It covers projects, branches, services, deployments, integrations, and domains.
 
 ## Next steps
 
-- [CLI reference](/cli/v8): every command and flag.
 - [Deployments](/compute/deployments): inspect, promote, roll back, start, stop.
 - [Environment variables](/compute/environment-variables): production, preview, and per-branch overrides.
 - [Branching](/compute/branching): how branches isolate work and map to Git.
-- [GitHub integration](/compute/github): the push-to-deploy flow in detail.
-- [Prisma Composer](/composer): CLI-driven deploys of multi-service apps.
