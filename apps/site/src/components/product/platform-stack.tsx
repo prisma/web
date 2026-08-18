@@ -185,10 +185,10 @@ const SLOT_TWEEN = { duration: 0.26, ease: [0.22, 1, 0.36, 1] } as const;
 
 function PrismaMark({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 76.817 76.817" className={className} aria-hidden>
-      <path d="M15.5417 0V0.0303339L0 15.5671V43.6548L43.6729 0H15.5417Z" fill="#04D5E7" />
-      <path d="M76.817 0H47.7408L0 47.721V76.817H29.0473L76.817 29.0657V0Z" fill="#FE4352" />
-      <path d="M33.1143 76.8175H61.2454L76.8175 61.2504V33.1309L33.1143 76.8175Z" fill="#FEBE29" />
+    <svg viewBox="0 0 263 264" className={className} aria-hidden>
+      <path d="M57.3357 92.5003L0 149.939V53.5L53.2105 0.10425V0H149.524L57.3357 92.5003Z" fill="#04D5E7" />
+      <path d="M263 91.7452L91.0537 264H0V172.229L171.92 0H263V91.7452Z" fill="#FE4352" />
+      <path d="M209.686 264H113.373L156.453 220.773L263.001 114.034V210.5L209.686 264Z" fill="#FEBE29" />
     </svg>
   );
 }

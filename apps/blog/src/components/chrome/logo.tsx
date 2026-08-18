@@ -25,16 +25,16 @@ export function Logo({
       <img
         src={withBlogBasePath(LIGHT)}
         alt="Prisma"
-        width={304}
-        height={77}
+        width={264}
+        height={67}
         className="h-6.5 w-auto dark:hidden sm:h-7"
       />
       <img
         src={withBlogBasePath(DARK)}
         alt=""
         aria-hidden
-        width={304}
-        height={77}
+        width={264}
+        height={67}
         className="hidden h-6.5 w-auto dark:block sm:h-7"
       />
     </a>
