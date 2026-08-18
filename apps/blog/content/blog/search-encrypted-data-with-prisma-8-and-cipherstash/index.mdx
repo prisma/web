@@ -1,18 +1,20 @@
 ---
 title: "Search encrypted data with Prisma 8 and CipherStash"
-slug: "search-encrypted-data-with-prisma-next-and-cipherstash"
+slug: "search-encrypted-data-with-prisma-8-and-cipherstash"
 date: "2026-07-30"
 authors:
   - "Dan Draper"
 metaTitle: "Search encrypted data with Prisma 8 and CipherStash"
 metaDescription: "CipherStash brings searchable field-level encryption to Prisma 8: encrypted equality, free-text and range queries, and identity-based key management."
-heroImagePath: "/search-encrypted-data-with-prisma-next-and-cipherstash/imgs/hero.svg"
+heroImagePath: "/search-encrypted-data-with-prisma-8-and-cipherstash/imgs/hero.svg"
 heroImageAlt: "Search encrypted data with Prisma 8 and CipherStash"
-metaImagePath: "/search-encrypted-data-with-prisma-next-and-cipherstash/imgs/meta.png"
+metaImagePath: "/search-encrypted-data-with-prisma-8-and-cipherstash/imgs/meta.png"
 canonicalUrl: "https://cipherstash.com/blog/search-encrypted-data-with-prisma-next-and-cipherstash"
 tags:
   - "announcement"
   - "orm"
+series: prisma-next
+seriesIndex: 12
 ---
 
 Most developers think their production database is already encrypted.
@@ -21,7 +23,7 @@ Strictly speaking, they're right.
 
 Most managed databases enable **encryption at rest** by default. But encryption at rest probably doesn't protect data in the way you think it does.
 
-Today, we're excited to announce first-class support for **[Prisma 8 RC1](https://pris.ly/pn-cipherstash)**, making it simple to add searchable field-level encryption to Prisma applications—with encrypted queries, identity-based key management and almost no change to the way you work with your database.
+Today, we're excited to announce first-class support for **[Prisma 8](https://pris.ly/pn-cipherstash)**, now in Early Access, making it simple to add searchable field-level encryption to Prisma applications—with encrypted queries, identity-based key management and a small, explicit API surface for encrypted reads and writes. This guest post by CipherStash is the twelfth entry in the [Prisma 8 series](/series/prisma-next); the integration it introduces grew out of the earlier [call for extension authors](/prisma-next-call-for-extension-authors).
 
 But first: why encrypt fields at all?
 
@@ -76,10 +78,9 @@ CipherStash approaches the problem differently.
 When enabled for a field, every sensitive value is encrypted independently using its own derived data key.
 Data keys are not stored alongside the data and never leave the application.
 
-Queries on EQL columns are encrypted in the same way.
-Postgres compares encrypted query terms against encrypted values.
-Standard B-tree and GIN indexes work, too, so performance is sub-millisecond for many queries, even on very large datasets.
-See our [benchmarks][benchmarks] for more information.
+Queries on encrypted columns are encrypted in the same way.
+Alongside the randomized ciphertext, the [Encrypt Query Language][eql] (EQL) package stores encrypted index terms that Postgres can compare without ever seeing plaintext. The terms reveal equality, ordering, and match relationships to the database, but not the values themselves.
+Standard B-tree and GIN indexes work on those terms: in our [benchmarks][benchmarks], encrypted lookups run in 0.1–0.8 ms — equality through JSON containment — on tables of up to 10 million rows.
 
 This means encrypted fields can still support:
 
@@ -93,16 +94,16 @@ CipherStash can also tie key access directly to the user's identity.
 It works with identity providers like Clerk, Auth0, and others, using the user's identity token to control access to encrypted data.
 Applications don't need to store reusable data keys, and a database credential alone isn't enough to decrypt identity-bound values.
 
-![Encrypted insert, query and decryption paths](/search-encrypted-data-with-prisma-next-and-cipherstash/imgs/encrypted-data-flow.svg)
+![Encrypted insert, query and decryption paths](/search-encrypted-data-with-prisma-8-and-cipherstash/imgs/encrypted-data-flow.svg)
 
 _Encrypted insert, query and decryption paths._
 
 ## Searchable encryption in Prisma 8
 
 ORMs have long supported encrypting fields.
-What they haven't been able to do is preserve the queries that make an ORM useful.
+What they generally haven't preserved is the queries that make an ORM useful.
 
-Prisma 8 changes that.
+Prisma 8's extension model changes that, letting CipherStash bring searchable encryption into the ORM's own type-safe query API.
 
 <Quotes
   speakerImgLink="/blog/authors/will-madden.png"
@@ -127,12 +128,12 @@ For example, a `User` model might use the `Text`, `Date`, and `Json` types from 
 model User {
   id String @id
   email cipherstash.Text()        // encrypted string
-  birthday cipherstash.Date()     // encrypted Date
-  preferences cipherstash.Json()  // encrypted JSON "blob"
+  birthday cipherstash.Date()     // encrypted date
+  preferences cipherstash.Json()  // searchable encrypted JSON
 }
 ```
 
-Unlike regular plaintext types, CipherStash encrypted types are not searchable. To enable searchable encryption on a field, you can use a type variant.
+The constructor is the capability set. Base types like `cipherstash.Text()` and `cipherstash.Date()` are storage-only: you can write and decrypt those columns, but not query them. To enable searchable encryption on a field, use a variant that carries the query capabilities you need. (`cipherstash.Json()` already supports encrypted containment queries.)
 
 For example, for encrypted text values that support sorting, simple lookups, and fuzzy text search, use the TextSearch type:
 
@@ -147,7 +148,7 @@ model User {
 The contract is the single source of truth for which fields are encrypted and how they can be queried (or not).
 Prisma 8 manages the encrypted column types, database extension, and searchable indexes through the same migration lifecycle as the rest of your schema.
 
-Each encrypted type and all its variants are installed in Postgres automatically from the [Encrypt Query Language][eql] (EQL) package.
+Each encrypted type and all its variants are installed in Postgres automatically from the [EQL][eql] package.
 EQL also provides functions and operators that Prisma 8 uses for query comparisons and sorting.
 
 ### Encrypted queries that look like Prisma queries
@@ -170,6 +171,8 @@ PostgreSQL receives an encrypted query and evaluates it against the encrypted in
 The same model supports free-text and range queries:
 
 ```typescript
+import { eqlAsc } from "@cipherstash/stack-prisma/runtime"
+
 // Search for email addresses containing 'dan'
 // and order results
 const users = await db.orm.public.User
@@ -189,7 +192,9 @@ Query results remain encrypted until the application explicitly decrypts them.
 ```typescript
 import { decryptAll } from "@cipherstash/stack-prisma/runtime"
 
-const users = // query
+const users = await db.orm.public.User
+  .where(user => user.email.eqlEq("dan@example.com"))
+  .all()
 
 await decryptAll(users)
 const email = await users[0].email.decrypt()
@@ -197,7 +202,7 @@ const email = await users[0].email.decrypt()
 
 This creates a clear boundary around plaintext access.
 
-Encrypted values cannot accidentally appear in a JSON response, application log, or AI prompt simply because an object was serialized. Reaching plaintext requires an explicit decryption operation in application code.
+Plaintext values cannot accidentally appear in a JSON response, application log, or AI prompt simply because an object was serialized: serialized results contain only ciphertext. Reaching plaintext requires an explicit decryption operation in application code.
 
 ## Use cases
 
@@ -213,19 +218,19 @@ Organizations use CipherStash to:
 - reduce the impact of application or database compromise
 - enforce data sovereignty and residency requirements
 
-As regulators and enterprise customers increasingly expect evidence of technical controls, encryption is becoming less about protecting storage and more about proving who could—and couldn't—access sensitive information.
+As regulators and enterprise customers increasingly expect evidence of technical controls, encryption is becoming less about protecting storage and more about demonstrating who could—and couldn't—access sensitive information.
 
 ## Built for the Prisma stack
 
-The integration works with Prisma Postgres and fits naturally into applications deployed with Prisma Compute.
+The integration works with [Prisma Postgres](https://www.prisma.io/docs/postgres) and fits naturally into applications deployed with [Prisma Compute](https://www.prisma.io/docs/compute), currently in Public Beta.
 
-![Encrypted columns in Prisma Studio](/search-encrypted-data-with-prisma-next-and-cipherstash/imgs/studio-encrypted-columns.png)
+![Encrypted columns in Prisma Studio](/search-encrypted-data-with-prisma-8-and-cipherstash/imgs/studio-encrypted-columns.png)
 
 _Prisma Studio browsing the same table an attacker would: the encrypted columns are ciphertext, all the way down._
 
-![Encrypted queries in the Prisma Postgres query dashboard](/search-encrypted-data-with-prisma-next-and-cipherstash/imgs/postgres-queries.png)
+![Encrypted queries in the Prisma Postgres query dashboard](/search-encrypted-data-with-prisma-8-and-cipherstash/imgs/postgres-queries.png)
 
-_Encrypted queries in the Prisma Postgres dashboard, running sub-millisecond alongside everything else._
+_Encrypted queries in the Prisma Postgres dashboard, running alongside everything else._
 
 ## Get started in four steps
 
@@ -241,9 +246,9 @@ This gives you a fresh project with the contract-first workflow already wired up
 
 ### 2. Create a Prisma Postgres database
 
-The scaffold connects your app to Prisma Postgres as part of setup. There's no proxy to deploy and no database extension to install by hand — Prisma 8 installs the [EQL][eql] package for you during migration, alongside your own schema.
+The scaffold can connect your app to Prisma Postgres during setup. There's nothing else to deploy and no database extension to install by hand — Prisma 8 installs the [EQL][eql] package for you during migration, alongside your own schema.
 
-If you'd rather stay local while you experiment, `npx prisma dev` gives you a local Postgres instance instead.
+If you'd rather stay local while you experiment, `npx prisma dev` — part of the standard `prisma` CLI — gives you a local Postgres instance instead.
 
 ### 3. Add the CipherStash extension
 
@@ -251,15 +256,16 @@ If you'd rather stay local while you experiment, `npx prisma dev` gives you a lo
 npx stash init --prisma
 ```
 
-This detects Prisma 8, installs `@cipherstash/stack` and `@cipherstash/stack-prisma` pinned to the CLI release, and signs you in to CipherStash. Register the extension pack in your Prisma config:
+This sets up the Prisma integration: it installs `@cipherstash/stack` and `@cipherstash/stack-prisma` pinned to the CLI release and signs you in to CipherStash. Register it in your Prisma config:
 
 ```typescript
 // prisma-next.config.ts
 import cipherstash from '@cipherstash/stack-prisma/control'
+import { defineConfig } from '@prisma-next/postgres/config'
 
 export default defineConfig({
   // ...your existing config
-  extensionPacks: [cipherstash],
+  extensions: [cipherstash],
 })
 ```
 
@@ -294,7 +300,7 @@ model User {
 }
 ```
 
-Then emit the contract, plan the migration, and apply it:
+Then emit the contract, plan the migration, and apply it — the Early Access CLI ships these commands under the `prisma-next` binary:
 
 ```sh
 npx prisma-next contract emit
@@ -332,13 +338,13 @@ await decryptAll(users);
 const email = await users[0].email.decrypt();
 ```
 
-Four steps, and the value was never in plaintext in your database, in your query, or in your logs.
+Four steps, and the value never reached your database in plaintext — not in storage, not in the SQL Postgres received, and not in anything Postgres logged.
 
 You can also skip the scaffold and clone the [example app](https://github.com/cipherstash/stack/tree/main/examples/prisma) instead.
 
-:::note[Prisma 8 RC1]
+:::note[Prisma 8 Early Access]
 
-Prisma 8 is currently a release candidate. See [the Prisma 8 announcement](https://pris.ly/pn-cipherstash) for what's in it and where it's heading.
+Prisma 8 is currently in Early Access. See [the Early Access announcement](/prisma-next-early-access-write-your-contract-prompt-your-agent-ship-your-app) for what's in it and where it's heading.
 
 :::
 
@@ -347,7 +353,7 @@ Prisma 8 is currently a release candidate. See [the Prisma 8 announcement](https
 Searchable encryption does more than protect sensitive values.
 It changes what applications can prove about data access.
 
-When every value is encrypted independently, every query is encrypted, and every decryption is authorized against the identity making the request, access control moves from the application perimeter to the data itself.
+When every value is encrypted independently, every query is encrypted, and decryption can be authorized against the identity making the request, access control moves from the application perimeter to the data itself.
 
 This is known as Data Level Access Control (DLAC).
 
@@ -366,7 +372,7 @@ Without searchable encryption, encrypted data becomes difficult to use. Without 
 Together, they make it possible to build applications where access is enforced cryptographically, not just by convention.
 
 This is only the beginning.
-In the coming months, we'll introduce Access Intelligence, making those cryptographic decisions observable so that developers, security teams, and auditors can understand not only who accessed sensitive data but also why, when, and under what authority.
+In the coming months, CipherStash will introduce Access Intelligence, making those cryptographic decisions observable so that developers, security teams, and auditors can understand not only who accessed sensitive data but also why, when, and under what authority.
 
 That's where we believe data security is heading, not just encrypted databases, but data that can enforce and prove its own access controls.
 

@@ -244,6 +244,11 @@ const config = {
         destination: "/how-xeito-builds-features-not-database-infrastructure-with-prisma",
         permanent: true,
       },
+      {
+        source: "/search-encrypted-data-with-prisma-next-and-cipherstash",
+        destination: "/search-encrypted-data-with-prisma-8-and-cipherstash",
+        permanent: true,
+      },
       ...tagSlugs.map((tag) => ({
         source: `/${tag}`,
         destination: `/?tag=${tag}`,
