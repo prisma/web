@@ -10,7 +10,7 @@ Get an app live on [Prisma Compute](/compute) with the unified Prisma CLI: sign 
 
 :::info
 
-Until launch, the unified Prisma CLI is published as the `next` tag of the `@prisma/cli` package; run it as `npx @prisma/cli@next <command>`. In the unified CLI, deployments come from a git push, the [Console](https://pris.ly/pdp), or [Prisma Composer](/composer), and the CLI manages everything around them. The earlier `@prisma/cli` beta (the `latest` tag) still provides a one-shot `app deploy` command, which the [getting-started flows](/) on the docs homepage use. Both talk to the same platform.
+This guide uses the Prisma 8 RC CLI, run as `npx prisma@next <command>`. Deployments come from a git push, the [Console](https://pris.ly/pdp), or [Prisma Composer](/composer); the CLI manages everything around them.
 
 :::
 
@@ -25,7 +25,7 @@ Until launch, the unified Prisma CLI is published as the `next` tag of the `@pri
 Authenticate first; everything else needs a session:
 
 ```npm
-npx @prisma/cli@next auth login
+npx prisma@next auth login
 ```
 
 This opens a browser to sign you in, then stores a session that every later command inherits, including any coding agent working in your directory. The browser step needs a human; in CI or other headless environments, use a [service token](#automation-and-ci) instead. To check who you are signed in as, run `auth whoami`.
@@ -35,14 +35,14 @@ This opens a browser to sign you in, then stores a session that every later comm
 From your app directory, write the committed compute config:
 
 ```npm
-npx @prisma/cli@next init
+npx prisma@next init
 ```
 
 `init` detects your framework and writes `prisma.compute.ts` (or, with `--config-format json`, a dependency-free `prisma.compute.json`). The service commands read this file for the service name, framework, entry point, HTTP port, and region. The file is optional for a simple single-service repository (builds detect the framework without it), but committing one makes deploys reproducible and is required for monorepos; [Configuration](/compute/configuration) documents every field. Today there is first-class support for **Next.js**, **Nuxt**, **Astro**, **Hono**, **NestJS**, and **TanStack Start**, plus `bun` and `custom` entry points:
 
 ```npm
-npx @prisma/cli@next init --framework hono --entry src/index.ts
-npx @prisma/cli@next init --name api --http-port 8080
+npx prisma@next init --framework hono --entry src/index.ts
+npx prisma@next init --name api --http-port 8080
 ```
 
 :::note
@@ -60,20 +60,20 @@ export default { output: "standalone" };
 A project groups your services, branches, and databases. Create one and link this directory to it:
 
 ```npm
-npx @prisma/cli@next project create my-app
+npx prisma@next project create my-app
 ```
 
 If your team already has one, link to it instead:
 
 ```npm
-npx @prisma/cli@next project link my-app
+npx prisma@next project link my-app
 ```
 
 Either path writes `.prisma/local.json`, a gitignored file that pins this directory to a project. It is a local cache, not committed config. Two commands to check your wiring:
 
 ```npm
-npx @prisma/cli@next project show
-npx @prisma/cli@next project list
+npx prisma@next project show
+npx prisma@next project list
 ```
 
 `project show` tells you what this directory is linked to; `project list` shows the projects you can see.
@@ -83,20 +83,20 @@ npx @prisma/cli@next project list
 Connect the project to your repository:
 
 ```npm
-npx @prisma/cli@next git connect
+npx prisma@next git connect
 ```
 
 This starts the GitHub App install flow if needed and links the repository. From then on, pushing a branch builds and deploys it: the default Git branch deploys to production, and every other branch gets its own isolated preview. Push, then watch and open the result:
 
 ```npm
-npx @prisma/cli@next service show
-npx @prisma/cli@next service open
+npx prisma@next service show
+npx prisma@next service open
 ```
 
 `service show` prints the service and its current deployment, including the build id; stream a build's logs with:
 
 ```npm
-npx @prisma/cli@next build logs <buildId> --follow
+npx prisma@next build logs <buildId> --follow
 ```
 
 To learn how deployments are promoted, rolled back, started, and stopped, see [Deployments](/compute/deployments).
@@ -107,11 +107,11 @@ For an app made of several services and databases that you want to deploy direct
 
 ## Environment variables
 
-Give your app configuration per scope, production or preview, before the deploy that should use it. To connect a database, create a [Prisma Postgres](/postgres) database in the project (`npx @prisma/cli@next postgres create my-db` prints its connection string once) and store the URL as an environment variable:
+Give your app configuration per scope, production or preview, before the deploy that should use it. To connect a database, create a [Prisma Postgres](/postgres) database in the project (`npx prisma@next postgres create my-db` prints its connection string once) and store the URL as an environment variable:
 
 ```npm
-npx @prisma/cli@next project env add DATABASE_URL=postgres://... --role production
-npx @prisma/cli@next project env add DATABASE_URL=postgres://... --role preview
+npx prisma@next project env add DATABASE_URL=postgres://... --role production
+npx prisma@next project env add DATABASE_URL=postgres://... --role preview
 ```
 
 Values are write-only and resolve at deploy time; see [Environment variables](/compute/environment-variables).
@@ -123,13 +123,13 @@ The CLI is built for agents and CI, not just terminals.
 If you have signed in with `auth login`, anything running in that environment inherits your session, including an agent working in your directory. Check the session:
 
 ```npm
-npx @prisma/cli@next auth whoami
+npx prisma@next auth whoami
 ```
 
 For CI, or any environment where the browser sign-in is not an option, authenticate with a **service token** instead. Set `PRISMA_SERVICE_TOKEN` and the CLI uses it before any stored session. Pass targets explicitly so nothing depends on a prompt, `--json` for structured output, and `--no-interactive` so the CLI fails instead of asking:
 
 ```bash
-PRISMA_SERVICE_TOKEN=... npx @prisma/cli@next service show \
+PRISMA_SERVICE_TOKEN=... npx prisma@next service show \
   --project my-app \
   --service web \
   --json \
@@ -141,7 +141,7 @@ PRISMA_SERVICE_TOKEN=... npx @prisma/cli@next service show \
 If a coding agent does your deploying, install the Prisma Compute agent skill into your repo:
 
 ```npm
-npx @prisma/cli@next agent install --skill prisma-compute
+npx prisma@next agent install --skill prisma-compute
 ```
 
 The `prisma-compute` skill teaches your agent the Compute workflow (auth, config, deploys, logs, and domains), so it follows the right steps. Supported agents pick it up automatically. Run `agent install` with no flags for an interactive picker, or `agent status` to see what is installed.

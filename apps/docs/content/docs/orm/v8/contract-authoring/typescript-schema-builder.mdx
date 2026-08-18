@@ -22,19 +22,25 @@ If neither applies, write PSL: it is more compact, and it is what `create-prisma
 
 The config's `contract` path names the source of truth. A `.ts` extension selects TypeScript authoring:
 
-```typescript title="prisma-next.config.ts" tab="PostgreSQL"
-import { defineConfig } from "@prisma/orm-postgres/config";
+```typescript title="prisma.config.ts" tab="PostgreSQL"
+import { defineConfig } from "@prisma/cli-engine";
+import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
 
 export default defineConfig({
-  contract: "./prisma/contract.ts",
+  orm: ormConfig({
+    contract: "./prisma/contract.ts",
+  }),
 });
 ```
 
-```typescript title="prisma-next.config.ts" tab="MongoDB"
-import { defineConfig } from "@prisma/orm-mongo/config";
+```typescript title="prisma.config.ts" tab="MongoDB"
+import { defineConfig } from "@prisma/cli-engine";
+import { defineConfig as ormConfig } from "@prisma/orm-mongo/config";
 
 export default defineConfig({
-  contract: "./prisma/contract.ts",
+  orm: ormConfig({
+    contract: "./prisma/contract.ts",
+  }),
 });
 ```
 
@@ -149,7 +155,7 @@ export const contract = defineContract({
 });
 ```
 
-Run `npx @prisma/cli@next contract emit` after any change to refresh the artifacts.
+Run `npx prisma@next contract emit` after any change to refresh the artifacts.
 
 The two builders share the same shape but differ where the databases do. On PostgreSQL, fields pick column types and models chain `.sql({ table })` to map storage; on MongoDB, the ID is a `field.objectId()` named `_id`, scalar helpers are `field.string()`, `field.int32()`, `field.double()`, `field.bool()`, and `field.date()`, and the collection is an inline `collection` option on the model rather than a chained call.
 
@@ -248,7 +254,7 @@ export const contract = defineContract(
 );
 ```
 
-The same pack must also be composed in `prisma-next.config.ts` (as `extensions: [pgvector]`, using the pack's `/control` export) so the CLI and runtime agree with the contract.
+The same pack must also be composed in `prisma.config.ts` (as `extensions: [pgvector]`, using the pack's `/control` export) so the CLI and runtime agree with the contract.
 
 ## Keep the contract file pure
 
@@ -258,7 +264,7 @@ The contract file describes structure; emission canonicalizes it to JSON and has
 - Keep field values plain: strings, numbers, booleans, and the builder's own objects. Functions, class instances, and `Date` objects do not serialize.
 - Keep the file free of side effects. Emission evaluates it to obtain the contract object and nothing else.
 
-Configuration that legitimately varies per environment, such as the database URL, belongs in `prisma-next.config.ts`, not in the contract.
+Configuration that legitimately varies per environment, such as the database URL, belongs in `prisma.config.ts`, not in the contract.
 
 ## Parity with PSL
 

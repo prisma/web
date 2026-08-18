@@ -10,15 +10,15 @@ badge: release-candidate
 Applying is the one step that touches a database, and it has one command:
 
 ```bash
-npx @prisma/cli@next migrate
+npx prisma@next migrate
 ```
 
 Note the verb: it's `migrate`, not `migration apply`. The `migration ...` subcommands manage files on disk; `migrate` moves a database. It reads where the database currently is (its **marker**), finds a path through the [migration graph](/orm/v8/migrations/the-migration-graph) to the target, and applies each migration along the path, running every operation's precheck, execute, and postcheck as it goes.
 
-The connection comes from `db.connection` in `prisma-next.config.ts`, or `--db` to override:
+The connection comes from `db.connection` in `prisma.config.ts`, or `--db` to override:
 
 ```bash
-npx @prisma/cli@next migrate --db $DATABASE_URL
+npx prisma@next migrate --db $DATABASE_URL
 ```
 
 A successful run reports every operation it performed and the marker it left behind:
@@ -43,13 +43,13 @@ The habit worth building, especially against shared databases, is a three-step r
 
 ```bash
 # 1. Where is the database, what's pending?
-npx @prisma/cli@next migration status --db $DATABASE_URL
+npx prisma@next migration status --db $DATABASE_URL
 
 # 2. What exactly would run?
-npx @prisma/cli@next migrate --show --db $DATABASE_URL
+npx prisma@next migrate --show --db $DATABASE_URL
 
 # 3. Run it.
-npx @prisma/cli@next migrate --db $DATABASE_URL
+npx prisma@next migrate --db $DATABASE_URL
 ```
 
 `migration status` draws the path between the database's marker and the target, flagging each migration as applied or pending:
@@ -93,9 +93,9 @@ After applying, `migration log` shows the database's own record of what ran: an 
 With no `--to`, `migrate` advances toward your emitted contract. To aim somewhere specific, `--to` accepts the same reference grammar as everywhere else: a ref name, a contract hash or prefix, a migration directory name, or `<dir>^` for the state before a migration:
 
 ```bash
-npx @prisma/cli@next migrate --to prod --db $DATABASE_URL          # a ref
-npx @prisma/cli@next migrate --to sha256:e6b5c28 --db $DATABASE_URL # a hash prefix
-npx @prisma/cli@next migrate --to 20260707T1005_init --db $DATABASE_URL
+npx prisma@next migrate --to prod --db $DATABASE_URL          # a ref
+npx prisma@next migrate --to sha256:e6b5c28 --db $DATABASE_URL # a hash prefix
+npx prisma@next migrate --to 20260707T1005_init --db $DATABASE_URL
 ```
 
 If the graph has branched and more than one tip is reachable, `migrate` refuses to guess and asks for an explicit `--to`. That's the graph protecting you: two feature branches may both be valid futures, and picking one is a human decision.
@@ -103,7 +103,7 @@ If the graph has branched and more than one tip is reachable, `migrate` refuses 
 `--advance-ref` moves a named ref to the post-apply state in the same step. Advancing one called `db` is what keeps [`migration plan`](/orm/v8/migrations/generating-a-migration#the-db-ref-skipping---from) incremental:
 
 ```bash
-npx @prisma/cli@next migrate --advance-ref db
+npx prisma@next migrate --advance-ref db
 ```
 
 ## When something goes wrong
@@ -131,15 +131,15 @@ The commands are the same everywhere; what changes is where the files come from 
 **In development**, you're the one planning and editing, and you apply immediately:
 
 ```bash
-npx @prisma/cli@next migration plan --name my_change && npx @prisma/cli@next migrate --advance-ref db
+npx prisma@next migration plan --name my_change && npx prisma@next migrate --advance-ref db
 ```
 
 **In CI and production**, migrations arrive via your repo, already planned, reviewed, and merged. That's why the [editing rule](/orm/v8/migrations/editing-a-migration) matters: commit `migration.ts` and `ops.json` together, and let `migration check` (exit codes `0`/`2`/`4`, see [Generating a migration](/orm/v8/migrations/generating-a-migration#reviewing-what-you-planned)) catch a stale recompile before deploy. The deploy step is:
 
 ```bash
-npx @prisma/cli@next migration check          # files intact, graph well-formed (offline)
-npx @prisma/cli@next migrate --show --db $DATABASE_URL   # log what's about to run
-npx @prisma/cli@next migrate --db $DATABASE_URL
+npx prisma@next migration check          # files intact, graph well-formed (offline)
+npx prisma@next migrate --show --db $DATABASE_URL   # log what's about to run
+npx prisma@next migrate --db $DATABASE_URL
 ```
 
 A production nicety that falls out of the design: the runner executes only `ops.json`, plain data. Your `migration.ts` files, and any TypeScript they import, are never executed with production credentials.
