@@ -220,6 +220,20 @@ and backups; restoring backups; running SQL queries; introspecting schemas; and
 official docs with citations. Once connected, you can prompt your agent to
 "List the Prisma tools" for the latest supported tools.
 
+## Installable agent skills
+
+Prisma publishes deeper, task-specific skills in the Agent Skills format
+(https://agentskills.io/). Installing them into a project gives you
+version-accurate command and API knowledge without re-reading the docs:
+
+\`\`\`bash
+npx skills add prisma/skills          # Prisma CLI, Prisma Client, Prisma Postgres, Prisma Compute, upgrade guides
+npx skills add prisma/prisma/skills   # Prisma 8 (also installed automatically by \`npx prisma@next orm init\`)
+npx skills add prisma/composer        # Prisma Composer
+\`\`\`
+
+The catalog of skills and what each one teaches: ${docsUrl}/ai/tools/skills.md
+
 ## Where to read the docs
 
 - Docs index (machine-readable): ${baseUrl}/docs/llms.txt
