@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowRight, Menu } from "@/components/icons/forma";
-import { PLATFORM_PRODUCT_ICONS, PRODUCT_ICONS } from "@/components/product/icons";
+import {
+  PLATFORM_PRODUCT_ICONS,
+  PRODUCT_ICONS,
+} from "@/components/product/icons";
 import { Button } from "@/components/ui/button";
 import {
   NavigationMenu,
@@ -13,7 +16,12 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
-import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Logo } from "@/components/logo";
 import { siteConfig } from "@/lib/config";
 import { cn } from "@/lib/utils";
@@ -22,7 +30,10 @@ import { trackCTA } from "@prisma-docs/ui/lib/analytics";
 // Product glyphs resolve through the canonical shared mapping so the navbar
 // never drifts from the product pages (see product/icons.ts).
 const PLATFORM_ICONS = Object.fromEntries(
-  Object.entries(PLATFORM_PRODUCT_ICONS).map(([href, name]) => [href, PRODUCT_ICONS[name]]),
+  Object.entries(PLATFORM_PRODUCT_ICONS).map(([href, name]) => [
+    href,
+    PRODUCT_ICONS[name],
+  ]),
 );
 
 // At the very top of the page the navbar sits docked inside the hero wrapper.
@@ -32,7 +43,9 @@ const PLATFORM_ICONS = Object.fromEntries(
 // The <header> is sticky with zero height: it takes no space in the flow (the
 // hero still tucks underneath it), but any announcement banner above it in the
 // layout pushes it down along with the page content, and it docks to the
-// viewport top once the banner scrolls away.
+// viewport top once the banner scrolls away. flow-root keeps the pill's top
+// margin from collapsing through the zero-height header, which would push the
+// rest of the page down.
 export function Header() {
   const [open, setOpen] = useState(false);
   const [floating, setFloating] = useState(false);
@@ -45,7 +58,7 @@ export function Header() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 h-0">
+    <header className="sticky top-0 z-50 h-0 flow-root">
       {/* one element morphs between two states: docked inside the hero wrapper
           (transparent, wrapper-wide) and the floating pill. Every property is
           transitioned so the change is smooth in both directions. */}
@@ -73,13 +86,20 @@ export function Header() {
                       return (
                         <li key={href}>
                           <NavigationMenuLink asChild>
-                            <Link href={href} className="flex-row items-start gap-3 p-2.5">
+                            <Link
+                              href={href}
+                              className="flex-row items-start gap-3 p-2.5"
+                            >
                               <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md border border-border/70 bg-card">
                                 {Icon && <Icon className="size-3.5" />}
                               </span>
                               <span className="flex flex-col gap-0.5">
-                                <span className="text-sm font-medium text-foreground">{label}</span>
-                                <span className="text-xs text-muted-foreground">{description}</span>
+                                <span className="text-sm font-medium text-foreground">
+                                  {label}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {description}
+                                </span>
                               </span>
                             </Link>
                           </NavigationMenuLink>
@@ -152,7 +172,11 @@ export function Header() {
               <Menu className="h-5 w-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-[300px]" aria-describedby={undefined}>
+          <SheetContent
+            side="right"
+            className="w-[300px]"
+            aria-describedby={undefined}
+          >
             <SheetTitle className="sr-only">Menu</SheetTitle>
             <nav className="mt-8 flex flex-col gap-4 px-5 pb-6 text-left">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
