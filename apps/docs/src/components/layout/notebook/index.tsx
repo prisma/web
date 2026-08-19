@@ -1,11 +1,10 @@
-import { type ComponentProps, type FC, type HTMLAttributes, type ReactNode, useMemo } from "react";
+import { type ComponentProps, type FC, type HTMLAttributes, type ReactNode } from "react";
 import { type BaseLayoutProps, renderTitleNav, resolveLinkItems } from "../shared";
 import {
   Sidebar,
   SidebarCollapseTrigger,
   SidebarContent,
   SidebarDrawer,
-  SidebarPageTree,
   SidebarTrigger,
   SidebarViewport,
 } from "./sidebar";
@@ -20,7 +19,6 @@ import {
   LayoutBody,
   LayoutContextProvider,
   LayoutHeader,
-  LayoutHeaderTabs,
   NavbarLinkItem,
   NavbarMorphContainer,
   SidebarEnabledFromPageProvider,
@@ -30,8 +28,7 @@ import { LargeSearchToggle, SearchToggle } from "../search-toggle";
 import { isLinkItemVisibleOn } from "../link-item-visibility";
 import { LinkItem, type ButtonItemType, type LinkItemType } from "../link-item";
 import type { SidebarPageTreeComponents } from "../sidebar/page-tree";
-import { getSidebarTabs } from "../sidebar/tabs";
-import { SidebarTabsDropdown, type SidebarTabWithProps } from "../sidebar/tabs/dropdown";
+import { SidebarNav, SidebarNavHeader, SidebarViewProvider } from "./sidebar-nav";
 import { AIChatSidebar } from "@/components/ai-chat-sidebar";
 import { PaperGround } from "@/components/chrome/paper-ground";
 
@@ -62,11 +59,6 @@ interface SidebarOptions
     Pick<ComponentProps<typeof Sidebar>, "defaultOpenLevel" | "prefetch"> {
   components?: Partial<SidebarPageTreeComponents>;
 
-  /**
-   * Root Toggle options
-   */
-  tabs?: SidebarTabWithProps[] | false;
-
   banner?: ReactNode | FC<ComponentProps<"div">>;
   footer?: ReactNode | FC<ComponentProps<"div">>;
 
@@ -89,29 +81,17 @@ interface SidebarOptions
 export function DocsLayout(props: DocsLayoutProps) {
   const {
     nav = {},
-    sidebar: {
-      tabs: tabOptions,
-      defaultOpenLevel,
-      prefetch,
-      enabled: sidebarEnabled = true,
-      ...sidebarProps
-    } = {},
+    sidebar: { defaultOpenLevel, prefetch, enabled: sidebarEnabled = true, ...sidebarProps } = {},
     i18n = false,
     themeSwitch = {},
     tree,
   } = props;
 
   const links = resolveLinkItems(props);
-  const tabs = useMemo(() => {
-    return getSidebarTabs(tree);
-  }, [tabOptions, tree]);
 
   function sidebar() {
     const { banner, footer, components, collapsible = true, ...rest } = sidebarProps;
 
-    const menuLinks = links.filter(
-      (item) => item.type !== "icon" && item.type !== "button" && isLinkItemVisibleOn(item, "menu"),
-    );
     const iconLinks = links.filter(
       (item): item is Extract<LinkItemType, { type: "icon" }> =>
         item.type === "icon" && isLinkItemVisibleOn(item, "nav"),
@@ -119,15 +99,8 @@ export function DocsLayout(props: DocsLayoutProps) {
     const navButtons = links.filter(
       (item): item is ButtonItemType => item.type === "button" && isLinkItemVisibleOn(item, "nav"),
     );
-    const Header =
-      typeof banner === "function"
-        ? banner
-        : ({ className, ...props }: ComponentProps<"div">) => (
-            <div className={cn("flex flex-col gap-3 p-4 pb-2 empty:hidden", className)} {...props}>
-              {props.children}
-              {banner}
-            </div>
-          );
+    const BannerComponent = typeof banner === "function" ? banner : null;
+    const bannerNode = BannerComponent ? <BannerComponent /> : (banner as ReactNode);
     const Footer =
       typeof footer === "function"
         ? footer
@@ -144,18 +117,20 @@ export function DocsLayout(props: DocsLayoutProps) {
               {footer}
             </div>
           );
+    // The back button + version switcher live OUTSIDE the scroll viewport so
+    // they stay visible however far the page tree is scrolled.
     const viewport = (
-      <SidebarViewport>
-        <SidebarPageTree {...components} />
-      </SidebarViewport>
+      <>
+        <SidebarNavHeader banner={bannerNode} />
+        <SidebarViewport>
+          <SidebarNav components={components} />
+        </SidebarViewport>
+      </>
     );
 
     return (
       <>
         <SidebarContent {...rest}>
-          <Header>
-            <SidebarTabsDropdown links={menuLinks} className={cn("lg:hidden")} />
-          </Header>
           {viewport}
           <Footer>
             {iconLinks.map((item, i) => (
@@ -178,7 +153,7 @@ export function DocsLayout(props: DocsLayoutProps) {
           </Footer>
         </SidebarContent>
         <SidebarDrawer {...rest}>
-          <Header>
+          <div className="flex flex-row p-4 pb-2">
             <SidebarTrigger
               className={cn(
                 buttonVariants({
@@ -191,8 +166,7 @@ export function DocsLayout(props: DocsLayoutProps) {
             >
               <X />
             </SidebarTrigger>
-            {menuLinks.length > 0 && <SidebarTabsDropdown links={menuLinks} />}
-          </Header>
+          </div>
           {navButtons.length > 0 && (
             <div className="flex flex-col gap-2 px-4 pb-3">
               {navButtons.map((item, i) => (
@@ -265,19 +239,21 @@ export function DocsLayout(props: DocsLayoutProps) {
   return (
     <TreeContextProvider tree={tree}>
       <LayoutContextProvider navTransparentMode={nav.transparentMode}>
-        <Sidebar defaultOpenLevel={defaultOpenLevel} prefetch={prefetch}>
-          <SidebarEnabledFromPageProvider layoutEnabled={sidebarEnabled}>
-            <LayoutBody {...props.containerProps}>
-              {/* brand ground: grain over the paper + the prism ray crossing
-                  behind the reading sheet. First child so every painted grid
-                  surface (sheet, header, sidebar pills) stacks above it. */}
-              <PaperGround />
-              <SidebarEnabledGate>{sidebarEnabled ? sidebar() : null}</SidebarEnabledGate>
-              <DocsNavbar {...props} links={links} tabs={tabs} />
-              {props.children}
-            </LayoutBody>
-          </SidebarEnabledFromPageProvider>
-        </Sidebar>
+        <SidebarViewProvider>
+          <Sidebar defaultOpenLevel={defaultOpenLevel} prefetch={prefetch}>
+            <SidebarEnabledFromPageProvider layoutEnabled={sidebarEnabled}>
+              <LayoutBody {...props.containerProps}>
+                {/* brand ground: grain over the paper + the prism ray crossing
+                    behind the reading sheet. First child so every painted grid
+                    surface (sheet, header, sidebar pills) stacks above it. */}
+                <PaperGround />
+                <SidebarEnabledGate>{sidebarEnabled ? sidebar() : null}</SidebarEnabledGate>
+                <DocsNavbar {...props} links={links} />
+                {props.children}
+              </LayoutBody>
+            </SidebarEnabledFromPageProvider>
+          </Sidebar>
+        </SidebarViewProvider>
       </LayoutContextProvider>
     </TreeContextProvider>
   );
@@ -285,7 +261,6 @@ export function DocsLayout(props: DocsLayoutProps) {
 
 function DocsNavbar({
   links,
-  tabs,
   sidebar: { collapsible: sidebarCollapsible = true } = {},
   searchToggle = {},
   themeSwitch = {},
@@ -293,15 +268,7 @@ function DocsNavbar({
   i18n,
 }: DocsLayoutProps & {
   links: LinkItemType[];
-  tabs: SidebarTabWithProps[];
 }) {
-  const menuLinks = links.filter(
-    (item) =>
-      item.type !== "icon" &&
-      item.type !== "custom" &&
-      item.type !== "button" &&
-      isLinkItemVisibleOn(item, "menu"),
-  );
   const customLinks = links.filter(
     (item) => item.type === "custom" && isLinkItemVisibleOn(item, "nav"),
   );
@@ -314,7 +281,6 @@ function DocsNavbar({
   const navButtons = links.filter(
     (item): item is ButtonItemType => item.type === "button" && isLinkItemVisibleOn(item, "nav"),
   );
-  const showLayoutTabs = menuLinks.length > 0;
 
   return (
     <LayoutHeader
@@ -330,12 +296,11 @@ function DocsNavbar({
         // `--fd-header-height` stays authoritative — it feeds --fd-docs-row-2/3,
         // i.e. the sidebar and TOC sticky offsets. It is the strip's real height:
         // 8px (my-2) + 1px border + 56px body row + 1px border + 8px + 1px
-        // strip border-b = 75px, plus the 40px tabs row where it renders.
+        // strip border-b = 75px.
         "layout:[--fd-header-height:75px]",
-        showLayoutTabs && "lg:layout:[--fd-header-height:115px]",
       )}
     >
-      <NavbarMorphContainer twoRows={showLayoutTabs}>
+      <NavbarMorphContainer>
         <div data-header-body="" className="flex px-4 gap-4 h-14 md:px-6 justify-between">
           <div className="items-center flex flex-1">
             {renderTitleNav(nav, {
@@ -443,13 +408,6 @@ function DocsNavbar({
             </div>
           </div>
         </div>
-        {showLayoutTabs && (
-          <LayoutHeaderTabs
-            data-header-tabs=""
-            className="overflow-x-auto px-6 h-10 max-lg:hidden"
-            links={menuLinks}
-          />
-        )}
       </NavbarMorphContainer>
     </LayoutHeader>
   );

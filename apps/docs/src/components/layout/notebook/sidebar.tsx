@@ -10,14 +10,18 @@ import { createLinkItemRenderer } from "../sidebar/link-item";
 import { mergeRefs } from "../../../lib/merge-refs";
 import { getVersionedSidebarTree } from "../../../lib/versioned-sidebar-tree";
 
-const itemVariants = cva(
+export const itemVariants = cva(
   // `rounded-square` (10px) is the brand's soft-pill geometry — the active item
   // reads as a tinted pill rather than a boxy row.
-  "relative flex flex-row items-center gap-2 rounded-square p-2 text-start text-fd-muted-foreground wrap-anywhere [&_svg]:size-4 [&_svg]:shrink-0",
+  "relative flex flex-row items-center gap-2 rounded-square p-2 text-start text-fd-foreground wrap-anywhere [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        link: "transition-colors hover:bg-fd-accent/50 hover:text-fd-accent-foreground/80 hover:transition-none data-[active=true]:bg-(--shell-sheet) data-[active=true]:text-fd-primary data-[active=true]:shadow-[0_0_0_1px_var(--color-stroke-neutral),0_1px_2px_rgba(21,21,21,0.05)] data-[active=true]:hover:transition-colors",
+        // Hover spectrum text (fading) + active spectrum ring come from
+        // `.sidebar-prism-item` (global.css), the sidebar port of the site's
+        // CTA button states. No transition utilities here — they'd override
+        // the class's own colour fade.
+        link: "sidebar-prism-item",
         button:
           "transition-colors hover:bg-fd-accent/50 hover:text-fd-accent-foreground/80 hover:transition-none",
       },
@@ -114,7 +118,7 @@ export function SidebarSeparator({ className, style, children, ...props }: Compo
 
   return (
     <Base.SidebarSeparator
-      className={cn("[&_svg]:size-4 [&_svg]:shrink-0", className)}
+      className={cn("text-xs text-fd-muted-foreground [&_svg]:size-4 [&_svg]:shrink-0", className)}
       style={{
         paddingInlineStart: getItemOffset(depth),
         ...style,

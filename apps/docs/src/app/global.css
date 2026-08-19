@@ -543,3 +543,123 @@ header &[data-search-full] {
 #nd-subnav[data-floating="false"][data-transparent="false"] {
   background-color: color-mix(in srgb, var(--shell-ground) 85%, transparent);
 }
+
+/* ---------------------------------------------------------------------------
+   Spectrum states for sidebar rows, ported from the site's .spectrum-border
+   (apps/site globals.css), applied through `.sidebar-prism-item` in the
+   sidebar's itemVariants:
+   - hover    = text painted with the cool half of the brand spectrum
+                (pinks/reds/cyans — the warm yellow/orange stops read poorly
+                at text size, and the cyan→pink blend passes through purple)
+   - selected = the animated 1px spectrum ring */
+
+@keyframes spectrum-slide {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: 200% 50%;
+  }
+}
+
+:root {
+  /* Starts on cyan-500: brighter and more cyan than the primary blue, but
+     still legible as text on the light background (cyan-400 is not). */
+  --gradient-spectrum-cool: linear-gradient(
+    85deg,
+    var(--color-prism-cyan-500),
+    var(--color-spectrum-pink),
+    var(--color-spectrum-scarlet),
+    var(--color-spectrum-pink),
+    var(--color-prism-cyan-500)
+  );
+}
+
+.sidebar-prism-item::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background-image: var(--gradient-spectrum);
+  background-size: 200% 100%;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  animation: spectrum-slide 2.5s linear infinite;
+  pointer-events: none;
+}
+
+/* Selected: the animated spectrum ring. */
+.sidebar-prism-item[data-active="true"]::after {
+  opacity: 1;
+}
+
+/* Hover: text fades into the cool spectrum. The gradient is always painted
+   and clipped to the text; hover only fades `color` to transparent so the
+   gradient shows through — background-image itself cannot transition. Icons
+   keep the normal foreground because the clip trick makes `currentColor`
+   transparent. */
+.sidebar-prism-item {
+  background-image: var(--gradient-spectrum-cool);
+  background-clip: text;
+  -webkit-background-clip: text;
+  transition: color 0.35s ease;
+}
+
+.sidebar-prism-item svg {
+  color: var(--color-fd-foreground);
+}
+
+.sidebar-prism-item:hover {
+  color: transparent;
+}
+
+/* TOC ("On this page") active state: the same cool-spectrum text as the
+   sidebar hover, replacing the flat primary blue. Same fade technique — the
+   gradient is always painted and clipped; the active state fades `color` to
+   transparent to reveal it. */
+.spectrum-text-active {
+  background-image: var(--gradient-spectrum-cool);
+  background-clip: text;
+  -webkit-background-clip: text;
+  transition: color 0.35s ease;
+}
+
+.spectrum-text-active[data-active="true"] {
+  color: transparent;
+}
+
+/* Inline code inside a gradient-clipped item paints its own chip background
+   over the clipped gradient, leaving transparent text on a solid chip —
+   i.e. invisible. Give code children a solid colour instead. */
+.spectrum-text-active[data-active="true"] code,
+.sidebar-prism-item:hover code {
+  color: var(--color-fd-foreground);
+}
+
+/* The TOC position thumb (both variants), the cool spectrum run vertically. */
+.spectrum-thumb {
+  background-image: linear-gradient(
+    180deg,
+    var(--color-prism-cyan-500),
+    var(--color-spectrum-pink),
+    var(--color-spectrum-scarlet)
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-prism-item,
+  .sidebar-prism-item::after,
+  .spectrum-text-active {
+    animation: none;
+    transition: none;
+  }
+}

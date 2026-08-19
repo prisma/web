@@ -22,62 +22,9 @@ export const logo = (
   </>
 );
 
-type LinkItemTypeWithActivePaths = LinkItemType & {
-  activePaths?: string[];
-};
-
-export const links: LinkItemTypeWithActivePaths[] = [
-  {
-    text: "Getting Started",
-    url: "/",
-    active: "nested-url",
-    activePaths: ["/", "/next", "/prisma-orm", "/prisma-postgres", "/prisma-compute"],
-  },
-  {
-    text: "ORM",
-    url: "/orm",
-    active: "nested-url",
-    activePaths: ["/orm", "/orm/next", "/orm/v6"],
-    preserveDocsVersion: true,
-  },
-  {
-    text: "Postgres",
-    url: "/postgres",
-    active: "nested-url",
-  },
-  {
-    text: "Compute",
-    url: "/compute",
-    active: "nested-url",
-  },
-  {
-    text: "Composer",
-    url: "/composer",
-    active: "nested-url",
-  },
-  {
-    text: "CLI",
-    url: "/cli",
-    active: "nested-url",
-    preserveDocsVersion: true,
-  },
-  {
-    text: "Guides",
-    url: "/guides",
-    active: "nested-url",
-  },
-  {
-    text: "More",
-    type: "menu",
-    items: [
-      { text: "Management API", url: "/management-api", active: "nested-url" },
-      { text: "Studio", url: "/studio", active: "nested-url" },
-      { text: "AI", url: "/ai", active: "nested-url" },
-      { text: "Query Insights", url: "/query-insights", active: "nested-url" },
-      { text: "Accelerate", url: "/accelerate", active: "nested-url" },
-      { text: "Console", url: "/console", active: "nested-url" },
-    ],
-  },
+// Section navigation lives in the sidebar (src/lib/sidebar-sections.ts +
+// SidebarNav); the navbar only carries external links and buttons.
+export const links: LinkItemType[] = [
   {
     type: "icon",
     label: "Join Discord",
