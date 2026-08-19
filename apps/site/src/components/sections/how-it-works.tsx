@@ -1,6 +1,10 @@
 import { PrismButtonOutline } from "@/components/brand/prism-button";
 import { PrismRay } from "@/components/brand/prism-ray";
-import { DefineMock, DeployMock, IterateMock } from "@/components/brand/step-mocks";
+import {
+  DefineMock,
+  DeployMock,
+  IterateMock,
+} from "@/components/brand/step-mocks";
 import { Reveal } from "@/components/motion/reveal";
 
 // One ray crossing the whole card row in a single continuous movement: every
@@ -73,8 +77,8 @@ const STEPS = [
         <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.8125em]">
           contract.prisma
         </code>
-        , or have your agent write it for you. It&apos;s the shared contract your ORM, migrations,
-        and data layer are all built around.
+        , or have your agent write it for you. It&apos;s the shared contract
+        your ORM, migrations, and data layer are all built around.
       </>
     ),
   },
@@ -85,8 +89,8 @@ const STEPS = [
     illustration: DeployIllustration,
     body: (
       <>
-        Add Prisma Postgres and Compute when you&apos;re ready to ship. Your app and database deploy
-        together on the same host, co-located by default.
+        Add Prisma Postgres and Compute when you&apos;re ready to ship. Your app
+        and database deploy together on the same host, co-located by default.
       </>
     ),
   },
@@ -97,8 +101,8 @@ const STEPS = [
     illustration: IterateIllustration,
     body: (
       <>
-        Your agent reads logs, fixes what broke, and redeploys through one CLI. The loop runs for as
-        long as you need it to.
+        Your agent reads logs, fixes what broke, and redeploys through one CLI.
+        The loop runs for as long as you need it to.
       </>
     ),
   },
@@ -115,30 +119,37 @@ export function HowItWorks() {
         </Reveal>
 
         <div className="mt-16 grid gap-5 md:grid-cols-3">
-          {STEPS.map(({ number, title, illustration: Illustration, body, borderAnim }, i) => (
-            <Reveal
-              key={number}
-              delay={i * 0.1}
-              className={`overflow-hidden rounded-2xl border border-black/[0.06] bg-card motion-reduce:animate-none ${borderAnim}`}
-            >
-              <Illustration />
-              <div className="p-6">
-                <div className="flex items-center gap-3">
-                  <span className="grid size-6 shrink-0 place-items-center rounded-md bg-card-wash text-[0.8125rem] font-semibold text-foreground">
-                    {number}
-                  </span>
-                  <h3 className="text-xl">{title}</h3>
+          {STEPS.map(
+            (
+              { number, title, illustration: Illustration, body, borderAnim },
+              i,
+            ) => (
+              <Reveal
+                key={number}
+                delay={i * 0.1}
+                className={`overflow-hidden rounded-2xl border border-black/[0.06] bg-card motion-reduce:animate-none ${borderAnim}`}
+              >
+                <Illustration />
+                <div className="p-6">
+                  <div className="flex items-center gap-3">
+                    <span className="grid size-6 shrink-0 place-items-center rounded-md bg-card-wash text-[0.8125rem] font-semibold text-foreground">
+                      {number}
+                    </span>
+                    <h3 className="text-xl">{title}</h3>
+                  </div>
+                  <p className="mt-3 text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground">
+                    {body}
+                  </p>
                 </div>
-                <p className="mt-3 text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground">
-                  {body}
-                </p>
-              </div>
-            </Reveal>
-          ))}
+              </Reveal>
+            ),
+          )}
         </div>
 
         <Reveal className="mt-14 flex">
-          <PrismButtonOutline href="https://console.prisma.io">Get started free</PrismButtonOutline>
+          <PrismButtonOutline href="https://console.prisma.io">
+            Get started free
+          </PrismButtonOutline>
         </Reveal>
       </div>
     </section>

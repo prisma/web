@@ -70,7 +70,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${sora.variable} ${inter.variable}`}>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${sora.variable} ${inter.variable}`}
+    >
       <head>
         <Script
           id="fontawesome"

@@ -1,14 +1,14 @@
-import { GlassGlide } from "@/components/brand/glass-glide";
-import { PrismRay } from "@/components/brand/prism-ray";
-import { Texture } from "@/components/brand/texture";
-import { CheckBold } from "@/components/icons/forma";
-import { ContactMessageForm } from "@/components/sections/contact-message-form";
-import { siteConfig } from "@/lib/config";
-import { cn } from "@/lib/utils";
+import { GlassGlide } from "@/components/brand/glass-glide"
+import { PrismRay } from "@/components/brand/prism-ray"
+import { Texture } from "@/components/brand/texture"
+import { CheckBold } from "@/components/icons/forma"
+import { ContactMessageForm } from "@/components/sections/contact-message-form"
+import { siteConfig } from "@/lib/config"
+import { cn } from "@/lib/utils"
 
 // Same three brand colours, in the same order, as the hero checkmarks on the
 // homepage and the product pages.
-const CHECK_COLORS = ["text-prism-cyan-500", "text-prism-yellow-400", "text-prism-red-500"];
+const CHECK_COLORS = ["text-prism-cyan-500", "text-prism-yellow-400", "text-prism-red-500"]
 
 // Contact hero: the homepage hero's wrapped prismatic panel — same wrapper,
 // same spectral bottom, same grain, the crisp triple-band ray crossing behind
@@ -66,9 +66,10 @@ export function ContactHero() {
                 Talk to <GlassGlide>the team</GlassGlide>
               </h1>
               <p className="mt-6 max-w-[46ch] text-pretty text-lg leading-relaxed text-muted-foreground">
-                Evaluating Prisma, planning a migration, or exploring a partnership? Tell us what
-                you&apos;re working on and we&apos;ll route your message to the right person.
-                Already building and need help? We&apos;ll point you to the fastest support channel.
+                Evaluating Prisma, planning a migration, or exploring a
+                partnership? Tell us what you&apos;re working on and we&apos;ll
+                route your message to the right person. Already building and need
+                help? We&apos;ll point you to the fastest support channel.
               </p>
               {/* The homepage hero's proof stats, verbatim (siteConfig.proof) —
                   approved copy reused rather than new words, and it fills the
@@ -115,5 +116,5 @@ export function ContactHero() {
         </div>
       </div>
     </section>
-  );
+  )
 }
