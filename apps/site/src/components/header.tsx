@@ -28,6 +28,11 @@ const PLATFORM_ICONS = Object.fromEntries(
 // At the very top of the page the navbar sits docked inside the hero wrapper.
 // From the first scroll it detaches into a sticky floating pill with its own
 // wrapper.
+//
+// The <header> is sticky with zero height: it takes no space in the flow (the
+// hero still tucks underneath it), but any announcement banner above it in the
+// layout pushes it down along with the page content, and it docks to the
+// viewport top once the banner scrolls away.
 export function Header() {
   const [open, setOpen] = useState(false);
   const [floating, setFloating] = useState(false);
@@ -40,7 +45,7 @@ export function Header() {
   }, []);
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50">
+    <header className="sticky top-0 z-50 h-0">
       {/* one element morphs between two states: docked inside the hero wrapper
           (transparent, wrapper-wide) and the floating pill. Every property is
           transitioned so the change is smooth in both directions. */}
