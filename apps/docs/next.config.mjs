@@ -275,6 +275,8 @@ const config = {
       { source: "/llms/next.txt", destination: "/llms/v8.txt", permanent: true },
       // Docs IA restructure: the Composer CLI reference lives in the v8 CLI section.
       { source: "/composer/cli-reference", destination: "/cli/v8/composer", permanent: true },
+      // Docs IA restructure: the Compute CLI pointer page folded into the v8 CLI reference.
+      { source: "/compute/cli-reference", destination: "/cli/v8", permanent: true },
       // Docs IA restructure: the Management API is now the REST API.
       { source: "/management-api", destination: "/rest-api", permanent: true },
       { source: "/management-api/:path*", destination: "/rest-api/:path*", permanent: true },

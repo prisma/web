@@ -22,7 +22,7 @@ export const logo = (
   </>
 );
 
-// Section navigation lives in the sidebar (src/lib/sidebar-sections.ts +
+// Section navigation lives in the sidebar (src/lib/sidebar-sections.tsx +
 // SidebarNav); the navbar only carries external links and buttons.
 export const links: LinkItemType[] = [
   {

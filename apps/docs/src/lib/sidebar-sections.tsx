@@ -6,6 +6,9 @@
  * section renamed in its meta.json needs no change here. An entry with no
  * matching section is skipped with a dev-time warning.
  */
+import type { ReactNode } from "react";
+import { Laptop } from "lucide-react";
+
 export interface SidebarSectionGroup {
   /** Group heading rendered above the sections; null renders no heading. */
   heading: string | null;
@@ -14,7 +17,7 @@ export interface SidebarSectionGroup {
    * page link rather than a `root: true` section; it renders with that title
    * and skips the tree lookup.
    */
-  sections: { url: string; title?: string }[];
+  sections: { url: string; title?: string; icon?: ReactNode }[];
 }
 
 export const sidebarSectionGroups: SidebarSectionGroup[] = [
@@ -28,11 +31,16 @@ export const sidebarSectionGroups: SidebarSectionGroup[] = [
   },
   {
     heading: "Deploy",
-    sections: [{ url: "/compute" }, { url: "/postgres" }],
+    sections: [{ url: "/compute" }, { url: "/postgres" }, { url: "/storage" }],
   },
   {
     heading: "Manage",
-    sections: [{ url: "/studio" }, { url: "/query-insights" }, { url: "/console" }],
+    sections: [
+      { url: "/postgres/database/local-development", title: "Local Postgres", icon: <Laptop /> },
+      { url: "/studio" },
+      { url: "/query-insights" },
+      { url: "/console" },
+    ],
   },
   {
     heading: "Reference",

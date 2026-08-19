@@ -110,7 +110,7 @@ function SidebarNavTopView() {
       {sidebarSectionGroups.map((group, i) => (
         <Fragment key={group.heading ?? i}>
           {group.heading && <SidebarSeparator>{group.heading}</SidebarSeparator>}
-          {group.sections.map(({ url, title }) => {
+          {group.sections.map(({ url, title, icon }) => {
             const tab = tabsByUrl.get(url);
             // A `title` entry is a plain page link, not a root section.
             if (!tab && title) {
@@ -121,6 +121,7 @@ function SidebarNavTopView() {
                   prefetch={prefetch}
                   className={cn(itemVariants({ variant: "link" }), "ps-2")}
                 >
+                  {icon}
                   {title}
                 </Link>
               );

@@ -218,6 +218,13 @@ export const llmsSections: LLMsSection[] = [
     prefixes: ["/console", "/rest-api"],
   },
   {
+    slug: "storage",
+    title: "Prisma Storage",
+    description:
+      "S3-compatible object-store buckets that live inside a Prisma project, with bucket-scoped access keys.",
+    prefixes: ["/storage"],
+  },
+  {
     slug: "compute",
     title: "Prisma Compute",
     description:

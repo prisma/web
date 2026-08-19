@@ -22,11 +22,7 @@ export const itemVariants = cva(
         // CTA button states. No transition utilities here — they'd override
         // the class's own colour fade.
         link: "sidebar-prism-item",
-        button:
-          "transition-colors hover:bg-fd-accent/50 hover:text-fd-accent-foreground/80 hover:transition-none",
-      },
-      highlight: {
-        true: "data-[active=true]:before:content-[''] data-[active=true]:before:bg-fd-primary data-[active=true]:before:absolute data-[active=true]:before:w-px data-[active=true]:before:inset-y-2.5 data-[active=true]:before:start-2.5",
+        button: "sidebar-prism-item",
       },
     },
   },
@@ -140,7 +136,7 @@ export function SidebarItem({
 
   return (
     <Base.SidebarItem
-      className={cn(itemVariants({ variant: "link", highlight: depth >= 1 }), className)}
+      className={cn(itemVariants({ variant: "link" }), className)}
       style={{
         paddingInlineStart: getItemOffset(depth),
         ...style,
@@ -188,7 +184,7 @@ export function SidebarFolderLink({
 
   return (
     <Base.SidebarFolderLink
-      className={cn(itemVariants({ variant: "link", highlight: depth > 1 }), "w-full", className)}
+      className={cn(itemVariants({ variant: "link" }), "w-full", className)}
       style={{
         paddingInlineStart: getItemOffset(depth - 1),
         ...style,
