@@ -10,7 +10,7 @@ import {
   MASCOT_RULES,
 } from "@/components/brand-kit/content"
 
-const LEAD = "/brand-kit/mascot/salute.png"
+const LEAD = "/brand-kit/mascot/happy.png"
 
 // The mascot section. He already lives on the site as the agent at the centre
 // of the homepage orbit (see brand/agent-robot.tsx) — here he's handed over as
@@ -49,7 +49,7 @@ export function BrandKitMascot() {
             <Texture opacity={0.06} blend="multiply" />
             <Image
               src={LEAD}
-              alt={`The Prisma mascot, ${MASCOT_NAME}, saluting`}
+              alt={`The Prisma mascot, ${MASCOT_NAME}, smiling`}
               width={1254}
               height={1254}
               sizes="(min-width: 1024px) 20rem, 60vw"
