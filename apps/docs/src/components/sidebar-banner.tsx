@@ -149,7 +149,7 @@ export function SidebarBannerCarousel({ slides }: SidebarBannerCarouselProps) {
                 className="left-1/2 top-[58%] h-9 w-[30rem] -translate-x-1/2 -translate-y-1/2"
               />
               <span className="relative font-sans-display text-lg font-medium text-white">
-                Prisma Next
+                Prisma 8
               </span>
             </div>
           ) : front.image ? (
