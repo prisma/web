@@ -64,6 +64,7 @@ A how-to gets the reader through a task. Two other types come up often. Same voi
 - List every parameter with type, whether it's required, and the default.
 - Give one runnable example per entry.
 - No narrative. The reader is scanning, not reading.
+- Order options the way readers need them: the common case first, then selection and targeting, then advanced or CI-specific behavior.
 
 ## Improving an existing page
 
@@ -161,7 +162,13 @@ Model-drafted docs share habits a reviewer can spot in one pass. None of these i
 - **Frontmatter echo**: the body's first sentence repeats the frontmatter `description` almost verbatim. The description summarizes the page for cards and search results; the opening orients the reader. Write them differently, and define the product once, not once per metadata field.
 - **Contrast slogans**: "X, not Y" constructions ("injected, not discovered", "built for agents, not just terminals", "refuses to guess"). One per page at most. A page of balanced contrasts reads like ad copy; state the behavior plainly instead.
 - **Absolute stacking**: "never", "every", "nothing", "always", "cannot drift" piling up across a page. Each absolute is a promise the product has to keep. Keep the ones you can verify and that the reader needs; describe what happens rather than asserting what can't.
-- **Exception-packed sentences**: one sentence carrying the normal case, an exception, its reason, the alternative, and a safety condition, held together by semicolons. Split it: normal case first, exception as its own sentence or a callout at the step where the reader hits it.
+- **Exception-packed sentences**: one sentence carrying the normal case, an exception, its reason, the alternative, and a safety condition, held together by semicolons. One idea per sentence: state the default first ("By default, the command uses…"), then the exception as its own sentence ("In CI or other headless environments, set…"). A semicolon joining distinct ideas is usually two sentences.
+- **Manager-voice openers**: "`service` manages services…", "handles", "manages everything around". Lead with the user action or outcome ("Use `service` commands to manage…") and use concrete verbs: creates, stores, uses, selects, targets, deploys, builds.
+- **Coined shorthand**: compressed phrases invented mid-page ("local pin", "pick a target") instead of saying what actually happens. Spell out the relationship, and keep one consistent user-facing vocabulary: service, project, configuration, deployment, credentials.
+- **Implementation language**: internal detail that doesn't help the reader act ("the root node is `<entry>`'s default export"). Translate it into the behavior they observe ("the application exported as the default export from `<entry>`").
+- **Buried caveats**: a warning folded into a trailing clause. Turn it into a direct instruction: "The deploy command does not build your application. Run your build command before deploying."
+- **Confusable state left implicit**: when two things could be mixed up (local state vs committed configuration), contrast them directly: what is local, what is committed, and what each is used for.
+- **Mid-clause links**: a link dropped between unrelated clauses. Introduce it after the context it supports: "See [Deploying](…) for details."
 - **Definition cascade**: a landing page that defines every noun in identical rhythm ("An application is… A service is… A branch is…"). Define a term where the reader first needs it. If a glossary earns its place, keep it short and hand off to a page that goes deeper.
 - **Prose restating code**: after a code block, narrating what each line does. Explain only what the code can't show: why, or a non-obvious consequence.
 - **Triad reflex**: three-part lists everywhere ("reviewable, repeatable, and versioned"). Vary list length; cut members that don't earn their place.
