@@ -10,7 +10,7 @@ This guide is for teams running a Prisma 7 application on PostgreSQL who want to
 
 Both versions run against the same PostgreSQL database the whole time. The database, its data, and its connection string do not change; only application code and tooling do. Because each route stays on Prisma 7 until you deliberately move it, the application remains shippable at every point in the migration.
 
-The guide covers **PostgreSQL only**. Guidance for other databases will follow; for MongoDB (coming from v6), see the [MongoDB guide](/guides/v8/upgrade-prisma-orm/mongodb).
+The guide covers **PostgreSQL only**. Guidance for other databases will follow. If you are coming from v6 on MongoDB, see the [MongoDB guide](/guides/v8/upgrade-prisma-orm/mongodb).
 
 :::info
 
@@ -44,7 +44,7 @@ Prisma 8 expects the `prisma` package name, the `prisma` binary, and the `prisma
 
 ### 1.1. Confirm the application works
 
-The guide follows a small Hono API with two routes; map the file names to your own project. The Prisma 7 pieces that matter:
+The guide follows a small Hono API with two routes. Map the file names to your own project. The Prisma 7 pieces that matter:
 
 ```json title="package.json (excerpt)"
 {
@@ -220,7 +220,7 @@ npm install --save-dev prisma@next @prisma/cli-engine@0.2.0
 npm install @prisma/orm-postgres
 ```
 
-`prisma@next` is the Prisma 8 CLI. `@prisma/orm-postgres` is the PostgreSQL ORM runtime your application code will import. `@prisma/cli-engine` provides `defineConfig` for the Prisma 8 config file; install it directly so the import resolves under every package manager.
+`prisma@next` is the Prisma 8 CLI. `@prisma/orm-postgres` is the PostgreSQL ORM runtime your application code will import. `@prisma/cli-engine` provides `defineConfig` for the Prisma 8 config file. Install it directly so the import resolves under every package manager.
 
 After this install, `npx prisma <command>` runs the Prisma 8 CLI and `npx prisma7 <command>` runs Prisma 7:
 
@@ -272,7 +272,7 @@ npx prisma contract infer --output prisma8/contract.prisma
 The inferred contract needs two edits before it is correct:
 
 1. **Delete the `PrismaMigrations` model.** `contract infer` picks up Prisma 7's `_prisma_migrations` ledger table. Prisma 8 must not manage it, and extra tables in the database are fine. Remove the whole model.
-2. **Add `@@map` to every model.** Prisma 8 addresses tables by storage name and lowercases unmapped model names, so without `@@map("User")` it would query `public.user` while the actual table Prisma 7 created is `"User"`. Queries then fail with `relation "public.user" does not exist`.
+2. **Add `@@map` to every model.** Prisma 8 addresses tables by storage name and lowercases unmapped model names, so without `@@map("User")` it would query `public.user`. The table Prisma 7 created is `"User"`, so queries fail with `relation "public.user" does not exist`.
 
 The finished contract:
 
@@ -416,7 +416,7 @@ curl localhost:3000/users
 
 **Expected result:** the first request runs through Prisma 8. The second writes through Prisma 7. The third, through Prisma 8 again, includes the post Prisma 7 just wrote.
 
-Remaining routes can move over the same way, one at a time, on any schedule. Prisma 7 still owns schema migrations in this phase: if the schema changes, run `prisma7 migrate dev`, then re-run `contract infer` and `contract emit` so the Prisma 8 contract stays current.
+Remaining routes can move over the same way, one at a time, on any schedule. Prisma 7 still owns schema migrations in this phase. If the schema changes, run `prisma7 migrate dev`, then re-run `contract infer` and `contract emit` so the Prisma 8 contract stays current.
 
 ## 4. Transfer migration ownership
 
@@ -471,7 +471,7 @@ Without a ref, the next `migration plan` starts from scratch and plans `CREATE T
 
 ### 4.4. Retire the Prisma 7 migration scripts
 
-Remove `prisma7 migrate` from your scripts so nobody runs it by accident. Keep `prisma7 generate`; the legacy routes still need their client:
+Remove `prisma7 migrate` from your scripts so nobody runs it by accident. Keep `prisma7 generate`, because the legacy routes still need their client:
 
 ```json title="package.json (excerpt)"
 {
@@ -508,7 +508,7 @@ npx prisma db verify
 
 **Expected result:** `migration plan` contains a single operation, `Add column "bio" to "User"`. If you see `CREATE TABLE` operations instead, the `db` ref from step 4.3 is missing. `migrate` applies the migration, `--advance-ref db` moves the ref so the next plan chains correctly, and `db verify` reports that marker and schema match the contract.
 
-Restart the app: the Prisma 8 route returns users with `bio`, and the Prisma 7 route keeps working untouched; its client doesn't know about the new column. Additive changes like nullable columns are safe next to legacy Prisma 7 code. Be careful with renames or drops of columns that Prisma 7 routes still read.
+Restart the app: the Prisma 8 route returns users with `bio`, and the Prisma 7 route keeps working untouched, because its client doesn't know about the new column. Additive changes like nullable columns are safe next to legacy Prisma 7 code. Be careful with renames or drops of columns that Prisma 7 routes still read.
 
 ## 5. Remove Prisma 7
 

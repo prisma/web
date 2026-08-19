@@ -7,9 +7,9 @@ metaDescription: A step-by-step tutorial for the migration plan command, from co
 badge: release-candidate
 ---
 
-This tutorial takes a contract change from your editor to a planned migration on disk. Planning is **fully offline**: `migration plan` reads your emitted contract and your existing migrations; it never connects to a database, so you can plan on a plane, in CI, or in a sandbox with no credentials.
+This tutorial takes a contract change from your editor to a planned migration on disk. Planning is **fully offline**. `migration plan` reads your emitted contract and your existing migrations, and it never connects to a database. That means you can plan on a plane, in CI, or in a sandbox with no credentials.
 
-Start from a minimal project; `npx create-prisma@next` scaffolds one.
+Start from a minimal project. `npx create-prisma@next` scaffolds one.
 
 ## Your first migration
 
@@ -31,7 +31,7 @@ First, emit the contract. This compiles the schema into the `contract.json` arti
 npx prisma@next contract emit
 ```
 
-Now plan. `--name` sets the human-readable part of the directory name; without it the directory is called `migration`:
+Now plan. `--name` sets the human-readable part of the directory name. If you omit it, the directory is called `migration`:
 
 ```npm
 npx prisma@next migration plan --name init
@@ -61,14 +61,14 @@ CREATE TABLE "public"."user" (
 );
 ```
 
-(The `prisma-cli` in the hint is the binary's own name for itself; when invoking it as `npx prisma@next`, run the suggested subcommand the same way: `npx prisma@next migrate`.)
+(The `prisma-cli` in the hint is the binary's own name for itself. When invoking it as `npx prisma@next`, run the suggested subcommand the same way: `npx prisma@next migrate`.)
 
 Four things to notice:
 
 - **The DDL preview is right there.** You see the exact SQL before anything exists but files.
-- **`from: null`** means this migration starts from an empty database; it's the root of your [migration graph](/orm/v8/migrations/the-migration-graph).
+- **`from: null`** means this migration starts from an empty database. It's the root of your [migration graph](/orm/v8/migrations/the-migration-graph).
 - **`to:` is your contract's hash.** The migration promises to deliver a database matching exactly the contract you just emitted.
-- **`App space`** is your application's migration lane. Database extensions bring their own lanes; see [extension spaces](/orm/v8/migrations/applying-a-migration#extension-spaces).
+- **`App space`** is your application's migration lane. Database extensions bring their own lanes. See [extension spaces](/orm/v8/migrations/applying-a-migration#extension-spaces).
 
 The planned migration directory contains the TypeScript source, the compiled operations, and the contract snapshots:
 
@@ -110,9 +110,9 @@ export default class M extends Migration<never, End> {
 MigrationCLI.run(import.meta.url, M);
 ```
 
-Two notes on reading it: the `col(...)` calls mirror your contract fields, and you never write `codecRef` by hand. The planner fills it in to pin how values convert between TypeScript and Postgres; treat it as noise when reviewing.
+Two notes on reading it: the `col(...)` calls mirror your contract fields, and you never write `codecRef` by hand. The planner fills it in to pin how values convert between TypeScript and Postgres. Treat it as noise when reviewing.
 
-For a simple change you don't need to touch this file. When you do (to add a data backfill, reorder operations, or drop in raw SQL), that's [Editing a migration](/orm/v8/migrations/editing-a-migration).
+For a simple change you don't need to touch this file. When you do (to add a data backfill, reorder operations, or drop in raw SQL), see [Editing a migration](/orm/v8/migrations/editing-a-migration).
 
 ## The second migration: planning a delta
 
@@ -155,7 +155,7 @@ ALTER TABLE "public"."user" ADD COLUMN "phone" text;
 
 ### The db ref: skipping --from
 
-Passing `--from` every time gets old. The planner's default is smarter: if a [ref](/orm/v8/migrations/the-migration-graph#name-important-states-with-refs) named **`db`** exists, planning starts from whatever it points at. Keep it advanced as part of applying:
+You don't have to pass `--from` every time. If a [ref](/orm/v8/migrations/the-migration-graph#name-important-states-with-refs) named **`db`** exists, planning starts from whatever it points at by default. Move the ref forward each time you apply:
 
 ```npm
 npx prisma@next migrate --advance-ref db
@@ -200,7 +200,7 @@ npx prisma@next migration check
 
 :::note[What's early]
 
-Planning covers tables, columns, indexes, constraints, and the backfill scaffold shown above. Rename inference is not built yet: renaming a field plans as **drop column + add column**, flagged destructive with a data-loss warning. For a true rename, edit the migration and replace the pair with a `rawSql` `ALTER TABLE ... RENAME COLUMN`. There is also no interactive mode; the planner writes its best answer and leaves refinement to you in `migration.ts`.
+Planning covers tables, columns, indexes, constraints, and the backfill scaffold shown above. Rename inference is not built yet: renaming a field plans as **drop column + add column**, flagged destructive with a data-loss warning. For a true rename, edit the migration and replace the pair with a `rawSql` `ALTER TABLE ... RENAME COLUMN`. There is also no interactive mode. The planner writes its best answer and leaves refinement to you in `migration.ts`.
 
 :::
 
