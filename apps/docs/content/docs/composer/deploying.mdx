@@ -6,24 +6,30 @@ metaTitle: Deploying | Prisma Composer
 metaDescription: Deploy Prisma Composer apps to Prisma Compute with composer deploy, use stages for isolated environments and per-PR previews, wire CI, and destroy environments safely.
 ---
 
-One CLI, two commands. `composer deploy` takes your entry file (the one whose default export is the root module) and stands the whole app up on [Prisma Compute](/compute) and [Prisma Postgres](/postgres); `composer destroy` tears an environment down. Which environment you are touching, production or an isolated **stage**, is always a command-line choice, never something in your code.
+`composer deploy` takes your entry file (the one whose default export is the root module) and stands the whole app up on [Prisma Compute](/compute) and [Prisma Postgres](/postgres). `composer destroy` tears an environment down. You choose the target environment, production or an isolated **stage**, on the command line rather than in your code.
 
 | You want to... | Run |
 | --- | --- |
-| Deploy to production | `npx @prisma/cli@next composer deploy module.ts` |
-| Deploy an isolated environment | `npx @prisma/cli@next composer deploy module.ts --stage <name>` |
-| Deploy under a different app name | `npx @prisma/cli@next composer deploy module.ts --name demo-42` |
-| Tear down an isolated environment | `npx @prisma/cli@next composer destroy module.ts --stage <name>` |
-| Tear down production's resources | `npx @prisma/cli@next composer destroy module.ts --production` |
+| Deploy to production | `npx prisma@next composer deploy module.ts` |
+| Deploy an isolated environment | `npx prisma@next composer deploy module.ts --stage <name>` |
+| Deploy under a different app name | `npx prisma@next composer deploy module.ts --name demo-42` |
+| Tear down an isolated environment | `npx prisma@next composer destroy module.ts --stage <name>` |
+| Tear down production's resources | `npx prisma@next composer destroy module.ts --production` |
 
 ## Credentials
 
-Two environment variables, nothing else:
+On your machine, `composer deploy` uses the session stored by `auth login`, the same sign-in every other CLI command uses:
+
+```npm
+npx prisma@next auth login
+```
+
+In CI or any headless environment, use a service token instead. Set two environment variables:
 
 - `PRISMA_SERVICE_TOKEN`: create a service token for your workspace in the [Prisma Console](https://console.prisma.io).
 - `PRISMA_WORKSPACE_ID`: in the workspace's settings.
 
-A fresh checkout with just those two set deploys successfully; the CLI finds or creates everything else. Keep the values out of the repo (an `.env` you source at deploy time, or CI secrets). There is no interactive login for deploys; the token is the only authentication.
+A fresh checkout with just those two variables set deploys successfully. The CLI finds or creates everything else. Keep the values out of the repo (an `.env` you source at deploy time, or CI secrets). When `PRISMA_SERVICE_TOKEN` is set it takes priority over any stored session.
 
 ## Build first
 
@@ -31,24 +37,24 @@ A fresh checkout with just those two set deploys successfully; the CLI finds or 
 
 ```npm
 npm run build
-npx @prisma/cli@next composer deploy module.ts
+npx prisma@next composer deploy module.ts
 ```
 
-Deploy state (what is already provisioned, so re-deploys diff instead of recreate) is stored with the environment it describes, not on your machine. The platform hosts each environment's state behind its API, scoped to that environment's branch inside the app's project. Everyone deploying the app shares it, your laptop and CI see the same world, and two concurrent deploys of the same environment lock each other out instead of corrupting it: while one holds the deploy lease, the second fails immediately with a message naming the holder. If a deploy crashes, its lease expires after about a minute and the next deploy takes over.
+Deploy state records what is already provisioned, so a re-deploy applies the difference instead of recreating everything. The platform stores this state with the environment it describes, scoped to that environment's branch inside the app's project. It is not stored on your machine, so your laptop and CI see the same state. Concurrent deploys of the same environment take turns through a lease on that state. While one deploy holds the lease, a second deploy fails immediately with a message naming the holder. If a deploy crashes, its lease expires after about a minute, and the next deploy takes over.
 
 ## Production and stages
 
 Deploying with no `--stage` targets **production**. In platform terms, the app is a project (named after your root module), and production lives at the project level.
 
-`--stage <name>` deploys a complete, isolated copy of the app, every service, every database, its own configuration, as a branch of that same project. Nothing is shared with production except the code:
+`--stage <name>` deploys a complete, isolated copy of the app as a [preview branch](/compute/branching) of that same project: its own services, its own databases, its own configuration. The only thing a stage shares with production is the code. Composer's *stage* and Compute's *preview branch* are the same object seen from two tools, which is why the stage's variables are the branch's [environment variables](/compute/environment-variables):
 
 ```npm
-npx @prisma/cli@next composer deploy module.ts                  # production
-npx @prisma/cli@next composer deploy module.ts --stage staging  # a persistent staging environment
-npx @prisma/cli@next composer deploy module.ts --stage pr-42    # one environment per PR
+npx prisma@next composer deploy module.ts                  # production
+npx prisma@next composer deploy module.ts --stage staging  # a persistent staging environment
+npx prisma@next composer deploy module.ts --stage pr-42    # one environment per PR
 ```
 
-Re-deploying any environment is idempotent; it updates the resources in place. A stage name must be a valid git ref name; an invalid name is a hard error, never a silent rename.
+Re-deploying any environment is idempotent: it updates the resources in place. A stage name must be a valid git ref name. An invalid name fails the deploy rather than being renamed.
 
 ## What a deploy prints
 
@@ -66,29 +72,29 @@ storefront-auth
 
 The tree is your module structure: `auth.api` is the `api` service inside the `auth` Module. Under each name is the platform resource it became and its ID, the thing to search for in the Console when you need it.
 
-A URL appears only where the address is genuinely public. A Compute service prints one because its endpoint is reachable. A database never does: it has a connection string, not a public endpoint. Nothing secret is reported here at all; a node whose whole product is a keypair prints no resource line. A node that deployed but published nothing reportable is still listed, marked `(no entities reported)`, so a node is never silently missing from the tree.
+URLs appear for publicly reachable endpoints. That is why a Compute service prints one and a database does not: a database has a connection string, not a public endpoint. Secrets are left out entirely, so a node whose only output is a keypair prints no resource line. A node that deployed but published nothing reportable still appears in the tree, marked `(no entities reported)`.
 
 ## Destroying
 
-`destroy` refuses to guess. A bare `composer destroy` is an error; name the target:
+`destroy` requires an explicit target; a bare `composer destroy` is an error:
 
 ```npm
-npx @prisma/cli@next composer destroy module.ts --stage staging  # staging only; production untouched
-npx @prisma/cli@next composer destroy module.ts --production     # production's resources
+npx prisma@next composer destroy module.ts --stage staging  # staging only; production untouched
+npx prisma@next composer destroy module.ts --production     # production's resources
 ```
 
-`--stage` and `--production` together is an error too. Destroying a stage removes its resources, then deletes its branch, which takes the stage's deploy state with it. Destroying production removes the resources and also deletes the app's project once nothing is left in it, so hand-run stacks do not pile up as empty projects in your workspace; a project still holding another stage's resources is left in place. Destroy never creates: tearing down a stage that was never deployed fails with "nothing deployed" rather than provisioning one first.
+`--stage` and `--production` together is an error too. Destroying a stage removes its resources, then deletes its branch along with the stage's deploy state. Destroying production removes the resources and, if the project is empty afterwards, deletes the project too, so empty projects do not pile up in your workspace. A project still holding another stage's resources stays in place. Tearing down a stage that was never deployed fails with "nothing deployed". It does not provision one first.
 
 ## CI
 
-Nothing is CI-specific. Set the two credential variables as CI secrets, build, and run the same commands. The per-PR environment pattern:
+CI runs the same commands as your machine: set the two credential variables as CI secrets, build, and deploy. The per-PR environment pattern:
 
 ```bash
-npx @prisma/cli@next composer deploy module.ts --stage "pr-$PR_NUMBER"    # on push
-npx @prisma/cli@next composer destroy module.ts --stage "pr-$PR_NUMBER"   # on close
+npx prisma@next composer deploy module.ts --stage "pr-$PR_NUMBER"    # on push
+npx prisma@next composer destroy module.ts --stage "pr-$PR_NUMBER"   # on close
 ```
 
-One extra: if your app binds input fields with `envSecret` or `envParam` (see [Service input](/composer/service-input)), each stage keeps its own copy of those platform variables, and the platform copy is the store; the deploying shell only seeds it. A fresh stage (a new `pr-42`) has none of them yet, so CI must export the values alongside the two credentials; preflight copies missing ones up on that first deploy. A name absent from both the platform and the shell fails the deploy early, naming the missing variable.
+One extra step applies if your app binds input fields with `envSecret` or `envParam` (see [Service input](/composer/service-input)). Each stage stores its own copy of those platform variables. The deploying shell only seeds them. A fresh stage, such as a new `pr-42`, starts with none of them, so CI must export the values alongside the two credential variables. The first deploy then copies any missing values from the shell up to the stage. If a name is absent from both the platform and the shell, the deploy fails early and names the missing variable.
 
 ## When a deploy stops on an effect version conflict
 
@@ -110,11 +116,11 @@ Connection input "auth.db" declares param "url", but its producer "db" did not
 supply it — the producer's outputs carry [host].
 ```
 
-Fix it at whichever end is wrong: add the name to the outputs the producer returns, or mark the param `optional` on the connection if absent is genuinely legal (the consumer then reads `undefined`). Do not make the param optional just to route around the error; that reinstates a silent `undefined`. You will only meet this if you authored the connection or an extension on one side of the wire; every block that ships with the framework supplies what it declares.
+Fix it at whichever end is wrong: add the name to the outputs the producer returns, or mark the param `optional` on the connection if absent is a valid value (the consumer then reads `undefined`). Do not make the param optional just to route around the error: that reinstates a silent `undefined`. You will only meet this error if you authored the connection or an extension on one side of the wire. Every block that ships with the framework supplies what it declares.
 
 ## Production behavior
 
-What deployed apps actually run into, and what to do about it:
+Behavior you will run into once the app is deployed, and what to do about it:
 
 - **Compute scales to zero, and idle database connections get closed.** A long-lived client that treats a dropped connection as fatal will crash-loop through 502s. Keep the pool small and reconnect-friendly, and do not let an async error kill the process:
 
@@ -127,13 +133,13 @@ What deployed apps actually run into, and what to do about it:
 - **Bind `0.0.0.0`, not loopback.** Compute routes external HTTP to the VM; a `localhost` listener is unreachable from outside.
 - **A deployed `/rpc/<method>` returns `401` to you.** Calls are [authenticated for you](/composer/services-and-contracts#calls-are-authenticated-for-you), and your `curl` is not one of the services the app connected. Reach it through a consumer instead.
 - **Calls into a sleeping service can get `ECONNRESET`** while it cold-starts. Retry them; the generated RPC client already does.
-- **The `COMPOSER_*` variables in your project belong to the deploy.** Config, secret pointers, and service keys all land there, and every deploy rewrites them; editing one by hand does not survive.
+- **The `COMPOSER_*` variables in your project belong to the deploy.** Config, secret pointers, and service keys all land there, and every deploy rewrites them. An edit made by hand does not survive the next deploy.
 - **Streaming responses do not stream.** The platform's HTTP front door buffers a response until it completes, so an open SSE tail delivers nothing and times out at 60 seconds. Do not build on streamed HTTP responses.
 - **Next.js pages that call `service.load()` need `export const dynamic = 'force-dynamic'`.** The runtime environment does not exist at build time, and Next.js will not re-read it for prerendered routes.
 
 ## Driving deploys from code
 
-Everything the CLI does is also callable in-process, from `@prisma/composer/control`: typed `deploy`, `destroy`, `dev`, and `log` operations that return structured results instead of printing and exiting. The CLI commands are thin renderers over these same operations, so the two surfaces cannot drift:
+Everything the CLI does is also callable in-process, from `@prisma/composer/control`: typed `deploy`, `destroy`, `dev`, and `log` operations that return structured results instead of printing and exiting. The CLI commands are thin renderers over these same operations, so both surfaces behave the same:
 
 ```ts
 import { deploy } from '@prisma/composer/control';
@@ -142,7 +148,7 @@ const result = await deploy({ entry: 'module.ts', stage: 'pr-42' });
 if (!result.ok) console.error(result.failure.message);
 ```
 
-Failures come back as structured errors with a dotted `failure.code` and the same fix-naming `message` the CLI renders. `destroy` takes an explicit target, `{ kind: 'production' }` or `{ kind: 'stage', stage }`, so nothing defaults to production. The deploy engine's live output still streams to your process's stdio; the operations do not capture it.
+Failures come back as structured errors with a dotted `failure.code` and the same fix-naming `message` the CLI renders. `destroy` takes an explicit target, `{ kind: 'production' }` or `{ kind: 'stage', stage }`. There is no default. The deploy engine's live output still streams to your process's stdio; the operations do not capture it.
 
 ## Next steps
 

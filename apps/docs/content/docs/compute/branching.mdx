@@ -6,9 +6,9 @@ metaTitle: Branching | Prisma Compute
 metaDescription: How production and preview branches work in Prisma Compute, how the CLI picks a branch, and how branches are created and cleaned up.
 ---
 
-A branch is an isolated environment for one line of work. Every branch in a project gets its own apps, databases, and deployments, so work on a preview never touches production.
+A branch is an isolated environment for one line of work. Every branch in a project owns its own services, deployments, and any databases created on it, so preview deploys never share Compute resources with production. One caveat: a database your app reaches through a `DATABASE_URL` environment variable is only as isolated as that variable's value. Give previews their own preview-scoped `DATABASE_URL`. See [Environment variables](/compute/environment-variables) for details.
 
-A platform branch usually matches a Git branch name, but in Prisma it is a real resource that owns its own apps and databases:
+A platform branch usually matches a Git branch name, but in Prisma it is a real resource that owns its own services and databases:
 
 <ConceptAnimation name="compute-model" />
 
@@ -32,25 +32,25 @@ Commands that take a branch resolve it in this order:
 Inside a Git repo, running `service list` from `feature/search` targets the `feature/search` branch automatically. To target a branch explicitly:
 
 ```npm
-npx @prisma/cli@next service list --branch feature/search
+npx prisma@next service list --branch feature/search
 ```
 
 Inspect platform branches:
 
 ```npm
-npx @prisma/cli@next branch list
+npx prisma@next branch list
 ```
 
 Listing branches doesn't expand the services and databases inside them. Use the `service` and `postgres` commands to inspect those.
 
 ## Creating branches
 
-You rarely create branches manually. They appear when work needs them:
+You rarely create branches manually. They are created automatically:
 
 - **From GitHub**: when a repo is connected, branch and push events create or update the matching platform branch automatically. To set this up, see the [GitHub integration docs](/compute/github).
 - **From the CLI**: commands that target a branch that doesn't exist yet, such as `service create --branch feature/search` or a [Composer stage deploy](/composer/deploying), create it.
 
-Connecting GitHub doesn't create branches retroactively; it aligns your default branch with the repo's default branch and wires up automation for future events.
+Connecting GitHub doesn't create branches retroactively. It aligns your default branch with the repo's default branch and wires up automation for future events.
 
 ## Cleaning up
 

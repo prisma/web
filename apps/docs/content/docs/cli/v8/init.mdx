@@ -15,13 +15,13 @@ Use a [Prisma 8 quickstart](/v8/quickstart/postgresql) when you want a complete 
 Run it interactively for a guided setup:
 
 ```npm
-npx @prisma/cli@next orm init
+npx prisma@next orm init
 ```
 
 Or supply `--target` and `--authoring` for a fully scriptable run (CI, AI coding agents, automation):
 
 ```npm
-npx @prisma/cli@next orm init --yes --target postgres --authoring psl
+npx prisma@next orm init --yes --target postgres --authoring psl
 ```
 
 ## Options
@@ -35,25 +35,27 @@ npx @prisma/cli@next orm init --yes --target postgres --authoring psl
 | `--probe-db` | Connects to `DATABASE_URL` once and checks the server version. |
 | `--strict-probe` | Treats a failed database probe as fatal. |
 | `--skip-install` | Skips dependency installation and contract emission. |
-| `--skip-skills` | Skips the Prisma 8 agent-skill install. |
+| `--skip-skills` | Skips installing the [Prisma 8 agent skills](/ai/tools/skills) (the version-pinned `prisma-8` usage skill plus the upgrade skills). |
 | `--keep-previous-facade` | Keeps the previous target package in `package.json` when switching targets. |
 
 ## What it creates
 
 The exact files depend on the target and authoring style, but a Postgres PSL setup normally includes:
 
-- `prisma-next.config.ts`
-- a starter contract file such as `prisma/contract.prisma`
+- `prisma.config.ts`
+- a starter contract file such as `src/prisma/contract.prisma`
 - emitted contract artifacts after installation runs
-- a runtime client file that imports `contract.json`
-- package scripts for contract emission and database commands
+- a runtime client file (`src/prisma/db.ts`) that imports `contract.json`
+- `.env.example`, `tsconfig.json`, and updated `package.json`
+
+The runtime files are ES modules. If your `package.json` declares `"type": "commonjs"`, `orm init` keeps it and prints a warning. Set `"type": "module"` so the scaffolded `db.ts` loads.
 
 ## Examples
 
 ```npm
-npx @prisma/cli@next orm init --yes --target postgres --authoring psl
-npx @prisma/cli@next orm init --yes --target mongodb --authoring typescript --json
-npx @prisma/cli@next orm init --skip-install
+npx prisma@next orm init --yes --target postgres --authoring psl
+npx prisma@next orm init --yes --target mongodb --authoring typescript --json
+npx prisma@next orm init --skip-install
 ```
 
 ## After initialization
@@ -61,12 +63,14 @@ npx @prisma/cli@next orm init --skip-install
 Review the generated files, set `DATABASE_URL`, and emit the contract when you change the schema:
 
 ```npm
-npx @prisma/cli@next contract emit
+npx prisma@next contract emit
 ```
 
 Then initialize or verify the database:
 
 ```npm
-npx @prisma/cli@next db init --db "$DATABASE_URL"
-npx @prisma/cli@next db verify --db "$DATABASE_URL"
+npx prisma@next db init --db "$DATABASE_URL"
+npx prisma@next db verify --db "$DATABASE_URL"
 ```
+
+The scaffolded `db.ts` reads `DATABASE_URL` from the process environment at runtime. The CLI loads `.env` through the config file, but your own scripts do not. Run them with the variable set, for example `node --env-file=.env src/index.ts`.

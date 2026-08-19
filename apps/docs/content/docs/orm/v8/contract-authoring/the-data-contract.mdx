@@ -27,7 +27,7 @@ model Post {
 }
 ```
 
-Prisma 8 compiles this into a machine-readable artifact, and everything else checks itself against it: queries are type-checked against the contract, migrations are planned as changes to it, and the database is verified against it before your code runs.
+Prisma 8 compiles this into a machine-readable artifact, and the rest of the toolchain works against it: queries are type-checked against the contract, migrations are planned as changes to it, and the database is verified against it before your code runs.
 
 Think of it as a `package-lock.json` for your data: an exact, versioned record of what your application expects from its database.
 
@@ -43,17 +43,20 @@ Prisma ORM's current architecture compiles your schema into generated client cod
 
 Prisma 8 keeps the schema knowledge in the open. Your contract source compiles to two plain files: `contract.json`, a canonical JSON description of models, storage, and capabilities, and `contract.d.ts`, the TypeScript types derived from it. Both are deterministic: the same source always produces byte-identical output, so the artifacts can be diffed in code review, hashed for verification, and read directly by tools and AI agents.
 
-The contract also carries identity. Emission computes hashes over the contract's content, and [`db sign`](/cli/v8/db-sign) records them in a small marker inside the database. Before executing queries, Prisma 8 compares the contract it was built against with the marker in the database it is talking to. A mismatch, such as a deploy against an unmigrated database, fails verification instead of failing at query time.
+The contract also identifies the exact schema version it describes. When you emit the contract, Prisma 8 computes hashes over its content, and [`db sign`](/cli/v8/db-sign) records them in a small marker inside the database. Before executing queries, Prisma 8 compares the contract it was built against with the marker in the database it is talking to. If they do not match, for example after a deploy against an unmigrated database, verification fails before any query runs.
 
 ## How it works
 
-A Prisma 8 project declares one contract source in `prisma-next.config.ts`:
+A Prisma 8 project declares one contract source in `prisma.config.ts`:
 
-```typescript title="prisma-next.config.ts"
-import { defineConfig } from "@prisma/orm-postgres/config";
+```typescript title="prisma.config.ts"
+import { defineConfig } from "@prisma/cli-engine";
+import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
 
 export default defineConfig({
-  contract: "./prisma/contract.prisma",
+  orm: ormConfig({
+    contract: "./prisma/contract.prisma",
+  }),
 });
 ```
 
@@ -61,8 +64,8 @@ The source is either a Prisma schema file (`contract.prisma`) or a TypeScript fi
 
 Emitting turns the source into the artifacts:
 
-```bash
-npx @prisma/cli@next contract emit
+```npm
+npx prisma@next contract emit
 ```
 
 This writes `contract.json` and `contract.d.ts` next to the source. From there, the rest of the toolchain takes over:
@@ -73,11 +76,11 @@ This writes `contract.json` and `contract.d.ts` next to the source. From there, 
 
 ## Two authoring modes, one artifact
 
-**[PSL](/orm/v8/contract-authoring/psl-syntax)** is the preferred authoring surface: a compact language purpose-built for describing data. It is what `create-prisma` scaffolds, what [`contract infer`](/cli/v8/contract-infer) writes when you start from an existing database, and what the examples throughout these docs use.
+**[PSL](/orm/v8/contract-authoring/psl-syntax)** is the preferred way to author the contract: a compact language purpose-built for describing data. It is what `create-prisma` scaffolds, what [`contract infer`](/cli/v8/contract-infer) writes when you start from an existing database, and what the examples throughout these docs use.
 
-For the cases PSL does not cover, defining models with a **[TypeScript builder](/orm/v8/contract-authoring/typescript-schema-builder)** exists as an escape hatch: reach for it when model definitions must be composed, generated, or shared as ordinary TypeScript modules.
+For the cases PSL does not cover, define models with the **[TypeScript builder](/orm/v8/contract-authoring/typescript-schema-builder)** instead. Reach for it when model definitions must be composed, generated, or shared as ordinary TypeScript modules.
 
-Both modes are front ends to the same contract. For an equivalent schema they emit the same `contract.json`, so nothing downstream, including migrations, verification, and the query APIs, cares which one you write, and you give up nothing by staying with PSL. A project declares exactly one source of truth: the file named by `contract` in the config. Keep the other form out of the project, or treat it as a generated reference, so the two can never disagree.
+Both modes produce the same contract. For an equivalent schema they emit the same `contract.json`, so migrations, verification, and the query APIs behave the same no matter which mode you write. You give up nothing by staying with PSL. A project declares exactly one source of truth: the file named by `contract` in the config. Keep the other form out of the project, or treat it as a generated reference, so the two can never disagree.
 
 ## What the contract contains
 
@@ -93,7 +96,7 @@ It contains no rows, no credentials, and no connection details, so committing th
 
 ## Prompt your coding agent
 
-Projects scaffolded with `create-prisma@next` install [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent; the `prisma-8` skill covers this page. Ask your agent to:
+Projects scaffolded with `create-prisma@next` install [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. The `prisma-8` skill covers this page. Ask your agent to:
 
 - "Using the prisma-8 skill, explain what our contract.json currently declares."
 - "Add an Invoice model to the contract and emit it."

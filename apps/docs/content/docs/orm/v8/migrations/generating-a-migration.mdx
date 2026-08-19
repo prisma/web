@@ -7,9 +7,9 @@ metaDescription: A step-by-step tutorial for the migration plan command, from co
 badge: release-candidate
 ---
 
-This tutorial takes a contract change from your editor to a planned migration on disk. Planning is **fully offline**: `migration plan` reads your emitted contract and your existing migrations; it never connects to a database, so you can plan on a plane, in CI, or in a sandbox with no credentials.
+This tutorial takes a contract change from your editor to a planned migration on disk. Planning is **fully offline**. `migration plan` reads your emitted contract and your existing migrations, and it never connects to a database. That means you can plan on a plane, in CI, or in a sandbox with no credentials.
 
-Start from a minimal project; `npx create-prisma@next` scaffolds one.
+Start from a minimal project. `npx create-prisma@next` scaffolds one.
 
 ## Your first migration
 
@@ -27,14 +27,14 @@ model User {
 
 First, emit the contract. This compiles the schema into the `contract.json` artifact that every other command reads:
 
-```bash
-npx @prisma/cli@next contract emit
+```npm
+npx prisma@next contract emit
 ```
 
-Now plan. `--name` sets the human-readable part of the directory name; without it the directory is called `migration`:
+Now plan. `--name` sets the human-readable part of the directory name. If you omit it, the directory is called `migration`:
 
-```bash
-npx @prisma/cli@next migration plan --name init
+```npm
+npx prisma@next migration plan --name init
 ```
 
 ```text
@@ -48,7 +48,7 @@ from:   null
 to:     sha256:705b1a62f26f0913caa4bfe3f8b7cb491a1b94bd47fc43471d8711bc480bcbb5
 App space → migrations/app/20260707T1005_init
 
-Next: review migrations/app/20260707T1005_init if needed, then run prisma-next migrate.
+Next: review migrations/app/20260707T1005_init if needed, then run prisma-cli migrate.
 
 DDL preview
 
@@ -61,12 +61,14 @@ CREATE TABLE "public"."user" (
 );
 ```
 
+(The `prisma-cli` in the hint is the binary's own name for itself. When invoking it as `npx prisma@next`, run the suggested subcommand the same way: `npx prisma@next migrate`.)
+
 Four things to notice:
 
 - **The DDL preview is right there.** You see the exact SQL before anything exists but files.
-- **`from: null`** means this migration starts from an empty database; it's the root of your [migration graph](/orm/v8/migrations/the-migration-graph).
+- **`from: null`** means this migration starts from an empty database. It's the root of your [migration graph](/orm/v8/migrations/the-migration-graph).
 - **`to:` is your contract's hash.** The migration promises to deliver a database matching exactly the contract you just emitted.
-- **`App space`** is your application's migration lane. Database extensions bring their own lanes; see [extension spaces](/orm/v8/migrations/applying-a-migration#extension-spaces).
+- **`App space`** is your application's migration lane. Database extensions bring their own lanes. See [extension spaces](/orm/v8/migrations/applying-a-migration#extension-spaces).
 
 The planned migration directory contains the TypeScript source, the compiled operations, and the contract snapshots:
 
@@ -108,9 +110,9 @@ export default class M extends Migration<never, End> {
 MigrationCLI.run(import.meta.url, M);
 ```
 
-Two notes on reading it: the `col(...)` calls mirror your contract fields, and you never write `codecRef` by hand. The planner fills it in to pin how values convert between TypeScript and Postgres; treat it as noise when reviewing.
+Two notes on reading it: the `col(...)` calls mirror your contract fields, and you never write `codecRef` by hand. The planner fills it in to pin how values convert between TypeScript and Postgres. Treat it as noise when reviewing.
 
-For a simple change you don't need to touch this file. When you do (to add a data backfill, reorder operations, or drop in raw SQL), that's [Editing a migration](/orm/v8/migrations/editing-a-migration).
+For a simple change you don't need to touch this file. When you do (to add a data backfill, reorder operations, or drop in raw SQL), see [Editing a migration](/orm/v8/migrations/editing-a-migration).
 
 ## The second migration: planning a delta
 
@@ -129,9 +131,9 @@ model User {
 
 Emit and plan again. This time, tell the planner where to start from, so it plans the *delta* rather than the whole schema:
 
-```bash
-npx @prisma/cli@next contract emit
-npx @prisma/cli@next migration plan --name add_user_phone --from 20260707T1005_init
+```npm
+npx prisma@next contract emit
+npx prisma@next migration plan --name add_user_phone --from 20260707T1005_init
 ```
 
 ```text
@@ -153,11 +155,11 @@ ALTER TABLE "public"."user" ADD COLUMN "phone" text;
 
 ### The db ref: skipping --from
 
-Passing `--from` every time gets old. The planner's default is smarter: if a [ref](/orm/v8/migrations/the-migration-graph#name-important-states-with-refs) named **`db`** exists, planning starts from whatever it points at. Keep it advanced as part of applying:
+You don't have to pass `--from` every time. If a [ref](/orm/v8/migrations/the-migration-graph#name-important-states-with-refs) named **`db`** exists, planning starts from whatever it points at by default. Move the ref forward each time you apply:
 
-```bash
-npx @prisma/cli@next migrate --advance-ref db
-npx @prisma/cli@next migration plan --name next_change   # starts from the db ref automatically
+```npm
+npx prisma@next migrate --advance-ref db
+npx prisma@next migration plan --name next_change   # starts from the db ref automatically
 ```
 
 :::warning[Without `--from` or a `db` ref, plans start from empty]
@@ -183,22 +185,22 @@ The generated migration sandwiches a `dataTransform` between the schema steps, w
 
 Three offline commands close the loop before anything runs:
 
-```bash
+```npm
 # One migration in detail: operations, metadata, DDL preview
-npx @prisma/cli@next migration show 20260707T1006_add_user_phone
+npx prisma@next migration show 20260707T1006_add_user_phone
 
 # The whole graph, with your new edge in place
-npx @prisma/cli@next migration graph
+npx prisma@next migration graph
 
 # Integrity check: hashes match, files complete, graph well-formed; exits non-zero on failure
-npx @prisma/cli@next migration check
+npx prisma@next migration check
 ```
 
 `migration check` is designed for CI: exit code `0` means clean, `2` means it couldn't resolve what you asked for, `4` means an integrity failure, for example someone hand-edited `ops.json` without re-running `migration.ts`.
 
 :::note[What's early]
 
-Planning covers tables, columns, indexes, constraints, and the backfill scaffold shown above. Rename inference is not built yet: renaming a field plans as **drop column + add column**, flagged destructive with a data-loss warning. For a true rename, edit the migration and replace the pair with a `rawSql` `ALTER TABLE ... RENAME COLUMN`. There is also no interactive mode; the planner writes its best answer and leaves refinement to you in `migration.ts`.
+Planning covers tables, columns, indexes, constraints, and the backfill scaffold shown above. Rename inference is not built yet: renaming a field plans as **drop column + add column**, flagged destructive with a data-loss warning. For a true rename, edit the migration and replace the pair with a `rawSql` `ALTER TABLE ... RENAME COLUMN`. There is also no interactive mode. The planner writes its best answer and leaves refinement to you in `migration.ts`.
 
 :::
 

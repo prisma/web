@@ -7,7 +7,7 @@ metaDescription: What a Prisma 8 migration is, the plan-review-apply loop, the f
 badge: release-candidate
 ---
 
-A migration is how Prisma 8 changes your database when your contract changes. The **contract** is the schema description you author (a `.prisma` file or TypeScript) plus the `contract.json` artifact it compiles to; the **schema** is the database's actual structure, and migrations are what move it. You add a field to a model, and something has to run `ALTER TABLE` against every database that serves your app: your laptop, staging, production. Migrations are that something, recorded as files in your repo so the change is reviewable, repeatable, and versioned with your code.
+A migration is how Prisma 8 changes your database when your contract changes. The **contract** is the schema description you author (a `.prisma` file or TypeScript) plus the `contract.json` artifact it compiles to. The **schema** is the database's actual structure, and migrations are what move it. You add a field to a model, and something has to run `ALTER TABLE` against every database that serves your app: your laptop, staging, production. Migrations are that something, recorded as files in your repo so the change is reviewable, repeatable, and versioned with your code.
 
 The workflow is a loop you will run many times a day in development:
 
@@ -20,10 +20,10 @@ The workflow is a loop you will run many times a day in development:
 
 In a project with a database connection configured (the [quickstart](/v8/quickstart/postgresql) gives you one), the whole loop is three commands. Add an optional `phone String?` field to a model in your `.prisma` file, then:
 
-```bash
-npx @prisma/cli@next contract emit
-npx @prisma/cli@next migration plan --name add_user_phone
-npx @prisma/cli@next migrate
+```npm
+npx prisma@next contract emit
+npx prisma@next migration plan --name add_user_phone
+npx prisma@next migrate
 ```
 
 `migration plan` prepares the SQL for the migration, but doesn't run it:
@@ -45,7 +45,7 @@ and `migrate` applies the migration to your database and confirms what it applie
 ✔ Applied 1 migration(s) (1 operation(s)) across 1 contract space(s)
 ```
 
-The contract-space count only matters once you add database extensions; ignore it for now. If you see the `✔ Applied` line, you've already run the entire workflow. The rest of this page covers additional detail: what a migration is, and why it looks the way it does.
+The contract-space count only matters once you add database extensions. You can ignore it for now. If you see the `✔ Applied` line, you've already run the entire workflow. The rest of this page covers additional detail: what a migration is, and why it looks the way it does.
 
 ## What a migration contains
 
@@ -87,7 +87,7 @@ Use this file when you want to review or change what the migration does. See [Ed
 
 ### ops.json: the file Prisma runs
 
-`ops.json` is the compiled form of the migration. When `migration.ts` runs (the planner does this for you; after an edit, re-run it with `node migration.ts`), Prisma turns the TypeScript steps into JSON operations. The migration runner reads only this file.
+`ops.json` is the compiled form of the migration. When `migration.ts` runs, Prisma turns the TypeScript steps into JSON operations. The planner runs it for you. After an edit, re-run it yourself with `node migration.ts`. The migration runner reads only this file.
 
 That means production never executes your TypeScript. It reads the compiled operations, so no application code runs with production credentials.
 
@@ -181,13 +181,13 @@ Each operation also carries a class, which drives the `(destructive)` flags and 
 
 This structure is what makes Prisma 8 migrations safe in the situations where classic SQL migrations hurt:
 
-- **A migration fails.** On PostgreSQL the whole run is one transaction, so a failure rolls everything back: the database returns to exactly where it was while you fix the cause and re-run. And because the runner skips any operation whose postcheck already holds, re-running never double-applies work that's already true in the database. No commenting out statements, no hand-editing the database.
+- **A migration fails.** On PostgreSQL the whole run is one transaction, so a failure rolls everything back and the database returns to exactly where it was. Fix the cause and re-run. Because the runner skips any operation whose postcheck already holds, re-running never double-applies work that's already true in the database. No commenting out statements, no hand-editing the database.
 - **The database isn't in the state you assumed.** The precheck catches it before the change runs, and the error names the exact operation and the exact check that failed, not a generic SQL error halfway through.
 - **Someone (or some agent) wrote the migration for you.** The intent (`migration.ts`), the exact SQL (`ops.json`), and the verification for every step are all in the diff, so review is straightforward.
 
 ## The commands
 
-Everything lives under the [Prisma 8 CLI](/cli/v8); run them with `npx @prisma/cli@next <command>`. Planning and inspection are offline; they read files, not your database:
+These commands live under the [Prisma 8 CLI](/cli/v8). Run them with `npx prisma@next <command>`. The planning and inspection commands work offline. They read files, not your database:
 
 | Command                   | What it does                                                            |
 | ------------------------- | ----------------------------------------------------------------------- |

@@ -1,93 +1,112 @@
 ---
 title: Prisma Composer
-description: "Build apps made of multiple services in TypeScript, then deploy services, databases, and the wiring between them with one command."
+description: "A TypeScript framework for defining applications composed of multiple services and resources, and deploying them to Prisma Compute and Prisma Postgres."
 url: /composer
 badge: early-access
-metaTitle: Prisma Composer | Compose and deploy multi-service TypeScript apps
-metaDescription: Learn how Prisma Composer lets you declare services, databases, and their connections in TypeScript, and deploy the whole app to Prisma Compute and Prisma Postgres with one command.
+metaTitle: Prisma Composer | Define and deploy multi-service TypeScript apps
+metaDescription: Prisma Composer lets you declare services, their contracts, and their databases in TypeScript, then provisions and connects them on Prisma Compute and Prisma Postgres.
 ---
 
-Prisma Composer is a TypeScript framework for apps made of more than one piece. You declare each service and what it depends on, such as other services, databases, schedules, and secrets, compose them into a **Prisma App**, and deploy the whole thing to [Prisma Compute](/compute) and [Prisma Postgres](/postgres) with one command. There is no infrastructure configuration to write or maintain.
+With Prisma Composer, you describe your whole application in TypeScript: each service, plus whatever it depends on, such as other services, [Prisma Postgres](/postgres) databases, scheduled jobs, object storage, and secrets. One deploy command then provisions the services on [Prisma Compute](/compute), the databases on Prisma Postgres, and the authenticated connections between them.
+
+You do not need Composer to deploy to Prisma Compute. If your application is a single service, you can deploy it to Compute directly. See [Deployments](/compute/deployments) for those paths.
 
 :::info[Early Access]
 
-Prisma Composer is in [Early Access](/console/more/feature-maturity#early-access). APIs and commands can change between releases. Until the unified `prisma` CLI ships, run Composer commands with `npx @prisma/cli@next composer <command>`.
+Prisma Composer is in [Early Access](/console/more/feature-maturity#early-access). APIs and commands can change between releases. The Composer commands ship inside the [Prisma CLI](/composer/cli-reference): run them with `npx prisma@next composer <command>`.
 
 :::
 
-## Get started
+## What a Composer application is
 
-The fastest way to understand Composer is to build a small app with it. The quickstart takes you from an empty directory to two services calling each other over a typed contract, running on your machine.
+A Composer application is a tree of services and resources. Each service declares the resources it needs, such as a database. Services call each other through typed contracts. Step through how the pieces relate:
 
-<Cards>
-  <Card href="/composer/getting-started" title="Build your first Prisma App" icon={<Rocket className="text-primary" />}>
-    Two services, one typed contract, one command to run them together.
-  </Card>
-  <Card href="/composer/porting-an-app" title="Port an app you already have" icon={<Milestone className="text-primary" />}>
-    Keep your server code and add the declarations around it.
-  </Card>
-</Cards>
+<ConceptAnimation name="composer-app-graph" />
 
-## Built for agents
+## A minimal example
 
-Composer is designed to be driven by an AI coding agent. Before you or your agent write any code, add the Composer skill:
+You declare a service as data instead of writing deployment scripts. The declaration below says the `storefront` service calls the `catalog` service's API and is built as a Next.js app:
 
-```npm
-npx skills add prisma/composer
-```
+```ts title="src/storefront/service.ts"
+import nextjs from '@prisma/composer/nextjs';
+import { rpc } from '@prisma/composer/service-rpc';
+import { compute } from '@prisma/composer-prisma-cloud';
+import { catalogContract } from '../catalog/contract.ts';
 
-Your agent now knows the whole API, including the ready-made Modules for scheduled jobs, blob storage, and event streams. Describe what you want, for example "a Next.js storefront calling an orders API with its own Postgres", and review TypeScript instead of infrastructure config.
-
-Three properties make this reliable rather than plausible:
-
-- **Modules snap together.** A capability arrives as a [Module](/composer/apps-and-modules) that owns its internals and exposes a typed port. Adding scheduled jobs or a blob store is a couple of lines of composition, not an integration your agent has to invent.
-- **The compiler checks the wiring.** A dependency wired to the wrong producer, a missing RPC handler, or a config value of the wrong shape does not compile. Mistakes fail `tsc` in seconds, not a deploy ten minutes later.
-- **Deploys are deterministic.** One command, no infrastructure config, and re-running it converges instead of drifting.
-
-## Two rules shape everything
-
-- **Your code never reaches for its environment.** No `process.env`, no URLs. Every dependency arrives typed through one call, `service.load()`, which is why any environment (production, a staging copy, a test) is just a different set of injected values.
-- **The framework never bundles or transforms your code.** You build with the bundler you already use; the deploy assembles what you built.
-
-## What it looks like
-
-A service declares its dependencies as data; app code receives them from `service.load()`:
-
-```ts
-// service.ts, the declaration: pure data
 export default compute({
   name: 'storefront',
-  deps: { catalog: rpc(catalogContract) },   // "I call catalog's API"
+  deps: { catalog: rpc(catalogContract) },
   build: nextjs({ module: import.meta.url, appDir: '..' }),
 });
 ```
 
-```ts
-// app code: load() returns a client typed by that contract
+At runtime, the service receives a typed client for each declared dependency from `service.load()`. The contract determines which methods that client exposes and their TypeScript types, and calling one is an ordinary async function call:
+
+```ts title="src/storefront/data.ts"
+import service from './service.ts';
+
 const { catalog } = service.load();
 const { products } = await catalog.listProducts({});
 ```
 
-The root module is the app. It provisions the pieces and wires the typed ports:
+The root module ties the application together, wiring each declared dependency to the service or resource that provides it:
 
-```ts
-// module.ts
+```ts title="module.ts"
+import { module } from '@prisma/composer';
+import catalogModule from './src/catalog/module.ts';
+import ordersModule from './src/orders/module.ts';
+import storefrontService from './src/storefront/service.ts';
+
 export default module('store', ({ provision }) => {
-  const catalog = provision(catalogModule);      // owns its own Postgres
+  const catalog = provision(catalogModule);
   const orders = provision(ordersModule, { deps: { catalog: catalog.rpc } });
   provision(storefrontService, { deps: { catalog: catalog.rpc, orders: orders.rpc } });
 });
 ```
 
-Running `npx @prisma/cli@next composer deploy module.ts` provisions all of it: the services on Prisma Compute, the databases on Prisma Postgres, and the authenticated connections between them.
+TypeScript checks the wiring: a dependency bound to a producer with a different contract, a missing RPC handler, or a config value of the wrong shape is a compile error, not a failed deploy.
+
+## From declaration to deployment
+
+`npx prisma@next composer deploy module.ts` loads the root module, compares it with the deploy state stored for that environment, and creates or updates the services on Prisma Compute and the databases on Prisma Postgres. Re-running a deploy applies only the difference:
+
+<ConceptAnimation name="composer-deploy-flow" />
+
+## Core concepts
+
+- **App**: the complete deployable application, defined by the root module. Deployed as one Prisma [project](/compute#the-model).
+- **Service**: a running application component, declared with `compute()`. Deployed as one Prisma Compute service.
+- **Resource**: something a service depends on that is not a service: a Prisma Postgres database, a bucket, or a secret.
+- **Contract**: the typed interface through which services communicate, written as [Standard Schema](https://standardschema.dev) definitions.
+- **Module**: a reusable unit that provisions services and resources behind a typed boundary, such as a service packaged with its own database.
+
+[Apps and Modules](/composer/apps-and-modules) covers each in depth.
+
+## Design principles
+
+Two choices shape the rest of the framework. First, application code does not read `process.env` or hardcode URLs. Dependencies arrive typed through `service.load()`, so production, an isolated stage, and a test all run the same code with different injected values. Second, Composer does not bundle or transform your code. You build with your own bundler, and the deploy assembles what you built.
+
+## Get started
+
+<Cards>
+  <Card href="/composer/getting-started" title="Getting started" icon={<Rocket className="text-primary" />}>
+    Build and run a two-service application locally, then deploy it.
+  </Card>
+  <Card href="/composer/porting-an-app" title="Port an existing app" icon={<Milestone className="text-primary" />}>
+    Keep your server code and add the declarations around it.
+  </Card>
+</Cards>
+
+## Use Composer with an AI coding agent
+
+Composer's declaration-based API works well with coding agents because mistakes fail the TypeScript compile instead of a deploy. Before your agent writes Composer code, install the Composer skill, which gives it the current authoring API to work from:
+
+```npm
+npx skills add prisma/composer
+```
+
+The `prisma-composer` skill documents the full authoring API, the CLI commands, and the first-party Modules for scheduled jobs, object storage, and event streams. It is one of several [Prisma agent skills](/ai/tools/skills). Review the generated declarations like any other TypeScript: `npx tsc --noEmit` checks the wiring before you deploy.
 
 ## What to read next
 
-- [Getting started](/composer/getting-started): build and run a two-service app from scratch.
-- [Apps and Modules](/composer/apps-and-modules): how services, resources, and Modules compose into an app.
-- [Services and contracts](/composer/services-and-contracts): typed RPC between services, with authentication and retries handled for you.
-- [Databases](/composer/databases): give a service a Postgres database, plain or typed by a Prisma 8 contract.
-- [Local development](/composer/local-development): run the whole app on your machine with no cloud credentials.
-- [Deploying](/composer/deploying): production, isolated stages, CI, and teardown.
-- [CLI reference](/composer/cli-reference): every Composer command and flag.
-- [Limitations](/composer/limitations): what Composer does not do yet.
+Start with [Apps and Modules](/composer/apps-and-modules) for how services, resources, and Modules compose into an app, then [Services and contracts](/composer/services-and-contracts) for the typed RPC between them. When you're ready to run something, [Local development](/composer/local-development) works with no cloud credentials, and [Deploying](/composer/deploying) covers production, stages, and CI. Check [Limitations](/composer/limitations) before committing to a design.

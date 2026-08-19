@@ -7,11 +7,11 @@ metaDescription: Learn how to define a Prisma 8 contract in TypeScript with defi
 badge: release-candidate
 ---
 
-TypeScript authoring defines the Prisma 8 [data contract](/orm/v8/contract-authoring/the-data-contract) in code. Instead of a `.prisma` file, you write `prisma/contract.ts` with the `defineContract` builder, and [`contract emit`](/cli/v8/contract-emit) produces exactly the same `contract.json` and `contract.d.ts` a PSL schema would.
+With TypeScript authoring, you define the Prisma 8 [data contract](/orm/v8/contract-authoring/the-data-contract) in code. Instead of a `.prisma` file, you write `prisma/contract.ts` with the `defineContract` builder, and [`contract emit`](/cli/v8/contract-emit) produces exactly the same `contract.json` and `contract.d.ts` a PSL schema would.
 
 ## When to choose TypeScript over PSL
 
-[PSL](/orm/v8/contract-authoring/psl-syntax) is the preferred authoring surface, and since both modes emit identical artifacts, you give up nothing by staying with it. The TypeScript builder is an escape hatch for the cases PSL does not cover. Reach for it when:
+[PSL](/orm/v8/contract-authoring/psl-syntax) is the preferred way to author the contract. Both modes emit identical artifacts, so you give up nothing by staying with PSL. The TypeScript builder is an escape hatch for the cases PSL does not cover. Reach for it when:
 
 - model definitions must be split, composed, or reused across ordinary TypeScript modules or packages
 - parts of the schema are assembled programmatically from other static definitions (the [purity rules](#keep-the-contract-file-pure) still apply)
@@ -22,19 +22,25 @@ If neither applies, write PSL: it is more compact, and it is what `create-prisma
 
 The config's `contract` path names the source of truth. A `.ts` extension selects TypeScript authoring:
 
-```typescript title="prisma-next.config.ts" tab="PostgreSQL"
-import { defineConfig } from "@prisma/orm-postgres/config";
+```typescript title="prisma.config.ts" tab="PostgreSQL"
+import { defineConfig } from "@prisma/cli-engine";
+import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
 
 export default defineConfig({
-  contract: "./prisma/contract.ts",
+  orm: ormConfig({
+    contract: "./prisma/contract.ts",
+  }),
 });
 ```
 
-```typescript title="prisma-next.config.ts" tab="MongoDB"
-import { defineConfig } from "@prisma/orm-mongo/config";
+```typescript title="prisma.config.ts" tab="MongoDB"
+import { defineConfig } from "@prisma/cli-engine";
+import { defineConfig as ormConfig } from "@prisma/orm-mongo/config";
 
 export default defineConfig({
-  contract: "./prisma/contract.ts",
+  orm: ormConfig({
+    contract: "./prisma/contract.ts",
+  }),
 });
 ```
 
@@ -149,9 +155,9 @@ export const contract = defineContract({
 });
 ```
 
-Run `npx @prisma/cli@next contract emit` after any change to refresh the artifacts.
+Run `npx prisma@next contract emit` after any change to refresh the artifacts.
 
-The two builders share the same shape but differ where the databases do. On PostgreSQL, fields pick column types and models chain `.sql({ table })` to map storage; on MongoDB, the ID is a `field.objectId()` named `_id`, scalar helpers are `field.string()`, `field.int32()`, `field.double()`, `field.bool()`, and `field.date()`, and the collection is an inline `collection` option on the model rather than a chained call.
+The two builders share the same shape but differ where the databases do. On PostgreSQL, fields pick column types and models chain `.sql({ table })` to map storage. On MongoDB, the ID is a `field.objectId()` named `_id`, and the scalar helpers are `field.string()`, `field.int32()`, `field.double()`, `field.bool()`, and `field.date()`. The collection is an inline `collection` option on the model rather than a chained call.
 
 ## How `defineContract` works
 
@@ -159,7 +165,7 @@ The two builders share the same shape but differ where the databases do. On Post
 
 The options object declares what the contract is built from, most importantly `extensionPacks`. The target and database family are already bound by the import: `@prisma/orm-postgres/contract-builder` produces PostgreSQL contracts, so you never name them yourself.
 
-The factory receives authoring helpers composed from the target and every extension pack you declared: `field` for field definitions, `model` for models, and `type` for pack-provided types (which is why `type.pgvector` exists in the example, and only when `pgvector` is in `extensionPacks`). The factory returns the contract's content: `models`, plus optional `enums` and `types`.
+The factory receives authoring helpers composed from the target and every extension pack you declared: `field` for field definitions, `model` for models, and `type` for pack-provided types. `type.pgvector` in the example exists only because `pgvector` is listed in `extensionPacks`. The factory returns the contract's content: `models`, plus optional `enums` and `types`.
 
 The MongoDB builder is simpler: it exports `field`, `model`, and `rel` directly, and its `defineContract` takes a single definition object with the `models`, as in the MongoDB tab above. The sections below use the PostgreSQL builder.
 
@@ -208,7 +214,7 @@ Post.relations({
 });
 ```
 
-`rel.hasMany(Model, { by })` names the foreign key field on the other model; `rel.belongsTo(Model, { from, to })` maps the local foreign key field to the referenced field. `rel.hasOne` and `rel.manyToMany` cover the remaining shapes. A typo in a relation target is a compile error either way: the PostgreSQL builder takes model objects, and the MongoDB builder takes model names that are type-checked against the declared models.
+`rel.hasMany(Model, { by })` names the foreign key field on the other model. `rel.belongsTo(Model, { from, to })` maps the local foreign key field to the referenced field. `rel.hasOne` and `rel.manyToMany` cover the remaining shapes. A typo in a relation target is a compile error either way: the PostgreSQL builder takes model objects, and the MongoDB builder takes model names that are type-checked against the declared models.
 
 ## Storage mapping
 
@@ -248,25 +254,25 @@ export const contract = defineContract(
 );
 ```
 
-The same pack must also be composed in `prisma-next.config.ts` (as `extensions: [pgvector]`, using the pack's `/control` export) so the CLI and runtime agree with the contract.
+The same pack must also be composed in `prisma.config.ts` (as `extensions: [pgvector]`, using the pack's `/control` export) so the CLI and runtime agree with the contract.
 
 ## Keep the contract file pure
 
-The contract file describes structure; emission canonicalizes it to JSON and hashes it, and the same source must always produce the same bytes. That works only if the file is pure data:
+The contract file describes structure. When you emit it, Prisma 8 canonicalizes it to JSON and hashes it, and the same source must always produce the same bytes. That works only if the file is pure data:
 
 - Do not read `process.env`, the current time, or random values into the contract. A contract that changes per machine or per run breaks hashing and verification.
 - Keep field values plain: strings, numbers, booleans, and the builder's own objects. Functions, class instances, and `Date` objects do not serialize.
 - Keep the file free of side effects. Emission evaluates it to obtain the contract object and nothing else.
 
-Configuration that legitimately varies per environment, such as the database URL, belongs in `prisma-next.config.ts`, not in the contract.
+Configuration that legitimately varies per environment, such as the database URL, belongs in `prisma.config.ts`, not in the contract.
 
 ## Parity with PSL
 
-TypeScript and [PSL](/orm/v8/contract-authoring/psl-syntax) authoring emit the same canonical artifact for an equivalent schema. You can move between the modes without any downstream change, but a project declares exactly one source of truth: the file named in the config. Keep the other form out of the project so the two can never disagree.
+TypeScript and [PSL](/orm/v8/contract-authoring/psl-syntax) authoring emit the same canonical artifact for an equivalent schema. You can move between the modes without any downstream change. A project still declares exactly one source of truth: the file named in the config. Keep the other form out of the project so the two can never disagree.
 
 ## Prompt your coding agent
 
-Projects scaffolded with `create-prisma@next` install [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent; the `prisma-8` skill covers this page. Ask your agent to:
+Projects scaffolded with `create-prisma@next` install [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. The `prisma-8` skill covers this page. Ask your agent to:
 
 - "Convert this contract.prisma to the TypeScript schema builder."
 - "Using the prisma-8 skill, add a unique index to the email field in our TypeScript schema."

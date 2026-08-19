@@ -1,0 +1,549 @@
+---
+title: Migrate from Prisma 7 to Prisma 8
+description: Migrate a PostgreSQL project from Prisma 7 to Prisma 8 incrementally, with both versions running side by side
+url: /guides/v8/upgrade-prisma-orm/postgresql
+metaTitle: How to migrate a PostgreSQL project from Prisma 7 to Prisma 8
+metaDescription: Step-by-step guide to migrating a Prisma 7 PostgreSQL project to Prisma 8 incrementally. Run both clients side by side, migrate routes one at a time, then move migrations to Prisma 8.
+---
+
+This guide is for teams running a Prisma 7 application on PostgreSQL who want to move to **Prisma 8** without a rewrite. You will install Prisma 8 next to Prisma 7 in the same application, move routes over one at a time, hand migration ownership to Prisma 8, and remove Prisma 7 once nothing depends on it.
+
+Both versions run against the same PostgreSQL database the whole time. The database, its data, and its connection string do not change; only application code and tooling do. Because each route stays on Prisma 7 until you deliberately move it, the application remains shippable at every point in the migration.
+
+The guide covers **PostgreSQL only**. Guidance for other databases will follow. If you are coming from v6 on MongoDB, see the [MongoDB guide](/guides/v8/upgrade-prisma-orm/mongodb).
+
+:::info
+
+Prisma 8 is a Release Candidate and evolves quickly. Every command and code example in this guide was validated against `prisma@8.0.0-rc.6`, `@prisma/orm-postgres@8.0.0-rc.4`, `@prisma/cli-engine@0.2.0`, and `@prisma/prisma7@7.10.0-dev.58`, with a Prisma 7 baseline on `7.9.1`.
+
+:::
+
+## How the incremental migration works
+
+The migration runs in five phases. The application works at the end of each one.
+
+1. **Prepare Prisma 7 for side-by-side operation.** Move Prisma 7 onto its own package name, binary, and config file. No behavior changes.
+2. **Add Prisma 8.** Install the Prisma 8 CLI and runtime with their own config, schema contract, and generated client. No application code uses them yet.
+3. **Migrate one route.** One route runs on Prisma 8 while the rest stay on Prisma 7, all against the same database.
+4. **Transfer migration ownership.** Prisma 8 takes over planning and applying schema changes.
+5. **Remove Prisma 7** once nothing imports it.
+
+The ownership timeline matters more than the code timeline. Prisma 7 owns schema migrations through phases 1 to 3, and routes move to Prisma 8 independently of that. Prisma 8 takes over migrations only in phase 4, after a baseline migration, a database signature, and a ref are in place. You can pause between phases for as long as you need.
+
+The [prisma8-and-7-example](https://github.com/prisma/prisma8-and-7-example) repository shows the finished result of each phase (tags `step-0` through `step-3`).
+
+## Prerequisites
+
+- **Node.js 22.18+** (required by `@prisma/orm-postgres`)
+- A working **Prisma 7** application on PostgreSQL: `prisma.config.ts`, the `prisma-client` generator, and a driver adapter
+- **TypeScript 5.3+** with `"strict": true` and a `module` setting that supports import attributes, such as `"nodenext"`
+
+## 1. Prepare Prisma 7 for side-by-side operation
+
+Prisma 8 expects the `prisma` package name, the `prisma` binary, and the `prisma.config.ts` file name. In this phase you move Prisma 7 off those three names so Prisma 8 can take them without ambiguity. Nothing migrates yet.
+
+### 1.1. Confirm the application works
+
+The guide follows a small Hono API with two routes. Map the file names to your own project. The Prisma 7 pieces that matter:
+
+```json title="package.json (excerpt)"
+{
+  "scripts": {
+    "prisma:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.9.1",
+    "@prisma/client": "^7.9.1"
+  },
+  "devDependencies": {
+    "prisma": "^7.9.1"
+  }
+}
+```
+
+```prisma title="prisma/schema.prisma"
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id    Int     @id @default(autoincrement())
+  email String  @unique
+  name  String?
+  posts Post[]
+}
+
+model Post {
+  id        Int     @id @default(autoincrement())
+  title     String
+  published Boolean @default(false)
+  authorId  Int
+  author    User    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([authorId])
+}
+```
+
+```typescript title="prisma.config.ts"
+import "dotenv/config";
+import { defineConfig } from "prisma/config";
+
+export default defineConfig({
+  schema: "prisma/schema.prisma",
+  migrations: {
+    path: "prisma/migrations",
+  },
+  datasource: {
+    url: process.env["DATABASE_URL"],
+  },
+});
+```
+
+```typescript title="src/db.ts"
+import "dotenv/config";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "../generated/prisma/client.js";
+
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
+
+export const prisma = new PrismaClient({ adapter });
+```
+
+Two routes read and write through this client, `/users` and `/posts`:
+
+```typescript title="src/routes/users.ts"
+import { Hono } from "hono";
+import { prisma } from "../db.js";
+
+export const users = new Hono();
+
+users.get("/", async (c) => {
+  const result = await prisma.user.findMany({
+    include: { posts: true },
+    orderBy: { id: "asc" },
+  });
+  return c.json(result);
+});
+
+users.post("/", async (c) => {
+  const body = await c.req.json<{ email: string; name?: string }>();
+  const user = await prisma.user.create({ data: body });
+  return c.json(user, 201);
+});
+```
+
+`src/routes/posts.ts` follows the same pattern for `Post`.
+
+Start the app and run a read and a write:
+
+```npm
+npm run dev
+```
+
+```bash
+curl -X POST localhost:3000/users -H 'content-type: application/json' \
+  -d '{"email":"alice@prisma.io","name":"Alice"}'
+curl localhost:3000/users
+```
+
+Do not continue until both requests succeed. That confirms the Prisma 7 application works before you change its configuration.
+
+### 1.2. Replace the `prisma` package with `@prisma/prisma7`
+
+```npm
+npm uninstall prisma
+npm install --save-dev @prisma/prisma7@7.10.0-dev.58
+```
+
+`@prisma/prisma7` is the same Prisma 7 CLI under a version-specific name. It exposes a `prisma7` binary and keeps `prisma` 7 as a transitive dependency. Your `@prisma/client` and `@prisma/adapter-pg` dependencies stay untouched.
+
+### 1.3. Rename the Prisma 7 config
+
+```bash
+mv prisma.config.ts prisma7.config.ts
+```
+
+```typescript title="prisma7.config.ts"
+import "dotenv/config";
+import { defineConfig } from "prisma/config"; // [!code --]
+import { defineConfig } from "@prisma/prisma7/config"; // [!code ++]
+
+export default defineConfig({
+  schema: "prisma/schema.prisma",
+  migrations: {
+    path: "prisma/migrations",
+  },
+  datasource: {
+    url: process.env["DATABASE_URL"],
+  },
+});
+```
+
+The `prisma7` CLI discovers `prisma7.config.ts` automatically, so no `--config` flag is needed. Renaming frees the `prisma.config.ts` name for Prisma 8, which only accepts its own config format under that name.
+
+### 1.4. Point scripts at the `prisma7` binary
+
+```json title="package.json (excerpt)"
+{
+  "scripts": {
+    "prisma:generate": "prisma generate", // [!code --]
+    "db:migrate": "prisma migrate dev" // [!code --]
+    "prisma7:generate": "prisma7 generate", // [!code ++]
+    "prisma7:migrate": "prisma7 migrate dev" // [!code ++]
+  }
+}
+```
+
+After Prisma 8 is installed, the `prisma` binary runs the Prisma 8 CLI. Update every script, CI job, and deployment command that must continue using Prisma 7 to call `prisma7` instead.
+
+### 1.5. Check that Prisma 7 still works
+
+```npm
+npx prisma7 generate
+npx prisma7 migrate status
+```
+
+**Expected result:** `generate` writes the client to `generated/prisma` as before, and `migrate status` reports that the database schema is up to date. Start the app and query each route; behavior should be identical to step 1.1.
+
+## 2. Add Prisma 8
+
+### 2.1. Install the Prisma 8 packages
+
+```npm
+npm install --save-dev prisma@next @prisma/cli-engine@0.2.0
+npm install @prisma/orm-postgres
+```
+
+`prisma@next` is the Prisma 8 CLI. `@prisma/orm-postgres` is the PostgreSQL ORM runtime your application code will import. `@prisma/cli-engine` provides `defineConfig` for the Prisma 8 config file. Install it directly so the import resolves under every package manager.
+
+After this install, `npx prisma <command>` runs the Prisma 8 CLI and `npx prisma7 <command>` runs Prisma 7:
+
+```npm
+npx prisma --version
+```
+
+**Expected result:** `8.0.0-rc.6` (or newer).
+
+### 2.2. Create the Prisma 8 config
+
+```typescript title="prisma.config.ts"
+import "dotenv/config";
+import { defineConfig } from "@prisma/cli-engine";
+import { defineConfig as definePostgresConfig } from "@prisma/orm-postgres/config";
+
+export default defineConfig({
+  orm: definePostgresConfig({
+    contract: "prisma8/contract.prisma",
+    output: "generated/prisma8",
+    db: {
+      connection: process.env["DATABASE_URL"],
+    },
+  }),
+});
+```
+
+Both configs point at the **same** `DATABASE_URL`. Everything else is separate:
+
+| | Prisma 7 | Prisma 8 |
+|---|---|---|
+| CLI | `prisma7` | `prisma` |
+| Config | `prisma7.config.ts` | `prisma.config.ts` |
+| Schema | `prisma/schema.prisma` | `prisma8/contract.prisma` |
+| Generated client | `generated/prisma` | `generated/prisma8` |
+
+Because the config carries the connection, the Prisma 8 CLI commands below don't need a `--db` flag.
+
+### 2.3. Infer the contract from the live database
+
+Prisma 8 describes your schema as a [contract](/orm/v8/contract-authoring/the-data-contract). Generate it from the database Prisma 7 built:
+
+```npm
+npx prisma contract infer --output prisma8/contract.prisma
+```
+
+### 2.4. Edit the inferred contract
+
+The inferred contract needs two edits before it is correct:
+
+1. **Delete the `PrismaMigrations` model.** `contract infer` picks up Prisma 7's `_prisma_migrations` ledger table. Prisma 8 must not manage it, and extra tables in the database are fine. Remove the whole model.
+2. **Add `@@map` to every model.** Prisma 8 addresses tables by storage name and lowercases unmapped model names, so without `@@map("User")` it would query `public.user`. The table Prisma 7 created is `"User"`, so queries fail with `relation "public.user" does not exist`.
+
+The finished contract:
+
+```prisma title="prisma8/contract.prisma"
+model User {
+  id    Int     @id(map: "User_pkey") @default(autoincrement())
+  email String
+  name  String?
+  posts Post[]
+
+  @@index([email], map: "User_email_key", unique: true)
+  @@map("User")
+}
+
+model Post {
+  id        Int     @id(map: "Post_pkey") @default(autoincrement())
+  title     String
+  published Boolean @default(false)
+  authorId  Int
+  author    User    @relation(fields: [authorId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Post_authorId_fkey")
+
+  @@index([authorId], map: "Post_authorId_idx")
+  @@map("Post")
+}
+```
+
+### 2.5. Emit the contract artifacts
+
+```npm
+npx prisma contract emit
+```
+
+`contract emit` writes `contract.json` and `contract.d.ts` to `generated/prisma8`, the runtime and type inputs for the Prisma 8 client. Re-run it after every contract change.
+
+### 2.6. Include the generated types
+
+The Prisma 8 client imports `contract.json` with the `with { type: "json" }` import attribute. This syntax requires TypeScript 5.3 or later and a `module` setting that supports import attributes. The example project uses `"module": "nodenext"`, which supports them. `"esnext"` with `"moduleResolution": "bundler"` also works.
+
+Enable `resolveJsonModule` so TypeScript types the imported JSON, and include the generated declarations in the program:
+
+```json title="tsconfig.json (excerpt)"
+{
+  "compilerOptions": {
+    "module": "nodenext",
+    "resolveJsonModule": true // [!code ++]
+  },
+  "include": [
+    "src/**/*.ts",
+    "generated/prisma/**/*.ts",
+    "generated/prisma8/**/*.d.ts" // [!code ++]
+  ]
+}
+```
+
+**Check:** `npx tsc --noEmit` passes. Prisma 8 is now installed and configured, but no application code uses it yet.
+
+## 3. Migrate one route
+
+Pick one small route and move only that code. The rest of the application stays on Prisma 7.
+
+### 3.1. Instantiate both clients
+
+```typescript title="src/db.ts"
+import "dotenv/config";
+import { PrismaPg } from "@prisma/adapter-pg";
+import postgres from "@prisma/orm-postgres/runtime"; // [!code ++]
+import type { Contract } from "../generated/prisma8/contract.js"; // [!code ++]
+import contractJson from "../generated/prisma8/contract.json" with { type: "json" }; // [!code ++]
+import { PrismaClient } from "../generated/prisma/client.js";
+
+const connectionString = process.env.DATABASE_URL!;
+
+const adapter = new PrismaPg({ connectionString });
+
+export const prisma = new PrismaClient({ adapter });
+
+export const db = postgres<Contract>({ url: connectionString, contractJson }); // [!code ++]
+```
+
+`prisma` is the Prisma 7 client and `db` is the Prisma 8 client, both connected to the same database.
+
+### 3.2. Rewrite the route
+
+Move the users route to the Prisma 8 [ORM client](/orm/v8/reference/orm-client). Queries start from `db.orm.<schema>.<Model>` (`public` here) and chain instead of taking one options object:
+
+```typescript title="src/routes/users.ts" tab="After"
+import { Hono } from "hono";
+import { db } from "../db.js";
+
+export const users = new Hono();
+
+users.get("/", async (c) => {
+  const result = await db.orm.public.User.include("posts", (posts) =>
+    posts.orderBy((post) => post.id.asc()),
+  )
+    .orderBy((user) => user.id.asc())
+    .all();
+  return c.json(result);
+});
+
+users.post("/", async (c) => {
+  const body = await c.req.json<{ email: string; name?: string }>();
+  const user = await db.orm.public.User.create(body);
+  return c.json(user, 201);
+});
+```
+
+```typescript title="src/routes/users.ts" tab="Before"
+import { Hono } from "hono";
+import { prisma } from "../db.js";
+
+export const users = new Hono();
+
+users.get("/", async (c) => {
+  const result = await prisma.user.findMany({
+    include: { posts: true },
+    orderBy: { id: "asc" },
+  });
+  return c.json(result);
+});
+
+users.post("/", async (c) => {
+  const body = await c.req.json<{ email: string; name?: string }>();
+  const user = await prisma.user.create({ data: body });
+  return c.json(user, 201);
+});
+```
+
+`src/routes/posts.ts` stays unchanged, on Prisma 7.
+
+### 3.3. Exercise both code paths
+
+Start the app and hit both routes:
+
+```bash
+curl localhost:3000/users
+curl -X POST localhost:3000/posts -H 'content-type: application/json' \
+  -d '{"title":"Written by Prisma 7","authorId":1}'
+curl localhost:3000/users
+```
+
+**Expected result:** the first request runs through Prisma 8. The second writes through Prisma 7. The third, through Prisma 8 again, includes the post Prisma 7 just wrote.
+
+Remaining routes can move over the same way, one at a time, on any schedule. Prisma 7 still owns schema migrations in this phase. If the schema changes, run `prisma7 migrate dev`, then re-run `contract infer` and `contract emit` so the Prisma 8 contract stays current.
+
+## 4. Transfer migration ownership
+
+So far every schema change has gone through `prisma7 migrate dev`. In this phase Prisma 8 takes over planning and applying schema changes, and `prisma/schema.prisma` is frozen.
+
+Treat the switch as a decision, not a routine step. After it, your team and your pipelines must stop using the Prisma 7 migration workflow, even though routes still on the Prisma 7 client keep working. See [how migrations work](/orm/v8/migrations/how-migrations-work) for the full picture.
+
+Prisma 8 tracks schema state with four pieces, and the handoff creates each one exactly once:
+
+- A **contract hash** identifies one version of the emitted contract.
+- A **migration** is an on-disk package recording how to get from one contract hash to another. `migrate` only replays recorded migrations; it never invents one.
+- The **marker** is Prisma 8's record, stored in the database, of which contract hash the database currently satisfies.
+- A **ref** is a named pointer at a contract hash. `migration plan` uses the `db` ref as its starting point.
+
+Steps 4.1 to 4.3 create the baseline migration, set the marker, and set the ref.
+
+### 4.1. Create a baseline migration
+
+```npm
+npx prisma migration plan --name baseline
+```
+
+The command writes a migration package under `migrations/app/<timestamp>_baseline/` plus a contract snapshot under `migrations/snapshots/`. It captures the full schema Prisma 7 built, but you will not run it against your database.
+
+### 4.2. Sign the existing database
+
+Your database already has these tables, so adopt it instead of replaying the baseline:
+
+```npm
+npx prisma db sign
+```
+
+`db sign` verifies the live schema matches the emitted contract and writes Prisma 8's marker at that contract version.
+
+**Expected result:** `Database signed (marker created)`. Then confirm nothing is pending:
+
+```npm
+npx prisma migration status
+```
+
+The current and target contract hashes should match, with the baseline migration listed as already satisfied.
+
+### 4.3. Set the `db` ref
+
+Point a [ref](/orm/v8/migrations/the-migration-graph#name-important-states-with-refs) named `db` at the baseline, using the directory name from step 4.1:
+
+```npm
+npx prisma ref set db <timestamp>_baseline
+```
+
+Without a ref, the next `migration plan` starts from scratch and plans `CREATE TABLE` operations all over again. With it, plans chain from the baseline and contain only your actual changes.
+
+### 4.4. Retire the Prisma 7 migration scripts
+
+Remove `prisma7 migrate` from your scripts so nobody runs it by accident. Keep `prisma7 generate`, because the legacy routes still need their client:
+
+```json title="package.json (excerpt)"
+{
+  "scripts": {
+    "prisma7:generate": "prisma7 generate",
+    "prisma7:migrate": "prisma7 migrate dev", // [!code --]
+    "prisma8:migrate": "prisma migrate --advance-ref db" // [!code ++]
+  }
+}
+```
+
+### 4.5. Verify the handoff with a schema change
+
+Verify the migration handoff with a small additive schema change. Add a field to the contract:
+
+```prisma title="prisma8/contract.prisma (excerpt)"
+model User {
+  id    Int     @id(map: "User_pkey") @default(autoincrement())
+  email String
+  name  String?
+  bio   String? // [!code ++]
+  ...
+}
+```
+
+Emit, plan, and apply:
+
+```npm
+npx prisma contract emit
+npx prisma migration plan --name add_user_bio
+npx prisma migrate --advance-ref db
+npx prisma db verify
+```
+
+**Expected result:** `migration plan` contains a single operation, `Add column "bio" to "User"`. If you see `CREATE TABLE` operations instead, the `db` ref from step 4.3 is missing. `migrate` applies the migration, `--advance-ref db` moves the ref so the next plan chains correctly, and `db verify` reports that marker and schema match the contract.
+
+Restart the app: the Prisma 8 route returns users with `bio`, and the Prisma 7 route keeps working untouched, because its client doesn't know about the new column. Additive changes like nullable columns are safe next to legacy Prisma 7 code. Be careful with renames or drops of columns that Prisma 7 routes still read.
+
+## 5. Remove Prisma 7
+
+Migrate the remaining routes as in phase 3. For `posts` here, that means swapping `prisma.post.findMany(...)` for `db.orm.public.Post.include("author").all()` and `prisma.post.create({ data })` for `db.orm.public.Post.create(data)`.
+
+When nothing imports `generated/prisma` anymore, remove Prisma 7:
+
+```npm
+npm uninstall @prisma/prisma7 @prisma/client @prisma/adapter-pg
+```
+
+```bash
+rm prisma7.config.ts
+rm -r prisma generated/prisma
+```
+
+Then delete the `prisma7:*` scripts from `package.json` and drop `generated/prisma/**/*.ts` from the `include` array in `tsconfig.json`.
+
+Verify the end state:
+
+```npm
+npx tsc --noEmit
+npx prisma db verify
+```
+
+Start the app and run a query against every route. The application now runs entirely on Prisma 8, with schema changes managed by `prisma migrate`.
+
+:::note
+
+Prisma 7's `_prisma_migrations` table remains in the database. It is inert (Prisma 8 ignores it) and you can drop it whenever you like.
+
+:::
+
+## Next steps
+
+- [How migrations work in Prisma 8](/orm/v8/migrations/how-migrations-work): the day-to-day `contract emit` → `migration plan` → `migrate` loop for schema changes
+- [Contract authoring](/orm/v8/contract-authoring/psl-syntax): the full PSL syntax for evolving `contract.prisma`
+- [Prisma 8 CLI reference](/cli/v8): every command used in this guide

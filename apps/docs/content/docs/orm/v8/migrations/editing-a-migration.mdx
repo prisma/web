@@ -7,7 +7,7 @@ metaDescription: How to edit a Prisma 8 migration.ts by filling placeholder data
 badge: release-candidate
 ---
 
-The planner writes a good first draft, but plenty of real migrations need a human (or agent) decision: what to put in existing rows when a column becomes required, which order two steps must run in, one statement the planner has no factory for. In Prisma 8 you make those changes by editing `migration.ts`, ordinary TypeScript with autocomplete and type checking, and recompiling it. You never hand-edit SQL files, and you never hand-edit `ops.json`.
+The planner writes a good first draft, but plenty of real migrations need a human (or agent) decision: what to put in existing rows when a column becomes required, which order two steps must run in, one statement the planner has no factory for. In Prisma 8 you make those changes by editing `migration.ts`, ordinary TypeScript with autocomplete and type checking, and recompiling it. You never hand-edit SQL files or `ops.json`.
 
 The rule that makes this safe:
 
@@ -29,8 +29,8 @@ The recompile also **re-attests** the migration: `migration.json` gets a fresh `
 
 This is the classic case. `User` gets a required `displayName`, but the table already has rows, and those rows have no `displayName`. Plan it:
 
-```bash
-npx @prisma/cli@next migration plan --name add_display_name
+```npm
+npx prisma@next migration plan --name add_display_name
 ```
 
 ```text
@@ -58,7 +58,7 @@ override get operations() {
 }
 ```
 
-A `dataTransform` takes two closures. `check` asks "are there rows that still need this?" It must be a row-returning query where *any row* means work remains; the conventional shape is `select('id').where(<violation>).limit(1)`. `run` performs the change. Fill them with the typed SQL query builder, wired to the contract snapshot sitting next to the migration:
+A `dataTransform` takes two closures. `check` asks "are there rows that still need this?" It must be a row-returning query where *any row* means work remains. The conventional shape is `select('id').where(<violation>).limit(1)`. `run` performs the change. Fill them with the typed SQL query builder, wired to the contract snapshot sitting next to the migration:
 
 ```ts title="migration.ts (filled in)"
 import type { Contract as End } from './end-contract';
@@ -115,7 +115,7 @@ Two details worth pausing on:
 - **The types come from the migration's own contract snapshot** (`./end-contract`), not your live app contract. You're type-checking against the schema *as it will exist when this step runs*. That's why the builder happily references `displayName` even though the column doesn't exist yet, and why a migration written months ago keeps compiling after your contract moves on.
 - **The query is real application-grade TypeScript.** You can import shared constants, and typos in column names fail the type check instead of failing in production.
 
-The wiring block at the top (deserializing the contract, building the `db` handle) is the current Release Candidate shape; expect it to shrink to a one-liner. It's the price of a query builder that's typed against this migration's snapshot instead of your live app client.
+The wiring block at the top (deserializing the contract, building the `db` handle) is the current Release Candidate shape. Expect it to shrink to a one-liner. It's the price of a query builder that's typed against this migration's snapshot instead of your live app client.
 
 Recompile with `node migration.ts` and inspect what the backfill became:
 
@@ -148,7 +148,7 @@ Recompile with `node migration.ts` and inspect what the backfill became:
 }
 ```
 
-Your `check` closure became both the precheck (`EXISTS`: is there work?) and the postcheck (`NOT EXISTS`: is it done?). Your `run` became a parameterized `UPDATE`; note that `"Anonymous"` travels in `params`, through the driver's parameter binder, never spliced into SQL text. The reviewer reading your PR sees intent in `migration.ts` and the exact statements in `ops.json`, side by side.
+Your `check` closure became both the precheck (`EXISTS`: is there work?) and the postcheck (`NOT EXISTS`: is it done?). Your `run` became a parameterized `UPDATE`. Note that `"Anonymous"` travels in `params`, through the driver's parameter binder, and is never spliced into SQL text. The reviewer reading your PR sees intent in `migration.ts` and the exact statements in `ops.json`, side by side.
 
 ## Escape hatch: raw SQL
 
@@ -170,7 +170,7 @@ rawSql({
 }),
 ```
 
-The prechecks and postchecks are optional, but they're what makes a failed run resumable and a mistake diagnosable, so skipping them trades away most of what this system gives you. If you write the same `rawSql` twice, lift it into a function; the built-in factories are plain functions doing exactly this.
+The prechecks and postchecks are optional, but they're what makes a failed run resumable and a mistake diagnosable, so skipping them trades away most of what this system gives you. If you write the same `rawSql` twice, lift it into a function. The built-in factories are plain functions doing exactly this.
 
 ## The same pattern on MongoDB
 
@@ -201,8 +201,8 @@ The full working migration, including the two query-plan helpers, is in the Pris
 
 Sometimes there's no contract change at all: you want a data-only migration, or you'd rather write the whole thing by hand. `migration new` scaffolds an empty migration directory (already attested, like everything the CLI writes):
 
-```bash
-npx @prisma/cli@next migration new --name backfill_scores
+```npm
+npx prisma@next migration new --name backfill_scores
 ```
 
 Write your operations in the generated `migration.ts`, then compile it the same way: `node migration.ts`.
@@ -212,7 +212,7 @@ Write your operations in the generated `migration.ts`, then compile it the same 
 1. Edit `migration.ts`, never `ops.json`.
 2. Recompile: `node <migration-dir>/migration.ts`.
 3. Review the diff of `ops.json`; that's what will run.
-4. Verify: `npx @prisma/cli@next migration check`.
+4. Verify: `npx prisma@next migration check`.
 5. Commit `migration.ts`, `ops.json`, and `migration.json` together.
 
 :::note[What's early]

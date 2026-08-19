@@ -39,21 +39,24 @@ The `mongodb@^7` driver no longer accepts AWS credentials embedded in the connec
 Scaffold the project:
 
 ```bash
-npx @prisma/cli@next orm init --yes --target mongodb --authoring psl
+npx prisma@next orm init --yes --target mongodb --authoring psl
 ```
 
-`init` writes a `prisma-next.config.ts` at the repo root. MongoDB is selected by importing the `@prisma/orm-mongo` facade, not by a `provider` string in the schema. Point the connection at the **same database** your v6 app uses.
+`init` writes a `prisma.config.ts` at the repo root. You select MongoDB by importing the `@prisma/orm-mongo` facade instead of setting a `provider` string in the schema. Point the connection at the **same database** your v6 app uses.
 
 ```typescript tab="After"
-// prisma-next.config.ts
+// prisma.config.ts
 import 'dotenv/config';
-import { defineConfig } from '@prisma/orm-mongo/config';
+import { defineConfig } from '@prisma/cli-engine';
+import { defineConfig as ormConfig } from '@prisma/orm-mongo/config';
 
 export default defineConfig({
-  contract: './src/prisma/contract.prisma',
-  db: {
-    connection: process.env['DATABASE_URL']!,
-  },
+  orm: ormConfig({
+    contract: './src/prisma/contract.prisma',
+    db: {
+      connection: process.env['DATABASE_URL']!,
+    },
+  }),
 });
 ```
 
@@ -69,11 +72,11 @@ datasource db {
 
 ### Generate the contract
 
-Run `npx @prisma/cli@next contract emit` to generate `contract.json` from your `.prisma` contract file. Re-run this whenever you change the contract.
+Run `npx prisma@next contract emit` to generate `contract.json` from your `.prisma` contract file. Re-run this whenever you change the contract.
 
 ### Import the client
 
-The way to instantiate the Prisma client now is from the emitted contract. Replace `my-app-db` with the database name your v6 connection string uses; if the connection URL already carries the database name in its path, omit `dbName` and the client reads it from the URL:
+Instantiate the Prisma client from the emitted contract. Replace `my-app-db` with the database name your v6 connection string uses. If the connection URL already carries the database name in its path, omit `dbName` and the client reads it from the URL:
 
 ```typescript tab="After"
 // src/prisma/db.ts
@@ -107,7 +110,7 @@ Prisma 8 addresses collections by **storage name**, not model name: `db.orm.user
 
 :::
 
-The v6 `schema.prisma` is not consumed as-is; it becomes a **contract**, authored in PSL (shown here) or TypeScript. The syntax is close to v6, with a few differences.
+Prisma 8 does not consume the v6 `schema.prisma` as-is. You port it to a **contract**, authored in PSL (shown here) or TypeScript. The syntax is close to v6, with a few differences.
 
 In the table below, the left column is how you wrote it in v6 and the right column is the Prisma 8 equivalent:
 
@@ -119,7 +122,7 @@ You can use the [prisma-mongodb-upgrade](https://github.com/prisma/skills/tree/m
 
 | Concept | v6 (`schema.prisma`) | Prisma 8 (`contract.prisma`) |
 |---------|----------------------|---------------------------------|
-| Datasource | `datasource db { provider = "mongodb" }` | no `provider` (configured in `prisma-next.config.ts`) |
+| Datasource | `datasource db { provider = "mongodb" }` | no `provider` (configured in `prisma.config.ts`) |
 | Id field | `id String @id @default(auto()) @map("_id") @db.ObjectId` | `id ObjectId @id @map("_id")` |
 | Embedded document | `type Address { ... }` | `type Address { ... }` (unchanged) |
 | Index | `@@index(...)`, synced by `db push` | `@@index(...)` / `@@unique(...)`, applied by migrations |
@@ -173,7 +176,7 @@ When you use `@@discriminator`, declare a variant for every value the field take
 
 ## 3. Port client calls
 
-Names look similar but parity does not hold. This section breaks down each category of operation.
+Many method names look similar, but they do not behave the same way. This section breaks down each category of operation.
 
 ### 3a. Basic CRUD
 
@@ -389,8 +392,8 @@ For raw reads and writes scoped to a single collection (anything the typed build
 | `aggregate` / `groupBy` | `db.query.from(...).group(...).build()` → `db.execute(plan)` |
 | `findRaw` / `aggregateRaw` | `db.raw.collection(...).aggregate(...).build()` → `db.execute(plan)`, or `db.query.rawCommand(...)` |
 | `$runCommandRaw` | share a `MongoClient` with the binding, then `mongoClient.db(...).command(...)` (see 3e) |
-| `$transaction(...)` | no wrapper yet; driver sessions on a replica set (see 3d) |
-| `$connect` / `$disconnect` | lazy connect on first use; `db.close()` to disconnect |
+| `$transaction(...)` | no wrapper yet. Use driver sessions on a replica set (see 3d) |
+| `$connect` / `$disconnect` | connects lazily on first use. Call `db.close()` to disconnect |
 
 ## 4. Adopt the migration lifecycle
 
@@ -398,12 +401,12 @@ v6 MongoDB had no Prisma Migrate, only `db push` (ephemeral, no history). Prisma
 
 ### Bring the v6 database under management
 
-Your database already has collections and data, so bootstrap it with `db update`: it diffs the live database against your contract, applies the delta (the strict validators, plus any indexes the contract declares that v6 never created), and signs the database so Prisma 8 recognizes it from then on. The `--advance-ref db` flag records the resulting contract state as the [`db` ref](/orm/v8/migrations/the-migration-graph#name-important-states-with-refs), the starting point later migration plans diff from.
+Your database already has collections and data, so bootstrap it with `db update`. The command diffs the live database against your contract, applies the delta (the strict validators, plus any indexes the contract declares that v6 never created), and signs the database so Prisma 8 recognizes it from then on. The `--advance-ref db` flag records the resulting contract state as the [`db` ref](/orm/v8/migrations/the-migration-graph#name-important-states-with-refs), the starting point later migration plans diff from.
 
 ```bash
-npx @prisma/cli@next contract emit
-npx @prisma/cli@next db update --db "$DATABASE_URL" --dry-run   # preview the delta first
-npx @prisma/cli@next db update --db "$DATABASE_URL" --advance-ref db
+npx prisma@next contract emit
+npx prisma@next db update --db "$DATABASE_URL" --dry-run   # preview the delta first
+npx prisma@next db update --db "$DATABASE_URL" --advance-ref db
 ```
 
 Don't reach for `db init` here. It bootstraps only additively, and on a populated database it refuses the validator changes this migration needs, because adding a validator to a collection with existing documents is classed destructive. `db update` applies them after a confirmation prompt.
@@ -413,15 +416,16 @@ Don't reach for `db init` here. It bootstraps only additively, and on a populate
 Use `db update` for local experiments (the `db push` analogue, no history kept) and the migration workflow for shared branches and production:
 
 ```bash
-npx @prisma/cli@next migration plan --name add_posts_indexes   # plans from the db ref
-npx @prisma/cli@next migrate --db "$DATABASE_URL" --advance-ref db
-npx @prisma/cli@next db verify --db "$DATABASE_URL"   # check the DB matches the contract
+npx prisma@next contract emit                             # planning diffs the emitted contract
+npx prisma@next migration plan --name add_posts_indexes   # plans from the db ref
+npx prisma@next migrate --db "$DATABASE_URL" --advance-ref db
+npx prisma@next db verify --db "$DATABASE_URL"   # check the DB matches the contract
 ```
 
 **Good to know:**
 
 - You never hand-write migration steps: declare indexes and validators in the contract (step 2) and `migration plan` derives the changes.
-- Interrupted `migrate` runs are resumable; just rerun. After fixing anything by hand, run `db sign` so the signature matches the database again.
+- If a `migrate` run is interrupted, rerun it to resume. After fixing anything by hand, run `db sign` so the signature matches the database again.
 - Prisma 8 adds strict `$jsonSchema` validators by default. Make sure existing documents pass them before running in production: once the validators are live, writes to documents that don't match the contract fail with `Document failed validation`.
 
 ## 5. Pre-flight checklist (before production cutover)
@@ -449,4 +453,4 @@ Once you've cut over, this is the day-to-day workflow:
 - **Troubleshooting.** `db verify` checks the database against your contract, and `db sign` records any fixes you make by hand.
 - **Performance.** Your aggregations now compile to native MongoDB pipelines, so it's worth benchmarking them against your old v6 raw calls.
 
-See the [Prisma 8 docs](/orm/v8) for [pipeline builder patterns](/orm/v8/reference/pipeline-builder), [relation loading strategies](/orm/v8/reference/orm-client), and [advanced contract features](/orm/v8/contract-authoring/psl-syntax). This guide gets you across the bridge; Prisma 8's docs are the source of truth from here on.
+See the [Prisma 8 docs](/orm/v8) for [pipeline builder patterns](/orm/v8/reference/pipeline-builder), [relation loading strategies](/orm/v8/reference/orm-client), and [advanced contract features](/orm/v8/contract-authoring/psl-syntax). This guide gets you across the bridge. From here on, Prisma 8's docs are the source of truth.

@@ -9,7 +9,7 @@ badge: release-candidate
 
 Not every database stack supports every feature. One setup can run lateral joins, `RETURNING` clauses, and vector distance operations; another cannot.
 
-Capabilities are how the [data contract](/orm/v8/contract-authoring/the-data-contract) records what yours supports. Prisma 8 checks them before using a gated feature, so an unsupported feature fails early, with an error that names the missing capability, instead of surfacing as a database error mid-query.
+Capabilities are how the [data contract](/orm/v8/contract-authoring/the-data-contract) records what yours supports. Prisma 8 checks them before using a gated feature. An unsupported feature fails early with an error that names the missing capability, instead of surfacing as a database error mid-query.
 
 ## Where capabilities come from
 
@@ -38,20 +38,20 @@ You do not write capabilities yourself. When [`contract emit`](/cli/v8/contract-
 }
 ```
 
-The `sql` namespace holds keys shared across SQL databases; the `postgres` namespace holds PostgreSQL-specific keys. Extension packs contribute keys of their own: composing the pgvector pack is what adds `pgvector.cosine` above. Because the packs declare the keys, adding or removing an extension in `prisma-next.config.ts` and re-running `contract emit` changes the capability set with no further work.
+The `sql` namespace holds keys shared across SQL databases; the `postgres` namespace holds PostgreSQL-specific keys. Extension packs contribute keys of their own: composing the pgvector pack is what adds `pgvector.cosine` above. Because the packs declare the keys, adding or removing an extension in `prisma.config.ts` and re-running `contract emit` changes the capability set with no further work.
 
 ## What capabilities gate
 
 Capabilities are checked at two points, both before any SQL reaches the database.
 
-**When the contract is built.** A schema feature the target cannot store fails emission with a diagnostic. For example, SQLite does not report the `scalarList` capability, so a scalar list field in a contract targeting SQLite fails to emit:
+**When the contract is built.** If the schema uses a feature the target cannot store, `contract emit` fails with a diagnostic. For example, SQLite does not report the `scalarList` capability, so a scalar list field in a contract targeting SQLite fails to emit:
 
 ```text
 Field "User.tags" is a scalar list, but target "sqlite" does not support
 scalar lists (the adapter does not report the "scalarList" capability).
 ```
 
-**When a query is built.** Query-builder methods that depend on a capability check the contract's matrix and throw if the key is missing, naming the method and the capability:
+**When a query is built.** Query-builder methods that depend on a capability check the contract's `capabilities` section and throw if the key is missing, naming the method and the capability:
 
 ```text
 distinctOn() requires capability postgres.distinctOn
@@ -75,19 +75,19 @@ A few of the keys the built-in components declare, to give a sense of the granul
 | `postgres.jsonAgg` | JSON aggregation for nested reads |
 | `postgres.pgvector.cosine` | Cosine distance operations, contributed by the pgvector pack |
 
-This is an illustration, not the full registry; each target, adapter, and pack ships its own declarations. The emitted `contract.json` of your own project is the authoritative list of what your stack supports.
+This table is a sample, not the full registry. Each target, adapter, and pack ships its own declarations. Your project's emitted `contract.json` is the authoritative list of what your stack supports.
 
 MongoDB currently declares no capability keys: the capability system mostly differentiates SQL targets and their extensions, and the MongoDB pipeline does not yet gate features this way.
 
 ## Capabilities and verification
 
-Capabilities describe what the composed software stack supports, as declared by the target, adapter, and packs. They are recorded in the contract at emit time rather than probed from the live database, so the same contract behaves identically in every environment. Database-side verification is the separate hash-and-marker mechanism described in [the contract artifact](/orm/v8/contract-authoring/the-contract-artifact#the-content-hashes): [`db verify`](/cli/v8/db-verify) checks that the database matches the contract's schema and profile.
+Capabilities describe what the composed software stack supports, as declared by the target, adapter, and packs. They are recorded in the contract at emit time rather than probed from the live database, so the same contract behaves identically in every environment. Database-side verification is separate: [`db verify`](/cli/v8/db-verify) checks that the database matches the contract's schema and profile, using the hashes described in [the contract artifact](/orm/v8/contract-authoring/the-contract-artifact#the-content-hashes).
 
-Extensions are the main source of capabilities beyond the core; [Using extensions](/orm/v8/extensions/using-extensions) shows the full install-to-query flow.
+Extensions are the main source of capabilities beyond the core. [Using extensions](/orm/v8/extensions/using-extensions) shows the full flow from install to first query.
 
 ## Prompt your coding agent
 
-Projects scaffolded with `create-prisma@next` install [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent; the `prisma-8` skill covers this page. Ask your agent to:
+Projects scaffolded with `create-prisma@next` install [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. The `prisma-8` skill covers this page. Ask your agent to:
 
 - "Which capabilities does our contract currently require, and which package provides each?"
 - "Add pgvector to the project and confirm the capability shows up in the emitted contract."

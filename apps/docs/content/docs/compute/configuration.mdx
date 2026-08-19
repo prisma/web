@@ -12,11 +12,11 @@ metaDescription: "Reference for the prisma.compute.ts file: declare your app's f
 - **A monorepo.** Declare several apps in one repository and deploy them together, or one at a time.
 - **Type safety.** Catch a typo'd field or an invalid framework in your editor, before you deploy.
 
-The file is read by platform builds and the [`service` commands](/compute/cli-reference#service). It never selects your project, branch, or production; those stay explicit. It also does not configure a database; see [Environment variables](/compute/environment-variables) for the connection string.
+Platform builds and the [`service` commands](/cli/v8/service) read the file. It never selects your project, branch, or production target. You select those explicitly. It also does not configure a database. See [Environment variables](/compute/environment-variables) for the connection string.
 
 ## A minimal config
 
-Export a single `app` with `defineComputeConfig`:
+Export a single `app` with `defineComputeConfig`. The config keys are named `app` and `apps`. Each entry describes what the rest of the docs and the CLI call a **service**:
 
 ```ts title="prisma.compute.ts"
 import { defineComputeConfig } from "@prisma/compute-sdk/config";
@@ -30,17 +30,17 @@ export default defineComputeConfig({
 });
 ```
 
-Every field is optional. An empty `app: {}` is valid and defers entirely to detection. The values you do set become the defaults for builds and the `service` commands; explicit flags still win over them.
+Every field is optional. An empty `app: {}` is valid and defers entirely to detection. The values you do set become the defaults for builds and the `service` commands. Explicit flags still win over them.
 
 :::info
 
-`defineComputeConfig` is an identity helper that gives the file full type checking. The CLI resolves the import when it reads your config, so the file works without a local install. To get editor types, add the package as a dev dependency:
+The `defineComputeConfig` helper gives the file full type checking without changing the config at runtime. The CLI resolves the import when it reads your config, so the file works without a local install. To get editor types, add the package as a dev dependency:
 
 ```npm
 npm install -D @prisma/compute-sdk
 ```
 
-JavaScript configs work too: a plain `export default { app: { ... } }` from `prisma.compute.js`/`.mjs`/`.cjs` is valid, just without the type checking. So is a static `prisma.compute.json` with the same shape; it may include a `$schema` field for editor tooling, which is ignored at load time.
+JavaScript configs work too: a plain `export default { app: { ... } }` from `prisma.compute.js`/`.mjs`/`.cjs` is valid, just without the type checking. A static `prisma.compute.json` with the same shape is also valid. It may include a `$schema` field for editor tooling, which the CLI ignores at load time.
 
 :::
 
@@ -128,7 +128,7 @@ export default defineComputeConfig({
 
 - Every field is optional. A field you set overrides the framework default; a field you omit is inferred.
 - `command: null` skips the build step entirely.
-- `entrypoint` names the built artifact's entry file, relative to `outputDirectory` when one is set (otherwise to the app root). For `hono` and `bun` apps it's required whenever you set `outputDirectory`, and setting both `entry` and a differing `build.entrypoint` is a configuration error.
+- `entrypoint` names the built artifact's entry file, relative to `outputDirectory` when one is set (otherwise to the app root). For `hono` and `bun` apps it's required whenever you set `outputDirectory`. Setting both `entry` and a differing `build.entrypoint` is a configuration error.
 - A `build` block works with every framework. With the `custom` framework it's required, and must set both `outputDirectory` and `entrypoint`.
 
 Without a `build` block, the CLI infers everything (running your `package.json` build script when there is one, otherwise the framework default) and shows you what it chose during the deploy.
@@ -139,7 +139,7 @@ The CLI reads the **nearest** config file, searching from your current directory
 
 Per directory, exactly one of `prisma.compute.ts`, `prisma.compute.mts`, `prisma.compute.js`, `prisma.compute.mjs`, `prisma.compute.cjs`, or `prisma.compute.json` may exist.
 
-The config file's directory is treated as the project directory: the [`.prisma/local.json`](/compute/getting-started#create-or-link-a-project) project pin lives there, and paths in the config (`root`, `env.file`) resolve from there. That means the config means the same thing no matter which subdirectory you run the command from.
+The config file's directory is treated as the project directory: the [`.prisma/local.json`](/compute/getting-started#create-or-link-a-project) project pin lives there, and paths in the config (`root`, `env.file`) resolve from there. That means the config behaves the same no matter which subdirectory you run the command from.
 
 ## Monorepos
 
@@ -173,7 +173,7 @@ The config never sets your project, branch, or production target; those are alwa
 
 ## What's next
 
-- [CLI reference](/compute/cli-reference): every command and flag.
+- [CLI reference](/cli/v8): every command and flag.
 - [Deploy your first app](/prisma-compute/deploy): the end-to-end quickstart.
 - [Environment variables](/compute/environment-variables): scoped configuration, secrets, and your database connection string.
 - [GitHub integration](/compute/github): deploy-on-push, including monorepos.

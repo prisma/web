@@ -1,46 +1,52 @@
 ---
 title: CLI configuration
-description: Configure Prisma 8 CLI commands with prisma-next.config.ts and global flags.
+description: Configure Prisma 8 CLI commands with prisma.config.ts and global flags.
 url: /cli/v8/configuration
 metaTitle: Prisma 8 CLI configuration
 metaDescription: Learn how Prisma 8 CLI commands find config, read database URLs, and format output.
 ---
 
-Prisma 8 CLI commands use `prisma-next.config.ts` as the project entrypoint for contract emission, database operations, and migrations.
+Prisma 8 CLI commands read `prisma.config.ts` in your project root. The file has one section per part of the CLI. The Prisma 8 data commands read the `orm` section.
 
 ## Config file
 
-Commands that need project context read the Prisma 8 config from your project. For PostgreSQL projects, use the Postgres config helper:
+The outer `defineConfig` comes from `@prisma/cli-engine` and marks the file as a Prisma 8 CLI config. A Prisma 7 `prisma.config.ts` without that marker is rejected rather than misread. The `orm` section uses the config helper for your database. For PostgreSQL:
 
-```typescript title="prisma-next.config.ts"
+```typescript title="prisma.config.ts"
 import "dotenv/config";
-import { defineConfig } from "@prisma/orm-postgres/config";
+import { defineConfig } from "@prisma/cli-engine";
+import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
 
 export default defineConfig({
-  contract: "./prisma/contract.prisma",
-  db: {
-    connection: process.env["DATABASE_URL"]!,
-  },
+  orm: ormConfig({
+    contract: "./prisma/contract.prisma",
+    db: {
+      connection: process.env["DATABASE_URL"]!,
+    },
+  }),
 });
 ```
 
-For MongoDB projects, import `defineConfig` from `@prisma/orm-mongo/config` instead.
+For MongoDB projects, import the section helper from `@prisma/orm-mongo/config` instead.
 
-Pass `--config` when your config file is not in the default project location:
+[`orm init`](/cli/v8/init) writes this file for you. Pass `--config` when your config file is not at `./prisma.config.ts`:
 
 ```npm
-npx @prisma/cli@next contract emit --config ./config/prisma-next.config.ts
+npx prisma@next contract emit --config ./config/prisma.config.ts
 ```
 
 ## Emit-only config
 
-`contract emit` does not connect to a database, so the config can omit `db.connection`:
+`contract emit` does not connect to a database, so the `orm` section can omit `db.connection`:
 
-```typescript title="prisma-next.config.ts"
-import { defineConfig } from "@prisma/orm-postgres/config";
+```typescript title="prisma.config.ts"
+import { defineConfig } from "@prisma/cli-engine";
+import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
 
 export default defineConfig({
-  contract: "./prisma/contract.prisma",
+  orm: ormConfig({
+    contract: "./prisma/contract.prisma",
+  }),
 });
 ```
 
@@ -48,18 +54,21 @@ Add `db.connection` before running commands such as `db verify`, `db sign`, `db 
 
 ## Extension packs
 
-Add extension control descriptors to the config when your contract uses extension-provided types:
+Add extension control descriptors to the `orm` section when your contract uses extension-provided types:
 
-```typescript title="prisma-next.config.ts"
-import { defineConfig } from "@prisma/orm-postgres/config";
+```typescript title="prisma.config.ts"
+import { defineConfig } from "@prisma/cli-engine";
+import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
 import pgvector from "@prisma/orm-extension-pgvector/control";
 
 export default defineConfig({
-  contract: "./prisma/contract.prisma",
-  extensions: [pgvector],
-  db: {
-    connection: process.env["DATABASE_URL"]!,
-  },
+  orm: ormConfig({
+    contract: "./prisma/contract.prisma",
+    extensions: [pgvector],
+    db: {
+      connection: process.env["DATABASE_URL"]!,
+    },
+  }),
 });
 ```
 
@@ -67,10 +76,10 @@ Re-run `contract emit` after changing extension packs, then update the matching 
 
 ## Database URLs
 
-Database commands accept `--db <url>`. If you omit it, Prisma 8 can use the database connection from `prisma-next.config.ts`.
+Database commands accept `--db <url>`. If you omit it, Prisma 8 uses the database connection from `prisma.config.ts`.
 
 ```npm
-npx @prisma/cli@next db verify --db "$DATABASE_URL"
+npx prisma@next db verify --db "$DATABASE_URL"
 ```
 
 ## Environment variables
@@ -80,12 +89,35 @@ npx @prisma/cli@next db verify --db "$DATABASE_URL"
 | `DATABASE_URL` | Common place to store the database connection string used by config files and scripts. |
 | `NO_COLOR=1` | Disables colored terminal output. |
 
+## Platform environment variables
+
+The [platform commands](/cli/v8#platform-commands) read these:
+
+| Variable               | Description                                                        |
+| ---------------------- | ------------------------------------------------------------------- |
+| `PRISMA_SERVICE_TOKEN` | Authenticate without a browser, for CI. Takes priority over any stored session |
+| `PRISMA_WORKSPACE_ID`  | Workspace to target when authenticating with a service token         |
+| `PRISMA_PROJECT_ID`    | Override the project stored in `.prisma/local.json` (useful in CI)   |
+| `PRISMA_SERVICE_ID`    | Override the service selected in `prisma.compute.ts` (useful in CI) |
+
 ## Output modes
 
 Use the default text output when running commands locally. Use `--json` in CI or automation:
 
 ```npm
-npx @prisma/cli@next db verify --db "$DATABASE_URL" --json
+npx prisma@next db verify --db "$DATABASE_URL" --json
 ```
 
-Use `--no-interactive` for scripts that must never pause for user input, and `--confirm <token>` to grant a consent prompt non-interactively (for example, [`db update`](/cli/v8/db-update) asks for the database name before a destructive change).
+Use `--no-interactive` for scripts that must never pause for user input. Use `--confirm <token>` to grant a consent prompt non-interactively. For example, [`db update`](/cli/v8/db-update) asks for the database name before a destructive change.
+
+## JSON output
+
+In `--json` mode, commands emit newline-delimited JSON events. Progress events have `kind: "step-finished"`. The final event has `kind: "result"` and carries the `envelope` object your script branches on:
+
+- `envelope.ok`: `true` or `false`.
+- `envelope.result`: the command's data, when `ok` is `true`.
+- `envelope.error.code`: a dotted `NAMESPACE.SUBCODE`, for example `PROJECT.NOT_FOUND` or `SERVICE.PROJECT_SETUP_REQUIRED`.
+- `envelope.error.summary` and `envelope.error.why`: what failed and why it was rejected.
+- `envelope.nextActions`: machine-readable follow-up commands, so agents can drive the CLI.
+
+Branch on `envelope.error.code`, not the message text: codes are a stable contract, while message wording can change between releases.

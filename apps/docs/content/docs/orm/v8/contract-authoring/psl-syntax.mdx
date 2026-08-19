@@ -100,25 +100,31 @@ model Post {
 }
 ```
 
-Run `npx @prisma/cli@next contract emit` after any change to refresh the artifacts.
+Run `npx prisma@next contract emit` after any change to refresh the artifacts.
 
 ## Point the config at the schema
 
 The config's `contract` path names the source of truth. A `.prisma` extension selects PSL authoring:
 
-```typescript title="prisma-next.config.ts" tab="PostgreSQL"
-import { defineConfig } from "@prisma/orm-postgres/config";
+```typescript title="prisma.config.ts" tab="PostgreSQL"
+import { defineConfig } from "@prisma/cli-engine";
+import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
 
 export default defineConfig({
-  contract: "./prisma/contract.prisma",
+  orm: ormConfig({
+    contract: "./prisma/contract.prisma",
+  }),
 });
 ```
 
-```typescript title="prisma-next.config.ts" tab="MongoDB"
-import { defineConfig } from "@prisma/orm-mongo/config";
+```typescript title="prisma.config.ts" tab="MongoDB"
+import { defineConfig } from "@prisma/cli-engine";
+import { defineConfig as ormConfig } from "@prisma/orm-mongo/config";
 
 export default defineConfig({
-  contract: "./prisma/contract.prisma",
+  orm: ormConfig({
+    contract: "./prisma/contract.prisma",
+  }),
 });
 ```
 
@@ -130,7 +136,7 @@ Models declare fields with a type, an optional `?` marker, and attributes:
 
 - `@id` marks the primary key; `@@id([a, b])` declares a composite key.
 - `@unique` adds a unique constraint; `@@index([...])` declares a secondary index.
-- `@default(...)` sets a default. Database function defaults such as `@default(now())` become column defaults in the database. Generated defaults such as `@default(uuid())` are applied by Prisma 8 before each write instead, so they work the same on every database and appear in the contract's `execution` section rather than as DDL.
+- `@default(...)` sets a default. Database function defaults such as `@default(now())` become column defaults in the database. Generated defaults such as `@default(uuid())` are applied by Prisma 8 before each write instead, so they work the same on every database. They appear in the contract's `execution` section rather than as DDL.
 - `@map("column_name")` sets a field's physical name; `@@map("table_name")` sets the table or collection name when it differs from the model name.
 
 How IDs map differs by database:
@@ -188,7 +194,7 @@ enum Priority {
 }
 ```
 
-`@@type("pg/text@1")` stores the values as `text` on PostgreSQL. When a member has no explicit value, the member name itself is stored. In the database, the emitted contract enforces the allowed values with a `CHECK` constraint on each column that uses the enum.
+`@@type("pg/text@1")` stores the values as `text` on PostgreSQL. When a member has no explicit value, the member name itself is stored. In the database, Prisma 8 enforces the allowed values with a `CHECK` constraint on each column that uses the enum.
 
 ## Value objects
 
@@ -208,7 +214,7 @@ model User {
 }
 ```
 
-Storage follows the database's nature: on PostgreSQL a value object field lives in a single `jsonb` column, and on MongoDB it is an embedded document. Either way, `contract.d.ts` types it as a structured object rather than untyped JSON. On MongoDB, whether to embed or reference is the central modeling decision; [MongoDB data modeling](/orm/v8/data-modeling/mongodb#embed-or-reference) covers it.
+Storage differs by database: on PostgreSQL a value object field lives in a single `jsonb` column, and on MongoDB it is an embedded document. Either way, `contract.d.ts` types it as a structured object rather than untyped JSON. On MongoDB, whether to embed or reference is the central modeling decision; [MongoDB data modeling](/orm/v8/data-modeling/mongodb#embed-or-reference) covers it.
 
 ## Relations
 
@@ -273,19 +279,22 @@ model Bug {
 }
 ```
 
-Rows with `type = "bug"` are `Bug` records. On PostgreSQL, the variant's `@@map` picks its storage layout: with its own `@@map`, as here, the variant's fields live in their own table sharing the base model's primary key; without one, they live in the base table as nullable columns. [Relational data modeling](/orm/v8/data-modeling/relational-databases#polymorphic-relations) covers choosing between the two. On MongoDB, variants add their fields to documents in the base model's collection, so a variant declares `@@base` but no `@@map` of its own.
+Rows with `type = "bug"` are `Bug` records. On PostgreSQL, the variant's `@@map` picks its storage layout: with its own `@@map`, as here, the variant's fields live in their own table sharing the base model's primary key. Without one, they live in the base table as nullable columns. [Relational data modeling](/orm/v8/data-modeling/relational-databases#polymorphic-relations) covers choosing between the two. On MongoDB, variants add their fields to documents in the base model's collection, so a variant declares `@@base` but no `@@map` of its own.
 
 ## Extension types
 
 Extension packs contribute types through constructor expressions in the `types` block. Compose the pack in the config, then use its types:
 
-```typescript title="prisma-next.config.ts"
+```typescript title="prisma.config.ts"
+import { defineConfig } from "@prisma/cli-engine";
 import pgvector from "@prisma/orm-extension-pgvector/control";
-import { defineConfig } from "@prisma/orm-postgres/config";
+import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
 
 export default defineConfig({
-  contract: "./prisma/contract.prisma",
-  extensions: [pgvector],
+  orm: ormConfig({
+    contract: "./prisma/contract.prisma",
+    extensions: [pgvector],
+  }),
 });
 ```
 
@@ -300,17 +309,17 @@ model Post {
 }
 ```
 
-Emission validates extension types against the composed packs: a type from a pack that is not listed in the config fails the emit with a diagnostic. Re-run `contract emit` after changing the extension list.
+`contract emit` validates extension types against the packs composed in the config: a type from a pack that is not listed fails the emit with a diagnostic. Re-run `contract emit` after changing the extension list.
 
 ## Starting from an existing database
 
 If the database already exists, don't write the schema by hand. [`contract infer`](/cli/v8/contract-infer) reads the live schema and writes a starter `contract.prisma` for you to review and edit.
 
-The syntax above declares relations; for which shape to choose and which side owns the foreign key, see [relational data modeling](/orm/v8/data-modeling/relational-databases) and [MongoDB data modeling](/orm/v8/data-modeling/mongodb).
+The syntax above declares relations. For which shape to choose and which side owns the foreign key, see [relational data modeling](/orm/v8/data-modeling/relational-databases) and [MongoDB data modeling](/orm/v8/data-modeling/mongodb).
 
 ## Prompt your coding agent
 
-Projects scaffolded with `create-prisma@next` install [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent; the `prisma-8` skill covers this page. Ask your agent to:
+Projects scaffolded with `create-prisma@next` install [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. The `prisma-8` skill covers this page. Ask your agent to:
 
 - "Using the prisma-8 skill, add a Status enum stored as text and use it on the Order model."
 - "Add a one-to-many between User and Post with the foreign key on Post."
