@@ -15,7 +15,7 @@ Every command and code sample below was run end to end against a live Prisma Pos
 ## Prerequisites
 
 - [Deno](https://deno.com/) 2.0 or later (`deno --version`)
-- A PostgreSQL connection string, or nothing at all: the scaffold can create a [Prisma Postgres](/postgres) database for you
+- A PostgreSQL connection string, or nothing at all: the scaffold provisions a temporary [Prisma Postgres](/postgres) database for you
 
 ## Use with your agent
 
@@ -26,8 +26,8 @@ Prefer to delegate this guide? Copy the prompt and hand it to your coding agent:
 ```text
 Create a new Prisma 8 project on Deno, seed it, and run a first typed query.
 
-1. Scaffold: `deno run -A npm:create-prisma@next create my-deno-app --template minimal --provider postgres --package-manager deno --prisma-postgres --yes` (or pass `--database-url "<url>"` instead of `--prisma-postgres` if I give you a connection string).
-2. In `my-deno-app`, run `deno install`, then `deno run -A --env-file=.env npm:prisma@next contract emit` and `deno run -A --env-file=.env npm:prisma@next db init`.
+1. Scaffold: `deno run -A npm:create-prisma@next create my-deno-app --template minimal --provider postgres --package-manager deno --yes`. The scaffold provisions a temporary Prisma Postgres database and writes `DATABASE_URL` and a `CLAIM_URL` to `.env`; show me the claim URL so I can keep the database. If I give you a connection string, put it in `.env` as `DATABASE_URL` instead.
+2. In `my-deno-app`, run `deno install`, then `deno task contract:emit` and `deno task db:init`. Do not call `npm:prisma@next` directly; the unified CLI does not load under Deno yet, and the generated tasks use the working `npm:prisma-next` entry point.
 3. Run `deno task db:seed`. If seeding fails with `Cannot read properties of undefined (reading 'where')`, change `db.orm.User` to `db.orm.public.User` in `src/prisma/seed.ts`, `src/prisma/users.ts`, and `src/index.ts`, then rerun.
 4. Replace `src/index.ts` with a script that creates a user and reads all users back, following https://www.prisma.io/docs/guides/v8/runtimes/deno.md. Keep the `.ts` extension on relative imports. Verify `deno task dev` prints the created user and the user count.
 5. Do not deploy to Prisma Compute; it does not support Deno yet.
@@ -45,7 +45,7 @@ Use the installed Prisma 8 skills.
 deno run -A npm:create-prisma@next create my-deno-app --template minimal --provider postgres --package-manager deno
 ```
 
-Pick Prisma Postgres at the database prompt to have a database created for you, or paste your own `DATABASE_URL`. The generated `package.json` scripts wrap every command in `deno run -A --env-file=.env`, so environment variables load without a dotenv import.
+By default the scaffold provisions a temporary Prisma Postgres database and writes `DATABASE_URL` and a `CLAIM_URL` to `.env`; open the claim URL within 24 hours to keep the database in your account, or replace `DATABASE_URL` with your own connection string. The generated `package.json` scripts wrap every command in `deno run -A --env-file=.env`, so environment variables load without a dotenv import.
 
 ```bash
 cd my-deno-app
@@ -54,9 +54,11 @@ deno install
 
 ## 2. Emit the contract and initialize the database
 
+Use the generated tasks. They call the `npm:prisma-next` entry point; the unified `npm:prisma@next` CLI does not load under Deno yet, and fails with `ERR_MODULE_NOT_FOUND`.
+
 ```bash
-deno run -A --env-file=.env npm:prisma@next contract emit
-deno run -A --env-file=.env npm:prisma@next db init
+deno task contract:emit
+deno task db:init
 ```
 
 The first command compiles `src/prisma/contract.prisma` into the contract your queries are type-checked against and prints a JSON summary with `"ok": true` and the emitted file paths. The second creates the tables and signs the database. It exits quietly on success.

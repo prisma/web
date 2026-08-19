@@ -3,10 +3,10 @@ title: MongoDB
 description: Create a new Prisma 8 project with MongoDB using create-prisma@next.
 url: /v8/quickstart/mongodb
 metaTitle: 'Quickstart: Prisma 8 with MongoDB'
-metaDescription: Scaffold a Prisma 8 project with MongoDB, apply the starter migration, seed data, and run your first query.
+metaDescription: Scaffold a Prisma 8 project with MongoDB, apply the starter migration, and run your first query.
 ---
 
-Create a Prisma 8 app with MongoDB, seed it, and run your first query.
+Create a Prisma 8 app with MongoDB, apply the first migration, and run your first query against seeded data.
 
 :::note[The Prisma 8 Release Candidate is available]
 
@@ -22,33 +22,30 @@ If you want to stay on the current generally available version of Prisma ORM, yo
 npx create-prisma@next --provider mongodb
 ```
 
-Run this from a Node.js 24 or newer environment. The command preselects MongoDB. The generated local setup gives you a MongoDB replica set through `db:up`; if you use MongoDB Atlas or another existing deployment, set `DATABASE_URL` and skip `db:up`.
+Run this from a Node.js 24 or newer environment. The command preselects MongoDB and prompts you for the contract authoring style (PSL or TypeScript) and your package manager.
 
-Setup gives you the app template, a starter contract, `prisma-next.md`, project-level Prisma 8 skills for your coding agent, and package scripts for the database steps below.
+Setup gives you the app template, a starter contract, `prisma-next.md`, project-level Prisma 8 skills for your coding agent, and package scripts for the database steps below. Sample users are seeded automatically the first time the app queries the database, so there is no separate seed step.
 
-For local development, use a replica set. MongoDB Atlas already provides one, and the generated `db:up` script starts one for you.
+Prisma 8 needs a MongoDB replica set. MongoDB Atlas already gives you one; for local development, run a single-node replica set named `rs0` on port 27017 to match the generated connection string.
 
-## 1. Check the database connection
+## 1. Set the database connection
 
-Open `.env` and confirm that `DATABASE_URL` points to the MongoDB deployment you want Prisma 8 to use.
+The scaffold writes a `.env` with a local replica-set connection string:
 
 ```text title=".env"
-DATABASE_URL="mongodb://127.0.0.1:27017/app?replicaSet=rs0"
+DATABASE_URL="mongodb://localhost:27017/mydb?replicaSet=rs0&directConnection=true"
 ```
 
-If you use MongoDB Atlas, replace this with the connection string from your Atlas cluster.
+The generated scripts read environment variables directly rather than `.env`, and the CLI and the app use different variable names: the CLI commands read `MONGODB_URL`, and the app reads `DATABASE_URL`. Export both in the shell you work in:
 
-## 2. Start MongoDB
-
-From the generated project directory, run `db:up` to start the local replica set.
-
-```npm
-npm run db:up
+```bash
+export MONGODB_URL="mongodb://localhost:27017/mydb?replicaSet=rs0&directConnection=true"
+export DATABASE_URL="$MONGODB_URL"
 ```
 
-Skip this command when you use MongoDB Atlas or another existing deployment.
+If you use MongoDB Atlas, use the connection string from your Atlas cluster instead.
 
-## 3. Create the migration plan
+## 2. Create the migration plan
 
 Create the first migration plan from the starter contract.
 
@@ -56,7 +53,9 @@ Create the first migration plan from the starter contract.
 npm run migration:plan -- --name init
 ```
 
-## 4. Apply the migration
+The output reports the planned operations: creating the `users` and `posts` collections and a unique index on `users.email`.
+
+## 3. Apply the migration
 
 Apply the planned migration to MongoDB.
 
@@ -64,15 +63,9 @@ Apply the planned migration to MongoDB.
 npm run migrate
 ```
 
-## 5. Seed data
+The output ends with a summary like `Applied 1 migration(s) (3 operation(s)) across 1 contract space(s)`. If it fails with a connection error, confirm your MongoDB deployment is a replica set and `MONGODB_URL` is exported in this shell.
 
-`db:seed` inserts sample users so the first query has data to show.
-
-```npm
-npm run db:seed
-```
-
-## 6. Run the app
+## 4. Run the app
 
 Start the app and confirm the sample query runs successfully.
 

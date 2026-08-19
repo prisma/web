@@ -26,8 +26,8 @@ Prefer to delegate this guide? Copy the prompt and hand it to your coding agent:
 ```text
 Verify `bun --version` first; if Bun is missing, stop and ask. Create a new Elysia API with Prisma 8, seed it, and deploy it to Prisma Compute.
 
-1. Scaffold: `bunx create-prisma@next create my-elysia-api --template elysia --provider postgres --prisma-postgres --yes` (or pass `--database-url "<url>"` instead of `--prisma-postgres` if I give you a connection string).
-2. In `my-elysia-api`, run `bun run db:init`, then `bun run db:seed`. If seeding fails with `Cannot read properties of undefined (reading 'where')`, change `db.orm.User` to `db.orm.public.User` in `src/prisma/seed.ts` and `src/prisma/users.ts`, then rerun.
+1. Scaffold: `bunx create-prisma@next create my-elysia-api --template elysia --provider postgres --yes`. Then get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Export it as `DATABASE_URL` in the shell and write it to `my-elysia-api/.env` for the deploy step; the generated scripts read the environment variable, not `.env`.
+2. In `my-elysia-api`, run `bun run db:init` with `DATABASE_URL` exported. Sample users are seeded automatically on the app's first query; there is no separate seed script.
 3. Start `bun run dev` in the background, wait until it reports ready, verify `curl http://localhost:3000/users` returns the seeded users, then stop the dev server.
 4. Deploy: check `npx @prisma/cli@latest auth whoami`; if I am not signed in, stop and ask me to run `npx @prisma/cli@latest auth login`. Then run `npx @prisma/cli@latest app deploy --create-project my-elysia-api --env .env --framework bun --entry src/index.ts` and verify the live URL's /users endpoint.
 
@@ -44,27 +44,26 @@ bunx create-prisma@next create my-elysia-api --template elysia --provider postgr
 
 Pick your database at the prompt. The template generates an Elysia server in `src/index.ts` with `GET /` and `GET /users` routes, the Prisma 8 setup in `src/prisma/`, and package scripts for the database steps.
 
+Next, set the database connection. Use your own PostgreSQL connection string, or create a Prisma Postgres database with `npx create-db@latest`; it prints a connection string and a claim URL you can open to keep the database. Export the variable, and write it to `.env` for the deploy step later. The generated scripts read the environment variable, not `.env`:
+
+```bash
+export DATABASE_URL="<your connection string>"
+echo "DATABASE_URL=\"$DATABASE_URL\"" > .env
+```
+
 ```bash
 cd my-elysia-api
 ```
 
-## 2. Initialize and seed the database
+## 2. Initialize the database
 
 ```bash
 bun run db:init
-bun run db:seed
 ```
 
 ```text no-copy
 "summary": "Applied 5 operation(s) across 1 space(s), database signed"
-Seeded 3 users.
 ```
-
-:::note
-
-Seeing `Cannot read properties of undefined (reading 'where')`? The current `elysia` template still generates the older unqualified query form. Update `db.orm.User` to `db.orm.public.User` in `src/prisma/seed.ts` and `src/prisma/users.ts`, then rerun `db:seed`.
-
-:::
 
 ## 3. Run the server
 

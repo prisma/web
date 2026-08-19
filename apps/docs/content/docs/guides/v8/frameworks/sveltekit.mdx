@@ -20,12 +20,12 @@ One command scaffolds the project with Prisma 8 wired in:
 npx create-prisma@next create my-app --template svelte --provider postgres
 ```
 
-Pick Prisma Postgres at the database prompt to have a database created for you, or paste your own `DATABASE_URL`.
+Answer the prompts, then export `DATABASE_URL` in your shell before running the database scripts. Need a database? `npx create-db@latest` prints a Prisma Postgres connection string.
 
 ## Prerequisites
 
 - [Node.js](https://nodejs.org) 24 or later
-- A PostgreSQL connection string, or nothing at all: the scaffold can create the database for you
+- A PostgreSQL connection string, or nothing at all: `npx create-db@latest` can create a Prisma Postgres database for you
 
 ## Use with your agent
 
@@ -36,8 +36,8 @@ Prefer to delegate this guide? Copy the prompt and hand it to your coding agent:
 ```text
 Create a new SvelteKit app with Prisma 8, seed it, and verify the page renders.
 
-1. Scaffold: `npx create-prisma@next create my-app --template svelte --provider postgres --prisma-postgres --yes` (or pass `--database-url "<url>"` instead of `--prisma-postgres` if I give you a connection string).
-2. In `my-app`, run `npm run db:init`, then `npm run db:seed`. If seeding fails with `Cannot read properties of undefined (reading 'where')`, change `db.orm.User` to `db.orm.public.User` in `src/prisma/seed.ts` and `src/prisma/users.ts`, then rerun.
+1. Scaffold: `npx create-prisma@next create my-app --template svelte --provider postgres --yes`. Then get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Export it as `DATABASE_URL` in the shell and write it to `my-app/.env` for the deploy step; the generated scripts read the environment variable, not `.env`.
+2. In `my-app`, run `npm run db:init` with `DATABASE_URL` exported. Sample users are seeded automatically on the app's first query; there is no separate seed script.
 3. Do not deploy to Prisma Compute; it does not support SvelteKit yet. Start `npm run dev` in the background, wait until it reports ready, verify http://localhost:5173 lists the three seeded users, then stop the dev server, following https://www.prisma.io/docs/guides/v8/frameworks/sveltekit.md.
 
 Use the installed Prisma 8 skills.
@@ -52,27 +52,26 @@ npx create-prisma@next create my-app --template svelte --provider postgres
 cd my-app
 ```
 
-The scaffold writes your connection string to `.env`, generates the SvelteKit app with Prisma 8 wired in, installs dependencies, and emits the contract your queries are type-checked against.
+The scaffold generates the SvelteKit app with Prisma 8 wired in, installs dependencies, and emits the contract your queries are type-checked against.
 
-## 2. Initialize and seed the database
+Next, set the database connection. Use your own PostgreSQL connection string, or create a Prisma Postgres database with `npx create-db@latest`; it prints a connection string and a claim URL you can open to keep the database. Export the variable, and write it to `.env` for the deploy step later. The generated scripts read the environment variable, not `.env`:
+
+```bash
+export DATABASE_URL="<your connection string>"
+echo "DATABASE_URL=\"$DATABASE_URL\"" > .env
+```
+
+## 2. Initialize the database
 
 ```npm
 npm run db:init
-npm run db:seed
 ```
 
 ```text no-copy
 "summary": "Applied 5 operation(s) across 1 space(s), database signed"
-Seeded 3 users.
 ```
 
-:::note
-
-Seeing `Cannot read properties of undefined (reading 'where')`? The current `svelte` template still generates the older unqualified query form. Update `db.orm.User` to `db.orm.public.User` in `src/prisma/seed.ts` and `src/prisma/users.ts`, then rerun `db:seed`.
-
-:::
-
-`db:init` applies your schema (`src/prisma/contract.prisma`) to the database and signs it; the seed gives the first page something to show.
+`db:init` applies your schema (`src/prisma/contract.prisma`) to the database and signs it. Sample users are seeded automatically the first time the app queries the database.
 
 ## 3. Run and verify
 

@@ -53,14 +53,13 @@ Here is the workflow, from an empty directory. The screenshots in this post come
 npm create prisma@next
 ```
 
-Answer the prompts (PostgreSQL, PSL, and yes to [Prisma Postgres](https://www.prisma.io/docs/postgres)) or skip them:
+Answer the prompts (PostgreSQL, PSL, your package manager) or skip them:
 
 ```bash
-npm create prisma@next -- my-app --yes --provider postgres --authoring psl \
-  --template minimal --prisma-postgres --install --emit
+npm create prisma@next -- my-app --yes --provider postgres --authoring psl --template minimal
 ```
 
-This provisions a database, writes `DATABASE_URL` into `.env`, and scaffolds a contract at `src/prisma/contract.prisma`. The database is temporary for 24 hours; `.env` also holds a `CLAIM_URL` to keep it.
+This scaffolds a contract at `src/prisma/contract.prisma`. Then create a [Prisma Postgres](https://www.prisma.io/docs/postgres) database with `npx create-db@latest` and export the connection string it prints as `DATABASE_URL` (the CLI reads the environment variable, not `.env`). The database is temporary for 24 hours; `create-db` also prints a claim URL to keep it.
 
 ### Step 2: Model, plan, apply
 
@@ -93,9 +92,9 @@ model Post {
 Compile it, [plan a migration](https://www.prisma.io/docs/orm/v8/migrations/generating-a-migration), [apply it](https://www.prisma.io/docs/orm/v8/migrations/applying-a-migration):
 
 ```bash
-npx @prisma/cli@next contract emit
-npx @prisma/cli@next migration plan --name init_users_posts
-npx @prisma/cli@next migrate --advance-ref db
+npx prisma@next contract emit
+npx prisma@next migration plan --name init_users_posts
+npx prisma@next migrate --advance-ref db
 ```
 
 `--advance-ref db` moves a [ref](https://www.prisma.io/docs/orm/v8/migrations/the-migration-graph#name-important-states-with-refs), a name pinned to a point in your migration history, onto what you just applied. Later plans start from there and produce a delta instead of recreating everything.
@@ -136,9 +135,9 @@ model Post {
 ```
 
 ```bash
-npx @prisma/cli@next contract emit
-npx @prisma/cli@next migration plan --name add_roles_and_publishing
-npx @prisma/cli@next migrate --advance-ref db
+npx prisma@next contract emit
+npx prisma@next migration plan --name add_roles_and_publishing
+npx prisma@next migrate --advance-ref db
 ```
 
 Repeat for whatever your app needs; when a change needs a backfill, [Data Migrations in Prisma 8](/data-migrations-in-prisma-next) covers that. The history behind the screenshots here has six migrations: an initial pair of models, this enum-and-fields change, a `Category` model with a relation and two unique constraints, a destructive column drop, and two more field additions.
@@ -153,14 +152,14 @@ npm run db:seed
 
 ### Step 5: Open Studio
 
-A Prisma 8 project has no `schema.prisma`, so Studio takes the connection string with `--url`. It lives in `.env` rather than your shell, so load it first:
+A Prisma 8 project has no `schema.prisma`, so Studio takes the connection string with `--url`. The connection string lives in `.env` rather than your shell, so load it first. Run Studio from a directory outside the project: the Prisma 7 CLI that ships Studio cannot read the Prisma 8 `prisma.config.ts` and fails if it finds one:
 
 ```bash
 set -a && . ./.env && set +a
-npx prisma@dev studio --url "$DATABASE_URL"
+cd .. && npx prisma@latest studio --url "$DATABASE_URL"
 ```
 
-Studio opens on `http://localhost:5555`, and **Migrations** is in the left navigation.
+Studio prints the local URL it serves on; open it, and **Migrations** is in the left navigation.
 
 ## Reading a migration
 
@@ -201,7 +200,7 @@ The practical consequence: a migration applied from CI, from a teammate's laptop
 
 ## Where you can use it
 
-The Migrations view shipped in `@prisma/studio-core` 0.32.0. The Prisma CLI bundles Studio, and a new enough version is currently only in the CLI's `dev` release, so use `npx prisma@dev studio` to try it locally.
+The Migrations view shipped in `@prisma/studio-core` 0.32.0, and the stable Prisma CLI bundles it since 7.9. Run `npx prisma@latest studio --url "$DATABASE_URL"` from a directory outside your Prisma 8 project to try it locally.
 
 It is also in the embedded Studio in [Prisma Console](https://console.prisma.io), for any database with an applied Prisma 8 migration history. Open your database's Studio tab and select **Migrations**. No local setup, and the selected migration is part of the Console URL too.
 
@@ -225,7 +224,7 @@ This matters most where the repo can't help you. The database your app talks to 
 The Migrations view is a screen in Prisma Studio that lists every applied migration of a Prisma 8 database, newest first, with a visual diff of the models it changed, the SQL it executed, and a Prisma-schema diff. It shipped in `@prisma/studio-core` 0.32.0 and reads the history from the database itself.
   </Accordion>
   <Accordion title="Why doesn't the Migrations item appear in my Prisma Studio?">
-The Migrations item appears only when the connected database has at least one applied Prisma 8 migration, recorded in the `prisma_contract.ledger` table. It stays hidden for databases with no applied migrations, for Prisma ORM projects using `prisma migrate`, and for Studio versions older than `@prisma/studio-core` 0.32.0. The stable Prisma CLI still bundles an older Studio, so run `npx prisma@dev studio`.
+The Migrations item appears only when the connected database has at least one applied Prisma 8 migration, recorded in the `prisma_contract.ledger` table. It stays hidden for databases with no applied migrations, for Prisma ORM projects using `prisma migrate`, and for Studio versions older than `@prisma/studio-core` 0.32.0. Prisma CLI 7.9 and later bundle a new enough Studio; run `npx prisma@latest studio`.
   </Accordion>
   <Accordion title="Does the Migrations view work with Prisma ORM and prisma migrate?">
 No. Projects managed with `prisma migrate` record their history in the `_prisma_migrations` table, which the view does not read. The Migrations view requires a Prisma 8 project on PostgreSQL, which records each apply in `prisma_contract.ledger`.
@@ -243,8 +242,8 @@ npm create prisma@next
 
 Model something, apply two migrations, and open **Migrations**. Tell us what you'd want in the timeline next on [Discord](https://pris.ly/discord).
 
-**Star and watch [prisma/prisma-next](https://pris.ly/pn-gh) on GitHub** to follow development.
+**Star and watch [prisma/prisma](https://github.com/prisma/prisma) on GitHub** to follow development.
 
 ---
 
-The Migrations view shipped in `@prisma/studio-core` 0.32.0. The Prisma CLI bundles Studio, and a new enough version is currently only in the CLI's `dev` release, hence `npx prisma@dev studio`. [Prisma 8 is in Early Access](https://www.prisma.io/blog/prisma-next-early-access-write-your-contract-prompt-your-agent-ship-your-app) and not production-ready yet. Prisma 7 is still the right choice for production today.
+The Migrations view shipped in `@prisma/studio-core` 0.32.0; the stable Prisma CLI bundles it since 7.9. [Prisma 8 is in Early Access](https://www.prisma.io/blog/prisma-next-early-access-write-your-contract-prompt-your-agent-ship-your-app) and not production-ready yet. Prisma 7 is still the right choice for production today.
