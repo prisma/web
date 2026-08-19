@@ -13,7 +13,7 @@ In this guide you will build the data layer for a notes app where every note bel
 
 :::note[Release Candidate 1]
 
-Prisma 8 ships today as Release Candidate 1 of the `prisma-next` CLI and `@prisma/orm-*` packages. The API surface is stable, and we are collecting feedback before general availability. Try it with your Supabase project and [share what you find in Discord](https://pris.ly/discord).
+Prisma 8 ships today as a Release Candidate of the `prisma@next` CLI and `@prisma/orm-*` packages. The API surface is stable, and we are collecting feedback before general availability. Try it with your Supabase project and [share what you find in Discord](https://pris.ly/discord).
 
 :::
 
@@ -49,24 +49,27 @@ Use the session pooler (port `5432`), not the transaction pooler (port `6543`). 
 Create a project directory and scaffold a Prisma 8 project inside it:
 
 ```npm
-npx prisma-next init --yes --target postgres --authoring psl
+npx prisma@next orm init --yes --target postgres --authoring psl
 ```
 
-This creates several files:
+This installs `@prisma/orm-postgres` and the `@prisma/cli` package, then creates several files:
 
-- `prisma-next.config.ts`: the configuration file.
+- `prisma.config.ts`: the configuration file.
 - `src/prisma/contract.prisma`: your Prisma schema. Prisma 8 calls this your **contract**, because it describes everything Prisma manages in your database.
+- `src/prisma/db.ts`: the database client. You will replace it with a Supabase-aware version in step 8.
 - `.env.example`: a template for your environment variables.
+
+If the directory has no `package.json`, the scaffold creates one with `"type": "module"`. It also runs the first `contract emit` for you, so the generated types exist from the start.
 
 :::warning
 
-If your `package.json` contains `"type": "commonjs"`, change it to `"module"`. The scaffolded files use modern ESM imports.
+If your existing `package.json` contains `"type": "commonjs"`, change it to `"module"`. The scaffolded files use modern ESM imports.
 
 :::
 
 :::info
 
-Prisma 8 installs as the `prisma-next` CLI plus one database client package per app (here `@prisma/orm-postgres`), not as `prisma@8`.
+The CLI's own binary is named `prisma-cli`, so its output shows next-step hints like `prisma-cli migrate`. With the setup in this guide, run those through npx as `npx prisma@next migrate`.
 
 :::
 
@@ -89,22 +92,22 @@ SUPABASE_URL="https://YOUR_PROJECT_REF.supabase.co"
 
 ## 5. Register the extension
 
-Add the Supabase extension to `prisma-next.config.ts` so Prisma loads it together with your schema:
+Add the Supabase extension to `prisma.config.ts` so Prisma loads it together with your schema:
 
-```ts title="prisma-next.config.ts"
+```ts title="prisma.config.ts"
 import 'dotenv/config';
-import supabasePack from '@prisma/orm-extension-supabase/pack';
-import { defineConfig } from '@prisma/orm-postgres/config';
+import { definePrismaConfig } from '@prisma/cli-engine';
+import supabasePack from '@prisma/orm-extension-supabase/pack'; // [!code ++]
+import { defineConfig as ormConfig } from '@prisma/orm-postgres/config';
 
-export default defineConfig({
-  contract: './src/prisma/contract.prisma',
-  extensions: [supabasePack], // [!code ++]
-  migrations: {
-    dir: 'migrations',
-  },
-  db: {
-    connection: process.env['DATABASE_URL']!,
-  },
+export default definePrismaConfig({
+  orm: ormConfig({
+    contract: './src/prisma/contract.prisma',
+    extensions: [supabasePack], // [!code ++]
+    db: {
+      connection: process.env['DATABASE_URL']!,
+    },
+  }),
 });
 ```
 
@@ -166,7 +169,7 @@ Three parts of this schema do work no Prisma schema could do before:
 
 :::info
 
-Two details worth knowing. The `userId` column must be `Uuid` because `auth.users.id` is a `uuid`; Prisma does not convert types for you. And the `user` relation exists for the constraint only: you cannot `include` the user in a query, and trying is a compile-time error rather than a runtime surprise.
+The `userId` column must be `Uuid` because `auth.users.id` is a `uuid`; Prisma does not convert types for you. The `user` relation exists for the constraint only: you cannot `include` the user in a query, and trying is a compile-time error rather than a runtime surprise.
 
 There is also no policy for the `anon` role, on purpose. With RLS enabled and no matching policy, anonymous visitors see zero rows.
 
@@ -177,9 +180,9 @@ There is also no policy for the `anon` role, on purpose. With RLS enabled and no
 Three commands take the schema live:
 
 ```npm
-npx prisma-next contract emit
-npx prisma-next migration plan --name init
-npx prisma-next migrate
+npx prisma@next contract emit
+npx prisma@next migration plan --name init
+npx prisma@next migrate
 ```
 
 Here is what each does:
@@ -204,9 +207,10 @@ No SQL was written by hand, and every future policy change will show up as a sch
 
 ## 8. Create the client
 
-Create a file that builds the database client:
+Replace the scaffolded `src/prisma/db.ts` with a client that knows about Supabase Auth:
 
 ```ts title="src/prisma/db.ts"
+import 'dotenv/config';
 import { type SupabaseDb, supabase } from '@prisma/orm-extension-supabase/runtime';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
@@ -318,12 +322,12 @@ export default defineComputeConfig({
 Then deploy:
 
 ```npm
-npx @prisma/cli app deploy --create-project prisma8-supabase-rls
+npx @prisma/cli@latest app deploy --create-project prisma8-supabase-rls
 ```
 
 The CLI builds locally, uploads, and prints a live URL. Values from `.env` are configured through the deploy and never land in your repository. Because enforcement lives in Postgres, the deployed app behaves exactly like your local one.
 
-## Reading auth.users for admin work
+## Reading `auth.users` for admin work
 
 Application queries cannot reach the `auth` tables on any role; that boundary keeps your app from depending on Supabase's internal schema. For admin reads, `asServiceRole()` exposes the extension's own query surface:
 
@@ -345,11 +349,11 @@ For creating users, password resets, and other account operations, use the Supab
 
 ## Troubleshooting
 
-- `MIGRATION.CONTRACT_SPACE_LAYOUT_VIOLATION` with `declaredButUnmigrated: supabase`: you skipped `migration plan`. Run `npx prisma-next migration plan --name <slug>` once and retry.
+- `MIGRATION.CONTRACT_SPACE_LAYOUT_VIOLATION` with `declaredButUnmigrated: supabase`: you skipped `migration plan`. Run `npx prisma@next migration plan --name <slug>` once and retry.
 - `SUPABASE.CONFIG_INVALID`: set exactly one of `jwksUrl` or `jwtSecret`.
 - `SUPABASE.JWT_INVALID` with an algorithm mismatch in `meta.reason`: you passed an asymmetric-key token to a `jwtSecret` client or vice versa; switch the key source.
 - Connection timeouts or DNS failures: use the session pooler host, not `db.<ref>.supabase.co`, on IPv4 networks.
-- `db verify` reports missing `storage.iceberg_namespaces` / `storage.iceberg_tables` on a current hosted project: known issue, the extension's storage description lags the hosted platform. Migrations and runtime behavior are unaffected; use `npx prisma-next db verify --marker-only` until the updated extension ships.
+- `db verify` reports missing `storage.iceberg_namespaces` / `storage.iceberg_tables` on a current hosted project: known issue, the extension's storage description lags the hosted platform. Migrations and runtime behavior are unaffected; use `npx prisma@next db verify --marker-only` until the updated extension ships.
 
 ## Current limitations
 

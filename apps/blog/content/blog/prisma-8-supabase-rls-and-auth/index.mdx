@@ -22,47 +22,7 @@ import { OneContractGraph } from "./OneContractGraph";
 
 ## Your RLS policy, right next to your model
 
-Imagine defining a Row Level Security policy directly next to the model it protects:
-
-```prisma
-model Note {
-  // ...your fields
-  @@rls
-}
-
-// A signed-in user reads only their own notes.
-policy_select note_owner_read {
-  target = Note
-  roles  = [authenticated]
-  using  = "\"userId\"::uuid = auth.uid()"
-}
-```
-
-Good news: you can. This is real Prisma 8 syntax. You edit the policy where you edit the model, run one migrate command, and Postgres enforces the rule on every query your app makes.
-
-If that sounds like a small thing, let's look at what you probably do today.
-
-## Where is your current RLS policy?
-
-Think about the last time you needed to know what the authorization policy for a table actually is. Not what it was when someone first wrote it. What it is right now, in production.
-
-If you manage Row Level Security with SQL migrations, the answer lives somewhere in here:
-
-```text
-supabase/migrations/
-├── 20250514093012_add_notes_policy.sql
-├── 20250602141507_update_notes_policy.sql
-├── 20250618102244_fix_notes_policy.sql
-└── ...
-```
-
-Which one contains the current policy? You open the most likely file. It creates a policy, but a later migration replaced it. You open that one. Altered again, two weeks after. The current state of the most security-critical part of your data model is the sum of every migration that ever touched it, and the only way to read it is to replay them in your head. And if someone adjusted the policy in the Supabase dashboard along the way, it isn't in any of these files at all.
-
-That's the workflow Prisma 8's Supabase extension replaces. Instead of reconstructing the current policy from history, you read it in one place: your schema.
-
-## Your schema is the source of truth
-
-Here is the full schema for a notes app where every note belongs to a Supabase user:
+With [Prisma 8](https://www.prisma.io/docs/orm)'s Supabase extension, your models, your auth relationships, and your RLS policies live in the same file. Here is a notes app where every note belongs to a Supabase user:
 
 ```prisma
 namespace public {
@@ -87,20 +47,30 @@ namespace public {
 }
 ```
 
-This one block answers every question you were hunting through the migrations directory for. Three things are happening, so let's take them one at a time.
+`@@rls` turns on Row Level Security for the table, so no role sees any row unless a policy grants it. The policy block is the current read policy, carrying the same `USING` and `WITH CHECK` conditions you would otherwise write in SQL. Insert, update, and delete policies follow the same shape, with `withCheck` stopping users from writing rows they don't own; the full set is four short blocks in the [Supabase extension guide](https://www.prisma.io/docs/orm/next/extensions/supabase). There is deliberately no anon policy: with RLS enabled and no matching policy, anonymous visitors see zero rows. The `user` field is a real reference to Supabase's `auth.users` table, which we'll come back to below.
 
-`@@rls` turns on Row Level Security for the table. From that moment, no role sees any row unless a policy grants it, which is exactly the deny-by-default posture you want for user data.
+Declaring RLS in the Prisma schema is [the most-requested Supabase feature in Prisma's history](https://github.com/prisma/prisma/issues/12735), with over 400 reactions on the GitHub issue since 2022.
 
-The `policy_select` block is the current read policy. It carries the same `USING` condition you would otherwise write in SQL, so nothing about how you think in RLS changes; only where the rule lives does. Insert, update, and delete policies follow the same shape, with `withCheck` stopping users from writing rows they don't own. The full set is four short blocks in the [Supabase extension guide](https://www.prisma.io/docs/orm/next/extensions/supabase). There is deliberately no anon policy here, because with RLS enabled and no matching policy, anonymous visitors see zero rows.
+## Where is your current RLS policy?
 
-And the `user` field is a real reference to Supabase's `auth.users` table. We'll come back to that one below.
+Compare that to managing Row Level Security with SQL migrations, where the current policy for a table lives somewhere in here:
 
-This file is where your application is defined. It is the file you edit, and the file you read. It is also [the most-requested Supabase feature in Prisma's history](https://github.com/prisma/prisma/issues/12735), with over 400 reactions on the GitHub issue since 2022.
+```text
+supabase/migrations/
+├── 20250514093012_add_notes_policy.sql
+├── 20250602141507_update_notes_policy.sql
+├── 20250618102244_fix_notes_policy.sql
+└── ...
+```
 
-## One command migrates everything
+One migration creates the policy, a later one replaces it, a third alters it again. The current state of the most security-critical part of your data model is the sum of every migration that ever touched it, and the only way to read it is to replay them in your head. If someone adjusted the policy in the Supabase dashboard along the way, it isn't in any of these files at all.
 
-```bash
-npx prisma-next migrate
+With the schema above, the current policy is the block next to the model.
+
+## Migrations cover your policies too
+
+```npm
+npx prisma@next migration plan --name add-notes
 ```
 
 Prisma diffs your schema against the database and generates the DDL, policies included:
@@ -111,15 +81,15 @@ CREATE POLICY "note_owner_read_9f8e536e" ON "public"."note"
   USING ("userId"::uuid = auth.uid())
 ```
 
-You never write this SQL, and you never need to read it to learn the current state; it is an implementation detail of the schema above. The workflow also runs in reverse: if your database already has policies, `prisma-next contract infer` reads them back into your schema, so adopting Prisma 8 doesn't mean rewriting your authorization from scratch.
+`npx prisma@next migrate` applies it. You never write this SQL, and you never need to read it to learn the current state; it is an implementation detail of the schema above. The workflow also runs in reverse: if your database already has policies, `npx prisma@next contract infer` reads them back into your schema, so adopting Prisma 8 doesn't mean rewriting your authorization from scratch.
 
-## Every query names who is asking
+## Queries run as the signed-in user
 
-A policy only protects queries that run under a role it applies to, so the Supabase client won't run anything until you say who is asking: it has no query methods until a role is bound. Pass the request's Supabase Auth token to `db.asUser(jwt)`, and everything that follows runs as that user. The walkthrough below shows what happens on every request, step by step:
+A policy only protects queries that run under a role it applies to, so the Supabase client has no query methods until a role is bound. Pass the request's Supabase Auth token to `db.asUser(jwt)`, and everything that follows runs as that user:
 
 <RlsFlowDemo />
 
-The part worth pausing on is step three. The query never filters by user, yet each user receives only their own notes, because the verified token decides what the database is willing to return. The forgotten `where` clause that leaks every user's data stops being a bug your code can have.
+In step three, the query never filters by user, yet each user receives only their own notes: the verified token decides what Postgres returns. A forgotten `where` clause can no longer leak other users' data.
 
 Writes get the same protection. Creating a note that belongs to someone else is rejected by the database's `WITH CHECK` condition, regardless of what the application code says:
 
@@ -132,7 +102,7 @@ For public traffic there is `db.asAnon()`, and for admin jobs `db.asServiceRole(
 
 ## A real foreign key into auth.users
 
-Back to the `user` field from the schema:
+The `user` field from the schema declares a relation into Supabase's `auth.users` table:
 
 ```prisma
 user supabase:auth.AuthUser @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -148,15 +118,15 @@ ALTER TABLE "public"."note"
 
 A note can never point at a user that doesn't exist, and deleting a user deletes their notes, guaranteed by Postgres rather than by a cleanup script. The relation exists for the constraint: you cannot `include` the user from a note query, and trying is a compile-time error rather than a runtime surprise.
 
-## Authorization your team and your AI agents can read
+## Policy changes are schema diffs
 
 A policy change is now a schema diff in a pull request. The reviewer sees the old condition and the new one right next to the model they protect, and schema and security evolve together in the same commit.
 
-The same property pays off in AI-assisted development. Supabase treats AI agents as a primary way people build applications, and an agent asked to reason about access control faces the exact hunt this post opened with: dozens of timestamped SQL files, each holding a partial truth. With authorization in the schema, the agent reads one file and gets models, relationships, and policies as structured metadata it can inspect, update, and reason about. Your authorization is no longer hidden inside migration history. It is part of your schema, and that makes your application easier to understand for developers and agents alike.
+The same holds for AI agents. An agent asked to reason about access control otherwise faces dozens of timestamped SQL files, each holding a partial truth. With authorization in the schema, the agent reads one file and gets models, relationships, and policies as structured metadata.
 
 <OneContractGraph />
 
-## Current limitations and supported scenarios
+## Current limitations
 
 Prisma 8 RC1 with the Supabase extension supports Node.js and Bun, connecting through your project's session pooler (port 5432); the transaction pooler cannot carry the per-request role binding, and edge runtimes are not supported yet. Within that setup, a few boundaries to know:
 
@@ -174,25 +144,26 @@ Prisma 8 is available today as Release Candidate 1 (RC1): the final preview befo
 
 Create a free Supabase project as a sandbox, then test the workflow yourself in a few minutes:
 
-```bash
-npx prisma-next init --yes --target postgres --authoring psl
+```npm
+npx prisma@next orm init --yes --target postgres --authoring psl
 npm install @prisma/orm-extension-supabase
 ```
 
 Next:
 
-1. Add the extension to `prisma-next.config.ts`: `extensions: [supabasePack]`
+1. Register the extension in `prisma.config.ts`: `extensions: [supabasePack]` inside the ORM config.
 2. Set `DATABASE_URL` to your Supabase project's session pooler.
 3. Add the schema and policies shown above.
 4. Run:
 
-```bash
-npx prisma-next migrate
+```npm
+npx prisma@next contract emit
+npx prisma@next migration plan --name init
+npx prisma@next migrate
 ```
 
 {/* TODO before publish: add the public example repo link */}
-{/* TODO before publish: the CLI ships as prisma@next at launch; swap the prisma-next commands then */}
 
-With this setup, your authorization rules sit next to your Prisma models, ship through migrations, and get reviewed in the same pull request as the rest of your application code. The question this post opened with stops needing an answer: your schema is the current policy.
+With this setup, your authorization rules sit next to your Prisma models, ship through migrations, and get reviewed in the same pull request as the rest of your application code.
 
 This is the workflow we want to validate before general availability. Try Prisma 8 with your own project, and share any issues or feedback with us on [Discord](https://pris.ly/discord).

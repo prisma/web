@@ -1,5 +1,6 @@
 import remarkDirective from "remark-directive";
 import {
+  rehypeCodeDefaultOptions,
   remarkDirectiveAdmonition,
   remarkMdxFiles,
   remarkMdxMermaid,
@@ -7,6 +8,8 @@ import {
 import { remarkImage } from "fumadocs-core/mdx-plugins";
 import { defineCollections, defineConfig, frontmatterSchema } from "fumadocs-mdx/config";
 import lastModified from "fumadocs-mdx/plugins/last-modified";
+import { bundledLanguages, type BundledLanguage, type LanguageRegistration } from "shiki";
+import { prisma8Language } from "@prisma-docs/ui/lib/prisma8-language";
 import { z } from "zod";
 import convert from "npm-to-yarn";
 
@@ -64,6 +67,16 @@ export default defineConfig({
       remarkMdxFiles,
       remarkMdxMermaid,
     ],
+    rehypeCodeOptions: {
+      ...rehypeCodeDefaultOptions,
+      // Passing langs replaces the default set (all bundled languages), so
+      // rebuild it with the bundled prisma grammar swapped for the extended
+      // one that knows Prisma 8 namespace and policy blocks.
+      langs: [
+        ...(Object.keys(bundledLanguages) as BundledLanguage[]).filter((lang) => lang !== "prisma"),
+        prisma8Language as unknown as LanguageRegistration,
+      ],
+    },
     remarkCodeTabOptions: { parseMdx: true },
     remarkNpmOptions: {
       persist: { id: "package-manager" },

@@ -1,6 +1,6 @@
 "use client";
 
-import { Component, createRef, useEffect, useRef, useState, type RefObject } from "react";
+import { Component, createRef, Fragment, useEffect, useRef, useState, type RefObject } from "react";
 import { Pre, type HighlightedCode } from "codehike/code";
 import {
   calculateTransitions,
@@ -9,48 +9,56 @@ import {
 } from "codehike/utils/token-transitions";
 import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
 
+type Actor = "client" | "prisma" | "postgres";
+
 type Phase = {
   step: number;
   label: string;
   shortLabel: string;
-  technical: string;
-  plain: string;
+  actor: Actor;
+  detail: string;
 };
 
 const STEP_HOLD_MS = 6500;
+
+const ACTORS: { id: Actor; label: string }[] = [
+  { id: "client", label: "Client" },
+  { id: "prisma", label: "Prisma" },
+  { id: "postgres", label: "Postgres" },
+];
 
 const PHASES: Phase[] = [
   {
     step: 0,
     label: "The request carries a token",
     shortLabel: "Request",
-    technical:
+    actor: "client",
+    detail:
       "Every request arrives with the user's Supabase Auth session token, a signed JWT, in the Authorization header.",
-    plain: "The token is the caller's ID card. It says who is asking.",
   },
   {
     step: 1,
     label: "db.asUser(jwt)",
     shortLabel: "Verify + bind",
-    technical:
-      "asUser checks the token's signature against your project's public keys before any connection is used, then attaches the user's role and id to the database session.",
-    plain: "Prisma confirms the ID card is genuine before the database ever hears about the request.",
+    actor: "prisma",
+    detail:
+      "asUser verifies the token's signature against your project's public signing keys, then binds the user's role and id to the database session. A forged or expired token never reaches Postgres.",
   },
   {
     step: 2,
     label: "Query with no user filter",
     shortLabel: "Query",
-    technical:
-      "The handler selects notes without a where userId clause. The client cannot run a query at all until a role is bound, so there is no way to skip this step.",
-    plain: "The code never says “only my notes”. It doesn't have to.",
+    actor: "prisma",
+    detail:
+      "The handler selects notes without a where userId clause. The client has no query methods until a role is bound, so this step cannot be skipped.",
   },
   {
     step: 3,
     label: "Postgres applies the policy",
     shortLabel: "Enforce",
-    technical:
-      "Postgres evaluates the SELECT policy for every row and keeps only those where userId matches the verified token's auth.uid().",
-    plain: "The database itself hands back only the rows that belong to the caller.",
+    actor: "postgres",
+    detail:
+      "Postgres evaluates the select policy for every row and returns only those where userId matches the token's auth.uid().",
   },
 ];
 
@@ -184,17 +192,27 @@ export function RlsFlowDemoClient({ snippets }: Props) {
         </div>
 
         <div className="rls-flow-captions">
-          <div className="rls-flow-caption">
-            <span className="rls-flow-caption-tag">What happens</span>
-            <p>{phase.technical}</p>
+          <div className="rls-flow-rail" aria-hidden="true">
+            {ACTORS.map((actor, i) => (
+              <Fragment key={actor.id}>
+                {i > 0 && <span className="rls-flow-rail-arrow" />}
+                <span
+                  className="rls-flow-rail-node"
+                  data-active={actor.id === phase.actor ? "true" : undefined}
+                >
+                  {actor.label}
+                </span>
+              </Fragment>
+            ))}
           </div>
           <div className="rls-flow-caption">
-            <span className="rls-flow-caption-tag">In plain terms</span>
-            <p>{phase.plain}</p>
+            <p>{phase.detail}</p>
           </div>
-          <div className="rls-flow-footer">
-            No <code>where</code> clause in application code. The policy is the filter.
-          </div>
+          {phase.step >= 2 && (
+            <div className="rls-flow-footer">
+              No <code>where</code> clause in application code. The policy is the filter.
+            </div>
+          )}
         </div>
       </div>
     </div>
