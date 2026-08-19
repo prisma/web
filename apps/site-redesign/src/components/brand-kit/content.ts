@@ -136,6 +136,82 @@ export const LOGO_DONTS: Dont[] = [
   { title: "Don't place on busy backgrounds", detail: "Use a treatment with enough contrast. Never on low-contrast imagery." },
 ]
 
+// --- Mascot -----------------------------------------------------------------
+
+// TBC — the mascot has no name yet. It is written as `[name]` everywhere it
+// appears so naming him later is a single change here.
+export const MASCOT_NAME = "[name]"
+
+export type Expression = {
+  /** Display name in the UI. */
+  name: string
+  /** File stem under /public/brand-kit/mascot. */
+  file: string
+  /** One line on when to reach for this face. */
+  usage: string
+}
+
+// The nine expressions the client rendered, ordered warmest to coolest so the
+// grid reads as a range rather than a random sheet.
+export const MASCOT_EXPRESSIONS: Expression[] = [
+  {
+    name: "Salute",
+    file: "salute",
+    usage: "Hello and goodbye — welcome screens, onboarding, sign-offs.",
+  },
+  {
+    name: "Happy",
+    file: "happy",
+    usage: "The default face. Success states, shipped features, good news.",
+  },
+  {
+    name: "Laughing",
+    file: "laughing",
+    usage: "Delight — a playful release note or a community moment.",
+  },
+  {
+    name: "Laughing to tears",
+    file: "laughing-tears",
+    usage: "For when something is genuinely funny. Social, not product UI.",
+  },
+  {
+    name: "Relieved",
+    file: "relieved",
+    usage: "The it-worked-in-the-end face. Recovered errors, resolved incidents.",
+  },
+  {
+    name: "Surprised",
+    file: "surprised",
+    usage: "A reveal or a number that lands. Launches and announcements.",
+  },
+  {
+    name: "Thinking",
+    file: "thinking",
+    usage: "Loading, reasoning, and anything the agent is working through.",
+  },
+  {
+    name: "Sad",
+    file: "sad",
+    usage: "Empty states and things that went wrong. Use sparingly.",
+  },
+  {
+    name: "Annoyed",
+    file: "annoyed",
+    usage: "Rate limits, blocked actions, and firm don'ts. The rarest of the set.",
+  },
+]
+
+export function expressionHref(e: Expression): string {
+  return `/brand-kit/mascot/${e.file}.png`
+}
+
+export const MASCOT_RULES: string[] = [
+  `${MASCOT_NAME} is a character, not a logo. He never stands in for the prism mark or the wordmark.`,
+  "One expression per surface. Repeated down a page he stops reading as a character and starts reading as wallpaper.",
+  "Match the face to the message — the sad one never carries good news.",
+  "Keep him whole and level. No cropping past the base, no tilting, and never recolour the visor bands.",
+]
+
 // --- Co-branding ------------------------------------------------------------
 
 export const COBRAND_NOTES: string[] = [

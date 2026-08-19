@@ -8,13 +8,14 @@ import { BrandKitMisuse } from "@/components/brand-kit/brand-kit-misuse"
 import { BrandKitColor } from "@/components/brand-kit/brand-kit-color"
 import { BrandKitType } from "@/components/brand-kit/brand-kit-type"
 import { BrandKitElements } from "@/components/brand-kit/brand-kit-elements"
+import { BrandKitMascot } from "@/components/brand-kit/brand-kit-mascot"
 import { BrandKitCobranding } from "@/components/brand-kit/brand-kit-cobranding"
 import { MASTER_ZIP } from "@/components/brand-kit/content"
 
 export const metadata: Metadata = {
   title: "Brand & Press Kit",
   description:
-    "Download Prisma logos in every format, with the colours, typography, and guidelines that keep the brand consistent — for partners, integrations, and press.",
+    "Download Prisma logos and mascot art in every format, with the colours, typography, and guidelines that keep the brand consistent — for partners, integrations, and press.",
 }
 
 // The public brand & press kit. Built at /brand-kit so the internal
@@ -31,11 +32,12 @@ export default function BrandKitPage() {
       <BrandKitColor />
       <BrandKitType />
       <BrandKitElements />
+      <BrandKitMascot />
       <BrandKitCobranding />
       <CtaBurst
         headline="Take the whole pack with you"
         headlineMaxWidth="max-w-[20ch]"
-        body="Every logo, in every format, in a single download."
+        body="Every logo and every mascot expression, in a single download."
         bodyMaxWidth="max-w-[40ch]"
         checks={[
           { label: "Seven treatments, SVG / PNG / JPG", color: "text-prism-cyan-500" },

@@ -40,9 +40,10 @@ export function BrandKitHero() {
                 Everything you need to show Prisma.
               </h1>
               <p className="mt-6 max-w-[48ch] text-pretty text-lg leading-relaxed text-muted-foreground">
-                Logos, colours, and the rules that keep them consistent — for
-                partners, integrations, event and podcast banners, and anyone
-                writing about us. Grab the whole pack or a single file.
+                Logos, colours, the mascot, and the rules that keep them
+                consistent — for partners, integrations, event and podcast
+                banners, and anyone writing about us. Grab the whole pack or a
+                single file.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
                 <PrismButton href={MASTER_ZIP} size="lg">
