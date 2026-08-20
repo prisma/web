@@ -48,9 +48,12 @@ export function SidebarViewProvider({ children }: { children: ReactNode }) {
   // ordinary page load that happens to show the top view.
   const focusRequestRef = useRef(false);
 
-  // Any completed navigation re-derives the view from the new URL.
+  // Any completed navigation re-derives the view from the new URL and voids
+  // a pending focus request (the drawer may have auto-closed before any
+  // visible top view consumed it; a later mount must not inherit it).
   useOnChange(pathname, () => {
     setOverride(null);
+    focusRequestRef.current = false;
   });
 
   const value = useMemo(
@@ -120,10 +123,15 @@ function SidebarNavTopView() {
   // Back-button focus handoff: when this view replaces the section view, the
   // pressed button unmounts; keyboard users continue from the first section.
   // Gated on the back-press request so an ordinary page load that shows the
-  // top view does not steal focus.
+  // top view does not steal focus, and on visibility so that of the two
+  // rendered surfaces (desktop aside, mobile drawer) only the one the reader
+  // can see consumes the shared request — the aside is display:none on
+  // mobile but stays mounted.
   useEffect(() => {
+    const container = containerRef.current;
+    if (!container || container.getClientRects().length === 0) return;
     if (!consumeFocusRequest()) return;
-    const first = containerRef.current?.querySelector<HTMLAnchorElement>("a[href]");
+    const first = container.querySelector<HTMLAnchorElement>("a[href]");
     first?.focus({ preventScroll: true });
   }, [consumeFocusRequest]);
 
