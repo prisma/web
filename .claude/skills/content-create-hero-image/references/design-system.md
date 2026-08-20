@@ -92,7 +92,10 @@ Always embed before exporting or sharing.
 ## Layout (canonical 1200×630)
 
 - Uniform **72px** padding; nothing touches the canvas edge.
-- **Kicker** top-left: accent dot (9px) + sentence-case Inter 600 label (~17px). No dash, no caps.
+- **Kicker** top-left: accent dot + sentence-case Inter 600 label — the site's `RoleKicker`
+  treatment (`apps/site/src/components/brand/role-kicker.tsx`: color lives in the dot, label
+  stays ink at 70%). At cover scale: ≥5.5px dot, ≥20px label — or omit it. No dash, no caps,
+  no pill container.
 - **Headline** below: Sora 500, ~56–68px, 1–3 hand-wrapped lines, ink. Emphasis inside a headline
   is the accent color (deep variant if the phrase is small), not a weight change.
 - Optional **one-line subtitle**: Inter 400 ~26px, `#646567`.
@@ -104,7 +107,11 @@ Always embed before exporting or sharing.
 - ≥ 48px between any card and the canvas edge; ≥ 40px between sibling tiles; ≥ 24px padding
   inside cards; ≥ 28px between stacked rows. Verify on the rendered PNG, by measurement.
 
-### Shared anatomy (every cover)
+### Shared anatomy (the default stack — not a law)
+
+The five-part stack below is the *ceiling*, not the formula: the strongest covers often drop
+to two or three parts (a no-copy object + lockup; an atmosphere + one small card; a giant
+numeral + kicker). Drop elements before adding any.
 
 1. **Surface** — white/paper + grain, usually a spectral wash on one edge. Never the old dark
    aurora; never a flat grey.
@@ -116,7 +123,12 @@ Always embed before exporting or sharing.
 
 ### Content modules (pick one per cover)
 
-The module *structures* survive the rebrand; their *skin* is new. Reskin rules:
+**The full component catalog and the article→visual routing live in
+[`component-library.md`](component-library.md)** — families: HeroChart, MetricComponent,
+ComparisonTable, CodeWindow, QueryPanel, ArchitectureFlow, DatabaseObject, PrismObject,
+GradientField, TypeMark. Gradient/light recipes live in
+[`gradient-system.md`](gradient-system.md). The table below defines the house *skin* the
+classic modules take on the light surface:
 
 | Module               | When                                | New-brand skin                                                                                                                                        |
 | -------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |

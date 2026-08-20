@@ -1,9 +1,9 @@
 ---
 name: content-create-hero-image
-description: Use when the operator wants a hero or meta image for a Prisma blog post; asks to create or generate a blog hero, cover, social card, Open Graph, or YouTube image; mentions cover art, a blog thumbnail, cover.svg/hero.svg/meta.png; references content-create-hero-image; or wants to interactively design cover imagery in Prisma's 2026 brand (light paper, prism accents, Sora). Produces an editable SVG hero plus a pixel-exact PNG meta image, and includes an interactive mode and a built-in design-review pass.
+description: Use when the operator wants a hero or meta image for a Prisma blog post; asks to create or generate a blog hero, cover, social card, Open Graph, or YouTube image; mentions cover art, a blog thumbnail, cover.svg/hero.svg/meta.png; references content-create-hero-image; or wants to interactively design cover imagery in Prisma's 2026 brand (light paper, prism accents, Sora). An editorial art-direction system - each cover is derived from the article's core message and strongest visual highlight, routed to a component family (chart, code, table, flow, object, abstract, type) with one light treatment. Produces an editable SVG hero plus a pixel-exact PNG meta image, and includes an interactive mode and a built-in design-review pass.
 metadata:
   author: Prisma
-  version: "2026.8.11"
+  version: "2026.8.20"
 ---
 
 # Create blog hero & meta images
@@ -25,18 +25,22 @@ Use [`README.md`](README.md) for usage and sample prompts; this `SKILL.md` is th
 
 ## References (load on demand)
 
-- [`references/design-system.md`](references/design-system.md) — colors, fonts, layout recipe, the **content-module catalog**, formats, sources. **Read before designing.**
+- [`references/design-system.md`](references/design-system.md) — colors, fonts, layout recipe, formats, sources. **Read before designing.**
+- [`references/component-library.md`](references/component-library.md) — the content component families (chart, table, code, query, flow, object, prism, field, type), the article→visual routing heuristic, and the world-class-cover calibration. **Read before choosing a visual.**
+- [`references/gradient-system.md`](references/gradient-system.md) — the light treatments (wash, bloom, glow, spectrum, edge, beam, mesh, aurora, fade mask) as SVG recipes, plus gradient anti-patterns.
 - [`references/design-review.md`](references/design-review.md) — structured critique (A–F grades, AI-slop list, fix loop), adapted from the gstack `design-review` skill. **Read before the review pass.**
 - [`assets/tokens.json`](assets/tokens.json) — machine-readable tokens; the source of truth for hex/font values.
 - [`references/figma-source.md`](references/figma-source.md) — what `SOCIALS.fig` contains and how it was extracted.
 - [`references/figma-mcp.md`](references/figma-mcp.md) — **optional**: pull live specs/assets from the Prisma Figma workspace when a Figma MCP is connected.
 - [`assets/logos/`](assets/logos/) — official Prisma logo/symbol, Prisma 8 mark + lockup, Postgres/Compute icons (`README.md`).
 - [`assets/fonts/`](assets/fonts/) — bundled brand fonts (Mona Sans, Inter, Geist Mono); used by the scripts.
-- [`assets/templates/cover.svg`](assets/templates/cover.svg) — parameterized starting template.
+- [`assets/templates/`](assets/templates/) — modular starting families (`editorial`, `chart`, `code`, `table`, `flow`, `object`, `abstract`) sharing canvas/typography/token setup but **not** one composition; `cover.svg` is the legacy general-purpose base. Each carries the reusable primitive defs (wash, bloom, spectrum, beam, fade mask, grain).
 - [`assets/examples/`](assets/examples/) — worked hero/meta pairs per content module. **Pre-rebrand (dark Eclipse era): study for composition and module structure ONLY — their palette, fonts, and surfaces are retired.** The current quality bar is the newest committed covers in `apps/blog/public/*/imgs/`.
 - [`assets/hero1.svg`](assets/hero1.svg)–[`hero4.svg`](assets/hero4.svg) — abstract reference heroes, also pre-rebrand; same structure-only caveat.
 - [`scripts/embed-fonts.py`](scripts/embed-fonts.py) — inline the brand fonts into the SVG as base64 `@font-face`. **Run first.**
 - [`scripts/export-png.sh`](scripts/export-png.sh) — render the font-embedded SVG to PNG via headless Chrome so the PNG matches the SVG in a browser exactly. **Run second.**
+- [`scripts/validate-covers.sh`](scripts/validate-covers.sh) — machine-check dimensions/size/fonts/frontmatter for a slug list or `--all`.
+- [`scripts/contact-sheet.sh`](scripts/contact-sheet.sh) — thumbnail contact sheets for batch review.
 
 ## Output contract
 
@@ -132,13 +136,38 @@ reconcile `tokens.json` against the live Eclipse variables, sight the current co
 layout/dimensions, and re-export any stale logos. Read-only — never edit the shared file. If no
 Figma MCP is connected, skip this; the committed assets are the default.
 
-### 1. Read the blog context
+### 1. Read the article and extract its message
 
-Extract: main product, core concept, audience, and intended emotional register (launch /
-educational / conceptual / editorial / technical). Given an `index.mdx`, read the frontmatter
-(`title`, `metaDescription`, `slug`) and the lead paragraph. Given a `prisma/web` PR URL, fetch
-the PR metadata and changed blog files, then design one hero/meta pair per changed post unless the
-operator asks for a single combined cover.
+The cover is driven by the article, never by a template. Do not start from "which layout?" —
+start from "what is the most important idea in this article, and what visual best communicates
+it?" Given an `index.mdx`, read the frontmatter and enough of the body to know what the piece
+actually shows (code, numbers, architecture, story). Given a `prisma/web` PR URL, fetch the PR
+metadata and changed blog files first.
+
+Write down, before any drawing:
+
+- **Primary message** — one sentence: *what should the reader understand after reading this?*
+- **Core highlight** — one concrete idea from the article that can become the visual focus.
+  Prefer, in order: a meaningful result → a surprising comparison → a product capability → a
+  technical mechanism → a meaningful code pattern → an architecture relationship → a memorable
+  conceptual idea. ("Query latency dropped from X to Y" → a chart with Y emphasized; "one
+  expensive query causes most reads" → a query row with the read count highlighted; "this
+  workflow reduces migration to three steps" → a three-stage flow.)
+- Never invent numbers, claims, code, or technical details — everything shown must come from
+  the article or another approved repository source.
+
+Also extract: main product, audience, and emotional register (launch / educational /
+conceptual / editorial / technical).
+
+### 1b. Derive the cover title (separate from the article title)
+
+Never place the full blog title on the image by default — the thumbnail renders directly
+*beside* the real title, and metadata keeps the real title regardless. If text helps, derive a
+short editorial title: **~3–7 words, max two lines**, strong display hierarchy, readable at
+social-preview size, and not a marketing claim ("How we improved Prisma Postgres performance
+for serverless applications" → `Faster Postgres` / `for serverless`). **If the visual already
+communicates the message, no headline is a first-class choice.** Blog frontmatter titles are
+never modified to fit a cover.
 
 ### 2. Gather inputs — interactive or inferred
 
@@ -176,21 +205,35 @@ produce N separate `hero`/`meta` pairs (`hero-a`, `hero-b`, …) and present the
 every "must be present" element and the chosen logo/skew/background; creative direction still
 obeys the anti-patterns and the design-review bar — creative ≠ slop.
 
-### 3. Choose a visual direction
+### 3. Design brief — establish before rendering
 
-Decide a concept that's literal-but-elegant, never generic. Pick: surface (light paper default /
-ink dark only with a stated reason), product accent, kicker label, the **content module** that fits the content (see
-`design-system.md` → _Content modules_: pipeline/flow, data/log panel, terminal, code card,
-comparison card), and whether a product lockup belongs in the composition. Anchor every choice in
-`design-system.md`. One accent, one idea, strong hierarchy, generous space.
+Route the highlight to a **component family** via
+[`references/component-library.md`](references/component-library.md) (HeroChart,
+MetricComponent, ComparisonTable, CodeWindow, QueryPanel, ArchitectureFlow, DatabaseObject,
+PrismObject, GradientField, TypeMark) and pick **one** light treatment from
+[`references/gradient-system.md`](references/gradient-system.md). Surface is light paper by
+default; dark only with a stated reason. Anchor exact values in `design-system.md` /
+`tokens.json`.
 
-Before drawing, write a compact design brief for yourself:
+Write the brief before drawing — every field, explicitly:
 
-- **Message:** the one sentence the cover must communicate.
-- **Metaphor / module:** the concrete visual structure, preferably from the post itself (log,
-  stream, config file, deploy target, image pipeline, chart, …).
-- **Product signal:** the product logo/icon to use, or "Prisma only" if no product owns it.
-- **Output path:** the discovered blog asset path, the example path, or the fallback path.
+- **Core message:** the one sentence from step 1.
+- **Highlight:** the specific fact, mechanism, result, or idea that becomes visually dominant.
+- **Visual metaphor:** the simplest form that communicates it.
+- **Component:** which family carries it (chart, table, code, query panel, flow, object,
+  abstract, type).
+- **Product & accent:** the owning product and its canonical prism accent.
+- **Gradient:** the single light treatment that reinforces the concept — and what that light
+  is *doing* (atmosphere, emphasis, movement, material).
+- **Headline:** the derived cover title from step 1b, or "none".
+- **Empty space:** which area of the canvas stays deliberately open.
+
+**Composition principles:** one dominant visual element, asymmetrical balance, obvious
+hierarchy, large forms, fewer better components — *one idea, one hero, one highlight, plenty
+of space*. Component budget: 1 hero component, 0–1 supporting, 1 gradient treatment, 0–1
+kicker, 0–1 headline, 0–1 brand mark. One obvious focal element the viewer finds in under a
+second; never competing highlights; never fill space because it exists. Simplicity comes from
+editing, not from blandness.
 
 ### 4. Select assets
 
@@ -203,11 +246,13 @@ hex/fonts from `tokens.json`; do not introduce off-system colors, fonts, or stoc
 
 ### 5. Generate the SVG
 
-Copy `assets/templates/cover.svg` and fill the `{{TOKENS}}`, or hand-compose when the graphic is
-the message (e.g. a chart) — keep the layer groups (`background`, `badge`, `headline`, `brand`,
-`chart`) so it stays editable. Hand-wrap the title into 1–3 lines (drop title size to 56px if > 30
-chars). Set the eyebrow/badge pill width to roughly `(label length × 14) + 48`. Include the
-`<title>`/`<desc>` metadata.
+Copy the `assets/templates/` family that matches the brief's component (fall back to
+`cover.svg`), fill the `{{TOKENS}}`, and replace its placeholder module with the real one — or
+hand-compose when the graphic is the message (e.g. a chart). Keep named layer groups
+(`background`, `kicker`, `headline`, `module`, `brand`) so it stays editable, and reuse the
+primitive defs (`wash-*`, `bloom`, `spectrum`, `beam`, `fadeMask`, `grain`) instead of
+duplicating raw gradient stops. Hand-wrap the headline into 1–2 lines. Include the
+`<title>`/`<desc>` metadata (the full post title belongs in `<title>`, not on canvas).
 
 **Fonts (avoid the #1 off-brand bug):** the brand faces are **Sora** (headings/display, weight
 500, emphasis 600 — never 700+), **Inter** (body 400, kicker labels 600), and **Mona Sans Mono**
@@ -243,6 +288,10 @@ Tie any header number to the data it labels, and highlight the "live"/current el
   `<g[^>]*xml:space` and move any hit down onto the individual `<text>` elements.
 - **Long words don't wrap.** SVG `<text>` has no auto-wrap — hand-split into `<tspan>` lines with
   explicit `x`/`dy`.
+- **Gradients on straight lines need `gradientUnits="userSpaceOnUse"`.** An objectBoundingBox
+  gradient (the default) degenerates on a purely horizontal or vertical `<line>`/`<path>` —
+  the stroke silently renders empty. Every gradient beam sets `userSpaceOnUse` with real
+  coordinates.
 - **Centering: avoid `text-anchor="middle"` + `dx`.** For a bold-name + quiet-label pair (e.g.
   `api` / `Hono`), stack two single-run centered lines on the same `x`. Always **measure**
   centering against the rendered PNG — never eyeball the source.
@@ -317,6 +366,23 @@ Insights framed as a GA launch via the kicker dot; one white metric card carries
 restraint keeps it premium and thumbnail-legible.
 ```
 
+## Batch mode (multiple posts)
+
+When covering many posts in one effort, two extra disciplines apply:
+
+1. **Plan distribution first.** Route every post (step 3) *before* drawing any, and balance
+   the family mix — charts, code, tables, flows, typography-led, objects, abstract, query
+   treatments. No family dominates; adjacent/series posts don't share family + layout.
+   Cohesion comes from type, color, surfaces, spacing, and restraint — never one composition.
+2. **Review the set together.** After individual reviews, build contact sheets
+   (`scripts/contact-sheet.sh <out> <meta.png>…` — 24 thumbnails per sheet at the 300px
+   review size) and inspect for: repeated layouts, repeated gradient treatments, covers too
+   dense, covers that don't reflect their article, weak typography or truncation, thumbnail
+   illegibility. Revise the weak or repetitive ones, then re-sheet.
+
+`scripts/validate-covers.sh <blog-app-dir> --all` (or a slug list) machine-checks dimensions,
+size budget, embedded fonts, and frontmatter wiring for every cover.
+
 ## Validation — must pass before finalizing
 
 Visually inspect the rendered PNG, then verify:
@@ -332,6 +398,13 @@ Visually inspect the rendered PNG, then verify:
       has embedded `@font-face` (ran `embed-fonts.py`). Headlines are Sora **500**, sentence case.
 - [ ] One accent, one idea. Clear hierarchy; generous negative space. If a graphic is the message,
       it is centered and uncluttered.
+- [ ] The visual represents the article's **primary message**, and the single dominant highlight
+      is the brief's **core highlight** — no competing highlights, no elements that say nothing
+      about the article.
+- [ ] Exactly **one** gradient/light treatment, and it behaves like light, depth, material, or
+      data emphasis — not decoration (see `gradient-system.md` anti-patterns).
+- [ ] The headline (if any) is the derived cover title (≈3–7 words, ≤2 lines), not the full
+      article title; the article's frontmatter `title` was not modified to fit the cover.
 - [ ] Diagram cards sit ≥ 48px off the canvas edge; arrows are full-length; no node is jammed
       against a wall; every flow ends in a labeled recipient.
 - [ ] Code/snippet text renders its spaces correctly (multi-`tspan` lines carry
@@ -361,6 +434,15 @@ creative and brand traps a checklist can't catch.)
   filenames, and frontmatter fields from recent posts; the documented standard is a fallback.
 - **Generic AI look.** Glows everywhere, faux-3D blobs, busy gradients, literal robots. Prisma
   covers are restrained and typographic. When in doubt, remove an element.
+- **The template-generator look.** Random glowing cards, glassmorphism, meaningless UI, tiny
+  dashboards, fake charts/data/terminal output, decorative floating icons, browser mockups,
+  giant logos as decoration, everything centered, multiple competing components. Final test:
+  *would this still feel art-directed with the logo removed, and does any element fail to
+  communicate something about the article?* Remove what fails.
+- **One repeated layout across a batch.** `headline-left + rounded-card-right` for every post
+  is the failure mode. Across a set of covers keep a healthy distribution of chart, code,
+  table, flow, typography-led, object, abstract, and query treatments; cohesion comes from
+  typography, color, surfaces, spacing, and restraint — not identical composition.
 - **Off-system styling.** Inventing colors, or swapping the Sora + Inter pairing (Mona Sans
   display, Geist Mono, and Barlow are all retired/off-brand).
 - **Reaching for the retired look.** The dark teal aurora surface, Mona Sans 800 headlines,

@@ -19,21 +19,29 @@ cover. Critique the **rendered PNG**, not the SVG source — most defects are in
 
 ## Audit: grade each category A–F
 
+Review at two sizes, always: the full 1200×630 raster AND a ~300px-wide thumbnail (the blog
+grid renders covers ~400px wide beside the post's real title, cropped to ~16:9). A cover that
+only works at full size fails.
+
 Start with a **first-impression gut reaction** (one honest sentence, before analysis: does it
 look premium, or does it look like AI filler?). Then grade:
 
 | #  | Category                    | What to check                                                                                                                                                                             |
 | -- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1  | **Hierarchy & focal point** | One clear focal point; eye lands where intended; eyebrow → headline → support → graphic order reads cleanly.                                                                              |
-| 2  | **Typography**              | Mona Sans (display) / Inter (body) / Geist Mono (data) only — never Barlow or a fallback sans. Emphasis via colour or size, never random weights. Title hand-wrapped, not overflowing.    |
-| 3  | **Colour & contrast**       | Only `tokens.json` values. Text passes a squint legibility test on the dark surface. One accent (teal/indigo), not a rainbow.                                                             |
+| 2  | **Typography**              | Sora 500 (display) / Inter (body, 600 kicker) / Mona Sans Mono (data) only — never Mona Sans display, Geist Mono, Barlow, or a fallback sans. Emphasis via colour or size, never weight. Headline is the short derived cover title (≤2 lines), hand-wrapped, not the article title restated. |
+| 3  | **Colour & contrast**       | Only `tokens.json` values. Text passes a squint legibility test on its surface. One prism accent (cyan/yellow/red by product), not a rainbow.                                             |
 | 4  | **Spacing & alignment**     | Even canvas margins; elements share a grid; consistent padding inside cards; nothing kissing an edge.                                                                                     |
 | 5  | **Composition & balance**   | Left-anchored headline with right-side breathing room (or a single centred graphic). Diagram cards sit ≥ 48px off the canvas edge. Visual weight balanced L↔R.                            |
-| 6  | **Metaphor clarity**        | The diagram tells one true story; arrows connect real nodes; every flow ends in a labelled recipient; header numbers match the data they label.                                           |
+| 6  | **Message fidelity**        | The visual clearly represents the article's primary message; the chosen component (chart/code/table/object/diagram) genuinely relates to the article; the diagram tells one true story; arrows connect real nodes; every flow ends in a labelled recipient. |
 | 7  | **Render fidelity**         | No stripped whitespace in code (`xml:space="preserve"`), no missing-glyph boxes, no fallback fonts, no text overflow or clipping, no overlapping nodes.                                   |
-| 8  | **Thumbnail legibility**    | Still readable shrunk to ~200px wide (the real feed/SERP size). Squint: headline + metaphor survive.                                                                                      |
-| 9  | **Brand correctness**       | Logos intentional, correctly coloured, not stretched, not wallpaper; no `prisma.io/blog` on canvas; product accent correct (Postgres = teal, ORM = indigo, Compute/Next = platform teal). |
+| 8  | **Thumbnail legibility**    | Still readable at ~300px wide (grid/feed size). Squint: the focal point and any headline survive; the highlight is still findable.                                                        |
+| 9  | **Brand correctness**       | Logos intentional, correctly coloured, not stretched, not wallpaper; no `prisma.io/blog` on canvas; product accent correct (ORM/Prisma 8 = prism cyan, Postgres = prism yellow, Compute = prism red). |
 | 10 | **AI-slop check**           | None of the anti-patterns below.                                                                                                                                                          |
+| 11 | **Highlight discipline**    | Exactly one dominant highlight, identifiable in <1s; negative space is deliberate; no element that says nothing about the article.                                                        |
+| 12 | **Gradient quality**        | At most one light treatment, behaving as light/depth/material/data emphasis (`gradient-system.md`) — never decoration; nameable purpose.                                                  |
+| 13 | **Accuracy**                | Every visible number, label, claim, query, and code line is grounded in the source article — nothing invented.                                                                            |
+| 14 | **Editorial quality**       | Would still feel intentionally art-directed with the Prisma logo removed; does not read as a generic generated SaaS card or template output.                                              |
 
 A cover ships at **B or better in every category** — no C-or-lower anywhere.
 
