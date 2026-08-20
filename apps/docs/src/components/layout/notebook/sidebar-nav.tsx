@@ -29,6 +29,8 @@ const SidebarViewContext = createContext<{
   override: SidebarView | null;
   showTop: () => void;
   drillIn: (targetIsCurrentSection: boolean) => void;
+  /** True exactly once after a back-press, so the top view knows to move focus. */
+  consumeFocusRequest: () => boolean;
 } | null>(null);
 
 /**
@@ -41,6 +43,10 @@ const SidebarViewContext = createContext<{
 export function SidebarViewProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [override, setOverride] = useState<SidebarView | null>(null);
+  // Set on back-press only: the top view moves keyboard focus to its first
+  // link when the pressed button unmounts, but must not steal focus on an
+  // ordinary page load that happens to show the top view.
+  const focusRequestRef = useRef(false);
 
   // Any completed navigation re-derives the view from the new URL.
   useOnChange(pathname, () => {
@@ -50,7 +56,15 @@ export function SidebarViewProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       override,
-      showTop: () => setOverride("top"),
+      showTop: () => {
+        focusRequestRef.current = true;
+        setOverride("top");
+      },
+      consumeFocusRequest: () => {
+        const requested = focusRequestRef.current;
+        focusRequestRef.current = false;
+        return requested;
+      },
       // Clicking a section row: flip to the section view immediately ONLY when
       // the target is the section the reader is already in (covers Getting
       // Started on `/`, where no pathname change will arrive). For any other
@@ -78,7 +92,12 @@ function useSidebarView() {
   // section shows that section's tree. 404 (no section) falls back to top.
   const derived: SidebarView = pathname === "/" || root === full ? "top" : "section";
 
-  return { view: ctx.override ?? derived, showTop: ctx.showTop, drillIn: ctx.drillIn };
+  return {
+    view: ctx.override ?? derived,
+    showTop: ctx.showTop,
+    drillIn: ctx.drillIn,
+    consumeFocusRequest: ctx.consumeFocusRequest,
+  };
 }
 
 /** Top-level sections from the page tree, keyed by their index URL. */
@@ -94,16 +113,19 @@ function useSectionTabs(): Map<string, SidebarTab> {
 function SidebarNavTopView() {
   const pathname = usePathname();
   const { prefetch } = useSidebar();
-  const { drillIn } = useSidebarView();
+  const { drillIn, consumeFocusRequest } = useSidebarView();
   const tabsByUrl = useSectionTabs();
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Back-button focus handoff: when this view replaces the section view, the
   // pressed button unmounts; keyboard users continue from the first section.
+  // Gated on the back-press request so an ordinary page load that shows the
+  // top view does not steal focus.
   useEffect(() => {
+    if (!consumeFocusRequest()) return;
     const first = containerRef.current?.querySelector<HTMLAnchorElement>("a[href]");
     first?.focus({ preventScroll: true });
-  }, []);
+  }, [consumeFocusRequest]);
 
   return (
     <div ref={containerRef} className="flex flex-col gap-0.5">
