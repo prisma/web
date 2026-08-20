@@ -51,9 +51,14 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
+    // `data-scroll-behavior` is what lets Next temporarily force
+    // `scroll-behavior: auto` during route transitions. Without it, the
+    // unlayered `html { scroll-behavior: smooth }` in globals.css makes every
+    // client-side navigation *animate* its scroll-to-top instead of snapping.
     <html
       lang="en"
       suppressHydrationWarning
+      data-scroll-behavior="smooth"
       className={`${sora.variable} ${inter.variable}`}
     >
       <body className="antialiased">
