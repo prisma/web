@@ -1,7 +1,10 @@
 # Create blog hero & meta images
 
 Produces an editable **SVG hero** and a **pixel-exact PNG meta** image for a Prisma blog post in
-the Eclipse visual style, using the bundled brand tokens, logos, and fonts. The hero SVG is the
+the 2026 Prisma brand, using the bundled brand tokens, logos, and fonts. It is an **editorial
+art-direction system**: every cover starts from the article's core message and strongest visual
+highlight, which route to a component family (chart, metric, table, code, query, flow, object,
+prism, gradient field, type) with one gradient/light treatment — never from "which template". The hero SVG is the
 source of truth; the PNG is the export, and the meta image is always raster (Open Graph and social
 cards do not render SVG).
 
@@ -46,7 +49,8 @@ both to a durable path.
 
 Covers are a **render → critique → fix** loop. Don't judge the SVG source — judge the raster.
 Critique with [`references/design-review.md`](references/design-review.md) — a structured pass
-(first-impression → 10 categories graded A–F → AI-slop check → worst-first fixes), adapted from
+(first-impression → 14 categories graded A–F at full size AND thumbnail size → AI-slop check →
+worst-first fixes), adapted from
 the [gstack `design-review`](https://awesomeskill.ai/skill/gstack-gstack-design-review) skill.
 Anything below a B is a finding; fix and re-render until every category clears.
 
