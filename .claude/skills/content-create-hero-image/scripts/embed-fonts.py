@@ -46,10 +46,23 @@ def find_fonts_dir(explicit: str | None) -> Path:
 
 
 def used_chars(svg: str) -> str:
-    # collect text inside <text>/<tspan>, ignore markup; add a safe punctuation set
+    # Collect every character that will be rendered, then add a safe punctuation set.
+    #
+    # Flatten nested <tspan>s FIRST. Matching `<text ...>([^<]*)</` alone drops any run
+    # that is followed by a child element rather than a closing tag — e.g. the "10M" in
+    # `<text>10M<tspan>+</tspan></text>`, or every tinted code run. Those glyphs then fall
+    # out of the subset and Chrome silently renders that run in a fallback serif, visible
+    # only in the exported raster.
+    flattened = re.sub(r"</?tspan[^>]*>", "", svg)
     chars = set("0123456789%,/.()-:· ")
-    for m in re.findall(r"<(?:text|tspan)[^>]*>([^<]*)</", svg):
-        chars.update(m)
+    for m in re.findall(r"<text[^>]*>(.*?)</text>", flattened, re.S):
+        chars.update(re.sub(r"<[^>]*>", "", m))
+    # Decode the XML entities that reach the renderer as real glyphs.
+    for entity, ch in (("&amp;", "&"), ("&lt;", "<"), ("&gt;", ">"), ("&quot;", '"'), ("&apos;", "'")):
+        if entity in svg:
+            chars.add(ch)
+    chars.discard("\n")
+    chars.discard("\t")
     return "".join(sorted(chars))
 
 
