@@ -288,6 +288,15 @@ Tie any header number to the data it labels, and highlight the "live"/current el
   `<g[^>]*xml:space` and move any hit down onto the individual `<text>` elements.
 - **Long words don't wrap.** SVG `<text>` has no auto-wrap — hand-split into `<tspan>` lines with
   explicit `x`/`dy`.
+- **A bare `&` makes the whole file unparseable.** An unescaped `&` (in a `<title>`, a label,
+  anything) turns the render into an XML error page — Chrome writes that error page out as
+  your PNG. Escape as `&amp;`; likewise `<` → `&lt;`.
+- **Chrome ignores `text-decoration-color` in SVG.** A strike-through renders in the text
+  color no matter where the style sits, so an accent-colored strike silently comes out grey.
+  Measure the line's ink box (`magick -trim`) and draw an explicit accent `<rect>` instead.
+- **Don't nest the lockup group's transform.** The templates wrap the lockup in
+  `<g id="brand" transform="translate(...)">`; if you paste that wrapper *inside* another
+  positioned group, the transforms compose and the mark lands mid-canvas at the wrong size.
 - **Gradients on straight lines need `gradientUnits="userSpaceOnUse"`.** An objectBoundingBox
   gradient (the default) degenerates on a purely horizontal or vertical `<line>`/`<path>` —
   the stroke silently renders empty. Every gradient beam sets `userSpaceOnUse` with real
