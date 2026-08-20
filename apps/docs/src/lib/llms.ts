@@ -214,8 +214,15 @@ export const llmsSections: LLMsSection[] = [
     slug: "platform",
     title: "Prisma Platform",
     description:
-      "Prisma Console and the Management API for managing projects, environments, and deployments.",
-    prefixes: ["/console", "/management-api"],
+      "Prisma Console and the REST API for managing projects, environments, and deployments.",
+    prefixes: ["/console", "/rest-api"],
+  },
+  {
+    slug: "storage",
+    title: "Prisma Storage",
+    description:
+      "S3-compatible object-store buckets that live inside a Prisma project, with bucket-scoped access keys.",
+    prefixes: ["/storage"],
   },
   {
     slug: "compute",

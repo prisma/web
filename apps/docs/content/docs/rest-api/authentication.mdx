@@ -1,0 +1,194 @@
+---
+title: Authentication
+description: Learn how to authenticate with the Prisma REST API using service tokens or OAuth 2.0
+metaTitle: REST API Authentication | Service Tokens & OAuth 2.0
+metaDescription: 'Authenticate with Prisma REST API: service tokens for scripts and CI/CD, or OAuth 2.0 with PKCE for user-facing apps. Bearer token in Authorization header.'
+url: /rest-api/authentication
+---
+
+The REST API supports two authentication methods:
+
+- **Service Tokens** - Simple bearer tokens for server-to-server integrations
+- **OAuth 2.0** - For user-facing applications requiring user consent
+
+## Service tokens
+
+Service tokens are the simplest way to authenticate. They're ideal for scripts, CI/CD pipelines, and backend services.
+
+### Creating a Service token
+
+1. Navigate to [Prisma Console](https://console.prisma.io) and log in
+2. Select your workspace
+3. Go to **Settings → Service Tokens**
+4. Click **New Service Token**
+5. Copy the generated token immediately and store it securely
+
+### Using a Service token
+
+Include the token in the `Authorization` header:
+
+```bash
+curl -X GET "https://api.prisma.io/v1/workspaces" \
+  -H "Authorization: Bearer your-service-token"
+```
+
+Or with the SDK:
+
+```typescript
+import { createManagementApiClient } from "@prisma/management-api-sdk";
+
+const client = createManagementApiClient({
+  token: "your-service-token",
+});
+```
+
+:::warning[Service tokens never expire]
+
+Service tokens do not have an expiration date. While this provides convenience for long-running integrations, it also means these tokens require careful security management.
+
+:::
+
+## OAuth 2.0
+
+OAuth 2.0 is required for applications that act on behalf of users. The API uses OAuth 2.0 with PKCE for secure authentication.
+
+### PKCE Support
+
+The OAuth implementation supports Proof Key for Code Exchange (PKCE) using the S256 code challenge method:
+
+- **Public clients** (no client secret): PKCE is **mandatory**
+- **Confidential clients** (with client secret): PKCE is **optional**, but if you start the flow with PKCE, it must be completed with PKCE
+
+This provides enhanced security, especially for mobile and single-page applications that cannot securely store client secrets.
+
+### Creating an OAuth Application
+
+1. Navigate to [Prisma Console](https://console.prisma.io) and log in
+2. Click the **Integrations** tab in the left sidebar
+3. Under "Published Applications", click **New Application**
+4. Fill in your application details:
+   - **Name**: Your application name
+   - **Description**: Brief description _(optional)_
+   - **Redirect URI**: Your callback URL (e.g., `https://your-app.com/auth/callback`)
+5. Click **Continue**
+6. Copy your **Client ID** and **Client Secret** immediately
+
+:::note[Development redirect URIs]
+
+For local development, the following redirect URIs are accepted with any port via wildcard matching:
+- `localhost` (e.g., `http://localhost:3000/callback`)
+- `127.0.0.1` (e.g., `http://127.0.0.1:3000/callback`)
+- `[::1]` - IPv6 loopback (e.g., `http://[::1]:3000/callback`)
+
+:::
+
+### OAuth Endpoints
+
+| Endpoint | URL |
+|----------|-----|
+| Authorization | `https://auth.prisma.io/authorize` |
+| Token | `https://auth.prisma.io/token` |
+| Discovery | `https://auth.prisma.io/.well-known/oauth-authorization-server` |
+
+:::tip
+
+The discovery endpoint provides OAuth server metadata that can be used for automatic client configuration. Many OAuth libraries support automatic discovery using this endpoint.
+
+:::
+
+### Available Scopes
+
+| Scope | Description |
+|-------|-------------|
+| `workspace:admin` | Full access to workspace resources |
+| `offline_access` | Enables refresh tokens for long-lived sessions |
+
+### Token Lifetimes
+
+| Token Type | Expiration |
+|-----------|------------|
+| Access tokens | 1 hour |
+| Refresh tokens | 90 days |
+
+### OAuth Authorization Flow
+
+#### 1. Redirect users to authorize
+
+Redirect users to the authorization endpoint with the following query parameters:
+
+| Parameter | Description |
+|-----------|-------------|
+| `client_id` | Your OAuth application's Client ID |
+| `redirect_uri` | The callback URL where users will be redirected after authorization |
+| `response_type` | Must be `code` for the authorization code flow |
+| `scope` | Permissions to request (e.g., `workspace:admin`) |
+
+```
+https://auth.prisma.io/authorize?client_id=$CLIENT_ID&redirect_uri=$REDIRECT_URI&response_type=code&scope=workspace:admin
+```
+
+This will redirect the user to the Prisma authorization page where they can grant your application access to their workspace.
+
+#### 2. Receive the authorization code
+
+After authorization, users are redirected to your callback URL with a `code` parameter:
+
+```
+https://your-app.com/callback?code=abc123...
+```
+
+#### 3. Exchange the code for an access token
+
+```bash
+curl -X POST https://auth.prisma.io/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "client_id=$CLIENT_ID" \
+  -d "client_secret=$CLIENT_SECRET" \
+  -d "code=$CODE" \
+  -d "grant_type=authorization_code" \
+  -d "redirect_uri=$REDIRECT_URI"
+```
+
+The response will include an access token that can be used to make authenticated requests to the REST API:
+
+```json
+{
+  "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "Bearer",
+  "expires_in": 3600
+}
+```
+
+#### 4. Use the access token
+
+```bash
+curl -X GET "https://api.prisma.io/v1/workspaces" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+### Token Refresh
+
+If you requested the `offline_access` scope, you'll receive a refresh token. Use it to obtain new access tokens:
+
+```bash
+curl -X POST https://auth.prisma.io/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "client_id=$CLIENT_ID" \
+  -d "client_secret=$CLIENT_SECRET" \
+  -d "refresh_token=$REFRESH_TOKEN" \
+  -d "grant_type=refresh_token"
+```
+
+:::note[Refresh token rotation]
+
+Refresh tokens use single-use rotation with replay attack detection. When you exchange a refresh token for a new access token, you'll receive a new refresh token in the response. The old refresh token is immediately invalidated. If an invalidated refresh token is used again, it indicates a potential security breach, and the system will revoke all tokens associated with that authorization.
+
+:::
+
+### Using OAuth with the SDK
+
+The SDK handles the OAuth flow automatically. See the [SDK documentation](/rest-api/sdk#oauth-authentication-flow) for implementation details.
+
+## Using API Clients
+
+You can also authenticate using popular API clients like Postman, Insomnia, or Yaak. See the [Using API Clients](/rest-api/api-clients) guide for step-by-step instructions.

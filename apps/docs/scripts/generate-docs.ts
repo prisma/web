@@ -5,7 +5,7 @@ import { readdir, readFile, writeFile, rm, mkdir } from "node:fs/promises";
 import { join, resolve, dirname } from "node:path";
 import fg from "fast-glob";
 
-const OUTPUT_DIR = "content/docs/management-api/endpoints";
+const OUTPUT_DIR = "content/docs/rest-api/endpoints";
 
 function withDescriptionFirst(data: Record<string, unknown>, description: string) {
   const { title, description: _description, ...rest } = data;
@@ -146,8 +146,8 @@ async function main() {
         const normalizedPath = file.path
           .replace(/\\/g, "/")
           .replace(/\.mdx$/, "")
-          .replace(/^management-api\/endpoints\//, "");
-        const url = `/management-api/endpoints/${normalizedPath}`;
+          .replace(/^rest-api\/endpoints\//, "");
+        const url = `/rest-api/endpoints/${normalizedPath}`;
 
         // Capture new URL → relative path mapping (always, not just when changed)
         newUrlToRelPath.set(url, file.path.replace(/\\/g, "/"));
@@ -172,9 +172,9 @@ async function main() {
           typeof operation.description === "string" && operation.description.trim().length > 0
             ? stripEmoji(operation.description.trim())
             : `${operation.method} ${operation.path}.`;
-        const metaDescription = description.startsWith("Management API:")
+        const metaDescription = description.startsWith("REST API:")
           ? description
-          : `Management API: ${description}`;
+          : `REST API: ${description}`;
 
         if (data.description !== description) {
           data.description = description;
@@ -226,8 +226,8 @@ async function main() {
       const tag = url.split("/")[3];
       const tagStillExists = [...newUrlToRelPath.keys()].some((u) => u.split("/")[3] === tag);
       const destination = tagStillExists
-        ? `/docs/management-api/endpoints/${tag}`
-        : "/docs/management-api/endpoints";
+        ? `/docs/rest-api/endpoints/${tag}`
+        : "/docs/rest-api/endpoints";
       return { source: `/docs${url}`, destination };
     });
 
@@ -236,7 +236,7 @@ async function main() {
     // Remove redirects for endpoints that are live again (restored) or that we're about to re-add
     const sourcesToRemove = new Set([
       ...toAdd.map((r) => r.source), // de-dupe before re-inserting
-      ...[...restoredSources].filter((s) => s.includes("/management-api/endpoints/")),
+      ...[...restoredSources].filter((s) => s.includes("/rest-api/endpoints/")),
     ]);
     const { result: cleaned, removed } = removeRedirectLines(raw, sourcesToRemove);
     raw = cleaned;
