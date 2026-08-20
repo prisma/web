@@ -15,7 +15,7 @@ Every command and code sample below was run end to end against a live Prisma Pos
 ## Prerequisites
 
 - [Bun](https://bun.sh/) 1.1 or later (`bun --version`)
-- A PostgreSQL connection string, or nothing at all: the scaffold can create a [Prisma Postgres](/postgres) database for you
+- A PostgreSQL connection string, or nothing at all: `bunx create-db` can create a [Prisma Postgres](/postgres) database for you
 
 ## Use with your agent
 
@@ -26,8 +26,8 @@ Prefer to delegate this guide? Copy the prompt and hand it to your coding agent:
 ```text
 Create a new Bun app with Prisma 8, run a first typed query, and deploy it to Prisma Compute.
 
-1. Scaffold: `bunx create-prisma@next create my-bun-app --template minimal --provider postgres --package-manager bun --prisma-postgres --yes` (or pass `--database-url "<url>"` instead of `--prisma-postgres` if I give you a connection string).
-2. In `my-bun-app`, run `bun run contract:emit`, then `bun run db:init`. If any script fails with `undefined is not an object (evaluating 'db.orm.User.where')`, change `db.orm.User` to `db.orm.public.User` in `src/index.ts`, `src/prisma/seed.ts`, and `src/prisma/users.ts`, then rerun.
+1. Scaffold: `bunx create-prisma@next create my-bun-app --template minimal --provider postgres --package-manager bun --yes`. Then get a database connection string: use the one I give you, or create a Prisma Postgres database with `bunx create-db` and show me the claim URL it prints. Export it as `DATABASE_URL` in the shell and write it to `my-bun-app/.env` for the deploy step; the generated scripts read the environment variable, not `.env`.
+2. In `my-bun-app`, run `bun run contract:emit`, then `bun run db:init`, with `DATABASE_URL` exported.
 3. Replace `src/index.ts` with a script that creates a user and reads all users back via `db.orm.public.User`, following https://www.prisma.io/docs/guides/v8/runtimes/bun.md, and verify `bun run dev` prints the created user.
 4. Add `src/server.ts` with a `Bun.serve` server exposing GET /users, and verify `curl http://localhost:3000/users` returns the users.
 5. Deploy: check `npx @prisma/cli@latest auth whoami`; if I am not signed in, stop and ask me to run `npx @prisma/cli@latest auth login`. Then run `npx @prisma/cli@latest app deploy --create-project my-bun-app --env .env --framework bun --entry src/server.ts` and verify the live URL's /users endpoint.
@@ -45,10 +45,17 @@ Create the project with `create-prisma`. Pick Bun as the package manager when pr
 bunx create-prisma@next create my-bun-app --template minimal --provider postgres --package-manager bun
 ```
 
-When the prompt asks about the database, pick Prisma Postgres to have one created for you, or paste your own `DATABASE_URL`. The scaffold writes the connection string to `.env`, sets up `src/prisma/` with a starter schema, and installs dependencies with Bun.
+Answer the prompts for contract authoring style. The scaffold sets up `src/prisma/` with a starter schema and installs dependencies with Bun.
 
 ```bash
 cd my-bun-app
+```
+
+Next, set the database connection. Use your own PostgreSQL connection string, or create a Prisma Postgres database with `bunx create-db`; it prints a connection string and a claim URL you can open to keep the database. Export the variable, and write it to `.env` for the deploy step later. The generated scripts read the environment variable, not `.env`:
+
+```bash
+export DATABASE_URL="<your connection string>"
+echo "DATABASE_URL=\"$DATABASE_URL\"" > .env
 ```
 
 ## 2. Emit the contract and initialize the database
@@ -71,12 +78,6 @@ If `db:init` reports that the contract file is missing, run `bun run contract:em
 ## 3. Write your first query
 
 Replace `src/index.ts` with a script that creates a user and reads every user back. Model access is namespace-qualified on PostgreSQL: `db.orm.public.User`, where `public` is the default schema.
-
-:::note
-
-The scaffolded `src/index.ts`, `src/prisma/seed.ts`, and `src/prisma/users.ts` still use the older unqualified form `db.orm.User`, which fails under Bun with `TypeError: undefined is not an object (evaluating 'db.orm.User.where')`. Replacing `src/index.ts` below fixes the script you run here; if you also want `bun run db:seed`, update `db.orm.User` to `db.orm.public.User` in the other two files first.
-
-:::
 
 ```ts title="src/index.ts"
 import { db } from "./prisma/db";

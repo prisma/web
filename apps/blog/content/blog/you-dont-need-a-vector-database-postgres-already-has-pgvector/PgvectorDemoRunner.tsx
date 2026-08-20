@@ -43,18 +43,21 @@ model Movie {
   },
   {
     title: "Wire the extension",
-    filename: "prisma-next.config.ts",
+    filename: "prisma.config.ts",
     lang: "typescript",
     source: `import "dotenv/config";
 import pgvector from "@prisma/orm-extension-pgvector/control";
-import { defineConfig } from "@prisma/orm-postgres/config";
+import { defineConfig } from "@prisma/cli-engine";
+import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
 
 export default defineConfig({
-  contract: "./src/prisma/contract.prisma",
-  extensions: [pgvector],
-  db: {
-    connection: process.env.DATABASE_URL!,
-  },
+  orm: ormConfig({
+    contract: "./src/prisma/contract.prisma",
+    extensions: [pgvector],
+    db: {
+      connection: process.env.DATABASE_URL!,
+    },
+  }),
 });`,
     caption:
       "One entry in extensions teaches the CLI, the migration engine, and the query builder what a vector is.",
@@ -64,9 +67,9 @@ export default defineConfig({
     title: "Migrate",
     filename: "terminal",
     lang: "bash",
-    source: `bunx @prisma/cli@next contract emit
-bunx @prisma/cli@next migration plan
-bunx @prisma/cli@next db init`,
+    source: `bunx prisma@next contract emit
+bunx prisma@next migration plan
+bunx prisma@next db init`,
     caption:
       "migration plan copies the pgvector pack's own baseline migration into your repo; db init applies both spaces. You never run CREATE EXTENSION by hand.",
     output: [

@@ -26,10 +26,11 @@ Prefer to delegate? This is the same journey as the prompt on the [getting start
 ```text
 Create a new Hono API with Prisma 8, seed it, and deploy it to Prisma Compute.
 
-1. Scaffold: `npx create-prisma@next create my-app --template hono --provider postgres --prisma-postgres --yes` (or pass `--database-url "<url>"` instead of `--prisma-postgres` if I give you a connection string).
-2. In `my-app`, run `npm run db:init`, then `npm run db:seed`. If seeding fails with `Cannot read properties of undefined (reading 'where')`, change `db.orm.User` to `db.orm.public.User` in `src/prisma/seed.ts` and `src/prisma/users.ts`, then rerun.
-3. Start `npm run dev` in the background and verify `curl http://localhost:3000/users` returns the seeded users.
-4. Deploy: check `npx @prisma/cli@latest auth whoami`; if I am not signed in, stop and ask me to run `npx @prisma/cli@latest auth login`. Then run `npx @prisma/cli@latest app deploy --create-project my-app --env .env` and verify the live URL's /users endpoint with curl.
+1. Scaffold: `npx create-prisma@next create my-app --template hono --provider postgres --yes`.
+2. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Export it as `DATABASE_URL` in the shell and write it to `my-app/.env` for the deploy step; the generated scripts read the environment variable, not `.env`.
+3. In `my-app`, run `npm run db:init`. Sample users are seeded automatically on the app's first query; there is no separate seed script.
+4. Start `npm run dev` in the background (with `DATABASE_URL` exported) and verify `curl http://localhost:3000/users` returns the seeded users.
+5. Deploy: check `npx @prisma/cli@latest auth whoami`; if I am not signed in, stop and ask me to run `npx @prisma/cli@latest auth login`. Then run `npx @prisma/cli@latest app deploy --create-project my-app --env .env` and verify the live URL's /users endpoint with curl.
 
 Use the installed Prisma 8 skills.
 ```
@@ -38,39 +39,46 @@ Use the installed Prisma 8 skills.
 
 ## 1. Scaffold the app
 
-One command creates the app, wires up Prisma 8, and can provision the database:
+One command creates the app and wires up Prisma 8:
 
 ```npm
 npx create-prisma@next create my-app --template hono --provider postgres
 ```
 
-Pick **Prisma Postgres** at the database prompt to have a database created for you, or paste your own connection string. Then enter the project:
+Answer the prompts for contract authoring style and package manager, then enter the project:
 
 ```npm
 cd my-app
 ```
 
-The scaffold writes `DATABASE_URL` to `.env`, generates a Hono server in `src/index.ts` with `GET /` and `GET /users` routes, puts the Prisma 8 setup under `src/prisma/`, and installs [Prisma 8 skills](/ai/tools/skills) for your coding agent. If the database was provisioned without a signed-in CLI, `.env` also contains a `CLAIM_URL`; open it within 24 hours to claim the database into your account and keep it.
+The scaffold generates a Hono server in `src/index.ts` with `GET /` and `GET /users` routes, puts the Prisma 8 setup under `src/prisma/`, and installs [Prisma 8 skills](/ai/tools/skills) for your coding agent.
 
-## 2. Initialize and seed the database
+Next, get a Prisma Postgres connection string. If you don't have one, create a database from the terminal:
 
-`db:init` applies the starter contract to Prisma Postgres and signs the database; `db:seed` inserts sample users:
+```npm
+npx create-db@latest
+```
+
+The command prints a connection string and a claim URL; open the claim URL within 24 hours to keep the database in your account. Export the connection string in the shell you work in, and write it to `.env` for the deploy step later. The generated scripts read the environment variable, not `.env`:
+
+```bash
+export DATABASE_URL="<your connection string>"
+echo "DATABASE_URL=\"$DATABASE_URL\"" > .env
+```
+
+## 2. Initialize the database
+
+`db:init` applies the starter contract to Prisma Postgres and signs the database:
 
 ```npm
 npm run db:init
-npm run db:seed
 ```
 
 ```text no-copy
 "summary": "Applied 5 operation(s) across 1 space(s), database signed"
-Seeded 3 users.
 ```
 
-:::note
-
-Seeing `Cannot read properties of undefined (reading 'where')`? The current template still generates the older unqualified query form. Update `db.orm.User` to `db.orm.public.User` in `src/prisma/seed.ts` and `src/prisma/users.ts`, then rerun `db:seed`.
-
-:::
+Sample users are seeded automatically the first time the app queries the database, so there is no separate seed step.
 
 ## 3. Run it and query your data
 

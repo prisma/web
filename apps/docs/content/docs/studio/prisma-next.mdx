@@ -11,14 +11,14 @@ Prisma Studio shows the migration history of your [Prisma 8](/orm/v8) database a
 
 This guide takes you from an empty directory to inspecting your own migration history. For browsing, editing, and filtering data in general, see [Getting Started](/studio/getting-started).
 
-The Migrations view requires `@prisma/studio-core` 0.32.0 or later, which currently ships in the Prisma CLI's `dev` release. Run Studio with `npx prisma@dev studio`. The Prisma 8 [Release Candidate](/orm/v8) is available.
+The Migrations view requires `@prisma/studio-core` 0.32.0 or later, which ships in the stable Prisma CLI since 7.9. Run Studio with `npx prisma@latest studio`. The Prisma 8 [Release Candidate](/orm/v8) is available.
 
 ## Prerequisites
 
 - [Node.js](https://nodejs.org) installed
 - A Prisma 8 project on PostgreSQL
 
-Create the project and provision a [Prisma Postgres](/postgres) database in one step:
+Create the project:
 
 ```npm
 npm create prisma@next
@@ -27,11 +27,22 @@ npm create prisma@next
 To skip the prompts:
 
 ```npm
-npm create prisma@next -- my-app --yes --provider postgres --authoring psl \
-  --template minimal --prisma-postgres --install --emit
+npm create prisma@next -- my-app --yes --provider postgres --authoring psl --template minimal
 ```
 
-This writes your `DATABASE_URL` into `.env` and scaffolds a [data model](/orm/v8/data-modeling) at `src/prisma/contract.prisma`, authored in [PSL](/orm/v8/contract-authoring/psl-syntax). The database expires after 24 hours unless you claim it. Open the `CLAIM_URL` in `.env` to keep it and attach it to your Prisma Console account.
+This scaffolds a [data model](/orm/v8/data-modeling) at `src/prisma/contract.prisma`, authored in [PSL](/orm/v8/contract-authoring/psl-syntax).
+
+Next, create a [Prisma Postgres](/postgres) database and export its connection string. The generated scripts and the CLI read the environment variable, not `.env`:
+
+```npm
+npx create-db@latest
+```
+
+```bash
+export DATABASE_URL="<the connection string create-db printed>"
+```
+
+The database expires after 24 hours unless you claim it; `create-db` prints a claim URL to keep it and attach it to your Prisma Console account.
 
 ## Apply the first migration
 
@@ -104,28 +115,23 @@ Without a `db` ref and without `--from`, `migration plan` compares against an em
 
 ## Seed the database
 
-Migration history is easier to read next to real rows:
+Migration history is easier to read next to real rows. The scaffold seeds sample users automatically the first time the app queries the database, so run the app once and hit its endpoint:
 
 ```npm
-npm run db:seed
+npm run dev
 ```
 
-The CLI confirms with `Seeded 3 users.` The seed script writes through the Prisma 8 ORM client. See [Writing data](/orm/v8/fundamentals/writing-data) for the API it uses.
-
-:::note[Namespaced ORM access]
-`db.orm` is keyed by namespace first: reach models as `db.orm.public.User`, not `db.orm.User`. If the scaffolded `seed.ts` uses the shorter form, it fails with `TypeError: Cannot read properties of undefined (reading 'where')`. Add the namespace to fix it.
-:::
+Open the URL the command prints; the seeded users come back through the Prisma 8 ORM client. Then stop the dev server. See [Writing data](/orm/v8/fundamentals/writing-data) for the query API.
 
 ## Open Prisma Studio
 
-A Prisma 8 project has no `schema.prisma`, so pass the [connection string](/postgres/database/connecting-to-your-database) with `--url`. Load it from `.env` first:
+A Prisma 8 project has no `schema.prisma`, so pass the [connection string](/postgres/database/connecting-to-your-database) with `--url`. Run Studio from a directory outside the project: the Prisma 7 CLI that ships Studio cannot read the Prisma 8 `prisma.config.ts` and fails if it finds one:
 
 ```bash
-set -a && . ./.env && set +a
-npx prisma@dev studio --url "$DATABASE_URL"
+cd .. && npx prisma@latest studio --url "$DATABASE_URL"
 ```
 
-Studio opens at `http://localhost:5555`. Once the database has at least one applied migration, a **Migrations** item appears in the left navigation.
+Studio prints the local URL it serves on. Once the database has at least one applied migration, a **Migrations** item appears in the left navigation.
 
 :::note[History lives in your database]
 Studio reads migration history from the connected database, not from your local `migrations/` directory. Migrations applied from CI or another machine appear automatically.
@@ -195,13 +201,13 @@ The hashes are the same ones that make Prisma 8 migrations [a graph rather than 
 
 | Surface | Available |
 |---|---|
-| Local Studio (`npx prisma@dev studio`) | Yes, with `@prisma/studio-core` 0.32.0 or later |
+| Local Studio (`npx prisma@latest studio`) | Yes, with `@prisma/studio-core` 0.32.0 or later |
 | [Prisma Console](https://console.prisma.io) (embedded Studio) | Yes, for databases with an applied Prisma 8 migration history |
 | Prisma ORM projects using `prisma migrate` | No |
 
 In Prisma Console, open your database's Studio tab and select **Migrations**. The view is the same as local Studio, the selected migration is part of the Console URL, and no local setup is required.
 
-The stable Prisma CLI (`prisma@latest`) currently bundles an older Studio without the Migrations view. Use `npx prisma@dev studio` until it lands in a stable release.
+The stable Prisma CLI bundles the Migrations view since 7.9 (`@prisma/studio-core` 0.33.0). Run `npx prisma@latest studio` from a directory outside your Prisma 8 project; the Prisma 7 CLI cannot read the Prisma 8 `prisma.config.ts`.
 
 ## Limitations
 
