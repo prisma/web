@@ -315,6 +315,14 @@ old "PNG looks different from the SVG" bug. rsvg/magick are kept only as warned 
 renders at 1x by default; set `SCALE=2` for a supersampled, extra-crisp render. If you edit a
 committed SVG (fonts already embedded), just re-run `export-png.sh`.
 
+**Gotcha — re-embedding is skipped once `@font-face` exists.** `embed-fonts.py` no-ops on an
+SVG that already carries embedded faces, and the embedded faces are **subset to the glyphs the
+SVG had at embed time**. So editing coordinates, sizes, or colors after embedding is safe, but
+**changing or adding text after embedding silently renders the new glyphs in a fallback
+serif** — nothing errors, and it is visible only in the raster. When you change wording after
+embedding, rewrite the SVG from its pre-embed source (or strip the `@font-face` block), then
+re-run embed → export.
+
 ### 7. Save into the repo
 
 Save to a **durable** location, never a temp dir. Resolve in this order:
