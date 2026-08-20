@@ -106,8 +106,6 @@ export type Swatch = {
   rgb: string
   /** Tailwind bg utility for the swatch chip. */
   className: string
-  /** Render the label/copy control in light ink over this swatch? */
-  onDark?: boolean
 }
 
 // The three prism colours at their anchor step (the exact brand values from the
@@ -115,26 +113,17 @@ export type Swatch = {
 export const BRAND_COLORS: Swatch[] = [
   { name: "Prism Cyan", hex: "#01D7E4", rgb: "1, 215, 228", className: "bg-prism-cyan-400" },
   { name: "Prism Yellow", hex: "#F3C306", rgb: "243, 195, 6", className: "bg-prism-yellow-300" },
-  { name: "Prism Red", hex: "#F34A60", rgb: "243, 74, 96", className: "bg-prism-red-500", onDark: true },
+  { name: "Prism Red", hex: "#F34A60", rgb: "243, 74, 96", className: "bg-prism-red-500" },
 ]
 
 export const NEUTRAL_COLORS: Swatch[] = [
-  { name: "Ink", hex: "#121212", rgb: "18, 18, 18", className: "bg-[#121212]", onDark: true },
+  { name: "Ink", hex: "#121212", rgb: "18, 18, 18", className: "bg-[#121212]" },
   { name: "Paper", hex: "#FFFFFF", rgb: "255, 255, 255", className: "bg-white" },
 ]
 
-// --- Misuse -----------------------------------------------------------------
-
-export type Dont = { title: string; detail: string }
-
-export const LOGO_DONTS: Dont[] = [
-  { title: "Don't recolour", detail: "Keep the brand colours. Never swap the palette or tint the mark." },
-  { title: "Don't distort", detail: "Scale proportionally. Never stretch, squash, or skew." },
-  { title: "Don't rotate", detail: "The lockup is always level. Never tilt or set it on an angle." },
-  { title: "Don't add effects", detail: "No shadows, glows, gradients, or outlines on the logo." },
-  { title: "Don't crowd it", detail: "Respect the clear space. Keep type, edges, and other marks out." },
-  { title: "Don't place on busy backgrounds", detail: "Use a treatment with enough contrast. Never on low-contrast imagery." },
-]
+// Misuse copy is not here: each don't ships with a visual of the exact
+// mistake, so the strings live next to the CSS that produces them in
+// brand-kit-misuse.tsx rather than being split across two files.
 
 // --- Mascot -----------------------------------------------------------------
 

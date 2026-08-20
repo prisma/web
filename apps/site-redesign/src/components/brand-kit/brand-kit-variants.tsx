@@ -48,6 +48,10 @@ export function BrandKitVariants() {
                       key={format}
                       href={assetHref(v, format)}
                       download
+                      // Seven cards × four formats = 28 links whose visible
+                      // text is just the format. Name the treatment too, or
+                      // they're all identical in a screen reader's link list.
+                      aria-label={`Download the ${v.name.toLowerCase()} logo as ${FORMAT_LABELS[format]}`}
                       className="inline-flex items-center gap-1.5 rounded-md border border-black/[0.08] px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:border-black/20 hover:bg-black/[0.03]"
                     >
                       <Download className="size-3.5" aria-hidden />

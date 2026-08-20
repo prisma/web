@@ -52,7 +52,7 @@ export function BrandKitMascot() {
               alt={`The Prisma mascot, ${MASCOT_NAME}, smiling`}
               width={1254}
               height={1254}
-              sizes="(min-width: 1024px) 20rem, 60vw"
+              sizes="16rem"
               className="relative w-56 max-w-full drop-shadow-[0_10px_16px_rgba(21,21,21,0.18)] sm:w-64"
             />
           </Reveal>
@@ -91,11 +91,10 @@ export function BrandKitMascot() {
               <div className="flex h-44 items-center justify-center bg-white">
                 <Image
                   src={expressionHref(e)}
-                  alt={`The Prisma mascot — ${e.name.toLowerCase()}`}
+                  alt={`${MASCOT_NAME} — ${e.name.toLowerCase()}`}
                   width={1254}
                   height={1254}
-                  loading="lazy"
-                  sizes="(min-width: 1024px) 10rem, (min-width: 640px) 20vw, 40vw"
+                  sizes="8rem"
                   className="h-32 w-32 object-contain"
                 />
               </div>
@@ -106,6 +105,10 @@ export function BrandKitMascot() {
                   <a
                     href={expressionHref(e)}
                     download
+                    // Nine cards each with a link reading only "PNG": without
+                    // this the whole set is indistinguishable in a screen
+                    // reader's link list.
+                    aria-label={`Download the ${e.name.toLowerCase()} PNG`}
                     className="inline-flex items-center gap-1.5 rounded-md border border-black/[0.08] px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:border-black/20 hover:bg-black/[0.03]"
                   >
                     <Download className="size-3.5" aria-hidden />
