@@ -138,9 +138,9 @@ export const LOGO_DONTS: Dont[] = [
 
 // --- Mascot -----------------------------------------------------------------
 
-// TBC — the mascot has no name yet. It is written as `[name]` everywhere it
-// appears so naming him later is a single change here.
-export const MASCOT_NAME = "[name]"
+// Named by the client 2026-08-19. Held as a constant because the name appears
+// in the heading, the subhead, and the usage rules.
+export const MASCOT_NAME = "Prismo"
 
 export type Expression = {
   /** Display name in the UI. */
