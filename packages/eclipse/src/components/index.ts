@@ -126,9 +126,21 @@ export { Checkbox } from "./checkbox";
 
 export { RadioGroup, RadioGroupItem } from "./radio-group";
 export { Spinner } from "./spinner";
-export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent } from "./card";
+export {
+  Card,
+  CardHeader,
+  CardFooter,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "./card";
 
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "./tooltip";
+export {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from "./tooltip";
 
 export { TooltipExample } from "./tooltip-example";
 export {
@@ -166,3 +178,16 @@ export {
   EmptyContent,
   EmptyMedia,
 } from "./empty";
+
+export {
+  DatePicker,
+  DatePickerSingle,
+  DatePickerRange,
+  createDateRangePresets,
+  createDateRangePreset,
+  getLastNDays,
+  getCurrentMonth,
+  getPreviousMonth,
+} from "./date-picker";
+export type { DatePickerProps } from "./date-picker";
+export type { DateRange } from "./date-picker";
