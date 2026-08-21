@@ -34,7 +34,7 @@ export const journeySteps: JourneyStep[] = [
     caption:
       "One command creates the application, provisions a Prisma Postgres database, sets up Prisma 8, and configures the project for Prisma Compute. Nothing to wire together by hand.",
     lang: "bash",
-    code: `$ npm create prisma@next
+    code: `$ npm create prisma@latest
 
 ✔ Framework · Hono
 ✔ ORM       · Prisma 8
