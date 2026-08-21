@@ -34,7 +34,7 @@ export const metadata = createPageMetadata({
   ogImage: "/og/og-stack.png",
 });
 
-const SCAFFOLD_COMMAND = "npm create prisma@next";
+const SCAFFOLD_COMMAND = "npm create prisma@latest";
 
 const stackStructuredData = [
   createSoftwareApplicationStructuredData({
