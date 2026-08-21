@@ -122,7 +122,7 @@ Now, create a `prisma.config.ts` file in the root of your project:
 
 ```typescript title="prisma.config.ts"
 import "dotenv/config";
-import { defineConfig, env } from "prisma/config";
+import { defineConfig } from "prisma/config";
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
@@ -130,7 +130,7 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: env("DATABASE_URL"),
+    url: process.env["DATABASE_URL"],
   },
 });
 ```
@@ -198,8 +198,25 @@ Update the `package.json` scripts to include commands for running the server and
 "scripts": {
   "test": "echo \"Error: no test specified\" && exit 1", // [!code --]
   "dev": "node index.js", // [!code ++]
-  "db:deploy": "npx prisma migrate deploy && npx prisma generate" // [!code ++]
+  "db:generate": "npx prisma generate", // [!code ++]
+  "db:deploy": "npx prisma migrate deploy" // [!code ++]
 }
+```
+
+Add the generated Prisma Client output to `.gitignore` and `.dockerignore`. The client is generated during the Docker image build, so it does not need to be committed or sent as part of the Docker build context:
+
+```text title=".gitignore"
+node_modules
+generated
+.env
+.env.*
+```
+
+```text title=".dockerignore"
+node_modules
+generated
+.env
+.env.*
 ```
 
 Now that the application is set up, let's move on to configuring a PostgreSQL database using Docker Compose.
@@ -337,9 +354,14 @@ COPY package.json package-lock.json ./
 
 RUN npm ci
 
+COPY prisma ./prisma
+COPY prisma.config.ts ./
+
+RUN npm run db:generate
+
 COPY . .
 
-CMD ["sh", "-c", "npm run db:deploy && npm run dev"]
+CMD ["npm", "run", "dev"]
 ```
 
 :::note
@@ -372,10 +394,21 @@ COPY package.json package-lock.json ./
 
 RUN npm ci
 
+COPY prisma ./prisma
+COPY prisma.config.ts ./
+
+RUN npm run db:generate
+
 COPY . .
 
-CMD ["sh", "-c", "npm run db:deploy && npm run dev"]
+CMD ["npm", "run", "dev"]
 ```
+
+:::tip[Production migrations]
+
+Generate Prisma Client during the Docker image build, but run `prisma migrate deploy` separately from the long-running application container. In production, this is usually a CI/CD release step or a one-off job that runs before the new application version starts. Avoid running `migrate deploy` in the Dockerfile build because the build should not need access to your production database.
+
+:::
 
 Related Docker images:
 
@@ -455,10 +488,13 @@ DATABASE_URL="postgresql://postgres:prisma@postgres_db:5432/postgres?schema=publ
 
 ### 3.4. Build and run the application
 
-With everything set up, it's time to build and run the app using Docker Compose. Run the following command:
+With everything set up, build the app image, start PostgreSQL, apply pending migrations once, and then start the app:
 
 ```bash
-docker compose -f docker-compose.yml up --build -d
+docker compose -f docker-compose.yml build
+docker compose -f docker-compose.yml up -d postgres_db
+docker compose -f docker-compose.yml run --rm server npm run db:deploy
+docker compose -f docker-compose.yml up -d server
 ```
 
 Visit `http://localhost:3000` to see your app running with the message:

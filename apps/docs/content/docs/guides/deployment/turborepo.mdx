@@ -130,7 +130,7 @@ The `prisma.config.ts` file created in the `packages/database` directory should 
 
 ```typescript title="packages/database/prisma.config.ts"
 import "dotenv/config";
-import { defineConfig, env } from "prisma/config";
+import { defineConfig } from "prisma/config";
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
@@ -138,14 +138,14 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: env("DATABASE_URL"),
+    url: process.env["DATABASE_URL"],
   },
 });
 ```
 
 :::warning
 
-It is recommended to add `packages/database/generated` to your root `.gitignore` because generated Prisma Client code is a build artifact that can be recreated with `db:generate`.
+It is recommended to add `packages/database/generated` to your root `.gitignore` because generated Prisma Client code is a build artifact that can be recreated with `db:generate`. If you build apps from this monorepo with Docker, add the same path to `.dockerignore` and run `db:generate` during the image build instead of copying generated files from your host machine.
 
 :::
 
@@ -305,6 +305,8 @@ If you're not using a bundler, use the [Compiled Packages](https://turborepo.dev
 ```
 
 By completing these steps, you'll make the Prisma types and `PrismaClient` instance accessible throughout the monorepo.
+
+Export Prisma Client from the workspace package (`@repo/db`) and import that package from apps. Avoid importing the generated client with a relative path from another workspace, because that couples apps to the database package's internal folder layout and makes Docker build contexts harder to keep minimal.
 
 ## 3. Import the `database` package in the web app
 
