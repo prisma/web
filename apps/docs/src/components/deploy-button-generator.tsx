@@ -103,6 +103,7 @@ function Field({
         className={fieldClassName}
         placeholder={placeholder}
         value={value}
+        required={!optional}
         aria-invalid={!valid}
         aria-describedby={valid ? undefined : hintId}
         onChange={(event) => onChange(event.target.value)}
@@ -198,8 +199,7 @@ export function DeployButtonGenerator() {
       ) : (
         <p className="text-sm text-fd-muted-foreground">
           Enter your repository's GitHub URL to generate the button. The repository must be public
-          and contain a supported <code>prisma-composer.config.*</code> and <code>module.*</code> at
-          its root.
+          and contain a Composer config and module at its root.
         </p>
       )}
     </div>
