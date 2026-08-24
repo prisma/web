@@ -1,19 +1,7 @@
 "use client";
 
-import {
-  Component,
-  createRef,
-  useEffect,
-  useRef,
-  useState,
-  type RefObject,
-} from "react";
-import {
-  InnerLine,
-  Pre,
-  type AnnotationHandler,
-  type HighlightedCode,
-} from "codehike/code";
+import { Component, createRef, useEffect, useRef, useState, type RefObject } from "react";
+import { InnerLine, Pre, type AnnotationHandler, type HighlightedCode } from "codehike/code";
 import {
   calculateTransitions,
   getStartingSnapshot,
@@ -21,13 +9,7 @@ import {
 } from "codehike/utils/token-transitions";
 import { Pause, Play } from "lucide-react";
 
-type Phase =
-  | "idle"
-  | "typing"
-  | "thinking"
-  | "morphing"
-  | "running"
-  | "settled";
+type Phase = "idle" | "typing" | "thinking" | "morphing" | "running" | "settled";
 
 const TYPE_CHAR_MS = 45;
 const PAUSE_AFTER_TYPING_MS = 900;
@@ -125,10 +107,9 @@ export function AgentPromptClient({
       setInView(true);
       return;
     }
-    const obs = new IntersectionObserver(
-      ([entry]) => setInView(entry.isIntersecting),
-      { threshold: 0.25 },
-    );
+    const obs = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting), {
+      threshold: 0.25,
+    });
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
@@ -210,19 +191,13 @@ export function AgentPromptClient({
       : undefined;
 
   return (
-    <div
-      ref={containerRef}
-      className="agent-prompt not-prose"
-      data-phase={phase}
-    >
+    <div ref={containerRef} className="agent-prompt not-prose" data-phase={phase}>
       <div className="agent-prompt-bubble">
         <span className="agent-prompt-tag">You</span>
         <p className="agent-prompt-text">
           <span className="agent-prompt-text-visible">
             {typed}
-            {phase === "typing" ? (
-              <span className="agent-prompt-caret" aria-hidden="true" />
-            ) : null}
+            {phase === "typing" ? <span className="agent-prompt-caret" aria-hidden="true" /> : null}
           </span>
           <span className="agent-prompt-text-ghost" aria-hidden="true">
             {prompt}
@@ -289,17 +264,12 @@ export function AgentPromptClient({
               </button>
             ) : null}
           </div>
-          <div
-            className="agent-prompt-terminal-body"
-            style={terminalBodyStyle}
-          >
+          <div className="agent-prompt-terminal-body" style={terminalBodyStyle}>
             {hasTerminalCommand ? (
               <div className="agent-prompt-terminal-line agent-prompt-terminal-cmd agent-prompt-terminal-cmd-leading">
                 <span className="agent-prompt-terminal-prefix">$</span>
                 <span>
-                  {terminalCmdTyped ||
-                  phase === "settled" ||
-                  terminalVisibleLines > 0
+                  {terminalCmdTyped || phase === "settled" || terminalVisibleLines > 0
                     ? terminalCommand
                     : ""}
                   {phase === "running" && !terminalCmdTyped ? (

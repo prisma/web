@@ -12,8 +12,8 @@ export const BlogShare = ({ desc }: { desc: string }) => {
   const pathname = usePathname();
 
   return (
-    <div className="w-fit mx-auto">
-      <h5 className="text-center mb-4 font-semibold text-background-default-reverse">
+    <div className="mx-auto w-fit pb-4">
+      <h5 className="type-heading-2xs mb-4 text-center text-foreground-neutral-weak">
         Share this article
       </h5>
       <div className="flex justify-start gap-2 md:max-w-[190px]">
@@ -30,8 +30,10 @@ export const BlogShare = ({ desc }: { desc: string }) => {
                     target="_blank"
                     rel="noopener"
                     aria-label={socialLink.title}
+                    // Muted at rest, full ink on hover — the share row is a
+                    // quiet utility, not an accent.
                     className={cn(
-                      "text-[1.375rem] transition-colors hover:[&>div]:bg-background-ppg-strong",
+                      "text-[1.375rem] transition-colors hover:[&>div]:bg-background-neutral hover:[&_i]:text-foreground-neutral",
                     )}
                   >
                     <Action color="neutral" size="2xl">
@@ -58,7 +60,7 @@ export const BlogShare = ({ desc }: { desc: string }) => {
                       }, 500);
                       navigator.clipboard.writeText(`https://prisma.io/blog${pathname}`);
                     }}
-                    className="text-[1.375rem] transition-colors hover:bg-background-ppg-strong cursor-pointer"
+                    className="cursor-pointer text-[1.375rem] transition-colors hover:bg-background-neutral hover:[&_i]:text-foreground-neutral"
                   >
                     <i
                       className={`${socialLink.icon} text-current text-foreground-neutral-weak transition-colors`}

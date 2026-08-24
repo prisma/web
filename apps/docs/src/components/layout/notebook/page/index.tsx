@@ -230,7 +230,10 @@ export function DocsDescription({ children, className, ...props }: ComponentProp
 
 export function DocsTitle({ children, className, ...props }: ComponentProps<"h1">) {
   return (
-    <h1 {...props} className={cn("text-[1.75em] font-semibold", className)}>
+    // `font-medium` rather than `font-semibold`: the unlayered global heading
+    // rule pins every h1..h6 to Sora 500, so the class now states what renders.
+    // CF headline scale — pages open big, with balanced wrapping.
+    <h1 {...props} className={cn("text-4xl/[1.15] font-medium text-balance", className)}>
       {children}
     </h1>
   );

@@ -1,105 +1,159 @@
-import { EcosystemGrid } from "@/components/ecosystem/grid";
+import type { Metadata } from "next";
+import { ArrowRight } from "@/components/icons/forma";
+import { RoleKicker } from "@/components/brand/role-kicker";
+import { Texture } from "@/components/brand/texture";
+import { PrismButton } from "@/components/brand/prism-button";
+import ecosystem from "@/data/ecosystem.json";
 
-import { createPageMetadata } from "@/lib/page-metadata";
-import { Button } from "@prisma/eclipse";
-import { CopyCode } from "@/components/homepage/copy-btn";
-import LogoParade from "@prisma-docs/ui/components/logo-parade";
-import React from "react";
-import { Bento } from "@/components/homepage/bento";
-import { CardSection } from "@/components/homepage/card-section/card-section";
-import review from "../../data/homepage.json";
-import Testimonials from "../../components/homepage/testimonials";
+const PAGE_TITLE = "Prisma ORM Ecosystem";
+const PAGE_DESCRIPTION =
+  "Explore the variety of tools (from generators, to middleware, to CLIs) created by the Prisma community.";
 
-const twoCol = [
-  {
-    content: (
-      <>
-        <h2 className="text-foreground-neutral stretch-display text-4xl font-black! font-sans-display mt-0 mb-4">
-          Postgres that <br /> fits your stack.
-        </h2>
-        <p className="text-foreground-neutral-weak! text-base">
-          Works with your existing stack, wherever you deploy. Connect your choice of ORM,
-          frameworks, and tools.
-        </p>
-      </>
-    ),
-    imageUrl: null,
-    imageAlt: null,
-    mobileImageUrl: null,
-    mobileImageAlt: null,
-    logos: null,
-    useDefaultLogos: true,
-    visualPosition: "right" as const,
-    visualType: "logoGrid" as const,
+export const metadata: Metadata = {
+  title: { absolute: PAGE_TITLE },
+  description: PAGE_DESCRIPTION,
+  alternates: {
+    canonical: "/ecosystem",
   },
-  {
-    content: (
-      <>
-        <h2 className="text-foreground-neutral stretch-display text-4xl font-black! font-sans-display mt-0 mb-4">
-          Real Postgres. <br /> Better experience.
-        </h2>
-        <p className="text-foreground-neutral-weak! text-base">
-          The PostgreSQL millions know and trust in production, ready quickly without manual
-          configuration. Includes automatic backups, observability, and compliance.
-        </p>
-      </>
-    ),
-    imageUrl: "/illustrations/homepage/real_ppg.png",
-    imageAlt: "Real Postgres",
-    mobileImageUrl: "/illustrations/homepage/real_ppg.png",
-    mobileImageAlt: "Real PPG mobile",
-    logos: null,
-    useDefaultLogos: false,
-    visualPosition: "left" as const,
-    visualType: "image" as const,
+  openGraph: {
+    title: PAGE_TITLE,
+    description: PAGE_DESCRIPTION,
+    url: "/ecosystem",
+    siteName: "Prisma",
+    locale: "en_US",
+    type: "website",
+    images: [{ url: "/og/og-ecosystem.png" }],
   },
-];
-export const metadata = createPageMetadata({
-  title: "Prisma ORM Ecosystem",
-  description:
-    "Explore the variety of tools (from generators, to middleware, to CLIs) created by the Prisma community.",
-  path: "/ecosystem",
-  ogImage: "/og/og-ecosystem.png",
-});
+  twitter: {
+    card: "summary_large_image",
+    site: "@prisma",
+    creator: "@prisma",
+    title: PAGE_TITLE,
+    description: PAGE_DESCRIPTION,
+    images: ["/og/og-ecosystem.png"],
+  },
+};
 
-export default function SiteHome() {
+type EcosystemPackage = {
+  name: string;
+  description: string;
+  npmUrl: string;
+  packageName: string;
+  githubRepo: string;
+  type: string;
+};
+
+const CATEGORIES = [
+  { type: "generator", label: "Generators" },
+  { type: "middleware", label: "Middleware" },
+  { type: "other", label: "Other" },
+] as const;
+
+const packages = ecosystem.list as EcosystemPackage[];
+
+function PackageCard({ pkg }: { pkg: EcosystemPackage }) {
   return (
-    <main className="flex-1 w-full z-1 bg-background-default">
-      <div className="hero -mt-24 flex items-end justify-center px-4 relative pt-24">
-        <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20" />
-        <div className="content pt-31 relative z-2 my-12 flex flex-col gap-8">
-          <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
-            Prisma Ecosystem
-          </h1>
-          <p className="text-center text-foreground-neutral max-w-2xl mx-auto">
-            Explore the wide variety of tools created by the Prisma community.
-          </p>
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
-            <Button asChild variant="orm" size="3xl" className="font-sans-display! font-[650]">
-              <a
-                href="https://pris.ly/submit-your-package"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Submit your package
-                <i className="fa-regular fa-envelope" />
-              </a>
-            </Button>
+    <div className="flex flex-col gap-3 rounded-2xl border border-black/[0.06] bg-white p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04)]">
+      <h3 className="break-words text-lg leading-snug">{pkg.name}</h3>
+      <p className="text-sm leading-relaxed text-muted-foreground">{pkg.description}</p>
+      <div className="mt-auto flex flex-wrap gap-x-6 gap-y-2 pt-2">
+        <a
+          href={pkg.npmUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group flex items-center gap-1.5 text-sm font-semibold text-foreground transition-colors hover:text-prism-cyan-700"
+        >
+          View on npm
+          <ArrowRight
+            className="size-4 transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transition-none"
+            aria-hidden
+          />
+        </a>
+        <a
+          href={`https://github.com/${pkg.githubRepo}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group flex items-center gap-1.5 text-sm font-semibold text-foreground transition-colors hover:text-prism-cyan-700"
+        >
+          GitHub
+          <ArrowRight
+            className="size-4 transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transition-none"
+            aria-hidden
+          />
+        </a>
+      </div>
+    </div>
+  );
+}
+
+export default function EcosystemPage() {
+  return (
+    <>
+      <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
+        <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-[16rem] overflow-hidden"
+          >
+            <div
+              className="absolute -bottom-1/2 left-1/2 h-full w-[140%] -translate-x-1/2"
+              style={{
+                background:
+                  "radial-gradient(52% 60% at 50% 100%, color-mix(in srgb, var(--color-prism-cyan-400) 16%, transparent), transparent 70%)",
+              }}
+            />
+            <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-t from-transparent to-white" />
+          </div>
+          <Texture opacity={0.06} blend="multiply" />
+          <div className="relative px-4 sm:px-8">
+            <div className="mx-auto flex max-w-site flex-col items-center pb-14 pt-32 text-center md:pb-16 md:pt-44">
+              <RoleKicker color="bg-prism-cyan-400" className="justify-center">
+                Ecosystem
+              </RoleKicker>
+              <h1 className="isolate mt-4 max-w-[20ch] text-balance text-[clamp(2.5rem,4vw,3.5rem)] leading-[1.06]">
+                Prisma ecosystem
+              </h1>
+              <p className="mt-6 max-w-[48ch] text-pretty text-lg leading-relaxed text-muted-foreground">
+                Explore the wide variety of tools created by the Prisma community.
+              </p>
+              <div className="mt-8">
+                <PrismButton href="https://pris.ly/submit-your-package">
+                  Submit your package
+                </PrismButton>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-      <div className="my-12 px-4">
-        <div className="py-12 flex flex-col gap-6 max-w-[1200px] mx-auto">
-          <h2 className="text-foreground-neutral stretch-display text-center text-4xl font-black! font-sans-display my-0">
+      </section>
+
+      <section className="bg-white px-4 py-16 pb-24 sm:px-8 sm:pb-32">
+        <div className="mx-auto max-w-site">
+          <h2 className="mx-auto max-w-[28ch] text-balance text-center text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
             Dedicated ORM support options
           </h2>
-          <p className="text-center text-foreground-neutral max-w-xl mx-auto">
+          <p className="mx-auto mt-4 max-w-[56ch] text-center text-[0.9375rem] leading-relaxed text-muted-foreground">
             Focus on core competencies of your team, rather than building and managing complex
             infrastructure components.
           </p>
-          <EcosystemGrid />
+
+          <div className="mt-14 flex flex-col gap-14">
+            {CATEGORIES.map((category) => (
+              <div key={category.type}>
+                <h3 className="text-[clamp(1.375rem,2vw,1.75rem)] leading-[1.15]">
+                  {category.label}
+                </h3>
+                <div className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+                  {packages
+                    .filter((pkg) => pkg.type === category.type)
+                    .map((pkg) => (
+                      <PackageCard key={pkg.name} pkg={pkg} />
+                    ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
-    </main>
+      </section>
+    </>
   );
 }
