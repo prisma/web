@@ -2,6 +2,7 @@ import defaultMdxComponents from "fumadocs-ui/mdx";
 import { Youtube } from "@prisma-docs/ui/components/youtube";
 import { APIPage } from "@/components/api-page";
 import { ConceptAnimation } from "@/components/concept-animation";
+import { DeployButtonGenerator } from "@/components/deploy-button-generator";
 import {
   AgentPrompt,
   CliCallout,
@@ -125,6 +126,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     Bucket: BucketIcon,
     CliCallout,
     ConceptAnimation,
+    DeployButtonGenerator,
     IconGrid,
     IconLink,
     ModalRow,
