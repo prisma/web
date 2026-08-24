@@ -10,13 +10,13 @@ metaDescription: Work with Prisma Object Store buckets locally. Composer dev pro
 
 ## Local buckets with `composer dev`
 
-Apps deploy to Compute as [Prisma Composer](/composer) apps, and `composer dev` provisions a local stand-in bucket with working credentials, so upload code runs locally without an account or cloud credentials. Declare the bucket as a dependency and the service receives `{ url, bucket, accessKeyId, secretAccessKey }` at load time, the standard S3 config set, whether the bucket is local or hosted. See [Object storage in Composer](/composer/object-storage) and [Local development in Composer](/composer/local-development).
+Apps deploy to Compute as [Prisma Composer](/composer) apps, and `composer dev` provisions a local stand-in bucket with working credentials, so upload code runs locally without an account or cloud credentials. Declare the bucket as a dependency and the service receives `{ url, bucket, accessKeyId, secretAccessKey }` from `service.load()`, the standard S3 config set, whether the bucket is local or hosted. Those four values are what your S3 client needs: pass them as its endpoint, bucket name, and credentials rather than reading them from environment variables. See [Object storage in Composer](/composer/object-storage) and [Local development in Composer](/composer/local-development).
 
 You can also develop against a hosted bucket directly: create one with the [`bucket` CLI commands](/cli/v8/bucket) and mint a scoped access key. The key's credentials work from your machine during development the same way they work from a deployment.
 
 ## S3-compatible clients on Compute
 
-Any S3 client or SDK works with buckets. Two examples cover most apps.
+Any S3 client or SDK works with buckets. The examples below use direct access-key configuration through environment variables, the shape that fits a hosted bucket with a minted key. In a Composer service, feed the client the values from `load()` instead; the client setup is otherwise identical.
 
 ### Bun's built-in S3 client
 
@@ -33,7 +33,7 @@ const url = Bun.s3.file("uploads/hello.txt").presign({ expiresIn: 3600 });
 
 ### AWS SDK (`@aws-sdk/client-s3`)
 
-If your app already uses the AWS SDK, point it at the bucket's endpoint and credentials. These are the same four values Bun reads from the environment, whether they come from a minted access key or a Composer stand-in bucket:
+If your app already uses the AWS SDK, point it at the bucket's endpoint and credentials. These are the same four values Bun reads from the environment; in a Composer service they arrive through `load()` and slot into the same fields:
 
 ```ts title="src/storage.ts"
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
