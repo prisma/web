@@ -7,7 +7,6 @@
  * matching section is skipped with a dev-time warning.
  */
 import type { ReactNode } from "react";
-import { Laptop } from "lucide-react";
 
 export interface SidebarSectionGroup {
   /** Group heading rendered above the sections; null renders no heading. */
@@ -23,11 +22,15 @@ export interface SidebarSectionGroup {
 export const sidebarSectionGroups: SidebarSectionGroup[] = [
   {
     heading: "Start",
-    sections: [{ url: "/" }, { url: "/prisma-compute/deploy", title: "Build your first app" }],
+    sections: [
+      { url: "/" },
+      { url: "/prisma-compute/deploy", title: "Deploy your first app" },
+      { url: "/full-stack-tutorial", title: "Deploy the full Prisma stack" },
+    ],
   },
   {
     heading: "Build",
-    sections: [{ url: "/orm" }, { url: "/composer" }, { url: "/ai" }],
+    sections: [{ url: "/orm" }, { url: "/composer" }, { url: "/local-development" }],
   },
   {
     heading: "Deploy",
@@ -35,16 +38,17 @@ export const sidebarSectionGroups: SidebarSectionGroup[] = [
   },
   {
     heading: "Manage",
-    sections: [
-      { url: "/postgres/database/local-development", title: "Local Postgres", icon: <Laptop /> },
-      { url: "/studio" },
-      { url: "/query-insights" },
-      { url: "/console" },
-    ],
+    sections: [{ url: "/console" }, { url: "/studio" }, { url: "/query-insights" }],
   },
   {
     heading: "Reference",
-    sections: [{ url: "/guides" }, { url: "/cli" }, { url: "/rest-api" }, { url: "/accelerate" }],
+    sections: [
+      { url: "/guides" },
+      { url: "/cli" },
+      { url: "/rest-api" },
+      { url: "/ai" },
+      { url: "/accelerate" },
+    ],
   },
 ];
 
