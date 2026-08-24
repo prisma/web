@@ -199,7 +199,7 @@ Title: Pricing — Prisma Compute & Prisma Postgres
 Description: Usage-based pricing for the whole stack. Get started for free, choose the right Prisma Postgres plan for your workspace, and pay for Prisma Compute app hosting by use.
 
 Pricing summary:
-- Free plan: ${plans.free.price.USD}/month, ${computeIncludedRequests.free} Compute requests included, 100,000 operations included, 500 MB storage, 50 databases, no credit card required
+- Free plan: ${plans.free.price.USD}/month, ${computeIncludedRequests.free} Compute requests, 360 GB-hours of provisioned memory, 4 active vCPU-hours, 10 GB of outbound bandwidth, 200,000 database operations, 500 MB storage, 50 databases, no credit card required
 - Starter plan: ${plans.starter.price.USD}/month, ${computeIncludedRequests.starter} Compute requests included, 1,000,000 operations included, then $8 per million operations, 10 GB storage included, then $2 per GB, 1,000 databases, daily backups stored for 7 days
 - Pro plan: ${plans.pro.price.USD}/month, ${computeIncludedRequests.pro} Compute requests included, 10,000,000 operations included, then $2 per million operations, 50 GB storage included, then $1.50 per GB, 1,000 databases, daily backups stored for 7 days
 - Business plan: ${plans.business.price.USD}/month, ${computeIncludedRequests.business} Compute requests included, 50,000,000 operations included, then $1 per million operations, 100 GB storage included, then $1 per GB, 1,000 databases, daily backups stored for 30 days
@@ -218,9 +218,9 @@ Support and compliance summary:
 
 Prisma Compute pricing (app hosting, included with every plan):
 - Requests included per month: Free ${computeIncludedRequests.free}, Starter ${computeIncludedRequests.starter}, Pro ${computeIncludedRequests.pro}, Business ${computeIncludedRequests.business}; then $1 per million on paid plans (the Free plan has no usage billing)
-- Provisioned memory: $0.006 per GB-hour, billed per use on paid plans
-- Active CPU: $0.064 per vCPU-hour, billed per use on paid plans
-- Outbound bandwidth: $0.025 per GB, billed per use on paid plans
+- Provisioned memory: Free includes 360 GB-hours per month; paid plans bill $0.006 per GB-hour
+- Active CPU: Free includes 4 vCPU-hours per month; paid plans bill $0.064 per vCPU-hour
+- Outbound bandwidth: Free includes 10 GB per month; paid plans bill $0.025 per GB
 - Idle apps scale to zero and cost nothing; deploys, preview branches, and seats are not billed
 
 ## Enterprise

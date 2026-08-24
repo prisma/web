@@ -105,10 +105,9 @@ const GROUPS: Group[] = [
   {
     // Compute GA (Shane, 2026-08-24): Compute pricing goes in this table, not
     // its own section. Numbers are LOCKED IN, hand-entered by Shane, and must
-    // match the plan cards (pricing-plans.tsx): requests are the only meter
-    // with an included allowance; the other meters are billed per use on paid
-    // plans. Free's "—" price cells mean no usage billing on Free, same idea
-    // as the database side's missing overage.
+    // match the plan cards (pricing-plans.tsx). Free has hard monthly limits
+    // for every meter and no usage billing. Paid plans include requests and
+    // bill memory, CPU, and bandwidth by use.
     label: "Prisma Compute",
     icon: AppWindow,
     // -500 rather than -400: at 16px on white the lighter amber reads as washed
@@ -124,22 +123,24 @@ const GROUPS: Group[] = [
         values: ["—", "$1 per million", "$1 per million", "$1 per million"],
       },
       {
+        label: "Provisioned memory included",
+        values: ["360 GB-hours", "—", "—", "—"],
+      },
+      {
         label: "Provisioned memory price",
-        values: [
-          "—",
-          "$0.006 per GB-hour",
-          "$0.006 per GB-hour",
-          "$0.006 per GB-hour",
-        ],
+        values: ["—", "$0.006 per GB-hour", "$0.006 per GB-hour", "$0.006 per GB-hour"],
+      },
+      {
+        label: "Active CPU included",
+        values: ["4 vCPU-hours", "—", "—", "—"],
       },
       {
         label: "Active CPU price",
-        values: [
-          "—",
-          "$0.064 per vCPU-hour",
-          "$0.064 per vCPU-hour",
-          "$0.064 per vCPU-hour",
-        ],
+        values: ["—", "$0.064 per vCPU-hour", "$0.064 per vCPU-hour", "$0.064 per vCPU-hour"],
+      },
+      {
+        label: "Outbound bandwidth included",
+        values: ["10 GB", "—", "—", "—"],
       },
       {
         label: "Outbound bandwidth price",
@@ -225,12 +226,7 @@ const GROUPS: Group[] = [
       { label: "Support", values: [PENDING, PENDING, PENDING, PENDING] },
       {
         label: "Compliance",
-        values: [
-          "GDPR",
-          "GDPR",
-          "GDPR, HIPAA",
-          "GDPR, HIPAA, SOC 2, ISO 27001",
-        ],
+        values: ["GDPR", "GDPR", "GDPR, HIPAA", "GDPR, HIPAA, SOC 2, ISO 27001"],
       },
       { label: "Prisma ORM", values: ["Free", "Free", "Free", "Free"] },
     ],
@@ -243,9 +239,7 @@ const HIGHLIGHT = 1;
 
 function Cell({ value, highlight }: { value: string; highlight: boolean }) {
   if (value === YES) {
-    return (
-      <CheckBold className="size-4 text-prism-cyan-500" aria-label="Included" />
-    );
+    return <CheckBold className="size-4 text-prism-cyan-500" aria-label="Included" />;
   }
   // A placeholder means "we have not been given this" — it must never read as
   // "not included", which is what the em-dash means.
@@ -285,18 +279,14 @@ function MobileRow({ row }: { row: Row }) {
     <div className="border-t border-black/[0.06] px-5 py-3.5 first:border-t-0">
       {uniform ? (
         <div className="flex items-start justify-between gap-4">
-          <dt className="text-sm leading-relaxed text-muted-foreground">
-            {row.label}
-          </dt>
+          <dt className="text-sm leading-relaxed text-muted-foreground">{row.label}</dt>
           <dd className="shrink-0 text-right">
             <Cell value={row.values[0]} highlight />
           </dd>
         </div>
       ) : (
         <>
-          <dt className="text-sm leading-relaxed text-muted-foreground">
-            {row.label}
-          </dt>
+          <dt className="text-sm leading-relaxed text-muted-foreground">{row.label}</dt>
           <dd className="mt-2.5 grid grid-cols-2 gap-2">
             {row.values.map((v, i) => (
               <div
@@ -305,9 +295,7 @@ function MobileRow({ row }: { row: Row }) {
                   "rounded-lg px-3 py-2",
                   // Recommended plan lifted on white, the rest recessed — the
                   // site's before/after language from pricing-comparison.tsx.
-                  i === HIGHLIGHT
-                    ? "bg-white ring-1 ring-black/[0.09]"
-                    : "bg-foreground/[0.03]",
+                  i === HIGHLIGHT ? "bg-white ring-1 ring-black/[0.09]" : "bg-foreground/[0.03]",
                 )}
               >
                 <p className="text-[0.6875rem] font-medium text-muted-foreground">
@@ -358,8 +346,7 @@ export function PricingSpecTable() {
         </Reveal>
         <Reveal delay={0.1}>
           <p className="mt-4 max-w-2xl text-pretty text-base leading-relaxed text-muted-foreground">
-            Everything below is included with your plan, across Prisma Postgres
-            and Prisma Compute.
+            Everything below is included with your plan, across Prisma Postgres and Prisma Compute.
           </p>
         </Reveal>
 
@@ -412,10 +399,7 @@ export function PricingSpecTable() {
               </dl>
             </div>
             {GROUPS.map((group) => (
-              <div
-                key={group.label}
-                className="border-b border-black/[0.06] last:border-b-0"
-              >
+              <div key={group.label} className="border-b border-black/[0.06] last:border-b-0">
                 <p className="flex items-center gap-2.5 bg-foreground/[0.03] px-5 py-3 text-sm font-semibold text-foreground">
                   <group.icon className={cn("size-4 shrink-0", group.color)} />
                   {group.label}
@@ -432,8 +416,7 @@ export function PricingSpecTable() {
           <div className="relative hidden overflow-x-auto rounded-2xl border border-black/[0.06] bg-white lg:block">
             <table className="w-full min-w-[52rem] border-collapse text-left">
               <caption className="sr-only">
-                Feature and limit comparison across the Free, Starter, Pro and
-                Business plans
+                Feature and limit comparison across the Free, Starter, Pro and Business plans
               </caption>
               <colgroup>
                 <col />
@@ -448,11 +431,7 @@ export function PricingSpecTable() {
                     <span className="sr-only">Feature</span>
                   </th>
                   {PLAN_NAMES.map((name, i) => (
-                    <th
-                      key={name}
-                      scope="col"
-                      className="relative px-5 pb-4 pt-5"
-                    >
+                    <th key={name} scope="col" className="relative px-5 pb-4 pt-5">
                       {/* The lit column gets a spectrum cap rather than relying
                           on the paper tint alone, which was almost invisible. */}
                       {i === HIGHLIGHT && (
@@ -466,9 +445,7 @@ export function PricingSpecTable() {
                         <span
                           className={cn(
                             "text-sm font-semibold",
-                            i === HIGHLIGHT
-                              ? "text-foreground"
-                              : "text-muted-foreground",
+                            i === HIGHLIGHT ? "text-foreground" : "text-muted-foreground",
                           )}
                         >
                           {name}
@@ -497,9 +474,7 @@ export function PricingSpecTable() {
                       className="border-t border-black/[0.06] bg-card px-5 py-3"
                     >
                       <span className="flex items-center gap-2.5 text-sm font-semibold text-foreground">
-                        <group.icon
-                          className={cn("size-4 shrink-0", group.color)}
-                        />
+                        <group.icon className={cn("size-4 shrink-0", group.color)} />
                         {group.label}
                       </span>
                     </th>
