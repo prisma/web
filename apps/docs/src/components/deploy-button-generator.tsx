@@ -1,7 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
 import { CodeBlock, Pre } from "@prisma/eclipse";
-import { buttonVariants } from "@prisma-docs/ui/components/button";
 import { cn } from "@prisma-docs/ui/lib/cn";
 import { withDocsBasePath } from "@/lib/urls";
 
@@ -15,43 +14,17 @@ const BUTTON_HEIGHT = 36;
 const OWNER_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}$/;
 const REPO_PATTERN = /^[A-Za-z0-9._-]{1,100}$/;
 const PROJECT_NAME_PATTERN = REPO_PATTERN;
-// Mirrors the Console's env-var rules for /new/clone links; the canonical
-// implementation is services/console/lib/templates/deployEnvVars.ts in
-// prisma/pdp-control-plane. Keep the two in sync.
-const ENV_NAME_PATTERN = /^[A-Z_][A-Z0-9_]*$/;
-const MAX_ENV_VARS = 10;
-const MAX_ENV_NAME_LENGTH = 64;
-const MAX_ENV_EXAMPLE_LENGTH = 100;
 const MAX_UTM_LENGTH = 100;
 
-// C0/C1 controls and DEL, which the Console rejects, so a pasted tab or
-// newline must fail here, for the author, not later for their users. Bidi
-// overrides and zero-width characters are rejected on top of that: these
-// values land in the author's README, where such characters could visually
-// spoof its content.
+// Generated values are commonly pasted into a README, so reject characters
+// that could hide or visually reorder its content.
 const UNSAFE_CHARACTERS =
   // eslint-disable-next-line no-control-regex
   /[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/;
 
-interface EnvVarRow {
-  name: string;
-  example: string;
-}
-
-function exampleValid(example: string): boolean {
-  return example.length <= MAX_ENV_EXAMPLE_LENGTH && !UNSAFE_CHARACTERS.test(example);
-}
-
 function utmValid(value: string): boolean {
   const trimmed = value.trim();
   return trimmed.length <= MAX_UTM_LENGTH && !UNSAFE_CHARACTERS.test(trimmed);
-}
-
-function envRowValid(row: EnvVarRow): boolean {
-  const name = row.name.trim();
-  const example = row.example.trim();
-  if (name === "") return example === "";
-  return name.length <= MAX_ENV_NAME_LENGTH && ENV_NAME_PATTERN.test(name) && exampleValid(example);
 }
 
 function parseRepositoryUrl(raw: string): { owner: string; repo: string } | null {
@@ -147,48 +120,23 @@ export function DeployButtonGenerator() {
   const [repositoryUrl, setRepositoryUrl] = useState("");
   const [projectName, setProjectName] = useState("");
   const [utmSource, setUtmSource] = useState("");
-  const [utmCampaign, setUtmCampaign] = useState("");
-  const [envVars, setEnvVars] = useState<EnvVarRow[]>([{ name: "", example: "" }]);
-
-  const updateEnvRow = (index: number, patch: Partial<EnvVarRow>) =>
-    setEnvVars((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
 
   const parsed = useMemo(() => parseRepositoryUrl(repositoryUrl), [repositoryUrl]);
   const repositoryUrlValid = repositoryUrl.trim() === "" || parsed !== null;
+  const trimmedProjectName = projectName.trim();
   const projectNameValid =
-    projectName.trim() === "" || PROJECT_NAME_PATTERN.test(projectName.trim());
-  const envRowValidity = envVars.map((row, index) => {
-    if (!envRowValid(row)) return false;
-    const name = row.name.trim();
-    if (name === "") return true;
-    return !envVars.some((other, i) => i < index && other.name.trim() === name);
-  });
-  const envVarsValid = envRowValidity.every(Boolean);
+    trimmedProjectName === "" ||
+    (PROJECT_NAME_PATTERN.test(trimmedProjectName) &&
+      trimmedProjectName !== "." &&
+      trimmedProjectName !== "..");
   const utmSourceValid = utmValid(utmSource);
-  const utmCampaignValid = utmValid(utmCampaign);
 
   let url: string | null = null;
-  if (parsed && projectNameValid && envVarsValid && utmSourceValid && utmCampaignValid) {
+  if (parsed && projectNameValid && utmSourceValid) {
     const search = new URLSearchParams();
     search.set("repository-url", `https://github.com/${parsed.owner}/${parsed.repo}`);
-    if (projectName.trim()) search.set("project-name", projectName.trim());
-    const seen = new Set<string>();
-    const examples: [string, string][] = [];
-    for (const row of envVars) {
-      const name = row.name.trim();
-      if (name === "" || seen.has(name)) continue;
-      seen.add(name);
-      const example = row.example.trim();
-      if (example !== "") examples.push([name, example]);
-    }
-    if (seen.size > 0) {
-      search.set("env", [...seen].join(","));
-      for (const [name, example] of examples) {
-        search.set(`env-example-${name}`, example);
-      }
-    }
+    if (trimmedProjectName) search.set("project-name", trimmedProjectName);
     if (utmSource.trim()) search.set("utm_source", utmSource.trim());
-    if (utmCampaign.trim()) search.set("utm_campaign", utmCampaign.trim());
     url = `${CONSOLE_CLONE_URL}?${search.toString()}`;
   }
 
@@ -207,16 +155,16 @@ export function DeployButtonGenerator() {
           onChange={setRepositoryUrl}
         />
         <Field
-          label="Project name"
+          label="Destination repository name"
           placeholder="my-app"
           value={projectName}
           valid={projectNameValid}
           hintId="deploy-button-project-name-hint"
-          hint="Use up to 100 letters, numbers, dots, dashes, or underscores."
+          hint="Use 1–100 letters, numbers, dots, dashes, or underscores."
           onChange={setProjectName}
         />
         <Field
-          label="Source"
+          label="Attribution source"
           placeholder="github-readme"
           value={utmSource}
           valid={utmSourceValid}
@@ -224,76 +172,6 @@ export function DeployButtonGenerator() {
           hint={`Use a short label of up to ${MAX_UTM_LENGTH} visible characters.`}
           onChange={setUtmSource}
         />
-        <Field
-          label="Campaign"
-          placeholder="launch-2026"
-          value={utmCampaign}
-          valid={utmCampaignValid}
-          hintId="deploy-button-utm-campaign-hint"
-          hint={`Use a short label of up to ${MAX_UTM_LENGTH} visible characters.`}
-          onChange={setUtmCampaign}
-        />
-        <div className="flex flex-col gap-1.5 sm:col-span-2">
-          <span className="text-sm font-medium">
-            Required environment variables{" "}
-            <span className="font-normal text-fd-muted-foreground">(optional)</span>
-          </span>
-          <p className="m-0 text-xs text-fd-muted-foreground">
-            The Console prompts the user for each value during the flow. The link carries only the
-            names and any example you set here, never real values, so examples must be safe to
-            publish. <code>DATABASE_URL</code> is configured automatically and doesn't need to be
-            listed.
-          </p>
-          {envVars.map((row, index) => (
-            <div key={index} className="flex items-start gap-2">
-              <input
-                className={fieldClassName}
-                placeholder="OPENAI_API_KEY"
-                aria-label={`Variable ${index + 1} name`}
-                aria-invalid={!envRowValidity[index] && row.name.trim() !== "" ? true : undefined}
-                value={row.name}
-                onChange={(event) => updateEnvRow(index, { name: event.target.value })}
-              />
-              <input
-                className={fieldClassName}
-                placeholder="Example value (optional, non-secret)"
-                aria-label={`Variable ${index + 1} example value`}
-                value={row.example}
-                onChange={(event) => updateEnvRow(index, { example: event.target.value })}
-              />
-              <button
-                type="button"
-                aria-label={`Remove variable ${index + 1}`}
-                className={cn(buttonVariants({ color: "secondary", size: "sm" }), "shrink-0")}
-                onClick={() =>
-                  setEnvVars((rows) =>
-                    rows.length === 1
-                      ? [{ name: "", example: "" }]
-                      : rows.filter((_, i) => i !== index),
-                  )
-                }
-              >
-                <i className="fa-regular fa-xmark" />
-              </button>
-            </div>
-          ))}
-          {!envVarsValid ? (
-            <span className="text-xs text-fd-muted-foreground">
-              Names use uppercase letters, numbers, and underscores, like MY_API_KEY, and each
-              name may appear only once. An example needs a name next to it.
-            </span>
-          ) : null}
-          {envVars.length < MAX_ENV_VARS ? (
-            <button
-              type="button"
-              className={cn(buttonVariants({ color: "secondary", size: "sm" }), "self-start gap-2")}
-              onClick={() => setEnvVars((rows) => [...rows, { name: "", example: "" }])}
-            >
-              <i className="fa-regular fa-plus" />
-              Add variable
-            </button>
-          ) : null}
-        </div>
       </div>
 
       {url ? (
@@ -320,7 +198,8 @@ export function DeployButtonGenerator() {
       ) : (
         <p className="text-sm text-fd-muted-foreground">
           Enter your repository's GitHub URL to generate the button. The repository must be public
-          and contain a <code>prisma.compute.json</code> file at its root.
+          and contain a supported <code>prisma-composer.config.*</code> and <code>module.*</code> at
+          its root.
         </p>
       )}
     </div>
