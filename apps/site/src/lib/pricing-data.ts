@@ -247,6 +247,41 @@ export const usagePricing: Record<BillablePricingPlanKey, UsagePricing> = {
   },
 };
 
+// Prisma Compute usage meters — live GA rates (this branch launches Compute
+// into GA, per Shane 2026-08-24; the beta-era "expected price" hedging is
+// deliberately gone). Rates match docs /compute/pricing and the
+// prisma-compute-vs-vercel-pricing blog post; the descriptions are the
+// marketing wording Shane supplied, not the docs'. USD-only strings, like the
+// spec table — the currency toggle only covers the plan cards.
+export type ComputeMeter = {
+  meter: string;
+  price: string;
+  represents: string;
+};
+
+export const computeMeters: ComputeMeter[] = [
+  {
+    meter: "Requests",
+    price: "$1.00 / 1M requests",
+    represents: "The familiar per-request anchor that keeps a normal app easy to estimate",
+  },
+  {
+    meter: "Provisioned memory",
+    price: "$0.006 / GB-hour",
+    represents: "Capacity kept alive while the app is running or intentionally kept awake",
+  },
+  {
+    meter: "Active CPU",
+    price: "$0.064 / vCPU-hour",
+    represents: "CPU your code actually consumes, not wall-clock waiting",
+  },
+  {
+    meter: "Outbound bandwidth",
+    price: "$0.025 / GB",
+    represents: "Data your app sends to the public internet",
+  },
+];
+
 export type ComparisonCell = string | { text: string; price: CurrencyMap };
 
 export const comparisonSections: Array<{

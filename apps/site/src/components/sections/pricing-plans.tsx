@@ -9,6 +9,16 @@ import { cn } from "@/lib/utils";
 //    on the lower price rather than making Prisma read as expensive; Free
 //    states that it is free forever
 //
+// `compute` is each plan's included Prisma Compute allowance — Compute GA
+// (Shane, 2026-08-24): "put the details in the cards (how many are included
+// in each plan)".
+// ⚠ The allowance NUMBERS are placeholders: invented to show the format,
+// scaled so each plan's included Compute is roughly proportional to its price
+// at the GA meter rates ($1.00/1M requests, $0.006/GB-hour, $0.064/vCPU-hour,
+// $0.025/GB). Shane supplies the real figures — "we'll fix the exact numbers
+// after". Keep them in sync with the Prisma Compute group in
+// pricing-spec-table.tsx, which repeats them alongside the overage rates.
+//
 // `blurb` is kept in the data but NOT rendered (2026-07-30). Shane asked to land
 // on the plans with no preamble, and trimming the cards is what buys the last
 // 40px: at 1440x800 the blurb pushed each card to 494px and the CTA fell below
@@ -21,7 +31,14 @@ const PLANS = [
     name: "Free",
     price: "$0",
     note: "Free forever. No credit card required.",
-    features: ["100,000 operations / month", "500 MB storage", "50 databases"],
+    compute: [
+      "1,000,000 requests / month",
+      "100 GB-hours memory",
+      "10 vCPU-hours active CPU",
+      "10 GB outbound bandwidth",
+    ],
+    postgres: ["100,000 operations / month", "500 MB storage", "50 databases"],
+    platform: [],
     blurb:
       "Everything you need to build and explore with no clock running. No credit card, no expiry.",
     cta: "Start for free",
@@ -32,13 +49,19 @@ const PLANS = [
     name: "Starter",
     price: "$10",
     note: null,
-    features: [
+    compute: [
+      "5,000,000 requests / month",
+      "500 GB-hours memory",
+      "50 vCPU-hours active CPU",
+      "50 GB outbound bandwidth",
+    ],
+    postgres: [
       "1,000,000 operations / month, then $0.0080 per 1,000",
       "10 GB storage, then $2.00 per GB",
       "1,000 databases",
       "7-day daily backups",
-      "Spend limits",
     ],
+    platform: ["Spend limits"],
     blurb:
       "Ship your first production app without worrying about the bill. Backups included, spend limits on by default.",
     cta: "Get started",
@@ -49,14 +72,19 @@ const PLANS = [
     name: "Pro",
     price: "$49",
     note: null,
-    features: [
+    compute: [
+      "20,000,000 requests / month",
+      "2,000 GB-hours memory",
+      "200 vCPU-hours active CPU",
+      "250 GB outbound bandwidth",
+    ],
+    postgres: [
       "10,000,000 operations / month, then $0.0020 per 1,000",
       "50 GB storage, then $1.50 per GB",
       "1,000 databases",
       "7-day daily backups",
-      "Spend limits",
-      "GDPR, HIPAA",
     ],
+    platform: ["Spend limits", "GDPR, HIPAA"],
     blurb:
       "For production apps with real traffic. More operations, lower overage rates, and headroom to grow without watching the meter.",
     cta: "Get started",
@@ -67,20 +95,36 @@ const PLANS = [
     name: "Business",
     price: "$129",
     note: null,
-    features: [
+    compute: [
+      "50,000,000 requests / month",
+      "5,000 GB-hours memory",
+      "500 vCPU-hours active CPU",
+      "1 TB outbound bandwidth",
+    ],
+    postgres: [
       "50,000,000 operations / month, then $0.0010 per 1,000",
       "100 GB storage",
       "1,000 databases",
       "30-day backup retention",
-      "Spend limits",
-      "GDPR, HIPAA, SOC 2, ISO 27001",
     ],
+    platform: ["Spend limits", "GDPR, HIPAA, SOC 2, ISO 27001"],
     blurb: "Built for high-growth teams with compliance requirements and sustained high volume.",
     cta: "Get started",
     href: "https://console.prisma.io",
     popular: false,
   },
 ];
+
+// The two product groups render identically — same label style, same bullet
+// treatment — which is the "equal footing" Shane asked for (2026-08-24:
+// Compute is a first-class citizen). Compute leads, matching the
+// "Compute+Postgres" framing. Platform holds the plan-level items (spend
+// limits, compliance) so they don't masquerade as database features.
+const CARD_GROUPS = [
+  { key: "compute", label: "Prisma Compute" },
+  { key: "postgres", label: "Prisma Postgres" },
+  { key: "platform", label: "Platform" },
+] as const;
 
 // Renders bare — no <section>, no gutter, no max-width. These cards live inside
 // the hero panel (PricingHero takes them as children), which already provides
@@ -108,14 +152,36 @@ export function PricingPlans() {
               <span className="ml-1 text-base font-normal text-muted-foreground">/ month</span>
             </p>
             {plan.note && <p className="mt-2.5 text-sm text-muted-foreground">{plan.note}</p>}
-            <ul className="mt-6 space-y-3 border-t border-black/[0.06] pt-6">
-              {plan.features.map((feature) => (
-                <li key={feature} className="flex gap-2.5 text-sm leading-relaxed text-foreground">
-                  <CheckBold className="mt-0.5 size-4 shrink-0 text-prism-cyan-500" aria-hidden />
-                  {feature}
-                </li>
-              ))}
-            </ul>
+            {/* One loop for every group — Compute and Postgres get the exact
+                same treatment by construction (see CARD_GROUPS). Compute
+                numbers are placeholders — see the note on PLANS. */}
+            <div className="mt-6">
+              {CARD_GROUPS.map(({ key, label }) => {
+                const items = plan[key];
+                if (items.length === 0) {
+                  return null;
+                }
+                return (
+                  <div key={key} className="border-t border-black/[0.06] py-5 last:pb-0">
+                    <p className="text-xs font-semibold text-muted-foreground">{label}</p>
+                    <ul className="mt-3 space-y-3">
+                      {items.map((feature) => (
+                        <li
+                          key={feature}
+                          className="flex gap-2.5 text-sm leading-relaxed text-foreground"
+                        >
+                          <CheckBold
+                            className="mt-0.5 size-4 shrink-0 text-prism-cyan-500"
+                            aria-hidden
+                          />
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
             {/* plan.blurb is deliberately not rendered — see the note on PLANS */}
             <div className="mt-8 flex flex-1 items-end">
               {/* Brand CTAs, not the shadcn pair: the recommended plan gets

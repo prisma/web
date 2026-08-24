@@ -1,6 +1,6 @@
 import { SITE_HOME_DESCRIPTION, SITE_HOME_TITLE } from "@/lib/site-metadata";
 import { getBaseUrl } from "@/lib/url";
-import { plans, usagePricing } from "@/lib/pricing-data";
+import { computeMeters, plans, usagePricing } from "@/lib/pricing-data";
 
 type LlmsPage = {
   path: string;
@@ -46,9 +46,9 @@ const sitePages: LlmsPage[] = [
   },
   {
     path: "/pricing",
-    title: "Pricing — Prisma Postgres Plans & Features",
+    title: "Pricing — Prisma Compute & Prisma Postgres",
     description:
-      "Prisma Postgres plan details, included usage, database limits, support levels, and compliance coverage.",
+      "Usage-based pricing for the whole stack: Prisma Compute app hosting rates, Prisma Postgres plan details, included usage, database limits, support levels, and compliance coverage.",
   },
   {
     path: "/enterprise",
@@ -195,8 +195,8 @@ Key Prisma MCP Server capabilities:
 ## Pricing
 
 URL: ${toAbsoluteUrl(baseUrl, "/pricing")}
-Title: Pricing — Prisma Postgres Plans & Features
-Description: Get started for free with Prisma Postgres. Choose the right plan for your workspace based on your project requirements.
+Title: Pricing — Prisma Compute & Prisma Postgres
+Description: Usage-based pricing for the whole stack. Get started for free, choose the right Prisma Postgres plan for your workspace, and pay for Prisma Compute app hosting by use.
 
 Pricing summary:
 - Free plan: ${plans.free.price.USD}/month, 100,000 operations included, 500 MB storage, 50 databases, no credit card required
@@ -215,6 +215,10 @@ Support and compliance summary:
 - Starter: Community support, GDPR
 - Pro: Standard support, GDPR / HIPAA
 - Business: Premium support, GDPR / HIPAA / SOC2 / ISO:27001
+
+Prisma Compute pricing (usage-based app hosting):
+${computeMeters.map((m) => `- ${m.meter}: ${m.price} — ${m.represents}`).join("\n")}
+- Idle apps scale to zero and cost nothing; deploys, preview branches, and seats are not billed
 
 ## Enterprise
 

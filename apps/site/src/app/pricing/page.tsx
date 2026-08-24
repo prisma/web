@@ -12,10 +12,15 @@ import { TestimonialsReveal } from "@/components/sections/testimonials-reveal";
 export const metadata: Metadata = {
   title: "Pricing",
   description:
-    "Usage-based pricing by operation — pay for the queries your app runs, not seats or deploys. Free tier with no time limit, hard spend limits on every paid plan.",
+    "Usage-based pricing for your whole stack — Prisma Compute app hosting and Prisma Postgres databases. Pay for the work your app does, not seats or deploys. Free tier with no time limit, hard spend limits on every paid plan.",
 };
 
 // Built from the approved V2 pricing copy, in V2's order (CTA then FAQs).
+// Compute GA launch (Shane, 2026-08-24): Compute pricing lives inside the
+// existing structures — included allowances on the plan cards, rates and
+// allowances as a group in the spec table — NOT as a separate section, hero
+// subhead, or strip (all three were tried and removed on Shane's feedback:
+// "we already have a table for these things").
 // "Every plan includes" is the right-hand column of PricingHowItWorks; the
 // calculator's three entry points double as its preset selector.
 //
