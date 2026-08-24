@@ -3,22 +3,20 @@ title: Deploying
 description: Deploy a Prisma App to production or an isolated stage, run it in CI, and tear environments down safely.
 url: /composer/deploying
 metaTitle: Deploying | Prisma Composer
-metaDescription: Deploy Prisma Composer apps to Prisma Compute with composer deploy, use stages for isolated environments and per-PR previews, wire CI, and destroy environments safely.
+metaDescription: Deploy Prisma Composer apps to Prisma Compute with prisma deploy, use stages for isolated environments and per-PR previews, wire CI, and tear environments down safely.
 ---
 
-`composer deploy` takes your entry file (the one whose default export is the root module) and stands the whole app up on [Prisma Compute](/compute) and [Prisma Postgres](/postgres). `composer destroy` tears an environment down. You choose the target environment, production or an isolated **stage**, on the command line rather than in your code.
+`deploy` takes your entry file (the one whose default export is the root module) and stands the whole app up on [Prisma Compute](/compute) and [Prisma Postgres](/postgres). You choose the target environment, production or an isolated **stage**, on the command line rather than in your code. Tearing an environment down is the `destroy` operation of the [control API](#driving-deploys-from-code).
 
 | You want to... | Run |
 | --- | --- |
-| Deploy to production | `npx prisma@next composer deploy module.ts` |
-| Deploy an isolated environment | `npx prisma@next composer deploy module.ts --stage <name>` |
-| Deploy under a different app name | `npx prisma@next composer deploy module.ts --name demo-42` |
-| Tear down an isolated environment | `npx prisma@next composer destroy module.ts --stage <name>` |
-| Tear down production's resources | `npx prisma@next composer destroy module.ts --production` |
+| Deploy to production | `npx prisma@next deploy module.ts` |
+| Deploy an isolated environment | `npx prisma@next deploy module.ts --stage <name>` |
+| Deploy under a different app name | `npx prisma@next deploy module.ts --name demo-42` |
 
 ## Credentials
 
-On your machine, `composer deploy` uses the session stored by `auth login`, the same sign-in every other CLI command uses:
+On your machine, `deploy` uses the session stored by `auth login`, the same sign-in every other CLI command uses:
 
 ```npm
 npx prisma@next auth login
@@ -33,11 +31,11 @@ A fresh checkout with just those two variables set deploys successfully. The CLI
 
 ## Build first
 
-`composer deploy` does not build for you. It assembles what your build produced:
+`deploy` does not build for you. It assembles what your build produced:
 
 ```npm
 npm run build
-npx prisma@next composer deploy module.ts
+npx prisma@next deploy module.ts
 ```
 
 Deploy state records what is already provisioned, so a re-deploy applies the difference instead of recreating everything. The platform stores this state with the environment it describes, scoped to that environment's branch inside the app's project. It is not stored on your machine, so your laptop and CI see the same state. Concurrent deploys of the same environment take turns through a lease on that state. While one deploy holds the lease, a second deploy fails immediately with a message naming the holder. If a deploy crashes, its lease expires after about a minute, and the next deploy takes over.
@@ -49,9 +47,9 @@ Deploying with no `--stage` targets **production**. In platform terms, the app i
 `--stage <name>` deploys a complete, isolated copy of the app as a [preview branch](/compute/branching) of that same project: its own services, its own databases, its own configuration. The only thing a stage shares with production is the code. Composer's *stage* and Compute's *preview branch* are the same object seen from two tools, which is why the stage's variables are the branch's [environment variables](/compute/environment-variables):
 
 ```npm
-npx prisma@next composer deploy module.ts                  # production
-npx prisma@next composer deploy module.ts --stage staging  # a persistent staging environment
-npx prisma@next composer deploy module.ts --stage pr-42    # one environment per PR
+npx prisma@next deploy module.ts                  # production
+npx prisma@next deploy module.ts --stage staging  # a persistent staging environment
+npx prisma@next deploy module.ts --stage pr-42    # one environment per PR
 ```
 
 Re-deploying any environment is idempotent: it updates the resources in place. A stage name must be a valid git ref name. An invalid name fails the deploy rather than being renamed.
@@ -76,23 +74,25 @@ URLs appear for publicly reachable endpoints. That is why a Compute service prin
 
 ## Destroying
 
-`destroy` requires an explicit target; a bare `composer destroy` is an error:
+The unified CLI has no `destroy` command. Tear an environment down with the `destroy` operation from `@prisma/composer/control` (see [Driving deploys from code](#driving-deploys-from-code)). It requires an explicit target, `{ kind: 'stage', stage }` or `{ kind: 'production' }`, and there is no default, so a teardown always names what it destroys:
 
-```npm
-npx prisma@next composer destroy module.ts --stage staging  # staging only; production untouched
-npx prisma@next composer destroy module.ts --production     # production's resources
+```ts
+import { destroy } from '@prisma/composer/control';
+
+await destroy({ entry: 'module.ts', target: { kind: 'stage', stage: 'staging' } });
 ```
 
-`--stage` and `--production` together is an error too. Destroying a stage removes its resources, then deletes its branch along with the stage's deploy state. Destroying production removes the resources and, if the project is empty afterwards, deletes the project too, so empty projects do not pile up in your workspace. A project still holding another stage's resources stays in place. Tearing down a stage that was never deployed fails with "nothing deployed". It does not provision one first.
+Destroying a stage removes its resources, then deletes its branch along with the stage's deploy state. Destroying production removes the resources and, if the project is empty afterwards, deletes the project too, so empty projects do not pile up in your workspace. A project still holding another stage's resources stays in place. Tearing down a stage that was never deployed fails with "nothing deployed". It does not provision one first.
 
 ## CI
 
 CI runs the same commands as your machine: set the two credential variables as CI secrets, build, and deploy. The per-PR environment pattern:
 
 ```bash
-npx prisma@next composer deploy module.ts --stage "pr-$PR_NUMBER"    # on push
-npx prisma@next composer destroy module.ts --stage "pr-$PR_NUMBER"   # on close
+npx prisma@next deploy module.ts --stage "pr-$PR_NUMBER"    # on push
 ```
+
+When the PR closes, tear the stage down with the `destroy` operation, targeting `{ kind: 'stage', stage: 'pr-<number>' }` from a small script.
 
 One extra step applies if your app binds input fields with `envSecret` or `envParam` (see [Service input](/composer/service-input)). Each stage stores its own copy of those platform variables. The deploying shell only seeds them. A fresh stage, such as a new `pr-42`, starts with none of them, so CI must export the values alongside the two credential variables. The first deploy then copies any missing values from the shell up to the stage. If a name is absent from both the platform and the shell, the deploy fails early and names the missing variable.
 
@@ -139,10 +139,10 @@ Behavior you will run into once the app is deployed, and what to do about it:
 
 ## Driving deploys from code
 
-Everything the CLI does is also callable in-process, from `@prisma/composer/control`: typed `deploy`, `destroy`, `dev`, and `log` operations that return structured results instead of printing and exiting. The operations and their result shapes are documented in [the control API](/cli/v8/composer#the-control-api) on the `composer` command reference.
+Everything the CLI does is also callable in-process, from `@prisma/composer/control`: typed `deploy`, `destroy`, `dev`, and `log` operations that return structured results instead of printing and exiting. The operations and their result shapes are documented in [the control API](/cli/v8/deploy#the-control-api) on the `deploy` command reference.
 
 ## Next steps
 
 - [Local development](/composer/local-development): the same pipeline, no credentials.
 - [Service input](/composer/service-input): how per-stage configuration and secrets travel.
-- [`composer` command reference](/cli/v8/composer): every flag on deploy, destroy, dev, and log.
+- [`deploy` command reference](/cli/v8/deploy): every flag, plus the control API for destroy and log.

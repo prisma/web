@@ -10,7 +10,7 @@ Get an app live on [Prisma Compute](/compute) with the unified Prisma CLI: sign 
 
 :::info
 
-This guide uses the Prisma 8 RC CLI, run as `npx prisma@next <command>`. Deployments come from a git push, the [Console](https://pris.ly/pdp), or [Prisma Composer](/composer). The CLI creates the project, writes the configuration, connects GitHub, and inspects the results.
+This guide uses the Prisma 8 RC CLI, run as `npx prisma@next <command>`. Deployments come from a git push, the [Console](https://pris.ly/pdp), or the [`deploy` command](/cli/v8/deploy) for a [Prisma Composer](/composer) app. The CLI creates the project, connects GitHub, and inspects the results.
 
 :::
 
@@ -29,21 +29,6 @@ npx prisma@next auth login
 ```
 
 This opens a browser to sign you in, then stores a session that every later command inherits. Because the browser step is interactive, CI and other headless environments use a [service token](#automation-and-ci) instead. To check who you are signed in as, run `auth whoami`.
-
-## Describe your app
-
-From your app directory, write the committed compute config:
-
-```npm
-npx prisma@next init
-```
-
-`init` detects your framework and writes `prisma.compute.ts` (or, with `--config-format json`, a dependency-free `prisma.compute.json`). The service commands read this file for the service name, framework, entry point, HTTP port, and region. [Configuration](/compute/configuration) documents every field. A simple single-service repository can skip the file, since builds detect the framework without it. Committing one makes deploys reproducible. Monorepos require it. Today there is first-class support for **Next.js**, **Nuxt**, **Astro**, **Hono**, **NestJS**, and **TanStack Start**, plus `bun` and `custom` entry points:
-
-```npm
-npx prisma@next init --framework hono --entry src/index.ts
-npx prisma@next init --name api --http-port 8080
-```
 
 :::note
 
@@ -86,24 +71,25 @@ Connect the project to your repository:
 npx prisma@next git connect
 ```
 
-This starts the GitHub App install flow if needed and links the repository. From then on, pushing a branch builds and deploys it: the default Git branch deploys to production, and every other branch gets its own isolated preview. Push, then watch and open the result:
+This starts the GitHub App install flow if needed and links the repository. Builds detect your framework from the repository; there is first-class support for **Next.js**, **Nuxt**, **Astro**, **Hono**, **NestJS**, and **TanStack Start**, plus plain **Bun** servers. From then on, pushing a branch builds and deploys it: the default Git branch deploys to production, and every other branch gets its own isolated preview. Each deploy produces a service **version**. Push, then watch and open the result:
 
 ```npm
-npx prisma@next service show
-npx prisma@next service open
+npx prisma@next service list
+npx prisma@next service show <service>
+npx prisma@next service open <service>
 ```
 
-`service show` prints the service and its current deployment, including the build id. Stream a build's logs with:
+`service show` prints the service and its live version. Read the version's logs with:
 
 ```npm
-npx prisma@next build logs <buildId> --follow
+npx prisma@next service logs <service> --follow
 ```
 
-To learn how deployments are promoted, rolled back, started, and stopped, see [Deployments](/compute/deployments).
+To learn how versions are promoted, rolled back, started, and stopped, see [Deployments](/compute/deployments).
 
-## Deploying multi-service apps from the CLI
+## Deploying from the CLI with Composer
 
-For an app made of several services and databases that you want to deploy directly from a terminal or CI, use [Prisma Composer](/composer): declare the services in TypeScript and `composer deploy` provisions all of them on Compute in one command. The git-push flow above and Composer share the same platform underneath.
+To deploy directly from a terminal or CI, declare the app with [Prisma Composer](/composer): describe your services in TypeScript, and `deploy` provisions all of them, and any databases, on Compute in one command. The git-push flow above and Composer share the same platform underneath. See [Deploy your first app](/prisma-compute/deploy).
 
 ## Environment variables
 
@@ -129,9 +115,8 @@ npx prisma@next auth whoami
 For CI, or any environment where the browser sign-in is not an option, authenticate with a **service token** instead. Set `PRISMA_SERVICE_TOKEN` and the CLI uses it before any stored session. Pass targets explicitly so nothing depends on a prompt. Add `--json` for structured output, and `--no-interactive` so the CLI fails instead of asking:
 
 ```bash
-PRISMA_SERVICE_TOKEN=... npx prisma@next service show \
+PRISMA_SERVICE_TOKEN=... npx prisma@next service show web \
   --project my-app \
-  --service web \
   --json \
   --no-interactive
 ```
@@ -144,7 +129,7 @@ If a coding agent does your deploying, install the Prisma Compute agent skill in
 npx prisma@next agent install --skill prisma-compute
 ```
 
-The `prisma-compute` skill teaches your agent the Compute workflow (auth, config, deploys, logs, and domains), so it follows the right steps. Supported agents pick it up automatically. Run `agent install` with no flags to install [every Prisma skill](/ai/tools/skills) instead of just this one, and `agent status` to see what is installed. `prisma init` also offers this install once per project, so you may already have it.
+The `prisma-compute` skill teaches your agent the Compute workflow (auth, config, deploys, logs, and domains), so it follows the right steps. Supported agents pick it up automatically. Run `agent install` with no flags to install [every Prisma skill](/ai/tools/skills) instead of just this one, and `agent status` to see what is installed.
 
 ### Structured output
 

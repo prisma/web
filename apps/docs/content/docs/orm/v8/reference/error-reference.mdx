@@ -50,11 +50,11 @@ The `contract` section is missing (or incomplete) in `prisma.config.ts` when a c
 
 ### CONFIG.DB_CONNECTION_REQUIRED [#CONFIG.DB_CONNECTION_REQUIRED]
 
-A DB-connected command (`migrate`, `db init`, `db sign`, `db verify`, `db update`, `inspect-live-schema`, and the migration scaffold commands) was run with no database connection available — no `--db <url>` flag and no `db.connection` in `prisma.config.ts`. The fix text names the exact retry command when known. Meta: `missingFlags` (optional).
+A DB-connected command (`db migrate`, `db init`, `db sign`, `db verify`, `db update`, `inspect-live-schema`, and the migration scaffold commands) was run with no database connection available — no `--db <url>` flag and no `db.connection` in `prisma.config.ts`. The fix text names the exact retry command when known. Meta: `missingFlags` (optional).
 
 ### CONFIG.DRIVER_REQUIRED [#CONFIG.DRIVER_REQUIRED]
 
-A DB-connected command was run but `prisma.config.ts` has no control-plane `driver` entry (e.g. `driver: postgresDriver`). Raised by the migration command scaffold, `migrate`, `db sign`, `db verify`, and `inspect-live-schema`. Meta: none.
+A DB-connected command was run but `prisma.config.ts` has no control-plane `driver` entry (e.g. `driver: postgresDriver`). Raised by the migration command scaffold, `db migrate`, `db sign`, `db verify`, and `inspect-live-schema`. Meta: none.
 
 ### CONFIG.EVALUATION_FAILED [#CONFIG.EVALUATION_FAILED]
 
@@ -104,7 +104,7 @@ The migration-file CLI (`prisma migration`) received `--config` without a path a
 
 ### CLI.FILE_NOT_FOUND [#CLI.FILE_NOT_FOUND]
 
-A file the command needs does not exist at the given path. Produced by several commands: the migration command scaffold, `migrate`, `migration plan`, `migration show`, `db sign`, `db update`, `db verify`, and `ref` all raise it when the emitted `contract.json` (or another required file) is missing from the expected location. Most sites carry the path in `where.path`; the `migration new` contract-file site carries it in the summary text only. Meta: none.
+A file the command needs does not exist at the given path. Produced by several commands: the migration command scaffold, `db migrate`, `migration plan`, `migration show`, `db sign`, `db update`, `db verify`, and `migration ref` all raise it when the emitted `contract.json` (or another required file) is missing from the expected location. Most sites carry the path in `where.path`; the `migration new` contract-file site carries it in the summary text only. Meta: none.
 
 ### CLI.FILE_WRITE_FAILED [#CLI.FILE_WRITE_FAILED]
 
@@ -914,7 +914,7 @@ An extension descriptor publishes a `contractSpace` whose `headRef.hash` does no
 
 ### MIGRATION.DESTINATION_CONTRACT_MISMATCH [#MIGRATION.DESTINATION_CONTRACT_MISMATCH]
 
-Runner-level failure during apply (`db init`, `db update`, `migrate`): the plan's destination storage hash (or profile hash) does not match the destination contract handed to the runner alongside it. Indicates the plan and contract came from different emits. Meta: `planStorageHash`/`contractStorageHash` (or `planProfileHash`/`contractProfileHash`).
+Runner-level failure during apply (`db init`, `db update`, `db migrate`): the plan's destination storage hash (or profile hash) does not match the destination contract handed to the runner alongside it. Indicates the plan and contract came from different emits. Meta: `planStorageHash`/`contractStorageHash` (or `planProfileHash`/`contractProfileHash`).
 
 ### MIGRATION.DESTRUCTIVE_CHANGES [#MIGRATION.DESTRUCTIVE_CHANGES]
 
@@ -938,7 +938,7 @@ The per-space migration planner received the same contract-space id more than on
 
 ### MIGRATION.EXECUTION_FAILED [#MIGRATION.EXECUTION_FAILED]
 
-A migration operation's SQL step failed while being executed against the database during apply (`db init`, `db update`, `migrate`). The envelope carries the database error detail so you can see which statement failed and why. Meta: `operationId`, `stepDescription`, `sql`, `sqlState`, `constraint`, `table`, `column`, `detail`.
+A migration operation's SQL step failed while being executed against the database during apply (`db init`, `db update`, `db migrate`). The envelope carries the database error detail so you can see which statement failed and why. Meta: `operationId`, `stepDescription`, `sql`, `sqlState`, `constraint`, `table`, `column`, `detail`.
 
 ### MIGRATION.FILE_MISSING [#MIGRATION.FILE_MISSING]
 
@@ -1042,7 +1042,7 @@ While reconstructing the migration graph, no migration starts from the empty con
 
 ### MIGRATION.NO_INVARIANT_PATH [#MIGRATION.NO_INVARIANT_PATH]
 
-The target (or named ref) requires data invariants, and no path through the migration graph from the current state covers all of them. Add a migration on the path that runs a `dataTransform` with each missing `invariantId`, or retarget the ref. Meta: `required`, `missing`, `structuralPath` (edges: `dirName`, `migrationHash`, `from`, `to`, `invariants`), `refName` (when applicable). Also raised per space by `migrate` in show/plan mode when a space's path requires invariants not available on disk; that site's meta is `spaceId`, `missing`.
+The target (or named ref) requires data invariants, and no path through the migration graph from the current state covers all of them. Add a migration on the path that runs a `dataTransform` with each missing `invariantId`, or retarget the ref. Meta: `required`, `missing`, `structuralPath` (edges: `dirName`, `migrationHash`, `from`, `to`, `invariants`), `refName` (when applicable). Also raised per space by `db migrate` in show/plan mode when a space's path requires invariants not available on disk; that site's meta is `spaceId`, `missing`.
 
 ### MIGRATION.NO_MIGRATIONS [#MIGRATION.NO_MIGRATIONS]
 
@@ -1062,7 +1062,7 @@ A Mongo migration check uses a filter feature the check evaluator does not suppo
 
 ### MIGRATION.PATH_UNREACHABLE [#MIGRATION.PATH_UNREACHABLE]
 
-An apply command (`migrate`/`db update`) cannot find a path through the on-disk migration graph from the database's current marker to the requested target — the connecting edge was never planned. The fix walks you through `migration plan` (with the right `--from`/`--to`) then `migrate`. Meta: carries the underlying failure's meta (`fromHash`, `targetHash`, `deadEnds`, `kind`).
+An apply command (`db migrate`/`db update`) cannot find a path through the on-disk migration graph from the database's current marker to the requested target — the connecting edge was never planned. The fix walks you through `migration plan` (with the right `--from`/`--to`) then `db migrate`. Meta: carries the underlying failure's meta (`fromHash`, `targetHash`, `deadEnds`, `kind`).
 
 ### MIGRATION.PLANNING_FAILED [#MIGRATION.PLANNING_FAILED]
 
@@ -1122,7 +1122,7 @@ A reference parsed, but as the wrong kind for the argument position — e.g. a m
 
 ### MIGRATION.RUNNER_FAILED [#MIGRATION.RUNNER_FAILED]
 
-Generic wrapper for a migration runner failure during execution that has no more specific code; the summary/why carry the underlying detail (also used to surface the legacy-marker-shape condition from marker reads, with `meta.runnerErrorCode`). `migrate` and `db init` map unrecognized apply failures through it, passing the failure's own meta through unchanged. Inspect the reported summary/why detail and address the underlying failure before re-running the command. Meta: the wrapped failure's meta, when it has any; `runnerErrorCode` at the legacy-marker-shape site.
+Generic wrapper for a migration runner failure during execution that has no more specific code; the summary/why carry the underlying detail (also used to surface the legacy-marker-shape condition from marker reads, with `meta.runnerErrorCode`). `db migrate` and `db init` map unrecognized apply failures through it, passing the failure's own meta through unchanged. Inspect the reported summary/why detail and address the underlying failure before re-running the command. Meta: the wrapped failure's meta, when it has any; `runnerErrorCode` at the legacy-marker-shape site.
 
 ### MIGRATION.SAME_SOURCE_AND_TARGET [#MIGRATION.SAME_SOURCE_AND_TARGET]
 
@@ -1130,7 +1130,7 @@ A migration's `from` and `to` hashes are identical and it declares no data-trans
 
 ### MIGRATION.SCHEMA_VERIFY_FAILED [#MIGRATION.SCHEMA_VERIFY_FAILED]
 
-After applying migrations, the runner introspected the database and the resulting schema does not satisfy the destination contract; the apply is rolled back. Runner-level failure during `db init`/`db update`/`migrate`. Meta: `issues` (schema diff issues).
+After applying migrations, the runner introspected the database and the resulting schema does not satisfy the destination contract; the apply is rolled back. Runner-level failure during `db init`/`db update`/`db migrate`. Meta: `issues` (schema diff issues).
 
 ### MIGRATION.SNAPSHOT_MISSING [#MIGRATION.SNAPSHOT_MISSING]
 

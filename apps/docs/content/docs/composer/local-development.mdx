@@ -1,20 +1,17 @@
 ---
 title: Local development
-description: Run the whole app on your machine with composer dev, and tail its logs with composer log, with no cloud credentials.
+description: Run the whole app on your machine with prisma dev, with no cloud credentials, and tail its logs through the control API.
 url: /composer/local-development
 metaTitle: Local development | Prisma Composer
-metaDescription: Run a Prisma Composer app locally with composer dev, tail merged service logs with composer log, and understand warm restarts, --fresh, and local emulators.
+metaDescription: Run a Prisma Composer app locally with prisma dev, tail merged service logs through the control API, and understand warm restarts, --fresh, and local emulators.
 ---
 
-One command brings your whole app up on your machine, every service, its databases and buckets, wired together, with no cloud credentials. `composer dev` runs the same pipeline a deploy runs, but against local stand-ins for Prisma Compute and Prisma Postgres, so what you run locally is what you ship. A second command, `composer log`, shows you the logs.
+One command brings your whole app up on your machine, every service, its databases and buckets, wired together, with no cloud credentials. `dev` runs the same pipeline a deploy runs, but against local stand-ins for Prisma Compute and Prisma Postgres, so what you run locally is what you ship. Logs are read separately, through the control API's `log` operation.
 
 | You want to... | Run |
 | --- | --- |
-| Bring the app up locally | `npx prisma@next composer dev module.ts` |
-| Start clean (wipe local data first) | `npx prisma@next composer dev module.ts --fresh` |
-| Watch every service's logs | `npx prisma@next composer log module.ts` |
-| Watch one service | `npx prisma@next composer log module.ts catalog.service` |
-| Show more history first | `npx prisma@next composer log module.ts --tail 200` |
+| Bring the app up locally | `npx prisma@next dev module.ts` |
+| Start clean (wipe local data first) | `npx prisma@next dev module.ts --fresh` |
 
 `module.ts` is your entry file, the one whose default export is the root module, the same file you pass to `deploy`. No `PRISMA_*` variables are needed. Local dev never talks to the platform.
 
@@ -24,7 +21,7 @@ Like deploy, `dev` runs your *built* output, so build first:
 
 ```npm
 npm run build
-npx prisma@next composer dev module.ts
+npx prisma@next dev module.ts
 ```
 
 It stands the app up and prints each service's local URL:
@@ -39,26 +36,30 @@ From here `dev` keeps running: it watches your built output and, when a service'
 
 `Ctrl-C` stops your app's service processes and exits. The local databases, buckets, and their data stay up, so the next `dev` is a warm start: same ports, same data. `--fresh` wipes this app's local instances and data before starting.
 
-`dev` does not print service logs. With several services running, streaming them all inline would bury the URL list and the restart notices, so logs are their own command.
+`dev` does not print service logs. With several services running, streaming them all inline would bury the URL list and the restart notices, so logs are read separately.
 
 ## Logs
 
-```npm
-npx prisma@next composer log module.ts
+The unified CLI has no `log` command. Tail the merged logs of the already-running app with the `log` operation from `@prisma/composer/control`, the same in-process API that backs `deploy` and `dev` (see [the control API](/cli/v8/deploy#the-control-api)):
+
+```ts
+import { log } from '@prisma/composer/control';
+
+await log({ entry: 'module.ts' });
 ```
 
-This tails the merged logs of the already-running app: one stream, each line prefixed with the service it came from:
+It streams one merged log, each line prefixed with the service it came from:
 
 ```text no-copy
 [quotes] serving a quote
 [quotes] serving a quote
 ```
 
-It follows live, like `tail -f`. `Ctrl-C` stops watching. It only reads the running app. It never builds, provisions, starts, or stops anything, so you can open and close it freely alongside a running `dev`.
+It follows live, like `tail -f`. It only reads the running app. It never builds, provisions, starts, or stops anything, so you can start and stop it freely alongside a running `dev`.
 
-- **One service:** pass its address, for example `composer log module.ts cron.runner`. A nested Module's service address is dotted, exactly as the startup output prints it.
-- **How much history:** `--tail <n>` sets how many recent lines to show before going live (default 20; `--tail 0` for live-only). Each service's log is cleared when it starts fresh, so you are never scrolling back through past sessions.
-- **Nothing running yet?** If you have not run `dev` (or you stopped it), `log` says so and points you at `dev`.
+- **One service:** pass its dotted address, for example `cron.runner`, exactly as the startup output prints it.
+- **How much history:** a tail option sets how many recent lines to show before going live (default 20; `0` for live-only). Each service's log is cleared when it starts fresh, so you are never scrolling back through past sessions.
+- **Nothing running yet?** If you have not run `dev` (or you stopped it), the operation says so and points you at `dev`.
 
 ## What's local vs. what's real
 

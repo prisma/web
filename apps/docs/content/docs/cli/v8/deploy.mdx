@@ -1,0 +1,66 @@
+---
+title: deploy
+description: Deploy a Composer application to Prisma Compute, to production or an isolated stage.
+url: /cli/v8/deploy
+metaTitle: deploy | Prisma 8 CLI
+metaDescription: Complete reference for the prisma deploy command, including stages, credentials, CI reports, and the in-process control API.
+---
+
+`deploy` deploys a [Prisma Composer](/composer) application to [Prisma Compute](/compute). It takes an `<entry>` argument: the module whose default export is the application root, typically `module.ts`. The command streams the deploy pipeline's own output to the terminal.
+
+`deploy` and [`dev`](/cli/v8/dev) are root-level commands of the unified Prisma CLI. There is no `composer` command group.
+
+By default, the command uses the credentials from your existing `auth login` session. In CI or other headless environments, set `PRISMA_SERVICE_TOKEN` and `PRISMA_WORKSPACE_ID` instead. See [Deploying](/composer/deploying#credentials) for details.
+
+The `deploy` command does not build your application. Run your build command before deploying.
+
+## Usage
+
+```npm
+npx prisma@next deploy module.ts
+npx prisma@next deploy module.ts --stage feat-auth
+```
+
+## Flags
+
+| Flag | Description |
+| --- | --- |
+| `--name <name>` | Override the application name for this deploy. It defaults to the name of the exported application |
+| `--stage <stage>` | Deploy scope to target; omit for production |
+| `--report <path>` | Write the deploy's outcome as JSON to this path: resources, preview URLs, and the failure cause. Also settable as `PRISMA_COMPOSER_REPORT_FILE` |
+| `--build-id <id>` | Join the deploy record your CI already created rather than letting the target create one |
+
+## Global flags
+
+The Prisma CLI's global flags also apply: `--format`, `--json`, `--log-level`, `--verbose`, `--quiet`, `--yes`, `--confirm`, `--interactive`, `--color`, and `--config`.
+
+## Environment variables
+
+| Variable | Description |
+| --- | --- |
+| `PRISMA_SERVICE_TOKEN` | A workspace service token from the [Prisma Console](https://console.prisma.io), for CI and other headless environments. When unset, the command uses your stored `auth login` session |
+| `PRISMA_WORKSPACE_ID` | The workspace ID from the workspace's settings; pair it with the service token |
+| `PRISMA_COMPOSER_REPORT_FILE` | Path to write the deploy's JSON outcome report; the `--report` flag wins when both are set |
+
+## Tearing down and log tailing
+
+The unified CLI has no `destroy` or `log` command. Both operations are available in-process through the control API below: `destroy` takes an explicit target (`{ kind: 'production' }` or `{ kind: 'stage', stage }`), and `log` tails a locally running application.
+
+## The control API
+
+Everything the CLI does is also callable in-process, from `@prisma/composer/control`: typed `deploy`, `destroy`, `dev`, and `log` operations that return structured results instead of printing and exiting:
+
+```ts
+import { deploy } from '@prisma/composer/control';
+
+const result = await deploy({ entry: 'module.ts', stage: 'pr-42' });
+if (!result.ok) console.error(result.failure.message);
+```
+
+Operations return `{ ok: true, value }` or `{ ok: false, failure }`. Failures come back as structured errors with a dotted `failure.code` and the same fix-naming `message` the CLI renders. The deploy engine's live output still streams to your process's stdio; the operations do not capture it.
+
+## Next steps
+
+- [`dev`](/cli/v8/dev): run the same application locally, with no credentials.
+- [Getting started](/composer/getting-started): the commands in a working flow.
+- [Deploying](/composer/deploying): stages, CI, and what a deploy prints.

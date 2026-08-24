@@ -11,9 +11,9 @@ Prisma Compute is in [Public Beta](/console/more/feature-maturity#public-beta). 
 ## CLI
 
 - The quickest way to run the CLI is `npx prisma@next <command>` (or `bunx`/`pnpm dlx`), with Node.js 22.18 or newer.
-- The platform command groups are `init`, `auth`, `project` (including `project env`), `postgres`, `bucket`, `branch`, `git`, `service` (including `service deployment` and `service domain`), `build`, and `agent`. The same binary also carries the [Prisma 8 data commands](/cli/v8) (`contract`, `db`, `migration`, `migrate`, `ref`) and the [`composer` commands](/cli/v8/composer). There is no `compute` namespace: Compute is managed through the resource groups above.
-- There is no standalone `deploy`, `build`, or `run` verb in the unified CLI. Deployments come from a git push, the Console, or Composer; see [Deployments](/compute/deployments).
-- Committed configuration lives in [`prisma.compute.ts`](/compute/configuration) or `prisma.compute.json`. `.prisma/local.json` is gitignored and only stores your local link to the workspace and project. In CI, set `PRISMA_PROJECT_ID` / `PRISMA_SERVICE_ID` to override the linked project and service.
+- The platform command groups are `auth`, `project` (including `project env`), `postgres`, `bucket`, `branch`, `git`, `service` (including `service version` and `service domain`), and `agent`, plus the root-level [`dev`](/cli/v8/dev) and [`deploy`](/cli/v8/deploy) verbs for Composer apps. The same binary also carries the [Prisma 8 data commands](/cli/v8) (`contract`, `db`, `migration`). There is no `compute` namespace: Compute is managed through the resource groups above.
+- Commands are targeted by parameters, not ambient state: the subject resource is the first positional argument, and there is no interactive picker. A missing target fails with a structured error (exit 2) before any network call.
+- There is no committed compute config file. Builds detect the framework from the repository, and a Composer app describes itself in its module. `.prisma/local.json` is gitignored and only stores your local link to the workspace and project. In CI, set `PRISMA_PROJECT_ID` / `PRISMA_SERVICE_ID` to override the linked project and service.
 
 ## Projects and branches
 
@@ -24,40 +24,40 @@ Prisma Compute is in [Public Beta](/console/more/feature-maturity#public-beta). 
 
 ## Frameworks and runtimes
 
-- `init --framework` (and the `framework` field in `prisma.compute.ts`) accepts `nextjs`, `nuxt`, `astro`, `hono`, `nestjs`, `tanstack-start`, `custom`, and `bun`.
-- Use `--entry` for Bun, or whenever detection needs help.
+- Push-triggered builds detect `nextjs`, `nuxt`, `astro`, `hono`, `nestjs`, `tanstack-start`, and `bun`.
+- A [Prisma Composer](/composer) app declares its build explicitly per service (the `node` and `nextjs` build adapters), so detection is not involved.
 
 ## Environment variables
 
 - Values are write-only: once saved, they are never returned by any surface, and there is no command to pull them into a local `.env`.
 - `project env list` returns keys and metadata only.
-- Values resolve at deploy time; changing one doesn't mutate existing deployments or trigger a redeploy.
+- Values resolve at deploy time; changing one does not mutate existing versions or trigger a redeploy.
 - Production variables can't be branch-scoped.
 - Keys must match `[A-Z_][A-Z0-9_]*`; values are non-empty, up to 8 KB.
 
 ## GitHub
 
 - GitHub is the only supported provider, and a project connects to one repository.
-- Auto-deploy supports multiple services declared in `prisma.compute.ts`: one push fans out into a targeted build per service. CI with a service token remains available when you need full control.
+- CI with a service token remains available when you need full control over deploys.
 - The webhook path is branch- and push-driven. There are no PR comments or PR status automation.
 
 ## Domains
 
-- Custom domains are production-only and CNAME-based: they attach to the default (production) branch, and the service needs a promoted deployment first.
+- Custom domains are production-only and CNAME-based: they attach to the default (production) branch, and the service needs a promoted version first.
 - Up to 3 custom domains per service.
 - There is no workspace-wide domain list in the CLI.
 
 ## Logs
 
-- `build logs <buildId>` streams a build's logs; runtime logs for a running deployment are available in the Console.
-- It returns `FEATURE_UNAVAILABLE` when the platform can't serve logs for the resolved deployment.
+- `service logs <service>` reads a version's logs (`--version-id <id>` selects one); build output for a deploy is available in the Console.
+- It returns `FEATURE_UNAVAILABLE` when the platform can't serve logs for the resolved version.
 - Logs stream in time-bounded segments, so direct API clients should expect to reconnect.
 
 ## Runtime
 
 - This release focuses on HTTP services. Background work between requests is supported through the `@prisma/compute` keep-awake primitives; see [Keeping instances awake](/compute/keeping-instances-awake). Cron scheduling, a persistent filesystem, and edge runtimes are not part of it.
 - WebSocket servers are not currently a supported Public Beta capability. `waitUntil` and `KeepAwakeGuard` only prevent an instance from scaling to zero; they do not change connection-lifetime limits or guarantee continuity through restarts or deployments.
-- No multi-region deployments. Each service lives in one region, chosen at creation (`init --region` or `service create --region`): `us-east-1` (the default), `us-west-1`, `eu-west-3`, `eu-central-1`, `ap-northeast-1`, or `ap-southeast-1`.
+- No multi-region deployments. Each service lives in one region, chosen at creation (`service create --region`): `us-east-1` (the default), `us-west-1`, `eu-west-3`, `eu-central-1`, `ap-northeast-1`, or `ap-southeast-1`.
 - Not yet recommended for mission-critical or heavy production workloads.
 - Exact limits, pricing, retention policies, and runtime guardrails can still change before general availability.
 

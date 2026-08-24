@@ -274,9 +274,16 @@ const config = {
       { source: "/guides/next/:path*", destination: "/guides/v8/:path*", permanent: true },
       { source: "/llms/next.txt", destination: "/llms/v8.txt", permanent: true },
       // Docs IA restructure: the Composer CLI reference lives in the v8 CLI section.
-      { source: "/composer/cli-reference", destination: "/cli/v8/composer", permanent: true },
+      { source: "/composer/cli-reference", destination: "/cli/v8/deploy", permanent: true },
       // Docs IA restructure: the Compute CLI pointer page folded into the v8 CLI reference.
       { source: "/compute/cli-reference", destination: "/cli/v8", permanent: true },
+      // CLI rc.8 command-surface rework: init and build logs removed, composer
+      // dev/deploy promoted to root-level dev/deploy, migrate renamed db migrate.
+      { source: "/cli/v8/platform-init", destination: "/cli/v8/project", permanent: true },
+      { source: "/compute/configuration", destination: "/compute", permanent: true },
+      { source: "/cli/v8/build", destination: "/cli/v8/service", permanent: true },
+      { source: "/cli/v8/composer", destination: "/cli/v8/deploy", permanent: true },
+      { source: "/cli/v8/migration-apply", destination: "/cli/v8/db-migrate", permanent: true },
       // Docs IA restructure: Local Postgres moved into the Local Development section.
       {
         source: "/postgres/database/local-development",
