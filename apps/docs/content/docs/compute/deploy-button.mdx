@@ -23,55 +23,22 @@ Enter your repository URL and copy the generated snippet:
 
 <DeployButtonGenerator />
 
-Before publishing the button, make sure the repository meets the [deployment requirements](#make-your-repository-deployable).
+## Repository requirements
 
-## Make your repository deployable
+Before publishing the button, make sure the source repository:
 
-The source repository must meet all of these requirements:
+- is a public GitHub repository;
+- has a `prisma-composer.config.*` file and a `module.*` file at its root;
+- default-exports a `module("name", ...)` call with a literal name;
+- has a root `package.json` with a `build` script, or uses Nx build targets;
+- has one supported root lockfile: `bun.lock`, `package-lock.json`, `pnpm-lock.yaml`, or `yarn.lock`; and
+- declares every required service and resource in its Composer module.
 
-- **It is a public GitHub repository.** Prisma copies the default branch. Private source repositories are not supported.
-- **It has a Composer config at the repository root.** Use `prisma-composer.config.ts`, `prisma-composer.config.mts`, `prisma-composer.config.mjs`, or `prisma-composer.config.js`.
-- **It has a Composer module at the repository root.** Use `module.ts`, `module.mts`, `module.mjs`, or `module.js`. The file must default-export a `module("name", ...)` call, either directly or through a variable. The name must be a string literal.
-- **It has a root `package.json`.** Add a root `build` script. Nx workspaces can use their normal Nx build targets instead.
-- **It has exactly one supported lockfile at the repository root.** Use one of `bun.lock`, `package-lock.json`, `pnpm-lock.yaml`, or `yarn.lock`.
-- **Its Composer module declares everything needed for deployment.** Composer provisions only the resources in the module. Declare Prisma Postgres there if the app needs a database.
+The repository can contain up to 100 files and 25 MB in total, with no file larger than 5 MB. Symlinks, Git submodules, and custom GitHub Actions workflows are not supported.
 
-A minimal Composer config looks like this:
+See [Getting started with Composer](/composer/getting-started) to prepare a repository.
 
-```ts title="prisma-composer.config.ts"
-import { defineConfig } from '@prisma/composer/config'
-import { nodeBuild } from '@prisma/composer/node/control'
-import { prismaCloud, prismaState } from '@prisma/composer-prisma-cloud/control'
-
-export default defineConfig({
-  extensions: [prismaCloud(), nodeBuild()],
-  state: prismaState(),
-})
-```
-
-The root module imports the services and resources that Composer should provision:
-
-```ts title="module.ts"
-import { module } from '@prisma/composer'
-
-import service from './src/service.ts'
-
-export default module('my-app', ({ provision }) => {
-  provision(service)
-})
-```
-
-Prisma validates the repository before creating the destination copy. Validation rejects:
-
-- more than 100 files;
-- any file larger than 5 MB;
-- more than 25 MB in total;
-- symlinks or Git submodules; and
-- GitHub Actions workflows other than `.github/workflows/prisma-deploy.yml`.
-
-An existing `.github/workflows/prisma-deploy.yml` is allowed, but Prisma replaces it with the current managed workflow in the copied repository.
-
-## URL format
+## URL options
 
 A Deploy Button links to:
 
@@ -85,62 +52,12 @@ https://console.prisma.io/new/clone?repository-url=<your repository URL>
 | `project-name`   | No       | Prefills the destination repository name. The user can change it. Prisma derives the Composer project name from the final repository name. |
 | `utm_source`     | No       | Records where the deployment link was published, such as `github-readme`. |
 
-A Markdown example for a README:
-
-```md title="README.md"
-[![Deploy with Prisma](https://www.prisma.io/docs/img/deploy-button.svg)](https://console.prisma.io/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Facme%2Fshop-api&utm_source=github-readme)
-```
-
-The same button in HTML:
-
-```html title="HTML"
-<a
-  href="https://console.prisma.io/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Facme%2Fshop-api&amp;utm_source=github-readme"
->
-  <img
-    src="https://www.prisma.io/docs/img/deploy-button.svg"
-    alt="Deploy with Prisma"
-    width="172"
-    height="36"
-  />
-</a>
-```
-
-## Environment variables
-
-Deploy Button URLs do not currently accept environment variable parameters. The Console rejects a link containing `env`, so do not add variable names or values to the URL.
-
-Composer provisions and binds the resources declared in the root module. If the app needs another secret or environment variable, configure it in the resulting project and redeploy. See [environment variables](/compute/environment-variables).
-
-For a reliable first deployment, do not make the app depend on an external secret that the Composer module cannot provide.
+Deploy Button URLs do not accept environment variables. If the app needs a secret that Composer cannot provide, add it to the resulting project and redeploy. The first deployment must not depend on that secret.
 
 ## How it works
 
-1. **Open the deployment page.** The Console resolves and pins the source repository's default-branch commit. A signed-out user signs in and then returns to the same deployment page.
-2. **Choose the destination.** The user selects a workspace, a connected GitHub account or organization, a destination repository name, and whether the new repository is private or public. The Prisma GitHub App installation flow is shown when needed.
-3. **Authorize repository creation.** GitHub asks the user to authorize Prisma. Prisma uses that authorization for this repository creation and does not store it.
-4. **Copy and prepare the repository.** Prisma creates the destination repository, copies the pinned source commit, changes the Composer module name to a safe name derived from the destination repository, and adds or replaces `.github/workflows/prisma-deploy.yml`.
-5. **Let Composer create the project.** Publishing the initial commit starts the workflow. Composer creates the Prisma project, provisions the module's resources, and deploys its Compute services. The Console does not pre-create the project.
-6. **Push future changes.** Each later branch push runs the same Composer workflow. Deleting a branch runs its Composer teardown.
+1. The user chooses a workspace, a GitHub account or organization, a repository name, and its visibility.
+2. Prisma copies the source into a new repository owned by the user and adds the deployment workflow.
+3. The workflow runs Composer, which creates the Prisma project, provisions its resources, and deploys the app. Future pushes run the workflow again.
 
-The user owns the copied repository and the Prisma project. No long-lived Prisma credential is committed to the repository: the managed workflow authenticates with GitHub OIDC. The clone page does not ask the user to select a region; Composer uses the repository's configuration and platform defaults.
-
-The user needs a Prisma Data Platform account, a GitHub account, and permission to create a repository under the selected account or organization.
-
-## Troubleshooting
-
-**The page asks for `prisma-composer.config.mjs` or `module.mjs`.** The repository is missing a supported root Composer config or module. Any filename listed in [deployment requirements](#make-your-repository-deployable) works.
-
-**The repository has an invalid Prisma Composer configuration.** Check that the root module default-exports `module("name", ...)` with a literal name. Also check that the repository has exactly one supported lockfile and either a root `build` script or an Nx workspace.
-
-**The source repository must be public.** The button only supports public source repositories. The destination copy can still be private.
-
-**Environment variables in deploy links are not supported.** Remove `env` and every `env-example-*` parameter from the URL.
-
-**A repository or project with this name already exists.** Choose another destination repository name and try again.
-
-**GitHub authorization was canceled or expired.** Return to the deployment page and authorize GitHub again.
-
-**The repository was created, but deployment did not start.** Open the copied repository and check that `.github/workflows/prisma-deploy.yml` exists. Inspect the GitHub Actions run for an error. A new push to the branch starts the workflow again.
-
-**The workflow ran, but the app did not deploy.** Check the Composer workflow, build logs, and runtime logs. Confirm that the root build produces the service entry points declared by the Composer module.
+The user needs Prisma and GitHub accounts and permission to create the destination repository.
