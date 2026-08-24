@@ -64,13 +64,25 @@ export default function CustomSearchDialog(props: SharedProps) {
   return (
     <SearchDialog search={search} onSearchChange={setSearch} isLoading={query.isLoading} {...props}>
       <SearchDialogOverlay suppressHydrationWarning />
-      <SearchDialogContent>
-        <SearchDialogHeader>
-          <CustomSearchDialogIcon isLoading={query.isLoading} />
-          <SearchDialogInput />
-          <SearchDialogClose aria-label="Close search">
-            <X className="size-4" aria-hidden="true" />
-          </SearchDialogClose>
+      {/* Brand shell only — every fumadocs mechanic (RootContext, keyboard
+          navigation, the `*:border-b` divider rule on direct children) is
+          untouched. `rounded-(--radius-square-high)` rather than
+          `rounded-square-high` because tailwind-merge only collapses radius
+          classes it recognises, and the panel default is `rounded-xl`. */}
+      <SearchDialogContent className="rounded-(--radius-square-high) border-stroke-neutral">
+        <SearchDialogHeader className="p-3">
+          {/* The pill is a wrapper, not a restyle of SearchDialogInput —
+              that component hardcodes its className and drops any passed in. */}
+          <div className="flex w-full flex-row items-center gap-2 rounded-full border border-stroke-neutral bg-fd-secondary/50 px-4 py-2 transition-colors duration-300 focus-within:border-fd-ring motion-reduce:transition-none">
+            <CustomSearchDialogIcon isLoading={query.isLoading} />
+            <SearchDialogInput />
+            <SearchDialogClose
+              aria-label="Close search"
+              className="rounded-full border-stroke-neutral"
+            >
+              <X className="size-4" aria-hidden="true" />
+            </SearchDialogClose>
+          </div>
         </SearchDialogHeader>
         <SearchDialogList items={query.data !== "empty" ? query.data : null} />
       </SearchDialogContent>

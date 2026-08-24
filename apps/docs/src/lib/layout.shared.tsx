@@ -1,74 +1,30 @@
 import type { LinkItemType } from "@/components/layout/link-item";
 import type { BaseLayoutProps } from "@/components/layout/shared";
 import Image from "next/image";
-import logoDark from "../../public/img/logo-dark.svg";
-import logoWhite from "../../public/img/logo-white.svg";
+import logoLight from "../../public/logo/full-color.svg";
+import logoDark from "../../public/logo/full-color-white.svg";
 import { DiscordIcon } from "@/components/icons/discord";
 import Link from "next/link";
 
+// The full-colour lockup (prism mark + wordmark) from the redesign. Two files
+// rather than one recoloured file: the wordmark is solid black in the light
+// asset and solid white in the dark one, while the prism mark keeps its own
+// cyan/yellow/red in both.
 export const logo = (
   <>
-    <Image alt="Prisma" src={logoDark} aria-label="Prisma" className="dark:hidden" />
-    <Image alt="Prisma" src={logoWhite} aria-label="Prisma" className="hidden dark:block" />
+    <Image alt="Prisma" src={logoLight} aria-label="Prisma" className="h-7 w-auto dark:hidden" />
+    <Image
+      alt="Prisma"
+      src={logoDark}
+      aria-label="Prisma"
+      className="hidden h-7 w-auto dark:block"
+    />
   </>
 );
 
-type LinkItemTypeWithActivePaths = LinkItemType & {
-  activePaths?: string[];
-};
-
-export const links: LinkItemTypeWithActivePaths[] = [
-  {
-    text: "Getting Started",
-    url: "/",
-    active: "nested-url",
-    activePaths: ["/", "/next", "/prisma-orm", "/prisma-postgres", "/prisma-compute"],
-  },
-  {
-    text: "ORM",
-    url: "/orm",
-    active: "nested-url",
-    activePaths: ["/orm", "/orm/next", "/orm/v6"],
-    preserveDocsVersion: true,
-  },
-  {
-    text: "Postgres",
-    url: "/postgres",
-    active: "nested-url",
-  },
-  {
-    text: "Compute",
-    url: "/compute",
-    active: "nested-url",
-  },
-  {
-    text: "Composer",
-    url: "/composer",
-    active: "nested-url",
-  },
-  {
-    text: "CLI",
-    url: "/cli",
-    active: "nested-url",
-    preserveDocsVersion: true,
-  },
-  {
-    text: "Guides",
-    url: "/guides",
-    active: "nested-url",
-  },
-  {
-    text: "More",
-    type: "menu",
-    items: [
-      { text: "Management API", url: "/management-api", active: "nested-url" },
-      { text: "Studio", url: "/studio", active: "nested-url" },
-      { text: "AI", url: "/ai", active: "nested-url" },
-      { text: "Query Insights", url: "/query-insights", active: "nested-url" },
-      { text: "Accelerate", url: "/accelerate", active: "nested-url" },
-      { text: "Console", url: "/console", active: "nested-url" },
-    ],
-  },
+// Section navigation lives in the sidebar (src/lib/sidebar-sections.tsx +
+// SidebarNav); the navbar only carries external links and buttons.
+export const links: LinkItemType[] = [
   {
     type: "icon",
     label: "Join Discord",
@@ -96,7 +52,10 @@ export function baseOptions(): BaseLayoutProps {
     nav: {
       title: (
         <>
-          <Link href="https://www.prisma.io" className="mb-0 hover:mb-1 transition-[margin]">
+          <Link
+            href="https://www.prisma.io"
+            className="mb-0 hover:mb-1 transition-[margin] duration-300 motion-reduce:transition-none"
+          >
             {logo}
           </Link>
           <span className="text-fd-muted-foreground">/</span>

@@ -80,12 +80,19 @@ export function VersionSwitcher({
       <DropdownMenu>
         <DropdownMenuTrigger
           aria-label={`Select ${label.toLowerCase()}`}
-          className="flex w-full cursor-pointer items-center justify-between gap-2 rounded-md border bg-fd-background px-3 py-2 text-sm font-medium text-fd-foreground transition-colors hover:bg-fd-accent"
+          className="flex w-full cursor-pointer items-center justify-between gap-2 rounded-full border border-stroke-neutral bg-fd-background px-3.5 py-2 text-sm font-medium text-fd-foreground transition-colors duration-300 hover:bg-fd-accent motion-reduce:transition-none"
         >
           <span>{getVersionLabel(currentVersion)}</span>
           <ChevronDownIcon className="size-4 text-fd-muted-foreground" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="min-w-(--radix-dropdown-menu-trigger-width)">
+        {/* `rounded-(--radius-square-high)` rather than `rounded-square-high`: the
+            eclipse panel already carries `rounded-md`, and tailwind-merge only
+            collapses radius classes it recognises — the CSS-variable form is
+            recognised, the custom-named one is not. */}
+        <DropdownMenuContent
+          align="start"
+          className="min-w-(--radix-dropdown-menu-trigger-width) rounded-(--radius-square-high) border-stroke-neutral"
+        >
           <DropdownMenuRadioGroup value={currentVersion} onValueChange={handleVersionChange}>
             {visibleVersions.map((version) => (
               <DropdownMenuRadioItem

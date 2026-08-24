@@ -62,7 +62,7 @@ export function TOCItems({ ref, className, ...props }: ComponentProps<"div">) {
 
   if (items.length === 0)
     return (
-      <div className="rounded-lg border bg-fd-card p-3 text-xs text-fd-muted-foreground">
+      <div className="rounded-square border bg-fd-card p-3 text-xs text-fd-muted-foreground">
         {text.tocNoHeadings}
       </div>
     );
@@ -85,7 +85,7 @@ export function TOCItems({ ref, className, ...props }: ComponentProps<"div">) {
         >
           <TocThumb
             containerRef={containerRef}
-            className="absolute w-full top-(--fd-top) h-(--fd-height) bg-fd-primary transition-[top,height]"
+            className="absolute w-full top-(--fd-top) h-(--fd-height) spectrum-thumb transition-[top,height]"
           />
         </div>
       )}
@@ -132,7 +132,7 @@ function TOCItem({
       style={{
         paddingInlineStart: getItemOffset(item.depth),
       }}
-      className="prose relative py-1.5 text-sm text-fd-muted-foreground hover:text-fd-accent-foreground transition-colors wrap-anywhere first:pt-0 last:pb-0 data-[active=true]:text-fd-primary"
+      className="prose spectrum-text-active relative py-1.5 text-sm text-fd-muted-foreground hover:text-fd-accent-foreground wrap-anywhere first:pt-0 last:pb-0"
     >
       {offset !== upperOffset && (
         <svg

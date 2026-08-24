@@ -60,18 +60,20 @@ function assertMdxSafe(markdown) {
 // developers import from a facade package, not the unpublished @internal
 // scope. Each rule is a narrow literal so it no-ops once upstream catches up.
 function applyNamingStandard(body) {
-  return body
-    .replace(/Prisma Next\b/g, "Prisma 8")
-    .replace(
-      /`@internal\/utils\/structured-error`/g,
-      "your facade package's `utils/structured-error` subpath (for example `@prisma/orm-postgres/utils/structured-error`)",
-    )
-    // The facade clients by their published names. Backtick-bounded so the
-    // internal-only testkits (`@internal/postgres-codec-testkit`, ...) keep
-    // their real names.
-    .replace(/`@internal\/postgres`/g, "`@prisma/orm-postgres`")
-    .replace(/`@internal\/sqlite`/g, "`@prisma/orm-sqlite`")
-    .replace(/`@internal\/mongo`/g, "`@prisma/orm-mongo`");
+  return (
+    body
+      .replace(/Prisma Next\b/g, "Prisma 8")
+      .replace(
+        /`@internal\/utils\/structured-error`/g,
+        "your facade package's `utils/structured-error` subpath (for example `@prisma/orm-postgres/utils/structured-error`)",
+      )
+      // The facade clients by their published names. Backtick-bounded so the
+      // internal-only testkits (`@internal/postgres-codec-testkit`, ...) keep
+      // their real names.
+      .replace(/`@internal\/postgres`/g, "`@prisma/orm-postgres`")
+      .replace(/`@internal\/sqlite`/g, "`@prisma/orm-sqlite`")
+      .replace(/`@internal\/mongo`/g, "`@prisma/orm-mongo`")
+  );
 }
 
 function transform(markdown) {

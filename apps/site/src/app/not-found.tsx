@@ -1,25 +1,19 @@
-import GlitchParticles from "@/components/glitch-particles";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { NotFoundTracker } from "@/components/not-found-tracker";
-import type { Metadata } from "next";
-
-export const metadata: Metadata = {
-  title: "404 - Page Not Found | Prisma",
-  description: "The page you were looking for could not be found.",
-};
 
 export default function NotFound() {
   return (
-    <main className="flex-1 w-full max-w-249 mx-auto px-4 py-8 z-1">
+    <section className="flex flex-col items-center justify-center py-32 px-4 text-center">
       <NotFoundTracker />
-      <h1 className="pointer-events-none absolute opacity-0 stretch-display text-4xl font-bold mb-2 landing-h1 text-center mt-9 font-sans-display">
-        Prisma Website | 404
-      </h1>
-      <div className="relative mx-auto flex flex-col items-center justify-center -mt-10 md:-mt-30">
-        <GlitchParticles />
-        <p className="pointer-events-none absolute top-[65%] text-foreground-neutral-weak text-2xl md:text-[46px] font-semibold mb-4 font-mono">
-          page not found
-        </p>
-      </div>
-    </main>
+      <h1 className="text-6xl font-bold tracking-tight">404</h1>
+      <p className="mt-4 text-xl text-muted-foreground">Page not found</p>
+      <p className="mt-2 text-muted-foreground max-w-md">
+        The page you&apos;re looking for doesn&apos;t exist or has been moved.
+      </p>
+      <Button asChild className="mt-8">
+        <Link href="/">Go home</Link>
+      </Button>
+    </section>
   );
 }
