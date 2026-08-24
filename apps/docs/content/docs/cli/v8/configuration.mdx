@@ -6,18 +6,18 @@ metaTitle: Prisma 8 CLI configuration
 metaDescription: Learn how Prisma 8 CLI commands find config, read database URLs, and format output.
 ---
 
-Prisma 8 CLI commands read `prisma.config.ts` in your project root. The file has one section per part of the CLI. The Prisma 8 data commands read the `orm` section.
+Prisma 8 CLI commands read `prisma.config.ts` in your project root. The file has one section per part of the CLI. The Prisma 8 data commands read the `orm` section; the [agent skills commands](/cli/v8/skills) read the `skills` section.
 
 ## Config file
 
-The outer `defineConfig` comes from `@prisma/cli-engine` and marks the file as a Prisma 8 CLI config. A Prisma 7 `prisma.config.ts` without that marker is rejected rather than misread. The `orm` section uses the config helper for your database. For PostgreSQL:
+The outer `definePrismaConfig` comes from `prisma/config` and marks the file as a Prisma 8 CLI config. A Prisma 7 `prisma.config.ts` without that marker is rejected rather than misread. The import resolves from your project's `node_modules`, so `prisma` must be a local dependency. The `orm` section uses the config helper for your database. For PostgreSQL:
 
 ```typescript title="prisma.config.ts"
 import "dotenv/config";
-import { defineConfig } from "@prisma/cli-engine";
+import { definePrismaConfig } from "prisma/config";
 import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
 
-export default defineConfig({
+export default definePrismaConfig({
   orm: ormConfig({
     contract: "./prisma/contract.prisma",
     db: {
@@ -27,9 +27,9 @@ export default defineConfig({
 });
 ```
 
-For MongoDB projects, import the section helper from `@prisma/orm-mongo/config` instead.
+For MongoDB projects, import the section helper from `@prisma/orm-mongo/config` instead. `defineConfig` from `@prisma/cli-engine` is the former name of `definePrismaConfig` and still works, so configs scaffolded by earlier release candidates keep evaluating.
 
-[`orm init`](/cli/v8/init) writes this file for you. Pass `--config` when your config file is not at `./prisma.config.ts`:
+[`orm init`](/cli/v8/orm-init) writes this file for you. Pass `--config` when your config file is not at `./prisma.config.ts`:
 
 ```npm
 npx prisma@next contract emit --config ./config/prisma.config.ts
@@ -40,10 +40,10 @@ npx prisma@next contract emit --config ./config/prisma.config.ts
 `contract emit` does not connect to a database, so the `orm` section can omit `db.connection`:
 
 ```typescript title="prisma.config.ts"
-import { defineConfig } from "@prisma/cli-engine";
+import { definePrismaConfig } from "prisma/config";
 import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
 
-export default defineConfig({
+export default definePrismaConfig({
   orm: ormConfig({
     contract: "./prisma/contract.prisma",
   }),
@@ -57,11 +57,11 @@ Add `db.connection` before running commands such as `db verify`, `db sign`, `db 
 Add extension control descriptors to the `orm` section when your contract uses extension-provided types:
 
 ```typescript title="prisma.config.ts"
-import { defineConfig } from "@prisma/cli-engine";
+import { definePrismaConfig } from "prisma/config";
 import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
 import pgvector from "@prisma/orm-extension-pgvector/control";
 
-export default defineConfig({
+export default definePrismaConfig({
   orm: ormConfig({
     contract: "./prisma/contract.prisma",
     extensions: [pgvector],
@@ -73,6 +73,28 @@ export default defineConfig({
 ```
 
 Re-run `contract emit` after changing extension packs, then update the matching runtime client.
+
+## Agent skills
+
+The `skills` section controls the [agent skills commands](/cli/v8/skills) and the staleness check:
+
+```typescript title="prisma.config.ts"
+import { definePrismaConfig } from "prisma/config";
+
+export default definePrismaConfig({
+  skills: {
+    agents: ["claude", "cursor"],
+    check: true,
+  },
+});
+```
+
+| Field | What it does |
+| --- | --- |
+| `agents` | The agent harnesses `skills sync` writes and `skills list` reports: `claude`, `cursor`, `agents`, `devin`. An empty array records that no agent skills are wanted. Default: all of them. |
+| `check` | Set `false` to stop commands reporting out-of-date skills, for everyone working in the project. Default: `true`. |
+
+[`init`](/cli/v8/init) scaffolds this section for you.
 
 ## Database URLs
 
@@ -88,6 +110,7 @@ npx prisma@next db verify --db "$DATABASE_URL"
 | --- | --- |
 | `DATABASE_URL` | Common place to store the database connection string used by config files and scripts. |
 | `NO_COLOR=1` | Disables colored terminal output. |
+| `PRISMA_SKILLS_CHECK=0` | Disables the [agent skills staleness check](/cli/v8/skills#the-staleness-check). |
 
 ## Platform environment variables
 
