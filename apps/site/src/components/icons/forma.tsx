@@ -24,6 +24,30 @@ export function Swap(props: IconProps) {
   );
 }
 
+// Download — the one glyph the fetched Forma set was missing. Authored in the
+// same thin-stroke geometric voice (round caps, hairline weight) so it sits
+// beside the fill-based glyphs without reading as a different library.
+export function Download(props: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      width={24}
+      height={24}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <path d="M12 3v11" />
+      <path d="m7.5 9.5 4.5 4.5 4.5-4.5" />
+      <path d="M4 20.5h16" />
+    </svg>
+  );
+}
+
 export function Upload(props: IconProps) {
   return (
     <svg {...base(props)}>
