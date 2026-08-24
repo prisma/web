@@ -284,6 +284,8 @@ const config = {
       { source: "/cli/v8/build", destination: "/cli/v8/service", permanent: true },
       { source: "/cli/v8/composer", destination: "/cli/v8/deploy", permanent: true },
       { source: "/cli/v8/migration-apply", destination: "/cli/v8/db-migrate", permanent: true },
+      // The full-stack tutorial moved from the Prisma 8 block to the Start group.
+      { source: "/v8/full-stack-tutorial", destination: "/full-stack-tutorial", permanent: true },
       // Docs IA restructure: Local Postgres moved into the Local Development section.
       {
         source: "/postgres/database/local-development",

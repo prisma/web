@@ -1,7 +1,7 @@
-import { IconTile } from "@/components/brand/icon-tile"
-import { PrismButtonOutline } from "@/components/brand/prism-button"
-import { Console, Discord, Github, Mail } from "@/components/icons/forma"
-import { Reveal } from "@/components/motion/reveal"
+import { IconTile } from "@/components/brand/icon-tile";
+import { PrismButtonOutline } from "@/components/brand/prism-button";
+import { Console, Discord, Github, Mail } from "@/components/icons/forma";
+import { Reveal } from "@/components/motion/reveal";
 
 const CHANNELS = [
   {
@@ -23,7 +23,7 @@ const CHANNELS = [
     description: "Report a bug or request a feature on GitHub.",
     cta: { label: "Open GitHub", href: "https://github.com/prisma/prisma/issues" },
   },
-]
+];
 
 // The three support channels, for people who don't need the form. Unwrapped and
 // plain white so the hero's panel and the closing CTA's panel bracket it — the
@@ -78,5 +78,5 @@ export function ContactSupport() {
         </Reveal>
       </div>
     </section>
-  )
+  );
 }

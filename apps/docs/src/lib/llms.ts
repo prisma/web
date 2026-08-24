@@ -178,7 +178,7 @@ export const llmsSections: LLMsSection[] = [
     title: "Prisma 8 (Release Candidate)",
     description:
       "Prisma 8, the next major version of Prisma ORM, available as a Release Candidate. A ground-up TypeScript rewrite that keeps the schema-first workflow while making it extensible, composable, and AI-agent friendly. Covers setup, ORM, guides, and CLI docs for Prisma 8.",
-    prefixes: ["/v8", "/orm/v8", "/guides/v8", "/cli/v8"],
+    prefixes: ["/v8", "/orm/v8", "/guides/v8", "/cli/v8", "/full-stack-tutorial"],
   },
   {
     slug: "postgres",

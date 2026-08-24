@@ -6,7 +6,9 @@ export function getBaseUrl(): string {
   return (
     process.env.NEXT_PUBLIC_PRISMA_URL ??
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ??
-    "http://localhost:3001"
+    // PORT covers local runs on a non-default port; when Next auto-increments
+    // past a busy 3001 no env var records it, so links may still say 3001.
+    `http://localhost:${process.env.PORT ?? "3001"}`
   );
 }
 
