@@ -1,5 +1,13 @@
 import { Marker } from "@/components/brand/marker";
-import { CheckBold, Database, Layers, Server, Shield, Table } from "@/components/icons/forma";
+import {
+  AppWindow,
+  CheckBold,
+  Database,
+  Layers,
+  Server,
+  Shield,
+  Table,
+} from "@/components/icons/forma";
 import { Reveal } from "@/components/motion/reveal";
 import { cn } from "@/lib/utils";
 
@@ -55,36 +63,100 @@ type Group = {
   rows: Row[];
 };
 
+// Monthly price is plan-level, not a Postgres feature, so it sits above the
+// product groups rather than inside one — hoisted when "Database usage" was
+// renamed "Prisma Postgres" to mirror the plan cards' group labels (Shane,
+// 2026-08-24).
+const PLAN_ROW: Row = {
+  label: "Monthly price",
+  values: ["$0", "$10", "$49", "$129"],
+};
+
 const GROUPS: Group[] = [
   {
-    label: "Usage",
+    label: "Prisma Postgres",
     icon: Database,
     color: "text-prism-cyan-500",
     rows: [
-      { label: "Monthly price", values: ["$0", "$10", "$49", "$129"] },
       {
         label: "Operations included",
-        values: ["100,000", "1,000,000", "10,000,000", "50,000,000"],
+        values: ["200k", "1M", "10M", "50M"],
       },
       {
         label: "Operation overage",
-        values: ["—", "$0.0080 per 1,000", "$0.0020 per 1,000", "$0.0010 per 1,000"],
+        values: ["—", "$8 per million", "$2 per million", "$1 per million"],
       },
-      { label: "Storage included", values: ["500 MB", "10 GB", "50 GB", "100 GB"] },
-      { label: "Storage overage", values: ["—", "$2.00 per GB", "$1.50 per GB", "$1.00 per GB"] },
+      {
+        label: "Storage included",
+        values: ["500 MB", "10 GB", "50 GB", "100 GB"],
+      },
+      {
+        label: "Storage overage",
+        values: ["—", "$2.00 per GB", "$1.50 per GB", "$1.00 per GB"],
+      },
       { label: "Databases", values: ["50", "1,000", "1,000", "1,000"] },
-      { label: "Data transfer", values: ["Unlimited", "Unlimited", "Unlimited", "Unlimited"] },
+      {
+        label: "Data transfer",
+        values: ["Unlimited", "Unlimited", "Unlimited", "Unlimited"],
+      },
       { label: "Spend limits", values: ["—", YES, YES, YES] },
+    ],
+  },
+  {
+    // Compute GA (Shane, 2026-08-24): Compute pricing goes in this table, not
+    // its own section. Numbers are LOCKED IN, hand-entered by Shane, and must
+    // match the plan cards (pricing-plans.tsx): requests are the only meter
+    // with an included allowance; the other meters are billed per use on paid
+    // plans. Free's "—" price cells mean no usage billing on Free, same idea
+    // as the database side's missing overage.
+    label: "Prisma Compute",
+    icon: AppWindow,
+    // -500 rather than -400: at 16px on white the lighter amber reads as washed
+    // out next to the cyan and red glyphs.
+    color: "text-prism-yellow-500",
+    rows: [
+      {
+        label: "Requests included",
+        values: ["1M", "5M", "20M", "100M"],
+      },
+      {
+        label: "Request price",
+        values: ["—", "$1 per million", "$1 per million", "$1 per million"],
+      },
+      {
+        label: "Provisioned memory price",
+        values: [
+          "—",
+          "$0.006 per GB-hour",
+          "$0.006 per GB-hour",
+          "$0.006 per GB-hour",
+        ],
+      },
+      {
+        label: "Active CPU price",
+        values: [
+          "—",
+          "$0.064 per vCPU-hour",
+          "$0.064 per vCPU-hour",
+          "$0.064 per vCPU-hour",
+        ],
+      },
+      {
+        label: "Outbound bandwidth price",
+        values: ["—", "$0.025 per GB", "$0.025 per GB", "$0.025 per GB"],
+      },
+      { label: "Scale to zero when idle", values: [YES, YES, YES, YES] },
     ],
   },
   {
     label: "Managed connection pool",
     icon: Server,
-    // -500 rather than -400: at 16px on white the lighter amber reads as washed
-    // out next to the cyan and red glyphs.
-    color: "text-prism-yellow-500",
+    color: "text-prism-red-500",
     rows: [
-      { label: "Connection limit (pooled)", values: ["10", "100", "500", "1,000"] },
+      {
+        label: "Connection limit (pooled)",
+        values: ["10", "100", "500", "1,000"],
+      },
       { label: "Connection limit (direct)", values: ["10", "10", "50", "100"] },
       {
         label: "Connection idle timeout",
@@ -108,19 +180,27 @@ const GROUPS: Group[] = [
   {
     label: "Global cache",
     icon: Layers,
-    color: "text-prism-red-500",
+    color: "text-prism-cyan-500",
     rows: [
       // Live values are $0.0020 / $0.0010 per 1,000 and 5/5/10/20 purges per
       // hour, but Gregory said Accelerate is being deprecated — so whether
       // this group belongs on the page at all is unresolved. Placeholder.
-      { label: "Cache tag invalidations", values: [PENDING, PENDING, PENDING, PENDING] },
-      { label: "Cache purge requests", values: [PENDING, PENDING, PENDING, PENDING] },
+      {
+        label: "Cache tag invalidations",
+        values: [PENDING, PENDING, PENDING, PENDING],
+      },
+      {
+        label: "Cache purge requests",
+        values: [PENDING, PENDING, PENDING, PENDING],
+      },
     ],
   },
   {
     label: "Data",
     icon: Table,
-    color: "text-prism-cyan-500",
+    // -500 rather than -400: at 16px on white the lighter amber reads as washed
+    // out next to the cyan and red glyphs.
+    color: "text-prism-yellow-500",
     rows: [
       { label: "Query insights", values: [YES, YES, YES, YES] },
       { label: "View and edit your data", values: [YES, YES, YES, YES] },
@@ -138,16 +218,19 @@ const GROUPS: Group[] = [
   {
     label: "Platform",
     icon: Shield,
-    // -500 rather than -400: at 16px on white the lighter amber reads as washed
-    // out next to the cyan and red glyphs.
-    color: "text-prism-yellow-500",
+    color: "text-prism-red-500",
     rows: [
       // live page: Community / Community / Standard / Premium
       // Gregory (May): Community / Community / 24h / 2h — unresolved, so placeholder
       { label: "Support", values: [PENDING, PENDING, PENDING, PENDING] },
       {
         label: "Compliance",
-        values: ["GDPR", "GDPR", "GDPR, HIPAA", "GDPR, HIPAA, SOC 2, ISO 27001"],
+        values: [
+          "GDPR",
+          "GDPR",
+          "GDPR, HIPAA",
+          "GDPR, HIPAA, SOC 2, ISO 27001",
+        ],
       },
       { label: "Prisma ORM", values: ["Free", "Free", "Free", "Free"] },
     ],
@@ -160,7 +243,9 @@ const HIGHLIGHT = 1;
 
 function Cell({ value, highlight }: { value: string; highlight: boolean }) {
   if (value === YES) {
-    return <CheckBold className="size-4 text-prism-cyan-500" aria-label="Included" />;
+    return (
+      <CheckBold className="size-4 text-prism-cyan-500" aria-label="Included" />
+    );
   }
   // A placeholder means "we have not been given this" — it must never read as
   // "not included", which is what the em-dash means.
@@ -190,6 +275,75 @@ function Cell({ value, highlight }: { value: string; highlight: boolean }) {
   );
 }
 
+// One row of the mobile feature-first pivot — uniform rows collapse to a
+// single line, differing rows fan out into the 2x2 plan grid (see the layout
+// note in PricingSpecTable). Shared by the group rows and the hoisted
+// Monthly price row so the two can't drift apart.
+function MobileRow({ row }: { row: Row }) {
+  const uniform = row.values.every((v) => v === row.values[0]);
+  return (
+    <div className="border-t border-black/[0.06] px-5 py-3.5 first:border-t-0">
+      {uniform ? (
+        <div className="flex items-start justify-between gap-4">
+          <dt className="text-sm leading-relaxed text-muted-foreground">
+            {row.label}
+          </dt>
+          <dd className="shrink-0 text-right">
+            <Cell value={row.values[0]} highlight />
+          </dd>
+        </div>
+      ) : (
+        <>
+          <dt className="text-sm leading-relaxed text-muted-foreground">
+            {row.label}
+          </dt>
+          <dd className="mt-2.5 grid grid-cols-2 gap-2">
+            {row.values.map((v, i) => (
+              <div
+                key={PLAN_NAMES[i]}
+                className={cn(
+                  "rounded-lg px-3 py-2",
+                  // Recommended plan lifted on white, the rest recessed — the
+                  // site's before/after language from pricing-comparison.tsx.
+                  i === HIGHLIGHT
+                    ? "bg-white ring-1 ring-black/[0.09]"
+                    : "bg-foreground/[0.03]",
+                )}
+              >
+                <p className="text-[0.6875rem] font-medium text-muted-foreground">
+                  {PLAN_NAMES[i]}
+                </p>
+                <div className="mt-1">
+                  <Cell value={v} highlight={i === HIGHLIGHT} />
+                </div>
+              </div>
+            ))}
+          </dd>
+        </>
+      )}
+    </div>
+  );
+}
+
+// One row of the desktop table, same sharing rationale as MobileRow.
+function DesktopRow({ row }: { row: Row }) {
+  return (
+    <tr className="border-t border-black/[0.06]">
+      <th
+        scope="row"
+        className="px-5 py-3.5 text-sm font-normal leading-relaxed text-muted-foreground"
+      >
+        {row.label}
+      </th>
+      {row.values.map((v, i) => (
+        <td key={i} className="px-5 py-3.5 align-top">
+          <Cell value={v} highlight={i === HIGHLIGHT} />
+        </td>
+      ))}
+    </tr>
+  );
+}
+
 // overflow-x-clip on the section contains the glow's horizontal bleed:
 // -inset-x-10 is wider than the mobile gutter and pushed the document 24px
 // sideways. `clip` rather than `hidden` so it doesn't become a scroll container.
@@ -204,7 +358,8 @@ export function PricingSpecTable() {
         </Reveal>
         <Reveal delay={0.1}>
           <p className="mt-4 max-w-2xl text-pretty text-base leading-relaxed text-muted-foreground">
-            All of the features below are included with Prisma Postgres.
+            Everything below is included with your plan, across Prisma Postgres
+            and Prisma Compute.
           </p>
         </Reveal>
 
@@ -237,74 +392,38 @@ export function PricingSpecTable() {
               text cannot fit that width, so the data is pivoted feature-first
               instead of plan-first: each feature states its four values
               together, which keeps the comparison the table exists to make.
-              The uniform-row collapse is what makes that affordable. 12 of the
-              21 rows are identical across all four plans (every "Unlimited",
-              every all-plans check, every four-way TBC), so those render as one
-              line instead of a four-cell grid. Without it the pivot would be
-              roughly twice as long for no added information — and it has the
-              side effect of making the rows where plans actually DIFFER the
-              visually prominent ones.
+              The uniform-row collapse is what makes that affordable. Roughly
+              half the rows are identical across all four plans (every
+              "Unlimited", every all-plans check, every four-way TBC), so
+              those render as one line instead of a four-cell grid. Without it the pivot would be roughly twice as
+              long for no added information — and it has the side effect of
+              making the rows where plans actually DIFFER the visually
+              prominent ones.
               The crossover is lg, not md: the table needs its 832px min-width
               plus the section's 64px of gutter, so at md (768px) it still hid
               130px inside the scroller. It fits cleanly from ~900px, and lg is
               the first standard breakpoint past that. */}
           <div className="relative overflow-hidden rounded-2xl border border-black/[0.06] bg-white lg:hidden">
+            {/* Monthly price sits above the product groups, ungrouped — it's
+                the plan's price, not a Postgres or Compute feature. */}
+            <div className="border-b border-black/[0.06]">
+              <dl>
+                <MobileRow row={PLAN_ROW} />
+              </dl>
+            </div>
             {GROUPS.map((group) => (
-              <div key={group.label} className="border-b border-black/[0.06] last:border-b-0">
+              <div
+                key={group.label}
+                className="border-b border-black/[0.06] last:border-b-0"
+              >
                 <p className="flex items-center gap-2.5 bg-foreground/[0.03] px-5 py-3 text-sm font-semibold text-foreground">
                   <group.icon className={cn("size-4 shrink-0", group.color)} />
                   {group.label}
                 </p>
                 <dl>
-                  {group.rows.map((row) => {
-                    const uniform = row.values.every((v) => v === row.values[0]);
-                    return (
-                      <div
-                        key={row.label}
-                        className="border-t border-black/[0.06] px-5 py-3.5 first:border-t-0"
-                      >
-                        {uniform ? (
-                          <div className="flex items-start justify-between gap-4">
-                            <dt className="text-sm leading-relaxed text-muted-foreground">
-                              {row.label}
-                            </dt>
-                            <dd className="shrink-0 text-right">
-                              <Cell value={row.values[0]} highlight />
-                            </dd>
-                          </div>
-                        ) : (
-                          <>
-                            <dt className="text-sm leading-relaxed text-muted-foreground">
-                              {row.label}
-                            </dt>
-                            <dd className="mt-2.5 grid grid-cols-2 gap-2">
-                              {row.values.map((v, i) => (
-                                <div
-                                  key={PLAN_NAMES[i]}
-                                  className={cn(
-                                    "rounded-lg px-3 py-2",
-                                    // Recommended plan lifted on white, the rest
-                                    // recessed — the site's before/after language
-                                    // from pricing-comparison.tsx.
-                                    i === HIGHLIGHT
-                                      ? "bg-white ring-1 ring-black/[0.09]"
-                                      : "bg-foreground/[0.03]",
-                                  )}
-                                >
-                                  <p className="text-[0.6875rem] font-medium text-muted-foreground">
-                                    {PLAN_NAMES[i]}
-                                  </p>
-                                  <div className="mt-1">
-                                    <Cell value={v} highlight={i === HIGHLIGHT} />
-                                  </div>
-                                </div>
-                              ))}
-                            </dd>
-                          </>
-                        )}
-                      </div>
-                    );
-                  })}
+                  {group.rows.map((row) => (
+                    <MobileRow key={row.label} row={row} />
+                  ))}
                 </dl>
               </div>
             ))}
@@ -313,7 +432,8 @@ export function PricingSpecTable() {
           <div className="relative hidden overflow-x-auto rounded-2xl border border-black/[0.06] bg-white lg:block">
             <table className="w-full min-w-[52rem] border-collapse text-left">
               <caption className="sr-only">
-                Feature and limit comparison across the Free, Starter, Pro and Business plans
+                Feature and limit comparison across the Free, Starter, Pro and
+                Business plans
               </caption>
               <colgroup>
                 <col />
@@ -328,7 +448,11 @@ export function PricingSpecTable() {
                     <span className="sr-only">Feature</span>
                   </th>
                   {PLAN_NAMES.map((name, i) => (
-                    <th key={name} scope="col" className="relative px-5 pb-4 pt-5">
+                    <th
+                      key={name}
+                      scope="col"
+                      className="relative px-5 pb-4 pt-5"
+                    >
                       {/* The lit column gets a spectrum cap rather than relying
                           on the paper tint alone, which was almost invisible. */}
                       {i === HIGHLIGHT && (
@@ -342,7 +466,9 @@ export function PricingSpecTable() {
                         <span
                           className={cn(
                             "text-sm font-semibold",
-                            i === HIGHLIGHT ? "text-foreground" : "text-muted-foreground",
+                            i === HIGHLIGHT
+                              ? "text-foreground"
+                              : "text-muted-foreground",
                           )}
                         >
                           {name}
@@ -353,6 +479,11 @@ export function PricingSpecTable() {
                   ))}
                 </tr>
               </thead>
+              {/* Monthly price sits above the product groups, ungrouped — it's
+                  the plan's price, not a Postgres or Compute feature. */}
+              <tbody>
+                <DesktopRow row={PLAN_ROW} />
+              </tbody>
               {GROUPS.map((group) => (
                 <tbody key={group.label}>
                   <tr>
@@ -366,25 +497,15 @@ export function PricingSpecTable() {
                       className="border-t border-black/[0.06] bg-card px-5 py-3"
                     >
                       <span className="flex items-center gap-2.5 text-sm font-semibold text-foreground">
-                        <group.icon className={cn("size-4 shrink-0", group.color)} />
+                        <group.icon
+                          className={cn("size-4 shrink-0", group.color)}
+                        />
                         {group.label}
                       </span>
                     </th>
                   </tr>
                   {group.rows.map((row) => (
-                    <tr key={row.label} className="border-t border-black/[0.06]">
-                      <th
-                        scope="row"
-                        className="px-5 py-3.5 text-sm font-normal leading-relaxed text-muted-foreground"
-                      >
-                        {row.label}
-                      </th>
-                      {row.values.map((v, i) => (
-                        <td key={i} className="px-5 py-3.5 align-top">
-                          <Cell value={v} highlight={i === HIGHLIGHT} />
-                        </td>
-                      ))}
-                    </tr>
+                    <DesktopRow key={row.label} row={row} />
                   ))}
                 </tbody>
               ))}

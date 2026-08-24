@@ -158,16 +158,7 @@ export function StackBento() {
                 <ComputeIllustration />
                 <div className="flex flex-col p-7 max-lg:order-last sm:p-9 lg:order-first">
                   <RoleKicker color="bg-prism-red-500">App hosting</RoleKicker>
-                  <div className="mt-3 flex flex-wrap items-center gap-2.5">
-                    <h3 className="text-2xl">Prisma Compute</h3>
-                    <span className="flex items-center gap-1.5 rounded-md border border-prism-cyan-200 bg-prism-cyan-50 px-2 py-0.5 text-[0.6875rem] font-semibold uppercase tracking-[0.06em] text-prism-cyan-800">
-                      <span
-                        aria-hidden
-                        className="size-1.5 animate-pulse rounded-full bg-prism-cyan-400"
-                      />
-                      Public Beta
-                    </span>
-                  </div>
+                  <h3 className="mt-3 text-2xl">Prisma Compute</h3>
                   <p className="mt-3 text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground">
                     TypeScript app hosting that runs on the same host as your database, so your
                     agent can deploy, debug, and redeploy end-to-end.

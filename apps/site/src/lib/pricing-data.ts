@@ -247,6 +247,49 @@ export const usagePricing: Record<BillablePricingPlanKey, UsagePricing> = {
   },
 };
 
+// Prisma Compute usage pricing — locked in on the /pricing page (Shane,
+// 2026-08-24), whose plan cards and spec table are the source of truth these
+// values must match. Requests are the only meter with an included monthly
+// allowance; memory, CPU, and bandwidth are billed per use on paid plans, and
+// the Free plan has no usage billing. USD-only strings, like the spec table —
+// the currency toggle only covers the plan cards.
+export type ComputeMeter = {
+  meter: string;
+  price: string;
+  represents: string;
+};
+
+export const computeMeters: ComputeMeter[] = [
+  {
+    meter: "Requests",
+    price: "$1 per million",
+    represents: "The familiar per-request anchor that keeps a normal app easy to estimate",
+  },
+  {
+    meter: "Provisioned memory",
+    price: "$0.006 per GB-hour",
+    represents: "Capacity kept alive while the app is running or intentionally kept awake",
+  },
+  {
+    meter: "Active CPU",
+    price: "$0.064 per vCPU-hour",
+    represents: "CPU your code actually consumes, not wall-clock waiting",
+  },
+  {
+    meter: "Outbound bandwidth",
+    price: "$0.025 per GB",
+    represents: "Data your app sends to the public internet",
+  },
+];
+
+/** Included Compute requests per month, per plan. */
+export const computeIncludedRequests: Record<PricingPlanKey, string> = {
+  free: "1M",
+  starter: "5M",
+  pro: "20M",
+  business: "100M",
+};
+
 export type ComparisonCell = string | { text: string; price: CurrencyMap };
 
 export const comparisonSections: Array<{
