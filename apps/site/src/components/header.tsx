@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/navigation-menu";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Logo } from "@/components/logo";
+import { SiteLink } from "@/components/site-link";
 import { siteConfig } from "@/lib/config";
 import { cn } from "@/lib/utils";
 import { trackCTA } from "@prisma-docs/ui/lib/analytics";
@@ -105,13 +106,13 @@ export function Header() {
             </NavigationMenuList>
           </NavigationMenu>
           {siteConfig.nav.map((item) => (
-            <Link
+            <SiteLink
               key={item.href}
               href={item.href}
               className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
               {item.label}
-            </Link>
+            </SiteLink>
           ))}
         </nav>
 
@@ -172,14 +173,14 @@ export function Header() {
               ))}
               <div className="border-t pt-4 flex flex-col gap-4">
                 {siteConfig.nav.map((item) => (
-                  <Link
+                  <SiteLink
                     key={item.href}
                     href={item.href}
                     className="text-lg font-medium"
                     onClick={() => setOpen(false)}
                   >
                     {item.label}
-                  </Link>
+                  </SiteLink>
                 ))}
               </div>
               <div className="flex flex-col gap-2 mt-4 pt-4 border-t">
