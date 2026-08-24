@@ -58,14 +58,40 @@ Use JavaScript database drivers via [driver adapters](/orm/core-concepts/support
 **Standard PostgreSQL with `pg`:**
 
 ```npm
-npm install @prisma/adapter-pg
+npm install @prisma/adapter-pg pg dotenv
 ```
 
 ```ts
+import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "./generated/prisma";
 
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error("DATABASE_URL is not set");
+}
+
+const adapter = new PrismaPg({ connectionString });
+const prisma = new PrismaClient({ adapter });
+```
+
+`PrismaPg` accepts the same connection options as `pg.PoolConfig`. If you need to manage a `pg.Pool` yourself, you can pass the pool instance instead:
+
+```ts
+import "dotenv/config";
+import { Pool } from "pg";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "./generated/prisma";
+
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error("DATABASE_URL is not set");
+}
+
+const pool = new Pool({ connectionString });
+const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 ```
 

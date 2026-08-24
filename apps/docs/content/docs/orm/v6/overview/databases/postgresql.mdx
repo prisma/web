@@ -58,10 +58,10 @@ This section explains how you can use it with Prisma ORM and the `@prisma/adapte
 
 ### 1. Install the dependencies
 
-First, install Prisma ORM's driver adapter for `pg`:
+First, install Prisma ORM's driver adapter for `pg`, the `pg` driver, and `dotenv` if you load your connection string from `.env`:
 
 ```npm
-npm install @prisma/adapter-pg
+npm install @prisma/adapter-pg pg dotenv
 ```
 
 ### 2. Instantiate Prisma Client using the driver adapter
@@ -73,13 +73,36 @@ import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client";
 
-const connectionString = `${process.env.DATABASE_URL}`;
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error("DATABASE_URL is not set");
+}
 
 const adapter = new PrismaPg({ connectionString });
 const prisma = new PrismaClient({ adapter });
 ```
 
 Notice that this code requires the `DATABASE_URL` environment variable to be set to your PostgreSQL connection string. You can learn more about the connection string below.
+
+`PrismaPg` accepts the same connection options as `pg.PoolConfig`. If you need to manage a `pg.Pool` yourself, you can pass the pool instance instead:
+
+```ts
+import "dotenv/config";
+import { Pool } from "pg";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "../generated/prisma/client";
+
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error("DATABASE_URL is not set");
+}
+
+const pool = new Pool({ connectionString });
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
+```
 
 ### Notes
 
