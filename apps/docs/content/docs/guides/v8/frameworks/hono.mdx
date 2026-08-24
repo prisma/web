@@ -26,13 +26,11 @@ Prefer to delegate this guide? Copy the prompt and hand it to your coding agent:
 ```text
 Create a new Hono API with Prisma 8, seed it, and deploy it to Prisma Compute.
 
-1. Scaffold: `npx create-prisma@next create my-hono-api --template hono --provider postgres --yes`. Then get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Export it as `DATABASE_URL` in the shell and write it to `my-hono-api/.env` for the deploy step; the generated scripts read the environment variable, not `.env`.
+1. Scaffold: `npx create-prisma@next create my-hono-api --template hono --provider postgres --yes`. Then run `npx prisma@next init` in `my-hono-api` so the Prisma agent skills are installed and stay current, and use them. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Export it as `DATABASE_URL` in the shell; the generated scripts read the environment variable, not `.env`.
 2. In `my-hono-api`, run `npm run db:init` with `DATABASE_URL` exported. Sample users are seeded automatically on the app's first query; there is no separate seed script.
 3. Start `npm run dev` in the background, wait until it reports ready, verify `curl http://localhost:3000/users` returns the seeded users, then stop the dev server.
 4. Add a POST /users route that creates a user from the request body, following https://www.prisma.io/docs/guides/v8/frameworks/hono.md, restart the dev server, and verify it with curl.
-5. Deploy: check `npx @prisma/cli@latest auth whoami`; if I am not signed in, stop and ask me to run `npx @prisma/cli@latest auth login`. Then run `npx @prisma/cli@latest app deploy --create-project my-hono-api --env .env` and verify the live URL's /users endpoint.
-
-Use the installed Prisma 8 skills.
+5. Deploy: check `npx prisma@next auth whoami`; if I am not signed in, stop and ask me to run `npx prisma@next auth login`. Then run `npm run build` followed by `npx prisma@next deploy module.ts` and verify the live URL's /users endpoint. The deployed app provisions and seeds its own Prisma Postgres database; do not pass the local DATABASE_URL. Do not use the scaffold's `deploy` npm script, which still calls the removed `composer` subcommand.
 ```
 
 </AgentPrompt>
@@ -49,11 +47,10 @@ Pick your contract authoring style and package manager at the prompts. The templ
 cd my-hono-api
 ```
 
-Next, set the database connection. Use your own PostgreSQL connection string, or create a Prisma Postgres database with `npx create-db@latest`; it prints a connection string and a claim URL you can open to keep the database. Export the variable, and write it to `.env` for the deploy step later. The generated scripts read the environment variable, not `.env`:
+Next, set the database connection for the local steps. Use your own PostgreSQL connection string, or create a Prisma Postgres database with `npx create-db@latest`; it prints a connection string and a claim URL you can open to keep the database. Export the variable in the shell you work in; the generated scripts read the environment variable, not `.env`:
 
 ```bash
 export DATABASE_URL="<your connection string>"
-echo "DATABASE_URL=\"$DATABASE_URL\"" > .env
 ```
 
 ## 2. Initialize the database
@@ -120,35 +117,39 @@ curl -X POST http://localhost:3000/users \
 
 ## 5. Deploy to Prisma Compute
 
-Hono is supported on [Prisma Compute](/compute), so the API can go from your terminal to a live URL in one command. Sign in once (it opens a browser):
+Hono is supported on [Prisma Compute](/compute). The scaffold already declares the app for [Prisma Composer](/composer) in `module.ts` and `service.ts`, so deploying is building and handing that declaration to the CLI. Sign in once (it opens a browser):
 
 ```npm
-npx @prisma/cli@latest auth login
+npx prisma@next auth login
 ```
 
-Then deploy from the project directory. The `--env .env` flag passes your `DATABASE_URL` to the deployment, so the live API talks to the same database:
+Then build and deploy from the project directory:
 
 ```npm
-npx @prisma/cli@latest app deploy --env .env
+npm run build
+npx prisma@next deploy module.ts
 ```
 
 ```text no-copy
-First deploy of "my-hono-api" -- promoting to production.
-Building locally...
-  Built      0.9 MB
-Uploading...
-Deploying...
-Live in 7.5s
-https://<your-app>.ewr.prisma.build
+my-hono-api
+├─ database   postgres-database db_abc123
+└─ app        compute-service cps_abc123
+              https://xyz.ewr.prisma.build
 ```
 
-Verify the live endpoint returns the seeded users:
+The deploy creates a project named after your module and provisions its own Prisma Postgres database on the platform, declared in `module.ts`; the `DATABASE_URL` from your local steps is not involved. Verify the live endpoint returns the seeded users (the deployed database seeds on its first query):
 
 ```bash
-curl https://<your-app>.ewr.prisma.build/users
+curl https://xyz.ewr.prisma.build/users
 ```
 
-The first deploy asks you to pick or create a project (pass `--create-project my-hono-api` to skip the prompt), pins the directory to it in a gitignored `.prisma/local.json`, and promotes to production. For previews per Git branch and deploy-on-push, see [Deploy your first app](/prisma-compute/deploy).
+For previews per Git branch and deploy-on-push, see [Deploy your first app](/prisma-compute/deploy).
+
+:::note
+
+The scaffold's `npm run deploy` and `npm run dev:composer` scripts still call the CLI's former `composer` subcommand, which the current release candidate removed. Run `npx prisma@next deploy module.ts` and `npx prisma@next dev module.ts` directly until the template catches up.
+
+:::
 
 ## Common gotchas
 
@@ -160,7 +161,7 @@ In a long-running server, don't call `db.runtime().close()` in route handlers; t
 
 ## Prompt your coding agent
 
-The scaffold installs [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. Prompts that map to this guide:
+Run [`npx prisma@next init`](/cli/v8/init) once to install the [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
 
 - "Using the prisma-8 skill, add GET /users/:id that returns one user or a 404."
 - "Expose GET /users/:id/posts using the Post model that ships with the starter contract."

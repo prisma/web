@@ -150,15 +150,17 @@ Current docs: https://www.prisma.io/docs/postgres.md.
 <AgentPrompt title="Prisma Compute only" guideHref="/prisma-compute/deploy" guideTitle="Deploy guide" icon={<Rocket />}>
 
 ```text
-Deploy this app to Prisma Compute using `npx @prisma/cli@latest`.
+Deploy this app to Prisma Compute using `npx prisma@next`.
 
-Compute supports Next.js (with `output: "standalone"` in its config), Nuxt, Astro, Hono, NestJS, TanStack Start, and plain Bun servers; for a Bun or Elysia server pass `--framework bun --entry <server file>`. If the app is none of these, stop and tell me.
+Compute runs apps declared with Prisma Composer: your server code plus a small TypeScript declaration. Port the app following https://www.prisma.io/docs/composer/porting-an-app.md. SvelteKit and Deno are not supported yet; if the app is one of those, stop and tell me.
 
-1. Confirm I am signed in with `npx @prisma/cli@latest auth whoami`; if not, stop and ask me to run `npx @prisma/cli@latest auth login`.
-2. Run `npx @prisma/cli@latest app deploy` from the project directory. If the app reads env vars from `.env` (like DATABASE_URL), add `--env .env`. If deploy fails with `PROJECT_SETUP_REQUIRED` (the directory is not pinned to a project yet), rerun with `--create-project <app-name>`, or `--project <id>` for an existing project. Add `--db` only if it needs a brand-new database; Compute then provisions Prisma Postgres and wires the connection string.
-3. Fetch the deployed URL with curl and confirm the app responds. If it does not, read `npx @prisma/cli@latest app logs` briefly (it streams; stop it after reading).
+1. Install `@prisma/composer` and `@prisma/composer-prisma-cloud`, and pin `effect` in package.json to the exact version in `node_modules/@prisma/composer/package.json` (`"overrides": { "effect": "<that version>" }`). Then install the Composer skill with `npx prisma@next skills sync`, and use it.
+2. Declare the app: a `service.ts` with `compute({ name, deps, build })`, a `module.ts` that provisions it, and a `prisma-composer.config.ts`. Read the port from `service.port()` and bind 0.0.0.0. Replace other `process.env` reads with the service input schema, binding credentials like DATABASE_URL with `envSecret`. Composer does not build: produce one self-contained entry file per service (for example `esbuild <server> --bundle --platform=node --format=esm --outfile=dist/server.mjs`), or use the framework build adapter (Next.js needs the `nextjs` adapter and `output: "standalone"`).
+3. Verify locally: run the build, then `npx prisma@next dev module.ts`, and curl the printed local URL.
+4. Confirm I am signed in with `npx prisma@next auth whoami`; if not, stop and ask me to run `npx prisma@next auth login` (it opens a browser).
+5. Deploy: run the build, then `npx prisma@next deploy module.ts` with the app's env values (like DATABASE_URL) exported in the shell; the first deploy copies input values up to the deployment. Verify the printed public URL with curl.
 
-Current docs: https://www.prisma.io/docs/prisma-compute/deploy.md.
+Current docs: https://www.prisma.io/docs/composer/porting-an-app.md and https://www.prisma.io/docs/prisma-compute/deploy.md.
 ```
 
 </AgentPrompt>

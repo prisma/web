@@ -39,12 +39,12 @@ Use these guides if you already have an application or database and want to add 
 
 Once your app runs locally, [Prisma Compute](/compute) (currently in Public Beta) runs it next to your Prisma Postgres database:
 
-1. Sign in with `npx @prisma/cli@latest auth login`.
-2. Run `npx @prisma/cli@latest app deploy` from your app directory to get a live URL, adding `--env .env` so environment variables like `DATABASE_URL` reach the deployment.
-3. `--env .env` applies to that one deployment. Persist variables for future deployments with `npx @prisma/cli@latest project env add --file .env --role production`. See [environment variables](/compute/environment-variables).
+1. Port the app to [Prisma Composer](/composer): add a small TypeScript declaration around your server code, read the port from `service.port()`, and bind credentials like `DATABASE_URL` with `envSecret` in the service's [input schema](/composer/service-input). [Port an existing app](/composer/porting-an-app) covers the changes with complete declarations.
+2. Sign in with `npx prisma@next auth login`.
+3. Build your server bundle, then run `npx prisma@next deploy module.ts` with `DATABASE_URL` exported; the first deploy copies input values from your shell up to the deployment. See [Deploying](/composer/deploying).
 4. Keep deploying from the CLI, or [connect GitHub](/compute/github) to deploy on push.
 
-`app deploy` is part of the earlier beta CLI (`@prisma/cli@latest`). The Prisma 8 RC CLI (`prisma@next`) that the [Compute docs](/compute) describe deploys through a git push, the Console, or [Prisma Composer](/composer) instead. Both CLIs talk to the same platform. For the git-push path, follow the [deploy quickstart](/prisma-compute/deploy).
+For a worked example, from scratch or from an app you already have, follow [Deploy your first app](/prisma-compute/deploy).
 
 ## Use with your agent
 
@@ -57,10 +57,10 @@ Set up the Prisma 7 stack: Prisma ORM 7, Prisma Postgres, and Prisma Compute.
 
 If I have not told you which framework template to use, stop and ask.
 
-1. Scaffold a new app non-interactively: `npx create-prisma@latest --name my-app --template [next|hono|nuxt|astro|nest|svelte|tanstack-start|elysia|turborepo] --provider postgresql --no-deploy`. Or add Prisma 7 to an existing app with `npx prisma@latest init --db`, which provisions a Prisma Postgres database; before that, check `npx @prisma/cli@latest auth whoami` and stop and ask me to run `auth login` if I am not signed in, because provisioning can open a browser.
+1. Scaffold a new app non-interactively: `npx create-prisma@latest --name my-app --template [next|hono|nuxt|astro|nest|svelte|tanstack-start|elysia|turborepo] --provider postgresql --no-deploy`. Or add Prisma 7 to an existing app with `npx prisma@latest init --db`, which provisions a Prisma Postgres database and may open a browser to sign in; if it does, stop and ask me to complete the sign-in.
 2. From the project directory, define a small schema in `prisma/schema.prisma`, then run `npx prisma migrate dev --name init` and `npx prisma generate`. If migrate dev asks to reset the database, stop and ask me first.
 3. Update the seed and app code to query the schema, and verify locally with the dev script.
-4. Deploy with Prisma Compute: check `npx @prisma/cli@latest auth whoami` first. If I am not signed in, stop and ask me to run `npx @prisma/cli@latest auth login`, because that step opens a browser. Then run `npx @prisma/cli@latest app deploy --create-project my-app --env .env` so DATABASE_URL reaches the deployment, and verify the deployed URL with curl.
+4. Deploy with Prisma Compute: port the app to Prisma Composer following https://www.prisma.io/docs/composer/porting-an-app.md — declare the service around the existing server, read the port from `service.port()` and bind 0.0.0.0, bind `DATABASE_URL` with `envSecret` in the service input, and produce one self-contained entry file. Check `npx prisma@next auth whoami`. If I am not signed in, stop and ask me to run `npx prisma@next auth login`, because that step opens a browser. Then run the build followed by `npx prisma@next deploy module.ts` with `DATABASE_URL` exported so the first deploy copies it up, and verify the deployed URL with curl.
 
 Current docs: https://www.prisma.io/docs/getting-started.md and https://www.prisma.io/docs/llms.txt.
 ```

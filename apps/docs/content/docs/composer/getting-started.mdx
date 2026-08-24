@@ -41,18 +41,14 @@ npm install -D typescript @types/bun
 
 `"type": "module"` matters: Composer loads your entry file as an ES module, and without it every Composer command stops at `COMPOSE.ENTRY_UNLOADABLE` ("Cannot use import statement outside a module").
 
-Then pin the `effect` family in your `package.json` to `4.0.0-beta.103`, the version current `@prisma/composer` releases (0.8.0 through 0.11.0) pin internally. This works around an upstream bug in Composer's deploy engine, whose own version ranges float past the versions its code supports. Without the pins, a fresh install ends up with two conflicting copies of `effect`, and every Composer command refuses to run. On other Composer versions, match whatever `dependencies.effect` says in `node_modules/@prisma/composer/package.json`:
+Then pin `effect` in your `package.json` to the exact version your installed `@prisma/composer` requires. This works around an upstream bug in Composer's deploy engine, whose own version ranges float past the versions its code supports. Without the pin, a fresh install ends up with two conflicting copies of `effect`, and every Composer command refuses to run with `DEPS.EFFECT_VERSION_CONFLICT`, naming the version to pin.
+
+Read the required version from `dependencies.effect` in `node_modules/@prisma/composer/package.json` (for `@prisma/composer@0.13.0` it is `4.0.0-rc.111`), and pin it:
 
 ```json title="package.json (npm)"
 {
   "overrides": {
-    "effect": "4.0.0-beta.103",
-    "@effect/sql-d1": "4.0.0-beta.103",
-    "@effect/sql-pg": "4.0.0-beta.103",
-    "@effect/vitest": "4.0.0-beta.103",
-    "@effect/platform-bun": "4.0.0-beta.103",
-    "@effect/platform-node": "4.0.0-beta.103",
-    "@effect/platform-node-shared": "4.0.0-beta.103"
+    "effect": "4.0.0-rc.111"
   }
 }
 ```
@@ -63,19 +59,13 @@ With pnpm, the same map goes under `"pnpm"` instead:
 {
   "pnpm": {
     "overrides": {
-      "effect": "4.0.0-beta.103",
-      "@effect/sql-d1": "4.0.0-beta.103",
-      "@effect/sql-pg": "4.0.0-beta.103",
-      "@effect/vitest": "4.0.0-beta.103",
-      "@effect/platform-bun": "4.0.0-beta.103",
-      "@effect/platform-node": "4.0.0-beta.103",
-      "@effect/platform-node-shared": "4.0.0-beta.103"
+      "effect": "4.0.0-rc.111"
     }
   }
 }
 ```
 
-Run your install again after adding the block. (Yarn users: the equivalent field is `"resolutions"`. Bun reads the npm-style top-level `"overrides"`.)
+Run your install again after adding the block. (Yarn users: the equivalent field is `"resolutions"`. Bun reads the npm-style top-level `"overrides"`.) The pin is per-version: after upgrading `@prisma/composer`, re-read the package's `dependencies.effect` and update the override to match, or the next Composer command stops on the version conflict.
 
 :::note[Bun workspaces]
 
@@ -86,7 +76,7 @@ bun add alchemy
 bun add -d @prisma/dev
 ```
 
-Without `alchemy`, `composer dev` and `composer deploy` stop at `DEPLOY.ALCHEMY_BIN_MISSING`; without `@prisma/dev`, local dev stops with "local dev needs @prisma/dev". A single-package Bun project is not affected.
+Without `alchemy`, `dev` and `deploy` stop at `DEPLOY.ALCHEMY_BIN_MISSING`; without `@prisma/dev`, local dev stops with "local dev needs @prisma/dev". A single-package Bun project is not affected.
 
 :::
 

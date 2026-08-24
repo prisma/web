@@ -72,6 +72,25 @@ The tree is your module structure: `auth.api` is the `api` service inside the `a
 
 URLs appear for publicly reachable endpoints. That is why a Compute service prints one and a database does not: a database has a connection string, not a public endpoint. Secrets are left out entirely, so a node whose only output is a keypair prints no resource line. A node that deployed but published nothing reportable still appears in the tree, marked `(no entities reported)`.
 
+## Removing resources
+
+Your module is the source of truth for what exists. To remove a resource, delete its provision from the code and deploy again: the converge compares the declaration against the environment's deploy state and deletes whatever is no longer declared, alongside any creates and updates the same deploy needs.
+
+```text no-copy
+Plan: 3 to update, 4 to delete, 1 to noop
+[web2-deploy] deleted
+[COMPOSER_WEB2_PORT-var] deleted
+[COMPOSER_WEB2_ORIGIN-var] deleted
+[web2-svc] deleted
+```
+
+A removed service takes its deployment and its wiring with it, and the resources that remain are untouched: a two-service app whose second service is deleted from the module keeps serving from the first without interruption.
+
+Two things a deploy never removes:
+
+1. **The last service.** An app is at least one service; a module that provisions nothing fails with `ASSEMBLE.SERVICE_MISSING` before anything runs, so you cannot empty an environment by emptying the module.
+2. **The project and its branches.** Those are the containers an environment deploys into: created if absent on deploy, and never deleted by one. Tearing down a whole environment is the [`destroy` operation](#destroying); deleting an entire project is [`project delete`](/cli/v8/project).
+
 ## Destroying
 
 The unified CLI has no `destroy` command. Tear an environment down with the `destroy` operation from `@prisma/composer/control` (see [Driving deploys from code](#driving-deploys-from-code)). It requires an explicit target, `{ kind: 'stage', stage }` or `{ kind: 'production' }`, and there is no default, so a teardown always names what it destroys:
@@ -105,7 +124,7 @@ Error: Dependency conflict: alchemy resolves effect@<found>, but
 @prisma/composer requires effect@<required>.
 ```
 
-This happens when another dependency floats to a newer `effect` and your package manager hoists that copy where the deploy engine resolves it. The fix is what the error says: pin the whole `effect` family in your app's `package.json` to `@prisma/composer`'s exact pin, as shown in [Getting started](/composer/getting-started#1-set-up-the-project), and reinstall.
+This happens when another dependency floats to a newer `effect` and your package manager hoists that copy where the deploy engine resolves it. The fix is what the error says: pin `effect` in your app's `package.json` to the exact version the error names, as shown in [Getting started](/composer/getting-started#1-set-up-the-project), and reinstall. The pin goes stale when you upgrade `@prisma/composer`; the error names the new version each time.
 
 ## When a deploy stops on a missing connection value
 

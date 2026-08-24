@@ -26,11 +26,11 @@ Prefer to delegate this guide? Copy the prompt and hand it to your coding agent:
 ```text
 Create a new Bun app with Prisma 8, run a first typed query, and deploy it to Prisma Compute.
 
-1. Scaffold: `bunx create-prisma@next create my-bun-app --template minimal --provider postgres --package-manager bun --yes`. Then get a database connection string: use the one I give you, or create a Prisma Postgres database with `bunx create-db` and show me the claim URL it prints. Export it as `DATABASE_URL` in the shell and write it to `my-bun-app/.env` for the deploy step; the generated scripts read the environment variable, not `.env`.
+1. Scaffold: `bunx create-prisma@next create my-bun-app --template minimal --provider postgres --package-manager bun --yes`. Then run `bunx prisma@next init` in `my-bun-app` so the Prisma agent skills are installed and stay current, and use them. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `bunx create-db` and show me the claim URL it prints. Export it as `DATABASE_URL` in the shell; the generated scripts read the environment variable, not `.env`.
 2. In `my-bun-app`, run `bun run contract:emit`, then `bun run db:init`, with `DATABASE_URL` exported.
 3. Replace `src/index.ts` with a script that creates a user and reads all users back via `db.orm.public.User`, following https://www.prisma.io/docs/guides/v8/runtimes/bun.md, and verify `bun run dev` prints the created user.
 4. Add `src/server.ts` with a `Bun.serve` server exposing GET /users, and verify `curl http://localhost:3000/users` returns the users.
-5. Deploy: check `npx @prisma/cli@latest auth whoami`; if I am not signed in, stop and ask me to run `npx @prisma/cli@latest auth login`. Then run `npx @prisma/cli@latest app deploy --create-project my-bun-app --env .env --framework bun --entry src/server.ts` and verify the live URL's /users endpoint.
+5. Deploy: check `bunx prisma@next auth whoami`; if I am not signed in, stop and ask me to run `bunx prisma@next auth login`. Then point the `build` script at the server (`esbuild src/server.ts --bundle --platform=node --format=esm --outfile=dist/server.mjs`), run `bun run build`, then `bunx prisma@next deploy module.ts`, and verify the live URL's /users endpoint returns `[]`. The deployed app provisions its own fresh Prisma Postgres database, so the local users are not there; do not pass the local DATABASE_URL. Do not use the scaffold's `deploy` script, which still calls the removed `composer` subcommand.
 
 Use the installed Prisma 8 skills.
 ```
@@ -51,11 +51,10 @@ Answer the prompts for contract authoring style. The scaffold sets up `src/prism
 cd my-bun-app
 ```
 
-Next, set the database connection. Use your own PostgreSQL connection string, or create a Prisma Postgres database with `bunx create-db`; it prints a connection string and a claim URL you can open to keep the database. Export the variable, and write it to `.env` for the deploy step later. The generated scripts read the environment variable, not `.env`:
+Next, set the database connection for the local steps. Use your own PostgreSQL connection string, or create a Prisma Postgres database with `bunx create-db`; it prints a connection string and a claim URL you can open to keep the database. Export the variable in the shell you work in; the generated scripts read the environment variable, not `.env`:
 
 ```bash
 export DATABASE_URL="<your connection string>"
-echo "DATABASE_URL=\"$DATABASE_URL\"" > .env
 ```
 
 ## 2. Emit the contract and initialize the database
@@ -152,39 +151,57 @@ The server listens on port 3000; set `PORT` to change it. Unlike the script, the
 
 ## 6. Deploy to Prisma Compute
 
-Plain Bun servers are supported on [Prisma Compute](/compute), so the server can go from your terminal to a live URL in one command. Sign in once (it opens a browser):
+Plain Bun servers are supported on [Prisma Compute](/compute). The scaffold declares the app for [Prisma Composer](/composer) in `module.ts` and `service.ts`, which deploy whatever the `build` script bundles into `dist/server.mjs`. That script bundles `src/index.ts`, so point it at your server instead:
 
-```npm
-npx @prisma/cli@latest auth login
+```json title="package.json"
+{
+  "scripts": {
+    "build": "esbuild src/server.ts --bundle --platform=node --format=esm --outfile=dist/server.mjs"
+  }
+}
 ```
 
-Then deploy from the project directory. A plain Bun app has no framework for the CLI to detect, so pass the entrypoint explicitly. The `--env .env` flag passes your `DATABASE_URL` to the deployment, so the live server talks to the same database:
+Sign in once (it opens a browser):
 
-```npm
-npx @prisma/cli@latest app deploy --env .env --framework bun --entry src/server.ts
+```bash
+bunx prisma@next auth login
+```
+
+Then build and deploy from the project directory:
+
+```bash
+bun run build
+bunx prisma@next deploy module.ts
 ```
 
 ```text no-copy
-First deploy of "my-bun-app" -- promoting to production.
-Building locally...
-  Built      0.8 MB
-Uploading...
-Deploying...
-Live in 6.1s
-https://<your-app>.ewr.prisma.build
+my-bun-app
+├─ database   postgres-database db_abc123
+└─ app        compute-service cps_abc123
+              https://xyz.ewr.prisma.build
 ```
 
-Verify the live endpoint returns your users:
+The deploy creates a project named after your module and provisions its own Prisma Postgres database on the platform, declared in `module.ts`; the users you created locally are not in it. Verify the live endpoint responds with an empty list from the fresh database:
 
 ```bash
-curl https://<your-app>.ewr.prisma.build/users
+curl https://xyz.ewr.prisma.build/users
 ```
 
-The first deploy asks you to pick or create a project (pass `--create-project my-bun-app` to skip the prompt), pins the directory to it in a gitignored `.prisma/local.json`, and promotes to production. For previews per Git branch and deploy-on-push, see [Deploy your first app](/prisma-compute/deploy).
+```json no-copy
+[]
+```
+
+For previews per Git branch and deploy-on-push, see [Deploy your first app](/prisma-compute/deploy).
+
+:::note
+
+The scaffold's `deploy` and `dev:composer` package scripts still call the CLI's former `composer` subcommand, which the current release candidate removed. Run `bunx prisma@next deploy module.ts` and `bunx prisma@next dev module.ts` directly until the template catches up.
+
+:::
 
 ## Prompt your coding agent
 
-The scaffold installs [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. Prompts that map to this guide:
+Run [`bunx prisma@next init`](/cli/v8/init) once to install the [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
 
 - "Using the prisma-8 skill, add a script that lists the 10 newest users."
 - "Add a published flag to the Post model in the starter contract, emit the contract, and update the database."
