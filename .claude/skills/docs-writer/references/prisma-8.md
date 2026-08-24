@@ -16,7 +16,7 @@ Instead, append your section's redirect map to the commented block in `apps/docs
 
 ## Accuracy: test before you write
 
-Every code sample must be executed against the published `@prisma/orm-*` packages before it lands, or clearly marked as conceptual. Scaffold throwaway apps with `create-prisma@next` non-interactive flags; use `bunx create-db` for PostgreSQL and `mongodb-memory-server` (replica set) for MongoDB. Key tested facts that older internal docs get wrong:
+Every code sample must be executed against the published `@prisma/orm-*` packages before it lands, or clearly marked as conceptual. Scaffold throwaway apps with `create-prisma@latest` non-interactive flags; use `bunx create-db` for PostgreSQL and `mongodb-memory-server` (replica set) for MongoDB. Key tested facts that older internal docs get wrong:
 
 - PostgreSQL model access is namespace-qualified: `db.orm.public.User`, `db.sql.public.user`. MongoDB uses flat lowercase plural roots (`db.orm.users`) and documents keep `_id`.
 - `.update()` / `.delete()` affect one record; `updateAll` / `deleteAll` / `*Count` are the bulk forms. No `.count()` terminal; use `.aggregate(...)`.
