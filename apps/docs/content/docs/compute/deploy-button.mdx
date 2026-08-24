@@ -1,21 +1,27 @@
 ---
 title: Deploy Button
-description: Add a Deploy with Prisma button to your repository. One click copies your project into the user's GitHub account, provisions a Prisma Postgres database, and deploys it on Prisma Compute.
+description: Add a Deploy with Prisma button that copies a public Composer repository and starts a Composer-managed deployment.
 url: /compute/deploy-button
 metaTitle: Deploy Button | Prisma Compute
-metaDescription: Let anyone deploy your TypeScript project in one click. The Deploy with Prisma button clones your public GitHub repository, provisions Prisma Postgres, and deploys on Prisma Compute.
+metaDescription: Let users copy your public Composer repository and deploy its declared resources with Prisma.
 ---
 
-The Deploy Button lets anyone deploy your project in one click. Clicking it opens the Prisma Console, which copies your public GitHub repository into a new repository the user owns, creates a project with a [Prisma Postgres](/postgres) database, and starts the first deployment on [Prisma Compute](/compute). Add it to your README, a blog post, or your own site:
+The Deploy Button starts a guided deployment from a compatible public GitHub repository. Prisma copies the source into a new repository owned by the user and adds a managed GitHub Actions workflow. That workflow runs Composer, which creates the Prisma project and provisions the resources declared by the repository.
 
-<a href="https://console.prisma.io/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fprisma%2Fcompute-deploy-example&utm_source=docs">
-  <img
-    src="/docs/img/deploy-button.svg"
-    alt="Deploy with Prisma"
-    width="172"
-    height="36"
-  />
-</a>
+<img
+  src="/docs/img/deploy-button.svg"
+  alt="Deploy with Prisma"
+  width="172"
+  height="36"
+/>
+
+Add the button to a README, blog post, or website so other users can deploy their own copy.
+
+:::note
+
+The selected workspace must have Composer deployments enabled.
+
+:::
 
 ## Create your button
 
@@ -23,63 +29,77 @@ Enter your repository URL and copy the generated snippet:
 
 <DeployButtonGenerator />
 
-Before the button works, your repository needs to meet the [contract below](#make-your-repository-deployable). For every parameter the link can carry, see [URL format](#url-format).
+Before publishing the button, make sure the repository meets the [deployment requirements](#make-your-repository-deployable).
 
 ## Make your repository deployable
 
-Any public GitHub repository deploys when it meets this contract:
+The source repository must meet all of these requirements:
 
-- **Public GitHub repository.** The button deploys the default branch. Private repository support is planned.
-- **A `prisma.compute.json` file at the repository root.** The same configuration Prisma Compute reads for any connected repository: it names the app and sets its HTTP port. It must describe a single app and must not set a `region`, because the person deploying picks the region for both the database and the app. The file must use the JSON form with exactly this name — connected repositories also accept a typed `prisma.compute.ts`, but the Deploy Button does not yet. See [configuration](/compute/configuration).
-- **A JavaScript or TypeScript project** with a `package.json` and a lockfile (`bun.lock`, `package-lock.json`, `pnpm-lock.yaml`, or `yarn.lock`) at the root.
-- **A runnable app.** It must build and start under the normal Compute build, listen on the `httpPort` declared in `prisma.compute.json`, and declare anything it needs beyond `DATABASE_URL` as [required environment variables](#environment-variables) on the button link.
+- **It is a public GitHub repository.** Prisma copies the default branch. Private source repositories are not supported.
+- **It has a Composer config at the repository root.** Use `prisma-composer.config.ts`, `prisma-composer.config.mts`, `prisma-composer.config.mjs`, or `prisma-composer.config.js`.
+- **It has a Composer module at the repository root.** Use `module.ts`, `module.mts`, `module.mjs`, or `module.js`. The file must default-export a `module("name", ...)` call, either directly or through a variable. The name must be a string literal.
+- **It has a root `package.json`.** Add a root `build` script. Nx workspaces can use their normal Nx build targets instead.
+- **It has exactly one supported lockfile at the repository root.** Use one of `bun.lock`, `package-lock.json`, `pnpm-lock.yaml`, or `yarn.lock`.
+- **Its Composer module declares everything needed for deployment.** Composer provisions only the resources in the module. Declare Prisma Postgres there if the app needs a database.
 
-A minimal `prisma.compute.json`:
+A minimal Composer config looks like this:
 
-```json
-{
-  "app": {
-    "name": "my-app",
-    "framework": "hono",
-    "entry": "src/index.ts",
-    "httpPort": 3000
-  }
-}
+```ts title="prisma-composer.config.ts"
+import { defineConfig } from '@prisma/composer/config'
+import { nodeBuild } from '@prisma/composer/node/control'
+import { prismaCloud, prismaState } from '@prisma/composer-prisma-cloud/control'
+
+export default defineConfig({
+  extensions: [prismaCloud(), nodeBuild()],
+  state: prismaState(),
+})
 ```
 
-`framework` and `entry` tell Compute how to build and start the app. You can omit them — Compute then detects the framework from your dependencies — but setting them makes deploys predictable. The full key reference is on the [configuration](/compute/configuration) page. You can also generate this file by running `npx -y @prisma/cli@next init --config-format json` in your project.
+The root module imports the services and resources that Composer should provision:
 
-The repository is validated before it is copied. Validation rejects repositories with more than 100 files, a file over 5 MB, more than 25 MB in total, GitHub Actions workflows, symlinks, or Git submodules.
+```ts title="module.ts"
+import { module } from '@prisma/composer'
 
-There is no registration, API key, or approval process. A minimal working example you can copy is [`prisma/compute-deploy-example`](https://github.com/prisma/compute-deploy-example), whose README carries its own Deploy Button.
+import service from './src/service.ts'
+
+export default module('my-app', ({ provision }) => {
+  provision(service)
+})
+```
+
+Prisma validates the repository before creating the destination copy. Validation rejects:
+
+- more than 100 files;
+- any file larger than 5 MB;
+- more than 25 MB in total;
+- symlinks or Git submodules; and
+- GitHub Actions workflows other than `.github/workflows/prisma-deploy.yml`.
+
+An existing `.github/workflows/prisma-deploy.yml` is allowed, but Prisma replaces it with the current managed workflow in the copied repository.
 
 ## URL format
 
-A Deploy Button is a link to:
+A Deploy Button links to:
 
-```text
+```text title="Deploy Button URL"
 https://console.prisma.io/new/clone?repository-url=<your repository URL>
 ```
 
-| Parameter            | Required | Description                                                                                                                                                                                                                |
-| -------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `repository-url`     | Yes      | The public GitHub repository to deploy, in the form `https://github.com/owner/repo`. URL-encode it when composing the link.                                                                                                |
-| `project-name`       | No       | Prefills the name of the repository the user creates (they can change it). Defaults to your repository's name.                                                                                                             |
-| `env`                | No       | Comma-separated names of environment variables your app requires, for example `env=OPENAI_API_KEY,RESEND_API_KEY`. Up to 10 names of uppercase letters, numbers, and underscores, not starting with a number. Never put values in the URL.             |
-| `env-example-<NAME>` | No       | A non-secret example value that prefills the input for `<NAME>`, for example `env-example-RESEND_API_KEY=re_example_123`. Only use placeholder values that are safe to publish.                                             |
-| `utm_source`         | No       | Attribution for where the click came from, for example `github-readme`. This is the value Prisma's own funnel reporting records.                                                                                           |
-| `utm_medium`         | No       | Attribution for the kind of placement, for example `button`. Carried on the link for your own analytics.                                                                                                                   |
-| `utm_campaign`       | No       | Attribution for a specific campaign or launch. Carried on the link for your own analytics.                                                                                                                                 |
+| Parameter        | Required | Description |
+| ---------------- | -------- | ----------- |
+| `repository-url` | Yes      | Public GitHub repository in the form `https://github.com/owner/repo`. URL-encode it when composing the link. |
+| `project-name`   | No       | Prefills the destination repository name. The user can change it. Prisma derives the Composer project name from the final repository name. |
+| `utm_source`     | No       | Records where the deployment link was published, such as `github-readme`. |
 
-A complete Markdown example for a README:
+A Markdown example for a README:
 
-```md
+```md title="README.md"
 [![Deploy with Prisma](https://www.prisma.io/docs/img/deploy-button.svg)](https://console.prisma.io/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Facme%2Fshop-api&utm_source=github-readme)
 ```
 
 The same button in HTML:
 
-```html
+```html title="HTML"
 <a
   href="https://console.prisma.io/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Facme%2Fshop-api&amp;utm_source=github-readme"
 >
@@ -94,59 +114,41 @@ The same button in HTML:
 
 ## Environment variables
 
-`DATABASE_URL` never needs to be configured: it is provisioned and wired automatically. If your app needs anything else, declare the variable names on the button link:
+Deploy Button URLs do not currently accept environment variable parameters. The Console rejects a link containing `env`, so do not add variable names or values to the URL.
 
-```text
-https://console.prisma.io/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Facme%2Fshop-api&env=OPENAI_API_KEY,RESEND_API_KEY&env-example-RESEND_API_KEY=re_example_123
-```
+Composer provisions and binds the resources declared in the root module. If the app needs another secret or environment variable, configure it in the resulting project and redeploy. See [environment variables](/compute/environment-variables).
 
-The Console prompts the user for a value for each declared variable before the deployment starts. The values are stored encrypted in the user's new project and applied to the first deployment, so the app boots fully configured. The user can change them later in the project's [environment variables](/compute/environment-variables) settings.
-
-Two rules keep this safe:
-
-- **The URL carries names and public example values, never secrets.** The user types each real value (or accepts your example) in the Console form. Real values never appear in the link, in browser history, or in the GitHub authorization round-trip — only the names and any `env-example` placeholders you chose to publish.
-- **Examples must be safe to publish.** An `env-example-<NAME>` value appears in your README for anyone to read, so use obvious placeholders like `re_example_123`, never a real key.
-
-If you list `DATABASE_URL` or `DATABASE_URL_POOLED` in `env`, the Console shows them as "Added automatically" instead of prompting, which is a useful way to signal that your app uses the database.
-
-You can also declare variables in your repository instead of the link: entries under `app.env.vars` in `prisma.compute.json` show up in the deploy form automatically, with the committed value as the prefill. The snippet below shows only the `env` addition — merge it into your full config, which still needs `name` and `httpPort`.
-
-```json
-{
-  "app": {
-    "env": { "vars": { "RESEND_API_KEY": "re_example_123" } }
-  }
-}
-```
-
-Variables from the URL come first and keep their examples; config entries are added after them. Since your repository is public, treat committed values like `env-example` values: placeholders only, never real keys.
+For a reliable first deployment, do not make the app depend on an external secret that the Composer module cannot provide.
 
 ## How it works
 
-1. **Click the button.** The user lands on the clone page in the Prisma Console, which shows what will be deployed: your repository's name and, once a GitHub account is connected, the resolved commit, linked back to the source on GitHub. If they're signed out, they sign in first and return to the same page automatically.
-2. **Choose where it goes.** They pick a workspace (when they have more than one), a GitHub account or organization, a name and visibility for their new repository (private by default), and a deployment region. If the button link declares [required environment variables](#environment-variables), the form prompts for their values here. If the Prisma GitHub App isn't installed yet, the flow walks them through installing it.
-3. **Authorize once.** GitHub asks the user to authorize the repository creation. This authorization is used for that single deployment and is not stored.
-4. **Prisma sets everything up.** Your code is copied, pinned to the default-branch commit resolved when they click Deploy, into a new repository under the user's account. A project with a Prisma Postgres database is provisioned, the database connection is configured automatically, and the first deployment starts.
-5. **Push to deploy.** The new repository is connected to the project, so every later push deploys through the normal Git workflow.
+1. **Open the deployment page.** The Console resolves and pins the source repository's default-branch commit. A signed-out user signs in and then returns to the same deployment page.
+2. **Choose the destination.** The user selects a workspace, a connected GitHub account or organization, a destination repository name, and whether the new repository is private or public. The Prisma GitHub App installation flow is shown when needed.
+3. **Authorize repository creation.** GitHub asks the user to authorize Prisma. Prisma uses that authorization for this repository creation and does not store it.
+4. **Copy and prepare the repository.** Prisma creates the destination repository, copies the pinned source commit, changes the Composer module name to a safe name derived from the destination repository, and adds or replaces `.github/workflows/prisma-deploy.yml`.
+5. **Let Composer create the project.** Publishing the initial commit starts the workflow. Composer creates the Prisma project, provisions the module's resources, and deploys its Compute services. The Console does not pre-create the project.
+6. **Push future changes.** Each later branch push runs the same Composer workflow. Deleting a branch runs its Composer teardown.
 
-The user owns the copy and the project. Prisma adds no credentials or platform files to the repository; database connection settings are managed in the Console, not committed to code.
+The user owns the copied repository and the Prisma project. No long-lived Prisma credential is committed to the repository: the managed workflow authenticates with GitHub OIDC. The clone page does not ask the user to select a region; Composer uses the repository's configuration and platform defaults.
 
-The person clicking the button needs a [Prisma Data Platform account](https://pris.ly/pdp) (free to create during the flow), a GitHub account, and permission to create repositories under the selected account or organization. The flow walks them through anything missing, including installing the Prisma GitHub App.
+The user needs a Prisma Data Platform account, a GitHub account, permission to create a repository under the selected account or organization, and access to Composer deployments in the selected workspace.
 
 ## Troubleshooting
 
-**"This repository cannot be deployed" with a message about `prisma.compute.json`.** The repository is missing the root configuration file. Add one; see [make your repository deployable](#make-your-repository-deployable).
+**The page asks for `prisma-composer.config.mjs` or `module.mjs`.** The repository is missing a supported root Composer config or module. Any filename listed in [deployment requirements](#make-your-repository-deployable) works.
 
-**The clone page says the repository must be public.** The button only supports public source repositories today. The user's _copy_ can still be private; that's their choice in the deploy form.
+**The repository has an invalid Prisma Composer configuration.** Check that the root module default-exports `module("name", ...)` with a literal name. Also check that the repository has exactly one supported lockfile and either a root `build` script or an Nx workspace.
 
-**"The repository changed before Prisma could copy the template. Choose another repository name and try again."** The chosen name usually collides with a repository the user already has. Picking a different name in the form and deploying again resolves it.
+**The source repository must be public.** The button only supports public source repositories. The destination copy can still be private.
 
-**"This deploy link's environment variable list is not valid."** A name in the `env` parameter doesn't match the required shape. Names use uppercase letters, numbers, and underscores and can't start with a number (like `MY_API_KEY`), up to 10 per link. Regenerate the link with valid names.
+**Environment variables in deploy links are not supported.** Remove `env` and every `env-example-*` parameter from the URL.
 
-**GitHub authorization was canceled or expired.** The authorization step must be completed within 15 minutes. Returning to the clone page and clicking Deploy again starts a fresh attempt.
+**Composer deployments are not available for this workspace yet.** Choose a workspace where Composer is enabled. Deployment cannot continue in that workspace until access is available.
 
-**The GitHub account isn't listed.** The Prisma GitHub App isn't installed on that account or organization. The "Connect GitHub" option in the deploy form starts the installation; after completing it on GitHub, the user continues from the clone page.
+**A repository or project with this name already exists.** Choose another destination repository name and try again.
 
-**The repository was created, but the deployment didn't start.** Nothing is deleted on a partial failure. If the Prisma project was created and connected to the repository, pushing any commit to the new repository's default branch triggers a deployment through the normal Git flow. If the failure happened before the project existed, return to the clone page and deploy again with a different repository name. See [deployments](/compute/deployments).
+**GitHub authorization was canceled or expired.** Return to the deployment page and authorize GitHub again.
 
-**The app deployed but shows an error page.** Check the build and runtime logs on the project's deployment page, confirm the database finished provisioning in the Console, and verify the app listens on the port declared in `prisma.compute.json`. The [FAQ](/compute/faq) covers common runtime issues.
+**The repository was created, but deployment did not start.** Open the copied repository and check that `.github/workflows/prisma-deploy.yml` exists. Inspect the GitHub Actions run for an error. A new push to the branch starts the workflow again.
+
+**The workflow ran, but the app did not deploy.** Check the Composer workflow, build logs, and runtime logs. Confirm that the root build produces the service entry points declared by the Composer module.
