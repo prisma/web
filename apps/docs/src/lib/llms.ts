@@ -76,7 +76,7 @@ export const commonQueries: LLMsLink[] = [
   },
   {
     title: "Run Prisma Postgres locally",
-    href: "/postgres/database/local-development",
+    href: "/local-development/postgres",
     description:
       "Use local Prisma Postgres during development and switch to a hosted database for production.",
   },
@@ -184,8 +184,15 @@ export const llmsSections: LLMsSection[] = [
     slug: "postgres",
     title: "Prisma Postgres",
     description:
-      "Prisma Postgres setup, connection strings, local development, operations, and guides.",
+      "Prisma Postgres setup, connection strings, operations, and guides (local development lives in the Local Development section).",
     prefixes: ["/postgres", "/prisma-postgres"],
+  },
+  {
+    slug: "local-development",
+    title: "Local Development",
+    description:
+      "Running the Prisma stack locally: local app development on Bun and with Composer, local Prisma Postgres via prisma dev, and S3-compatible local object storage.",
+    prefixes: ["/local-development"],
   },
   {
     slug: "guides",

@@ -277,6 +277,12 @@ const config = {
       { source: "/composer/cli-reference", destination: "/cli/v8/composer", permanent: true },
       // Docs IA restructure: the Compute CLI pointer page folded into the v8 CLI reference.
       { source: "/compute/cli-reference", destination: "/cli/v8", permanent: true },
+      // Docs IA restructure: Local Postgres moved into the Local Development section.
+      {
+        source: "/postgres/database/local-development",
+        destination: "/local-development/postgres",
+        permanent: true,
+      },
       // Docs IA restructure: the Management API is now the REST API.
       { source: "/management-api", destination: "/rest-api", permanent: true },
       { source: "/management-api/:path*", destination: "/rest-api/:path*", permanent: true },

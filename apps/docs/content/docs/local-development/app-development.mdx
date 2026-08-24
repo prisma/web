@@ -1,0 +1,55 @@
+---
+title: Local app
+description: Run your app locally on the runtime Prisma Compute deploys, wire it to a local database, and bring up the whole app with Composer.
+url: /local-development/app-development
+metaTitle: Local app development | Prisma
+metaDescription: Develop Prisma apps locally with Bun and Composer. Compute runs deployed apps on Bun, so local runs match production; composer dev brings up multi-service apps with local emulators.
+---
+
+Building locally with Prisma is ordinary app development: you run your framework's dev server, query a database, and iterate. What the platform adds is parity. The pieces you develop against locally behave like the ones you deploy to, so "works on my machine" and "works in production" are the same claim.
+
+## Compute runs Bun
+
+[Prisma Compute](/compute) runs deployed apps on [Bun](https://bun.com). There is no proprietary runtime layer to emulate locally: run your app with Bun on your machine and you are exercising the same runtime your deployment uses. Bun's built-in APIs, like [its S3 client](/local-development/storage), work identically in both places.
+
+Day to day, iteration stays your framework's usual loop. A scaffolded [Prisma 8](/v8) app starts with:
+
+```npm
+npm run dev
+```
+
+For a Bun-native server, run the entry file directly:
+
+```bash
+bun run src/index.ts
+```
+
+The [Bun runtime guide](/guides/v8/runtimes/bun) walks through a full local build on Bun.
+
+## Wire in a local database
+
+Point your app at a local Prisma Postgres instance instead of a hosted one. Start it from your project directory:
+
+```npm
+npx prisma dev
+```
+
+It prints a `DATABASE_URL` you copy into `.env`; migrations and queries then run against your machine. [Local Postgres](/local-development/postgres) covers instances, background mode, and management commands. When you deploy, swap `DATABASE_URL` for a hosted [Prisma Postgres](/postgres) connection string; no application code changes.
+
+## Run the app with `composer dev`
+
+Apps deploy to Compute as [Prisma Composer](/composer) apps: you declare your services in TypeScript and `composer deploy` stands them up. The same declarations run locally. One command brings the whole app up, whether it is one service or several, with its databases and buckets wired together:
+
+```npm
+npx prisma@next composer dev module.ts
+```
+
+`composer dev` runs the same pipeline a deploy runs, but against local emulators standing in for Prisma Compute and Prisma Postgres. No cloud credentials are involved, and the local databases and buckets persist between runs until you pass `--fresh`. Tail the merged service logs with `composer log`. When the app runs locally, [deploying it](/prisma-compute/deploy) is the same declarations against the hosted platform.
+
+[Local development in Composer](/composer/local-development) documents the full workflow: warm restarts, log filtering, and what is local versus what is real.
+
+## Next steps
+
+- [Local Postgres](/local-development/postgres): the local database in detail.
+- [Local storage](/local-development/storage): S3-compatible clients against local and hosted buckets.
+- [Deploy your first app](/prisma-compute/deploy): take the locally built app to a live URL.
