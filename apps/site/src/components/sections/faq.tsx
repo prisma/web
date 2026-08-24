@@ -35,9 +35,9 @@ const faqs: FaqItem[] = [
       "Every paid tier includes spend limits, so your bill stops at the cap you set. The pricing calculator on the pricing page gives you a usage estimate, and full operation definitions are in the docs.",
   },
   {
-    question: "Compute is in beta. Should I run production on it?",
+    question: "Should I run production on Prisma Compute?",
     answer:
-      "Compute is in public beta and pricing isn't final yet. We recommend trying it with non-critical workloads first. The ORM and Prisma Postgres are production-ready and used by teams from solo developers to companies like Lush, Rapha, and Elsevier.",
+      "Compute is generally available: pricing is live, and every paid plan includes spend limits. The ORM and Prisma Postgres are production-ready and used by teams from solo developers to companies like Lush, Rapha, and Elsevier.",
   },
   {
     question: "What about Prisma 7 / Prisma ORM users today?",
