@@ -1,7 +1,14 @@
 "use client";
 import * as Base from "../sidebar/base";
 import { cn } from "@prisma-docs/ui/lib/cn";
-import { type ComponentProps, Fragment, type ReactNode, useMemo, useRef } from "react";
+import {
+  type ComponentProps,
+  type CSSProperties,
+  Fragment,
+  type ReactNode,
+  useMemo,
+  useRef,
+} from "react";
 import { cva } from "class-variance-authority";
 import { useTreeContext, useTreePath } from "@fumadocs/base-ui/contexts/tree";
 import type * as PageTree from "fumadocs-core/page-tree";
@@ -30,6 +37,20 @@ export const itemVariants = cva(
 
 function getItemOffset(depth: number) {
   return `calc(${2 + 3 * depth} * var(--spacing))`;
+}
+
+/**
+ * Indentation for an interactive row at `depth`. Nested rows swap part of the
+ * padding for a start margin so the row's edge — and the active spectrum ring
+ * `.sidebar-prism-item` paints on it — clears the guide line that
+ * SidebarFolderContent draws at inset-s-2.5. The text position is unchanged.
+ */
+function getItemIndent(depth: number): CSSProperties {
+  if (depth < 1) return { paddingInlineStart: getItemOffset(depth) };
+  return {
+    marginInlineStart: "calc(3.5 * var(--spacing))",
+    paddingInlineStart: `calc(${2 + 3 * depth - 3.5} * var(--spacing))`,
+  };
 }
 
 export const {
@@ -138,7 +159,7 @@ export function SidebarItem({
     <Base.SidebarItem
       className={cn(itemVariants({ variant: "link" }), className)}
       style={{
-        paddingInlineStart: getItemOffset(depth),
+        ...getItemIndent(depth),
         ...style,
       }}
       {...props}
@@ -165,7 +186,7 @@ export function SidebarFolderTrigger({
         )
       }
       style={{
-        paddingInlineStart: getItemOffset(depth - 1),
+        ...getItemIndent(depth - 1),
         ...style,
       }}
       {...props}
@@ -186,7 +207,7 @@ export function SidebarFolderLink({
     <Base.SidebarFolderLink
       className={cn(itemVariants({ variant: "link" }), "w-full", className)}
       style={{
-        paddingInlineStart: getItemOffset(depth - 1),
+        ...getItemIndent(depth - 1),
         ...style,
       }}
       {...props}

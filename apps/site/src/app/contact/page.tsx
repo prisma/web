@@ -1,13 +1,12 @@
-import type { Metadata } from "next"
-import { ContactHero } from "@/components/sections/contact-hero"
-import { ContactSupport } from "@/components/sections/contact-support"
-import { CtaBurst } from "@/components/sections/cta-burst"
+import type { Metadata } from "next";
+import { ContactHero } from "@/components/sections/contact-hero";
+import { ContactSupport } from "@/components/sections/contact-support";
+import { CtaBurst } from "@/components/sections/cta-burst";
 
 export const metadata: Metadata = {
   title: "Contact",
-  description:
-    "Tell us what you're working on and we'll route your message to the right person.",
-}
+  description: "Tell us what you're working on and we'll route your message to the right person.",
+};
 
 // Built from the approved contact copy, verbatim. Three sections: the wrapped
 // hero panel carrying the form, the three support channels, and the site's
@@ -37,5 +36,5 @@ export default function ContactPage() {
         secondaryCta={{ label: "Read the docs", href: "/docs" }}
       />
     </>
-  )
+  );
 }
