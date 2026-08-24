@@ -277,6 +277,8 @@ const config = {
       { source: "/composer/cli-reference", destination: "/cli/v8/composer", permanent: true },
       // Docs IA restructure: the Compute CLI pointer page folded into the v8 CLI reference.
       { source: "/compute/cli-reference", destination: "/cli/v8", permanent: true },
+      // The full-stack tutorial moved from the Prisma 8 block to the Start group.
+      { source: "/v8/full-stack-tutorial", destination: "/full-stack-tutorial", permanent: true },
       // Docs IA restructure: Local Postgres moved into the Local Development section.
       {
         source: "/postgres/database/local-development",

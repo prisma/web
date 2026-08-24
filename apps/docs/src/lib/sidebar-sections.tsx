@@ -22,7 +22,11 @@ export interface SidebarSectionGroup {
 export const sidebarSectionGroups: SidebarSectionGroup[] = [
   {
     heading: "Start",
-    sections: [{ url: "/" }, { url: "/prisma-compute/deploy", title: "Build your first app" }],
+    sections: [
+      { url: "/" },
+      { url: "/prisma-compute/deploy", title: "Deploy your first app" },
+      { url: "/full-stack-tutorial", title: "Deploy the full Prisma stack" },
+    ],
   },
   {
     heading: "Build",
@@ -34,7 +38,7 @@ export const sidebarSectionGroups: SidebarSectionGroup[] = [
   },
   {
     heading: "Manage",
-    sections: [{ url: "/studio" }, { url: "/query-insights" }, { url: "/console" }],
+    sections: [{ url: "/console" }, { url: "/studio" }, { url: "/query-insights" }],
   },
   {
     heading: "Reference",
