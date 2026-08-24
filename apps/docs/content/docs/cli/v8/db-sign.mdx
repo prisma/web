@@ -1,0 +1,53 @@
+---
+title: db sign
+description: Sign a database with the current Prisma 8 contract.
+url: /cli/v8/db-sign
+metaTitle: db sign | Prisma 8 CLI
+metaDescription: Learn how to sign a database once it matches the current Prisma 8 contract.
+---
+
+`db sign` verifies that the live database satisfies the emitted contract and, if so, writes or updates the database signature. The signature records that this database instance is aligned with a specific contract version.
+
+It is idempotent and safe to run in CI or a deployment pipeline. Use it after importing or inferring an existing schema, or after a deployment flow that already applied the required database changes.
+
+## Usage
+
+```npm
+npx prisma@next db sign --db "$DATABASE_URL"
+```
+
+## Options
+
+| Argument or option | What it does |
+| --- | --- |
+| `[contract]` | Signs against a specific contract reference (hash, prefix, ref name, or migration directory name) instead of the emitted contract. |
+| `--db <url>` | Connects to the database. |
+| `--contract <contract>` | The contract reference as a flag. Also accepts the `<dir>^` and `./path` forms that the positional argument does not. |
+| `--config <path>` | Read this config file instead of `./prisma.config.ts`. |
+| `--json` | Prints a machine-readable result. |
+
+## Exit codes
+
+| Code | Meaning |
+| --- | --- |
+| `0` | The database was signed. |
+| `2` | The command could not run: unresolvable contract reference, no emitted contract, or unreachable database. |
+| `4` | Schema verification failed and no signature was written. |
+
+## Example
+
+```npm
+npx prisma@next contract emit
+npx prisma@next db sign --db "$DATABASE_URL"
+npx prisma@next db verify --db "$DATABASE_URL"
+```
+
+## When to use it
+
+Use `db sign` only after you believe the live database already matches the emitted contract. It is common after:
+
+- `contract infer` for a brownfield database
+- a manually reviewed migration flow
+- a database restore that you need to mark as matching the current contract
+
+Do not use `db sign` to hide drift. If verification fails, fix the contract or database first.

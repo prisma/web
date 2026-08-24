@@ -3,7 +3,7 @@ title: Environment variables
 description: Project configuration that gets injected into your deployments, scoped to production, preview, or a single branch.
 url: /compute/environment-variables
 metaTitle: Environment variables | Prisma Compute
-metaDescription: Set, update, and remove environment variables for Prisma Compute apps, with production, preview, and per-branch scopes.
+metaDescription: Set, update, and remove environment variables for Prisma Compute services, with production, preview, and per-branch scopes.
 ---
 
 Environment variables are project configuration that gets injected into your deployments. You scope each one to production, to preview, or to a single preview branch. This is also how you connect your app to a database: set its connection string as a variable like `DATABASE_URL`.
@@ -20,28 +20,28 @@ There are three layers:
 
 A preview deploy gets the preview variables, with any branch overrides layered on top. Overrides help when one branch needs a different API key, database URL, or feature flag than the rest.
 
-Values are resolved at deploy time and baked into the deployment. Changing a variable doesn't touch deployments that already exist and doesn't trigger a redeploy; the new value applies the next time you deploy.
+Values are resolved at deploy time and baked into the deployment. Changing a variable doesn't touch deployments that already exist and doesn't trigger a redeploy. The new value applies the next time you deploy.
 
 ## Set a variable
 
 Pass `KEY=value` and a role or branch:
 
 ```npm
-npx @prisma/cli@latest project env add DATABASE_URL=postgresql://example --role production
-npx @prisma/cli@latest project env add DATABASE_URL=postgresql://preview --role preview
-npx @prisma/cli@latest project env add FEATURE_FLAG=enabled --branch feature/search
+npx prisma@next project env add DATABASE_URL=postgresql://example --role production
+npx prisma@next project env add DATABASE_URL=postgresql://preview --role preview
+npx prisma@next project env add FEATURE_FLAG=enabled --branch feature/search
 ```
 
 To keep a secret out of your shell history, pass just the key and let the CLI read it from your environment:
 
 ```bash
-DATABASE_URL=postgresql://example npx @prisma/cli@latest project env add DATABASE_URL --role production
+DATABASE_URL=postgresql://example npx prisma@next project env add DATABASE_URL --role production
 ```
 
 To import many variables at once, pass a dotenv file with `--file` instead of a `KEY=value` argument (one or the other, not both). It works for `add` and `update`:
 
 ```npm
-npx @prisma/cli@latest project env add --file .env.production --role production
+npx prisma@next project env add --file .env.production --role production
 ```
 
 ## Connect a database
@@ -57,19 +57,19 @@ Don't assume production data is copied into preview branches, and don't assume m
 ## List, update, remove
 
 ```npm
-npx @prisma/cli@latest project env list --role production
-npx @prisma/cli@latest project env list --branch feature/search
-npx @prisma/cli@latest project env update DATABASE_URL=postgresql://new --role production
-npx @prisma/cli@latest project env remove DATABASE_URL --role preview
+npx prisma@next project env list --role production
+npx prisma@next project env list --branch feature/search
+npx prisma@next project env update DATABASE_URL=postgresql://new --role production
+npx prisma@next project env remove DATABASE_URL --role preview
 ```
 
-`list --role` shows names and metadata, never values. `list --branch` shows the resolved view for one branch. `rm` works as an alias for `remove`.
+`list --role` shows names and metadata, never values. `list --branch` shows the variables a deploy of that branch would receive. `rm` works as an alias for `remove`.
 
 `add` never overwrites: it fails if the key already exists in that scope, so use `update` to change a value. Every `project env` subcommand also accepts `--project <id-or-name>` to target a project other than the linked one.
 
 ## Values are write-only
 
-Once you save a variable, the platform never gives it back. Values are encrypted at rest and never returned: not by the CLI, the API, or the Console. In practice:
+Once you save a variable, its value is encrypted at rest and never returned: not by the CLI, the API, or the Console. In practice:
 
 - `project env list` shows keys and metadata, not values.
 - There's no command to pull values into a local `.env`.
@@ -86,13 +86,13 @@ Keep your own copy of every value in a secret manager. Treat Prisma as the place
 
 ## In CI and agents
 
-Add `--json` so the output is machine-readable, and `--no-interactive` so the CLI fails with an error code instead of waiting on a prompt nothing will answer:
+Add `--json` so the output is machine-readable, and `--no-interactive` so the CLI fails with an error code instead of waiting on a prompt:
 
 ```npm
-npx @prisma/cli@latest project env list --role preview --json --no-interactive
+npx prisma@next project env list --role preview --json --no-interactive
 ```
 
-Don't build anything that depends on reading a value back. Pass the source value in from your own secret store, and let Prisma handle injection at deploy time.
+Don't build anything that depends on reading a value back. Pass the source value in from your own secret store, and let Prisma inject it at deploy time.
 
 ## Next steps
 

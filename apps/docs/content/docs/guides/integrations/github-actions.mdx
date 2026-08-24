@@ -1,15 +1,15 @@
 ---
 title: GitHub Actions
-description: Provision and manage Prisma Postgres databases per pull request using GitHub Actions and Prisma Management API
+description: Provision and manage Prisma Postgres databases per pull request using GitHub Actions and Prisma REST API
 image: /img/guides/prisma-postgres-github-actions-cover.png
 url: /guides/integrations/github-actions
 metaTitle: How to provision preview databases with GitHub Actions and Prisma Postgres
-metaDescription: Provision and manage Prisma Postgres databases per pull request using GitHub Actions and Prisma Management API
+metaDescription: Provision and manage Prisma Postgres databases per pull request using GitHub Actions and Prisma REST API
 ---
 
 ## Overview
 
-This guide shows you how to automatically create and delete [Prisma Postgres](https://www.prisma.io/postgres) databases using GitHub Actions and [the Prisma Postgres management API](https://api.prisma.io/v1/swagger-editor). The setup provisions a new database for every pull request, seeds it with sample data, and the `github-actions` bot leaves a comment with the database name and the status.
+This guide shows you how to automatically create and delete [Prisma Postgres](https://www.prisma.io/postgres) databases using GitHub Actions and [the Prisma Postgres REST API](https://api.prisma.io/v1/swagger-editor). The setup provisions a new database for every pull request, seeds it with sample data, and the `github-actions` bot leaves a comment with the database name and the status.
 
 ![GitHub Actions comment](/img/guides/github-comment.png)
 
@@ -245,7 +245,7 @@ Start by creating the required directory and file:
 
 ```bash
 mkdir -p .github/workflows
-touch .github/workflows/prisma-postgres-management.yml
+touch .github/workflows/prisma-postgres-rest-api.yml
 ```
 
 This file will contain the logic to manage databases on a per-PR basis. This GitHub Actions workflow:
@@ -263,10 +263,10 @@ This workflow uses `us-east-1` as the default region for Prisma Postgres. You ca
 
 ### 3.2. Add the base configuration
 
-Paste the following into `.github/workflows/prisma-postgres-management.yml`. This sets up when the workflow runs and provides required environment variables.
+Paste the following into `.github/workflows/prisma-postgres-rest-api.yml`. This sets up when the workflow runs and provides required environment variables.
 
-```yaml title=".github/workflows/prisma-postgres-management.yml"
-name: Prisma Postgres Management API Workflow
+```yaml title=".github/workflows/prisma-postgres-rest-api.yml"
+name: Prisma Postgres REST API Workflow
 
 on:
   pull_request:
@@ -312,7 +312,7 @@ Now add a job to provision the database when the PR is opened or when triggered 
 
 Append the following under the `jobs:` key in your workflow file:
 
-```yaml title=".github/workflows/prisma-postgres-management.yml"
+```yaml title=".github/workflows/prisma-postgres-rest-api.yml"
 jobs:
   provision-database:
     if: (github.event_name == 'pull_request' && github.event.action != 'closed') || (github.event_name == 'workflow_dispatch' && inputs.action == 'provision')
@@ -475,7 +475,7 @@ When a pull request is closed, you can automatically remove the associated datab
 
 Append the following to your `jobs:` section, after the `provision-database` job:
 
-```yaml title=".github/workflows/prisma-postgres-management.yml"
+```yaml title=".github/workflows/prisma-postgres-rest-api.yml"
 cleanup-database:
   if: (github.event_name == 'pull_request' && github.event.action == 'closed') || (github.event_name == 'workflow_dispatch' && inputs.action == 'cleanup')
   runs-on: ubuntu-latest
@@ -570,7 +570,7 @@ To manage Prisma Postgres databases, you also need a service token. Follow these
 
 ### 5.2 Retrieve the project ID where you want to provision Prisma Postgres databases
 
-To avoid conflicts with your development databases, you'll now create a dedicated project specifically for CI workflows. Use the following curl command to create a new Prisma Postgres project using the Prisma Postgres Management API:
+To avoid conflicts with your development databases, you'll now create a dedicated project specifically for CI workflows. Use the following curl command to create a new Prisma Postgres project using the Prisma Postgres REST API:
 
 ```bash
 curl -X POST https://api.prisma.io/v1/projects \
@@ -636,7 +636,7 @@ You can test the setup in two ways:
 **Option 2: Manual trigger**
 
 1. Go to the **Actions** tab in your repository.
-2. Select the **Prisma Postgres Management API Workflow** on the left sidebar.
+2. Select the **Prisma Postgres REST API Workflow** on the left sidebar.
 3. Click the **Run workflow** dropdown
 4. Choose `provision` as the action and optionally provide a custom database name. You can also choose `cleanup` to delete an _existing_ database.
 5. Click **Run workflow**.

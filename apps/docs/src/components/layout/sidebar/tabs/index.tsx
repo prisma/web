@@ -1,5 +1,6 @@
 import type * as PageTree from "fumadocs-core/page-tree";
 import type { ReactNode } from "react";
+import { normalize, isActive } from "../../../../lib/urls";
 
 export interface SidebarTab {
   /**
@@ -48,6 +49,12 @@ export function getSidebarTabs(tree: PageTree.Root): SidebarTab[] {
   if (tree.fallback) scanOptions(tree.fallback, true);
 
   return results;
+}
+
+export function isTabActive(tab: SidebarTab, pathname: string) {
+  if (tab.urls) return tab.urls.has(normalize(pathname));
+
+  return isActive(tab.url, pathname, true);
 }
 
 function getFolderUrls(folder: PageTree.Folder, output: Set<string> = new Set()): Set<string> {

@@ -1,0 +1,100 @@
+---
+title: Testing
+description: Test composed services by deciding what service.load() returns, with mockService for unit tests and bootstrapService for integration tests.
+url: /composer/testing
+metaTitle: Testing | Prisma Composer
+metaDescription: Unit-test Prisma Composer services with mockService and type-checked fakes, and boot the real built entry against stand-in dependencies with bootstrapService.
+---
+
+Your app's code gets every dependency from one call, `service.load()`, and nothing from arguments or globals. That makes testing a matter of deciding what `load()` returns; the code under test is never modified. There are two tools, and you pick by how much of the real path you want to exercise:
+
+| You want to... | Use | From |
+| --- | --- | --- |
+| Call a page, action, or handler directly, dependencies faked | `mockService` | `@prisma/composer/testing` |
+| Boot the real built entry and drive it over real HTTP | `bootstrapService` | `@prisma/composer-prisma-cloud/testing` |
+
+Most tests are the first kind. Reach for the second when the thing you are proving is the wiring itself: that the service boots, reads its config, builds its clients, and answers requests.
+
+## Unit tests: `mockService`
+
+`mockService(service, overrides)` returns a copy of the service whose `load()` yields your fakes and whose `input()` yields the object you pass under the reserved `input` key. Everything goes in one flat object: dependency names route to `load()`, and `input` routes to `input()` (required exactly when the service declares an input schema; the input double is handed over as-is, not validated). The fakes are type-checked against the service's declared dependencies, so a double with the wrong shape does not compile.
+
+Substituting the mocked service for the real one is your test runner's job: `vi.mock` in Vitest, `mock.module` in `bun test`. A Vitest example, testing a Next.js page:
+
+```tsx title="app/page.test.tsx"
+import { renderToString } from 'react-dom/server';
+import { mockService } from '@prisma/composer/testing';
+import realService from '../src/service.ts';
+
+vi.mock('../src/service.ts', () => ({
+  default: mockService(realService, {
+    auth: { verify: async () => ({ ok: true }) }, // wrong shape = compile error
+  }),
+}));
+
+import Page from './page.tsx';
+
+it('renders the verified state', async () => {
+  expect(renderToString(await Page())).toContain('Signed in: true');
+});
+```
+
+No server, no database, no environment; the page renders against the fake.
+
+## Integration tests: `bootstrapService`
+
+`bootstrapService` boots the service's real built entry in-process, fed the same way a deployed boot is fed, except you choose the values. Point a dependency at a stand-in you run on a loopback port, then make real HTTP requests. Run these under `bun test`:
+
+```ts title="service.integration.test.ts"
+import { bootstrapService } from '@prisma/composer-prisma-cloud/testing';
+import fakeAuth from '@my-app/auth/fake'; // an in-memory handler, no db
+import storefront from '../src/service.ts';
+
+const fake = Bun.serve({ port: 0, fetch: fakeAuth });
+
+const app = await bootstrapService(storefront, {
+  service: { port: 4310 },
+  inputs: { auth: { url: fake.url.href } },
+});
+
+const res = await app.fetch(new Request(app.url));
+expect(await res.text()).toContain('Signed in: true');
+```
+
+Five things to know:
+
+- **Build first.** It boots the *built* entry, so the test task must depend on the build.
+- **Pass a concrete `service.port`.** The entry listens itself; no OS-assigned port is reported back.
+- **There is no `close()`.** Run each integration-test file in its own process (`bun test` does this per file) and the server dies with it.
+- **The service's code is untouched.** If you find yourself editing `server.ts` to make it testable, something upstream is wrong.
+- **You do not need a service key.** Only a deploy (or `composer dev`) provisions keys; in a test nothing checks, every call reaches your handler, and there is nothing to put in `inputs`.
+
+A service with an input schema takes `input` in the config, a binding exactly like `provision()`'s, run through the real serialize and read path, so `input()` in the booted entry sees what a deploy would produce.
+
+**Next.js services need a third argument**, a boot function, because the built entry lives inside Next's standalone output. Resolve it with `standaloneServerPath`; `bootstrapService` exports the resolved port as `process.env.PORT` before booting, which is exactly what Next's standalone server binds:
+
+```ts
+import { pathToFileURL } from 'node:url';
+import { standaloneServerPath } from '@prisma/composer/nextjs/control';
+
+await bootstrapService(storefront, config, async () => {
+  await import(pathToFileURL(standaloneServerPath(storefront.build)).href);
+});
+```
+
+The complete working version is [`examples/storefront-auth`](https://github.com/prisma/composer/tree/main/examples/storefront-auth) in the Composer repository.
+
+## Writing good fakes
+
+A dependency's type *is* its contract, so anything of that shape is a valid fake, and the compiler holds it to that. In increasing order of realism:
+
+- **A bare object**: `{ verify: async () => ({ ok: true }) }`. Right for most unit tests.
+- **The real client over an in-memory handler**: exercises JSON encoding and schema validation, still no socket.
+- **A real local server**: the fake served over actual HTTP, which is what `bootstrapService` drives.
+
+One habit pays for all of this: ship each service's fake from its own package as a `/fake` entry point, outside `src/`, so it cannot reach production code. Fake and service then share one contract; when the contract changes, both stop compiling at once, and every consumer's tests find out immediately.
+
+## Next steps
+
+- [Services and contracts](/composer/services-and-contracts): what the contract types on each end.
+- [Local development](/composer/local-development): run the real app instead of booting one service.

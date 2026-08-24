@@ -1,37 +1,42 @@
 ---
 title: Pricing
-description: How Prisma Compute pricing works, with the expected production rates and worked examples.
+description: How Prisma Compute pricing works, with the usage rates, included usage by plan, and worked examples.
 url: /compute/pricing
 metaTitle: Pricing | Prisma Compute
-metaDescription: How Prisma Compute pricing works, including the expected per-meter rates, worked cost examples, the billing formula, and what is not billed.
+metaDescription: How Prisma Compute pricing works, including the per-meter rates, included usage by plan, worked cost examples, the billing formula, and what is not billed.
 ---
 
-Compute is free during public beta. The rates below are what we expect to charge once we enable production billing. We are publishing them now so you can understand the model, estimate future usage, and tell us where real workloads don't fit.
+Compute pricing is usage-based. Every plan includes a monthly request allowance, and the meters below cover the work your app does. An idle app scales to zero and costs nothing.
 
-:::info[Public Beta]
-
-Prisma Compute is in [Public Beta](/console/more/feature-maturity#public-beta), so rates, limits, and included usage may change before billing begins. If something has to change, we will change it and say so clearly.
-
-This pricing isn't final, and your feedback shapes it. If a rate or meter doesn't fit how your app runs, tell us in the `prisma-compute` channel on our [Discord](https://pris.ly/discord).
-
-:::
-
-## Expected usage rates
+## Usage rates
 
 Each meter measures a different resource: how often your app runs (requests), how much memory it holds and CPU it uses while running (provisioned memory and active CPU), and how much data it sends back (outbound bandwidth).
 
-| Meter              | Price                 | What it means                                                                         |
-| ------------------ | --------------------- | ------------------------------------------------------------------------------------- |
-| Requests           | `$1.00 / 1M requests` | Every inbound request your app handles.                                               |
-| Provisioned memory | `$0.006 / GB-hour`    | Memory allocated while your app is running or intentionally kept awake.               |
-| Active CPU         | `$0.064 / vCPU-hour`  | CPU time your app actually consumes.                                                  |
-| Outbound bandwidth | `$0.025 / GB`         | Data your app sends out to the internet. Incoming requests do not count as bandwidth. |
+| Meter              | Price                | What it means                                                                          |
+| ------------------ | -------------------- | -------------------------------------------------------------------------------------- |
+| Requests           | `$1 per million`     | Every inbound request your app handles, after your plan's included requests.           |
+| Provisioned memory | `$0.006 / GB-hour`   | Memory allocated while your app is running or intentionally kept awake.                |
+| Active CPU         | `$0.064 / vCPU-hour` | CPU time your app actually consumes.                                                   |
+| Outbound bandwidth | `$0.025 / GB`        | Data your app sends out to the internet. Incoming requests do not count as bandwidth.  |
+
+## Included usage by plan
+
+Requests are the one meter with an included monthly allowance. Provisioned memory, active CPU, and outbound bandwidth are billed per use on paid plans at the rates above; the Free plan has no usage billing.
+
+| Plan     | Monthly price | Requests included | Requests beyond that |
+| -------- | ------------- | ----------------- | -------------------- |
+| Free     | `$0`          | 1M                | No usage billing     |
+| Starter  | `$10`         | 5M                | `$1 per million`     |
+| Pro      | `$49`         | 20M               | `$1 per million`     |
+| Business | `$129`        | 100M              | `$1 per million`     |
+
+See the [pricing page](https://www.prisma.io/pricing) for what each plan includes across Prisma Compute and Prisma Postgres.
 
 ## Example costs by workload
 
 The three examples below show how the same rates add up for different kinds of apps, from a short-lived preview to a bandwidth-heavy service.
 
-These examples are estimates, not benchmarks. The inputs are round numbers so the math is easy to follow. Each total is what the usage would cost under the expected rates, once billing starts.
+These examples are estimates, not benchmarks. The inputs are round numbers so the math is easy to follow, and every meter is priced from zero — in practice your plan's included requests cover the request line first.
 
 ### Preview workflow
 
@@ -47,7 +52,7 @@ Assume the preview gets `10,000` requests, stays running for `3,000s` at `1 GB`,
 | Outbound bandwidth | `0.25 GB * $0.025 = $0.0063`                             |
 | Total              | `$0.0320`, about `$0.03`                                 |
 
-The usage is the bill, not the deploys or the [preview branch](/compute/branching).
+Only the usage is billed; the deploys and the [preview branch](/compute/branching) itself are not.
 
 ### Agent workflow
 
@@ -83,11 +88,11 @@ Here compute is almost free and bandwidth is nearly the whole bill. If your app 
 
 ## Formula to estimate your bill
 
-To estimate any month yourself, add up the four meters at their rates:
+To estimate any month yourself, subtract your plan's included requests, then add up the four meters at their rates:
 
 ```text
 bill =
-  requests * 1.00 / 1_000_000
+  max(0, requests - included_requests) * 1.00 / 1_000_000
   + provisioned_memory_gb_hours * 0.006
   + active_vcpu_hours * 0.064
   + outbound_bandwidth_gb * 0.025
@@ -107,22 +112,20 @@ A preview branch only costs money when it does work, such as serving traffic or 
 
 ## Usage data for humans and agents
 
-Database usage is available from the [CLI](/compute/cli-reference) (`database usage`) and API, including as JSON, and an agent can read it to estimate a cost, explain a change, or suggest a fix. Equivalent Compute usage surfaces are still taking shape during the beta.
+Database usage is available from the [CLI](/cli/v8/postgres) (`postgres usage`) and API, including as JSON, and an agent can read it to estimate a cost, explain a change, or suggest a fix. Equivalent usage reporting for Compute is still being built.
 
-## Beta and bandwidth
+## Bandwidth
 
-Compute is free during public beta. The rates above are estimates and may change as we learn from real usage. If anything changes before we enable production billing, we will say so clearly.
-
-Outbound bandwidth is the data your app sends from Compute to the public internet; inbound requests don't count. Small JSON or API responses use little of it, while streaming, file downloads, and media use much more. During beta we are measuring real traffic to confirm the rate, included usage, and edge cases before billing starts.
+Outbound bandwidth is the data your app sends from Compute to the public internet; inbound requests don't count. Small JSON or API responses use little of it, while streaming, file downloads, and media use much more. If your app moves a lot of data, estimate bandwidth before you ship.
 
 ## Share your pricing feedback
 
-This pricing is still taking shape during the beta, and your input shapes where it lands. If a rate, meter, or included amount doesn't match how your app actually runs, tell us in the `prisma-compute` channel on our [Discord](https://pris.ly/discord). That feedback is exactly what we are measuring against before billing turns on.
+If a rate, meter, or included amount doesn't match how your app actually runs, tell us in the `prisma-compute` channel on our [Discord](https://pris.ly/discord).
 
 ## What to read next
 
 - [Prisma Compute vs Vercel pricing](https://www.prisma.io/blog/prisma-compute-vs-vercel-pricing?utm_source=docs): the same monthly workload priced line by line on both platforms.
-- [Get started](/compute/getting-started): the quickstart, deploy your first app to a live URL in two commands.
+- [Get started](/compute/getting-started): the quickstart that takes your first app to a live URL in two commands.
 - [Known limitations](/compute/limitations): what the beta can and can't do.
 - [FAQ](/compute/faq): quick answers to common questions.
 - [Branching](/compute/branching): how preview branches isolate work and when they cost money.

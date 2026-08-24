@@ -27,8 +27,13 @@ export function BlogGrid({
 }) {
   return (
     <>
-      {featuredPost && <PostCard post={featuredPost} currentCategory={currentCategory} featured />}
-      <div className="grid gap-6 mt-12 grid-cols-1">
+      {featuredPost ? (
+        <div className="mb-6">
+          <PostCard post={featuredPost} currentCategory={currentCategory} featured />
+        </div>
+      ) : null}
+      {/* CF's blog skeleton: one grid, three up at desktop, 1.5rem gutters. */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         {items.map((post) => (
           <PostCard key={post.url} post={post} currentCategory={currentCategory} />
         ))}

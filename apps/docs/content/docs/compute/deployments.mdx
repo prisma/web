@@ -1,115 +1,84 @@
 ---
 title: Deployments
-description: Build, deploy, inspect, promote, and roll back app deployments on Prisma Compute.
+description: How deployments are created on Prisma Compute, and how to inspect, promote, roll back, start, and stop them.
 url: /compute/deployments
 metaTitle: Deployments | Prisma Compute
-metaDescription: How deployments work in Prisma Compute, including local builds, production deploys, logs, promotion, and rollback.
+metaDescription: How deployments work in Prisma Compute, including git-push builds, build logs, promotion, rollback, and starting and stopping deployments.
 ---
 
 A deployment is one built version of your app. Deployments live inside a [branch](/compute/branching), and the live deployment is the one currently serving traffic.
 
-## Deploy
+## Where deployments come from
 
-From your app directory:
+Deployments are created three ways:
 
-```npm
-npx @prisma/cli@latest app deploy
-```
+- **A git push.** After you [connect a GitHub repository](/compute/github), pushing a branch builds and deploys it: the default Git branch deploys to production, and every other branch gets an isolated preview.
+- **The [Console](https://pris.ly/pdp).** Trigger a build and deployment from the browser.
+- **[Prisma Composer](/composer).** `composer deploy` does not build your services; it assembles the services you have already built and provisions them. This is the CLI-driven path for multi-service apps.
 
-The CLI resolves your project, branch, and app, builds the code, and returns a live URL. What it resolves:
-
-- **Project**: from your linked directory, or `--project` / `--create-project`.
-- **Branch**: `--branch`, then your active Git branch, then `main`.
-- **App**: `--app`, or inferred from your `package.json` name or directory. If more than one app matches in non-interactive mode, the deploy fails with `APP_AMBIGUOUS`; pass `--app`.
-
-You can pass values straight into a deploy:
-
-```npm
-npx @prisma/cli@latest app deploy --framework hono --entry src/index.ts --http-port 3000
-npx @prisma/cli@latest app deploy --env DATABASE_URL=postgresql://example
-```
-
-`--env` is for one-off values at deploy time. For variables that should persist across deploys, set them on the project. To learn more, see the [Environment variables docs](/compute/environment-variables).
-
-## Build locally
-
-Check your app builds before you ship it:
-
-```npm
-npx @prisma/cli@latest app build
-```
-
-`app build` supports the build types `auto`, `nextjs`, `nuxt`, `astro`, `nestjs`, `tanstack-start`, `custom`, and `bun`.
-
-## Deploy to production
-
-Your first deployment is promoted to production automatically. After that, every production deploy needs an explicit `--prod` flag, so you don't ship to production by accident:
-
-```npm
-npx @prisma/cli@latest app deploy --prod
-```
-
-Without `--prod`, a deploy that resolves to the production branch and already has a live production deployment fails with `PROD_DEPLOY_REQUIRES_FLAG`. With `--prod`, the CLI shows the current live deployment and asks you to confirm before replacing it.
-
-For scripts and CI, pass both flags so nothing waits on a prompt:
-
-```npm
-npx @prisma/cli@latest app deploy --prod --yes
-```
-
-In non-interactive mode, a `--prod` deploy without `--yes` fails with `CONFIRMATION_REQUIRED`. Preview deploys never need `--prod` and never ask.
+The unified CLI does not have a standalone `deploy` command for a single service. Use its `service` commands to manage the deployments those flows create. During the beta, the earlier CLI (`@prisma/cli@latest`) still offers an `app deploy` command that builds and deploys a single service from your terminal in one step. The same commands below manage the deployments it creates.
 
 ## Inspect deployments
 
 ```npm
-npx @prisma/cli@latest app show --app web
-npx @prisma/cli@latest app open --app web
-npx @prisma/cli@latest app list-deploys --app web
-npx @prisma/cli@latest app show-deploy dep_123
+npx prisma@next service show --service web
+npx prisma@next service open --service web
+npx prisma@next service deployment list --service web
+npx prisma@next service deployment show dep_123
 ```
 
-`app show` describes the live app, `app open` opens its URL, `app list-deploys` lists the deployment history, and `app show-deploy` shows one deployment in detail.
+`service show` describes the service and its current deployment, `service open` opens its URL, `deployment list` lists the deployment history, and `deployment show` shows one deployment in detail.
 
-## Logs
+## Build logs
 
-Stream logs for the live deployment, or for a specific one:
+Each deployment starts as a build. Stream a build's logs, live or after the fact:
 
 ```npm
-npx @prisma/cli@latest app logs --app web
-npx @prisma/cli@latest app logs --app web --deployment dep_123
+npx prisma@next build logs bld_123 --follow
 ```
 
-Your app's log lines go to stdout; the CLI's own status and errors go to stderr, so you can pipe them apart. If the log stream can't be served for the resolved deployment, the command fails with `DEPLOY_FAILED`.
+`--follow` keeps the connection open while the build runs; `--cursor <cursor>` resumes from a cursor a previous run reported. Build ids appear in `service show`, `service deployment show`, and the Console.
 
 ## Promote and roll back
 
-Promote an earlier deployment to be the live one:
+Promote a preview deployment to production:
 
 ```npm
-npx @prisma/cli@latest app promote dep_123 --app web
+npx prisma@next service deployment promote dep_123 --service web
 ```
 
-Promotion makes an existing deployment live behind the app's endpoint. If the deployment is stopped, it's started first and promoted once it's running. Nothing is rebuilt: environment variables are baked in when a deployment is created, so a promoted deployment keeps the config it was built with. To build a deployment without making it live, deploy with `--no-promote` and promote it later.
+Promotion rebuilds the deployment with **production** environment variables and makes the result live behind the service's endpoint. The rebuild is what lets a deployment built for a preview branch pick up production environment variables on its way to production.
 
-Roll back to the previous deployment, or a specific one. Rollback works the same way — it reuses an existing build and just targets the previous deployment, so there is no rebuild step between you and a known-good state:
+Roll back production to a previous deployment. Rollback reuses an existing build, so there is no rebuild step between you and a known-good state:
 
 ```npm
-npx @prisma/cli@latest app rollback --app web
-npx @prisma/cli@latest app rollback --app web --to dep_123
+npx prisma@next service deployment rollback --service web
+npx prisma@next service deployment rollback --service web --to dep_123
 ```
 
-If there's nothing to roll back to, you get `NO_PREVIOUS_DEPLOYMENT`.
+Without `--to`, rollback targets the deployment before the live one.
 
-## Remove an app
+## Start, stop, delete
 
 ```npm
-npx @prisma/cli@latest app remove --app web
+npx prisma@next service deployment stop dep_123
+npx prisma@next service deployment start dep_123
+npx prisma@next service deployment delete dep_123
 ```
 
-This removes the app from the current branch. Pass `--yes` to skip the confirmation prompt.
+Stopping a deployment takes it out of service without deleting its artifact; starting it brings it back. Deleting a deployment removes it and the artifact it holds, after confirmation.
+
+## Remove a service
+
+```npm
+npx prisma@next service remove --service web
+```
+
+This removes the service from the selected branch (your active Git branch, unless you pass `--branch`). Pass `--yes` to skip the confirmation prompt.
 
 ## Next steps
 
 - [Environment variables](/compute/environment-variables): persist config across deploys.
-- [GitHub integration](/compute/github): deploy on push instead of manually.
+- [GitHub integration](/compute/github): the push-to-deploy flow in detail.
 - [Domains](/compute/domains): point a custom domain at production.
+- [Prisma Composer](/composer): CLI-driven deploys for multi-service apps.

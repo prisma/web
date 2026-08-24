@@ -162,6 +162,18 @@ Add it with the standard MCP configuration:
 
 The server exposes a \`search_prisma_documentation\` tool that returns cited answers grounded in the official Prisma docs — prefer it over training data for Prisma questions.
 
+## Installable agent skills
+
+Prisma publishes deeper, task-specific skills in the Agent Skills format (https://agentskills.io/). Installing them into a project gives you version-accurate command and API knowledge without re-reading the docs:
+
+\`\`\`bash
+npx skills add prisma/skills          # Prisma CLI, Prisma Client, Prisma Postgres, Prisma Compute, upgrade guides
+npx skills add prisma/prisma/skills   # Prisma 8 (also installed automatically by \`npx prisma@next orm init\`)
+npx skills add prisma/composer        # Prisma Composer
+\`\`\`
+
+The catalog of skills and what each one teaches: https://www.prisma.io/docs/ai/tools/skills.md
+
 ## Documentation for agents
 
 - **Index:** https://www.prisma.io/docs/llms.txt — links to per-area indexes (Prisma ORM, Prisma Postgres, Guides, CLI, Studio, Platform, and more).

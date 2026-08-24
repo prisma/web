@@ -5,14 +5,17 @@ import { useTheme } from "next-themes";
 import { ComponentProps, useEffect, useState } from "react";
 import { cn } from "@prisma-docs/ui/lib/cn";
 
-const itemVariants = cva("size-6.5 rounded-full p-1.5 text-fd-muted-foreground", {
-  variants: {
-    active: {
-      true: "bg-fd-accent text-fd-accent-foreground",
-      false: "text-fd-muted-foreground",
+const itemVariants = cva(
+  "size-6.5 rounded-full p-1.5 text-fd-muted-foreground transition-colors duration-300 motion-reduce:transition-none",
+  {
+    variants: {
+      active: {
+        true: "bg-fd-accent text-fd-accent-foreground",
+        false: "text-fd-muted-foreground hover:text-fd-foreground",
+      },
     },
   },
-});
+);
 
 const full = [["light", Sun] as const, ["dark", Moon] as const, ["system", Airplay] as const];
 
@@ -30,7 +33,10 @@ export function ThemeToggle({
     setMounted(true);
   }, []);
 
-  const container = cn("inline-flex items-center rounded-full border p-1", className);
+  const container = cn(
+    "inline-flex items-center rounded-full border border-stroke-neutral p-1",
+    className,
+  );
 
   if (mode === "light-dark") {
     const value = mounted ? resolvedTheme : null;

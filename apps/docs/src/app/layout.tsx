@@ -3,7 +3,6 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@prisma-docs/ui/lib/cn";
 import { getBaseUrl } from "@/lib/urls";
 import "./global.css";
-import { Inter, Barlow } from "next/font/google";
 import localFont from "next/font/local";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
@@ -14,34 +13,38 @@ import { GoogleTagManager } from "@prisma-docs/ui/components/google-tag-manager"
 import { Banner } from "fumadocs-ui/components/banner";
 import { ArrowRightIcon } from "lucide-react";
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
-
-const barlow = Barlow({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-barlow",
-});
-
-const monaSans = localFont({
+// Inter is vendored inside @prisma/eclipse now, so load the same files here
+// rather than pulling a second copy from Google.
+const inter = localFont({
   src: [
     {
-      path: "../../../../packages/eclipse/src/static/fonts/MonaSansVF[wdth,wght,opsz,ital].woff2",
-      weight: "200 900",
+      path: "../../../../packages/eclipse/src/static/fonts/InterVariable.woff2",
+      weight: "100 900",
       style: "normal",
     },
     {
-      path: "../../../../packages/eclipse/src/static/fonts/MonaSansVF[wdth,wght,opsz,ital].woff2",
-      weight: "200 900",
+      path: "../../../../packages/eclipse/src/static/fonts/InterVariable-Italic.woff2",
+      weight: "100 900",
       style: "italic",
     },
   ],
-  variable: "--font-mona-sans",
+  variable: "--font-inter",
   display: "swap",
 });
 
+// Sora replaces Mona Sans VF as the display face. next/font/local has no
+// per-source `unicode-range`, so only the latin subset is preloaded here; the
+// latin-ext subset is served by the plain "Sora" @font-face in the package's
+// fonts.css, which sits directly behind this variable in the family stack.
+const sora = localFont({
+  src: "../../../../packages/eclipse/src/static/fonts/SoraVF-latin.woff2",
+  weight: "100 800",
+  style: "normal",
+  variable: "--font-sora",
+  display: "swap",
+});
+
+// Code face — unchanged by the rebrand.
 const monaSansMono = localFont({
   src: "../../../../packages/eclipse/src/static/fonts/MonaSansMonoVF[wght].woff2",
   variable: "--font-mona-mono",
@@ -61,7 +64,11 @@ export const metadata: Metadata = {
 
 export default function Layout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${barlow.variable}`} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${sora.variable} ${inter.variable} ${monaSansMono.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         <script
           type="application/ld+json"
@@ -147,12 +154,12 @@ export default function Layout({ children }: { children: ReactNode }) {
           className="prisma-next-banner text-fd-foreground"
         >
           <div className="prisma-next-banner-content flex w-full items-center justify-center gap-2 pr-8 text-xs sm:text-sm">
-            <span className="font-semibold">Prisma Next is in early access.</span>
+            <span className="font-semibold">The Prisma 8 Release Candidate is available.</span>
             <span className="hidden text-fd-muted-foreground sm:inline">
               Explore the next Prisma ORM workflow.
             </span>
             <Link
-              href="/next"
+              href="/v8"
               className={cn(
                 buttonVariants({ variant: "secondary", size: "sm" }),
                 "prisma-next-banner-cta h-7 shrink-0 whitespace-nowrap px-2 py-1 text-xs",

@@ -146,7 +146,11 @@ function recentPostsQuery(slugs) {
     `coalesce(pv.visitors, 0) AS visitors, row_number() OVER (ORDER BY coalesce(pv.pageviews, 0) DESC) AS rank, ` +
     `count() OVER () AS total FROM recent LEFT JOIN pv ON pv.path = concat('/blog/', recent.slug)) ` +
     `ORDER BY rank LIMIT 100`;
-  return { kind: "DataVisualizationNode", display: "ActionsTable", source: { kind: "HogQLQuery", query } };
+  return {
+    kind: "DataVisualizationNode",
+    display: "ActionsTable",
+    source: { kind: "HogQLQuery", query },
+  };
 }
 
 async function patchInsight(id, query) {
@@ -182,7 +186,9 @@ if (process.argv.includes("--dry-run")) {
 }
 
 if (!process.env.POSTHOG_API_KEY) {
-  console.error("Error: POSTHOG_API_KEY is not set. Set the repo secret, or pass --dry-run to preview.");
+  console.error(
+    "Error: POSTHOG_API_KEY is not set. Set the repo secret, or pass --dry-run to preview.",
+  );
   process.exit(1);
 }
 

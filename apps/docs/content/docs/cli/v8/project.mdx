@@ -1,0 +1,47 @@
+---
+title: project
+description: Create, link, and inspect projects; manage project environment variables.
+url: /cli/v8/project
+metaTitle: project | Prisma 8 CLI
+metaDescription: Learn how to manage Prisma platform projects, directory bindings, and project environment variables with the unified Prisma CLI.
+---
+
+Use `project` commands to create, link, and inspect projects, and to manage project environment variables.
+
+## Usage
+
+```npm
+npx prisma@next project list
+npx prisma@next project show
+```
+
+## Commands
+
+| Command                        | Description                                                  |
+| ------------------------------ | ------------------------------------------------------------- |
+| `project list`                 | List all projects in your workspace                            |
+| `project show`                 | Show the project this directory is linked to                   |
+| `project create <name>`        | Create a project and link the directory to it (`--region <region>` sets the Prisma Compute region) |
+| `project link [id-or-name]`    | Link the directory to an existing project                      |
+| `project rename <name>`        | Rename the linked project                                      |
+| `project remove <id-or-name>`  | Remove a project permanently, after exact id confirmation      |
+| `project transfer <id-or-name>`| Transfer a project to another workspace, after exact id confirmation |
+
+When you link a project, Prisma writes the selected workspace and project to `.prisma/local.json`. This file is gitignored and only stores your local link, so it should not be treated as committed configuration.
+
+Committed configuration lives in `prisma.compute.ts` or `prisma.compute.json`. The [`init`](/cli/v8/platform-init) command creates this configuration, and the [`service` commands](/cli/v8/service) use it.
+
+## project env
+
+Use `project env` commands to manage environment variables for the linked project. Every write requires an explicit scope: pass exactly one of `--role <production|preview>` or `--branch <git-name>`. A write without a scope fails with `PROJECT.USAGE_ERROR`, so a write targets production only when you ask for it. See [Environment variables](/compute/environment-variables).
+
+| Command                               | Description                                                |
+| ------------------------------------- | ----------------------------------------------------------- |
+| `project env add [KEY=value\|KEY]`    | Create a variable. Pass just `KEY` to read the value from your environment, or omit the assignment and pass `--file` |
+| `project env update [KEY=value\|KEY]` | Replace an existing variable's value. A bare `KEY` also reads from your environment |
+| `project env list`                    | List variable names and metadata for a scope, never values   |
+| `project env remove <key>`            | Remove a variable from a scope                               |
+
+`add` and `update` also accept `--file <path>` to read `KEY=VALUE` assignments from a dotenv file, and every `project env` command takes `--project <id-or-name>`.
+
+Values are write-only: they are encrypted at rest and cannot be read back. A deployment picks up the values at deploy time. Redeploy to apply changes.

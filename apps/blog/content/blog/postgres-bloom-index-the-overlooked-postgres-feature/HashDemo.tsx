@@ -28,7 +28,8 @@ const PHASES: HashPhase[] = [
   },
   {
     label: "h2 = djb2(item) % 16",
-    caption: "DJB2 is a different mixer, so the same input lands on bit 7. The three hashes are independent.",
+    caption:
+      "DJB2 is a different mixer, so the same input lands on bit 7. The three hashes are independent.",
     lines: { from: 3, to: 3 },
     completed: 1,
     activeHash: 1,

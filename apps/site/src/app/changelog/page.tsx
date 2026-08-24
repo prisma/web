@@ -1,105 +1,92 @@
+import type { Metadata } from "next";
 import Link from "next/link";
-import { Badge } from "@prisma/eclipse";
-import {
-  getReleaseNotePreview,
-  getSortedReleaseNotes,
-} from "@/lib/changelog-source";
-import { createPageMetadata } from "@/lib/page-metadata";
-import { formatDate, formatTag } from "@/lib/format";
+import { ArrowRight } from "@/components/icons/forma";
+import { RoleKicker } from "@/components/brand/role-kicker";
+import { Texture } from "@/components/brand/texture";
+import { extractPreview, formatChangelogDate, getChangelogEntries } from "@/lib/changelog";
 
-export const metadata = createPageMetadata({
-  title: "Release Notes | Prisma",
+export const metadata: Metadata = {
+  title: "Changelog",
   description:
-    "Track Prisma release notes, product improvements, and rollout details in one markdown-driven changelog.",
-  path: "/changelog",
-  ogImage: "/og/og-changelog.png",
-});
+    "New features, improvements, and fixes across Prisma ORM, Prisma Postgres, and the Prisma platform.",
+};
 
-export default async function ChangelogPage() {
-  const entries = getSortedReleaseNotes();
-  const entriesWithPreview = await Promise.all(
-    entries.map(async (entry) => ({
-      entry,
-      summary:
-        entry.data.summary ??
-        entry.data.description ??
-        (entry.slugs[0] ? await getReleaseNotePreview(entry.slugs[0]) : null),
-    })),
-  );
+// Ported from the old site's /changelog (apps/site): same MDX entries, listed
+// newest first as a single timeline.
+export default function ChangelogPage() {
+  const entries = getChangelogEntries();
 
   return (
-    <main className="flex-1 w-full z-1 bg-background-default">
-      <div className="hero -mt-24 pt-40 relative">
-        <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-ppg)_0%,var(--color-background-default)_100%)] opacity-20" />
-        <section className="max-w-249 mx-auto px-4 relative z-2 flex flex-col gap-4 pb-8">
-          <div className="flex items-center gap-2 text-foreground-ppg-strong type-title-sm">
-            <i className="fa-regular fa-sparkles" aria-hidden />
-            <span>Changelog</span>
+    <>
+      <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
+        <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
+          <Texture opacity={0.06} blend="multiply" />
+          <div className="relative px-4 sm:px-8">
+            <div className="mx-auto flex max-w-site flex-col items-center pb-14 pt-32 text-center md:pb-16 md:pt-44">
+              <RoleKicker color="bg-prism-cyan-400" className="justify-center">
+                Changelog
+              </RoleKicker>
+              <h1 className="isolate mt-4 max-w-[20ch] text-balance text-[clamp(2.5rem,4vw,3.5rem)] leading-[1.06]">
+                What&apos;s new in Prisma
+              </h1>
+              <p className="mt-6 max-w-[52ch] text-pretty text-lg leading-relaxed text-muted-foreground">
+                New features, improvements, and fixes across Prisma ORM, Prisma Postgres, and the
+                platform.
+              </p>
+            </div>
           </div>
-          <h1 className="type-title-3xl md:type-title-4xl lg:type-title-5xl m-0 font-sans-display text-foreground-neutral">
-            The Latest News from Prisma
-          </h1>
-          <p className="m-0 max-w-[640px] text-base text-foreground-neutral md:text-lg">
-            Here you’ll find all improvements and updates we’ve made to our
-            products.
-          </p>
-        </section>
-      </div>
-
-      <section className="max-w-249 mx-auto px-4 py-8">
-        <div className="grid gap-6 mt-12 grid-cols-1">
-          {entriesWithPreview.map(({ entry, summary }) => {
-            const tags = entry.data.tags ?? [];
-            // Date-labeled entries set version to the date; showing both repeats it
-            const versionLabel =
-              entry.data.date &&
-              entry.data.version ===
-                new Date(entry.data.date).toISOString().slice(0, 10)
-                ? null
-                : entry.data.version;
-
-            return (
-              <Link
-                key={entry.url}
-                href={entry.url}
-                className="group grid overflow-hidden border-b pb-4 sm:pb-6 border-stroke-neutral gap-8"
-              >
-                <div className="order-1 flex flex-col justify-between">
-                  <div>
-                    <div className="eyebrow flex gap-2 items-center flex-wrap">
-                      {versionLabel ? (
-                        <Badge
-                          color="neutral"
-                          label={versionLabel}
-                          className="w-fit"
-                        />
-                      ) : null}
-                      {tags.length > 0 ? (
-                        <Badge
-                          color="success"
-                          label={formatTag(tags[0])}
-                          className="w-fit"
-                        />
-                      ) : null}
-                      <span className="text-xs text-foreground-neutral-weak">
-                        {formatDate(new Date(entry.data.date).toISOString())}
-                      </span>
-                    </div>
-                    <h2 className="text-foreground-neutral font-mona-sans mt-4 mb-2 text-md md:text-lg font-[650] sm:font-bold">
-                      {entry.data.title}
-                    </h2>
-                    {summary ? (
-                      <p className="text-sm text-foreground-neutral-weak line-clamp-2">
-                        {summary}
-                      </p>
-                    ) : null}
-                  </div>
-                </div>
-              </Link>
-            );
-          })}
         </div>
       </section>
-    </main>
+
+      <section className="bg-white px-4 pb-24 pt-14 sm:px-8 sm:pb-32">
+        <div className="mx-auto max-w-3xl">
+          <ol className="flex flex-col">
+            {entries.map((entry) => {
+              const preview = extractPreview(entry.content);
+              return (
+                <li
+                  key={entry.slug}
+                  className="group relative border-l border-black/[0.08] pb-12 pl-8 last:pb-0"
+                >
+                  <span
+                    aria-hidden
+                    className="absolute -left-[5px] top-[0.4rem] size-[9px] rounded-full bg-prism-cyan-400 ring-4 ring-white"
+                  />
+                  <time
+                    dateTime={entry.frontmatter.date}
+                    className="text-sm font-semibold text-foreground/60"
+                  >
+                    {formatChangelogDate(entry.frontmatter.date)}
+                  </time>
+                  <h2 className="mt-2 text-xl leading-snug sm:text-2xl">
+                    <Link
+                      href={`/changelog/${entry.slug}`}
+                      className="transition-colors hover:text-prism-cyan-700"
+                    >
+                      {entry.frontmatter.headline ?? entry.frontmatter.title}
+                    </Link>
+                  </h2>
+                  {preview && (
+                    <p className="mt-3 text-[0.9375rem] leading-relaxed text-muted-foreground">
+                      {preview}
+                    </p>
+                  )}
+                  <Link
+                    href={`/changelog/${entry.slug}`}
+                    className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-foreground"
+                  >
+                    Read more
+                    <ArrowRight
+                      className="size-4 transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transition-none"
+                      aria-hidden
+                    />
+                  </Link>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      </section>
+    </>
   );
 }

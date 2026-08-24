@@ -1,53 +1,46 @@
 ---
 title: Prisma Compute
-description: "Deploy TypeScript apps alongside Prisma Postgres, with hosting, database branches, and previews managed together."
+description: "Deploy TypeScript services alongside Prisma Postgres, with hosting, database branches, and previews managed together."
 url: /compute
 badge: beta
 metaTitle: Prisma Compute | TypeScript app hosting for Prisma Postgres
 metaDescription: Learn how Prisma Compute deploys TypeScript apps alongside Prisma Postgres, with isolated branch previews, database branches, and CLI-first workflows.
 ---
 
-Prisma Compute is TypeScript app hosting built to run alongside [Prisma Postgres](/postgres). It is the last step of the [recommended Prisma stack](/): you model your data with [Prisma Next](/next) or [Prisma ORM](/orm), store it in Prisma Postgres, and deploy your app with Prisma Compute, so your schema, database, hosting, and branch previews work together in one Prisma project.
+Prisma Compute is a hosting platform for TypeScript services. It runs your application next to [Prisma Postgres](/postgres) and gives every Git branch an isolated environment: its own service, environment variables, and optionally its own database.
+
+Compute works with any supported TypeScript framework. It pairs with [Prisma 8](/v8) and [Prisma ORM](/orm) for data access, but neither is required.
 
 :::info[Public Beta]
 
-Prisma Compute is in [Public Beta](/console/more/feature-maturity#public-beta) and is CLI-first: you deploy and manage apps with the [`@prisma/cli`](/compute/getting-started) beta package. Use the [Console](https://pris.ly/pdp) if you prefer to view your resources instead of running a command.
+Prisma Compute is in [Public Beta](/console/more/feature-maturity#public-beta). These docs use the Prisma 8 RC CLI, run as `npx prisma@next`. Deployments come from a git push, the [Console](https://pris.ly/pdp), or [Prisma Composer](/composer). See [Deployments](/compute/deployments) for details.
 
 :::
 
 ## Get started
 
-The best way to understand Compute is to deploy an app. The quickstart takes a TypeScript app to a live URL in a few minutes, then connects GitHub so every push can deploy automatically.
-
 <Cards>
-  <Card href="/prisma-compute/deploy" title="Deploy your first app" icon={<Rocket className="text-primary" />}>
-    The quickstart: sign in, deploy, verify, and connect GitHub.
+  <Card href="/compute/getting-started" title="Deploy your first service" icon={<Rocket className="text-primary" />}>
+    Sign in, write the compute config, connect GitHub, and deploy on push.
   </Card>
-  <Card href="/" title="Start from the beginning" icon={<Milestone className="text-primary" />}>
-    No app yet? Scaffold one with Prisma Next and Prisma Postgres first.
+  <Card href="/prisma-compute/deploy" title="Deploy quickstart" icon={<Milestone className="text-primary" />}>
+    The short path: declare a new app or bring one you have, then deploy it with Composer.
   </Card>
 </Cards>
 
-Working with a coding agent? The deploy quickstart ends with a ready-to-copy prompt in [Hand it to your agent](/prisma-compute/deploy#hand-it-to-your-agent).
-
-To learn how Compute works, [the model](#the-model) below shows how each branch gets isolated app and database resources, so preview work never touches production.
+Building an application with several services that depend on each other or on databases? Use [Prisma Composer](/composer) to declare them in TypeScript and deploy them together.
 
 ## The model
 
 Compute organizes everything into a few resources:
 
 - A **project** groups one product or codebase.
-- A **branch** maps to a Git branch in the linked repository, and gets its own isolated app, environment variables, and deployments.
-- An **app** is an HTTP service, such as a frontend or backend, and can have multiple **deployments**.
+- A **branch** maps to a Git branch in the linked repository. Each branch is an isolated environment with its own services, environment variables, and deployments, and can have its own database.
+- A **service** is an HTTP application, such as a frontend or backend. Each deploy of a service creates a **deployment**. One deployment is live at a time.
 
-The branch is the concept that ties Compute together. Each branch owns its own app, URL, and environment variables, and can have its own database. When you deploy to a new branch, Compute provisions isolated resources for that branch, so you can test changes in preview without affecting production.
+The default Git branch (usually `main`) is the **production** branch. Every other branch is a **preview** branch with its own Compute resources: services, deployments, and environment variables. Data isolation is yours to configure. A preview deploy reads the preview-scoped variables. If preview work must not touch production data, point the preview `DATABASE_URL` at a non-production database. See [Environment variables](/compute/environment-variables) for details. After you [connect a GitHub repository](/compute/github), pushing to a branch builds and deploys that branch automatically.
 
-- **Production**: the default Git branch (e.g., `main`) is your production branch, with its own resources and environment variables.
-- **Preview**: every other branch is a preview branch, with its own isolated resources and environment variables scoped to **preview**.
-
-After you [connect a GitHub repository](/compute/github), pushing to a Git branch builds and deploys its preview automatically.
-
-The animation below shows how a project, its branches, and their infrastructure fit together, and how each branch's variables resolve by scope. Step through it, or let it play:
+The animation below shows how a project, its branches, and their infrastructure fit together, and how each branch's variables resolve by scope:
 
 <ConceptAnimation name="compute-model" />
 
@@ -57,17 +50,8 @@ For the full picture, see [Branching](/compute/branching).
 
 Use the **CLI** for anything you want to repeat: local development, CI, and agent workflows. Every command supports a `--json` flag that switches its output to machine-readable JSON, so scripts and agents can parse results instead of scraping terminal text.
 
-Use the **[Console](https://pris.ly/pdp)** if you prefer to view your resources instead of running a command. The Console shows your projects, branches, apps, and deployments in a visual way, and lets you manage them with buttons instead of commands.
+Use the **[Console](https://pris.ly/pdp)** to view and manage projects, branches, services, and deployments in a browser instead of running commands.
 
 ## What to read next
 
-- [Get started with `@prisma/cli`](/compute/getting-started): the full CLI guide for frameworks, project linking, production, and CI.
-- [Branching](/compute/branching): how branches isolate work and map to Git.
-- [Deployments](/compute/deployments): build, deploy, logs, promote, roll back.
-- [Image Transformations](/compute/image-transformations): resize, encode, cache, and serve images from a Compute app with Bun.
-- [Environment variables](/compute/environment-variables): production, preview, and per-branch overrides.
-- [GitHub integration](/compute/github): connect a repo and deploy on push.
-- [CLI reference](/compute/cli-reference): every command, flag, and error code.
-- [Domains](/compute/domains): point a custom domain at production.
-- [Known limitations](/compute/limitations): what the beta can and can't do.
-- [FAQ](/compute/faq): quick answers to common questions.
+Once you have deployed something, read [Deployments](/compute/deployments) for logs, promoting, and rolling back, and [Environment variables](/compute/environment-variables) for configuration per scope. [Object storage](/compute/object-storage) covers S3-compatible Object Store buckets, next to your databases in the same project. [Configuration](/compute/configuration) documents every field of `prisma.compute.ts`, and the [CLI reference](/cli/v8) documents every command and flag. Before relying on the beta in production, read the [known limitations](/compute/limitations).

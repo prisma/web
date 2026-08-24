@@ -1,0 +1,126 @@
+---
+title: Using extensions
+description: Extensions add database capabilities like vector search, geospatial data, and full-text search to a Prisma 8 project.
+url: /orm/v8/extensions/using-extensions
+metaTitle: Using extensions in Prisma 8
+metaDescription: Add an extension to a Prisma 8 project, from install to first query, and browse the catalog of available extensions such as pgvector, PostGIS, and ParadeDB.
+badge: release-candidate
+---
+
+An extension is a package that adds a database capability Prisma 8 does not have out of the box: new column types, query operations, and index types, along with the migrations that install the underlying database feature. Vector search, geospatial data, full-text search, typed JSON, and provider-specific integrations are all added through extensions.
+
+Use an extension when you want the database to do something powerful and still keep the Prisma 8 experience: typed schema declarations, generated TypeScript, migration support, and query helpers that feel native to your app.
+
+To add an extension, install its package and register it in two places: the config and the client. The steps below use pgvector, the vector search extension, as the example.
+
+## 1. Install the package
+
+```npm title="Terminal"
+npm install @prisma/orm-extension-pgvector
+```
+
+## 2. Register it in the config
+
+Prisma 8 uses this registration when it emits your contract and plans migrations:
+
+```ts title="prisma.config.ts"
+import { defineConfig } from '@prisma/cli-engine';
+import pgvector from '@prisma/orm-extension-pgvector/control';
+import { defineConfig as ormConfig } from '@prisma/orm-postgres/config';
+
+export default defineConfig({
+  orm: ormConfig({
+    contract: './src/prisma/contract.prisma',
+    extensions: [pgvector],
+    db: {
+      connection: process.env['DATABASE_URL']!,
+    },
+  }),
+});
+```
+
+## 3. Register it on the client
+
+Prisma 8 uses this registration when your app runs queries: it adds the extension's query operations and value types:
+
+```ts title="src/prisma/db.ts"
+import pgvector from '@prisma/orm-extension-pgvector/runtime';
+import postgres from '@prisma/orm-postgres/runtime';
+import type { Contract } from './contract.d';
+import contractJson from './contract.json' with { type: 'json' };
+
+export const db = postgres<Contract>({
+  contractJson,
+  url: process.env['DATABASE_URL']!,
+  extensions: [pgvector],
+});
+```
+
+## 4. Use the new type in your schema
+
+The extension's types are now available in your contract. Declare a vector column with an explicit dimension:
+
+```prisma title="src/prisma/contract.prisma"
+types {
+  Embedding1536 = pgvector.Vector(1536)
+}
+
+model Post {
+  id        String         @id @default(uuid())
+  title     String
+  embedding Embedding1536?
+}
+```
+
+## 5. Apply and query
+
+Run `npx prisma@next db init` (or `db update` on an existing database). The extension ships its own migration, so this step runs `CREATE EXTENSION IF NOT EXISTS vector` for you. If `db init` reports a contract-space layout violation instead, run `npx prisma@next migration plan` once: it writes the extension's baseline migration under `migrations/<extension>/`, and `db init` then proceeds. Then query with the operations the extension adds:
+
+```ts title="src/prisma/similarity-search.ts"
+const plan = db.sql.public.post
+  .select('id', 'title')
+  .select('distance', (f, fns) => fns.cosineDistance(f.embedding, queryVector))
+  .orderBy((f, fns) => fns.cosineDistance(f.embedding, queryVector), { direction: 'asc' })
+  .limit(10)
+  .build();
+
+const similar = await db.runtime().execute(plan);
+```
+
+## How the pieces fit
+
+One package, two registrations, one database:
+
+<ConceptAnimation name="extension-planes" />
+
+## Capabilities
+
+Each extension names what it adds under a key like `pgvector.cosine`. You never write these keys by hand. Registering the extension in the config records them in your contract. Registering it in `db.ts` provides them at runtime.
+
+The point of this bookkeeping is to fail early:
+
+- If your contract needs an extension that `db.ts` does not register, creating the client fails immediately. A query never runs with the extension only partially registered.
+- If the database itself cannot install the extension, `db init` or `db update` reports it before your app takes traffic.
+
+## Available extensions
+
+You can build an extension that does not exist yet. The catalog is first-party today, but it is built for community authors: extension packs are versioned npm packages with a documented layout. The [call for extension authors](https://www.prisma.io/blog/prisma-next-call-for-extension-authors) explains how to write and publish one.
+
+| Extension | Adds | Package |
+| --- | --- | --- |
+| [pgvector](https://github.com/prisma/prisma/tree/main/packages/3-extensions/pgvector#readme) | Vector columns and similarity search | `@prisma/orm-extension-pgvector` |
+| [PostGIS](https://github.com/prisma/prisma/tree/main/packages/3-extensions/postgis#readme) | Geometry columns and geo queries | `@prisma/orm-extension-postgis` |
+| [ParadeDB](https://github.com/prisma/prisma/tree/main/packages/3-extensions/paradedb#readme) | BM25 full-text search indexes | `@prisma/orm-extension-paradedb` |
+| [Supabase](https://github.com/prisma/prisma/tree/main/packages/3-extensions/supabase#readme) | Supabase auth and storage tables, role-bound clients | `@prisma/orm-extension-supabase` |
+| [arktype-json](https://github.com/prisma/prisma/tree/main/packages/3-extensions/arktype-json#readme) | JSON columns validated by an arktype schema | `@prisma/orm-extension-arktype-json` |
+
+All target PostgreSQL. ParadeDB and Supabase are experimental (ParadeDB supports the `key_field` index option only so far). The rest are part of the Release Candidate. Extension names link to each package's README on GitHub.
+
+For a working project per extension, see the runnable examples: [pgvector](https://github.com/prisma/prisma/tree/main/examples/prisma-8-demo), [PostGIS](https://github.com/prisma/prisma/tree/main/examples/prisma-8-postgis-demo), [ParadeDB](https://github.com/prisma/prisma/tree/main/examples/paradedb-demo), and [Supabase](https://github.com/prisma/prisma/tree/main/examples/supabase).
+
+## See also
+
+- [Advanced queries](/orm/v8/fundamentals/advanced-queries): the SQL query builder, where extension operations like `cosineDistance` appear
+- [How middleware works](/orm/v8/middleware/how-middleware-works) for wrapping queries rather than adding database capabilities
+- [Quickstart with PostgreSQL](/v8/quickstart/postgresql) to set up a project to add extensions to
+- [Prisma 8 overview](/orm/v8) for the contract-first model extensions plug into

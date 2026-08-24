@@ -58,7 +58,7 @@ Prisma documentation site built with **Fumadocs** on **Next.js 16 App Router**.
 - `content/docs/` - v7 documentation (latest), served at `/docs/v7/*`
 - `content/docs.v6/` - v6 documentation, served at `/docs/v6/*`
 - Each section has a `meta.json` defining page order, icons, and hierarchy
-- MDX frontmatter supports `badge: "early-access" | "deprecated" | "preview"`
+- MDX frontmatter supports `badge: "early-access" | "release-candidate" | "beta" | "deprecated" | "preview"`
 
 **Key Directories:**
 

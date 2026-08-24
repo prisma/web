@@ -1,0 +1,59 @@
+---
+title: migrate
+description: Apply pending Prisma 8 migrations.
+url: /cli/v8/migration-apply
+metaTitle: migrate | Prisma 8 CLI
+metaDescription: Learn how to apply pending Prisma 8 on-disk migrations with the migrate command.
+---
+
+`migrate` applies pending on-disk migrations to advance the database. It walks every contract space (app and extensions) and applies migrations in canonical order: extensions alphabetically, then the app. It applies only the migrations that exist on disk and never generates new operations.
+
+Use it from a controlled deployment step after reviewing migration packages.
+
+## Usage
+
+```npm
+npx prisma@next migrate --db "$DATABASE_URL"
+```
+
+## Options
+
+| Option | What it does |
+| --- | --- |
+| `--db <url>` | Connects to the database. |
+| `--to <contract>` | Applies migrations up to a target contract (hash, prefix, ref name, migration directory name, `<dir>^`, or `./path`). |
+| `--advance-ref <name>` | Advances the named [ref](/cli/v8/migration-ref) to the post-apply marker after success. |
+| `--show` | Previews the migration route without applying (read-only). |
+| `--from <contract>` | Sets the from-state for the `--show` preview: `@contract` (the emitted contract), `@db` (the database's current marker), a hash, a ref name, or a migration directory. |
+| `--config <path>` | Read this config file instead of `./prisma.config.ts`. |
+| `--json` | Prints a machine-readable result. |
+
+## Recommended flow
+
+```npm
+npx prisma@next migration status --db "$DATABASE_URL"
+npx prisma@next migrate --db "$DATABASE_URL"
+npx prisma@next migration status --db "$DATABASE_URL"
+npx prisma@next db verify --db "$DATABASE_URL"
+```
+
+Run `migration status` before and after applying migrations to see what changed.
+
+## Previewing the route
+
+`--show` prints the route `migrate` would take without touching the database:
+
+```npm
+npx prisma@next migrate --show
+npx prisma@next migrate --show --from @contract --to production
+```
+
+## Applying to a target
+
+If your project uses named [refs](/cli/v8/migration-ref), apply up to a target ref:
+
+```npm
+npx prisma@next migrate --db "$DATABASE_URL" --to production
+```
+
+Manage refs with [`ref`](/cli/v8/migration-ref).

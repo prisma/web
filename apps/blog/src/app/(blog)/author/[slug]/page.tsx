@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import type { Metadata } from "next";
 
 import { Avatar } from "@prisma/eclipse";
@@ -11,6 +10,7 @@ import { getAuthorBioBySlug } from "@/lib/author-bios";
 import { getBaseUrl, withBlogBasePath, withBlogBasePathForImageSrc } from "@/lib/url";
 import { AuthorSocialLinks } from "@/components/AuthorBio";
 import { BlogGrid, type BlogCardItem } from "@/components/BlogGrid";
+import { BackToBlogLink } from "@/components/BackToBlogLink";
 import { BLOG_HOME_TITLE } from "@/lib/blog-metadata";
 
 export const revalidate = false;
@@ -94,24 +94,30 @@ export default async function AuthorPage(props: { params: Promise<AuthorPagePara
   const bio = getAuthorBioBySlug(slug);
 
   return (
-    <main className="flex-1 w-full max-w-249 mx-auto px-4 py-8 z-1">
+    <main className="z-1 mx-auto w-full max-w-[87.5rem] flex-1 px-4 pt-10 pb-20 sm:px-6 lg:px-8">
       <JsonLd id="author-structured-data" data={buildAuthorJsonLd(profile, bio, avatarSrc)} />
-      <Link href="/" className="text-fd-primary hover:underline text-sm">
-        ← Back to Blog
-      </Link>
+      <BackToBlogLink />
 
-      <header className="mt-6 mb-10 flex flex-col gap-4 sm:flex-row sm:items-start">
-        {avatarSrc ? <Avatar format="image" src={avatarSrc} alt={profile.name} size="xl" /> : null}
+      {/* Author identity block on a paper panel — the one surface change that
+          separates "who wrote this" from the feed of what they wrote. */}
+      <header className="mt-8 mb-12 flex flex-col gap-5 rounded-square-high border border-stroke-neutral bg-paper p-6 sm:flex-row sm:items-start sm:p-8">
+        {avatarSrc ? (
+          <div className="shrink-0">
+            <Avatar format="image" src={avatarSrc} alt={profile.name} size="xl" />
+          </div>
+        ) : null}
         <div className="min-w-0">
-          <div className="text-xs uppercase tracking-wide text-foreground-neutral-weak font-semibold mb-2">
+          <div className="type-heading-2xs mb-3 text-foreground-neutral-weak">
             Author · {items.length} {items.length === 1 ? "post" : "posts"}
           </div>
-          <h1 className="type-title-3xl md:type-title-4xl text-foreground-neutral break-words hyphens-auto">
+          <h1 className="type-title-3xl md:type-title-4xl break-words hyphens-auto text-foreground-neutral-strong">
             {profile.name}
           </h1>
-          {bio ? <p className="mt-3 max-w-2xl text-foreground-neutral-weak">{bio.bio}</p> : null}
           {bio ? (
-            <AuthorSocialLinks socials={bio.socials} name={profile.name} className="mt-3" />
+            <p className="mt-4 max-w-2xl leading-relaxed text-foreground-neutral-weak">{bio.bio}</p>
+          ) : null}
+          {bio ? (
+            <AuthorSocialLinks socials={bio.socials} name={profile.name} className="mt-4" />
           ) : null}
         </div>
       </header>

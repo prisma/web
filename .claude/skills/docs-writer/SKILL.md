@@ -14,13 +14,13 @@ If a rule here conflicts with house style, follow the house style and flag the c
 
 For a step-by-step example of writing each kind of page (how-to, concept, reference) and rewriting an existing one, see `references/how-to-use.md`.
 
-For a Prisma Next docs page or section (anything under `content/docs/orm/next/` or `content/docs/(index)/next/`), also read `references/prisma-next.md`: page location, redirect handling (commented out until the URL cutover), tested-example requirements, tab and diagram conventions, and naming rules.
+For a Prisma 8 docs page or section (anything under `content/docs/orm/v8/` or `content/docs/(index)/next/`), also read `references/prisma-8.md`: page location, redirect handling (commented out until the URL cutover), tested-example requirements, tab and diagram conventions, and naming rules.
 
 ## Foundation
 
 These come from Prisma's positioning. They shape how docs frame the product, without turning a page into marketing.
 
-- **Prisma is one integrated platform, not three separate tools.** Prisma Next, Prisma Postgres, and Prisma Compute are built to work together for TypeScript teams. When a page spans more than one, show how they connect; the integration is the reason to use them together, so make it the spine of the page rather than a footnote.
+- **Prisma is one integrated platform, not three separate tools.** Prisma 8, Prisma Postgres, and Prisma Compute are built to work together for TypeScript teams. When a page spans more than one, show how they connect; the integration is the reason to use them together, so make it the spine of the page rather than a footnote.
 - **Write for a TypeScript developer, often one building with an AI coding agent.** They want fewer moving parts and a working path, not a tour of features.
 - **Be honest about maturity.** Don't claim general availability or production readiness for early-stage products (Prisma Compute is early-stage). Don't call a product best-in-class or claim feature parity across products. When the source material is unsure, use narrower wording and flag it.
 
@@ -64,6 +64,7 @@ A how-to gets the reader through a task. Two other types come up often. Same voi
 - List every parameter with type, whether it's required, and the default.
 - Give one runnable example per entry.
 - No narrative. The reader is scanning, not reading.
+- Order options the way readers need them: the common case first, then selection and targeting, then advanced or CI-specific behavior.
 
 ## Improving an existing page
 
@@ -117,7 +118,7 @@ Better:
 - Prefer one complete, real example over an abstract description of options. Show the common case; link to the reference for the rest.
 - State a limitation where the reader will hit it, inline with the relevant step, not in a footnote.
 - Link the first mention of a concept the reader may not know. Don't re-link it every time.
-- Use exact product names: Prisma Postgres, Prisma Compute, Prisma Next. Don't shorten "Prisma Postgres" to "the database" or "Prisma Next" to "the ORM" once a page covers more than one product.
+- Use exact product names: Prisma Postgres, Prisma Compute, Prisma 8. Don't shorten "Prisma Postgres" to "the database" or "Prisma 8" to "the ORM" once a page covers more than one product.
 - When you tell the reader something is automatic, show the trigger that makes it happen and how to confirm it did. "Compute injects `DATABASE_URL` automatically" needs a follow-up: "Run `prisma compute env` to confirm it's set."
 
 ## Teach in plain language
@@ -134,7 +135,7 @@ Better (idea first, example second, terms last):
 >
 > For example, a blog has users, posts, and comments. A user has fields like an email and a name. These models also relate to each other: a user can write many posts, and a post can have many comments.
 >
-> In Prisma Next, you define this structure in a `contract.prisma` file. This file becomes the shared contract between your application code, database migrations, and developer tools.
+> In Prisma 8, you define this structure in a `contract.prisma` file. This file becomes the shared contract between your application code, database migrations, and developer tools.
 
 The same rule applies inside sections: when a paragraph packs several decisions together, split it into short subsections, one decision each, and show a code block for every option you name. Guidance that lives only in inline code (`Int @id @default(autoincrement())` mid-sentence) belongs in a fenced block with a sentence of its own.
 
@@ -154,6 +155,27 @@ Delete these on sight. They add length, not clarity.
 - **Em dashes**. Use a comma, colon, or period instead.
 - **Hype**: don't sell inside docs. The reader already chose the product; they want it to work.
 
+## Don't write like a model
+
+Model-drafted docs share habits a reviewer can spot in one pass. None of these is wrong in isolation; their density is what gives a page a synthetic voice. Check for each before finishing.
+
+- **Frontmatter echo**: the body's first sentence repeats the frontmatter `description` almost verbatim. The description summarizes the page for cards and search results; the opening orients the reader. Write them differently, and define the product once, not once per metadata field.
+- **Contrast slogans**: "X, not Y" constructions ("injected, not discovered", "built for agents, not just terminals", "refuses to guess"). One per page at most. A page of balanced contrasts reads like ad copy; state the behavior plainly instead.
+- **Absolute stacking**: "never", "every", "nothing", "always", "cannot drift" piling up across a page. Each absolute is a promise the product has to keep. Keep the ones you can verify and that the reader needs; describe what happens rather than asserting what can't.
+- **Exception-packed sentences**: one sentence carrying the normal case, an exception, its reason, the alternative, and a safety condition, held together by semicolons. One idea per sentence: state the default first ("By default, the command uses…"), then the exception as its own sentence ("In CI or other headless environments, set…"). A semicolon joining distinct ideas is usually two sentences.
+- **Manager-voice openers**: "`service` manages services…", "handles", "manages everything around". Lead with the user action or outcome ("Use `service` commands to manage…") and use concrete verbs: creates, stores, uses, selects, targets, deploys, builds.
+- **Coined shorthand**: compressed phrases invented mid-page ("local pin", "pick a target") instead of saying what actually happens. Spell out the relationship, and keep one consistent user-facing vocabulary: service, project, configuration, deployment, credentials.
+- **Implementation language**: internal detail that doesn't help the reader act ("the root node is `<entry>`'s default export"). Translate it into the behavior they observe ("the application exported as the default export from `<entry>`").
+- **Buried caveats**: a warning folded into a trailing clause. Turn it into a direct instruction: "The deploy command does not build your application. Run your build command before deploying."
+- **Confusable state left implicit**: when two things could be mixed up (local state vs committed configuration), contrast them directly: what is local, what is committed, and what each is used for.
+- **Mid-clause links**: a link dropped between unrelated clauses. Introduce it after the context it supports: "See [Deploying](…) for details."
+- **Definition cascade**: a landing page that defines every noun in identical rhythm ("An application is… A service is… A branch is…"). Define a term where the reader first needs it. If a glossary earns its place, keep it short and hand off to a page that goes deeper.
+- **Prose restating code**: after a code block, narrating what each line does. Explain only what the code can't show: why, or a non-obvious consequence.
+- **Triad reflex**: three-part lists everywhere ("reviewable, repeatable, and versioned"). Vary list length; cut members that don't earn their place.
+- **Exhaustive nav dumps**: a "What to read next" that lists every sibling page in the same grammatical form. Pick the two or three pages this reader most likely needs next; the sidebar already lists everything.
+
+The same applies to PR descriptions for docs changes: write a short reviewer-facing summary of what changed and why, and put validation details (commands run, environments used) in a collapsed section. Don't paste the working session's log.
+
 ## Voice
 
 - Calm and direct. The reader is mid-task, not browsing a landing page.
@@ -169,4 +191,5 @@ Before you finish, check:
 - [ ] Does each step say what it does before showing the command?
 - [ ] Is there a way to verify success at the end?
 - [ ] Did you cut every phrase from "Cut the slop"?
+- [ ] Did you check the page against every pattern in "Don't write like a model"?
 - [ ] Are product names and limitations accurate?

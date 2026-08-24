@@ -8,17 +8,16 @@ import {
   type PointerEvent,
   type ReactNode,
   use,
+  useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 import { useSidebar } from "../sidebar/base";
 import { ChevronDown } from "lucide-react";
-import Link from "fumadocs-core/link";
 import { usePathname } from "fumadocs-core/framework";
 import { useIsScrollTop } from "@fumadocs/base-ui/utils/use-is-scroll-top";
-import { isLinkItemVisibleOn } from "../link-item-visibility";
-import { LinkItem, type LinkItemType, type MainItemType, type MenuItemType } from "../link-item";
+import { LinkItem, type LinkItemType, type MenuItemType } from "../link-item";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
 
 export const LayoutContext = createContext<{
@@ -86,14 +85,69 @@ export function LayoutContextProvider({
   );
 }
 
+/**
+ * True once the page has been scrolled past the dock threshold. Read by
+ * `NavbarMorphContainer`, which is the element that actually morphs.
+ */
+const HeaderFloatingContext = createContext(false);
+
+/**
+ * The header strip.
+ *
+ * Docs cannot use the blog's `position: fixed` header: this element lives in
+ * the notebook grid (`[grid-area:header]`, sticky under the banner at
+ * `--fd-docs-row-1`) and its height is what `--fd-header-height` describes for
+ * the sidebar/TOC sticky math (`--fd-docs-row-2/3`). So the strip stays put and
+ * keeps a constant height, and the dock -> float morph happens to the container
+ * inside it. Threshold (`scrollY > 24`), 500ms `cubic-bezier(0.22,1,0.36,1)`
+ * easing and the reduced-motion guard are the blog's, verbatim
+ * (`apps/blog/src/components/chrome/Header.tsx`).
+ */
 export function LayoutHeader(props: ComponentProps<"header">) {
   const { open } = useSidebar();
   const { isNavTransparent } = use(LayoutContext)!;
+  const [floating, setFloating] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setFloating(window.scrollY > 24);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
-    <header data-transparent={isNavTransparent && !open} {...props}>
-      {props.children}
-    </header>
+    <HeaderFloatingContext value={floating}>
+      <header data-transparent={isNavTransparent && !open} data-floating={floating} {...props}>
+        {props.children}
+      </header>
+    </HeaderFloatingContext>
+  );
+}
+
+/**
+ * The morphing element: transparent and full-bleed while docked, a floating
+ * glass panel once scrolled — the blog pill (`rounded-full`).
+ *
+ * Nothing here changes the box's outer height: the vertical margins and the
+ * 1px border are present in both states, and only max-width / background /
+ * border colour / shadow / blur cross-fade. That is what keeps the strip's
+ * height — and therefore `--fd-header-height` — constant through the morph.
+ */
+export function NavbarMorphContainer({ className, ...props }: ComponentProps<"div">) {
+  const floating = use(HeaderFloatingContext);
+
+  return (
+    <div
+      data-floating={floating}
+      className={cn(
+        "pointer-events-auto mx-auto my-2 flex w-full flex-col rounded-full border transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+        floating
+          ? "border-stroke-neutral bg-background-default-075 max-w-[calc(100%-1.5rem)] shadow-[0_1px_2px_rgba(21,21,21,0.04),0_8px_24px_-8px_rgba(21,21,21,0.16)] backdrop-blur-md sm:max-w-[calc(100%-2.5rem)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.5),0_8px_24px_-8px_rgba(0,0,0,0.8)]"
+          : "bg-background-default/0 max-w-full border-transparent shadow-[0_1px_2px_rgba(21,21,21,0),0_8px_24px_-8px_rgba(21,21,21,0)] backdrop-blur-none dark:shadow-[0_1px_2px_rgba(0,0,0,0),0_8px_24px_-8px_rgba(0,0,0,0)]",
+        className,
+      )}
+      {...props}
+    />
   );
 }
 
@@ -130,84 +184,6 @@ export function LayoutBody({ className, style, children, ...props }: ComponentPr
   );
 }
 
-export function LayoutHeaderTabs({
-  links,
-  className,
-  ...props
-}: ComponentProps<"div"> & {
-  links: LinkItemType[];
-}) {
-  const items = useMemo(() => {
-    const visibleItems = links.filter(
-      (item) =>
-        item.type !== "icon" &&
-        item.type !== "custom" &&
-        item.type !== "button" &&
-        isLinkItemVisibleOn(item, "menu"),
-    );
-
-    if (
-      visibleItems.length <= 6 ||
-      visibleItems.some((item): item is Extract<LinkItemType, { type: "menu" }> => item.type === "menu")
-    ) {
-      return visibleItems;
-    }
-
-    const primaryItems = visibleItems.slice(0, 5);
-    const overflowItems = visibleItems
-      .slice(5)
-      .filter((item): item is MainItemType => "url" in item && item.type !== "menu" && item.type !== "button");
-
-    return [
-      ...primaryItems,
-      {
-        type: "menu",
-        text: "More",
-        items: overflowItems,
-      } satisfies MenuItemType,
-    ];
-  }, [links]);
-
-  return (
-    <div className={cn("flex flex-row items-end gap-6", className)} {...props}>
-      {items.map((item, i) => {
-        if ((item as any)?.type === "custom") {
-          return <span key={i}>{(item as any).children}</span>;
-        }
-
-        if ((item as any)?.type === "menu") {
-          return (
-            <NavbarLinkItemMenu
-              key={i}
-              item={item as MenuItemType}
-              className={cn(
-                "inline-flex border-b-2 border-transparent transition-colors items-center pb-1.5 font-medium gap-2 text-fd-muted-foreground text-sm text-nowrap hover:text-fd-accent-foreground",
-              )}
-            />
-          );
-        }
-
-        if ("url" in (item as any)) {
-          return (
-            <LinkItem
-              key={i}
-              item={item as any}
-              className={cn(
-                "inline-flex border-b-2 border-transparent transition-colors items-center pb-1.5 font-medium gap-2 text-fd-muted-foreground text-sm text-nowrap hover:text-fd-accent-foreground",
-                "data-[active=true]:border-fd-primary data-[active=true]:text-fd-primary",
-              )}
-            >
-              {"text" in item ? (item as any).text : null}
-            </LinkItem>
-          );
-        }
-
-        return null;
-      })}
-    </div>
-  );
-}
-
 export function NavbarLinkItem({
   item,
   className,
@@ -223,7 +199,7 @@ export function NavbarLinkItem({
     <LinkItem
       item={item}
       className={cn(
-        "text-sm text-fd-muted-foreground transition-colors hover:text-fd-accent-foreground data-[active=true]:text-fd-primary",
+        "text-sm text-fd-muted-foreground transition-colors duration-300 motion-reduce:transition-none hover:text-fd-foreground data-[active=true]:text-fd-primary",
         className,
       )}
       {...props}
@@ -277,7 +253,7 @@ function NavbarLinkItemMenu({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         className={cn(
-          "inline-flex items-center gap-1 text-sm text-fd-muted-foreground transition-colors hover:text-fd-accent-foreground data-[active=true]:text-fd-primary",
+          "inline-flex items-center gap-1 text-sm text-fd-muted-foreground transition-colors duration-300 motion-reduce:transition-none hover:text-fd-foreground data-[active=true]:text-fd-primary",
           active && "text-fd-primary",
           className,
         )}
@@ -302,7 +278,7 @@ function NavbarLinkItemMenu({
             >
               <NavbarLinkItem
                 item={child}
-                className="rounded-md px-3 py-2 hover:bg-fd-accent data-[active=true]:bg-fd-accent"
+                className="rounded-square px-3 py-2 hover:bg-fd-accent data-[active=true]:bg-fd-accent"
               />
             </Fragment>
           ))}

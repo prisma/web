@@ -1,4 +1,4 @@
-import { Button } from "@prisma/eclipse";
+import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button";
 
 export function McpCtaSection({
   docsHref,
@@ -8,41 +8,21 @@ export function McpCtaSection({
   readDocsHref: string;
 }) {
   return (
-    <section className="bg-radial from-background-ppg/50 from-0% to-background-default to-70% px-4 py-12">
-      <div className="mx-auto max-w-360 rounded-2xl bg-[url('/illustrations/homepage/footer_grid.svg')] bg-cover bg-center px-4 py-12">
-        <div className="flex min-h-77 items-center justify-center p-4 md:p-8">
-          <div className="flex w-full max-w-[495px] flex-col items-center gap-8 text-center">
-            <div className="flex flex-col items-center gap-4">
-              <h3 className="stretch-display font-sans-display text-[30px] leading-10 font-black text-foreground-neutral">
-                Start Building with AI
-              </h3>
-              <p className="max-w-[463px] text-base leading-6 text-foreground-neutral-weak">
-                Join thousands of developers, and agents, already using Prisma MCP for faster, more
-                intuitive database workflows.
-              </p>
-            </div>
-
-            <div className="flex flex-col items-center gap-4">
-              <div className="flex w-full flex-col items-center justify-center gap-4 min-[720px]:flex-row min-[720px]:gap-6">
-                <Button asChild variant={"ppg"} size={"3xl"} className="gap-3">
-                  <a href={docsHref}>
-                    Add MCP Server
-                    <i className="fa-regular fa-arrow-right shrink-0 text-[16px]" aria-hidden />
-                  </a>
-                </Button>
-                <Button asChild variant={"default-strong"} size={"3xl"} className="gap-3">
-                  <a href={readDocsHref}>
-                    Read Docs
-                    <i className="fa-regular fa-book-open shrink-0 text-[16px]" aria-hidden />
-                  </a>
-                </Button>
-              </div>
-
-              <p className="text-xs text-foreground-neutral-weaker">
-                2-minute setup &bull; Works with all MCP tools
-              </p>
-            </div>
+    <section className="bg-white px-4 py-16 pb-24 sm:px-8 sm:pb-32">
+      <div className="mx-auto max-w-site">
+        <div className="flex flex-col items-center gap-5 rounded-2xl border border-black/[0.06] p-8 text-center sm:p-12">
+          <h2 className="text-[clamp(1.5rem,2.25vw,2rem)] leading-[1.15]">
+            Start building with AI
+          </h2>
+          <p className="max-w-[48ch] text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground">
+            Join thousands of developers, and agents, already using Prisma MCP for faster, more
+            intuitive database workflows.
+          </p>
+          <div className="flex flex-col items-center gap-4 sm:flex-row">
+            <PrismButton href={docsHref}>Add MCP server</PrismButton>
+            <PrismButtonOutline href={readDocsHref}>Read the docs</PrismButtonOutline>
           </div>
+          <p className="text-xs text-muted-foreground">2-minute setup. Works with all MCP tools.</p>
         </div>
       </div>
     </section>

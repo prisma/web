@@ -1,0 +1,62 @@
+---
+title: db verify
+description: Verify a database against the current Prisma 8 contract.
+url: /cli/v8/db-verify
+metaTitle: db verify | Prisma 8 CLI
+metaDescription: Learn how to verify that a database marker and live schema match the Prisma 8 contract.
+---
+
+`db verify` checks whether the database marker and live schema match your emitted contract. It verifies the marker first, then checks the schema.
+
+Use it in CI and deployment checks before application code that depends on a contract reaches users.
+
+## Usage
+
+```npm
+npx prisma@next db verify --db "$DATABASE_URL"
+```
+
+## Options
+
+| Option | What it does |
+| --- | --- |
+| `--db <url>` | Connects to the database. |
+| `--marker-only` | Checks only the database marker. |
+| `--schema-only` | Checks only whether the live schema satisfies the contract. |
+| `--strict` | Fails if the database includes schema elements not present in the contract. |
+| `--config <path>` | Read this config file instead of `./prisma.config.ts`. |
+| `--json` | Prints machine-readable output. |
+
+## Exit codes
+
+| Code | Meaning |
+| --- | --- |
+| `0` | The database matches the contract. |
+| `2` | The check could not run: conflicting mode flags, no emitted contract, or unreachable database. |
+| `4` | Drift or a marker finding. |
+
+## Examples
+
+```npm
+npx prisma@next db verify --db "$DATABASE_URL"
+npx prisma@next db verify --db "$DATABASE_URL" --strict
+npx prisma@next db verify --db "$DATABASE_URL" --schema-only
+npx prisma@next db verify --db "$DATABASE_URL" --marker-only
+```
+
+Use JSON output in automation:
+
+```npm
+npx prisma@next db verify --db "$DATABASE_URL" --json
+```
+
+## What failures mean
+
+| Failure | Meaning |
+| --- | --- |
+| Marker mismatch | The database was not signed for the emitted contract, or the contract changed after signing. |
+| Schema mismatch | The live database does not satisfy the emitted contract. |
+| Strict mismatch | The database has extra schema elements not present in the contract. |
+| Extension mismatch | The contract requires an extension that is not wired in the config. |
+
+Fix the database or contract, emit again if needed, then verify again.

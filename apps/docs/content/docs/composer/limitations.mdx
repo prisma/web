@@ -1,0 +1,39 @@
+---
+title: Limitations
+description: What Prisma Composer does not do yet, so you can name the gap instead of working around it blind.
+url: /composer/limitations
+metaTitle: Limitations | Prisma Composer
+metaDescription: Current limitations of Prisma Composer in Early Access, including contract kinds, interactive auth, streaming responses, and Windows support.
+---
+
+Prisma Composer is in [Early Access](/console/more/feature-maturity#early-access). This page lists what it does not do yet, so you can plan around a gap instead of discovering it mid-build. If something you need is missing here and below, check the [examples](https://github.com/prisma/composer/tree/main/examples) and design docs in the [Composer repository](https://github.com/prisma/composer), then file an issue there rather than guessing at an API.
+
+## Contracts and communication
+
+- **RPC over HTTP is the only contract kind.** No gRPC, WebSocket, or streaming contracts.
+- **No in-memory contract bindings.** A dependency cannot yet be wired to a co-located handler without HTTP; use [`bootstrapService`](/composer/testing#integration-tests-bootstrapservice) with a loopback fake in tests.
+- **Streaming responses do not stream in production.** The platform's HTTP front door buffers a response until it completes, so an open SSE tail delivers nothing and times out at 60 seconds.
+
+## Deploys and auth
+
+- **No interactive login for deploys.** Deploys authenticate only via a static `PRISMA_SERVICE_TOKEN`; there is no browser flow.
+- **Deploys do not build.** `composer deploy` assembles your built output; the build is always yours to run first.
+- **The `effect` family must be pinned** in your app's `package.json` until an upstream dependency fixes its version ranges; see [Getting started](/composer/getting-started#1-set-up-the-project). Every Composer command checks this and stops with a fix-naming error when the pin is missing.
+
+## Platforms
+
+- **Windows is not supported yet** for local development (`composer dev` and `composer log`).
+- **Node.js 22.18 or newer is required.** Composer hands your TypeScript entry file straight to Node, and earlier versions cannot run `.ts` files directly.
+
+## Runtime behavior to design around
+
+These are properties of running on [Prisma Compute](/compute) rather than missing features; [Deploying](/composer/deploying#production-behavior) covers each with the fix:
+
+- Compute scales to zero, so idle database connections get closed and cold calls can see `ECONNRESET`.
+- A deployed RPC endpoint answers only its wired consumers; hand-rolled probes get `401`.
+- Environment variables prefixed `COMPOSER_*` belong to the deploy and are rewritten on every deploy.
+
+## Next steps
+
+- [Deploying](/composer/deploying): operational behavior in full.
+- [Building blocks](/composer/building-blocks): what ships today, and how extensions arrive.

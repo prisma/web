@@ -28,9 +28,9 @@ export const seriesRegistry = {
     relatedSeries: ["agentic-engineering", "prisma-next"],
   },
   "prisma-next": {
-    title: "Prisma Next",
+    title: "Prisma 8",
     description:
-      "Follow the journey of Prisma Next, the next evolution of Prisma ORM. From the announcement and roadmap to TypeScript migrations, the extension API, and Early Access.",
+      "Follow the journey of Prisma 8, the next evolution of Prisma ORM. From the announcement and roadmap to TypeScript migrations, the extension API, and Early Access.",
     featured: true,
     relatedSeries: ["agentic-engineering", "prisma-compute"],
   },

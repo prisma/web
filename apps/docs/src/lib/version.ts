@@ -1,7 +1,7 @@
 import type * as PageTree from "fumadocs-core/page-tree";
 
 export const LATEST_VERSION = "latest";
-const NAMED_VERSIONS = ["next", "v6"] as const;
+const NAMED_VERSIONS = ["v8", "v6"] as const;
 export type Version = string;
 
 type TreeNode = {
@@ -17,49 +17,49 @@ type TreeNode = {
 const VERSION_SEGMENT_REGEX = /^v\d+$/i;
 const LEGACY_ORM_VERSION_REGEX = /^\/(?<version>[a-z0-9-]+)\/orm(?:\/|$)/i;
 const DOCS_PREFIX = "/docs";
-const NEXT_GETTING_STARTED_ROOT = "/next";
+const V8_GETTING_STARTED_ROOT = "/v8";
 const LATEST_CLI_ROOT = "/cli";
-const NEXT_CLI_ROOT = "/cli/next";
+const V8_CLI_ROOT = "/cli/v8";
 const LATEST_GUIDES_ROOT = "/guides";
-const NEXT_GUIDES_ROOT = "/guides/next";
-const NEXT_GETTING_STARTED_PATHS_BY_LATEST_PATH = new Map<string, string>([
-  ["/", NEXT_GETTING_STARTED_ROOT],
-  ["/getting-started", "/next/getting-started"],
-  ["/prisma-orm", NEXT_GETTING_STARTED_ROOT],
-  ["/prisma-orm/quickstart/postgresql", "/next/quickstart/postgresql"],
-  ["/prisma-orm/quickstart/mongodb", "/next/quickstart/mongodb"],
-  ["/prisma-orm/add-to-existing-project/postgresql", "/next/add-to-existing-project/postgresql"],
-  ["/prisma-orm/add-to-existing-project/mongodb", "/next/add-to-existing-project/mongodb"],
-  ["/prisma-postgres", "/next/prisma-postgres/quickstart/prisma-next"],
-  ["/prisma-postgres/quickstart/prisma-orm", "/next/prisma-postgres/quickstart/prisma-next"],
+const V8_GUIDES_ROOT = "/guides/v8";
+const V8_GETTING_STARTED_PATHS_BY_LATEST_PATH = new Map<string, string>([
+  ["/", V8_GETTING_STARTED_ROOT],
+  ["/getting-started", "/v8/getting-started"],
+  ["/prisma-orm", V8_GETTING_STARTED_ROOT],
+  ["/prisma-orm/quickstart/postgresql", "/v8/quickstart/postgresql"],
+  ["/prisma-orm/quickstart/mongodb", "/v8/quickstart/mongodb"],
+  ["/prisma-orm/add-to-existing-project/postgresql", "/v8/add-to-existing-project/postgresql"],
+  ["/prisma-orm/add-to-existing-project/mongodb", "/v8/add-to-existing-project/mongodb"],
+  ["/prisma-postgres", "/v8/prisma-postgres/quickstart/prisma-next"],
+  ["/prisma-postgres/quickstart/prisma-orm", "/v8/prisma-postgres/quickstart/prisma-next"],
   [
     "/prisma-postgres/import-from-existing-database-postgresql",
-    "/next/prisma-postgres/import-from-existing-database-postgresql",
+    "/v8/prisma-postgres/import-from-existing-database-postgresql",
   ],
   [
     "/prisma-postgres/import-from-existing-database-mysql",
-    "/next/prisma-postgres/import-from-existing-database-mysql",
+    "/v8/prisma-postgres/import-from-existing-database-mysql",
   ],
-  ["/prisma-postgres/from-the-cli", "/next/prisma-postgres/from-the-cli"],
+  ["/prisma-postgres/from-the-cli", "/v8/prisma-postgres/from-the-cli"],
 ]);
-const LATEST_GETTING_STARTED_PATHS_BY_NEXT_PATH = new Map<string, string>([
-  // Bare "/" redirects to /next, so the Latest getting-started anchor is /getting-started.
-  [NEXT_GETTING_STARTED_ROOT, "/getting-started"],
-  ["/next/getting-started", "/getting-started"],
-  ["/next/quickstart/postgresql", "/prisma-orm/quickstart/postgresql"],
-  ["/next/quickstart/mongodb", "/prisma-orm/quickstart/mongodb"],
-  ["/next/add-to-existing-project/postgresql", "/prisma-orm/add-to-existing-project/postgresql"],
-  ["/next/add-to-existing-project/mongodb", "/prisma-orm/add-to-existing-project/mongodb"],
-  ["/next/prisma-postgres/quickstart/prisma-next", "/prisma-postgres/quickstart/prisma-orm"],
+const LATEST_GETTING_STARTED_PATHS_BY_V8_PATH = new Map<string, string>([
+  // Bare "/" redirects to /v8, so the Latest getting-started anchor is /getting-started.
+  [V8_GETTING_STARTED_ROOT, "/getting-started"],
+  ["/v8/getting-started", "/getting-started"],
+  ["/v8/quickstart/postgresql", "/prisma-orm/quickstart/postgresql"],
+  ["/v8/quickstart/mongodb", "/prisma-orm/quickstart/mongodb"],
+  ["/v8/add-to-existing-project/postgresql", "/prisma-orm/add-to-existing-project/postgresql"],
+  ["/v8/add-to-existing-project/mongodb", "/prisma-orm/add-to-existing-project/mongodb"],
+  ["/v8/prisma-postgres/quickstart/prisma-next", "/prisma-postgres/quickstart/prisma-orm"],
   [
-    "/next/prisma-postgres/import-from-existing-database-postgresql",
+    "/v8/prisma-postgres/import-from-existing-database-postgresql",
     "/prisma-postgres/import-from-existing-database-postgresql",
   ],
   [
-    "/next/prisma-postgres/import-from-existing-database-mysql",
+    "/v8/prisma-postgres/import-from-existing-database-mysql",
     "/prisma-postgres/import-from-existing-database-mysql",
   ],
-  ["/next/prisma-postgres/from-the-cli", "/prisma-postgres/from-the-cli"],
+  ["/v8/prisma-postgres/from-the-cli", "/prisma-postgres/from-the-cli"],
 ]);
 
 function normalizePathname(pathname: string) {
@@ -168,8 +168,8 @@ export function getVersionLabel(version: Version) {
     return "Latest";
   }
 
-  if (version === "next") {
-    return "Next";
+  if (version === "v8") {
+    return "v8 (RC)";
   }
   if (version === "v6") {
     return "v6";
@@ -193,19 +193,17 @@ function isLatestGettingStartedPathname(pathname: string) {
   );
 }
 
-function isNextGettingStartedPathname(pathname: string) {
-  return (
-    pathname === NEXT_GETTING_STARTED_ROOT || pathname.startsWith(`${NEXT_GETTING_STARTED_ROOT}/`)
-  );
+function isV8GettingStartedPathname(pathname: string) {
+  return pathname === V8_GETTING_STARTED_ROOT || pathname.startsWith(`${V8_GETTING_STARTED_ROOT}/`);
 }
 
 function getGettingStartedSwitchPathname(docsPathname: string, targetVersion: Version) {
-  if (targetVersion === "next") {
-    return NEXT_GETTING_STARTED_PATHS_BY_LATEST_PATH.get(docsPathname) ?? NEXT_GETTING_STARTED_ROOT;
+  if (targetVersion === "v8") {
+    return V8_GETTING_STARTED_PATHS_BY_LATEST_PATH.get(docsPathname) ?? V8_GETTING_STARTED_ROOT;
   }
 
   if (targetVersion === LATEST_VERSION) {
-    return LATEST_GETTING_STARTED_PATHS_BY_NEXT_PATH.get(docsPathname) ?? "/getting-started";
+    return LATEST_GETTING_STARTED_PATHS_BY_V8_PATH.get(docsPathname) ?? "/getting-started";
   }
 
   return getVersionRoot(targetVersion);
@@ -214,23 +212,23 @@ function getGettingStartedSwitchPathname(docsPathname: string, targetVersion: Ve
 function isLatestCliPathname(pathname: string) {
   return (
     pathname === LATEST_CLI_ROOT ||
-    (pathname.startsWith(`${LATEST_CLI_ROOT}/`) && !isNextCliPathname(pathname))
+    (pathname.startsWith(`${LATEST_CLI_ROOT}/`) && !isV8CliPathname(pathname))
   );
 }
 
-function isNextCliPathname(pathname: string) {
-  return pathname === NEXT_CLI_ROOT || pathname.startsWith(`${NEXT_CLI_ROOT}/`);
+function isV8CliPathname(pathname: string) {
+  return pathname === V8_CLI_ROOT || pathname.startsWith(`${V8_CLI_ROOT}/`);
 }
 
 function isLatestGuidesPathname(pathname: string) {
   return (
     pathname === LATEST_GUIDES_ROOT ||
-    (pathname.startsWith(`${LATEST_GUIDES_ROOT}/`) && !isNextGuidesPathname(pathname))
+    (pathname.startsWith(`${LATEST_GUIDES_ROOT}/`) && !isV8GuidesPathname(pathname))
   );
 }
 
-function isNextGuidesPathname(pathname: string) {
-  return pathname === NEXT_GUIDES_ROOT || pathname.startsWith(`${NEXT_GUIDES_ROOT}/`);
+function isV8GuidesPathname(pathname: string) {
+  return pathname === V8_GUIDES_ROOT || pathname.startsWith(`${V8_GUIDES_ROOT}/`);
 }
 
 function getGuidesSwitchPathname(
@@ -238,12 +236,12 @@ function getGuidesSwitchPathname(
   targetVersion: Version,
   availablePathnames: Iterable<string>,
 ) {
-  if (targetVersion !== LATEST_VERSION && targetVersion !== "next") {
+  if (targetVersion !== LATEST_VERSION && targetVersion !== "v8") {
     return getVersionRoot(targetVersion);
   }
 
-  const targetRoot = targetVersion === "next" ? NEXT_GUIDES_ROOT : LATEST_GUIDES_ROOT;
-  const currentRoot = isNextGuidesPathname(docsPathname) ? NEXT_GUIDES_ROOT : LATEST_GUIDES_ROOT;
+  const targetRoot = targetVersion === "v8" ? V8_GUIDES_ROOT : LATEST_GUIDES_ROOT;
+  const currentRoot = isV8GuidesPathname(docsPathname) ? V8_GUIDES_ROOT : LATEST_GUIDES_ROOT;
   const suffix =
     docsPathname === currentRoot
       ? ""
@@ -263,8 +261,8 @@ function getGuidesSwitchPathname(
 export function getGuidesVersionFromPathname(pathname: string): Version | null {
   const docsPathname = withoutDocsPrefix(pathname);
 
-  if (isNextGuidesPathname(docsPathname)) {
-    return "next";
+  if (isV8GuidesPathname(docsPathname)) {
+    return "v8";
   }
 
   if (isLatestGuidesPathname(docsPathname)) {
@@ -289,12 +287,11 @@ function getCliSwitchPathname(
   targetVersion: Version,
   availablePathnames: Iterable<string>,
 ) {
-  if (targetVersion !== LATEST_VERSION && targetVersion !== "next") {
-    return getVersionRoot(targetVersion);
-  }
-
-  const targetRoot = targetVersion === "next" ? NEXT_CLI_ROOT : LATEST_CLI_ROOT;
-  const currentRoot = isNextCliPathname(docsPathname) ? NEXT_CLI_ROOT : LATEST_CLI_ROOT;
+  // The classic `prisma` CLI serves every pre-v8 version, so any non-v8 target
+  // (Latest, v6, ...) stays in the CLI section on the latest tree instead of
+  // jumping to that version's ORM docs.
+  const targetRoot = targetVersion === "v8" ? V8_CLI_ROOT : LATEST_CLI_ROOT;
+  const currentRoot = isV8CliPathname(docsPathname) ? V8_CLI_ROOT : LATEST_CLI_ROOT;
   const suffix =
     docsPathname === currentRoot
       ? ""
@@ -314,8 +311,8 @@ function getCliSwitchPathname(
 export function getGettingStartedVersionFromPathname(pathname: string): Version | null {
   const docsPathname = withoutDocsPrefix(pathname);
 
-  if (isNextGettingStartedPathname(docsPathname)) {
-    return "next";
+  if (isV8GettingStartedPathname(docsPathname)) {
+    return "v8";
   }
 
   if (isLatestGettingStartedPathname(docsPathname)) {
@@ -332,8 +329,8 @@ export function isGettingStartedVersionPathname(pathname: string) {
 export function getCliVersionFromPathname(pathname: string): Version | null {
   const docsPathname = withoutDocsPrefix(pathname);
 
-  if (isNextCliPathname(docsPathname)) {
-    return "next";
+  if (isV8CliPathname(docsPathname)) {
+    return "v8";
   }
 
   if (isLatestCliPathname(docsPathname)) {
@@ -414,32 +411,32 @@ export function getVersionSwitchPathname(
 
 export function getVersionedNavPathname(targetPathname: string, currentPathname: string) {
   const targetDocsPathname = withoutDocsPrefix(targetPathname);
-  const isNextDocsPathname =
-    getGettingStartedVersionFromPathname(currentPathname) === "next" ||
-    getOrmVersionFromPathname(currentPathname) === "next" ||
-    getCliVersionFromPathname(currentPathname) === "next" ||
-    getGuidesVersionFromPathname(currentPathname) === "next";
+  const isV8DocsPathname =
+    getGettingStartedVersionFromPathname(currentPathname) === "v8" ||
+    getOrmVersionFromPathname(currentPathname) === "v8" ||
+    getCliVersionFromPathname(currentPathname) === "v8" ||
+    getGuidesVersionFromPathname(currentPathname) === "v8";
 
-  // Bare "/" redirects to /next, so route the Getting Started tab to the reachable
+  // Bare "/" redirects to /v8, so route the Getting Started tab to the reachable
   // landing for the active version instead of the redirecting root.
   if (targetDocsPathname === "/") {
-    return isNextDocsPathname ? NEXT_GETTING_STARTED_ROOT : "/getting-started";
+    return isV8DocsPathname ? V8_GETTING_STARTED_ROOT : "/getting-started";
   }
 
-  if (!isNextDocsPathname) {
+  if (!isV8DocsPathname) {
     return targetPathname;
   }
 
   if (targetDocsPathname === "/orm") {
-    return "/orm/next";
+    return "/orm/v8";
   }
 
   if (targetDocsPathname === LATEST_CLI_ROOT) {
-    return NEXT_CLI_ROOT;
+    return V8_CLI_ROOT;
   }
 
   if (targetDocsPathname === LATEST_GUIDES_ROOT) {
-    return NEXT_GUIDES_ROOT;
+    return V8_GUIDES_ROOT;
   }
 
   return targetPathname;

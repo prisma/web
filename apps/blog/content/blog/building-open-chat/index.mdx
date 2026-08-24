@@ -8,7 +8,7 @@ metaTitle: "How I Built a Chat App That Never Drops a Token"
 metaDescription: "A personal walkthrough of building Open Chat (oss.chat): durable, resumable AI chat on Durable Streams, Prisma Streams, TanStack DB, and Prisma Compute. How each piece works and what it enables."
 excerpt: "How I built Open Chat: durable, resumable AI chat where the answer is safe the instant it exists. It runs on Durable Streams, Prisma Streams, TanStack DB, and Prisma Compute."
 heroImagePath: "/building-open-chat/imgs/hero.svg"
-heroImageAlt: "Open Chat: a durable log of message.created and message.delta events, with an SSE tail that resumes from offset 412. Chat that never drops a token, durable-log-backed streaming."
+heroImageAlt: "An append-only event log for one chat: message.created, message.delta and message.completed rows on a durable stream, with the live delta highlighted"
 metaImagePath: "/building-open-chat/imgs/meta.png"
 tags:
   - "platform"
@@ -138,7 +138,7 @@ const { data: messages } = useLiveQuery(messagesCollection);
 
 The payoff is in the re-renders. When an event arrives, exactly the affected rows update: streaming a long answer re-renders _one_ message, not the page. And because both relational collections and the stream-fed collection are queryable the same way, a component can join "the chats I own" with "the live status of the one I'm viewing" in a single declarative query. The live event stream and the typed Postgres data meet in the same place.
 
-That typed Postgres data comes from [Prisma Next](https://www.prisma.io/blog/prisma-next-early-access-write-your-contract-prompt-your-agent-ship-your-app): one contract file describes users, chats, and credits, and compiles to a fully typed client. `db.orm.Chat.where({ userId }).orderBy(c => c.updatedAt.desc()).all()` autocompletes every column. The relational half of the app gets the same "no surprises" feeling the streaming half does.
+That typed Postgres data comes from [Prisma 8](https://www.prisma.io/blog/prisma-next-early-access-write-your-contract-prompt-your-agent-ship-your-app): one contract file describes users, chats, and credits, and compiles to a fully typed client. `db.orm.Chat.where({ userId }).orderBy(c => c.updatedAt.desc()).all()` autocompletes every column. The relational half of the app gets the same "no surprises" feeling the streaming half does.
 
 **What it enables:** one query language for two kinds of data. The chat list, the credit balance, and the live token stream all read the same way, so there's no glue layer and no second state manager to keep in sync.
 
@@ -183,4 +183,4 @@ Then read the code. The whole app is about 6,000 lines and built to be read. The
 
 I set out to fix one tiny annoyance: a chat that drops its tail when you look away. What I ended up with is a small demonstration that durable, resumable streaming doesn't have to be exotic infrastructure. It can be an append-only log, a typed database, a live query, and one deploy command. Never dropping a token turned out to be the easy path, as long as you let the log be the truth.
 
-The reason it stayed simple is that the app, the streaming service, and the database all live in one place. That's what [Prisma Compute](/launching-prisma-compute-public-beta) and [Prisma Postgres](https://www.prisma.io/postgres) are for: your app runs next to your data, deploys in one command, and is free to try while Compute is in public beta. If you want the rest of the story, see how we [launched Compute](/launching-prisma-compute-public-beta), why it [runs on Bun's Rust rewrite](/bun-rust-rewrite-prisma-compute), and how it handles [image transformations](/image-transformations-with-bun-on-prisma-compute) and [custom domains](/prisma-compute-custom-domains). Come build with us in [#prisma-compute](https://pris.ly/discord-compute) on Discord.
+The reason it stayed simple is that the app, the streaming service, and the database all live in one place. That's what [Prisma Compute](/launching-prisma-compute-public-beta) and [Prisma Postgres](https://www.prisma.io/postgres) are for: your app runs next to your data, deploys in one command, and is free to try on the Free plan. If you want the rest of the story, see how we [launched Compute](/launching-prisma-compute-public-beta), why it [runs on Bun's Rust rewrite](/bun-rust-rewrite-prisma-compute), and how it handles [image transformations](/image-transformations-with-bun-on-prisma-compute) and [custom domains](/prisma-compute-custom-domains). Come build with us in [#prisma-compute](https://pris.ly/discord-compute) on Discord.

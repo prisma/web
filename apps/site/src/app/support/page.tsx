@@ -1,184 +1,154 @@
-import { createPageMetadata } from "@/lib/page-metadata";
-import { Action, Card, CardHeader } from "@prisma/eclipse";
-import PDPStatus from "@prisma-docs/ui/components/pdp-status";
-import * as data from "../../data/support.json";
-import { cn } from "../../lib/cn";
-import { LargeSearchToggle } from "@/components/support/search-toggle";
+import type { Metadata } from "next";
+import { ArrowRight } from "@/components/icons/forma";
+import { RoleKicker } from "@/components/brand/role-kicker";
+import { Texture } from "@/components/brand/texture";
 
-const title = "Prisma Support | Get Help, Report Bugs, and Request Features";
-const description =
-  "Get help with Prisma. Search for answers, report bugs, request features, or contact the Prisma support team.";
-const ogImage = "/og/og-support.png";
-
-export const metadata = createPageMetadata({
-  title,
-  description,
-  path: "/support",
-  ogImage,
-});
-
-type SupportLink = {
-  label: string;
-  url: string;
-  icon: string;
+export const metadata: Metadata = {
+  title: "Support",
+  description:
+    "Get help with Prisma. Search for answers, report bugs, request features, or contact the Prisma support team.",
 };
 
-type SupportCardData = {
-  title?: string;
-  description?: string;
-  icon?: string;
-  color?: "orm" | "ppg" | "neutral" | "success";
-  links: SupportLink[];
+// Ported from the old site's /support page (apps/site + data/support.json),
+// rebuilt in the redesign language: one card per support path, accent bars
+// instead of the old gradient washes.
+
+type SupportCard = {
+  title: string;
+  description: string;
+  accent: string;
+  links: { label: string; url: string }[];
 };
 
-export default function Support() {
-  const cards = data.cards as SupportCardData[];
+const SUPPORT_CARDS: SupportCard[] = [
+  {
+    title: "Issues & feature requests",
+    description: "Found a bug, or want to request something new? Let us know.",
+    accent: "bg-prism-cyan-400/70",
+    links: [
+      {
+        label: "Report a bug",
+        url: "https://github.com/prisma/prisma/issues/new?assignees=&labels=&template=bug_report.md",
+      },
+      {
+        label: "Request a new feature",
+        url: "https://github.com/prisma/prisma/issues/new?assignees=&labels=&template=feature_request.md",
+      },
+    ],
+  },
+  {
+    title: "Starter plan",
+    description:
+      "Support for customers on our Starter plan is provided through our community channels.",
+    accent: "bg-prism-yellow-300",
+    links: [{ label: "Join our Discord channel", url: "https://pris.ly/discord" }],
+  },
+  {
+    title: "Pro & Business plans",
+    description:
+      "Support for customers on our Pro or Business plan is provided through the Platform Console.",
+    accent: "bg-prism-red-400/80",
+    links: [{ label: "Submit a ticket", url: "https://console.prisma.io" }],
+  },
+];
 
+const MORE_LINKS = [
+  { label: "Documentation", url: "/docs" },
+  { label: "Prisma examples", url: "https://github.com/prisma/prisma-examples" },
+  { label: "Support policy", url: "/support-policy" },
+  { label: "Enterprise support", url: "/enterprise" },
+];
+
+export default function SupportPage() {
   return (
-    <main className="flex-1 w-screen bg-background-default">
-      <div className="hero relative w-full -mt-33 pt-65 block pb-12 flex flex-col gap-8">
-        <div className="absolute inset-0 pointer-events-none z-1 overflow-hidden bg-[linear-gradient(180deg,var(--color-foreground-orm-strong)_0%,var(--color-background-default)_100%)] opacity-20" />
-        <h1 className="relative z-2 text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
-          {data.title}
-        </h1>
-        <LargeSearchToggle className="h-full z-2 max-w-141 mx-auto w-full" />
-        <PDPStatus className="gap-2 [&_b]:text-foreground-neutral! [&_*]:text-xs! [&>span]:text-xs! [&>span]:flex [&>span]:flex-row [&>span]:items-center [&>span]:gap-2 font-mono [&_*]:m-0 items-center z-2 relative" />
-      </div>
-
-      <div className="mx-0 lg:mt-0 lg:mb-40 mt-10 mb-20 ">
-        <div className="mx-auto w-full relative px-2.5 md:px-6 md:max-w-[1248px]">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {/* Cards 1-3: Regular support cards */}
-            {cards.slice(0, 3).map((card, idx) => (
-              <Card
-                key={idx}
-                className={cn(
-                  "justify-between rounded-square-high",
-                  card.color === "orm"
-                    ? "bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-orm)_262.5%)]"
-                    : "bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-ppg)_262.5%)]",
-                )}
-              >
-                <div className="flex flex-col gap-4">
-                  <div className="flex gap-4 items-center">
-                    <Action size="4xl" color={card.color}>
-                      <i className={card.icon} />
-                    </Action>
-                    <h3 className="font-bold text-xl font-bold font-sans-display text-foreground-neutral mb-0">
-                      {card.title}
-                    </h3>
-                  </div>
-                  <p className="text-foreground-neutral-weak">{card.description}</p>
-                </div>
-                <div className="flex flex-col gap-2">
-                  {card.links.map((link, idx) => (
-                    <a
-                      key={idx}
-                      href={link.url}
-                      className={cn(
-                        "text-foreground-neutral-weak underline underline-offset-3 text-sm font-semibold",
-                        card.color === "orm"
-                          ? "text-background-orm-reverse-strong hover:text-background-orm-reverse"
-                          : "text-background-ppg-reverse-strong hover:text-background-ppg-reverse",
-                      )}
-                    >
-                      {link.icon && <i className={cn("mr-2", link.icon)} />}
-                      {link.label}
-                      <i className="fa-regular fa-arrow-up-right ml-2 text-xs" />
-                    </a>
-                  ))}
-                </div>
-              </Card>
-            ))}
-
-            {/* Card 4: "Still need help?" - spans 2 columns on large screens */}
-            {cards[3] && (
-              <Card
-                className={cn(
-                  "justify-between lg:col-span-2 rounded-square-high",
-                  cards[3].color === "orm"
-                    ? "bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-orm)_262.5%)]"
-                    : "bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-ppg)_262.5%)]",
-                )}
-              >
-                <div className="grid grid-rows-[auto_auto_1fr] gap-4 h-full lg:grid-rows-1 lg:grid-cols-[1fr_auto]">
-                  <div>
-                    <h3 className="text-xl font-bold font-sans-display text-foreground-neutral mb-4">
-                      {cards[3].title}
-                    </h3>
-                    <p className="text-foreground-neutral-weak text-base lg:max-w-[48ch]">
-                      {cards[3].description}
-                    </p>
-                  </div>
-                  <div className="flex flex-col gap-3 lg:ml-auto">
-                    {cards[3].links.map((link, idx) => (
-                      <a
-                        key={idx}
-                        href={link.url}
-                        className="text-sm font-semibold flex items-center gap-2 text-foreground-ppg-strong hover:text-foreground-ppg transition-colors whitespace-nowrap"
-                      >
-                        <span className="underline underline-offset-3">{link.label}</span>
-                        <i className="fa-regular fa-arrow-up-right ml-2" />
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              </Card>
-            )}
-
-            {/* Card 5: Additional links - spans 2 cols on md, 1 on lg */}
-            {cards[4] && (
-              <Card
-                className={cn(
-                  "md:col-span-2 lg:col-span-1 justify-between rounded-square-high",
-                  cards[3].color === "orm"
-                    ? "bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-orm)_262.5%)]"
-                    : "bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-ppg)_262.5%)]",
-                )}
-              >
-                <div className="flex flex-col gap-3 md:flex-row justify-center lg:flex-col lg:h-full">
-                  {cards[4].links.map((link, idx) => (
-                    <a
-                      key={idx}
-                      href={link.url}
-                      className="text-sm font-semibold flex items-center gap-2 text-foreground-ppg-strong hover:text-foreground-ppg transition-colors w-fit"
-                    >
-                      {link.icon && <i className={link.icon} />}
-                      <span className="underline underline-offset-3">{link.label}</span>
-                      <i className="fa-regular fa-arrow-up-right ml-auto" />
-                    </a>
-                  ))}
-                </div>
-              </Card>
-            )}
-
-            {/* Card 6: Enterprise banner - full width */}
-            {cards[5] && (
-              <Card
-                className={cn(
-                  "col-start-1 md:col-end-3 lg:col-end-4 justify-between rounded-square-high",
-                  cards[5].color === "orm"
-                    ? "bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-orm)_262.5%)]"
-                    : "bg-[linear-gradient(180deg,var(--color-background-default)_0%,var(--color-background-ppg)_262.5%)]",
-                )}
-              >
-                <div className="flex flex-row items-center justify-between flex-wrap gap-4">
-                  <h3 className="text-xl font-bold font-sans-display text-foreground-neutral">
-                    {cards[5].title}
-                  </h3>
-                  <a
-                    href={cards[5].links[0].url}
-                    className="text-sm font-semibold flex items-center gap-2 text-background-orm-reverse-strong hover:text-background-orm-reverse transition-colors"
-                  >
-                    <span className="underline underline-offset-3">{cards[5].links[0].label}</span>
-                    <i className={cards[5].links[0].icon} />
-                  </a>
-                </div>
-              </Card>
-            )}
+    <>
+      <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
+        <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
+          <Texture opacity={0.06} blend="multiply" />
+          <div className="relative px-4 sm:px-8">
+            <div className="mx-auto flex max-w-site flex-col items-center pb-14 pt-32 text-center md:pb-16 md:pt-44">
+              <RoleKicker color="bg-prism-cyan-400" className="justify-center">
+                Support
+              </RoleKicker>
+              <h1 className="isolate mt-4 max-w-[20ch] text-balance text-[clamp(2.5rem,4vw,3.5rem)] leading-[1.06]">
+                How can we help?
+              </h1>
+              <p className="mt-6 max-w-[46ch] text-pretty text-lg leading-relaxed text-muted-foreground">
+                Search the docs, report bugs, request features, or reach the Prisma support team.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
-    </main>
+      </section>
+
+      <section className="bg-white px-4 pb-24 pt-14 sm:px-8 sm:pb-32">
+        <div className="mx-auto max-w-5xl">
+          <div className="grid gap-5 md:grid-cols-3">
+            {SUPPORT_CARDS.map((card) => (
+              <div
+                key={card.title}
+                className="relative flex flex-col gap-3 overflow-hidden rounded-2xl border border-black/[0.06] bg-white p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04)] sm:p-7"
+              >
+                <span aria-hidden className={`absolute left-0 top-0 h-1 w-full ${card.accent}`} />
+                <h2 className="text-lg leading-snug">{card.title}</h2>
+                <p className="text-sm leading-relaxed text-muted-foreground">{card.description}</p>
+                <div className="mt-auto flex flex-col gap-2 pt-2">
+                  {card.links.map((link) => (
+                    <a
+                      key={link.label}
+                      href={link.url}
+                      className="group flex items-center gap-1.5 text-sm font-semibold text-foreground transition-colors hover:text-prism-cyan-700"
+                    >
+                      {link.label}
+                      <ArrowRight
+                        className="size-4 transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transition-none"
+                        aria-hidden
+                      />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-5 grid gap-5 md:grid-cols-[2fr_1fr]">
+            <div className="flex flex-col justify-between gap-4 rounded-2xl bg-card-wash p-7 sm:flex-row sm:items-center sm:p-9">
+              <div>
+                <h2 className="text-xl leading-snug">Still need help?</h2>
+                <p className="mt-2 max-w-[48ch] text-sm leading-relaxed text-muted-foreground">
+                  We&apos;re here to help. Response times depend on your subscription level and the
+                  volume of requests we&apos;re receiving.
+                </p>
+              </div>
+              <a
+                href="mailto:support@prisma.io"
+                className="group flex shrink-0 items-center gap-1.5 text-sm font-semibold text-foreground"
+              >
+                Email us
+                <ArrowRight
+                  className="size-4 transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transition-none"
+                  aria-hidden
+                />
+              </a>
+            </div>
+            <div className="flex flex-col justify-center gap-3 rounded-2xl border border-black/[0.06] p-7">
+              {MORE_LINKS.map((link) => (
+                <a
+                  key={link.label}
+                  href={link.url}
+                  className="group flex items-center gap-1.5 text-sm font-semibold text-foreground transition-colors hover:text-prism-cyan-700"
+                >
+                  {link.label}
+                  <ArrowRight
+                    className="size-4 transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transition-none"
+                    aria-hidden
+                  />
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+    </>
   );
 }

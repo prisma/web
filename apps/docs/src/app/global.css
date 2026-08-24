@@ -1,58 +1,219 @@
 @import "tailwindcss";
 @import "@prisma/eclipse/styles/globals.css";
-
-/* Forward the design-token font variables to the next/font/local preloaded
-   families. This :root block intentionally comes after the @import above so
-   it wins the cascade at equal specificity. The var() fallbacks preserve the
-   original CSS @font-face names in case --font-mona-sans / --font-mona-mono
-   are ever absent. */
-:root {
-    --font-sans-display:
-        var(--font-mona-sans, "Mona Sans VF"), "Inter", "Roboto",
-        "Helvetica Neue", "Arial Nova", "Nimbus Sans", "Arial", sans-serif;
-    --font-mono:
-        var(--font-mona-mono, "Mona Sans Mono VF"), ui-monospace,
-        "Cascadia Code", "Source Code Pro", "Menlo", "Consolas",
-        "DejaVu Sans Mono", monospace;
-}
 @import "fumadocs-ui/css/shadcn.css";
 @import "fumadocs-ui/css/preset.css";
 @import "fumadocs-openapi/css/preset.css";
 @import "@prisma-docs/ui/styles";
 @source "../../node_modules/streamdown/dist/*.js";
 
+/* Wire next/font/local preloaded fonts into the design-token variables.
+   Declared after the @imports so this :root wins on cascade order (same
+   specificity, later position). The bare family name after each variable is
+   the @font-face from the package's fonts.css — it both backstops a missing
+   next/font variable and supplies the subsets next/font does not preload
+   (Sora latin-ext). */
+:root {
+  --font-sans-display:
+    var(--font-sora, "Sora"), "Sora", "Inter", "Roboto", "Helvetica Neue", "Arial Nova",
+    "Nimbus Sans", "Arial", sans-serif;
+  --font-sans:
+    var(--font-inter, "Inter"), "Inter", "Roboto", "Helvetica Neue", "Arial Nova", "Nimbus Sans",
+    "Arial", sans-serif;
+  --font-mono:
+    var(--font-mona-mono, "Mona Sans Mono VF"), ui-monospace, "Cascadia Code", "Source Code Pro",
+    "Menlo", "Consolas", "DejaVu Sans Mono", monospace;
+}
+
+/* Brand heading rule: display face, Medium weight, natural tracking on every
+   heading. Deliberately unlayered — fumadocs' `prose` typography emits into
+   @layer utilities with its own heading weights (800/700/600), and unlayered
+   declarations outrank every layer regardless of specificity. */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-sans-display);
+  font-weight: 500;
+  letter-spacing: normal;
+}
+
+/* Inter's brand body weight. `@prisma/eclipse` sets this in @layer base, but
+   `fumadocs-ui/css/preset.css` is imported after it and also writes `body` in
+   the same layer, so it is restated unlayered here to survive that. */
+body {
+  font-weight: 380;
+}
+
+/* `.stretch-display` (from `@prisma-docs/ui`, out of scope for this rebrand)
+   drives the Mona Sans VF `wdth`/`wght` axes. Sora has neither, so the axis
+   settings are cleared and the brand display weight applied instead. */
+.stretch-display {
+  font-variation-settings: normal;
+  font-weight: 500;
+}
+
+/* ---------------------------------------------------------------------------
+   App chrome retheme — remap the shadcn/fumadocs shell variables onto prism.
+
+   `@prisma-docs/ui` (out of scope for this rebrand: apps/site, apps/blog and
+   apps/docs consume it) still ships the previous identity in these variables —
+   teal #16a394 accents, a #131420 blue-navy dark, and cool blue-gray text. The
+   package cannot be edited, so the app remaps the same variable names here.
+   Every `--color-fd-*` alias fumadocs reads is defined by
+   `fumadocs-ui/css/shadcn.css` as `var(--<name>)` against exactly these
+   variables, so overriding the base set carries the whole shell: sidebar,
+   TOC, breadcrumbs, tabs, buttons, popovers.
+
+   `fumadocs-openapi/css/preset.css` is imported alongside them here, but it
+   defines no colour of its own — it is utility classes resolving against the
+   same `--color-fd-*` aliases — so the remap below carries the API reference
+   surfaces too, and there is nothing extra to override for it.
+
+   Placement and shape matter. These blocks sit after the @imports so they win
+   on source order at equal specificity, and `:root` and `.dark` are BOTH
+   declared in full: an unpaired `:root` here would also outrank the package's
+   earlier `.dark`, leaking light values into dark mode.
+
+   Values are eclipse tokens, never literals, so the shell tracks the package.
+--------------------------------------------------------------------------- */
+:root {
+  /* CF's base radius is 10px; fumadocs derives sm/md/xl/2xl.. from this. */
+  --radius: 0.625rem;
+
+  --background: var(--color-background-default); /* #ffffff */
+  --foreground: var(--color-foreground-neutral); /* #3a3b3c */
+  --card: var(--color-background-default);
+  --card-foreground: var(--color-foreground-neutral);
+  --popover: var(--color-background-default);
+  --popover-foreground: var(--color-foreground-neutral);
+
+  /* Brand accent: sidebar active item, TOC thumb + active link, section links,
+     active tab underline. `bg-fd-primary/10` derives the active-item tint. */
+  --primary: var(--color-prism-cyan-600); /* #009aaa */
+  --primary-foreground: #ffffff;
+
+  --secondary: var(--color-background-neutral-weak); /* paper #f9faf5 */
+  --secondary-foreground: var(--color-foreground-neutral);
+  --muted: var(--color-background-neutral); /* #f5f5f4 */
+  --muted-foreground: var(--color-foreground-neutral-weak); /* #646567 */
+
+  /* Hover wash + hover text. cyan-100 holds the luminance the previous teal
+     tint had, so hover feedback keeps its weight and only changes hue. */
+  --accent: var(--color-prism-cyan-100); /* #dcfdff */
+  --accent-foreground: var(--color-prism-cyan-700); /* #007f8d */
+
+  --destructive: var(--color-foreground-error); /* prism red #d02344 */
+  --border: var(--color-stroke-neutral); /* #e5e5e4 */
+  --input: var(--color-stroke-neutral);
+  --ring: var(--color-prism-cyan-600);
+
+  /* `#nd-sidebar` above paints its background from `--color-background`, so
+     `--sidebar` is kept in agreement rather than fighting it. */
+  --sidebar: var(--color-background-default);
+  --sidebar-foreground: var(--color-foreground-neutral);
+  --sidebar-primary: var(--color-prism-cyan-600);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--color-prism-cyan-100);
+  --sidebar-accent-foreground: var(--color-prism-cyan-700);
+  --sidebar-border: var(--color-stroke-neutral);
+  --sidebar-ring: var(--color-prism-cyan-600);
+}
+
+.dark {
+  /* The neutral dark ramp, chroma-0 off the brand ink — not the old blue-gray. */
+  --background: var(--color-background-default); /* #0f0f0f */
+  --foreground: var(--color-foreground-neutral); /* #f5f5f4 */
+  --card: var(--color-background-neutral-weak); /* #1a1a1a */
+  --card-foreground: var(--color-foreground-neutral);
+  --popover: var(--color-background-neutral-weak);
+  --popover-foreground: var(--color-foreground-neutral);
+
+  /* Cyan lifts to 400 on dark for legible accents; its foreground goes to ink,
+     because white on #01d7e4 does not carry. */
+  --primary: var(--color-prism-cyan-400); /* #01d7e4 */
+  --primary-foreground: var(--color-background-default); /* #0f0f0f */
+
+  --secondary: var(--color-background-neutral); /* #232323 */
+  --secondary-foreground: var(--color-foreground-neutral);
+  --muted: var(--color-background-neutral); /* #232323 */
+  --muted-foreground: var(--color-foreground-neutral-weak); /* #a5a5a6 */
+
+  --accent: var(--color-prism-cyan-950); /* #00353c */
+  --accent-foreground: var(--color-prism-cyan-300); /* #7be7f0 */
+
+  --destructive: var(--color-foreground-error); /* prism red #f34a60 */
+  --border: var(--color-stroke-neutral); /* #2a2a2a */
+  --input: var(--color-stroke-neutral);
+  --ring: var(--color-prism-cyan-400);
+
+  --sidebar: var(--color-background-default);
+  --sidebar-foreground: var(--color-foreground-neutral);
+  --sidebar-primary: var(--color-prism-cyan-400);
+  --sidebar-primary-foreground: var(--color-background-default);
+  --sidebar-accent: var(--color-prism-cyan-950);
+  --sidebar-accent-foreground: var(--color-prism-cyan-300);
+  --sidebar-border: var(--color-stroke-neutral);
+  --sidebar-ring: var(--color-prism-cyan-400);
+}
+
+/* The sidebar lives directly on the paper ground (shell v2, end of file) —
+   no wall, no fill of its own. Active items carry their own sheet-white
+   pills instead. */
 #nd-sidebar {
-    @apply border-e;
-    background-color: var(--color-background);
+  background-color: transparent;
 }
 
 header &[data-search-full] {
-    @apply rounded-xl;
+  @apply rounded-xl;
 }
 
 /* [data-header-tabs], */
 [data-header-body] {
-    @apply border-none;
+  @apply border-none;
 }
 
 #nd-page {
-    @apply @container;
+  @apply @container;
 }
 
 /* Hide reCAPTCHA badge from Kapa SDK - terms are in footer */
 .grecaptcha-badge {
-    visibility: hidden !important;
+  visibility: hidden !important;
 }
 
+/* ---------------------------------------------------------------------------
+   Prisma Next banner — the one loud brand moment in an otherwise quiet shell.
+
+   Structure is unchanged (flow / sweep / grid keyframes, reduced-motion
+   guard); only the palette moved. The old teal becomes prism cyan-500
+   (`0 187 203` where an rgba() is needed, since custom properties cannot be
+   spliced into an rgba channel list), the old indigo-blue is dropped
+   entirely rather than re-hued, and the navy base ramp is rebuilt as ink with
+   faint prism tints. The result reads spectrum, not rainbow: cyan dominates
+   the resting surface, and yellow / orange / pink appear only as the sweep's
+   passing highlights.
+--------------------------------------------------------------------------- */
 #prisma-next-docs.prisma-next-banner {
   isolation: isolate;
   overflow: hidden;
-  color: #f8fffd;
-  border-bottom: 1px solid color-mix(in oklab, #00ccb4 45%, #6385ff);
+  color: #fafafa;
+  border-bottom: 1px solid
+    color-mix(in oklab, var(--color-prism-cyan-500) 55%, var(--color-prism-cyan-900));
   background:
-    linear-gradient(100deg, rgba(0, 204, 180, 0.32), transparent 28%),
-    linear-gradient(260deg, rgba(255, 188, 63, 0.28), transparent 30%),
-    linear-gradient(90deg, #061615 0%, #101936 36%, #25152d 68%, #081816 100%),
+    linear-gradient(100deg, rgba(0, 187, 203, 0.32), transparent 28%),
+    /* prism yellow-300 is markedly more saturated than the amber it replaces,
+       so its wash is dialled back from 0.28 to keep the surface cyan-dominant
+       rather than tipping olive on the right-hand third. */
+    linear-gradient(260deg, rgba(243, 195, 6, 0.2), transparent 30%),
+    linear-gradient(
+      90deg,
+      #0f0f0f 0%,
+      color-mix(in srgb, var(--color-prism-cyan-950) 40%, #0f0f0f) 36%,
+      color-mix(in srgb, var(--color-prism-yellow-950) 30%, #0f0f0f) 68%,
+      #0f0f0f 100%
+    ),
     repeating-linear-gradient(
       115deg,
       rgba(255, 255, 255, 0.14) 0,
@@ -71,7 +232,7 @@ header &[data-search-full] {
     220% 100%,
     48px 48px;
   box-shadow:
-    0 8px 32px rgba(0, 204, 180, 0.16),
+    0 8px 32px rgba(0, 187, 203, 0.16),
     inset 0 1px 0 rgba(255, 255, 255, 0.12),
     inset 0 -1px 0 rgba(0, 0, 0, 0.32);
   animation: prisma-next-banner-flow 16s ease-in-out infinite alternate;
@@ -85,18 +246,23 @@ header &[data-search-full] {
   pointer-events: none;
 }
 
+/* Layer 1 is the travelling highlight — four spectrum stops in gradient order
+   (cyan → yellow → orange → pink) replacing the old teal/indigo/amber/rose
+   run. Layer 2 is the 2px rule along the bottom edge, and it takes
+   `--gradient-spectrum` verbatim: a full-width spectrum hairline is exactly
+   the brand's interaction signature. */
 #prisma-next-docs.prisma-next-banner::before {
   background:
     linear-gradient(
       90deg,
       transparent 0%,
-      rgba(0, 204, 180, 0.28) 18%,
-      rgba(99, 133, 255, 0.44) 38%,
-      rgba(255, 188, 63, 0.4) 56%,
-      rgba(255, 111, 145, 0.28) 74%,
+      rgba(1, 215, 228, 0.28) 18%,
+      rgba(243, 195, 6, 0.44) 38%,
+      rgba(243, 122, 3, 0.4) 56%,
+      rgba(240, 14, 92, 0.28) 74%,
       transparent 100%
     ),
-    linear-gradient(90deg, #00ccb4, #6385ff 34%, #ffbc3f 68%, #ff6f91);
+    var(--gradient-spectrum);
   background-position:
     -42rem 0,
     0 0;
@@ -133,21 +299,41 @@ header &[data-search-full] {
   z-index: 1;
 }
 
+/* The banner surface is dark in either theme, so its secondary copy cannot
+   ride `--fd-muted-foreground` — in light mode that resolves to #646567 and
+   all but disappears against the ink. It takes the dark ramp's weak neutral
+   directly instead. */
+#prisma-next-docs .prisma-next-banner-content .text-fd-muted-foreground {
+  color: #a5a5a6;
+}
+
+/* The CTA sits on the same always-dark surface as the banner, so it is built
+   from the same ink + prism-tint logic rather than the mode-aware tokens. */
 #prisma-next-docs .prisma-next-banner-cta {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  border-color: color-mix(in oklab, #00ccb4 48%, #ffffff);
-  color: #f8fffd;
-  background: linear-gradient(135deg, #05201d, #172036 60%, #2a2030);
+  border-color: color-mix(in oklab, var(--color-prism-cyan-500) 48%, #ffffff);
+  color: #fafafa;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-prism-cyan-950) 55%, #0f0f0f),
+    #1a1a1a 60%,
+    color-mix(in srgb, var(--color-prism-yellow-950) 30%, #0f0f0f)
+  );
   box-shadow:
-    0 4px 18px rgba(0, 204, 180, 0.22),
+    0 4px 18px rgba(0, 187, 203, 0.22),
     inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
 #prisma-next-docs .prisma-next-banner-cta:hover {
   color: #ffffff;
-  background: linear-gradient(135deg, #06302b, #1d2b52 58%, #3b243c);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-prism-cyan-900) 65%, #0f0f0f),
+    #232323 58%,
+    color-mix(in srgb, var(--color-prism-yellow-900) 40%, #0f0f0f)
+  );
 }
 
 @keyframes prisma-next-banner-flow {
@@ -201,77 +387,325 @@ header &[data-search-full] {
 }
 
 @layer utilities {
-    .glitch {
-        position: relative;
-    }
+  .glitch {
+    position: relative;
+  }
 
-    .glitch::before,
-    .glitch::after {
-        content: attr(data-text);
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        overflow: hidden;
-    }
+  .glitch::before,
+  .glitch::after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    overflow: hidden;
+  }
 
-    .glitch::before {
-        left: 2px;
-        text-shadow: -2px 0 red;
-        animation: glitch-1 2s infinite linear alternate-reverse;
-    }
+  /* Chromatic-aberration fringes. The CSS keywords `red` / `cyan` were
+       arbitrary primaries; the prism red and cyan land in the same two
+       directions and read as the brand instead. */
+  .glitch::before {
+    left: 2px;
+    text-shadow: -2px 0 var(--color-prism-red-500);
+    animation: glitch-1 2s infinite linear alternate-reverse;
+  }
 
-    .glitch::after {
-        left: -2px;
-        text-shadow: -2px 0 cyan;
-        animation: glitch-2 1.5s infinite linear alternate-reverse;
-    }
+  .glitch::after {
+    left: -2px;
+    text-shadow: -2px 0 var(--color-prism-cyan-400);
+    animation: glitch-2 1.5s infinite linear alternate-reverse;
+  }
 
-    @keyframes glitch-1 {
-        0% {
-            clip-path: inset(20% 0 60% 0);
-        }
-        20% {
-            clip-path: inset(10% 0 85% 0);
-        }
-        40% {
-            clip-path: inset(40% 0 40% 0);
-        }
-        60% {
-            clip-path: inset(80% 0 5% 0);
-        }
-        80% {
-            clip-path: inset(50% 0 30% 0);
-        }
-        100% {
-            clip-path: inset(25% 0 55% 0);
-        }
+  @keyframes glitch-1 {
+    0% {
+      clip-path: inset(20% 0 60% 0);
     }
+    20% {
+      clip-path: inset(10% 0 85% 0);
+    }
+    40% {
+      clip-path: inset(40% 0 40% 0);
+    }
+    60% {
+      clip-path: inset(80% 0 5% 0);
+    }
+    80% {
+      clip-path: inset(50% 0 30% 0);
+    }
+    100% {
+      clip-path: inset(25% 0 55% 0);
+    }
+  }
 
-    @keyframes glitch-2 {
-        0% {
-            clip-path: inset(80% 0 5% 0);
-        }
-        20% {
-            clip-path: inset(50% 0 30% 0);
-        }
-        40% {
-            clip-path: inset(20% 0 60% 0);
-        }
-        60% {
-            clip-path: inset(10% 0 85% 0);
-        }
-        80% {
-            clip-path: inset(40% 0 40% 0);
-        }
-        100% {
-            clip-path: inset(75% 0 15% 0);
-        }
+  @keyframes glitch-2 {
+    0% {
+      clip-path: inset(80% 0 5% 0);
     }
+    20% {
+      clip-path: inset(50% 0 30% 0);
+    }
+    40% {
+      clip-path: inset(20% 0 60% 0);
+    }
+    60% {
+      clip-path: inset(10% 0 85% 0);
+    }
+    80% {
+      clip-path: inset(40% 0 40% 0);
+    }
+    100% {
+      clip-path: inset(75% 0 15% 0);
+    }
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-    .glitch::before,
-    .glitch::after {
-        animation: none;
-    }
+  .glitch::before,
+  .glitch::after {
+    animation: none;
+  }
+}
+
+/* chrome overrides (builder B) appended below */
+
+/* ---------------------------------------------------------------------------
+   Chrome — the floating-morph header.
+
+   The morph itself is all classes (see `notebook/client.tsx`): the strip stays
+   sticky in `[grid-area:header]` so `--fd-header-height` keeps describing its
+   real height for the sidebar/TOC sticky math, and the container inside it is
+   what dock/float cross-fades. Only what a class cannot reach from there lives
+   here. `[data-header-body] { border-none }` above is now the right
+   behaviour rather than an override to fight: the docked hairline belongs to the
+   strip and the floating one to the glass panel, so neither row draws its own.
+--------------------------------------------------------------------------- */
+
+/* The large search field is now the navbar's pill. An earlier unlayered rule in
+   this file pins `[data-search-full]` to `rounded-xl`; scoping by the header's
+   id outranks it wherever it applies, in either state of the morph. */
+#nd-subnav [data-search-full] {
+  border-radius: var(--radius-circle);
+}
+
+/* ---------------------------------------------------------------------------
+   Shell v2 — "the reading sheet". The compositional layer of the rebrand:
+   site-redesign's pages put content on floating white panels over a warm,
+   grain-textured paper ground, with the triple-band prism ray crossing behind
+   them (see hero-home.tsx). The docs shell mirrors that at reading volume:
+   the app ground is paper (grain + ray render from PaperGround in the layout),
+   the article floats as a rounded sheet, and the sidebar/TOC sit directly on
+   the paper with no walls.
+
+   Ground and sheet are a mode-flipping pair: light keeps CF's paper ground
+   under a white sheet; dark inverts the depth cue instead (elevated surfaces
+   lighten), so the ground is the ink base and the sheet lifts one step off it.
+--------------------------------------------------------------------------- */
+:root {
+  --shell-ground: var(--color-paper); /* #f9faf5 */
+  --shell-sheet: var(--color-background-default); /* #ffffff */
+  --shell-sheet-shadow: 0 1px 2px rgba(21, 21, 21, 0.04), 0 16px 40px -16px rgba(21, 21, 21, 0.12);
+}
+
+.dark {
+  --shell-ground: var(--color-background-default); /* #0f0f0f */
+  --shell-sheet: var(--color-background-neutral-weaker); /* #141414 */
+  --shell-sheet-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 16px 40px -16px rgba(0, 0, 0, 0.8);
+}
+
+/* `position: relative` anchors PaperGround's ray layer to the grid;
+   `isolation: isolate` gives its negative-z layers a floor, so they paint
+   above this paper fill but under every in-flow surface (sheet, header,
+   sidebar pills) — light behind panels, never over content. */
+#nd-notebook-layout {
+  position: relative;
+  isolation: isolate;
+  background-color: var(--shell-ground);
+}
+
+/* The reading sheet. Unlayered, so these margins/paddings outrank the
+   component's utility classes at equal specificity. */
+#nd-page {
+  background-color: var(--shell-sheet);
+  border: 1px solid var(--color-stroke-neutral);
+  border-radius: 1.25rem;
+  box-shadow: var(--shell-sheet-shadow);
+  margin: 0.5rem 0.5rem 2rem;
+  padding: clamp(2rem, 3vw, 3.25rem) clamp(1.25rem, 4vw, 4rem) 4rem;
+}
+
+@media (min-width: 768px) {
+  #nd-page {
+    margin: 0.75rem 1.25rem 3rem;
+  }
+}
+
+/* Docked header sits on the paper, not on white. Same translucency+blur as
+   before; only the tint follows the ground. */
+#nd-subnav[data-floating="false"][data-transparent="false"] {
+  background-color: color-mix(in srgb, var(--shell-ground) 85%, transparent);
+}
+
+/* ---------------------------------------------------------------------------
+   Spectrum states for sidebar rows, ported from the site's .spectrum-border
+   (apps/site globals.css), applied through `.sidebar-prism-item` in the
+   sidebar's itemVariants:
+   - hover    = text painted with the cool half of the brand spectrum
+                (pinks/reds/cyans — the warm yellow/orange stops read poorly
+                at text size, and the cyan→pink blend passes through purple)
+   - selected = the animated 1px spectrum ring */
+
+@keyframes spectrum-slide {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: 200% 50%;
+  }
+}
+
+:root {
+  /* The spectrum palette (eclipse globals.css) has no purple stop; this one
+     sits between its pink and the prism cyan in vibrancy, and stays legible
+     as text on the light background. */
+  --color-spectrum-purple: #9333ea;
+  /* Purple edges into the pink/scarlet core; the edge colour doubles as the
+     resting tint the hover fade starts from. */
+  --gradient-spectrum-cool: linear-gradient(
+    85deg,
+    var(--color-spectrum-purple),
+    var(--color-spectrum-pink),
+    var(--color-spectrum-scarlet),
+    var(--color-spectrum-pink),
+    var(--color-spectrum-purple)
+  );
+}
+
+.sidebar-prism-item::after,
+.spectrum-ring-hover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background-image: var(--gradient-spectrum);
+  background-size: 200% 100%;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  animation: spectrum-slide 2.5s linear infinite;
+  pointer-events: none;
+}
+
+/* Selected: the animated spectrum ring. */
+.sidebar-prism-item[data-active="true"]::after {
+  opacity: 1;
+}
+
+/* The same ring on hover instead of selection, for tiles that link out (the
+   Get started page's Build/Deploy tiles). The element's own border drops out
+   so the ring replaces it rather than stacking on it; any background tint
+   stays a utility on the element. */
+.spectrum-ring-hover {
+  position: relative;
+}
+
+/* Unlike sidebar rows, the tiles have a real 1px border, and `inset: 0` on
+   the ::after resolves to the padding box — one pixel inside that border. Pull
+   the ring out over the border band and clip the background to the padding
+   box, so the hover tint can never peek past the ring's outside edge. */
+.spectrum-ring-hover::after {
+  inset: -1px;
+}
+
+.spectrum-ring-hover:hover {
+  border-color: transparent;
+  background-clip: padding-box;
+}
+
+.spectrum-ring-hover:hover::after {
+  opacity: 1;
+}
+
+/* Titles inside a ring tile: the sidebar hover's cool-spectrum text instead
+   of the flat accent colour. Same fade technique as .sidebar-prism-item — the
+   gradient is always painted and clipped to the text; hovering the tile fades
+   `color` to transparent to reveal it. Children that set their own colour
+   (badges) are unaffected. */
+.spectrum-text-hover {
+  background-image: var(--gradient-spectrum-cool);
+  background-clip: text;
+  -webkit-background-clip: text;
+  transition: color 0.35s ease;
+}
+
+.spectrum-ring-hover:hover .spectrum-text-hover {
+  color: transparent;
+}
+
+/* Hover: text fades into the cool spectrum. The gradient is always painted
+   and clipped to the text; hover only fades `color` to transparent so the
+   gradient shows through — background-image itself cannot transition. Icons
+   keep the normal foreground because the clip trick makes `currentColor`
+   transparent. */
+.sidebar-prism-item {
+  background-image: var(--gradient-spectrum-cool);
+  background-clip: text;
+  -webkit-background-clip: text;
+  transition: color 0.35s ease;
+}
+
+.sidebar-prism-item svg {
+  color: var(--color-fd-foreground);
+}
+
+.sidebar-prism-item:hover {
+  color: transparent;
+}
+
+/* TOC ("On this page") active state: the same cool-spectrum text as the
+   sidebar hover, replacing the flat primary blue. Same fade technique — the
+   gradient is always painted and clipped; the active state fades `color` to
+   transparent to reveal it. */
+.spectrum-text-active {
+  background-image: var(--gradient-spectrum-cool);
+  background-clip: text;
+  -webkit-background-clip: text;
+  transition: color 0.35s ease;
+}
+
+.spectrum-text-active[data-active="true"] {
+  color: transparent;
+}
+
+/* Inline code inside a gradient-clipped item paints its own chip background
+   over the clipped gradient, leaving transparent text on a solid chip —
+   i.e. invisible. Give code children a solid colour instead. */
+.spectrum-text-active[data-active="true"] code,
+.sidebar-prism-item:hover code {
+  color: var(--color-fd-foreground);
+}
+
+/* The TOC position thumb (both variants), the cool spectrum run vertically. */
+.spectrum-thumb {
+  background-image: linear-gradient(
+    180deg,
+    var(--color-prism-cyan-500),
+    var(--color-spectrum-pink),
+    var(--color-spectrum-scarlet)
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-prism-item,
+  .sidebar-prism-item::after,
+  .spectrum-text-active {
+    animation: none;
+    transition: none;
+  }
 }
