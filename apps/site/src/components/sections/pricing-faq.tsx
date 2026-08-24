@@ -23,7 +23,7 @@ const PRICING_FAQS: FaqItem[] = [
   {
     question: "What happens if I exceed my plan's operations?",
     answer:
-      "Overage rates kick in automatically at the per-1,000 rate shown on your plan. You can set a spend limit on any paid plan to cap how much you're charged in a billing cycle.",
+      "Overage rates kick in automatically at the per-million rate shown on your plan. You can set a spend limit on any paid plan to cap how much you're charged in a billing cycle.",
   },
   {
     question: "Are there egress fees?",

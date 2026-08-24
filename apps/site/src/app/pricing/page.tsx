@@ -51,11 +51,23 @@ export default function PricingPage() {
         headlineMaxWidth="max-w-[24ch]"
         body="Prisma ORM is free and always will be. Spin up a Prisma Postgres database and deploy your first app in minutes."
         checks={[
-          { label: "No credit card required to start", color: "text-prism-cyan-500" },
-          { label: "Free tier with no time limit", color: "text-prism-yellow-400" },
-          { label: "Upgrade or downgrade anytime", color: "text-prism-red-500" },
+          {
+            label: "No credit card required to start",
+            color: "text-prism-cyan-500",
+          },
+          {
+            label: "Free tier with no time limit",
+            color: "text-prism-yellow-400",
+          },
+          {
+            label: "Upgrade or downgrade anytime",
+            color: "text-prism-red-500",
+          },
         ]}
-        primaryCta={{ label: "Get started free", href: "https://console.prisma.io" }}
+        primaryCta={{
+          label: "Get started free",
+          href: "https://console.prisma.io",
+        }}
         secondaryCta={{ label: "Talk to us", href: "/contact" }}
       />
       <PricingFaq />

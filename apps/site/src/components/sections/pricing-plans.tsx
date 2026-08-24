@@ -9,15 +9,14 @@ import { cn } from "@/lib/utils";
 //    on the lower price rather than making Prisma read as expensive; Free
 //    states that it is free forever
 //
-// `compute` is each plan's included Prisma Compute allowance — Compute GA
-// (Shane, 2026-08-24): "put the details in the cards (how many are included
-// in each plan)".
-// ⚠ The allowance NUMBERS are placeholders: invented to show the format,
-// scaled so each plan's included Compute is roughly proportional to its price
-// at the GA meter rates ($1.00/1M requests, $0.006/GB-hour, $0.064/vCPU-hour,
-// $0.025/GB). Shane supplies the real figures — "we'll fix the exact numbers
-// after". Keep them in sync with the Prisma Compute group in
-// pricing-spec-table.tsx, which repeats them alongside the overage rates.
+// `compute` is each plan's Prisma Compute pricing — Compute GA (Shane,
+// 2026-08-24). The numbers are LOCKED IN, hand-entered by Shane: requests
+// are the only meter with an included allowance (Free 1M with no usage
+// billing, then 5M/20M/100M plus $1 per million on the paid tiers); memory,
+// CPU, and bandwidth are billed per use on paid plans. These cards are the
+// page's source of truth — keep the Prisma Compute group in
+// pricing-spec-table.tsx, pricing-data.ts, and the llms surfaces in sync
+// with them.
 //
 // `blurb` is kept in the data but NOT rendered (2026-07-30). Shane asked to land
 // on the plans with no preamble, and trimming the cards is what buys the last
@@ -31,13 +30,8 @@ const PLANS = [
     name: "Free",
     price: "$0",
     note: "Free forever. No credit card required.",
-    compute: [
-      "1,000,000 requests / month",
-      "100 GB-hours memory",
-      "10 vCPU-hours active CPU",
-      "10 GB outbound bandwidth",
-    ],
-    postgres: ["100,000 operations / month", "500 MB storage", "50 databases"],
+    compute: ["1M requests / month"],
+    postgres: ["200k operations / month", "500 MB storage", "50 databases"],
     platform: [],
     blurb:
       "Everything you need to build and explore with no clock running. No credit card, no expiry.",
@@ -50,13 +44,13 @@ const PLANS = [
     price: "$10",
     note: null,
     compute: [
-      "5,000,000 requests / month",
-      "500 GB-hours memory",
-      "50 vCPU-hours active CPU",
-      "50 GB outbound bandwidth",
+      "5M requests / month, then $1 per million",
+      "$0.006 per GB-hour memory",
+      "$0.064 per active vCPU-hours",
+      "$0.025 per GB outbound bandwidth",
     ],
     postgres: [
-      "1,000,000 operations / month, then $0.0080 per 1,000",
+      "1M operations / month, then $8 per million",
       "10 GB storage, then $2.00 per GB",
       "1,000 databases",
       "7-day daily backups",
@@ -73,13 +67,13 @@ const PLANS = [
     price: "$49",
     note: null,
     compute: [
-      "20,000,000 requests / month",
-      "2,000 GB-hours memory",
-      "200 vCPU-hours active CPU",
-      "250 GB outbound bandwidth",
+      "20M requests / month, then $1 per million",
+      "$0.006 per GB-hour memory",
+      "$0.064 per active vCPU-hours",
+      "$0.025 per GB outbound bandwidth",
     ],
     postgres: [
-      "10,000,000 operations / month, then $0.0020 per 1,000",
+      "10M operations / month, then $2 per million",
       "50 GB storage, then $1.50 per GB",
       "1,000 databases",
       "7-day daily backups",
@@ -96,13 +90,13 @@ const PLANS = [
     price: "$129",
     note: null,
     compute: [
-      "50,000,000 requests / month",
-      "5,000 GB-hours memory",
-      "500 vCPU-hours active CPU",
-      "1 TB outbound bandwidth",
+      "100M requests / month, then $1 per million",
+      "$0.006 per GB-hour memory",
+      "$0.064 per active vCPU-hours",
+      "$0.025 per GB outbound bandwidth",
     ],
     postgres: [
-      "50,000,000 operations / month, then $0.0010 per 1,000",
+      "50M operations / month, then $1 per million",
       "100 GB storage",
       "1,000 databases",
       "30-day backup retention",
@@ -153,8 +147,7 @@ export function PricingPlans() {
             </p>
             {plan.note && <p className="mt-2.5 text-sm text-muted-foreground">{plan.note}</p>}
             {/* One loop for every group — Compute and Postgres get the exact
-                same treatment by construction (see CARD_GROUPS). Compute
-                numbers are placeholders — see the note on PLANS. */}
+                same treatment by construction (see CARD_GROUPS). */}
             <div className="mt-6">
               {CARD_GROUPS.map(({ key, label }) => {
                 const items = plan[key];
