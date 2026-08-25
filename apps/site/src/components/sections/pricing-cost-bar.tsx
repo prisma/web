@@ -25,7 +25,8 @@ const TRACK = "h-2 w-full overflow-hidden rounded-full bg-foreground/[0.07]";
 //
 // A null fraction is not zero — it means we have no figure for that column yet,
 // and renders as a dashed empty track so it reads as "pending" rather than
-// "free". Same distinction the spec table draws between TBC and an em dash.
+// "free". No column currently passes null; the branch exists so a future
+// comparison column can be added before its figures land.
 export function CostBar({ fraction, spectrum = false, delay = 0, className }: CostBarProps) {
   const reduceMotion = useReducedMotion();
 
