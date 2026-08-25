@@ -80,7 +80,9 @@ export function InlineTOC({ items, className, ...props }: InlineTocProps) {
 
   // The docs TOC marks the active item with a gradient segment on the rail
   // (`.spectrum-thumb`); mirror it by measuring the active link's offset
-  // within the relative wrapper.
+  // within the relative wrapper. A ResizeObserver on the container and the
+  // link keeps the segment aligned when a resize, font load, or line wrap
+  // moves the links after the initial measurement.
   useEffect(() => {
     const container = containerRef.current;
     if (!container || activeId === null) {
@@ -92,7 +94,12 @@ export function InlineTOC({ items, className, ...props }: InlineTocProps) {
       setThumb(null);
       return;
     }
-    setThumb({ top: link.offsetTop, height: link.offsetHeight });
+    const measure = () => setThumb({ top: link.offsetTop, height: link.offsetHeight });
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(container);
+    observer.observe(link);
+    return () => observer.disconnect();
   }, [activeId]);
 
   return (
