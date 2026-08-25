@@ -49,6 +49,27 @@ function applyOrmNamingStandard(body) {
   );
 }
 
+// Fenced blocks and inline code spans, so a rewrite meant for prose cannot
+// reach an identifier. `String.split` with one capture group yields
+// [prose, code, prose, code, ...], so the odd indices are the code.
+const CODE_SEGMENT = /(```[\s\S]*?```|`[^`\n]*`)/g;
+
+function replaceInProse(body, pattern, replacement) {
+  return body
+    .split(CODE_SEGMENT)
+    .map((segment, index) => (index % 2 === 1 ? segment : segment.replace(pattern, replacement)))
+    .join("");
+}
+
+// prisma-cli names this API after the SDK it calls it through
+// (`@prisma/management-api-sdk`), which is right in that repo. The docs site
+// publishes the same API as the REST API and does not reintroduce the old
+// name in prose (apps/docs/CLAUDE.md). Identifiers keep their real names, so
+// this rewrites prose only.
+function applyCliNamingStandard(body) {
+  return replaceInProse(body, /\bManagement API\b/g, "REST API");
+}
+
 const TARGETS = {
   orm: {
     sourceRepo: "prisma/prisma",
@@ -70,7 +91,7 @@ metaDescription: Every structured error code Prisma 8 can emit, by namespace, wi
   cli: {
     sourceRepo: "prisma/prisma-cli",
     output: join(HERE, "../content/docs/cli/error-reference.mdx"),
-    applyNamingStandard: (body) => body,
+    applyNamingStandard: applyCliNamingStandard,
     hostedIntro:
       "Each code anchors as `#<CODE>` — the fragment an emitted error's `docsUrl` resolves to. " +
       "This page is generated from the canonical registry in the `prisma/prisma-cli` repository, " +

@@ -16,7 +16,7 @@ Recognize an error programmatically by running with `--json` and matching on `er
 
 Most codes on this page are expected failures. Some are warn-severity diagnostics that ride a successful run: the command completes and exits `0`, and the diagnostic carries the code (the entry says so where it applies). The process exit-code contract is in [Error Conventions](https://github.com/prisma/prisma-cli/blob/main/docs/product/error-conventions.md).
 
-Every code on this page is assigned where the error is raised, and this page lists every code the CLI can emit. No boundary invents a code from a server response or rewrites one on the way out, so an error's code never depends on which command you reached the failure through. When a Management API request fails, the CLI raises the domain's registered `*.API_ERROR` code and carries the API's own code and HTTP status in `meta.apiCode` and `meta.status`, where they are data you can read rather than a code you have to guess at.
+Every code on this page is assigned where the error is raised, and this page lists every code the CLI can emit. No boundary invents a code from a server response or rewrites one on the way out, so an error's code never depends on which command you reached the failure through. When a REST API request fails, the CLI raises the domain's registered `*.API_ERROR` code and carries the API's own code and HTTP status in `meta.apiCode` and `meta.status`, where they are data you can read rather than a code you have to guess at.
 
 Namespaces:
 
@@ -80,17 +80,17 @@ A user-typed workspace name matched more than one workspace, from two raise site
 
 ### BRANCH.API_ERROR [#BRANCH.API_ERROR]
 
-A Management API call made by `prisma branch list` failed. The `why` carries the API's message or, failing that, the HTTP status, and the fix suggests rerunning with `--log-level verbose` for the response details. Meta: `status`, `apiCode` (the API's own error code, when the response supplied one).
+A REST API call made by `prisma branch list` failed. The `why` carries the API's message or, failing that, the HTTP status, and the fix suggests rerunning with `--log-level verbose` for the response details. Meta: `status`, `apiCode` (the API's own error code, when the response supplied one).
 
 ## BUCKET
 
 ### BUCKET.API_ERROR [#BUCKET.API_ERROR]
 
-A bucket Management API request (listing, creating, or deleting buckets or bucket keys) failed — raised by the provider (`lib/bucket/provider.ts`). The `why` carries the API's message or HTTP status, and the fix is the API's hint when it sent one. An HTTP 401 or 403 raises this code too, with a `why` saying the API rejected the request as unauthorized and a `prisma auth login` next action. Meta: `status`, `apiCode` (the API's own error code, when the response supplied one).
+A bucket REST API request (listing, creating, or deleting buckets or bucket keys) failed — raised by the provider (`lib/bucket/provider.ts`). The `why` carries the API's message or HTTP status, and the fix is the API's hint when it sent one. An HTTP 401 or 403 raises this code too, with a `why` saying the API rejected the request as unauthorized and a `prisma auth login` next action. Meta: `status`, `apiCode` (the API's own error code, when the response supplied one).
 
 ### BUCKET.KEY_SECRET_MISSING [#BUCKET.KEY_SECRET_MISSING]
 
-`prisma bucket key create` created the key, but the Management API response omitted part of the one-time credential payload (secret access key, access key id, endpoint, or bucket name), so the CLI cannot show credentials it will never see again. The fix is to create another key and store the returned credentials immediately. Meta: none.
+`prisma bucket key create` created the key, but the REST API response omitted part of the one-time credential payload (secret access key, access key id, endpoint, or bucket name), so the CLI cannot show credentials it will never see again. The fix is to create another key and store the returned credentials immediately. Meta: none.
 
 ### BUCKET.USAGE_ERROR [#BUCKET.USAGE_ERROR]
 
@@ -296,7 +296,7 @@ A database name passed to a `prisma postgres` subcommand matched more than one d
 
 ### POSTGRES.API_ERROR [#POSTGRES.API_ERROR]
 
-A database Management API request failed without a more specific code — the generic fallback for every `prisma postgres` operation, raised by the provider (`lib/database/provider.ts`), and also when a database response omits its project id. The `why` carries the API's message or HTTP status, and the fix is the API's hint when it sent one. An HTTP 401 or 403 raises this code too, with a `why` saying the API rejected the request as unauthorized and a `prisma auth login` next action. Meta: `status`, `apiCode` (the API's own error code, when the response supplied one).
+A database REST API request failed without a more specific code — the generic fallback for every `prisma postgres` operation, raised by the provider (`lib/database/provider.ts`), and also when a database response omits its project id. The `why` carries the API's message or HTTP status, and the fix is the API's hint when it sent one. An HTTP 401 or 403 raises this code too, with a `why` saying the API rejected the request as unauthorized and a `prisma auth login` next action. Meta: `status`, `apiCode` (the API's own error code, when the response supplied one).
 
 ### POSTGRES.BACKUP_NOT_FOUND [#POSTGRES.BACKUP_NOT_FOUND]
 
@@ -320,7 +320,7 @@ The database a `prisma postgres` subcommand targets could not be resolved: eithe
 
 ### POSTGRES.PLAN_LIMIT_REACHED [#POSTGRES.PLAN_LIMIT_REACHED]
 
-A database operation was blocked because the workspace has used up the operations included in its plan — the API's structured plan-limit discriminator, detected on any `prisma postgres` Management API call; this is a workspace plan restriction, not a Prisma outage. The one nextAction is to upgrade the workspace plan, with the upgrade URL and current plan name when the workspace subscription could be read. Meta: `workspaceId`, `blockedFeature`, `planName`, `usageBlocked`, `upgradeUrl` (each `null` when unavailable).
+A database operation was blocked because the workspace has used up the operations included in its plan — the API's structured plan-limit discriminator, detected on any `prisma postgres` REST API call; this is a workspace plan restriction, not a Prisma outage. The one nextAction is to upgrade the workspace plan, with the upgrade URL and current plan name when the workspace subscription could be read. Meta: `workspaceId`, `blockedFeature`, `planName`, `usageBlocked`, `upgradeUrl` (each `null` when unavailable).
 
 ### POSTGRES.RESTORE_CONFLICT [#POSTGRES.RESTORE_CONFLICT]
 
@@ -338,7 +338,7 @@ Project resolution matched more than one project: an explicit project reference 
 
 ### PROJECT.API_ERROR [#PROJECT.API_ERROR]
 
-A Management API project operation (list, rename, delete, or transfer) failed. Listing projects deliberately throws this rather than returning an empty list, so a rejected request is distinguishable from a workspace that genuinely has no projects. The `why` carries the API's message or HTTP status, and the API's own error code, when it sent one, is in `meta.apiCode`. Meta: `status`, `apiCode` (each present only when the response supplied it).
+A REST API project operation (list, rename, delete, or transfer) failed. Listing projects deliberately throws this rather than returning an empty list, so a rejected request is distinguishable from a workspace that genuinely has no projects. The `why` carries the API's message or HTTP status, and the API's own error code, when it sent one, is in `meta.apiCode`. Meta: `status`, `apiCode` (each present only when the response supplied it).
 
 ### PROJECT.CREATE_FAILED [#PROJECT.CREATE_FAILED]
 
@@ -346,11 +346,11 @@ The platform rejected creating a project — raised by `prisma project create` a
 
 ### PROJECT.DELETE_BLOCKED [#PROJECT.DELETE_BLOCKED]
 
-The Management API answered `prisma project delete` with HTTP 400, which typically means the project still has active deployments; the fix is to delete the project's services first (`prisma service delete --service <name>`) and retry. The API's own message replaces the default `why` when present. Meta: none.
+The REST API answered `prisma project delete` with HTTP 400, which typically means the project still has active deployments; the fix is to delete the project's services first (`prisma service delete --service <name>`) and retry. The API's own message replaces the default `why` when present. Meta: none.
 
 ### PROJECT.ENV_API_ERROR [#PROJECT.ENV_API_ERROR]
 
-A Management API call made by the `prisma project env` commands (reading, writing, or deleting variables, or resolving and creating branches for a scope) failed. The summary names the call that failed, for example "Failed to add STRIPE_KEY". An HTTP 401 or 403 raises this code too, with a `why` saying the API rejected the request as unauthorized and a `prisma auth login` next action. Meta: `status`, `apiCode` (the API's own error code, when the response supplied one).
+A REST API call made by the `prisma project env` commands (reading, writing, or deleting variables, or resolving and creating branches for a scope) failed. The summary names the call that failed, for example "Failed to add STRIPE_KEY". An HTTP 401 or 403 raises this code too, with a `why` saying the API rejected the request as unauthorized and a `prisma auth login` next action. Meta: `status`, `apiCode` (the API's own error code, when the response supplied one).
 
 ### PROJECT.ENV_BRANCH_CREATE_REQUIRES_DEFAULT_BRANCH [#PROJECT.ENV_BRANCH_CREATE_REQUIRES_DEFAULT_BRANCH]
 
@@ -398,7 +398,7 @@ An explicit project reference matched no project in the active workspace, either
 
 ### PROJECT.RENAME_FAILED [#PROJECT.RENAME_FAILED]
 
-The Management API answered `prisma project rename` with HTTP 400 or 422, meaning the platform rejected the new name; the API's message and hint replace the default `why` and fix when present, and the fallback fix is to retry with a different name. Meta: none.
+The REST API answered `prisma project rename` with HTTP 400 or 422, meaning the platform rejected the new name; the API's message and hint replace the default `why` and fix when present, and the fallback fix is to retry with a different name. Meta: none.
 
 ### PROJECT.SETUP_REQUIRED [#PROJECT.SETUP_REQUIRED]
 
@@ -414,7 +414,7 @@ A command needed a project but the directory is not linked and no `--project` fl
 
 ### PROJECT.TRANSFER_REJECTED [#PROJECT.TRANSFER_REJECTED]
 
-The Management API answered `prisma project transfer` with HTTP 400 — for example because the recipient token is invalid or expired; the API's message replaces the default `why` when present, and the fix is to check the recipient session or token and retry. Meta: none.
+The REST API answered `prisma project transfer` with HTTP 400 — for example because the recipient token is invalid or expired; the API's message replaces the default `why` when present, and the fix is to check the recipient session or token and retry. Meta: none.
 
 ### PROJECT.USAGE_ERROR [#PROJECT.USAGE_ERROR]
 
@@ -436,7 +436,7 @@ A `service domain` command was pointed at a non-production branch, which the dom
 
 ### SERVICE.DEPLOY_FAILED [#SERVICE.DEPLOY_FAILED]
 
-The general "Management API call failed" wrapper for the `service` command family — despite the name there is no deploy command here: it wraps failures to create a service, list services or versions, show/promote/roll back/delete/start/stop a version, resolve a service URL, and unrecognized custom-domain API failures. The underlying error's message becomes `why` and the original error is carried in `cause`; each raise site attaches its own next actions. On the domain fallback path only, a `DomainApiError` adds debug meta. Meta: `status`, `apiCode`, `hint` (domain fallback path only; otherwise none).
+The general "REST API call failed" wrapper for the `service` command family — despite the name there is no deploy command here: it wraps failures to create a service, list services or versions, show/promote/roll back/delete/start/stop a version, resolve a service URL, and unrecognized custom-domain API failures. The underlying error's message becomes `why` and the original error is carried in `cause`; each raise site attaches its own next actions. On the domain fallback path only, a `DomainApiError` adds debug meta. Meta: `status`, `apiCode`, `hint` (domain fallback path only; otherwise none).
 
 ### SERVICE.DOMAIN_ALREADY_REGISTERED [#SERVICE.DOMAIN_ALREADY_REGISTERED]
 
@@ -536,7 +536,7 @@ Not an error: a warn-severity diagnostic attached by `service version stop` when
 
 ### SERVICE.VERSION_DETACHED [#SERVICE.VERSION_DETACHED]
 
-A version was resolved by its globally-unique id but the Management API returned it without an owning service, so there is nothing to report or act on it as. The next action shows the version with `service version show`. Meta: none.
+A version was resolved by its globally-unique id but the REST API returned it without an owning service, so there is nothing to report or act on it as. The next action shows the version with `service version show`. Meta: none.
 
 ### SERVICE.VERSION_NOT_FOUND [#SERVICE.VERSION_NOT_FOUND]
 
