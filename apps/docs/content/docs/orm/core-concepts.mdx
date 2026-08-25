@@ -20,9 +20,10 @@ model User {
 }
 
 model Post {
-  id     Int    @id @default(autoincrement())
-  title  String
-  userId Int
+  id        Int     @id @default(autoincrement())
+  title     String
+  published Boolean @default(false)
+  userId    Int
 
   user User @relation(fields: [userId], references: [id])
 }
@@ -78,7 +79,7 @@ With the SQL query builder, the two steps are visible in your code:
 import { db } from "./prisma/db";
 
 const plan = db.sql.public.post
-  .select("id", "title", "authorId")
+  .select("id", "title", "userId")
   .where((f, fns) => fns.eq(f.published, true))
   .limit(10)
   .build();
@@ -151,7 +152,7 @@ After that, `pgvector.Vector(1536)` is a column type in your contract, vector op
 
 ## Middleware
 
-Middleware is a function that runs around every query, the same idea as middleware in Express or Koa. Because every query is a plan, middleware gets a structured object to inspect: it can log it, enforce limits on it, or reject it, without changing how queries are written.
+A middleware is a plain object with a name and one or more hooks that run around every query, the same idea as middleware in Express or Koa. You register it once, in the `middleware` option of your client setup. Because every query is a plan, middleware gets a structured object to inspect: it can log it, enforce limits on it, or reject it, without changing how queries are written.
 
 Prisma 8 ships three built-ins: [budgets](/orm/middleware/built-in-budgets) cap row counts and surface slow queries, [lints](/orm/middleware/built-in-lints) block risky query shapes, and [cache](/orm/middleware/built-in-cache) serves repeated reads from memory. You can also [write your own](/orm/middleware/authoring-custom-middleware). Start with [How middleware works](/orm/middleware/how-middleware-works).
 
@@ -209,12 +210,12 @@ npx prisma@latest contract emit
 npx prisma@latest db init --db "$DATABASE_URL"
 ```
 
-**Checking in CI, deploying in CD.** [`migration check`](/cli) verifies the migration files and graph offline, so it runs in CI with no database. [`db verify`](/cli/db-verify) is its live counterpart: a read-only check that a database satisfies the contract. A deploy pipeline pins environments with refs and migrates to them by name:
+**Checking in CI, deploying in CD.** [`migration check`](/cli#other-commands) verifies the migration files and graph offline, so it runs in CI with no database. [`db verify`](/cli/db-verify) is its live counterpart: a read-only check that a database satisfies the contract. A deploy pipeline pins environments with refs and migrates to them by name:
 
 ```npm
 npx prisma@latest migration check
 npx prisma@latest db verify --db "$DATABASE_URL"
-npx prisma@latest db migrate --to production
+npx prisma@latest db migrate --db "$DATABASE_URL" --to production
 ```
 
 ## Prompt your coding agent
