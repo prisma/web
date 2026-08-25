@@ -1,165 +1,76 @@
 ---
-title: init
-description: Set up a new Prisma project in the current directory
-metaTitle: prisma init | Create New Prisma Project
-metaDescription: 'Bootstrap a new Prisma project with prisma init. Creates schema.prisma, prisma.config.ts, .env. Choose datasource provider or provision Prisma Postgres.'
+title: orm init
+description: Initialize Prisma 8 files in a project.
 url: /cli/init
+metaTitle: orm init | Prisma 8 CLI
+metaDescription: Learn how to initialize Prisma 8 files in an existing project with the orm init command.
 ---
 
-The `prisma init` command bootstraps a fresh Prisma project within the current directory.
+`orm init` scaffolds the Prisma 8 config, contract source, and runtime files inside an existing project, installs dependencies, and emits the contract. It gets you from zero to typed queries in one step.
+
+Use a [Prisma 8 quickstart](/prisma-orm/quickstart/postgresql) when you want a complete new application template. Use `orm init` when you already have a project and want to add the lower-level Prisma 8 files.
 
 ## Usage
 
-```bash
-prisma init [options]
+Run it interactively for a guided setup:
+
+```npm
+npx prisma@latest orm init
 ```
 
-The command creates a `prisma` directory containing a `schema.prisma` file. By default, the project is configured for [local Prisma Postgres](/local-development/postgres), but you can choose a different database using the `--datasource-provider` option.
+Or supply `--target` and `--authoring` for a fully scriptable run (CI, AI coding agents, automation):
+
+```npm
+npx prisma@latest orm init --yes --target postgres --authoring psl
+```
 
 ## Options
 
-| Option                  | Description                                                                                               |
-| ----------------------- | --------------------------------------------------------------------------------------------------------- |
-| `-h`, `--help`          | Display help message                                                                                      |
-| `--db`                  | Provision a fully managed Prisma Postgres database on the Prisma Data Platform                            |
-| `--datasource-provider` | Define the datasource provider: `postgresql`, `mysql`, `sqlite`, `sqlserver`, `mongodb`, or `cockroachdb` |
-| `--generator-provider`  | Define the generator provider to use (default: `prisma-client`)                                           |
-| `--preview-feature`     | Define a preview feature to use (can be specified multiple times)                                         |
-| `--output`              | Define Prisma Client generator output path                                                                |
-| `--url`                 | Define a custom datasource URL                                                                            |
+| Option | What it does |
+| --- | --- |
+| `--target <db>` | Sets the database target. Use `postgres` or `mongodb`. |
+| `--authoring <style>` | Sets the contract authoring style. Use `psl` or `typescript`. |
+| `--schema-path <path>` | Sets where the starter contract is written. |
+| `--write-env` | Writes `.env` from `.env.example` (gitignored). |
+| `--probe-db` | Connects to `DATABASE_URL` once and checks the server version. |
+| `--strict-probe` | Treats a failed database probe as fatal. |
+| `--skip-install` | Skips dependency installation and contract emission. |
+| `--skip-skills` | Skips installing the [Prisma 8 agent skills](/ai/tools/skills) (the version-pinned `prisma-8` usage skill plus the upgrade skills). |
+| `--keep-previous-facade` | Keeps the previous target package in `package.json` when switching targets. |
 
-## Flags
+## What it creates
 
-| Flag           | Description                                     |
-| -------------- | ----------------------------------------------- |
-| `--with-model` | Add an example model to the created schema file |
+The exact files depend on the target and authoring style, but a Postgres PSL setup normally includes:
+
+- `prisma.config.ts`
+- a starter contract file such as `src/prisma/contract.prisma`
+- emitted contract artifacts after installation runs
+- a runtime client file (`src/prisma/db.ts`) that imports `contract.json`
+- `.env.example`, `tsconfig.json`, and updated `package.json`
+
+The runtime files are ES modules. If your `package.json` declares `"type": "commonjs"`, `orm init` keeps it and prints a warning. Set `"type": "module"` so the scaffolded `db.ts` loads.
 
 ## Examples
 
-### Set up a new Prisma project (default)
+```npm
+npx prisma@latest orm init --yes --target postgres --authoring psl
+npx prisma@latest orm init --yes --target mongodb --authoring typescript --json
+npx prisma@latest orm init --skip-install
+```
 
-Sets up a new project configured for local Prisma Postgres:
+## After initialization
+
+Review the generated files, set `DATABASE_URL`, and emit the contract when you change the schema:
 
 ```npm
-npx prisma init
+npx prisma@latest contract emit
 ```
 
-### Specify a datasource provider
-
-Set up a new project with MySQL as the datasource provider:
+Then initialize or verify the database:
 
 ```npm
-npx prisma init --datasource-provider mysql
+npx prisma@latest db init --db "$DATABASE_URL"
+npx prisma@latest db verify --db "$DATABASE_URL"
 ```
 
-### Specify a generator provider
-
-Set up a project with the legacy `prisma-client-js` generator instead of the default `prisma-client` generator:
-
-```npm
-npx prisma init --generator-provider prisma-client-js
-```
-
-### Specify preview features
-
-Set up a project with specific preview features enabled:
-
-```npm
-npx prisma init --preview-feature metrics
-```
-
-Multiple preview features:
-
-```npm
-npx prisma init --preview-feature views --preview-feature metrics
-```
-
-### Specify a custom output path
-
-Set up a project with a custom output path for Prisma Client:
-
-```npm
-npx prisma init --output ./generated-client
-```
-
-### Specify a custom datasource URL
-
-Set up a project with a specific database URL:
-
-```npm
-npx prisma init --url mysql://user:password@localhost:3306/mydb
-```
-
-### Add an example model
-
-Set up a project with an example `User` model:
-
-```npm
-npx prisma init --with-model
-```
-
-### Provision a Prisma Postgres database
-
-Create a new project with a managed Prisma Postgres database:
-
-```npm
-npx prisma init --db
-```
-
-This requires authentication with the [Prisma Data Platform Console](https://console.prisma.io).
-
-## Generated files
-
-After running `prisma init`, you'll have the following files:
-
-### `prisma/schema.prisma`
-
-The Prisma schema file where you define your data model:
-
-```prisma
-generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
-}
-
-datasource db {
-  provider = "postgresql"
-}
-```
-
-### `prisma.config.ts`
-
-A TypeScript configuration file for Prisma:
-
-```typescript
-import "dotenv/config";
-import { defineConfig, env } from "prisma/config";
-
-export default defineConfig({
-  schema: "prisma/schema.prisma",
-  migrations: {
-    path: "prisma/migrations",
-  },
-  datasource: {
-    url: env("DATABASE_URL"),
-  },
-});
-```
-
-### `.env`
-
-Environment variables file for your project:
-
-```bash
-DATABASE_URL="postgresql://user:password@localhost:5432/mydb"
-```
-
-### `.gitignore`
-
-Git ignore file configured for Prisma projects:
-
-```bash
-node_modules
-.env
-/generated/prisma
-```
+The scaffolded `db.ts` reads `DATABASE_URL` from the process environment at runtime. The CLI loads `.env` through the config file, but your own scripts do not. Run them with the variable set, for example `node --env-file=.env src/index.ts`.

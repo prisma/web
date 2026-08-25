@@ -67,9 +67,9 @@ export default defineConfig({
     title: "Migrate",
     filename: "terminal",
     lang: "bash",
-    source: `bunx prisma@next contract emit
-bunx prisma@next migration plan
-bunx prisma@next db init`,
+    source: `bunx prisma@latest contract emit
+bunx prisma@latest migration plan
+bunx prisma@latest db init`,
     caption:
       "migration plan copies the pgvector pack's own baseline migration into your repo; db init applies both spaces. You never run CREATE EXTENSION by hand.",
     output: [

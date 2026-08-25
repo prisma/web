@@ -11,16 +11,16 @@ Classify every docs page as one of three kinds before writing or moving content:
 ## Placement rules
 
 1. Reference material lives under `content/docs/cli/`, `content/docs/rest-api/`, or a section's `---Reference---` meta.json block. Never document flags, parameters, or endpoints in full inside a concept or guide page; link to the reference page instead.
-2. A product section may keep a thin `cli-reference.mdx` pointer page that links into `cli/v8/*`. `content/docs/compute/cli-reference.mdx` is the canonical example. Full command references live in `cli/v8/`.
+2. A product section may keep a thin `cli-reference.mdx` pointer page that links into `cli/*`. `content/docs/compute/cli-reference.mdx` is the canonical example. Full command references live in `cli/`; the Prisma 7 CLI is under `cli/v7/`.
 3. The section is named "REST API" (folder `rest-api`). Do not reintroduce "Management API" in titles, nav, prose, or new URLs. Code identifiers (`@prisma/management-api-sdk`, `createManagementApiClient`) keep their names.
 4. Sidebar grouping (Build/Deploy/Manage/Reference) is UI config in `src/lib/sidebar-sections.ts`, not content structure. Do not add grouping separators to the root `content/docs/meta.json`.
 
 ## Moving or renaming pages
 
-1. Add a redirect in the live region of `next.config.mjs` `redirects()` (near the `/llms/next.txt` entry). Do not add entries to the commented "Prisma 8 URL cutover" staging blocks unless working on that cutover. Run `pnpm audit:redirects:strict` after.
+1. Add a redirect in the live region of `next.config.mjs` `redirects()` (near the `/llms/next.txt` entry). Run `pnpm audit:redirects:strict` after.
 2. Re-run `npx tsx scripts/add-url-frontmatter.ts` after any file move; the required `url:` frontmatter goes stale silently and no linter catches it.
 3. New top-level sections need an entry in `llmsSections` in `src/lib/llms.ts` (see `.claude/skills/docs-agent-ready`).
-4. Do not rename the `orm/`, `cli/`, or `guides/` folders or their meta.json titles, and keep `cli/v8/meta.json` title exactly `"v8 (RC)"`: `src/lib/version.ts` path maps and `src/lib/versioned-sidebar-tree.ts` match on those strings and break the version switcher silently.
+4. Do not rename the `orm/`, `cli/`, or `guides/` folders or their meta.json titles, and keep the `orm/v7`, `cli/v7`, `guides/v7`, and `(index)/v7` meta.json titles exactly `"v7"`: `src/lib/version.ts` path maps and `src/lib/versioned-sidebar-tree.ts` match on those strings and break the version switcher silently.
 
 ## Generated content
 

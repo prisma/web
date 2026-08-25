@@ -105,7 +105,7 @@ Then grab the connection strings you will need:
 
 Every Prisma Postgres database has [two connection strings](https://www.prisma.io/docs/postgres/database/connecting-to-your-database): a **pooled** one (hostname `pooled.db.prisma.io`) for application traffic, and a **direct** one (`db.prisma.io`) for migrations and standard Postgres tools like `pg_restore`. You will use both in the next steps.
 
-Two CLI alternatives, depending on where you are: for a brand-new project, `npx prisma init --db` scaffolds the schema and provisions a Prisma Postgres database in one go, and [`npx create-db@latest`](https://www.prisma.io/docs/postgres/npx-create-db) creates a temporary database with no sign-up; claim it within 24 hours to keep it, or it is deleted.
+Two CLI alternatives, depending on where you are: for a brand-new project, `npx prisma@7.9.1 init --db` scaffolds the schema and provisions a Prisma Postgres database in one go, and [`npx create-db@latest`](https://www.prisma.io/docs/postgres/npx-create-db) creates a temporary database with no sign-up; claim it within 24 hours to keep it, or it is deleted.
 
 ## Update env and config
 
@@ -164,7 +164,7 @@ npx prisma migrate diff \
 npx prisma migrate resolve --applied 0_init
 ```
 
-That writes the migration your schema implies and records it as already applied locally, without touching your data. Point `.env` back at production before continuing. The [baselining docs](https://www.prisma.io/docs/orm/prisma-migrate/workflows/baselining) cover the workflow in full. Do this before dumping, too, if you are taking the data path below: it gives the dump a migration history to carry.
+That writes the migration your schema implies and records it as already applied locally, without touching your data. Point `.env` back at production before continuing. The [baselining docs](https://www.prisma.io/docs/orm/v7/prisma-migrate/workflows/baselining) cover the workflow in full. Do this before dumping, too, if you are taking the data path below: it gives the dump a migration history to carry.
 
 With `.env` on production, the CLI applies your migrations to the hosted database, over the direct connection:
 
@@ -178,7 +178,7 @@ npx prisma migrate deploy
 All migrations have been successfully applied.
 ```
 
-`migrate deploy` is the production counterpart of `migrate dev`: it applies the committed migration files in order, with no schema drafting, no prompts, and no drift detection. That makes it safe to put in CI or your deploy pipeline, where it belongs. The [development and production workflows docs](https://www.prisma.io/docs/orm/prisma-migrate/workflows/development-and-production) explain the split. If you have a seed script for production defaults, run it once now, while `.env` points at production.
+`migrate deploy` is the production counterpart of `migrate dev`: it applies the committed migration files in order, with no schema drafting, no prompts, and no drift detection. That makes it safe to put in CI or your deploy pipeline, where it belongs. The [development and production workflows docs](https://www.prisma.io/docs/orm/v7/prisma-migrate/workflows/development-and-production) explain the split. If you have a seed script for production defaults, run it once now, while `.env` points at production.
 
 **Bringing the data along.** If the local data matters, copy it with the standard Postgres tools. The dump and restore below both take their database on the command line with `-d`, so neither reads `.env`; it does not matter that `.env` currently points at production.
 
@@ -249,7 +249,7 @@ Yes, that is the intended workflow. Production traffic hits hosted Prisma Postgr
 The checklist, condensed:
 
 1. **Develop locally.** `npx prisma dev` for a one-command local Prisma Postgres, or keep your Docker Postgres. Apply schema changes with `npx prisma migrate dev`.
-2. **Create the hosted database.** Console **New project**, or `npx prisma init --db` for a brand-new project, or `npx create-db@latest` and claim it within 24 hours. Copy the pooled and direct connection strings.
+2. **Create the hosted database.** Console **New project**, or `npx prisma@7.9.1 init --db` for a brand-new project, or `npx create-db@latest` and claim it within 24 hours. Copy the pooled and direct connection strings.
 3. **Update config.** Set the pooled `DATABASE_URL` and the direct `DIRECT_URL`, point the config's datasource at `DIRECT_URL`, and store the production URLs in your platform's env settings.
 4. **Move schema and data.** Fresh start: `npx prisma migrate deploy` plus your seed. With data: `pg_dump -Fc` locally, `pg_restore` over the direct connection, history included.
 5. **Validate.** `npx prisma migrate status`, row counts in Prisma Studio, one smoke test, then deploy with `migrate deploy` in the pipeline.

@@ -1,68 +1,99 @@
 ---
 title: Overview
-description: 'The Prisma CLI is the command-line interface for Prisma ORM. Use it to initialize projects, generate Prisma Client, manage databases, run migrations, and more'
-metaTitle: Prisma CLI Reference | Commands for ORM, Migrate & Database
-metaDescription: 'Complete Prisma CLI reference. Initialize projects, generate Prisma Client, run migrations, manage databases, and use Prisma Studio. Install with npm.'
+description: Prisma CLI reference
 url: /cli
+metaTitle: Prisma 8 CLI reference
+metaDescription: 'Learn the Prisma 8 CLI commands for contracts, databases, migrations, and refs in the unified Prisma CLI.'
 ---
 
-The Prisma CLI provides commands for:
+Prisma 8 ships with a new, unified Prisma CLI. One binary contains the commands for the platform and ORM including [Prisma Composer](/composer), [Prisma Compute](/compute), and more.
 
-- **Project setup**: Initialize new Prisma projects
-- **Code generation**: Generate Prisma Client and other artifacts
-- **Database management**: Pull schemas, push changes, seed data
-- **Migrations**: Create, apply, and manage database migrations
-- **Development tools**: Local database servers, schema validation, formatting
+:::note[Using Prisma 7?]
 
-## Installation
-
-The Prisma CLI is available as an npm package. Install it as a development dependency:
-
-```npm
-npm install prisma --save-dev
-```
-
-:::info
-
-This page documents the Prisma 7 CLI that ships in the `prisma` package. Prisma 8 introduces a new, unified Prisma CLI that also includes commands for [Prisma Composer](/composer) and [Prisma Compute](/compute). The Prisma 8 RC publishes it as `prisma@next`. See the [Prisma 8 CLI reference](/cli/v8), the [Composer commands](/cli/v8/composer), and the [platform commands](/cli/v8#platform-commands).
+Prisma 8 is the current release of Prisma ORM. Prisma 7 remains fully supported; its docs live at [/orm/v7](/orm/v7) and its setup paths at [/v7/getting-started](/v7/getting-started).
 
 :::
 
-## Usage
+The Prisma 8 CLI ships in the `prisma` package. Run it without installing:
 
-```bash
-prisma [command]
+```npm
+npx prisma@latest --help
+npx prisma@latest contract emit
 ```
 
-## Commands
+With `prisma` installed in your project, these commands become plain `prisma contract emit` and so on.
 
-| Command                          | Description                                          |
-| -------------------------------- | ---------------------------------------------------- |
-| [`init`](/cli/init)         | Set up Prisma for your app                           |
-| [`dev`](/cli/dev)           | Start a local Prisma Postgres server for development |
-| [`generate`](/cli/generate) | Generate artifacts (e.g. Prisma Client)              |
-| [`db`](/cli/db)             | Manage your database schema and lifecycle            |
-| [`migrate`](/cli/migrate)   | Migrate your database                                |
-| [`studio`](/cli/studio)     | Browse your data with Prisma Studio                  |
-| [`validate`](/cli/validate) | Validate your Prisma schema                          |
-| [`format`](/cli/format)     | Format your Prisma schema                            |
-| [`version`](/cli/version)   | Display Prisma version info                          |
-| [`debug`](/cli/debug)       | Display Prisma debug info                            |
+For a full app scaffold, use a [Prisma 8 quickstart](/prisma-orm/quickstart/postgresql). That path creates the project files and package scripts for you. This CLI reference is for the lower-level commands those scripts call.
+
+## Platform commands
+
+The platform commands manage everything your app runs on. With [`service`](/cli/service), [`git`](/cli/git), and [`composer`](/cli/composer) you deploy apps to [Prisma Compute](/compute) and manage their deployments, logs, and domains. With [`postgres`](/cli/postgres) you spin up and manage [Prisma Postgres](/postgres) databases. With [`bucket`](/cli/bucket) you create blob-storage buckets and their access keys. [`auth`](/cli/auth), [`project`](/cli/project), and [`branch`](/cli/branch) handle the account, project, and branch plumbing around them. Each command group has its own page in this section; deployments are created by a git push, the [Console](https://pris.ly/pdp), or [Composer](/composer), never by a standalone `deploy` command.
+
+## Common workflows
+
+There are two main entry points. Platform users deploy apps, create databases, and provision buckets with the [platform commands](#platform-commands). ORM users manage their schema, contracts, and migrations with the ORM and migration commands.
+
+### Deploy an app
+
+Sign in, write the committed compute config, and connect the repository; every push then deploys:
+
+```npm
+npx prisma@latest auth login
+npx prisma@latest init
+npx prisma@latest git connect
+```
+
+Follow a deploy with [`build logs`](/cli/build) and manage the result with [`service`](/cli/service).
+
+### Create a database
+
+```npm
+npx prisma@latest postgres create mydb
+npx prisma@latest postgres connection create mydb
+```
+
+`postgres create` prints a one-time connection URL; `postgres connection create` mints another when you need one. See [`postgres`](/cli/postgres).
+
+### Create a bucket
+
+```npm
+npx prisma@latest bucket create --name my-bucket
+npx prisma@latest bucket key create <bucket-id>
+```
+
+`bucket key create` prints the key's one-time credentials. See [`bucket`](/cli/bucket).
+
+### Start in an existing project
+
+```npm
+npx prisma@latest orm init --target postgres --authoring psl
+npx prisma@latest contract emit
+npx prisma@latest db init --db "$DATABASE_URL"
+```
+
+### Adopt an existing database
+
+```npm
+npx prisma@latest contract infer --db "$DATABASE_URL" --output ./prisma/contract.prisma
+npx prisma@latest contract emit
+npx prisma@latest db sign --db "$DATABASE_URL"
+npx prisma@latest db verify --db "$DATABASE_URL"
+```
+
+### Use checked-in migrations
+
+```npm
+npx prisma@latest contract emit
+npx prisma@latest migration plan --name add-users
+npx prisma@latest migration status --db "$DATABASE_URL"
+npx prisma@latest migrate --db "$DATABASE_URL"
+npx prisma@latest db verify --db "$DATABASE_URL"
+```
+
+## Other commands
+
+A few commands ship without dedicated pages yet. `format` formats your PSL contract source in place, and `lsp` starts the Prisma 8 language server (spawned by editors, not run interactively). The `migration` group also has read-only inspection commands: `migration list` (on-disk migrations per contract space; `--space`, `--ascii`, `--legend`), `migration log` (executed history from the database ledger; `--db`, `--utc`, `--ascii`), `migration graph` (graph topology; `--space`, `--dot` for Graphviz output, `--ascii`, `--legend`), and `migration check [target]` (artifact and graph integrity; `--space`). Run any of them with `--help` for the details.
 
 ## Global flags
 
-These flags are available for all commands:
-
-| Flag                | Description                         |
-| ------------------- | ----------------------------------- |
-| `--help`, `-h`      | Show help information for a command |
-| `--preview-feature` | Run Preview Prisma commands         |
-
-## Using a HTTP proxy
-
-Prisma CLI supports custom HTTP proxies. This is useful when behind a corporate firewall.
-
-Set one of these environment variables:
-
-- `HTTP_PROXY` or `http_proxy`: Proxy URL for HTTP traffic (e.g., `http://localhost:8080`)
-- `HTTPS_PROXY` or `https_proxy`: Proxy URL for HTTPS traffic (e.g., `https://localhost:8080`)
+Every command accepts the same set of output, prompt, and config flags. They are documented on [Global flags](/cli/global-flags).
