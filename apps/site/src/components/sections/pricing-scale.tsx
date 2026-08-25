@@ -22,11 +22,11 @@ const GRAIN: React.CSSProperties = {
   mixBlendMode: "multiply",
 };
 
-// TODO: /pricing and /customers/[slug] are Phase 1 sitemap routes not built
-// yet (see design-ref/sitemap.md).
-// TODO: the ~5K and ~500K MAU scenario numbers and all three case studies are
-// placeholders pending client content — only the ~50K MAU column came from
-// the client.
+// The case studies are real customer stories from src/lib/customers.ts; their
+// teasers restate claims from the published posts. Pick per-tier fits from
+// that list when rotating them.
+// TODO: the ~5K and ~500K MAU scenario numbers are placeholders pending
+// client content — only the ~50K MAU column came from the client.
 
 const BULLETS = [
   {
@@ -82,9 +82,9 @@ const SCENARIOS: Scenario[] = [
       "Hard free-tier cap, no surprises",
     ],
     caseStudy: {
-      company: "Pixelwave",
-      teaser: "shipped a weekend build that found real users, on the free tier",
-      href: "/customers/pixelwave",
+      company: "Pearly",
+      teaser: "scaled quickly with an ultra-lean team on Prisma",
+      href: "/blog/pearly-plan-customer-success-pdmdrRhTupve",
     },
   },
   {
@@ -99,9 +99,9 @@ const SCENARIOS: Scenario[] = [
     ],
     prisma: ["One bill, one platform", "Data transfer included", "Spend limits on by default"],
     caseStudy: {
-      company: "CloudBase",
-      teaser: "switched their entire stack over in a weekend",
-      href: "/customers/cloudbase",
+      company: "Solin",
+      teaser: "serves 2.5M database queries per day on Prisma",
+      href: "/blog/how-solin-uses-prisma-accelerate-to-serve-2-5m-database-queries-per",
     },
   },
   {
@@ -116,9 +116,9 @@ const SCENARIOS: Scenario[] = [
     ],
     prisma: ["One bill, one platform", "Data transfer included", "Spend limits on by default"],
     caseStudy: {
-      company: "Meridian Health",
-      teaser: "consolidated five vendors and passed compliance review",
-      href: "/customers/meridian-health",
+      company: "Tryg",
+      teaser: "democratized billions of records across data sources with Prisma",
+      href: "/blog/tryg-customer-story-pdmdrRhTupvd",
     },
   },
 ];
