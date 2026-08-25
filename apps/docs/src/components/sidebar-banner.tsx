@@ -9,12 +9,11 @@ export interface BannerSlide {
   title: string;
   description: string;
   href: string;
+  /** Accent for the badge and link: ORM amber or platform cyan. */
   gradient?: "orm" | "ppg";
   badge?: string;
-  image?: string;
-  imageAlt?: string;
-  /** Brand-drawn tile instead of a raster — stays on-palette by construction. */
-  visual?: "prism";
+  /** Link label; defaults to "Read more". */
+  cta?: string;
 }
 
 interface SidebarBannerCarouselProps {
@@ -65,6 +64,7 @@ export function SidebarBannerCarousel({ slides }: SidebarBannerCarouselProps) {
   }
 
   const front = visibleSlides[0];
+  const isPpg = front.gradient === "ppg";
 
   // Peek cards rendered furthest-back first so DOM order = visual stacking
   const peekCards = visibleSlides.slice(1, 4).map((_, idx, arr) => {
@@ -97,121 +97,107 @@ export function SidebarBannerCarousel({ slides }: SidebarBannerCarouselProps) {
       {/* Peek cards above — each one narrower, creating depth perspective */}
       {peekCount > 0 && <div className="flex flex-col -mb-px">{peekCards}</div>}
 
-      {/* Front card */}
+      {/* Front card. The card is the artwork: a brand-tinted panel (card-wash
+          flips with the theme: cyan-tinted paper in light, cyan-tinted ink in
+          dark) with the always-on spectrum ring and the triple-band ray
+          crossing the top corner behind the copy. No raster, so it never
+          fights the theme it sits in. */}
       <div
         className={cn(
-          // `rounded-high` was never a real utility (eclipse only defines
-          // --radius-square-{low,,high} + --radius-circle), so this card had no
-          // radius at all. `spectrum-border` is the shell's one spectrum moment:
-          // a gradient hairline that lights up on hover, animation guarded by
-          // the reduced-motion rule inside eclipse's globals.
-          "spectrum-border relative rounded-square-high border border-stroke-neutral overflow-hidden shadow-drop-low",
-          "bg-background-default transition-shadow hover:shadow-drop",
+          "spectrum-border spectrum-border-on group relative overflow-hidden rounded-square-high",
+          "bg-card-wash shadow-drop-low transition-shadow hover:shadow-drop",
+          "focus-within:ring-2 focus-within:ring-foreground-ppg",
         )}
       >
-        {/* Title + description */}
-        <div className="p-3 pb-0">
-          <div className="flex items-center gap-1.5 mb-1">
-            <span className="text-sm font-semibold text-foreground-neutral leading-tight">
-              {front.title}
-            </span>
-            {front.badge && (
+        {/* The whole card is the link, but as an overlay sibling rather than a
+            wrapper: interactive content (the dismiss button) is not allowed
+            inside an anchor. Copy is pointer-transparent so clicks reach the
+            overlay; the button opts back in and sits above it. */}
+        <Link
+          href={front.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`${front.cta ?? "Read more"}: ${front.title}`}
+          className="absolute inset-0 z-0 rounded-square-high focus-visible:outline-none"
+        />
+
+        <PrismRay
+          intensity="structural"
+          mask="start"
+          className="pointer-events-none -right-24 top-4 h-7 w-72 transition-opacity duration-300 group-hover:opacity-90"
+        />
+        <PrismRay
+          intensity="whisper"
+          mask="both"
+          className="pointer-events-none -left-16 bottom-3 h-4 w-64 opacity-25 dark:opacity-40"
+        />
+
+        <div className="pointer-events-none relative p-3.5">
+          <div className="flex items-center justify-between">
+            {front.badge ? (
               <span
                 className={cn(
-                  "text-2xs font-medium px-1.5 py-0.5 rounded-circle shrink-0",
-                  front.gradient === "ppg"
-                    ? "bg-background-ppg text-foreground-ppg"
-                    : "bg-background-orm text-foreground-orm",
+                  "inline-flex items-center rounded-circle px-2 py-0.5 text-2xs font-semibold uppercase tracking-wide",
+                  isPpg
+                    ? "bg-background-ppg-reverse text-foreground-ppg-reverse"
+                    : "bg-background-orm-reverse text-foreground-orm-reverse",
                 )}
               >
                 {front.badge}
               </span>
+            ) : (
+              <span />
             )}
-          </div>
-          <p className="text-xs text-foreground-neutral-weak truncate">{front.description}</p>
-        </div>
-
-        {/* Image preview */}
-        <div
-          className={cn(
-            "relative mx-3 mt-2 rounded-square overflow-hidden aspect-video",
-            !front.image && (front.gradient === "ppg" ? "bg-gradient-ppg" : "bg-gradient-orm"),
-          )}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          {front.visual === "prism" ? (
-            // The brand tile: ink panel, the triple-band ray crossing behind a
-            // small wordmark — the sidebar-scale echo of the reference hero.
-            // Deliberately ink in both themes (it is artwork, not surface).
-            <div className="relative flex size-full items-center justify-center overflow-hidden bg-[#151515]">
-              <PrismRay
-                intensity="hero"
-                className="left-1/2 top-[58%] h-9 w-[30rem] -translate-x-1/2 -translate-y-1/2"
-              />
-              <span className="relative font-sans-display text-lg font-medium text-white">
-                Prisma 8
-              </span>
-            </div>
-          ) : front.image ? (
-            <img
-              src={front.image.startsWith("http") ? front.image : `/docs${front.image}`}
-              alt={front.imageAlt ?? front.title ?? ""}
-              className="absolute inset-0 size-full object-cover"
-            />
-          ) : (
-            <div className="flex items-center justify-center size-full">
+            <button
+              type="button"
+              aria-label="Dismiss"
+              onClick={(e) => handleDismiss(e, front.href)}
+              className="pointer-events-auto relative z-10 -m-1 rounded-circle p-1 text-foreground-neutral-weaker transition-colors hover:bg-background-neutral-strong hover:text-foreground-neutral"
+            >
               <svg
                 aria-hidden="true"
-                viewBox="0 0 28 37"
+                viewBox="0 0 16 16"
                 fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-8 w-auto opacity-40"
+                stroke="currentColor"
+                strokeWidth="1.75"
+                strokeLinecap="round"
+                className="size-3.5"
               >
-                <path
-                  d="M27.4 8.42L15.52.32a3.2 3.2 0 00-3.36 0L.32 8.42A3.22 3.22 0 000 11.1v16.2a3.22 3.22 0 001.6 2.78l11.88 7.6a3.2 3.2 0 003.36 0l11.56-7.6a3.2 3.2 0 001.6-2.78V11.1a3.22 3.22 0 00-1.6-2.68zM12.16 33.48L2.24 27.18a1.6 1.6 0 01-.8-1.38v-7.4l10.72 6.5v8.58zm1.28-10.6L2.28 16.22l5.08-3.16 11.16 6.76-5.08 3.06zm13.12-4.56v7.38a1.6 1.6 0 01-.8 1.38l-9.92 6.3v-8.56l10.72-6.5z"
-                  fill="currentColor"
-                  className={cn(
-                    front.gradient === "ppg"
-                      ? "text-foreground-ppg-strong"
-                      : "text-foreground-orm-strong",
-                  )}
-                />
+                <path d="M4 4l8 8M12 4l-8 8" />
               </svg>
-            </div>
-          )}
-        </div>
+            </button>
+          </div>
 
-        {/* Action bar — appears on hover */}
-        <div
-          className={cn(
-            "flex items-center justify-between px-3 overflow-hidden transition-all duration-300 ease-out",
-            hovered ? "max-h-12 opacity-100 py-2.5" : "max-h-0 opacity-0 py-0",
-          )}
-        >
-          <Link
-            href={front.href}
-            target="_blank"
-            rel="noopener noreferrer"
+          <h3 className="mt-3 font-sans-display text-[15px] font-medium leading-snug text-foreground-neutral">
+            {front.title}
+          </h3>
+          <p className="mt-1.5 text-xs leading-relaxed text-foreground-neutral-weak">
+            {front.description}
+          </p>
+
+          <span
             className={cn(
-              "text-xs font-medium transition-colors",
-              front.gradient === "ppg"
-                ? "text-foreground-ppg hover:text-foreground-ppg-strong"
-                : "text-foreground-orm hover:text-foreground-orm-strong",
+              "mt-3 inline-flex items-center gap-1 text-xs font-medium transition-colors",
+              isPpg
+                ? "text-foreground-ppg group-hover:text-foreground-ppg-strong"
+                : "text-foreground-orm group-hover:text-foreground-orm-strong",
             )}
           >
-            Read more
-          </Link>
-          <button
-            type="button"
-            onClick={(e) => handleDismiss(e, front.href)}
-            className="text-xs text-foreground-neutral-weaker hover:text-foreground-neutral-weak transition-colors"
-          >
-            Dismiss
-          </button>
+            {front.cta ?? "Read more"}
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="size-3 transition-transform duration-300 group-hover:translate-x-0.5"
+            >
+              <path d="M3 8h10M9 4l4 4-4 4" />
+            </svg>
+          </span>
         </div>
-
-        {/* Bottom padding when action bar is hidden */}
-        <div className={cn("transition-all duration-300 ease-out", hovered ? "h-0" : "h-3")} />
       </div>
     </div>
   );
