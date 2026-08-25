@@ -1,0 +1,121 @@
+---
+title: pull
+description: Pull the state from the database to the Prisma schema using introspection
+metaTitle: prisma db pull | Introspect Database to Prisma Schema
+metaDescription: 'Sync your Prisma schema from an existing database with prisma db pull. Introspect tables, relations, and generate Prisma models automatically.'
+url: /cli/v7/db/pull
+---
+
+The `prisma db pull` command connects to your database and adds Prisma models to your Prisma schema that reflect the current database schema.
+
+## Usage
+
+```bash
+prisma db pull [options]
+```
+
+The datasource URL configuration is read from the Prisma config file (e.g., `prisma.config.ts`).
+
+:::warning
+
+This command will overwrite the current `schema.prisma` file with the new schema. Back up your current schema or commit to version control before running `db pull` if it contains important modifications.
+
+:::
+
+:::info
+
+Introspection with `db pull` on the [MongoDB connector](/orm/v7/core-concepts/supported-databases/mongodb) samples the data instead of reading a schema.
+
+:::
+
+## Prerequisites
+
+Configure your database connection in `prisma.config.ts`:
+
+```prisma file=schema.prisma
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+```
+
+```typescript file=prisma.config.ts
+import { defineConfig, env } from "prisma/config";
+
+export default defineConfig({
+  schema: "prisma/schema.prisma",
+  migrations: {
+    path: "prisma/migrations",
+  },
+  datasource: {
+    url: env("DATABASE_URL"),
+  },
+});
+```
+
+## Flags
+
+| Flag           | Description                                    |
+| -------------- | ---------------------------------------------- |
+| `-h`, `--help` | Display help message                           |
+| `--force`      | Ignore current Prisma schema file              |
+| `--print`      | Print the introspected Prisma schema to stdout |
+
+## Options
+
+| Option                   | Description                                                                                                                 |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| `--config`               | Custom path to your Prisma config file                                                                                      |
+| `--schema`               | Custom path to your Prisma schema                                                                                           |
+| `--url`                  | Override the datasource URL from the Prisma config file                                                                     |
+| `--composite-type-depth` | Depth for introspecting composite types (e.g., MongoDB Embedded Documents). Default `-1` for infinite depth, `0` to disable |
+| `--schemas`              | Specify database schemas to introspect (overrides datasource block)                                                         |
+| `--local-d1`             | Generate a Prisma schema from a local Cloudflare D1 database                                                                |
+
+## Examples
+
+### Introspect the database
+
+```npm
+npx prisma db pull
+```
+
+Output:
+
+```text
+Introspecting based on datasource defined in schema.prisma …
+
+✔ Introspected 2 models and wrote them into schema.prisma in 38ms
+
+Run prisma generate to generate Prisma Client.
+```
+
+### Specify a schema path
+
+```npm
+npx prisma db pull --schema=./alternative/schema.prisma
+```
+
+### Print to stdout instead of writing to file
+
+```npm
+npx prisma db pull --print
+```
+
+### Force overwrite existing schema
+
+Ignore any customizations in the current schema:
+
+```npm
+npx prisma db pull --force
+```
+
+### Set composite type depth for MongoDB
+
+```npm
+npx prisma db pull --composite-type-depth=2
+```

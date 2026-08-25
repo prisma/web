@@ -278,6 +278,8 @@ const config = {
       { source: "/startups", destination: "/programs/startups", permanent: true },
       { source: "/partners", destination: "/programs/partners", permanent: true },
       { source: "/oss-friends", destination: "/programs/oss-friends", permanent: true },
+      // Template gallery renamed to /apps.
+      { source: "/templates", destination: "/apps", permanent: true },
       // ORM feature marketing absorbed by the new /orm product page.
       { source: "/client", destination: "/orm", permanent: true },
       { source: "/typedsql", destination: "/orm", permanent: true },
@@ -523,7 +525,7 @@ const config = {
         permanent: true,
         source: "/blog/heroku-integration-homihof6eifi",
         destination:
-          "https://www.prisma.io/docs/orm/prisma-client/deployment/traditional/deploy-to-heroku",
+          "https://www.prisma.io/docs/orm/v7/prisma-client/deployment/traditional/deploy-to-heroku",
       },
       {
         permanent: true,

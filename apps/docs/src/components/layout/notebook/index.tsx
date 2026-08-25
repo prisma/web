@@ -286,7 +286,12 @@ function DocsNavbar({
     <LayoutHeader
       id="nd-subnav"
       className={cn(
-        "sticky [grid-area:header] flex flex-col top-(--fd-docs-row-1) z-10 border-b transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+        // z-30 keeps the strip above the sidebar placeholder (z-20): the two
+        // briefly overlap when dismissing the banner re-anchors the sticky
+        // offsets, and the sidebar rows must slide under the strip, not over
+        // the logo. `top` stays out of the transition for the same reason —
+        // the sidebar's offset snaps, so the strip's must snap with it.
+        "sticky [grid-area:header] flex flex-col top-(--fd-docs-row-1) z-30 border-b transition-[background-color,border-color,backdrop-filter] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
         // Docked: the strip itself is the bar — translucent paper-white with a
         // hairline bottom edge, content blurring underneath it.
         "data-[floating=false]:border-stroke-neutral data-[floating=false]:backdrop-blur-sm data-[floating=false]:data-[transparent=false]:bg-fd-background/80",

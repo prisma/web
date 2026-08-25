@@ -13,13 +13,13 @@ heroImageAlt: "A dark migration.ts code card showing the createTable, addUnique 
 tags:
   - "orm"
   - "education"
-series: prisma-next
+series: prisma-8
 seriesIndex: 4
 ---
 
 > _Editor's note: Prisma 8 was developed under the working name Prisma Next. This post has been updated to use the final name._
 
-Migrations shouldn't be the scariest part of your deploy. In Prisma 8, [migrations](https://www.prisma.io/docs/orm/v8/migrations/how-migrations-work) are TypeScript files you can read, edit, and re-run with confidence. Every step is verified before it runs and again after. Every failure points directly at the operation that caused it.
+Migrations shouldn't be the scariest part of your deploy. In Prisma 8, [migrations](https://www.prisma.io/docs/orm/migrations/how-migrations-work) are TypeScript files you can read, edit, and re-run with confidence. Every step is verified before it runs and again after. Every failure points directly at the operation that caused it.
 
 ## This is a SQL migration
 
@@ -177,16 +177,16 @@ You edit the TypeScript. The system runs the JSON. Both get committed, much like
 
 ## The workflow
 
-Most migrations don't get written from scratch. They get [planned](https://www.prisma.io/docs/orm/v8/migrations/generating-a-migration) from changes to your [Prisma contract](https://www.prisma.io/docs/orm/v8/contract-authoring/the-data-contract) (the `.prisma` file that describes your database schema). Say you add a `displayName String` field to your `User` model. Then:
+Most migrations don't get written from scratch. They get [planned](https://www.prisma.io/docs/orm/migrations/generating-a-migration) from changes to your [Prisma contract](https://www.prisma.io/docs/orm/contract-authoring/the-data-contract) (the `.prisma` file that describes your database schema). Say you add a `displayName String` field to your `User` model. Then:
 
 ```text
-$ npx prisma@next migration plan
+$ npx prisma@latest migration plan
 ✔ Planned 2 operation(s)
 │
 ├─ Add column "displayName" to "user" [additive]
 └─ Set NOT NULL on "user"."displayName" [destructive]
 
-$ npx prisma@next migrate --verbose
+$ npx prisma@latest migrate --verbose
 ✔ Applied 1 migration(s)
 
 └─ 20260424T0930_add_user_displayname [2 op(s)]
@@ -196,12 +196,12 @@ $ npx prisma@next migrate --verbose
 
 The planner reads your contract, compares it to the current database, and writes both `migration.ts` and `ops.json`. For most changes (adding a model, adding a field, creating an index), that's all you need.
 
-When you do need to [edit a migration](https://www.prisma.io/docs/orm/v8/migrations/editing-a-migration), for example to backfill data before a constraint, reorder operations, or drop in a custom check, you open `migration.ts`, edit it like any other TypeScript file, and re-run it to regenerate `ops.json`. Your editor handles autocomplete, type checking, and inline docs for every operation. There's no SQL syntax to remember and no second-guessing whether you got the constraint definition right.
+When you do need to [edit a migration](https://www.prisma.io/docs/orm/migrations/editing-a-migration), for example to backfill data before a constraint, reorder operations, or drop in a custom check, you open `migration.ts`, edit it like any other TypeScript file, and re-run it to regenerate `ops.json`. Your editor handles autocomplete, type checking, and inline docs for every operation. There's no SQL syntax to remember and no second-guessing whether you got the constraint definition right.
 
 Where it gets interesting is when something goes wrong. The runner doesn't just bail with a database error. It names the operation that failed and the check inside it that the database refused to satisfy:
 
 ```text
-$ npx prisma@next migrate
+$ npx prisma@latest migrate
 ✖ Operation alterNullability.setNotNull.user.displayName failed during precheck: ensure no NULL values in "displayName" (PN-RUN-5001)
   Why: Migration runner halted before destructive ALTER
   Fix: Fix the issue and re-run `prisma-next migrate`. Previously applied migrations are preserved.
@@ -209,14 +209,14 @@ $ npx prisma@next migrate
 
 You know which operation failed (`alterNullability.setNotNull.user.displayName`) and which check failed inside it (`ensure no NULL values in "displayName"`). Both come straight from `ops.json`, and both tell you exactly where to look. From here, you fix it. You might backfill the nulls, drop and re-add the column with a default, or edit the migration to add a backfill step before the `setNotNull`. Then you re-run.
 
-**[Re-running is safe](https://www.prisma.io/docs/orm/v8/migrations/rollbacks-and-recovery).** Before running each operation, the migration runner first evaluates that operation's postcheck. If the postcheck is already true, the runner skips the operation (which makes each operation idempotent). The migration then continues at the first step that hasn't succeeded yet. There's no commenting out lines, no manually unwinding state, and no guessing what's been applied. The single most uncomfortable problem with SQL migrations is solved.
+**[Re-running is safe](https://www.prisma.io/docs/orm/migrations/rollbacks-and-recovery).** Before running each operation, the migration runner first evaluates that operation's postcheck. If the postcheck is already true, the runner skips the operation (which makes each operation idempotent). The migration then continues at the first step that hasn't succeeded yet. There's no commenting out lines, no manually unwinding state, and no guessing what's been applied. The single most uncomfortable problem with SQL migrations is solved.
 
 **Your development workflow becomes:**
 
 1. Edit your `contract.prisma`
 2. Plan a migration: `migration plan`
 3. Edit the TypeScript and run `./migration.ts`
-4. [Apply the migration](https://www.prisma.io/docs/orm/v8/migrations/applying-a-migration): `prisma-next migrate`
+4. [Apply the migration](https://www.prisma.io/docs/orm/migrations/applying-a-migration): `prisma-next migrate`
 5. Read the output, iterate
 
 The contract describes the database schema you want. `migration.ts` lets you edit the migration easily. The JSON is what runs. The feedback is granular enough to act on.
@@ -293,7 +293,7 @@ Most importantly, `migration.ts` combined with `ops.json` is _really_ easy to re
 But you can try it now:
 
 ```bash
-npx prisma@next orm init
+npx prisma@latest orm init
 ```
 
 Start a project, write a contract, plan a migration, and see what `migration.ts` and `ops.json` look like for yourself. We'd love your feedback. Join us on [Discord](https://pris.ly/discord) and tell us what works and what doesn't.

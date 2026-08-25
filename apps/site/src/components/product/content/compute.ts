@@ -16,7 +16,7 @@ import type { ProductPageContent } from "../types";
 //  - Five features (V4 shipped four; Object Store buckets, launched 2026-07-24,
 //    were added after the review), rendered three-then-two with the last pair
 //    centred — see product-features.tsx.
-const CONSOLE = "https://console.prisma.io";
+const CONSOLE = "https://console.prisma.io/sign-up";
 const DOCS = "/docs";
 
 export const computeContent: ProductPageContent = {
@@ -59,10 +59,9 @@ export const computeContent: ProductPageContent = {
         illustration: "deployments",
       },
       {
-        label: "Templates",
-        caption:
-          "Start from a template — Next.js, Hono, an API, an agent — and deploy it as it is.",
-        illustration: "runTemplates",
+        label: "Apps",
+        caption: "Start from an app — Next.js, Hono, an API, an agent — and deploy it as it is.",
+        illustration: "runApps",
       },
     ],
   },

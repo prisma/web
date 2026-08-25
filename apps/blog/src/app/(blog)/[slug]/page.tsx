@@ -22,6 +22,7 @@ import { getSeriesContext } from "@/lib/series";
 import { getRelatedPosts } from "@/lib/related-posts";
 import { getBaseUrl, withBlogBasePath, withBlogBasePathForImageSrc } from "@/lib/url";
 import Link from "next/link";
+import { Text } from "lucide-react";
 import type { Metadata } from "next";
 
 interface TOCItem {
@@ -295,16 +296,17 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
         <BlogShare desc={page.data.metaDescription as string} />
       </div>
       <div className="toc max-md:hidden">
-        {/* InlineTOC ships the docs shell's own treatment — cyan `fd-primary`
-            rail segment and `fd-accent-foreground` text on the active item,
-            cyan hover on the rest — via the same variables this app remaps in
-            global.css. No overrides, so the blog TOC reads exactly like the
-            docs TOC in both modes. */}
+        {/* InlineTOC ships the docs shell's own treatment — cool-spectrum
+            gradient text on the active item plus the vertical spectrum thumb
+            on the rail, and the docs sidebar's spectrum hover on the rest —
+            via the shared classes in eclipse globals.css. No overrides, so
+            the blog TOC reads exactly like the docs TOC in both modes. */}
         <div className="fd-scroll-container sticky top-28 max-h-[calc(100vh-8rem)] overflow-y-auto">
-          <span className="type-heading-2xs mt-0 mb-4 block text-foreground-neutral-weak">
+          <h3 className="mt-0 mb-3 inline-flex items-center gap-1.5 text-sm text-fd-muted-foreground">
+            <Text className="size-4" />
             On this page
-          </span>
-          <InlineTOC items={page.data.toc as TOCItem[]} className="px-0" />
+          </h3>
+          <InlineTOC items={page.data.toc as TOCItem[]} />
         </div>
       </div>
     </div>

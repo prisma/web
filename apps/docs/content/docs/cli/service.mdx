@@ -1,0 +1,57 @@
+---
+title: service
+description: 'Manage Compute services, their versions, logs, and custom domains.'
+url: /cli/service
+metaTitle: service | Prisma 8 CLI
+metaDescription: 'Learn how to manage Prisma Compute services, service versions, logs, and custom domains with the unified Prisma CLI.'
+---
+
+Use `service` commands to manage the services in a project. A deploy produces a **version** of a service; one version is live at a time. Deploys start from a git push, the [Console](https://pris.ly/pdp), or [`deploy`](/cli/deploy) for a Composer app. The commands below inspect and manage services and the versions that already exist.
+
+Commands are targeted by parameters, not by ambient state. A command that acts on a service takes the service as its first positional argument (`service show <service>`), with `PRISMA_SERVICE_ID` as the environment fallback; the argument wins when both are set. Scope with `--branch <name>` and `--project <id-or-name>`. There is no interactive picker: a missing target fails with a structured `SERVICE.TARGET_REQUIRED` error (exit 2) before any network call, even in an interactive terminal. Commands targeted by a globally unique version id (`service version promote|start|stop|delete <version-id>`) need no other context.
+
+## Usage
+
+```npm
+npx prisma@latest service list
+npx prisma@latest service show my-service
+```
+
+## Commands
+
+| Command                     | Description                                       |
+| --------------------------- | -------------------------------------------------- |
+| `service list`              | List the services in a project (`--branch` scopes it) |
+| `service create <name>`     | Create a service (`--region`, `--branch`)          |
+| `service show <service>`    | Show the service and its live version              |
+| `service open <service>`    | Open the service's live URL                        |
+| `service logs <service>`    | Read logs for a version of the service. Defaults to the live version (`--version-id <id>` selects another). `--tail <n>` sets the line count (default 100), `--from-start` reads from the beginning, and `--follow` keeps polling |
+| `service delete <service>`  | Permanently delete the service from the branch you target, after confirmation |
+
+## service version
+
+Use `service version` commands to manage the versions of a service. Versions are created by deploys; these commands operate on the versions that already exist.
+
+| Command                                  | Description                                                        |
+| ---------------------------------------- | ------------------------------------------------------------------- |
+| `service version list <service>`         | List versions of the service                                        |
+| `service version show <version-id>`      | Show a version in detail                                            |
+| `service version promote <version-id>`   | Promote a version to production by rebuilding with production env vars |
+| `service version rollback <service>`     | Roll back production to a previous version (`--to <version-id>`; defaults to the one before the live version) |
+| `service version start <version-id>`     | Start a stopped version                                             |
+| `service version stop <version-id>`      | Stop a running version                                              |
+| `service version delete <version-id>`    | Permanently delete a version and the artifact it holds              |
+
+Promotion rebuilds the version with production environment variables, so configuration changes take effect on promote. Rollback switches production back to an existing version. See [Deployments](/compute/deployments).
+
+## service domain
+
+Use `service domain` commands to manage custom domains for a service. All commands take a `<hostname>` argument plus the usual service and project selectors and a `--branch <name>` scope. Domains target the production branch by default. See [Domains](/compute/domains) for details.
+
+| Command                            | Description                                                    |
+| ---------------------------------- | --------------------------------------------------------------- |
+| `service domain add <hostname>`    | Register a custom domain on the service's production branch      |
+| `service domain show <hostname>`   | Show custom domain status and certificate details                |
+| `service domain wait <hostname>`   | Wait until a custom domain is active or failed (`--timeout <duration>`, default 15m) |
+| `service domain retry <hostname>`  | Retry custom domain DNS verification and TLS provisioning         |
+| `service domain delete <hostname>` | Permanently delete a custom domain from the service               |

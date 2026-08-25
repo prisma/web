@@ -11,9 +11,9 @@ import { cn } from "@/lib/utils";
 //
 // `compute` is each plan's Prisma Compute pricing — Compute GA (Shane,
 // 2026-08-24). The numbers are LOCKED IN, hand-entered by Shane: requests
-// are the only meter with an included allowance (Free 1M with no usage
-// billing, then 5M/20M/100M plus $1 per million on the paid tiers); memory,
-// CPU, and bandwidth are billed per use on paid plans. These cards are the
+// include 1M requests, 360 GB-hours of memory, 4 vCPU-hours, and 10 GB of
+// outbound bandwidth on Free with no usage billing. Paid tiers include
+// 5M/20M/100M requests, then bill every meter by use. These cards are the
 // page's source of truth — keep the Prisma Compute group in
 // pricing-spec-table.tsx, pricing-data.ts, and the llms surfaces in sync
 // with them.
@@ -30,13 +30,18 @@ const PLANS = [
     name: "Free",
     price: "$0",
     note: "Free forever. No credit card required.",
-    compute: ["1M requests / month"],
+    compute: [
+      "1M requests / month",
+      "360 GB-hours memory / month",
+      "4 active vCPU-hours / month",
+      "10 GB outbound bandwidth / month",
+    ],
     postgres: ["200k operations / month", "500 MB storage", "50 databases"],
     platform: [],
     blurb:
       "Everything you need to build and explore with no clock running. No credit card, no expiry.",
     cta: "Start for free",
-    href: "https://console.prisma.io",
+    href: "https://console.prisma.io/sign-up",
     popular: false,
   },
   {
@@ -59,7 +64,7 @@ const PLANS = [
     blurb:
       "Ship your first production app without worrying about the bill. Backups included, spend limits on by default.",
     cta: "Get started",
-    href: "https://console.prisma.io",
+    href: "https://console.prisma.io/sign-up",
     popular: true,
   },
   {
@@ -82,7 +87,7 @@ const PLANS = [
     blurb:
       "For production apps with real traffic. More operations, lower overage rates, and headroom to grow without watching the meter.",
     cta: "Get started",
-    href: "https://console.prisma.io",
+    href: "https://console.prisma.io/sign-up",
     popular: false,
   },
   {
@@ -104,7 +109,7 @@ const PLANS = [
     platform: ["Spend limits", "GDPR, HIPAA, SOC 2, ISO 27001"],
     blurb: "Built for high-growth teams with compliance requirements and sustained high volume.",
     cta: "Get started",
-    href: "https://console.prisma.io",
+    href: "https://console.prisma.io/sign-up",
     popular: false,
   },
 ];

@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRightBold, CheckBold, X } from "@/components/icons/forma";
+import { CheckBold, X } from "@/components/icons/forma";
 import { PrismButton } from "@/components/brand/prism-button";
-import { Button } from "@/components/ui/button";
 import { Reveal } from "@/components/motion/reveal";
 import { CountUp } from "@/components/motion/count-up";
 import { cn } from "@/lib/utils";
@@ -22,11 +21,8 @@ const GRAIN: React.CSSProperties = {
   mixBlendMode: "multiply",
 };
 
-// TODO: /pricing and /customers/[slug] are Phase 1 sitemap routes not built
-// yet (see design-ref/sitemap.md).
-// TODO: the ~5K and ~500K MAU scenario numbers and all three case studies are
-// placeholders pending client content — only the ~50K MAU column came from
-// the client.
+// TODO: the ~5K and ~500K MAU scenario numbers are placeholders pending
+// client content — only the ~50K MAU column came from the client.
 
 const BULLETS = [
   {
@@ -62,7 +58,6 @@ type Scenario = {
   prismaCost: string;
   typical: string[];
   prisma: string[];
-  caseStudy: { company: string; teaser: string; href: string };
 };
 
 const SCENARIOS: Scenario[] = [
@@ -81,11 +76,6 @@ const SCENARIOS: Scenario[] = [
       "Data transfer included",
       "Hard free-tier cap, no surprises",
     ],
-    caseStudy: {
-      company: "Pixelwave",
-      teaser: "shipped a weekend build that found real users, on the free tier",
-      href: "/customers/pixelwave",
-    },
   },
   {
     tab: "Growing SaaS",
@@ -98,11 +88,6 @@ const SCENARIOS: Scenario[] = [
       "Spend limits not standard",
     ],
     prisma: ["One bill, one platform", "Data transfer included", "Spend limits on by default"],
-    caseStudy: {
-      company: "CloudBase",
-      teaser: "switched their entire stack over in a weekend",
-      href: "/customers/cloudbase",
-    },
   },
   {
     tab: "At scale",
@@ -115,11 +100,6 @@ const SCENARIOS: Scenario[] = [
       "Spend limits not standard",
     ],
     prisma: ["One bill, one platform", "Data transfer included", "Spend limits on by default"],
-    caseStudy: {
-      company: "Meridian Health",
-      teaser: "consolidated five vendors and passed compliance review",
-      href: "/customers/meridian-health",
-    },
   },
 ];
 
@@ -184,30 +164,6 @@ function ComparisonSlide({ scenario, active }: { scenario: Scenario; active: boo
             </ul>
           </div>
         </div>
-      </div>
-
-      <div className="mt-7 flex flex-col gap-2 border-t border-border/70 pt-5 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-        <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
-          <span className="font-semibold text-foreground">{scenario.caseStudy.company}</span>{" "}
-          {scenario.caseStudy.teaser}.
-        </p>
-        {/* text-clipped spectrum hover — the blend variant needs a white
-            backdrop, which the washed card doesn't have */}
-        <Button
-          asChild
-          variant="ghost"
-          className="spectrum-ink-text -ml-3.5 shrink-0 self-start sm:-mr-3.5 sm:ml-0"
-        >
-          {/* aria-label instead of sr-only: hidden text leaks through the
-              spectrum-ink-text background-clip mask */}
-          <a
-            href={scenario.caseStudy.href}
-            aria-label={`Read the ${scenario.caseStudy.company} case study`}
-          >
-            Read the case study
-            <ArrowRightBold className="size-3.5" aria-hidden />
-          </a>
-        </Button>
       </div>
     </div>
   );

@@ -1,0 +1,381 @@
+---
+title: Referential actions
+description: Referential actions let you define the update and delete behavior of related models on the database level
+url: /orm/v7/prisma-schema/data-model/relations/referential-actions
+metaTitle: Special rules for referential actions in SQL Server and MongoDB
+metaDescription: 'Circular references or multiple cascade paths can cause validation errors on Microsoft SQL Server and MongoDB. Since the database does not handle these situations out of the box, learn how to solve this problem.'
+---
+
+Referential actions determine what happens to a record when your application deletes or updates a related record. They are defined in the [`@relation`](/orm/v7/reference/prisma-schema-reference#relation) attribute and map to foreign key constraints in the database.
+
+In the following example, `onDelete: Cascade` means that deleting a `User` record will also delete all related `Post` records.
+
+```prisma title="schema.prisma" highlight=4;normal showLineNumbers
+model Post {
+  id       Int    @id @default(autoincrement())
+  title    String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId Int
+}
+
+model User {
+  id    Int    @id @default(autoincrement())
+  posts Post[]
+}
+```
+
+If you do not specify a referential action, Prisma ORM [uses a default](#referential-action-defaults).
+
+<details>
+<summary>Questions answered in this page</summary>
+
+- What do referential actions do?
+- Which defaults apply if none are set?
+- How do actions map to my database?
+- How do I fix cascade cycles on SQL Server?
+- Do MongoDB self-relations require NoAction?
+- How do I handle multiple cascade paths?
+
+</details>
+
+
+## Available referential actions
+
+Prisma ORM supports five referential actions:
+
+- **[`Cascade`](#cascade)** - Deletes/updates cascade to related records
+- **[`Restrict`](#restrict)** - Prevents deletion/update if related records exist  
+- **[`NoAction`](#noaction)** - Similar to Restrict, behavior varies by database
+- **[`SetNull`](#setnull)** - Sets foreign key to NULL (requires optional relation)
+- **[`SetDefault`](#setdefault)** - Sets foreign key to default value
+
+### Referential action defaults
+
+If you do not specify a referential action, Prisma ORM uses the following defaults:
+
+| Clause     | Optional relations | Mandatory relations |
+| :--------- | :----------------- | :------------------ |
+| `onDelete` | `SetNull`          | `Restrict`          |
+| `onUpdate` | `Cascade`          | `Cascade`           |
+
+## Caveats
+
+The following caveats apply:
+
+- Referential actions are **not** supported on [implicit many-to-many relations](/orm/v7/prisma-schema/data-model/relations/many-to-many-relations#implicit-many-to-many-relations). To use referential actions, you must define an explicit many-to-many relation and define your referential actions on the [join table](/orm/v7/prisma-schema/data-model/relations/troubleshooting-relations#how-to-use-a-relation-table-with-a-many-to-many-relationship).
+- Certain combinations of referential actions and required/optional relations are incompatible. For example, using `SetNull` on a required relation will lead to database errors when deleting referenced records because the non-nullable constraint would be violated. See [this GitHub issue](https://github.com/prisma/prisma/issues/7909) for more information.
+
+## Types of referential actions
+
+The following table shows which referential action each database supports.
+
+| Database      | Cascade | Restrict | NoAction | SetNull | SetDefault |
+| :------------ | :------ | :------- | :------- | :------ | :--------- |
+| PostgreSQL    | ✔️      | ✔️       | ✔️       | ✔️⌘     | ✔️         |
+| MySQL/MariaDB | ✔️      | ✔️       | ✔️       | ✔️      | ❌ (✔️†)   |
+| SQLite        | ✔️      | ✔️       | ✔️       | ✔️      | ✔️         |
+| SQL Server    | ✔️      | ❌‡      | ✔️       | ✔️      | ✔️         |
+| CockroachDB   | ✔️      | ✔️       | ✔️       | ✔️      | ✔️         |
+| MongoDB       | ✔️      | ✔️       | ✔️       | ✔️      | ❌         |
+
+- † See [special cases for MySQL](#mysqlmariadb).
+- ⌘ See [special cases for PostgreSQL](#postgresql).
+- ‡ See [special cases for SQL Server](#sql-server).
+
+### Special cases for referential actions
+
+Referential actions are part of the ANSI SQL standard. However, there are special cases where some relational databases diverge from the standard.
+
+#### MySQL/MariaDB
+
+MySQL/MariaDB, and the underlying InnoDB storage engine, does not support `SetDefault`. The exact behavior depends on the database version:
+
+- In MySQL versions 8 and later, and MariaDB versions 10.5 and later, `SetDefault` effectively acts as an alias for `NoAction`. You can define tables using the `SET DEFAULT` referential action, but a foreign key constraint error is triggered at runtime.
+- In MySQL versions 5.6 and later, and MariaDB versions before 10.5, attempting to create a table definition with the `SET DEFAULT` referential action fails with a syntax error.
+
+For this reason, when you set `mysql` as the database provider, Prisma ORM warns users to replace `SetDefault` referential actions in the Prisma schema with another action.
+
+#### PostgreSQL
+
+PostgreSQL is the only database supported by Prisma ORM that allows you to define a `SetNull` referential action that refers to a non-nullable field. However, this raises a foreign key constraint error when the action is triggered at runtime.
+
+For this reason, when you set `postgres` as the database provider in the (default) `foreignKeys` relation mode, Prisma ORM warns users to mark as optional any fields that are included in a `@relation` attribute with a `SetNull` referential action. For all other database providers, Prisma ORM rejects the schema with a validation error.
+
+#### SQL Server
+
+[`Restrict`](#restrict) is not available for SQL Server databases, but you can use [`NoAction`](#noaction) instead.
+
+### `Cascade`
+
+- `onDelete: Cascade` Deleting a referenced record will trigger the deletion of referencing record.
+- `onUpdate: Cascade` Updates the relation scalar fields if the referenced scalar fields of the dependent record are updated.
+
+#### Example usage
+
+```prisma title="schema.prisma" highlight=4;add showLineNumbers
+model Post {
+  id       Int    @id @default(autoincrement())
+  title    String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade, onUpdate: Cascade) // [!code ++]
+  authorId Int
+}
+
+model User {
+  id    Int    @id @default(autoincrement())
+  posts Post[]
+}
+```
+
+**Result:** If a `User` record is deleted, their posts are deleted too. If the user's `id` is updated, the corresponding `authorId` is also updated.
+
+### `Restrict`
+
+- `onDelete: Restrict` Prevents the deletion if any referencing records exist.
+- `onUpdate: Restrict` Prevents the identifier of a referenced record from being changed.
+
+#### Example usage
+
+```prisma title="schema.prisma" highlight=4;add showLineNumbers
+model Post {
+  id       Int    @id @default(autoincrement())
+  title    String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Restrict, onUpdate: Restrict) // [!code ++]
+  authorId Int
+}
+
+model User {
+  id    Int    @id @default(autoincrement())
+  posts Post[]
+}
+```
+
+**Result:** `User`s with posts cannot be deleted. The `User`'s `id` cannot be changed.
+
+:::warning
+
+The `Restrict` action is **not** available on [Microsoft SQL Server](/orm/v7/core-concepts/supported-databases/sql-server) and triggers a schema validation error. Instead, you can use [`NoAction`](#noaction), which produces the same result and is compatible with SQL Server.
+
+:::
+
+### `NoAction`
+
+The `NoAction` action is similar to `Restrict`, the difference between the two is dependent on the database being used:
+
+- **PostgreSQL**: `NoAction` allows the check (if a referenced row on the table exists) to be deferred until later in the transaction. See [the PostgreSQL docs](https://www.postgresql.org/docs/current/ddl-constraints.html#DDL-CONSTRAINTS-FK) for more information.
+- **MySQL**: `NoAction` behaves exactly the same as `Restrict`. See [the MySQL docs](https://dev.mysql.com/doc/refman/8.0/en/create-table-foreign-keys.html#foreign-key-referential-actions) for more information.
+- **SQLite**: When a related primary key is modified or deleted, no action is taken. See [the SQLite docs](https://www.sqlite.org/foreignkeys.html#fk_actions) for more information.
+- **SQL Server**: When a referenced record is deleted or modified, an error is raised. See [the SQL Server docs](https://learn.microsoft.com/en-us/sql/relational-databases/tables/graph-edge-constraints?view=sql-server-ver15#on-delete-referential-actions-on-edge-constraints) for more information.
+- **MongoDB**: When a record is modified or deleted, nothing is done to any related records.
+
+:::warning
+
+If you are [managing relations in Prisma Client](/orm/v7/prisma-schema/data-model/relations/relation-mode#emulate-relations-in-prisma-orm-with-the-prisma-relation-mode) rather than using foreign keys in the database, you should be aware that currently Prisma ORM only implements the referential actions. Foreign keys also create constraints, which make it impossible to manipulate data in a way that would violate these constraints: instead of executing the query, the database responds with an error. These constraints will not be created if you emulate referential integrity in Prisma Client, so if you set the referential action to `NoAction` there will be no checks to prevent you from breaking the referential integrity.
+
+:::
+
+#### Example usage
+
+```prisma title="schema.prisma" highlight=4;add showLineNumbers
+model Post {
+  id       Int    @id @default(autoincrement())
+  title    String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: NoAction, onUpdate: NoAction) // [!code ++]
+  authorId Int
+}
+
+model User {
+  id    Int    @id @default(autoincrement())
+  posts Post[]
+}
+```
+
+**Result:** `User`s with posts cannot be deleted. The `User`'s `id` cannot be changed.
+
+### `SetNull`
+
+- `onDelete: SetNull` The scalar field of the referencing object will be set to `NULL`.
+
+- `onUpdate: SetNull` When updating the identifier of a referenced object, the scalar fields of the referencing objects will be set to `NULL`.
+
+`SetNull` will only work on optional relations. On required relations, a runtime error will be thrown since the scalar fields cannot be null.
+
+```prisma title="schema.prisma" highlight=4;add showLineNumbers
+model Post {
+  id       Int    @id @default(autoincrement())
+  title    String
+  author   User?  @relation(fields: [authorId], references: [id], onDelete: SetNull, onUpdate: SetNull) // [!code ++]
+  authorId Int?
+}
+
+model User {
+  id    Int    @id @default(autoincrement())
+  posts Post[]
+}
+```
+
+**Result:** When deleting or updating a `User`, the `authorId` is set to `NULL` for all their posts.
+
+### `SetDefault`
+
+- `onDelete: SetDefault` The scalar field of the referencing object will be set to the fields default value.
+
+- `onUpdate: SetDefault` The scalar field of the referencing object will be set to the fields default value.
+
+These require setting a default for the relation scalar field with [`@default`](/orm/v7/reference/prisma-schema-reference#default). If no defaults are provided for any of the scalar fields, a runtime error will be thrown.
+
+```prisma title="schema.prisma" highlight=4,5;add showLineNumbers
+model Post {
+  id             Int     @id @default(autoincrement())
+  title          String
+  authorUsername String? @default("anonymous") // [!code ++]
+  author         User?   @relation(fields: [authorUsername], references: [username], onDelete: SetDefault, onUpdate: SetDefault) // [!code ++]
+}
+
+model User {
+  username String @id
+  posts    Post[]
+}
+```
+
+**Result:** When deleting or updating a `User`, their posts' `authorUsername` is set to the default value ('anonymous').
+
+## Special rules for SQL Server and MongoDB
+
+:::info[Quick summary]
+This section explains special rules and common issues when using referential actions with SQL Server and MongoDB, including how to avoid cycles and multiple cascade paths.
+:::
+
+**SQL Server** doesn't allow cascading referential actions if the relation chain causes a cycle or multiple cascade paths. The server will return an error when executing the SQL.
+
+**MongoDB** requires `NoAction` for self-referential relations or cycles between three models to prevent infinite loops. MongoDB uses `relationMode = "prisma"` by default, meaning Prisma ORM manages [referential integrity](/orm/v7/prisma-schema/data-model/relations/relation-mode).
+
+Prisma ORM validates your data model _before_ generating SQL, highlighting problematic relations to help you fix these issues early.
+
+### Self-relation (SQL Server and MongoDB)
+
+The following model describes a self-relation where an `Employee` can have a manager and managees, referencing entries of the same model.
+
+```prisma
+model Employee {
+  id        Int        @id @default(autoincrement())
+  manager   Employee?  @relation(name: "management", fields: [managerId], references: [id])
+  managees  Employee[] @relation(name: "management")
+  managerId Int?
+}
+```
+
+This will result in the following error:
+
+```bash wrap
+Error parsing attribute "@relation": A self-relation must have `onDelete` and `onUpdate` referential actions set to `NoAction` in one of the @relation attributes. (Implicit default `onDelete`: `SetNull`, and `onUpdate`: `Cascade`)
+```
+
+By not defining any actions, Prisma ORM will use the following default values depending if the underlying [scalar fields](/orm/v7/prisma-schema/data-model/models#scalar-fields) are set to be optional or required.
+
+| Clause     | All of the scalar fields are optional | At least one scalar field is required |
+| :--------- | :------------------------------------ | :------------------------------------ |
+| `onDelete` | `SetNull`                             | `NoAction`                            |
+| `onUpdate` | `Cascade`                             | `Cascade`                             |
+
+Since the default referential action for `onUpdate` in the above relation would be `Cascade` and for `onDelete` it would be `SetNull`, it creates a cycle and the solution is to explicitly set the `onUpdate` and `onDelete` values to `NoAction`.
+
+```prisma highlight=3;delete|4;add
+model Employee {
+  id        Int        @id @default(autoincrement())
+  manager   Employee   @relation(name: "management", fields: [managerId], references: [id]) // [!code --]
+  manager   Employee   @relation(name: "management", fields: [managerId], references: [id], onDelete: NoAction, onUpdate: NoAction) // [!code ++]
+  managees  Employee[] @relation(name: "management")
+  managerId Int
+}
+```
+
+### Cyclic relation between three tables (SQL Server and MongoDB)
+
+The following models describe a cyclic relation between a `Chicken`, an `Egg` and a `Fox`, where each model references the other.
+
+```prisma
+model Chicken {
+  id        Int   @id @default(autoincrement())
+  egg       Egg   @relation(fields: [eggId], references: [id])
+  eggId     Int
+  predators Fox[]
+}
+
+model Egg {
+  id         Int       @id @default(autoincrement())
+  predator   Fox       @relation(fields: [predatorId], references: [id])
+  predatorId Int
+  parents    Chicken[]
+}
+
+model Fox {
+  id        Int     @id @default(autoincrement())
+  meal      Chicken @relation(fields: [mealId], references: [id])
+  mealId    Int
+  foodStore Egg[]
+}
+```
+
+This will result in validation errors indicating a cycle exists:
+
+```bash wrap
+Error parsing attribute "@relation": Reference causes a cycle. One of the @relation attributes in this cycle must have `onDelete` and `onUpdate` referential actions set to `NoAction`. Cycle path: Chicken.egg → Egg.predator → Fox.meal. (Implicit default `onUpdate`: `Cascade`)
+```
+
+Since the default `onUpdate` action is `Cascade`, it creates a cycle. Set `onUpdate: NoAction` on any one of the relations to break the cycle:
+
+```prisma highlight=3;delete|4;add
+model Chicken {
+  id        Int   @id @default(autoincrement())
+  egg       Egg   @relation(fields: [eggId], references: [id]) // [!code --]
+  egg       Egg   @relation(fields: [eggId], references: [id], onUpdate: NoAction) // [!code ++]
+  eggId     Int
+  predators Fox[]
+}
+```
+
+### Multiple cascade paths between two models (SQL Server only)
+
+The data model describes two different paths between same models, with both relations triggering cascading referential actions.
+
+```prisma
+model User {
+  id       Int       @id @default(autoincrement())
+  comments Comment[]
+  posts    Post[]
+}
+
+model Post {
+  id       Int       @id @default(autoincrement())
+  authorId Int
+  author   User      @relation(fields: [authorId], references: [id])
+  comments Comment[]
+}
+
+model Comment {
+  id          Int  @id @default(autoincrement())
+  writtenById Int
+  postId      Int
+  writtenBy   User @relation(fields: [writtenById], references: [id])
+  post        Post @relation(fields: [postId], references: [id])
+}
+```
+
+There are two paths from `Comment` to `User`, and the default `onUpdate: Cascade` creates multiple cascade paths:
+
+```bash wrap
+Error parsing attribute "@relation": When any of the records in model `User` is updated or deleted, the referential actions on the relations cascade to model `Comment` through multiple paths. Please break one of these paths by setting the `onUpdate` and `onDelete` to `NoAction`. (Implicit default `onUpdate`: `Cascade`)
+```
+
+Set `onUpdate: NoAction` on any one of the relations to break the multiple cascade paths:
+
+```prisma highlight=5;delete|6;add
+model Comment {
+  id          Int  @id @default(autoincrement())
+  writtenById Int
+  postId      Int
+  writtenBy   User @relation(fields: [writtenById], references: [id]) // [!code --]
+  writtenBy   User @relation(fields: [writtenById], references: [id], onUpdate: NoAction) // [!code ++]
+  post        Post @relation(fields: [postId], references: [id])
+}
+```

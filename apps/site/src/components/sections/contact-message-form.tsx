@@ -54,9 +54,6 @@ export function ContactMessageForm() {
       <h2 className="text-2xl leading-tight">Send us a message</h2>
 
       {sent ? (
-        // The confirmation copy was never supplied, so it stays a visible
-        // placeholder rather than a guess — same convention as /pricing.
-        //
         // role="status" because submitting REPLACES the form: without a live
         // region a screen reader announces nothing, and focus is destroyed along
         // with the submit button and falls back to <body>. Nothing else on the
@@ -69,12 +66,16 @@ export function ContactMessageForm() {
           <IconTile className="size-14">
             <CheckCircle className="size-6 text-foreground" aria-hidden />
           </IconTile>
-          <span
-            title="Awaiting copy from Prisma"
-            className="rounded border border-dashed border-black/20 px-1.5 py-0.5 text-xs font-medium text-muted-foreground/70"
-          >
-            Confirmation copy TBC
-          </span>
+          <div className="flex flex-col gap-2">
+            <p className="text-lg font-medium text-foreground">Message sent</p>
+            {/* Echoes the hero's promise ("we'll route your message to the
+                right person") without committing to a response-time SLA no
+                team has signed off on. */}
+            <p className="max-w-xs text-[15px] leading-relaxed text-muted-foreground">
+              Thanks for reaching out. We&apos;ll route your message to the right person on the team
+              and get back to you soon.
+            </p>
+          </div>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="mt-7 flex flex-col gap-5">

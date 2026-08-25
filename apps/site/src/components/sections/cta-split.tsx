@@ -434,7 +434,7 @@ export function CtaSplit() {
             </ul>
 
             <div className="mt-9 flex flex-wrap items-center gap-3">
-              <PrismButton href="https://console.prisma.io">Get started free</PrismButton>
+              <PrismButton href="https://console.prisma.io/sign-up">Get started free</PrismButton>
               <PrismButtonOutline href="/pricing">See pricing</PrismButtonOutline>
             </div>
           </div>

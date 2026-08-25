@@ -12,7 +12,7 @@ heroImageAlt: "Claude and Codex AI agent icons beside a production database that
 tags:
   - "orm"
   - "ai"
-series: prisma-next
+series: prisma-8
 seriesIndex: 13
 ---
 
@@ -28,9 +28,9 @@ We built Prisma 8 (formerly *Prisma Next*) so your agent can manage your databas
 
 Most agent-caused data loss traces back to a handful of schema admin commands: the commands that change the structure of your tables and their relationships.
 
-The worst offender historically was [`prisma migrate reset`](https://www.prisma.io/docs/cli/migrate/reset), a command that wipes the database completely. It was meant as a development-time tool for starting from scratch, but older versions of Prisma *suggested* it whenever the database got into a state they couldn't manage. Unsurprisingly, people, and later their agents, deleted their databases. It was, after all, the next step in a process they trusted `prisma` to keep safe.
+The worst offender historically was [`prisma migrate reset`](https://www.prisma.io/docs/cli/v7/migrate/reset), a command that wipes the database completely. It was meant as a development-time tool for starting from scratch, but older versions of Prisma *suggested* it whenever the database got into a state they couldn't manage. Unsurprisingly, people, and later their agents, deleted their databases. It was, after all, the next step in a process they trusted `prisma` to keep safe.
 
-In the same vein are commands that update the database to match the schema recorded in the codebase: [`prisma db push`](https://www.prisma.io/docs/cli/db/push), [`drizzle-kit push --force`](https://orm.drizzle.team/docs/drizzle-kit-push), and friends. These are intended for development, but to an inquisitive agent they look like a fine way to update a running production database. Never mind that they will blithely delete any data that no longer matches the schema.
+In the same vein are commands that update the database to match the schema recorded in the codebase: [`prisma db push`](https://www.prisma.io/docs/cli/v7/db/push), [`drizzle-kit push --force`](https://orm.drizzle.team/docs/drizzle-kit-push), and friends. These are intended for development, but to an inquisitive agent they look like a fine way to update a running production database. Never mind that they will blithely delete any data that no longer matches the schema.
 
 And then there are migrations themselves, a vertigo-inducing pitfall for humans and agents alike, and the place where tools have historically done almost nothing to protect you from your own mistakes. A migration is a file of SQL commands that runs in order. That's it. No protections, no guardrails, no verification. If you mess up, it's on you.
 
@@ -56,11 +56,11 @@ But this isn't enough. The fix isn't a better warning. It's a system where the c
 
 ## How Prisma 8 makes schema changes safe
 
-In Prisma 8, your schema is a [**contract**](https://www.prisma.io/docs/orm/v8/contract-authoring/the-data-contract) between your application and the database: it records every table, field, and index your application depends on.
+In Prisma 8, your schema is a [**contract**](https://www.prisma.io/docs/orm/contract-authoring/the-data-contract) between your application and the database: it records every table, field, and index your application depends on.
 
 Prisma's job is to make sure your database satisfies your contract, and that your application's queries and TypeScript types match it too.
 
-The way you change your database is by changing your contract. Each time you do, you tell Prisma to bring the database up to date, which it does by writing and executing [migrations](https://www.prisma.io/docs/orm/v8/migrations/how-migrations-work).
+The way you change your database is by changing your contract. Each time you do, you tell Prisma to bring the database up to date, which it does by writing and executing [migrations](https://www.prisma.io/docs/orm/migrations/how-migrations-work).
 
 For an agent, just like a human, that reduces the job to: describe what you want, ask the system to make it true, go back to writing your app. We didn't add warnings to make this safe for agents. We took away the dangerous actions entirely.
 
@@ -72,7 +72,7 @@ Interactively, it asks: *"Apply destructive changes? This cannot be undone."* No
 
 ### There is no shadow database
 
-To plan a migration, classic Prisma needed a second, disposable database, the [shadow database](https://www.prisma.io/docs/orm/prisma-migrate/understanding-prisma-migrate/shadow-database), where it replayed your entire migration history to work out what your real database should look like. Prisma usually creates and deletes it automatically, but hosted providers often don't allow that, so you supply one yourself through `shadowDatabaseUrl`. A shadow database gets wiped at the start of every run, with no prompt. That's its job. Which means one connection string pasted into the wrong field turns "plan a migration" into "silently erase a real database". The docs can only warn: *"Do not use the exact same values for `url` and `shadowDatabaseUrl` as that might delete all the data in your database."*
+To plan a migration, classic Prisma needed a second, disposable database, the [shadow database](https://www.prisma.io/docs/orm/v7/prisma-migrate/understanding-prisma-migrate/shadow-database), where it replayed your entire migration history to work out what your real database should look like. Prisma usually creates and deletes it automatically, but hosted providers often don't allow that, so you supply one yourself through `shadowDatabaseUrl`. A shadow database gets wiped at the start of every run, with no prompt. That's its job. Which means one connection string pasted into the wrong field turns "plan a migration" into "silently erase a real database". The docs can only warn: *"Do not use the exact same values for `url` and `shadowDatabaseUrl` as that might delete all the data in your database."*
 
 That's not a hypothetical. In late July 2026, [ten minutes into an agent session](https://x.com/im_irushik/status/2082328630169145526), a developer watched [every table in their production Supabase instance turn up empty](https://x.com/IntCyberDigest/status/2082479318567895195). And Supabase is exactly the kind of hosted provider where the shadow database is configured by hand.
 
@@ -136,7 +136,7 @@ Never "drop the database and try again".
 
 ### Runtime guardrails for dangerous queries
 
-Schema changes aren't the only risk. When your application is running, Prisma 8 [middleware](https://www.prisma.io/docs/orm/v8/middleware/how-middleware-works) can check the queries you're executing, whoever wrote them:
+Schema changes aren't the only risk. When your application is running, Prisma 8 [middleware](https://www.prisma.io/docs/orm/middleware/how-middleware-works) can check the queries you're executing, whoever wrote them:
 
 ```ts
 middleware: [
@@ -151,7 +151,7 @@ middleware: [
 ],
 ```
 
-A `DELETE` without a `WHERE`, the classic agent-generated data wipe, errors before it executes. A connection can be marked read-only in policy. [Budgets](https://www.prisma.io/docs/orm/v8/middleware/built-in-budgets) stop runaway queries mid-stream. Together with the [built-in lints](https://www.prisma.io/docs/orm/v8/middleware/built-in-lints), this gives your agent fast feedback loops in development and testing, so it corrects itself before code hits production.
+A `DELETE` without a `WHERE`, the classic agent-generated data wipe, errors before it executes. A connection can be marked read-only in policy. [Budgets](https://www.prisma.io/docs/orm/middleware/built-in-budgets) stop runaway queries mid-stream. Together with the [built-in lints](https://www.prisma.io/docs/orm/middleware/built-in-lints), this gives your agent fast feedback loops in development and testing, so it corrects itself before code hits production.
 
 ## What about the connection string?
 
@@ -178,7 +178,7 @@ Prisma 8 is available today as a Release Candidate. Some features of Prisma 7 ar
 To get started, run:
 
 ```bash
-npx prisma@next orm init
+npx prisma@latest orm init
 ```
 
 Then ask your agent to make a schema change and watch the workflow it follows: edit the contract, plan a migration, run it. That workflow, not a warning, is what stands between your agent and a viral screenshot.

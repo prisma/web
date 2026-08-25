@@ -113,7 +113,7 @@ export const plans: Record<PricingPlanKey, PricingPlan> = {
     title: "Free",
     subtitle: "Perfect for that weekend idea",
     points: [
-      "<b>100,000</b> operations<span>*</span> included",
+      "<b>200,000</b> operations<span>*</span> included",
       "<b>500 MB</b> storage",
       "<b>50</b> databases",
       "No credit card required",
@@ -249,9 +249,9 @@ export const usagePricing: Record<BillablePricingPlanKey, UsagePricing> = {
 
 // Prisma Compute usage pricing — locked in on the /pricing page (Shane,
 // 2026-08-24), whose plan cards and spec table are the source of truth these
-// values must match. Requests are the only meter with an included monthly
-// allowance; memory, CPU, and bandwidth are billed per use on paid plans, and
-// the Free plan has no usage billing. USD-only strings, like the spec table —
+// values must match. The Free plan has monthly hard limits for every meter and
+// no usage billing. Paid plans include requests and bill every meter by use.
+// USD-only strings, like the spec table —
 // the currency toggle only covers the plan cards.
 export type ComputeMeter = {
   meter: string;
@@ -353,12 +353,12 @@ export const faqs: Array<{ question: string; answer: string }> = [
   {
     question: "How many operations do I need for my project?",
     answer:
-      '<p>While the answer to this question will vary from project to project, there are a couple of ways to get an idea of what you will need:</p><ul><li>If you already have a database with another provider, you can often look in their dashboard to see your current usage. The number of queries will be a good hint to the approximate number of operations you’ll use.</li><li>If you already use the Prisma ORM, you can enable the <a class="underline underline-offset-2 decoration-[var(--color-foreground-ppg)] text-foreground-neutral hover:text-foreground-neutral-weak" href="https://www.prisma.io/docs/orm/prisma-client/observability-and-logging/metrics">metrics</a> feature to begin tracking your usage, which is an easy and accurate way to see your current usage.</li><li>If you’re starting a new project, we encourage you to just get started and see how many queries you typically use. We offer a free plan with 100,000 operations <strong>per month</strong>, meaning you can confidently get started without paying anything. From our experience, 100,000 operations per month is more than enough to get started with a project and serve your first users.</li></ul><p>You can find an <a class="underline underline-offset-2 decoration-[var(--color-foreground-ppg)] text-foreground-neutral hover:text-foreground-neutral-weak" href="https://www.prisma.io/blog/operations-based-billing#calculation-example">example calculation </a>for a medium-sized workload in our blog post about our operations-based pricing model.</p>',
+      '<p>While the answer to this question will vary from project to project, there are a couple of ways to get an idea of what you will need:</p><ul><li>If you already have a database with another provider, you can often look in their dashboard to see your current usage. The number of queries will be a good hint to the approximate number of operations you’ll use.</li><li>If you already use the Prisma ORM, you can enable the <a class="underline underline-offset-2 decoration-[var(--color-foreground-ppg)] text-foreground-neutral hover:text-foreground-neutral-weak" href="https://www.prisma.io/docs/orm/prisma-client/observability-and-logging/metrics">metrics</a> feature to begin tracking your usage, which is an easy and accurate way to see your current usage.</li><li>If you’re starting a new project, we encourage you to just get started and see how many queries you typically use. We offer a free plan with 200,000 operations <strong>per month</strong>, meaning you can confidently get started without paying anything. From our experience, 200,000 operations per month is more than enough to get started with a project and serve your first users.</li></ul><p>You can find an <a class="underline underline-offset-2 decoration-[var(--color-foreground-ppg)] text-foreground-neutral hover:text-foreground-neutral-weak" href="https://www.prisma.io/blog/operations-based-billing#calculation-example">example calculation </a>for a medium-sized workload in our blog post about our operations-based pricing model.</p>',
   },
   {
     question: "Can I use Prisma Postgres for free?",
     answer:
-      "<p>We include a free threshold of 100,000 database operations <strong>per month</strong> on the Free plan, meaning you can use Prisma for free, and only pay if you exceed the threshold. From our experience, 100,000 operations per month is more than enough to get started.</p><p>We always send usage notifications to let you know when you’re approaching the threshold, so that you’re always in control of your spending.</p>",
+      "<p>We include a free threshold of 200,000 database operations <strong>per month</strong> on the Free plan. From our experience, 200,000 operations per month is more than enough to get started.</p><p>We always send usage notifications to let you know when you’re approaching the threshold.</p>",
   },
   {
     question: "Can I set spending limits to control my budget?",

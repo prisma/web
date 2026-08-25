@@ -81,7 +81,7 @@ npx prisma migrate dev
 
 Make sure the local Prisma Postgres server is running before running the `prisma migrate dev` command.
 
-If you must use a different port, append [`--port <number>`](/orm/reference/prisma-cli-reference#dev) (for example, `npx prisma migrate dev --port 5422`) and update your `DATABASE_URL` (or other connection settings) to match.
+If you must use a different port, append [`--port <number>`](/orm/v7/reference/prisma-cli-reference#dev) (for example, `npx prisma migrate dev --port 5422`) and update your `DATABASE_URL` (or other connection settings) to match.
 
 :::
 
@@ -289,6 +289,22 @@ Notes:
 - Allocate unique ports and `name` values when running tests concurrently.
 - Use `server.database.connectionString` to connect with Postgres clients or ORMs.
 - This pattern is great for running tests that require a local database.
+
+## Troubleshooting
+
+### Start says "already running", but `ls` says `not_running`
+
+Starting an instance may fail with `A Prisma Dev server with the name <name> is already running`, while `npx prisma dev ls` reports that same instance as `not_running`. This happens when a previous run of the server crashed or was force-killed and left its lock file behind: the start command saw only the held lock, while `ls` checked whether the server was actually alive.
+
+Recent versions of `prisma` detect that the previous owner is dead, take over the leftover lock, and start normally. Projects whose installed `prisma` predates the fix can still hit this — tools that embed the local server (such as Prisma Composer) run the `@prisma/dev` version installed in your project, so the fix reaches you by updating the project's `prisma` dependency.
+
+To recover on an affected version, remove the stuck instance and start it again:
+
+```npm
+npx prisma dev rm <name>
+```
+
+Note that `rm` deletes the instance's stored data along with the leftover lock.
 
 ## Known limitations
 

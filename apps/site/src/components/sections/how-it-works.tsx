@@ -138,7 +138,9 @@ export function HowItWorks() {
         </div>
 
         <Reveal className="mt-14 flex">
-          <PrismButtonOutline href="https://console.prisma.io">Get started free</PrismButtonOutline>
+          <PrismButtonOutline href="https://console.prisma.io/sign-up">
+            Get started free
+          </PrismButtonOutline>
         </Reveal>
       </div>
     </section>

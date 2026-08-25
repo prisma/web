@@ -28,7 +28,7 @@ const PRICING_FAQS: FaqItem[] = [
   {
     question: "Are there egress fees?",
     answer:
-      "Not for your database — unlimited data transfer is included with Prisma Postgres on all plans. Apps hosted on Prisma Compute pay for outbound bandwidth at $0.025 per GB, as part of Compute's usage-based pricing.",
+      "Not for your database — unlimited data transfer is included with Prisma Postgres on all plans. Prisma Compute includes 10 GB of outbound bandwidth per month on Free. Paid plans bill outbound bandwidth at $0.025 per GB.",
   },
   {
     question: "Can I change plans later?",
