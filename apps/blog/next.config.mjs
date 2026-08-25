@@ -238,6 +238,11 @@ const config = {
         permanent: true,
       },
       {
+        source: "/series/prisma-next",
+        destination: "/series/prisma-8",
+        permanent: true,
+      },
+      {
         source: "/xeito-prisma-customer-story",
         destination: "/how-xeito-builds-features-not-database-infrastructure-with-prisma",
         permanent: true,
