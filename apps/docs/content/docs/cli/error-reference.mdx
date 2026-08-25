@@ -16,7 +16,7 @@ Recognize an error programmatically by running with `--json` and matching on `er
 
 Most codes on this page are expected failures. Some are warn-severity diagnostics that ride a successful run: the command completes and exits `0`, and the diagnostic carries the code (the entry says so where it applies). The process exit-code contract is in [Error Conventions](https://github.com/prisma/prisma-cli/blob/main/docs/product/error-conventions.md).
 
-Some command boundaries pass unrecognized upstream codes through by prefixing their namespace — a legacy platform code becomes `SERVICE.<LEGACY_CODE>` or `GIT.<RAW_CODE>`, and a server-supplied API code becomes `POSTGRES.<RAW_CODE>` or `BUCKET.<RAW_CODE>`. This page documents the codes defined in production source; a passthrough code not listed here carries the meaning of the upstream code it wraps.
+Every code on this page is assigned where the error is raised, and this page lists every code the CLI can emit. No boundary invents a code from a server response or rewrites one on the way out, so an error's code never depends on which command you reached the failure through. When a Management API request fails, the CLI raises the domain's registered `*.API_ERROR` code and carries the API's own code and HTTP status in `meta.apiCode` and `meta.status`, where they are data you can read rather than a code you have to guess at.
 
 Namespaces:
 
@@ -80,13 +80,13 @@ A user-typed workspace name matched more than one workspace, from two raise site
 
 ### BRANCH.API_ERROR [#BRANCH.API_ERROR]
 
-A Management API call made by `prisma branch list` failed and the response body carried no API error code — when the body does carry one, that code passes through as `BRANCH.<API_CODE>` instead. The `why` carries the API's message or, failing that, the HTTP status, and the fix suggests rerunning with `--log-level verbose` for the response details. Meta: none.
+A Management API call made by `prisma branch list` failed. The `why` carries the API's message or, failing that, the HTTP status, and the fix suggests rerunning with `--log-level verbose` for the response details. Meta: `status`, `apiCode` (the API's own error code, when the response supplied one).
 
 ## BUCKET
 
 ### BUCKET.API_ERROR [#BUCKET.API_ERROR]
 
-A bucket Management API request (listing, creating, or deleting buckets or bucket keys) failed and the response body carried no error code of its own — raised at the bucket commands' mapping boundary (`commands/bucket/errors.ts`) from the legacy `BUCKET_API_ERROR` shape; a response that does name a code passes through as `BUCKET.<RAW_CODE>` instead. The `why` carries the API's message or HTTP status, and the fix is the API's hint when it sent one. Meta: none.
+A bucket Management API request (listing, creating, or deleting buckets or bucket keys) failed — raised by the provider (`lib/bucket/provider.ts`). The `why` carries the API's message or HTTP status, and the fix is the API's hint when it sent one. An HTTP 401 or 403 raises this code too, with a `why` saying the API rejected the request as unauthorized and a `prisma auth login` next action. Meta: `status`, `apiCode` (the API's own error code, when the response supplied one).
 
 ### BUCKET.KEY_SECRET_MISSING [#BUCKET.KEY_SECRET_MISSING]
 
@@ -292,31 +292,31 @@ A warn diagnostic from `prisma init`: the final step, syncing the agent skills f
 
 ### POSTGRES.AMBIGUOUS [#POSTGRES.AMBIGUOUS]
 
-A database name passed to a `prisma postgres` subcommand matched more than one database in the resolved project — raised by the shared database resolver (`controllers/database.ts`, legacy `DATABASE_AMBIGUOUS`). The fix is to pass the database id, or `--branch <git-name>` to narrow the match; the candidates are carried in meta as `matches`, each with `id`, `name`, and `branchName`. Meta: `matches`.
+A database name passed to a `prisma postgres` subcommand matched more than one database in the resolved project — raised by the shared database resolver (`controllers/database.ts`). The fix is to pass the database id, or `--branch <git-name>` to narrow the match; the candidates are carried in meta as `matches`, each with `id`, `name`, and `branchName`. Meta: `matches`.
 
 ### POSTGRES.API_ERROR [#POSTGRES.API_ERROR]
 
-A database Management API request failed without a more specific code — the generic fallback for every `prisma postgres` operation (legacy `DATABASE_API_ERROR`), also raised when a database response omits its project id; a response that names its own error code passes through as `POSTGRES.<RAW_CODE>` instead. The `why` carries the API's message or HTTP status, and the fix is the API's hint when it sent one. Meta: none.
+A database Management API request failed without a more specific code — the generic fallback for every `prisma postgres` operation, raised by the provider (`lib/database/provider.ts`), and also when a database response omits its project id. The `why` carries the API's message or HTTP status, and the fix is the API's hint when it sent one. An HTTP 401 or 403 raises this code too, with a `why` saying the API rejected the request as unauthorized and a `prisma auth login` next action. Meta: `status`, `apiCode` (the API's own error code, when the response supplied one).
 
 ### POSTGRES.BACKUP_NOT_FOUND [#POSTGRES.BACKUP_NOT_FOUND]
 
-`prisma postgres backup restore` got a 404 from the restore endpoint; the source and target databases are resolved before the call, so the 404 identifies the backup id (legacy `DATABASE_BACKUP_NOT_FOUND`). The fix is to pass a backup id from `prisma postgres backup list <database>`. Meta: none.
+`prisma postgres backup restore` got a 404 from the restore endpoint; the source and target databases are resolved before the call, so the 404 identifies the backup id. The fix is to pass a backup id from `prisma postgres backup list <database>`. Meta: none.
 
 ### POSTGRES.BACKUPS_UNSUPPORTED [#POSTGRES.BACKUPS_UNSUPPORTED]
 
-Listing backups returned a 422 because the platform does not manage backups for this database — for example a remote/BYO database (legacy `DATABASE_BACKUPS_UNSUPPORTED`, raised by `prisma postgres backup list`). The fix is to use your own backup tooling for externally managed databases. Meta: none.
+Listing backups returned a 422 because the platform does not manage backups for this database — for example a remote/BYO database (raised by `prisma postgres backup list`). The fix is to use your own backup tooling for externally managed databases. Meta: none.
 
 ### POSTGRES.CONNECTION_MISSING [#POSTGRES.CONNECTION_MISSING]
 
-`prisma postgres create` created the database, but the API response did not include the first one-time connection payload (legacy `DATABASE_CONNECTION_MISSING`). The fix is to create a connection explicitly with `prisma postgres connection create <database>`. Meta: none.
+`prisma postgres create` created the database, but the API response did not include the first one-time connection payload. The fix is to create a connection explicitly with `prisma postgres connection create <database>`. Meta: none.
 
 ### POSTGRES.CONNECTION_STRING_MISSING [#POSTGRES.CONNECTION_STRING_MISSING]
 
-A connection create or rotate succeeded, but the API response did not include the one-time connection string the CLI would show exactly once (legacy `DATABASE_CONNECTION_STRING_MISSING`, raised by `prisma postgres create`, `postgres connection create`, and `postgres connection rotate`). The fix is to rerun the operation, or create a replacement connection and store the returned URL immediately. Meta: none.
+A connection create or rotate succeeded, but the API response did not include the one-time connection string the CLI would show exactly once (raised by `prisma postgres create`, `postgres connection create`, and `postgres connection rotate`). The fix is to rerun the operation, or create a replacement connection and store the returned URL immediately. Meta: none.
 
 ### POSTGRES.NOT_FOUND [#POSTGRES.NOT_FOUND]
 
-The database a `prisma postgres` subcommand targets could not be resolved: either no database matched the given id or name in the project (and optional `--branch`) scope, or a database that was just listed returned 404 on read because it was removed while the command ran (legacy `DATABASE_NOT_FOUND`, raised by the shared resolver in `controllers/database.ts`). The fix is to pass an id or name from `prisma postgres list`. Meta: none.
+The database a `prisma postgres` subcommand targets could not be resolved: either no database matched the given id or name in the project (and optional `--branch`) scope, or a database that was just listed returned 404 on read because it was removed while the command ran (raised by the shared resolver in `controllers/database.ts`). The fix is to pass an id or name from `prisma postgres list`. Meta: none.
 
 ### POSTGRES.PLAN_LIMIT_REACHED [#POSTGRES.PLAN_LIMIT_REACHED]
 
@@ -324,7 +324,7 @@ A database operation was blocked because the workspace has used up the operation
 
 ### POSTGRES.RESTORE_CONFLICT [#POSTGRES.RESTORE_CONFLICT]
 
-`prisma postgres backup restore` got a 409 because the target database is provisioning or already recovering (legacy `DATABASE_RESTORE_CONFLICT`). The fix is to wait for the database to become ready — check with `prisma postgres show <database>` — then retry. Meta: none.
+`prisma postgres backup restore` got a 409 because the target database is provisioning or already recovering. The fix is to wait for the database to become ready — check with `prisma postgres show <database>` — then retry. Meta: none.
 
 ### POSTGRES.USAGE_ERROR [#POSTGRES.USAGE_ERROR]
 
@@ -338,11 +338,7 @@ Project resolution matched more than one project: an explicit project reference 
 
 ### PROJECT.API_ERROR [#PROJECT.API_ERROR]
 
-A Management API project operation (list, rename, delete, or transfer) failed and the response body carried no API error code; a body that does carry one passes through as `PROJECT.<API_CODE>`. Listing projects deliberately throws this rather than returning an empty list, so a rejected request is distinguishable from a workspace that genuinely has no projects. The `why` carries the API's message or HTTP status. Meta: none.
-
-### PROJECT.CONFIRMATION_REQUIRED [#PROJECT.CONFIRMATION_REQUIRED]
-
-Reserved by the project group's legacy-error mapper (`commands/project/errors.ts`) for the legacy `CONFIRMATION_REQUIRED` CliError code, but nothing in the current source raises that code: the destructive `project delete` and `project transfer` commands confirm through the engine's consent prompt, which raises `CLI.CONSENT_REQUIRED` instead. Meta: none.
+A Management API project operation (list, rename, delete, or transfer) failed. Listing projects deliberately throws this rather than returning an empty list, so a rejected request is distinguishable from a workspace that genuinely has no projects. The `why` carries the API's message or HTTP status, and the API's own error code, when it sent one, is in `meta.apiCode`. Meta: `status`, `apiCode` (each present only when the response supplied it).
 
 ### PROJECT.CREATE_FAILED [#PROJECT.CREATE_FAILED]
 
@@ -354,7 +350,7 @@ The Management API answered `prisma project delete` with HTTP 400, which typical
 
 ### PROJECT.ENV_API_ERROR [#PROJECT.ENV_API_ERROR]
 
-A Management API call made by the `prisma project env` commands (reading, writing, or deleting variables, or resolving and creating branches for a scope) failed without an API error code in the body — a body carrying one passes through as `PROJECT.<API_CODE>`, and an HTTP 401/403 is converted to the auth-required error instead of this code. Meta: none.
+A Management API call made by the `prisma project env` commands (reading, writing, or deleting variables, or resolving and creating branches for a scope) failed. The summary names the call that failed, for example "Failed to add STRIPE_KEY". An HTTP 401 or 403 raises this code too, with a `why` saying the API rejected the request as unauthorized and a `prisma auth login` next action. Meta: `status`, `apiCode` (the API's own error code, when the response supplied one).
 
 ### PROJECT.ENV_BRANCH_CREATE_REQUIRES_DEFAULT_BRANCH [#PROJECT.ENV_BRANCH_CREATE_REQUIRES_DEFAULT_BRANCH]
 
@@ -383,10 +379,6 @@ Not an error: a warn diagnostic emitted on a successful `prisma project env add`
 ### PROJECT.ENV_VARIABLE_NOT_FOUND [#PROJECT.ENV_VARIABLE_NOT_FOUND]
 
 `prisma project env update` or `env delete` targeted a key (or, in update's `--file` mode, one or more keys) that does not exist in the targeted scope. The fix for update is to create the variable with `env add` (or split a mixed file); for delete it is to list the scope's variables first. Meta: `keys` (file-mode update only; the single-key forms carry no meta).
-
-### PROJECT.LINK_TARGET_REQUIRED [#PROJECT.LINK_TARGET_REQUIRED]
-
-Reserved by the project group's legacy-error mapper (`commands/project/errors.ts`) for the legacy `PROJECT_LINK_TARGET_REQUIRED` CliError code, but nothing in the current source raises that code: `prisma project link` without a target prompts interactively and reports a cancelled prompt as a usage error instead. Meta: none.
 
 ### PROJECT.LOCAL_STATE_STALE [#PROJECT.LOCAL_STATE_STALE]
 
@@ -516,7 +508,7 @@ The resolved service has no usable version for the command — raised by `servic
 
 ### SERVICE.PROJECT_NOT_FOUND [#SERVICE.PROJECT_NOT_FOUND]
 
-The project a service command resolved to does not exist in the authenticated workspace or is no longer accessible — raised directly when listing services answers "Resource Not Found" for the resolved project id, and via the legacy-error mapping when project resolution cannot match an explicit `--project` reference (every legacy service-family error code is prefixed `SERVICE.` at that boundary). Next actions point at `project show` to inspect the directory binding and `project link` to fix it. Meta: none.
+The project a service command resolved to does not exist in the authenticated workspace or is no longer accessible — raised when listing services answers "Resource Not Found" for the resolved project id. A service command that cannot match an explicit `--project` reference fails with the project group's own `PROJECT.NOT_FOUND` instead, because the condition is the same one whichever command met it. Next actions point at `project show` to inspect the directory binding and `project link` to fix it. Meta: none.
 
 ### SERVICE.SELECTION_INVALID [#SERVICE.SELECTION_INVALID]
 
