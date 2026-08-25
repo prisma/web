@@ -1,0 +1,100 @@
+---
+title: create-prisma
+description: Scaffold a new Prisma 8 app with create-prisma, with Prisma Composer, Prisma Postgres, and a deploy path built in.
+url: /prisma-orm/create-prisma
+metaTitle: Scaffold a Prisma 8 app with create-prisma
+metaDescription: Use npx create-prisma@latest to create a Prisma 8 app from a framework template, pick PostgreSQL or MongoDB, choose PSL or TypeScript contract authoring, and deploy to Prisma.
+---
+
+`create-prisma` creates a new Prisma 8 project from an app template. It installs Prisma 8, emits the contract, and generates a deployable [Prisma Composer](/composer) app. PostgreSQL projects use Composer's native Prisma Postgres provider, including migrations and a typed runtime client.
+
+Use it when you want to start from a working app. If you already have an app, follow [Add Prisma 8 to an existing PostgreSQL project](/prisma-orm/add-to-existing-project/postgresql) or [Add Prisma 8 to an existing MongoDB project](/prisma-orm/add-to-existing-project/mongodb) instead.
+
+:::note[Using Prisma 7?]
+
+`create-prisma@latest` scaffolds Prisma 8. To scaffold a Prisma 7 app, run `npm create prisma@stable` and follow the [Prisma 7 setup paths](/v7/getting-started).
+
+:::
+
+## Create a project
+
+Run the CLI with your package manager and answer the prompts:
+
+```npm
+npx create-prisma@latest my-app
+```
+
+The prompts cover the project name, the app template, the database provider, the contract authoring style, the package manager, and whether to deploy right away. Generated Node.js projects expect Node.js 24 LTS or newer.
+
+The last prompt is:
+
+```text
+Deploy to Prisma now?
+```
+
+Choose no to deploy later with the generated `deploy` script. When more than one Prisma workspace session is available, the CLI asks which workspace receives the deployment; pass `--workspace <id-or-name>` to pick one without a prompt, or omit it to use the active workspace. Choosing another workspace also updates the Prisma CLI's active workspace session.
+
+## Skip the prompts
+
+Pass flags when you already know the project shape. `--yes` accepts the defaults for anything you leave out:
+
+```npm
+npx create-prisma@latest my-app --template next --provider postgres --yes
+```
+
+`create` is the default subcommand, so `npx create-prisma@latest create my-app ...` is the same command.
+
+| Flag | What it does |
+| --- | --- |
+| `<name>` or `--name <name>` | The project name and directory. |
+| `--template <name>` | Chooses the app template (see below). |
+| `--provider postgres\|postgresql\|mongo\|mongodb` | Chooses the database: PostgreSQL relational models or MongoDB document models. |
+| `--authoring psl\|typescript` | Chooses the [contract authoring](/orm/contract-authoring/the-data-contract) style. |
+| `--package-manager npm\|pnpm\|yarn\|bun\|deno` | Chooses the package manager used to install dependencies. |
+| `--deploy` / `--no-deploy` | Deploys the generated app to Prisma immediately, or skips that step. |
+| `--workspace <id-or-name>` | The Prisma workspace to deploy into. |
+| `--yes` | Skips prompts and accepts the default choices. |
+| `--force` | Allows scaffolding into a non-empty directory. |
+| `--verbose` | Shows the full command output during setup. |
+
+## Templates
+
+| `--template` | App |
+| --- | --- |
+| `minimal` | A minimal server with one query |
+| `next` | Next.js |
+| `hono` | Hono |
+| `elysia` | Elysia |
+| `nest` | NestJS |
+| `svelte` | SvelteKit |
+| `astro` | Astro |
+| `nuxt` | Nuxt |
+| `tanstack-start` | TanStack Start |
+
+Every template supports PostgreSQL and MongoDB, PSL or TypeScript contract authoring, and npm, pnpm, Yarn, and Bun. Each [framework guide](/guides) walks the generated app from the first query to a deploy.
+
+Deno is supported for local minimal PostgreSQL apps:
+
+```bash
+deno run -A npm:create-prisma@latest my-deno-app --template minimal --provider postgres --package-manager deno --no-deploy
+```
+
+Prisma Compute does not support Deno deployments yet, so Deno projects stop at a verified local run.
+
+## Start the app
+
+Review `DATABASE_URL` in `.env`, then initialize the database and start the dev server:
+
+```bash
+cd my-app
+npm run db:init
+npm run dev
+```
+
+Sample records are seeded on the app's first query. From there, evolve the contract under `src/prisma/`, run `npm run contract:emit`, and plan and apply the migration with `npx prisma@latest migration plan` and `npx prisma@latest migrate`. The [quickstart](/prisma-orm/quickstart/postgresql) covers that loop in detail, and the [MongoDB quickstart](/prisma-orm/quickstart/mongodb) covers the replica set setup MongoDB needs.
+
+## Telemetry
+
+Published builds may send anonymous usage telemetry. It never includes project names, file paths, or database URLs. Disable it by setting `DO_NOT_TRACK`, `CREATE_PRISMA_DISABLE_TELEMETRY`, or `CREATE_PRISMA_TELEMETRY_DISABLED` in your environment.
+
+The CLI is open source at [prisma/create-prisma](https://github.com/prisma/create-prisma).

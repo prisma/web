@@ -149,17 +149,17 @@ export default function Layout({ children }: { children: ReactNode }) {
           <code>.md</code> to its URL.
         </div>
         <Banner
-          id="prisma-next-docs"
+          id="prisma-8-docs"
           height="3.25rem"
           className="prisma-next-banner text-fd-foreground"
         >
           <div className="prisma-next-banner-content flex w-full items-center justify-center gap-2 pr-8 text-xs sm:text-sm">
-            <span className="font-semibold">The Prisma 8 Release Candidate is available.</span>
+            <span className="font-semibold">Prisma 8 is here.</span>
             <span className="hidden text-fd-muted-foreground sm:inline">
-              Explore the next Prisma ORM workflow.
+              The docs now default to Prisma 8. Prisma 7 docs stay at /orm/v7.
             </span>
             <Link
-              href="/v8"
+              href="/getting-started"
               className={cn(
                 buttonVariants({ variant: "secondary", size: "sm" }),
                 "prisma-next-banner-cta h-7 shrink-0 whitespace-nowrap px-2 py-1 text-xs",

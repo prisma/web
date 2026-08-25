@@ -167,8 +167,8 @@ function SidebarNavTopView() {
             return (
               <Link
                 key={url}
-                // Keep the reader's version context: /orm routes to /orm/v8
-                // when they are on a v8 page, matching the old top-nav tabs.
+                // Keep the reader's version context: /orm routes to /orm/v7
+                // when they are on a v7 page, matching the old top-nav tabs.
                 href={getVersionedNavPathname(tab.url, pathname)}
                 prefetch={prefetch}
                 onClick={(event) => {
@@ -194,7 +194,7 @@ function SidebarNavTopView() {
 
 /** The current top-level section of `pathname`, resolved against the config.
  *  Only configured top-level sections are candidates, so nested roots
- *  (orm/v8, cli/v8) still resolve to their parent section. */
+ *  (orm/v7, cli/v7) still resolve to their parent section. */
 function useCurrentSection(): SidebarTab | null {
   const pathname = usePathname();
   const tabsByUrl = useSectionTabs();

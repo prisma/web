@@ -38,27 +38,10 @@ const BADGE_COLOR: Record<BadgeType, "ppg" | "orm-reverse" | "error" | "neutral"
   deprecated: "error",
 };
 
-function shouldHideSidebarBadge(url: string, badge: BadgeType | undefined) {
-  if (badge !== "early-access" && badge !== "release-candidate") {
-    return false;
-  }
-
-  const docsPathname = url.replace(/^\/docs(?=\/|$)/, "") || "/";
-
-  return (
-    docsPathname === "/v8" ||
-    docsPathname.startsWith("/v8/") ||
-    docsPathname === "/orm/v8" ||
-    docsPathname.startsWith("/orm/v8/") ||
-    docsPathname === "/cli/v8" ||
-    docsPathname.startsWith("/cli/v8/")
-  );
-}
-
 export const SidebarBadgeItem: FC<{ item: PageTree.Item }> = ({ item }) => {
   const badges = use(BadgeContext);
   const badge = badges[item.url] as BadgeType | undefined;
-  const visibleBadge = shouldHideSidebarBadge(item.url, badge) ? undefined : badge;
+  const visibleBadge = badge;
 
   return (
     <SidebarItem href={item.url} external={item.external} icon={item.icon}>

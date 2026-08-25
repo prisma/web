@@ -152,8 +152,8 @@ Run the Prisma CLI with \`npx prisma\`. The typical workflow for a new project:
    npm init -y
    npm install typescript tsx @types/node --save-dev
    npx tsc --init
-   npm install prisma @types/pg --save-dev
-   npm install @prisma/client @prisma/adapter-pg pg dotenv
+   npm install prisma@7.9.1 @types/pg --save-dev
+   npm install @prisma/client@7.9.1 @prisma/adapter-pg pg dotenv
    \`\`\`
 
    Set \`"module": "ESNext"\` (along with \`"moduleResolution": "bundler"\`,
@@ -259,7 +259,7 @@ version-accurate command and API knowledge without re-reading the docs:
 
 \`\`\`bash
 npx skills add prisma/skills          # Prisma CLI, Prisma Client, Prisma Postgres, Prisma Compute, upgrade guides
-npx skills add prisma/prisma/skills   # Prisma 8 (also installed automatically by \`npx prisma@next orm init\`)
+npx skills add prisma/prisma/skills   # Prisma 8 (also installed automatically by \`npx prisma@latest orm init\`)
 npx skills add prisma/composer        # Prisma Composer
 \`\`\`
 

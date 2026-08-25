@@ -1,289 +1,75 @@
 ---
 title: PostgreSQL
-description: Create a new TypeScript project from scratch by connecting Prisma ORM to PostgreSQL and generating a Prisma Client for database access
+description: Create a new Prisma 8 project with PostgreSQL using create-prisma@latest.
 url: /prisma-orm/quickstart/postgresql
-metaTitle: 'Quickstart: Prisma ORM with PostgreSQL (10 min)'
-metaDescription: Create a new TypeScript project from scratch by connecting Prisma ORM to PostgreSQL and generating a Prisma Client for database access.
+metaTitle: 'Quickstart: Prisma 8 with PostgreSQL'
+metaDescription: 'Scaffold a Prisma 8 project with PostgreSQL, initialize the database, and run your first query.'
 ---
 
-[PostgreSQL](https://www.postgresql.org) is a powerful, open-source relational database. In this guide, you will learn how to set up a new TypeScript project from scratch, connect it to PostgreSQL using Prisma ORM, and generate a Prisma Client for easy, type-safe access to your database.
+Create a Prisma 8 app with PostgreSQL and run your first query against seeded data.
 
-## Prerequisites
+:::note[Using Prisma 7?]
 
-You also need:
-
-- A [PostgreSQL](https://www.postgresql.org/) database server running and accessible
-- Database connection details (host, port, username, password, database name)
-
-:::tip[Need a PostgreSQL database?]
-
-If you don't already have a PostgreSQL database, follow the quickstart to set up a production-ready [Prisma Postgres](/prisma-orm/quickstart/prisma-postgres) database with Prisma ORM in a new project.
+Prisma 8 is the current release of Prisma ORM. Prisma 7 remains fully supported; its docs live at [/orm/v7](/orm/v7) and its setup paths at [/v7/getting-started](/v7/getting-started).
 
 :::
 
-## 1. Create a new project
-
-```shell
-mkdir hello-prisma
-cd hello-prisma
-```
-
-Initialize a TypeScript project:
+## Quick start
 
 ```npm
-npm init -y
-npm install typescript tsx @types/node --save-dev
-npx tsc --init
+npx create-prisma@latest --provider postgres
 ```
 
+Run this from a Node.js 24 or newer environment. The command preselects PostgreSQL and prompts you for the contract authoring style (PSL or TypeScript) and your package manager.
 
-## 2. Install required dependencies
+Setup gives you the app template, a starter contract, `prisma-next.md`, project-level Prisma 8 skills for your coding agent, and package scripts for the database steps below. Sample users are seeded automatically the first time the app queries the database, so there is no separate seed step.
 
-Install the packages needed for this quickstart:
+From here you have two paths: let [Prisma Composer](/composer) run a local Prisma Postgres database for you, or connect a PostgreSQL database you provide.
+
+## Path A: Run with a local database
+
+Composer builds the app, starts a local Prisma Postgres database, and applies the starter contract for you. No connection string needed.
 
 ```npm
-npm install prisma @types/pg --save-dev
-npm install @prisma/client @prisma/adapter-pg pg dotenv
+npm run dev:composer
 ```
 
-Here's what each package does:
+Open the URL the command prints. You should see the seeded users returned from PostgreSQL.
 
-- **`prisma`** - The Prisma CLI for running commands like `prisma init`, `prisma migrate`, and `prisma generate`
-- **`@prisma/client`** - The Prisma Client library for querying your database
-- **`@prisma/adapter-pg`** - The [`node-postgres` driver adapter](/orm/core-concepts/supported-databases/postgresql#using-driver-adapters) that connects Prisma Client to your database
-- **`pg`** - The node-postgres database driver
-- **`@types/pg`** - TypeScript type definitions for node-postgres
-- **`dotenv`** - Loads environment variables from your `.env` file
+## Path B: Connect your own database
 
-## 3. Configure ESM support
+### 1. Set the database connection
 
-Update `tsconfig.json` for ESM compatibility:
+Export `DATABASE_URL` in the shell you run the commands from. The generated scripts read the variable from the environment, not from `.env`.
 
-```json title="tsconfig.json"
-{
-  "compilerOptions": {
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "target": "ES2023",
-    "strict": true,
-    "esModuleInterop": true,
-    "ignoreDeprecations": "6.0"
-  }
-}
+```bash
+export DATABASE_URL="postgresql://username:password@host:5432/database?sslmode=require"
 ```
 
-Update `package.json` to enable ESM:
+If you don't have a PostgreSQL database yet, `npx create-db@latest` creates a temporary Prisma Postgres database and prints its connection string, plus a claim URL if you want to keep it.
 
-```json title="package.json"
-{
-  "type": "module" // [!code ++]
-}
-```
+### 2. Initialize the database
 
-## 4. Initialize Prisma ORM
-
-You can now invoke the Prisma CLI by prefixing it with `npx`:
+From the generated project directory, run `db:init` to apply the starter contract to PostgreSQL and sign the database.
 
 ```npm
-npx prisma
+npm run db:init
 ```
 
-Next, set up your Prisma ORM project by creating your [Prisma Schema](/orm/prisma-schema/overview) file with the following command:
+The output ends with a summary like `Applied 5 operation(s) across 1 space(s), database signed`.
+
+### 3. Run the app
+
+Start the app and confirm the sample query runs successfully.
 
 ```npm
-npx prisma init --datasource-provider postgresql --output ../generated/prisma
+npm run dev
 ```
 
-This command does a few things:
-
-- Creates a `prisma/` directory with a `schema.prisma` file containing your database connection and schema models
-- Creates a `.env` file in the root directory for environment variables
-- Creates a `prisma.config.ts` file for Prisma configuration
-
-The generated `prisma.config.ts` file looks like this:
-
-```typescript title="prisma.config.ts"
-import "dotenv/config";
-import { defineConfig, env } from "prisma/config";
-
-export default defineConfig({
-  schema: "prisma/schema.prisma",
-  migrations: {
-    path: "prisma/migrations",
-  },
-  datasource: {
-    url: env("DATABASE_URL"),
-  },
-});
-```
-
-The generated schema uses [the ESM-first `prisma-client` generator](/orm/prisma-schema/overview/generators#prisma-client) with a custom output path:
-
-```prisma title="prisma/schema.prisma"
-generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
-}
-
-datasource db {
-  provider = "postgresql"
-}
-```
-
-Update your `.env` file with your PostgreSQL connection string:
-
-```text title=".env"
-DATABASE_URL="postgresql://username:password@localhost:5432/mydb?schema=public"
-```
-
-Replace the placeholders with your actual database credentials:
-
-- `username`: Your PostgreSQL username
-- `password`: Your PostgreSQL password
-- `localhost:5432`: Your PostgreSQL host and port
-- `mydb`: Your database name
-
-## 5. Define your data model
-
-Open `prisma/schema.prisma` and add the following models:
-
-```prisma title="prisma/schema.prisma"
-generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
-}
-
-datasource db {
-  provider = "postgresql"
-}
-
-model User { // [!code ++]
-  id    Int     @id @default(autoincrement()) // [!code ++]
-  email String  @unique // [!code ++]
-  name  String? // [!code ++]
-  posts Post[] // [!code ++]
-} // [!code ++]
-
-model Post { // [!code ++]
-  id        Int     @id @default(autoincrement()) // [!code ++]
-  title     String // [!code ++]
-  content   String? // [!code ++]
-  published Boolean @default(false) // [!code ++]
-  author    User    @relation(fields: [authorId], references: [id]) // [!code ++]
-  authorId  Int // [!code ++]
-} // [!code ++]
-```
-
-## 6. Create and apply your first migration
-
-Create your first migration to set up the database tables:
-
-```npm
-npx prisma migrate dev --name init
-```
-
-This command creates the database tables based on your schema.
-
-Now run the following command to generate the Prisma Client:
-
-```npm
-npx prisma generate
-```
-
-## 7. Instantiate Prisma Client
-
-Now that you have all the dependencies installed, you can instantiate Prisma Client. You need to pass an instance of the Prisma ORM driver adapter to the `PrismaClient` constructor:
-
-```typescript title="lib/prisma.ts"
-import "dotenv/config";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../generated/prisma/client";
-
-const connectionString = `${process.env.DATABASE_URL}`;
-
-const adapter = new PrismaPg({ connectionString });
-const prisma = new PrismaClient({ adapter });
-
-export { prisma };
-```
-
-## 8. Write your first query
-
-Create a `script.ts` file to test your setup:
-
-```typescript title="script.ts"
-import { prisma } from "./lib/prisma";
-
-async function main() {
-  // Create a new user with a post
-  const user = await prisma.user.create({
-    data: {
-      name: "Alice",
-      email: "alice@prisma.io",
-      posts: {
-        create: {
-          title: "Hello World",
-          content: "This is my first post!",
-          published: true,
-        },
-      },
-    },
-    include: {
-      posts: true,
-    },
-  });
-  console.log("Created user:", user);
-
-  // Fetch all users with their posts
-  const allUsers = await prisma.user.findMany({
-    include: {
-      posts: true,
-    },
-  });
-  console.log("All users:", JSON.stringify(allUsers, null, 2));
-}
-
-main()
-  .then(async () => {
-    await prisma.$disconnect();
-  })
-  .catch(async (e) => {
-    console.error(e);
-    await prisma.$disconnect();
-    process.exit(1);
-  });
-```
-
-Run the script:
-
-```npm
-npx tsx script.ts
-```
-
-You should see the created user and all users printed to the console!
-
-## 9. Explore your data with Prisma Studio
-
-Prisma Studio is a visual editor for your database. Launch it with:
-
-```shell
-npx prisma studio
-```
+Use the URL or terminal output shown by your template. You should see the seeded users returned from PostgreSQL. If the response is `Could not query users yet`, `DATABASE_URL` is not set in the environment the app runs in; export it in the same shell and restart.
 
 ## Next steps
 
-You've successfully set up Prisma ORM. Here's what you can explore next:
-
-- **Learn more about Prisma Client**: Explore the [Prisma Client API](/orm/prisma-client/setup-and-configuration/introduction) for advanced querying, filtering, and relations
-- **Database migrations**: Learn about [Prisma Migrate](/orm/prisma-migrate) for evolving your database schema
-- **Performance optimization**: Discover [query optimization techniques](/orm/prisma-client/queries/advanced/query-optimization-performance)
-- **Build a full application**: Check out our [framework guides](/guides) to integrate Prisma ORM with Next.js, Express, and more
-- **Join the community**: Connect with other developers on [Discord](https://pris.ly/discord)
-
-
-
-## More info
-
-- [PostgreSQL database connector](/orm/core-concepts/supported-databases/postgresql)
-- [Prisma Config reference](/orm/reference/prisma-config-reference)
-- [Database connection management](/orm/prisma-client/setup-and-configuration/databases-connections)
+- Open `src/prisma/contract.prisma` or `src/prisma/contract.ts` and change the starter model.
+- Use the [PostgreSQL existing-project guide](/prisma-orm/add-to-existing-project/postgresql) if you already have an app and database.
+- Read the [Prisma 8 overview](/orm) when you want the concepts behind contracts, query APIs, and migrations.

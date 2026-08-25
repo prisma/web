@@ -525,7 +525,7 @@ const config = {
         permanent: true,
         source: "/blog/heroku-integration-homihof6eifi",
         destination:
-          "https://www.prisma.io/docs/orm/prisma-client/deployment/traditional/deploy-to-heroku",
+          "https://www.prisma.io/docs/orm/v7/prisma-client/deployment/traditional/deploy-to-heroku",
       },
       {
         permanent: true,

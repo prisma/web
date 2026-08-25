@@ -4,14 +4,13 @@ description: Apply migrations to Prisma Postgres with Prisma 8, then inspect the
 url: /studio/prisma-next
 metaTitle: Get started with Prisma Studio and Prisma 8
 metaDescription: Create a Prisma 8 project with npm create prisma@latest, apply migrations to Prisma Postgres, and use the Studio Migrations view to see what each migration changed.
-badge: release-candidate
 ---
 
-Prisma Studio shows the migration history of your [Prisma 8](/orm/v8) database as a visual timeline. Select any applied migration to see the models it changed, the SQL it executed, and a diff of the schema before and after.
+Prisma Studio shows the migration history of your [Prisma 8](/orm) database as a visual timeline. Select any applied migration to see the models it changed, the SQL it executed, and a diff of the schema before and after.
 
 This guide takes you from an empty directory to inspecting your own migration history. For browsing, editing, and filtering data in general, see [Getting Started](/studio/getting-started).
 
-The Migrations view requires `@prisma/studio-core` 0.32.0 or later, which ships in the stable Prisma CLI since 7.9. Run Studio with `npx prisma@latest studio`. The Prisma 8 [Release Candidate](/orm/v8) is available.
+The Migrations view requires `@prisma/studio-core` 0.32.0 or later, which ships in the stable Prisma CLI since 7.9. Run Studio with `npx prisma@7.9.1 studio`. See the [Prisma 8 docs](/orm).
 
 ## Prerequisites
 
@@ -30,7 +29,7 @@ To skip the prompts:
 npm create prisma@latest -- my-app --yes --provider postgres --authoring psl --template minimal
 ```
 
-This scaffolds a [data model](/orm/v8/data-modeling) at `src/prisma/contract.prisma`, authored in [PSL](/orm/v8/contract-authoring/psl-syntax).
+This scaffolds a [data model](/orm/data-modeling) at `src/prisma/contract.prisma`, authored in [PSL](/orm/contract-authoring/psl-syntax).
 
 Next, create a [Prisma Postgres](/postgres) database and export its connection string. The generated scripts and the CLI read the environment variable, not `.env`:
 
@@ -46,12 +45,12 @@ The database expires after 24 hours unless you claim it; `create-db` prints a cl
 
 ## Apply the first migration
 
-The scaffolded [contract](/orm/v8/contract-authoring/the-data-contract) defines a `User` and a `Post` model. Compile it, [plan a migration](/orm/v8/migrations/generating-a-migration), and [apply it](/orm/v8/migrations/applying-a-migration):
+The scaffolded [contract](/orm/contract-authoring/the-data-contract) defines a `User` and a `Post` model. Compile it, [plan a migration](/orm/migrations/generating-a-migration), and [apply it](/orm/migrations/applying-a-migration):
 
 ```npm
-npx prisma@next contract emit
-npx prisma@next migration plan --name init_users_posts
-npx prisma@next migrate --advance-ref db
+npx prisma@latest contract emit
+npx prisma@latest migration plan --name init_users_posts
+npx prisma@latest migrate --advance-ref db
 ```
 
 The CLI confirms the apply:
@@ -60,7 +59,7 @@ The CLI confirms the apply:
 Applied 1 migration(s) (6 operation(s)) across 1 contract space(s)
 ```
 
-`--advance-ref db` records where your database is by advancing a [ref](/orm/v8/migrations/the-migration-graph#name-important-states-with-refs), so the next plan produces a delta instead of recreating everything.
+`--advance-ref db` records where your database is by advancing a [ref](/orm/migrations/the-migration-graph#name-important-states-with-refs), so the next plan produces a delta instead of recreating everything.
 
 ## Update the data model
 
@@ -102,15 +101,15 @@ model Post {
 Compile the updated contract, plan, and apply:
 
 ```npm
-npx prisma@next contract emit
-npx prisma@next migration plan --name add_roles_and_publishing
-npx prisma@next migrate --advance-ref db
+npx prisma@latest contract emit
+npx prisma@latest migration plan --name add_roles_and_publishing
+npx prisma@latest migrate --advance-ref db
 ```
 
-Because the `db` ref was advanced in the previous step, the planner produces a delta: four `ALTER TABLE` operations that add the new columns and the enum's check constraint. To edit a planned migration before it runs, for example to add a backfill, see [Editing a migration](/orm/v8/migrations/editing-a-migration).
+Because the `db` ref was advanced in the previous step, the planner produces a delta: four `ALTER TABLE` operations that add the new columns and the enum's check constraint. To edit a planned migration before it runs, for example to add a backfill, see [Editing a migration](/orm/migrations/editing-a-migration).
 
 :::warning[Plans start from empty without a starting point]
-Without a `db` ref and without `--from`, `migration plan` compares against an empty database and recreates every table. If that happens, delete the planned migration directory and re-plan with `--from <previous-migration-dir>`, for example `--from 20260716T1155_init_users_posts`. See [The db ref](/orm/v8/migrations/generating-a-migration#the-db-ref-skipping---from).
+Without a `db` ref and without `--from`, `migration plan` compares against an empty database and recreates every table. If that happens, delete the planned migration directory and re-plan with `--from <previous-migration-dir>`, for example `--from 20260716T1155_init_users_posts`. See [The db ref](/orm/migrations/generating-a-migration#the-db-ref-skipping---from).
 :::
 
 ## Seed the database
@@ -121,14 +120,14 @@ Migration history is easier to read next to real rows. The scaffold seeds sample
 npm run dev
 ```
 
-Open the URL the command prints; the seeded users come back through the Prisma 8 ORM client. Then stop the dev server. See [Writing data](/orm/v8/fundamentals/writing-data) for the query API.
+Open the URL the command prints; the seeded users come back through the Prisma 8 ORM client. Then stop the dev server. See [Writing data](/orm/fundamentals/writing-data) for the query API.
 
 ## Open Prisma Studio
 
 A Prisma 8 project has no `schema.prisma`, so pass the [connection string](/postgres/database/connecting-to-your-database) with `--url`. Run Studio from a directory outside the project: the Prisma 7 CLI that ships Studio cannot read the Prisma 8 `prisma.config.ts` and fails if it finds one:
 
 ```bash
-cd .. && npx prisma@latest studio --url "$DATABASE_URL"
+cd .. && npx prisma@7.9.1 studio --url "$DATABASE_URL"
 ```
 
 Studio prints the local URL it serves on. Once the database has at least one applied migration, a **Migrations** item appears in the left navigation.
@@ -139,7 +138,7 @@ Studio reads migration history from the connected database, not from your local 
 
 ## Inspect migration history
 
-Open **Migrations**. The timeline lists every applied migration, newest first, with its name, apply time, operation count, and chips summarizing the change: `+1 model`, `~2 models`, `+3 fields`, `+1 enum`, `−1 field`. A ⚠️ marker flags migrations that contain a destructive change, so a dropped column is visible before you select anything. If a destructive migration needs undoing, see [Rollbacks and recovery](/orm/v8/migrations/rollbacks-and-recovery).
+Open **Migrations**. The timeline lists every applied migration, newest first, with its name, apply time, operation count, and chips summarizing the change: `+1 model`, `~2 models`, `+3 fields`, `+1 enum`, `−1 field`. A ⚠️ marker flags migrations that contain a destructive change, so a dropped column is visible before you select anything. If a destructive migration needs undoing, see [Rollbacks and recovery](/orm/migrations/rollbacks-and-recovery).
 
 ![The Prisma Studio Migrations view showing a timeline of six applied migrations and a visual diff canvas of the selected migration.](/img/studio/prisma-next-migrations/studio-migrations-timeline.png)
 
@@ -156,7 +155,7 @@ Select a migration to see the schema as that migration changed it:
 - **NEW** (green): a model the migration added.
 - **UPDATED** (amber): a model whose table changed, with `+`, `−`, and `~` glyphs on the affected fields and `before → after` pills for changed types, nullability, or defaults.
 - **UNCHANGED** (dimmed): neighboring models drawn for context.
-- Enum cards, and [relation](/orm/v8/fundamentals/relations-and-joins) edges between visible models.
+- Enum cards, and [relation](/orm/fundamentals/relations-and-joins) edges between visible models.
 
 Amber always means the migration changed that model's table. A model that only gained a back-relation, where the foreign key lives on the other table, stays dimmed, and the new relation edge is emphasized instead.
 
@@ -168,7 +167,7 @@ By default the view shows only the models the migration touched plus their direc
 
 ## Review executed SQL
 
-Open the **SQL** panel to see the operations exactly as they ran, each labelled `additive` or `destructive`. This is the same SQL the migration runner executed; [How migrations work](/orm/v8/migrations/how-migrations-work) explains how those operations are planned and checked.
+Open the **SQL** panel to see the operations exactly as they ran, each labelled `additive` or `destructive`. This is the same SQL the migration runner executed; [How migrations work](/orm/migrations/how-migrations-work) explains how those operations are planned and checked.
 
 ![The SQL panel showing the ALTER TABLE statements and check constraint executed by a migration, each labelled with its operation class.](/img/studio/prisma-next-migrations/studio-migrations-sql-panel.png)
 
@@ -195,23 +194,23 @@ Prisma 8 records every apply in two tables in your database:
 
 Studio joins the two to build the timeline and the diffs. Because everything is read from the database, the history of any database you connect to is complete, including migrations you never ran yourself. These table names are also where to look if you inspect the history over SQL.
 
-The hashes are the same ones that make Prisma 8 migrations [a graph rather than a numbered list](/orm/v8/migrations/the-migration-graph); the design story is in [Rethinking Database Migrations](https://www.prisma.io/blog/rethinking-database-migrations).
+The hashes are the same ones that make Prisma 8 migrations [a graph rather than a numbered list](/orm/migrations/the-migration-graph); the design story is in [Rethinking Database Migrations](https://www.prisma.io/blog/rethinking-database-migrations).
 
 ## Availability
 
 | Surface | Available |
 |---|---|
-| Local Studio (`npx prisma@latest studio`) | Yes, with `@prisma/studio-core` 0.32.0 or later |
+| Local Studio (`npx prisma@7.9.1 studio`) | Yes, with `@prisma/studio-core` 0.32.0 or later |
 | [Prisma Console](https://console.prisma.io) (embedded Studio) | Yes, for databases with an applied Prisma 8 migration history |
 | Prisma ORM projects using `prisma migrate` | No |
 
 In Prisma Console, open your database's Studio tab and select **Migrations**. The view is the same as local Studio, the selected migration is part of the Console URL, and no local setup is required.
 
-The stable Prisma CLI bundles the Migrations view since 7.9 (`@prisma/studio-core` 0.33.0). Run `npx prisma@latest studio` from a directory outside your Prisma 8 project; the Prisma 7 CLI cannot read the Prisma 8 `prisma.config.ts`.
+The stable Prisma CLI bundles the Migrations view since 7.9 (`@prisma/studio-core` 0.33.0). Run `npx prisma@7.9.1 studio` from a directory outside your Prisma 8 project; the Prisma 7 CLI cannot read the Prisma 8 `prisma.config.ts`.
 
 ## Limitations
 
-- **Prisma 8 on PostgreSQL only.** Prisma ORM projects using `prisma migrate` record history in a different format, and [Studio does not support MongoDB](/studio), where Prisma 8 [stores its history differently](/orm/v8/migrations/the-migration-graph#database-specific-details).
+- **Prisma 8 on PostgreSQL only.** Prisma ORM projects using `prisma migrate` record history in a different format, and [Studio does not support MongoDB](/studio), where Prisma 8 [stores its history differently](/orm/migrations/the-migration-graph#database-specific-details).
 - **Applied migrations only.** A planned but unapplied migration is not in the database, so it does not appear.
 - **An empty history hides the view.** The **Migrations** item appears only after the first applied migration.
 - **Older databases lose the diffs.** If the database was migrated by a Prisma 8 version that predates schema snapshots, the timeline and SQL panel still work, and the diff canvas asks you to update Prisma 8. Migrations applied after the update render normally.

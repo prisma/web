@@ -38,24 +38,18 @@ export function VersionSwitcher({
   const isCliVersion = isCliVersionPathname(pathname);
   const isGuidesVersion = isGuidesVersionPathname(pathname);
 
-  // Getting Started no longer has a version toggle: Prisma 8 lives inline in the
-  // getting-started sidebar as its own sections, so there is no "Docs version" dropdown.
-  if (isGettingStartedVersion) {
-    return null;
-  }
-
   const detectedVersion =
     getGettingStartedVersionFromPathname(pathname) ??
     getCliVersionFromPathname(pathname) ??
     getGuidesVersionFromPathname(pathname) ??
     getOrmVersionFromPathname(pathname);
   const currentVersion = detectedVersion ?? null;
-  // Guides exist only for Latest and v8. The CLI section lists every version:
-  // v8 routes to the unified CLI tree, while older versions (Latest, v6) all
-  // resolve to the classic `prisma` CLI docs.
-  const visibleVersions = isGuidesVersion
-    ? versions.filter((version) => version === LATEST_VERSION || version === "v8")
-    : versions;
+  // Getting Started, Guides, and the CLI exist only for Latest (Prisma 8) and
+  // v7; the ORM section lists every version, including v6.
+  const visibleVersions =
+    isGettingStartedVersion || isGuidesVersion || isCliVersion
+      ? versions.filter((version) => version === LATEST_VERSION || version === "v7")
+      : versions;
   const label = isGettingStartedVersion
     ? "Docs version"
     : isCliVersion
