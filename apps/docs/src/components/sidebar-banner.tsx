@@ -102,28 +102,37 @@ export function SidebarBannerCarousel({ slides }: SidebarBannerCarouselProps) {
           dark) with the always-on spectrum ring and the triple-band ray
           crossing the top corner behind the copy. No raster, so it never
           fights the theme it sits in. */}
-      <Link
-        href={front.href}
-        target="_blank"
-        rel="noopener noreferrer"
+      <div
         className={cn(
-          "spectrum-border spectrum-border-on group relative block overflow-hidden rounded-square-high",
+          "spectrum-border spectrum-border-on group relative overflow-hidden rounded-square-high",
           "bg-card-wash shadow-drop-low transition-shadow hover:shadow-drop",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground-ppg",
+          "focus-within:ring-2 focus-within:ring-foreground-ppg",
         )}
       >
+        {/* The whole card is the link, but as an overlay sibling rather than a
+            wrapper: interactive content (the dismiss button) is not allowed
+            inside an anchor. Copy is pointer-transparent so clicks reach the
+            overlay; the button opts back in and sits above it. */}
+        <Link
+          href={front.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`${front.cta ?? "Read more"}: ${front.title}`}
+          className="absolute inset-0 z-0 rounded-square-high focus-visible:outline-none"
+        />
+
         <PrismRay
           intensity="structural"
           mask="start"
-          className="-right-24 top-4 h-7 w-72 transition-opacity duration-300 group-hover:opacity-90"
+          className="pointer-events-none -right-24 top-4 h-7 w-72 transition-opacity duration-300 group-hover:opacity-90"
         />
         <PrismRay
           intensity="whisper"
           mask="both"
-          className="-left-16 bottom-3 h-4 w-64 opacity-25 dark:opacity-40"
+          className="pointer-events-none -left-16 bottom-3 h-4 w-64 opacity-25 dark:opacity-40"
         />
 
-        <div className="relative p-3.5">
+        <div className="pointer-events-none relative p-3.5">
           <div className="flex items-center justify-between">
             {front.badge ? (
               <span
@@ -143,7 +152,7 @@ export function SidebarBannerCarousel({ slides }: SidebarBannerCarouselProps) {
               type="button"
               aria-label="Dismiss"
               onClick={(e) => handleDismiss(e, front.href)}
-              className="-m-1 rounded-circle p-1 text-foreground-neutral-weaker transition-colors hover:bg-background-neutral-strong hover:text-foreground-neutral"
+              className="pointer-events-auto relative z-10 -m-1 rounded-circle p-1 text-foreground-neutral-weaker transition-colors hover:bg-background-neutral-strong hover:text-foreground-neutral"
             >
               <svg
                 aria-hidden="true"
@@ -189,7 +198,7 @@ export function SidebarBannerCarousel({ slides }: SidebarBannerCarouselProps) {
             </svg>
           </span>
         </div>
-      </Link>
+      </div>
     </div>
   );
 }
