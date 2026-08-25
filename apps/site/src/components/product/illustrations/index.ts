@@ -17,7 +17,7 @@ import { NoLockIn } from "./no-lock-in";
 import { ObjectStore } from "./object-store";
 import { QueryInsights } from "./query-insights";
 import { RepoConnect } from "./repo-connect";
-import { RunTemplates } from "./run-templates";
+import { RunApps } from "./run-apps";
 import { SchemaFile } from "./schema-file";
 import { SpendLimits } from "./spend-limits";
 import { StudioTable } from "./studio-table";
@@ -51,7 +51,7 @@ export const PRODUCT_ILLUSTRATIONS = {
   objectStore: ObjectStore,
   queryInsights: QueryInsights,
   repoConnect: RepoConnect,
-  runTemplates: RunTemplates,
+  runApps: RunApps,
   schemaFile: SchemaFile,
   spendLimits: SpendLimits,
   studioTable: StudioTable,
