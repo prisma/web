@@ -1,7 +1,6 @@
-// Brand-kit content. Data-only; the sections compose it. Copy that the client
-// still owes us is marked `TBC` — the same placeholder convention the pricing
-// and use-case pages use, so the page reads as complete while the real words
-// land. Grep `TBC` before shipping.
+// Brand-kit content. Data-only; the sections compose it. Every string here is
+// real copy — there are no `TBC` placeholders left on this page or on pricing,
+// so don't add one back: fill the real words in, or leave the entry out.
 
 export type LogoFormat = "svg" | "png" | "transparent" | "jpg";
 

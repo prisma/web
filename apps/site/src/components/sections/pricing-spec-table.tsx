@@ -29,27 +29,19 @@ const HALO =
 //
 // Rows and values are taken from the live "Compare plans" table
 // (https://www.prisma.io/pricing, read 2026-07-29) so the structure matches
-// what their users already know. Two items still need a ruling:
+// what their users already know.
 //
-//  - BACKUPS is not in their live table at all. Starter/Pro/Business come from
-//    the approved V2 plan cards; Free's retention has never been supplied, so
-//    it is left as PENDING rather than guessed.
-//  - GLOBAL CACHE rows are published under "included with Prisma Postgres",
-//    but Gregory said Accelerate is being deprecated and should come off the
-//    page. Confirm whether the cache rows stay.
-//  - SUPPORT reads Community / Community / Standard / Premium on the live
-//    page, where Gregory's May notes said Community / Community / 24h / 2h.
-//    The live page wins here, as with every other figure.
+// Every cell carries a real figure — there are no placeholders. The four rows
+// that once read "TBC" (cache tag invalidations, cache purge requests, Free
+// backups, support tiers) were restored from the pre-rebrand pricing table at
+// apps/site/src/app/pricing/pricing-data.ts (commit 528ab05fc^), which is the
+// same live table this one was modelled on. If a figure genuinely moves, edit
+// it — don't reintroduce a placeholder, since the page has no legend
+// explaining one (that note was pulled on the client's instruction 2026-07-30).
 //
-// The reader-facing legend under this table ("TBC — awaiting confirmation…, an
-// em dash means not included") was removed on the client's instruction
-// (2026-07-30). It was half internal note anyway and shouldn't ship to Prisma's
-// users. Consequence: nothing on the page now spells out the TBC-vs-em-dash
-// distinction, so the badge's title tooltip is the only affordance left. The
-// three open questions above are tracked here and in the project's open-items
-// list — they are NOT resolved just because the note is gone.
-const PENDING = "TBC";
-
+// One open question remains, and it is about the group, not a value: Gregory
+// said Accelerate is being deprecated, so confirm whether the GLOBAL CACHE
+// rows belong on the page at all.
 const YES = "yes";
 
 type Row = { label: string; values: [string, string, string, string] };
@@ -183,16 +175,21 @@ const GROUPS: Group[] = [
     icon: Layers,
     color: "text-prism-cyan-500",
     rows: [
-      // Live values are $0.0020 / $0.0010 per 1,000 and 5/5/10/20 purges per
-      // hour, but Gregory said Accelerate is being deprecated — so whether
-      // this group belongs on the page at all is unresolved. Placeholder.
+      // Live-page values, restored from the pre-rebrand table
+      // (apps/site/src/app/pricing/pricing-data.ts at 528ab05fc^). Free and
+      // Starter get no tag invalidations at all, hence the em dash.
       {
         label: "Cache tag invalidations",
-        values: [PENDING, PENDING, PENDING, PENDING],
+        values: [
+          "—",
+          "—",
+          "$0.002 per 1,000, max 10,000 per day",
+          "$0.001 per 1,000, max 100,000 per day",
+        ],
       },
       {
         label: "Cache purge requests",
-        values: [PENDING, PENDING, PENDING, PENDING],
+        values: ["5 per hour", "5 per hour", "10 per hour", "20 per hour"],
       },
     ],
   },
@@ -205,10 +202,12 @@ const GROUPS: Group[] = [
     rows: [
       { label: "Query insights", values: [YES, YES, YES, YES] },
       { label: "View and edit your data", values: [YES, YES, YES, YES] },
+      // Free has no backups: /postgres/database/backups says snapshots are a
+      // Starter, Pro, and Business feature, so the em dash is the right cell.
       {
         label: "Backups",
         values: [
-          PENDING,
+          "—",
           "Daily, 7-day retention",
           "Daily, 7-day retention",
           "Daily, 30-day retention",
@@ -221,9 +220,13 @@ const GROUPS: Group[] = [
     icon: Shield,
     color: "text-prism-red-500",
     rows: [
-      // live page: Community / Community / Standard / Premium
-      // Gregory (May): Community / Community / 24h / 2h — unresolved, so placeholder
-      { label: "Support", values: [PENDING, PENDING, PENDING, PENDING] },
+      // Live page: Community / Community / Standard / Premium. Gregory's May
+      // notes said Community / Community / 24h / 2h; the live page wins, as
+      // with every other figure in this table.
+      {
+        label: "Support",
+        values: ["Community", "Community", "Standard", "Premium"],
+      },
       {
         label: "Compliance",
         values: ["GDPR", "GDPR", "GDPR, HIPAA", "GDPR, HIPAA, SOC 2, ISO 27001"],
@@ -240,18 +243,6 @@ const HIGHLIGHT = 1;
 function Cell({ value, highlight }: { value: string; highlight: boolean }) {
   if (value === YES) {
     return <CheckBold className="size-4 text-prism-cyan-500" aria-label="Included" />;
-  }
-  // A placeholder means "we have not been given this" — it must never read as
-  // "not included", which is what the em-dash means.
-  if (value === PENDING) {
-    return (
-      <span
-        title="Awaiting confirmation from Prisma"
-        className="inline-flex rounded border border-dashed border-black/20 px-1.5 py-0.5 text-xs font-medium text-muted-foreground/70"
-      >
-        {PENDING}
-      </span>
-    );
   }
   return (
     <span
@@ -381,7 +372,7 @@ export function PricingSpecTable() {
               together, which keeps the comparison the table exists to make.
               The uniform-row collapse is what makes that affordable. Roughly
               half the rows are identical across all four plans (every
-              "Unlimited", every all-plans check, every four-way TBC), so
+              "Unlimited", every all-plans check, every flat per-unit price), so
               those render as one line instead of a four-cell grid. Without it the pivot would be roughly twice as
               long for no added information — and it has the side effect of
               making the rows where plans actually DIFFER the visually
