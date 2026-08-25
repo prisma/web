@@ -65,6 +65,8 @@ npx prisma@latest db migrate --db $DATABASE_URL
 1 pending — run `prisma-cli migrate --to 925198f3cc27`
 ```
 
+The output above is verbatim. `prisma-cli migrate` is the binary's internal name for the command; run it as `npx prisma@latest db migrate --to 925198f3cc27`.
+
 Read the markers on the right: `@db` is where the database is, `@contract` is where your emitted contract is, and `(db)` is the [ref](/orm/migrations/the-migration-graph#name-important-states-with-refs) of that name pointing at the same node.
 
 `db migrate --show` is the read-only dry run: it draws the path from the database's position to the target and stops. Nothing touches the database:
@@ -91,21 +93,15 @@ After applying, `migration log` shows the database's own record of what ran: an 
 
 ## Choosing a target
 
-With no `--to`, `db migrate` advances toward your emitted contract. To aim somewhere specific, `--to` accepts the same reference grammar as everywhere else: a ref name, a contract hash or prefix, a migration directory name, or `<dir>^` for the state before a migration:
+With no `--to`, `db migrate` advances toward your emitted contract. To aim somewhere specific, name the target with `--to`, for example a ref:
 
 ```npm
-npx prisma@latest db migrate --to prod --db $DATABASE_URL          # a ref
-npx prisma@latest db migrate --to sha256:e6b5c28 --db $DATABASE_URL # a hash prefix
-npx prisma@latest db migrate --to 20260707T1005_init --db $DATABASE_URL
+npx prisma@latest db migrate --to prod --db $DATABASE_URL
 ```
 
 If the graph has branched and more than one tip is reachable, `db migrate` stops and asks for an explicit `--to`. That's the graph protecting you: two feature branches may both be valid futures, and picking one is a human decision.
 
-`--advance-ref` moves a named ref to the post-apply state in the same step. Advancing one called `db` is what keeps [`migration plan`](/orm/migrations/generating-a-migration#the-db-ref-skipping---from) incremental:
-
-```npm
-npx prisma@latest db migrate --advance-ref db
-```
+`--advance-ref` moves a named ref to the post-apply state in the same step, which is what keeps [`migration plan`](/orm/migrations/generating-a-migration#the-db-ref-skipping---from) incremental. The [`db migrate` reference](/cli/db-migrate#options) has the full `--to` grammar (refs, hashes, migration names, `<dir>^`) and the flag contract.
 
 ## When something goes wrong
 
@@ -116,6 +112,8 @@ The runner stops at the first failing operation and tells you which one, why, an
   Why: extension "vector" is not available
   Fix: Fix the issue and re-run `prisma-cli migrate --to <contract>` — previously applied migrations are preserved.
 ```
+
+That hint is the CLI's literal output; `prisma-cli migrate` is its internal name for `db migrate`, so re-run `npx prisma@latest db migrate --to <contract>`.
 
 Three properties make failure boring instead of terrifying:
 
