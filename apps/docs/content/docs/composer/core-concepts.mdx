@@ -1,0 +1,145 @@
+---
+title: Core concepts
+description: "The ideas every Composer declaration and command builds on: services, resources, Modules, ports, contracts, stages, and the deploy model."
+url: /composer/core-concepts
+metaTitle: Prisma Composer core concepts
+metaDescription: Learn the core concepts behind Prisma Composer in one page. What services, resources, and Modules are, how ports and contracts wire them, and how deploys converge.
+---
+
+Prisma Composer has a small vocabulary that repeats everywhere: in the authoring API, in deploy output, and in error messages. This page defines each term in plain language and shows how they connect. Each section links to the page that goes deeper, so you can read this once and then navigate the rest of the docs by name.
+
+## Declarations are data
+
+Everything you author in Composer is a declaration: a plain TypeScript value that describes a piece of your application without running it. A service declaration says what the service is, what it depends on, and how it was built:
+
+```ts title="src/storefront/service.ts"
+import nextjs from '@prisma/composer/nextjs';
+import { rpc } from '@prisma/composer/service-rpc';
+import { compute } from '@prisma/composer-prisma-cloud';
+import { catalogContract } from '../catalog/contract.ts';
+
+export default compute({
+  name: 'storefront',
+  deps: { catalog: rpc(catalogContract) },
+  build: nextjs({ module: import.meta.url, appDir: '..' }),
+});
+```
+
+Importing this file executes nothing. The declaration is data that three different consumers read: the TypeScript compiler checks the wiring, the deploy provisions what it describes, and the runtime injects the declared dependencies into your code. That is why a mistake, such as a dependency wired to a producer with a different contract, fails `tsc` in seconds instead of failing a deploy.
+
+Two rules follow from this design and shape everything else:
+
+1. **Your code never reads its environment.** No `process.env`, no hardcoded URLs. Every dependency and config value arrives typed, through injection.
+2. **Composer never bundles or transforms your code.** You build with your own tooling; the deploy assembles what you built.
+
+## The three node kinds
+
+A Composer application is a tree of nodes. There are three kinds, and each answers a different question:
+
+| Kind | What it is | Declared with |
+| --- | --- | --- |
+| **Service** | A unit that runs your code: an API, a web app, a worker | `compute()` |
+| **Resource** | A stateful dependency the platform manages for you: a database, a bucket | `postgres()`, storage |
+| **Module** | A boundary that groups services and resources and exposes typed ports | `module()` |
+
+A service is atomic: Composer sees its ports and nothing inside. A Module is the opposite: it runs no code of its own; its behaviour is the composition of what it wraps. A Module owns its internals, so a consumer can use its exposed port but can never reach the database inside it.
+
+The **App** is not a fourth kind. It is the outermost Module, the one whose file you hand to the CLI. It wires the top-level pieces together, and deploying it deploys everything it contains. On the platform, the App becomes one Prisma [project](/compute#the-model): services land on [Prisma Compute](/compute) and databases on [Prisma Postgres](/postgres).
+
+What is deliberately not a node: plain values. An API key, a region name, or a feature flag has no lifecycle to manage, so it is **configuration**, and it travels through a different channel ([below](#two-channels-dependencies-and-input)). The test for whether something is a node is whether the deploy can create, update, and destroy it.
+
+See [Apps and Modules](/composer/apps-and-modules) for the full authoring surface.
+
+## Ports and wiring
+
+Every node has typed connection points, called ports. A `deps` entry is a port where the node requires something; an `expose` entry is a port where it offers something. Wiring means connecting a required port to an offered one that satisfies it, and it happens in exactly one place: a Module's builder function, using `provision()`:
+
+```ts title="module.ts"
+import { module } from '@prisma/composer';
+import catalogModule from './src/catalog/module.ts';
+import ordersModule from './src/orders/module.ts';
+import storefrontService from './src/storefront/service.ts';
+
+export default module('store', ({ provision }) => {
+  const catalog = provision(catalogModule);
+  const orders = provision(ordersModule, { deps: { catalog: catalog.rpc } });
+  provision(storefrontService, { deps: { catalog: catalog.rpc, orders: orders.rpc } });
+});
+```
+
+`provision()` places a node in the graph and returns a ref carrying one port per exposed contract. Because ports are typed, the compiler verifies every wire: each declared dependency must be bound, and bound to a producer whose contract matches. The wired graph as a whole is the application's **topology**, and the deploy prints it as a tree with dotted addresses (`auth.service`), so the structure you author is the structure you operate.
+
+## Two channels: dependencies and input
+
+A service receives things from outside through two deliberately separate channels, with two separate accessors in your code.
+
+**Dependencies** are live connections to other nodes: another service's API, a database. They are declared in `deps` and arrive in code through `service.load()`, already typed and already authenticated:
+
+```ts title="src/storefront/data.ts"
+import service from './service.ts';
+
+const { catalog } = service.load();
+const { products } = await catalog.listProducts({});
+```
+
+**Input** is configuration: plain values and credentials, declared together as one [Standard Schema](https://standardschema.dev) and read through `service.input()`. The service declares what shapes are legal; the place that provisions it decides where each value comes from. There are three bindings:
+
+1. A **literal**: the value is written at the provision site and travels with the deployment.
+2. **`envParam(NAME)`**: the value is read from a named platform variable per environment, so it can differ between production and a stage.
+3. **`envSecret(NAME)`**: like `envParam`, but the value is a credential: redacted in output and never stored in deploy state. This is the only thing Composer calls a secret.
+
+The split is what makes environments cheap: production, a staging stage, a local run, and a test all execute the same code with different injected values. See [Service input](/composer/service-input).
+
+## Contracts
+
+A **contract** is the typed interface through which services communicate. You write it once as a set of method signatures with Standard Schema message types (arktype, zod, and valibot all work), then both sides use it: the providing service serves it, and a consuming service declares `rpc(contract)` as a dependency and gets a typed client from `service.load()`. On the wire, calls are RPC over HTTP, authenticated with per-consumer service keys Composer provisions for you, and retried safely. See [Services and contracts](/composer/services-and-contracts).
+
+Databases have a contract story of their own: a `pnPostgres()` resource is typed by a [Prisma 8 data contract](/orm/contract-authoring/the-data-contract), and its migrations run as part of the deploy. Every database belongs to exactly one Module, which is what makes migration ownership unambiguous: the Module that owns the database owns its schema. See [Databases](/composer/databases).
+
+## The deploy model: converge, don't script
+
+`deploy` is declarative. It loads your root module, compares the topology it describes with the **deploy state** recorded for that environment, and applies only the difference: create what is new, update what changed, leave the rest alone. Re-running a deploy with nothing changed is a no-op, and re-running after a failure picks up where things diverged rather than starting over.
+
+```npm
+npx prisma@latest deploy module.ts
+```
+
+Two consequences of convergence are worth naming. Removing a node from your module removes the deployed thing on the next deploy, because the topology is the source of truth. And tearing a whole environment down works through the same mechanism, via the `destroy` operation in `@prisma/composer/control`. See [Deploying](/composer/deploying) and the [`deploy` reference](/cli/deploy).
+
+## Stages
+
+A **stage** is an environment name chosen at deploy time, never written in the topology. The same graph deploys anywhere:
+
+```npm
+npx prisma@latest deploy module.ts                  # production
+npx prisma@latest deploy module.ts --stage staging  # a persistent staging environment
+npx prisma@latest deploy module.ts --stage pr-42    # one environment per PR
+```
+
+Deploying with no `--stage` targets production, which lives at the project level. A named stage is a complete, isolated copy of the app, deployed as a [preview branch](/compute/branching) of the same project: its own services, its own databases, its own configuration. The only thing a stage shares with production is the code, which is exactly what the two-channel design promises: same topology, different injected values.
+
+## Local development
+
+`dev` brings the whole app up on your machine by running the same deploy pipeline against local emulators standing in for Prisma Compute and Prisma Postgres. No credentials, no network. Your services, databases, and wiring are real; only the providers underneath are swapped, so behaviour like service-key authentication works locally exactly as it does deployed:
+
+```npm
+npx prisma@latest dev module.ts
+```
+
+See [Local development](/composer/local-development) for what persists between runs and the [`dev` reference](/cli/dev).
+
+## Building blocks and extensions
+
+A Module is also the unit of reuse. A **building block** is a ready-made Module that ships with the framework and composes in a couple of lines: `cron` for scheduled jobs, `storage` for S3-backed blobs, and `streams` for durable event streams. Because a block is an ordinary Module, wiring one in is the same `provision()` call you use for your own.
+
+An **extension** is a package that brings its own Modules, resources, or deploy target, published under the `prisma-composer-*` naming convention. The first-party blocks above are the whole catalogue today. See [Building blocks](/composer/building-blocks) and [Object storage](/composer/object-storage).
+
+## Testing is the same seam
+
+Because your code receives everything through `service.load()` and `service.input()`, a test is just another environment: one where you decide what those calls return. `mockService` substitutes a fake for a unit test; `bootstrapService` hydrates a service with real local dependencies for an integration test. Nothing is provisioned and no code changes. See [Testing](/composer/testing).
+
+## Next steps
+
+- [Apps and Modules](/composer/apps-and-modules): the authoring surface behind the node kinds and `provision()`.
+- [Getting started](/composer/getting-started): build and run a two-service app from an empty directory.
+- [Limitations](/composer/limitations): what Composer does not do yet, before you commit to a design.
