@@ -267,7 +267,7 @@ const config = {
       // and the Release Candidate and will not come back in that form.
       { source: "/v8", destination: "/prisma-orm", permanent: true },
       { source: "/v8/getting-started", destination: "/getting-started", permanent: true },
-      { source: "/v8/create-prisma", destination: "/getting-started", permanent: true },
+      { source: "/v8/create-prisma", destination: "/prisma-orm/create-prisma", permanent: true },
       {
         source: "/v8/quickstart",
         destination: "/prisma-orm/quickstart/postgresql",
@@ -299,7 +299,7 @@ const config = {
         permanent: true,
       },
       { source: "/v8/:path*", destination: "/prisma-orm", permanent: true },
-      { source: "/orm/v8/create-prisma", destination: "/getting-started", permanent: true },
+      { source: "/orm/v8/create-prisma", destination: "/prisma-orm/create-prisma", permanent: true },
       {
         source: "/orm/v8/quickstart/:path*",
         destination: "/prisma-orm/quickstart/:path*",
@@ -319,7 +319,7 @@ const config = {
       { source: "/llms/v8.txt", destination: "/llms/orm.txt", permanent: true },
       { source: "/next", destination: "/prisma-orm", permanent: true },
       { source: "/next/getting-started", destination: "/getting-started", permanent: true },
-      { source: "/next/create-prisma", destination: "/getting-started", permanent: true },
+      { source: "/next/create-prisma", destination: "/prisma-orm/create-prisma", permanent: true },
       {
         source: "/next/quickstart",
         destination: "/prisma-orm/quickstart/postgresql",
@@ -351,7 +351,7 @@ const config = {
         permanent: true,
       },
       { source: "/next/:path*", destination: "/prisma-orm", permanent: true },
-      { source: "/orm/next/create-prisma", destination: "/getting-started", permanent: true },
+      { source: "/orm/next/create-prisma", destination: "/prisma-orm/create-prisma", permanent: true },
       {
         source: "/orm/next/quickstart/:path*",
         destination: "/prisma-orm/quickstart/:path*",
@@ -374,6 +374,10 @@ const config = {
         destination: "/prisma-postgres/quickstart/prisma-orm",
         permanent: true,
       },
+      // Renamed sections still linked from older blog posts and changelog entries.
+      { source: "/management-api", destination: "/rest-api", permanent: true },
+      { source: "/management-api/:path*", destination: "/rest-api/:path*", permanent: true },
+      { source: "/compute/cli-reference", destination: "/cli", permanent: true },
       // ── Prisma 7 URL cutover (DR-8687) ────────────────────────────────────
       // The Prisma 7 tree moved to /orm/v7 (and /v7, /cli/v7, /guides/v7).
       // Pages with a Prisma 8 equivalent redirect to it (section owners'
