@@ -261,6 +261,17 @@ const config = {
         destination: "/orm/v6/:path*",
         permanent: true,
       },
+      // CLI rc.8 command-surface rework: init and build logs removed, composer
+      // dev/deploy promoted to root-level dev/deploy, migrate renamed db migrate.
+      { source: "/cli/platform-init", destination: "/cli/project", permanent: true },
+      { source: "/compute/configuration", destination: "/compute", permanent: true },
+      { source: "/cli/build", destination: "/cli/service", permanent: true },
+      { source: "/cli/composer", destination: "/cli/deploy", permanent: true },
+      { source: "/cli/migration-apply", destination: "/cli/db-migrate", permanent: true },
+      // CLI rc.9: the agent group is replaced by skills sync/list. No redirect
+      // for the orm init page's move to /cli/orm-init: /cli/init is now the
+      // top-level init command, so the source URL stays a page.
+      { source: "/cli/agent", destination: "/cli/skills", permanent: true },
       // ── Prisma 8 is the default docs version ──────────────────────────────
       // The former /v8 (and older /next) version segments are now the
       // unversioned tree. Permanent: those URLs circulated during Early Access

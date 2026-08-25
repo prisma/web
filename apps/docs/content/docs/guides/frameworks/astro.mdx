@@ -36,11 +36,11 @@ Prefer to delegate this guide? Copy the prompt and hand it to your coding agent:
 ```text
 Create a new Astro app with Prisma 8, seed it, and deploy it to Prisma Compute.
 
-1. Scaffold: `npx create-prisma@latest create my-astro-app --template astro --provider postgres --yes`. Then get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Export it as `DATABASE_URL` in the shell and write it to `my-astro-app/.env` for the deploy step; the generated scripts read the environment variable, not `.env`.
+1. Scaffold: `npx create-prisma@latest create my-astro-app --template astro --provider postgres --yes`. Then run `npx prisma@latest init` in `my-astro-app` so the Prisma agent skills are installed and stay current, and use them. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Export it as `DATABASE_URL` in the shell; the generated scripts read the environment variable, not `.env`.
 2. In `my-astro-app`, run `npm run db:init` with `DATABASE_URL` exported. Sample users are seeded automatically on the app's first query; there is no separate seed script.
 3. Start `npm run dev` in the background, wait until it reports ready, verify http://localhost:4321 lists the seeded users and `curl http://localhost:4321/api/users` returns them as JSON, then stop the dev server.
-4. Prepare the deploy build: run `npm install @astrojs/node@^10`, then set `output: "server"` and `adapter: node({ mode: "standalone" })` in `astro.config.mjs`, following https://www.prisma.io/docs/guides/frameworks/astro.md.
-5. Deploy: check `npx @prisma/cli@latest auth whoami`; if I am not signed in, stop and ask me to run `npx @prisma/cli@latest auth login`. Then run `npx @prisma/cli@latest app deploy --create-project my-astro-app --env .env --env HOST=0.0.0.0` (without HOST the live URL answers `Service not found`) and verify the live URL's /api/users endpoint with curl.
+4. Confirm `astro.config.mjs` still sets `output: "server"` and `adapter: node({ mode: "standalone" })` (the template sets both).
+5. Deploy: check `npx prisma@latest auth whoami`; if I am not signed in, stop and ask me to run `npx prisma@latest auth login`. Then run `npm run build` followed by `npx prisma@latest deploy module.ts` and verify the live URL's /api/users endpoint with curl. The deployed app provisions and seeds its own Prisma Postgres database; do not pass the local DATABASE_URL. If the deploy fails with `HostedStateBootstrapError`, a project with the module's name exists in my workspace but its hosted state cannot be verified; re-run the deploy with `--name <a unique name>`.
 
 Use the installed Prisma 8 skills.
 ```
@@ -56,11 +56,10 @@ cd my-astro-app
 
 The scaffold generates the Astro app with Prisma 8 wired in, installs dependencies, and emits the contract your queries are type-checked against.
 
-Next, set the database connection. Use your own PostgreSQL connection string, or create a Prisma Postgres database with `npx create-db@latest`; it prints a connection string and a claim URL you can open to keep the database. Export the variable, and write it to `.env` for the deploy step later. The generated scripts read the environment variable, not `.env`:
+Next, set the database connection for the local steps. Use your own PostgreSQL connection string, or create a Prisma Postgres database with `npx create-db@latest`; it prints a connection string and a claim URL you can open to keep the database. Export the variable in the shell you work in; the generated scripts read the environment variable, not `.env`:
 
 ```bash
 export DATABASE_URL="<your connection string>"
-echo "DATABASE_URL=\"$DATABASE_URL\"" > .env
 ```
 
 ## 2. Initialize the database
@@ -72,6 +71,8 @@ npm run db:init
 ```text no-copy
 "summary": "Applied 5 operation(s) across 1 space(s), database signed"
 ```
+
+If `db:init` stops with `Connection terminated unexpectedly`, a database you just created is still starting; wait a few seconds and run it again. The command is safe to repeat and reports `Applied 0 operation(s)` when there is nothing left to do.
 
 `db:init` applies your schema (`src/prisma/contract.prisma`) to the database and signs it. Sample users are seeded automatically the first time the app queries the database.
 
@@ -93,64 +94,35 @@ Model access is namespace-qualified on PostgreSQL: `db.orm.public.User`. The [Pr
 
 ## 4. Deploy to Prisma Compute
 
-Astro is supported on [Prisma Compute](/compute), which runs the site as a Node server. That needs the Node adapter in standalone mode; without it the deploy fails at build time with `Astro build did not produce a standalone server entrypoint`. The template currently pins Astro 6, so install the matching adapter major:
-
-```npm
-npm install @astrojs/node@^10
-```
-
-Then configure the adapter in `astro.config.mjs`. Setting `output: "server"` renders the page and the API route per request, so the live site reads current data instead of freezing the build-time snapshot into static files:
-
-```js title="astro.config.mjs"
-// @ts-check
-import node from "@astrojs/node";
-import { prismaVitePlugin } from "@prisma/orm-postgres/vite-plugin-contract-emit";
-import { defineConfig } from "astro/config";
-
-// https://astro.build/config
-export default defineConfig({
-  output: "server",
-  adapter: node({ mode: "standalone" }),
-  vite: {
-    plugins: [prismaVitePlugin()],
-  },
-});
-```
+Astro is supported on [Prisma Compute](/compute), which runs the site as a Node server. The scaffold configures that already: `astro.config.mjs` sets `output: "server"` with `adapter: node({ mode: "standalone" })`, and `module.ts` with `service.ts` declare the app for [Prisma Composer](/composer), pointing at the built `dist/server/entry.mjs`. Keep those settings: `output: "server"` renders the page and the API route per request, so the live site reads current data instead of freezing the build-time snapshot into static files, and without the standalone adapter there is no server entrypoint to deploy.
 
 Sign in once (it opens a browser):
 
 ```npm
-npx @prisma/cli@latest auth login
+npx prisma@latest auth login
 ```
 
-Then deploy from the project directory. The `--env .env` flag passes your `DATABASE_URL` to the deployment, so the live site talks to the same database. The `HOST=0.0.0.0` variable is required: the standalone server binds `localhost` by default, which Compute's router cannot reach, and the live URL answers `Service not found` without it:
+Then build and deploy from the project directory:
 
 ```npm
-npx @prisma/cli@latest app deploy --env .env --env HOST=0.0.0.0
+npm run build
+npx prisma@latest deploy module.ts
 ```
 
 ```text no-copy
-First deploy of "my-astro-app" -- promoting to production.
-
-Build settings
-  Build Command     astro build  · Astro default
-  Output Directory  dist         · Astro output
-
-Building locally...
-  Built      8.3 MB
-Uploading...
-Deploying...
-Live in 10.6s
-https://<your-app>.ewr.prisma.build
+my-astro-app
+├─ database   postgres-database db_abc123
+└─ app        compute-service cps_abc123
+              https://xyz.ewr.prisma.build
 ```
 
-Verify the live API route returns the seeded users:
+The deploy creates a project named after your module in your workspace, and re-running the deploy reuses it: the CLI finds the hosted state it stored on the first run and converges the project to your module. If a project with that name exists but the CLI cannot identify or verify its stored state (one left behind by a different checkout, for example), the deploy stops with `HostedStateBootstrapError`; deploy under another name with `--name <unique-name>`, or rename the module in `module.ts`. The deploy also provisions its own Prisma Postgres database on the platform, declared in `module.ts`; the `DATABASE_URL` from your local steps is not involved, and the deployed database seeds on the app's first query. Verify the live API route returns the seeded users:
 
 ```bash
-curl https://<your-app>.ewr.prisma.build/api/users
+curl https://xyz.ewr.prisma.build/api/users
 ```
 
-The live URL's root page renders the same users server-side. The first deploy asks you to pick or create a project (pass `--create-project my-astro-app` to skip the prompt), pins the directory to it in a gitignored `.prisma/local.json`, and promotes to production. For previews per Git branch and deploy-on-push, see [Deploy your first app](/prisma-compute/deploy).
+The live URL's root page renders the same users server-side. For previews per Git branch and deploy-on-push, see [Deploy your first app](/prisma-compute/deploy).
 
 ## Next steps
 

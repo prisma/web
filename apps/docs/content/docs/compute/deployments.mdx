@@ -1,84 +1,85 @@
 ---
 title: Deployments
-description: How deployments are created on Prisma Compute, and how to inspect, promote, roll back, start, and stop them.
+description: How deploys create service versions on Prisma Compute, and how to inspect, promote, roll back, start, and stop them.
 url: /compute/deployments
 metaTitle: Deployments | Prisma Compute
-metaDescription: How deployments work in Prisma Compute, including git-push builds, build logs, promotion, rollback, and starting and stopping deployments.
+metaDescription: How deploys work in Prisma Compute, including git-push builds, service versions, logs, promotion, rollback, and starting and stopping versions.
 ---
 
-A deployment is one built version of your app. Deployments live inside a [branch](/compute/branching), and the live deployment is the one currently serving traffic.
+A deploy produces a **version** of a service: one built artifact that can serve traffic. Versions live inside a [branch](/compute/branching), and the live version is the one currently serving requests.
 
-## Where deployments come from
+## Where versions come from
 
-Deployments are created three ways:
+Versions are created three ways:
 
 - **A git push.** After you [connect a GitHub repository](/compute/github), pushing a branch builds and deploys it: the default Git branch deploys to production, and every other branch gets an isolated preview.
-- **The [Console](https://pris.ly/pdp).** Trigger a build and deployment from the browser.
-- **[Prisma Composer](/composer).** `composer deploy` does not build your services; it assembles the services you have already built and provisions them. This is the CLI-driven path for multi-service apps.
+- **The [Console](https://pris.ly/pdp).** Trigger a build and deploy from the browser.
+- **[`deploy`](/cli/deploy).** For a [Prisma Composer](/composer) app, `deploy` assembles the services you have already built and provisions them from your terminal or CI.
 
-The unified CLI does not have a standalone `deploy` command for a single service. Use its `service` commands to manage the deployments those flows create. During the beta, the earlier CLI (`@prisma/cli@latest`) still offers an `app deploy` command that builds and deploys a single service from your terminal in one step. The same commands below manage the deployments it creates.
+The `service` commands below manage the versions those flows create. They are targeted explicitly: the service is the first positional argument, and version-scoped commands take a globally unique version id, so there is no interactive picker and no dependence on your current git branch.
 
-## Inspect deployments
-
-```npm
-npx prisma@latest service show --service web
-npx prisma@latest service open --service web
-npx prisma@latest service deployment list --service web
-npx prisma@latest service deployment show dep_123
-```
-
-`service show` describes the service and its current deployment, `service open` opens its URL, `deployment list` lists the deployment history, and `deployment show` shows one deployment in detail.
-
-## Build logs
-
-Each deployment starts as a build. Stream a build's logs, live or after the fact:
+## Inspect services and versions
 
 ```npm
-npx prisma@latest build logs bld_123 --follow
+npx prisma@latest service show web
+npx prisma@latest service open web
+npx prisma@latest service version list web
+npx prisma@latest service version show ver_123
 ```
 
-`--follow` keeps the connection open while the build runs; `--cursor <cursor>` resumes from a cursor a previous run reported. Build ids appear in `service show`, `service deployment show`, and the Console.
+`service show` describes the service and its live version, `service open` opens its URL, `version list` lists the version history, and `version show` shows one version in detail.
+
+## Logs
+
+Read a version's logs with `service logs`. It defaults to the live version; `--version-id <id>` selects another:
+
+```npm
+npx prisma@latest service logs web --follow
+npx prisma@latest service logs web --version-id ver_123 --tail 200
+```
+
+Build output for a deploy is available in the [Console](https://pris.ly/pdp) alongside the version it produced.
 
 ## Promote and roll back
 
-Promote a preview deployment to production:
+Promote a preview version to production:
 
 ```npm
-npx prisma@latest service deployment promote dep_123 --service web
+npx prisma@latest service version promote ver_123
 ```
 
-Promotion rebuilds the deployment with **production** environment variables and makes the result live behind the service's endpoint. The rebuild is what lets a deployment built for a preview branch pick up production environment variables on its way to production.
+Promotion rebuilds the version with **production** environment variables and makes the result live behind the service's endpoint. The rebuild is what lets a version built for a preview branch pick up production environment variables on its way to production.
 
-Roll back production to a previous deployment. Rollback reuses an existing build, so there is no rebuild step between you and a known-good state:
+Roll back production to a previous version. Rollback reuses an existing build, so there is no rebuild step between you and a known-good state:
 
 ```npm
-npx prisma@latest service deployment rollback --service web
-npx prisma@latest service deployment rollback --service web --to dep_123
+npx prisma@latest service version rollback web
+npx prisma@latest service version rollback web --to ver_123
 ```
 
-Without `--to`, rollback targets the deployment before the live one.
+Without `--to`, rollback targets the version before the live one.
 
 ## Start, stop, delete
 
 ```npm
-npx prisma@latest service deployment stop dep_123
-npx prisma@latest service deployment start dep_123
-npx prisma@latest service deployment delete dep_123
+npx prisma@latest service version stop ver_123
+npx prisma@latest service version start ver_123
+npx prisma@latest service version delete ver_123
 ```
 
-Stopping a deployment takes it out of service without deleting its artifact; starting it brings it back. Deleting a deployment removes it and the artifact it holds, after confirmation.
+Stopping a version takes it out of service without deleting its artifact; starting it brings it back. Deleting a version permanently removes it and the artifact it holds, after confirmation.
 
-## Remove a service
+## Delete a service
 
 ```npm
-npx prisma@latest service remove --service web
+npx prisma@latest service delete web
 ```
 
-This removes the service from the selected branch (your active Git branch, unless you pass `--branch`). Pass `--yes` to skip the confirmation prompt.
+This permanently deletes the service from the branch you target with `--branch`. Pass `--yes` to skip the confirmation prompt.
 
 ## Next steps
 
 - [Environment variables](/compute/environment-variables): persist config across deploys.
 - [GitHub integration](/compute/github): the push-to-deploy flow in detail.
 - [Domains](/compute/domains): point a custom domain at production.
-- [Prisma Composer](/composer): CLI-driven deploys for multi-service apps.
+- [Prisma Composer](/composer): declare the app the `deploy` command deploys.
