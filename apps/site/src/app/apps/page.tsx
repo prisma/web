@@ -45,7 +45,7 @@ async function getTemplates() {
 }
 
 function TemplateCard({ template }: { template: Template }) {
-  const deployUrl = new URL(`/templates/${template.id}`, "https://console.prisma.io");
+  const deployUrl = new URL(`/apps/${template.id}`, "https://console.prisma.io");
   deployUrl.searchParams.set("utm_source", "website");
   deployUrl.searchParams.set("utm_medium", "templates");
 
