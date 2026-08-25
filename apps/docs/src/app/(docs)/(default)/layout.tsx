@@ -15,15 +15,14 @@ import { VersionSwitcher } from "@/components/version-switcher";
 // Sidebar announcement slides — set to [] to hide the banner
 const SIDEBAR_SLIDES: BannerSlide[] = [
   {
-    title: "The Next Evolution of Prisma ORM",
+    title: "Building the Stack for the Next Million Products",
     description:
-      "Prisma 8: a full TypeScript rewrite with a new query API, SQL builder, and extensible architecture.",
-    href: "https://pris.ly/pn-anouncement",
-    gradient: "orm" as const,
+      "Prisma is building a software factory: ORM, Postgres, and Compute connected into one loop for builders and agents.",
+    href: "https://www.prisma.io/blog/building-the-stack-for-the-next-million-products?utm_source=docs&utm_medium=sidebar-banner&utm_campaign=prisma-rebrand-2026",
+    gradient: "ppg" as const,
     badge: "New",
-    // Brand-drawn tile (see sidebar-banner.tsx) — the previous raster was
-    // old-brand navy/indigo artwork, the last off-palette element in the shell.
-    visual: "prism" as const,
+    image: "/imgs/sidebar-banners/software-factory.png",
+    imageAlt: "The shortest path from an idea to working software",
   },
 ];
 
