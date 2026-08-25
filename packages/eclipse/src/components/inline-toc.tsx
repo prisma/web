@@ -28,13 +28,17 @@ function TOCItemComponent({ item, activeId }: { item: TOCItem; activeId: string 
     <>
       <a
         href={item.url}
-        data-state={isActive ? "active" : "inactive"}
+        data-active={isActive}
+        // `.spectrum-text-active` / `.spectrum-text-hover` (eclipse
+        // globals.css) paint the docs TOC treatment: cool-spectrum gradient
+        // text on the active item, the same gradient fading in on hover —
+        // matching the docs sidebar's hover.
         className={cn(
-          "toc-item-comp border-s py-1 type-text-sm transition-colors no-underline data-[state=active]:border-s-fd-primary data-[state=active]:text-fd-accent-foreground data-[state=active]:type-text-sm-strong data-[state=inactive]:text-foreground-neutral-weak data-[state=inactive]:hover:text-foreground-neutral data-[state=inactive]:hover:text-fd-accent-foreground",
+          "spectrum-text-active spectrum-text-hover py-1.5 text-sm text-fd-muted-foreground no-underline wrap-anywhere transition-colors first:pt-0 last:pb-0",
+          item.depth <= 2 && "ps-3",
+          item.depth === 3 && "ps-6",
+          item.depth >= 4 && "ps-8",
         )}
-        style={{
-          paddingInlineStart: 12 * Math.max(item.depth - 1, 0),
-        }}
       >
         {item.title}
       </a>
@@ -48,6 +52,8 @@ function TOCItemComponent({ item, activeId }: { item: TOCItem; activeId: string 
 export function InlineTOC({ items, className, ...props }: InlineTocProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [thumb, setThumb] = useState<{ top: number; height: number } | null>(null);
 
   useEffect(() => {
     const flat = flattenItems(items);
@@ -72,17 +78,37 @@ export function InlineTOC({ items, className, ...props }: InlineTocProps) {
     return () => observerRef.current?.disconnect();
   }, [items]);
 
+  // The docs TOC marks the active item with a gradient segment on the rail
+  // (`.spectrum-thumb`); mirror it by measuring the active link's offset
+  // within the relative wrapper.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || activeId === null) {
+      setThumb(null);
+      return;
+    }
+    const link = container.querySelector<HTMLAnchorElement>(`a[data-active="true"]`);
+    if (!link) {
+      setThumb(null);
+      return;
+    }
+    setThumb({ top: link.offsetTop, height: link.offsetHeight });
+  }, [activeId]);
+
   return (
-    <div
-      className={cn(
-        "flex cursor-default flex-col p-4 pt-0 type-text-sm text-foreground-neutral-weak",
-        className,
+    <div ref={containerRef} className={cn("relative", className)} {...props}>
+      {thumb && (
+        <div
+          role="none"
+          className="spectrum-thumb absolute start-0 w-0.5 rounded-e-sm transition-[top,height] ease-linear"
+          style={{ top: thumb.top, height: thumb.height }}
+        />
       )}
-      {...props}
-    >
-      {items.map((item) => (
-        <TOCItemComponent key={item.url} item={item} activeId={activeId} />
-      ))}
+      <div className="flex cursor-default flex-col border-s border-fd-foreground/10 text-sm text-fd-muted-foreground">
+        {items.map((item) => (
+          <TOCItemComponent key={item.url} item={item} activeId={activeId} />
+        ))}
+      </div>
     </div>
   );
 }
