@@ -271,7 +271,7 @@ function Socials({
   return (
     <div
       className={cn(
-        "gap-4 align-center lg:flex! sm:flex md:hidden! hidden",
+        "gap-4 items-center lg:flex! sm:flex md:hidden! hidden",
         scroll && "md:hidden! lg:hidden!",
         className,
       )}
@@ -297,7 +297,7 @@ function Socials({
         </NavigationMenuLink>
       </NavigationMenuItem>
       {(include === "all" || include?.includes("discord")) && (
-        <NavigationMenuItem className="align-center flex">
+        <NavigationMenuItem className="items-center flex">
           <NavigationMenuLink
             className="p-0 hover:bg-revert cursor-pointer"
             href="https://pris.ly/discord"
@@ -316,21 +316,21 @@ function Socials({
         </NavigationMenuItem>
       )}
       {(include === "all" || include?.includes("twitter")) && (
-        <NavigationMenuItem className="align-center flex">
+        <NavigationMenuItem className="items-center flex">
           <NavigationMenuLink className="p-0" href="https://pris.ly/x">
             <i className="fa-brands fa-x-twitter"></i>
           </NavigationMenuLink>
         </NavigationMenuItem>
       )}
       {(include === "all" || include?.includes("youtube")) && (
-        <NavigationMenuItem className="align-center flex">
+        <NavigationMenuItem className="items-center flex">
           <NavigationMenuLink className="p-0" href="https://pris.ly/youtube">
             <i className="fa-brands fa-youtube"></i>
           </NavigationMenuLink>
         </NavigationMenuItem>
       )}
       {(include === "all" || include?.includes("linkedin")) && (
-        <NavigationMenuItem className="align-center flex">
+        <NavigationMenuItem className="items-center flex">
           <NavigationMenuLink className="p-0" href="https://pris.ly/linkedin">
             <i className="fa-brands fa-square-linkedin"></i>
           </NavigationMenuLink>

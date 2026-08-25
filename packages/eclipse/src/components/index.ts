@@ -166,3 +166,13 @@ export {
   EmptyContent,
   EmptyMedia,
 } from "./empty";
+
+export {
+  Takeover,
+  TakeoverMenu,
+  TakeoverHeader,
+  TakeoverTitle,
+  TakeoverDescription,
+  TakeoverContent,
+  TakeoverFooter,
+} from "./takeover";
