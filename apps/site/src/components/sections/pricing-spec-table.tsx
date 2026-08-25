@@ -39,9 +39,13 @@ const HALO =
 // it — don't reintroduce a placeholder, since the page has no legend
 // explaining one (that note was pulled on the client's instruction 2026-07-30).
 //
-// One open question remains, and it is about the group, not a value: Gregory
-// said Accelerate is being deprecated, so confirm whether the GLOBAL CACHE
-// rows belong on the page at all.
+// The Accelerate open question was resolved 2026-08-25: the limits come back,
+// but only in this table — deliberately NOT in the plan cards, so they are
+// documented without being highlighted. The 60,000-operation allowance,
+// operation overage, and per-query egress figures are the last ones the old
+// site published, from the plan cards' acceleratePoints in pricing-data.ts at
+// b41116959; the invalidation and purge rows were already restored from its
+// comparison table.
 const YES = "yes";
 
 type Row = { label: string; values: [string, string, string, string] };
@@ -171,10 +175,28 @@ const GROUPS: Group[] = [
     ],
   },
   {
-    label: "Global cache",
+    // Accelerate limits restored 2026-08-25 — table only, not the plan cards
+    // (see the header note). Values are the old site's last published figures.
+    label: "Accelerate (global cache)",
     icon: Layers,
     color: "text-prism-cyan-500",
     rows: [
+      {
+        label: "Operations included",
+        values: ["60,000", "60,000", "60,000", "60,000"],
+      },
+      {
+        label: "Operation overage",
+        values: ["—", "$0.018 per 1,000", "$0.008 per 1,000", "$0.006 per 1,000"],
+      },
+      {
+        label: "Egress included",
+        values: ["1 KiB per query", "1 KiB per query", "1 KiB per query", "2 KiB per query"],
+      },
+      {
+        label: "Egress overage",
+        values: ["—", "$0.09 per GiB", "$0.09 per GiB", "$0.08 per GiB"],
+      },
       // Live-page values, restored from the pre-rebrand table
       // (apps/site/src/app/pricing/pricing-data.ts at 528ab05fc^). Free and
       // Starter get no tag invalidations at all, hence the em dash.
