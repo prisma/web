@@ -59,10 +59,9 @@ export const computeContent: ProductPageContent = {
         illustration: "deployments",
       },
       {
-        label: "Templates",
-        caption:
-          "Start from a template — Next.js, Hono, an API, an agent — and deploy it as it is.",
-        illustration: "runTemplates",
+        label: "Apps",
+        caption: "Start from an app — Next.js, Hono, an API, an agent — and deploy it as it is.",
+        illustration: "runApps",
       },
     ],
   },
