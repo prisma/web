@@ -49,16 +49,22 @@ function applyOrmNamingStandard(body) {
   );
 }
 
-// Fenced blocks and inline code spans, so a rewrite meant for prose cannot
-// reach an identifier. `String.split` with one capture group yields
-// [prose, code, prose, code, ...], so the odd indices are the code.
-const CODE_SEGMENT = /(```[\s\S]*?```|`[^`\n]*`)/g;
+// Every span this file must treat as opaque, in the forms CommonMark allows:
+// a fence opened with three or more backticks or tildes and closed by its own
+// delimiter, and an inline span delimited by any number of backticks. Both the
+// prose rewriter and the MDX check read this, so neither can reach inside code
+// and rewrite an identifier or trip over a brace that is only ever displayed.
+const CODE_SEGMENT = /^(`{3,}|~{3,})[^\n]*\n[\s\S]*?^\1[^\S\n]*$|(`+)[^\n]*?\2/gm;
 
+/** Applies a prose-only rewrite, leaving every code segment untouched. */
 function replaceInProse(body, pattern, replacement) {
-  return body
-    .split(CODE_SEGMENT)
-    .map((segment, index) => (index % 2 === 1 ? segment : segment.replace(pattern, replacement)))
-    .join("");
+  let out = "";
+  let end = 0;
+  for (const code of body.matchAll(CODE_SEGMENT)) {
+    out += body.slice(end, code.index).replace(pattern, replacement) + code[0];
+    end = code.index + code[0].length;
+  }
+  return out + body.slice(end).replace(pattern, replacement);
 }
 
 // prisma-cli names this API after the SDK it calls it through
@@ -130,7 +136,7 @@ function assertMdxSafe(markdown) {
   // The page is plain markdown compiled as MDX. Braces and JSX-like tags
   // outside code spans/fences would change meaning or break the build, so
   // refuse them here where the failure is attributable to the source file.
-  const withoutCode = markdown.replace(/```[\s\S]*?```/g, "").replace(/`[^`\n]*`/g, "");
+  const withoutCode = markdown.replace(CODE_SEGMENT, "");
   const hostile = withoutCode.match(/[{}]|<[A-Za-z/]/);
   if (hostile) {
     throw new Error(
