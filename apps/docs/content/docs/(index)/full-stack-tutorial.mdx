@@ -6,7 +6,7 @@ metaTitle: "Tutorial: the full Prisma stack"
 metaDescription: Compose an app with Prisma Composer, model data with Prisma 8, run it on a local Prisma Postgres, then deploy app and database to Prisma Compute with one command.
 ---
 
-This tutorial takes you through the whole recommended stack in one sitting. [Prisma Composer](/composer) declares your app: its services, its databases, and how they connect. [Prisma 8](/v8) types your data. [Prisma Postgres](/postgres) stores it, locally while you develop and on the platform when you deploy. One declaration drives everything: the same `module.ts` runs the app on your machine and deploys it to [Prisma Compute](/compute). About 15 minutes.
+This tutorial takes you through the whole recommended stack in one sitting. [Prisma Composer](/composer) declares your app: its services, its databases, and how they connect. [Prisma 8](/v8) types your data. [Prisma Postgres](/postgres) stores it, locally while you develop and on the platform when you deploy. One declaration drives everything: the same `module.ts` runs the app on your machine and deploys it to [Prisma Compute](/compute). Plan on about 15 minutes.
 
 It uses the `hono` template so you get a small API you can verify with curl at every step. The same journey works for the other templates; the [framework guides](/guides/v8) cover each one.
 
@@ -30,8 +30,6 @@ Create a new Hono API composed with Prisma Composer and Prisma 8, run it locally
 3. Build and run locally: `npm run build`, then `npx prisma@next dev module.ts`. This provisions a local Prisma Postgres database and applies the contract; no DATABASE_URL is needed. Sample users are seeded on the app's first query. Verify the local URL that `dev` prints: its /users endpoint returns the seeded users.
 4. Deploy: check `npx prisma@next auth whoami`; if I am not signed in, stop and ask me to run `npx prisma@next auth login` (it opens a browser). Capture the baseline migration first with `npx prisma@next migration plan --name init` and note the migration directory it writes. Then run `npx prisma@next deploy module.ts` and verify the live URL's /users endpoint with curl. The deploy creates the project and provisions the database from the module declaration; do not pass a DATABASE_URL.
 5. Evolve the schema: add `role String @default("member")` to the User model in `src/prisma/contract.prisma`, run `npx prisma@next contract emit`, add `"role"` to the typed select and the returned object in `src/prisma/users.ts`, and plan the migration with `npx prisma@next migration plan --name add-user-role --from <the init migration directory>`. Then run `npm run build` and `npx prisma@next deploy module.ts` again, and verify the live /users now returns `role: "member"` with the same createdAt values as before.
-
-Run the CLI directly as above; do not use the scaffold's `deploy` and `dev:composer` npm scripts, which still call the removed `composer` subcommand.
 ```
 
 </AgentPrompt>
@@ -50,7 +48,7 @@ Answer the prompts for contract authoring style and package manager, then enter 
 cd my-app
 ```
 
-If you work with a coding agent, run [`npx prisma@next init`](/cli/v8/init) once. It installs the [Prisma agent skills](/ai/tools/skills) that ship inside the installed Prisma packages and adds a postinstall hook that keeps them matching the versions in use; see [`skills`](/cli/v8/skills).
+If you work with a coding agent, run [`npx prisma@next init`](/cli/v8/init) once. The scaffold has already synced the [Prisma agent skills](/ai/tools/skills) that ship inside its Prisma packages and added the `postinstall` hook that keeps them current, so on a fresh scaffold `init` confirms that setup and reports each step as already done. It is still worth running, because it is the command that repairs the setup after you upgrade a Prisma package. See [`skills`](/cli/v8/skills).
 
 ## 2. The Composer app
 
@@ -114,7 +112,7 @@ npx prisma@next dev module.ts
 
 `dev` provisions a local Prisma Postgres database, applies the contract to it, starts the service, and prints the app's local URL when everything is ready. No account, credentials, or connection string are involved; see [Local development](/local-development) for how the local platform works.
 
-Sample users are seeded automatically the first time the app queries the database. Confirm the API serves the seeded rows (use the port `dev` printed):
+Sample users are seeded automatically the first time the app queries the database. Confirm the API serves the seeded rows. `dev` picks a free port and prints the URL, so use the one it printed if it differs from the `3000` shown here:
 
 ```bash
 curl http://localhost:3000/users
@@ -128,7 +126,7 @@ curl http://localhost:3000/users
 ]
 ```
 
-Prefer the framework's own dev server? `npm run dev` runs it directly. Direct mode is not managed by Composer, so it needs a database of your own in `DATABASE_URL`. Create one inside your project with the CLI:
+If you prefer the framework's own dev server, `npm run dev` runs it directly. Composer does not manage that mode, so the app needs a database of your own in `DATABASE_URL`. Create one inside your project with the CLI:
 
 ```npm
 npx prisma@next auth login
@@ -161,7 +159,7 @@ npm run build
 npx prisma@next deploy module.ts
 ```
 
-Composer creates a project named after your module, provisions the Prisma Postgres database declared in `module.ts`, wires it to the service, and starts the app. There is nothing to configure and no environment file to pass: the deployed database comes from the declaration, exactly like the local one did. The deploy finishes by printing your app's topology and its public URL:
+Composer creates a project named after your module, provisions the Prisma Postgres database declared in `module.ts`, wires it to the service, and starts the app. There is nothing to configure and no environment file to pass, because the deployed database comes from the declaration exactly as the local one did. When everything is up, the deploy prints what it made, each part of your app next to the platform resource it became, along with the public URL:
 
 ```text no-copy
 my-app
@@ -170,9 +168,13 @@ my-app
               https://xyz.ewr.prisma.build
 ```
 
-:::note
+:::warning[The module name must be unique in your workspace]
 
-The scaffold's `npm run deploy` and `npm run dev:composer` scripts still call the CLI's former `composer` subcommand, which the current release candidate removed. Run `npx prisma@next deploy module.ts` and `npx prisma@next dev module.ts` directly until the template catches up.
+`deploy` looks the module name up in your workspace and reuses an existing project with that name rather than creating another. If you have deployed a `my-app` before, the deploy stops with `HostedStateBootstrapError` and names a project id you did not choose. Deploy under a different name with `--name`, or rename the module in `module.ts`:
+
+```npm
+npx prisma@next deploy module.ts --name my-app-tutorial
+```
 
 :::
 
@@ -182,7 +184,7 @@ The scaffold's `npm run deploy` and `npm run dev:composer` scripts still call th
 curl https://xyz.ewr.prisma.build/users
 ```
 
-The same three users come back, now served from production next to your database, seeded on the deployed app's first query. Re-deploying is idempotent: build again, deploy again, and the platform applies the difference. That includes removals: your module is the source of truth, so deleting a provision from `module.ts` and deploying again removes the resource from the platform. See [Removing resources](/composer/deploying#removing-resources).
+The same three users come back, now served from production next to your database, seeded on the deployed app's first query. Re-deploying is idempotent: build again, deploy again, and the platform applies only the difference. That includes removals, because your module is the source of truth: delete a provision from `module.ts`, deploy again, and the resource disappears from the platform. See [Removing resources](/composer/deploying#removing-resources).
 
 ## 7. Evolve the data model
 
@@ -208,7 +210,7 @@ npx prisma@next contract emit
 npx prisma@next migration plan --name add-user-role --from <timestamp>_init
 ```
 
-`--from` names the migration you are building on. Teams point a [ref](/cli/v8/migration-ref) named `db` at the applied migration instead, so plans chain automatically without naming directories.
+`--from` names the migration you are building on, and here it is required. Without it, `migration plan` starts from the [ref](/cli/v8/migration-ref) named `db`. `db init` sets that ref when you initialize a database directly, but a Composer deploy never does, so a plan without `--from` in this project would start from an empty database and describe every table again. Teams that want plans to chain on their own point the ref at the applied migration once (`migration ref set db <timestamp>_init`) and advance it after each deploy.
 
 The plan is your change and nothing else. Review it like any other diff, with [`migration show`](/cli/v8/migration-show) or by reading the generated package:
 
@@ -224,7 +226,7 @@ const users = await db.orm.public.User.select("id", "email", "username", "name",
 
 This is the Prisma 8 loop: the contract is the source of truth, the emit step regenerates the types, and the compiler points at every query the change touches.
 
-Verify locally first if you like (`npm run build`, then `npx prisma@next dev module.ts`; the local database picks up the contract change on start). Then build and deploy again:
+If you want to see the change on your machine first, run `npm run build` and `npx prisma@next dev module.ts` again; the local database applies the new migration on start and `/users` returns the role there too. Then build and deploy again:
 
 ```npm
 npm run build
@@ -241,6 +243,14 @@ curl https://xyz.ewr.prisma.build/users
 [
   { "id": "1", "email": "alice@prisma.io", "username": "alice", "name": "Alice", "role": "member", "createdAt": "2026-08-24T18:40:06.375Z" }
 ]
+```
+
+## 8. Clean up (optional)
+
+The project keeps running until you remove it. Deleting it removes the service and the database, so the command asks you to repeat the project id (find it with `npx prisma@next project list`):
+
+```npm
+npx prisma@next project delete <project-id> --confirm <project-id>
 ```
 
 ## Next steps

@@ -39,7 +39,7 @@ Create a new Nuxt app with Prisma 8, seed it, and deploy it to Prisma Compute.
 1. Scaffold: `npx create-prisma@latest create my-app --template nuxt --provider postgres --yes`. Then run `npx prisma@next init` in `my-app` so the Prisma agent skills are installed and stay current, and use them. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Export it as `DATABASE_URL` in the shell; the generated scripts read the environment variable, not `.env`.
 2. In `my-app`, run `npm run db:init` with `DATABASE_URL` exported. Sample users are seeded automatically on the app's first query; there is no separate seed script.
 3. Start `npm run dev` in the background, wait until it reports ready, verify that http://localhost:3000 lists the seeded users and `curl http://localhost:3000/api/users` returns them, then stop the dev server.
-4. Deploy: check `npx prisma@next auth whoami`; if I am not signed in, stop and ask me to run `npx prisma@next auth login`. Then run `npm run build` followed by `npx prisma@next deploy module.ts` and verify the live URL's /api/users endpoint. The deployed app provisions and seeds its own Prisma Postgres database; do not pass the local DATABASE_URL. Do not use the scaffold's `deploy` npm script, which still calls the removed `composer` subcommand.
+4. Deploy: check `npx prisma@next auth whoami`; if I am not signed in, stop and ask me to run `npx prisma@next auth login`. Then run `npm run build` followed by `npx prisma@next deploy module.ts` and verify the live URL's /api/users endpoint. The deployed app provisions and seeds its own Prisma Postgres database; do not pass the local DATABASE_URL. If the deploy fails with `HostedStateBootstrapError`, a project with the module's name already exists in my workspace; re-run the deploy with `--name <a unique name>`.
 
 Use the installed Prisma 8 skills.
 ```
@@ -70,6 +70,8 @@ npm run db:init
 ```text no-copy
 "summary": "Applied 5 operation(s) across 1 space(s), database signed"
 ```
+
+If `db:init` stops with `Connection terminated unexpectedly`, a database you just created is still starting; wait a few seconds and run it again. The command is safe to repeat and reports `Applied 0 operation(s)` when there is nothing left to do.
 
 `db:init` applies your schema (`src/prisma/contract.prisma`) to the database and signs it. Sample users are seeded automatically the first time the app queries the database.
 
@@ -125,19 +127,13 @@ my-app
               https://xyz.ewr.prisma.build
 ```
 
-The deploy creates a project named after your module and provisions its own Prisma Postgres database on the platform, declared in `module.ts`; the `DATABASE_URL` from your local steps is not involved, and the deployed database seeds on the app's first query. Verify the live app: open the URL to see the rendered user list, or hit the API route:
+The deploy creates a project named after your module, so that name has to be unique in your workspace. If a project with the same name already exists (an earlier run of this guide, for example), the deploy stops with `HostedStateBootstrapError`; deploy under another name with `--name <unique-name>`, or rename the module in `module.ts`. The deploy also provisions its own Prisma Postgres database on the platform, declared in `module.ts`; the `DATABASE_URL` from your local steps is not involved, and the deployed database seeds on the app's first query. Verify the live app: open the URL to see the rendered user list, or hit the API route:
 
 ```bash
 curl https://xyz.ewr.prisma.build/api/users
 ```
 
 For previews per Git branch and deploy-on-push, see [Deploy your first app](/prisma-compute/deploy).
-
-:::note
-
-The scaffold's `npm run deploy` and `npm run dev:composer` scripts still call the CLI's former `composer` subcommand, which the current release candidate removed. Run `npx prisma@next deploy module.ts` and `npx prisma@next dev module.ts` directly until the template catches up.
-
-:::
 
 ## Next steps
 

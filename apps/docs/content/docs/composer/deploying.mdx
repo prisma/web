@@ -42,7 +42,7 @@ Deploy state records what is already provisioned, so a re-deploy applies the dif
 
 ## Production and stages
 
-Deploying with no `--stage` targets **production**. In platform terms, the app is a project (named after your root module), and production lives at the project level.
+Deploying with no `--stage` targets **production**. In platform terms, the app is a project (named after your root module), and production lives at the project level. The name is looked up in your workspace: an existing project with the same name is reused rather than duplicated, and one left over from an earlier deploy stops the command with `HostedStateBootstrapError`. Use `--name` to deploy under a different name, or rename the module.
 
 `--stage <name>` deploys a complete, isolated copy of the app as a [preview branch](/compute/branching) of that same project: its own services, its own databases, its own configuration. The only thing a stage shares with production is the code. Composer's *stage* and Compute's *preview branch* are the same object seen from two tools, which is why the stage's variables are the branch's [environment variables](/compute/environment-variables):
 
@@ -56,7 +56,7 @@ Re-deploying any environment is idempotent: it updates the resources in place. A
 
 ## What a deploy prints
 
-A deploy ends by printing your app's own topology: the names you authored, what each one became on the platform, and the public URLs:
+A deploy ends by printing what it made, in your own terms: the names you authored, what each one became on the platform, and the public URLs:
 
 ```text no-copy
 storefront-auth
@@ -74,7 +74,7 @@ URLs appear for publicly reachable endpoints. That is why a Compute service prin
 
 ## Removing resources
 
-Your module is the source of truth for what exists. To remove a resource, delete its provision from the code and deploy again: the converge compares the declaration against the environment's deploy state and deletes whatever is no longer declared, alongside any creates and updates the same deploy needs.
+Your module is the source of truth for what exists. To remove a resource, delete its provision from the code and deploy again: the deploy compares the declaration against the environment's deploy state and deletes whatever is no longer declared, alongside any creates and updates the same deploy needs.
 
 ```text no-copy
 Plan: 3 to update, 4 to delete, 1 to noop
@@ -89,17 +89,20 @@ A removed service takes its deployment and its wiring with it, and the resources
 Two things a deploy never removes:
 
 1. **The last service.** An app is at least one service; a module that provisions nothing fails with `ASSEMBLE.SERVICE_MISSING` before anything runs, so you cannot empty an environment by emptying the module.
-2. **The project and its branches.** Those are the containers an environment deploys into: created if absent on deploy, and never deleted by one. Tearing down a whole environment is the [`destroy` operation](#destroying); deleting an entire project is [`project delete`](/cli/v8/project).
+2. **The project and its branches.** Those are the containers an environment deploys into: created if absent on deploy, and never deleted by one. Tearing down a whole environment is the [`destroy` operation](#destroying); deleting an entire project is [`project delete`](/cli/v8/project), which asks you to repeat the project id with `--confirm <project-id>` because it destroys the project's databases too.
 
 ## Destroying
 
-The unified CLI has no `destroy` command. Tear an environment down with the `destroy` operation from `@prisma/composer/control` (see [Driving deploys from code](#driving-deploys-from-code)). It requires an explicit target, `{ kind: 'stage', stage }` or `{ kind: 'production' }`, and there is no default, so a teardown always names what it destroys:
+The unified CLI has no `destroy` command. Tear an environment down with the `destroy` operation from `@prisma/composer/control` (see [Driving deploys from code](#driving-deploys-from-code)). It requires an explicit target, `{ kind: 'stage', stage }` or `{ kind: 'production' }`, and there is no default, so a teardown always names what it destroys. Unlike the CLI, the control API does not read the session stored by `auth login`. Export `PRISMA_SERVICE_TOKEN` and `PRISMA_WORKSPACE_ID` (see [Credentials](#credentials)) before running the script, or it stops with `environment variable PRISMA_WORKSPACE_ID is required`:
 
-```ts
+```ts title="destroy-staging.ts"
 import { destroy } from '@prisma/composer/control';
 
-await destroy({ entry: 'module.ts', target: { kind: 'stage', stage: 'staging' } });
+const result = await destroy({ entry: 'module.ts', target: { kind: 'stage', stage: 'staging' } });
+if (!result.ok) throw new Error(`${result.failure.code}: ${result.failure.message}`);
 ```
+
+If you deployed under a different name with `--name`, pass the same `name` here so the operation finds the right project.
 
 Destroying a stage removes its resources, then deletes its branch along with the stage's deploy state. Destroying production removes the resources and, if the project is empty afterwards, deletes the project too, so empty projects do not pile up in your workspace. A project still holding another stage's resources stays in place. Tearing down a stage that was never deployed fails with "nothing deployed". It does not provision one first.
 

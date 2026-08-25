@@ -12,11 +12,13 @@ The app is deliberately tiny, with no database, so you can see the whole shape a
 
 :::note[Working with a coding agent?]
 
-Add the Composer skill first, even if you plan to write every line yourself. It costs one command and stops your agent from inventing an API that does not exist:
+Add the Composer skill first, even if you plan to write every line yourself. It ships inside the `@prisma/composer` package, and one command, run after step 1 installs the packages, copies it into the directories your agent reads and stops the agent from inventing an API that does not exist:
 
 ```npm
-npx skills add prisma/composer
+npx prisma@next init
 ```
+
+`init` also adds a `postinstall` hook that keeps the skill matching the installed version; see [`skills`](/cli/v8/skills).
 
 :::
 
@@ -303,15 +305,15 @@ npx prisma@next deploy module.ts
 
 (In CI, where the browser sign-in is not an option, set `PRISMA_SERVICE_TOKEN` and `PRISMA_WORKSPACE_ID` from the [Prisma Console](https://console.prisma.io) instead; see [Deploying](/composer/deploying#credentials).)
 
-The CLI creates a project named `my-app` in your workspace, provisions both services on Prisma Compute, points the gateway's `quotes` dependency at the deployed quotes service, and starts everything. The deploy finishes by printing what it made: your module names, the platform resource each became, and the public URLs. Open the gateway's URL and you get a quote.
+The CLI creates a project named `my-app` in your workspace (if one already exists, the deploy reuses it and can stop with `HostedStateBootstrapError`; pass `--name <unique-name>` in that case), provisions both services on Prisma Compute, points the gateway's `quotes` dependency at the deployed quotes service, and starts everything. The deploy finishes by printing what it made: your module names, the platform resource each became, and the public URLs. Open the gateway's URL and you get a quote.
 
-Re-deploying is idempotent. For an isolated copy of the whole app, deploy a stage; tear it down with the `destroy` operation of the [control API](/cli/v8/deploy#the-control-api) when you are done:
+Re-deploying is idempotent. For an isolated copy of the whole app, deploy a stage:
 
 ```npm
 npx prisma@next deploy module.ts --stage demo
 ```
 
-See [Deploying](/composer/deploying) for stages, CI, and teardown in full.
+Tearing a stage down is the `destroy` operation of the [control API](/cli/v8/deploy#the-control-api). That operation does not read your `auth login` session: it needs `PRISMA_SERVICE_TOKEN` and `PRISMA_WORKSPACE_ID` in the environment, the same service-token credentials CI uses. Without them, delete the stage's branch in the [Console](https://console.prisma.io) instead. See [Deploying](/composer/deploying) for stages, CI, and teardown in full.
 
 ## Where to go next
 
