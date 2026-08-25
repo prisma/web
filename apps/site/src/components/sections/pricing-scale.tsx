@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRightBold, CheckBold, X } from "@/components/icons/forma";
+import { CheckBold, X } from "@/components/icons/forma";
 import { PrismButton } from "@/components/brand/prism-button";
-import { Button } from "@/components/ui/button";
 import { Reveal } from "@/components/motion/reveal";
 import { CountUp } from "@/components/motion/count-up";
 import { cn } from "@/lib/utils";
@@ -22,9 +21,6 @@ const GRAIN: React.CSSProperties = {
   mixBlendMode: "multiply",
 };
 
-// The case studies are real customer stories from src/lib/customers.ts; their
-// teasers restate claims from the published posts. Pick per-tier fits from
-// that list when rotating them.
 // TODO: the ~5K and ~500K MAU scenario numbers are placeholders pending
 // client content — only the ~50K MAU column came from the client.
 
@@ -62,7 +58,6 @@ type Scenario = {
   prismaCost: string;
   typical: string[];
   prisma: string[];
-  caseStudy: { company: string; teaser: string; href: string };
 };
 
 const SCENARIOS: Scenario[] = [
@@ -81,11 +76,6 @@ const SCENARIOS: Scenario[] = [
       "Data transfer included",
       "Hard free-tier cap, no surprises",
     ],
-    caseStudy: {
-      company: "Pearly",
-      teaser: "scaled quickly with an ultra-lean team on Prisma",
-      href: "/blog/pearly-plan-customer-success-pdmdrRhTupve",
-    },
   },
   {
     tab: "Growing SaaS",
@@ -98,11 +88,6 @@ const SCENARIOS: Scenario[] = [
       "Spend limits not standard",
     ],
     prisma: ["One bill, one platform", "Data transfer included", "Spend limits on by default"],
-    caseStudy: {
-      company: "Solin",
-      teaser: "serves 2.5M database queries per day on Prisma",
-      href: "/blog/how-solin-uses-prisma-accelerate-to-serve-2-5m-database-queries-per",
-    },
   },
   {
     tab: "At scale",
@@ -115,11 +100,6 @@ const SCENARIOS: Scenario[] = [
       "Spend limits not standard",
     ],
     prisma: ["One bill, one platform", "Data transfer included", "Spend limits on by default"],
-    caseStudy: {
-      company: "Tryg",
-      teaser: "democratized billions of records across data sources with Prisma",
-      href: "/blog/tryg-customer-story-pdmdrRhTupvd",
-    },
   },
 ];
 
@@ -184,30 +164,6 @@ function ComparisonSlide({ scenario, active }: { scenario: Scenario; active: boo
             </ul>
           </div>
         </div>
-      </div>
-
-      <div className="mt-7 flex flex-col gap-2 border-t border-border/70 pt-5 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-        <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
-          <span className="font-semibold text-foreground">{scenario.caseStudy.company}</span>{" "}
-          {scenario.caseStudy.teaser}.
-        </p>
-        {/* text-clipped spectrum hover — the blend variant needs a white
-            backdrop, which the washed card doesn't have */}
-        <Button
-          asChild
-          variant="ghost"
-          className="spectrum-ink-text -ml-3.5 shrink-0 self-start sm:-mr-3.5 sm:ml-0"
-        >
-          {/* aria-label instead of sr-only: hidden text leaks through the
-              spectrum-ink-text background-clip mask */}
-          <a
-            href={scenario.caseStudy.href}
-            aria-label={`Read the ${scenario.caseStudy.company} case study`}
-          >
-            Read the case study
-            <ArrowRightBold className="size-3.5" aria-hidden />
-          </a>
-        </Button>
       </div>
     </div>
   );
