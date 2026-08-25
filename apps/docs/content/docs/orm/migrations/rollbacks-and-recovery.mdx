@@ -45,7 +45,7 @@ ALTER TABLE "public"."user" DROP COLUMN "displayName";
 The planner diffs the two contract states and writes the operations that undo the change, flagged **destructive** because they are. This is a real migration: review it, edit it (for example, to archive the column's data into another table before the `DROP`), commit it. Then apply it like any other migration:
 
 ```npm
-npx prisma@latest migrate --to 20260707T1008_add_display_name^
+npx prisma@latest db migrate --to 20260707T1008_add_display_name^
 ```
 
 A rollback also leaves a cycle in the graph, so the next `migration plan` cannot pick its starting point automatically. It fails with `MIGRATION.NO_TARGET` and lists the reachable states. Plan with an explicit `--from <state>` until history moves forward again.
@@ -76,7 +76,7 @@ A rollback edge creates a cycle in the graph (`A → B → A`), and with a cycle
 
 ## Recovery: when a migration fails partway
 
-A failed `migrate` run stops at the failing operation and reports it precisely:
+A failed `db migrate` run stops at the failing operation and reports it precisely:
 
 ```text
 ✖ Operation alterNullability.setNotNull.user.nickname failed during precheck:
@@ -85,17 +85,19 @@ A failed `migrate` run stops at the failing operation and reports it precisely:
   Fix: Fix the issue and re-run `prisma-cli migrate --to <contract>` — previously applied migrations are preserved.
 ```
 
+The hint is the CLI's literal output: `prisma-cli migrate` is its internal name for `db migrate`, so the command to re-run is `npx prisma@latest db migrate --to <contract>`.
+
 The playbook:
 
 1. **Read which check failed.** The error names the operation and the specific precheck or postcheck, in plain language. Here, rows with `NULL` still exist, so tightening the constraint would fail.
 2. **Nothing to clean up.** On PostgreSQL the whole run was one transaction, so the failure rolled it back completely: the database is exactly where it was before the run, and migrations applied in earlier runs are untouched. There is no "half-applied migration" to untangle by hand.
-3. **Fix the cause, then re-run `migrate`.** Sometimes the cause is the environment (extension missing, permissions). Sometimes it's the migration itself; here you'd [edit the migration](/orm/migrations/editing-a-migration) to add a backfill before the `setNotNull`, recompile with `node migration.ts`, and apply again. Re-running is safe, for the reasons covered in [the failure model](/orm/migrations/applying-a-migration#when-something-goes-wrong).
+3. **Fix the cause, then re-run `db migrate`.** Sometimes the cause is the environment (extension missing, permissions). Sometimes it's the migration itself; here you'd [edit the migration](/orm/migrations/editing-a-migration) to add a backfill before the `setNotNull`, recompile with `node migration.ts`, and apply again. Re-running is safe, for the reasons covered in [the failure model](/orm/migrations/applying-a-migration#when-something-goes-wrong).
 
 The precheck also protects you when a migration works in development but would fail in production. Your dev database had no `NULL`s, but production does. The precheck halts production *before* the destructive `ALTER` touches anything, with an error pointing at the exact rows-with-NULLs condition instead of a generic constraint violation mid-statement.
 
 ### Drift: when the database isn't where migrations left it
 
-If someone changed the database outside of migrations (a hand-run `ALTER`, a restore from an old backup), the marker or the live schema won't match any state the graph knows, and `migrate` refuses to run rather than pile changes onto drift. Your options, in order of preference:
+If someone changed the database outside of migrations (a hand-run `ALTER`, a restore from an old backup), two things can happen. When the change also moved the marker to a state the graph doesn't know, `db migrate` fails before running any SQL rather than pile changes onto drift. When the marker is intact and only the live schema changed, `db migrate` still runs: each operation's postcheck decides whether the work is already done, so a hand-applied change it can recognise is skipped, and one it can't fails that operation. Either way, start by finding out where the database really is. Your options, in order of preference:
 
 - **`db verify`** checks whether the database still matches your contract, and fails with a precise error when it doesn't.
 - **In development**, `db update` reconciles the database directly to your contract without walking the graph. It's quick, but it leaves no record in the migration history, so treat it as a dev-only reset.
@@ -112,7 +114,7 @@ Reverse planning (`--to <dir>^`), destructive-operation warnings, resumable re-r
 Projects scaffolded with `create-prisma@latest` install [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. Ask your agent to:
 
 - "Plan a rollback for the last migration and show me its destructive operations before I decide."
-- "This migrate run failed. Read the error, fix the migration, and re-run it."
+- "This db migrate run failed. Read the error, fix the migration, and re-run it."
 - "Check whether staging has drifted from the contract and explain the differences."
 
 ## See also

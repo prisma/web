@@ -26,10 +26,10 @@ Prefer to delegate this guide? Copy the prompt and hand it to your coding agent:
 ```text
 Create a new NestJS API with Prisma 8, seed it, and deploy it to Prisma Compute.
 
-1. Scaffold: `npx create-prisma@latest create my-nest-api --template nest --provider postgres --yes`. Then get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Export it as `DATABASE_URL` in the shell and write it to `my-nest-api/.env` for the deploy step; the generated scripts read the environment variable, not `.env`.
+1. Scaffold: `npx create-prisma@latest create my-nest-api --template nest --provider postgres --yes`. Then run `npx prisma@latest init` in `my-nest-api` so the Prisma agent skills are installed and stay current, and use them. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Export it as `DATABASE_URL` in the shell; the generated scripts read the environment variable, not `.env`.
 2. In `my-nest-api`, run `npm run db:init` with `DATABASE_URL` exported. Sample users are seeded automatically on the app's first query; there is no separate seed script.
 3. Start `npm run dev` in the background, wait until it reports ready, and verify `curl http://localhost:3000/users` returns the seeded users; stop the dev server once verified. If it returns a 500 and the server logs `Cannot read properties of undefined (reading 'findAll')`, add explicit injection tokens: `@Inject(UsersService)` on the constructor parameter in `src/users.controller.ts` and `@Inject(PrismaService)` in `src/users.service.ts` (import `Inject` from `@nestjs/common`), then retry.
-4. Deploy: check `npx @prisma/cli@latest auth whoami`; if I am not signed in, stop and ask me to run `npx @prisma/cli@latest auth login`. Then run `npx @prisma/cli@latest app deploy --create-project my-nest-api --env .env` and verify the live URL's /users endpoint.
+4. Deploy: check `npx prisma@latest auth whoami`; if I am not signed in, stop and ask me to run `npx prisma@latest auth login`. Then run `npm run build` followed by `npx prisma@latest deploy module.ts` and verify the live URL's /users endpoint. The deployed app provisions and seeds its own Prisma Postgres database; do not pass the local DATABASE_URL. If the deploy fails with `HostedStateBootstrapError`, a project with the module's name exists in my workspace but its hosted state cannot be verified; re-run the deploy with `--name <a unique name>`.
 
 Use the installed Prisma 8 skills.
 ```
@@ -45,11 +45,10 @@ cd my-nest-api
 
 Answer the prompts for contract authoring style and package manager. The scaffold generates the NestJS app with Prisma 8 wired in, installs dependencies, and emits the contract your queries are type-checked against.
 
-Next, set the database connection. Use your own PostgreSQL connection string, or create a Prisma Postgres database with `npx create-db@latest`; it prints a connection string and a claim URL you can open to keep the database. Export the variable, and write it to `.env` for the deploy step later. The generated scripts read the environment variable, not `.env`:
+Next, set the database connection for the local steps. Use your own PostgreSQL connection string, or create a Prisma Postgres database with `npx create-db@latest`; it prints a connection string and a claim URL you can open to keep the database. Export the variable in the shell you work in; the generated scripts read the environment variable, not `.env`:
 
 ```bash
 export DATABASE_URL="<your connection string>"
-echo "DATABASE_URL=\"$DATABASE_URL\"" > .env
 ```
 
 ## 2. Initialize the database
@@ -61,6 +60,8 @@ npm run db:init
 ```text no-copy
 "summary": "Applied 5 operation(s) across 1 space(s), database signed"
 ```
+
+If `db:init` stops with `Connection terminated unexpectedly`, a database you just created is still starting; wait a few seconds and run it again. The command is safe to repeat and reports `Applied 0 operation(s)` when there is nothing left to do.
 
 `db:init` applies your schema (`src/prisma/contract.prisma`) to the database and signs it. Sample users are seeded automatically the first time the app queries the database.
 
@@ -102,40 +103,33 @@ Model access is namespace-qualified on PostgreSQL: `db.orm.public.User`. The [Pr
 
 ## 4. Deploy to Prisma Compute
 
-NestJS is supported on [Prisma Compute](/compute), so the API can go from your terminal to a live URL in one command. Sign in once (it opens a browser):
+NestJS is supported on [Prisma Compute](/compute). The scaffold declares the app for [Prisma Composer](/composer) in `module.ts` and `service.ts`, so deploying is building and handing that declaration to the CLI. Sign in once (it opens a browser):
 
 ```npm
-npx @prisma/cli@latest auth login
+npx prisma@latest auth login
 ```
 
-Then deploy from the project directory. The `--env .env` flag passes your `DATABASE_URL` to the deployment, so the live API talks to the same database:
+Then build and deploy from the project directory:
 
 ```npm
-npx @prisma/cli@latest app deploy --env .env
+npm run build
+npx prisma@latest deploy module.ts
 ```
 
 ```text no-copy
-First deploy of "my-nest-api" -- promoting to production.
-
-Build settings
-  Build Command     npm run build  · package.json scripts.build
-  Output Directory  dist           · NestJS output
-
-Building locally...
-  Built      1.1 MB
-Uploading...
-Deploying...
-Live in 9.6s
-https://<your-app>.ewr.prisma.build
+my-nest-api
+├─ database   postgres-database db_abc123
+└─ app        compute-service cps_abc123
+              https://xyz.ewr.prisma.build
 ```
 
-Verify the live endpoint returns the seeded users:
+The deploy creates a project named after your module in your workspace, and re-running the deploy reuses it: the CLI finds the hosted state it stored on the first run and converges the project to your module. If a project with that name exists but the CLI cannot identify or verify its stored state (one left behind by a different checkout, for example), the deploy stops with `HostedStateBootstrapError`; deploy under another name with `--name <unique-name>`, or rename the module in `module.ts`. The deploy also provisions its own Prisma Postgres database on the platform, declared in `module.ts`; the `DATABASE_URL` from your local steps is not involved, and the deployed database seeds on the app's first query. Verify the live endpoint returns the seeded users:
 
 ```bash
-curl https://<your-app>.ewr.prisma.build/users
+curl https://xyz.ewr.prisma.build/users
 ```
 
-The first deploy asks you to pick or create a project (pass `--create-project my-nest-api` to skip the prompt), pins the directory to it in a gitignored `.prisma/local.json`, and promotes to production. For previews per Git branch and deploy-on-push, see [Deploy your first app](/prisma-compute/deploy).
+For previews per Git branch and deploy-on-push, see [Deploy your first app](/prisma-compute/deploy).
 
 ## Common gotchas
 
@@ -147,7 +141,7 @@ In a long-running server, don't call `db.runtime().close()` in request handlers;
 
 ## Prompt your coding agent
 
-The scaffold installs [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. Prompts that map to this guide:
+Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
 
 - "Using the prisma-8 skill, add GET /users/:id to the users controller that returns one user or a 404."
 - "Expose GET /users/:id/posts using the Post model that ships with the starter contract."

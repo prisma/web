@@ -92,31 +92,97 @@ Now run the app on your machine. No account or credentials are involved:
 
 ```npm
 npm run build
-npx prisma@latest composer dev module.ts
+npx prisma@latest dev module.ts
 ```
 
-`composer dev` prints the service's local URL; `curl` it and you get `Hello from Prisma Compute`. See [Local development](/local-development) for the local database, storage, and log workflow.
+`dev` prints the service's local URL; `curl` it and you get `Hello from Prisma Compute`. See [Local development](/local-development) for the local database, storage, and log workflow.
 
 From here the app grows by declaration: `deps: { db: postgres() }` gives the service a [Prisma Postgres database](/composer/databases), [`bucket()`](/composer/object-storage) gives it object storage, and a second service with a [typed contract](/composer/getting-started) turns cross-service calls into checked function calls. When the app runs locally, continue to [Deploy](#2-deploy).
 
 ### Bring an app you already have
 
-Porting an app does not mean rewriting it. Your server code stays the server; you add a declaration around it and make three changes:
+Porting an app does not mean rewriting it. Your server code stays the server, your build stays the build, and you add a declaration around them. The steps below port a two-service app, a notes API on Postgres and an uploads service on S3 credentials, to a Composer app that provisions its own database and bucket. For a Next.js service, use the `nextjs` build adapter with `output: "standalone"` instead; [Port an existing app](/composer/porting-an-app) covers that variant.
 
-1. **Read the port from `service.port()`** instead of `process.env.PORT`, and bind `0.0.0.0`.
-2. **Replace other `process.env` reads.** Configuration becomes the service's [input schema](/composer/service-input); anything another service provides becomes a dependency.
-3. **If it talks to Postgres**, declare `deps: { db: postgres() }` and build your existing client from the injected `db.url`.
+**1. Install the Composer packages.** Same as [step 1 of the scratch path](/composer/getting-started#1-set-up-the-project): install `@prisma/composer` and `@prisma/composer-prisma-cloud`, and pin `effect` to the version your installed `@prisma/composer` requires.
 
-For a Next.js app, use the `nextjs` build adapter and set `output: "standalone"` in the Next.js config. [Port an existing app](/composer/porting-an-app) covers all three cases, including the build requirements, with complete declarations.
+**2. Declare each service.** A `service.ts` next to each server names the service, declares what it consumes as dependencies, and points at your built output. A Postgres connection becomes `postgres()`; S3 credentials become `bucket()`:
 
-Verify the port before deploying by running it locally:
+```ts title="src/api/service.ts"
+import node from "@prisma/composer/node";
+import { compute, postgres } from "@prisma/composer-prisma-cloud";
+
+export default compute({
+  name: "api",
+  deps: { db: postgres() },
+  build: node({ module: import.meta.url, entry: "../../dist/api.mjs" }),
+});
+```
+
+```ts title="src/files/service.ts"
+import node from "@prisma/composer/node";
+import { bucket, compute } from "@prisma/composer-prisma-cloud";
+
+export default compute({
+  name: "files",
+  deps: { store: bucket() },
+  build: node({ module: import.meta.url, entry: "../../dist/files.mjs" }),
+});
+```
+
+**3. Provision everything in one module.** The root module owns the resources and wires them to the services; the deploy config next to it is the same one the scratch path uses:
+
+```ts title="module.ts"
+import { module } from "@prisma/composer";
+import { bucket, postgres } from "@prisma/composer-prisma-cloud";
+import apiService from "./src/api/service.ts";
+import filesService from "./src/files/service.ts";
+
+export default module("my-app", ({ provision }) => {
+  const db = provision(postgres({ name: "database" }));
+  const store = provision(bucket({ name: "uploads" }));
+  provision(apiService, { deps: { db } });
+  provision(filesService, { deps: { store } });
+});
+```
+
+**4. Port the environment reads.** This is the only change to your server code, and it is what makes every environment work without hand-wired configuration:
+
+1. **The port**: read `service.port()` instead of `process.env.PORT`, and bind `0.0.0.0`.
+2. **Dependency values**: read `service.load()` instead of connection-string and credential env vars. The Postgres dependency delivers `db.url` for whatever client you already use; the bucket delivers the standard S3 set.
+3. **Everything else** (flags, regions, external URLs, third-party credentials) becomes the service's [input schema](/composer/service-input).
+
+```ts title="src/api/server.ts (the changed lines)"
+import { SQL } from "bun";
+import service from "./service.ts";
+
+// before: new SQL({ url: process.env.DATABASE_URL })
+const { db } = service.load();
+const sql = new SQL({ url: db.url, max: 1, idleTimeout: 10 });
+
+Bun.serve({ port: service.port(), hostname: "0.0.0.0", fetch: handler });
+```
+
+```ts title="src/files/server.ts (the changed lines)"
+import service from "./service.ts";
+
+// before: endpoint, bucket, and keys from four S3_* env vars
+const { store } = service.load();
+const s3 = new Bun.S3Client({
+  endpoint: store.url,
+  bucket: store.bucket,
+  accessKeyId: store.accessKeyId,
+  secretAccessKey: store.secretAccessKey,
+});
+```
+
+**5. Build and verify locally.** Your build must produce one self-contained entry file per service; keep your own build if it already does, or use one `bun build --target=bun` line per service. Then run the whole declaration locally:
 
 ```npm
 npm run build
-npx prisma@latest composer dev module.ts
+npx prisma@latest dev module.ts
 ```
 
-Every service should appear in the startup output with a local URL. Then continue to [Deploy](#2-deploy).
+`dev` provisions a local Postgres and a local stand-in bucket with working credentials, and every service appears in the startup output with a local URL, so you can exercise the database and upload paths end-to-end before touching the platform. Then continue to [Deploy](#2-deploy): the same deploy command provisions the real database and bucket alongside the services.
 
 ## 2. Deploy
 
@@ -128,18 +194,18 @@ npx prisma@latest auth login
 
 The session is stored on your machine and every later command reads it, including commands a coding agent runs in your directory. Confirm it any time with `auth whoami`. In CI or a headless environment, set `PRISMA_SERVICE_TOKEN` and `PRISMA_WORKSPACE_ID` instead; see [Deploying](/composer/deploying#credentials).
 
-`composer deploy` does not build for you, so build first, then deploy:
+`deploy` does not build for you, so build first, then deploy:
 
 ```npm
 npm run build
-npx prisma@latest composer deploy module.ts
+npx prisma@latest deploy module.ts
 ```
 
-The CLI creates a project named after your root module, provisions the services on Compute and any databases on Prisma Postgres, wires the dependencies, and starts everything.
+The CLI creates a project named after your root module, provisions the services on Compute and any databases on Prisma Postgres, wires the dependencies, and starts everything. The project name identifies the app in your workspace: redeploying reuses the project this module created, and a same-name project whose hosted state the CLI cannot verify stops the command with `HostedStateBootstrapError`. Deploy under another name with `--name <unique-name>` when that happens.
 
 ## 3. Verify the deployment
 
-A deploy finishes by printing your app's topology: each service, the platform resource it became, and its public URL:
+A deploy finishes by printing what it made: each service, the platform resource it became, and its public URL:
 
 ```text no-copy
 my-app
@@ -157,30 +223,29 @@ You can also inspect everything in the [Console](https://pris.ly/pdp): projects,
 
 ## 4. Ship changes and environments
 
-Re-deploying is idempotent: build again, deploy again, and the platform applies the difference instead of recreating everything. Production and previews are separated by stages:
+Re-deploying is idempotent: build again, deploy again, and the platform applies the difference instead of recreating everything. That includes removals: delete a provision from your module and the next deploy deletes the resource; see [Removing resources](/composer/deploying#removing-resources). Production and previews are separated by stages:
 
 ```npm
-npx prisma@latest composer deploy module.ts                  # production
-npx prisma@latest composer deploy module.ts --stage staging  # a persistent staging environment
-npx prisma@latest composer deploy module.ts --stage pr-42    # one environment per PR
-npx prisma@latest composer destroy module.ts --stage pr-42   # tear the environment down
+npx prisma@latest deploy module.ts                  # production
+npx prisma@latest deploy module.ts --stage staging  # a persistent staging environment
+npx prisma@latest deploy module.ts --stage pr-42    # one environment per PR
 ```
 
-A stage is a complete, isolated copy of the app: its own services, databases, and configuration, sharing only the code with production. In platform terms it is a [preview branch](/compute/branching) of the same project. See [Deploying](/composer/deploying) for CI, deploy state, and teardown in full.
+A stage is a complete, isolated copy of the app: its own services, databases, and configuration, sharing only the code with production. In platform terms it is a [preview branch](/compute/branching) of the same project. Tearing a stage down needs the control API with service-token credentials, or a branch deletion in the Console; see [Destroying](/composer/deploying#destroying). [Deploying](/composer/deploying) covers CI, deploy state, and teardown in full.
 
 ## Hand it to your agent
 
-You can let a coding agent do the work. Sign in once yourself ([step 2](#2-deploy)). The browser sign-in is the one step an agent can't do for you. After that, anything running in your environment inherits the session, including your agent. Paste this into your agent and fill in the blanks:
+You can let a coding agent do the work. Sign in once yourself ([step 2](#2-deploy)). The browser sign-in is the one step an agent can't do for you. After that, anything running in your environment inherits the session, including your agent. The `@prisma/composer` package ships an [agent skill](/cli/skills) that teaches your agent the installed version's API; [`npx prisma@latest init`](/cli/init) sets the project up so the skill stays in sync across upgrades. Paste this into your agent and fill in the blanks:
 
 ```text
 Build [what you want] as a Prisma Composer app and deploy it to Prisma Compute using `npx prisma@latest`.
 
 Notes:
-- First install the Composer skill so you use the real API: `npx skills add prisma/composer`.
+- After installing @prisma/composer, install its agent skill so you use the real API: `npx prisma@latest skills sync` (the skill ships inside the package; run `npx prisma@latest skills list` to confirm).
 - Before deploying, run `npx prisma@latest auth whoami`; if I am not signed in, stop and ask me to run `npx prisma@latest auth login` (it opens a browser).
 - Composer needs Node.js 22.18 or newer, and server code targets Bun. Read the port with `service.port()` and bind 0.0.0.0. For a Next.js service, use the nextjs build adapter and set `output: "standalone"`.
-- Composer does not build; produce one self-contained entry file per service (for example `bun build --target=bun`), then run it locally with `npx prisma@latest composer dev module.ts` and verify each service's local URL responds.
-- Deploy with `npx prisma@latest composer deploy module.ts` and verify the printed public URL with curl.
+- Composer does not build; produce one self-contained entry file per service (for example `bun build --target=bun`), then run it locally with `npx prisma@latest dev module.ts` and verify each service's local URL responds.
+- Deploy with `npx prisma@latest deploy module.ts` and verify the printed public URL with curl.
 - To give a service a database, declare `deps: { db: postgres() }` and build the client from the injected `db.url`; do not read connection strings from process.env.
 - Current docs: https://www.prisma.io/docs/composer.md and https://www.prisma.io/docs/prisma-compute/deploy.md
 ```

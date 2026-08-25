@@ -216,11 +216,11 @@ npx prisma7 migrate status
 ### 2.1. Install the Prisma 8 packages
 
 ```npm
-npm install --save-dev prisma@latest @prisma/cli-engine@0.2.0
+npm install --save-dev prisma@latest
 npm install @prisma/orm-postgres
 ```
 
-`prisma@latest` is the Prisma 8 CLI. `@prisma/orm-postgres` is the PostgreSQL ORM runtime your application code will import. `@prisma/cli-engine` provides `defineConfig` for the Prisma 8 config file. Install it directly so the import resolves under every package manager.
+`prisma@latest` is the Prisma 8 CLI, and its `prisma/config` subpath provides `definePrismaConfig` for the Prisma 8 config file. Installing it locally (not only running it through `npx`) is what makes that import resolve. `@prisma/orm-postgres` is the PostgreSQL ORM runtime your application code will import.
 
 After this install, `npx prisma <command>` runs the Prisma 8 CLI and `npx prisma7 <command>` runs Prisma 7:
 
@@ -234,10 +234,10 @@ npx prisma --version
 
 ```typescript title="prisma.config.ts"
 import "dotenv/config";
-import { defineConfig } from "@prisma/cli-engine";
+import { definePrismaConfig } from "prisma/config";
 import { defineConfig as definePostgresConfig } from "@prisma/orm-postgres/config";
 
-export default defineConfig({
+export default definePrismaConfig({
   orm: definePostgresConfig({
     contract: "prisma8/contract.prisma",
     output: "generated/prisma8",
@@ -464,7 +464,7 @@ The current and target contract hashes should match, with the baseline migration
 Point a [ref](/orm/migrations/the-migration-graph#name-important-states-with-refs) named `db` at the baseline, using the directory name from step 4.1:
 
 ```npm
-npx prisma ref set db <timestamp>_baseline
+npx prisma migration ref set db <timestamp>_baseline
 ```
 
 Without a ref, the next `migration plan` starts from scratch and plans `CREATE TABLE` operations all over again. With it, plans chain from the baseline and contain only your actual changes.
@@ -478,7 +478,7 @@ Remove `prisma7 migrate` from your scripts so nobody runs it by accident. Keep `
   "scripts": {
     "prisma7:generate": "prisma7 generate",
     "prisma7:migrate": "prisma7 migrate dev", // [!code --]
-    "prisma8:migrate": "prisma migrate --advance-ref db" // [!code ++]
+    "prisma8:migrate": "prisma db migrate --advance-ref db" // [!code ++]
   }
 }
 ```
@@ -502,11 +502,11 @@ Emit, plan, and apply:
 ```npm
 npx prisma contract emit
 npx prisma migration plan --name add_user_bio
-npx prisma migrate --advance-ref db
+npx prisma db migrate --advance-ref db
 npx prisma db verify
 ```
 
-**Expected result:** `migration plan` contains a single operation, `Add column "bio" to "User"`. If you see `CREATE TABLE` operations instead, the `db` ref from step 4.3 is missing. `migrate` applies the migration, `--advance-ref db` moves the ref so the next plan chains correctly, and `db verify` reports that marker and schema match the contract.
+**Expected result:** `migration plan` contains a single operation, `Add column "bio" to "User"`. If you see `CREATE TABLE` operations instead, the `db` ref from step 4.3 is missing. `db migrate` applies the migration, `--advance-ref db` moves the ref so the next plan chains correctly, and `db verify` reports that marker and schema match the contract.
 
 Restart the app: the Prisma 8 route returns users with `bio`, and the Prisma 7 route keeps working untouched, because its client doesn't know about the new column. Additive changes like nullable columns are safe next to legacy Prisma 7 code. Be careful with renames or drops of columns that Prisma 7 routes still read.
 
@@ -534,7 +534,7 @@ npx tsc --noEmit
 npx prisma db verify
 ```
 
-Start the app and run a query against every route. The application now runs entirely on Prisma 8, with schema changes managed by `prisma migrate`.
+Start the app and run a query against every route. The application now runs entirely on Prisma 8, with schema changes managed by `prisma migration plan` and `prisma db migrate`.
 
 :::note
 

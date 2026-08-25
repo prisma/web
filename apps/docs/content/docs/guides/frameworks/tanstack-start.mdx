@@ -36,13 +36,10 @@ Prefer to delegate this guide? Copy the prompt and hand it to your coding agent:
 ```text
 Create a new TanStack Start app with Prisma 8, seed it, and deploy it to Prisma Compute.
 
-1. Scaffold: `npx create-prisma@latest create my-app --template tanstack-start --provider postgres --yes`. Then get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Export it as `DATABASE_URL` in the shell and write it to `my-app/.env` for the deploy step; the generated scripts read the environment variable, not `.env`.
+1. Scaffold: `npx create-prisma@latest create my-app --template tanstack-start --provider postgres --yes`. Then run `npx prisma@latest init` in `my-app` so the Prisma agent skills are installed and stay current, and use them. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Export it as `DATABASE_URL` in the shell; the generated scripts read the environment variable, not `.env`.
 2. In `my-app`, run `npm run db:init` with `DATABASE_URL` exported. Sample users are seeded automatically on the app's first query; there is no separate seed script.
 3. Start `npm run dev` in the background, wait until it reports ready, verify http://localhost:3000 renders the three seeded users, then stop the dev server.
-4. Prepare the deploy build: install `nitro` and enable the `nitro()` Vite plugin for builds only, following https://www.prisma.io/docs/guides/frameworks/tanstack-start.md.
-5. Deploy: check `npx @prisma/cli@latest auth whoami`; if I am not signed in, stop and ask me to run `npx @prisma/cli@latest auth login`. Then run `npx @prisma/cli@latest app deploy --create-project my-app --env .env` and verify the live URL renders the seeded users.
-
-Use the installed Prisma 8 skills.
+4. Deploy: check `npx prisma@latest auth whoami`; if I am not signed in, stop and ask me to run `npx prisma@latest auth login`. Then run `npm run build` followed by `npx prisma@latest deploy module.ts` and verify the live URL renders the seeded users. The deployed app provisions and seeds its own Prisma Postgres database; do not pass the local DATABASE_URL. If the deploy fails with `HostedStateBootstrapError`, a project with the module's name exists in my workspace but its hosted state cannot be verified; re-run the deploy with `--name <a unique name>`.
 ```
 
 </AgentPrompt>
@@ -56,11 +53,10 @@ cd my-app
 
 The scaffold generates the TanStack Start app with Prisma 8 wired in, installs dependencies, and emits the contract your queries are type-checked against.
 
-Next, set the database connection. Use your own PostgreSQL connection string, or create a Prisma Postgres database with `npx create-db@latest`; it prints a connection string and a claim URL you can open to keep the database. Export the variable, and write it to `.env` for the deploy step later. The generated scripts read the environment variable, not `.env`:
+Next, set the database connection for the local steps. Use your own PostgreSQL connection string, or create a Prisma Postgres database with `npx create-db@latest`; it prints a connection string and a claim URL you can open to keep the database. Export the variable in the shell you work in; the generated scripts read the environment variable, not `.env`:
 
 ```bash
 export DATABASE_URL="<your connection string>"
-echo "DATABASE_URL=\"$DATABASE_URL\"" > .env
 ```
 
 ## 2. Initialize the database
@@ -72,6 +68,8 @@ npm run db:init
 ```text no-copy
 "summary": "Applied 5 operation(s) across 1 space(s), database signed"
 ```
+
+If `db:init` stops with `Connection terminated unexpectedly`, a database you just created is still starting; wait a few seconds and run it again. The command is safe to repeat and reports `Applied 0 operation(s)` when there is nothing left to do.
 
 `db:init` applies your schema (`src/prisma/contract.prisma`) to the database and signs it. Sample users are seeded automatically the first time the app queries the database.
 
@@ -85,63 +83,27 @@ Open [http://localhost:3000](http://localhost:3000). The page lists the seeded u
 
 ## 4. Deploy to Prisma Compute
 
-TanStack Start is supported on [Prisma Compute](/compute), so the app can go from your terminal to a live URL. The Compute build expects Nitro's `.output` directory, and the template builds with plain Vite, so first install the `nitro` package (not `nitropack`):
+TanStack Start is supported on [Prisma Compute](/compute). The scaffold builds with Nitro (the `nitro()` Vite plugin ships in `vite.config.ts`) and declares the app for [Prisma Composer](/composer) in `module.ts` and `service.ts`, pointing at Nitro's `.output` directory. Deploying is building and handing that declaration to the CLI. Sign in once (it opens a browser):
 
 ```npm
-npm install nitro
+npx prisma@latest auth login
 ```
 
-Then enable `nitro()` from `nitro/vite` for builds only:
-
-```ts title="vite.config.ts"
-import { prismaVitePlugin } from "@prisma/orm-postgres/vite-plugin-contract-emit";
-import { defineConfig } from "vite";
-import viteReact from "@vitejs/plugin-react";
-import { tanstackStart } from "@tanstack/react-start/plugin/vite";
-import { nitro } from "nitro/vite";
-import tsconfigPaths from "vite-tsconfig-paths";
-
-export default defineConfig(({ command }) => ({
-  plugins: [
-    prismaVitePlugin(),
-    tsconfigPaths({ projects: ["./tsconfig.json"] }),
-    tanstackStart(),
-    ...(command === "build" ? [nitro()] : []),
-    viteReact(),
-  ],
-}));
-```
-
-The Nitro plugin is enabled for builds only because it conflicts with the contract watcher in the dev server; `npm run dev` keeps working unchanged.
-
-Sign in once (it opens a browser):
+Then build and deploy from the project directory:
 
 ```npm
-npx @prisma/cli@latest auth login
-```
-
-Then deploy from the project directory. The `--env .env` flag passes your `DATABASE_URL` to the deployment, so the live app reads the same database:
-
-```npm
-npx @prisma/cli@latest app deploy --env .env
+npm run build
+npx prisma@latest deploy module.ts
 ```
 
 ```text no-copy
-First deploy of "my-app" -- promoting to production.
-
-Build settings
-  Build Command     npm run build  · package.json scripts.build
-  Output Directory  .output        · TanStack Start output
-
-Building locally...
-  Built      0.5 MB
-Uploading...
-Deploying...
-Live in 9.4s
-https://<your-app>.ewr.prisma.build
+my-app
+├─ database   postgres-database db_abc123
+└─ app        compute-service cps_abc123
+              https://xyz.ewr.prisma.build
 ```
 
-Open the live URL: the page renders the same seeded users, served from your Prisma Postgres database. The first deploy asks you to pick or create a project (pass `--create-project my-app` to skip the prompt), pins the directory to it in a gitignored `.prisma/local.json`, and promotes to production. For previews per Git branch and deploy-on-push, see [Deploy your first app](/prisma-compute/deploy).
+Open the live URL: the page renders the seeded users. The deploy creates a project named after your module in your workspace, and re-running the deploy reuses it: the CLI finds the hosted state it stored on the first run and converges the project to your module. If a project with that name exists but the CLI cannot identify or verify its stored state (one left behind by a different checkout, for example), the deploy stops with `HostedStateBootstrapError`; deploy under another name with `--name <unique-name>`, or rename the module in `module.ts`. The deploy also provisions its own Prisma Postgres database on the platform, declared in `module.ts`; the `DATABASE_URL` from your local steps is not involved, and the deployed database seeds on the app's first query. For previews per Git branch and deploy-on-push, see [Deploy your first app](/prisma-compute/deploy).
 
 ## Where things live
 

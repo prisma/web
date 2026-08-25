@@ -12,11 +12,13 @@ The app is deliberately tiny, with no database, so you can see the whole shape a
 
 :::note[Working with a coding agent?]
 
-Add the Composer skill first, even if you plan to write every line yourself. It costs one command and stops your agent from inventing an API that does not exist:
+Add the Composer skill first, even if you plan to write every line yourself. It ships inside the `@prisma/composer` package, and one command, run after step 1 installs the packages, copies it into the directories your agent reads and stops the agent from inventing an API that does not exist:
 
 ```npm
-npx skills add prisma/composer
+npx prisma@latest init
 ```
+
+`init` also adds a `postinstall` hook that keeps the skill matching the installed version; see [`skills`](/cli/skills).
 
 :::
 
@@ -41,18 +43,14 @@ npm install -D typescript @types/bun
 
 `"type": "module"` matters: Composer loads your entry file as an ES module, and without it every Composer command stops at `COMPOSE.ENTRY_UNLOADABLE` ("Cannot use import statement outside a module").
 
-Then pin the `effect` family in your `package.json` to `4.0.0-beta.103`, the version current `@prisma/composer` releases (0.8.0 through 0.11.0) pin internally. This works around an upstream bug in Composer's deploy engine, whose own version ranges float past the versions its code supports. Without the pins, a fresh install ends up with two conflicting copies of `effect`, and every Composer command refuses to run. On other Composer versions, match whatever `dependencies.effect` says in `node_modules/@prisma/composer/package.json`:
+Then pin `effect` in your `package.json` to the exact version your installed `@prisma/composer` requires. This works around an upstream bug in Composer's deploy engine, whose own version ranges float past the versions its code supports. Without the pin, a fresh install ends up with two conflicting copies of `effect`, and every Composer command refuses to run with `DEPS.EFFECT_VERSION_CONFLICT`, naming the version to pin.
+
+Read the required version from `dependencies.effect` in `node_modules/@prisma/composer/package.json` (for `@prisma/composer@0.13.0` it is `4.0.0-rc.111`), and pin it:
 
 ```json title="package.json (npm)"
 {
   "overrides": {
-    "effect": "4.0.0-beta.103",
-    "@effect/sql-d1": "4.0.0-beta.103",
-    "@effect/sql-pg": "4.0.0-beta.103",
-    "@effect/vitest": "4.0.0-beta.103",
-    "@effect/platform-bun": "4.0.0-beta.103",
-    "@effect/platform-node": "4.0.0-beta.103",
-    "@effect/platform-node-shared": "4.0.0-beta.103"
+    "effect": "4.0.0-rc.111"
   }
 }
 ```
@@ -63,19 +61,13 @@ With pnpm, the same map goes under `"pnpm"` instead:
 {
   "pnpm": {
     "overrides": {
-      "effect": "4.0.0-beta.103",
-      "@effect/sql-d1": "4.0.0-beta.103",
-      "@effect/sql-pg": "4.0.0-beta.103",
-      "@effect/vitest": "4.0.0-beta.103",
-      "@effect/platform-bun": "4.0.0-beta.103",
-      "@effect/platform-node": "4.0.0-beta.103",
-      "@effect/platform-node-shared": "4.0.0-beta.103"
+      "effect": "4.0.0-rc.111"
     }
   }
 }
 ```
 
-Run your install again after adding the block. (Yarn users: the equivalent field is `"resolutions"`. Bun reads the npm-style top-level `"overrides"`.)
+Run your install again after adding the block. (Yarn users: the equivalent field is `"resolutions"`. Bun reads the npm-style top-level `"overrides"`.) The pin is per-version: after upgrading `@prisma/composer`, re-read the package's `dependencies.effect` and update the override to match, or the next Composer command stops on the version conflict.
 
 :::note[Bun workspaces]
 
@@ -86,7 +78,7 @@ bun add alchemy
 bun add -d @prisma/dev
 ```
 
-Without `alchemy`, `composer dev` and `composer deploy` stop at `DEPLOY.ALCHEMY_BIN_MISSING`; without `@prisma/dev`, local dev stops with "local dev needs @prisma/dev". A single-package Bun project is not affected.
+Without `alchemy`, `dev` and `deploy` stop at `DEPLOY.ALCHEMY_BIN_MISSING`; without `@prisma/dev`, local dev stops with "local dev needs @prisma/dev". A single-package Bun project is not affected.
 
 :::
 
@@ -269,7 +261,7 @@ npx tsc --noEmit
 One command brings the whole app up on your machine, both services wired together, with no cloud credentials:
 
 ```npm
-npx prisma@latest composer dev module.ts
+npx prisma@latest dev module.ts
 ```
 
 It runs the same pipeline a deploy runs, against local stand-ins for Prisma Compute and Prisma Postgres, and prints each service's local URL:
@@ -308,21 +300,20 @@ Local dev needed no account. Deploying the same app to [Prisma Compute](/compute
 
 ```npm
 npx prisma@latest auth login
-npx prisma@latest composer deploy module.ts
+npx prisma@latest deploy module.ts
 ```
 
 (In CI, where the browser sign-in is not an option, set `PRISMA_SERVICE_TOKEN` and `PRISMA_WORKSPACE_ID` from the [Prisma Console](https://console.prisma.io) instead; see [Deploying](/composer/deploying#credentials).)
 
-The CLI creates a project named `my-app` in your workspace, provisions both services on Prisma Compute, points the gateway's `quotes` dependency at the deployed quotes service, and starts everything. The deploy finishes by printing what it made: your module names, the platform resource each became, and the public URLs. Open the gateway's URL and you get a quote.
+The CLI creates a project named `my-app` in your workspace (a project this module deployed before is reused; one whose hosted state the CLI cannot verify stops the deploy with `HostedStateBootstrapError`, so pass `--name <unique-name>` in that case), provisions both services on Prisma Compute, points the gateway's `quotes` dependency at the deployed quotes service, and starts everything. The deploy finishes by printing what it made: your module names, the platform resource each became, and the public URLs. Open the gateway's URL and you get a quote.
 
-Re-deploying is idempotent. For an isolated copy of the whole app, deploy a stage and tear it down when you are done:
+Re-deploying is idempotent. For an isolated copy of the whole app, deploy a stage:
 
 ```npm
-npx prisma@latest composer deploy module.ts --stage demo
-npx prisma@latest composer destroy module.ts --stage demo
+npx prisma@latest deploy module.ts --stage demo
 ```
 
-See [Deploying](/composer/deploying) for stages, CI, and teardown in full.
+Tearing a stage down is the `destroy` operation of the [control API](/cli/deploy#the-control-api). That operation does not read your `auth login` session: it needs `PRISMA_SERVICE_TOKEN` and `PRISMA_WORKSPACE_ID` in the environment, the same service-token credentials CI uses. Without them, delete the stage's branch in the [Console](https://console.prisma.io) instead. See [Deploying](/composer/deploying) for stages, CI, and teardown in full.
 
 ## Where to go next
 
