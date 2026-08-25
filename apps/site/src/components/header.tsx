@@ -134,12 +134,12 @@ export function Header() {
           </Button>
           <Button asChild>
             <a
-              href="https://console.prisma.io"
+              href="https://console.prisma.io/sign-up"
               onClick={() =>
                 trackCTA({
                   cta_text: "Get Started",
                   cta_location: "navbar",
-                  cta_destination: "https://console.prisma.io",
+                  cta_destination: "https://console.prisma.io/sign-up",
                   section: "website",
                 })
               }
@@ -201,12 +201,12 @@ export function Header() {
                 </Button>
                 <Button asChild>
                   <a
-                    href="https://console.prisma.io"
+                    href="https://console.prisma.io/sign-up"
                     onClick={() =>
                       trackCTA({
                         cta_text: "Get Started",
                         cta_location: "navbar",
-                        cta_destination: "https://console.prisma.io",
+                        cta_destination: "https://console.prisma.io/sign-up",
                         section: "website",
                       })
                     }

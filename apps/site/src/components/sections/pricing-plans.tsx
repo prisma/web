@@ -41,7 +41,7 @@ const PLANS = [
     blurb:
       "Everything you need to build and explore with no clock running. No credit card, no expiry.",
     cta: "Start for free",
-    href: "https://console.prisma.io",
+    href: "https://console.prisma.io/sign-up",
     popular: false,
   },
   {
@@ -64,7 +64,7 @@ const PLANS = [
     blurb:
       "Ship your first production app without worrying about the bill. Backups included, spend limits on by default.",
     cta: "Get started",
-    href: "https://console.prisma.io",
+    href: "https://console.prisma.io/sign-up",
     popular: true,
   },
   {
@@ -87,7 +87,7 @@ const PLANS = [
     blurb:
       "For production apps with real traffic. More operations, lower overage rates, and headroom to grow without watching the meter.",
     cta: "Get started",
-    href: "https://console.prisma.io",
+    href: "https://console.prisma.io/sign-up",
     popular: false,
   },
   {
@@ -109,7 +109,7 @@ const PLANS = [
     platform: ["Spend limits", "GDPR, HIPAA, SOC 2, ISO 27001"],
     blurb: "Built for high-growth teams with compliance requirements and sustained high volume.",
     cta: "Get started",
-    href: "https://console.prisma.io",
+    href: "https://console.prisma.io/sign-up",
     popular: false,
   },
 ];

@@ -66,7 +66,7 @@ export default function PricingPage() {
         ]}
         primaryCta={{
           label: "Get started free",
-          href: "https://console.prisma.io",
+          href: "https://console.prisma.io/sign-up",
         }}
         secondaryCta={{ label: "Talk to us", href: "/contact" }}
       />

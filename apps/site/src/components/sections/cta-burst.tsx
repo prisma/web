@@ -42,7 +42,7 @@ export function CtaBurst({
   bodyMaxWidth = "max-w-[52ch]",
   body = "The TypeScript stack 500K+ developers trust. Start with the free ORM, and add the rest of the platform when you need it.",
   checks = CHECKS,
-  primaryCta = { label: "Get started free", href: "https://console.prisma.io" },
+  primaryCta = { label: "Get started free", href: "https://console.prisma.io/sign-up" },
   secondaryCta = { label: "See pricing", href: "/pricing" },
 }: CtaBurstProps = {}) {
   return (

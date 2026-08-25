@@ -14,7 +14,7 @@ import type { ProductPageContent } from "../types";
 //    any other Postgres?". The hero tour is that answer: branching, Studio and
 //    Query Insights are the three things a bare managed Postgres doesn't give
 //    you, so they lead rather than sitting in feature cards further down.
-const CONSOLE = "https://console.prisma.io";
+const CONSOLE = "https://console.prisma.io/sign-up";
 const PRICING = "/pricing";
 
 export const postgresContent: ProductPageContent = {
