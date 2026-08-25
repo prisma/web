@@ -11,9 +11,9 @@ import { cn } from "@/lib/utils";
 //
 // `compute` is each plan's Prisma Compute pricing — Compute GA (Shane,
 // 2026-08-24). The numbers are LOCKED IN, hand-entered by Shane: requests
-// are the only meter with an included allowance (Free 1M with no usage
-// billing, then 5M/20M/100M plus $1 per million on the paid tiers); memory,
-// CPU, and bandwidth are billed per use on paid plans. These cards are the
+// include 1M requests, 360 GB-hours of memory, 4 vCPU-hours, and 10 GB of
+// outbound bandwidth on Free with no usage billing. Paid tiers include
+// 5M/20M/100M requests, then bill every meter by use. These cards are the
 // page's source of truth — keep the Prisma Compute group in
 // pricing-spec-table.tsx, pricing-data.ts, and the llms surfaces in sync
 // with them.
@@ -30,7 +30,12 @@ const PLANS = [
     name: "Free",
     price: "$0",
     note: "Free forever. No credit card required.",
-    compute: ["1M requests / month"],
+    compute: [
+      "1M requests / month",
+      "360 GB-hours memory / month",
+      "4 active vCPU-hours / month",
+      "10 GB outbound bandwidth / month",
+    ],
     postgres: ["200k operations / month", "500 MB storage", "50 databases"],
     platform: [],
     blurb:
