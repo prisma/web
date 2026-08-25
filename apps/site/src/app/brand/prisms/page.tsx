@@ -79,7 +79,7 @@ function HeroShell({ motif }: { motif?: React.ReactNode }) {
             ))}
           </ul>
           <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-            <PrismButton href="https://console.prisma.io">Get started free</PrismButton>
+            <PrismButton href="https://console.prisma.io/sign-up">Get started free</PrismButton>
             <PrismButtonOutline href="/pricing">See pricing</PrismButtonOutline>
           </div>
         </div>
