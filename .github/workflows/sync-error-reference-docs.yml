@@ -32,28 +32,44 @@ jobs:
           path: prisma-src
           persist-credentials: false
 
+      - name: Checkout prisma/prisma-cli (main)
+        uses: actions/checkout@v4
+        with:
+          repository: prisma/prisma-cli
+          ref: main
+          path: prisma-cli-src
+          persist-credentials: false
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      - name: Generate error reference page
+      - name: Generate ORM error reference page
         working-directory: apps/docs
-        run: node ./scripts/generate-error-reference.mjs --source ../../prisma-src/docs/reference/error-reference.md
+        run: node ./scripts/generate-error-reference.mjs --target orm --source ../../prisma-src/docs/reference/error-reference.md
 
-      - name: Verify page lists every known error code
+      - name: Verify ORM page lists every known error code
         run: node prisma-src/scripts/list-error-codes.mjs --root prisma-src --verify apps/docs/content/docs/orm/reference/error-reference.mdx
+
+      - name: Generate CLI error reference page
+        working-directory: apps/docs
+        run: node ./scripts/generate-error-reference.mjs --target cli --source ../../prisma-cli-src/docs/reference/error-reference.md
+
+      - name: Verify CLI page lists every known error code
+        run: node prisma-cli-src/scripts/list-error-codes.mjs --root prisma-cli-src --verify apps/docs/content/docs/cli/error-reference.mdx
 
       - name: Check for changes
         id: changes
         run: |
-          if [[ -z "$(git status --porcelain --untracked-files=all -- apps/docs/content/docs/orm/reference/error-reference.mdx)" ]]; then
-            echo "changed=false" >> $GITHUB_OUTPUT
+          PAGES=(apps/docs/content/docs/orm/reference/error-reference.mdx apps/docs/content/docs/cli/error-reference.mdx)
+          if [[ -z "$(git status --porcelain --untracked-files=all -- "${PAGES[@]}")" ]]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "No changes detected"
           else
-            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "changed=true" >> "$GITHUB_OUTPUT"
             echo "Changes detected:"
-            git status --short -- apps/docs/content/docs/orm/reference/error-reference.mdx
+            git status --short -- "${PAGES[@]}"
           fi
 
       - name: Commit and push
@@ -65,7 +81,7 @@ jobs:
         run: |
           git config user.email "prismabots@gmail.com"
           git config user.name "Prismo"
-          git add apps/docs/content/docs/orm/reference/error-reference.mdx
+          git add apps/docs/content/docs/orm/reference/error-reference.mdx apps/docs/content/docs/cli/error-reference.mdx
           git commit -m "chore(docs): sync Prisma 8 error reference"
           git push "https://x-access-token:${BOT_TOKEN}@github.com/${TARGET_REPO}.git" "HEAD:${TARGET_REF}"
 

@@ -310,7 +310,11 @@ const config = {
         permanent: true,
       },
       { source: "/v8/:path*", destination: "/prisma-orm", permanent: true },
-      { source: "/orm/v8/create-prisma", destination: "/prisma-orm/create-prisma", permanent: true },
+      {
+        source: "/orm/v8/create-prisma",
+        destination: "/prisma-orm/create-prisma",
+        permanent: true,
+      },
       {
         source: "/orm/v8/quickstart/:path*",
         destination: "/prisma-orm/quickstart/:path*",
@@ -362,7 +366,11 @@ const config = {
         permanent: true,
       },
       { source: "/next/:path*", destination: "/prisma-orm", permanent: true },
-      { source: "/orm/next/create-prisma", destination: "/prisma-orm/create-prisma", permanent: true },
+      {
+        source: "/orm/next/create-prisma",
+        destination: "/prisma-orm/create-prisma",
+        permanent: true,
+      },
       {
         source: "/orm/next/quickstart/:path*",
         destination: "/prisma-orm/quickstart/:path*",
@@ -380,6 +388,18 @@ const config = {
       { source: "/guides/next", destination: "/guides", permanent: true },
       { source: "/guides/next/:path*", destination: "/guides/:path*", permanent: true },
       { source: "/llms/next.txt", destination: "/llms/orm.txt", permanent: true },
+      // The CLI engine composes structured-error docsUrls as
+      // <docsBaseUrl>/<CODE> (path form); the pages anchor codes as #<CODE>.
+      {
+        source: "/cli/error-reference/:code",
+        destination: "/cli/error-reference#:code",
+        permanent: false,
+      },
+      {
+        source: "/orm/reference/error-reference/:code",
+        destination: "/orm/reference/error-reference#:code",
+        permanent: false,
+      },
       {
         source: "/prisma-postgres/quickstart/prisma-next",
         destination: "/prisma-postgres/quickstart/prisma-orm",
