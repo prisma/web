@@ -101,22 +101,88 @@ From here the app grows by declaration: `deps: { db: postgres() }` gives the ser
 
 ### Bring an app you already have
 
-Porting an app does not mean rewriting it. Your server code stays the server; you add a declaration around it and make three changes:
+Porting an app does not mean rewriting it. Your server code stays the server, your build stays the build, and you add a declaration around them. The steps below port a two-service app, a notes API on Postgres and an uploads service on S3 credentials, to a Composer app that provisions its own database and bucket. For a Next.js service, use the `nextjs` build adapter with `output: "standalone"` instead; [Port an existing app](/composer/porting-an-app) covers that variant.
 
-1. **Read the port from `service.port()`** instead of `process.env.PORT`, and bind `0.0.0.0`.
-2. **Replace other `process.env` reads.** Configuration becomes the service's [input schema](/composer/service-input); anything another service provides becomes a dependency.
-3. **If it talks to Postgres**, declare `deps: { db: postgres() }` and build your existing client from the injected `db.url`.
+**1. Install the Composer packages.** Same as [step 1 of the scratch path](/composer/getting-started#1-set-up-the-project): install `@prisma/composer` and `@prisma/composer-prisma-cloud`, and pin `effect` to the version your installed `@prisma/composer` requires.
 
-For a Next.js app, use the `nextjs` build adapter and set `output: "standalone"` in the Next.js config. [Port an existing app](/composer/porting-an-app) covers all three cases, including the build requirements, with complete declarations.
+**2. Declare each service.** A `service.ts` next to each server names the service, declares what it consumes as dependencies, and points at your built output. A Postgres connection becomes `postgres()`; S3 credentials become `bucket()`:
 
-Verify the port before deploying by running it locally:
+```ts title="src/api/service.ts"
+import node from "@prisma/composer/node";
+import { compute, postgres } from "@prisma/composer-prisma-cloud";
+
+export default compute({
+  name: "api",
+  deps: { db: postgres() },
+  build: node({ module: import.meta.url, entry: "../../dist/api.mjs" }),
+});
+```
+
+```ts title="src/files/service.ts"
+import node from "@prisma/composer/node";
+import { bucket, compute } from "@prisma/composer-prisma-cloud";
+
+export default compute({
+  name: "files",
+  deps: { store: bucket() },
+  build: node({ module: import.meta.url, entry: "../../dist/files.mjs" }),
+});
+```
+
+**3. Provision everything in one module.** The root module owns the resources and wires them to the services; the deploy config next to it is the same one the scratch path uses:
+
+```ts title="module.ts"
+import { module } from "@prisma/composer";
+import { bucket, postgres } from "@prisma/composer-prisma-cloud";
+import apiService from "./src/api/service.ts";
+import filesService from "./src/files/service.ts";
+
+export default module("my-app", ({ provision }) => {
+  const db = provision(postgres({ name: "database" }));
+  const store = provision(bucket({ name: "uploads" }));
+  provision(apiService, { deps: { db } });
+  provision(filesService, { deps: { store } });
+});
+```
+
+**4. Port the environment reads.** This is the only change to your server code, and it is what makes every environment work without hand-wired configuration:
+
+1. **The port**: read `service.port()` instead of `process.env.PORT`, and bind `0.0.0.0`.
+2. **Dependency values**: read `service.load()` instead of connection-string and credential env vars. The Postgres dependency delivers `db.url` for whatever client you already use; the bucket delivers the standard S3 set.
+3. **Everything else** (flags, regions, external URLs, third-party credentials) becomes the service's [input schema](/composer/service-input).
+
+```ts title="src/api/server.ts (the changed lines)"
+import { SQL } from "bun";
+import service from "./service.ts";
+
+// before: new SQL({ url: process.env.DATABASE_URL })
+const { db } = service.load();
+const sql = new SQL({ url: db.url, max: 1, idleTimeout: 10 });
+
+Bun.serve({ port: service.port(), hostname: "0.0.0.0", fetch: handler });
+```
+
+```ts title="src/files/server.ts (the changed lines)"
+import service from "./service.ts";
+
+// before: endpoint, bucket, and keys from four S3_* env vars
+const { store } = service.load();
+const s3 = new Bun.S3Client({
+  endpoint: store.url,
+  bucket: store.bucket,
+  accessKeyId: store.accessKeyId,
+  secretAccessKey: store.secretAccessKey,
+});
+```
+
+**5. Build and verify locally.** Your build must produce one self-contained entry file per service; keep your own build if it already does, or use one `bun build --target=bun` line per service. Then run the whole declaration locally:
 
 ```npm
 npm run build
 npx prisma@next dev module.ts
 ```
 
-Every service should appear in the startup output with a local URL. Then continue to [Deploy](#2-deploy).
+`dev` provisions a local Postgres and a local stand-in bucket with working credentials, and every service appears in the startup output with a local URL, so you can exercise the database and upload paths end to end before touching the platform. Then continue to [Deploy](#2-deploy): the same deploy command provisions the real database and bucket alongside the services.
 
 ## 2. Deploy
 
