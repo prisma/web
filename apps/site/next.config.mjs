@@ -278,6 +278,8 @@ const config = {
       { source: "/startups", destination: "/programs/startups", permanent: true },
       { source: "/partners", destination: "/programs/partners", permanent: true },
       { source: "/oss-friends", destination: "/programs/oss-friends", permanent: true },
+      // Template gallery renamed to /apps.
+      { source: "/templates", destination: "/apps", permanent: true },
       // ORM feature marketing absorbed by the new /orm product page.
       { source: "/client", destination: "/orm", permanent: true },
       { source: "/typedsql", destination: "/orm", permanent: true },

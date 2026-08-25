@@ -23,10 +23,10 @@ const templateManifestSchema = z.object({
 type Template = z.infer<typeof templateManifestSchema>["templates"][number];
 
 export const metadata = createPageMetadata({
-  title: "Prisma Compute templates",
+  title: "Prisma Compute apps",
   description:
     "Browse open-source TypeScript starters and deploy one with Prisma Postgres and Prisma Compute.",
-  path: "/templates",
+  path: "/apps",
 });
 
 async function getTemplates() {
@@ -59,7 +59,7 @@ function TemplateCard({ template }: { template: Template }) {
           className="w-full"
           ctaLocation="templates-card"
         >
-          Use template
+          Use this app
         </PrismButtonOutline>
         <a
           href={`https://github.com/prisma/prisma-examples/tree/latest/${template.path}`}
@@ -79,14 +79,14 @@ function TemplateCard({ template }: { template: Template }) {
   );
 }
 
-export default async function TemplatesPage() {
+export default async function AppsPage() {
   const templates = await getTemplates();
 
   return (
     <>
       <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
         <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
-          {/* compute-red wash — templates deploy to Prisma Compute, so the
+          {/* compute-red wash — these apps deploy to Prisma Compute, so the
               hero carries its accent (same treatment as /ecosystem's cyan) */}
           <div
             aria-hidden
@@ -105,10 +105,10 @@ export default async function TemplatesPage() {
           <div className="relative px-4 sm:px-8">
             <div className="mx-auto flex max-w-site flex-col items-center pb-14 pt-32 text-center md:pb-16 md:pt-44">
               <RoleKicker color="bg-prism-red-500" className="justify-center">
-                Templates
+                Apps
               </RoleKicker>
               <h1 className="isolate mt-4 max-w-[20ch] text-balance text-[clamp(2.5rem,4vw,3.5rem)] leading-[1.06]">
-                Start from a template
+                Start from an app
               </h1>
               <p className="mt-6 max-w-[52ch] text-pretty text-lg leading-relaxed text-muted-foreground">
                 Open-source TypeScript starters. Review the code, then deploy with Prisma Postgres
@@ -130,10 +130,10 @@ export default async function TemplatesPage() {
           ) : (
             <div className="mx-auto flex max-w-[36rem] flex-col items-center gap-3 rounded-2xl border border-dashed border-black/[0.12] bg-white px-6 py-14 text-center">
               <h2 className="text-[clamp(1.375rem,2vw,1.75rem)] leading-[1.15]">
-                Templates are unavailable
+                Apps are unavailable
               </h2>
               <p className="max-w-[44ch] text-sm leading-relaxed text-muted-foreground">
-                We could not load the template directory. Please try again in a few minutes.
+                We could not load the app directory. Please try again in a few minutes.
               </p>
             </div>
           )}
