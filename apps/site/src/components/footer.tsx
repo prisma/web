@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Github, Linkedin, Mail, XSocial } from "@/components/icons/forma";
 import { AnimatedWordmark } from "@/components/brand/animated-wordmark";
+import { SiteLink } from "@/components/site-link";
 import { siteConfig } from "@/lib/config";
 
 // Light reference-style footer (Fincrest): brand block with contact + social
@@ -62,12 +63,12 @@ export function Footer() {
                 <ul className="space-y-3">
                   {items.map((item) => (
                     <li key={item.href}>
-                      <Link
+                      <SiteLink
                         href={item.href}
                         className="text-sm text-muted-foreground transition-colors hover:text-foreground"
                       >
                         {item.label}
-                      </Link>
+                      </SiteLink>
                     </li>
                   ))}
                 </ul>
