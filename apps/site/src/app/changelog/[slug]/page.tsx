@@ -21,10 +21,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const entry = getChangelogEntry(slug);
   if (!entry) return {};
   const title = entry.frontmatter.headline ?? entry.frontmatter.title;
-  const description = entry.frontmatter.metaDescription;
+  const description =
+    entry.frontmatter.metaDescription ??
+    `${title}. New features, improvements, and fixes across Prisma ORM, Prisma Postgres, and the Prisma platform.`;
   return createPageMetadata({
     title: `${title} | Changelog`,
-    description: description ?? "",
+    description,
     path: `/changelog/${slug}`,
     ogKicker: "Changelog",
   });
