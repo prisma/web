@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { ArrowRight } from "@/components/icons/forma";
 import { RoleKicker } from "@/components/brand/role-kicker";
 import { Texture } from "@/components/brand/texture";
@@ -9,30 +9,12 @@ const PAGE_TITLE = "Prisma ORM Ecosystem";
 const PAGE_DESCRIPTION =
   "Explore the variety of tools (from generators, to middleware, to CLIs) created by the Prisma community.";
 
-export const metadata: Metadata = {
-  title: { absolute: PAGE_TITLE },
+export const metadata = createPageMetadata({
+  title: PAGE_TITLE,
   description: PAGE_DESCRIPTION,
-  alternates: {
-    canonical: "/ecosystem",
-  },
-  openGraph: {
-    title: PAGE_TITLE,
-    description: PAGE_DESCRIPTION,
-    url: "/ecosystem",
-    siteName: "Prisma",
-    locale: "en_US",
-    type: "website",
-    images: [{ url: "/og/og-ecosystem.png" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    site: "@prisma",
-    creator: "@prisma",
-    title: PAGE_TITLE,
-    description: PAGE_DESCRIPTION,
-    images: ["/og/og-ecosystem.png"],
-  },
-};
+  path: "/ecosystem",
+  ogKicker: "Ecosystem",
+});
 
 type EcosystemPackage = {
   name: string;

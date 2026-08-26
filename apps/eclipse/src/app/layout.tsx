@@ -1,7 +1,6 @@
 import { Provider } from "@/components/provider";
 import Script from "next/script";
 import "./global.css";
-import { Barlow } from "next/font/google";
 import localFont from "next/font/local";
 import { FontAwesomeScript as EclipseFA } from "@prisma/eclipse";
 
@@ -22,12 +21,6 @@ const inter = localFont({
   ],
   variable: "--font-inter",
   display: "swap",
-});
-
-const barlow = Barlow({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-barlow",
 });
 
 // Sora replaces Mona Sans VF as the display face. next/font/local has no
@@ -53,7 +46,7 @@ export default function Layout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${barlow.variable} ${sora.variable} ${monaSansMono.variable}`}
+      className={`${inter.variable} ${sora.variable} ${monaSansMono.variable}`}
       suppressHydrationWarning
     >
       <head>

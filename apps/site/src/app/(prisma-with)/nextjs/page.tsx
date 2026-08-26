@@ -108,7 +108,7 @@ export const metadata = createPageMetadata({
   description:
     "Build high-performance and type-safe Next.js apps with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and the first serverless database without cold starts.",
   path: "/nextjs",
-  ogImage: "/og/prisma-with/nextjs.png",
+  ogKicker: "Prisma ORM",
 });
 
 export default async function NextJsPage() {
