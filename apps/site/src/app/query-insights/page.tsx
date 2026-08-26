@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import Image from "next/image";
 import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button";
 import { RoleKicker } from "@/components/brand/role-kicker";
@@ -55,12 +55,14 @@ const FEATURES = [
   },
 ] as const;
 
-export const metadata: Metadata = {
-  alternates: { canonical: "/query-insights" },
+export const metadata = createPageMetadata({
   title: "Prisma Query Insights",
   description:
     "Monitor slow queries in Prisma Postgres, understand their production impact, and generate AI-ready optimization prompts to fix performance issues faster.",
-};
+  path: "/query-insights",
+  ogKicker: "Prisma Postgres",
+  ogAccent: "yellow",
+});
 
 export default function QueryInsightsPage() {
   return (

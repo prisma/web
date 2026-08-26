@@ -1,13 +1,14 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { ArrowRight } from "@/components/icons/forma";
 import { RoleKicker } from "@/components/brand/role-kicker";
 import { Texture } from "@/components/brand/texture";
 
-export const metadata: Metadata = {
-  alternates: { canonical: "/programs/oss-friends" },
+export const metadata = createPageMetadata({
   title: "Our OSS Friends",
   description: "Promoting and supporting the open source community.",
-};
+  path: "/programs/oss-friends",
+  ogKicker: "Programs",
+});
 
 // Ported from the old site's /oss-friends page, same community-maintained
 // list, fetched from the shared OSS-friends API.

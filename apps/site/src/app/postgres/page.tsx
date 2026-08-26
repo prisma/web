@@ -1,12 +1,14 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { postgresContent } from "@/components/product/content/postgres";
 import { ProductPage } from "@/components/product/product-page";
 
-export const metadata: Metadata = {
-  alternates: { canonical: "/postgres" },
+export const metadata = createPageMetadata({
   title: "Prisma Postgres",
   description: "Production-ready Postgres, already wired to your stack.",
-};
+  path: "/postgres",
+  ogKicker: "Prisma Postgres",
+  ogAccent: "yellow",
+});
 
 // /postgres is the one page whose approved copy matches the standard shape
 // exactly — hero, problem, features, cross-sell, testimonials, closer — so it

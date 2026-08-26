@@ -1,15 +1,16 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import Link from "next/link";
 import { ArrowRight } from "@/components/icons/forma";
 import { RoleKicker } from "@/components/brand/role-kicker";
 import { Texture } from "@/components/brand/texture";
 import { CtaBurst } from "@/components/sections/cta-burst";
 
-export const metadata: Metadata = {
-  alternates: { canonical: "/programs" },
+export const metadata = createPageMetadata({
   title: "Programs",
   description: "Prisma programs for startups, platform partners, and the open-source community.",
-};
+  path: "/programs",
+  ogKicker: "Programs",
+});
 
 // Programs hub, the footer's "Programs" destination. Each program's full
 // page is ported from the old site (/startups, /partners, /oss-friends).

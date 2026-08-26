@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { CtaBurst } from "@/components/sections/cta-burst";
 import { PricingCalculator } from "@/components/sections/pricing-calculator";
 import { PricingComparison } from "@/components/sections/pricing-comparison";
@@ -9,12 +9,13 @@ import { PricingPlans } from "@/components/sections/pricing-plans";
 import { PricingSpecTable } from "@/components/sections/pricing-spec-table";
 import { TestimonialsReveal } from "@/components/sections/testimonials-reveal";
 
-export const metadata: Metadata = {
-  alternates: { canonical: "/pricing" },
+export const metadata = createPageMetadata({
   title: "Pricing",
   description:
     "Usage-based pricing for your whole stack — Prisma Compute app hosting and Prisma Postgres databases. Pay for the work your app does, not seats or deploys. Free tier with no time limit, hard spend limits on every paid plan.",
-};
+  path: "/pricing",
+  ogKicker: "Pricing",
+});
 
 // Built from the approved V2 pricing copy, in V2's order (CTA then FAQs).
 // Compute GA launch (Shane, 2026-08-24): Compute pricing lives inside the

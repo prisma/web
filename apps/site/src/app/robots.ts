@@ -11,6 +11,7 @@ export default function robots(): MetadataRoute.Robots {
   // /blog/*?tag=* is deliberately not disallowed: blog tag landing pages 301
   // into /blog?tag=<tag>, so blocking it would block a redirect destination.
   const zoneDisallow = [
+    "/og/",
     "/docs/api/",
     "/docs/og/",
     "/docs/*?query=*",

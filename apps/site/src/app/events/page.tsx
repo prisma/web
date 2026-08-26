@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { ArrowRight } from "@/components/icons/forma";
 import { RoleKicker } from "@/components/brand/role-kicker";
 import { Texture } from "@/components/brand/texture";
@@ -17,30 +17,12 @@ const PAGE_TITLE = "Prisma Events";
 const PAGE_DESCRIPTION =
   "Find upcoming Prisma events and Meetups, see where the team will be speaking, and explore recordings and resources from past events.";
 
-export const metadata: Metadata = {
-  title: { absolute: PAGE_TITLE },
+export const metadata = createPageMetadata({
+  title: PAGE_TITLE,
   description: PAGE_DESCRIPTION,
-  alternates: {
-    canonical: "/events",
-  },
-  openGraph: {
-    title: PAGE_TITLE,
-    description: PAGE_DESCRIPTION,
-    url: "/events",
-    siteName: "Prisma",
-    locale: "en_US",
-    type: "website",
-    images: [{ url: "/og/og-events.png" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    site: "@prisma",
-    creator: "@prisma",
-    title: PAGE_TITLE,
-    description: PAGE_DESCRIPTION,
-    images: ["/og/og-events.png"],
-  },
-};
+  path: "/events",
+  ogKicker: "Events",
+});
 
 const eventsStructuredData = createCollectionPageStructuredData({
   path: "/events",

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MDXRemote } from "next-mdx-remote/rsc";
@@ -20,12 +21,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const entry = getChangelogEntry(slug);
   if (!entry) return {};
   const title = entry.frontmatter.headline ?? entry.frontmatter.title;
-  const description = entry.frontmatter.metaDescription;
-  return {
+  const description =
+    entry.frontmatter.metaDescription ??
+    `${title}. New features, improvements, and fixes across Prisma ORM, Prisma Postgres, and the Prisma platform.`;
+  return createPageMetadata({
     title: `${title} | Changelog`,
     description,
-    alternates: { canonical: `${siteConfig.url}/changelog/${slug}` },
-  };
+    path: `/changelog/${slug}`,
+    ogKicker: "Changelog",
+  });
 }
 
 export default async function ChangelogEntryPage({ params }: Props) {

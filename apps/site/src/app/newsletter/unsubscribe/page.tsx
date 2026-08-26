@@ -3,15 +3,19 @@ import {
   isValidNewsletterUnsubscribeToken,
 } from "@prisma-docs/ui/lib/newsletter-subscription";
 import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { RoleKicker } from "@/components/brand/role-kicker";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
-  alternates: { canonical: "/newsletter/unsubscribe" },
-  title: "Unsubscribe from the Prisma newsletter",
-  description: "Manage your Prisma newsletter subscription.",
+  ...createPageMetadata({
+    title: "Unsubscribe from the Prisma newsletter",
+    description: "Manage your Prisma newsletter subscription.",
+    path: "/newsletter/unsubscribe",
+    ogKicker: "Newsletter",
+  }),
   referrer: "no-referrer",
   robots: { follow: false, index: false },
 };
