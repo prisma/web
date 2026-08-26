@@ -10,7 +10,9 @@ export function getBaseUrl(): string {
     // Vercel host. Same guard as apps/site.
     (process.env.NODE_ENV === "production" ? "https://www.prisma.io" : null) ??
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ??
-    "http://localhost:3001"
+    // PORT covers local runs on a non-default port; when Next auto-increments
+    // past a busy 3001 no env var records it, so links may still say 3001.
+    `http://localhost:${process.env.PORT ?? "3001"}`
   );
 }
 
@@ -20,10 +22,7 @@ export function normalize(urlOrPath: string) {
 }
 
 export function normalizeLatestOrmPath(urlOrPath: string): string {
-  return urlOrPath.replace(
-    /^(https?:\/\/[^/?#]+)?(\/docs)?\/orm\/latest(?=\/|$|[?#])/,
-    "$1$2/orm",
-  );
+  return urlOrPath.replace(/^(https?:\/\/[^/?#]+)?(\/docs)?\/orm\/latest(?=\/|$|[?#])/, "$1$2/orm");
 }
 
 export const DOCS_PREFIX = "/docs";

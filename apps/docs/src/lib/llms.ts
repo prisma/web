@@ -59,14 +59,15 @@ export const commonQueries: LLMsLink[] = [
   },
   {
     title: "Start a new Prisma ORM project",
-    href: "/prisma-orm/quickstart/prisma-postgres",
-    description: "Set up Prisma ORM, Prisma Client, and Prisma Postgres in a new TypeScript app.",
+    href: "/getting-started",
+    description:
+      "Choose a Prisma 8 quickstart for a new project or add Prisma 8 to an existing app.",
   },
   {
-    title: "Try Prisma Next (Early Access)",
-    href: "/next/getting-started",
+    title: "Use Prisma ORM 7",
+    href: "/v7/getting-started",
     description:
-      "Choose a Prisma Next quickstart for a new project or add Prisma Next to an existing app.",
+      "Prisma 7 remains fully supported. Its quickstarts, Prisma Client, Migrate, and CLI docs live under /orm/v7.",
   },
   {
     title: "Connect to Prisma Postgres",
@@ -76,25 +77,25 @@ export const commonQueries: LLMsLink[] = [
   },
   {
     title: "Run Prisma Postgres locally",
-    href: "/postgres/database/local-development",
+    href: "/local-development/postgres",
     description:
       "Use local Prisma Postgres during development and switch to a hosted database for production.",
   },
   {
     title: "Manage database connections",
-    href: "/orm/prisma-client/setup-and-configuration/databases-connections",
+    href: "/orm/v7/prisma-client/setup-and-configuration/databases-connections",
     description:
-      "Configure Prisma Client connection management for long-running and serverless apps.",
+      "Configure Prisma 7 Client connection management for long-running and serverless apps.",
   },
   {
     title: "Create and apply migrations",
-    href: "/orm/prisma-migrate/getting-started",
-    description: "Use Prisma Migrate to evolve your database schema in development.",
+    href: "/orm/migrations/how-migrations-work",
+    description: "Use Prisma 8 migrations to evolve your database schema in development.",
   },
   {
     title: "Deploy migrations safely",
-    href: "/orm/prisma-client/deployment/deploy-database-changes-with-prisma-migrate",
-    description: "Apply schema changes in production with Prisma Migrate.",
+    href: "/orm/migrations/applying-a-migration",
+    description: "Apply schema changes in production with Prisma 8 migrations.",
   },
   {
     title: "Use Query Insights",
@@ -108,20 +109,20 @@ export const commonQueries: LLMsLink[] = [
       "Connect AI agents to Prisma Postgres workflows with the local or remote MCP server.",
   },
   {
-    title: "Use the Prisma Client API",
-    href: "/orm/reference/prisma-client-reference",
-    description: "Look up Prisma Client query APIs, options, and generated types.",
+    title: "Use the Prisma ORM client API",
+    href: "/orm/reference/orm-client",
+    description: "Look up Prisma 8 ORM client query APIs, options, and generated types.",
   },
   {
     title: "Use the Prisma CLI",
-    href: "/orm/reference/prisma-cli-reference",
+    href: "/cli",
     description:
-      "Look up Prisma CLI commands for init, generate, migrate, db, and studio workflows.",
+      "Look up the unified Prisma CLI commands for contracts, databases, migrations, and the platform.",
   },
   {
     title: "Troubleshoot Prisma ORM errors",
-    href: "/orm/reference/errors",
-    description: "Find common Prisma ORM errors and links to deeper troubleshooting pages.",
+    href: "/orm/reference/error-reference",
+    description: "Find Prisma ORM error codes and links to deeper troubleshooting pages.",
   },
   {
     title: "Troubleshoot Prisma Postgres",
@@ -162,9 +163,16 @@ export const llmsSections: LLMsSection[] = [
     slug: "orm",
     title: "Prisma ORM",
     description:
-      "Current Prisma ORM docs: setup, schema modeling, Prisma Client, migrations, and references (excludes legacy v6 and Prisma Next).",
-    prefixes: ["/orm", "/prisma-orm"],
-    excludePrefixes: ["/orm/v6", "/orm/next"],
+      "Current Prisma ORM (Prisma 8) docs: setup, contracts and data modeling, the ORM client, migrations, middleware, and references. A ground-up TypeScript rewrite that keeps the schema-first workflow while making it extensible, composable, and AI-agent friendly (excludes the Prisma 7 and legacy v6 trees).",
+    prefixes: ["/orm", "/prisma-orm", "/getting-started", "/full-stack-tutorial"],
+    excludePrefixes: ["/orm/v6", "/orm/v7"],
+  },
+  {
+    slug: "orm-v7",
+    title: "Prisma ORM v7",
+    description:
+      "Prisma ORM 7 documentation: the schema.prisma workflow, Prisma Client, Prisma Migrate, the classic prisma CLI, and the Prisma 7 quickstarts and framework guides. Prisma 7 remains fully supported; pin prisma and @prisma/client to 7.10.0.",
+    prefixes: ["/orm/v7", "/v7", "/guides/v7", "/cli/v7"],
   },
   {
     slug: "orm-v6",
@@ -174,26 +182,26 @@ export const llmsSections: LLMsSection[] = [
     prefixes: ["/orm/v6"],
   },
   {
-    slug: "next",
-    title: "Prisma Next (Early Access)",
-    description:
-      "Prisma Next, the next major version of Prisma ORM, available in Early Access. A ground-up TypeScript rewrite that keeps the schema-first workflow while making it extensible, composable, and AI-agent friendly. Covers setup, ORM, guides, and CLI docs for Prisma Next.",
-    prefixes: ["/next", "/orm/next", "/guides/next", "/cli/next"],
-  },
-  {
     slug: "postgres",
     title: "Prisma Postgres",
     description:
-      "Prisma Postgres setup, connection strings, local development, operations, and guides.",
+      "Prisma Postgres setup, connection strings, operations, and guides (local development lives in the Local Development section).",
     prefixes: ["/postgres", "/prisma-postgres"],
+  },
+  {
+    slug: "local-development",
+    title: "Local Development",
+    description:
+      "Running the Prisma stack locally: local app development on Bun and with Composer, local Prisma Postgres via prisma dev, and S3-compatible local object storage.",
+    prefixes: ["/local-development"],
   },
   {
     slug: "guides",
     title: "Guides",
     description:
-      "End-to-end guides for using Prisma ORM and Prisma Postgres with popular frameworks and runtimes (Prisma Next guides live in the Prisma Next section).",
+      "End-to-end guides for using Prisma ORM and Prisma Postgres with popular frameworks and runtimes (Prisma 8 guides live in the Prisma 8 section).",
     prefixes: ["/guides"],
-    excludePrefixes: ["/guides/next"],
+    excludePrefixes: ["/guides/v7"],
   },
   {
     slug: "ai",
@@ -206,16 +214,23 @@ export const llmsSections: LLMsSection[] = [
     slug: "cli",
     title: "Prisma CLI",
     description:
-      "Prisma CLI command reference for init, generate, migrate, db, studio, and more (Prisma Next CLI docs live in the Prisma Next section).",
+      "Prisma CLI command reference for init, generate, migrate, db, studio, and more (Prisma 8 CLI docs live in the Prisma 8 section).",
     prefixes: ["/cli"],
-    excludePrefixes: ["/cli/next"],
+    excludePrefixes: ["/cli/v7"],
   },
   {
     slug: "platform",
     title: "Prisma Platform",
     description:
-      "Prisma Console and the Management API for managing projects, environments, and deployments.",
-    prefixes: ["/console", "/management-api"],
+      "Prisma Console and the REST API for managing projects, environments, and deployments.",
+    prefixes: ["/console", "/rest-api"],
+  },
+  {
+    slug: "storage",
+    title: "Prisma Storage",
+    description:
+      "S3-compatible object-store buckets that live inside a Prisma project, with bucket-scoped access keys.",
+    prefixes: ["/storage"],
   },
   {
     slug: "compute",
@@ -223,6 +238,13 @@ export const llmsSections: LLMsSection[] = [
     description:
       "Prisma Compute (Public Beta): TypeScript app hosting that runs alongside Prisma Postgres, with database branches, isolated branch previews, and a CLI-first deploy workflow.",
     prefixes: ["/compute"],
+  },
+  {
+    slug: "composer",
+    title: "Prisma Composer",
+    description:
+      "Prisma Composer (Early Access): a TypeScript framework for multi-service apps. Declare services, databases, and typed dependencies, compose them into a Prisma App, and deploy to Prisma Compute and Prisma Postgres with one command.",
+    prefixes: ["/composer"],
   },
   {
     slug: "studio",

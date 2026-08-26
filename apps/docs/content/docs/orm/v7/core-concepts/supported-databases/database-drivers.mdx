@@ -1,0 +1,212 @@
+---
+title: Database drivers
+description: Learn how Prisma connects to your database using driver adapters
+url: /orm/v7/core-concepts/supported-databases/database-drivers
+metaTitle: Database drivers
+metaDescription: Learn how Prisma connects to your database using the built-in drivers and how you can use Prisma along with other JavaScript database drivers using driver adapters (Preview)
+---
+
+## Driver adapters
+
+Prisma Client can connect and run queries against your database using JavaScript database drivers via **driver adapters**. Adapters act as _translators_ between Prisma Client and the JavaScript database driver.
+
+Prisma Client will use the Query Engine to transform the Prisma Client query to SQL and run the generated SQL queries via the JavaScript database driver.
+
+![Query flow from the user application to the database using Prisma Client and driver adapters](/img/orm/core-concepts/databases/images/drivers/qe-query-engine-adapter.png)
+
+There are two different types of driver adapters:
+
+- [Database driver adapters](#database-driver-adapters)
+- [Serverless driver adapters](#serverless-driver-adapters)
+
+> **Note**: Driver adapters enable [edge deployments](/orm/v7/prisma-client/deployment/edge/overview) of applications that use Prisma ORM.
+
+### Database driver adapters
+
+You can connect to your database using a Node.js-based driver from Prisma Client using a database driver adapter. Prisma maintains the adapters for the following drivers:
+
+- PostgreSQL
+  - [`pg`](/orm/v7/core-concepts/supported-databases/postgresql#using-driver-adapters)
+- Prisma Postgres
+  - [`@prisma/adapter-ppg`](/postgres/database/serverless-driver#use-with-prisma-orm)
+- MySQL/MariaDB
+  - [`mariadb`](/orm/v7/core-concepts/supported-databases/mysql#using-driver-adapters)
+- SQLite
+  - [`better-sqlite3`](/orm/v7/core-concepts/supported-databases/sqlite#using-driver-adapters)
+  - [`libSQL`](/orm/v7/core-concepts/supported-databases/sqlite#using-driver-adapters) (Turso)
+- MS SQL Server
+  - [`node-mssql`](/orm/v7/core-concepts/supported-databases/sql-server#using-driver-adapters)
+
+### Serverless driver adapters
+
+Database providers, such as Neon and PlanetScale, allow you to connect to your database using other protocols besides TCP, such as HTTP and WebSockets. These database drivers are optimized for connecting to your database in serverless and edge environments.
+
+Prisma ORM maintains the following serverless driver adapters:
+
+- [Prisma Postgres](/postgres/database/serverless-driver#use-with-prisma-orm)
+- [Neon](/orm/v7/core-concepts/supported-databases/postgresql#neon) (and Vercel Postgres)
+- [PlanetScale](/orm/v7/core-concepts/supported-databases/mysql#planetscale)
+- [Cloudflare D1](/orm/v7/core-concepts/supported-databases/sqlite#cloudflare-d1)
+
+### Community-maintained database driver adapters
+
+You can also build your own driver adapter for the database you're using. The following is a list of community-maintained driver adapters:
+
+- [TiDB Cloud Serverless Driver](https://github.com/tidbcloud/prisma-adapter)
+- [PGlite - Postgres in WASM](https://github.com/lucasthevenet/pglite-utils/tree/main/packages/prisma-adapter)
+
+## How to use driver adapters
+
+Refer to the following pages to learn more about how to use the specific driver adapters with the specific database providers:
+
+- [PostgreSQL](/orm/v7/core-concepts/supported-databases/postgresql#using-driver-adapters)
+- [Prisma Postgres](/postgres/database/serverless-driver#use-with-prisma-orm)
+- [MySQL/MariaDB](/orm/v7/core-concepts/supported-databases/mysql#using-driver-adapters)
+- [MS SQL Server](/orm/v7/core-concepts/supported-databases/sql-server#using-driver-adapters)
+- [Neon](/orm/v7/core-concepts/supported-databases/postgresql#neon)
+- [PlanetScale](/orm/v7/core-concepts/supported-databases/mysql#planetscale)
+- [Turso](/orm/v7/core-concepts/supported-databases/sqlite#turso-libsql)
+- [Cloudflare D1](/orm/v7/core-concepts/supported-databases/sqlite#cloudflare-d1)
+- [CockroachDB](/orm/v7/core-concepts/supported-databases/postgresql#cockroachdb)
+
+## Notes about using driver adapters
+
+### New driver adapters API in v6.6.0
+
+In [v6.6.0](https://github.com/prisma/prisma/releases/tag/6.6.0), we introduced a simplified version for instantiating Prisma Client when using driver adapters. You now don't need to create an instance of the driver/client to pass to a driver adapter, instead you can just create the driver adapter directly (and pass the driver's options to it if needed).
+
+Here is an example using the `@prisma/adapter-libsql` adapter:
+
+#### Before 6.6.0
+
+Earlier versions of Prisma ORM required you to first instantiate the driver itself, and then use that instance to create the Prisma driver adapter. Here is an example using the `@libsql/client` driver for LibSQL:
+
+```typescript
+import { createClient } from "@libsql/client";
+import { PrismaLibSQL } from "@prisma/adapter-libsql";
+import { PrismaClient } from "../prisma/generated/client";
+
+// Old way of using driver adapters (before 6.6.0)
+const driver = createClient({
+  url: env.LIBSQL_DATABASE_URL,
+  authToken: env.LIBSQL_DATABASE_TOKEN,
+});
+const adapter = new PrismaLibSQL(driver);
+
+const prisma = new PrismaClient({ adapter });
+```
+
+#### 6.6.0 and later
+
+As of the 6.6.0 release, you instantiate the driver adapter _directly_ with the options of your preferred JS-native driver.:
+
+```typescript
+import { PrismaLibSQL } from "@prisma/adapter-libsql";
+import { PrismaClient } from "../generated/prisma/client";
+
+const adapter = new PrismaLibSQL({
+  url: env.LIBSQL_DATABASE_URL,
+  authToken: env.LIBSQL_DATABASE_TOKEN,
+});
+
+const prisma = new PrismaClient({ adapter });
+```
+
+### Driver adapters and database connection configuration
+
+In Prisma ORM 7, the database connection URL is configured in [`prisma.config.ts`](/orm/v7/reference/prisma-config-reference). However, when using a driver adapter, the connection string needs to be provided in your _application code_ when the driver adapter is set up initially.
+
+Here is how this is done for the `pg` driver and the `@prisma/adapter-pg` adapter:
+
+```ts
+import "dotenv/config";
+import { PrismaClient } from "../generated/prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+const prisma = new PrismaClient({ adapter });
+```
+
+See the docs for the driver adapter you're using for concrete setup instructions.
+
+:::tip[Tuning pool sizes, timeouts, or other connection parameters]
+
+See the [connection pool guide](/orm/v7/prisma-client/setup-and-configuration/databases-connections/connection-pool) for the Prisma ORM v7 driver adapter defaults and how they map from Prisma ORM v6 URL parameters.
+
+:::
+
+:::tip[Prisma timeouts]
+
+Prisma ORM also has its own configurable timeouts that are separate from the database driver timeouts. If you see a timeout error and are unsure whether it comes from the driver or from Prisma Client, see the [Prisma Client timeouts and transaction options documentation](/orm/v7/prisma-client/queries/transactions#transaction-isolation-level).
+
+:::
+
+### Driver adapters and custom output paths
+
+In Prisma ORM 7, the recommended approach is to use a custom output path for Prisma Client. The default output path is `../generated/prisma`.
+
+Let's assume you have `output` in your Prisma schema set to `../generated/prisma`:
+
+```prisma
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+```
+
+You can reference Prisma Client using a relative path from your application code:
+
+```ts
+import { PrismaClient } from "./generated/prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+const client = new PrismaClient({ adapter });
+```
+
+Alternatively, you can use a linked dependency for cleaner imports.
+
+```npm
+npm add db@./generated/prisma
+```
+
+:::note
+
+For pnpm, use `pnpm add db@link:./generated/prisma`. For yarn, use `yarn add db@link:./generated/prisma`.
+
+:::
+
+Now, you should be able to reference your generated client using `db`!
+
+```ts
+import { PrismaClient } from "db";
+import { PrismaPg } from "@prisma/adapter-pg";
+
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+const client = new PrismaClient({ adapter });
+```
+
+### Driver adapters and specific frameworks
+
+#### Nuxt
+
+Using a driver adapter with [Nuxt](https://nuxt.com/) to deploy to an edge function environment does not work out of the box, but adding the `nitro.experimental.wasm` configuration option fixes that:
+
+```ts
+export default defineNuxtConfig({
+  // ...
+  nitro: {
+    // ...
+    experimental: {
+      wasm: true,
+    },
+  },
+  // ...
+});
+```
+
+### Driver adapters and TypedSQL
+
+[TypedSQL](/orm/v7/prisma-client/using-raw-sql/typedsql) lets you write fully type-safe SQL queries that integrate directly with Prisma Client. This feature is useful if you want the flexibility of writing SQL while still benefiting from Prisma's type-safety.
+
+You can also use driver adapters together with TypedSQL to connect through JavaScript database drivers. TypedSQL works with all supported driver adapters except `@prisma/adapter-better-sqlite3`. For SQLite support, use [`@prisma/adapter-libsql`](https://www.npmjs.com/package/@prisma/adapter-libsql) instead.

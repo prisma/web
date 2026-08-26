@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { getMDXComponents } from "@/mdx-components";
 import { createRelativeLink } from "fumadocs-ui/mdx";
 import { blog } from "@/lib/source";
-import { Badge, InlineTOC, Separator } from "@prisma/eclipse";
+import { InlineTOC, Separator } from "@prisma/eclipse";
 
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import { BlogShare } from "@/components/BlogShare";
@@ -17,12 +17,13 @@ import { SeriesBanner } from "@/components/SeriesBanner";
 import { SeriesMarker } from "@/components/SeriesMarker";
 import { SeriesNavigation } from "@/components/SeriesNavigation";
 import { KeepReading } from "@/components/KeepReading";
+import { BackToBlogLink } from "@/components/BackToBlogLink";
 import { getSeriesContext } from "@/lib/series";
 import { getRelatedPosts } from "@/lib/related-posts";
 import { getBaseUrl, withBlogBasePath, withBlogBasePathForImageSrc } from "@/lib/url";
 import Link from "next/link";
+import { Text } from "lucide-react";
 import type { Metadata } from "next";
-import { cn } from "@prisma-docs/ui/lib/cn";
 
 interface TOCItem {
   title: string;
@@ -182,20 +183,24 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
   const relatedPosts = seriesContext ? [] : getRelatedPosts(page, 2);
 
   return (
-    <div className="w-full px-4 z-1 mx-auto md:grid md:grid-cols-[1fr_180px] mt-4 md:mt-22 gap-12 max-w-257">
+    <div className="z-1 mx-auto w-full max-w-257 gap-12 px-4 pt-10 pb-8 md:grid md:grid-cols-[1fr_180px] md:pt-20">
       {blogPostingJsonLd ? (
         <JsonLd id="blog-posting-structured-data" data={blogPostingJsonLd} />
       ) : null}
       <div className="post-contents w-full">
-        {/* Title + meta */}
-        <header className="w-full relative">
-          <Link href="/" className="text-fd-primary hover:underline text-sm absolute -top-8">
-            ← Back to Blog
-          </Link>
-          <h1 className="mt-3 mb-8 type-title-3xl md:type-title-4xl lg:type-title-5xl text-foreground-neutral break-words hyphens-auto">
+        {/* Title + meta — CF's post header: back link, display title, muted
+            dek, then the byline row. */}
+        <header className="w-full">
+          <BackToBlogLink className="mb-8" />
+          <h1 className="type-title-3xl md:type-title-4xl lg:type-title-5xl text-balance break-words hyphens-auto text-foreground-neutral-strong">
             {page.data.title}
           </h1>
-          <div className="text-sm flex gap-2 items-center text-foreground-neutral mb-4">
+          {page.data.excerpt ? (
+            <p className="mt-5 text-lg leading-relaxed text-foreground-neutral-weak">
+              {page.data.excerpt}
+            </p>
+          ) : null}
+          <div className="mt-8 mb-4 flex flex-wrap items-center gap-2 text-sm text-foreground-neutral">
             <AuthorAvatarGroup authors={page.data.authors} />
             {page.data.date ? (
               <>
@@ -215,22 +220,18 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
             ) : null}
           </div>
           {page.data.tags && page.data.tags.length > 0 && (
-            <div className="filter-badge flex gap-2">
+            // Same ghost pill as the home page's category chips, so a tag reads
+            // identically wherever it appears. Hover is the docs shell's accent
+            // wash (`fd-accent` = cyan-100 light / cyan-950 dark) rather than a
+            // grey tint, so pointing at a pill answers in the brand hue.
+            <div className="filter-badge flex flex-wrap gap-2">
               {page.data?.tags?.map((tag) => (
-                <Link href={{ pathname: "/", query: { tag } }} key={tag}>
-                  <Badge
-                    color="neutral"
-                    label={formatTag(tag)}
-                    className="
-                    transition-colors
-                    border capitalize
-                  border-stroke-neutral-strong
-                    bg-transparent
-                  text-foreground-neutral-weak
-                  hover:bg-background-ppg/50
-                  hover:border-stroke-ppg/50
-                  hover:text-foreground-ppg"
-                  />
+                <Link
+                  href={{ pathname: "/", query: { tag } }}
+                  key={tag}
+                  className="inline-flex items-center rounded-circle border border-stroke-neutral px-3 py-1 text-xs font-medium capitalize text-foreground-neutral-weak transition-colors duration-300 hover:border-stroke-ppg-weak hover:bg-fd-accent hover:text-fd-accent-foreground motion-reduce:transition-none"
+                >
+                  {formatTag(tag)}
                 </Link>
               ))}
             </div>
@@ -239,12 +240,8 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
         </header>
 
         {/* Body */}
-        <article className="w-full flex flex-col pb-8 mt-12">
+        <article className="mt-12 flex w-full flex-col pb-8">
           <div className="prose min-w-0 [&_figure]:w-full [&_figure]:md:max-w-140 [&_figure]:lg:max-w-200">
-            {page.data.excerpt ? (
-              <p className="font-semibold text-lg">{page.data.excerpt}</p>
-            ) : null}
-
             <MDX
               components={getMDXComponents({
                 a: createRelativeLink(blog, page),
@@ -298,12 +295,18 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
         {/* Share Container */}
         <BlogShare desc={page.data.metaDescription as string} />
       </div>
-      <div className="max-md:hidden toc">
-        <div className="sticky top-24 max-h-[calc(100vh-6rem)] overflow-y-auto [&_a[data-state=inactive]]:text-foreground-neutral-weak! [&_a[data-state=active]]:text-foreground-neutral!">
-          <span className="text-shadow-foreground-neutral-reverse font-semibold text-md mb-4 mt-0 block">
+      <div className="toc max-md:hidden">
+        {/* InlineTOC ships the docs shell's own treatment — cool-spectrum
+            gradient text on the active item plus the vertical spectrum thumb
+            on the rail, and the docs sidebar's spectrum hover on the rest —
+            via the shared classes in eclipse globals.css. No overrides, so
+            the blog TOC reads exactly like the docs TOC in both modes. */}
+        <div className="fd-scroll-container sticky top-28 max-h-[calc(100vh-8rem)] overflow-y-auto">
+          <h3 className="mt-0 mb-3 inline-flex items-center gap-1.5 text-sm text-fd-muted-foreground">
+            <Text className="size-4" />
             On this page
-          </span>
-          <InlineTOC items={page.data.toc as TOCItem[]} className="px-0" />
+          </h3>
+          <InlineTOC items={page.data.toc as TOCItem[]} />
         </div>
       </div>
     </div>

@@ -1,0 +1,71 @@
+---
+title: Building blocks
+description: Compose the ready-made cron, storage, and streams Modules instead of building scheduled jobs, blob storage, or event streams yourself.
+url: /composer/building-blocks
+metaTitle: Building blocks | Prisma Composer
+metaDescription: Use the cron, storage, and streams Modules that ship with Prisma Composer, and find community extensions published as prisma-composer-* packages on npm.
+---
+
+Building blocks are Modules you compose instead of implementing a capability yourself. Each owns its internals and hands you a typed port, so adding one is a couple of lines. The first-party set ships inside `@prisma/composer-prisma-cloud`. It is small, and growing:
+
+| Import | What you get | Exposes |
+| --- | --- | --- |
+| `cron` from `@prisma/composer-prisma-cloud/cron` | A scheduler that fires your jobs at your service on an interval | nothing |
+| `storage` from `@prisma/composer-prisma-cloud/storage` | An S3-backed blob store, credentials included | `store` |
+| `streams` from `@prisma/composer-prisma-cloud/streams` | Durable append-only event streams, backed by a `store` | `streams` |
+
+Before implementing a capability by hand, check whether a block already owns it. Wiring one in is always cheaper than maintaining an integration.
+
+## Cron
+
+Cron is the block most apps want first. You supply two things, a schedule and a runner service that exposes the `trigger` contract, and the Module does the rest.
+
+The schedule is the single source of truth for job ids and intervals:
+
+```ts title="src/promotions/service.ts"
+import { defineSchedule, triggerContract } from '@prisma/composer-prisma-cloud/cron';
+
+export const schedule = defineSchedule({ rotateSpecial: '30s' });
+
+export default compute({
+  name: 'promotions',
+  deps: { catalog: rpc(catalogContract) },
+  build: node({ module: import.meta.url, entry: '../dist/server.mjs' }),
+  expose: { trigger: triggerContract },
+});
+```
+
+In the server, map each job id to work. `serveSchedule` checks the map against the schedule, so an unhandled job does not compile:
+
+```ts title="src/promotions/server.ts"
+import { serveSchedule } from '@prisma/composer-prisma-cloud/cron';
+
+const handler = serveSchedule(service, schedule, {
+  rotateSpecial: (deps) => deps.catalog.rotateSpecial({}),
+});
+```
+
+In the module, the cron Module's boundary deps mirror the runner's own, so the root wires it like any other edge:
+
+```ts title="module.ts"
+provision(cron({ schedule, runner: promotionsService }), {
+  deps: { catalog: catalog.rpc },
+});
+```
+
+## Storage and streams
+
+The `storage` Module provisions an S3-backed blob store, with its own Postgres and minted credentials, and exposes a `store` port. The `streams` Module builds durable append-only event streams on top of a `store`. For working versions, including the streams Module's secret binding, see [`examples/storage`](https://github.com/prisma/composer/tree/main/examples/storage) and [`examples/streams`](https://github.com/prisma/composer/tree/main/examples/streams) in the Composer repository.
+
+If you want the raw S3 surface without the Module, provision a [`bucket` resource](/composer/object-storage) instead; the two share a contract kind, so a service wired to `s3()` can be rewired to a `bucket` without changing its declaration.
+
+## Where new blocks come from
+
+An **extension** is a package that brings its own Modules, resources, or deploy target, using the same mechanism `@prisma/composer-prisma-cloud` itself uses. The convention is an npm package named `prisma-composer-*`, which is how you and your agent find one. An extension is installed like any dependency and enters the deploy through the `extensions` array in `prisma-composer.config.ts`.
+
+The ecosystem is new: today the three Modules above plus the ones you write are the whole set. Treat `prisma-composer-*` as the place to look, and check that a package actually exists on npm before depending on it.
+
+## Next steps
+
+- [Apps and Modules](/composer/apps-and-modules): write a reusable Module of your own.
+- [Object storage](/composer/object-storage): the raw bucket resource.

@@ -151,17 +151,41 @@ export default async function BlogHome() {
     });
 
   return (
-    <main className="flex-1 w-full max-w-249 mx-auto px-4 py-8 z-1">
-      <h1 className="stretch-display text-4xl font-bold mb-2 landing-h1 text-center mt-9 font-sans-display">
-        Blog
-      </h1>
+    // Site width (1400px) — the same container the rebranded marketing pages
+    // use, so the blog's grid lines up with the rest of prisma.io.
+    <main className="z-1 mx-auto w-full max-w-[87.5rem] flex-1 px-4 sm:px-6 lg:px-8">
+      {/* CF's centered hero on calm prismatic ground: spectral washes only.
+          The page's single ray lives on the featured-series card below — one
+          brand moment per view, and a diagonal band can't safely cross
+          centered text at every breakpoint anyway. Static by design. */}
+      <header className="relative isolate mx-auto max-w-2xl py-16 text-center sm:py-20">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -inset-x-24 -inset-y-8 -z-10 overflow-hidden dark:opacity-70"
+        >
+          <div
+            className="absolute inset-0"
+            style={{
+              background: [
+                "radial-gradient(34% 48% at 18% 30%, color-mix(in srgb, var(--color-prism-cyan-400) 16%, transparent), transparent 68%)",
+                "radial-gradient(30% 42% at 84% 24%, color-mix(in srgb, var(--color-prism-yellow-300) 13%, transparent), transparent 66%)",
+                "radial-gradient(30% 44% at 70% 88%, color-mix(in srgb, var(--color-prism-red-500) 12%, transparent), transparent 68%)",
+              ].join(","),
+            }}
+          />
+        </div>
+        <h1 className="landing-h1">Blog</h1>
+        <p className="mt-6 text-lg leading-relaxed text-foreground-neutral-weak text-balance">
+          {BLOG_HOME_DESCRIPTION}
+        </p>
+      </header>
       {/*
        * Suspense is required here because BlogHomeClient uses useSearchParams().
        * During static pre-rendering Next.js renders the fallback; after hydration
        * the client component takes over and applies URL-driven filtering instantly
        * since all post data is already present in the RSC payload.
        */}
-      <Suspense fallback={<div className="pt-6 pb-12 mt-10 min-h-96" />}>
+      <Suspense fallback={<div className="min-h-96 pb-20" />}>
         <BlogHomeClient
           items={items}
           uniqueTags={uniqueTags}

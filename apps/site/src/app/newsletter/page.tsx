@@ -1,16 +1,15 @@
-import { createPageMetadata } from "@/lib/page-metadata";
-import Image from "next/image";
+import type { Metadata } from "next";
 import Link from "next/link";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@prisma/eclipse";
+import { ArrowRight } from "@/components/icons/forma";
+import { RoleKicker } from "@/components/brand/role-kicker";
+import { Texture } from "@/components/brand/texture";
 import { NewsletterSignup } from "./newsletter-signup";
 
-export const metadata = createPageMetadata({
+export const metadata: Metadata = {
   title: "Sign up for Prisma's monthly newsletter",
   description:
     "The Prisma newsletter is packed with all the latest releases, updates, blogs, and more. Sign up today to stay up-to-date with Prisma.",
-  path: "/newsletter",
-  ogImage: "/og/og-newsletter.png",
-});
+};
 
 type RssItem = {
   title: string;
@@ -85,73 +84,74 @@ export default async function NewsletterPage() {
   const posts = await getLatestBlogPosts(3);
 
   return (
-    <main className="flex-1 w-full -mt-24 bg-background-default text-foreground-neutral">
-      <section className="px-4 pt-50 pb-16">
-        <div className="max-w-[720px] mx-auto flex flex-col items-center gap-6 text-center">
-          <p className="m-0 flex items-center justify-center gap-2 text-sm stretch-display font-semibold uppercase tracking-[1.6px] text-foreground-ppg font-sans">
-            <i className="fa-regular fa-bell" aria-hidden />
-            Stay Updated
-          </p>
-          <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
-            Get our monthly newsletter
-          </h1>
+    <>
+      <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
+        <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
+          <Texture opacity={0.06} blend="multiply" />
+          <div className="relative px-4 sm:px-8">
+            <div className="mx-auto flex max-w-site flex-col items-center pb-14 pt-32 text-center md:pb-16 md:pt-44">
+              <RoleKicker color="bg-prism-yellow-300" className="justify-center">
+                Newsletter
+              </RoleKicker>
+              <h1 className="isolate mt-4 max-w-[20ch] text-balance text-[clamp(2.5rem,4vw,3.5rem)] leading-[1.06]">
+                Get our monthly newsletter
+              </h1>
+              <p className="mt-6 max-w-[48ch] text-pretty text-lg leading-relaxed text-muted-foreground">
+                Release updates, tutorials, and more content delivered to your inbox monthly.
+              </p>
+              <div className="mt-8 w-full max-w-md text-left">
+                <NewsletterSignup />
+              </div>
+            </div>
+          </div>
         </div>
-
-        <Card className="mx-auto mt-10 max-w-[520px]">
-          <CardHeader>
-            <CardTitle className="text-lg font-sans-display">
-              Sign up for the Prisma newsletter today
-            </CardTitle>
-            <CardDescription>
-              Get release updates, tutorials, and more content delivered to your inbox monthly.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <NewsletterSignup />
-          </CardContent>
-        </Card>
       </section>
 
       {posts.length > 0 && (
-        <section className="px-4 pb-16 md:pb-20">
-          <div className="mx-auto max-w-[1024px]">
-            <h2 className="m-0 mb-8 text-center text-3xl font-sans-display [font-variation-settings:'wght'_900] text-foreground-neutral">
-              Latest from the Blog
+        <section className="bg-white px-4 pb-24 pt-16 sm:px-8 sm:pb-32">
+          <div className="mx-auto max-w-site">
+            <h2 className="mx-auto max-w-[24ch] text-balance text-center text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
+              Latest from the blog
             </h2>
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {posts.map((post) => (
-                <Link key={post.link} href={post.link}>
-                  <Card className="flex h-full flex-col overflow-hidden p-0 transition-colors hover:border-stroke-neutral-strong">
-                    {post.image && (
-                      <div className="relative aspect-video w-full overflow-hidden">
-                        <Image
-                          src={post.image}
-                          alt={post.title}
-                          fill
-                          className="object-cover"
-                          sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-                        />
-                      </div>
-                    )}
-                    <CardContent className="flex flex-1 flex-col gap-2 px-3 pb-3">
-                      <CardTitle className="text-base font-semibold">{post.title}</CardTitle>
-                      {post.description ? (
-                        <CardDescription className="line-clamp-2">
-                          {post.description}
-                        </CardDescription>
-                      ) : null}
-                      <p className="m-0 flex items-center gap-1.5 text-xs text-foreground-neutral-weak">
-                        <i className="fa-regular fa-calendar" aria-hidden />
-                        {formatDate(post.date)}
+                <Link
+                  key={post.link}
+                  href={post.link}
+                  className="group flex flex-col overflow-hidden rounded-2xl border border-black/[0.06] bg-white shadow-[0_1px_2px_rgba(21,21,21,0.04)] transition-[border-color,box-shadow] duration-300 hover:border-black/[0.12] hover:shadow-[0_6px_20px_rgba(21,21,21,0.07)]"
+                >
+                  {post.image && (
+                    <div className="relative aspect-video w-full overflow-hidden bg-[#eef4f3]">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={post.image}
+                        alt=""
+                        loading="lazy"
+                        className="absolute inset-0 size-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:scale-[1.03] motion-reduce:transition-none"
+                      />
+                    </div>
+                  )}
+                  <div className="flex flex-1 flex-col gap-2 p-6">
+                    <h3 className="text-lg leading-snug">{post.title}</h3>
+                    {post.description ? (
+                      <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+                        {post.description}
                       </p>
-                    </CardContent>
-                  </Card>
+                    ) : null}
+                    <span className="mt-auto flex items-center justify-between pt-2 text-sm text-muted-foreground">
+                      {formatDate(post.date)}
+                      <ArrowRight
+                        className="size-4 text-foreground transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transition-none"
+                        aria-hidden
+                      />
+                    </span>
+                  </div>
                 </Link>
               ))}
             </div>
           </div>
         </section>
       )}
-    </main>
+    </>
   );
 }

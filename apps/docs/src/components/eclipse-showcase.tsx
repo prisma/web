@@ -17,7 +17,7 @@ export function EclipseShowcase() {
   return (
     <div className="not-prose my-8 space-y-8">
       {/* Dark Mode Toggle */}
-      <div className="flex items-center justify-between rounded-lg border border-stroke-neutral p-4 bg-background-neutral-weak">
+      <div className="flex items-center justify-between rounded-square border border-stroke-neutral p-4 bg-background-neutral-weak">
         <span className="text-sm font-medium text-foreground-neutral">Theme Mode</span>
         <button
           onClick={() => setIsDark(!isDark)}
@@ -141,14 +141,16 @@ export function EclipseShowcase() {
       <section className="space-y-4">
         <h3 className="text-xl font-semibold text-foreground-neutral">Border Radius</h3>
         <div className="flex flex-wrap gap-4">
-          <div className="px-6 py-4 bg-background-orm rounded-low border border-stroke-orm">
-            <span className="text-sm font-medium text-foreground-neutral">Low (3px)</span>
+          {/* `rounded-low` was never a real utility, and the px labels were
+              stale — the tokens are 6 / 10 / 14px. */}
+          <div className="px-6 py-4 bg-background-orm rounded-square-low border border-stroke-orm">
+            <span className="text-sm font-medium text-foreground-neutral">Low (6px)</span>
           </div>
           <div className="px-6 py-4 bg-background-orm rounded-square border border-stroke-orm">
-            <span className="text-sm font-medium text-foreground-neutral">Square (6px)</span>
+            <span className="text-sm font-medium text-foreground-neutral">Square (10px)</span>
           </div>
           <div className="px-6 py-4 bg-background-orm rounded-square-high border border-stroke-orm">
-            <span className="text-sm font-medium text-foreground-neutral">High (12px)</span>
+            <span className="text-sm font-medium text-foreground-neutral">High (14px)</span>
           </div>
           <div className="px-6 py-4 bg-background-orm rounded-circle border border-stroke-orm">
             <span className="text-sm font-medium text-foreground-neutral">Circle</span>

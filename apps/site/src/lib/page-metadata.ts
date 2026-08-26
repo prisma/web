@@ -40,7 +40,10 @@ export function createPageMetadata({
     : undefined;
 
   return {
-    title,
+    // Absolute: this helper already brands the title itself (word-boundary
+    // logic above), so the root layout's "%s | Prisma" template must not
+    // stack a second suffix on top.
+    title: { absolute: title },
     description,
     alternates: {
       canonical: url,

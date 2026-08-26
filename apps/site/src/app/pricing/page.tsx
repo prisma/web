@@ -1,96 +1,76 @@
-import { createPageMetadata } from "@/lib/page-metadata";
-import { Accordion, Accordions, Button } from "@prisma/eclipse";
-import { ConsoleCtaButton } from "@/components/console-cta-button";
-import { faqs } from "./pricing-data";
-import { PricingPageContent } from "./pricing-page-content";
+import type { Metadata } from "next";
+import { CtaBurst } from "@/components/sections/cta-burst";
+import { PricingCalculator } from "@/components/sections/pricing-calculator";
+import { PricingComparison } from "@/components/sections/pricing-comparison";
+import { PricingFaq } from "@/components/sections/pricing-faq";
+import { PricingHero } from "@/components/sections/pricing-hero";
+import { PricingHowItWorks } from "@/components/sections/pricing-how-it-works";
+import { PricingPlans } from "@/components/sections/pricing-plans";
+import { PricingSpecTable } from "@/components/sections/pricing-spec-table";
+import { TestimonialsReveal } from "@/components/sections/testimonials-reveal";
 
-export const metadata = createPageMetadata({
-  title: "Prisma Pricing | Prisma Postgres Plans and Usage-Based Pricing",
+export const metadata: Metadata = {
+  title: "Pricing",
   description:
-    "Compare Prisma Postgres plans, usage-based pricing, included features, and workspace options. Start free and scale as your product grows.",
-  path: "/pricing",
-  ogImage: "/og/og-pricing.png",
-});
+    "Usage-based pricing for your whole stack — Prisma Compute app hosting and Prisma Postgres databases. Pay for the work your app does, not seats or deploys. Free tier with no time limit, hard spend limits on every paid plan.",
+};
 
+// Built from the approved V2 pricing copy, in V2's order (CTA then FAQs).
+// Compute GA launch (Shane, 2026-08-24): Compute pricing lives inside the
+// existing structures — included allowances on the plan cards, rates and
+// allowances as a group in the spec table — NOT as a separate section, hero
+// subhead, or strip (all three were tried and removed on Shane's feedback:
+// "we already have a table for these things").
+// "Every plan includes" is the right-hand column of PricingHowItWorks; the
+// calculator's three entry points double as its preset selector.
+//
+// Plan cards sit directly under the hero panel, ahead of the how-it-works
+// copy, per the client (2026-07-30) — Shane asked for the table to be
+// reachable without scrolling. The hero subhead still defines an operation
+// before the cards quote operation counts, so the definition precedes the
+// number even though the full explanation now follows the cards.
+// Still to come: the full limits table Ankur asked for — blocked on the
+// unanswered rows (Free-tier backups, compliance on Free/Starter, support).
 export default function PricingPage() {
   return (
-    <main className="flex-1 w-full -mt-24 bg-background-default text-background-neutral-weak pt-24">
-      <PricingPageContent />
-
-      {/* FAQ */}
-      <section className="px-4 py-16">
-        <div className="max-w-[996px] mx-auto">
-          <h4 className="m-0 text-center text-foreground-neutral type-title-4xl">
-            FAQ
-          </h4>
-          <Accordions
-            type="single"
-            className="mt-10 border border-stroke-neutral-weak rounded-md overflow-hidden"
-          >
-            {faqs.map((faq, index) => (
-              <Accordion
-                key={faq.question}
-                value={`faq-${index}`}
-                title={faq.question}
-                className="border-b border-stroke-neutral-weak last:border-b-0"
-              >
-                <div
-                  className="m-0 text-foreground-neutral-weak [&_p]:my-0 [&_p+p]:mt-4 [&_ul]:my-4 [&_ul]:list-disc [&_ul]:pl-6 [&_li]:my-2"
-                  dangerouslySetInnerHTML={{ __html: faq.answer }}
-                />
-              </Accordion>
-            ))}
-          </Accordions>
-          <p className="m-0 mt-8 text-center text-xs text-foreground-neutral-weak">
-            If you have any questions, please reach out to our support team at{" "}
-            <a href="mailto:support@prisma.io" className="underline">
-              support@prisma.io
-            </a>
-            .
-          </p>
-        </div>
-      </section>
-
-      {/* Try Prisma Postgres */}
-      <section className="bg-radial from-background-ppg from-0% to-background-default to-70% px-4 py-12">
-        <div className="mx-auto rounded-2xl bg-[url('/illustrations/homepage/footer_grid.svg')] bg-cover bg-center px-4 py-12">
-          <div className="p-4 md:p-8">
-            <div className="mx-auto flex max-w-[580px] flex-col items-center gap-8 text-center">
-              <div className="flex flex-col items-center gap-4">
-                <h2 className="text-3xl text-foreground-neutral font-sans-display stretch-display">
-                  Try Prisma Postgres
-                </h2>
-                <p className="text-foreground-neutral-weak">
-                  Deploy a Postgres database instantly.
-                </p>
-              </div>
-              <div className="flex flex-col gap-6 md:flex-row">
-                <ConsoleCtaButton
-                  consolePath="/sign-up"
-                  variant="ppg"
-                  size="2xl"
-                  ctaLocation="footer_cta"
-                  ctaText="Create your first Database"
-                >
-                  <>
-                    Create your first Database
-                    <i className="fa-regular fa-arrow-right" />
-                  </>
-                </ConsoleCtaButton>
-                <Button asChild variant="default-strong" size="2xl">
-                  <a href="https://www.prisma.io/docs/">
-                    Read the docs
-                    <i className="fa-regular fa-book-open" />
-                  </a>
-                </Button>
-              </div>
-              <h6 className="mb-0! -mt-4 text-xs text-foreground-neutral-weaker">
-                Free to get started, no credit card needed.
-              </h6>
-            </div>
-          </div>
-        </div>
-      </section>
-    </main>
+    <>
+      {/* The headline and the plan cards share the hero's wrapped panel, per the
+          client (2026-07-30) — the page resumes outside it from how-it-works on. */}
+      <PricingHero>
+        <PricingPlans />
+      </PricingHero>
+      <PricingHowItWorks />
+      <PricingCalculator />
+      <PricingComparison />
+      <PricingSpecTable />
+      <TestimonialsReveal />
+      {/* V2's closing CTA, copy verbatim. CtaBurst is the site's CTA idiom —
+          fully parameterised, so this is copy only, no new component. */}
+      <CtaBurst
+        headline="Start building on Prisma today"
+        headlineMaxWidth="max-w-[24ch]"
+        body="Prisma ORM is free and always will be. Spin up a Prisma Postgres database and deploy your first app in minutes."
+        checks={[
+          {
+            label: "No credit card required to start",
+            color: "text-prism-cyan-500",
+          },
+          {
+            label: "Free tier with no time limit",
+            color: "text-prism-yellow-400",
+          },
+          {
+            label: "Upgrade or downgrade anytime",
+            color: "text-prism-red-500",
+          },
+        ]}
+        primaryCta={{
+          label: "Get started free",
+          href: "https://console.prisma.io/sign-up",
+        }}
+        secondaryCta={{ label: "Talk to us", href: "/contact" }}
+      />
+      <PricingFaq />
+    </>
   );
 }

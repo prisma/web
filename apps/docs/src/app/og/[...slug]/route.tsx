@@ -7,8 +7,17 @@ import { ImageResponse } from "next/og";
 
 export const revalidate = false;
 
-const FALLBACK_METHOD_COLOR = "#71e8df";
-const SECTION_BADGE_COLOR = "#71e8df";
+/* Prism palette, inlined because satori resolves no CSS custom properties.
+   Each value is the eclipse token named beside it. The card is an always-dark
+   surface, so it takes the dark-mode steps of the ramp. */
+const INK = "#0f0f0f"; // --color-background-default (dark)
+const INK_RAISED = "#151515"; // --color-foreground-neutral-strong (light)
+const PAPER_TEXT = "#fafafa"; // --color-stroke-neutral-stronger
+const MUTED_TEXT = "#a5a5a6"; // --color-foreground-neutral-weak (dark)
+const CYAN = "#7be7f0"; // --color-prism-cyan-300
+
+const FALLBACK_METHOD_COLOR = CYAN;
+const SECTION_BADGE_COLOR = CYAN;
 const LONG_TITLE_FONT_SIZE = "3.5rem";
 const DEFAULT_TITLE_FONT_SIZE = "5rem";
 const API_PATH_SEGMENT_REGEX = /(\{[^}]+\})/;
@@ -52,8 +61,13 @@ type ApiPathSegment = {
   color: string;
 };
 
+/* Sora Medium is the brand display face and replaces the previous one here. It is
+   shipped as a TTF in `public/fonts` rather than read from the woff2 files
+   vendored in @prisma/eclipse, because satori (behind `next/og`) cannot parse
+   woff2 — and rather than fetched from Google at build time, because this
+   route pre-renders one image per docs page and must not need the network. */
 const FONT_DEFINITIONS = [
-  { name: "Barlow", file: "Barlow-Bold.ttf", weight: 700 },
+  { name: "Sora", file: "Sora-Medium.ttf", weight: 500 },
   { name: "Inter", file: "Inter-Regular.ttf", weight: 400 },
   { name: "JetBrains Mono", file: "JetBrainsMono-Regular.ttf", weight: 400 },
 ] as const;
@@ -111,7 +125,7 @@ function getApiPathSegments(apiPath?: string) {
     .filter(Boolean)
     .map((segment) => ({
       text: segment,
-      color: segment.startsWith("{") && segment.endsWith("}") ? FALLBACK_METHOD_COLOR : "#a0aec0",
+      color: segment.startsWith("{") && segment.endsWith("}") ? FALLBACK_METHOD_COLOR : MUTED_TEXT,
     }));
 }
 
@@ -140,7 +154,7 @@ function PrismaOGImage({
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",
-        background: "linear-gradient(to bottom, #0B1A1E, #0A0B16)",
+        background: `linear-gradient(to bottom, ${INK_RAISED}, ${INK})`,
         padding: 60,
         position: "relative",
       }}
@@ -161,8 +175,8 @@ function PrismaOGImage({
             padding: `${BADGE_VERTICAL_PADDING}px ${BADGE_HORIZONTAL_PADDING}px`,
             borderRadius: BADGE_BORDER_RADIUS,
             fontSize: BADGE_FONT_SIZE,
-            fontFamily: "Barlow, sans-serif",
-            fontWeight: 700,
+            fontFamily: "Sora, sans-serif",
+            fontWeight: 500,
             lineHeight: 1,
             whiteSpace: "nowrap",
             textAlign: "center",
@@ -187,13 +201,13 @@ function PrismaOGImage({
             padding: `${BADGE_VERTICAL_PADDING}px ${BADGE_HORIZONTAL_PADDING}px`,
             borderRadius: BADGE_BORDER_RADIUS,
             fontSize: BADGE_FONT_SIZE,
-            fontFamily: "Barlow, sans-serif",
-            fontWeight: 700,
+            fontFamily: "Sora, sans-serif",
+            fontWeight: 500,
             textTransform: "uppercase",
             lineHeight: 1,
             whiteSpace: "nowrap",
             textAlign: "center",
-            boxShadow: "0 0 40px rgba(62, 192, 219, 0.3)",
+            boxShadow: `0 0 40px ${CYAN}4d`,
           }}
         >
           {badgeLabel}
@@ -204,9 +218,9 @@ function PrismaOGImage({
         <h1
           style={{
             fontSize: titleFontSize,
-            fontWeight: 700,
-            fontFamily: "Barlow, sans-serif",
-            color: "#f7fafc",
+            fontWeight: 500,
+            fontFamily: "Sora, sans-serif",
+            color: PAPER_TEXT,
             lineHeight: 1.2,
             margin: 0,
           }}
@@ -219,7 +233,7 @@ function PrismaOGImage({
               fontSize: "2rem",
               fontFamily: "Inter, sans-serif",
               fontWeight: 400,
-              color: "#a0aec0",
+              color: MUTED_TEXT,
               lineHeight: 1.5,
               margin: 0,
             }}
@@ -259,9 +273,9 @@ function PrismaOGImage({
           bottom: 60,
           left: 60,
           fontSize: 22,
-          fontFamily: "Barlow, sans-serif",
-          fontWeight: 700,
-          color: "#71e8df",
+          fontFamily: "Sora, sans-serif",
+          fontWeight: 500,
+          color: CYAN,
         }}
       >
         prisma.io/docs

@@ -6,7 +6,6 @@ import {
   SearchDialogClose,
   SearchDialogContent,
   SearchDialogHeader,
-  SearchDialogIcon,
   SearchDialogInput,
   SearchDialogList,
   SearchDialogOverlay,
@@ -52,7 +51,7 @@ function SearchResultItem({ item, onClick }: SearchResultItemProps): ReactNode {
     <SearchDialogListItem
       item={item}
       onClick={onClick}
-      className="group grid grid-cols-[128px_1fr] sm:grid-cols-[160px_1fr] gap-4 items-center p-2! rounded-square border border-transparent aria-selected:border-stroke-neutral aria-selected:bg-background-muted/60"
+      className="group grid grid-cols-[128px_1fr] sm:grid-cols-[160px_1fr] gap-4 items-center p-2! rounded-square-high border border-transparent transition-colors duration-300 aria-selected:border-stroke-neutral aria-selected:bg-background-neutral motion-reduce:transition-none"
     >
       <div className="relative aspect-video w-full overflow-hidden rounded-square bg-background-neutral">
         {post.heroImagePath ? (
@@ -66,7 +65,7 @@ function SearchResultItem({ item, onClick }: SearchResultItemProps): ReactNode {
         ) : null}
       </div>
       <div className="min-w-0 flex flex-col gap-2 justify-center">
-        <h3 className="text-sm sm:text-base text-foreground-neutral font-[650] sm:font-bold font-mona-sans line-clamp-2">
+        <h3 className="font-sans-display text-sm font-medium text-foreground-neutral-strong line-clamp-2 sm:text-base">
           {post.content}
         </h3>
         {post.description ? (
@@ -77,7 +76,12 @@ function SearchResultItem({ item, onClick }: SearchResultItemProps): ReactNode {
         {post.tags?.length ? (
           <div className="flex flex-wrap gap-1 pt-1">
             {post.tags.slice(0, 3).map((tag) => (
-              <Badge key={tag} color="success" label={formatTag(tag)} className="w-fit" />
+              <Badge
+                key={tag}
+                color="ppg"
+                label={formatTag(tag)}
+                className="w-fit rounded-circle px-2.5 capitalize"
+              />
             ))}
           </div>
         ) : null}

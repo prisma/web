@@ -1,394 +1,100 @@
 ---
 title: SvelteKit
-description: Learn how to use Prisma ORM in a SvelteKit app
-image: /img/guides/prisma-sveltekit-cover.png
+description: 'Set up Prisma 8 in a SvelteKit app with create-prisma, from scaffold to rendered data.'
 url: /guides/frameworks/sveltekit
-metaTitle: How to use Prisma ORM and Prisma Postgres with SvelteKit
-metaDescription: Learn how to use Prisma ORM in a SvelteKit app
+metaTitle: How to use Prisma 8 with SvelteKit
+metaDescription: 'Scaffold a SvelteKit project with Prisma 8 and Prisma Postgres, initialize the database, seed it, and see your data, with tested commands.'
 ---
 
 ## Introduction
 
-Prisma ORM simplifies database access with type-safe queries, and when paired with [SvelteKit](https://svelte.dev/docs/kit), it creates a robust and scalable full-stack architecture.
+This guide shows you how to use Prisma 8 in a SvelteKit app. You scaffold a project where a server load function queries your database, initialize the schema, and see your data render.
 
-In this guide, you'll learn to integrate Prisma ORM with a Prisma Postgres database in a SvelteKit project from scratch. You can find a complete example of this guide on [GitHub](https://github.com/prisma/prisma-examples/tree/latest/orm/sveltekit).
+Every command below was run end to end against a live [Prisma Postgres](/postgres) database.
 
 ## Quick start
 
-Run one command to scaffold a SvelteKit project with Prisma ORM and Prisma Postgres ready to go:
+One command scaffolds the project with Prisma 8 wired in:
 
 ```npm
-npm create prisma@latest -- --template svelte
+npx create-prisma@latest create my-app --template svelte --provider postgres
 ```
 
-Or follow the steps below to set it up manually.
+Answer the prompts, then export `DATABASE_URL` in your shell before running the database scripts. Need a database? `npx create-db@latest` prints a Prisma Postgres connection string.
 
 ## Prerequisites
 
-- [Node.js 20+](https://nodejs.org)
-- [Svelte VSCode extension](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode) (Recommended by Svelte)
+- [Node.js](https://nodejs.org) 24 or later
+- A PostgreSQL connection string, or nothing at all: `npx create-db@latest` can create a Prisma Postgres database for you
 
-## 1. Set up your project
+## Use with your agent
 
-You'll be using [Svelte CLI](https://github.com/sveltejs/cli) instead of `npx create svelte@latest`. This CLI provides a more interactive setup and built-in support for popular tooling like ESLint and Prettier
+Prefer to delegate this guide? Copy the prompt and hand it to your coding agent:
 
-Create a new Svelte project:
+<AgentPrompt>
 
-```npm
-npx sv create sveltekit-prisma
+```text
+Create a new SvelteKit app with Prisma 8, seed it, and verify the page renders.
+
+1. Scaffold: `npx create-prisma@latest create my-app --template svelte --provider postgres --yes`. Then run `npx prisma@latest init` in `my-app` so the Prisma agent skills are installed and stay current, and use them. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Export it as `DATABASE_URL` in the shell; the generated scripts read the environment variable, not `.env`.
+2. In `my-app`, run `npm run db:init` with `DATABASE_URL` exported. Sample users are seeded automatically on the app's first query; there is no separate seed script.
+3. Do not deploy to Prisma Compute; it does not support SvelteKit yet. Start `npm run dev` in the background, wait until it reports ready, verify http://localhost:5173 lists the three seeded users, then stop the dev server, following https://www.prisma.io/docs/guides/frameworks/sveltekit.md.
+
+Use the installed Prisma 8 skills.
 ```
 
-It will prompt you to customize your setup. Here are the options you'll choose:
+</AgentPrompt>
 
-:::info
-
-- _Which template would you like?_ `SvelteKit minimal`
-- _Add type checking with TypeScript?_ `Yes, using TypeScript syntax`
-- _What would you like to add to your project?_
-  - `prettier`
-  - `eslint`
-- _Which package manager do you want to install dependencies with?_ `npm`
-
-:::
-
-Once the setup completes, navigate into your project and start the development server:
+## 1. Scaffold and enter the project
 
 ```npm
-cd sveltekit-prisma
+npx create-prisma@latest create my-app --template svelte --provider postgres
+cd my-app
+```
+
+The scaffold generates the SvelteKit app with Prisma 8 wired in, installs dependencies, and emits the contract your queries are type-checked against.
+
+Next, set the database connection. Use your own PostgreSQL connection string, or create a Prisma Postgres database with `npx create-db@latest`; it prints a connection string and a claim URL you can open to keep the database. Export the variable in the shell you work in; the generated scripts read the environment variable, not `.env`:
+
+```bash
+export DATABASE_URL="<your connection string>"
+```
+
+## 2. Initialize the database
+
+```npm
+npm run db:init
+```
+
+```text no-copy
+"summary": "Applied 5 operation(s) across 1 space(s), database signed"
+```
+
+If `db:init` stops with `Connection terminated unexpectedly`, a database you just created is still starting; wait a few seconds and run it again. The command is safe to repeat and reports `Applied 0 operation(s)` when there is nothing left to do.
+
+`db:init` applies your schema (`src/prisma/contract.prisma`) to the database and signs it. Sample users are seeded automatically the first time the app queries the database.
+
+## 3. Run and verify
+
+```npm
 npm run dev
 ```
 
-That's it! Svelte makes it a very simple process to get up and running. At this point, your project is ready to integrate Prisma and connect to a Prisma Postgres database.
+Open [http://localhost:5173](http://localhost:5173). The page lists the seeded users, loaded on the server by the `+page.server.ts` load function.
 
-## 2. Install and Configure Prisma
+## Where things live
 
-### 2.1. Install dependencies
+- `src/routes/+page.server.ts`: the server `load` function that fetches users
+- `src/routes/+page.svelte`: the page that renders them
+- `src/prisma/users.ts`: the `listUsers` query helper the load function imports
+- `src/prisma/db.ts`: the Prisma 8 client behind that helper
 
-To get started with Prisma, you'll need to install a few dependencies:
+Model access is namespace-qualified on PostgreSQL: `db.orm.public.User`. The [Prisma 8 overview](/orm) covers the contract-first model behind it.
 
-```npm
-npm install prisma tsx @types/pg --save-dev
-```
+[Prisma Compute](/compute) does not support SvelteKit deployments yet; see [Deploy your first app](/prisma-compute/deploy) for what is currently supported. In the meantime, the app deploys to SvelteKit's usual hosts through its standard adapters.
 
-```npm
-npm install @prisma/client @prisma/adapter-pg dotenv pg
-```
+## Next steps
 
-:::info
-
-If you are using a different database provider (MySQL, SQL Server, SQLite), install the corresponding driver adapter package instead of `@prisma/adapter-pg`. For more information, see [Database drivers](/orm/core-concepts/supported-databases/database-drivers).
-
-:::
-
-Once installed, initialize Prisma in your project:
-
-```npm
-npx prisma init --output src/generated/prisma
-```
-
-:::info
-
-`prisma init` creates the Prisma scaffolding and a local `DATABASE_URL`. In the next step, you will create a Prisma Postgres database and replace that value with a direct `postgres://...` connection string.
-
-:::
-
-This will create:
-
-- A `prisma` directory with a `schema.prisma` file.
-- A `prisma.config.ts` file for configuring Prisma
-- A `.env` file containing a local `DATABASE_URL` at the project root.
-- An `output` directory for the generated Prisma Client as `src/generated/prisma`.
-
-Create a Prisma Postgres database and replace the generated `DATABASE_URL` in your `.env` file with the `postgres://...` connection string from the CLI output:
-
-```npm
-npx create-db
-```
-
-### 2.2. Define your Prisma Schema
-
-In the `prisma/schema.prisma` file, add the following models and change the generator to use the `prisma-client` provider:
-
-```prisma title="prisma/schema.prisma"
-generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
-}
-
-datasource db {
-  provider = "postgresql"
-}
-
-model User { // [!code ++]
-  id    Int     @id @default(autoincrement()) // [!code ++]
-  email String  @unique // [!code ++]
-  name  String? // [!code ++]
-  posts Post[] // [!code ++]
-} // [!code ++]
- // [!code ++]
-model Post { // [!code ++]
-  id        Int     @id @default(autoincrement()) // [!code ++]
-  title     String // [!code ++]
-  content   String? // [!code ++]
-  published Boolean @default(false) // [!code ++]
-  authorId  Int // [!code ++]
-  author    User    @relation(fields: [authorId], references: [id]) // [!code ++]
-} // [!code ++]
-```
-
-This creates two models: `User` and `Post`, with a one-to-many relationship between them.
-
-### 2.3 Add `dotenv` to `prisma.config.ts`
-
-To get access to the variables in the `.env` file, they can either be loaded by your runtime, or by using `dotenv`.
-Include an import for `dotenv` at the top of the `prisma.config.ts`
-
-```ts
-import "dotenv/config"; // [!code ++]
-import { defineConfig, env } from "prisma/config";
-export default defineConfig({
-  schema: "prisma/schema.prisma",
-  migrations: {
-    path: "prisma/migrations",
-  },
-  datasource: {
-    url: env("DATABASE_URL"),
-  },
-});
-```
-
-### 2.4. Configure the Prisma Client generator
-
-Now, run the following command to create the database tables and generate the Prisma Client:
-
-```npm
-npx prisma migrate dev --name init
-```
-
-```npm
-npx prisma generate
-```
-
-### 2.5. Seed the database
-
-Add some seed data to populate the database with sample users and posts.
-
-Create a new file called `seed.ts` in the `prisma/` directory:
-
-```typescript title="prisma/seed.ts"
-import { PrismaClient, Prisma } from "../src/generated/prisma/client.js";
-import { PrismaPg } from "@prisma/adapter-pg";
-
-const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL!,
-});
-
-const prisma = new PrismaClient({
-  adapter,
-});
-
-const userData: Prisma.UserCreateInput[] = [
-  {
-    name: "Alice",
-    email: "alice@prisma.io",
-    posts: {
-      create: [
-        {
-          title: "Join the Prisma Discord",
-          content: "https://pris.ly/discord",
-          published: true,
-        },
-        {
-          title: "Prisma on YouTube",
-          content: "https://pris.ly/youtube",
-        },
-      ],
-    },
-  },
-  {
-    name: "Bob",
-    email: "bob@prisma.io",
-    posts: {
-      create: [
-        {
-          title: "Follow Prisma on Twitter",
-          content: "https://www.twitter.com/prisma",
-          published: true,
-        },
-      ],
-    },
-  },
-];
-
-export async function main() {
-  for (const u of userData) {
-    await prisma.user.create({ data: u });
-  }
-}
-
-main();
-```
-
-Now, tell Prisma how to run this script by updating your `prisma.config.ts`:
-
-```ts title="prisma.config.ts"
-import "dotenv/config";
-import { defineConfig, env } from "prisma/config";
-export default defineConfig({
-  schema: "prisma/schema.prisma",
-  migrations: {
-    path: "prisma/migrations",
-    seed: `tsx prisma/seed.ts`, // [!code ++]
-  },
-  datasource: {
-    url: env("DATABASE_URL"),
-  },
-});
-```
-
-Run the seed script:
-
-```npm
-npx prisma db seed
-```
-
-And open Prisma Studio to inspect your data:
-
-```npm
-npx prisma studio
-```
-
-## 3. Integrate Prisma into SvelteKit
-
-### 3.1. Create a Prisma Client
-
-Inside your `/src/lib` directory, rename `index.ts` to `prisma.ts`. This file will be used to create and export your Prisma Client instance.
-
-:::tip
-Files in `src/lib` can be accessed from anywhere using the `$lib` alias.
-:::
-
-The `DATABASE_URL` is stored in the `.env` file. To access it, you'll need to import it from the [`$env/static/private`](https://svelte.dev/docs/kit/$env-static-private) namespace.
-
-Set up the Prisma client like this:
-
-```tsx title="src/lib/prisma.ts"
-import { PrismaClient } from "../generated/prisma/client.js";
-import { DATABASE_URL } from "$env/static/private";
-import { PrismaPg } from "@prisma/adapter-pg";
-
-const adapter = new PrismaPg({
-  connectionString: DATABASE_URL,
-});
-
-const prisma = new PrismaClient({
-  adapter,
-});
-
-export default prisma;
-```
-
-:::warning
-We recommend using a connection pooler (like [Prisma Accelerate](https://www.prisma.io/accelerate)) to manage database connections efficiently.
-
-If you choose not to use one, **avoid** instantiating `PrismaClient` globally in long-lived environments. Instead, create and dispose of the client per request to prevent exhausting your database connections.
-:::
-
-### 3.2. Create a server route
-
-To fetch data from the database on the server side, create a `+page.server.ts` file in your `routes` directory. This file should export a `load` function, which runs on the server before your page renders.
-
-Use the `findMany()` method within a basic `load` function to get a list of users.
-
-Update your `+page.server.ts` file like this:
-
-```typescript title="src/routes/+page.server.ts"
-import prisma from "$lib/prisma";
-
-export async function load() {
-  const users = await prisma.user.findMany({});
-  return {
-    users,
-  };
-}
-```
-
-At this point, you're only getting data directly on the `User` model — no relations like posts are included yet.
-
-To also fetch each user's posts, we can expand the query using the `include` option. This tells Prisma to join the related `Posts` table in the result.
-
-Update your `findMany()` call like this:
-
-```typescript title="src/routes/+page.server.ts"
-import prisma from "$lib/prisma";
-
-export async function load() {
-  const users = await prisma.user.findMany({
-    include: {
-      // [!code ++]
-      posts: true, // [!code ++]
-    }, // [!code ++]
-  });
-
-  return {
-    users,
-  };
-}
-```
-
-Now, every user in the result will also include a `posts` array.
-
-### 3.3. Populate the page
-
-In `src/routes/+page.svelte`, strip the file down to the basics and add a `<script>` fragment. The file should look like this:
-
-```html title="src/routes/+page.svelte"
-<script lang="ts"></script>
-
-<h1>SvelteKit + Prisma</h1>
-```
-
-We need to grab the data exported from `+page.server.ts`:
-
-```html title="src/routes/+page.svelte"
-<script lang="ts">
-  let { data } = $props(); // [!code ++]
-</script>
-
-<h1>SvelteKit + Prisma</h1>
-```
-
-Now that we have the data, let's map through the users and their posts with Svelte's [`each`](https://svelte.dev/docs/svelte/each) block:
-
-```html title="src/routes/+page.svelte"
-<script lang="ts">
-  let { data } = $props();
-</script>
-
-<h1>SvelteKit + Prisma</h1>
-
-{#each data.users as user} // [!code ++]
-<h2>{user.name}</h2>
-// [!code ++] {#each user.posts as post} // [!code ++]
-<ul>
-  // [!code ++]
-  <li><a href="{post.content}">{post.title}</a></li>
-  // [!code ++]
-</ul>
-// [!code ++] {/each} // [!code ++] {/each} // [!code ++]
-```
-
-You're done! You've just created a SvelteKit app with Prisma ORM. Below are some next steps to explore, as well as some more resources to help you get started expanding your project.
-
-## Next Steps
-
-Now that you have a working SvelteKit app connected to a Prisma Postgres database, you can:
-
-- Extend your Prisma schema with more models and relationships
-- Add create/update/delete routes and forms
-- Explore authentication and validation
-
-### More Info
-
-- [Prisma Documentation](/orm)
-- [SvelteKit Documentation](https://svelte.dev/docs/kit)
+- Change the schema in `src/prisma/contract.prisma`, then run `npm run contract:emit` and `npm run db:update`.
+- [Learn the fundamentals](/orm/fundamentals/reading-data): filtering, sorting, pagination, and writes.
+- [Read the Prisma 8 overview](/orm) for the concepts behind contracts and typed queries.

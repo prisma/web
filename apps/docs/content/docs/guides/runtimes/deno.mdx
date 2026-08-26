@@ -1,317 +1,149 @@
 ---
 title: Deno
-description: Learn how to use Prisma ORM in a Deno application with Prisma Postgres
+description: Run a minimal Prisma 8 and PostgreSQL app on Deno.
 url: /guides/runtimes/deno
-metaTitle: How to use Prisma ORM and Prisma Postgres with Deno
-metaDescription: Learn how to use Prisma ORM in a Deno application with Prisma Postgres
+metaTitle: How to use Prisma 8 with Deno
+metaDescription: 'Scaffold a Prisma 8 project for Deno, initialize Prisma Postgres, and run the generated typed query end to end.'
 ---
 
 ## Introduction
 
-[Deno](https://deno.com) is a secure JavaScript and TypeScript runtime built on V8 with built-in TypeScript support, a permissions system, and web-standard APIs. In this guide, you will set up a Deno project with Prisma ORM and a Prisma Postgres database. You will create a simple HTTP server that reads from the database and returns the results.
+In this guide, you scaffold a minimal Prisma 8 app for Deno, initialize a PostgreSQL database, and run the generated typed query. The app uses Deno-native tasks and explicit `.ts` extensions for relative imports.
 
-<Youtube videoId="hAL2J3yQf7I" title="How to use Prisma ORM with Deno and Prisma Postgres" />
+Every command below was run end to end against a live Prisma Postgres database.
 
 ## Prerequisites
 
-- [Deno](https://docs.deno.com/runtime/#install-deno) v2.0 or later installed on your system
-- A [Prisma Postgres database](/postgres) (created during setup)
-- Basic knowledge of JavaScript/TypeScript
-- [Deno extension for VS Code](https://docs.deno.com/runtime/reference/vscode/) (recommended)
+- [Deno](https://deno.com/) 2.0 or later (`deno --version`)
 
-## 1. Setting up your Deno project
+## Use with your agent
 
-First, create a directory for your project and navigate to it:
+Prefer to delegate this guide? Copy this prompt and hand it to your coding agent:
+
+<AgentPrompt>
+
+```text
+Create and verify a minimal Prisma 8 app on Deno.
+
+1. Run `deno run -A npm:create-prisma@latest my-deno-app --template minimal --provider postgres --package-manager deno --no-deploy --yes`.
+2. Enter `my-deno-app`. Run `deno run -A npm:create-db@latest --env .env --ttl 24h` and show me the claim URL so I can keep the temporary database.
+3. Run `deno task db:init`, then start `deno task dev` in the background.
+4. Request `http://localhost:3000` and verify that it returns Alice, Bob, and Carol. The first request seeds these users automatically; do not add or run a separate seed command.
+5. Do not deploy to Prisma Compute because it does not support Deno.
+
+Use the generated tasks instead of invoking a Prisma CLI package directly.
+```
+
+</AgentPrompt>
+
+## 1. Scaffold the project
+
+Run `create-prisma` through Deno and select the minimal PostgreSQL template:
 
 ```bash
-mkdir deno-prisma
-cd deno-prisma
+deno run -A npm:create-prisma@latest my-deno-app --template minimal --provider postgres --package-manager deno --no-deploy
 ```
 
-Then, initialize a new Deno project:
+The command creates the app, installs its npm dependencies through Deno, and emits the Prisma contract artifacts. Deno support is currently limited to the minimal PostgreSQL template.
 
 ```bash
-deno init
+cd my-deno-app
 ```
 
-This creates a basic Deno project with a `deno.json` configuration file and a `main.ts` file.
+The generated project includes:
 
-### 1.1. Configure Deno for Prisma
+- `deno.json` with npm compatibility enabled
+- Deno-native `dev`, `build`, and Prisma tasks in `package.json`
+- explicit `.ts` extensions on relative imports
+- no Composer or Prisma Compute deployment files
 
-Update the `deno.json` file with the following configuration to set up Node.js compatibility, import maps, and Prisma-related task scripts:
+## 2. Create and initialize the database
 
-```json title="deno.json"
-{
-  "nodeModulesDir": "auto",
-  "compilerOptions": {
-    "lib": ["deno.window"],
-    "types": ["node"]
-  },
-  "imports": {
-    "@prisma/adapter-pg": "npm:@prisma/adapter-pg@^7.0.0",
-    "@prisma/client": "npm:@prisma/client@^7.0.0",
-    "prisma": "npm:prisma@^7.0.0"
-  },
-  "tasks": {
-    "dev": "deno run -A --env=.env --watch main.ts",
-    "db:generate": "deno run -A --env=.env npm:prisma generate",
-    "db:push": "deno run -A --env=.env npm:prisma db push",
-    "db:migrate": "deno run -A --env=.env npm:prisma migrate dev",
-    "db:seed": "deno run -A --env=.env npm:prisma db seed"
-  }
-}
-```
-
-:::info
-
-The `nodeModulesDir: "auto"` setting allows Deno to automatically manage a `node_modules` directory, which is needed for Prisma's generated client. The import map entries let you use bare specifiers like `@prisma/client` in your code.
-
-:::
-
-## 2. Installing and configuring Prisma
-
-### 2.1. Initialize Prisma ORM with Prisma Postgres
-
-Initialize Prisma ORM with Prisma Postgres in your project:
+Create a temporary Prisma Postgres database and write its connection string to `.env`:
 
 ```bash
-deno run -A npm:prisma init
+deno run -A npm:create-db@latest --env .env --ttl 24h
 ```
 
-:::info
+The command prints a claim URL. Open it within 24 hours to keep the database, or replace `DATABASE_URL` in `.env` with your own PostgreSQL connection string.
 
-`prisma init` creates the Prisma scaffolding and a local `DATABASE_URL`. In the next step, you will create a Prisma Postgres database and replace that value with a direct `postgres://...` connection string.
-
-:::
-
-This command creates:
-
-- A `prisma/` directory with your `schema.prisma` file
-- A `prisma.config.ts` file
-- A `.env` file with your `DATABASE_URL`
-
-### 2.2. Update the Prisma config file
-
-Open the generated `prisma.config.ts` file. Since Deno loads environment variables using the `--env=.env` flag (configured in `deno.json` tasks), you can remove the `dotenv/config` import if it was generated:
-
-```typescript title="prisma.config.ts"
-import "dotenv/config"; // [!code --]
-import { defineConfig, env } from "prisma/config";
-
-export default defineConfig({
-  schema: "prisma/schema.prisma",
-  migrations: {
-    path: "prisma/migrations",
-  },
-  datasource: {
-    url: env("DATABASE_URL"),
-  },
-});
-```
-
-### 2.3. Create a Prisma Postgres database
-
-Create a Prisma Postgres database and replace the generated `DATABASE_URL` in your `.env` file with the `postgres://...` connection string from the CLI output:
+Apply the starter contract and sign the database:
 
 ```bash
-npx create-db
+deno task db:init
 ```
 
-Update your `.env` file:
+## 3. Run the app
 
-```bash title=".env"
-DATABASE_URL="postgres://..."
-```
-
-### 2.4. Update your Prisma schema
-
-Open `prisma/schema.prisma` and update it to include the Deno runtime and your data model:
-
-```prisma title="prisma/schema.prisma"
-generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
-  runtime  = "deno" // [!code ++]
-}
-
-datasource db {
-  provider = "postgresql"
-}
-
-model User { // [!code ++]
-  id    Int     @id @default(autoincrement()) // [!code ++]
-  email String  @unique // [!code ++]
-  name  String? // [!code ++]
-} // [!code ++]
-```
-
-:::note
-
-The `runtime = "deno"` setting in the generator block is required for Prisma Client to work correctly with the Deno runtime.
-
-:::
-
-## 3. Generate Prisma Client and run migrations
-
-Generate the Prisma Client and apply your schema to the database:
-
-```bash
-deno task db:migrate --name init
-deno task db:generate
-```
-
-This command:
-
-- Creates the database tables based on your schema
-- Generates the Prisma Client in the `generated/prisma` directory
-
-## 4. Setting up database configuration and creating a seed script
-
-### 4.1. Create a database utility file
-
-Create a `db.ts` file in your project root to configure `PrismaClient`:
-
-```typescript title="db.ts"
-import { PrismaClient } from "./generated/prisma/client.ts";
-import { PrismaPg } from "@prisma/adapter-pg";
-
-const adapter = new PrismaPg({
-  connectionString: Deno.env.get("DATABASE_URL")!,
-});
-
-export const prisma = new PrismaClient({
-  adapter,
-});
-```
-
-### 4.2. Create a seed script
-
-Create a seed script in the `prisma` folder to populate your database with sample data:
-
-```typescript title="prisma/seed.ts"
-import { PrismaClient } from "../generated/prisma/client.ts";
-import { PrismaPg } from "@prisma/adapter-pg";
-
-const adapter = new PrismaPg({
-  connectionString: Deno.env.get("DATABASE_URL")!,
-});
-
-const prisma = new PrismaClient({
-  adapter,
-});
-
-async function main() {
-  // Create multiple users
-  await prisma.user.createMany({
-    data: [
-      { email: "alice@example.com", name: "Alice" },
-      { email: "bob@example.com", name: "Bob" },
-      { email: "charlie@example.com", name: "Charlie" },
-      { email: "diana@example.com", name: "Diana" },
-      { email: "eve@example.com", name: "Eve" },
-      { email: "frank@example.com", name: "Frank" },
-      { email: "grace@example.com", name: "Grace" },
-      { email: "henry@example.com", name: "Henry" },
-      { email: "isabella@example.com", name: "Isabella" },
-      { email: "jack@example.com", name: "Jack" },
-    ],
-    skipDuplicates: true, // prevents errors if you run the seed multiple times
-  });
-
-  console.log("Seed data inserted!");
-}
-
-main()
-  .catch((e) => {
-    console.error(e);
-    Deno.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
-```
-
-### 4.3. Add the seed script to Prisma Config
-
-Update the `prisma.config.ts` file to include the seed command:
-
-```typescript title="prisma.config.ts"
-import { defineConfig, env } from "prisma/config";
-
-export default defineConfig({
-  schema: "prisma/schema.prisma",
-  migrations: {
-    path: "prisma/migrations",
-    seed: "deno run -A --env=.env ./prisma/seed.ts", // [!code ++]
-  },
-  datasource: {
-    url: env("DATABASE_URL"),
-  },
-});
-```
-
-Run the seed script to populate your database:
-
-```bash
-deno task db:seed
-```
-
-## 5. Creating your Deno server
-
-Replace the `main.ts` file contents with the following code to build a simple HTTP server that uses Prisma ORM to fetch and display users:
-
-```typescript title="main.ts"
-import { prisma } from "./db.ts";
-
-async function handler(req: Request): Promise<Response> {
-  const { pathname } = new URL(req.url);
-
-  // Skip favicon route
-  if (pathname === "/favicon.ico") {
-    return new Response(null, { status: 204 });
-  }
-
-  // Return all users
-  const users = await prisma.user.findMany();
-
-  // Count all users
-  const count = await prisma.user.count();
-
-  // Format the response with JSON
-  return new Response(
-    JSON.stringify({
-      users: users,
-      totalUsers: count,
-    }),
-    { headers: { "Content-Type": "application/json" } },
-  );
-}
-
-Deno.serve({ port: 8000 }, handler);
-```
-
-## 6. Running your application
-
-Start your Deno server:
+Start the generated HTTP server:
 
 ```bash
 deno task dev
 ```
 
-You should see the server running on `http://localhost:8000` in the console. When you visit `http://localhost:8000` in your browser, you'll see a JSON response with all the users in your database and the total count.
+Then request it from another terminal:
+
+```bash
+curl http://localhost:3000
+```
+
+The response contains the starter users:
+
+```json no-copy
+{
+  "users": [
+    { "email": "alice@prisma.io", "name": "Alice" },
+    { "email": "bob@prisma.io", "name": "Bob" },
+    { "email": "carol@prisma.io", "name": "Carol" }
+  ]
+}
+```
+
+The first request runs `src/prisma/seed.ts` through the generated query helper. Seeding is idempotent, so later requests read the same rows without creating duplicates. There is no separate seed command.
+
+## 4. Understand the generated query
+
+The generated `src/prisma/users.ts` connects the database, seeds on the first query, and reads from the PostgreSQL `public` namespace:
+
+```ts title="src/prisma/users.ts"
+import { db } from "./db.ts";
+import { seed } from "./seed.ts";
+
+export async function listUsers(limit = 10) {
+  await seed();
+
+  const users = await db.orm.public.User
+    .select("id", "email", "username", "name", "createdAt")
+    .take(limit)
+    .all();
+
+  return users.map((user) => ({
+    id: String(user.id),
+    email: user.email,
+    username: user.username ?? null,
+    name: user.name ?? null,
+    createdAt: user.createdAt,
+  }));
+}
+```
+
+Deno requires the `.ts` extension on these relative imports. The generated files already include it.
+
+After changing `src/prisma/contract.prisma`, regenerate the typed artifacts and update the database:
+
+```bash
+deno task contract:emit
+deno task db:update
+```
+
+## Current limitations
+
+- Prisma Compute does not support Deno deployments yet.
+- The generated ORM tasks currently use the Deno-compatible Prisma 8 ORM CLI entry point. The consolidated `npm:prisma@latest` CLI still loads Node-only credential storage under Deno, so use the generated tasks rather than invoking a CLI package directly.
+- The generated commands use `-A` for the filesystem, environment, and network permissions required during setup and local development. You can replace it with a narrower allow list for your application after setup.
 
 ## Next steps
 
-Now that you have a Deno application connected to a Prisma Postgres database, you can continue by:
-
-- Extending your Prisma schema with additional models and relationships
-- Implementing authentication and authorization
-- Adding input validation with Zod
-- Exploring Deno's built-in testing tools
-- Deploying your application to [Deno Deploy](/guides/integrations/deno)
-
-### More info
-
-- [Deno Documentation](https://docs.deno.com)
-- [Prisma Config File](/orm/reference/prisma-config-reference)
-- [Prisma Postgres](/postgres)
+- [Learn the fundamentals](/orm/fundamentals/reading-data): filtering, sorting, pagination, and writes.
+- [Read the Prisma 8 overview](/orm) for contracts, typed queries, and migrations.
+- [Use the Bun guide](/guides/runtimes/bun) if you also target Bun.

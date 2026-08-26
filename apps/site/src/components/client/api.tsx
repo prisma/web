@@ -203,7 +203,7 @@ const API = () => {
             </Select>
           </div>
           <Button asChild size="2xl" variant="orm" className="w-full sm:w-auto">
-            <a href={"https://www.prisma.io/docs/orm/prisma-client"}>Get Started</a>
+            <a href={"https://www.prisma.io/docs/orm/fundamentals/reading-data"}>Get Started</a>
           </Button>
         </div>
         <div className="min-w-50 relative mt-0.5">

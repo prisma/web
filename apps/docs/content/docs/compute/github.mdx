@@ -1,12 +1,17 @@
 ---
 title: GitHub
-description: Connect a GitHub repository to a project and Prisma deploys on every push, with previews tracking your Git branches.
+description: Connect a GitHub repository to a project to authenticate your Actions deploys and keep platform branches in sync with your Git branches.
 url: /compute/github
 metaTitle: GitHub integration | Prisma Compute
-metaDescription: Connect a GitHub repository to Prisma Compute, deploy on push, and map repository branches to platform branches automatically.
+metaDescription: Connect a GitHub repository to Prisma Compute to enable OIDC-authenticated deploys from GitHub Actions and automatic preview teardown when branches are deleted.
 ---
 
-Connect a GitHub repository to a project and Prisma deploys on every push. Branch and push events map to platform branches automatically, so your previews track your Git branches.
+Connecting a GitHub repository wires a project to your repo. Deploys run in your own GitHub Actions, through [prisma/cloud-deploy-action](https://github.com/prisma/cloud-deploy-action); the connection provides two things around them:
+
+- **Credentials.** Workflow runs in the connected repository exchange their GitHub OIDC token for a short-lived Prisma workspace token, so the deploy workflow needs no secrets.
+- **Branch lifecycle.** Branch events keep the matching platform branches in sync, including tearing a preview down when its Git branch is deleted.
+
+For the full setup, from connection to a live preview per branch, follow [Deploy on push](/compute/deploy-on-push).
 
 ## How it works
 
@@ -14,69 +19,52 @@ The connection has two levels:
 
 <ConceptAnimation name="github-connection" />
 
-The workspace owns the GitHub App installation; each project points at a single repository. Once connected, Prisma listens for that repo's branch events and keeps the matching platform branches in sync.
+The workspace owns the GitHub App installation; each project points at a single repository. Once connected, Prisma verifies the repository identity behind each credential exchange and listens for the repo's branch events.
 
 In beta, a project connects to one repository.
 
 ## Connect a repo
 
+You can connect through the [Console](https://pris.ly/pdp) or from the CLI. The Console also opens a pull request that adds the deploy workflow to the repository. The CLI sets up the connection only, and you [add the workflow yourself](/compute/deploy-on-push#4-add-the-deploy-workflow).
+
 From a linked project directory, connect your Git origin:
 
 ```npm
-npx @prisma/cli@latest git connect
+npx prisma@latest git connect
 ```
 
 To name the repository explicitly:
 
 ```npm
-npx @prisma/cli@latest git connect https://github.com/acme/shop
+npx prisma@latest git connect https://github.com/acme/shop
 ```
 
-If the GitHub App isn't installed yet, the CLI starts the install flow. In `--json` / `--no-interactive` mode it doesn't block: it gives you the install URL to finish in the browser, so automation can hand the install off:
-
-```npm
-npx @prisma/cli@latest git connect https://github.com/acme/shop --json --no-interactive
-```
+If the GitHub App isn't installed yet, the CLI opens the browser to finish the install. The command needs an interactive terminal: it waits for the install to complete, and `--no-interactive` fails with `CLI.INTERACTION_REQUIRED`. For headless setups, connect through the Console instead.
 
 Disconnect when you're done:
 
 ```npm
-npx @prisma/cli@latest git disconnect
+npx prisma@latest git disconnect
 ```
 
-Disconnecting stops future automation. It doesn't delete the project or tear down existing branches.
+Disconnecting stops the credential exchange and the branch automation. It doesn't delete the project or tear down existing branches.
 
-## What events do
+## What the connection does
 
 Once a project is connected:
 
+- **Actions runs can authenticate.** A workflow job with `id-token: write` gets a workspace token through the OIDC exchange. The token is valid for 30 minutes and is only issued for the connected repository; unconnected repositories and forks are refused, and the deploy action then skips with a green run.
 - **Branch created** → creates the matching platform branch.
-- **Push** → creates or resolves the matching branch and builds the pushed commit.
-- **Branch deleted** → tears down the matching branch, unless it's the production or default branch.
+- **Branch deleted** → tears down the matching platform branch and its resources. Your production and default branches are exempt from this cleanup.
 
-Connecting doesn't deploy anything on its own; it wires up automation for *future* events. To deploy right now, run `app deploy` yourself.
-
-## CI and monorepos
-
-Auto-deploy handles monorepos that declare their apps in `prisma.compute.ts`: one pushed commit fans out into a targeted build per app. For custom pipelines, or anywhere you want full control, run the CLI directly with a service token and explicit targets:
-
-```bash
-PRISMA_SERVICE_TOKEN=... npx @prisma/cli@latest app deploy \
-  --project my-app \
-  --app web \
-  --branch "$GITHUB_HEAD_REF" \
-  --json \
-  --no-interactive
-```
-
-This keeps deploys deterministic and gives agents a structured result to read.
+Pushes are not handled by the platform. Your repository's own workflow deploys them, so a connected repo without a deploy workflow deploys nothing. Connecting also doesn't create branches retroactively: it aligns your default branch with the repo's default branch and wires up automation for future events.
 
 ## What's not in beta
 
-GitHub is the only supported provider; others return `REPO_PROVIDER_UNSUPPORTED`. The webhook path is branch- and push-driven. Each webhook deployment posts a "Prisma Compute Deploy" check run on the commit — success or failure, with the deploy URL — on a best-effort basis. Pull-request comments and preview comments aren't part of the beta surface.
+GitHub is the only supported provider; others return `REPO_PROVIDER_UNSUPPORTED`. Pull-request comments and preview comments aren't part of the beta surface.
 
 ## Next steps
 
+- [Deploy on push](/compute/deploy-on-push): the full walkthrough, from connection to per-branch previews.
 - [Branching](/compute/branching): how platform branches map to Git.
-- [Deployments](/compute/deployments): what happens after a push builds.
 - [Environment variables](/compute/environment-variables): per-branch config for previews.

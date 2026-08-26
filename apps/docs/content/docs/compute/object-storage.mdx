@@ -1,0 +1,160 @@
+---
+title: Object storage
+description: Store and serve files from a Prisma Compute app with an Object Store bucket, S3-compatible storage that lives in the same Prisma project as your database.
+url: /compute/object-storage
+metaTitle: Object Storage | Prisma Compute
+metaDescription: Learn how to create an Object Store bucket, mint scoped access keys, and read, write, and serve files from a Prisma Compute app with any S3-compatible client.
+---
+
+Object Store buckets are S3-compatible file storage for your Prisma project: a place for user avatars, PDF exports, uploaded CSVs, generated images. A bucket lives inside the project, next to its [Prisma Postgres](/postgres) databases, and is managed from the same [Console](https://pris.ly/pdp) and [REST API](/rest-api), so you don't need a separate storage provider or a second set of credentials.
+
+This page walks the whole path: create a bucket, mint an access key, and deploy a Compute route that writes a file and serves it back over a presigned URL.
+
+Buckets speak the S3 API, so any S3 client or SDK works. Compute apps run on Bun, and Bun ships a [built-in S3 client](https://bun.com/docs/api/s3), so the examples below need no extra dependency.
+
+## How buckets fit a project
+
+- **A bucket belongs to a project.** It can be associated with a branch at creation, via `branchId` or `branchGitName`. Omit both and the bucket attaches to the project's default branch. Paired with [Compute branching](/compute/branching), a preview environment can carry its own files next to its own database.
+- **Access keys are minted per bucket** with a `read` or `read_write` role, enforced by the storage layer: a write with a `read` key is rejected with `AccessDenied`. The `secretAccessKey` is returned exactly once at mint time and is not retrievable afterward.
+- **Deleting a bucket removes its contents and keys in the same call**, even when it is not empty. There is no empty-the-bucket-first step, so treat deletion as destructive and confirm it deliberately.
+
+You can manage buckets from the [Console](https://pris.ly/pdp), with the CLI's [`bucket` commands](/cli/bucket), or over the [REST API](/rest-api) with a [service token](/rest-api/authentication). This page uses the API, since that is what you would automate against. The Console and CLI cover the same operations, so the steps map one to one.
+
+The whole API surface is seven endpoints:
+
+| Operation          | Endpoint                                                                                              |
+| ------------------ | ----------------------------------------------------------------------------------------------------- |
+| Create a bucket    | [`POST /v1/buckets`](/rest-api/endpoints/buckets/post-buckets)                                   |
+| List buckets       | [`GET /v1/buckets`](/rest-api/endpoints/buckets/get-buckets)                                     |
+| Get a bucket       | [`GET /v1/buckets/{bucketId}`](/rest-api/endpoints/buckets/get-buckets-by-bucket-id)             |
+| Delete a bucket    | [`DELETE /v1/buckets/{bucketId}`](/rest-api/endpoints/buckets/delete-buckets-by-bucket-id)       |
+| Mint an access key | [`POST /v1/buckets/{bucketId}/keys`](/rest-api/endpoints/buckets/post-buckets-by-bucket-id-keys) |
+| List keys          | [`GET /v1/buckets/{bucketId}/keys`](/rest-api/endpoints/buckets/get-buckets-by-bucket-id-keys)   |
+| Revoke a key       | [`DELETE /v1/buckets/{bucketId}/keys/{keyId}`](/rest-api/endpoints/buckets/delete-buckets-by-bucket-id-keys-by-key-id) |
+
+:::info
+
+Object Store pricing and plan limits are not published yet. Keep that in mind before provisioning storage unattended, for example from an agent workflow.
+
+:::
+
+## Prerequisites
+
+- A Prisma project. The [deploy quickstart](/prisma-compute/deploy) creates one if you don't have one yet.
+- A [service token](/rest-api/authentication) for the API examples, created in the Console under your workspace's **Settings**, then **Service Tokens**. If you prefer clicking, you can create the bucket and key in the [Console](https://pris.ly/pdp) instead and skip to step 3.
+- Your project id, visible in the project's Console URL or one [`GET /v1/projects`](/rest-api/endpoints/projects/get-projects) call away.
+
+## 1. Create a bucket
+
+Create a bucket in your project. The response includes the bucket id you need for every later call.
+
+```bash title="Create a bucket"
+curl -X POST https://api.prisma.io/v1/buckets \
+  -H "Authorization: Bearer $PRISMA_SERVICE_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"projectId": "<your project id>", "name": "uploads"}'
+```
+
+The response comes back with `"status": "ready"` and a `branchId` pointing at your project's default branch. There is nothing to wait for; you can write to the bucket right away. To tie it to a specific branch instead, pass `branchId` or `branchGitName` in the request body.
+
+## 2. Mint an access key
+
+Mint a key for the bucket. The response contains everything an S3 client needs: `accessKeyId`, `secretAccessKey`, `endpoint`, and `bucketName`.
+
+```bash title="Mint a read-write key"
+curl -X POST https://api.prisma.io/v1/buckets/<bucketId>/keys \
+  -H "Authorization: Bearer $PRISMA_SERVICE_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "app-key", "role": "read_write"}'
+```
+
+Save the `secretAccessKey` now; this is the only time the API returns it. If you lose it, revoke the key and mint a new one.
+
+Give each key the narrowest role that works: a deployment that only serves files should hold a `read` key, and `read_write` stays with the code paths that upload.
+
+## 3. Add the credentials to your Compute app
+
+Store the four values as [environment variables](/compute/environment-variables) so your deployed app can reach the bucket. Bun's S3 client reads these exact names by default, so the code below needs no explicit configuration:
+
+```bash title="Set the bucket variables"
+npx @prisma/cli@next project env add S3_ENDPOINT=<endpoint> --role production
+npx @prisma/cli@next project env add S3_BUCKET=<bucketName> --role production
+npx @prisma/cli@next project env add S3_ACCESS_KEY_ID=<accessKeyId> --role production
+npx @prisma/cli@next project env add S3_SECRET_ACCESS_KEY=<secretAccessKey> --role production
+```
+
+Environment variables are scoped by role and branch, so production and previews can point at different buckets: repeat the commands with `--role preview` (or `--branch <name>`) and the credentials of a second, branch-associated bucket. Values resolve at deploy time, so set them before the deploy that should use them.
+
+## 4. Read, write, and serve files from a route
+
+A storage route is an ordinary [Compute deployment](/compute/deployments). The example below uses Hono to match the other [Compute examples](/compute/getting-started); the S3 code is identical in any framework. `Bun.s3` picks up the `S3_*` variables from step 3.
+
+```ts title="src/index.ts"
+import { Hono } from "hono";
+
+const app = new Hono();
+
+// Upload: write the request body to the bucket.
+app.put("/files/:name", async (c) => {
+  const name = c.req.param("name");
+
+  if (!/^[a-zA-Z0-9_.-]+$/.test(name)) {
+    return c.text("Invalid file name", 400);
+  }
+
+  await Bun.s3.file(`uploads/${name}`).write(await c.req.arrayBuffer());
+  return c.json({ stored: `uploads/${name}` }, 201);
+});
+
+// Serve: redirect to a presigned URL instead of proxying the bytes.
+// The URL is time-boxed and needs no credentials on the client.
+app.get("/files/:name", (c) => {
+  const name = c.req.param("name");
+
+  if (!/^[a-zA-Z0-9_.-]+$/.test(name)) {
+    return c.text("Invalid file name", 400);
+  }
+
+  const url = Bun.s3.file(`uploads/${name}`).presign({ expiresIn: 3600 });
+  return c.redirect(url, 302);
+});
+
+export default app;
+```
+
+Deploy it by committing and pushing: with a [connected GitHub repository](/compute/github), the push builds and deploys the branch. Watch the build and open the result:
+
+```bash title="Deploy"
+git push
+npx @prisma/cli@next service show
+```
+
+## 5. Verify
+
+Upload a file to the deployed app, then fetch it back through the presigned redirect:
+
+```bash title="Upload and read back"
+curl -X PUT --data "hello from a bucket" https://<your-app-url>/files/hello.txt
+curl -L https://<your-app-url>/files/hello.txt
+```
+
+You should see the upload respond with `{"stored":"uploads/hello.txt"}` and the second request print `hello from a bucket`. If the upload fails with `AccessDenied`, the app is holding a `read` key; mint a `read_write` key for the uploading deployment and update the environment variables.
+
+## Deleting a bucket
+
+Deleting a bucket removes its objects and its access keys in one call:
+
+```bash title="Delete a bucket"
+curl -X DELETE https://api.prisma.io/v1/buckets/<bucketId> \
+  -H "Authorization: Bearer $PRISMA_SERVICE_TOKEN"
+```
+
+This succeeds even when the bucket still contains objects. That makes tearing down an environment a single call, but it also means there is no undo, so double-check the bucket id before running it. If an agent manages your buckets, have it confirm deletions with you first.
+
+## What to read next
+
+- [Environment variables](/compute/environment-variables): scope bucket credentials per branch.
+- [Branching](/compute/branching): give a preview environment its own bucket next to its own database.
+- [Image Transformations](/compute/image-transformations): resize and serve images from a bucket with `Bun.s3` sources.
+- [REST API: buckets](/rest-api/endpoints/buckets/get-buckets): the full endpoint reference.
+- [Your AI agent needs file storage](https://www.prisma.io/blog/object-store-buckets): the launch post, with the full agent-driven lifecycle as one script.

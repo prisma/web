@@ -274,129 +274,443 @@ const config = {
         destination: "/orm/v6/:path*",
         permanent: true,
       },
+      // CLI rc.8 command-surface rework: init and build logs removed, composer
+      // dev/deploy promoted to root-level dev/deploy, migrate renamed db migrate.
+      { source: "/cli/platform-init", destination: "/cli/project", permanent: true },
+      { source: "/compute/configuration", destination: "/compute", permanent: true },
+      { source: "/cli/build", destination: "/cli/service", permanent: true },
+      { source: "/cli/composer", destination: "/cli/deploy", permanent: true },
+      { source: "/cli/migration-apply", destination: "/cli/db-migrate", permanent: true },
+      // CLI rc.9: the agent group is replaced by skills sync/list. No redirect
+      // for the orm init page's move to /cli/orm-init: /cli/init is now the
+      // top-level init command, so the source URL stays a page.
+      { source: "/cli/agent", destination: "/cli/skills", permanent: true },
+      // ── Prisma 8 is the default docs version ──────────────────────────────
+      // The former /v8 (and older /next) version segments are now the
+      // unversioned tree. Permanent: those URLs circulated during Early Access
+      // and the Release Candidate and will not come back in that form.
+      { source: "/v8", destination: "/prisma-orm", permanent: true },
+      { source: "/v8/getting-started", destination: "/getting-started", permanent: true },
+      { source: "/v8/create-prisma", destination: "/prisma-orm/create-prisma", permanent: true },
       {
-        source: "/orm/next/create-prisma",
-        destination: "/next/getting-started",
-        permanent: false,
+        source: "/v8/quickstart",
+        destination: "/prisma-orm/quickstart/postgresql",
+        permanent: true,
       },
       {
-        source: "/next/create-prisma",
-        destination: "/next/getting-started",
-        permanent: false,
+        source: "/v8/quickstart/:path*",
+        destination: "/prisma-orm/quickstart/:path*",
+        permanent: true,
       },
+      {
+        source: "/v8/add-to-existing-project/:path*",
+        destination: "/prisma-orm/add-to-existing-project/:path*",
+        permanent: true,
+      },
+      {
+        source: "/v8/prisma-postgres/quickstart",
+        destination: "/prisma-postgres/quickstart/prisma-orm",
+        permanent: true,
+      },
+      {
+        source: "/v8/prisma-postgres/quickstart/prisma-next",
+        destination: "/prisma-postgres/quickstart/prisma-orm",
+        permanent: true,
+      },
+      {
+        source: "/v8/prisma-postgres/:path*",
+        destination: "/prisma-postgres/:path*",
+        permanent: true,
+      },
+      { source: "/v8/:path*", destination: "/prisma-orm", permanent: true },
+      {
+        source: "/orm/v8/create-prisma",
+        destination: "/prisma-orm/create-prisma",
+        permanent: true,
+      },
+      {
+        source: "/orm/v8/quickstart/:path*",
+        destination: "/prisma-orm/quickstart/:path*",
+        permanent: true,
+      },
+      {
+        source: "/orm/v8/add-to-existing-project/:path*",
+        destination: "/prisma-orm/add-to-existing-project/:path*",
+        permanent: true,
+      },
+      { source: "/orm/v8", destination: "/orm", permanent: true },
+      { source: "/orm/v8/:path*", destination: "/orm/:path*", permanent: true },
+      { source: "/cli/v8", destination: "/cli", permanent: true },
+      { source: "/cli/v8/:path*", destination: "/cli/:path*", permanent: true },
+      { source: "/guides/v8", destination: "/guides", permanent: true },
+      { source: "/guides/v8/:path*", destination: "/guides/:path*", permanent: true },
+      { source: "/llms/v8.txt", destination: "/llms/orm.txt", permanent: true },
+      { source: "/next", destination: "/prisma-orm", permanent: true },
+      { source: "/next/getting-started", destination: "/getting-started", permanent: true },
+      { source: "/next/create-prisma", destination: "/prisma-orm/create-prisma", permanent: true },
       {
         source: "/next/quickstart",
-        destination: "/next/quickstart/postgresql",
-        permanent: false,
+        destination: "/prisma-orm/quickstart/postgresql",
+        permanent: true,
+      },
+      {
+        source: "/next/quickstart/:path*",
+        destination: "/prisma-orm/quickstart/:path*",
+        permanent: true,
+      },
+      {
+        source: "/next/add-to-existing-project/:path*",
+        destination: "/prisma-orm/add-to-existing-project/:path*",
+        permanent: true,
       },
       {
         source: "/next/prisma-postgres/quickstart",
-        destination: "/prisma-postgres/quickstart/prisma-next",
-        permanent: false,
+        destination: "/prisma-postgres/quickstart/prisma-orm",
+        permanent: true,
       },
-      // The Prisma Next + Prisma Postgres quickstart now lives in the Prisma Postgres
-      // Quickstart dropdown alongside the other ORMs.
       {
         source: "/next/prisma-postgres/quickstart/prisma-next",
-        destination: "/prisma-postgres/quickstart/prisma-next",
-        permanent: false,
+        destination: "/prisma-postgres/quickstart/prisma-orm",
+        permanent: true,
+      },
+      {
+        source: "/next/prisma-postgres/:path*",
+        destination: "/prisma-postgres/:path*",
+        permanent: true,
+      },
+      { source: "/next/:path*", destination: "/prisma-orm", permanent: true },
+      {
+        source: "/orm/next/create-prisma",
+        destination: "/prisma-orm/create-prisma",
+        permanent: true,
       },
       {
         source: "/orm/next/quickstart/:path*",
-        destination: "/next/quickstart/:path*",
-        permanent: false,
+        destination: "/prisma-orm/quickstart/:path*",
+        permanent: true,
       },
       {
         source: "/orm/next/add-to-existing-project/:path*",
-        destination: "/next/add-to-existing-project/:path*",
+        destination: "/prisma-orm/add-to-existing-project/:path*",
+        permanent: true,
+      },
+      { source: "/orm/next", destination: "/orm", permanent: true },
+      { source: "/orm/next/:path*", destination: "/orm/:path*", permanent: true },
+      { source: "/cli/next", destination: "/cli", permanent: true },
+      { source: "/cli/next/:path*", destination: "/cli/:path*", permanent: true },
+      { source: "/guides/next", destination: "/guides", permanent: true },
+      { source: "/guides/next/:path*", destination: "/guides/:path*", permanent: true },
+      { source: "/llms/next.txt", destination: "/llms/orm.txt", permanent: true },
+      // The CLI engine composes structured-error docsUrls as
+      // <docsBaseUrl>/<CODE> (path form); the pages anchor codes as #<CODE>.
+      {
+        source: "/cli/error-reference/:code",
+        destination: "/cli/error-reference#:code",
         permanent: false,
       },
-      // ── Prisma Next URL cutover (DR-8687) — DO NOT ENABLE YET ─────────────
-      // The redirects below retire live Prisma 7 URLs, so they ship only when
-      // Prisma Next becomes the default docs version (the /orm/next tree moves
-      // to /orm). Until then, keep your section's redirects here, commented
-      // out, so the full cutover map builds up in one reviewable place.
-      // Section owners: append your block below with a DR reference.
-      //
-      // DR-8681 Fundamentals:
-      // { source: "/orm/prisma-client", destination: "/orm/next/fundamentals/reading-data", permanent: false },
-      // { source: "/orm/prisma-client/queries/crud", destination: "/orm/next/fundamentals/reading-data", permanent: false },
-      // { source: "/orm/prisma-client/queries/select-fields", destination: "/orm/next/fundamentals/reading-data", permanent: false },
-      // { source: "/orm/prisma-client/queries/filtering-and-sorting", destination: "/orm/next/fundamentals/reading-data", permanent: false },
-      // { source: "/orm/prisma-client/queries/pagination", destination: "/orm/next/fundamentals/reading-data", permanent: false },
-      // { source: "/orm/prisma-client/queries/aggregation-grouping-summarizing", destination: "/orm/next/fundamentals/reading-data", permanent: false },
-      // { source: "/orm/prisma-client/queries/relation-queries", destination: "/orm/next/fundamentals/relations-and-joins", permanent: false },
-      // { source: "/orm/prisma-client/queries/transactions", destination: "/orm/next/fundamentals/transactions", permanent: false },
-      // { source: "/orm/prisma-client/using-raw-sql", destination: "/orm/next/fundamentals/advanced-queries", permanent: false },
-      //
-      // DR-8680 Contract authoring:
-      // { source: "/orm/prisma-schema", destination: "/orm/next/contract-authoring/the-data-contract", permanent: false },
-      // { source: "/orm/prisma-schema/overview", destination: "/orm/next/contract-authoring/psl-syntax", permanent: false },
-      // { source: "/orm/prisma-schema/overview/data-sources", destination: "/orm/next/contract-authoring/psl-syntax", permanent: false },
-      // { source: "/orm/prisma-schema/overview/location", destination: "/orm/next/contract-authoring/psl-syntax", permanent: false },
-      // { source: "/orm/prisma-client/type-safety", destination: "/orm/next/contract-authoring/the-data-contract", permanent: false },
-      //
-      // No Prisma Next equivalent yet (stay on the Prisma 7 tree, flag to the
-      // SEO owner at cutover): /orm/prisma-client/queries/full-text-search,
-      // /orm/prisma-client/queries/advanced/query-optimization-performance,
-      // /orm/prisma-client/queries/excluding-fields.
-      //
-      // DR-8679 Data modeling:
-      // { source: "/orm/prisma-schema", destination: "/orm/next/data-modeling", permanent: false },
-      // { source: "/orm/prisma-schema/data-model/models", destination: "/orm/next/data-modeling", permanent: false },
-      // { source: "/orm/prisma-schema/data-model/relations", destination: "/orm/next/data-modeling/relational-databases", permanent: false },
-      //
-      // Migrations (PR #8025; the "Migrating from Prisma 7" guide is DR-8689):
-      // { source: "/orm/prisma-migrate", destination: "/orm/next/migrations/how-migrations-work", permanent: false },
-      // { source: "/orm/prisma-migrate/getting-started", destination: "/orm/next/migrations/how-migrations-work", permanent: false },
-      // { source: "/orm/prisma-migrate/understanding-prisma-migrate/mental-model", destination: "/orm/next/migrations/the-migration-graph", permanent: false },
-      // { source: "/orm/prisma-migrate/workflows/development-and-production", destination: "/orm/next/migrations/applying-a-migration", permanent: false },
-      // { source: "/orm/prisma-migrate/workflows/customizing-migrations", destination: "/orm/next/migrations/editing-a-migration", permanent: false },
-      //
-      // No Prisma Next equivalent yet (stay on the Prisma 7 tree, flag to the
-      // SEO owner at cutover): /orm/prisma-migrate/understanding-prisma-migrate/shadow-database,
-      // .../migration-histories, .../limitations-and-known-issues, and the
-      // /orm/prisma-migrate/workflows/ pages for seeding, baselining,
-      // squashing-migrations, generating-down-migrations, patching-and-hotfixing,
-      // native-database-functions, native-database-types, prototyping-your-schema,
-      // troubleshooting — reassess as matching Prisma Next pages land.
-      //
-      // ── Guides URL cutover (DR-8689 / DR-8687) — DO NOT ENABLE YET ────────
-      // Today: Prisma 7 guides live at /guides/* and Prisma Next guides at
-      // /guides/next/* (the "Guides version" dropdown switches between them).
-      // When Prisma Next becomes the default docs version ("/" becomes the
-      // Prisma Next docs and Prisma 7 moves to v7), the guides flip the same
-      // way: the Prisma 7 guide tree moves under /guides/v7, and the
-      // /guides/next tree is promoted to /guides. The redirects to enable at
-      // that cutover, kept here so the map builds up in one reviewable place:
-      //
-      // The /guides/next tree mirrors the Prisma 7 folder structure, so the
-      // promotion is one wildcard:
-      // { source: "/guides/next/:path*", destination: "/guides/:path*", permanent: false },
-      //
-      // Park the Prisma 7 versions under /guides/v7 (only for guides that
-      // have a Prisma Next replacement; unconverted guides keep their URL):
-      // { source: "/guides/runtimes/bun", destination: "/guides/v7/runtimes/bun", permanent: false },
-      // { source: "/guides/runtimes/deno", destination: "/guides/v7/runtimes/deno", permanent: false },
-      // { source: "/guides/frameworks/nextjs", destination: "/guides/v7/frameworks/nextjs", permanent: false },
-      // { source: "/guides/frameworks/astro", destination: "/guides/v7/frameworks/astro", permanent: false },
-      // { source: "/guides/frameworks/nuxt", destination: "/guides/v7/frameworks/nuxt", permanent: false },
-      // { source: "/guides/frameworks/sveltekit", destination: "/guides/v7/frameworks/sveltekit", permanent: false },
-      // { source: "/guides/frameworks/tanstack-start", destination: "/guides/v7/frameworks/tanstack-start", permanent: false },
-      // { source: "/guides/frameworks/nestjs", destination: "/guides/v7/frameworks/nestjs", permanent: false },
-      // { source: "/guides/frameworks/hono", destination: "/guides/v7/frameworks/hono", permanent: false },
-      // { source: "/guides/frameworks/elysia", destination: "/guides/v7/frameworks/elysia", permanent: false },
-      //
-      // Each future guide conversion appends its pair here in the same PR.
+      {
+        source: "/orm/reference/error-reference/:code",
+        destination: "/orm/reference/error-reference#:code",
+        permanent: false,
+      },
+      {
+        source: "/prisma-postgres/quickstart/prisma-next",
+        destination: "/prisma-postgres/quickstart/prisma-orm",
+        permanent: true,
+      },
+      // Renamed sections still linked from older blog posts and changelog entries.
+      { source: "/management-api", destination: "/rest-api", permanent: true },
+      { source: "/management-api/:path*", destination: "/rest-api/:path*", permanent: true },
+      { source: "/compute/cli-reference", destination: "/cli", permanent: true },
+      // ── Prisma 7 URL cutover (DR-8687) ────────────────────────────────────
+      // The Prisma 7 tree moved to /orm/v7 (and /v7, /cli/v7, /guides/v7).
+      // Pages with a Prisma 8 equivalent redirect to it (section owners'
+      // maps: DR-8681 Fundamentals, DR-8680 Contract authoring, DR-8679 Data
+      // modeling, PR #8025 Migrations, DR-8689 Guides). Every other page
+      // redirects page-to-page to its /v7 twin. Pages that exist in both trees
+      // (/orm, /orm/reference/error-reference, /cli, /cli/init, /getting-started,
+      // /prisma-orm/quickstart/{postgresql,mongodb}, the converted framework
+      // and runtime guides) keep their URL and now serve Prisma 8.
+      {
+        source: "/orm/prisma-client",
+        destination: "/orm/fundamentals/reading-data",
+        permanent: false,
+      },
+      {
+        source: "/orm/prisma-client/queries/crud",
+        destination: "/orm/fundamentals/reading-data",
+        permanent: false,
+      },
+      {
+        source: "/orm/prisma-client/queries/select-fields",
+        destination: "/orm/fundamentals/reading-data",
+        permanent: false,
+      },
+      {
+        source: "/orm/prisma-client/queries/filtering-and-sorting",
+        destination: "/orm/fundamentals/reading-data",
+        permanent: false,
+      },
+      {
+        source: "/orm/prisma-client/queries/pagination",
+        destination: "/orm/fundamentals/reading-data",
+        permanent: false,
+      },
+      {
+        source: "/orm/prisma-client/queries/aggregation-grouping-summarizing",
+        destination: "/orm/fundamentals/reading-data",
+        permanent: false,
+      },
+      {
+        source: "/orm/prisma-client/queries/relation-queries",
+        destination: "/orm/fundamentals/relations-and-joins",
+        permanent: false,
+      },
+      {
+        source: "/orm/prisma-client/queries/transactions",
+        destination: "/orm/fundamentals/transactions",
+        permanent: false,
+      },
+      {
+        source: "/orm/prisma-client/using-raw-sql",
+        destination: "/orm/fundamentals/advanced-queries",
+        permanent: false,
+      },
+      {
+        source: "/orm/prisma-client/type-safety",
+        destination: "/orm/contract-authoring/the-data-contract",
+        permanent: false,
+      },
+      {
+        source: "/orm/prisma-schema",
+        destination: "/orm/contract-authoring/the-data-contract",
+        permanent: false,
+      },
+      {
+        source: "/orm/prisma-schema/overview",
+        destination: "/orm/contract-authoring/psl-syntax",
+        permanent: false,
+      },
+      {
+        source: "/orm/prisma-schema/overview/data-sources",
+        destination: "/orm/contract-authoring/psl-syntax",
+        permanent: false,
+      },
+      {
+        source: "/orm/prisma-schema/overview/location",
+        destination: "/orm/contract-authoring/psl-syntax",
+        permanent: false,
+      },
+      {
+        source: "/orm/prisma-schema/data-model/models",
+        destination: "/orm/data-modeling",
+        permanent: false,
+      },
+      {
+        source: "/orm/prisma-schema/data-model/relations",
+        destination: "/orm/data-modeling/relational-databases",
+        permanent: false,
+      },
+      {
+        source: "/orm/prisma-migrate",
+        destination: "/orm/migrations/how-migrations-work",
+        permanent: false,
+      },
+      {
+        source: "/orm/prisma-migrate/getting-started",
+        destination: "/orm/migrations/how-migrations-work",
+        permanent: false,
+      },
+      {
+        source: "/orm/prisma-migrate/understanding-prisma-migrate/mental-model",
+        destination: "/orm/migrations/the-migration-graph",
+        permanent: false,
+      },
+      {
+        source: "/orm/prisma-migrate/workflows/development-and-production",
+        destination: "/orm/migrations/applying-a-migration",
+        permanent: false,
+      },
+      {
+        source: "/orm/prisma-migrate/workflows/customizing-migrations",
+        destination: "/orm/migrations/editing-a-migration",
+        permanent: false,
+      },
+      {
+        source: "/prisma-orm/quickstart/prisma-postgres",
+        destination: "/prisma-postgres/quickstart/prisma-orm",
+        permanent: false,
+      },
+      {
+        source: "/prisma-orm/add-to-existing-project/prisma-postgres",
+        destination: "/prisma-orm/add-to-existing-project/postgresql",
+        permanent: false,
+      },
+      // Page-to-page: the rest of the Prisma 7 ORM tree.
+      {
+        source: "/orm/prisma-client/:path*",
+        destination: "/orm/v7/prisma-client/:path*",
+        permanent: false,
+      },
+      {
+        source: "/orm/prisma-schema/:path*",
+        destination: "/orm/v7/prisma-schema/:path*",
+        permanent: false,
+      },
+      {
+        source: "/orm/prisma-migrate/:path*",
+        destination: "/orm/v7/prisma-migrate/:path*",
+        permanent: false,
+      },
+      // Nested Prisma 7 core-concepts pages only. `:path*` also matched the
+      // Prisma 8 hub at /orm/core-concepts (core-concepts.mdx) and sent it to
+      // /orm/v7/core-concepts/, which has no index and 404s (prisma/prisma#30136).
+      {
+        source: "/orm/core-concepts/:path+",
+        destination: "/orm/v7/core-concepts/:path+",
+        permanent: false,
+      },
+      { source: "/orm/more/:path*", destination: "/orm/v7/more/:path*", permanent: false },
+      // Prisma 7 folders that never had an index page. Their bare URLs 404, so
+      // send them to the first page in each folder's meta.json.
+      {
+        source: "/orm/v7/core-concepts",
+        destination: "/orm/v7/core-concepts/data-modeling",
+        permanent: false,
+      },
+      {
+        source: "/orm/v7/prisma-schema",
+        destination: "/orm/v7/prisma-schema/overview",
+        permanent: false,
+      },
+      { source: "/orm/v7/more", destination: "/orm/v7/more/releases", permanent: false },
+      {
+        source: "/orm/v7/reference/preview-features",
+        destination: "/orm/v7/reference/preview-features/client-preview-features",
+        permanent: false,
+      },
+      {
+        source: "/orm/reference/prisma-cli-reference",
+        destination: "/orm/v7/reference/prisma-cli-reference",
+        permanent: false,
+      },
+      {
+        source: "/orm/reference/prisma-client-reference",
+        destination: "/orm/v7/reference/prisma-client-reference",
+        permanent: false,
+      },
+      {
+        source: "/orm/reference/prisma-schema-reference",
+        destination: "/orm/v7/reference/prisma-schema-reference",
+        permanent: false,
+      },
+      {
+        source: "/orm/reference/prisma-config-reference",
+        destination: "/orm/v7/reference/prisma-config-reference",
+        permanent: false,
+      },
+      {
+        source: "/orm/reference/connection-urls",
+        destination: "/orm/v7/reference/connection-urls",
+        permanent: false,
+      },
+      {
+        source: "/orm/reference/environment-variables-reference",
+        destination: "/orm/v7/reference/environment-variables-reference",
+        permanent: false,
+      },
+      {
+        source: "/orm/reference/database-features",
+        destination: "/orm/v7/reference/database-features",
+        permanent: false,
+      },
+      {
+        source: "/orm/reference/supported-databases",
+        destination: "/orm/v7/reference/supported-databases",
+        permanent: false,
+      },
+      {
+        source: "/orm/reference/system-requirements",
+        destination: "/orm/v7/reference/system-requirements",
+        permanent: false,
+      },
+      {
+        source: "/orm/reference/errors/:path*",
+        destination: "/orm/v7/reference/errors/:path*",
+        permanent: false,
+      },
+      {
+        source: "/orm/reference/preview-features/:path*",
+        destination: "/orm/v7/reference/preview-features/:path*",
+        permanent: false,
+      },
+      // Page-to-page: Prisma 7 getting-started pages with no Prisma 8 equivalent.
+      {
+        source: "/prisma-orm/quickstart/cockroachdb",
+        destination: "/v7/prisma-orm/quickstart/cockroachdb",
+        permanent: false,
+      },
+      {
+        source: "/prisma-orm/quickstart/mysql",
+        destination: "/v7/prisma-orm/quickstart/mysql",
+        permanent: false,
+      },
+      {
+        source: "/prisma-orm/quickstart/planetscale",
+        destination: "/v7/prisma-orm/quickstart/planetscale",
+        permanent: false,
+      },
+      {
+        source: "/prisma-orm/quickstart/sql-server",
+        destination: "/v7/prisma-orm/quickstart/sql-server",
+        permanent: false,
+      },
+      {
+        source: "/prisma-orm/quickstart/sqlite",
+        destination: "/v7/prisma-orm/quickstart/sqlite",
+        permanent: false,
+      },
+      {
+        source: "/prisma-orm/add-to-existing-project/cockroachdb",
+        destination: "/v7/prisma-orm/add-to-existing-project/cockroachdb",
+        permanent: false,
+      },
+      {
+        source: "/prisma-orm/add-to-existing-project/mysql",
+        destination: "/v7/prisma-orm/add-to-existing-project/mysql",
+        permanent: false,
+      },
+      {
+        source: "/prisma-orm/add-to-existing-project/planetscale",
+        destination: "/v7/prisma-orm/add-to-existing-project/planetscale",
+        permanent: false,
+      },
+      {
+        source: "/prisma-orm/add-to-existing-project/sql-server",
+        destination: "/v7/prisma-orm/add-to-existing-project/sql-server",
+        permanent: false,
+      },
+      {
+        source: "/prisma-orm/add-to-existing-project/sqlite",
+        destination: "/v7/prisma-orm/add-to-existing-project/sqlite",
+        permanent: false,
+      },
+      // Page-to-page: the classic prisma CLI (Prisma 7).
+      { source: "/cli/generate", destination: "/cli/v7/generate", permanent: false },
+      { source: "/cli/validate", destination: "/cli/v7/validate", permanent: false },
+      { source: "/cli/format", destination: "/cli/v7/format", permanent: false },
+      { source: "/cli/studio", destination: "/cli/v7/studio", permanent: false },
+      { source: "/cli/debug", destination: "/cli/v7/debug", permanent: false },
+      { source: "/cli/version", destination: "/cli/v7/version", permanent: false },
+      { source: "/cli/migrate/:path*", destination: "/cli/v7/migrate/:path*", permanent: false },
+      { source: "/cli/dev/:path*", destination: "/cli/v7/dev/:path*", permanent: false },
+      { source: "/cli/db/:path*", destination: "/cli/v7/db/:path*", permanent: false },
+      { source: "/cli/console/:path*", destination: "/cli/v7/console/:path*", permanent: false },
       // ───────────────────────────────────────────────────────────────────────
     ];
   },
   async rewrites() {
     return [
-      // {
-      //   source: "/orm/:path((?!latest(?:/|$)|v6(?:/|$)).*)",
-      //   destination: "/orm/latest/:path",
-      // },
       {
         source: "/sitemap",
         destination: "/sitemap.xml",

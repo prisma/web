@@ -1,5 +1,3 @@
-import { createPageMetadata } from "@/lib/page-metadata";
-import { Button } from "@prisma/eclipse";
 import {
   NEWSLETTER_UNSUBSCRIBE_COOKIE_NAME,
   isValidNewsletterUnsubscribeToken,
@@ -7,16 +5,15 @@ import {
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Link from "next/link";
+import { RoleKicker } from "@/components/brand/role-kicker";
+import { Button } from "@/components/ui/button";
 
-export const metadata = {
-  ...createPageMetadata({
-    title: "Unsubscribe from the Prisma newsletter",
-    description: "Manage your Prisma newsletter subscription.",
-    path: "/newsletter/unsubscribe",
-  }),
+export const metadata: Metadata = {
+  title: "Unsubscribe from the Prisma newsletter",
+  description: "Manage your Prisma newsletter subscription.",
   referrer: "no-referrer",
   robots: { follow: false, index: false },
-} satisfies Metadata;
+};
 
 type UnsubscribePageProps = {
   searchParams: Promise<{ status?: string }>;
@@ -31,10 +28,10 @@ export default async function UnsubscribePage({ searchParams }: UnsubscribePageP
   const isInvalid = !isSuccess && !canConfirm;
 
   return (
-    <main className="flex min-h-[70vh] flex-1 items-center bg-background-default px-4 py-24 text-foreground-neutral">
-      <section className="mx-auto flex w-full max-w-[560px] flex-col items-start gap-5">
-        <p className="m-0 text-sm font-semibold uppercase text-foreground-ppg">Prisma newsletter</p>
-        <h1 className="m-0 text-4xl font-sans-display sm:text-5xl">
+    <main className="flex min-h-[70vh] items-center bg-white px-4 py-32 sm:px-8">
+      <section className="mx-auto flex w-full max-w-xl flex-col items-start gap-5">
+        <RoleKicker color="bg-prism-yellow-300">Prisma newsletter</RoleKicker>
+        <h1 className="text-balance text-3xl leading-[1.1] sm:text-4xl">
           {isSuccess
             ? "You are unsubscribed"
             : isInvalid
@@ -43,35 +40,36 @@ export default async function UnsubscribePage({ searchParams }: UnsubscribePageP
         </h1>
 
         {isSuccess ? (
-          <p className="m-0 text-lg text-foreground-neutral-weak">
+          <p className="text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground">
             You will no longer receive the Prisma newsletter. Transactional account and service
             emails are unaffected.
           </p>
         ) : isInvalid ? (
-          <p className="m-0 text-lg text-foreground-neutral-weak">
+          <p className="text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground">
             The unsubscribe link is missing or invalid. You can try the link from your latest Prisma
             newsletter again.
           </p>
         ) : (
           <>
-            <p className="m-0 text-lg text-foreground-neutral-weak">
+            <p className="text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground">
               This stops Prisma newsletter emails only. You will still receive important account and
               service messages.
             </p>
             {isError ? (
-              <p className="m-0 text-sm text-foreground-error">
+              <p className="text-sm text-prism-red-600">
                 We could not update your subscription. Please try again.
               </p>
             ) : null}
             <form action="/api/newsletter/unsubscribe" method="post">
-              <Button type="submit" variant="default-strong" size="2xl">
-                Unsubscribe
-              </Button>
+              <Button type="submit">Unsubscribe</Button>
             </form>
           </>
         )}
 
-        <Link href="/" className="text-sm text-foreground-ppg underline">
+        <Link
+          href="/"
+          className="text-sm font-semibold text-prism-cyan-700 transition-colors hover:text-prism-cyan-600"
+        >
           Return to Prisma
         </Link>
       </section>

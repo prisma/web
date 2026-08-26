@@ -1,165 +1,57 @@
 ---
 title: init
-description: Set up a new Prisma project in the current directory
-metaTitle: prisma init | Create New Prisma Project
-metaDescription: 'Bootstrap a new Prisma project with prisma init. Creates schema.prisma, prisma.config.ts, .env. Choose datasource provider or provision Prisma Postgres.'
+description: Prepare a repository for Prisma development.
 url: /cli/init
+metaTitle: init | Prisma 8 CLI
+metaDescription: Learn how prisma init prepares a repository for Prisma development with a skills-sync postinstall hook and a scaffolded prisma.config.ts.
 ---
 
-The `prisma init` command bootstraps a fresh Prisma project within the current directory.
+`init` prepares the current directory for Prisma development. It runs locally and calls no platform API. It does not scaffold the ORM: use [`orm init`](/cli/orm-init) to add the Prisma 8 config, contract, and runtime files to a project.
+
+`init` does three things:
+
+1. Adds a `postinstall` script to `package.json` (`prisma skills sync || exit 0`), so the [Prisma agent skills](/cli/skills) resync on every install and upgrade.
+2. Scaffolds a `prisma.config.ts` recording which agents to install skills for, in the [`skills` config section](/cli/configuration#agent-skills).
+3. Runs [`skills sync`](/cli/skills) once.
+
+It never prompts, always exits 0, and is safe to rerun: each step reports what is already done. A `prisma.config.ts` or `postinstall` script that already exists is never edited. If `package.json` already has a different `postinstall` script, `init` reports it and tells you what to append instead of chaining or replacing it.
 
 ## Usage
 
-```bash
-prisma init [options]
+```npm
+npx prisma@latest init
 ```
-
-The command creates a `prisma` directory containing a `schema.prisma` file. By default, the project is configured for [local Prisma Postgres](/postgres/database/local-development), but you can choose a different database using the `--datasource-provider` option.
 
 ## Options
 
-| Option                  | Description                                                                                               |
-| ----------------------- | --------------------------------------------------------------------------------------------------------- |
-| `-h`, `--help`          | Display help message                                                                                      |
-| `--db`                  | Provision a fully managed Prisma Postgres database on the Prisma Data Platform                            |
-| `--datasource-provider` | Define the datasource provider: `postgresql`, `mysql`, `sqlite`, `sqlserver`, `mongodb`, or `cockroachdb` |
-| `--generator-provider`  | Define the generator provider to use (default: `prisma-client`)                                           |
-| `--preview-feature`     | Define a preview feature to use (can be specified multiple times)                                         |
-| `--output`              | Define Prisma Client generator output path                                                                |
-| `--url`                 | Define a custom datasource URL                                                                            |
-
-## Flags
-
-| Flag           | Description                                     |
-| -------------- | ----------------------------------------------- |
-| `--with-model` | Add an example model to the created schema file |
+| Option | What it does |
+| --- | --- |
+| `--skills <agents>` | Agents to install skills for, comma-separated: `claude`, `cursor`, `agents`, `devin`. Pass `none` to record that no agent skills are wanted. Default: all of them. |
+| `--postinstall`/`--no-postinstall` | Add the skills-sync `postinstall` hook. `--no-postinstall` skips that step. |
 
 ## Examples
 
-### Set up a new Prisma project (default)
-
-Sets up a new project configured for local Prisma Postgres:
-
 ```npm
-npx prisma init
+npx prisma@latest init
+npx prisma@latest init --skills=claude,cursor
+npx prisma@latest init --skills=none
+npx prisma@latest init --no-postinstall
 ```
 
-### Specify a datasource provider
+## The scaffolded config
 
-Set up a new project with MySQL as the datasource provider:
+`init` writes a minimal `prisma.config.ts` when none exists:
 
-```npm
-npx prisma init --datasource-provider mysql
-```
+```typescript title="prisma.config.ts"
+import { definePrismaConfig } from "prisma/config";
 
-### Specify a generator provider
-
-Set up a project with the legacy `prisma-client-js` generator instead of the default `prisma-client` generator:
-
-```npm
-npx prisma init --generator-provider prisma-client-js
-```
-
-### Specify preview features
-
-Set up a project with specific preview features enabled:
-
-```npm
-npx prisma init --preview-feature metrics
-```
-
-Multiple preview features:
-
-```npm
-npx prisma init --preview-feature views --preview-feature metrics
-```
-
-### Specify a custom output path
-
-Set up a project with a custom output path for Prisma Client:
-
-```npm
-npx prisma init --output ./generated-client
-```
-
-### Specify a custom datasource URL
-
-Set up a project with a specific database URL:
-
-```npm
-npx prisma init --url mysql://user:password@localhost:3306/mydb
-```
-
-### Add an example model
-
-Set up a project with an example `User` model:
-
-```npm
-npx prisma init --with-model
-```
-
-### Provision a Prisma Postgres database
-
-Create a new project with a managed Prisma Postgres database:
-
-```npm
-npx prisma init --db
-```
-
-This requires authentication with the [Prisma Data Platform Console](https://console.prisma.io).
-
-## Generated files
-
-After running `prisma init`, you'll have the following files:
-
-### `prisma/schema.prisma`
-
-The Prisma schema file where you define your data model:
-
-```prisma
-generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
-}
-
-datasource db {
-  provider = "postgresql"
-}
-```
-
-### `prisma.config.ts`
-
-A TypeScript configuration file for Prisma:
-
-```typescript
-import "dotenv/config";
-import { defineConfig, env } from "prisma/config";
-
-export default defineConfig({
-  schema: "prisma/schema.prisma",
-  migrations: {
-    path: "prisma/migrations",
-  },
-  datasource: {
-    url: env("DATABASE_URL"),
+export default definePrismaConfig({
+  skills: {
+    agents: ["claude", "cursor", "agents", "devin"],
   },
 });
 ```
 
-### `.env`
+The `prisma/config` import resolves from your project's `node_modules`, so add `prisma` as a dev dependency before running other commands against this file. See [Configuration](/cli/configuration).
 
-Environment variables file for your project:
-
-```bash
-DATABASE_URL="postgresql://user:password@localhost:5432/mydb"
-```
-
-### `.gitignore`
-
-Git ignore file configured for Prisma projects:
-
-```bash
-node_modules
-.env
-/generated/prisma
-```
+Writing the `postinstall` hook is exclusively the act of running `init`. No other command edits `package.json`: [`skills sync`](/cli/skills) itself never touches it.

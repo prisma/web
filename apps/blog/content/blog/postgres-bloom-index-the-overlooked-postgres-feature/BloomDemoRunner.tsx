@@ -54,8 +54,7 @@ console.log(
 const STEPS: RunnerStep[] = [
   {
     title: "Provision DB",
-    caption:
-      "Spin up a temporary Prisma Postgres database with a 1 hour TTL and connect over pg.",
+    caption: "Spin up a temporary Prisma Postgres database with a 1 hour TTL and connect over pg.",
     lines: { from: 1, to: 10 },
     output: [
       "Provisioning a temporary Prisma Postgres database (1h TTL)...",

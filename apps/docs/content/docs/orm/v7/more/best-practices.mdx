@@ -1,0 +1,465 @@
+---
+title: Best practices
+description: 'Learn production-ready patterns for schema design, query optimization, type safety, security, and deployment with Prisma ORM.'
+metaTitle: Best practices
+metaDescription: 'Learn production-ready patterns for schema design, query optimization, type safety, security, and deployment with Prisma ORM.'
+url: /orm/v7/more/best-practices
+---
+
+## Schema design and modeling
+
+### Naming conventions
+
+Use **PascalCase** for model names (singular) and **camelCase** for field names. Map to legacy database naming with `@map` and `@@map`:
+
+```prisma title="prisma/schema.prisma"
+model Comment {
+  id      Int    @id @default(autoincrement())
+  content String @map("comment_text")
+  email   String @map("commenter_email")
+
+  @@map("comments")
+}
+```
+
+This keeps your Prisma schema readable while supporting any database naming convention.
+
+### Model relations explicitly
+
+Always define both sides of a relation to keep your schema clear and maintainable:
+
+```prisma title="prisma/schema.prisma"
+model User {
+  id    Int    @id @default(autoincrement())
+  posts Post[]
+}
+
+model Post {
+  id       Int  @id @default(autoincrement())
+  author   User @relation(fields: [authorId], references: [id])
+  authorId Int
+}
+```
+
+:::warning
+For databases that don't enforce foreign keys (like PlanetScale), Prisma ORM emulates relations and you should manually add indexes on relation scalar fields to avoid full table scans:
+
+```prisma title="prisma/schema.prisma"
+model Comment {
+  postId Int
+  post   Post @relation(fields: [postId], references: [id])
+
+  @@index([postId])
+}
+```
+:::
+
+### Index strategy
+
+Index fields used in `where`, `orderBy`, and relations. Without indexes, the database can be forced to scan entire tables to find matching rows, which becomes slower as tables grow.
+
+```prisma title="prisma/schema.prisma"
+model Comment {
+  id      Int    @id @default(autoincrement())
+  postId  Int
+  status  String
+  post    Post   @relation(fields: [postId], references: [id])
+
+  @@index([postId])
+  @@index([status])
+}
+```
+
+### Enum vs string fields
+
+Enums provide type-safe, finite sets of values. You can map enum values to match your database naming:
+
+```prisma title="prisma/schema.prisma"
+enum Role {
+  USER  @map("user")
+  ADMIN @map("admin")
+
+  @@map("user_role")
+}
+
+model User {
+  id   Int  @id @default(autoincrement())
+  role Role @default(USER)
+}
+```
+
+For values that change frequently or are user-generated, `String` avoids schema changes.
+
+### Multi-file schema organization
+
+For large projects, use multi-file Prisma schemas (available since v6.7.0):
+
+```
+prisma/
+├── schema.prisma        # Main schema with generator and datasource
+├── migrations/          # Migration files
+├── user.prisma         # User-related models
+├── product.prisma      # Product-related models
+└── order.prisma        # Order-related models
+```
+
+The `schema.prisma` file (containing the `generator` block) and `migrations/` directory must be at the same level. You can also group additional schema files under a subdirectory such as `prisma/models/`.
+
+## Query optimization
+
+### Connection pooling
+
+Create one global `PrismaClient` instance and reuse it throughout your application. Creating multiple instances creates multiple connection pools, which can exhaust your database's connection limit and slow down queries.
+
+```ts title="lib/prisma.ts"
+import { PrismaClient } from '../generated/prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
+
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL
+})
+
+export const prisma = new PrismaClient({ adapter })
+```
+
+**Serverless environments:**
+
+- Instantiate `PrismaClient` **outside** the handler function to reuse connections across warm invocations
+- Consider [Prisma Postgres](/postgres) for built-in connection pooling or external poolers like PgBouncer
+
+### Preventing N+1 queries
+
+The N+1 problem occurs when you run 1 query to fetch a list, then 1 additional query per item in that list. This creates many unnecessary round-trips to the database instead of a few efficient queries.
+
+```ts title="n-plus-one.ts"
+// ❌ Bad: N+1 queries (1 + N queries)
+const users = await prisma.user.findMany()
+for (const user of users) {
+  const posts = await prisma.post.findMany({
+    where: { authorId: user.id }
+  })
+}
+
+// ✅ Good: Single query with include
+const users = await prisma.user.findMany({
+  include: { posts: true }
+})
+
+// ✅ Good: Batch with IN filter
+const users = await prisma.user.findMany()
+const posts = await prisma.post.findMany({
+  where: { authorId: { in: users.map(u => u.id) } }
+})
+```
+
+### Select only needed fields
+
+By default, Prisma ORM returns all scalar fields. Use `select` to whitelist specific fields you want returned:
+
+```ts title="select.ts"
+const user = await prisma.user.findFirst({
+  select: {
+    id: true,
+    email: true,
+    role: true
+  }
+})
+```
+
+Use `omit` to blacklist fields you want excluded (useful for sensitive data):
+
+```ts title="omit.ts"
+import { PrismaClient } from '../generated/prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
+
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL
+})
+
+const prisma = new PrismaClient({
+  adapter,
+  omit: {
+    user: { secretValue: true }
+  }
+})
+```
+
+You cannot combine `select` and `omit` in the same query.
+
+### Pagination
+
+Use **offset pagination** for small datasets where jumping to arbitrary pages is needed:
+
+```ts title="offset-pagination.ts"
+const posts = await prisma.post.findMany({
+  skip: 40,
+  take: 10,
+  where: { email: { contains: 'prisma.io' } },
+})
+```
+
+Use **cursor-based pagination** for large datasets or infinite scroll. Cursor-based pagination scales better because it uses indexed columns to find the starting position instead of traversing skipped rows:
+
+```ts title="cursor-pagination.ts"
+const posts = await prisma.post.findMany({
+  take: 10,
+  skip: 1,
+  cursor: {
+    id: lastPost.id,
+  },
+  orderBy: {
+    id: 'asc',
+  },
+})
+```
+
+### Batch operations
+
+Use bulk methods when operating on multiple records:
+
+```ts title="batch-operations.ts"
+await prisma.user.createMany({
+  data: [
+    { email: 'alice@prisma.io' },
+    { email: 'bob@prisma.io' }
+  ]
+})
+
+await prisma.post.updateMany({
+  where: { published: false },
+  data: { published: true }
+})
+```
+
+Bulk operations (`createMany`, `createManyAndReturn`, `updateMany`, `updateManyAndReturn`, and `deleteMany`) [automatically run as transactions](/orm/v7/prisma-client/queries/transactions#batch-operations), so all writes either succeed together or are rolled back if something fails.
+
+### Raw queries
+
+Prefer Prisma ORM's query API. Use raw SQL only when you need features not supported by Prisma ORM or heavily optimized queries:
+
+```ts title="raw-query.ts"
+const email = 'user@example.com'
+const users = await prisma.$queryRaw`
+  SELECT * FROM "User" WHERE email = ${email}
+`
+```
+
+:::warning
+Never concatenate user input into SQL strings. Always use parameterized queries or tagged templates to prevent SQL injection.
+:::
+
+## Type safety and validation
+
+### Leverage generated types
+
+Use Prisma ORM's generated types instead of duplicating interfaces:
+
+```ts title="generated-types.ts"
+import type { User } from '../generated/prisma/client'
+
+async function getAdminEmails(): Promise<string[]> {
+  const admins: User[] = await prisma.user.findMany({
+    where: { role: 'ADMIN' }
+  })
+
+  return admins.map(a => a.email)
+}
+```
+
+### Input validation
+
+Always validate and sanitize user input before database operations:
+
+```ts title="input-validation.ts"
+import { z } from 'zod'
+
+const createUserSchema = z.object({
+  email: z.string().email(),
+  name: z.string().min(1).max(100)
+})
+
+async function createUser(input: unknown) {
+  const data = createUserSchema.parse(input)
+  return prisma.user.create({ data })
+}
+```
+
+## Security
+
+### SQL injection prevention
+
+Prisma ORM's API is safe by default. For raw queries, always use parameterized queries. String concatenation with untrusted input allows attackers to inject arbitrary SQL into your queries.
+
+```ts title="sql-injection-prevention.ts"
+// ✅ Safe: tagged template
+const result = await prisma.$queryRaw`
+  SELECT * FROM "User" WHERE email = ${email}
+`
+
+// ✅ Safe: parameterized
+const result = await prisma.$queryRawUnsafe(
+  'SELECT * FROM "User" WHERE email = $1',
+  email
+)
+
+// ❌ Unsafe: string concatenation
+const query = `SELECT * FROM "User" WHERE email = '${email}'`
+const result = await prisma.$queryRawUnsafe(query)
+```
+
+### Sensitive data handling
+
+Exclude sensitive fields from query results:
+
+```ts title="sensitive-data.ts"
+import { PrismaClient } from '../generated/prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
+
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL
+})
+
+// Global exclusion
+const prisma = new PrismaClient({
+  adapter,
+  omit: {
+    user: { secretValue: true }
+  }
+})
+
+// Per-query exclusion
+const user = await prisma.user.findUnique({
+  where: { id: 1 },
+  omit: { secretValue: true }
+})
+```
+
+## Testing
+
+### Database setup
+
+Use a dedicated test database that can be reset freely:
+
+1. Start test database (often in Docker)
+2. Apply schema via migrations
+3. Seed test data
+4. Run tests
+5. Clean up or reset database
+
+### Unit tests with mocking
+
+Mock Prisma ORM using `jest-mock-extended`:
+
+```ts title="unit-test.ts"
+import { PrismaClient } from '../generated/prisma/client'
+import { mockDeep } from 'jest-mock-extended'
+
+const prismaMock = mockDeep<PrismaClient>()
+
+test('finds user by email', async () => {
+  prismaMock.user.findUnique.mockResolvedValue({
+    id: 1,
+    email: 'test@example.com',
+    name: 'Test User'
+  })
+
+  const user = await prismaMock.user.findUnique({
+    where: { email: 'test@example.com' }
+  })
+
+  expect(user).toBeDefined()
+})
+```
+
+### Integration tests with real database
+
+Use a real database with Prisma Migrate:
+
+```ts title="integration-test.ts"
+import { PrismaClient } from '../generated/prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
+
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL
+})
+
+const prisma = new PrismaClient({ adapter })
+
+beforeEach(async () => {
+  await prisma.user.create({
+    data: { email: 'test@example.com', name: 'Test' }
+  })
+})
+
+afterEach(async () => {
+  await prisma.user.deleteMany()
+})
+
+test('creates user', async () => {
+  const user = await prisma.user.create({
+    data: { email: 'new@example.com', name: 'New User' }
+  })
+
+  expect(user.email).toBe('new@example.com')
+})
+```
+
+## Production deployment
+
+### Migration strategies
+
+**Development:**
+
+- Use `prisma migrate dev` to create and apply migrations
+- Use `prisma db push` only for quick prototyping (may reset data)
+
+**Production:**
+
+- Use **only** `prisma migrate deploy` with committed migrations
+- Never use `migrate dev` (can prompt to reset DB) or `db push` (can be destructive and locks you into a migrationless workflow)
+
+`prisma migrate deploy` applies existing migrations in a non-interactive way, uses advisory locking to prevent concurrent runs, and is safe for production data.
+
+Example CI/CD workflow:
+
+```yaml title=".github/workflows/deploy.yml"
+- name: Apply migrations
+  run: npx prisma migrate deploy
+  env:
+    DATABASE_URL: ${{ secrets.DATABASE_URL }}
+```
+
+### Serverless considerations
+
+For AWS Lambda, Vercel, Cloudflare Workers, or similar platforms:
+
+1. Instantiate `PrismaClient` **outside** the handler function to reuse connections across warm invocations
+2. Do **not** call `$disconnect()` at the end of each invocation (the container may be reused)
+3. Consider external connection poolers (like PgBouncer) for high-concurrency workloads
+
+```ts title="serverless-handler.ts"
+import { PrismaClient } from '../generated/prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
+
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL
+})
+
+const prisma = new PrismaClient({ adapter })
+
+export async function handler(event) {
+  const users = await prisma.user.findMany()
+  return {
+    statusCode: 200,
+    body: JSON.stringify(users)
+  }
+}
+```
+
+Creating a new client inside the handler on every invocation risks exhausting database connections. Each concurrent function creates its own connection pool, quickly multiplying connection counts.
+
+## Next steps
+
+- [Query optimization](/query-insights)
+- [Raw queries](/orm/v7/prisma-client/using-raw-sql/raw-queries)
+- [Prisma Migrate workflows](/orm/v7/prisma-migrate/workflows/development-and-production)

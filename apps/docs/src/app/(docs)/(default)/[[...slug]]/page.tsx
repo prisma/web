@@ -59,7 +59,7 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
           <DocsTitle>{page.data.title}</DocsTitle>
           <div className="flex flex-row gap-2 items-center" data-markdown-ignore>
             {promptContent && <CopyPromptButton fullPrompt={promptContent.fullPrompt} />}
-            {!page.url.startsWith("/management-api/endpoints") && (
+            {!page.url.startsWith("/rest-api/endpoints") && (
               <LLMCopyButton markdownUrl={`${withDocsBasePath(page.url)}.mdx`} />
             )}
 
