@@ -558,6 +558,24 @@ const config = {
         permanent: false,
       },
       { source: "/orm/more/:path*", destination: "/orm/v7/more/:path*", permanent: false },
+      // Prisma 7 folders that never had an index page. Their bare URLs 404, so
+      // send them to the first page in each folder's meta.json.
+      {
+        source: "/orm/v7/core-concepts",
+        destination: "/orm/v7/core-concepts/data-modeling",
+        permanent: false,
+      },
+      {
+        source: "/orm/v7/prisma-schema",
+        destination: "/orm/v7/prisma-schema/overview",
+        permanent: false,
+      },
+      { source: "/orm/v7/more", destination: "/orm/v7/more/releases", permanent: false },
+      {
+        source: "/orm/v7/reference/preview-features",
+        destination: "/orm/v7/reference/preview-features/client-preview-features",
+        permanent: false,
+      },
       {
         source: "/orm/reference/prisma-cli-reference",
         destination: "/orm/v7/reference/prisma-cli-reference",
