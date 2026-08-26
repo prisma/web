@@ -6,6 +6,7 @@ import { Texture } from "@/components/brand/texture";
 import { extractPreview, formatChangelogDate, getChangelogEntries } from "@/lib/changelog";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/changelog" },
   title: "Changelog",
   description:
     "New features, improvements, and fixes across Prisma ORM, Prisma Postgres, and the Prisma platform.",

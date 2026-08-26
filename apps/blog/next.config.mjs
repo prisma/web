@@ -256,6 +256,13 @@ const config = {
         destination: "/series/prisma-8",
         permanent: true,
       },
+      // Legacy slug suffixes are mixed case; lowercased copies of this one
+      // still arrive from old links and search results.
+      {
+        source: "/nestjs-prisma-authentication-7d056s1s0k3l",
+        destination: "/nestjs-prisma-authentication-7D056s1s0k3l",
+        permanent: true,
+      },
       {
         source: "/xeito-prisma-customer-story",
         destination: "/how-xeito-builds-features-not-database-infrastructure-with-prisma",

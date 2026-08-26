@@ -5,6 +5,7 @@ import { Texture } from "@/components/brand/texture";
 import { PrismButton } from "@/components/brand/prism-button";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/community" },
   title: "Community",
   description:
     "Have a question, idea, or contribution for Prisma ORM? You are not alone. Join hundreds of thousands of Prisma developers.",

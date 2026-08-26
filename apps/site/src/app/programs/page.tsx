@@ -6,6 +6,7 @@ import { Texture } from "@/components/brand/texture";
 import { CtaBurst } from "@/components/sections/cta-burst";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/programs" },
   title: "Programs",
   description: "Prisma programs for startups, platform partners, and the open-source community.",
 };

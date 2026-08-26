@@ -4,6 +4,7 @@ import { ContactSupport } from "@/components/sections/contact-support";
 import { CtaBurst } from "@/components/sections/cta-burst";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/contact" },
   title: "Contact",
   description: "Tell us what you're working on and we'll route your message to the right person.",
 };

@@ -7,6 +7,7 @@ import { ProductPlatform } from "@/components/product/product-platform";
 import { ProductProblem } from "@/components/product/product-problem";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/compute" },
   title: "Prisma Compute",
   description: "One platform for your app and its database.",
 };

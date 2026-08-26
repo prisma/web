@@ -3,6 +3,7 @@ import { LegalPage } from "@/components/sections/legal-page";
 import { termsLastUpdated, termsSections } from "@/lib/legal/terms";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/legal/terms" },
   title: "Terms of Service",
   description: "Read the Prisma Terms of Service.",
 };

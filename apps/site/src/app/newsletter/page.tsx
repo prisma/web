@@ -6,6 +6,7 @@ import { Texture } from "@/components/brand/texture";
 import { NewsletterSignup } from "./newsletter-signup";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/newsletter" },
   title: "Sign up for Prisma's monthly newsletter",
   description:
     "The Prisma newsletter is packed with all the latest releases, updates, blogs, and more. Sign up today to stay up-to-date with Prisma.",

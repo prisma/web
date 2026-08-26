@@ -5,6 +5,7 @@ import { RoleKicker } from "@/components/brand/role-kicker";
 import { PrismButton } from "@/components/brand/prism-button";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/legal/security-and-compliance" },
   title: "Security & Compliance",
   description:
     "Prisma's certifications and standards: SOC 2, ISO 27001, GDPR, and HIPAA, with full details and reports in the Prisma Trust Center.",
