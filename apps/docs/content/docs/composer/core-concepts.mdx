@@ -6,7 +6,7 @@ metaTitle: Prisma Composer core concepts
 metaDescription: Learn the core concepts behind Prisma Composer in one page. What services, resources, and Modules are, how ports and contracts wire them, and how deploys converge.
 ---
 
-Prisma Composer has a small vocabulary that repeats everywhere: in the authoring API, in deploy output, and in error messages. This page defines each term in plain language and shows how they connect. Each section links to the page that goes deeper, so you can read this once and then navigate the rest of the docs by name.
+Prisma Composer is a TypeScript framework for applications made of several services. You touch two things: the `@prisma/composer` library, which you use to declare your services and what they depend on, and the `dev` and `deploy` commands in the Prisma CLI, which run and provision what you declared on [Prisma Compute](/compute) and [Prisma Postgres](/postgres). The declarations use a small vocabulary that repeats everywhere: in the authoring API, in deploy output, and in error messages. The sections below define each term in plain language, and each links to the page that goes deeper.
 
 ## Declarations are data
 
@@ -25,7 +25,7 @@ export default compute({
 });
 ```
 
-Importing this file executes nothing. The declaration is data that three different consumers read: the TypeScript compiler checks the wiring, the deploy provisions what it describes, and the runtime injects the declared dependencies into your code. That is why a mistake, such as a dependency wired to a producer with a different contract, fails `tsc` in seconds instead of failing a deploy.
+The `deps` line says the storefront calls the catalog service's API, named by a [contract](#contracts) defined further down this page. Importing this file executes nothing. The declaration is data that three different consumers read: the TypeScript compiler checks the wiring, the deploy provisions what it describes, and the runtime injects the declared dependencies into your code. That is why a mistake, such as a dependency wired to a producer with a different contract, fails `tsc` in seconds instead of failing a deploy.
 
 Two rules follow from this design and shape everything else:
 
@@ -85,7 +85,7 @@ const { products } = await catalog.listProducts({});
 **Input** is configuration: plain values and credentials, declared together as one [Standard Schema](https://standardschema.dev) and read through `service.input()`. The service declares what shapes are legal; the place that provisions it decides where each value comes from. There are three bindings:
 
 1. A **literal**: the value is written at the provision site and travels with the deployment.
-2. **`envParam(NAME)`**: the value is read from a named platform variable per environment, so it can differ between production and a stage.
+2. **`envParam(NAME)`**: the value is read from a named platform variable per environment, so the same app reads different values in production and in a staging copy.
 3. **`envSecret(NAME)`**: like `envParam`, but the value is a credential: redacted in output and never stored in deploy state. This is the only thing Composer calls a secret.
 
 The split is what makes environments cheap: production, a staging stage, a local run, and a test all execute the same code with different injected values. See [Service input](/composer/service-input).
@@ -96,9 +96,9 @@ A **contract** is the typed interface through which services communicate. You wr
 
 Databases have a contract story of their own: a `pnPostgres()` resource is typed by a [Prisma 8 data contract](/orm/contract-authoring/the-data-contract), and its migrations run as part of the deploy. Every database belongs to exactly one Module, which is what makes migration ownership unambiguous: the Module that owns the database owns its schema. See [Databases](/composer/databases).
 
-## The deploy model: converge, don't script
+## The deploy model
 
-`deploy` is declarative. It loads your root module, compares the topology it describes with the **deploy state** recorded for that environment, and applies only the difference: create what is new, update what changed, leave the rest alone. Re-running a deploy with nothing changed is a no-op, and re-running after a failure picks up where things diverged rather than starting over.
+A deploy is not a script of steps you wrote; it is a comparison. `deploy` loads your root module, compares the topology it describes with the **deploy state** recorded for that environment, and applies only the difference: create what is new, update what changed, leave the rest alone. Re-running a deploy with nothing changed is a no-op, and re-running after a failure picks up where things diverged rather than starting over.
 
 ```npm
 npx prisma@latest deploy module.ts
@@ -134,7 +134,7 @@ A Module is also the unit of reuse. A **building block** is a ready-made Module 
 
 An **extension** is a package that brings its own Modules, resources, or deploy target, published under the `prisma-composer-*` naming convention. The first-party blocks above are the whole catalogue today. See [Building blocks](/composer/building-blocks) and [Object storage](/composer/object-storage).
 
-## Testing is the same seam
+## Testing
 
 Because your code receives everything through `service.load()` and `service.input()`, a test is just another environment: one where you decide what those calls return. `mockService` substitutes a fake for a unit test; `bootstrapService` hydrates a service with real local dependencies for an integration test. Nothing is provisioned and no code changes. See [Testing](/composer/testing).
 
