@@ -1,13 +1,17 @@
 import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import Link from "next/link";
 import { CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CtaSimple } from "@/components/sections/cta-simple";
 
 export const metadata: Metadata = {
-  alternates: { canonical: "/demo/thank-you" },
-  title: "Thanks for Requesting a Demo",
-  description: "We'll be in touch shortly to schedule your personalized walkthrough.",
+  ...createPageMetadata({
+    title: "Thanks for Requesting a Demo",
+    description: "We'll be in touch shortly to schedule your personalized walkthrough.",
+    path: "/demo/thank-you",
+    ogKicker: "Demo",
+  }),
   robots: { index: false, follow: false },
 };
 

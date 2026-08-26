@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import type { ReactNode } from "react";
 import { RoleKicker } from "@/components/brand/role-kicker";
 import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button";
@@ -9,11 +9,12 @@ import {
   supportChannels,
 } from "@/data/support-policy";
 
-export const metadata: Metadata = {
-  alternates: { canonical: "/support-policy" },
+export const metadata = createPageMetadata({
   title: "Support Policy",
   description: "Read our support policy and see how it relates to you.",
-};
+  path: "/support-policy",
+  ogKicker: "Support",
+});
 
 // Restyled from the old support-policy page: same data tables and prose, on
 // the legal-document shell of the new design system.

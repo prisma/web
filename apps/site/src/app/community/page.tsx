@@ -1,15 +1,16 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { ArrowRight } from "@/components/icons/forma";
 import { RoleKicker } from "@/components/brand/role-kicker";
 import { Texture } from "@/components/brand/texture";
 import { PrismButton } from "@/components/brand/prism-button";
 
-export const metadata: Metadata = {
-  alternates: { canonical: "/community" },
+export const metadata = createPageMetadata({
   title: "Community",
   description:
     "Have a question, idea, or contribution for Prisma ORM? You are not alone. Join hundreds of thousands of Prisma developers.",
-};
+  path: "/community",
+  ogKicker: "Community",
+});
 
 // Ported from the old site's /community page (apps/site).
 

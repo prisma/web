@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { computeContent } from "@/components/product/content/compute";
 import { ProductCta } from "@/components/product/product-cta";
 import { ProductFeatures } from "@/components/product/product-features";
@@ -6,11 +6,13 @@ import { ProductHero } from "@/components/product/product-hero";
 import { ProductPlatform } from "@/components/product/product-platform";
 import { ProductProblem } from "@/components/product/product-problem";
 
-export const metadata: Metadata = {
-  alternates: { canonical: "/compute" },
+export const metadata = createPageMetadata({
   title: "Prisma Compute",
   description: "One platform for your app and its database.",
-};
+  path: "/compute",
+  ogKicker: "Prisma Compute",
+  ogAccent: "red",
+});
 
 // /compute composes the product sections directly, like /orm: V4 gives this page
 // no testimonial section, so it can't go through ProductPage. It adds no extra

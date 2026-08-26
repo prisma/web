@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { createSoftwareApplicationStructuredData } from "@/lib/structured-data";
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 
@@ -19,30 +19,12 @@ const PAGE_TITLE = "Prisma MCP Server | Manage Databases with AI Agents";
 const PAGE_DESCRIPTION =
   "Manage your databases with natural language via MCP in Claude, Codex, Cursor, Warp, ChatGPT and other AI agents. Works great with Prisma Postgres.";
 
-export const metadata: Metadata = {
-  title: { absolute: PAGE_TITLE },
+export const metadata = createPageMetadata({
+  title: PAGE_TITLE,
   description: PAGE_DESCRIPTION,
-  alternates: {
-    canonical: "/mcp",
-  },
-  openGraph: {
-    title: PAGE_TITLE,
-    description: PAGE_DESCRIPTION,
-    url: "/mcp",
-    siteName: "Prisma",
-    locale: "en_US",
-    type: "website",
-    images: [{ url: "/og/og-mcp.png" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    site: "@prisma",
-    creator: "@prisma",
-    title: PAGE_TITLE,
-    description: PAGE_DESCRIPTION,
-    images: ["/og/og-mcp.png"],
-  },
-};
+  path: "/mcp",
+  ogKicker: "Prisma MCP Server",
+});
 
 const DOCS_MCP = "https://www.prisma.io/docs/ai/tools/mcp-server";
 

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -29,10 +29,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: "Brand Guidelines",
   description: "Brand guidelines, typography, colors, and design tokens.",
-};
+  path: "/brand",
+  ogKicker: "Brand",
+});
 
 const colors = [
   { name: "Primary", variable: "--primary", class: "bg-primary text-primary-foreground" },

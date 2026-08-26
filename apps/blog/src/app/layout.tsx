@@ -2,7 +2,6 @@ import { Provider } from "@/components/provider";
 import { createBlogStructuredData } from "@/lib/structured-data";
 import { getBaseUrl } from "@/lib/url";
 import "./global.css";
-import { Barlow } from "next/font/google";
 import localFont from "next/font/local";
 import type { Metadata } from "next";
 import Script from "next/script";
@@ -50,12 +49,6 @@ const monaSansMono = localFont({
   weight: "200 900",
 });
 
-const barlow = Barlow({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-barlow",
-});
-
 export const metadata: Metadata = {
   metadataBase: new URL(getBaseUrl()),
   title: BLOG_HOME_TITLE,
@@ -68,7 +61,7 @@ export default function Layout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${barlow.variable} ${sora.variable} ${monaSansMono.variable}`}
+      className={`${inter.variable} ${sora.variable} ${monaSansMono.variable}`}
       suppressHydrationWarning
     >
       <head>

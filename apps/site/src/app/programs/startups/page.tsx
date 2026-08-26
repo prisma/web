@@ -1,15 +1,16 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { CheckBold } from "@/components/icons/forma";
 import { RoleKicker } from "@/components/brand/role-kicker";
 import { Texture } from "@/components/brand/texture";
 import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button";
 
-export const metadata: Metadata = {
-  alternates: { canonical: "/programs/startups" },
+export const metadata = createPageMetadata({
   title: "Prisma Startup Program",
   description:
     "The Prisma Startup Program is designed to help early-stage founders focus on scaling their businesses, and not managing databases.",
-};
+  path: "/programs/startups",
+  ogKicker: "Programs",
+});
 
 // Ported from the old site's /startups page. The Tally application form is
 // linked directly instead of embedded (no third-party script needed here).

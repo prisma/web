@@ -1,16 +1,17 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { ArrowRight } from "@/components/icons/forma";
 import { RoleKicker } from "@/components/brand/role-kicker";
 import { Texture } from "@/components/brand/texture";
 import { PrismButton } from "@/components/brand/prism-button";
 import { cn } from "@/lib/utils";
 
-export const metadata: Metadata = {
-  alternates: { canonical: "/programs/partners" },
+export const metadata = createPageMetadata({
   title: "Partner network",
   description:
     "Join our partner network designed for affiliates, technology partners, and resellers.",
-};
+  path: "/programs/partners",
+  ogKicker: "Programs",
+});
 
 // Ported from the old site's /partners page. The Tally contact form is linked
 // directly instead of embedded; illustrations reuse the old page's light set.

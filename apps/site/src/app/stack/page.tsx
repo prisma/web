@@ -1,15 +1,16 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { CtaBurst } from "@/components/sections/cta-burst";
 import { StackBento } from "@/components/sections/stack-bento";
 import { RoleKicker } from "@/components/brand/role-kicker";
 import { Texture } from "@/components/brand/texture";
 
-export const metadata: Metadata = {
-  alternates: { canonical: "/stack" },
+export const metadata = createPageMetadata({
   title: "The Prisma Stack",
   description:
     "ORM, Postgres, and Compute, one platform for your app and its database, with one shared context across your stack.",
-};
+  path: "/stack",
+  ogKicker: "The Prisma Stack",
+});
 
 // Interim /stack page: the header's "Explore the stack" link needs a real
 // destination. Reuses the homepage's StackBento until CF designs the full

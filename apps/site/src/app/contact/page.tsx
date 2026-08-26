@@ -1,13 +1,14 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { ContactHero } from "@/components/sections/contact-hero";
 import { ContactSupport } from "@/components/sections/contact-support";
 import { CtaBurst } from "@/components/sections/cta-burst";
 
-export const metadata: Metadata = {
-  alternates: { canonical: "/contact" },
+export const metadata = createPageMetadata({
   title: "Contact",
   description: "Tell us what you're working on and we'll route your message to the right person.",
-};
+  path: "/contact",
+  ogKicker: "Contact",
+});
 
 // Built from the approved contact copy, verbatim. Three sections: the wrapped
 // hero panel carrying the form, the three support channels, and the site's
