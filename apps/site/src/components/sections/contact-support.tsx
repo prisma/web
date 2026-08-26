@@ -21,7 +21,7 @@ const CHANNELS = [
     name: "Bugs and feature requests",
     Icon: Github,
     description: "Report a bug or request a feature on GitHub.",
-    cta: { label: "Open GitHub", href: "https://github.com/prisma/prisma/issues" },
+    cta: { label: "Open GitHub", href: "https://github.com/prisma/orm/issues" },
   },
 ];
 

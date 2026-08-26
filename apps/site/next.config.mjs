@@ -519,7 +519,7 @@ const config = {
       {
         permanent: true,
         source: "/blog/mongodb-preview-ow4wahkekaep",
-        destination: "https://github.com/prisma/prisma/issues/1277",
+        destination: "https://github.com/prisma/orm/issues/1277",
       },
       {
         permanent: true,
