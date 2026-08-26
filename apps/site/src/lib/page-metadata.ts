@@ -8,8 +8,6 @@ type PageMetadataOptions = {
   title: string;
   description: string;
   path: string;
-  /** A hand-made image. Without it the page gets a generated card (see lib/og-card.ts). */
-  ogImage?: string;
   /** Eyebrow on the generated card, e.g. "Prisma ORM". Defaults to the site name. */
   ogKicker?: string;
   /** Product accent on the generated card. Defaults to cyan. */
@@ -36,20 +34,20 @@ export function createPageMetadata({
   title: rawTitle,
   description,
   path,
-  ogImage,
   ogKicker,
   ogAccent,
 }: PageMetadataOptions): Metadata {
   const title = withSiteName(rawTitle);
-  const ogImagePath =
-    ogImage ?? getOgCardUrl({ title: rawTitle, description, kicker: ogKicker, accent: ogAccent });
+  const ogImagePath = getOgCardUrl({
+    title: rawTitle,
+    description,
+    kicker: ogKicker,
+    accent: ogAccent,
+  });
   const pathname = path === "/" ? "/" : path.startsWith("/") ? path : `/${path}`;
   const baseUrl = getBaseUrl();
   const url = new URL(pathname, baseUrl).toString();
-  const ogImageUrl = new URL(
-    ogImagePath.startsWith("/") ? ogImagePath : `/${ogImagePath}`,
-    baseUrl,
-  ).toString();
+  const ogImageUrl = new URL(ogImagePath, baseUrl).toString();
 
   return {
     // Absolute: this helper already brands the title itself (word-boundary

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { CtaBurst } from "@/components/sections/cta-burst";
 import { BrandKitHero } from "@/components/brand-kit/brand-kit-hero";
 import { BrandKitLogo } from "@/components/brand-kit/brand-kit-logo";
@@ -12,12 +12,13 @@ import { BrandKitMascot } from "@/components/brand-kit/brand-kit-mascot";
 import { BrandKitCobranding } from "@/components/brand-kit/brand-kit-cobranding";
 import { MASTER_ZIP } from "@/components/brand-kit/content";
 
-export const metadata: Metadata = {
-  alternates: { canonical: "/brand-kit" },
+export const metadata = createPageMetadata({
   title: "Brand & Press Kit",
   description:
     "Download Prisma logos and mascot art in every format, with the colours, typography, and guidelines that keep the brand consistent — for partners, integrations, and press.",
-};
+  path: "/brand-kit",
+  ogKicker: "Brand",
+});
 
 // The public brand & press kit. Built at /brand-kit so the internal
 // design-system reference at /brand is untouched; can be promoted to /brand

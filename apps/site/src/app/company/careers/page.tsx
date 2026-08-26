@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import {
   CareersBenefits,
   CareersCulture,
@@ -7,12 +7,13 @@ import {
 import { TeamPhotos } from "@/components/sections/company-sections";
 import { OpenRoles } from "@/components/sections/open-roles";
 
-export const metadata: Metadata = {
-  alternates: { canonical: "/company/careers" },
+export const metadata = createPageMetadata({
   title: "Careers",
   description:
     "See open positions at Prisma. Join us to empower developers to build data-driven applications.",
-};
+  path: "/company/careers",
+  ogKicker: "Careers",
+});
 
 // Ported from the old site's /careers page (apps/site).
 export default function CareersPage() {

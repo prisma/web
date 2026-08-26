@@ -1,15 +1,16 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import Link from "next/link";
 import { ArrowRight } from "@/components/icons/forma";
 import { RoleKicker } from "@/components/brand/role-kicker";
 import { PrismButton } from "@/components/brand/prism-button";
 
-export const metadata: Metadata = {
-  alternates: { canonical: "/legal/security-and-compliance" },
+export const metadata = createPageMetadata({
   title: "Security & Compliance",
   description:
     "Prisma's certifications and standards: SOC 2, ISO 27001, GDPR, and HIPAA, with full details and reports in the Prisma Trust Center.",
-};
+  path: "/legal/security-and-compliance",
+  ogKicker: "Legal",
+});
 
 // Compliance claims sourced from the pricing spec table (plan availability)
 // and the partner terms; the Trust Center carries the authoritative reports.

@@ -1,16 +1,17 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import Link from "next/link";
 import { ArrowRight } from "@/components/icons/forma";
 import { RoleKicker } from "@/components/brand/role-kicker";
 import { Texture } from "@/components/brand/texture";
 import { extractPreview, formatChangelogDate, getChangelogEntries } from "@/lib/changelog";
 
-export const metadata: Metadata = {
-  alternates: { canonical: "/changelog" },
+export const metadata = createPageMetadata({
   title: "Changelog",
   description:
     "New features, improvements, and fixes across Prisma ORM, Prisma Postgres, and the Prisma platform.",
-};
+  path: "/changelog",
+  ogKicker: "Changelog",
+});
 
 // Ported from the old site's /changelog (apps/site): same MDX entries, listed
 // newest first as a single timeline.
