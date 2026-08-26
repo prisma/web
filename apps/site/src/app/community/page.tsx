@@ -63,20 +63,20 @@ const CONTRIBUTING = [
     title: "Open an issue",
     description:
       "Found a bug or have a feature request? Open an issue on the Prisma GitHub repository.",
-    link: "https://github.com/prisma/prisma/issues",
+    link: "https://github.com/prisma/orm/issues",
     cta: "Open issue",
   },
   {
     title: "Join the discussion",
     description:
       "Ask questions, share ideas, and connect with the Prisma team on GitHub Discussions.",
-    link: "https://github.com/prisma/prisma/discussions",
+    link: "https://github.com/prisma/orm/discussions",
     cta: "Start discussion",
   },
   {
     title: "Contributing guide",
     description: "Learn how to contribute code, docs, and improvements to the Prisma project.",
-    link: "https://github.com/prisma/prisma/blob/main/CONTRIBUTING.md",
+    link: "https://github.com/prisma/orm/blob/main/CONTRIBUTING.md",
     cta: "Read guide",
   },
 ];

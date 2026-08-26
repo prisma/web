@@ -29,11 +29,11 @@ const SUPPORT_CARDS: SupportCard[] = [
     links: [
       {
         label: "Report a bug",
-        url: "https://github.com/prisma/prisma/issues/new?assignees=&labels=&template=bug_report.md",
+        url: "https://github.com/prisma/orm/issues/new?assignees=&labels=&template=bug_report.md",
       },
       {
         label: "Request a new feature",
-        url: "https://github.com/prisma/prisma/issues/new?assignees=&labels=&template=feature_request.md",
+        url: "https://github.com/prisma/orm/issues/new?assignees=&labels=&template=feature_request.md",
       },
     ],
   },

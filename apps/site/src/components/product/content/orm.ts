@@ -18,7 +18,7 @@ import type { ProductPageContent } from "../types";
 //  - The features and integrations carry no "Learn more" destinations, so none
 //    are rendered rather than invented.
 
-const GITHUB = "https://github.com/prisma/prisma";
+const GITHUB = "https://github.com/prisma/orm";
 const DOCS = "/docs";
 
 export const ormContent: ProductPageContent = {
