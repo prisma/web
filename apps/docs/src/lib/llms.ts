@@ -236,7 +236,7 @@ export const llmsSections: LLMsSection[] = [
     slug: "compute",
     title: "Prisma Compute",
     description:
-      "Prisma Compute (Public Beta): TypeScript app hosting that runs alongside Prisma Postgres, with database branches, isolated branch previews, and a CLI-first deploy workflow.",
+      "Prisma Compute: TypeScript app hosting that runs alongside Prisma Postgres, with database branches, isolated branch previews, and a CLI-first deploy workflow.",
     prefixes: ["/compute"],
   },
   {
