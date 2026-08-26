@@ -5,6 +5,7 @@ import { Texture } from "@/components/brand/texture";
 import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/programs/startups" },
   title: "Prisma Startup Program",
   description:
     "The Prisma Startup Program is designed to help early-stage founders focus on scaling their businesses, and not managing databases.",

@@ -8,6 +8,7 @@ import { TeamPhotos } from "@/components/sections/company-sections";
 import { OpenRoles } from "@/components/sections/open-roles";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/company/careers" },
   title: "Careers",
   description:
     "See open positions at Prisma. Join us to empower developers to build data-driven applications.",

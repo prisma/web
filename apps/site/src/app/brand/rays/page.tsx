@@ -3,6 +3,7 @@ import { Check, Database, Rocket, Search, Server } from "@/components/icons/form
 import { PrismRay, prismBands } from "@/components/brand/prism-ray";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/brand/rays" },
   title: "Ray Lab",
   robots: { index: false, follow: false },
 };

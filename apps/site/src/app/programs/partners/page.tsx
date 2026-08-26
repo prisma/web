@@ -6,6 +6,7 @@ import { PrismButton } from "@/components/brand/prism-button";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/programs/partners" },
   title: "Partner network",
   description:
     "Join our partner network designed for affiliates, technology partners, and resellers.",

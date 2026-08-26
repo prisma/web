@@ -5,6 +5,10 @@
 export function getBaseUrl(): string {
   return (
     process.env.NEXT_PUBLIC_PRISMA_URL ??
+    // Production builds must never fall through to the deployment hostname:
+    // canonicals, sitemap <loc>s, and JSON-LD @ids would silently point at a
+    // Vercel host. Same guard as apps/site.
+    (process.env.NODE_ENV === "production" ? "https://www.prisma.io" : null) ??
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ??
     // PORT covers local runs on a non-default port; when Next auto-increments
     // past a busy 3001 no env var records it, so links may still say 3001.

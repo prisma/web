@@ -8,6 +8,7 @@ import {
 } from "@/components/sections/company-sections";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/company" },
   title: "Company",
   description:
     "At Prisma, our mission is to make working with databases easy, with a great developer experience at the core of every product we build.",

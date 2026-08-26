@@ -3,6 +3,7 @@ import { postgresContent } from "@/components/product/content/postgres";
 import { ProductPage } from "@/components/product/product-page";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/postgres" },
   title: "Prisma Postgres",
   description: "Production-ready Postgres, already wired to your stack.",
 };

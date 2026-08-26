@@ -217,7 +217,7 @@ Those helpers are used for things like `metadataBase`, canonical URLs, OpenGraph
 The behavior differs slightly by app:
 
 - `apps/site` normalizes `NEXT_PUBLIC_PRISMA_URL`, falls back to `https://www.prisma.io` in production, and otherwise uses `VERCEL_URL` or `http://localhost:3000`.
-- `apps/docs` and `apps/blog` fall back to their own local ports (`3001` and `3002`) if no environment variable is present.
+- `apps/docs` and `apps/blog` follow the same production fallback to `https://www.prisma.io`, then `VERCEL_URL`, then their own local ports (`3001` and `3002`).
 
 That means each zone can reason about its own canonical base URL, but it also means environment consistency matters if you want metadata to align cleanly across deployments.
 

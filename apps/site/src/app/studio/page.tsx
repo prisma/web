@@ -103,6 +103,7 @@ const studioStructuredData = createSoftwareApplicationStructuredData({
 });
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/studio" },
   title: "Prisma Studio",
   description:
     "Explore, edit, and understand your data with a visual database browser for Prisma, locally or in Prisma Console.",

@@ -3,6 +3,7 @@ import { LegalPage } from "@/components/sections/legal-page";
 import { slaLastUpdated, slaSections } from "@/lib/legal/sla";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/legal/sla" },
   title: "Service Level Agreement",
   description: "Read the Prisma Service Level Agreement.",
 };

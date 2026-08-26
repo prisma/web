@@ -10,6 +10,7 @@ import {
 } from "@/data/support-policy";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/support-policy" },
   title: "Support Policy",
   description: "Read our support policy and see how it relates to you.",
 };

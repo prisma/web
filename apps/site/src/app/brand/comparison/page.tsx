@@ -5,6 +5,7 @@ import { prismBands } from "@/components/brand/prism-ray";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/brand/comparison" },
   title: "Brand lab - Before & after",
   robots: { index: false },
 };

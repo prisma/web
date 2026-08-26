@@ -227,6 +227,20 @@ const config = {
         permanent: false,
         basePath: false,
       },
+      // Direct hits on the blog origin host (blog.prisma.io/robots.txt) get a
+      // disallow-all robots.txt so the duplicate host is not crawled. Search
+      // Console shows blog.prisma.io URLs indexed with impressions but zero
+      // clicks. Google follows robots.txt redirects and treats the target as
+      // this host's robots file. A basePath-free rewrite is not allowed for
+      // internal destinations, hence the redirect. The canonical
+      // www.prisma.io/robots.txt is served by apps/site and never reaches
+      // this app.
+      {
+        source: "/robots.txt",
+        destination: "/blog/robots-origin.txt",
+        permanent: false,
+        basePath: false,
+      },
       {
         source: "/optimize-now-generally-available",
         destination: "/",
@@ -242,9 +256,21 @@ const config = {
         destination: "/series/prisma-8",
         permanent: true,
       },
+      // Legacy slug suffixes are mixed case; lowercased copies of this one
+      // still arrive from old links and search results.
+      {
+        source: "/nestjs-prisma-authentication-7d056s1s0k3l",
+        destination: "/nestjs-prisma-authentication-7D056s1s0k3l",
+        permanent: true,
+      },
       {
         source: "/xeito-prisma-customer-story",
         destination: "/how-xeito-builds-features-not-database-infrastructure-with-prisma",
+        permanent: true,
+      },
+      {
+        source: "/series/agentic-software-development",
+        destination: "/series/agentic-engineering",
         permanent: true,
       },
       ...tagSlugs.map((tag) => ({
@@ -262,6 +288,13 @@ const config = {
       },
       {
         source: "/:path*.mdx",
+        destination: "/llms.mdx/:path*",
+      },
+      // Match docs: agents request the conventional .md suffix too, and the
+      // docs Link headers advertise it. Both suffixes serve the same
+      // markdown rendition.
+      {
+        source: "/:path*.md",
         destination: "/llms.mdx/:path*",
       },
     ];

@@ -4,6 +4,7 @@ import { RoleKicker } from "@/components/brand/role-kicker";
 import { Texture } from "@/components/brand/texture";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/support" },
   title: "Support",
   description:
     "Get help with Prisma. Search for answers, report bugs, request features, or contact the Prisma support team.",

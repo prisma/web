@@ -3,6 +3,7 @@ import { LegalPage } from "@/components/sections/legal-page";
 import { privacyLastUpdated, privacySections } from "@/lib/legal/privacy";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/legal/privacy" },
   title: "Privacy Policy",
   description:
     "Read the Prisma Privacy Policy covering how we collect, use, and protect your data.",

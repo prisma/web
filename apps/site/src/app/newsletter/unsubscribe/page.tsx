@@ -9,6 +9,7 @@ import { RoleKicker } from "@/components/brand/role-kicker";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/newsletter/unsubscribe" },
   title: "Unsubscribe from the Prisma newsletter",
   description: "Manage your Prisma newsletter subscription.",
   referrer: "no-referrer",
