@@ -1,16 +1,17 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import Link from "next/link";
 import { ArrowRight } from "@/components/icons/forma";
 import { RoleKicker } from "@/components/brand/role-kicker";
 import { Texture } from "@/components/brand/texture";
 import { NewsletterSignup } from "./newsletter-signup";
 
-export const metadata: Metadata = {
-  alternates: { canonical: "/newsletter" },
+export const metadata = createPageMetadata({
   title: "Sign up for Prisma's monthly newsletter",
   description:
     "The Prisma newsletter is packed with all the latest releases, updates, blogs, and more. Sign up today to stay up-to-date with Prisma.",
-};
+  path: "/newsletter",
+  ogKicker: "Newsletter",
+});
 
 type RssItem = {
   title: string;

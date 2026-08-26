@@ -1,14 +1,15 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { ArrowRight } from "@/components/icons/forma";
 import { RoleKicker } from "@/components/brand/role-kicker";
 import { Texture } from "@/components/brand/texture";
 
-export const metadata: Metadata = {
-  alternates: { canonical: "/support" },
+export const metadata = createPageMetadata({
   title: "Support",
   description:
     "Get help with Prisma. Search for answers, report bugs, request features, or contact the Prisma support team.",
-};
+  path: "/support",
+  ogKicker: "Support",
+});
 
 // Ported from the old site's /support page (apps/site + data/support.json),
 // rebuilt in the redesign language: one card per support path, accent bars

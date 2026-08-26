@@ -1,14 +1,15 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { RoleKicker } from "@/components/brand/role-kicker";
 import { Texture } from "@/components/brand/texture";
 import { PrismButton } from "@/components/brand/prism-button";
 
-export const metadata: Metadata = {
-  alternates: { canonical: "/enterprise" },
+export const metadata = createPageMetadata({
   title: "Enterprise",
   description:
     "Enterprise-level support, security, and guidance for teams running Prisma in production.",
-};
+  path: "/enterprise",
+  ogKicker: "Enterprise",
+});
 
 // Ported (condensed) from the old site's /enterprise page. The Tally contact
 // form is linked directly instead of embedded.

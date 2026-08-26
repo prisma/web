@@ -105,7 +105,7 @@ export const metadata = createPageMetadata({
   description:
     "Query data from MySQL, PostgreSQL & SQL Server databases in Fastify apps with Prisma – a better ORM for JavaScript and TypeScript.",
   path: "/fastify",
-  ogImage: "/og/prisma-with/fastify.png",
+  ogKicker: "Prisma ORM",
 });
 
 export default async function FastifyPage() {

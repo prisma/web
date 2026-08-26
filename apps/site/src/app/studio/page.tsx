@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import Image from "next/image";
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import { Youtube } from "@prisma-docs/ui/components/youtube";
@@ -102,12 +102,13 @@ const studioStructuredData = createSoftwareApplicationStructuredData({
     "Visual database browser and editor for Prisma. Explore and edit your data with a model-aware interface, locally or in the Prisma Console.",
 });
 
-export const metadata: Metadata = {
-  alternates: { canonical: "/studio" },
+export const metadata = createPageMetadata({
   title: "Prisma Studio",
   description:
     "Explore, edit, and understand your data with a visual database browser for Prisma, locally or in Prisma Console.",
-};
+  path: "/studio",
+  ogKicker: "Prisma Studio",
+});
 
 export default function StudioPage() {
   return (

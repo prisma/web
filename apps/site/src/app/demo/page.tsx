@@ -1,11 +1,12 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { DemoForm } from "./demo-form";
 
-export const metadata: Metadata = {
-  alternates: { canonical: "/demo" },
+export const metadata = createPageMetadata({
   title: "Request a Demo",
   description: "See how we can help your team ship faster. Book a personalized walkthrough.",
-};
+  path: "/demo",
+  ogKicker: "Demo",
+});
 
 export default function DemoPage() {
   return (

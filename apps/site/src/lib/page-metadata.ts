@@ -1,12 +1,17 @@
 import type { Metadata } from "next";
 import { getBaseUrl } from "@/lib/url";
 import { SITE_NAME } from "@/lib/site-metadata";
+import { getOgCardUrl } from "@/lib/og-card";
+import type { OgAccent } from "@prisma-docs/ui/components/og-image";
 
 type PageMetadataOptions = {
   title: string;
   description: string;
   path: string;
-  ogImage?: string;
+  /** Eyebrow on the generated card, e.g. "Prisma ORM". Defaults to the site name. */
+  ogKicker?: string;
+  /** Product accent on the generated card. Defaults to cyan. */
+  ogAccent?: OgAccent;
 };
 
 /**
@@ -29,15 +34,20 @@ export function createPageMetadata({
   title: rawTitle,
   description,
   path,
-  ogImage = "/og/og-index.png",
+  ogKicker,
+  ogAccent,
 }: PageMetadataOptions): Metadata {
   const title = withSiteName(rawTitle);
+  const ogImagePath = getOgCardUrl({
+    title: rawTitle,
+    description,
+    kicker: ogKicker,
+    accent: ogAccent,
+  });
   const pathname = path === "/" ? "/" : path.startsWith("/") ? path : `/${path}`;
   const baseUrl = getBaseUrl();
   const url = new URL(pathname, baseUrl).toString();
-  const ogImageUrl = ogImage
-    ? new URL(ogImage.startsWith("/") ? ogImage : `/${ogImage}`, baseUrl).toString()
-    : undefined;
+  const ogImageUrl = new URL(ogImagePath, baseUrl).toString();
 
   return {
     // Absolute: this helper already brands the title itself (word-boundary
@@ -55,15 +65,15 @@ export function createPageMetadata({
       siteName: "Prisma",
       locale: "en_US",
       type: "website",
-      images: ogImageUrl ? [{ url: ogImageUrl }] : undefined,
+      images: [{ url: ogImageUrl }],
     },
     twitter: {
-      card: ogImageUrl ? "summary_large_image" : "summary",
+      card: "summary_large_image",
       site: "@prisma",
       creator: "@prisma",
       title,
       description,
-      images: ogImageUrl ? [ogImageUrl] : undefined,
+      images: [ogImageUrl],
     },
   };
 }

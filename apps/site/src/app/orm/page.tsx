@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/page-metadata";
 import { TestimonialsReveal } from "@/components/sections/testimonials-reveal";
 import { ormContent, ormFeedback, ormMigrations } from "@/components/product/content/orm";
 import { FeedbackLoop } from "@/components/product/illustrations/feedback-loop";
@@ -11,11 +11,13 @@ import { ProductNarrative } from "@/components/product/product-narrative";
 import { ProductPlatform } from "@/components/product/product-platform";
 import { ProductProblem } from "@/components/product/product-problem";
 
-export const metadata: Metadata = {
-  alternates: { canonical: "/orm" },
+export const metadata = createPageMetadata({
   title: "Prisma ORM",
   description: "Give your agent database access it can't get wrong.",
-};
+  path: "/orm",
+  ogKicker: "Prisma ORM",
+  ogAccent: "cyan",
+});
 
 // /orm composes the product sections directly rather than going through
 // ProductPage: V4 puts two extra top-level sections on this page — the

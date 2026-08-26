@@ -27,6 +27,8 @@ export const metadata = createPageMetadata({
   description:
     "Browse open-source TypeScript starters and deploy one with Prisma Postgres and Prisma Compute.",
   path: "/apps",
+  ogKicker: "Prisma Compute",
+  ogAccent: "red",
 });
 
 async function getTemplates() {
