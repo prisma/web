@@ -25,7 +25,7 @@ export default compute({
 });
 ```
 
-The `deps` line says the storefront calls the catalog service's API, named by a [contract](#contracts) defined further down this page. Importing this file executes nothing. The declaration is data that three different consumers read: the TypeScript compiler checks the wiring, the deploy provisions what it describes, and the runtime injects the declared dependencies into your code. That is why a mistake, such as a dependency wired to a producer with a different contract, fails `tsc` in seconds instead of failing a deploy.
+The `deps` line says the storefront calls the catalog service's API, named by a [contract](#contracts) defined further down this page. Importing this file starts no service and provisions nothing: `compute()` returns a plain description. The declaration is data that three different consumers read: the TypeScript compiler checks the wiring, the deploy provisions what it describes, and the runtime injects the declared dependencies into your code. That is why a mistake, such as a dependency wired to a producer with a different contract, fails `tsc` in seconds instead of failing a deploy.
 
 Two rules follow from this design and shape everything else:
 
@@ -98,7 +98,7 @@ Databases have a contract story of their own: a `pnPostgres()` resource is typed
 
 ## The deploy model
 
-A deploy is not a script of steps you wrote; it is a comparison. `deploy` loads your root module, compares the topology it describes with the **deploy state** recorded for that environment, and applies only the difference: create what is new, update what changed, leave the rest alone. Re-running a deploy with nothing changed is a no-op, and re-running after a failure picks up where things diverged rather than starting over.
+A deploy is not a script of steps you wrote; it is a comparison. `deploy` loads your root module, compares the topology it describes with the **deploy state** recorded for that environment, and applies only the difference: create what is new, update what changed, leave the rest alone. Re-running a deploy with nothing changed is a no-op, and re-running after a failure converges what the deploy state already tracks rather than starting over. One edge sits outside that guarantee: if an environment's very first deploy fails before its state is written, resources created up to that point are untracked, and neither a retry nor a destroy will manage them.
 
 ```npm
 npx prisma@latest deploy module.ts
