@@ -56,6 +56,7 @@ const FEATURES = [
 ] as const;
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/query-insights" },
   title: "Prisma Query Insights",
   description:
     "Monitor slow queries in Prisma Postgres, understand their production impact, and generate AI-ready optimization prompts to fix performance issues faster.",

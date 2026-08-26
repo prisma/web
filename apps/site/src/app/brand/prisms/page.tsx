@@ -8,6 +8,7 @@ import { ConsoleIllustration } from "@/components/sections/console-illustration"
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/brand/prisms" },
   title: "Prism Lab",
   robots: { index: false, follow: false },
 };

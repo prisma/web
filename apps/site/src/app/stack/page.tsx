@@ -5,6 +5,7 @@ import { RoleKicker } from "@/components/brand/role-kicker";
 import { Texture } from "@/components/brand/texture";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/stack" },
   title: "The Prisma Stack",
   description:
     "ORM, Postgres, and Compute, one platform for your app and its database, with one shared context across your stack.",

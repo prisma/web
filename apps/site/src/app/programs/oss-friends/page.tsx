@@ -4,6 +4,7 @@ import { RoleKicker } from "@/components/brand/role-kicker";
 import { Texture } from "@/components/brand/texture";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/programs/oss-friends" },
   title: "Our OSS Friends",
   description: "Promoting and supporting the open source community.",
 };

@@ -134,7 +134,7 @@ function getBlogPostingJsonLd(page: ReturnType<typeof blog.getPage>): BlogPostin
       name: "Prisma",
       logo: {
         "@type": "ImageObject",
-        url: "https://www.prisma.io/logo.png",
+        url: "https://www.prisma.io/images/logo.svg",
       },
     },
   };

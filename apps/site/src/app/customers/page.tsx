@@ -5,6 +5,7 @@ import { CustomersHero } from "@/components/sections/customers-hero";
 import { TestimonialsReveal } from "@/components/sections/testimonials-reveal";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/customers" },
   title: "Customers",
   description:
     "See how teams use Prisma ORM, Prisma Postgres, and Prisma Compute in production to ship faster, scale reliably, and improve developer workflows.",

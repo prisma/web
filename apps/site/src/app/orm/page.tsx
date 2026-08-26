@@ -12,6 +12,7 @@ import { ProductPlatform } from "@/components/product/product-platform";
 import { ProductProblem } from "@/components/product/product-problem";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/orm" },
   title: "Prisma ORM",
   description: "Give your agent database access it can't get wrong.",
 };

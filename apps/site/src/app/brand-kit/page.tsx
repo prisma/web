@@ -13,6 +13,7 @@ import { BrandKitCobranding } from "@/components/brand-kit/brand-kit-cobranding"
 import { MASTER_ZIP } from "@/components/brand-kit/content";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/brand-kit" },
   title: "Brand & Press Kit",
   description:
     "Download Prisma logos and mascot art in every format, with the colours, typography, and guidelines that keep the brand consistent — for partners, integrations, and press.",

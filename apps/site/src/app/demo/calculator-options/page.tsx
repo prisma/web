@@ -6,6 +6,7 @@ import { VariantDial } from "@/components/sections/calculator-options/variant-di
 import { VariantReceipt } from "@/components/sections/calculator-options/variant-receipt";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/demo/calculator-options" },
   title: "Pricing calculator — design options",
   robots: { index: false, follow: false },
 };
