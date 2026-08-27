@@ -3,27 +3,27 @@ title: Databases
 description: Give a service a Postgres database, either as a plain connection or typed by a Prisma 8 contract with managed migrations.
 url: /composer/databases
 metaTitle: Databases | Prisma Composer
-metaDescription: Add Prisma Postgres to a Composer service with postgres() for a plain connection, or pnPostgres() for a Prisma 8-typed client with deploy-time migrations.
+metaDescription: Add Prisma Postgres to a Composer service with rawPostgres() for a plain connection, or postgres() for a Prisma 8-typed client with deploy-time migrations.
 ---
 
 There are two ways for a service to get a [Prisma Postgres](/postgres) database, depending on how much you want the framework to do. Both are dependencies: the service declares the need, the module provisions the resource, and your code receives the result from `service.load()`.
 
 :::note[Two kinds of contract]
 
-Composer's [service contracts](/composer/services-and-contracts) describe an RPC API between services. A Prisma 8 **data contract** describes a database schema. This page uses both: `pnPostgres()` ties a database dependency to a Prisma 8 data contract.
+Composer's [service contracts](/composer/services-and-contracts) describe an RPC API between services. A Prisma 8 **data contract** describes a database schema. This page uses both: `postgres()` ties a database dependency to a Prisma 8 data contract.
 
 :::
 
-## `postgres()`: bring your own client
+## `rawPostgres()`: bring your own client
 
-Declare `postgres()` when you want to build the client yourself. The dependency delivers connection config, `{ url }`, and nothing else. In your server entry, build the client you already know (`pg`, Bun's `SQL`, an ORM):
+Declare `rawPostgres()` when you want to build the client yourself. The dependency delivers connection config, `{ url }`, and nothing else. In your server entry, build the client you already know (`pg`, Bun's `SQL`, an ORM):
 
 ```ts title="src/auth/service.ts"
-import { compute, postgres } from '@prisma/composer-prisma-cloud';
+import { compute, rawPostgres } from '@prisma/composer-prisma-cloud';
 
 export default compute({
   name: 'auth',
-  deps: { db: postgres() },
+  deps: { db: rawPostgres() },
   // ...
 });
 ```
@@ -40,15 +40,15 @@ Those pool settings matter. Prisma Compute scales to zero and closes idle connec
 The module that owns the database provisions it:
 
 ```ts title="module.ts"
-const db = provision(postgres({ name: 'database' }));
+const db = provision(rawPostgres({ name: 'database' }));
 provision(authService, { deps: { db } });
 ```
 
-## `pnPostgres()`: a Prisma 8-typed database
+## `postgres()`: a Prisma 8-typed database
 
-If you want typed queries and managed migrations, make the database a [Prisma 8](/v8) one. `load()` then returns `{ url, client }`: the raw connection string, plus a client generated from your data contract. Queries like `db.client.orm.public.Product.where({ id }).first()` are compile-time checked, with no SQL strings and no row mapping. The client is constructed only on first access, so a service that brings its own Postgres client can still read `db.url` and keep contract-checked wiring and deploy-time migrations.
+If you want typed queries and managed migrations, make the database a [Prisma 8](/prisma-orm) one. `load()` then returns `{ url, client }`: the raw connection string, plus a client generated from your data contract. Queries like `db.client.orm.public.Product.where({ id }).first()` are compile-time checked, with no SQL strings and no row mapping. The client is constructed only on first access, so a service that brings its own Postgres client can still read `db.url` and keep contract-checked wiring and deploy-time migrations.
 
-The schema workflow runs once per schema change, using the [Prisma 8 CLI commands](/cli/v8):
+The schema workflow runs once per schema change, using the [Prisma 8 CLI commands](/cli):
 
 1. Edit `contract.prisma`, your schema.
 2. Run `contract emit` to regenerate `contract.json` and `contract.d.ts` from it.
@@ -58,37 +58,37 @@ The schema workflow runs once per schema change, using the [Prisma 8 CLI command
 In your app, wrap the emitted contract once. Both the resource and every service that queries it reference that one value:
 
 ```ts title="src/data.ts"
-import { pnContract } from '@prisma/composer-prisma-cloud/prisma-next';
+import { dataContract } from '@prisma/composer-prisma-cloud/orm';
 import type { Contract } from '../contract.d.ts';
 import contractJson from '../contract.json' with { type: 'json' };
 
-export const catalogData = pnContract<Contract>(contractJson);
+export const catalogData = dataContract<Contract>(contractJson);
 ```
 
-You call `pnPostgres()` on both sides of the wiring, and what you pass it tells the two apart. Passing the contract alone declares the dependency, the service saying what it queries:
+You call `postgres()` on both sides of the wiring, and what you pass it tells the two apart. Passing the contract alone declares the dependency, the service saying what it queries:
 
 ```ts
-deps: { db: pnPostgres(catalogData) }
+deps: { db: postgres(catalogData) }
 ```
 
-Passing an options object declares the resource. The module that owns the database provisions it, naming the `prisma-next.config.ts` path (relative to the module file) so the deploy can find `migrations/`:
+Passing an options object declares the resource. The module that owns the database provisions it, naming the `prisma.config.ts` path (relative to the module file) so the deploy can find `migrations/`:
 
 ```ts
 const db = provision(
-  pnPostgres({ name: 'database', contract: catalogData, config: './prisma-next.config.ts' }),
+  postgres({ name: 'database', contract: catalogData, config: './prisma.config.ts' }),
 );
 ```
 
 Because both ends share the contract value, the deploy refuses to wire a service against a database whose schema does not match.
 
-For complete working versions, see [`examples/pn-widgets`](https://github.com/prisma/composer/tree/main/examples/pn-widgets) (one service, one typed database) and [`examples/store`](https://github.com/prisma/composer/tree/main/examples/store) (the full pattern inside a reusable Module) in the Composer repository.
+For complete working versions, see [`examples/orm-demo`](https://github.com/prisma/composer/tree/main/examples/orm-demo) (one service, one typed database) and [`examples/store`](https://github.com/prisma/composer/tree/main/examples/store) (the full pattern inside a reusable Module) in the Composer repository.
 
 ## Local databases
 
-`composer dev` provisions real local Postgres instances for both kinds, so you can migrate and query them exactly as you would in production, with no cloud credentials. The data persists across restarts until you pass `--fresh`. See [Local development](/composer/local-development).
+`dev` provisions real local Postgres instances for both kinds, so you can migrate and query them exactly as you would in production, with no cloud credentials. The data persists across restarts until you pass `--fresh`. See [Local development](/composer/local-development).
 
 ## Next steps
 
 - [Object storage](/composer/object-storage): the other stateful resource, an S3-compatible bucket.
 - [Apps and Modules](/composer/apps-and-modules): keep a database private inside a Module.
-- [Prisma 8 CLI reference](/cli/v8): the contract and migration commands in detail.
+- [Prisma 8 CLI reference](/cli): the contract and migration commands in detail.

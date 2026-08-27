@@ -16,10 +16,7 @@ import * as Unstyled from "./ui/tabs";
 
 type CollectionKey = string | symbol;
 
-export interface TabsProps extends Omit<
-  ComponentProps<typeof Unstyled.Tabs>,
-  "value"
-> {
+export interface TabsProps extends Omit<ComponentProps<typeof Unstyled.Tabs>, "value"> {
   /**
    * Use simple mode instead of advanced usage as documented in https://radix-ui.com/primitives/docs/components/tabs.
    */
@@ -124,18 +121,11 @@ export function Tabs({
       {...props}
     >
       <TabsContext.Provider
-        value={useMemo(
-          () => ({ items, collection, color }),
-          [collection, items, color],
-        )}
+        value={useMemo(() => ({ items, collection, color }), [collection, items, color])}
       >
         {items && (
           <TabsList>
-            {label && (
-              <span className="type-text-sm-strong my-auto me-auto">
-                {label}
-              </span>
-            )}
+            {label && <span className="type-text-sm-strong my-auto me-auto">{label}</span>}
             {items.map((item) => (
               <TabsTrigger key={item} value={escapeValue(item)}>
                 {item}
@@ -149,10 +139,7 @@ export function Tabs({
   );
 }
 
-export interface TabProps extends Omit<
-  ComponentProps<typeof Unstyled.TabsContent>,
-  "value"
-> {
+export interface TabProps extends Omit<ComponentProps<typeof Unstyled.TabsContent>, "value"> {
   /**
    * Value of tab, detect from index if unspecified.
    */

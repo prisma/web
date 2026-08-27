@@ -7,7 +7,9 @@ interface VersionBannerProps {
 
 export function VersionBanner({ requestedVersion, showingVersion }: VersionBannerProps) {
   return (
-    <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+    // The eclipse `warning` triad already carries its own dark-mode values, so
+    // the four `dark:` overrides the raw amber palette needed are gone.
+    <div className="mb-4 rounded-square border border-stroke-warning bg-background-warning p-4 text-foreground-warning">
       <p className="text-sm">
         This page doesn&apos;t exist in <strong>{requestedVersion}</strong>. Showing content from{" "}
         <strong>{showingVersion}</strong>.

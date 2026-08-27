@@ -267,6 +267,23 @@ const config = {
   transpilePackages: ["@prisma/eclipse"],
   async redirects() {
     return [
+      // 2026 rebrand: old-site URLs whose content moved in the redesign IA.
+      { source: "/about", destination: "/company", permanent: true },
+      { source: "/careers", destination: "/company/careers", permanent: true },
+      { source: "/case-studies", destination: "/customers", permanent: true },
+      { source: "/showcase", destination: "/customers", permanent: true },
+      { source: "/privacy", destination: "/legal/privacy", permanent: true },
+      { source: "/terms", destination: "/legal/terms", permanent: true },
+      { source: "/sla", destination: "/legal/sla", permanent: true },
+      { source: "/startups", destination: "/programs/startups", permanent: true },
+      { source: "/partners", destination: "/programs/partners", permanent: true },
+      { source: "/oss-friends", destination: "/programs/oss-friends", permanent: true },
+      // Template gallery renamed to /apps.
+      { source: "/templates", destination: "/apps", permanent: true },
+      // ORM feature marketing absorbed by the new /orm product page.
+      { source: "/client", destination: "/orm", permanent: true },
+      { source: "/typedsql", destination: "/orm", permanent: true },
+      { source: "/migrate", destination: "/orm", permanent: true },
       {
         source: "/:path*",
         has: [
@@ -502,13 +519,13 @@ const config = {
       {
         permanent: true,
         source: "/blog/mongodb-preview-ow4wahkekaep",
-        destination: "https://github.com/prisma/prisma/issues/1277",
+        destination: "https://github.com/prisma/orm/issues/1277",
       },
       {
         permanent: true,
         source: "/blog/heroku-integration-homihof6eifi",
         destination:
-          "https://www.prisma.io/docs/orm/prisma-client/deployment/traditional/deploy-to-heroku",
+          "https://www.prisma.io/docs/orm/v7/prisma-client/deployment/traditional/deploy-to-heroku",
       },
       {
         permanent: true,
@@ -742,6 +759,20 @@ const config = {
           source: "/docs/:path*.mdx",
           destination: `${DOCS_ORIGIN}/docs/:path*.mdx`,
           missing: [{ type: "host", value: DOCS_ORIGIN_HOST }],
+        },
+        // Blog markdown renditions must be forwarded to the blog zone before
+        // the bare /:path*.mdx rule below captures them and rewrites into the
+        // site app's stub llms.mdx route, which always 404s. The .md variant
+        // matches docs, whose Link headers advertise the .md suffix to agents.
+        {
+          source: "/blog/:path*.mdx",
+          destination: `${BLOG_ORIGIN}/blog/:path*.mdx`,
+          missing: [{ type: "host", value: BLOG_ORIGIN_HOST }],
+        },
+        {
+          source: "/blog/:path*.md",
+          destination: `${BLOG_ORIGIN}/blog/:path*.md`,
+          missing: [{ type: "host", value: BLOG_ORIGIN_HOST }],
         },
         {
           source: "/:path*.mdx",

@@ -1,6 +1,21 @@
 "use client";
 import { Component, type ReactNode } from "react";
 
+// Shared degraded state for every tweet embed path: unfetchable payload,
+// payload react-tweet chokes on, or a render throw caught by the boundary.
+export function TweetFallbackLink({ tweetId }: { tweetId: string }) {
+  return (
+    <a
+      href={`https://x.com/i/status/${tweetId}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block w-full rounded-square-high border border-stroke-neutral bg-paper p-6 text-center text-sm text-foreground-neutral-weak no-underline transition-colors duration-300 hover:border-stroke-neutral-strong hover:text-foreground-neutral motion-reduce:transition-none"
+    >
+      View this post on X →
+    </a>
+  );
+}
+
 // Safety net around react-tweet's <EmbeddedTweet>. enrichTweet() still runs on
 // the client during hydration; if it throws on an unexpected payload, contain
 // the failure to this one embed instead of blanking the whole page, and fall
@@ -17,16 +32,7 @@ export class TweetBoundary extends Component<
 
   render() {
     if (this.state.failed) {
-      return (
-        <a
-          href={`https://x.com/i/status/${this.props.tweetId}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block w-full rounded-xl border border-gray-200 bg-gray-50 p-6 text-center text-sm text-gray-600 no-underline hover:border-gray-300 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-300"
-        >
-          View this post on X →
-        </a>
-      );
+      return <TweetFallbackLink tweetId={this.props.tweetId} />;
     }
     return this.props.children;
   }

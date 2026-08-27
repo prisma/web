@@ -22,46 +22,77 @@ const SKILL_DESCRIPTION =
  */
 export const MCP_TOOLS: { name: string; description: string }[] = [
   {
-    name: "CreateBackupTool",
-    description: "Create a new managed Prisma Postgres Backup.",
+    name: "fetch_workspace_details",
+    description: "Fetch the details of a Prisma Postgres workspace.",
   },
   {
-    name: "CreateConnectionStringTool",
-    description: "Create a new Connection String for a Prisma Postgres database with the given id.",
+    name: "list_prisma_postgres_databases",
+    description: "Fetch a list of available Prisma Postgres databases for the user's workspace.",
   },
   {
-    name: "CreateRecoveryTool",
-    description: "Restore a Prisma Postgres Database to a new database with the given Backup id.",
+    name: "create_prisma_postgres_database",
+    description: "Create a new managed Prisma Postgres database.",
   },
   {
-    name: "DeleteConnectionStringTool",
-    description: "Delete a Connection String with the given connection string id.",
+    name: "delete_prisma_postgres_database",
+    description: "Delete a Prisma Postgres database with the given database id.",
   },
   {
-    name: "DeleteDatabaseTool",
-    description: "Delete a Prisma Postgres database with the given id.",
+    name: "list_prisma_postgres_connection_strings",
+    description: "Fetch a list of available connection strings for the given database id.",
   },
   {
-    name: "ListBackupsTool",
-    description:
-      "Fetch a list of available Prisma Postgres Backups for the given database id and environment id.",
+    name: "create_prisma_postgres_connection_string",
+    description: "Create a new connection string for a Prisma Postgres database with the given id.",
   },
   {
-    name: "ListConnectionStringsTool",
-    description:
-      "Fetch a list of available Prisma Postgres Database Connection Strings for the given database id and environment id.",
+    name: "delete_prisma_postgres_connection_string",
+    description: "Delete a connection string with the given connection string id.",
   },
   {
-    name: "ListDatabasesTool",
-    description: "Fetch a list of available Prisma Postgres Databases for user's workspace.",
+    name: "list_prisma_postgres_backups",
+    description: "Fetch a list of available backups for the given database id.",
   },
   {
-    name: "ExecuteSqlQueryTool",
+    name: "create_prisma_postgres_backup",
+    description: "Create a new managed Prisma Postgres backup.",
+  },
+  {
+    name: "create_prisma_postgres_recovery",
+    description: "Restore a Prisma Postgres database to a new database with the given backup id.",
+  },
+  {
+    name: "introspect_database_schema",
+    description: "Introspect the schema of a Prisma Postgres database with the given id.",
+  },
+  {
+    name: "execute_sql_query",
     description: "Execute a SQL query on a Prisma Postgres database with the given id.",
   },
   {
-    name: "IntrospectSchemaTool",
-    description: "Introspect the schema of a Prisma Postgres database with the given id.",
+    name: "execute_prisma_postgres_schema_update",
+    description: "Execute a schema update on a Prisma Postgres database with the given id.",
+  },
+  {
+    name: "list_object_store_buckets",
+    description: "List object-store buckets in the workspace, optionally filtered by project id.",
+  },
+  {
+    name: "create_object_store_bucket",
+    description: "Create a new object-store bucket in the given project.",
+  },
+  {
+    name: "delete_object_store_bucket",
+    description:
+      "Permanently delete an object-store bucket, all objects stored in it, and all its access keys.",
+  },
+  {
+    name: "create_object_store_bucket_key",
+    description: "Create an S3-compatible access key for an object-store bucket.",
+  },
+  {
+    name: "delete_object_store_bucket_key",
+    description: "Delete an object-store bucket access key. The key stops working immediately.",
   },
   {
     name: "search_prisma_documentation",
@@ -121,8 +152,8 @@ Run the Prisma CLI with \`npx prisma\`. The typical workflow for a new project:
    npm init -y
    npm install typescript tsx @types/node --save-dev
    npx tsc --init
-   npm install prisma @types/pg --save-dev
-   npm install @prisma/client @prisma/adapter-pg pg dotenv
+   npm install prisma@7.9.1 @types/pg --save-dev
+   npm install @prisma/client@7.9.1 @prisma/adapter-pg pg dotenv
    \`\`\`
 
    Set \`"module": "ESNext"\` (along with \`"moduleResolution": "bundler"\`,
@@ -228,7 +259,7 @@ version-accurate command and API knowledge without re-reading the docs:
 
 \`\`\`bash
 npx skills add prisma/skills          # Prisma CLI, Prisma Client, Prisma Postgres, Prisma Compute, upgrade guides
-npx skills add prisma/prisma/skills   # Prisma 8 (also installed automatically by \`npx prisma@next orm init\`)
+npx skills add prisma/prisma/skills   # Prisma 8 (also installed automatically by \`npx prisma@latest orm init\`)
 npx skills add prisma/composer        # Prisma Composer
 \`\`\`
 

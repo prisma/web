@@ -1,0 +1,65 @@
+---
+title: Local storage
+description: Use S3-compatible client libraries against Prisma object storage, locally with stand-in buckets and deployed on Prisma Compute.
+url: /local-development/storage
+metaTitle: Local storage | Prisma
+metaDescription: Work with Prisma Object Store buckets locally. Composer dev provisions stand-in buckets, and S3-compatible clients like Bun.s3 and the AWS SDK work unchanged on Prisma Compute.
+---
+
+[Object Store buckets](/storage) speak the S3 API. Because your app talks to storage through an ordinary S3 client, the same code runs against a local stand-in bucket during development and a hosted bucket on [Prisma Compute](/compute). Nothing in your upload or download paths knows which one it is using.
+
+## Local buckets with `dev`
+
+Apps deploy to Compute as [Prisma Composer](/composer) apps, and `dev` provisions a local stand-in bucket with working credentials, so upload code runs locally without an account or cloud credentials. Declare the bucket as a dependency and the service receives `{ url, bucket, accessKeyId, secretAccessKey }` from `service.load()`, the standard S3 config set, whether the bucket is local or hosted. Those four values are what your S3 client needs: pass them as its endpoint, bucket name, and credentials rather than reading them from environment variables. See [Object storage in Composer](/composer/object-storage) and [Local development in Composer](/composer/local-development).
+
+You can also develop against a hosted bucket directly: create one with the [`bucket` CLI commands](/cli/bucket) and mint a scoped access key. The key's credentials work from your machine during development the same way they work from a deployment.
+
+## S3-compatible clients on Compute
+
+Any S3 client or SDK works with buckets. The examples below use direct access-key configuration through environment variables, the shape that fits a hosted bucket with a minted key. In a Composer service, feed the client the values from `load()` instead; the client setup is otherwise identical.
+
+### Bun's built-in S3 client
+
+Compute runs deployed apps on Bun, and Bun ships an [S3 client](https://bun.com/docs/api/s3) that reads `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, and `S3_SECRET_ACCESS_KEY` from the environment. With those four variables set, reading, writing, and presigning need no client configuration and no dependency:
+
+```ts title="src/storage.ts"
+// Write an object, then hand out a time-boxed download URL.
+await Bun.s3.file("uploads/hello.txt").write("hello from a bucket");
+
+const url = Bun.s3.file("uploads/hello.txt").presign({ expiresIn: 3600 });
+```
+
+[Object storage on Compute](/compute/object-storage) builds this into a deployed upload-and-serve route end to end.
+
+### AWS SDK (`@aws-sdk/client-s3`)
+
+If your app already uses the AWS SDK, point it at the bucket's endpoint and credentials. These are the same four values Bun reads from the environment; in a Composer service they arrive through `load()` and slot into the same fields:
+
+```ts title="src/storage.ts"
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+
+const s3 = new S3Client({
+  endpoint: process.env.S3_ENDPOINT,
+  region: "auto",
+  credentials: {
+    accessKeyId: process.env.S3_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
+  },
+});
+
+await s3.send(
+  new PutObjectCommand({
+    Bucket: process.env.S3_BUCKET,
+    Key: "uploads/hello.txt",
+    Body: "hello from a bucket",
+  }),
+);
+```
+
+The SDK requires a `region`; S3-compatible endpoints ignore it, so `"auto"` is fine. Other S3-compatible libraries, such as `minio`, configure the same way: endpoint, bucket name, key id, secret.
+
+## Next steps
+
+- [Storage](/storage): buckets, access keys, and management surfaces.
+- [Object storage on Compute](/compute/object-storage): a deployed upload-and-serve route, step by step.
+- [Object storage in Composer](/composer/object-storage): the declarative `bucket()` resource.

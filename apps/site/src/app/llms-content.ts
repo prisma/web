@@ -1,6 +1,6 @@
 import { SITE_HOME_DESCRIPTION, SITE_HOME_TITLE } from "@/lib/site-metadata";
 import { getBaseUrl } from "@/lib/url";
-import { plans, usagePricing } from "./pricing/pricing-data";
+import { computeIncludedRequests, plans, usagePricing } from "@/lib/pricing-data";
 
 type LlmsPage = {
   path: string;
@@ -46,9 +46,9 @@ const sitePages: LlmsPage[] = [
   },
   {
     path: "/pricing",
-    title: "Pricing — Prisma Postgres Plans & Features",
+    title: "Pricing — Prisma Compute & Prisma Postgres",
     description:
-      "Prisma Postgres plan details, included usage, database limits, support levels, and compliance coverage.",
+      "Usage-based pricing for the whole stack: Prisma Compute app hosting rates, Prisma Postgres plan details, included usage, database limits, support levels, and compliance coverage.",
   },
   {
     path: "/enterprise",
@@ -195,14 +195,14 @@ Key Prisma MCP Server capabilities:
 ## Pricing
 
 URL: ${toAbsoluteUrl(baseUrl, "/pricing")}
-Title: Pricing — Prisma Postgres Plans & Features
-Description: Get started for free with Prisma Postgres. Choose the right plan for your workspace based on your project requirements.
+Title: Pricing — Prisma Compute & Prisma Postgres
+Description: Usage-based pricing for the whole stack. Get started for free, choose the right Prisma Postgres plan for your workspace, and pay for Prisma Compute app hosting by use.
 
 Pricing summary:
-- Free plan: ${plans.free.price.USD}/month, 100,000 operations included, 500 MB storage, 50 databases, no credit card required
-- Starter plan: ${plans.starter.price.USD}/month, 1,000,000 operations included, then $0.008 per 1,000 operations, 10 GB storage included, then $2 per GB, 1,000 databases, daily backups stored for 7 days
-- Pro plan: ${plans.pro.price.USD}/month, 10,000,000 operations included, then $0.002 per 1,000 operations, 50 GB storage included, then $1.50 per GB, 1,000 databases, daily backups stored for 7 days
-- Business plan: ${plans.business.price.USD}/month, 50,000,000 operations included, then $0.001 per 1,000 operations, 100 GB storage included, then $1 per GB, 1,000 databases, daily backups stored for 30 days
+- Free plan: ${plans.free.price.USD}/month, ${computeIncludedRequests.free} Compute requests, 360 GB-hours of provisioned memory, 4 active vCPU-hours, 10 GB of outbound bandwidth, 200,000 database operations, 500 MB storage, 50 databases, no credit card required
+- Starter plan: ${plans.starter.price.USD}/month, ${computeIncludedRequests.starter} Compute requests included, 1,000,000 operations included, then $8 per million operations, 10 GB storage included, then $2 per GB, 1,000 databases, daily backups stored for 7 days
+- Pro plan: ${plans.pro.price.USD}/month, ${computeIncludedRequests.pro} Compute requests included, 10,000,000 operations included, then $2 per million operations, 50 GB storage included, then $1.50 per GB, 1,000 databases, daily backups stored for 7 days
+- Business plan: ${plans.business.price.USD}/month, ${computeIncludedRequests.business} Compute requests included, 50,000,000 operations included, then $1 per million operations, 100 GB storage included, then $1 per GB, 1,000 databases, daily backups stored for 30 days
 
 Annual billing note:
 - Paid plans include a 25% yearly discount based on the current pricing data
@@ -215,6 +215,13 @@ Support and compliance summary:
 - Starter: Community support, GDPR
 - Pro: Standard support, GDPR / HIPAA
 - Business: Premium support, GDPR / HIPAA / SOC2 / ISO:27001
+
+Prisma Compute pricing (app hosting, included with every plan):
+- Requests included per month: Free ${computeIncludedRequests.free}, Starter ${computeIncludedRequests.starter}, Pro ${computeIncludedRequests.pro}, Business ${computeIncludedRequests.business}; then $1 per million on paid plans (the Free plan has no usage billing)
+- Provisioned memory: Free includes 360 GB-hours per month; paid plans bill $0.006 per GB-hour
+- Active CPU: Free includes 4 vCPU-hours per month; paid plans bill $0.064 per vCPU-hour
+- Outbound bandwidth: Free includes 10 GB per month; paid plans bill $0.025 per GB
+- Idle apps scale to zero and cost nothing; deploys, preview branches, and seats are not billed
 
 ## Enterprise
 

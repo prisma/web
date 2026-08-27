@@ -8,13 +8,13 @@ authors:
 metaTitle: "Prisma 8: A Call for Extension Authors"
 metaDescription: "Prisma 8 has a tiny core that knows nothing about specific databases. Postgres, vector search, and JSON-with-schema are extensions, on the same surface that's open to you. An invitation to build."
 heroImagePath: "/prisma-next-call-for-extension-authors/imgs/hero.svg"
-heroImageAlt: "Prisma 8: A Call for Extension Authors"
+heroImageAlt: "A dark manifest card for an extension package listing the four layers it can contribute: contract, query, runtime and migration, over the line that registers it"
 metaImagePath: "/prisma-next-call-for-extension-authors/imgs/meta.png"
 tags:
   - "orm"
   - "announcement"
   - "education"
-series: prisma-next
+series: prisma-8
 seriesIndex: 6
 ---
 
@@ -22,13 +22,13 @@ seriesIndex: 6
 
 If you've ever wanted to integrate your tool, your database, or your library with Prisma, or you tried in Prisma 6 or 7 and gave up, this post is for you. Read the [Prisma 8 Early Access announcement](https://www.prisma.io/blog/prisma-next-early-access-write-your-contract-prompt-your-agent-ship-your-app) for the full launch story.
 
-[Prisma 8](https://www.prisma.io/docs/orm/v8) has a deliberately tiny core that knows nothing about any specific database. Postgres support is an extension. Vector search is an extension. JSON-with-schema is an extension. Whatever Prisma 8 can do, it does because someone wrote it using the same components that are available to you.
+[Prisma 8](https://www.prisma.io/docs/orm) has a deliberately tiny core that knows nothing about any specific database. Postgres support is an extension. Vector search is an extension. JSON-with-schema is an extension. Whatever Prisma 8 can do, it does because someone wrote it using the same components that are available to you.
 
 The API surface is real, the same shape we used to build Postgres support ourselves, and ready to build against today.
 
 ## Postgres is an extension
 
-The Prisma 8 framework knows about [contracts](https://www.prisma.io/docs/orm/v8/contract-authoring/the-data-contract), plans, query lifecycle, and the policies that gate execution. It does _not_ know what Postgres, SQL, Mongo, vectors, or any column type other than `unknown` are.
+The Prisma 8 framework knows about [contracts](https://www.prisma.io/docs/orm/contract-authoring/the-data-contract), plans, query lifecycle, and the policies that gate execution. It does _not_ know what Postgres, SQL, Mongo, vectors, or any column type other than `unknown` are.
 
 Every database we support and every native feature you've used in Prisma 8 was added by an extension package on a public service provider interface (SPI). The Postgres target, the SQL family (its contract shape, operations, and lanes), the Postgres adapter and driver, the pgvector vector type and its similarity operators, and the arktype-JSON codec are all extensions.
 
@@ -36,14 +36,14 @@ There is no "core API" and "plugin API." There is one SPI, used by the team buil
 
 ## What an extension can ship
 
-An extension is a normal npm package: `@yourname/prisma-next-extension-foo`. Your users `pnpm add` it, [add one line to `prisma-next.config.ts`](https://www.prisma.io/docs/orm/v8/extensions/using-extensions), and your additions show up in their contract, their queries, and (if you ship migrations) their migration plans.
+An extension is a normal npm package: `@yourname/prisma-next-extension-foo`. Your users `pnpm add` it, [add one line to `prisma.config.ts`](https://www.prisma.io/docs/orm/extensions/using-extensions), and your additions show up in their contract, their queries, and (if you ship migrations) their migration plans.
 
 An extension can include any subset of four layers, in any combination:
 
 - **Contract layer**: column types, field builders, index types, and authoring constructs that show up in `contract.ts` and `contract.json` with your namespace and your validation rules. This is how pgvector adds dimensioned vector columns and how ParadeDB adds typed BM25 indexes
 - **Query layer**: typed methods on the query builder. Users discover them through autocomplete; they compile to SQL via lowerers you provide. This is how pgvector adds `cosineDistance` on vector columns
-- **Runtime layer**: codecs that translate between the database wire format and your TypeScript types. Codecs can be synchronous (pgvector vectors decode to `number[]`) or asynchronous (encryption codecs decrypt on read with key material from an external service). [Runtime middleware](https://www.prisma.io/docs/orm/v8/middleware/how-middleware-works) is also part of this slice, covering observability, audit, and policy interception around every query
-- **Migration layer**: custom DDL and data operations with pre/post checks and idempotency declarations, integrated into the migration planner. ParadeDB's planned BM25 index ops land here, and so does anything else that needs to participate in [the migration graph](https://www.prisma.io/docs/orm/v8/migrations/the-migration-graph) rather than ship as a one-off script
+- **Runtime layer**: codecs that translate between the database wire format and your TypeScript types. Codecs can be synchronous (pgvector vectors decode to `number[]`) or asynchronous (encryption codecs decrypt on read with key material from an external service). [Runtime middleware](https://www.prisma.io/docs/orm/middleware/how-middleware-works) is also part of this slice, covering observability, audit, and policy interception around every query
+- **Migration layer**: custom DDL and data operations with pre/post checks and idempotency declarations, integrated into the migration planner. ParadeDB's planned BM25 index ops land here, and so does anything else that needs to participate in [the migration graph](https://www.prisma.io/docs/orm/migrations/the-migration-graph) rather than ship as a one-off script
 
 Pick the layers you need. A useful extension can be one layer (a single codec, a single index type) or all four for a full vertical slice.
 
@@ -53,19 +53,19 @@ Three extensions ship in the repo today, each demonstrating a different combinat
 
 ### pgvector: three layers in one pack
 
-[@prisma/orm-extension-pgvector](https://github.com/prisma/prisma/tree/main/packages/3-extensions/pgvector) is the canonical example. It ships a `vector(N)` column type on the contract layer, `cosineDistance` and `cosineSimilarity` operators on the query layer, and the codec that maps the SQL `vector` type to `number[]` on the runtime layer.
+[@prisma/orm-extension-pgvector](https://github.com/prisma/orm/tree/main/packages/3-extensions/pgvector) is the canonical example. It ships a `vector(N)` column type on the contract layer, `cosineDistance` and `cosineSimilarity` operators on the query layer, and the codec that maps the SQL `vector` type to `number[]` on the runtime layer.
 
 All three show up in the same project, file by file:
 
 ```typescript
-// prisma-next.config.ts: register the pack
+// prisma.config.ts: register the pack
 import pgvector from "@prisma/orm-extension-pgvector/control";
 
 export default defineConfig({
-  family: sql,
-  target: postgres,
-  adapter: postgresAdapter,
-  extensionPacks: [pgvector],
+  orm: ormConfig({
+    extensions: [pgvector],
+    // ...contract and db settings
+  }),
 });
 
 // prisma/contract.ts: declare a dimensioned vector column
@@ -90,13 +90,13 @@ const plan = sql
 
 ### arktype-json: codec and contract layers, library-author shape
 
-[@prisma/orm-extension-arktype-json](https://github.com/prisma/prisma/tree/main/packages/3-extensions/arktype-json) is a per-library codec for JSON-with-schema columns. Pass it an arktype schema and you get back a typed JSON column whose TypeScript type matches the schema (`{ name: string; price: number }`) and whose values are validated against the schema on the wire.
+[@prisma/orm-extension-arktype-json](https://github.com/prisma/orm/tree/main/packages/3-extensions/arktype-json) is a per-library codec for JSON-with-schema columns. Pass it an arktype schema and you get back a typed JSON column whose TypeScript type matches the schema (`{ name: string; price: number }`) and whose values are validated against the schema on the wire.
 
 The pattern is deliberately per-library: arktype-json today, `zod-json` and `valibot-json` on parallel tracks tomorrow, each shipping the same shape with their own serialize/rehydrate story. This is the natural template for the integration you've probably wanted: your TS library wired up at the contract layer, not bolted on around the edges of an ORM.
 
 ### ParadeDB: contract layer only
 
-[@prisma/orm-extension-paradedb](https://github.com/prisma/prisma/tree/main/packages/3-extensions/paradedb) adds typed BM25 full-text-search index authoring for ParadeDB users: `bm25.text(...)`, `bm25.numeric(...)`, and `bm25Index({ ... })` with all twelve built-in tokenizers and validation against the BM25 contract.
+[@prisma/orm-extension-paradedb](https://github.com/prisma/orm/tree/main/packages/3-extensions/paradedb) adds typed BM25 full-text-search index authoring for ParadeDB users: `bm25.text(...)`, `bm25.numeric(...)`, and `bm25Index({ ... })` with all twelve built-in tokenizers and validation against the BM25 contract.
 
 The query and migration layers for ParadeDB are explicitly planned, not yet shipped, and the README says so out loud. We think that's worth saying: an extension doesn't have to ship every layer at once. Authoring-first and following with the rest is a perfectly good trajectory, and the surface supports it.
 
@@ -127,7 +127,7 @@ We, the Prisma 8 team, are available on Discord and eager to help you build, as 
 
 ## The fastest way to start
 
-Clone [`prisma/prisma-next`](https://pris.ly/pn-gh), point your coding agent at the repo, and tell it what you want to build.
+Clone [`prisma/prisma`](https://github.com/prisma/orm), point your coding agent at the repo, and tell it what you want to build.
 
 The repo is dense with architecture docs, architecture decision record (ADRs), SPI READMEs, and reference extensions: enough context that an agent can absorb it in seconds and scaffold a working pack from your description alone, without you reading a line of it first.
 
@@ -135,15 +135,15 @@ The result is normal TypeScript you can read, edit, and iterate on like any othe
 
 If you'd rather start from a known-good template yourself, pick the existing extension closest to what you want and copy it:
 
-- **Building a feature pack with column types, operators, and codecs?** Copy [pgvector](https://github.com/prisma/prisma/tree/main/packages/3-extensions/pgvector)
-- **Integrating a TypeScript library at the contract layer (validation, serialization, schema-driven types)?** Copy [arktype-json](https://github.com/prisma/prisma/tree/main/packages/3-extensions/arktype-json)
-- **Adding typed authoring for a database feature, with the rest of the layers to follow later?** Copy [ParadeDB](https://github.com/prisma/prisma/tree/main/packages/3-extensions/paradedb)
+- **Building a feature pack with column types, operators, and codecs?** Copy [pgvector](https://github.com/prisma/orm/tree/main/packages/3-extensions/pgvector)
+- **Integrating a TypeScript library at the contract layer (validation, serialization, schema-driven types)?** Copy [arktype-json](https://github.com/prisma/orm/tree/main/packages/3-extensions/arktype-json)
+- **Adding typed authoring for a database feature, with the rest of the layers to follow later?** Copy [ParadeDB](https://github.com/prisma/orm/tree/main/packages/3-extensions/paradedb)
 
 Either way, the packages are small. Reading code is faster than reading docs.
 
 ## Build an extension
 
-Build it, then tell us about it in [`#prisma-next`](https://pris.ly/discord) on Discord, and star [`prisma/prisma-next`](https://pris.ly/pn-gh) on GitHub to follow the SPI as it matures.
+Build it, then tell us about it in [`#prisma-next`](https://pris.ly/discord) on Discord, and star [`prisma/prisma`](https://github.com/prisma/orm) on GitHub to follow the SPI as it matures.
 
 Prisma 8 is early, and the SPI is stable enough that the existing extensions are real proof of what's possible, though we expect to iterate as more of you build against it.
 

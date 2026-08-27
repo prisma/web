@@ -1,0 +1,352 @@
+---
+title: Deploy to Deno Deploy
+metaTitle: Deploy to Deno Deploy
+metaDescription: Learn how to deploy a TypeScript application using Prisma ORM to Deno Deploy.
+url: /orm/v7/prisma-client/deployment/edge/deploy-to-deno-deploy
+---
+
+With this guide, you can learn how to build and deploy a REST API to [Deno Deploy](https://deno.com/deploy). The application uses Prisma ORM to manage tasks in a [Prisma Postgres](/postgres) database.
+
+This guide covers Deno CLI, Deno Deploy, Prisma Client with the Postgres adapter, and Prisma Postgres.
+
+## Prerequisites
+
+- A free [Prisma Data Platform](https://console.prisma.io/login) account
+- A free [Deno Deploy](https://deno.com/deploy) account
+- [Deno](https://docs.deno.com/runtime/#install-deno) v2.0 or later installed
+- (Recommended) [Deno extension for VS Code](https://docs.deno.com/runtime/reference/vscode/)
+
+## 1. Set up your application
+
+Create a new directory and initialize your Prisma project:
+
+```npm
+mkdir prisma-deno-deploy
+cd prisma-deno-deploy
+deno run -A npm:prisma@7.10.0 init --db
+```
+
+Enter a name for your project and choose a database region.
+
+This command:
+- Connects to the [Prisma Data Platform](https://console.prisma.io) (opens browser for authentication)
+- Creates a `prisma/schema.prisma` file for your database models
+- Creates a `.env` file with your `DATABASE_URL`
+- Creates a `prisma.config.ts` configuration file
+
+## 2. Configure Deno
+
+Create a `deno.json` file with the following configuration:
+
+```json title="deno.json"
+{
+  "nodeModulesDir": "auto",
+  "compilerOptions": {
+    "lib": ["deno.window"],
+    "types": ["node"]
+  },
+  "imports": {
+    "@prisma/adapter-pg": "npm:@prisma/adapter-pg@^7.0.0",
+    "@prisma/client": "npm:@prisma/client@7.10.0",
+    "prisma": "npm:prisma@7.10.0"
+  },
+  "tasks": {
+    "dev": "deno run -A --env=.env --watch index.ts",
+    "db:generate": "deno run -A --env=.env npm:prisma generate",
+    "db:push": "deno run -A --env=.env npm:prisma db push",
+    "db:migrate": "deno run -A --env=.env npm:prisma migrate dev",
+    "db:studio": "deno run -A --env=.env npm:prisma studio"
+  }
+}
+```
+
+:::note
+The `nodeModulesDir: "auto"` setting is required for Prisma to work correctly with Deno. The `compilerOptions` ensure TypeScript understands Deno globals and npm packages. The import map allows you to use clean import paths like `@prisma/adapter-pg` instead of `npm:@prisma/adapter-pg`.
+:::
+
+Install the dependencies:
+
+```bash
+deno install
+deno install --allow-scripts
+```
+
+## 3. Define your data model
+
+Edit `prisma/schema.prisma` to add the Deno runtime and a `Task` model:
+
+```prisma title="prisma/schema.prisma" highlight=4;add
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+  runtime  = "deno"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Task {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  completed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+```
+
+## 4. Push the schema to your database
+
+Apply the schema to your database and generate Prisma Client:
+
+```bash
+deno task db:push
+```
+
+This command:
+1. Creates the `Task` table in your Prisma Postgres database
+2. Generates the Prisma Client with full type safety
+
+:::info
+If you see TypeScript errors in your IDE after generating, restart the Deno language server (`Cmd/Ctrl + Shift + P` → "Deno: Restart Language Server") to refresh the types.
+:::
+
+## 5. Create your application
+
+Create `index.ts` with a REST API for managing tasks:
+
+```ts title="index.ts"
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "./generated/prisma/client.ts";
+
+// Initialize Prisma Client with the Postgres adapter
+const connectionString = Deno.env.get("DATABASE_URL")!;
+const adapter = new PrismaPg({ connectionString });
+const prisma = new PrismaClient({ adapter });
+
+// Helper to create JSON responses
+function json(data: unknown, status = 200): Response {
+  return new Response(JSON.stringify(data, null, 2), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+// Request handler
+async function handler(request: Request): Promise<Response> {
+  const url = new URL(request.url);
+  const path = url.pathname;
+  const method = request.method;
+
+  try {
+    // GET /tasks - List all tasks
+    if (method === "GET" && path === "/tasks") {
+      const tasks = await prisma.task.findMany({
+        orderBy: { createdAt: "desc" },
+      });
+      return json(tasks);
+    }
+
+    // POST /tasks - Create a new task
+    if (method === "POST" && path === "/tasks") {
+      const body = await request.json();
+      const task = await prisma.task.create({
+        data: {
+          title: body.title,
+          description: body.description,
+        },
+      });
+      return json(task, 201);
+    }
+
+    // GET /tasks/:id - Get a specific task
+    const taskMatch = path.match(/^\/tasks\/(\d+)$/);
+    if (taskMatch) {
+      const id = parseInt(taskMatch[1]);
+
+      if (method === "GET") {
+        const task = await prisma.task.findUnique({ where: { id } });
+        if (!task) return json({ error: "Task not found" }, 404);
+        return json(task);
+      }
+
+      // PATCH /tasks/:id - Update a task
+      if (method === "PATCH") {
+        const body = await request.json();
+        const task = await prisma.task.update({
+          where: { id },
+          data: body,
+        });
+        return json(task);
+      }
+
+      // DELETE /tasks/:id - Delete a task
+      if (method === "DELETE") {
+        await prisma.task.delete({ where: { id } });
+        return json({ message: "Task deleted" });
+      }
+    }
+
+    // GET / - API info
+    if (method === "GET" && path === "/") {
+      return json({
+        name: "Prisma + Deno Task API",
+        version: "1.0.0",
+        endpoints: {
+          "GET /tasks": "List all tasks",
+          "POST /tasks": "Create a task",
+          "GET /tasks/:id": "Get a task",
+          "PATCH /tasks/:id": "Update a task",
+          "DELETE /tasks/:id": "Delete a task",
+        },
+      });
+    }
+
+    return json({ error: "Not found" }, 404);
+  } catch (error) {
+    console.error(error);
+    return json({ error: "Internal server error" }, 500);
+  }
+}
+
+// Start the server
+Deno.serve({ port: 8000 }, handler);
+```
+
+This creates a full CRUD API with the following endpoints:
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/` | API info |
+| GET | `/tasks` | List all tasks |
+| POST | `/tasks` | Create a new task |
+| GET | `/tasks/:id` | Get a specific task |
+| PATCH | `/tasks/:id` | Update a task |
+| DELETE | `/tasks/:id` | Delete a task |
+
+## 6. Test your application locally
+
+Start the development server:
+
+```bash
+deno task dev
+```
+
+Test the API with curl:
+
+```bash
+# Get API info
+curl http://localhost:8000/
+
+# Create a task
+curl -X POST http://localhost:8000/tasks \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Learn Prisma", "description": "Complete the Deno guide"}'
+
+# List all tasks
+curl http://localhost:8000/tasks
+
+# Update a task (mark as completed)
+curl -X PATCH http://localhost:8000/tasks/1 \
+  -H "Content-Type: application/json" \
+  -d '{"completed": true}'
+
+# Delete a task
+curl -X DELETE http://localhost:8000/tasks/1
+```
+
+You should see JSON responses for each request. The task ID will increment with each new task created.
+
+## 7. Create a GitHub repository
+
+You need a GitHub repository to deploy to Deno Deploy.
+
+Create a `.gitignore` file:
+
+```text title=".gitignore"
+.env
+node_modules/
+generated/
+deno.lock
+```
+
+Initialize and push your repository:
+
+```bash
+git init -b main
+git remote add origin https://github.com/<username>/prisma-deno-deploy
+git add .
+git commit -m "Initial commit"
+git push -u origin main
+```
+
+## 8. Deploy to Deno Deploy
+
+1. Go to [https://dash.deno.com/](https://dash.deno.com/)
+2. Click **New Project** and select your GitHub repository
+3. Configure the deployment:
+   - **Framework preset**: No Preset
+   - **Install command**: `deno install`
+   - **Build command**: `deno run -A npm:prisma generate`
+   - **Entrypoint**: `index.ts`
+4. Click **Create & Deploy**
+
+The first deployment will fail because you need to add the database connection string.
+
+### Add environment variables
+
+1. Go to your project's **Settings** > **Environment Variables**
+2. Add a new variable:
+   - **Key**: `DATABASE_URL`
+   - **Value**: Your Prisma Postgres connection string (copy from your `.env` file)
+3. Click **Save**
+
+Trigger a new deployment by clicking **Redeploy** or pushing a new commit.
+
+## 9. Test your deployed API
+
+Once deployed, test your API at your Deno Deploy URL:
+
+```bash
+# Replace with your actual Deno Deploy URL
+curl https://your-project.deno.dev/
+
+# Create a task
+curl -X POST https://your-project.deno.dev/tasks \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Deploy to production"}'
+
+# List tasks
+curl https://your-project.deno.dev/tasks
+```
+
+## Summary
+
+You successfully deployed a REST API to Deno Deploy using:
+
+- **Deno** as the runtime with native TypeScript support
+- **Prisma ORM** with the Postgres adapter for type-safe database access
+- **Prisma Postgres** as the managed database
+
+Your project structure should look like this:
+
+```
+prisma-deno-deploy/
+├── deno.json
+├── index.ts
+├── prisma/
+│   └── schema.prisma
+├── prisma.config.ts
+├── generated/
+│   └── prisma/
+│       └── ...
+└── .env
+```
+
+### Next steps
+
+- Add authentication using [Deno KV](https://docs.deno.com/deploy/reference/deno_kv/) for sessions
+- Add request validation with [Zod](https://zod.dev/)
+- Explore [Prisma Client extensions](/orm/v7/prisma-client/client-extensions) for custom functionality
+- Set up [Prisma Migrate](/orm/v7/prisma-migrate) for schema versioning in production

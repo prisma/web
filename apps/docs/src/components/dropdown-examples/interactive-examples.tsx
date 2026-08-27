@@ -20,7 +20,7 @@ export function CheckboxDropdownExample() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="px-3 py-1.5 text-sm font-normal border border-fd-border rounded-low bg-background-default hover:bg-background-neutral text-foreground-neutral disabled:text-foreground-neutral-weaker active:hover:font-medium active:font-medium shadow-box outline-none">
+      <DropdownMenuTrigger className="px-3 py-1.5 text-sm font-normal border border-stroke-neutral rounded-square-low bg-background-default hover:bg-background-neutral text-foreground-neutral disabled:text-foreground-neutral-weaker active:hover:font-medium active:font-medium shadow-box outline-none">
         View Options
       </DropdownMenuTrigger>
       <DropdownMenuContent>
@@ -47,7 +47,7 @@ export function RadioDropdownExample() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="px-3 py-1.5 text-sm font-normal border border-fd-border rounded-low bg-background-default hover:bg-background-neutral text-foreground-neutral disabled:text-foreground-neutral-weaker active:hover:font-medium active:font-medium shadow-box outline-none">
+      <DropdownMenuTrigger className="px-3 py-1.5 text-sm font-normal border border-stroke-neutral rounded-square-low bg-background-default hover:bg-background-neutral text-foreground-neutral disabled:text-foreground-neutral-weaker active:hover:font-medium active:font-medium shadow-box outline-none">
         Panel Position
       </DropdownMenuTrigger>
       <DropdownMenuContent>

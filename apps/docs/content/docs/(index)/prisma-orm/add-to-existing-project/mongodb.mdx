@@ -1,326 +1,174 @@
 ---
 title: MongoDB
-description: Add Prisma ORM to an existing TypeScript project with MongoDB and learn database introspection and querying
+description: Add Prisma 8 to an existing MongoDB project.
 url: /prisma-orm/add-to-existing-project/mongodb
-metaTitle: How to add Prisma ORM to an existing project using MongoDB (15 min)
-metaDescription: Add Prisma ORM to an existing TypeScript project with MongoDB and learn database introspection and querying.
+metaTitle: Add Prisma 8 to an existing MongoDB project
+metaDescription: Add Prisma 8 to an existing MongoDB project.
 ---
 
-[MongoDB](https://www.mongodb.com/) is a popular document-based NoSQL database known for its flexibility, scalability, and developer-friendly features. In this guide, you will learn how to add Prisma ORM to an existing TypeScript project, connect it to MongoDB, introspect your existing database schema, and start querying with type-safe Prisma Client.
+To add Prisma 8 to a project that already uses MongoDB, you will run `orm init`, describe the collections you want to work with, emit the generated artifacts, and run a couple of queries.
 
-:::warning[MongoDB support for Prisma ORM v7]
+Use this path when you already have an application and database. Make sure the app can already reach its MongoDB deployment and runs on Node.js 24 or newer. If you want Prisma 8 to create a new app for you, use the [MongoDB quickstart](/prisma-orm/quickstart/mongodb).
 
-**MongoDB support for Prisma ORM v7 is coming in the near future.** In the meantime, please use **Prisma ORM v6.19** (the latest v6 release) when working with MongoDB.
+:::note[Using Prisma 7?]
 
-This guide uses Prisma ORM v6.19 to ensure full compatibility with MongoDB.
-
-:::
-
-:::tip
-
-If you're migrating to Prisma ORM from Mongoose, see our [Migrate from Mongoose guide](/guides/switch-to-prisma-orm/from-mongoose).
+Prisma 8 is the current release of Prisma ORM. Prisma 7 remains fully supported; its docs live at [/orm/v7](/orm/v7) and its setup paths at [/v7/getting-started](/v7/getting-started).
 
 :::
 
-## Prerequisites
+For local development, use a replica set. MongoDB Atlas already gives you that.
 
-In order to successfully complete this guide, you need:
+## 1. Make sure you can run the example script
 
-- [Node.js](https://nodejs.org/en/) installed on your machine (see [system requirements](/guides/upgrade-prisma-orm/v6#minimum-supported-nodejs-versions) for officially supported versions)
-- An existing TypeScript project with a `package.json` file
-- Access to a MongoDB 4.2+ server with a replica set deployment. We recommend using [MongoDB Atlas](https://www.mongodb.com/cloud/atlas).
+If your project already runs TypeScript scripts, you can skip this step.
 
-:::warning
-
-The MongoDB database connector uses transactions to support nested writes. Transactions **require** a [replica set](https://www.mongodb.com/docs/manual/tutorial/deploy-replica-set/) deployment. The easiest way to deploy a replica set is with [Atlas](https://www.mongodb.com/docs/atlas/getting-started/). It's free to get started.
-
-:::
-
-Make sure you have your database [connection URL](/orm/reference/connection-urls) (that includes your authentication credentials) at hand!
-
-:::note
-
-If your project contains multiple directories with `package.json` files (e.g., `frontend`, `backend`, etc.), note that Prisma ORM is specifically designed for use in the API/backend layer. To set up Prisma, navigate to the appropriate backend directory containing the relevant `package.json` file and configure Prisma there.
-
-:::
-
-## 1. Set up Prisma ORM
-
-Navigate to your existing project directory and install the required dependencies:
+Otherwise, install the script tooling:
 
 ```npm
-npm install prisma@6.19 @types/node --save-dev
-npm install @prisma/client@6.19 dotenv
+npm install --save-dev tsx typescript
 ```
 
-Here's what each package does:
+Later, `orm init` will also add the Node.js types it needs and make sure the generated Prisma 8 files can run as ES modules. If your project already declares `"type": "commonjs"`, Prisma 8 leaves that choice alone and prints a warning so you can decide how to wire the generated helper into your app.
 
-- **`prisma`** - The Prisma CLI for running commands like `prisma init`, `prisma db pull`, and `prisma generate`
-- **`@prisma/client`** - The Prisma Client library for querying your database
-- **`dotenv`** - Loads environment variables from your `.env` file
+## 2. Initialize Prisma 8
 
-:::info[Why Prisma v6.19?]
-
-This is the latest stable version of Prisma ORM v6 that fully supports MongoDB. MongoDB support for Prisma ORM v7 is coming soon.
-
-You can also install `prisma@6` and `@prisma/client@6` to automatically get the latest v6 release.
-
-:::
-
-## 2. Initialize Prisma ORM
-
-Set up your Prisma ORM project by creating your [Prisma Schema](/orm/prisma-schema/overview) file with the following command:
+From the root of your existing project, run:
 
 ```npm
-npx prisma init --datasource-provider mongodb --output ../generated/prisma
+npx prisma@latest orm init --target mongodb
 ```
 
-This command does a few things:
+This is the existing-project path. It preselects MongoDB, adds Prisma 8 files and package scripts to the app you already have, and does not scaffold a new framework project.
 
-- Creates a `prisma/` directory with a `schema.prisma` file containing your database connection configuration
-- Creates a `.env` file in the root directory for environment variables
-- Creates a `prisma.config.ts` file for Prisma configuration
+It also adds `prisma-next.md` and project-level Prisma 8 skills for Cursor, Claude Code, Codex, and Windsurf so your agent can read the Prisma 8 usage, upgrade, and extension-author guidance from the project.
 
-The generated `prisma.config.ts` file looks like this:
+When Prisma 8 asks the remaining setup questions:
 
-```typescript title="prisma.config.ts"
-import { defineConfig, env } from "prisma/config";
+- choose `PSL`
+- keep the default schema path, `prisma/contract.prisma`
 
-export default defineConfig({
-  schema: "prisma/schema.prisma",
-  migrations: {
-    path: "prisma/migrations",
-  },
-  engine: "classic",
-  datasource: {
-    url: env("DATABASE_URL"),
-  },
-});
-```
+## 3. Set your database connection string
 
-Add `dotenv` to `prisma.config.ts` so that Prisma can load environment variables from your `.env` file:
-
-```typescript title="prisma.config.ts"
-import "dotenv/config"; // [!code ++]
-import { defineConfig, env } from "prisma/config";
-
-export default defineConfig({
-  schema: "prisma/schema.prisma",
-  migrations: {
-    path: "prisma/migrations",
-  },
-  engine: "classic",
-  datasource: {
-    url: env("DATABASE_URL"),
-  },
-});
-```
-
-The generated schema uses [the ESM-first `prisma-client` generator](/orm/prisma-schema/overview/generators#prisma-client) with a custom output path:
-
-```prisma title="prisma/schema.prisma"
-generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
-}
-
-datasource db {
-  provider = "mongodb"
-  url = env("DATABASE_URL")
-}
-```
-
-## 3. Connect your database
-
-Update the `.env` file with your MongoDB connection URL:
+Update `.env` with the connection string for the MongoDB deployment your app already uses:
 
 ```text title=".env"
-DATABASE_URL="mongodb+srv://username:password@cluster.mongodb.net/mydb"
+DATABASE_URL="mongodb://127.0.0.1:27017/app?replicaSet=rs0"
 ```
 
-For MongoDB Atlas, the connection URL format is:
+## 4. Describe the collections you want Prisma 8 to know about
 
-```
-mongodb+srv://USERNAME:PASSWORD@CLUSTER.mongodb.net/DATABASE
-```
+This is the key adoption step for MongoDB, because you decide which part of the existing database Prisma 8 should model first.
 
-Self-hosted MongoDB connection URL format:
+PostgreSQL has `contract infer`. MongoDB does not, so this step is manual.
 
-```
-mongodb://USERNAME:PASSWORD@HOST:PORT/DATABASE
-```
+Open `prisma/contract.prisma` and make it match the collections you want Prisma 8 to query first. If your existing database already has `users` and `posts` collections with `email`, `name`, `title`, and `authorId`, the starter contract is already a useful first draft:
 
-Connection URL components:
+```prisma title="prisma/contract.prisma"
+// use prisma-next
 
-- **`USERNAME`**: Your database user name
-- **`PASSWORD`**: Your database user password
-- **`HOST`**: The host where [`mongod`](https://www.mongodb.com/docs/manual/reference/program/mongod/#mongodb-binary-bin.mongod) or [`mongos`](https://www.mongodb.com/docs/manual/reference/program/mongos/#mongodb-binary-bin.mongos) is running
-- **`PORT`**: The port where your database server is running (typically `27017`)
-- **`DATABASE`**: The name of your database
-
-:::tip
-
-For MongoDB Atlas, you can manually append the database name to the connection URL, as Atlas doesn't include it by default.
-
-:::
-
-### Troubleshooting connection issues
-
-- **Authentication failed** — If you see a `SCRAM failure: Authentication failed` error, [add `?authSource=admin`](https://github.com/prisma/prisma/discussions/9994#discussioncomment-1562283) to the end of your connection string.
-- **Empty database name** — If you see an `Error code 8000 (AtlasError): empty database name not allowed` error, append the database name to your connection URL. See this [GitHub issue](https://github.com/prisma/web/issues/5562) for details.
-
-## 4. Introspect your database
-
-Run the following command to introspect your existing database:
-
-```npm
-npx prisma db pull
-```
-
-This command:
-
-- Reads the `DATABASE_URL` from your `.env` file
-- Connects to your MongoDB database
-- Samples documents in your collections to infer the schema
-- Generates Prisma models in your `schema.prisma` file
-
-![Introspect your database with Prisma ORM](/img/getting-started/prisma-db-pull-generate-schema.png)
-
-:::info
-
-**MongoDB introspection limitations:** Prisma introspects MongoDB by sampling documents. You may need to manually:
-
-- Add relation fields using the `@relation` attribute
-- Adjust field types if the sampling didn't capture all variations
-- Add indexes and constraints not detected during introspection
-
-:::
-
-## 5. Generate Prisma ORM types
-
-Generate Prisma Client based on your introspected schema:
-
-```npm
-npx prisma generate
-```
-
-This creates a type-safe Prisma Client tailored to your database schema in the `generated/prisma` directory.
-
-## 6. Instantiate Prisma Client
-
-Create a utility file to instantiate Prisma Client:
-
-```typescript title="lib/prisma.ts"
-import "dotenv/config";
-import { PrismaClient } from "../generated/prisma/client";
-
-const prisma = new PrismaClient();
-
-export { prisma };
-```
-
-## 7. Query your database
-
-Now you can use Prisma Client to query your database. Create a `script.ts` file:
-
-```typescript title="script.ts"
-import { prisma } from "./lib/prisma";
-
-async function main() {
-  // Example: Fetch all records from a collection
-  // Replace 'user' with your actual model name
-  const allUsers = await prisma.user.findMany();
-  console.log("All users:", JSON.stringify(allUsers, null, 2));
+model User {
+  id    ObjectId @id @map("_id")
+  email String   @unique
+  name  String?
+  posts Post[]
+  @@map("users")
 }
 
-main()
-  .then(async () => {
-    await prisma.$disconnect();
-  })
-  .catch(async (e) => {
-    console.error(e);
-    await prisma.$disconnect();
-    process.exit(1);
-  });
+model Post {
+  id       ObjectId @id @map("_id")
+  title    String
+  content  String?
+  author   User     @relation(fields: [authorId], references: [id])
+  authorId ObjectId
+  @@map("posts")
+}
 ```
 
-Run the script:
+You do not need to model every collection on day one. Start with the part of the database you want to read and write first.
+
+## 5. Emit the generated artifacts
+
+Once the contract looks right, this step turns it into the generated files the runtime and query APIs use.
+
+Run:
+
+```npm
+npx prisma@latest contract emit
+```
+
+This refreshes `prisma/contract.json` and `prisma/contract.d.ts` so the runtime and query APIs are aligned with the contract you just reviewed.
+
+## 6. Run a simple high-level query
+
+With the emitted artifacts in place, you can test the higher-level API first and confirm Prisma 8 can read the existing collections.
+
+Create a `script.ts` file:
+
+```typescript title="script.ts"
+import "dotenv/config";
+import { db } from "./prisma/db";
+
+async function main() {
+  const user = await db.orm.users.where({ email: "existing@example.com" }).first();
+  console.log(user);
+
+  await db.close();
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
+```
+
+Run it:
 
 ```npm
 npx tsx script.ts
 ```
 
-## 8. Evolve your schema
+## 7. Run a simple low-level query
 
-MongoDB doesn't support migrations like relational databases. Instead, use `db push` to sync schema changes:
+After the ORM example, this step shows the lower-level MongoDB pipeline builder against the same existing collections.
 
-### 8.1. Update your Prisma schema file
+Replace `script.ts` with this version:
 
-Modify your Prisma schema file with the changes you want. For example, add a new model:
+```typescript title="script.ts"
+import "dotenv/config";
+import { db } from "./prisma/db";
 
-```prisma title="prisma/schema.prisma"
-model Post { // [!code ++]
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId // [!code ++]
-  title     String // [!code ++]
-  content   String? // [!code ++]
-  published Boolean  @default(false) // [!code ++]
-  authorId  String   @db.ObjectId // [!code ++]
-  author    User     @relation(fields: [authorId], references: [id]) // [!code ++]
-} // [!code ++]
+async function main() {
+  const runtime = await db.runtime();
+  const plan = db.query
+    .from("users")
+    .match((fields) => fields.email.eq("existing@example.com"))
+    .project("email", "name")
+    .build();
 
-model User { // [!code ++]
-  id    String @id @default(auto()) @map("_id") @db.ObjectId // [!code ++]
-  email String @unique // [!code ++]
-  name  String? // [!code ++]
-  posts Post[] // [!code ++]
-} // [!code ++]
+  const rows = await runtime.execute(plan);
+  console.log(rows);
+
+  await db.close();
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
 ```
 
-:::info
-
-In MongoDB, the `id` field is mapped to `_id` and uses `@db.ObjectId` type. Relations use `String` type with `@db.ObjectId` annotation.
-
-:::
-
-### 8.2. Push the changes to your database
+Run it again:
 
 ```npm
-npx prisma db push
+npx tsx script.ts
 ```
 
-This command:
+## 8. Next steps
 
-- Applies schema changes to your MongoDB database
-- Automatically regenerates Prisma Client
+When you change `prisma/contract.prisma`, emit the contract again:
 
-:::info[Why `db push` instead of migrations?]
+```npm
+npx prisma@latest contract emit
+```
 
-MongoDB uses a flexible schema model. Prisma Migrate (which creates migration files) is not supported for MongoDB. Always use `prisma db push` to sync your schema changes.
-
-:::
-
-## 9. Explore your data
-
-You can use [MongoDB Atlas](https://www.mongodb.com/cloud/atlas), the MongoDB shell, or MongoDB Compass to view and manage your data.
-
-:::warning
-
-[Prisma Studio](/studio) does not currently support MongoDB. Support may be added in a future release. See [Databases supported by Prisma Studio](/studio#supported-databases) for more information.
-
-:::
-
-## Next steps
-
-You've successfully set up Prisma ORM. Here's what you can explore next:
-
-- **Learn more about Prisma Client**: Explore the [Prisma Client API](/orm/prisma-client/setup-and-configuration/introduction) for advanced querying, filtering, and relations
-- **Database migrations**: Learn about [Prisma Migrate](/orm/prisma-migrate) for evolving your database schema
-- **Performance optimization**: Discover [query optimization techniques](/orm/prisma-client/queries/advanced/query-optimization-performance)
-- **Build a full application**: Check out our [framework guides](/guides) to integrate Prisma ORM with Next.js, Express, and more
-- **Join the community**: Connect with other developers on [Discord](https://pris.ly/discord)
-
-## More info
-
-- [MongoDB database connector](/orm/core-concepts/supported-databases/mongodb)
-- [Prisma Config reference](/orm/reference/prisma-config-reference)
-- [Database introspection](/orm/prisma-schema/introspection)
+You do not need a migration just to read collections that already exist. Use [migration plan](/cli/migration-plan) when you want Prisma 8 to own a schema change.

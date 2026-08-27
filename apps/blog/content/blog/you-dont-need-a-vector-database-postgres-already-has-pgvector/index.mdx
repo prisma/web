@@ -8,7 +8,7 @@ metaTitle: "You Don't Need a Vector Database, Postgres Already Has pgvector"
 metaDescription: "pgvector turns Postgres into a vector store; Prisma 8 makes it type-safe. Build working semantic search on a temporary Prisma Postgres database in minutes."
 heroImagePath: "/you-dont-need-a-vector-database-postgres-already-has-pgvector/imgs/hero.svg"
 metaImagePath: "/you-dont-need-a-vector-database-postgres-already-has-pgvector/imgs/meta.png"
-heroImageAlt: "You Don't Need a Vector Database, Postgres Already Has pgvector"
+heroImageAlt: "The post's movie vectors plotted on the action and scifi axes, with The Terminator highlighted and lines drawn to its nearest neighbours."
 tags:
   - "prisma-postgres"
   - "education"
@@ -27,7 +27,7 @@ If your app already runs on Postgres, you probably don't need a dedicated vector
 
 The default move is the opposite: the moment semantic search shows up on a roadmap, someone proposes Pinecone, Weaviate, or Qdrant. That means a second data store, a pipeline to keep it consistent with your primary database, and a second set of credentials, backups, and bills, all before the first useful search result.
 
-In this post you'll build a small semantic search demo end to end: a temporary [Prisma Postgres](https://www.prisma.io/docs/postgres) database spawned with `npx create-db`, a schema with a `vector` column, and a type-safe cosine similarity query written with [Prisma 8](https://www.prisma.io/docs/orm/v8), the next-generation Prisma ORM, and its `@prisma/orm-extension-pgvector` extension pack. Every command and every output in this post comes from a real run.
+In this post you'll build a small semantic search demo end to end: a temporary [Prisma Postgres](https://www.prisma.io/docs/postgres) database spawned with `npx create-db`, a schema with a `vector` column, and a type-safe cosine similarity query written with [Prisma 8](https://www.prisma.io/docs/orm), the next-generation Prisma ORM, and its `@prisma/orm-extension-pgvector` extension pack. Every command and every output in this post comes from a real run.
 
 ## What an embedding is
 
@@ -155,19 +155,22 @@ model Movie {
 
 The line that matters is `Vibe = pgvector.Vector(4)`. The dimension is part of the type, and every `Movie.embedding` is a 4-dimensional vector from here on. A real app would write `pgvector.Vector(1536)` to match its embedding model.
 
-Wire the extension into `prisma-next.config.ts` at the project root:
+Wire the extension into `prisma.config.ts` at the project root:
 
 ```typescript
 import "dotenv/config";
 import pgvector from "@prisma/orm-extension-pgvector/control";
-import { defineConfig } from "@prisma/orm-postgres/config";
+import { defineConfig } from "@prisma/cli-engine";
+import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
 
 export default defineConfig({
-  contract: "./src/prisma/contract.prisma",
-  extensions: [pgvector],
-  db: {
-    connection: process.env.DATABASE_URL!,
-  },
+  orm: ormConfig({
+    contract: "./src/prisma/contract.prisma",
+    extensions: [pgvector],
+    db: {
+      connection: process.env.DATABASE_URL!,
+    },
+  }),
 });
 ```
 
@@ -176,9 +179,9 @@ export default defineConfig({
 Three commands take the contract from a `.prisma` file to a live, signed database:
 
 ```bash
-bunx prisma-next contract emit
-bunx prisma-next migration plan
-bunx prisma-next db init
+bunx prisma@latest contract emit
+bunx prisma@latest migration plan
+bunx prisma@latest db init
 ```
 
 `contract emit` compiles the contract to `contract.json` plus a `contract.d.ts` where `Movie.embedding` is typed as `Vector<4>`.
@@ -357,7 +360,7 @@ Yes. An embedding is just an array of numbers, so you can insert hand-made vecto
 ## Recap
 
 - Embeddings are vectors; semantic search is ordering by the angle between them. pgvector gives Postgres a `vector(N)` column type and a `<=>` cosine distance operator.
-- [`@prisma/orm-extension-pgvector`](https://github.com/prisma/prisma-next) is a Prisma 8 extension pack: a codec (`Vector<4>` in your types), typed `cosineDistance`/`cosineSimilarity` operations, and a baseline migration that installs the extension for you.
+- [`@prisma/orm-extension-pgvector`](https://github.com/prisma/orm/tree/main/packages/3-extensions/pgvector) is a Prisma 8 extension pack: a codec (`Vector<4>` in your types), typed `cosineDistance`/`cosineSimilarity` operations, and a baseline migration that installs the extension for you.
 - The demo ran on a throwaway database from `npx create-db@latest`, and the whole flow is four commands: `contract emit`, `migration plan`, `db init`, `bun index.ts`.
 - Fit: apps already on Postgres with up to a few million vectors that want embeddings, filters, and transactions in one place. Reach for a dedicated engine when extreme-scale ANN or full search-engine features are the product.
 

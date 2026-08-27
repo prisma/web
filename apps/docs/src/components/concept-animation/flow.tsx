@@ -13,9 +13,15 @@ import type {
 import { PlayerShell } from "./shell";
 
 const EDGE_COLOR = "var(--color-fd-muted-foreground)";
-const MONO = "ui-monospace, SFMono-Regular, Menlo, monospace";
+// The brand mono face, with the previous stack kept as the fallback chain.
+const MONO = "var(--font-mono, ui-monospace), ui-monospace, SFMono-Regular, Menlo, monospace";
 
-/** Box styling per role. Tailwind `fill-*`/`stroke-*` utilities, theme-aware. */
+/**
+ * Box styling per role. Tailwind `fill-*`/`stroke-*` utilities, theme-aware.
+ *
+ * The diagram's role hues are data-viz, not brand — except the retired teal,
+ * which was remapped onto the prism cyan scale by lightness position.
+ */
 const BOX: Record<FlowVariant, { rect: string; label: string; sub: string; ring: string }> = {
   project: {
     rect: "fill-amber-100 stroke-amber-300 dark:fill-amber-400/15 dark:stroke-amber-400/40",
@@ -42,10 +48,10 @@ const BOX: Record<FlowVariant, { rect: string; label: string; sub: string; ring:
     ring: "stroke-emerald-400 dark:stroke-emerald-300",
   },
   production: {
-    rect: "fill-teal-100 stroke-teal-300 dark:fill-teal-400/15 dark:stroke-teal-400/40",
-    label: "fill-teal-950 dark:fill-teal-50",
-    sub: "fill-teal-700 dark:fill-teal-200/70",
-    ring: "stroke-teal-400 dark:stroke-teal-300",
+    rect: "fill-prism-cyan-100 stroke-prism-cyan-300 dark:fill-prism-cyan-400/15 dark:stroke-prism-cyan-400/40",
+    label: "fill-prism-cyan-950 dark:fill-prism-cyan-50",
+    sub: "fill-prism-cyan-700 dark:fill-prism-cyan-200/70",
+    ring: "stroke-prism-cyan-400 dark:stroke-prism-cyan-300",
   },
   scope: {
     rect: "fill-violet-100 stroke-violet-300 dark:fill-violet-400/15 dark:stroke-violet-400/40",
@@ -57,7 +63,7 @@ const BOX: Record<FlowVariant, { rect: string; label: string; sub: string; ring:
     rect: "fill-fd-card stroke-stroke-neutral-strong",
     label: "fill-fd-foreground",
     sub: "fill-fd-muted-foreground",
-    ring: "stroke-teal-400 dark:stroke-teal-300",
+    ring: "stroke-prism-cyan-400 dark:stroke-prism-cyan-300",
   },
   infra: {
     rect: "fill-transparent stroke-stroke-neutral-strong",
@@ -77,12 +83,13 @@ type ChipKind = "vars" | "scope" | "production";
 const CHIP: Record<ChipKind, string> = {
   vars: "fill-emerald-100 stroke-emerald-300 dark:fill-emerald-400/20 dark:stroke-emerald-400/40",
   scope: "fill-violet-100 stroke-violet-300 dark:fill-violet-400/20 dark:stroke-violet-400/40",
-  production: "fill-teal-100 stroke-teal-300 dark:fill-teal-400/20 dark:stroke-teal-400/40",
+  production:
+    "fill-prism-cyan-100 stroke-prism-cyan-300 dark:fill-prism-cyan-400/20 dark:stroke-prism-cyan-400/40",
 };
 const CHIP_TEXT: Record<ChipKind, string> = {
   vars: "fill-emerald-950 dark:fill-emerald-50",
   scope: "fill-violet-950 dark:fill-violet-50",
-  production: "fill-teal-950 dark:fill-teal-50",
+  production: "fill-prism-cyan-950 dark:fill-prism-cyan-50",
 };
 function chipKind(variant: string): ChipKind {
   if (variant === "vars") return "vars";
@@ -92,12 +99,12 @@ function chipKind(variant: string): ChipKind {
 
 /** Colored bar drawn beside a variable row, by where its value came from. */
 const ORIGIN_BAR: Record<RowOrigin, string> = {
-  production: "fill-teal-500 dark:fill-teal-400",
+  production: "fill-prism-cyan-500 dark:fill-prism-cyan-400",
   preview: "fill-emerald-500 dark:fill-emerald-400",
   override: "fill-amber-500 dark:fill-amber-400",
 };
 const ORIGIN_TEXT: Record<RowOrigin, string> = {
-  production: "fill-teal-700 dark:fill-teal-300",
+  production: "fill-prism-cyan-700 dark:fill-prism-cyan-300",
   preview: "fill-emerald-700 dark:fill-emerald-300",
   override: "fill-amber-700 dark:fill-amber-300",
 };

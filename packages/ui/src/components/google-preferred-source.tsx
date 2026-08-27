@@ -37,6 +37,10 @@ type Props = AnchorHTMLAttributes<HTMLAnchorElement> & {
   label?: string;
 };
 
+/** Eclipse-token palette (blog, docs). Site passes its own shadcn classes. */
+export const eclipseButtonClass =
+  "border-stroke-neutral bg-background-default text-foreground-neutral hover:bg-background-neutral-weak";
+
 export function GooglePreferredSourceButton({
   className,
   label = "Make us preferred on Google",
@@ -49,7 +53,7 @@ export function GooglePreferredSourceButton({
       rel="noopener noreferrer"
       aria-label={`${label} (opens Google search preferences)`}
       className={cn(
-        "inline-flex w-fit shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-stroke-neutral-weak bg-background-default px-4 py-2 text-sm font-semibold leading-none text-foreground-neutral no-underline transition-colors hover:bg-background-neutral-weak",
+        "inline-flex w-fit shrink-0 items-center gap-2 whitespace-nowrap rounded-full border px-4 py-2 text-sm font-semibold leading-none no-underline transition-colors",
         className,
       )}
       {...rest}
@@ -67,7 +71,7 @@ export function GooglePreferredSourceCallout({ className }: { className?: string
   return (
     <aside
       className={cn(
-        "flex flex-col gap-4 rounded-square border border-stroke-neutral-weak bg-background-default p-5 md:flex-row md:items-center md:justify-between",
+        "flex flex-col gap-4 rounded-square border border-stroke-neutral bg-background-default p-5 md:flex-row md:items-center md:justify-between",
         className,
       )}
     >
@@ -78,7 +82,10 @@ export function GooglePreferredSourceCallout({ className }: { className?: string
           your Top Stories and AI Overviews.
         </span>
       </div>
-      <GooglePreferredSourceButton data-attr="blog-post-google-preferred-source" />
+      <GooglePreferredSourceButton
+        className={eclipseButtonClass}
+        data-attr="blog-post-google-preferred-source"
+      />
     </aside>
   );
 }
