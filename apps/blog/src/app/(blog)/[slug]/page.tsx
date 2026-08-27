@@ -8,6 +8,7 @@ import { Badge, InlineTOC, Separator } from "@prisma/eclipse";
 
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import { BlogShare } from "@/components/BlogShare";
+import { GooglePreferredSourceCallout } from "@prisma-docs/ui/components/google-preferred-source";
 import { BlogCTA } from "@/components/BlogCTA";
 import { AuthorAvatarGroup } from "@/components/AuthorAvatarGroup";
 import { AuthorBio } from "@/components/AuthorBio";
@@ -297,6 +298,9 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
 
         {/* Share Container */}
         <BlogShare desc={page.data.metaDescription as string} />
+
+        {/* Google Preferred Sources — readers who finish a post are the most likely to opt in */}
+        <GooglePreferredSourceCallout className="mt-12" />
       </div>
       <div className="max-md:hidden toc">
         <div className="sticky top-24 max-h-[calc(100vh-6rem)] overflow-y-auto [&_a[data-state=inactive]]:text-foreground-neutral-weak! [&_a[data-state=active]]:text-foreground-neutral!">

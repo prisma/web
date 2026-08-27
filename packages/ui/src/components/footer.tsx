@@ -13,6 +13,7 @@ import { Logo } from "./navigation-menu";
 import { gdpr, hipaa, iso27, soc2 } from "./footer-badges";
 import PDPStatus from "./pdp-status";
 import { ThemeToggle } from "./theme-toggle";
+import { GooglePreferredSourceButton } from "./google-preferred-source";
 
 type ColorType = "orm" | "ppg" | undefined;
 
@@ -120,6 +121,7 @@ const Footer = ({
             {!hideNewsletter && newsletterComponent ? (
               <div className="w-full max-w-sm lg:max-w-[280px]">{newsletterComponent}</div>
             ) : null}
+            <GooglePreferredSourceButton className="w-fit" />
           </div>
           {/* Main Grid Row */}
           <div className="grid max-md:gap-8 max-md:grid-cols-2 grid-cols-[repeat(4,auto)] lg:gap-8 xl:gap-12 relative lg:w-fit ml-auto">
