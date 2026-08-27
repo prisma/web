@@ -48,6 +48,7 @@ export function GooglePreferredSourceButton({
 }: Props) {
   return (
     <a
+      {...rest}
       href={GOOGLE_PREFERRED_SOURCE_URL}
       target="_blank"
       rel="noopener noreferrer"
@@ -56,7 +57,6 @@ export function GooglePreferredSourceButton({
         "inline-flex w-fit shrink-0 items-center gap-2 whitespace-nowrap rounded-full border px-4 py-2 text-sm font-semibold leading-none no-underline transition-colors",
         className,
       )}
-      {...rest}
     >
       <GoogleG />
       <span>{label}</span>

@@ -55,6 +55,10 @@ export function Footer() {
                 </Link>
               ))}
             </div>
+            <GooglePreferredSourceButton
+              className="mt-8 border-black/10 bg-white text-foreground hover:bg-black/[0.04]"
+              data-attr="footer-google-preferred-source"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-4">
@@ -112,10 +116,6 @@ export function Footer() {
               </Link>
             ))}
           </div>
-          <GooglePreferredSourceButton
-            className="border-black/10 bg-white text-foreground hover:bg-black/[0.04] md:justify-self-end"
-            data-attr="footer-google-preferred-source"
-          />
         </div>
 
         {/* the giant footer wordmark — kept inside the page's max-width so it
