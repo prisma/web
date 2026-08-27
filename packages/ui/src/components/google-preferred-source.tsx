@@ -49,7 +49,7 @@ export function GooglePreferredSourceButton({
       rel="noopener noreferrer"
       aria-label={`${label} (opens Google search preferences)`}
       className={cn(
-        "inline-flex items-center gap-2 rounded-full border border-stroke-neutral-weak bg-background-default px-4 py-2 text-sm font-semibold leading-none text-foreground-neutral no-underline transition-colors hover:bg-background-neutral-weak",
+        "inline-flex w-fit shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-stroke-neutral-weak bg-background-default px-4 py-2 text-sm font-semibold leading-none text-foreground-neutral no-underline transition-colors hover:bg-background-neutral-weak",
         className,
       )}
       {...rest}
@@ -78,7 +78,7 @@ export function GooglePreferredSourceCallout({ className }: { className?: string
           your Top Stories and AI Overviews.
         </span>
       </div>
-      <GooglePreferredSourceButton className="shrink-0" />
+      <GooglePreferredSourceButton data-attr="blog-post-google-preferred-source" />
     </aside>
   );
 }

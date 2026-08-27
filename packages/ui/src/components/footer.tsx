@@ -121,7 +121,6 @@ const Footer = ({
             {!hideNewsletter && newsletterComponent ? (
               <div className="w-full max-w-sm lg:max-w-[280px]">{newsletterComponent}</div>
             ) : null}
-            <GooglePreferredSourceButton className="w-fit" />
           </div>
           {/* Main Grid Row */}
           <div className="grid max-md:gap-8 max-md:grid-cols-2 grid-cols-[repeat(4,auto)] lg:gap-8 xl:gap-12 relative lg:w-fit ml-auto">
@@ -192,7 +191,10 @@ const Footer = ({
 
           {/* Compliance Footer */}
           <div className="gap-6 md:items-center justify-between flex md:flex-nowrap flex-wrap w-full md:pb-0 pb-11">
-            <PDPStatus className="justify-start order-1" />
+            <div className="flex flex-wrap items-center gap-4 order-1">
+              <PDPStatus className="justify-start" />
+              <GooglePreferredSourceButton data-attr="footer-google-preferred-source" />
+            </div>
             <div className="md:max-w-78 flex justify-between w-full items-center order-3 md:order-2">
               <a
                 href="https://trust.prisma.io/"
