@@ -3,6 +3,7 @@ import { Github, Linkedin, Mail, XSocial } from "@/components/icons/forma";
 import { AnimatedWordmark } from "@/components/brand/animated-wordmark";
 import { SiteLink } from "@/components/site-link";
 import { siteConfig } from "@/lib/config";
+import { GooglePreferredSourceButton } from "@prisma-docs/ui/components/google-preferred-source";
 
 // Light reference-style footer (Fincrest): brand block with contact + social
 // icons on the left, link columns (including a Social Media column) on the
@@ -54,6 +55,10 @@ export function Footer() {
                 </Link>
               ))}
             </div>
+            <GooglePreferredSourceButton
+              className="mt-8 border-black/10 bg-white text-foreground hover:bg-black/[0.04]"
+              data-attr="footer-google-preferred-source"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-4">

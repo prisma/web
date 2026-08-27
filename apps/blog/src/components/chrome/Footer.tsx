@@ -16,6 +16,11 @@
 import footerData from "@prisma-docs/ui/data/footer";
 import { gdpr, hipaa, iso27, soc2 } from "@prisma-docs/ui/components/footer-badges";
 import PDPStatus from "@prisma-docs/ui/components/pdp-status";
+import {
+  GooglePreferredSourceButton,
+  eclipseButtonClass,
+} from "@prisma-docs/ui/components/google-preferred-source";
+import { cn } from "@prisma-docs/ui/lib/cn";
 import type { ReactNode } from "react";
 import { BLOG_HOME_DESCRIPTION } from "@/lib/blog-metadata";
 import { BLOG_PREFIX } from "@/lib/url";
@@ -97,6 +102,10 @@ export function Footer({ newsletterComponent }: { newsletterComponent?: ReactNod
             {newsletterComponent ? (
               <div className="mt-8 w-full max-w-[280px]">{newsletterComponent}</div>
             ) : null}
+            <GooglePreferredSourceButton
+              className={cn("mt-8", eclipseButtonClass)}
+              data-attr="footer-google-preferred-source"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-4">
