@@ -1,0 +1,199 @@
+---
+title: "Prisma Compute is now generally available"
+date: "2026-08-28"
+version: "2026-08-28"
+slug: "2026-08-28"
+headline: "Prisma Compute is now generally available"
+tags:
+  - "Prisma"
+  - "Prisma Compute"
+  - "Prisma Composer"
+  - "Prisma 8"
+  - "Prisma Postgres"
+  - "REST API"
+canonical: "/changelog#log2026-08-28"
+metaDescription: "Prisma Compute is generally available with usage-based pricing and a Free plan. This release also introduces Deploy Buttons and the Prisma apps directory, and makes Prisma 8 available through prisma@latest."
+share:
+  active: true
+  content: "Look at this page: "
+---
+**You can now run production apps on Prisma Compute.** Pricing is published, the Free plan covers a million requests a month, and every branch gets its own environment. This release also introduces **Deploy Buttons**, which let anyone launch your app from a README in one click, and makes **Prisma 8 available as `prisma@latest`**.
+
+## Prisma Compute is ready for production
+
+[Prisma Compute](https://www.prisma.io/docs/compute) runs your TypeScript app next to your [Prisma Postgres](https://www.prisma.io/docs/postgres) database and scales it to zero when idle, so you *only pay for traffic you serve*. [Pricing](https://www.prisma.io/docs/compute/pricing) applies from today:
+
+- The **Free plan** includes 1 million requests, 360 GB-hours of memory, 4 vCPU-hours, and 10 GB of bandwidth a month and is *never billed*. If a workspace passes a limit, its apps pause until the next month or an upgrade.
+- **Paid plans** include 5, 20, or 100 million requests a month, and usage beyond that costs `$1` per million requests, `$0.006` per GB-hour, `$0.064` per vCPU-hour, and `$0.025` per GB sent.
+
+The [Console](https://console.prisma.io) Usage page shows **where the money goes**, with requests, memory, CPU, and bandwidth broken down by day, by app, and by response status.
+
+![The Prisma Console Usage page showing Compute requests, provisioned memory, active CPU, and outbound bandwidth for a workspace, with a request chart split by response status and totals per app.](/changelog/2026-08-28-console-compute-usage.png)
+
+<div className="not-prose flex flex-wrap gap-3">
+  <PrismButton href="https://console.prisma.io/?utm_source=changelog&utm_medium=cta&utm_campaign=compute-ga" ctaLocation="changelog-compute-ga">Deploy on Prisma Compute</PrismButton>
+  <PrismButtonOutline href="https://www.prisma.io/blog/building-the-stack-for-the-next-million-products" ctaLocation="changelog-compute-ga">Read the launch post</PrismButtonOutline>
+</div>
+
+## Anyone can deploy your app in one click
+
+Add a Deploy Button to your README, and whoever clicks it gets **a running copy of your app, with its own database, in their own workspace**. The [Deploy Button page](https://www.prisma.io/docs/compute/deploy-button) generates the badge for you and lists the three things your repository needs: a [Composer](https://www.prisma.io/docs/composer) config, a build script, and a lockfile.
+
+![The Deploy Button generator in the Prisma docs: a repository URL field, optional destination name and attribution source, and the generated Deploy with Prisma badge.](/changelog/2026-08-28-deploy-button-generator.png)
+
+To start from a ready-made app, browse the [Prisma apps directory](https://www.prisma.io/apps), which lists open-source starters that deploy the same way. The same starters are the first option when you create a project in the Console.
+
+![The Prisma apps directory listing open-source starters, each with a Use this app button and a link to the source.](/changelog/2026-08-28-prisma-apps-directory.png)
+
+<div className="not-prose flex flex-wrap gap-3">
+  <PrismButton href="https://www.prisma.io/apps" ctaLocation="changelog-apps-directory">Browse the apps directory</PrismButton>
+  <PrismButtonOutline href="https://www.prisma.io/docs/compute/deploy-button" ctaLocation="changelog-apps-directory">Make a Deploy Button</PrismButtonOutline>
+</div>
+
+## Prisma 8 is now `prisma@latest`
+
+**`npm install prisma@latest` installs Prisma 8**, and Prisma 7 *stays fully supported* as `prisma@prev` ([docs](https://www.prisma.io/docs/orm/v7)). You do not have to upgrade in one go: the [side-by-side upgrade guide](https://www.prisma.io/docs/guides/upgrade-prisma-orm/postgresql) runs Prisma 7 and Prisma 8 against the same database so you can move one module at a time.
+
+<div className="not-prose flex flex-wrap gap-3">
+  <PrismButton href="https://www.prisma.io/docs/guides/upgrade-prisma-orm/postgresql" ctaLocation="changelog-prisma-8">Run Prisma 7 and 8 side by side</PrismButton>
+  <PrismButtonOutline href="https://www.prisma.io/docs/prisma-orm/quickstart/postgresql" ctaLocation="changelog-prisma-8">Start a new Prisma 8 project</PrismButtonOutline>
+</div>
+
+## What you need to do
+
+- **On Prisma 7:** there is *nothing to change*. If you install with a `latest` tag somewhere, pin `prisma@prev` there.
+- **On an earlier Prisma 8 release candidate:** install `prisma@latest`, replace `prisma-next` with `prisma`, move your config to `prisma.config.ts`, rename `.take()`/`.skip()` to `.limit()`/`.offset()`, and rename `db.sql.raw` to `db.raw.sql`.
+- **CI that runs `db verify`, `db sign`, or `migration check`:** findings now exit `4` instead of `1`, so *update the check* your pipeline relies on.
+- **Calling `/v1/apps` in the REST API:** switch to `/v1/services`, which has the same routes and behavior with `serviceId` in place of `appId`. See the [REST API reference](https://www.prisma.io/docs/rest-api).
+- **Compute projects that build on push:** move to deploys from your own GitHub Actions. Affected projects show a notice in the Console with a one-click switch that opens a setup pull request, which you need to *merge before the cutoff in the notice*.
+
+## Breaking changes
+
+These apply to Prisma 8 release candidates.
+
+- `.take(n)` and `.skip(n)` are now `.limit(n)` and `.offset(n)` everywhere, including relations, groups, and MongoDB, with the same behavior. ([#30112](https://github.com/prisma/orm/pull/30112))
+- The `prisma-next` CLI is no longer published, so use `prisma@latest` and `prisma.config.ts` instead. ([#30005](https://github.com/prisma/orm/pull/30005), [#30058](https://github.com/prisma/orm/pull/30058))
+- Raw SQL moves from `db.sql.raw` to `db.raw.sql` ([reference](https://www.prisma.io/docs/orm/reference/raw-queries#postgresql-raw-sql)). ([#30045](https://github.com/prisma/orm/pull/30045))
+- `db verify`, `db sign`, and `migration check` exit `4` on findings and `2` when they cannot run. ([#29984](https://github.com/prisma/orm/pull/29984))
+
+## Deprecations
+
+- **REST API:** the `/v1/apps` routes are deprecated in favor of `/v1/services`, and both work for now. See the [reference](https://www.prisma.io/docs/rest-api).
+- **Prisma Compute:** platform builds triggered by a GitHub push are deprecated in favor of [deploy on push](https://www.prisma.io/docs/compute/deploy-on-push) from GitHub Actions.
+
+## Prisma Compute
+
+**Every branch now gets its own preview environment** with no extra setup. Deploys run in your repository's GitHub Actions through `prisma/cloud-deploy-action`, where the default branch is production, any other branch is a preview, and deleting the branch deletes the preview. There are *no secrets to store*, because the workflow authenticates with GitHub's OIDC token. The [deploy on push guide](https://www.prisma.io/docs/compute/deploy-on-push) walks through the setup.
+
+From the Console, the whole setup is **one pull request**. You pick a repository, merge the PR the Console opens, and push. Before opening it, the Console checks that the app is on Prisma 8 and within the supported framework boundary, and that the GitHub App has the permissions it needs.
+
+![The Console's Set up your project page: start from a template, or set up manually with a project name, a region, and a repository to deploy from GitHub.](/changelog/2026-08-28-console-new-project.png)
+
+The Console has three smaller improvements as well:
+
+- Creating a project is a single screen where you choose a name, a region, and then a starter, a repository, or an empty project.
+- Every build has a page naming the deployment and database it touched, and builds that never report back are marked as such after 30 minutes instead of staying pending forever.
+- If your app is unreachable after a deploy, the boot log now *tells you why* in the two common cases, which are binding to `localhost` and listening on the wrong port.
+
+## Prisma Composer
+
+With [Prisma Composer](https://www.prisma.io/docs/composer), in Early Access, **you run your entire app, including its infrastructure, on your laptop, then deploy the same thing to Prisma with one command**. Compute services, Prisma Postgres databases, [Object Store buckets](https://www.prisma.io/docs/storage), scheduled jobs, and secrets are all part of one TypeScript app definition. `npx prisma@latest dev module.ts` brings all of it up [locally](https://www.prisma.io/docs/local-development) against stand-in databases and buckets, and `npx prisma@latest deploy module.ts` provisions the real ones and wires the authenticated connections between them. Running deploy again applies *only the diff*. Composer is also what the Deploy Button and the apps directory run on.
+
+```ts title="src/storefront/service.ts"
+import nextjs from "@prisma/composer/nextjs";
+import { rpc } from "@prisma/composer/service-rpc";
+import { compute } from "@prisma/composer-prisma-cloud";
+import { catalogContract } from "../catalog/contract.ts";
+
+export default compute({
+  name: "storefront",
+  deps: { catalog: rpc(catalogContract) },
+  build: nextjs({ module: import.meta.url, appDir: ".." }),
+});
+```
+
+The [core concepts](https://www.prisma.io/docs/composer/core-concepts) page is the place to start, and the [porting guide](https://www.prisma.io/docs/composer/porting-an-app) brings an existing Node.js, Bun, or Next.js app over with a prompt you can hand to your coding agent.
+
+## Prisma Postgres
+
+**The Free plan now includes 200,000 operations a month, double the previous limit.** The [pricing page](https://www.prisma.io/pricing) lists every plan.
+
+## REST API
+
+The Management API is now called the **[REST API](https://www.prisma.io/docs/rest-api)**, and old links redirect. New this release:
+
+- **Manage service tokens without the Console** by calling [create](https://www.prisma.io/docs/rest-api/endpoints/service-tokens/post-workspaces-by-workspace-id-service-tokens), [list](https://www.prisma.io/docs/rest-api/endpoints/service-tokens/get-workspaces-by-workspace-id-service-tokens), and [revoke](https://www.prisma.io/docs/rest-api/endpoints/service-tokens/delete-workspaces-by-workspace-id-service-tokens-by-service-token-id) at `/v1/workspaces/{workspaceId}/service-tokens`.
+- **Run CI without long-lived secrets** by calling `POST /v1/auth/github-actions/token`, which swaps a GitHub Actions OIDC token for a 30-minute workspace token. See [authentication](https://www.prisma.io/docs/rest-api/authentication).
+- **Bring your own deploy tool** and report its builds with `POST /v1/builds` and `PATCH /v1/builds/{buildId}`, so they appear in the Console like any other.
+- **Page through logs** with `GET /v1/deployments/{deploymentId}/logs`, which returns newline-delimited JSON with a cursor for the next page.
+- **Check a workspace's plan from code** with [`GET /v1/workspaces/{workspaceId}/subscription`](https://www.prisma.io/docs/rest-api/endpoints/workspaces/get-workspaces-by-id-subscription), which returns the plan, whether usage is blocked, and the upgrade URL.
+- Every `/v1/apps` route is also available at `/v1/services`, matching what the CLI calls the resource.
+
+## Prisma Console and MCP server
+
+The Console, docs, blog, and site now carry the new Prisma brand. The docs are grouped into Start, Build, Deploy, Manage, and Reference, and every CLI command is documented under [/docs/cli](https://www.prisma.io/docs/cli).
+
+The [Prisma MCP server](https://www.prisma.io/docs/ai/tools/mcp-server) now **signs in from the Claude apps** and from strict OAuth clients such as fx.
+
+## Fixes
+
+**Prisma Compute**
+
+- **Repositories that use pnpm now deploy**, because the generated workflow installs pnpm.
+- A failed deploy from the apps directory shows its error instead of spinning forever.
+
+**Prisma Postgres**
+
+- **Backup sizes now show the right unit**, so a 23 GiB backup no longer reads `23.14 KiB`.
+
+**Prisma 8**
+
+- **Filters like "users followed by people I follow" return the right rows.** Nested self-relation filters used to override each other. ([#29900](https://github.com/prisma/orm/pull/29900))
+- **Counting or summing across a many-to-many relation works** instead of failing on a missing foreign key. ([#29888](https://github.com/prisma/orm/pull/29888))
+- `.aggregate()` and `.groupBy()` now respect `limit`, `offset`, `cursor`, and `distinct` set earlier in the chain, so affected queries return the correct number. Those clauses were silently dropped before. ([#30067](https://github.com/prisma/orm/pull/30067), [#30092](https://github.com/prisma/orm/pull/30092))
+- Running the same `upsert` twice on a `Bytes` key now succeeds instead of failing on the second run. ([#29910](https://github.com/prisma/orm/pull/29910))
+- A migration that gives a non-`SERIAL` column an `autoincrement()` default now fails when you write it, rather than silently at runtime. ([#30040](https://github.com/prisma/orm/pull/30040))
+- Nested relation callbacks in `upsert({ create })`, `createAll()`, and `createAndCount()` are now a type error, because they never ran and *writes you expected were being skipped*. ([#30144](https://github.com/prisma/orm/pull/30144))
+- On MongoDB, the `_id` returned from a write now matches what you read back. ([#29879](https://github.com/prisma/orm/pull/29879))
+- Migration errors now name your actual migrations directory. ([#30041](https://github.com/prisma/orm/pull/30041))
+- `migration graph --dot` prints in the terminal again. ([#30057](https://github.com/prisma/orm/pull/30057))
+- Windows paths now work in `prisma.config.ts`. ([#30121](https://github.com/prisma/orm/pull/30121))
+- Error messages now link to the Prisma 8 error reference. ([#30126](https://github.com/prisma/orm/pull/30126))
+
+**Prisma ORM 7**
+
+- **Migrate now stops you if `shadowDatabaseUrl` points at your real database**, with the new error `P3025`. Until now, `migrate diff --from-migrations` in that setup wiped your schema and reported nothing. ([prisma-engines#5851](https://github.com/prisma/prisma-engines/pull/5851))
+
+**Prisma Studio**
+
+- **Other websites open in your browser can no longer reach the database connected to Studio.** ([#29890](https://github.com/prisma/orm/pull/29890))
+
+## Guides and articles
+
+- [Prisma Is Building the Stack for the Next Million Products](https://www.prisma.io/blog/building-the-stack-for-the-next-million-products): the launch post.
+- [Why Your Agent Reads a Prisma Schema Better Than Your Codebase](https://www.prisma.io/blog/prisma-schema-as-llm-context): the schema as the densest context you can give a coding agent.
+- [Infraslopture and Other Paradoxes](https://www.prisma.io/blog/infraslopture-and-other-paradoxes): letting agents change production config without trusting them.
+- [Deploy the full Prisma stack](https://www.prisma.io/docs/full-stack-tutorial): empty directory to Composer app with a preview per branch.
+- [Upgrade from Prisma 7 to Prisma 8](https://www.prisma.io/docs/guides/upgrade-prisma-orm/postgresql): both versions side by side, one module at a time.
+
+## Builder's Day
+
+Join us in **San Francisco on October 26** for [Builder's Day](https://builders.day/), a one-day conference for people building with AI in production. Expect talks and demos on coding agents, LLM apps, and the infrastructure behind them, followed by ping pong and drinks at SPIN.
+
+<div className="not-prose flex flex-wrap gap-3">
+  <PrismButton href="https://builders.day/" ctaLocation="changelog-builders-day">Get Builder's Day tickets</PrismButton>
+</div>
+
+## Prisma Arcade
+
+[Prisma Arcade](https://arcade.prisma.io/) is a set of six browser games built on Prisma Compute, Prisma Postgres, and Prisma ORM. Whoever tops the Comet Cat leaderboard when the contest closes wins **$500 in Prisma credits**.
+
+![Comet Cat on Prisma Arcade: a pixel-art title screen reading Ready, Pilot? with the score and high score counters.](/changelog/2026-08-28-prisma-arcade.png)
+
+<div className="not-prose flex flex-wrap gap-3">
+  <PrismButtonOutline href="https://arcade.prisma.io/" ctaLocation="changelog-arcade">Play Comet Cat</PrismButtonOutline>
+</div>
+
+---
+
+*Need help applying these changes in production? [Prisma Enterprise Support](https://prisma.io/enterprise) can help with schema design, performance, security, and compliance.*
