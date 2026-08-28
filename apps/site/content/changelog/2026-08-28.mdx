@@ -54,56 +54,17 @@ To start from a ready-made app, browse the [Prisma apps directory](https://www.p
 
 ## Prisma 8 is now `prisma@latest`
 
-**`npm install prisma@latest` installs Prisma 8** (previously Prisma Next). Prisma 7 *stays supported* as `prisma@prev` ([docs](https://www.prisma.io/docs/orm/v7)).
-
-Prisma 8 is a rewrite of Prisma ORM in TypeScript. You still write a schema and query your models, but four things are different from Prisma 7:
-
-- **Your schema becomes a contract.** Instead of generating a client package, `contract emit` turns the schema into a JSON document plus TypeScript types that your app, the migration tools, and coding agents all read. It is a plain file you can inspect and diff.
-- **Queries chain instead of taking one options object.** They start from `db.orm.<schema>.<Model>`, support custom collection methods, streaming results, and a type-safe SQL builder, and each one compiles to a plan you can inspect.
-- **Migrations are a graph.** Branch conflicts resolve automatically, partial failures are safe to retry, and schema and data migrations are written in TypeScript and validated against your contract ([the migration graph](https://www.prisma.io/docs/orm/migrations/the-migration-graph)).
-- **Everything is an extension**, including Postgres support itself, so you can add databases, query builders, data types, and middleware through a public SPI.
-
-The same query, before and after:
-
-```typescript title="Prisma 7"
-const users = await prisma.user.findMany({
-  include: { posts: true },
-  orderBy: { id: "asc" },
-});
-```
-
-```typescript title="Prisma 8"
-const users = await db.orm.public.User.include("posts")
-  .orderBy((user) => user.id.asc())
-  .all();
-```
-
-**Setup now comes down to one config file and one CLI.** You install `@prisma/orm-postgres` or `@prisma/orm-mongo` alongside `prisma`, and the same `prisma` command handles migrations and deploys by reading `prisma.config.ts`:
-
-```ts title="prisma.config.ts"
-import "dotenv/config";
-import { defineConfig } from "@prisma/cli-engine";
-import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
-
-export default defineConfig({
-  orm: ormConfig({
-    contract: "./src/prisma/contract.prisma",
-    db: { connection: process.env["DATABASE_URL"]! },
-  }),
-});
-```
-
-PostgreSQL and MongoDB are supported today, with SQLite and then MySQL planned. If you are new to Prisma 8, start with the [overview](https://www.prisma.io/docs/orm) and [core concepts](https://www.prisma.io/docs/orm/core-concepts). If you are on Prisma 7, the [upgrade guide](https://www.prisma.io/docs/guides/upgrade-prisma-orm/postgresql) runs both versions against the same database so you can move one module at a time.
+**`npm install prisma@latest` installs Prisma 8** (previously Prisma Next), and Prisma 7 *stays fully supported* as `prisma@prev` ([docs](https://www.prisma.io/docs/orm/v7)). You do not have to upgrade in one go: the [side-by-side upgrade guide](https://www.prisma.io/docs/guides/upgrade-prisma-orm/postgresql) runs Prisma 7 and Prisma 8 against the same database so you can move one module at a time.
 
 <div className="not-prose flex flex-wrap gap-3">
-  <PrismButton href="https://www.prisma.io/docs/prisma-orm/quickstart/postgresql" ctaLocation="changelog-prisma-8">Start with Prisma 8</PrismButton>
-  <PrismButtonOutline href="https://www.prisma.io/docs/guides/upgrade-prisma-orm/postgresql" ctaLocation="changelog-prisma-8">Upgrade from Prisma 7</PrismButtonOutline>
+  <PrismButton href="https://www.prisma.io/docs/guides/upgrade-prisma-orm/postgresql" ctaLocation="changelog-prisma-8">Run Prisma 7 and 8 side by side</PrismButton>
+  <PrismButtonOutline href="https://www.prisma.io/docs/prisma-orm/quickstart/postgresql" ctaLocation="changelog-prisma-8">Start a new Prisma 8 project</PrismButtonOutline>
 </div>
 
 ## What you need to do
 
 - **On Prisma 7:** there is *nothing to change*, unless you install with a `latest` tag somewhere, in which case pin `prisma@prev`.
-- **On an earlier Prisma 8 release candidate:** install `prisma@latest`, replace `prisma-next` with `prisma`, move your config to `prisma.config.ts` as above, rename `.take()`/`.skip()` to `.limit()`/`.offset()`, and rename `db.sql.raw` to `db.raw.sql`.
+- **On an earlier Prisma 8 release candidate:** install `prisma@latest`, replace `prisma-next` with `prisma`, move your config to `prisma.config.ts`, rename `.take()`/`.skip()` to `.limit()`/`.offset()`, and rename `db.sql.raw` to `db.raw.sql`.
 - **CI that runs `db verify`, `db sign`, or `migration check`:** findings now exit `4` instead of `1`, so *update the check* your pipeline relies on.
 - **Calling `/v1/apps` in the REST API:** switch to `/v1/services`, which has the same routes and behavior with `serviceId` in place of `appId`. See the [REST API reference](https://www.prisma.io/docs/rest-api).
 - **Compute projects that build on push:** move to deploys from your own GitHub Actions. The Console shows a notice with a one-click switch that opens a setup pull request, and you need to *merge it before the cutoff in the notice*.
@@ -172,34 +133,6 @@ The Management API is now called the **[REST API](https://www.prisma.io/docs/res
 - **Page through logs** with `GET /v1/deployments/{deploymentId}/logs`, which returns newline-delimited JSON with a cursor for the next page.
 - **Check a workspace's plan from code** with [`GET /v1/workspaces/{workspaceId}/subscription`](https://www.prisma.io/docs/rest-api/endpoints/workspaces/get-workspaces-by-id-subscription), which returns the plan, whether usage is blocked, and the upgrade URL.
 - Every `/v1/apps` route is also available at `/v1/services`, matching what the CLI calls the resource.
-
-## Prisma 8 since the last release candidate
-
-If you were already on a Prisma 8 release candidate, the line moved from `rc.1` to `rc.8` this month, and *three changes stand out*.
-
-**Validation rules now live in your schema.** `@@check` declares a `CHECK` constraint on a model, and `contract infer` picks up constraints that already exist in the database. Enum and list columns get checks automatically, and `@noCheck` opts a column out. ([#29892](https://github.com/prisma/orm/pull/29892), [#29894](https://github.com/prisma/orm/pull/29894), [#29928](https://github.com/prisma/orm/pull/29928), [#29972](https://github.com/prisma/orm/pull/29972))
-
-```prisma
-model Order {
-  id    Int     @id
-  total Decimal
-
-  @@check(expression: "(total > (0)::numeric)", map: "positive_total")
-}
-```
-
-**Dates keep their precision**, because PostgreSQL date and time columns now map to `Temporal` types instead of JavaScript `Date`. If you want the server's text as-is, declare `DateString` or `TimestampString(p)`. ([#30073](https://github.com/prisma/orm/pull/30073))
-
-**Raw SQL is typed.** `db.raw.sql` runs a tagged-template query, and you finish it with `.returnsRow({ … })` for typed rows or `.affectedCount()` for a count. It replaces `$queryRaw` and `$executeRaw`. See the [raw queries reference](https://www.prisma.io/docs/orm/reference/raw-queries#postgresql-raw-sql). ([#29997](https://github.com/prisma/orm/pull/29997), [#30044](https://github.com/prisma/orm/pull/30044), [#30075](https://github.com/prisma/orm/pull/30075))
-
-Beyond those three:
-
-- **A database restart or a dropped idle connection no longer crashes your app.** ([#30081](https://github.com/prisma/orm/pull/30081))
-- **PostgreSQL 15 is now supported**, down from 17, so more existing databases can adopt Prisma 8. ([#29971](https://github.com/prisma/orm/pull/29971))
-- `count()`, `sum()`, and `avg()` return plain numbers, with `bigint` variants alongside, and the new `BigIntNumber` and `UnboundedInt` column types let you pick the representation per column. ([#29902](https://github.com/prisma/orm/pull/29902), [#29930](https://github.com/prisma/orm/pull/29930), [#29921](https://github.com/prisma/orm/pull/29921))
-- `db update` *will not destroy data* until you type the database name, and in CI you pass `--no-interactive --confirm <database>` instead. ([#29986](https://github.com/prisma/orm/pull/29986))
-- `migration plan` refuses to start from an empty database when migrations already exist, which used to produce a package that failed everywhere. The bundled `prisma-8` agent skill teaches coding agents the same rule. ([how migrations work](https://www.prisma.io/docs/orm/migrations/how-migrations-work), [#30122](https://github.com/prisma/orm/pull/30122), [#30096](https://github.com/prisma/orm/pull/30096), [#30123](https://github.com/prisma/orm/pull/30123))
-- Prisma 7 and 8 can share a project during an upgrade: `@prisma/prisma7` provides a `prisma7` binary and reads `prisma7.config.ts`. ([#29949](https://github.com/prisma/orm/pull/29949), [#30020](https://github.com/prisma/orm/pull/30020), [#30140](https://github.com/prisma/orm/pull/30140))
 
 ## Prisma Console and MCP server
 
