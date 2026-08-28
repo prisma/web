@@ -1,19 +1,19 @@
 ---
 title: Supabase
 description: 'Learn step-by-step how to use Prisma 8 with Supabase: reference auth.users from your schema and manage Row Level Security policies with Prisma migrations.'
-url: /orm/next/extensions/supabase
+url: /orm/extensions/supabase
 metaTitle: How to use Prisma 8 with Supabase
-metaDescription: 'Set up Prisma 8 RC1 with a Supabase project, declare RLS policies in your Prisma schema, reference the auth.users table with a real foreign key, and query as your users.'
+metaDescription: 'Set up Prisma 8 with a Supabase project, declare RLS policies in your Prisma schema, reference the auth.users table with a real foreign key, and query as your users.'
 badge: early-access
 ---
 
-Supabase gives you Postgres with authentication and Row Level Security built in. Until now, using an ORM on Supabase meant those two features lived outside it, in SQL migrations you wrote by hand. The Supabase extension for Prisma 8 changes that: you declare RLS policies and references to the `auth.users` table in your Prisma schema, and Prisma migrates them like any other schema change.
+Supabase gives you Postgres with authentication and Row Level Security built in. Until now, using an ORM on Supabase meant writing the RLS policies and the foreign keys into `auth.users` as SQL migrations by hand. With the Supabase extension for Prisma 8, you declare both in your Prisma schema, and Prisma migrates them like any other schema change.
 
-In this guide you will build the data layer for a notes app where every note belongs to a Supabase user and each user can only reach their own notes.
+In this guide you build the data layer for a notes app. Every note belongs to a Supabase user, and each user can only reach their own notes. Ten steps, about fifteen minutes.
 
-:::note[Release Candidate 1]
+:::note[Release candidate]
 
-Prisma 8 ships today as a Release Candidate of the `prisma@next` CLI and `@prisma/orm-*` packages. The API surface is stable, and we are collecting feedback before general availability. Try it with your Supabase project and [share what you find in Discord](https://pris.ly/discord).
+Prisma 8 ships today as a release candidate of the `prisma` CLI and the `@prisma/orm-*` packages. The API surface is stable, and we are collecting feedback before general availability. Try it with your Supabase project and [share what you find in Discord](https://pris.ly/discord).
 
 :::
 
@@ -27,7 +27,7 @@ Prisma 8 ships today as a Release Candidate of the `prisma@next` CLI and `@prism
 
 ### Prerequisites
 
-- [Node.js 24+](https://nodejs.org/)
+- [Node.js 22.18+](https://nodejs.org/)
 - A [Supabase project](https://supabase.com/dashboard) (the free tier works)
 
 ## 1. Collect your Supabase connection details
@@ -40,7 +40,7 @@ You need three values from your [Supabase dashboard](https://supabase.com/dashbo
 
 :::info
 
-Use the session pooler (port `5432`), not the transaction pooler (port `6543`). Prisma attaches the signed-in user's role to the database session, and only the session pooler keeps that session intact. The direct connection host (`db.YOUR_PROJECT_REF.supabase.co`) also works, but only on networks with IPv6; if it fails with a DNS error, use the pooler.
+Use the session pooler (port `5432`), not the transaction pooler (port `6543`). Prisma sets the signed-in user's role on the database session, and only the session pooler keeps that session intact. The direct connection host (`db.YOUR_PROJECT_REF.supabase.co`) also works, but only on IPv6 networks. If it fails with a DNS error, use the pooler.
 
 :::
 
@@ -49,27 +49,21 @@ Use the session pooler (port `5432`), not the transaction pooler (port `6543`). 
 Create a project directory and scaffold a Prisma 8 project inside it:
 
 ```npm
-npx prisma@next orm init --yes --target postgres --authoring psl
+npx prisma@latest orm init --yes --target postgres --authoring psl
 ```
 
-This installs `@prisma/orm-postgres` and the `@prisma/cli` package, then creates several files:
+This installs `@prisma/orm-postgres` and the Prisma 8 CLI, then creates several files:
 
 - `prisma.config.ts`: the configuration file.
 - `src/prisma/contract.prisma`: your Prisma schema. Prisma 8 calls this your **contract**, because it describes everything Prisma manages in your database.
 - `src/prisma/db.ts`: the database client. You will replace it with a Supabase-aware version in step 8.
 - `.env.example`: a template for your environment variables.
 
-If the directory has no `package.json`, the scaffold creates one with `"type": "module"`. It also runs the first `contract emit` for you, so the generated types exist from the start.
+If the directory has no `package.json`, the scaffold creates one with `"type": "module"`. It also runs the first `contract emit` for you, so the generated types exist from the start. The scaffold adds `prisma` as a dev dependency, so after this step `npx prisma` and `npx prisma@latest` run the same CLI.
 
 :::warning
 
 If your existing `package.json` contains `"type": "commonjs"`, change it to `"module"`. The scaffolded files use modern ESM imports.
-
-:::
-
-:::info
-
-The CLI's own binary is named `prisma-cli`, so its output shows next-step hints like `prisma-cli migrate`. With the setup in this guide, run those through npx as `npx prisma@next migrate`.
 
 :::
 
@@ -79,7 +73,7 @@ The CLI's own binary is named `prisma-cli`, so its output shows next-step hints 
 npm install @prisma/orm-extension-supabase
 ```
 
-The extension teaches Prisma what Supabase owns in your database: the `auth` and `storage` tables and the `anon`, `authenticated`, and `service_role` roles. Prisma can then reference those tables from your schema without ever trying to create, change, or delete them; they stay fully managed by Supabase.
+The extension teaches Prisma what Supabase owns in your database: the `auth` and `storage` tables and the `anon`, `authenticated`, and `service_role` roles. Prisma can reference those tables from your schema and never tries to create, change, or delete them. They stay managed by Supabase.
 
 ## 4. Connect to your database
 
@@ -163,8 +157,8 @@ namespace public {
 
 Three parts of this schema do work no Prisma schema could do before:
 
-- **The `user` relation** becomes a real foreign key into Supabase's `auth.users` table. A note can never point at a user that doesn't exist, and deleting a user deletes their notes, guaranteed by Postgres. The `supabase:` prefix tells Prisma the target lives in the extension's territory, not yours.
-- **`@@rls`** turns on Row Level Security for the table, which means no role sees any row unless a policy grants it.
+- **The `user` relation** is a real foreign key into Supabase's `auth.users` table. A note can never point at a user that doesn't exist, and deleting a user deletes their notes. Postgres guarantees both. The `supabase:` prefix tells Prisma the target belongs to the extension, not to you.
+- **`@@rls`** turns on Row Level Security for the table. No role sees any row unless a policy grants it.
 - **The `policy_*` blocks** are your access rules. Each one names the operation it covers, the roles it applies to, and the same `USING` and `WITH CHECK` conditions you would otherwise write in SQL.
 
 :::info
@@ -180,16 +174,18 @@ There is also no policy for the `anon` role, on purpose. With RLS enabled and no
 Three commands take the schema live:
 
 ```npm
-npx prisma@next contract emit
-npx prisma@next migration plan --name init
-npx prisma@next migrate
+npx prisma@latest contract emit
+npx prisma@latest migration plan --name init
+npx prisma@latest db migrate
 ```
 
 Here is what each does:
 
 - `contract emit` checks your schema and generates the TypeScript types.
-- `migration plan` compares your schema against the database and writes a migration under `migrations/app/`. The first run also snapshots the Supabase extension's contract under `migrations/snapshots/`, referenced from `migrations/supabase/`; commit the whole `migrations` directory, since it lets CI and production apply migrations without loading the extension package.
-- `migrate` applies the migration. For this schema that means the table, the foreign key into `auth.users`, turning on Row Level Security, and creating all four policies.
+- `migration plan` compares your schema against the database and writes a migration under `migrations/app/`. The first run also snapshots the Supabase extension's contract under `migrations/snapshots/`, referenced from `migrations/supabase/`. Commit the whole `migrations` directory; it lets CI and production apply migrations without loading the extension package.
+- `db migrate` applies the migration. For this schema that means the table, an index on `userId`, the foreign key into `auth.users`, Row Level Security, and all four policies.
+
+Always run `contract emit` before `migration plan`. The plan reads the emitted contract, not the `.prisma` file, so an unemitted edit plans as a no-op.
 
 To confirm the foreign key landed, run this in the Supabase SQL editor:
 
@@ -203,7 +199,20 @@ where conrelid = 'public.note'::regclass and contype = 'f';
 note_userId_fkey | FOREIGN KEY ("userId") REFERENCES auth.users(id) ON DELETE CASCADE
 ```
 
-No SQL was written by hand, and every future policy change will show up as a schema diff in your pull requests.
+You wrote no SQL, and every future policy change shows up as a schema diff in your pull requests.
+
+:::info
+
+For the next migration, tell Prisma where to plan from. Set the `db` ref once, then advance it with each migrate:
+
+```npm
+npx prisma@latest migration ref set db <contract-hash>
+npx prisma@latest db migrate --advance-ref db
+```
+
+The contract hash is the `to` value printed by `migration plan`. Without the ref, a second `migration plan` fails with `MIGRATION.PLAN_ORIGIN_UNKNOWN` rather than silently re-planning from an empty database.
+
+:::
 
 ## 8. Create the client
 
@@ -227,7 +236,7 @@ export function getDb(): Promise<SupabaseDb<Contract>> {
 }
 ```
 
-The `jwksUrl` points at your project's public signing keys. When a request arrives with a Supabase Auth token, Prisma checks the token's signature against those keys before running any query, so a forged or expired token never reaches your database.
+The `jwksUrl` points at your project's public signing keys. When a request arrives with a Supabase Auth token, Prisma checks the token's signature against those keys before running any query. A forged or expired token never reaches your database.
 
 :::info
 
@@ -237,7 +246,7 @@ Configure exactly one key source. Current Supabase projects sign tokens with asy
 
 ## 9. Query as your users
 
-The client has no query methods until you choose who is asking. That is deliberate: it makes it impossible to accidentally run application queries with the connection's admin-level login and silently skip RLS.
+The client has no query methods until you choose who is asking. `db.orm` does not exist; `db.asUser(jwt).orm` does. This makes it impossible to run application queries with the connection's admin login and silently skip RLS.
 
 ```ts
 const db = await getDb();
@@ -267,27 +276,66 @@ const note = await userDb.orm.public.Note.select('id', 'title', 'userId').create
 
 ## 10. Check that your policies work
 
-Sign up two users through Supabase Auth, then confirm the rules hold in both directions:
+Save this as `src/check.ts`. It signs up two users through Supabase Auth, then confirms every rule holds in both directions. It needs your project's anon key as `SUPABASE_ANON_KEY` in `.env` (**Project Settings** > **API Keys**), and email confirmation turned off under **Authentication** > **Sign In / Providers** > **Email** so that sign-up returns a session.
 
-```ts
-// Each user sees exactly their own rows.
-const aliceRows = await (await db.asUser(alice.token)).orm.public.Note.select('title', 'userId').all().toArray();
-// [{ title: 'alice note', userId: alice.id }]
+```ts title="src/check.ts"
+import 'dotenv/config';
+import { getDb } from './prisma/db.js';
+
+const url = process.env['SUPABASE_URL']!;
+const anonKey = process.env['SUPABASE_ANON_KEY']!;
+
+async function signUp(email: string) {
+  const res = await fetch(`${url}/auth/v1/signup`, {
+    method: 'POST',
+    headers: { apikey: anonKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password: 'correct-horse-battery-staple-42' }),
+  });
+  const json = await res.json();
+  return { id: json.user.id as string, token: json.access_token as string };
+}
+
+const db = await getDb();
+const stamp = Date.now();
+const alice = await signUp(`alice+${stamp}@example.com`);
+const bob = await signUp(`bob+${stamp}@example.com`);
+const asAlice = await db.asUser(alice.token);
+const asBob = await db.asUser(bob.token);
+
+await asAlice.orm.public.Note.select('id').create({ title: 'alice note', body: null, userId: alice.id });
+await asBob.orm.public.Note.select('id').create({ title: 'bob note', body: null, userId: bob.id });
+
+// Each user sees exactly their own rows, with no where clause.
+const mine = await asAlice.orm.public.Note.select('title', 'userId').all().toArray();
+console.log('alice sees only her rows:', mine.length === 1 && mine[0]!.userId === alice.id);
 
 // Updating another user's note changes zero rows.
-const count = await (await db.asUser(alice.token)).orm.public.Note
-  .where({ userId: bob.id })
-  .updateAndCount({ title: 'should-not-change' });
-// 0
+const count = await asAlice.orm.public.Note.where({ userId: bob.id }).updateAndCount({ title: 'x' });
+console.log('cross-user update touches 0 rows:', count === 0);
 
 // Creating a note owned by someone else is rejected by the database.
-await (await db.asUser(alice.token)).orm.public.Note.select('id')
-  .create({ title: 'forged', body: null, userId: bob.id });
-// throws: new row violates row-level security policy
+await asAlice.orm.public.Note.select('id').create({ title: 'forged', body: null, userId: bob.id })
+  .then(() => console.log('forged insert rejected: false'))
+  .catch((e) => console.log('forged insert rejected:', /row-level security/.test(String(e.message))));
 
 // Anonymous requests see nothing.
-await db.asAnon().orm.public.Note.select('id').all().toArray();
-// []
+const anon = await db.asAnon().orm.public.Note.select('id').all().toArray();
+console.log('anon sees nothing:', anon.length === 0);
+
+process.exit(0);
+```
+
+Run it:
+
+```npm
+npx tsx src/check.ts
+```
+
+```js no-copy
+alice sees only her rows: true
+cross-user update touches 0 rows: true
+forged insert rejected: true
+anon sees nothing: true
 ```
 
 :::warning
@@ -296,7 +344,7 @@ Keep `service_role` out of these checks. It skips RLS by design, so a test that 
 
 :::
 
-Congratulations, your schema, auth relationships, and access rules now live in one file, and Postgres enforces them on every query.
+Your schema, auth relationships, and access rules now live in one file, and Postgres enforces them on every query.
 
 ## 11. Optional: deploy to Prisma Compute
 
@@ -349,11 +397,13 @@ For creating users, password resets, and other account operations, use the Supab
 
 ## Troubleshooting
 
-- `MIGRATION.CONTRACT_SPACE_LAYOUT_VIOLATION` with `declaredButUnmigrated: supabase`: you skipped `migration plan`. Run `npx prisma@next migration plan --name <slug>` once and retry.
+- `MIGRATION.CONTRACT_SPACE_LAYOUT_VIOLATION` with `declaredButUnmigrated: supabase`: you skipped `migration plan`. Run `npx prisma@latest migration plan --name <slug>` once and retry.
+- `MIGRATION.PLAN_ORIGIN_UNKNOWN`: migrations exist but no `db` ref is set. Run `npx prisma@latest migration ref set db <hash>` with the hash of the contract your database is on (see step 7).
+- `CLI.UNKNOWN_COMMAND` for `migrate`: the command is `db migrate` in the current release candidate.
 - `SUPABASE.CONFIG_INVALID`: set exactly one of `jwksUrl` or `jwtSecret`.
 - `SUPABASE.JWT_INVALID` with an algorithm mismatch in `meta.reason`: you passed an asymmetric-key token to a `jwtSecret` client or vice versa; switch the key source.
 - Connection timeouts or DNS failures: use the session pooler host, not `db.<ref>.supabase.co`, on IPv4 networks.
-- `db verify` reports missing `storage.iceberg_namespaces` / `storage.iceberg_tables` on a current hosted project: known issue, the extension's storage description lags the hosted platform. Migrations and runtime behavior are unaffected; use `npx prisma@next db verify --marker-only` until the updated extension ships.
+- `db verify` reports missing `storage.iceberg_namespaces` / `storage.iceberg_tables` on a current hosted project: known issue, the extension's storage description lags the hosted platform. Migrations and runtime behavior are unaffected; use `npx prisma@latest db verify --marker-only` until the updated extension ships.
 
 ## Current limitations
 
@@ -373,10 +423,10 @@ Add a model owned by the Supabase Auth user to my Prisma 8 contract: a Uuid fore
 ## Next steps
 
 - Add more models and policies as your app grows; every change ships as a reviewed migration.
-- Read [Using extensions](/orm/next/extensions/using-extensions) to see how extensions plug into Prisma 8.
+- Read [Using extensions](/orm/extensions/using-extensions) to see how extensions plug into Prisma 8.
 - Check out [Prisma Compute](https://www.prisma.io/docs/compute) to run your app next to your database.
 
 ### More info
 
 - [Supabase Row Level Security docs](https://supabase.com/docs/guides/database/postgres/row-level-security)
-- [Prisma 8 docs](/orm/next)
+- [Prisma 8 docs](/orm)
