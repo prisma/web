@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { createPageMetadata } from "@/lib/page-metadata";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { MDXRemote } from "next-mdx-remote/rsc";
+import { MDXRemote, type MDXRemoteProps } from "next-mdx-remote/rsc";
+import { rehypeCode } from "fumadocs-core/mdx-plugins";
+import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button";
 import { ArrowRight } from "@/components/icons/forma";
 import { siteConfig } from "@/lib/config";
 import { getContentSlugs } from "@/lib/content";
@@ -11,6 +13,19 @@ import { formatChangelogDate, getChangelogEntry, rewriteChangelogAssets } from "
 type Props = {
   params: Promise<{ slug: string }>;
 };
+
+// next-mdx-remote ships no syntax highlighting of its own, so code blocks
+// rendered plain `<pre><code>`. Reuse fumadocs' rehype-code (the docs app's
+// pipeline: shiki, github-light/github-dark as `--shiki-*` CSS variables,
+// consumed in globals.css) and fall back to plain text for fences like
+// ```npm whose language shiki does not know.
+const mdxOptions: NonNullable<MDXRemoteProps["options"]>["mdxOptions"] = {
+  rehypePlugins: [[rehypeCode, { icon: false, tab: false, fallbackLanguage: "plaintext" }]],
+};
+
+// Components changelog MDX may use. PrismButton* are client components; RSC
+// serializes the reference, so passing them straight through is fine.
+const components = { PrismButton, PrismButtonOutline };
 
 export async function generateStaticParams() {
   return getContentSlugs("changelog").map((slug) => ({ slug }));
@@ -59,7 +74,11 @@ export default async function ChangelogEntryPage({ params }: Props) {
         </h1>
 
         <div className="prose mt-10 max-w-none prose-headings:font-heading prose-a:text-prism-cyan-700 prose-img:rounded-xl prose-img:border prose-img:border-black/[0.06]">
-          <MDXRemote source={rewriteChangelogAssets(entry.content)} />
+          <MDXRemote
+            source={rewriteChangelogAssets(entry.content)}
+            components={components}
+            options={{ mdxOptions }}
+          />
         </div>
       </div>
     </article>
