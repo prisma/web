@@ -17,18 +17,16 @@ share:
   active: true
   content: "Look at this page: "
 ---
-**You can now run production apps on Prisma Compute.** Pricing is published, the Free plan is generous, and every branch gets its own environment. This release also introduces **Deploy Buttons**, which let anyone launch your app from a README in one click, and makes **Prisma 8 available as `prisma@latest`**.
+**You can now run production apps on Prisma Compute.** Pricing is published, the Free plan covers a million requests a month, and every branch gets its own environment. This release also introduces **Deploy Buttons**, which let anyone launch your app from a README in one click, and makes **Prisma 8 available as `prisma@latest`**.
 
 ## Prisma Compute is ready for production
 
-[Prisma Compute](https://www.prisma.io/docs/compute) runs your TypeScript app next to your [Prisma Postgres](https://www.prisma.io/docs/postgres) database. Apps scale to zero when idle, so you *only pay for traffic you serve*.
+[Prisma Compute](https://www.prisma.io/docs/compute) runs your TypeScript app next to your [Prisma Postgres](https://www.prisma.io/docs/postgres) database and scales it to zero when idle, so you *only pay for traffic you serve*. [Pricing](https://www.prisma.io/docs/compute/pricing) applies from today:
 
-[Pricing](https://www.prisma.io/docs/compute/pricing) applies from today:
+- The **Free plan** includes 1 million requests, 360 GB-hours of memory, 4 vCPU-hours, and 10 GB of bandwidth a month and is *never billed*. If a workspace passes a limit, its apps pause until the next month or an upgrade.
+- **Paid plans** include 5, 20, or 100 million requests a month, and usage beyond that costs `$1` per million requests, `$0.006` per GB-hour, `$0.064` per vCPU-hour, and `$0.025` per GB sent.
 
-- **Free:** 1 million requests, 360 GB-hours of memory, 4 vCPU-hours, and 10 GB of bandwidth a month, *never billed*. Past a limit, apps pause until the next month or an upgrade.
-- **Paid:** 5, 20, or 100 million requests a month included, then `$1` per million requests, `$0.006` per GB-hour, `$0.064` per vCPU-hour, and `$0.025` per GB sent.
-
-The [Console](https://console.prisma.io) Usage page shows **where the money goes**: requests, memory, CPU, and bandwidth by day, by app, and by response status.
+The [Console](https://console.prisma.io) Usage page shows **where the money goes**, with requests, memory, CPU, and bandwidth broken down by day, by app, and by response status.
 
 ![The Prisma Console Usage page showing Compute requests, provisioned memory, active CPU, and outbound bandwidth for a workspace, with a request chart split by response status and totals per app.](/changelog/2026-08-28-console-compute-usage.png)
 
@@ -63,21 +61,21 @@ To start from a ready-made app, browse the [Prisma apps directory](https://www.p
 
 ## What you need to do
 
-- **On Prisma 7:** there is *nothing to change*, unless you install with a `latest` tag somewhere, in which case pin `prisma@prev`.
+- **On Prisma 7:** there is *nothing to change*. If you install with a `latest` tag somewhere, pin `prisma@prev` there.
 - **On an earlier Prisma 8 release candidate:** install `prisma@latest`, replace `prisma-next` with `prisma`, move your config to `prisma.config.ts`, rename `.take()`/`.skip()` to `.limit()`/`.offset()`, and rename `db.sql.raw` to `db.raw.sql`.
 - **CI that runs `db verify`, `db sign`, or `migration check`:** findings now exit `4` instead of `1`, so *update the check* your pipeline relies on.
 - **Calling `/v1/apps` in the REST API:** switch to `/v1/services`, which has the same routes and behavior with `serviceId` in place of `appId`. See the [REST API reference](https://www.prisma.io/docs/rest-api).
-- **Compute projects that build on push:** move to deploys from your own GitHub Actions. The Console shows a notice with a one-click switch that opens a setup pull request, and you need to *merge it before the cutoff in the notice*.
+- **Compute projects that build on push:** move to deploys from your own GitHub Actions. Affected projects show a notice in the Console with a one-click switch that opens a setup pull request, which you need to *merge before the cutoff in the notice*.
 
 ## Breaking changes
 
-All of these apply to Prisma 8.
+These apply to Prisma 8 release candidates.
 
 - `.take(n)` and `.skip(n)` are now `.limit(n)` and `.offset(n)` everywhere, including relations, groups, and MongoDB, with the same behavior. ([#30112](https://github.com/prisma/orm/pull/30112))
 - The `prisma-next` CLI is no longer published, so use `prisma@latest` and `prisma.config.ts` instead. ([#30005](https://github.com/prisma/orm/pull/30005), [#30058](https://github.com/prisma/orm/pull/30058))
 - Raw SQL moves from `db.sql.raw` to `db.raw.sql` ([reference](https://www.prisma.io/docs/orm/reference/raw-queries#postgresql-raw-sql)). ([#30045](https://github.com/prisma/orm/pull/30045))
 - `db verify`, `db sign`, and `migration check` exit `4` on findings and `2` when they cannot run. ([#29984](https://github.com/prisma/orm/pull/29984))
-- `.aggregate()` and `.groupBy()` now respect `limit`, `offset`, `cursor`, and `distinct` set earlier in the chain. These were dropped silently before, so those queries now return a *different, correct* number. ([#30067](https://github.com/prisma/orm/pull/30067), [#30092](https://github.com/prisma/orm/pull/30092))
+- `.aggregate()` and `.groupBy()` now respect `limit`, `offset`, `cursor`, and `distinct` set earlier in the chain. Those clauses were silently dropped before, so affected queries now return a *different, correct* number. ([#30067](https://github.com/prisma/orm/pull/30067), [#30092](https://github.com/prisma/orm/pull/30092))
 
 ## Deprecations
 
@@ -100,9 +98,7 @@ The Console has three smaller improvements as well:
 
 ## Prisma Composer
 
-With [Prisma Composer](https://www.prisma.io/docs/composer), in Early Access, **you run your entire app, including its infrastructure, on your laptop, then deploy the same thing to Prisma with one command**. Compute services, Prisma Postgres databases, [Object Store buckets](https://www.prisma.io/docs/storage), scheduled jobs, and secrets are all part of the app definition, so `npx prisma@latest dev module.ts` brings all of it up [locally](https://www.prisma.io/docs/local-development) against stand-in databases and buckets, and `npx prisma@latest deploy module.ts` provisions the real ones and wires the authenticated connections between them. Running deploy again applies *only the diff*.
-
-You describe each service in TypeScript, along with what it depends on. Composer is also what the Deploy Button and the apps directory run on.
+With [Prisma Composer](https://www.prisma.io/docs/composer), in Early Access, **you run your entire app, including its infrastructure, on your laptop, then deploy the same thing to Prisma with one command**. Compute services, Prisma Postgres databases, [Object Store buckets](https://www.prisma.io/docs/storage), scheduled jobs, and secrets are all part of one TypeScript app definition. `npx prisma@latest dev module.ts` brings all of it up [locally](https://www.prisma.io/docs/local-development) against stand-in databases and buckets, and `npx prisma@latest deploy module.ts` provisions the real ones and wires the authenticated connections between them. Running deploy again applies *only the diff*. Composer is also what the Deploy Button and the apps directory run on.
 
 ```ts title="src/storefront/service.ts"
 import nextjs from "@prisma/composer/nextjs";
@@ -125,7 +121,7 @@ The [core concepts](https://www.prisma.io/docs/composer/core-concepts) page is t
 
 ## REST API
 
-The Management API is now called the **[REST API](https://www.prisma.io/docs/rest-api)**, and old links redirect. This release adds six endpoints:
+The Management API is now called the **[REST API](https://www.prisma.io/docs/rest-api)**, and old links redirect. New this release:
 
 - **Manage service tokens without the Console** by calling [create](https://www.prisma.io/docs/rest-api/endpoints/service-tokens/post-workspaces-by-workspace-id-service-tokens), [list](https://www.prisma.io/docs/rest-api/endpoints/service-tokens/get-workspaces-by-workspace-id-service-tokens), and [revoke](https://www.prisma.io/docs/rest-api/endpoints/service-tokens/delete-workspaces-by-workspace-id-service-tokens-by-service-token-id) at `/v1/workspaces/{workspaceId}/service-tokens`.
 - **Run CI without long-lived secrets** by calling `POST /v1/auth/github-actions/token`, which swaps a GitHub Actions OIDC token for a 30-minute workspace token. See [authentication](https://www.prisma.io/docs/rest-api/authentication).
@@ -153,16 +149,16 @@ The [Prisma MCP server](https://www.prisma.io/docs/ai/tools/mcp-server) now **si
 
 **Prisma 8**
 
-- **Filters like "users followed by people I follow" return the right rows**, where nested self-relation filters used to override each other. ([#29900](https://github.com/prisma/orm/pull/29900))
-- **Counting or summing across a many-to-many relation works.** ([#29888](https://github.com/prisma/orm/pull/29888))
+- **Filters like "users followed by people I follow" return the right rows.** Nested self-relation filters used to override each other. ([#29900](https://github.com/prisma/orm/pull/29900))
+- **Counting or summing across a many-to-many relation works** instead of failing on a missing foreign key. ([#29888](https://github.com/prisma/orm/pull/29888))
 - Running the same `upsert` twice on a `Bytes` key now succeeds instead of failing on the second run. ([#29910](https://github.com/prisma/orm/pull/29910))
 - A migration that gives a non-`SERIAL` column an `autoincrement()` default now fails when you write it, rather than silently at runtime. ([#30040](https://github.com/prisma/orm/pull/30040))
 - Nested relation callbacks in `upsert({ create })`, `createAll()`, and `createAndCount()` are now a type error, because they never ran and *writes you expected were being skipped*. ([#30144](https://github.com/prisma/orm/pull/30144))
-- On MongoDB, the `_id` returned from a write matches what you read back. ([#29879](https://github.com/prisma/orm/pull/29879))
-- Migration errors name your actual migrations directory. ([#30041](https://github.com/prisma/orm/pull/30041))
+- On MongoDB, the `_id` returned from a write now matches what you read back. ([#29879](https://github.com/prisma/orm/pull/29879))
+- Migration errors now name your actual migrations directory. ([#30041](https://github.com/prisma/orm/pull/30041))
 - `migration graph --dot` prints in the terminal again. ([#30057](https://github.com/prisma/orm/pull/30057))
-- Windows paths work in `prisma.config.ts`. ([#30121](https://github.com/prisma/orm/pull/30121))
-- Error messages link to the Prisma 8 error reference. ([#30126](https://github.com/prisma/orm/pull/30126))
+- Windows paths now work in `prisma.config.ts`. ([#30121](https://github.com/prisma/orm/pull/30121))
+- Error messages now link to the Prisma 8 error reference. ([#30126](https://github.com/prisma/orm/pull/30126))
 
 **Prisma ORM 7**
 
@@ -182,7 +178,7 @@ The [Prisma MCP server](https://www.prisma.io/docs/ai/tools/mcp-server) now **si
 
 ## Builder's Day
 
-Join us in **San Francisco on October 26** for [Builder's Day](https://builders.day/), a one-day conference for people building with AI in production. The day brings talks and demos on coding agents, LLM apps, and the infrastructure behind them, followed by ping pong and drinks at SPIN.
+Join us in **San Francisco on October 26** for [Builder's Day](https://builders.day/), a one-day conference for people building with AI in production. Expect talks and demos on coding agents, LLM apps, and the infrastructure behind them, followed by ping pong and drinks at SPIN.
 
 <div className="not-prose flex flex-wrap gap-3">
   <PrismButton href="https://builders.day/" ctaLocation="changelog-builders-day">Get Builder's Day tickets</PrismButton>
