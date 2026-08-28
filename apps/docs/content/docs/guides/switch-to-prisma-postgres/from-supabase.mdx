@@ -14,7 +14,7 @@ This guide works with Prisma 8, Prisma 7, earlier Prisma ORM versions, and stand
 
 This guide migrates PostgreSQL schemas and data you own. It does not migrate Supabase Auth users and configuration, Storage objects, Realtime configuration, Edge Functions, API settings, or other Supabase platform services. Plan replacements for any services your application uses before switching it to Prisma Postgres.
 
-The dump is a snapshot. Writes made after `pg_dump` starts are not included.
+The final dump is a snapshot. For a production cutover, stop or drain source writes before the final dump and keep them stopped until validation succeeds and traffic switches to Prisma Postgres.
 
 :::
 
@@ -118,9 +118,13 @@ psql "$PRISMA_POSTGRES_DIRECT_URL" \
 
 The first query should report the Prisma Postgres database and PostgreSQL 17. The second query should not list any application tables.
 
-## 4. Export application data from Supabase
+## 4. Stop source writes and export the final snapshot
 
-Create a private, compressed archive of the `public` schema:
+You can rehearse this process while the Supabase database remains active, but do not use a rehearsal dump for the production cutover. Before the final dump, stop or drain every application, worker, scheduled job, integration, and administrative operation that can write to the Supabase database. Confirm that writes have stopped, and keep the source frozen until step 8 switches traffic to Prisma Postgres.
+
+If you cannot keep the Supabase database frozen for the dump, restore, and validation window, stop here. Use a separately tested migration process that durably captures and replays every post-snapshot write. This snapshot-only process does not provide a zero-downtime cutover.
+
+Create a private, compressed archive of the `public` schema. This is the task-specific command for this migration; see the [PostgreSQL 17 `pg_dump` reference](https://www.postgresql.org/docs/17/app-pgdump.html) for the complete option reference:
 
 ```bash title="Terminal"
 umask 077
@@ -216,7 +220,7 @@ ORDER BY schemaname, tablename
 \gexec
 ```
 
-Add any other application schema names from step 2 to the `IN` list. Run the query against both databases and compare the results:
+Add any other application schema names from step 2 to the `IN` list. With source writes still stopped, run the query against both databases and compare the results:
 
 ```bash title="Terminal"
 psql "$SOURCE_DATABASE_URL" -X --set ON_ERROR_STOP=1 --file=row-counts.sql > source-row-counts.txt
@@ -224,7 +228,7 @@ psql "$PRISMA_POSTGRES_DIRECT_URL" -X --set ON_ERROR_STOP=1 --file=row-counts.sq
 diff -u source-row-counts.txt target-row-counts.txt
 ```
 
-`diff` should print nothing and exit with code `0`. Also rerun the extension and policy queries from step 2 against `PRISMA_POSTGRES_DIRECT_URL`. Resolve every unexpected difference before reconnecting your application.
+`diff` should print nothing and exit with code `0`. Also rerun the extension and policy queries from step 2 against `PRISMA_POSTGRES_DIRECT_URL`. Resolve every unexpected difference while source writes remain stopped. Do not send production traffic to Prisma Postgres yet.
 
 ## 7. Connect your application
 
@@ -295,9 +299,9 @@ Use `DIRECT_URL` for migrations, `pg_dump`, `pg_restore`, and other administrati
 
 ## 8. Verify and switch the application
 
-Start the application with the new environment variables and run its existing test suite. At minimum, verify one read and one rolled-back or disposable write through the pooled connection before changing production traffic.
+Start the application with the new environment variables while production traffic remains paused, then run its existing test suite. At minimum, verify one read and one rolled-back or disposable write through the pooled connection.
 
-Test every feature that previously depended on Supabase Auth, Storage, Realtime, or role-based RLS against its replacement. Keep the Supabase project available until the application is healthy on Prisma Postgres and you have accounted for writes that occurred after the final dump.
+Test every feature that previously depended on Supabase Auth, Storage, Realtime, or role-based RLS against its replacement. Only after the database comparison and application checks succeed, route production traffic to Prisma Postgres and resume writes there. Do not re-enable writes on Supabase. Keep the Supabase project available in a read-only state until the application is healthy on Prisma Postgres and the rollback window has ended.
 
 ## 9. Remove local migration files
 
