@@ -111,7 +111,7 @@ You can rehearse this process while the source remains active, but do not use a 
 
 If you cannot keep the source frozen for the dump, restore, and validation window, stop here. Use a separately tested migration process that durably captures and replays every post-snapshot write. This snapshot-only process does not provide a zero-downtime cutover.
 
-Create a private, compressed archive containing all non-system schemas in the selected database. This is the task-specific command for this migration; see the [PostgreSQL 17 `pg_dump` reference](https://www.postgresql.org/docs/17/app-pgdump.html) for the complete option reference:
+Create a private, compressed archive containing all non-system schemas in the selected database. See the [PostgreSQL 17 `pg_dump` reference](https://www.postgresql.org/docs/17/app-pgdump.html) for the other options:
 
 ```bash title="Terminal"
 umask 077
@@ -136,7 +136,7 @@ sed -n '1,20p' postgres-restore.list
 
 You should see an archive header followed by database objects. If `pg_dump` reports a version mismatch, make sure the PostgreSQL 17 tools appear first in your `PATH`.
 
-If step 1 found policies that reference source-only roles, list the policy entries:
+If the policy check found policies that reference source-only roles, list the policy entries:
 
 ```bash title="Terminal"
 grep ' POLICY ' postgres-restore.list
@@ -209,64 +209,74 @@ Choose the path that matches your application:
 - [I use Prisma 7 or earlier](#use-prisma-7-or-earlier)
 - [I do not use Prisma ORM](#do-not-use-prisma-orm)
 
-Accelerate can connect from edge runtimes over HTTP. Standard Prisma Postgres drivers connect over PostgreSQL TCP. If your current runtime cannot open TCP connections, move database access to a compatible Node.js or Bun runtime before switching. The [Prisma Postgres serverless driver](/postgres/database/serverless-driver) supports constrained runtimes but is currently Early Access and is not recommended for production.
+Every path uses the two connection strings from step 2: the pooled URL for application queries and the direct URL for migrations and other CLI tools.
 
 ### Already use Prisma 8
 
-Keep your existing contract and application code. Set the pooled URL for runtime queries and the direct URL for Prisma CLI operations:
+Keep your existing contract, migrations, and application code. The dump copied the `prisma_contract` schema, so the imported database still carries the marker that ties it to your contract.
+
+Set the pooled URL for runtime queries and the direct URL for Prisma CLI commands:
 
 ```bash title=".env"
 DATABASE_URL="postgres://USER:PASSWORD@pooled.db.prisma.io:5432/postgres?sslmode=require"
 DIRECT_URL="postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require"
 ```
 
-If your `prisma.config.ts` defines `db.connection`, point that property at `DIRECT_URL`. Keep your existing contract path, output, extensions, and migration history unchanged.
+If your `prisma.config.ts` sets `db.connection`, point it at `DIRECT_URL`.
 
-Verify the imported database against your existing contract:
+Confirm that the imported database still matches your contract:
 
 ```npm title="Terminal"
-npx prisma@latest db verify
+npx prisma@latest db verify --db "$DIRECT_URL"
 ```
 
-The command should report that the database satisfies the contract. Do not run `orm init`, infer a replacement contract, or transfer migration ownership again.
+The command exits with code `0` when the marker and schema match the contract. Exit code `4` means the database does not match. Check that the restore included the `prisma_contract` schema before you change anything else. Do not run `orm init` or `contract infer` against the new database; your existing contract already describes it.
 
 ### Use Prisma 7 or earlier
 
-Replace the Accelerate URL with the pooled Prisma Postgres URL, and use the direct URL for Prisma CLI operations:
+Set the pooled URL for runtime queries and the direct URL for Prisma CLI commands:
 
 ```bash title=".env"
 DATABASE_URL="postgres://USER:PASSWORD@pooled.db.prisma.io:5432/postgres?sslmode=require"
 DIRECT_URL="postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require"
 ```
 
-Remove the Accelerate extension:
+Prisma 7 reads the CLI connection from `datasource.url` in `prisma.config.ts`. Point it at `DIRECT_URL` as shown in the [Prisma 7 PostgreSQL setup](/orm/v7/core-concepts/supported-databases/postgresql). Prisma 6 and earlier read `url` and `directUrl` from the `datasource` block in `schema.prisma`.
+
+If your application did not use Prisma Accelerate, run `npx prisma generate` and continue to step 7.
+
+#### Remove Prisma Accelerate
+
+If your application connected through Accelerate, remove it now. Prisma Postgres connection pooling replaces the Accelerate connection pool. It does not replace Accelerate query caching, so remove the cache calls as well.
+
+Uninstall the extension:
 
 ```npm title="Terminal"
 npm uninstall @prisma/extension-accelerate
 ```
 
-Remove `withAccelerate()`, `accelerateUrl`, and the Accelerate extension import from your Prisma Client setup. Also remove query-cache APIs such as `cacheStrategy`, `withAccelerateInfo`, `$accelerate.invalidate`, and `$accelerate.invalidateAll`; Prisma Postgres connection pooling does not replace Accelerate query caching.
+In your Prisma Client setup, remove the `@prisma/extension-accelerate` import, `withAccelerate()`, and `accelerateUrl`. Remove `cacheStrategy` options from queries, and remove calls to `withAccelerateInfo`, `$accelerate.invalidate`, and `$accelerate.invalidateAll`.
 
-For Prisma 7, connect through the PostgreSQL driver adapter as described in the [Prisma 7 PostgreSQL setup](/orm/v7/core-concepts/supported-databases/postgresql). For Prisma 6 or earlier, use the regular Prisma Client with its query engine or a driver adapter supported by your version. If your Accelerate setup used `@prisma/client/edge`, `engineType = "client"`, `prisma generate --no-engine`, `--accelerate`, or `--data-proxy`, undo those Accelerate-only changes before regenerating.
+Undo any build settings you added for Accelerate: imports from `@prisma/client/edge`, `engineType = "client"` in the generator block, and the `--no-engine`, `--accelerate`, or `--data-proxy` flags on `prisma generate`. For Prisma 7, connect through the PostgreSQL driver adapter. For Prisma 6 or earlier, use Prisma Client with its bundled query engine or a driver adapter your version supports.
 
-Regenerate Prisma Client after removing the extension:
+Accelerate reached edge runtimes over HTTP. Prisma Postgres connections use PostgreSQL over TCP. If your application runs in a runtime that cannot open TCP connections, move database access to a Node.js or Bun runtime before switching. The [Prisma Postgres serverless driver](/postgres/database/serverless-driver) works in constrained runtimes but is in Early Access and not recommended for production.
+
+Regenerate Prisma Client:
 
 ```npm title="Terminal"
 npx prisma generate
 ```
 
-The command should finish without references to `@prisma/extension-accelerate` or `prisma://` URLs.
+Search your project for `@prisma/extension-accelerate` and `prisma://`. Neither should appear.
 
 ### Do not use Prisma ORM
 
-Keep your existing PostgreSQL library. Configure its runtime connection with the pooled URL:
+Keep your existing PostgreSQL client library. Point its runtime connection at the pooled URL, and use the direct URL for migrations, `pg_dump`, `pg_restore`, and other administrative tools:
 
 ```bash title=".env"
 DATABASE_URL="postgres://USER:PASSWORD@pooled.db.prisma.io:5432/postgres?sslmode=require"
 DIRECT_URL="postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require"
 ```
-
-Use `DIRECT_URL` for migrations, `pg_dump`, `pg_restore`, and other administrative tools.
 
 ## 7. Verify and switch the application
 
@@ -274,7 +284,7 @@ Start the application with the new environment variables while production traffi
 
 Only after the database comparison and application checks succeed, route production traffic to Prisma Postgres and resume writes there. Do not re-enable writes on the source. Keep the source database available in a read-only state until the application is healthy on Prisma Postgres and the rollback window has ended.
 
-## 8. Remove local migration files
+## 8. Delete the local dump files
 
 After you have verified the application and retained any audit evidence you need, delete the local dump and row-count files:
 
