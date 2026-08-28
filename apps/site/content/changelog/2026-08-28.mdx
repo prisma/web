@@ -56,6 +56,28 @@ To start from a ready-made app, browse the [Prisma apps directory](https://www.p
 
 **`npm install prisma@latest` installs Prisma 8** (previously Prisma Next). Prisma 7 *stays supported* as `prisma@prev` ([docs](https://www.prisma.io/docs/orm/v7)).
 
+Prisma 8 is a rewrite of Prisma ORM in TypeScript. You still write a schema and query your models, but four things are different from Prisma 7:
+
+- **Your schema becomes a contract.** Instead of generating a client package, `contract emit` turns the schema into a JSON document plus TypeScript types that your app, the migration tools, and coding agents all read. It is a plain file you can inspect and diff.
+- **Queries chain instead of taking one options object.** They start from `db.orm.<schema>.<Model>`, support custom collection methods, streaming results, and a type-safe SQL builder, and each one compiles to a plan you can inspect.
+- **Migrations are a graph.** Branch conflicts resolve automatically, partial failures are safe to retry, and schema and data migrations are written in TypeScript and validated against your contract ([the migration graph](https://www.prisma.io/docs/orm/migrations/the-migration-graph)).
+- **Everything is an extension**, including Postgres support itself, so you can add databases, query builders, data types, and middleware through a public SPI.
+
+The same query, before and after:
+
+```typescript title="Prisma 7"
+const users = await prisma.user.findMany({
+  include: { posts: true },
+  orderBy: { id: "asc" },
+});
+```
+
+```typescript title="Prisma 8"
+const users = await db.orm.public.User.include("posts")
+  .orderBy((user) => user.id.asc())
+  .all();
+```
+
 **Setup now comes down to one config file and one CLI.** You install `@prisma/orm-postgres` or `@prisma/orm-mongo` alongside `prisma`, and the same `prisma` command handles migrations and deploys by reading `prisma.config.ts`:
 
 ```ts title="prisma.config.ts"
@@ -71,7 +93,7 @@ export default defineConfig({
 });
 ```
 
-If you are new to Prisma 8, start with the [overview](https://www.prisma.io/docs/orm) and [core concepts](https://www.prisma.io/docs/orm/core-concepts). If you are on Prisma 7, the [upgrade guide](https://www.prisma.io/docs/guides/upgrade-prisma-orm/postgresql) runs both versions against the same database so you can move one module at a time.
+PostgreSQL and MongoDB are supported today, with SQLite and then MySQL planned. If you are new to Prisma 8, start with the [overview](https://www.prisma.io/docs/orm) and [core concepts](https://www.prisma.io/docs/orm/core-concepts). If you are on Prisma 7, the [upgrade guide](https://www.prisma.io/docs/guides/upgrade-prisma-orm/postgresql) runs both versions against the same database so you can move one module at a time.
 
 <div className="not-prose flex flex-wrap gap-3">
   <PrismButton href="https://www.prisma.io/docs/prisma-orm/quickstart/postgresql" ctaLocation="changelog-prisma-8">Start with Prisma 8</PrismButton>
@@ -117,9 +139,9 @@ The Console has three smaller improvements as well:
 
 ## Prisma Composer
 
-[Prisma Composer](https://www.prisma.io/docs/composer) (Early Access) deploys an app made of several services with **one command**. It is what the Deploy Button runs on, and you can use it directly.
+With [Prisma Composer](https://www.prisma.io/docs/composer), in Early Access, **you run your entire app, including its infrastructure, on your laptop, then deploy the same thing to Prisma with one command**. Compute services, Prisma Postgres databases, [Object Store buckets](https://www.prisma.io/docs/storage), scheduled jobs, and secrets are all part of the app definition, so `npx prisma@latest dev module.ts` brings all of it up [locally](https://www.prisma.io/docs/local-development) against stand-in databases and buckets, and `npx prisma@latest deploy module.ts` provisions the real ones and wires the authenticated connections between them. Running deploy again applies *only the diff*.
 
-You describe each service in TypeScript, along with what it needs, such as other services, databases, [buckets](https://www.prisma.io/docs/storage), scheduled jobs, and secrets. Running `npx prisma@latest deploy module.ts` provisions all of it and wires the connections, and running it again applies *only the diff*. To run the whole app on your machine, use `npx prisma@latest dev module.ts` ([local development](https://www.prisma.io/docs/local-development)).
+You describe each service in TypeScript, along with what it depends on. Composer is also what the Deploy Button and the apps directory run on.
 
 ```ts title="src/storefront/service.ts"
 import nextjs from "@prisma/composer/nextjs";
@@ -151,9 +173,9 @@ The Management API is now called the **[REST API](https://www.prisma.io/docs/res
 - **Check a workspace's plan from code** with [`GET /v1/workspaces/{workspaceId}/subscription`](https://www.prisma.io/docs/rest-api/endpoints/workspaces/get-workspaces-by-id-subscription), which returns the plan, whether usage is blocked, and the upgrade URL.
 - Every `/v1/apps` route is also available at `/v1/services`, matching what the CLI calls the resource.
 
-## Prisma 8
+## Prisma 8 since the last release candidate
 
-The release candidate line moved from `rc.1` to `rc.8` this month, and *three changes stand out*.
+If you were already on a Prisma 8 release candidate, the line moved from `rc.1` to `rc.8` this month, and *three changes stand out*.
 
 **Validation rules now live in your schema.** `@@check` declares a `CHECK` constraint on a model, and `contract infer` picks up constraints that already exist in the database. Enum and list columns get checks automatically, and `@noCheck` opts a column out. ([#29892](https://github.com/prisma/orm/pull/29892), [#29894](https://github.com/prisma/orm/pull/29894), [#29928](https://github.com/prisma/orm/pull/29928), [#29972](https://github.com/prisma/orm/pull/29972))
 
