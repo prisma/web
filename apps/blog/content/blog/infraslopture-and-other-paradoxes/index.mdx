@@ -1,0 +1,114 @@
+---
+title: "Infraslopture and Other Paradoxes"
+slug: "infraslopture-and-other-paradoxes"
+date: "2026-08-03"
+authors:
+  - "Gemma Anible"
+metaTitle: "Infraslopture and Other Paradoxes"
+metaDescription: "How we're combining untrustable agents and production infrastructure without burning down our servers"
+heroImagePath: "/infraslopture-and-other-paradoxes/imgs/hero.svg"
+heroImageAlt: "A terminal where the prompt 'i need reproducible server configs' resolves into a checklist: NixOS with flakes, colmena with sops-nix, Incus with Tailscale"
+metaImagePath: "/infraslopture-and-other-paradoxes/imgs/meta.png"
+tags:
+  - "ai"
+  - "platform"
+series: agentic-engineering
+seriesIndex: 5
+---
+
+*If infrastructure and slop machines go together like oil and water, at Prisma, we're making a nice vinaigrette.*
+
+---
+
+We start with research.
+
+```
+> i need a system for creating and maintaining deterministic, reproducible server configurations, so i can maintain a fleet of bare metal, linux-based hosts without worrying about configuration drift. what are some solutions in the modern infra ecosystem?
+```
+
+Claude glues my query to the end of my global instructions and spins away, recombining water, power, and human creativity and intellectual property into a slurry of Markdown (the universal engineering language in 2026). We walk through each category it identified: immutable operating systems, declarative configuration systems like [Nix](https://nix.dev) and [Puppet](https://www.puppet.com), and the imperative systems like [Ansible](https://www.ansible.com) that I have come to loathe.
+
+_[Immutable Linux](https://justingarrison.com/blog/state-of-immutable-linux/) is your best bet_, it tells me.
+
+Oh honey. Honey no. Don't worry, it just needs more context. I'm holding it wrong.
+
+```
+> these hosts will be running thousands of customer-owned production workloads, so we don't reboot them unless we need to update the kernel. i need something declarative and reproducible that can apply configuration changes to a live system without downtime.
+```
+
+More spinning. Imagine creating persistent hosts in 2026. Imagine defining what Claude has started calling a "substrate" without [Terraform](https://developer.hashicorp.com/terraform) or [Kubernetes](https://kubernetes.io). _[NixOS](https://nixos.org) and [Guix](https://guix.gnu.org/) are the only tools that meet your constraints of declarative, reproducible systems that apply updates without a system reboot and are not based on proprietary tech._ Good bot.
+
+Armed with a new perspective into the modern IaC/config management landscape, I go hunting myself and find nothing additionally useful. NixOS does sound great, so close to what I was looking for that it seems too good to be true: an entire Linux specified in a config file and checked into source control. The ecosystem around it might be [chaotic neutral](https://discourse.nixos.org/t/a-call-for-the-nix-team-to-present-a-unified-front-on-the-outcome-and-strategy-around-nix-flakes/54959), but if I can restrict my own configs with clear rules and conventions to follow, entry point [`flake.nix`](https://nixos-and-flakes.thiscute.world/preface) consuming [NixOS modules](https://nixos-and-flakes.thiscute.world/nixos-with-flakes/modularize-the-configuration), [new `nix`](https://nix.dev/manual/nix/2.35/command-ref/new-cli/nix.html) instead of [old nix](https://nix.dev/manual/nix/2.35/command-ref/nix-shell.html), maybe it'll be fine. We can keep our own house in order and build a moat around it. With Markdown.
+
+## The proof of concept
+
+```
+> okay to validate the nixos choice i want set up a config that manages a single host to start, but is built to manage multiple. the first host will be a machine for developers to run tests on. they'll need something like proxmox, so they can manage VMs running on the host, and run microVMs in those VMs.
+```
+
+More spinning ends in a recommendation I'd never heard of: [Incus](https://linuxcontainers.org/incus/). Turns out my memory was wrong: [Proxmox](https://pve.proxmox.com/wiki/Install_Proxmox_VE_on_Debian_11_Bullseye) is an appliance, not an application. It eats your whole machine. I need something that runs _on_ NixOS, not something that _replaces_ NixOS.
+
+Claude hands me a bunch of [sources](https://www.xda-developers.com/who-needs-proxmox-im-finally-trying-out-incus/) that it has mechanically verified to be actual sources and not fabrications, so I go skim, and what do you know, Incus does sound like a winner. Give each dev a _project_ with resource guardrails they can define and let them launch/destroy VMs as much as they want. Nice interfaces on the command line, or on the web, scriptable. Support for [nested virtualization](https://docs.kernel.org/virt/kvm/x86/running-nested-guests.html). Supports NixOS images. Easy to wire into a [Skill™](https://agentskills.io/home). Sold.
+
+The robot and I walk through a few more choices -- [colmena](https://colmena.cli.rs/unstable/) instead of [deploy-rs](https://github.com/serokell/deploy-rs) to push NixOS configs because it has better support for grouping, [sops-nix](https://github.com/Mic92/sops-nix) for secrets management with dedicated keys so we don't have to re-encrypt everything if we rotate host keys -- but the party really takes a turn with [Tailscale](https://tailscale.com). Surely there's no reason to dump all these disposable VMs into my tailnet, and consign myself to accumulated weeks of fighting with `tailscale up`, but if I don't force them into my tailnet, how do I restrict access without managing individual SSH keys?
+
+(I need to make clear at this point that I am not a network engineer. I'm *arguably* a sysadmin. I can only imagine the deafening peals of laughter that would emanate forth were I to tell my old boss, an actual sysadmin, what my job is now.)
+
+```
+> ok hang on, i want the incus host on the tailnet but not all these throwaway VMs. how do i restrict VM access to the people that can access the host, and give those people ergonomic hostnames for the VMs, without the tailnet?
+```
+
+And that's how I learned about Tailscale's [subnet routing](https://tailscale.com/docs/features/subnet-routers). The host will advertise itself as a router for my VM subnet, and Tailscale will control access and DNS. When I'm on the tailnet:
+
+1. I `ssh dev@ellobox.incus`.
+2. Tailscale knows `.incus` means the `10.69.0.0/24` subnet, and directs my traffic through the host that routes it.
+3. Incus knows what `ellobox.incus` means and shoots me directly into my VM.
+
+Magic. I am living in the future. Claude wrote me a special Markdown for that one.
+
+## Skills to pay the bills
+
+Concerningly, as a wise Italian once said to me, I shot on my foot.
+
+I've just introduced a minimum of four new tools to my organization, depending on how you count:
+
+1. NixOS, nix, flakes
+2. colmena
+3. sops
+4. Incus
+
+I'm building the foundation that's going to run [the next generation of Prisma products](https://www.prisma.io/stack), and I barely understand it, and nobody else at Prisma has even heard of most of it (except for a couple guys who were already running NixOS in their homelabs because they are, legitimately, cool). How do I check if a package is installed? How do I check which package owns a particular binary? Can I update packages from the host or do I have to do it from the config repository and then deploy? What happens if I do it from the host, can I port it back to my configs? Can I pin package versions? Are they already pinned? Do I keep using all my normal `coreutils` and `inetutils` in NixOS, or is there a whole new paradigm to learn?
+
+Well.
+
+By the time I got to a functioning Incus host with a custom NixOS image library, Claude had four Skills written and tested, and a bunch more specced:
+
+- A Skill to provision a new NixOS host at our provider, using [`nixos-anywhere`](https://github.com/nix-community/nixos-anywhere).
+- A Skill to bootstrap a teammate as a NixOS operator. This one walks through the local `nix` installation and secret provisioning, so most of the heavy lifting is a shell script. Determinism is how you win the Skills game.
+- A Skill to onboard a teammate who also wants to play with Incus VMs. Again, heavy lifting in a shell script, general rules and prerequisites in the prose.
+- A Skill that knows how to interact with Incus, because lord knows none of us do.
+- A Skill that knows how to configure Tailscale the way we need it configured.
+- A Skill that knows how to offboard people.
+- A Skill that knows how to configure NixOS in a way we'll be able to maintain.
+
+### You should have just written guides for humans
+
+Sure.
+
+**Users don't read.**
+
+We don't. We don't read. We don't all read, we don't read all the time, we don't read consistently, we don't read more than a couple lines. We especially don't read in 2026 when stochastic parrots are available to a) read, and b) make us _feel like_ we read. You know how it's maddening that all of this documentation we're writing for robots would have been great before robots took over, how it would have been amazing and helpful for actual humans, and nobody wrote it because it wasn't a business priority and nobody has time for things that are not business priorities? No, my friend, my colleague, my sister in Christ: nobody wrote it because _nobody would read it_.
+
+So in anticipation of none of us reading, and all of us asking robots "how do I...?", the repository that controls our infrastructure will be full to bursting with answers to those questions, in a format and medium my team will consume.
+
+## I lied, it's not really a paradox
+
+I don't like LLMs, even though I use them all day, every day. They are phenomenally useful, effective tools for building software systems, but I had some skepticism that they would be useful for building infrastructure. A startup that [made a bet on exactly that argument](https://github.com/systeminit/si) folded this year, early. The things that make models useful in a software context -- deterministic static analysis, isolated test suites, linters, QA teams -- don't exist to the same extent in an infrastructure context. On top of that, the level of access usually required to do actual work on infrastructure is not a level anybody with any relevant experience is comfortable granting a model. Especially if your infra is persistent and not ephemeral. (Remember the last time Opus surprise-force-pushed on you?)
+
+I've learned a lot building this project, a lot faster than I would have on my own, and I had a lot of fun in the process. Prisma now has a functioning prototype of an agent-oriented infrastructure system, using tools I'd mostly never heard of, and I have some confidence that I'll be able to extend it to cover the rest of our use cases. I can understand trade-offs and make decisions better now, because I have a more complete picture of the landscape and how it'll serve our in-house needs. And if the slop does fall apart, I still have the resources and the experience to put it back together myself.
+
+Can well-directed slop machines build good infrastructure? I don't know. Check out [the Prisma stack](https://www.prisma.io/stack) and we can find out together.
+
+---
+
+*If you want to read more in the story of how we're engineering agentically at Prisma, start with [Agentic Engineering: How Prisma Builds with AI](/how-prisma-build-with-agentic-ai).*

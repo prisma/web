@@ -1,83 +1,74 @@
-"use client";
-
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  TooltipProvider,
-} from "@prisma/eclipse";
-
+import { ArrowRight } from "@/components/icons/forma";
 import { AgentCard } from "./agent-card";
+import { InkCode } from "./ink-code";
 
 export type McpAgent = {
+  name: string;
   logo: string | null;
   alt: string;
   href?: string;
   copyText?: string;
 };
 
+const TALLY_HREF = "https://tally.so/r/wA1R1N";
+
+const MANUAL_CONFIG = JSON.stringify(
+  {
+    mcpServers: {
+      Prisma: {
+        url: "https://mcp.prisma.io/mcp",
+      },
+    },
+  },
+  null,
+  2,
+);
+
 export function McpAgentsSection({ agents }: { agents: readonly McpAgent[] }) {
-  const tallyHref = "https://tally.so/r/wA1R1N";
-
   return (
-    <section className="px-4 py-12 md:px-0">
-      <div className="mx-auto flex max-w-[790px] flex-col items-center gap-12 text-center">
-        <div className="flex max-w-[768px] flex-col items-center gap-4">
-          <h2 className="font-sans-display stretch-display font-black text-foreground-neutral text-3xl">
-            Works with your AI agent
-          </h2>
-          <p className="text-base leading-6 text-foreground-neutral-weak">
-            Works with any AI agent, whether you prefer to use a remote or a local server,
-            we&apos;ve got you.
-          </p>
-        </div>
+    <section className="bg-white px-4 pt-16 sm:px-8">
+      <div className="mx-auto max-w-site">
+        <div className="mx-auto max-w-4xl">
+          <div className="flex flex-col items-center gap-4 text-center">
+            <h2 className="text-[clamp(1.5rem,2.25vw,2rem)] leading-[1.15]">
+              Works with your AI agent
+            </h2>
+            <p className="max-w-[52ch] text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground">
+              Works with any AI agent, whether you prefer to use a remote or a local server,
+              we&apos;ve got you.
+            </p>
+          </div>
 
-        <TooltipProvider>
-          <div className="grid w-full max-w-[368px] grid-cols-2 justify-items-center gap-4 min-[400px]:gap-8 md:max-w-[790px] md:grid-cols-4 md:gap-8">
+          <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-4 sm:gap-5">
             {agents.map((agent) => (
               <AgentCard key={agent.alt} {...agent} />
             ))}
           </div>
-        </TooltipProvider>
 
-        <Dialog>
-          <DialogTrigger asChild>
-            <button
-              type="button"
-              className="cursor-pointer text-sm font-semibold text-foreground-ppg underline"
-            >
-              Want to see your tool listed?
-            </button>
-          </DialogTrigger>
-          <DialogContent className="max-w-4xl">
-            <DialogHeader>
-              <DialogTitle>Want to see your favorite AI tool listed on prisma.io/mcp?</DialogTitle>
-            </DialogHeader>
-            <div className="overflow-hidden rounded-xl border border-stroke-neutral bg-background-neutral-weaker shadow-box-low">
-              <iframe
-                src={tallyHref}
-                title="Tool listing request"
-                width="100%"
-                height="640"
-                className="block min-h-[640px] w-full border-0 bg-white"
-              />
+          <div className="mt-5 grid gap-5 md:grid-cols-[1fr_auto] md:items-stretch">
+            <div className="flex flex-col gap-3 rounded-2xl border border-black/[0.06] bg-white p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04)]">
+              <p className="text-sm font-semibold text-foreground">
+                Or add the server to any MCP client
+              </p>
+              <InkCode code={MANUAL_CONFIG} ariaLabel="Copy MCP server configuration" />
             </div>
-            <p className="text-sm leading-6 text-foreground-neutral-weak">
-              If the form does not load,{" "}
+            <div className="flex flex-col justify-center gap-2 rounded-2xl bg-card-wash p-6">
+              <p className="text-sm font-semibold text-foreground">Want to see your tool listed?</p>
               <a
-                href={tallyHref}
+                href={TALLY_HREF}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-semibold text-foreground-ppg underline"
+                className="group flex items-center gap-1.5 text-sm font-semibold text-foreground transition-colors hover:text-prism-cyan-700"
               >
-                open it in a new tab
+                Tell us about it
+                <ArrowRight
+                  className="size-4 transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transition-none"
+                  aria-hidden
+                />
               </a>
-              .
-            </p>
-          </DialogContent>
-        </Dialog>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   );

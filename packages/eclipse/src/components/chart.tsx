@@ -222,7 +222,7 @@ function ChartTooltipContent({
                       !hideIndicator && (
                         <div
                           className={cn(
-                            "shrink-0 rounded-[2px] border-(--color-border) bg-(--color-bg)",
+                            "shrink-0 rounded-square-low border-(--color-border) bg-(--color-bg)",
                             indicator === "dot" && "h-2.5 w-2.5",
                             indicator === "line" && "w-1",
                             indicator === "dashed" &&
@@ -311,7 +311,7 @@ function ChartLegendContent({
                 <itemConfig.icon />
               ) : (
                 <div
-                  className="h-2 w-2 shrink-0 rounded-[2px]"
+                  className="h-2 w-2 shrink-0 rounded-square-low"
                   style={{
                     backgroundColor: item.color,
                   }}

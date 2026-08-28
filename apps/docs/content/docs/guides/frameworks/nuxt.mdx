@@ -1,303 +1,142 @@
 ---
 title: Nuxt
-description: A step-by-step guide to setting up and using Prisma ORM and Prisma Postgres in a Nuxt app
-image: /img/guides/prisma-postgres-and-prisma-nuxt-guide.png
+description: 'Set up Prisma 8 in a Nuxt app with create-prisma, from scaffold to rendered data, and deploy it to Prisma Compute.'
 url: /guides/frameworks/nuxt
-metaTitle: Build a Nuxt app with Prisma ORM and Prisma Postgres
-metaDescription: A step-by-step guide to setting up and using Prisma ORM and Prisma Postgres in a Nuxt app.
-aiPrompt: "nuxt"
+metaTitle: How to use Prisma 8 with Nuxt
+metaDescription: 'Scaffold a Nuxt app with Prisma 8 and Prisma Postgres, initialize the database, render your data, and deploy to Prisma Compute.'
 ---
 
-This guide shows you how to set up Prisma ORM in a Nuxt application with [Prisma Postgres](https://prisma.io/postgres).
+## Introduction
+
+This guide shows you how to use Prisma 8 in a Nuxt app. You scaffold a project where a server API route queries your database and the page renders it, initialize the schema, see your data, and deploy the app to [Prisma Compute](/compute).
+
+Every command below was run end to end against a live [Prisma Postgres](/postgres) database.
 
 ## Quick start
 
-Run one command to scaffold a Nuxt project with Prisma ORM and Prisma Postgres ready to go:
+One command scaffolds the project with Prisma 8 wired in:
 
 ```npm
-npm create prisma@latest -- --template nuxt
+npx create-prisma@latest create my-app --template nuxt --provider postgres
 ```
 
-Or follow the steps below to set it up manually.
+Answer the prompts, then export `DATABASE_URL` in your shell before running the database scripts. If you do not have a database yet, `npx create-db@latest` prints a Prisma Postgres connection string.
 
 ## Prerequisites
 
-- Node.js 18+
-- A [Prisma Postgres](https://console.prisma.io/) database (or any PostgreSQL database)
+- [Node.js](https://nodejs.org) 24 or later
+- A PostgreSQL connection string, or nothing at all: `npx create-db@latest` can create a Prisma Postgres database for you
 
-## 1. Create a Nuxt project
+## Use with your agent
 
-Create a new Nuxt project:
+To delegate this guide to your coding agent, copy the prompt below and hand it over:
 
-```npm
-npx nuxi@latest init hello-prisma
+<AgentPrompt>
+
+```text
+Create a new Nuxt app with Prisma 8, seed it, and deploy it to Prisma Compute.
+
+1. Scaffold: `npx create-prisma@latest create my-app --template nuxt --provider postgres --yes`. Then run `npx prisma@latest init` in `my-app` so the Prisma agent skills are installed and stay current, and use them. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Export it as `DATABASE_URL` in the shell; the generated scripts read the environment variable, not `.env`.
+2. In `my-app`, run `npm run db:init` with `DATABASE_URL` exported. Sample users are seeded automatically on the app's first query; there is no separate seed script.
+3. Start `npm run dev` in the background, wait until it reports ready, verify that http://localhost:3000 lists the seeded users and `curl http://localhost:3000/api/users` returns them, then stop the dev server.
+4. Deploy: check `npx prisma@latest auth whoami`; if I am not signed in, stop and ask me to run `npx prisma@latest auth login`. Then run `npm run build` followed by `npx prisma@latest deploy module.ts` and verify the live URL's /api/users endpoint. The deployed app provisions and seeds its own Prisma Postgres database; do not pass the local DATABASE_URL. If the deploy fails with `HostedStateBootstrapError`, a project with the module's name exists in my workspace but its hosted state cannot be verified; re-run the deploy with `--name <a unique name>`.
+
+Use the installed Prisma 8 skills.
 ```
 
-Navigate to the project and install dependencies:
+</AgentPrompt>
+
+## 1. Scaffold and enter the project
+
+```npm
+npx create-prisma@latest create my-app --template nuxt --provider postgres
+cd my-app
+```
+
+The scaffold generates the Nuxt app with Prisma 8 wired in, installs dependencies, and emits the contract your queries are type-checked against.
+
+Next, set the database connection for the local steps. Use your own PostgreSQL connection string, or create a Prisma Postgres database with `npx create-db@latest`; it prints a connection string and a claim URL you can open to keep the database. Export the variable in the shell you work in; the generated scripts read the environment variable, not `.env`:
 
 ```bash
-cd hello-prisma
+export DATABASE_URL="<your connection string>"
 ```
+
+## 2. Initialize the database
 
 ```npm
-npm install @prisma/client @prisma/adapter-pg pg
+npm run db:init
 ```
 
-```npm
-npm install -D prisma @types/pg dotenv tsx
+```text no-copy
+"summary": "Applied 5 operation(s) across 1 space(s), database signed"
 ```
 
-## 2. Initialize Prisma
+If `db:init` stops with `Connection terminated unexpectedly`, a database you just created is still starting; wait a few seconds and run it again. The command is safe to repeat and reports `Applied 0 operation(s)` when there is nothing left to do.
 
-Initialize Prisma in your project:
+`db:init` applies your schema (`src/prisma/contract.prisma`) to the database and signs it. Sample users are seeded automatically the first time the app queries the database.
 
-```npm
-npx prisma init
-```
-
-Update your `prisma/schema.prisma`:
-
-```prisma title="prisma/schema.prisma"
-generator client {
-  provider = "prisma-client"
-  output   = "./generated"
-}
-
-datasource db {
-  provider = "postgresql"
-}
-
-model User {
-  id    Int     @id @default(autoincrement())
-  email String  @unique
-  name  String?
-  posts Post[]
-}
-
-model Post {
-  id        Int      @id @default(autoincrement())
-  title     String
-  content   String?
-  published Boolean  @default(false)
-  author    User?    @relation(fields: [authorId], references: [id])
-  authorId  Int?
-}
-```
-
-Create a `prisma.config.ts` file in the root of your project:
-
-```ts title="prisma.config.ts"
-import { defineConfig, env } from "prisma/config";
-import "dotenv/config";
-
-export default defineConfig({
-  schema: "prisma/schema.prisma",
-  migrations: {
-    path: "prisma/migrations",
-    seed: "tsx ./prisma/seed.ts",
-  },
-  datasource: {
-    url: env("DATABASE_URL"),
-  },
-});
-```
-
-Update your `.env` file with your database connection string:
-
-```text title=".env"
-DATABASE_URL="postgresql://user:password@localhost:5432/mydb"
-```
-
-Run the migration to create your database tables:
-
-```npm
-npx prisma migrate dev --name init
-```
-
-## 3. Set up Prisma Client
-
-Create `server/utils/db.ts`. Nuxt auto-imports exports from `server/utils`, making `prisma` available in all API routes:
-
-```ts title="server/utils/db.ts"
-import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../../prisma/generated/client";
-
-const prismaClientSingleton = () => {
-  const pool = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
-  return new PrismaClient({ adapter: pool });
-};
-
-type PrismaClientSingleton = ReturnType<typeof prismaClientSingleton>;
-
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClientSingleton | undefined;
-};
-
-export const prisma = globalForPrisma.prisma ?? prismaClientSingleton();
-
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
-```
-
-## 4. Create API routes
-
-Create an API route to fetch users. The `prisma` instance is auto-imported:
-
-```ts title="server/api/users.get.ts"
-export default defineEventHandler(async () => {
-  const users = await prisma.user.findMany({
-    include: { posts: true },
-  });
-  return users;
-});
-```
-
-Create an API route to create a user:
-
-```ts title="server/api/users.post.ts"
-export default defineEventHandler(async (event) => {
-  const body = await readBody<{ name: string; email: string }>(event);
-
-  const user = await prisma.user.create({
-    data: {
-      name: body.name,
-      email: body.email,
-    },
-  });
-
-  return user;
-});
-```
-
-## 5. Create a page
-
-Update `app.vue` to display users:
-
-```html title="app.vue"
-<template>
-  <div>
-    <h1>Users</h1>
-    <ul v-if="users?.length">
-      <li v-for="user in users" :key="user.id">{{ user.name }} ({{ user.email }})</li>
-    </ul>
-    <p v-else>No users yet.</p>
-  </div>
-</template>
-
-<script setup>
-  const { data: users } = await useFetch('/api/users')
-</script>
-```
-
-## 6. Run the app
-
-Start the development server:
+## 3. Run and verify
 
 ```npm
 npm run dev
 ```
 
-Open `http://localhost:3000` to see your app.
+Open [http://localhost:3000](http://localhost:3000). The page lists the seeded users, fetched from the `/api/users` server route. You can hit that route directly:
 
-## 7. Seed your database (optional)
-
-Create a seed file to populate your database with sample data:
-
-```ts title="prisma/seed.ts"
-import "dotenv/config";
-import { PrismaClient } from "./generated/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
-const prisma = new PrismaClient({ adapter });
-
-async function main() {
-  const alice = await prisma.user.create({
-    data: {
-      name: "Alice",
-      email: "alice@prisma.io",
-      posts: {
-        create: { title: "Hello World", published: true },
-      },
-    },
-  });
-  console.log(`Created user: ${alice.name}`);
-}
-
-main()
-  .then(() => prisma.$disconnect())
-  .catch(async (e) => {
-    console.error(e);
-    await prisma.$disconnect();
-    process.exit(1);
-  });
+```bash
+curl http://localhost:3000/api/users
 ```
 
-Run the seed:
+```json no-copy
+{
+  "users": [
+    { "id": "1", "email": "alice@prisma.io", "username": "alice", "name": "Alice", "createdAt": "2026-07-24T11:43:58.001Z" },
+    { "id": "2", "email": "bob@prisma.io", "username": "bob", "name": "Bob", "createdAt": "2026-07-24T11:43:58.035Z" },
+    { "id": "3", "email": "carol@prisma.io", "username": "carol", "name": "Carol", "createdAt": "2026-07-24T11:43:58.068Z" }
+  ]
+}
+```
+
+## Where things live
+
+- `server/api/users.get.ts`: the server route that queries users
+- `app/pages/index.vue`: the page that fetches and renders them
+- `src/prisma/db.ts`: the Prisma 8 client the server route imports
+
+Model access is namespace-qualified on PostgreSQL: `db.orm.public.User`. The [Prisma 8 overview](/orm) covers the contract-first model behind it.
+
+## 4. Deploy to Prisma Compute
+
+Nuxt is supported on [Prisma Compute](/compute). The scaffold declares the app for [Prisma Composer](/composer) in `module.ts` and `service.ts`, pointing at Nuxt's `.output` build directory, so deploying is building and handing that declaration to the CLI. Sign in once (it opens a browser):
 
 ```npm
-npx prisma db seed
+npx prisma@latest auth login
 ```
 
-## 8. Deploy to Vercel
+Then build and deploy from the project directory:
 
-You can deploy your Nuxt application to Vercel using one of two methods:
+```npm
+npm run build
+npx prisma@latest deploy module.ts
+```
 
-### Option A: Deploy using Vercel CLI
+```text no-copy
+my-app
+├─ database   postgres-database db_abc123
+└─ app        compute-service cps_abc123
+              https://xyz.ewr.prisma.build
+```
 
-1. Install the Vercel CLI (if not already installed):
+The deploy creates a project named after your module in your workspace, and re-running the deploy reuses it: the CLI finds the hosted state it stored on the first run and converges the project to your module. If a project with that name exists but the CLI cannot identify or verify its stored state (one left behind by a different checkout, for example), the deploy stops with `HostedStateBootstrapError`; deploy under another name with `--name <unique-name>`, or rename the module in `module.ts`. The deploy also provisions its own Prisma Postgres database on the platform, declared in `module.ts`; the `DATABASE_URL` from your local steps is not involved, and the deployed database seeds on the app's first query. Verify the live app: open the URL to see the rendered user list, or hit the API route:
 
-   ```npm
-   npm install -g vercel
-   ```
+```bash
+curl https://xyz.ewr.prisma.build/api/users
+```
 
-2. Deploy your project:
-
-   ```npm
-   npx vercel
-   ```
-
-3. Set the `DATABASE_URL` environment variable:
-   - Go to your [Vercel Dashboard](https://vercel.com/dashboard)
-   - Select your project
-   - Navigate to **Settings** → **Environment Variables**
-   - Add `DATABASE_URL` with your database connection string
-
-4. Redeploy your application to apply the environment variable:
-   ```npm
-   npx vercel --prod
-   ```
-
-### Option B: Deploy using Git integration
-
-1. Push your code to a Git repository (GitHub, GitLab, or Bitbucket).
-
-2. Add `prisma generate` to your `postinstall` script in `package.json` to ensure Prisma Client is generated during deployment:
-
-   ```json title="package.json"
-   {
-     "scripts": {
-       "postinstall": "prisma generate",
-       "build": "nuxt build",
-       "dev": "nuxt dev"
-     }
-   }
-   ```
-
-3. Import your project in Vercel:
-   - Go to [Vercel Dashboard](https://vercel.com/dashboard)
-   - Click **Add New** → **Project**
-   - Import your Git repository
-   - Vercel will automatically detect it as a Nuxt project
-
-4. Configure environment variables:
-   - Before deploying, go to **Environment Variables**
-   - Add `DATABASE_URL` with your database connection string
-   - Click **Deploy**
-
-Vercel will automatically build and deploy your Nuxt application. The deployment process is the same as any other Node.js application, and Prisma Client will be generated during the build process thanks to the `postinstall` script.
+For previews per Git branch and deploy-on-push, see [Deploy your first app](/prisma-compute/deploy).
 
 ## Next steps
 
-- Explore the [full Nuxt + Prisma example](https://github.com/prisma/prisma-examples/tree/latest/orm/nuxt) for a complete blog application
-- Learn about [Prisma Client API](/orm/prisma-client/setup-and-configuration/introduction)
-- Set up [Prisma Postgres](/postgres) for a managed database
+- Change the schema in `src/prisma/contract.prisma`, then run `npm run contract:emit` and `npm run db:update`.
+- [Learn the fundamentals](/orm/fundamentals/reading-data): filtering, sorting, pagination, and writes.
+- [Read the Prisma 8 overview](/orm) for the concepts behind contracts and typed queries.

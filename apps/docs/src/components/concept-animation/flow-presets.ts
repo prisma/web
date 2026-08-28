@@ -961,7 +961,7 @@ const relationManyToMany: FlowScene = {
     {
       id: "post1",
       label: "Post",
-      sub: "Hello Prisma Next",
+      sub: "Hello Prisma 8",
       variant: "project",
       x: 24,
       y: 46,
@@ -1064,7 +1064,6 @@ const relationManyToMany: FlowScene = {
   ],
 };
 
-
 // ---------------------------------------------------------------------------
 // Migration scenes. Each teaches exactly one concept.
 // ---------------------------------------------------------------------------
@@ -1074,42 +1073,90 @@ const migrationLoop: FlowScene = {
   width: 620,
   height: 236,
   nodes: [
-    { id: "contract", label: "Change the contract", sub: "your schema", variant: "source", x: 24, y: 24, w: 240, h: 64 },
-    { id: "plan", label: "Plan", sub: "writes migration files", variant: "scope", x: 356, y: 24, w: 240, h: 64 },
-    { id: "review", label: "Review", sub: "read it, edit if needed", variant: "vars", x: 356, y: 148, w: 240, h: 64 },
-    { id: "apply", label: "Apply", sub: "runs against the database", variant: "project", x: 24, y: 148, w: 240, h: 64 },
+    {
+      id: "contract",
+      label: "Change the contract",
+      sub: "your schema",
+      variant: "source",
+      x: 24,
+      y: 24,
+      w: 240,
+      h: 64,
+    },
+    {
+      id: "plan",
+      label: "Plan",
+      sub: "writes migration files",
+      variant: "scope",
+      x: 356,
+      y: 24,
+      w: 240,
+      h: 64,
+    },
+    {
+      id: "review",
+      label: "Review",
+      sub: "read it, edit if needed",
+      variant: "vars",
+      x: 356,
+      y: 148,
+      w: 240,
+      h: 64,
+    },
+    {
+      id: "apply",
+      label: "Apply",
+      sub: "runs against the database",
+      variant: "project",
+      x: 24,
+      y: 148,
+      w: 240,
+      h: 64,
+    },
   ],
   edges: [
     { id: "e1", from: "contract", fromSide: "r", to: "plan", toSide: "l" },
     { id: "e2", from: "plan", fromSide: "b", to: "review", toSide: "t" },
     { id: "e3", from: "review", fromSide: "l", to: "apply", toSide: "r" },
-    { id: "e4", from: "apply", fromSide: "t", to: "contract", toSide: "b", dashed: true, label: "next change" },
+    {
+      id: "e4",
+      from: "apply",
+      fromSide: "t",
+      to: "contract",
+      toSide: "b",
+      dashed: true,
+      label: "next change",
+    },
   ],
   steps: [
     {
       title: "1. Change",
-      caption: "Edit your schema, then emit it. The contract is what every migration command reads.",
+      caption:
+        "Edit your schema, then emit it. The contract is what every migration command reads.",
       nodes: ["contract", "plan", "review", "apply"],
       edges: ["e1", "e2", "e3", "e4"],
       emphasize: ["contract"],
     },
     {
       title: "2. Plan",
-      caption: "The planner diffs your contract against history and writes migration files. No database needed.",
+      caption:
+        "The planner diffs your contract against history and writes migration files. No database needed.",
       nodes: ["contract", "plan", "review", "apply"],
       edges: ["e1", "e2", "e3", "e4"],
       emphasize: ["plan"],
     },
     {
       title: "3. Review",
-      caption: "Read the TypeScript and the SQL preview. Edit the migration when a change needs a data step.",
+      caption:
+        "Read the TypeScript and the SQL preview. Edit the migration when a change needs a data step.",
       nodes: ["contract", "plan", "review", "apply"],
       edges: ["e1", "e2", "e3", "e4"],
       emphasize: ["review"],
     },
     {
       title: "4. Apply",
-      caption: "migrate runs the pending migrations. Then the loop starts again with your next change.",
+      caption:
+        "migrate runs the pending migrations. Then the loop starts again with your next change.",
       nodes: ["contract", "plan", "review", "apply"],
       edges: ["e1", "e2", "e3", "e4"],
       emphasize: ["apply"],
@@ -1123,10 +1170,46 @@ const migrationGraph: FlowScene = {
   width: 700,
   height: 250,
   nodes: [
-    { id: "s0", label: "empty", sub: "new database", variant: "neutral", x: 16, y: 93, w: 120, h: 64 },
-    { id: "s1", label: "705b1a6", sub: "after init", variant: "source", x: 190, y: 93, w: 130, h: 64 },
-    { id: "sa", label: "93be6c2", sub: "Alice's branch", variant: "scope", x: 386, y: 20, w: 130, h: 64 },
-    { id: "sb", label: "7e3fa7f", sub: "Bob's branch", variant: "vars", x: 386, y: 166, w: 130, h: 64 },
+    {
+      id: "s0",
+      label: "empty",
+      sub: "new database",
+      variant: "neutral",
+      x: 16,
+      y: 93,
+      w: 120,
+      h: 64,
+    },
+    {
+      id: "s1",
+      label: "705b1a6",
+      sub: "after init",
+      variant: "source",
+      x: 190,
+      y: 93,
+      w: 130,
+      h: 64,
+    },
+    {
+      id: "sa",
+      label: "93be6c2",
+      sub: "Alice's branch",
+      variant: "scope",
+      x: 386,
+      y: 20,
+      w: 130,
+      h: 64,
+    },
+    {
+      id: "sb",
+      label: "7e3fa7f",
+      sub: "Bob's branch",
+      variant: "vars",
+      x: 386,
+      y: 166,
+      w: 130,
+      h: 64,
+    },
     { id: "sm", label: "f9a41d7", sub: "merged", variant: "project", x: 560, y: 93, w: 124, h: 64 },
   ],
   edges: [
@@ -1170,17 +1253,55 @@ const migrationRollback: FlowScene = {
   width: 640,
   height: 220,
   nodes: [
-    { id: "before", label: "705b1a6", sub: "before the change", variant: "source", x: 24, y: 48, w: 200, h: 124 },
-    { id: "after", label: "e6b5c28", sub: "after add_display_name", variant: "project", x: 416, y: 48, w: 200, h: 124 },
+    {
+      id: "before",
+      label: "705b1a6",
+      sub: "before the change",
+      variant: "source",
+      x: 24,
+      y: 48,
+      w: 200,
+      h: 124,
+    },
+    {
+      id: "after",
+      label: "e6b5c28",
+      sub: "after add_display_name",
+      variant: "project",
+      x: 416,
+      y: 48,
+      w: 200,
+      h: 124,
+    },
   ],
   edges: [
-    { id: "fwd", from: "before", fromSide: "r", to: "after", toSide: "l", fromDy: -30, toDy: -30, label: "add_display_name" },
-    { id: "back", from: "after", fromSide: "l", to: "before", toSide: "r", fromDy: 30, toDy: 30, dashed: true, label: "rollback (a new migration)" },
+    {
+      id: "fwd",
+      from: "before",
+      fromSide: "r",
+      to: "after",
+      toSide: "l",
+      fromDy: -30,
+      toDy: -30,
+      label: "add_display_name",
+    },
+    {
+      id: "back",
+      from: "after",
+      fromSide: "l",
+      to: "before",
+      toSide: "r",
+      fromDy: 30,
+      toDy: 30,
+      dashed: true,
+      label: "rollback (a new migration)",
+    },
   ],
   steps: [
     {
       title: "1. A change ships",
-      caption: "add_display_name applies cleanly and the database sits at the new state. Then the team decides the change was wrong.",
+      caption:
+        "add_display_name applies cleanly and the database sits at the new state. Then the team decides the change was wrong.",
       nodes: ["before", "after"],
       edges: ["fwd"],
       emphasize: ["after"],
@@ -1204,12 +1325,255 @@ const migrationRollback: FlowScene = {
   ],
 };
 
+// ---------------------------------------------------------------------------
+// Composer scenes.
+// ---------------------------------------------------------------------------
+
+// What a Composer application is made of: services, the contracts between
+// them, and the resources they depend on. Teaches composition before syntax.
+const composerAppGraph: FlowScene = {
+  label: "A Prisma App: services, contracts, and resources",
+  width: 700,
+  height: 300,
+  groupLabels: [
+    { text: "Prisma App · store", x: 24, y: 18 },
+    { text: "Resources", x: 520, y: 18 },
+  ],
+  nodes: [
+    {
+      id: "storefront",
+      label: "storefront",
+      sub: "Next.js service",
+      variant: "scope",
+      x: 24,
+      y: 110,
+      w: 170,
+      h: 64,
+    },
+    {
+      id: "orders",
+      label: "orders",
+      sub: "service",
+      variant: "source",
+      x: 274,
+      y: 36,
+      w: 160,
+      h: 64,
+    },
+    {
+      id: "catalog",
+      label: "catalog",
+      sub: "service",
+      variant: "source",
+      x: 274,
+      y: 196,
+      w: 160,
+      h: 64,
+    },
+    {
+      id: "orders-db",
+      label: "Prisma Postgres",
+      sub: "orders database",
+      variant: "project",
+      x: 512,
+      y: 36,
+      w: 170,
+      h: 64,
+    },
+    {
+      id: "catalog-db",
+      label: "Prisma Postgres",
+      sub: "catalog database",
+      variant: "project",
+      x: 512,
+      y: 196,
+      w: 170,
+      h: 64,
+    },
+  ],
+  edges: [
+    {
+      id: "sf-orders",
+      from: "storefront",
+      fromSide: "r",
+      to: "orders",
+      toSide: "l",
+      label: "orders contract",
+    },
+    {
+      id: "sf-catalog",
+      from: "storefront",
+      fromSide: "r",
+      to: "catalog",
+      toSide: "l",
+      label: "catalog contract",
+    },
+    {
+      id: "orders-catalog",
+      from: "orders",
+      fromSide: "b",
+      to: "catalog",
+      toSide: "t",
+      dashed: true,
+      label: "catalog contract",
+    },
+    { id: "orders-pg", from: "orders", fromSide: "r", to: "orders-db", toSide: "l" },
+    { id: "catalog-pg", from: "catalog", fromSide: "r", to: "catalog-db", toSide: "l" },
+  ],
+  steps: [
+    {
+      title: "1. Services",
+      caption:
+        "An application is one or more services. Each service is a process that Composer builds a declaration for: what it is called, how it is built, and what it depends on.",
+      nodes: ["storefront", "orders", "catalog"],
+      edges: [],
+      emphasize: ["storefront", "orders", "catalog"],
+    },
+    {
+      title: "2. Contracts connect services",
+      caption:
+        "A service that other services call exposes a contract: its API described as schemas. A consumer declares a dependency on that contract and receives a typed client. TypeScript checks that every declared dependency matches a contract some service exposes.",
+      nodes: ["storefront", "orders", "catalog"],
+      edges: ["sf-orders", "sf-catalog", "orders-catalog"],
+      emphasize: ["storefront"],
+    },
+    {
+      title: "3. Resources attach to services",
+      caption:
+        "A resource is something a service depends on that is not a service: a Prisma Postgres database, an object-store bucket, a secret. Each service declares its own resources, so the orders and catalog services each get their own database.",
+      nodes: ["storefront", "orders", "catalog", "orders-db", "catalog-db"],
+      edges: ["sf-orders", "sf-catalog", "orders-catalog", "orders-pg", "catalog-pg"],
+      emphasize: ["orders-db", "catalog-db"],
+    },
+  ],
+};
+
+// From declaration to running infrastructure, and how app code receives its
+// dependencies at runtime.
+const composerDeployFlow: FlowScene = {
+  label: "From declarations to running services",
+  width: 700,
+  height: 286,
+  groupLabels: [
+    { text: "You write", x: 24, y: 18 },
+    { text: "composer deploy provisions", x: 470, y: 18 },
+  ],
+  nodes: [
+    {
+      id: "decl",
+      label: "Service declarations",
+      sub: "compute({ name, deps, build })",
+      subBelow: true,
+      variant: "source",
+      x: 24,
+      y: 36,
+      w: 220,
+      h: 78,
+    },
+    {
+      id: "root",
+      label: "Root module",
+      sub: "module.ts wires deps",
+      subBelow: true,
+      variant: "scope",
+      x: 24,
+      y: 176,
+      w: 220,
+      h: 78,
+    },
+    {
+      id: "deploy",
+      label: "composer deploy",
+      sub: "diffs against stored state",
+      subBelow: true,
+      variant: "neutral",
+      x: 320,
+      y: 106,
+      w: 190,
+      h: 78,
+    },
+    {
+      id: "compute",
+      label: "Prisma Compute",
+      sub: "one service each",
+      variant: "vars",
+      x: 546,
+      y: 36,
+      w: 148,
+      h: 64,
+    },
+    {
+      id: "postgres",
+      label: "Prisma Postgres",
+      sub: "one database each",
+      variant: "project",
+      x: 546,
+      y: 126,
+      w: 148,
+      h: 64,
+    },
+    {
+      id: "load",
+      label: "service.load()",
+      sub: "typed clients at runtime",
+      variant: "resolved",
+      x: 546,
+      y: 216,
+      w: 148,
+      h: 56,
+    },
+  ],
+  edges: [
+    { id: "d-root", from: "decl", fromSide: "b", to: "root", toSide: "t" },
+    { id: "root-deploy", from: "root", fromSide: "r", to: "deploy", toSide: "l" },
+    { id: "deploy-compute", from: "deploy", fromSide: "r", to: "compute", toSide: "l" },
+    { id: "deploy-pg", from: "deploy", fromSide: "r", to: "postgres", toSide: "l" },
+    {
+      id: "deploy-load",
+      from: "deploy",
+      fromSide: "b",
+      to: "load",
+      toSide: "l",
+      dashed: true,
+      label: "injected env",
+    },
+  ],
+  steps: [
+    {
+      title: "1. Declare",
+      caption:
+        "Each service is declared as data: its name, its dependencies, and how it is built. The root module provisions the services and wires each dependency to the service or resource that provides it.",
+      nodes: ["decl", "root"],
+      edges: ["d-root"],
+      emphasize: ["decl", "root"],
+    },
+    {
+      title: "2. Deploy",
+      caption:
+        "composer deploy loads the root module, compares the declared application against the deploy state stored on the platform for that environment, and creates or updates the services on Prisma Compute and the databases on Prisma Postgres. Re-running a deploy applies only the difference; unchanged resources are not recreated.",
+      nodes: ["decl", "root", "deploy", "compute", "postgres"],
+      edges: ["d-root", "root-deploy", "deploy-compute", "deploy-pg"],
+      emphasize: ["deploy", "compute", "postgres"],
+    },
+    {
+      title: "3. Run",
+      caption:
+        "At runtime, each service calls service.load() once and receives its dependencies as typed values: an RPC client for each contract dependency, a connection for each database. The values come from environment variables Composer wrote at deploy time; your code never reads process.env itself.",
+      nodes: ["decl", "root", "deploy", "compute", "postgres", "load"],
+      edges: ["d-root", "root-deploy", "deploy-compute", "deploy-pg", "deploy-load"],
+      emphasize: ["load"],
+    },
+  ],
+};
+
 /**
  * Names that render as visual flow diagrams. Any name not listed here falls
  * back to the Code Hike token animation in presets.ts.
  */
 export const FLOW_SCENES = {
   "compute-model": computeModel,
+  "composer-app-graph": composerAppGraph,
+  "composer-deploy-flow": composerDeployFlow,
   "env-layers": envLayers,
   "github-connection": githubConnection,
   "relation-one-to-one": relationOneToOne,

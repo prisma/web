@@ -16,7 +16,7 @@ export const seriesRegistry = {
     description:
       "How Prisma builds software with AI agents: introducing the practice, the process and documentation layer that make cross-repo agent work possible, the Drive process and the Maker role, and how the approach keeps evolving as models and harnesses improve.",
     featured: false,
-    relatedSeries: ["prisma-next", "prisma-compute"],
+    relatedSeries: ["prisma-8", "prisma-compute"],
   },
   "prisma-compute": {
     title: "Prisma Compute",
@@ -25,12 +25,12 @@ export const seriesRegistry = {
     featured: true,
     docsUrl: "https://docs.prisma.io/docs/prisma-compute",
     docsLabel: "Read the Prisma Compute docs",
-    relatedSeries: ["agentic-engineering", "prisma-next"],
+    relatedSeries: ["agentic-engineering", "prisma-8"],
   },
-  "prisma-next": {
-    title: "Prisma Next",
+  "prisma-8": {
+    title: "Prisma 8",
     description:
-      "Follow the journey of Prisma Next, the next evolution of Prisma ORM. From the announcement and roadmap to TypeScript migrations, the extension API, and Early Access.",
+      "Follow the journey of Prisma 8, the next evolution of Prisma ORM. From the announcement and roadmap to TypeScript migrations, the extension API, and Early Access.",
     featured: true,
     relatedSeries: ["agentic-engineering", "prisma-compute"],
   },

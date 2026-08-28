@@ -49,13 +49,8 @@ function isGettingStartedVersionNode(node: TreeNode, version: Version) {
 
   const name = String(node.name ?? "").toLowerCase();
 
-  if (version === "next") {
-    return (
-      name === "next" ||
-      name === "prisma next" ||
-      node.url === "/next" ||
-      node.index?.url === "/next"
-    );
+  if (version === "v7") {
+    return name === "v7" || name === "prisma 7" || node.url === "/v7" || node.index?.url === "/v7";
   }
 
   return false;
@@ -68,8 +63,8 @@ function isCliVersionNode(node: TreeNode, version: Version) {
 
   const name = String(node.name ?? "").toLowerCase();
 
-  if (version === "next") {
-    return name === "next" || node.index?.url === "/cli/next";
+  if (version === "v7") {
+    return name === "v7" || node.index?.url === "/cli/v7";
   }
 
   return false;
@@ -82,8 +77,8 @@ function isGuidesVersionNode(node: TreeNode, version: Version) {
 
   const name = String(node.name ?? "").toLowerCase();
 
-  if (version === "next") {
-    return name === "next" || node.index?.url === "/guides/next";
+  if (version === "v7") {
+    return name === "v7" || node.index?.url === "/guides/v7";
   }
 
   return false;
@@ -140,9 +135,9 @@ function filterGettingStartedSidebarTree(node: TreeNode, version: Version): Tree
   }
 
   if (isGettingStartedNode(node)) {
-    const versionChildren = children.filter((child) => isGettingStartedVersionNode(child, "next"));
+    const versionChildren = children.filter((child) => isGettingStartedVersionNode(child, "v7"));
 
-    if (version === "next") {
+    if (version === "v7") {
       const selectedVersion = versionChildren.find((child) =>
         isGettingStartedVersionNode(child, version),
       );
@@ -176,9 +171,9 @@ function filterCliSidebarTree(node: TreeNode, version: Version): TreeNode {
   }
 
   if (isCliNode(node)) {
-    const versionChildren = children.filter((child) => isCliVersionNode(child, "next"));
+    const versionChildren = children.filter((child) => isCliVersionNode(child, "v7"));
 
-    if (version === "next") {
+    if (version === "v7") {
       const selectedVersion = versionChildren.find((child) => isCliVersionNode(child, version));
 
       if (selectedVersion?.children) {
@@ -210,9 +205,9 @@ function filterGuidesSidebarTree(node: TreeNode, version: Version): TreeNode {
   }
 
   if (isGuidesNode(node)) {
-    const versionChildren = children.filter((child) => isGuidesVersionNode(child, "next"));
+    const versionChildren = children.filter((child) => isGuidesVersionNode(child, "v7"));
 
-    if (version === "next") {
+    if (version === "v7") {
       const selectedVersion = versionChildren.find((child) => isGuidesVersionNode(child, version));
 
       if (selectedVersion?.children) {

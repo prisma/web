@@ -72,7 +72,7 @@ export const upgradeTerminalLines = [
   "→ Detected current: 0.10.0    target: 0.11.0",
   "→ Reading upgrades/0.10-to-0.11/instructions.md",
   "→ Plan: wrap single-row .insert({...}) calls in arrays",
-  "→ Bumping @prisma-next/* to 0.11.0 in package.json",
+  "→ Bumping @prisma/orm-* to 0.11.0 in package.json",
   "$ pnpm install",
   "✓ Lockfile updated",
   "→ Applying codemod across src/",

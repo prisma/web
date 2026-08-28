@@ -7,6 +7,7 @@ import { getSeriesPosts } from "@/lib/series";
 import { getSeriesMetadata, isKnownSeriesKey, seriesRegistry } from "@/lib/series-registry";
 import { withBlogBasePath, withBlogBasePathForImageSrc } from "@/lib/url";
 import { BlogGrid, type BlogCardItem } from "@/components/BlogGrid";
+import { BackToBlogLink } from "@/components/BackToBlogLink";
 import { BLOG_HOME_TITLE } from "@/lib/blog-metadata";
 
 export const revalidate = false;
@@ -72,25 +73,25 @@ export default async function SeriesPage(props: { params: Promise<SeriesPagePara
   const items = buildCardItems(key);
 
   return (
-    <main className="flex-1 w-full max-w-249 mx-auto px-4 py-8 z-1">
-      <Link href="/" className="text-fd-primary hover:underline text-sm">
-        ← Back to Blog
-      </Link>
+    <main className="z-1 mx-auto w-full max-w-[87.5rem] flex-1 px-4 pt-10 pb-20 sm:px-6 lg:px-8">
+      <BackToBlogLink />
 
-      <header className="mt-6 mb-10">
-        <div className="text-xs uppercase tracking-wide text-foreground-neutral-weak font-semibold mb-2">
+      <header className="mt-8 mb-12 max-w-3xl">
+        <div className="type-heading-2xs mb-3 text-foreground-ppg">
           Series · {items.length} {items.length === 1 ? "part" : "parts"}
         </div>
-        <h1 className="type-title-3xl md:type-title-4xl text-foreground-neutral break-words hyphens-auto">
+        <h1 className="type-title-3xl md:type-title-4xl text-balance break-words hyphens-auto text-foreground-neutral-strong">
           {meta.title}
         </h1>
         {meta.description ? (
-          <p className="mt-3 text-foreground-neutral-weak">{meta.description}</p>
+          <p className="mt-4 text-lg leading-relaxed text-foreground-neutral-weak">
+            {meta.description}
+          </p>
         ) : null}
         {meta.docsUrl ? (
           <a
             href={meta.docsUrl}
-            className="mt-3 inline-block text-sm font-medium text-foreground-ppg hover:underline"
+            className="mt-4 inline-block text-sm font-medium text-foreground-ppg transition-colors duration-300 hover:text-foreground-ppg-strong motion-reduce:transition-none"
           >
             {meta.docsLabel ?? "Read the docs"} →
           </a>
@@ -99,14 +100,14 @@ export default async function SeriesPage(props: { params: Promise<SeriesPagePara
           const related = (meta.relatedSeries ?? []).filter(isKnownSeriesKey);
           if (related.length === 0) return null;
           return (
-            <div className="mt-4 text-sm text-foreground-neutral-weak">
+            <div className="mt-5 text-sm text-foreground-neutral-weak">
               Related series:{" "}
               {related.map((relKey, i) => (
                 <span key={relKey}>
                   {i > 0 ? ", " : ""}
                   <Link
                     href={withBlogBasePath(`/series/${relKey}`)}
-                    className="text-fd-primary hover:underline"
+                    className="font-medium text-foreground-neutral-strong underline decoration-prism-cyan-400/50 underline-offset-4 transition-colors duration-300 hover:decoration-prism-cyan-500 motion-reduce:transition-none"
                   >
                     {getSeriesMetadata(relKey).title}
                   </Link>

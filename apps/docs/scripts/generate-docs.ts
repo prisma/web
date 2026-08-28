@@ -5,7 +5,7 @@ import { readdir, readFile, writeFile, rm, mkdir } from "node:fs/promises";
 import { join, resolve, dirname } from "node:path";
 import fg from "fast-glob";
 
-const OUTPUT_DIR = "content/docs/management-api/endpoints";
+const OUTPUT_DIR = "content/docs/rest-api/endpoints";
 
 function withDescriptionFirst(data: Record<string, unknown>, description: string) {
   const { title, description: _description, ...rest } = data;
@@ -30,7 +30,10 @@ function escapeRegExp(s: string) {
 
 // Remove compact single-line redirect entries by source without touching the rest of the file.
 // Returns the modified string and the count of lines actually removed.
-function removeRedirectLines(raw: string, sources: Set<string>): { result: string; removed: number } {
+function removeRedirectLines(
+  raw: string,
+  sources: Set<string>,
+): { result: string; removed: number } {
   let removed = 0;
   for (const source of sources) {
     const pattern = new RegExp(
@@ -143,8 +146,8 @@ async function main() {
         const normalizedPath = file.path
           .replace(/\\/g, "/")
           .replace(/\.mdx$/, "")
-          .replace(/^management-api\/endpoints\//, "");
-        const url = `/management-api/endpoints/${normalizedPath}`;
+          .replace(/^rest-api\/endpoints\//, "");
+        const url = `/rest-api/endpoints/${normalizedPath}`;
 
         // Capture new URL → relative path mapping (always, not just when changed)
         newUrlToRelPath.set(url, file.path.replace(/\\/g, "/"));
@@ -169,9 +172,9 @@ async function main() {
           typeof operation.description === "string" && operation.description.trim().length > 0
             ? stripEmoji(operation.description.trim())
             : `${operation.method} ${operation.path}.`;
-        const metaDescription = description.startsWith("Management API:")
+        const metaDescription = description.startsWith("REST API:")
           ? description
-          : `Management API: ${description}`;
+          : `REST API: ${description}`;
 
         if (data.description !== description) {
           data.description = description;
@@ -217,16 +220,14 @@ async function main() {
   {
     const removedUrls = [...oldUrlToFile.keys()].filter((url) => !newUrlToRelPath.has(url));
     // Endpoints that were previously redirected but are now live again
-    const restoredSources = new Set(
-      [...newUrlToRelPath.keys()].map((url) => `/docs${url}`),
-    );
+    const restoredSources = new Set([...newUrlToRelPath.keys()].map((url) => `/docs${url}`));
 
     const toAdd = removedUrls.map((url) => {
       const tag = url.split("/")[3];
       const tagStillExists = [...newUrlToRelPath.keys()].some((u) => u.split("/")[3] === tag);
       const destination = tagStillExists
-        ? `/docs/management-api/endpoints/${tag}`
-        : "/docs/management-api/endpoints";
+        ? `/docs/rest-api/endpoints/${tag}`
+        : "/docs/rest-api/endpoints";
       return { source: `/docs${url}`, destination };
     });
 
@@ -235,7 +236,7 @@ async function main() {
     // Remove redirects for endpoints that are live again (restored) or that we're about to re-add
     const sourcesToRemove = new Set([
       ...toAdd.map((r) => r.source), // de-dupe before re-inserting
-      ...[...restoredSources].filter((s) => s.includes("/management-api/endpoints/")),
+      ...[...restoredSources].filter((s) => s.includes("/rest-api/endpoints/")),
     ]);
     const { result: cleaned, removed } = removeRedirectLines(raw, sourcesToRemove);
     raw = cleaned;
@@ -244,7 +245,10 @@ async function main() {
     // Prepend new entries for removed endpoints, compact single-line format
     if (toAdd.length > 0) {
       const lines = toAdd
-        .map((r) => `    { "source": "${r.source}", "destination": "${r.destination}", "permanent": true },`)
+        .map(
+          (r) =>
+            `    { "source": "${r.source}", "destination": "${r.destination}", "permanent": true },`,
+        )
         .join("\n");
       raw = raw.replace(/("redirects"\s*:\s*\[)/, `$1\n${lines}`);
       console.log(`Prepended ${toAdd.length} redirects to vercel.json`);
@@ -278,9 +282,7 @@ async function main() {
 
   // Sync endpoints/meta.json: keep existing order, append new dirs alphabetically, [experimental] last
   const afterDirEntries = await readdir(endpointsDir, { withFileTypes: true });
-  const currentTagDirs = new Set(
-    afterDirEntries.filter((d) => d.isDirectory()).map((d) => d.name),
-  );
+  const currentTagDirs = new Set(afterDirEntries.filter((d) => d.isDirectory()).map((d) => d.name));
 
   const currentMeta = JSON.parse(await readFile(metaJsonPath, "utf-8"));
   const existingPages: string[] = currentMeta.pages ?? [];
