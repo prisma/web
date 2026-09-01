@@ -10,6 +10,7 @@ import {
   syncUtmAttribution,
   writeStoredUtmAttribution,
 } from "../lib/utm";
+import { ATTRIBUTION_CHANGE_EVENT, type AttributionChangeDetail } from "../lib/attribution";
 
 interface UtmPersistenceProps {
   /**
@@ -34,6 +35,15 @@ function getActiveAttribution(storageKey: string) {
 
   if (attribution && Object.keys(currentUtmParams).length > 0) {
     writeStoredUtmAttribution(storageKey, attribution);
+
+    // Let analytics clients record the touch. Emitted only when the URL
+    // actually carried attribution params, so it fires on a real landing
+    // rather than on every route change.
+    document.dispatchEvent(
+      new CustomEvent<AttributionChangeDetail>(ATTRIBUTION_CHANGE_EVENT, {
+        detail: { attribution },
+      }),
+    );
   }
 
   return attribution;
