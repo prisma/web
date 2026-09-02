@@ -77,7 +77,9 @@ const ContentSecurityPolicy = `
     https://googleads.g.doubleclick.net
     https://vercel.live https://vercel.com data: blob:
     https://td.doubleclick.net
-    https://raw.githubusercontent.com;
+    https://raw.githubusercontent.com
+    https://*.google-analytics.com
+    https://stats.g.doubleclick.net;
 
   connect-src 'self'
     https://ingest.promptwatch.com
@@ -126,7 +128,9 @@ const ContentSecurityPolicy = `
     https://proxy.kapa.ai
     https://hcaptcha.com
     https://*.hcaptcha.com
-    https://ka-p.fontawesome.com;
+    https://ka-p.fontawesome.com
+    https://*.analytics.google.com
+    https://stats.g.doubleclick.net;
 
   media-src 'self'
     https://*.prisma.io
@@ -201,9 +205,7 @@ const securityHeaders = [
   },
 ];
 
-const allowedDevOrigins = (
-  process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0.1,192.168.1.48"
-)
+const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0.1,192.168.1.48")
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);

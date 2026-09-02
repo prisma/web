@@ -122,7 +122,9 @@ const ContentSecurityPolicy = `
     https://td.doubleclick.net
     https://raw.githubusercontent.com
     https://*.meetupstatic.com
-    https://www.prisma.io;
+    https://www.prisma.io
+    https://*.google-analytics.com
+    https://stats.g.doubleclick.net;
 
   connect-src 'self'
     https://ingest.promptwatch.com
@@ -171,7 +173,9 @@ const ContentSecurityPolicy = `
     https://proxy.kapa.ai
     https://hcaptcha.com
     https://*.hcaptcha.com
-    https://ka-p.fontawesome.com;
+    https://ka-p.fontawesome.com
+    https://*.analytics.google.com
+    https://stats.g.doubleclick.net;
 
   media-src 'self'
     https://*.prisma.io
