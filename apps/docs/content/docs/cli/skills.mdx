@@ -1,0 +1,74 @@
+---
+title: skills
+description: Keep the Prisma agent skills in a project current.
+url: /cli/skills
+metaTitle: skills | Prisma 8 CLI
+metaDescription: Learn how prisma skills sync installs agent skills from the Prisma packages a project already has, and how the staleness check works.
+---
+
+Use `skills` commands to keep a project's [Prisma agent skills](/ai/tools/skills) current. An agent skill is a directory with a `SKILL.md`: instructions that teach an AI coding agent (Claude Code, Cursor, Devin) how to use a library. Skills ship inside the Prisma npm packages your project installs, so they always describe the version in use. `skills sync` copies them into the directories the agent harnesses read.
+
+## Usage
+
+```npm
+npx prisma@latest skills sync
+```
+
+Run [`init`](/cli/init) once to add a `postinstall` hook that reruns the sync on every install and upgrade.
+
+## Commands
+
+| Command | Description |
+| --- | --- |
+| `skills sync` | Copy the agent skills from installed Prisma packages into the project |
+| `skills list` | Show which Prisma agent skills are installed in the project |
+
+`skills sync` takes:
+
+| Option | What it does |
+| --- | --- |
+| `--disable` | Stop other commands reporting out-of-date skills in this project (stored in `.prisma/skills.json`) |
+| `--enable` | Undo `--disable` for this project |
+
+## Where skills come from
+
+Sync resolves a fixed allowlist of Prisma packages by name, from the project root and each workspace member:
+
+- `@prisma/orm-postgres`
+- `@prisma/orm-sqlite`
+- `@prisma/orm-mongo`
+- `@prisma/composer`
+
+It never scans `node_modules` for skills. A skill is instructions an agent will follow, so installing one from an arbitrary transitive dependency would hand that dependency's author influence over your agent. Only packages you deliberately installed are sources. If two workspace members pin different versions of one package, the highest version wins and sync warns.
+
+## Where skills go
+
+Sync writes one copy per configured agent harness:
+
+| Agent | Directory |
+| --- | --- |
+| `claude` | `.claude/skills` |
+| `cursor` | `.cursor/skills` |
+| `agents` | `.agents/skills` |
+| `devin` | `.devin/skills` |
+
+Without configuration, sync writes every directory, so a harness you adopt later finds the skills already there. Narrow the set with `skills: { agents: [...] }` in `prisma.config.ts`; see [Configuration](/cli/configuration#agent-skills). The copies are ordinary files that git tracks: commit them so agents have the skills on a fresh clone.
+
+Each copy carries the source package's version in its `SKILL.md` frontmatter. Sync compares that stamp against the installed package and re-copies on mismatch, and removes copies whose source package is no longer installed. A directory sync does not own, such as a hand-written skill whose name collides, is left intact and reported as refused. Sync does nothing, and exits 0, when everything is already current.
+
+## The staleness check
+
+After a package upgrade that nobody follows with a sync, every `prisma` command appends one line to stderr:
+
+```text
+Prisma agent skills are out of date (installed @prisma/orm-postgres 8.1.0, synced 8.0.0). Run: prisma skills sync
+```
+
+The notice never changes the exit code and never writes to stdout. It is not conditioned on a TTY: agents run without one, and they are who it is for. It is suppressed by any of:
+
+1. `prisma skills sync --disable` (persistent, per project).
+2. `skills: { check: false }` in `prisma.config.ts`.
+3. The `PRISMA_SKILLS_CHECK=0` environment variable.
+4. A `CI` or `GITHUB_ACTIONS` environment variable.
+5. The `--quiet`, `--json`, `--format json`, or `--version` flags on the current invocation.
+6. Running a `skills` or `init` command itself.

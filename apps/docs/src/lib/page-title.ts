@@ -5,7 +5,10 @@ export function getPageTitleText(title: ReactNode, fallback = ""): string {
   if (typeof title === "number" || typeof title === "bigint") return String(title);
 
   if (Array.isArray(title)) {
-    const value = title.map((entry) => getPageTitleText(entry, "")).join("").trim();
+    const value = title
+      .map((entry) => getPageTitleText(entry, ""))
+      .join("")
+      .trim();
     return value || fallback;
   }
 

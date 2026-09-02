@@ -61,10 +61,7 @@ function getBreadcrumbName(page: DocsPage, slugs: string[], index: number) {
     return getPageTitleText(page.data.title, slugs[index] ?? "Docs");
   }
 
-  return (
-    getSectionTitle(page, slugs.slice(0, index + 1)) ??
-    formatSlugDisplayName(slugs[index])
-  );
+  return getSectionTitle(page, slugs.slice(0, index + 1)) ?? formatSlugDisplayName(slugs[index]);
 }
 
 export function TechArticleSchema({ page }: StructuredDataProps) {

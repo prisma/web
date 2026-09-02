@@ -9,7 +9,7 @@ draft: true
 metaTitle: "Ship risky schema changes with per-branch databases"
 metaDescription: "Prisma Compute gives every branch its own Prisma Postgres database. Rehearse expand-and-contract migrations in isolation before they touch production."
 heroImagePath: "/ship-risky-schema-changes-without-a-shared-staging-database/imgs/hero.svg"
-heroImageAlt: "Per-branch databases let each pull request run its own migrations in isolation"
+heroImageAlt: "Two branches fork off main into separate branch databases, one adding the displayName column and one dropping the legacy name column"
 metaImagePath: "/ship-risky-schema-changes-without-a-shared-staging-database/imgs/meta.png"
 tags:
   - "platform"
@@ -38,7 +38,7 @@ Three Prisma products appear here, each with one job:
 
 - **Prisma Compute** (Public Beta) hosts your app and provisions a database for each branch you deploy with `--db`. It provides the isolation. Its CLI is `@prisma/cli`.
 - **Prisma Postgres** is the database each branch gets.
-- **[Prisma Next](https://www.prisma.io/docs/orm/next)** (Early Access; it becomes Prisma 8 at general availability) provides the migration toolchain in the examples, via the `prisma-next` CLI. The same workflow also works with Prisma 7's `prisma migrate deploy`.
+- **[Prisma 8](https://www.prisma.io/docs/orm)** (Release Candidate) provides the migration toolchain in the examples, via the unified Prisma CLI (`npx prisma@latest`). The same workflow also works with Prisma 7's `prisma migrate deploy`.
 
 :::
 
@@ -63,7 +63,7 @@ flowchart TD
     style F fill:#ef4444,color:#fff
 ```
 
-[Prisma Next migrations](https://pris.ly/ts-migrations-pn) make this failure precise instead of silent: every migration records the contract state it starts `from` and the state it moves `to`, and the runner refuses to apply a migration against a database in the wrong state. Bob gets a hard error instead of a corrupted staging environment.
+[Prisma 8 migrations](https://pris.ly/ts-migrations-pn) make this failure precise instead of silent: every migration records the contract state it starts `from` and the state it moves `to`, and the runner refuses to apply a migration against a database in the wrong state. Bob gets a hard error instead of a corrupted staging environment.
 
 The conventional workarounds all paper over the same root cause:
 
@@ -127,7 +127,7 @@ Add `displayName` as nullable, so existing code that only knows about `name` kee
   skill="prisma-next-migrations"
   before={expandContractBefore}
   after={expandContractAfter}
-  terminalCommand="npx prisma-next migration plan --name add_display_name"
+  terminalCommand="npx prisma@latest migration plan --name add_display_name"
   terminalLines={expandTerminalLines}
 />
 
@@ -147,7 +147,7 @@ override get operations() {
 }
 ```
 
-Apply it to your branch database with `npx prisma-next migrate` and deploy the branch. Old code still reads `name`; new code can start writing `displayName`.
+Apply it to your branch database with `npx prisma@latest migrate` and deploy the branch. Old code still reads `name`; new code can start writing `displayName`.
 
 ### Step 2: Migrate
 
@@ -166,7 +166,7 @@ model User {
 ```
 
 ```bash
-npx prisma-next migration plan --name require_display_name
+npx prisma@latest migration plan --name require_display_name
 ```
 
 The planner can write the `SET NOT NULL` itself, but only you know what existing rows should contain, so it scaffolds a backfill placeholder in front of the constraint and leaves the query to you. The backfill lives [inside the migration](https://pris.ly/data-migrations-pn) as a `dataTransform`, written with the same type-safe query builder you use in your app, instead of a standalone script that runs outside your migration history. Filled in:
@@ -196,7 +196,7 @@ override get operations() {
 
 `check` asks "are there rows that still need this?" and `run` performs the change, here copying each row's `name` into `displayName`. Every migration folder carries a snapshot of the contract as it stood at that point in history, and both queries are typed against this migration's snapshot rather than your live schema. That's why the query can reference `name` even though a later migration drops it.
 
-After editing, recompile with `node migration.ts`. The `dataTransform` compiles to the same `precheck` / `execute` / `postcheck` JSON as every other operation: reviewers read your intent in `migration.ts` and the exact SQL in `ops.json`, and production only ever runs the compiled JSON, never your TypeScript. See [Editing a migration](https://www.prisma.io/docs/orm/next/migrations/editing-a-migration) for the full file, including the wiring that builds the typed `db` handle.
+After editing, recompile with `node migration.ts`. The `dataTransform` compiles to the same `precheck` / `execute` / `postcheck` JSON as every other operation: reviewers read your intent in `migration.ts` and the exact SQL in `ops.json`, and production only ever runs the compiled JSON, never your TypeScript. See [Editing a migration](https://www.prisma.io/docs/orm/migrations/editing-a-migration) for the full file, including the wiring that builds the typed `db` handle.
 
 Run it against the branch database and check the data. Seed the branch database with realistic data first; an empty database proves the sequence applies cleanly, but only a real-shaped dataset tells you anything about the backfill. Nothing has touched production yet.
 
@@ -211,7 +211,7 @@ Once all code reads `displayName` and the backfill is verified, remove the old c
   skill="prisma-next-migrations"
   before={contractContractBefore}
   after={contractContractAfter}
-  terminalCommand="npx prisma-next migration plan --name drop_legacy_name"
+  terminalCommand="npx prisma@latest migration plan --name drop_legacy_name"
   terminalLines={contractTerminalLines}
 />
 
@@ -230,7 +230,7 @@ flowchart LR
 
 Rollbacks are the wrong mental model for schema changes, and that's why the rehearsal matters.
 
-Promoting an earlier deployment on Compute restores your app code, not your schema; the database keeps the state from the most recent migration. On the schema side, Prisma Next has no `migrate down` and no down-migration files. Rolling back means planning one more migration to a state your database has already been in: the planner diffs the two states, writes the operations that undo the change, and flags destructive ones with a data-loss warning so you can edit the plan before applying it. History stays append-only, `git revert` rather than `git reset`, and no rollback can resurrect the data a dropped column held.
+Promoting an earlier deployment on Compute restores your app code, not your schema; the database keeps the state from the most recent migration. On the schema side, Prisma 8 has no `migrate down` and no down-migration files. Rolling back means planning one more migration to a state your database has already been in: the planner diffs the two states, writes the operations that undo the change, and flags destructive ones with a data-loss warning so you can edit the plan before applying it. History stays append-only, `git revert` rather than `git reset`, and no rollback can resurrect the data a dropped column held.
 
 Expand-and-contract keeps every forward step small, and per-branch databases give you a place to rehearse the sequence until it's boring.
 
@@ -270,7 +270,7 @@ jobs:
           PRISMA_SERVICE_TOKEN: ${{ secrets.PRISMA_SERVICE_TOKEN }}
 
       - name: Apply migrations to the branch database
-        run: npx prisma-next migrate --db "$DATABASE_URL"
+        run: npx prisma@latest migrate --db "$DATABASE_URL"
         env:
           DATABASE_URL: ${{ secrets.BRANCH_DB_URL }}
 
@@ -304,8 +304,8 @@ No. Branch databases are not seeded from production: you run migrations against 
   <Accordion title="What happens to a branch database when the branch is deleted?">
 When the project is connected to GitHub, deleting a Git branch tears down the matching platform branch and the resources it owns. Production and default branches are never removed by cleanup.
   </Accordion>
-  <Accordion title="Can I use per-branch databases without Prisma Next?">
-Yes. The isolation comes from Prisma Compute's branching model, not from Prisma Next. Prisma 7's `prisma migrate deploy` works against a branch database the same way. This post uses Prisma Next because its TypeScript migrations and `dataTransform` make expand-and-contract easier to write and review.
+  <Accordion title="Can I use per-branch databases without Prisma 8?">
+Yes. The isolation comes from Prisma Compute's branching model, not from Prisma 8. Prisma 7's `prisma migrate deploy` works against a branch database the same way. This post uses Prisma 8 because its TypeScript migrations and `dataTransform` make expand-and-contract easier to write and review.
   </Accordion>
   <Accordion title="How does this compare to Neon's branching?">
 Neon branches copy schema and data from a parent branch by default. Compute branch databases are not copies: your migrations and seeds build them up. Copying is faster for manual poking around; a database built only from your migrations proves they work end-to-end and keeps production data out of previews.
@@ -314,12 +314,12 @@ Neon branches copy schema and data from a parent branch by default. Compute bran
 
 ## Try it yourself
 
-[Prisma Next is in Early Access](https://www.prisma.io/blog/prisma-next-early-access-write-your-contract-prompt-your-agent-ship-your-app). It isn't production-ready yet; Prisma 7 remains the right choice for production today. But the per-branch workflow is ready to try now:
+[Prisma 8 is in Early Access](https://www.prisma.io/blog/prisma-next-early-access-write-your-contract-prompt-your-agent-ship-your-app). It isn't production-ready yet; Prisma 7 remains the right choice for production today. But the per-branch workflow is ready to try now:
 
 ```bash
-npx prisma-next@latest init
+npx prisma@latest orm init
 ```
 
 Write a contract, plan a migration, and read the `migration.ts` and `ops.json` it produces. Then, from a feature branch, deploy to [Compute](https://www.prisma.io/docs/prisma-compute/deploy) with `npx @prisma/cli@latest app deploy --db`. The CLI targets your current Git branch, so that one command gives the branch its own database, ready for the expand-and-contract cycle.
 
-Tell us what worked and what didn't on [Discord](https://pris.ly/discord) in the `#prisma-next` channel, and **star [prisma/prisma-next](https://pris.ly/pn-gh) on GitHub** to follow development.
+Tell us what worked and what didn't on [Discord](https://pris.ly/discord) in the `#prisma-next` channel, and **star [prisma/prisma](https://github.com/prisma/orm) on GitHub** to follow development.

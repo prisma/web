@@ -15,8 +15,7 @@ export const AutoplayYoutubeEmbed = ({ videoId, title }: Props) => {
     const onMessage = (event: MessageEvent) => {
       if (event.source !== iframeRef.current?.contentWindow) return;
       try {
-        const data =
-          typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+        const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
         if (data?.event === "onStateChange" && data?.info === 1) {
           setPlaying(true);
         }

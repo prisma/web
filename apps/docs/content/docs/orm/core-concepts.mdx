@@ -1,0 +1,230 @@
+---
+title: Core concepts
+description: "The ideas every Prisma 8 command and API builds on: contracts, emitting, plans, the database signature, codecs, and the migration graph."
+url: /orm/core-concepts
+metaTitle: Prisma 8 core concepts
+metaDescription: Learn the core concepts behind Prisma 8 in one page. What a contract is, what emitting does, how queries compile to plans, and how the CLI commands combine.
+---
+
+Prisma 8 is the current major version of Prisma ORM, rebuilt in TypeScript around one idea: your application and your database keep an explicit, checkable agreement about what the data looks like. A small vocabulary follows from that idea, and it repeats everywhere: in the CLI, in the query APIs, and in error messages. The sections below define each term in plain language, and each links to the page that goes deeper.
+
+## The contract and the schema
+
+The contract is your description of the data your application needs: the models, their fields, how they relate, and how they map to database tables or collections. You author it in PSL (the Prisma schema language) in a `.prisma` file, or in TypeScript:
+
+```prisma title="prisma/contract.prisma"
+model User {
+  id    Int    @id @default(autoincrement())
+  email String @unique
+  posts Post[]
+}
+
+model Post {
+  id        Int     @id @default(autoincrement())
+  title     String
+  published Boolean @default(false)
+  userId    Int
+
+  user User @relation(fields: [userId], references: [id])
+}
+```
+
+The schema is something else: the database's actual structure, the tables and indexes that exist right now. The contract lives in your repository; the schema lives in the database. Everything Prisma 8 does is a relationship between the two: queries are typed against the contract, migrations move the schema toward the contract, and verification checks that the schema still satisfies the contract.
+
+:::note[Contract vs. schema]
+
+Other tools use "schema" for the file you write. In Prisma 8, you author a **contract**, and the **schema** is what the database has. When a command or error message says "schema", it means the database side.
+
+:::
+
+Read more in [The data contract](/orm/contract-authoring/the-data-contract), and author it [in PSL](/orm/contract-authoring/psl-syntax) or [in TypeScript](/orm/contract-authoring/typescript-schema-builder).
+
+## Emitting: from source to artifacts
+
+Emitting is the build step that compiles your contract source into two plain files:
+
+```npm
+npx prisma@latest contract emit
+```
+
+1. `contract.json`: a canonical JSON description of your models, storage layout, and required capabilities.
+2. `contract.d.ts`: the TypeScript types derived from it, which is what makes your queries type-safe.
+
+Every other part of the toolchain reads these artifacts, not your source file. The query APIs read `contract.d.ts` for types. The migration planner diffs two `contract.json` files. The runtime verifies `contract.json` against the database. That is why `contract emit` comes first in almost every workflow: after any contract change, emit before you plan, migrate, or run.
+
+Emission is deterministic. The same source always produces byte-identical artifacts, so both files are committed to version control and diff cleanly in code review. Think of the pair like `package.json` and `package-lock.json`: the source is what you ask for, the artifacts are the exact resolved result.
+
+See [The emitted artifacts](/orm/contract-authoring/the-contract-artifact) for what is inside each file.
+
+## Hashes and the database signature
+
+A hash is a short fingerprint computed from a file's content: the same content always produces the same hash, and any change produces a different one. Because emission is deterministic, hashing `contract.json` gives an identifier for that exact schema state, the way a Git commit hash identifies an exact state of your code. Contract hashes appear throughout the CLI; a migration, for example, records the hash it starts from and the hash it produces.
+
+The database carries the other half of the agreement: a **signature**, a small marker record stored in the database itself that names the contract hash the database currently satisfies. [`db sign`](/cli/db-sign) writes it, and [`db migrate`](/cli/db-migrate) updates it each time it applies a migration.
+
+The two halves make the agreement checkable from either side:
+
+1. Before executing queries, the runtime can compare the contract your application was built with against the database's signature, and stop on a mismatch, for example a deploy against an unmigrated database, before it produces wrong results.
+2. Before applying a migration, the runner checks that the database's signature matches the contract hash the migration starts from.
+
+When the contract and the database disagree, that state is called **drift**. [`db verify`](/cli/db-verify) is the read-only command that reports it.
+
+## Queries compile to plans
+
+A **plan** is the compiled form of a query: a plain data object holding the statement to run, its parameters, and metadata about what the query touches. Every query, whichever API produced it, becomes a plan before it executes; running the plan is a separate step.
+
+With the SQL query builder, the two steps are visible in your code:
+
+```typescript
+import { db } from "./prisma/db";
+
+const plan = db.sql.public.post
+  .select("id", "title", "userId")
+  .where((f, fns) => fns.eq(f.published, true))
+  .limit(10)
+  .build();
+
+const publishedPosts = await db.runtime().execute(plan);
+```
+
+Plans matter for two reasons:
+
+1. **Every query goes through the same pipeline.** However a query was written (the ORM client, a query builder, a raw fragment, or an API an extension added), it reaches the database as a plan. Middleware sees every query in the same shape, execution works the same way for all of them, and you can mix the query APIs freely. It also means one policy, an authorization check for instance, can sit in one place and see everything.
+2. **A plan is data.** The statement and its parameters exist as an object before anything touches the database, so middleware can check them, telemetry can record them, and a failed query can report exactly what it ran.
+
+## The query APIs
+
+All the query APIs are typed against the contract and all of them produce plans. They differ in how much of the statement you write yourself.
+
+The **ORM client** is where you start on both databases: model-based queries like `db.orm.public.User.where(...)`. It is more than a query builder. An operation like `.include()` coordinates several queries on your behalf to serve higher-order needs, relation traversal above all, and hands back one typed result. Start with [Reading data](/orm/fundamentals/reading-data).
+
+Beneath it, each database family has a typed builder for the queries the ORM client cannot express, and a raw escape hatch below that. A builder plan compiles to exactly one statement, so what you build is what runs:
+
+| | PostgreSQL | MongoDB |
+| --- | --- | --- |
+| Typed builder | [The SQL query builder](/orm/fundamentals/advanced-queries): composable joins, grouping, projections | [The pipeline builder](/orm/reference/pipeline-builder): typed aggregation pipelines |
+| Raw escape hatch | [Raw SQL fragments](/orm/reference/raw-queries) spliced into builder queries | [Raw commands](/orm/reference/raw-queries) sent to the driver |
+
+Raw queries are still plans, so middleware and telemetry see them like any other query. Their results skip codec decoding, though, so you handle raw values yourself; the [raw queries reference](/orm/reference/raw-queries) spells out what that means per database.
+
+## The stack behind one package
+
+One facade package connects your code to your database. A PostgreSQL project installs `@prisma/orm-postgres`, and its config helper wires up everything underneath: the database **family** (SQL), the **target** dialect (PostgreSQL), the **adapter** that translates plans into that dialect, and the **driver** that holds the network connection. You will meet those four names in error messages and extension docs; day to day, you configure the one package and move on.
+
+The layering exists for extensibility. Prisma 8's core is small, and everything around it, PostgreSQL support included, plugs in through the same public interfaces. Supporting a new database means writing a new target, adapter, and driver, not changing the core.
+
+## Capabilities
+
+A **capability** is a specific feature a database may or may not support, like `RETURNING` clauses or vector indexes. Your contract declares the capabilities it needs; the adapter reports what the connected database provides. Prisma 8 compares the two at startup, so a missing feature surfaces as one clear error when the app boots, not as a failed query later. See [Capabilities](/orm/contract-authoring/capabilities).
+
+## Codecs
+
+A **codec** converts values between JavaScript and the database's wire format, in both directions. Every column type in your contract is backed by one: a PostgreSQL `timestamptz` column has a codec that produces a JavaScript `Date` when you read and encodes it back when you write. So when you pick a column type in PSL, you are also picking the codec that will handle every value that column carries.
+
+Extensions bring codecs for the types they add: with pgvector installed, a `Vector(1536)` column comes back as a typed vector rather than a string. This is also why raw query results, which skip codecs, put value handling back in your hands.
+
+## Extensions
+
+An extension is an installable package that plugs new pieces into the toolchain: column types and their codecs, query operations, index kinds, capabilities, and at the widest, support for an entire database. One package extends the contract language, the emitted types, the query builders, and migrations together.
+
+You declare extensions in `prisma.config.ts` and register them on the client:
+
+```ts title="prisma.config.ts"
+import { definePrismaConfig } from 'prisma/config';
+import pgvector from '@prisma/orm-extension-pgvector/control';
+import { defineConfig as ormConfig } from '@prisma/orm-postgres/config';
+
+export default definePrismaConfig({
+  orm: ormConfig({
+    contract: './src/prisma/contract.prisma',
+    extensions: [pgvector],
+    db: {
+      connection: process.env['DATABASE_URL']!,
+    },
+  }),
+});
+```
+
+After that, `pgvector.Vector(1536)` is a column type in your contract, vector operators appear in the query builder, and `migration plan` knows how to create vector indexes. See [Using extensions](/orm/extensions/using-extensions).
+
+## Middleware
+
+A middleware is a plain object with a name and one or more hooks that run around every query, the same idea as middleware in Express or Koa. You register it once, in the `middleware` option of your client setup. Because every query is a plan, middleware gets a structured object to inspect: it can log it, enforce limits on it, or reject it, without changing how queries are written. That makes middleware the place for one policy that must cover the whole app, such as an authorization rule that examines every plan before it runs.
+
+Three middleware ship with Prisma 8 today, and they are early: treat them as working demonstrations of the pattern rather than finished products. [Budgets](/orm/middleware/built-in-budgets) caps row counts and surfaces slow queries, [lints](/orm/middleware/built-in-lints) blocks risky query shapes, and [cache](/orm/middleware/built-in-cache) serves repeated reads from memory. For policy your app depends on, [write your own](/orm/middleware/authoring-custom-middleware); the middleware API is the durable surface. Start with [How middleware works](/orm/middleware/how-middleware-works).
+
+## Migrations: a graph of contracts
+
+A **migration** is a recorded change that moves the database's schema from the state one contract describes to the state another describes. It is a directory in your repository containing the change as editable TypeScript (`migration.ts`), the compiled operations Prisma runs (`ops.json`), and metadata recording which contract hash it starts `from` and moves `to`.
+
+One command applies them: [`db migrate`](/cli/db-migrate) advances a live database along the recorded migrations. The other `migration ...` commands never touch a database; they create and inspect the migration files in your repository.
+
+Because every migration records its `from` and `to` hashes, the migrations in a repository form a **graph**: contracts are the nodes, migrations are the edges. When two branches each add a migration and both merge, the graph has a fork and a join, and `db migrate` finds a path from wherever a database currently is to wherever you want it to be. No renumbering, no rebasing migration files.
+
+A **ref** is a named pointer at a contract, such as `production` or `staging`, managed with [`migration ref`](/cli/migration-ref). Refs let deployment commands target an environment by name: `db migrate --to production`.
+
+If you know Git, the whole vocabulary maps across:
+
+| Git | Prisma 8 |
+| --- | --- |
+| A commit | A contract, identified by its hash |
+| A patch between commits | A migration |
+| A branch or tag | A ref |
+| `HEAD` | The database signature |
+| `git checkout <commit>` | `db migrate --to <contract>` |
+
+Start with [How migrations work](/orm/migrations/how-migrations-work), then [The migration graph](/orm/migrations/the-migration-graph) for the branching story.
+
+## How the CLI commands combine
+
+One rule divides the whole [CLI](/cli): `db ...` commands connect to a live database and can change it, while `contract ...` and `migration ...` commands work on the files in your repository. The one exception is `contract infer`, which reads a live database, changing nothing in it, to write a starter contract file. When you are unsure what a command might touch, its first word answers: only `db` can change a database.
+
+The commands compose into four everyday workflows.
+
+**The development loop.** Edit your contract, emit it, turn the change into a reviewable migration, apply it:
+
+```npm
+npx prisma@latest contract emit
+npx prisma@latest migration plan --name add_user_phone
+npx prisma@latest db migrate
+```
+
+**Prototyping without migration files.** While a schema is still in flux, skip the migration directory and reconcile the database directly. [`db update`](/cli/db-update) diffs the live schema against the emitted contract and applies the difference; `--dry-run` previews it first:
+
+```npm
+npx prisma@latest contract emit
+npx prisma@latest db update --db "$DATABASE_URL" --dry-run
+npx prisma@latest db update --db "$DATABASE_URL"
+```
+
+When the shape settles, switch to `migration plan` so changes become reviewable files.
+
+**Adopting an existing database.** [`contract infer`](/cli/contract-infer) writes a starter contract from a live schema. Review and edit it, emit, then bring the database under contract management: [`db init`](/cli/db-init) applies only additive changes and writes the first signature. If the database already matches the contract exactly, [`db sign`](/cli/db-sign) records the signature without changing anything:
+
+```npm
+npx prisma@latest contract infer --db "$DATABASE_URL"
+npx prisma@latest contract emit
+npx prisma@latest db init --db "$DATABASE_URL"
+```
+
+**Checking in CI, deploying in CD.** [`migration check`](/cli#other-commands) verifies the migration files and graph offline, so it runs in CI with no database. [`db verify`](/cli/db-verify) is its live counterpart: a read-only check that a database satisfies the contract. A deploy pipeline pins environments with refs and migrates to them by name:
+
+```npm
+npx prisma@latest migration check
+npx prisma@latest db verify --db "$DATABASE_URL"
+npx prisma@latest db migrate --db "$DATABASE_URL" --to production
+```
+
+## Prompt your coding agent
+
+Projects scaffolded with `create-prisma@latest` install [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. Ask your agent to:
+
+- "Using the prisma-8 skill, explain the difference between our contract and the database schema."
+- "Show me the plan the SQL query builder produces for this query."
+- "Which of our CLI scripts touch the live database, and which are offline?"
+
+## Next steps
+
+- [The data contract](/orm/contract-authoring/the-data-contract): the concept this whole page hangs off, in depth.
+- [Reading data](/orm/fundamentals/reading-data): put the ORM client to work against your contract.
+- [How migrations work](/orm/migrations/how-migrations-work): the plan, review, apply loop hands-on.

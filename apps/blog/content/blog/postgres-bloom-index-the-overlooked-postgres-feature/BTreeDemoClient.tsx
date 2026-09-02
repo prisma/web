@@ -193,11 +193,7 @@ export function BTreeDemoClient({ baseCode, phases }: Props) {
                       const matched =
                         phase.matchedKey === k && phase.activeLeaf === i ? "true" : undefined;
                       return (
-                        <div
-                          key={k}
-                          className="btree-demo-leaf-entry"
-                          data-matched={matched}
-                        >
+                        <div key={k} className="btree-demo-leaf-entry" data-matched={matched}>
                           <span className="btree-demo-leaf-key">{k}</span>
                           <span className="btree-demo-leaf-arrow" aria-hidden="true">
                             →

@@ -2,18 +2,20 @@ import defaultMdxComponents from "fumadocs-ui/mdx";
 import { Youtube } from "@prisma-docs/ui/components/youtube";
 import { APIPage } from "@/components/api-page";
 import { ConceptAnimation } from "@/components/concept-animation";
+import { DeployButtonGenerator } from "@/components/deploy-button-generator";
 import {
   AgentPrompt,
-  GetStartedTabs,
-  HeroGrid,
-  HeroPitch,
+  CliCallout,
   IconGrid,
   IconLink,
   ModalRow,
   SectionRow,
-  StackDiagram,
-  StackLayer,
+  WorkflowGrid,
+  WorkflowHero,
+  WorkflowLink,
+  WorkflowStage,
 } from "@/components/getting-started";
+import { BucketIcon } from "@/components/icons/bucket";
 import { withDocsBasePath } from "@/lib/urls";
 import { cn } from "@prisma-docs/ui/lib/cn";
 
@@ -120,17 +122,20 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     Accordions,
     APIPage,
     AgentPrompt,
+    // Same custom bucket the sidebar's Storage entry uses (lucide has none).
+    Bucket: BucketIcon,
+    CliCallout,
     ConceptAnimation,
-    GetStartedTabs,
-    HeroGrid,
-    HeroPitch,
+    DeployButtonGenerator,
     IconGrid,
     IconLink,
     ModalRow,
     SectionRow,
-    StackDiagram,
-    StackLayer,
     TechIcon,
+    WorkflowGrid,
+    WorkflowHero,
+    WorkflowLink,
+    WorkflowStage,
     Youtube,
     img: (props: any) => (
       <ImageZoom {...(props as any)} src={withDocsBasePathForImageSrc((props as any).src)} />

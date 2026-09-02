@@ -99,7 +99,7 @@ async function getOpenAPISpec() {
 export const openapi = createOpenAPI({
   input: async () => {
     const doc = await getOpenAPISpec();
-    return { "management-api": doc };
+    return { "rest-api": doc };
   },
   proxyUrl: "/api/proxy",
 });

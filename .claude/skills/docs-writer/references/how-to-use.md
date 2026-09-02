@@ -2,7 +2,7 @@
 
 The skill handles four jobs. Each starts the same way: say what you want and which page type, then follow the steps. Every job ends with the "Final pass" checklist in `SKILL.md`.
 
-The examples below lean on the products you'll usually document: an app on **Prisma Compute** that queries **Prisma Postgres** through **Prisma Next**.
+The examples below lean on the products you'll usually document: an app on **Prisma Compute** that queries **Prisma Postgres** through **Prisma 8**.
 
 | You want to...                          | Page type | Jump to                        |
 | --------------------------------------- | --------- | ------------------------------ |
@@ -15,12 +15,12 @@ The examples below lean on the products you'll usually document: an app on **Pri
 
 ## Write a how-to
 
-**Prompt:** "Write a how-to for deploying a TypeScript API to Prisma Compute that reads from Prisma Postgres with Prisma Next."
+**Prompt:** "Write a how-to for deploying a TypeScript API to Prisma Compute that reads from Prisma Postgres with Prisma 8."
 
 1. Answer the four "Before you write" questions: who the reader is, the one task, the prerequisites, the success signal.
 2. Lay out the page shape: title, intro, prerequisites, numbered steps, verify, next steps.
 3. Write each step in order: a context sentence, the exact command, the expected output, and the likely failure with its fix.
-4. Make the product connection the spine: the Prisma Next client connects to Prisma Postgres, and the app runs on Prisma Compute. Show that, don't just mention it.
+4. Make the product connection the spine: the Prisma 8 client connects to Prisma Postgres, and the app runs on Prisma Compute. Show that, don't just mention it.
 5. End with a Verify section the reader can copy and run, like a `curl` against the deployed URL.
 6. Run the Final pass checklist; cut everything in "Cut the slop".
 
@@ -44,7 +44,7 @@ Result: a reader who can decide whether and when the concept applies to them.
 
 ## Write a reference page
 
-**Prompt:** "Document the `cacheStrategy` option on a Prisma Next query."
+**Prompt:** "Document the `cacheStrategy` option on a Prisma 8 query."
 
 1. Lead with the signature or syntax.
 2. List every parameter: type, required or optional, and the default.

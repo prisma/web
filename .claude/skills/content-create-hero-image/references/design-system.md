@@ -1,161 +1,134 @@
-# Prisma cover design system
+# Prisma cover design system — 2026 brand
 
-The visual language for Prisma blog and social covers, distilled from the Eclipse
-design system, the canonical OG generator, and `SOCIALS.fig`. Machine-readable
-values live in [`../assets/tokens.json`](../assets/tokens.json) — that file is the
-source of truth; this document explains intent.
+The visual language for Prisma blog and social covers under the 2026 rebrand: light paper
+surfaces, the three-color prism accent family, Sora display type. Machine-readable values live
+in [`../assets/tokens.json`](../assets/tokens.json) — that file is the source of truth; this
+document explains intent.
+
+> **The pre-2026 style is retired.** The dark teal "aurora" surface, Mona Sans 800 headlines,
+> uppercase dash eyebrows, and Geist Mono labels are the OLD look. The worked examples in
+> `assets/examples/` and `assets/hero1–4.svg` predate the rebrand — study them for *composition
+> and module structure only*, never for palette, type, or surface.
 
 ## Sources
 
-| What                        | Where (in `prisma/web`)                                                                                                                           |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Color tokens (hex)          | `packages/eclipse/src/styles/globals.css`                                                                                                         |
-| Type tokens (font + scale)  | `apps/eclipse/content/design-system/tokens/typography.mdx`                                                                                        |
-| Layout composition recipe   | `apps/docs/src/app/og/[...slug]/route.tsx` (layout only — it uses Barlow, which is **off-brand**; covers use Mona Sans)                           |
-| Brand fonts                 | `packages/eclipse/src/static/fonts/` (Mona Sans VF, Mona Sans Mono VF); bundled static instances in [`../assets/fonts/`](../assets/fonts/)        |
-| Logos / marks               | Official press kit [`prisma/presskit`](https://github.com/prisma/presskit); product icons in [`../assets/logos/`](../assets/logos/) (`README.md`) |
-| Blog cover conventions      | `apps/blog/content/blog/<slug>/index.mdx` + `apps/blog/public/<slug>/imgs/`                                                                       |
-| Hand-designed cover library | `SOCIALS.fig` (see [`figma-source.md`](./figma-source.md))                                                                                        |
+The durable sources are the **eclipse package** and the **marketing site app**. The marketing
+site currently lives at `apps/site-redesign` (a temporary app name — it replaces `apps/site` at
+cutover); if that path is gone, look for the same files under `apps/site`. `tokens.json` bundles
+every needed value, so a missing path never blocks a cover.
 
-The skill bundles its brand fonts in `assets/fonts/`, so it renders on-brand without extra setup.
-This skill lives in the `prisma/web` repo, so the live Eclipse tokens in `packages/eclipse/` are
-available to reconcile against.
+| What                       | Where (in `prisma/web`)                                                                                        |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Eclipse (docs/blog) tokens | `packages/eclipse/src/styles/globals.css` (ink/paper neutrals, Sora/Inter wiring) — durable                     |
+| Brand fonts                | `packages/eclipse/src/static/fonts/` — durable; bundled copies in [`../assets/fonts/`](../assets/fonts/)        |
+| Brand color tokens         | the marketing site's `src/app/globals.css` `@theme` block (prism-cyan/red/yellow ramps, paper, card-wash)       |
+| Product accent map         | the marketing site's `src/components/product/icons.ts` (`PLATFORM_PRODUCT_ACCENTS`)                             |
+| Logos / marks              | `apps/blog/public/logo/` (full-color lockup) and the prism mark; bundled in [`../assets/logos/`](../assets/logos/) |
+| Live brand reference       | the marketing site's heroes and cards (`src/components/sections/`, `/brand` route)                              |
+| Blog cover conventions     | `apps/blog/content/blog/<slug>/index.mdx` + `apps/blog/public/<slug>/imgs/`                                     |
 
 ## The look in one paragraph
 
-A premium **teal-green "aurora" surface** — a luminous teal glow at the top (strongest top-left)
-fading through dark navy to near-black at the bottom — with a single mint-teal accent (`#5EEAD4`).
-A **dash-prefixed eyebrow** (a short teal hairline + uppercase label) names the topic; a bold,
-**large** Mona Sans headline with its key phrase in teal carries the message; and one **content
-module** does the showing — a row of icon tiles, a comparison card of bars, a log/data panel, a
-terminal, or a code card. The word **`Prisma`** signs off in a clear bottom corner. Nothing else:
-no stock illustration, no random gradient, no decorative noise. Restraint is the brand, and the
-diagram is minimal — favour a few clean boxes and one hero glyph over arrows, chips, and pills.
-(See the worked examples in `assets/examples/`, which mirror the brand reference frames.)
+A **light paper canvas** — white or `#f9faf5` — with barely-there grain and, usually, a soft
+**spectral wash**: two or three radial pools of the prism colors (cyan, yellow, red at ~15–25%)
+dissolving into the surface along one edge, exactly like the site's hero panels. **One prism
+accent** (chosen by product) carries the cover: a small **kicker dot** beside a sentence-case
+label names the topic, a **Sora 500** headline in ink carries the message, and one **content
+module** — a white hairline-bordered card, an ink code card, a flow of rounded tiles — does the
+showing. The **`Prisma`** wordmark (Sora 600 ink) or the small full-color lockup signs off in a
+clear bottom corner. Nothing else: no dark aurora, no uppercase eyebrows, no glows, no stock
+decoration. Restraint is still the brand; the surface just turned to daylight.
 
 ## Color
 
-- **Cover surface (default, dark):** a **vertical** gradient — teal-green `#163535` (top) → `#0A1018` → near-black `#03060E` (bottom). The lighter top carries the eyebrow + headline; the bottom anchors the content module. This visible top-to-bottom shift is part of the look — do not flatten it.
-- **Accent (signature):** mint teal **`#5EEAD4`** (Eclipse teal-300) for eyebrows, headline highlight, hero numbers, hairlines (`#71e8df` is an accepted near-equivalent). Use exactly one accent per cover.
-- **Title text:** `#f7fafc`/white on dark, `#111827` on light.
-- **Body / subtitle / muted:** `#9CA3AF` (`#a0aec0` ok).
-- **Background texture:** a faint slate grid (`#94A3B8` @ ~4.5%, 48px cells) plus a soft teal radial glow (`rgba(45,212,191,0.16)`), positioned to complement the composition. Both barely-there — atmosphere, not decoration.
-- **Bar / data fills:** neutral/reference bars = slate gradient `#64748B → #CBD5E1`; the hero/product bar = teal gradient `#14B8A6 → #5EEAD4` with a `#2DD4BF` glow. Track behind bars = `#1F2937`.
-- **Card surface:** `#111827` at ~92% opacity, `1.5px` border `#FFFFFF` @ 8%, radius ~22.
-- **Product palettes** (semantic, from Eclipse): Postgres = teal (`#0d9488` / cover accent `#5EEAD4`), ORM = indigo (`#4f46e5`). Compute and Next inherit the platform teal. See `tokens.json → products`.
-
-Light covers are allowed for editorial/educational pieces: white background, `#111827`
-title, product-colored accent. Dark is the default and the launch/announcement standard.
+- **Cover surface (default, light):** `#ffffff` or paper `#f9faf5`. Add the **grain** (SVG
+  `feTurbulence`, multiply, ~5% opacity) and usually a **spectral wash** — 2–3 soft radial
+  gradients (`cyan rgba(1,215,228,.20)`, `yellow rgba(243,195,6,.16)`, `red rgba(255,118,130,.17)`)
+  pooling along the bottom or a corner and fading to the surface. The wash is atmosphere; type and
+  modules must sit on calm areas.
+- **Accent (one per cover, by product):** ORM / Prisma 8 → **cyan `#01d7e4`**; Postgres →
+  **yellow `#eaa700`** (dot may use `#f3c306`); Compute → **red `#f34a60`**. Deep variants for
+  small text on white: cyan `#007f8d`, yellow `#965100`, red `#af0a33`. The other two prisms may
+  appear only inside the wash or a deliberate prism-stripe motif.
+- **Text:** ink `#151515` for titles, `#3a3b3c` body, `#646567` muted. On the rare dark cover:
+  paper `#f9faf5` titles, `#a5a5a6` muted.
+- **Cards:** white fill, hairline border `rgba(0,0,0,0.06)` (strong: `0.12`), radius ~20, soft
+  shadow `0 10px 30px rgba(21,21,21,0.08)`. Inner chip/row surface: card-wash `#eef4f3`.
+- **Code/terminal cards invert to ink** (`#151515` fill, paper text) — the one sanctioned dark
+  element on a light cover, and it reads as the site's code blocks do.
+- **Prism motif (optional):** 45° diagonal bands cyan → red → yellow (the logo's anatomy) as a
+  corner glyph, edge bleed, or divider. Crisp and geometric — never a blurred rainbow.
+- **Dark covers are the exception**, for genuinely nocturnal subjects: ink `#151515`/`#0f0f0f`
+  surface, paper text, same accents. Say why when you choose it.
 
 ## Typography
 
-| Role               | Family                               | Weight | Notes                                                         |
-| ------------------ | ------------------------------------ | ------ | ------------------------------------------------------------- |
-| Title / headline   | **Mona Sans**                        | 800    | Eclipse titles run 800–900, extended width; line-height ~1.1  |
-| Eyebrow (kicker)   | **Geist Mono**                       | 600    | UPPERCASE, letter-spacing ~2.7, accent teal, leading `—` rule |
-| Subtitle / body    | **Inter**                            | 400    | line-height 1.5                                               |
-| Data values / code | **Geist Mono** (alt: Mona Sans Mono) | 500    | benchmark numbers, req/s, snippets, API paths                 |
-| Big numbers        | **Mona Sans**                        | 800    | hero stats and percentages                                    |
+| Role               | Family             | Weight | Notes                                                            |
+| ------------------ | ------------------ | ------ | ---------------------------------------------------------------- |
+| Title / headline   | **Sora**           | 500    | sentence case, line-height ~1.08, tracking ~-0.5 to -1; never 700+ |
+| Kicker label       | **Inter**          | 600    | sentence case beside the accent dot; `rgba(21,21,21,.7)`         |
+| Subtitle / body    | **Inter**          | 400    | line-height ~1.45                                                |
+| Data values / code | **Mona Sans Mono** | 500    | snippets, paths, numbers inside modules                          |
+| Big numbers        | **Sora**           | 600    | hero stats; 600 is the ceiling                                   |
+| Wordmark sign-off  | **Sora**           | 600    | the word `Prisma`, ~24px ink                                     |
 
-Never substitute a different display face. **Mona Sans + Inter** is the pairing — **not Barlow**.
-Barlow is the legacy docs-OG face and reads off-brand; do not use it on covers.
+**Sora + Inter is the pairing.** Mona Sans display (the old 800 headlines), Geist Mono, and
+Barlow are all off-brand on covers now. Headlines are **sentence case** — never all-caps, never
+letter-spaced.
 
-### Fonts & rendering (important)
+### Fonts & rendering (unchanged mechanics)
 
-The brand faces are **Mona Sans** (headings/display, weight 800), **Inter** (body, 400), and
-**Geist Mono** (data/code, 500). The skill bundles static instances in
-[`../assets/fonts/`](../assets/fonts/) (Mona Sans is a variable font; the bundled instance is the
-weight-800 display cut). Use those families/weights — an arbitrary weight or a different family
-makes renderers fall back to a generic sans, the #1 cause of an off-brand cover.
+The bundled faces are variable fonts: `Sora-VF.woff2`, `Inter-VF.woff2`,
+`MonaSansMono-VF.woff2`. A cover that only *names* the families renders with fallbacks wherever
+they aren't installed, and librsvg ignores `@font-face` entirely. So the pipeline is still:
 
-**One source of truth: embed the fonts, then render.** A cover that only _names_ the families
-renders with fallback fonts wherever they are not installed. Two renderers disagree about
-fonts, which is the #1 cause of "the PNG and SVG look different":
+1. **`scripts/embed-fonts.py <hero.svg>`** — subsets and inlines the three faces as base64
+   `@font-face` (self-contained SVG).
+2. **`scripts/export-png.sh`** — renders the PNG with headless Chrome, which honors the embedded
+   faces, making the PNG pixel-identical to the SVG in a browser.
 
-- A **browser/Figma** renders the SVG's embedded `@font-face` (correct brand fonts).
-- **librsvg/`rsvg-convert`** _ignores_ `@font-face`, and since fontconfig does not index the
-  bundled `.woff2`, it falls back to a generic sans (e.g. Verdana) — wrong.
-
-So the pipeline is: **(1) `scripts/embed-fonts.py <hero.svg>`** inlines the faces as base64
-`@font-face` (self-contained SVG), then **(2) `scripts/export-png.sh`** renders the PNG with
-**headless Chrome/Chromium**, which honors the embedded faces — making the PNG pixel-identical
-to the SVG-in-browser. Always embed before exporting or sharing. (rsvg/magick remain only as
-fallbacks and warn that fonts may not match.)
+Always embed before exporting or sharing.
 
 ## Layout (canonical 1200×630)
 
-- Uniform **72px** padding on all edges; nothing touches the canvas edge.
-- **Headline block:** top-left; eyebrow, then title (1–3 hand-wrapped lines), optional one-line
-  subtitle (~20px gap). Large type — title ~62–72px.
-- **`Prisma` wordmark:** the brand sign-off — the word `Prisma` in Mona Sans 800, white, ~22px,
-  in whichever **bottom corner is clear of content** (bottom-left when the module is right-side;
-  bottom/top-right when content fills the bottom). Never the URL `prisma.io/blog`; never an icon
-  paired with extra text.
-- Strong left alignment and generous negative space on the right. Do not center everything.
+- Uniform **72px** padding; nothing touches the canvas edge.
+- **Kicker** top-left: accent dot (9px) + sentence-case Inter 600 label (~17px). No dash, no caps.
+- **Headline** below: Sora 500, ~56–68px, 1–3 hand-wrapped lines, ink. Emphasis inside a headline
+  is the accent color (deep variant if the phrase is small), not a weight change.
+- Optional **one-line subtitle**: Inter 400 ~26px, `#646567`.
+- **Content module** lower/right; **wordmark** in a clear bottom corner.
+- Left-anchored, generous negative space. Center only a single graphic-led composition.
 
-### Spacing & breathing room (coherence)
+### Spacing minimums (unchanged)
 
-Cramped elements read as "off". Hold these minimums and keep them consistent across a set:
-
-- **≥ 48px** between any card/diagram and the canvas edge.
-- **≥ 40px** between sibling tiles/boxes in a row (equal gaps; symmetric about their center).
-- **≥ 24px** padding inside a card before its content; **≥ 28px** between stacked rows of content.
-- Eyebrow → headline → subtitle → module each get clear air; never let two text blocks crowd.
-- Verify spacing on the **rendered PNG**, by measurement, not by eye (see `design-review.md`).
+- ≥ 48px between any card and the canvas edge; ≥ 40px between sibling tiles; ≥ 24px padding
+  inside cards; ≥ 28px between stacked rows. Verify on the rendered PNG, by measurement.
 
 ### Shared anatomy (every cover)
 
-The house style is one frame with a few fixed parts and a swappable **content module**:
-
-1. **Eyebrow** top-left — a short teal **hairline dash** (~30px) + uppercase label in **Mona Sans
-   800** ~16px, letter-spacing ~2.4, accent teal (`— LABEL`). Names the topic (e.g.
-   `REQUEST-TIME IMAGE PIPELINE`, `THROUGHPUT VS RAW PG`).
-2. **Headline** below it — **Mona Sans 800**, **~62–72px** (go large), tight tracking (about -1.8),
-   1–3 lines, white with the **key phrase in accent teal** (e.g. "Image transforms / **as app
-   logic**").
-3. **Content module** in the lower/right area — the visual that carries the idea (see catalog).
-   Keep it **minimal**: a few clean tiles/rows and one hero element beat a busy diagram.
-4. **`Prisma` wordmark** — Mona Sans 800, white, ~22px, in a clear bottom corner. Always present.
-5. **Base** — the teal-green **aurora** surface (bright teal top, strongest top-left → near-black
-   bottom) + a barely-there slate grid. Always. Never a flat/near-solid dark fill.
-
-Left-anchored, generous space, one accent, no decoration beyond the base aurora.
+1. **Surface** — white/paper + grain, usually a spectral wash on one edge. Never the old dark
+   aurora; never a flat grey.
+2. **Kicker** — accent dot + sentence-case label naming product or topic.
+3. **Headline** — Sora 500 ink; short and declarative. (No-copy covers stay first-class: the
+   module + wordmark carry it, kicker optional.)
+4. **One content module** — the visual that carries the idea (catalog below).
+5. **Sign-off** — `Prisma` in Sora 600 ink, or the small full-color lockup, in a clear corner.
 
 ### Content modules (pick one per cover)
 
-Each example folder in [`../assets/examples/`](../assets/examples/) is a worked instance:
+The module *structures* survive the rebrand; their *skin* is new. Reskin rules:
 
-| Module               | When                                | Looks like                                                                                                                                                                                                                                                              | Example                                            |
-| -------------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| **Pipeline / flow**  | a sequence or transform (A → B → C) | a row of rounded **square tiles**, equal size and equal gaps, a mono label under each; the key tile gets a teal-glow border and holds the hero logo/glyph (e.g. the Bun mark). Keep it minimal — the tiles + labels read as a flow; skip arrows, param chips, and pills | `image-transformations-with-bun-on-prisma-compute` |
-| **Comparison card**  | "X vs Y", "% of", benchmarks        | rounded `#111827`@92% card of **horizontal bars** — each row = prism icon + label, big right-aligned number + unit; reference row fills 100% (slate), hero row fills its true ratio (teal + glow). Bar width _is_ the comparison                                        | `prisma-next-benchmark`                            |
-| **Data / log panel** | streams, logs, events, real-time    | a dark panel of monospace **rows** (timestamp + label + mini-bar), optionally a small flow beneath (`source → client`)                                                                                                                                                  | `building-open-chat`                               |
-| **Terminal card**    | CLI, scaffolding, getting-started   | a terminal-style card with a `$ command` and a short ✓ checklist                                                                                                                                                                                                        | `create-prisma-deploy-prisma-compute`              |
-| **Code card**        | config, schema, API shape           | a code-editor card (filename tab + syntax-tinted lines), optional target nodes beneath                                                                                                                                                                                  | `prisma-compute-config-file`                       |
+| Module               | When                                | New-brand skin                                                                                                                                        |
+| -------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Pipeline / flow**  | a sequence or transform (A → B → C) | white rounded tiles with hairline borders on the light surface; equal gaps; the hero tile gets the accent border + accent tint fill; mono labels below |
+| **Comparison card**  | "X vs Y", "% of", benchmarks        | one white card; bars in card-wash track; reference bar `#e5e5e4`→`#a5a5a6`; hero bar in the accent; ink numbers right-aligned                          |
+| **Data / log panel** | streams, logs, events, real-time    | white card of mono rows (`#3a3b3c`), accent-tinted highlight row; or an ink code-card variant                                                          |
+| **Terminal card**    | CLI, scaffolding, getting-started   | **ink card** (`#151515`, paper text) with a `$ command` and short ✓ checklist (✓ in the accent)                                                        |
+| **Code card**        | config, schema, API shape           | ink card with a filename tab; syntax tints drawn from the prism ramps (cyan for keywords, yellow strings, red flags) — subtle, 2–3 tints max           |
+| **Prism stripe**     | brand/launch moments                | the 45° three-band motif as the graphic itself, with the lockup or a single stat                                                                       |
 
-Tiles/cards: rounded ~22–24px, **translucent** fill `#0A1622` @ ~0.74 (so the aurora shows
-faintly through), hairline border `#FFFFFF` @ ~10%; inner chips/boxes `#0B1220` @ ~0.7; the hero
-element uses a teal border + `#2DD4BF` glow. Labels and code/data are **Geist Mono**; headings and
-big numbers are **Mona Sans**; prose is **Inter**.
-
-**No-copy covers (common).** Most Prisma blog images carry **no headline at all** — the content
-module plus the `Prisma` wordmark do the work. Default to no-copy unless the post has a short,
-punchy thesis worth setting as a headline. A no-copy cover centres/enlarges the module and keeps
-the eyebrow optional.
-
-**Isometric skew (optional hero treatment).** For card/table/grid modules, a subtle isometric
-skew (e.g. `transform="matrix(1,0.18,-0.18,1,…)"` or a ~15–25° rotate + scale) gives the hero a
-premium 3-D plane. Use it for **cards and tables**; keep **flow/loop/pipeline and "→ bill"
-diagrams flat** (skew muddies a left-to-right read). One skewed plane per cover, never the whole
-canvas.
-
-**Multiple directions.** When asked for N directions (1–4), produce N independent
-`cover-<a|b|…>.svg`/`.png` pairs exploring distinct modules or framings (e.g. literal diagram vs
-typographic thesis vs comparison), each fully on-brand, and present them together for selection.
-
-**Graphic-led variant.** When a single chart/diagram is the whole message, you can drop the
-headline and **center the module**, with the standalone product logo (e.g. `prisma-next-logo.svg`)
-centered on top as the only brand mark.
+**Isometric skew** stays available for card/table modules (one skewed plane max; flows stay
+flat). **Multiple directions** (1–4) and **graphic-led no-copy variants** work as before.
 
 ## Formats
 
@@ -166,4 +139,4 @@ centered on top as the only brand mark.
 | YouTube thumbnail  | 1280×720   | video             | `youtube-thumbnail.png` |
 | Generic blog cover | 1200×630   | alias of social   | `blog-cover.svg/.png`   |
 
-Scale font sizes proportionally when the frame changes (e.g. ×0.70 for the 844-wide hero).
+Scale font sizes proportionally when the frame changes (×0.70 for the 844-wide hero).

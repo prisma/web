@@ -350,7 +350,12 @@ export function CodeBlockTabsList(props: ComponentProps<typeof TabsList>) {
     <div className="flex items-center justify-between pr-2">
       {tabsList}
       {/* Variant dropdown — right side, sibling of TabsList */}
-      <Select value={ctx.activeVariant} onValueChange={ctx.setActiveVariant}>
+      <Select
+        value={ctx.activeVariant}
+        onValueChange={(v) => {
+          if (v !== null) ctx.setActiveVariant?.(v);
+        }}
+      >
         <SelectTrigger
           className={cn(
             "h-7 min-w-[7rem] shrink-0 border-none bg-transparent px-2 py-0",

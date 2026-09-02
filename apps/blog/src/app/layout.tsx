@@ -2,7 +2,7 @@ import { Provider } from "@/components/provider";
 import { createBlogStructuredData } from "@/lib/structured-data";
 import { getBaseUrl } from "@/lib/url";
 import "./global.css";
-import { Inter, Barlow } from "next/font/google";
+import localFont from "next/font/local";
 import type { Metadata } from "next";
 import Script from "next/script";
 import { BLOG_HOME_DESCRIPTION, BLOG_HOME_TITLE } from "@/lib/blog-metadata";
@@ -10,15 +10,43 @@ import { FontAwesomeScript as EclipseFA } from "@prisma/eclipse";
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import { GoogleTagManager } from "@prisma-docs/ui/components/google-tag-manager";
 
-const inter = Inter({
-  subsets: ["latin"],
+// Inter is vendored inside @prisma/eclipse now, so load the same files here
+// rather than pulling a second copy from Google.
+const inter = localFont({
+  src: [
+    {
+      path: "../../../../packages/eclipse/src/static/fonts/InterVariable.woff2",
+      weight: "100 900",
+      style: "normal",
+    },
+    {
+      path: "../../../../packages/eclipse/src/static/fonts/InterVariable-Italic.woff2",
+      weight: "100 900",
+      style: "italic",
+    },
+  ],
   variable: "--font-inter",
+  display: "swap",
 });
 
-const barlow = Barlow({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-barlow",
+// Sora replaces Mona Sans VF as the display face. next/font/local has no
+// per-source `unicode-range`, so only the latin subset is preloaded here; the
+// latin-ext subset is served by the plain "Sora" @font-face in the package's
+// fonts.css, which sits directly behind this variable in the family stack.
+const sora = localFont({
+  src: "../../../../packages/eclipse/src/static/fonts/SoraVF-latin.woff2",
+  weight: "100 800",
+  style: "normal",
+  variable: "--font-sora",
+  display: "swap",
+});
+
+// Code face — unchanged by the rebrand.
+const monaSansMono = localFont({
+  src: "../../../../packages/eclipse/src/static/fonts/MonaSansMonoVF[wght].woff2",
+  variable: "--font-mona-mono",
+  display: "swap",
+  weight: "200 900",
 });
 
 export const metadata: Metadata = {
@@ -31,7 +59,11 @@ const blogStructuredData = createBlogStructuredData();
 
 export default function Layout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${inter.variable} ${barlow.variable}`} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${inter.variable} ${sora.variable} ${monaSansMono.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         <JsonLd id="blog-structured-data" data={blogStructuredData} />
         {/* FontAwesome — not render-critical; explicit strategy prevents accidental beforeInteractive promotion */}

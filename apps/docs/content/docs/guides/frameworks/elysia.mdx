@@ -1,461 +1,140 @@
 ---
 title: Elysia
-description: Learn how to use Prisma ORM in an Elysia app
-image: /img/guides/prisma-elysia-cover.png
+description: Build an Elysia API on Prisma 8 with the elysia template and deploy it to Prisma Compute.
 url: /guides/frameworks/elysia
-metaTitle: How to use Prisma ORM and Prisma Postgres with Elysia
-metaDescription: Learn how to use Prisma ORM in an Elysia app
+metaTitle: How to use Prisma 8 with Elysia
+metaDescription: 'Scaffold an Elysia API backed by Prisma 8 and Prisma Postgres, seed it, serve users over HTTP, and deploy it to Prisma Compute as a Bun app.'
 ---
 
 ## Introduction
 
-[Elysia](https://elysiajs.com/) is an ergonomic web framework for building high-performance backend servers with Bun. It offers end-to-end type safety, an expressive API, and exceptional performance. Combined with Prisma ORM and [Prisma Postgres](https://www.prisma.io/postgres), you get a fast, type-safe backend stack.
+In this guide, you scaffold an Elysia API backed by Prisma 8, initialize and seed a PostgreSQL database, serve data over HTTP, and deploy the API to [Prisma Compute](/compute) as a Bun app. The `elysia` template generates the server, so most of the work is understanding the pieces.
 
-In this guide, you'll learn to integrate Prisma ORM with a Prisma Postgres database in an Elysia application. You can find a complete example of this guide on [GitHub](https://github.com/prisma/prisma-examples/tree/latest/orm/elysia).
-
-## Quick start
-
-Run one command to scaffold an Elysia project with Prisma ORM and Prisma Postgres ready to go:
-
-```npm
-npm create prisma@latest -- --template elysia
-```
-
-Or follow the steps below to set it up manually.
+Every command and response below was run end to end against a live Prisma Postgres database.
 
 ## Prerequisites
 
-- [Bun](https://bun.sh/docs/installation) installed on your system
+- [Bun](https://bun.sh/) 1.1 or later (Elysia is Bun-first)
+- A PostgreSQL connection string, or nothing at all: the scaffold can create a [Prisma Postgres](/postgres) database for you
 
-## 1. Set up your project
+## Use with your agent
 
-Create a new Elysia project:
+To delegate this guide to your coding agent, copy the prompt below and hand it over:
 
-```npm
-npm create elysia@latest elysia-prisma
+<AgentPrompt>
+
+```text
+Verify `bun --version` first; if Bun is missing, stop and ask. Create a new Elysia API with Prisma 8, seed it, and deploy it to Prisma Compute.
+
+1. Scaffold: `bunx create-prisma@latest create my-elysia-api --template elysia --provider postgres --yes`. Then run `bunx prisma@latest init` in `my-elysia-api` so the Prisma agent skills are installed and stay current, and use them. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Export it as `DATABASE_URL` in the shell; the generated scripts read the environment variable, not `.env`.
+2. In `my-elysia-api`, run `bun run db:init` with `DATABASE_URL` exported. Sample users are seeded automatically on the app's first query; there is no separate seed script.
+3. Start `bun run dev` in the background, wait until it reports ready, verify `curl http://localhost:3000/users` returns the seeded users, then stop the dev server.
+4. Deploy: check `bunx prisma@latest auth whoami`; if I am not signed in, stop and ask me to run `bunx prisma@latest auth login`. Then run `bun run build` followed by `bunx prisma@latest deploy module.ts` and verify the live URL's /users endpoint. The deployed app provisions and seeds its own Prisma Postgres database; do not pass the local DATABASE_URL. If the deploy fails with `HostedStateBootstrapError`, a project with the module's name exists in my workspace but its hosted state cannot be verified; re-run the deploy with `--name <a unique name>`.
+
+Use the installed Prisma 8 skills.
 ```
 
-Navigate to the project directory:
+</AgentPrompt>
+
+## 1. Scaffold the project
 
 ```bash
-cd elysia-prisma
+bunx create-prisma@latest create my-elysia-api --template elysia --provider postgres
 ```
 
-## 2. Install and configure Prisma
+Pick your database at the prompt. The template generates an Elysia server in `src/index.ts` with `GET /` and `GET /users` routes, the Prisma 8 setup in `src/prisma/`, and package scripts for the database steps.
 
-### 2.1. Install dependencies
+Next, set the database connection for the local steps. Use your own PostgreSQL connection string, or create a Prisma Postgres database with `npx create-db@latest`; it prints a connection string and a claim URL you can open to keep the database. Export the variable in the shell you work in; the generated scripts read the environment variable, not `.env`:
 
-Install the required Prisma packages, database adapter, and Prismabox (for generated TypeBox schemas):
-
-```npm
-npm install prisma bun-types --save-dev
-npm install @prisma/client @prisma/adapter-pg pg prismabox
+```bash
+export DATABASE_URL="<your connection string>"
 ```
 
-:::info
+```bash
+cd my-elysia-api
+```
 
-If you are using a different database provider (MySQL, SQL Server, SQLite), install the corresponding driver adapter package instead of `@prisma/adapter-pg`. For more information, see [Database drivers](/orm/core-concepts/supported-databases/database-drivers).
+## 2. Initialize the database
+
+```bash
+bun run db:init
+```
+
+```text no-copy
+"summary": "Applied 5 operation(s) across 1 space(s), database signed"
+```
+
+If `db:init` stops with `Connection terminated unexpectedly`, a database you just created is still starting; wait a few seconds and run it again. The command is safe to repeat and reports `Applied 0 operation(s)` when there is nothing left to do.
+
+## 3. Run the server
+
+```bash
+bun run dev
+```
+
+The server starts on port 3000 (set `PORT` to change it):
+
+```bash
+curl http://localhost:3000/users
+```
+
+```json no-copy
+[
+  { "id": "1", "email": "alice@prisma.io", "username": "alice", "name": "Alice", "createdAt": "2026-07-24T11:43:41.450Z" },
+  { "id": "2", "email": "bob@prisma.io", "username": "bob", "name": "Bob", "createdAt": "2026-07-24T11:43:41.490Z" },
+  { "id": "3", "email": "carol@prisma.io", "username": "carol", "name": "Carol", "createdAt": "2026-07-24T11:43:41.533Z" }
+]
+```
+
+The route handler is ordinary Elysia code calling an ordinary Prisma 8 query; there is no framework adapter in between. To add write routes, follow the same pattern as the [Hono guide's POST route](/guides/frameworks/hono#4-add-a-post-route); the query code is identical.
+
+## 4. Deploy to Prisma Compute
+
+Elysia is supported on [Prisma Compute](/compute). The scaffold declares the app for [Prisma Composer](/composer) in `module.ts` and `service.ts`, pointing at the bundled server the `build` script produces, so no framework flags are needed. Sign in once (it opens a browser):
+
+```bash
+bunx prisma@latest auth login
+```
+
+Then build and deploy from the project directory:
+
+```bash
+bun run build
+bunx prisma@latest deploy module.ts
+```
+
+```text no-copy
+my-elysia-api
+├─ database   postgres-database db_abc123
+└─ app        compute-service cps_abc123
+              https://xyz.ewr.prisma.build
+```
+
+The deploy creates a project named after your module in your workspace, and re-running the deploy reuses it: the CLI finds the hosted state it stored on the first run and converges the project to your module. If a project with that name exists but the CLI cannot identify or verify its stored state (one left behind by a different checkout, for example), the deploy stops with `HostedStateBootstrapError`; deploy under another name with `--name <unique-name>`, or rename the module in `module.ts`. The deploy also provisions its own Prisma Postgres database on the platform, declared in `module.ts`; the `DATABASE_URL` from your local steps is not involved, and the deployed database seeds on the app's first query. Verify the live endpoint returns the seeded users:
+
+```bash
+curl https://xyz.ewr.prisma.build/users
+```
+
+For previews per Git branch and deploy-on-push, see [Deploy your first app](/prisma-compute/deploy).
+
+## Common gotchas
+
+:::warning
+
+In a long-running server, don't call `db.runtime().close()` in route handlers; the client's connection pool is shared across requests. Close it only on process shutdown.
 
 :::
 
-Once installed, initialize Prisma in your project:
+## Prompt your coding agent
 
-```npm
-npx prisma init --output ../src/generated/prisma
-```
+Run [`bunx prisma@latest init`](/cli/init) once to install the [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
 
-:::info
-
-`prisma init` creates the Prisma scaffolding and a local `DATABASE_URL`. In the next step, you will create a Prisma Postgres database and replace that value with a direct `postgres://...` connection string.
-
-:::
-
-This will create:
-
-- A `prisma/` directory with a `schema.prisma` file
-- A `prisma.config.ts` file for configuring Prisma
-- A `.env` file with a local `DATABASE_URL` already set
-
-Create a Prisma Postgres database and replace the generated `DATABASE_URL` in your `.env` file with the `postgres://...` connection string from the CLI output:
-
-```npm
-npx create-db
-```
-
-### 2.2. Define your Prisma Schema
-
-In the `prisma/schema.prisma` file, mirror the example app structure with Prismabox TypeBox generators and a `Todo` model:
-
-```prisma title="prisma/schema.prisma"
-generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
-}
-
-generator prismabox {
-  provider                    = "prismabox"
-  typeboxImportDependencyName = "elysia"
-  typeboxImportVariableName   = "t"
-  inputModel                  = true
-  output                      = "../src/generated/prismabox"
-}
-
-datasource db {
-  provider = "postgresql"
-}
-
-model Todo { // [!code ++]
-  id        Int      @id @default(autoincrement()) // [!code ++]
-  title     String // [!code ++]
-  completed Boolean  @default(false) // [!code ++]
-  createdAt DateTime @default(now()) // [!code ++]
-  updatedAt DateTime @updatedAt // [!code ++]
-} // [!code ++]
-```
-
-This matches the Prisma Elysia example: it generates Prisma Client to `src/generated/prisma` and Prismabox TypeBox schemas to `src/generated/prismabox`.
-
-#### What is Prismabox?
-
-- A Prisma generator that reads your Prisma schema and emits Elysia-friendly TypeBox models.
-- Generates files like `src/generated/prismabox/Todo.ts` (and one per model) with `TodoPlain`, `TodoPlainInputCreate`, etc.
-- Use those generated models in routes to validate requests/responses and keep Elysia types in sync with your Prisma schema (also useful for OpenAPI/Eden).
-
-### 2.3. Run migrations and generate Prisma Client
-
-Run the following commands to create the database tables and generate the Prisma Client:
-
-```npm
-npx prisma migrate dev --name init
-npx prisma generate
-```
-
-### 2.4. Seed the database
-
-Add some seed data to populate the database with sample todos (mirrors the example repo).
-
-Create a new file called `seed.ts` in the `prisma/` directory:
-
-```typescript title="prisma/seed.ts"
-import { PrismaClient } from "../src/generated/prisma/client.js";
-import { PrismaPg } from "@prisma/adapter-pg";
-
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL is not set");
-}
-
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
-const prisma = new PrismaClient({ adapter });
-
-const todoData = [
-  { title: "Learn Elysia" },
-  { title: "Learn Prisma" },
-  { title: "Build something awesome", completed: true },
-];
-
-async function main() {
-  console.log("Start seeding...");
-  for (const todo of todoData) {
-    const created = await prisma.todo.create({
-      data: todo,
-    });
-    console.log(`Created todo with id: ${created.id}`);
-  }
-  console.log("Seeding finished.");
-}
-
-main()
-  .then(async () => {
-    await prisma.$disconnect();
-  })
-  .catch(async (e) => {
-    console.error(e);
-    await prisma.$disconnect();
-    process.exit(1);
-  });
-```
-
-Run the seed script:
-
-```npm
-npx prisma db seed
-```
-
-And open Prisma Studio to inspect your data:
-
-```npm
-npx prisma studio
-```
-
-## 3. Integrate Prisma into Elysia
-
-### 3.1. Create a Prisma Client instance
-
-Inside the `src/` directory, create a `lib` directory with a `prisma.ts` file. This file will create and export your Prisma Client instance and add the following code:
-
-```typescript title="src/lib/prisma.ts"
-import { PrismaClient } from "../generated/prisma/client.js";
-import { PrismaPg } from "@prisma/adapter-pg";
-
-const databaseUrl = process.env.DATABASE_URL;
-
-if (!databaseUrl) {
-  throw new Error("DATABASE_URL is not set");
-}
-
-const adapter = new PrismaPg({ connectionString: databaseUrl });
-export const prisma = new PrismaClient({ adapter });
-```
-
-### 3.2. Create API routes
-
-Update your `src/index.ts` file to match the Prisma Elysia example, including Prismabox-generated validation types:
-
-```typescript title="src/index.ts"
-import { Elysia, t } from "elysia";
-import { prisma } from "./lib/prisma";
-import { TodoPlain, TodoPlainInputCreate, TodoPlainInputUpdate } from "./generated/prismabox/Todo";
-
-const app = new Elysia()
-  // Health check
-  .get("/", () => {
-    return { message: "Hello Elysia with Prisma!" };
-  })
-
-  // Get all todos
-  .get(
-    "/todos",
-    async () => {
-      const todos = await prisma.todo.findMany({
-        orderBy: { createdAt: "desc" },
-      });
-      return todos;
-    },
-    {
-      response: t.Array(TodoPlain),
-    },
-  )
-
-  // Get a single todo by ID
-  .get(
-    "/todos/:id",
-    async ({ params, set }) => {
-      const id = Number(params.id);
-      const todo = await prisma.todo.findUnique({
-        where: { id },
-      });
-
-      if (!todo) {
-        set.status = 404;
-        return { error: "Todo not found" };
-      }
-
-      return todo;
-    },
-    {
-      params: t.Object({
-        id: t.Numeric(),
-      }),
-      response: {
-        200: TodoPlain,
-        404: t.Object({
-          error: t.String(),
-        }),
-      },
-    },
-  )
-
-  // Create a new todo
-  .post(
-    "/todos",
-    async ({ body }) => {
-      const todo = await prisma.todo.create({
-        data: {
-          title: body.title,
-        },
-      });
-      return todo;
-    },
-    {
-      body: TodoPlainInputCreate,
-      response: TodoPlain,
-    },
-  )
-
-  // Update a todo
-  .put(
-    "/todos/:id",
-    async ({ params, body, set }) => {
-      const id = Number(params.id);
-
-      try {
-        const todo = await prisma.todo.update({
-          where: { id },
-          data: {
-            title: body.title,
-            completed: body.completed,
-          },
-        });
-        return todo;
-      } catch {
-        set.status = 404;
-        return { error: "Todo not found" };
-      }
-    },
-    {
-      params: t.Object({
-        id: t.Numeric(),
-      }),
-      body: TodoPlainInputUpdate,
-      response: {
-        200: TodoPlain,
-        404: t.Object({
-          error: t.String(),
-        }),
-      },
-    },
-  )
-
-  // Toggle todo completion
-  .patch(
-    "/todos/:id/toggle",
-    async ({ params, set }) => {
-      const id = Number(params.id);
-
-      try {
-        const todo = await prisma.todo.findUnique({
-          where: { id },
-        });
-
-        if (!todo) {
-          set.status = 404;
-          return { error: "Todo not found" };
-        }
-
-        const updated = await prisma.todo.update({
-          where: { id },
-          data: { completed: !todo.completed },
-        });
-
-        return updated;
-      } catch {
-        set.status = 404;
-        return { error: "Todo not found" };
-      }
-    },
-    {
-      params: t.Object({
-        id: t.Numeric(),
-      }),
-      response: {
-        200: TodoPlain,
-        404: t.Object({
-          error: t.String(),
-        }),
-      },
-    },
-  )
-
-  // Delete a todo
-  .delete(
-    "/todos/:id",
-    async ({ params, set }) => {
-      const id = Number(params.id);
-
-      try {
-        const todo = await prisma.todo.delete({
-          where: { id },
-        });
-        return todo;
-      } catch {
-        set.status = 404;
-        return { error: "Todo not found" };
-      }
-    },
-    {
-      params: t.Object({
-        id: t.Numeric(),
-      }),
-      response: {
-        200: TodoPlain,
-        404: t.Object({
-          error: t.String(),
-        }),
-      },
-    },
-  )
-
-  .listen(3000);
-
-console.log(`🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`);
-```
-
-This creates the same endpoints as the official example:
-
-- `GET /` - Health check
-- `GET /todos` - Fetch all todos (newest first)
-- `GET /todos/:id` - Fetch a single todo
-- `POST /todos` - Create a todo
-- `PUT /todos/:id` - Update a todo
-- `PATCH /todos/:id/toggle` - Toggle completion
-- `DELETE /todos/:id` - Delete a todo
-
-Prismabox generates the `TodoPlain`/`TodoPlainInput*` TypeBox schemas so responses and request bodies are validated and typed.
-
-### 3.3. Run the application
-
-Start your Elysia server:
-
-```npm
-npm run dev
-```
-
-You should see `🦊 Elysia is running at localhost:3000` in the console.
-
-### 3.4. Test the API
-
-Test the endpoints using `curl`:
-
-```bash
-# Health check
-curl http://localhost:3000/ | jq
-
-# Get all todos
-curl http://localhost:3000/todos | jq
-
-# Get a single todo
-curl http://localhost:3000/todos/1 | jq
-
-# Create a new todo
-curl -X POST http://localhost:3000/todos \
-  -H "Content-Type: application/json" \
-  -d '{"title": "Ship the Prisma + Elysia guide"}' | jq
-
-# Toggle completion
-curl -X PATCH http://localhost:3000/todos/1/toggle | jq
-
-# Update a todo
-curl -X PUT http://localhost:3000/todos/1 \
-  -H "Content-Type: application/json" \
-  -d '{"title": "Updated title", "completed": true}' | jq
-
-# Delete a todo
-curl -X DELETE http://localhost:3000/todos/1 | jq
-```
-
-You're done! You've created an Elysia app with Prisma that's connected to a Prisma Postgres database.
+- "Using the prisma-8 skill, add GET /users/:id that returns one user or a 404."
+- "Add a POST /users route that creates a user from the request body."
 
 ## Next steps
 
-Now that you have a working Elysia app connected to a Prisma Postgres database, you can:
-
-- Extend your Prisma schema with more models and relationships
-- Add update and delete endpoints
-- Explore authentication with [Elysia plugins](https://elysiajs.com/plugins/overview.html)
-- Use [Eden](https://elysiajs.com/eden/overview.html) for end-to-end type-safe API calls
-
-### More info
-
-- [Prisma Documentation](/orm)
-- [Elysia Documentation](https://elysiajs.com/)
-- [Elysia with Prisma Guide](https://elysiajs.com/integrations/prisma.html)
+- [Learn the fundamentals](/orm/fundamentals/reading-data): filtering, sorting, pagination, and writes.
+- [Read the Prisma 8 overview](/orm) for the concepts behind contracts and typed queries.
+- [Use the Hono guide](/guides/frameworks/hono) for the tested POST route pattern.

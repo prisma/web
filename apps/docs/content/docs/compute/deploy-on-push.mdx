@@ -1,0 +1,142 @@
+---
+title: Deploy on push
+description: Graduate a Composer app from manual deploys to a Git workflow, with production deploys on push and an isolated preview environment per branch.
+url: /compute/deploy-on-push
+metaTitle: Deploy on push | Prisma Compute
+metaDescription: Connect a GitHub repository and deploy a Prisma Composer app from GitHub Actions with prisma/cloud-deploy-action - production on the default branch, isolated preview stages per branch, automatic teardown.
+---
+
+You have a [Composer](/composer) app that you deploy by running `deploy module.ts` in a terminal. In this guide you connect its GitHub repository and add a deploy workflow, so pushing replaces that manual step: a push to the default branch updates production, every other branch gets an isolated preview environment, and deleting a branch cleans its preview up.
+
+## How it works
+
+Push-to-deploy has two parts, and you set up both:
+
+1. **The repository connection.** [`git connect`](/cli/git) installs the Prisma GitHub App and registers the repository with your project. This lets workflow runs authenticate: a job exchanges its GitHub OIDC token for a Prisma workspace token that expires after 30 minutes, so the workflow needs no repository secrets. The connection also subscribes the project to branch events, which is what tears a preview down when its Git branch is deleted.
+2. **The deploy workflow.** [prisma/cloud-deploy-action](https://github.com/prisma/cloud-deploy-action) runs in your repository's GitHub Actions. On each push it installs dependencies, runs your build, and runs the [`deploy` command](/cli/deploy) against production or a stage named after the branch.
+
+Connecting a repository does not deploy it; deploys come from the workflow. Without the connection, the workflow has no credential: the action prints a notice, sets its `outcome` output to `skipped-no-credential`, and exits successfully, so the run stays green.
+
+You can connect in the [Console](https://pris.ly/pdp) or from the CLI. The Console opens a pull request that adds the workflow file at the same time. The CLI registers the connection only, and you add the workflow file yourself. This guide uses the CLI.
+
+## Prerequisites
+
+- A Composer app that builds and deploys from your machine. The [full-stack tutorial](/full-stack-tutorial) ends with one.
+- Admin access to the GitHub repository, so you can install the Prisma GitHub App on it.
+
+## 1. Push the project to GitHub
+
+If the app is not on GitHub yet, create a repository from the project directory and push it. With the [GitHub CLI](https://cli.github.com/):
+
+```bash
+gh repo create my-app --private --source . --push
+```
+
+## 2. Link the directory to the project
+
+The `git` commands operate on the project this directory is linked to. If you have deployed from this directory before, it is already linked and you can skip this step. Otherwise, link it to the project your deploys created:
+
+```npm
+npx prisma@latest project link my-app
+```
+
+Run the command in the project root, next to `module.ts`. Linking records the current directory, and it accepts a parent directory without a warning. If later commands fail with `PROJECT.SETUP_REQUIRED`, re-run `project link` from the project root. See the [`project` command reference](/cli/project) for how the link is stored and resolved.
+
+## 3. Connect the repository
+
+Connect the project to the repository from step 1:
+
+```npm
+npx prisma@latest git connect https://github.com/you/my-app
+```
+
+The command opens your browser to install the Prisma GitHub App if it is not installed yet, then registers the connection. It needs an interactive terminal. With `--no-interactive` it fails with `CLI.INTERACTION_REQUIRED`; if you cannot run it interactively, connect through the [Console](https://pris.ly/pdp) instead.
+
+## 4. Add the deploy workflow
+
+Commit a workflow that runs the deploy action on every push:
+
+```yaml title=".github/workflows/prisma-deploy.yml"
+name: prisma-deploy
+
+on:
+  push:
+
+concurrency:
+  group: prisma-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    if: github.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: oven-sh/setup-bun@v2
+      - uses: prisma/cloud-deploy-action@v1
+        with:
+          build-command: npm run build
+```
+
+A few settings to be aware of:
+
+- `id-token: write` lets the job request the OIDC token that the action exchanges for a workspace token. Without this permission the exchange cannot happen and the run skips.
+- `build-command` runs verbatim. The action does not detect your framework or build for you. If the app runs its source directly, set `build-command: none`.
+- The action requires Bun on the runner PATH, which `oven-sh/setup-bun@v2` provides.
+
+When the repository has a `prisma` devDependency, the action deploys with that installed version, so keep it current. The action's [README](https://github.com/prisma/cloud-deploy-action) documents the remaining inputs, including `module` for an entry file that is not `module.ts` and `working-directory` for monorepos.
+
+## 5. Push to deploy production
+
+Commit the workflow and push to your default branch. In the repository's **Actions** tab, the `prisma-deploy` run installs, builds, and deploys, and ends with the same deploy report you know from your terminal:
+
+```text no-copy
+my-app
+├─ db    postgres-database db_def456
+└─ api   compute-service cps_abc123
+         https://xyz.ewr.prisma.build
+```
+
+Every later push to the default branch updates production the same way, as if you had run `deploy module.ts` yourself.
+
+If the deploy step fails with `CLI.UNKNOWN_COMMAND`, the action release predates the unified CLI: releases up to v1.5.0 call the removed `prisma composer` commands. Use a release that runs the top-level `deploy` command; the action's [releases page](https://github.com/prisma/cloud-deploy-action/releases) lists what changed in each. If the run is green but its log shows `skipped-no-credential`, the repository is not connected; repeat step 3. Runs triggered from forks skip the same way, because GitHub does not issue OIDC tokens to them, so contributors' pushes keep a green CI without reaching your workspace.
+
+## 6. Preview a branch
+
+Push a branch to try the preview flow:
+
+```bash
+git switch -c feature/search
+git push -u origin feature/search
+```
+
+The action deploys the branch as a [stage](/composer/deploying#production-and-stages) named after it, which is a [preview branch](/compute/branching) of the same project. The preview has its own services, its own databases assigned to that branch, its own buckets, and its own URL. The only thing it shares with production is the code. Confirm it from your terminal:
+
+```npm
+npx prisma@latest service list --branch feature/search
+```
+
+Further pushes to the branch update the same preview. Its configuration comes from the branch's [environment variables](/compute/environment-variables), so a preview reads preview-scoped values rather than production ones.
+
+## 7. Delete the branch to clean up
+
+When the branch has served its purpose, delete it:
+
+```bash
+git push origin --delete feature/search
+```
+
+The platform tears down the matching preview: its services, databases, and buckets are removed. This automation comes from the connection you set up in step 3, so it runs whether or not a workflow fires for the deletion. Automated cleanup skips your production and default branches.
+
+## Next steps
+
+- [GitHub integration](/compute/github): what the repository connection is and does.
+- [Branching](/compute/branching): how preview branches relate to Git branches.
+- [Deploying](/composer/deploying): stages, deploy state, and per-stage secrets, which apply to CI deploys too.

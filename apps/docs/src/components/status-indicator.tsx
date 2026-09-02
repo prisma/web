@@ -20,11 +20,16 @@ interface IncidentsResponse {
   incidents: Incident[];
 }
 
+// Brand tokens, not raw Tailwind hues. The severity ramp walks the spectrum in
+// its own order — cyan (the success mirror) -> yellow -> orange -> red — so the
+// escalation reads monotonically, and identically, in both themes. Deliberately
+// not the light/dark-flipping semantic triads: a status dot must not get
+// *lighter* as the situation gets worse just because the theme changed.
 const dotColors: Record<StatusIndicator, string> = {
-  none: "bg-green-500",
-  minor: "bg-yellow-500",
-  major: "bg-orange-500",
-  critical: "bg-red-500",
+  none: "bg-prism-cyan-500",
+  minor: "bg-prism-yellow-300",
+  major: "bg-spectrum-orange",
+  critical: "bg-prism-red-500",
 };
 
 const SEVERITY: Record<StatusIndicator, number> = {

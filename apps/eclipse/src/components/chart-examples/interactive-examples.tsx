@@ -189,7 +189,7 @@ export function PieChartExample() {
     },
     firefox: {
       label: "Firefox",
-      color: "#f97316",
+      color: "#f37a03",
     },
     edge: {
       label: "Edge",

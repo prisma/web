@@ -1,189 +1,304 @@
 ---
 title: Import from PostgreSQL
-description: Learn how to import data from an existing PostgreSQL database into Prisma Postgres
+description: 'Move an existing PostgreSQL database to Prisma Postgres without changing your ORM version.'
 url: /prisma-postgres/import-from-existing-database-postgresql
-metaTitle: Import from existing Postgres database into Prisma Postgres
-metaDescription: Learn how to import data from an existing database into Prisma Postgres.
+metaTitle: Import an existing PostgreSQL database into Prisma Postgres
+metaDescription: 'Export an existing PostgreSQL database, restore it into Prisma Postgres, and reconnect your application.'
 ---
 
-This guide provides step-by-step instructions for importing data from an existing PostgreSQL database into Prisma Postgres.
+Move an existing PostgreSQL database to Prisma Postgres with `pg_dump` and `pg_restore`, then reconnect and verify your application.
 
-You can accomplish this migration in three steps:
+This guide works with Prisma 8, Prisma 7, earlier Prisma ORM versions, and standard PostgreSQL clients. Moving your database does not require changing your ORM version.
 
-1. Create a new Prisma Postgres database.
-1. Export your existing data via `pg_dump`.
-1. Import the previously exported data into Prisma Postgres via `pg_restore`.
+:::warning[This migration copies a snapshot]
 
-In the third step, you will be using a [direct connection](/postgres/database/connecting-to-your-database) to securely connect to your Prisma Postgres database to run `pg_restore`.
+The final dump contains the database state from when `pg_dump` runs. For a production cutover, stop or drain source writes before the final dump and keep them stopped until validation succeeds and traffic switches to Prisma Postgres.
+
+:::
 
 ## Prerequisites
 
-- The connection URL to your existing PostgreSQL database
-- A [Prisma Data Platform](https://console.prisma.io) account
-- Node.js 18+ installed
-- PostgreSQL CLI Tools (`pg_dump`, `pg_restore`) for creating and restoring backups
+You need:
 
-:::info[Make sure your PostgreSQL tools match the Prisma Postgres version]
+- a direct, non-pooled connection URL for the PostgreSQL database you are moving
+- a new, empty [Prisma Postgres database](https://console.prisma.io)
+- the [direct and pooled Prisma Postgres connection strings](/postgres/database/connecting-to-your-database)
+- enough local disk space for the compressed database dump
+- PostgreSQL 17 command-line tools: `pg_dump`, `pg_restore`, and `psql`
 
-Prisma Postgres runs PostgreSQL 17. Your `pg_dump` and `pg_restore` tools need to be version 17 to ensure compatibility. You can check your version by running `pg_dump --version` or `pg_restore --version`.
+Confirm that all three tools use PostgreSQL 17:
 
-:::
-
-## 1. Create a new Prisma Postgres database
-
-Follow these steps to create a new Prisma Postgres database:
-
-1. Log in to [Prisma Data Platform](https://console.prisma.io/) and open the Console.
-1. In a [workspace](/console/concepts#workspace) of your choice, click the **New project** button.
-1. Type a name for your project in the **Name** field, e.g. **hello-ppg**.
-1. In the **Prisma Postgres** section, click the **Get started** button.
-1. In the **Region** dropdown, select the region that's closest to your current location, e.g. **US East (N. Virginia)**.
-1. Click the **Create project** button.
-
-Once your database is provisioned, obtain your direct connection string:
-
-1. Navigate to your active Prisma Postgres instance.
-1. Click the **Connection Strings** tab in the project's sidenav.
-1. Click the **Create connection string** button.
-1. In the popup, provide a **Name** for the connection string and click **Create**.
-1. Copy the connection string starting with `postgres://`, this is your direct connection string.
-
-Save the connection string, as you'll need it in step 3.
-
-## 2. Export data from your existing database
-
-In this step, you're going to export the data from your existing database and store it in a `.bak` file on your local machine.
-
-Make sure to have the connection URL for your existing database ready, it should be [structured](/orm/reference/connection-urls) like this:
-
-```text
-postgresql://USER:PASSWORD@HOST:PORT/DATABASE
+```bash title="Terminal"
+pg_dump --version
+pg_restore --version
+psql --version
 ```
 
-Expand below for provider-specific instructions that help you determine the right connection string:
+Each command should report version `17.x`. PostgreSQL 17 `pg_dump` can read older PostgreSQL databases, but it cannot dump a server newer than version 17. Moving from PostgreSQL 18 or later into Prisma Postgres requires a separate downgrade-compatible migration process.
 
+## 1. Inspect the source database
 
-<Accordions>
+Set the direct source connection URL. Keep the single quotes so your shell does not interpret special characters in the URL:
 
-<Accordion title="Neon">
+```bash title="Terminal"
+export SOURCE_DATABASE_URL='postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require'
+```
 
-  - Make sure to select non-pooled connection string by switching off the **Connection pooling** toggle.
-  - The `sslmode` has to be set to `require` and appended to your Neon database URL for the command to work.
-  - The connection URL should look similar to this:
+Check the source version and database size before you create the dump:
 
-  ```text
-  postgresql://USER:PASSWORD@YOUR-NEON-HOST/DATABASE?sslmode=require
-  ```
-</Accordion>
-<Accordion title="Supabase">
+```bash title="Terminal"
+psql "$SOURCE_DATABASE_URL" \
+  -X \
+  --set ON_ERROR_STOP=1 \
+  --command="SELECT current_setting('server_version') AS server_version, pg_size_pretty(pg_database_size(current_database())) AS database_size;"
+```
 
-  - Use a database connection URL that uses [Supavisor session mode](https://supabase.com/docs/guides/database/connecting-to-postgres#supavisor-session-mode).
-  - The connection URL should look similar to this:
-  ```text
-  postgres://postgres.apbkobhfnmcqqzqeeqss:[YOUR-PASSWORD]@aws-0-ca-central-1.pooler.supabase.com:5432/postgres
-  ```
+The command should print the server version and database size. Stop if the server is newer than PostgreSQL 17 or if you do not have enough local disk space for the dump.
 
-</Accordion>
+List the application schemas and installed extensions:
 
-</Accordions>
+```bash title="Terminal"
+psql "$SOURCE_DATABASE_URL" \
+  -X \
+  --set ON_ERROR_STOP=1 \
+  --command="SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN ('information_schema') AND schema_name NOT LIKE 'pg_%' ORDER BY schema_name;" \
+  --command="SELECT extname FROM pg_extension ORDER BY extname;"
+```
 
-Next, run the following command to export the data of your PostgreSQL database (replace the `__DATABASE_URL__` placeholder with your actual database connection URL):
+Compare the result with the [extensions supported by Prisma Postgres](/postgres/database/postgres-extensions). Stop and decide how to replace or remove an unsupported extension before continuing.
 
-```bash
+`pg_dump` does not copy PostgreSQL roles. Inspect policies that name roles so you can adapt them for the target database:
+
+```bash title="Terminal"
+psql "$SOURCE_DATABASE_URL" \
+  -X \
+  --set ON_ERROR_STOP=1 \
+  --command="SELECT schemaname, tablename, policyname, roles FROM pg_policies ORDER BY schemaname, tablename, policyname;"
+```
+
+If a policy depends on a source-only role, record its policy name. You will omit that policy during restore and recreate it for your Prisma Postgres access model before switching the application.
+
+## 2. Create the Prisma Postgres destination
+
+Create a new Prisma Postgres database in [Prisma Console](https://console.prisma.io):
+
+1. Open your project and select the database.
+1. Click **Connect to your database**.
+1. Click **Generate new connection string**.
+1. Copy both the **direct** and **pooled** connection strings.
+
+Set the direct connection string for the import:
+
+```bash title="Terminal"
+export PRISMA_POSTGRES_DIRECT_URL='postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require'
+```
+
+Confirm that the target is reachable and empty:
+
+```bash title="Terminal"
+psql "$PRISMA_POSTGRES_DIRECT_URL" \
+  -X \
+  --set ON_ERROR_STOP=1 \
+  --command="SELECT current_database(), current_setting('server_version');" \
+  --command="SELECT schemaname, tablename FROM pg_tables WHERE schemaname NOT IN ('pg_catalog', 'information_schema') ORDER BY schemaname, tablename;"
+```
+
+The first query should report the Prisma Postgres database and PostgreSQL 17. The second query should not list any application tables. Create another Prisma Postgres database if this target already contains data you need to keep.
+
+## 3. Stop source writes and export the final snapshot
+
+You can rehearse this process while the source remains active, but do not use a rehearsal dump for the production cutover. Before the final dump, stop or drain every application, worker, scheduled job, integration, and administrative operation that can write to the source. Confirm that writes have stopped, and keep the source frozen until step 7 switches traffic to Prisma Postgres.
+
+If you cannot keep the source frozen for the dump, restore, and validation window, stop here. Use a separately tested migration process that durably captures and replays every post-snapshot write. This snapshot-only process does not provide a zero-downtime cutover.
+
+Create a private, compressed archive containing all non-system schemas in the selected database. See the [PostgreSQL 17 `pg_dump` reference](https://www.postgresql.org/docs/17/app-pgdump.html) for the other options:
+
+```bash title="Terminal"
+umask 077
+
 pg_dump \
-  -Fc \
-  -v \
-  -d __DATABASE_URL__ \
-  -n public \
-  -f db_dump.bak
+  --format=custom \
+  --verbose \
+  --no-owner \
+  --no-privileges \
+  --dbname="$SOURCE_DATABASE_URL" \
+  --file=postgres-to-prisma-postgres.dump
 ```
 
-Here's a quick overview of the CLI options that were used for this command:
+`pg_dump` should finish without an error and create `postgres-to-prisma-postgres.dump`. Treat this file as sensitive because it contains your application data.
 
-- `-Fc`: Uses the custom format for backups, recommended for `pg_restore`
-- `-v`: Runs `pg_dump` in verbose mode
-- `-d`: Specifies the database connection string
-- `-n`: Specifies the target PostgreSQL schema
-- `-f`: Specifies the output name for the backup file
+Create the restore manifest and confirm that PostgreSQL can read the archive:
 
-Running this command will create a backup file named `db_dump.bak` which you will use to restore the data into your Prisma Postgres database in the next step.
-
-## 3. Import data into Prisma Postgres
-
-In this section, you'll use your [direct connection string](/postgres/database/connecting-to-your-database) to connect to your Prisma Postgres instance and import data via `pg_restore`.
-
-Your direct connection string from step 1 should look like this:
-
-```text
-postgres://USER:PASSWORD@db.prisma.io:5432/?sslmode=require
+```bash title="Terminal"
+pg_restore --list postgres-to-prisma-postgres.dump > postgres-restore.list
+sed -n '1,20p' postgres-restore.list
 ```
 
-Use the backup file from **Step 2** to restore data into your Prisma Postgres database with `pg_restore` by running this command (replace `__USER__`, `__PASSWORD__` with the values from your direct connection string):
+You should see an archive header followed by database objects. If `pg_dump` reports a version mismatch, make sure the PostgreSQL 17 tools appear first in your `PATH`.
 
-```bash
+If the policy check found policies that reference source-only roles, list the policy entries:
+
+```bash title="Terminal"
+grep ' POLICY ' postgres-restore.list
+```
+
+In a text editor, prefix with `;` only the `POLICY` lines for the policy names you recorded. This omits the incompatible policies without omitting their tables or data. Recreate each omitted policy with target-compatible roles after the restore and before switching the application.
+
+## 4. Restore into Prisma Postgres
+
+Restore the archive through the direct Prisma Postgres connection:
+
+```bash title="Terminal"
 pg_restore \
-  -h db.prisma.io \
-  -p 5432 \
-  -U __USER__ \
-  -d postgres \
-  -v \
-  ./db_dump.bak \
-&& echo "-complete-"
+  --verbose \
+  --single-transaction \
+  --exit-on-error \
+  --no-owner \
+  --no-privileges \
+  --use-list=postgres-restore.list \
+  --dbname="$PRISMA_POSTGRES_DIRECT_URL" \
+  postgres-to-prisma-postgres.dump
 ```
 
-When prompted, enter the `__PASSWORD__` from your direct connection string.
+The command should finish with exit code `0`. The single transaction leaves the target unchanged if an error stops the restore. Do not ignore errors about missing extensions, roles, or incompatible database objects.
 
-You can also use the full connection string format:
+Refresh PostgreSQL's query-planner statistics after the restore:
 
-```bash
-pg_restore \
-  -d "postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require" \
-  -v \
-  ./db_dump.bak \
-&& echo "-complete-"
+```bash title="Terminal"
+psql "$PRISMA_POSTGRES_DIRECT_URL" \
+  -X \
+  --set ON_ERROR_STOP=1 \
+  --command="ANALYZE;"
 ```
 
-Once the command completes execution, you will have successfully imported the data from your existing PostgreSQL database into Prisma Postgres 🎉
+## 5. Verify the imported data
 
-To validate that the import worked, you can use [Prisma Studio](/guides/postgres/viewing-data#viewing-and-editing-data-in-prisma-studio). Either open it in the [Platform Console](https://console.prisma.io) by clicking the **Studio** tab in the left-hand sidenav in your project or run this command to launch Prisma Studio locally:
+Create a reusable query that returns an exact row count for every non-system table:
 
-```npm
-npx prisma studio
+```sql title="row-counts.sql"
+\pset tuples_only on
+\pset format unaligned
+
+SELECT format(
+  'SELECT %L || ''='' || count(*) FROM %I.%I;',
+  schemaname || '.' || tablename,
+  schemaname,
+  tablename
+)
+FROM pg_tables
+WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
+ORDER BY schemaname, tablename
+\gexec
 ```
 
-## 4. Update your application code to query Prisma Postgres
+With source writes still stopped, run the query against both databases and compare the results:
 
-### Scenario A: You are already using Prisma ORM
-
-If you're already using Prisma ORM, you need to update your database connection URL to point to your new Prisma Postgres instance.
-
-Update the `DATABASE_URL` in your `.env` file to match your Prisma Postgres direct connection string from step 1:
-
-```text title=".env"
-DATABASE_URL="postgres://USER:PASSWORD@db.prisma.io:5432/?sslmode=require"
+```bash title="Terminal"
+psql "$SOURCE_DATABASE_URL" -X --set ON_ERROR_STOP=1 --file=row-counts.sql > source-row-counts.txt
+psql "$PRISMA_POSTGRES_DIRECT_URL" -X --set ON_ERROR_STOP=1 --file=row-counts.sql > target-row-counts.txt
+diff -u source-row-counts.txt target-row-counts.txt
 ```
 
-Then, re-generate Prisma Client so that the updated environment variable takes effect:
+`diff` should print nothing and exit with code `0`. Also rerun the schema, extension, and policy queries from step 1 against `PRISMA_POSTGRES_DIRECT_URL`. Resolve every unexpected difference while source writes remain stopped. Do not send production traffic to Prisma Postgres yet.
 
-```npm
+## 6. Connect your application
+
+Choose the path that matches your application:
+
+- [I already use Prisma 8](#already-use-prisma-8)
+- [I use Prisma 7 or earlier](#use-prisma-7-or-earlier)
+- [I do not use Prisma ORM](#do-not-use-prisma-orm)
+
+Every path uses the two connection strings from step 2: the pooled URL for application queries and the direct URL for migrations and other CLI tools.
+
+### Already use Prisma 8
+
+Keep your existing contract, migrations, and application code. The dump copied the `prisma_contract` schema, so the imported database still carries the marker that ties it to your contract.
+
+Set the pooled URL for runtime queries and the direct URL for Prisma CLI commands:
+
+```bash title=".env"
+DATABASE_URL="postgres://USER:PASSWORD@pooled.db.prisma.io:5432/postgres?sslmode=require"
+DIRECT_URL="postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require"
+```
+
+If your `prisma.config.ts` sets `db.connection`, point it at `DIRECT_URL`.
+
+Confirm that the imported database still matches your contract:
+
+```npm title="Terminal"
+npx prisma@latest db verify --db "$DIRECT_URL"
+```
+
+The command exits with code `0` when the marker and schema match the contract. Exit code `4` means the database does not match. Check that the restore included the `prisma_contract` schema before you change anything else. Do not run `orm init` or `contract infer` against the new database; your existing contract already describes it.
+
+### Use Prisma 7 or earlier
+
+Set the pooled URL for runtime queries and the direct URL for Prisma CLI commands:
+
+```bash title=".env"
+DATABASE_URL="postgres://USER:PASSWORD@pooled.db.prisma.io:5432/postgres?sslmode=require"
+DIRECT_URL="postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require"
+```
+
+Prisma 7 reads the CLI connection from `datasource.url` in `prisma.config.ts`. Point it at `DIRECT_URL` as shown in the [Prisma 7 PostgreSQL setup](/orm/v7/core-concepts/supported-databases/postgresql). Prisma 6 and earlier read `url` and `directUrl` from the `datasource` block in `schema.prisma`.
+
+If your application did not use Prisma Accelerate, run `npx prisma generate` and continue to step 7.
+
+#### Remove Prisma Accelerate
+
+If your application connected through Accelerate, remove it now. Prisma Postgres connection pooling replaces the Accelerate connection pool. It does not replace Accelerate query caching, so remove the cache calls as well.
+
+Uninstall the extension:
+
+```npm title="Terminal"
+npm uninstall @prisma/extension-accelerate
+```
+
+In your Prisma Client setup, remove the `@prisma/extension-accelerate` import, `withAccelerate()`, and `accelerateUrl`. Remove `cacheStrategy` options from queries, and remove calls to `withAccelerateInfo`, `$accelerate.invalidate`, and `$accelerate.invalidateAll`.
+
+Undo any build settings you added for Accelerate: imports from `@prisma/client/edge`, `engineType = "client"` in the generator block, and the `--no-engine`, `--accelerate`, or `--data-proxy` flags on `prisma generate`. For Prisma 7, connect through the PostgreSQL driver adapter. For Prisma 6 or earlier, use Prisma Client with its bundled query engine or a driver adapter your version supports.
+
+Accelerate reached edge runtimes over HTTP. Prisma Postgres connections use PostgreSQL over TCP. If your application runs in a runtime that cannot open TCP connections, move database access to a Node.js or Bun runtime before switching. The [Prisma Postgres serverless driver](/postgres/database/serverless-driver) works in constrained runtimes but is in Early Access and not recommended for production.
+
+Regenerate Prisma Client:
+
+```npm title="Terminal"
 npx prisma generate
 ```
 
-Once this is done, you can run your application and it should work as before.
+Search your project for `@prisma/extension-accelerate` and `prisma://`. Neither should appear.
 
-:::tip
+### Do not use Prisma ORM
 
-For a complete guide on setting up Prisma ORM with Prisma Postgres from scratch, including driver adapter configuration and best practices, see the [Prisma ORM with Prisma Postgres quickstart](/prisma-orm/quickstart/prisma-postgres).
+Keep your existing PostgreSQL client library. Point its runtime connection at the pooled URL, and use the direct URL for migrations, `pg_dump`, `pg_restore`, and other administrative tools:
 
-:::
+```bash title=".env"
+DATABASE_URL="postgres://USER:PASSWORD@pooled.db.prisma.io:5432/postgres?sslmode=require"
+DIRECT_URL="postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require"
+```
 
-### Scenario B: You are not yet using Prisma ORM
+## 7. Verify and switch the application
 
-If you are not yet using Prisma ORM, you'll need to go through the following steps to use Prisma Postgres from your application:
+Start the application with the new environment variables while production traffic remains paused, then run its existing test suite. At minimum, verify one read and one rolled-back or disposable write through the pooled connection.
 
-1. Install the Prisma CLI and other required dependencies in your project
-1. Introspect the database to generate a Prisma schema
-1. Generate Prisma Client
-1. Update the queries in your application to use Prisma ORM
+Only after the database comparison and application checks succeed, route production traffic to Prisma Postgres and resume writes there. Do not re-enable writes on the source. Keep the source database available in a read-only state until the application is healthy on Prisma Postgres and the rollback window has ended.
 
-You can find the detailed step-by-step instructions for this process in this guide: [Add Prisma ORM to an existing project](/prisma-orm/add-to-existing-project/prisma-postgres).
+## 8. Delete the local dump files
+
+After you have verified the application and retained any audit evidence you need, delete the local dump and row-count files:
+
+```bash title="Terminal"
+rm postgres-to-prisma-postgres.dump postgres-restore.list row-counts.sql source-row-counts.txt target-row-counts.txt
+```
+
+## Recommended next step: adopt Prisma 8
+
+Your database migration is complete. Prisma 8 is the current Prisma ORM release, but upgrading is a separate application change. Follow the [incremental Prisma 7 to Prisma 8 guide](/guides/upgrade-prisma-orm/postgresql) after the application is stable on Prisma Postgres.
+
+If you want to complete both changes on the same day, deploy and verify the Prisma Postgres connection first. Upgrade Prisma ORM in a separate commit or deployment so failures have one clear cause.
+
+## Provider-specific guides
+
+- [Migrate from Supabase to Prisma Postgres](/guides/switch-to-prisma-postgres/from-supabase)
+- [Migrate from Neon to Prisma Postgres](/guides/switch-to-prisma-postgres/from-neon)
