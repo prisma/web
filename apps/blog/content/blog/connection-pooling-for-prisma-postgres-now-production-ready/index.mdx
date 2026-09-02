@@ -1,0 +1,82 @@
+---
+title: "Connection pooling for Prisma Postgres now production ready"
+slug: "connection-pooling-for-prisma-postgres-now-production-ready"
+date: "2026-03-19"
+authors:
+  - "Ankur Datta"
+metaTitle: "Connection pooling for Prisma Postgres now production ready"
+metaDescription: "Connection pooling for Prisma Postgres is now production ready, giving you built-in protection against connection spikes in high concurrency environments."
+metaImagePath: "/connection-pooling-for-prisma-postgres-now-production-ready/imgs/meta-36ec093fafcc691a0e198091a55dcfaaea23facd-844x474.png"
+heroImagePath: "/connection-pooling-for-prisma-postgres-now-production-ready/imgs/hero-36ec093fafcc691a0e198091a55dcfaaea23facd-844x474.png"
+tags:
+  - "announcement"
+---
+
+Connection pooling for Prisma Postgres is now production ready, giving you built-in protection against connection spikes in high concurrency environments. Your database stays stable as your application scales, without requiring you to manage pooling infrastructure yourself.
+
+If you evaluated Prisma Postgres and concluded it wasn't ready for serious production traffic, the gap you identified is now closed.
+
+## Connection management shouldn't be your problem
+
+Most Postgres problems in production aren't Postgres problems. They're connection management problems. Too many instances opening too many connections (especially when using serverless or edge functions), a database hitting its limit under a traffic spike, requests timing out not because the database is struggling but because it ran out of connection slots.
+
+![](/connection-pooling-for-prisma-postgres-now-production-ready/imgs/9e8e3becfee1a26c6cf2bee22d97d2f495e9684f-2888x2464.webp)
+
+The standard fix is deploying and configuring a connection pooler yourself. Understand pool modes. Size the pool against your connection limit. Monitor it as a separate component that can fail independently.
+
+That's the right solution to a problem _you shouldn't have to solve_.
+
+With Prisma Postgres, connection pooling is part of the platform. Use the pooled connection string for application traffic, the direct connection string for migrations. That's it. The configuration decisions have been made correctly, by default, and you don't touch them.
+
+![](/connection-pooling-for-prisma-postgres-now-production-ready/imgs/44ba60d5b943aa33c196f630f245f52ca3cd074f-2888x2188.webp)
+
+## How connection pooling works
+
+Under the hood, Prisma Postgres uses PgBouncer in transactional mode.
+
+Connection slots are isolated per tenant, so your pool capacity is not shared with other tenants on the platform. When a transaction finishes, its connection immediately returns to the pool, which is exactly the behavior you want for serverless functions and other request-driven workloads that do not keep state across requests.
+
+When demand increases, requests queue until connections become available. Pool sizing is handled by the platform, so you do not need to tune it yourself.
+
+There are two practical details worth knowing:
+
+- Named prepared statements do not persist across transactions in transactional mode. Prisma ORM already handles this correctly. If you are using a raw Postgres client that depends on named prepared statements, test that path explicitly.
+- Pooled connections have a 10-minute query timeout. Long-running work such as bulk exports, heavy analytics queries, or long migrations should use the direct connection string instead.
+
+So the mental model is simple: use pooled connections for normal application traffic, and direct connections for operations that are long-running or session-sensitive.
+
+## How to use it
+
+To use a pooled connection, use the `pooled.db.prisma.io` hostname in your connection string:
+
+```bash
+# Application traffic
+DATABASE_URL="postgres://USER:PASSWORD@pooled.db.prisma.io:5432/?sslmode=require"
+
+# Migrations, long-running queries, and Prisma Studio
+DATABASE_URL_DIRECT="postgres://USER:PASSWORD@db.prisma.io:5432/?sslmode=require"
+```
+
+The credentials stay the same and only the hostname changes.
+
+Use the pooled connection string for the code that serves requests.
+
+Use the direct connection string for migrations, Prisma Studio, and anything else that may run for a long time.
+
+This works with Prisma ORM, `node-postgres`, and standard Postgres clients.
+
+## Try it
+
+Already running Prisma Postgres? Switch your application connection string to `pooled.db.prisma.io`. Same username and password, just a different hostname. That's the entire change.
+
+Starting fresh by:
+
+<Button
+  variant="ppg"
+  href="https://pris.ly/pdp-conn-pooling-ga"
+  className="no-underline hover:no-underline w-auto md:w-1/2 whitespace-nowrap mx-auto"
+>
+  Creating a database in the Console
+</Button>
+
+or run `npx prisma init --db`.
