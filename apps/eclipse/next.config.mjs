@@ -134,7 +134,8 @@ const ContentSecurityPolicy = `
     https://*.hcaptcha.com
     https://*.fontawesome.com
     https://*.analytics.google.com
-    https://stats.g.doubleclick.net;
+    https://stats.g.doubleclick.net
+    https://*.google-analytics.com;
 
   media-src 'self'
     https://*.prisma.io
