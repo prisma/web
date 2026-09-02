@@ -1,0 +1,189 @@
+---
+title: "Supabase vs Prisma Postgres: Choosing the right Postgres for your app"
+slug: "supabase-vs-prisma-postgres"
+date: "2026-04-20"
+authors:
+  - "Arthur Gamby"
+metaTitle: "Supabase vs Prisma Postgres: A fair, technical comparison"
+metaDescription: "Supabase and Prisma Postgres, head to head. Pricing, architecture, migrations, Query Insights, ORM, and AI tooling, with guidance on where each fits."
+metaImagePath: "/og/og-supabase-vs-prisma.png"
+heroImagePath: "/og/og-supabase-vs-prisma.png"
+heroImageAlt: "A split graphic with Supabase on the left and Prisma Postgres on the right, representing a head-to-head comparison of two Postgres platforms."
+tags:
+  - "prisma-postgres"
+  - "data-platform"
+---
+
+Picking a database for your next app? Here's how [Supabase](https://supabase.com) and [Prisma Postgres](https://www.prisma.io/postgres) compare, and where each one fits best.
+
+Quick note before we start: Supabase is also an Auth, Storage, Realtime, and Edge Functions platform. This post focuses on the **database layer**, where the overlap with Prisma Postgres is clearest.
+
+## The snapshot
+
+| | Supabase | Prisma Postgres |
+|---|---|---|
+| **Cold starts** | Free projects pause after inactivity; paid projects do not | **Zero cold starts. Always-on, even on free.** |
+| **Pricing model** | Plan tier + compute add-ons + storage + egress | **Operations + storage. No compute, no egress.** |
+| **Free tier** | 2 active projects, 500 MB DB, 5 GB egress, auto-pause | **5 databases, 100k operations, always-on.** |
+| **Query diagnostics** | Query performance views, slow query logs, `pg_stat_statements` | **Query Insights, built in, with AI fix suggestions.** |
+| **AI / MCP** | MCP server, pgvector, AI SDK integrations | **Native MCP, `npx prisma init --db`, `npm create db`.** |
+| **Core offering** | Full BaaS (DB, Auth, Storage, Realtime, Edge Functions) | Focused Postgres with ORM, Studio, Query Insights |
+| **Postgres version** | Postgres 17 on new projects, 15 on older ones ([upgrade guide](https://supabase.com/docs/guides/platform/upgrading)) | Postgres 17 |
+| **Architecture** | Dedicated Postgres instance per project | Unikernels on bare metal, thousands of DBs per host |
+| **ORM integration** | Works with any ORM; no first-party ORM | First-party Prisma ORM |
+| **Direct Postgres protocol** | Yes, via pooler and direct connection | Yes, GA. `psql`, TablePlus, Hyperdrive, Kysely |
+
+## Architecture under the hood
+
+Supabase provisions a dedicated Postgres instance per project. You pick a compute size. Familiar, predictable.
+
+Prisma Postgres runs each database inside a [unikernel](https://www.prisma.io/blog/announcing-prisma-postgres-early-access) on Firecracker microVMs, on bare metal. The unikernel image is tiny (~61 MB vs. ~280 MB for stock Postgres), so thousands of databases share a host without fighting over resources.
+
+**That's how Prisma Postgres delivers zero cold starts and an always-on free tier without charging for it.**
+
+Full tour in [Cloudflare, Unikernels, and Bare Metal](/cloudflare-unikernels-and-bare-metal-life-of-a-prisma-postgres-query).
+
+## Pricing: different meters
+
+Supabase and Prisma Postgres price on different axes. Your workload shape decides which model is friendlier.
+
+| Tier | Supabase (approx.) | Prisma Postgres |
+|---|---|---|
+| **Free** | $0. 2 active projects, 500 MB DB, 5 GB egress, auto-pause. | $0. 5 DBs, 500 MB, 100k operations/mo, always-on. |
+| **Entry paid** | Pro from $25/mo. 8 GB DB, 250 GB egress, and $10 compute credits covering one Micro instance. | Starter $10/mo. 1M operations, 10 GB, 10 DBs. |
+| **Scaling path** | Add per-project compute and usage. Team starts at $599/mo for org controls, compliance, and support features. | Pro $49/mo. 10M operations, 50 GB, 100 DBs. |
+| **Overage** | Per GB storage, per GB egress, per compute-hour, and feature add-ons. | $0.008 / 1k ops (Starter), $0.002 / 1k ops (Pro), storage from $2/GB on Starter and $1.50/GB on Pro. |
+| **Cost control** | Spend caps available. | Spend limits on every plan, including free. |
+
+Two patterns:
+
+1. **Supabase is easy to reason about for steady workloads.** If you know the compute size you need and want the broader backend platform around it, the model is familiar. For idle or highly bursty database-only workloads, reserved per-project compute can be less cost-efficient.
+2. **Prisma Postgres is friendlier to bursty and idle database workloads.** Operations-based pricing means an idle database does not keep accumulating compute charges. Preview branches, demos, and side projects can stay free while they are below the included limits.
+
+:::ppg
+**A concrete example.** A small startup launching an MVP with ~200 active users and a demo that idles overnight and on weekends.
+
+- On **Supabase**, the free plan may be enough if pausing after inactivity is acceptable. If the project needs to stay online, Pro starts at **$25/mo** and includes compute credits for one Micro instance.
+- On **Prisma Postgres**, the same app can stay on the always-on free tier as long as it remains under the included operations and storage limits.
+
+When it does scale, $10/mo Starter covers 1M operations and 10 GB of storage before usage-based overages apply.
+:::
+
+Numbers change. Check the live [Supabase pricing](https://supabase.com/pricing) and [Prisma pricing](https://www.prisma.io/pricing) before deciding.
+
+## Developer experience: ORM, schema, and queries
+
+Supabase does not try to be an ORM. You get `supabase-js` and auto-generated REST/GraphQL via PostgREST, plus raw SQL. That works well for SQL-first and API-first teams.
+
+**Prisma Postgres is built around [Prisma ORM](https://www.prisma.io/orm).** One declarative schema. Generated, type-safe client. Migrations in the same workflow. The whole package in one install.
+
+Here's the same query ("get a user with their five most recent posts") in both clients.
+
+```ts title="prisma-client.ts"
+const user = await prisma.user.findUnique({
+  where: { id: userId },
+  include: {
+    posts: {
+      take: 5,
+      orderBy: { createdAt: "desc" },
+    },
+  },
+});
+```
+
+```ts title="supabase-js.ts"
+const { data: user } = await supabase
+  .from("users")
+  .select("*, posts(*)")
+  .eq("id", userId)
+  .order("created_at", { foreignTable: "posts", ascending: false })
+  .limit(5, { foreignTable: "posts" })
+  .single();
+```
+
+Rename a column in `schema.prisma` and the generated types update everywhere. Your editor lights up the five places you forgot. Your CI refuses to build until they're fixed.
+
+That's the difference, and it compounds as the codebase grows.
+
+## Migrations: the quiet differentiator
+
+Supabase migrations are SQL files, run through the `supabase db` CLI, with git-tied branching and Vercel Previews. Straightforward for SQL-first teams.
+
+Prisma Migrate is schema-first. Change `schema.prisma`, run `prisma migrate dev`, and a migration file is generated. In CI, `prisma migrate deploy` applies pending ones. It feels obvious once you have it.
+
+The [new migration engine](/rethinking-database-migrations) goes further:
+
+- Graph-based, with verifiable `from` / `to` schema hashes
+- Idempotent operations
+- Automatic conflict resolution across branches
+
+It's designed to stay safe when AI agents generate your migrations, which is happening more and more.
+
+## Query Insights and observability
+
+This is a meaningful product difference.
+
+Supabase gives you a query performance view built on `pg_stat_statements`, plus a slow query log. That is familiar and useful for Postgres-oriented teams, but it asks you to do more interpretation yourself.
+
+Prisma Postgres ships [Query Insights](https://www.prisma.io/blog/announcing-query-insights-for-prisma-postgres) directly in the console:
+
+- Latency percentiles and frequency per query
+- N+1 patterns surfaced automatically
+- Missing indexes, over-fetching, and offset pagination bloat flagged
+- AI-generated fix with a copyable prompt for your editor
+
+No extension, no setup, included on every plan.
+
+![Query Insights dashboard showing grouped queries and latency metrics](/supabase-vs-prisma-postgres/imgs/query-insights-dashboard.gif)
+
+If your team wants performance guidance surfaced in the product rather than manually interpreting `EXPLAIN ANALYZE` plans, this is a real advantage.
+
+## Connection pooling and the edge
+
+Supabase uses Supavisor for transaction and session pooling, and exposes direct database connections plus PostgREST as an HTTP layer. Edge Functions run at points of presence globally.
+
+Prisma Postgres bakes pooling in, no separate config step. For edge runtimes like Cloudflare Workers, Vercel Edge, and Deno, the `@prisma/ppg` driver speaks HTTP and WebSockets, so you skip the TCP connection limits that trip up serverless.
+
+Both work at the edge. Prisma Postgres keeps the Prisma path to edge runtimes more integrated.
+
+## Studio and data browsing
+
+Supabase's Studio is broad: Table Editor (spreadsheet UI), Monaco SQL editor with autocomplete, a visual Row Level Security policy builder, plus integrated UIs for Auth, Storage, and Logs.
+
+Prisma Studio focuses on the data itself, and ships two ways: online in the Prisma Console, and locally via `prisma studio`. Full CRUD, advanced filters, relationship-aware navigation, and multi-tab workflows.
+
+The fun part for Prisma Postgres users: Studio is **embeddable into your own app**, so you can expose a polished data editor to your team or customers without building one.
+
+See [Studio for Prisma Postgres: view and edit your data online](/studio-for-prisma-postgres-view-and-edit-your-data-online).
+
+## AI and agent integration
+
+Both teams are investing in AI tooling. The depth of integration is different.
+
+Supabase publishes an MCP server, supports pgvector out of the box, and has AI SDK integrations.
+
+Prisma Postgres was built around AI agents from day one:
+
+- A native MCP server that ships with the Prisma CLI and works with Cursor, Claude Code, Windsurf, and the OpenAI Agents SDK
+- Scaffold a schema and provision a database from a single prompt with `npx prisma init --db`
+- Spin up a throwaway DB for an AI-generated app with `npx create-db@latest` in seconds
+
+See [Announcing Prisma's MCP Server](/announcing-prisma-s-mcp-server-vibe-code-with-prisma-postgres) and [Prisma Postgres for AI Coding Agents](/announcing-prisma-postgres-for-ai-coding-agents).
+
+The density model is what makes "provision a database from a prompt" cheap enough to actually offer.
+
+## Wrapping up
+
+Both are solid choices for Postgres-backed apps.
+
+Pick Supabase if you want a broader backend platform around Postgres: Auth, Storage, Realtime, Edge Functions, Row Level Security workflows, SQL-first migrations, and a mature dashboard in one product.
+
+Pick Prisma Postgres if you want always-on pricing, type-safe tooling, Query Insights on day one, and AI-native workflows out of the box.
+
+Try it in less than a minute:
+
+```shell
+npx create-db@latest
+```
+
+Then check the [Prisma Postgres docs](https://www.prisma.io/docs/postgres), the [pricing page](https://www.prisma.io/pricing), or come say hi on [Discord](https://pris.ly/discord).
