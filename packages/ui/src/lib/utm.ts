@@ -5,6 +5,10 @@ export type UtmParams = Record<string, string>;
 export interface UtmAttribution {
   first: UtmParams;
   last: UtmParams;
+  /** ISO time the first tagged landing was recorded. */
+  firstSeenAt?: string;
+  /** ISO time the most recent tagged landing was recorded. */
+  lastSeenAt?: string;
 }
 
 /**
@@ -56,11 +60,20 @@ function sanitizeUtmParams(input: unknown): UtmParams {
   );
 }
 
-export function getUtmParams(searchParams: URLSearchParams): UtmParams {
+/**
+ * @param includeClickIds Capture ad-platform click IDs too. These are
+ *   advertising identifiers, so callers gate this on analytics consent —
+ *   without consent nothing downstream records them anyway.
+ */
+export function getUtmParams(
+  searchParams: URLSearchParams,
+  { includeClickIds = true }: { includeClickIds?: boolean } = {},
+): UtmParams {
   const utmParams: UtmParams = {};
 
   for (const [key, value] of searchParams.entries()) {
-    if (isCapturedKey(key) && value) {
+    if (!value) continue;
+    if (isClickIdKey(key) ? includeClickIds : isAttributionKey(key)) {
       utmParams[key] = value;
     }
   }
@@ -81,12 +94,24 @@ function sanitizeUtmAttribution(input: unknown): UtmAttribution | undefined {
   const first = sanitizeUtmParams(candidate.first);
   const last = sanitizeUtmParams(candidate.last);
 
-  return hasUtmParams(first) && hasUtmParams(last) ? { first, last } : undefined;
+  if (!hasUtmParams(first) || !hasUtmParams(last)) return undefined;
+
+  return {
+    first,
+    last,
+    ...(typeof candidate.firstSeenAt === "string" && {
+      firstSeenAt: candidate.firstSeenAt,
+    }),
+    ...(typeof candidate.lastSeenAt === "string" && {
+      lastSeenAt: candidate.lastSeenAt,
+    }),
+  };
 }
 
 export function mergeUtmAttribution(
   existing: UtmAttribution | undefined,
   latest: UtmParams,
+  now?: string,
 ): UtmAttribution | undefined {
   const validExisting = sanitizeUtmAttribution(existing);
   const validLatest = sanitizeUtmParams(latest);
@@ -95,9 +120,21 @@ export function mergeUtmAttribution(
     return validExisting;
   }
 
+  const isFirst = !validExisting;
+
   return {
     first: validExisting?.first ?? validLatest,
     last: validLatest,
+    // Recorded at capture time so replaying stored attribution on a later
+    // page load cannot restamp the touch as if it just happened.
+    ...(now && {
+      firstSeenAt: isFirst ? now : (validExisting?.firstSeenAt ?? now),
+      lastSeenAt: now,
+    }),
+    ...(!now && {
+      firstSeenAt: validExisting?.firstSeenAt,
+      lastSeenAt: validExisting?.lastSeenAt,
+    }),
   };
 }
 

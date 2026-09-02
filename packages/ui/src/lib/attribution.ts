@@ -110,28 +110,40 @@ export function getPaidPersonProperties(
   const first = classifyPaidTouch(attribution.first);
   const last = classifyPaidTouch(attribution.last);
 
-  if (!first && !last) {
+  // When only the last touch was paid, it is also the earliest paid touch we
+  // know of — otherwise `first_paid_source` would be permanently empty, since
+  // `$set_once` cannot be filled in later.
+  const firstPaid = first ?? last;
+
+  if (!firstPaid) {
     return undefined;
   }
 
+  // Prefer the time the touch was captured. Falling back to `now` would
+  // restamp an old touch every time stored attribution is replayed.
+  const firstPaidAt = (first ? attribution.firstSeenAt : attribution.lastSeenAt) ?? now;
+
   const setOnce = omitUndefined({
     is_paid_acquired: true,
-    first_paid_at: now,
-    first_paid_source: first?.source,
-    first_paid_campaign: first?.campaign,
-    first_paid_medium: first?.medium,
-    first_paid_click_id: first?.clickId,
-    first_paid_click_id_param: first?.clickIdParam,
+    first_paid_at: firstPaidAt,
+    first_paid_source: firstPaid.source,
+    first_paid_campaign: firstPaid.campaign,
+    first_paid_medium: firstPaid.medium,
+    first_paid_click_id: firstPaid.clickId,
+    first_paid_click_id_param: firstPaid.clickIdParam,
   });
 
-  const set = omitUndefined({
-    last_paid_at: now,
-    last_paid_source: last?.source,
-    last_paid_campaign: last?.campaign,
-    last_paid_medium: last?.medium,
-    last_paid_click_id: last?.clickId,
-    last_paid_click_id_param: last?.clickIdParam,
-  }) as Record<string, string>;
+  // Only claim a recent paid touch when the last touch actually was one.
+  const set = last
+    ? (omitUndefined({
+        last_paid_at: attribution.lastSeenAt ?? now,
+        last_paid_source: last.source,
+        last_paid_campaign: last.campaign,
+        last_paid_medium: last.medium,
+        last_paid_click_id: last.clickId,
+        last_paid_click_id_param: last.clickIdParam,
+      }) as Record<string, string>)
+    : {};
 
   return { setOnce, set };
 }

@@ -136,13 +136,19 @@ if (props) posthog.setPersonProperties(props.set, props.setOnce);
 `$set_once` semantics make this safe to run unconditionally — if the cookie
 already carried the first touch, the fallback cannot overwrite it.
 
+**Ordering matters for GA4.** `user_id` must be populated *before* the Google
+tag fires the `sign_up` event, or GA4 records the event without a User-ID and
+cross-device stitching is lost for it. Set the dataLayer variable first, then
+push the event, and confirm in GTM Preview that `user_id` is present on the
+outgoing request rather than on the following one.
+
 ### 2d. Persist attribution to your own database
 
 **Do this as well as PostHog, not instead of it.** PostHog person properties can
 be merged, reset, or aged out, and a months-later revenue question is
 finance-grade. Write once at signup, never update:
 
-```
+```text
 users.acq_first_paid_source      text  null
 users.acq_first_paid_campaign    text  null
 users.acq_first_click_id         text  null
