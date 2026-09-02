@@ -23,7 +23,7 @@ export const seriesRegistry = {
     description:
       "The story of Prisma Compute: TypeScript app hosting that runs on the same infrastructure as your database. From the public beta launch to the runtime engineering underneath.",
     featured: true,
-    docsUrl: "https://docs.prisma.io/docs/prisma-compute",
+    docsUrl: "https://docs.prisma.io/docs/compute",
     docsLabel: "Read the Prisma Compute docs",
     relatedSeries: ["agentic-engineering", "prisma-8"],
   },
