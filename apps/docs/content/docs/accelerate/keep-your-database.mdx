@@ -1,0 +1,141 @@
+---
+title: Keep your existing database
+description: Remove Prisma Accelerate from your application without migrating your existing database
+url: /accelerate/keep-your-database
+metaTitle: Remove Prisma Accelerate and keep your existing database
+metaDescription: Remove Prisma Accelerate from your application while keeping your existing PostgreSQL, MySQL, MariaDB, CockroachDB, PlanetScale, or MongoDB database.
+---
+
+Standalone Prisma Accelerate will be retired on December 1, 2026. Follow this guide to stop routing your application through Accelerate while keeping your existing database.
+
+This process changes how your application connects to the database. It does not move or modify your data. If you use PostgreSQL and want Prisma to manage your database, follow the guide to [migrate to Prisma Postgres](/prisma-postgres/import-from-existing-database-postgresql) instead.
+
+:::warning
+
+Removing Accelerate also removes its managed connection pooling and query caching. Before changing production traffic, confirm that your application has a safe way to connect at its expected concurrency and that it does not depend on cached query results.
+
+:::
+
+This guide applies to existing Accelerate applications using Prisma ORM 7 or earlier. Some older Accelerate setups do not use the `@prisma/extension-accelerate` extension; complete the steps that apply to your project.
+
+## 1. Choose how your application will connect
+
+Do not replace the Accelerate URL until you know which database URL your application should use at runtime.
+
+| Application runtime | Connection guidance |
+| --- | --- |
+| Long-running Node.js or Bun server | A direct database URL may be appropriate when the database's connection limit supports your workload. Reuse one Prisma Client instance across requests. |
+| Serverless functions | Each function instance can create its own connection pool. Use a pooled connection URL or another pooling setup supported by your current database provider or infrastructure. |
+| Edge runtime | Confirm that the runtime and database driver can connect without Accelerate. If they cannot, move database access to a compatible runtime or change your connection architecture before continuing. |
+
+For more information, read the connection guidance for [Prisma ORM 7](/orm/v7/prisma-client/setup-and-configuration/databases-connections) or [Prisma ORM 6 and earlier](/orm/v6/prisma-client/setup-and-configuration/databases-connections). Prisma ORM 7 users can also review [driver adapters for serverless and edge runtimes](/orm/v7/core-concepts/supported-databases/database-drivers#serverless-driver-adapters). Consult your current database provider's documentation for its connection limits and pooling options.
+
+:::note
+
+The direct URL previously used by Prisma Migrate or introspection is not always the right runtime URL. If your application uses a pooler, keep the pooled URL for application queries and a separate direct URL for CLI and administrative commands.
+
+:::
+
+## 2. Replace the Accelerate connection string
+
+Change the runtime `DATABASE_URL` from the `prisma://` Accelerate URL to the direct or pooled URL you selected in step 1.
+
+```bash title=".env"
+# Before
+DATABASE_URL="<your Accelerate URL>"
+
+# After
+DATABASE_URL="<your direct or pooled database URL>"
+```
+
+If you already have a separate variable such as `DIRECT_DATABASE_URL` for Prisma CLI commands, keep it when your runtime URL points to a pooler. Confirm that `prisma.config.ts` or the `datasource` block in `schema.prisma` still uses the correct URL for migrations and introspection.
+
+## 3. Remove the Accelerate extension
+
+Find the Prisma Client instance that is extended with Accelerate:
+
+```ts title="src/lib/prisma.ts"
+import { PrismaClient } from "@prisma/client";
+import { withAccelerate } from "@prisma/extension-accelerate";
+
+export const prisma = new PrismaClient({
+  accelerateUrl: process.env.DATABASE_URL,
+}).$extends(withAccelerate());
+```
+
+Remove the `withAccelerate` import, `accelerateUrl`, and `$extends(withAccelerate())`. Complete the version-specific client setup below, then uninstall the extension:
+
+```npm title="Terminal"
+npm uninstall @prisma/extension-accelerate
+```
+
+The final Prisma Client setup depends on your Prisma ORM version and database.
+
+### Prisma ORM 7
+
+Prisma ORM 7 connects through a database driver adapter. Follow the setup for your existing database, then pass that adapter to `new PrismaClient({ adapter })`:
+
+| Existing database | Prisma ORM 7 setup |
+| --- | --- |
+| PostgreSQL or CockroachDB | [PostgreSQL driver adapters](/orm/v7/core-concepts/supported-databases/postgresql#using-driver-adapters) |
+| MySQL or MariaDB | [MySQL and MariaDB driver adapters](/orm/v7/core-concepts/supported-databases/mysql#using-driver-adapters) |
+| PlanetScale | [PlanetScale serverless driver adapter](/orm/v7/core-concepts/supported-databases/mysql#using-driver-adapters) |
+
+[MongoDB is not supported in Prisma ORM 7](/orm/v7/core-concepts/supported-databases/mongodb). If your existing Accelerate application uses MongoDB, keep it on Prisma ORM 6.19 while completing this change. Treat an ORM upgrade as a separate migration.
+
+Run the standard generation command after configuring the adapter:
+
+```npm title="Terminal"
+npx prisma generate
+```
+
+The `--no-engine` flag is not required in Prisma ORM 7. Removing Accelerate does not add a Rust query engine to a Prisma ORM 7 build.
+
+### Prisma ORM 6 or earlier
+
+Prisma ORM 6 and earlier can connect directly with the [bundled query engine](/orm/v6/more/internals/engines). Remove `--no-engine`, `--accelerate`, or `--data-proxy` from any `prisma generate` command in your package scripts and CI configuration, then regenerate Prisma Client:
+
+```npm title="Terminal"
+npx prisma generate
+```
+
+This can add the query engine to builds that previously generated an engine-less client. Review your deployment bundle and make sure the required engine file is included. If your application already uses a driver adapter supported by its Prisma ORM version, keep that adapter instead.
+
+If your application imports Prisma Client from `@prisma/client/edge`, replace it with the client import shown in the database driver adapter setup you chose. Prisma ORM 7 normally imports from the configured generated output. A Prisma ORM 6 application using the bundled engine normally imports from `@prisma/client`.
+
+## 4. Remove Accelerate caching APIs
+
+Search your application for these Accelerate-specific APIs and remove or refactor every use:
+
+- `cacheStrategy`
+- `.withAccelerateInfo()`
+- `$accelerate.invalidate()`
+- `$accelerate.invalidateAll()`
+
+These APIs are not silently ignored after you remove the extension. TypeScript projects should report them as invalid during type checking. JavaScript projects, builds that skip type checking, and values passed through untyped code can instead fail at runtime. Search for them explicitly rather than relying on the compiler.
+
+After removal, queries that previously used `cacheStrategy` run against your database. Prisma Postgres does not currently provide replacement query caching, and query caching is not on our immediate roadmap. Account for the resulting database load and latency before switching production traffic.
+
+## 5. Update every deployment environment
+
+Apply the new client setup, generation command, and environment variables to:
+
+- local development
+- preview and staging deployments
+- production deployments
+- CI jobs that run Prisma CLI commands or generate Prisma Client
+
+Keep the previous Accelerate configuration available as a rollback path until the new connection has been tested under representative load.
+
+## 6. Validate and switch traffic
+
+Deploy the direct connection to a preview or staging environment before production. At minimum:
+
+1. Run `npx prisma validate`, `npx prisma generate`, your type checker, and your application test suite.
+2. Test a read, a disposable write, and any transactions your application depends on.
+3. Run the Prisma Migrate or introspection command your deployment normally uses.
+4. Confirm that the deployed `DATABASE_URL` does not start with `prisma://`.
+5. Search your source and build configuration for `@prisma/extension-accelerate`, `withAccelerate`, `accelerateUrl`, `cacheStrategy`, `withAccelerateInfo`, `$accelerate`, `prisma://`, `--no-engine`, `--accelerate`, and `--data-proxy`.
+6. Exercise representative concurrency while monitoring database connections, timeouts, errors, and query latency.
+
+Move production traffic only after these checks pass. Continue monitoring during the rollout. When the application is stable, remove the unused Accelerate URL and credentials from deployment settings and secret stores.
