@@ -1,6 +1,12 @@
 import posthog from "posthog-js";
 import * as Sentry from "@sentry/nextjs";
 import { hasAnalyticsConsent, onAnalyticsConsentChange } from "@prisma-docs/ui/lib/consent";
+import { getPaidPersonProperties, onAttributionChange } from "@prisma-docs/ui/lib/attribution";
+import {
+  readStoredUtmAttribution,
+  UTM_ATTRIBUTION_STORAGE_KEY,
+  type UtmAttribution,
+} from "@prisma-docs/ui/lib/utm";
 
 const SUPER_PROPERTIES = {
   site_name: "mono-docs",
@@ -40,6 +46,28 @@ onAnalyticsConsentChange((status) => {
   // super-properties, so re-register or later events lose site_name.
   if (status !== "pending") posthog.register(SUPER_PROPERTIES);
 });
+
+// Paid-acquisition attribution.
+// A purchase can happen months after the ad click, long outside any ad
+// platform's conversion window, so the paid touch is recorded on the PostHog
+// *person* rather than on a conversion event. It then rides through signup on
+// console.prisma.io (same `.prisma.io` cookie domain) onto every later event.
+// No-ops while opted out, so this stays behind the same consent gate.
+function recordPaidTouch(attribution: UtmAttribution) {
+  const properties = getPaidPersonProperties(attribution, new Date().toISOString());
+  if (!properties) return;
+
+  posthog.setPersonProperties(properties.set, properties.setOnce);
+}
+
+onAttributionChange(recordPaidTouch);
+
+// Landings that arrive before UtmPersistence mounts are covered by replaying
+// whatever is already stored.
+if (typeof window !== "undefined") {
+  const stored = readStoredUtmAttribution(UTM_ATTRIBUTION_STORAGE_KEY);
+  if (stored) recordPaidTouch(stored);
+}
 
 Sentry.init({
   dsn: "https://e83ce4699e59051fdeaa330bf4a0dfb9@o4510879743737856.ingest.us.sentry.io/4510879744000000",
