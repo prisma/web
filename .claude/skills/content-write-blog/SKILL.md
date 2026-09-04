@@ -15,7 +15,7 @@ The blog is owned by DevRel but contributed to by everyone, so do not assume the
 
 ## Assets
 
-- `assets/positioning.md` — Prisma's internal positioning doc. It is **not committed to this public repo** (it's gitignored); obtain it from the internal positioning source and place it at `assets/positioning.md` before drafting. Read it before writing the lead and section stubs so the angle, framing, and product claims stay aligned with how Prisma describes itself. It is the source of truth for positioning, so do not contradict it. If it is absent, ask the operator for the current positioning before grounding the post.
+- **Positioning doc** — The authoritative source is `docs/prisma/positioning.md` in the **prisma/ignite** repository on GitHub. Fetch it at draft time from its raw URL: `https://raw.githubusercontent.com/prisma/ignite/main/docs/prisma/positioning.md`. Do **not** look for a local copy — there is no vendored version in this repo. Read it before writing the lead and section stubs so the angle, framing, and product claims stay aligned with how Prisma describes itself. It is the source of truth for positioning, so do not contradict it. If the fetch fails, ask the operator for the current positioning before grounding the post.
 
 ## Asking the operator questions
 
@@ -35,7 +35,7 @@ Do not proceed without input, and do not invent a pitch on the operator's behalf
 
 ## Step 2: Ground in positioning
 
-Read the positioning asset above. Note the product names, claims, and framing that the post must stay consistent with. If the pitch conflicts with positioning, surface the conflict to the operator before drafting — do not silently "correct" the pitch, and do not write copy that contradicts positioning.
+Fetch and read the positioning doc from `https://raw.githubusercontent.com/prisma/ignite/main/docs/prisma/positioning.md` (the authoritative copy in the prisma/ignite repo). Note the product names, claims, and framing that the post must stay consistent with. If the pitch conflicts with positioning, surface the conflict to the operator before drafting — do not silently "correct" the pitch, and do not write copy that contradicts positioning.
 
 ## Step 3: Locate the blog repository checkout
 
@@ -164,7 +164,7 @@ Spawn one reviewer agent per applicable lens, every lens that applies, regardles
    - **Fact refuter**: attack every number, price, version, date, and named behavior. Verify each against the live primary source (vendor pricing page, official docs), not from memory. Report any claim whose source does not say what the post says.
    - **Code refuter** (posts with code): run every sample fresh against the stated versions. Report anything that does not compile, run, or produce the shown output.
    - **Reader skeptic**: where does the post confuse, overclaim, contradict itself, or read like marketing? Where would a knowledgeable reader stop trusting it?
-   - **Positioning refuter**: report claims that contradict the positioning doc or overstate product status (GA claims, superlatives, unverified benchmarks).
+   - **Positioning refuter**: report claims that contradict the positioning doc (fetched from `https://raw.githubusercontent.com/prisma/ignite/main/docs/prisma/positioning.md`) or overstate product status (GA claims, superlatives, unverified benchmarks).
 4. **The implementer fixes; reviewers re-review.** Findings come back to the authoring session, which applies fixes. Re-run the reviewers on the fixed draft. Repeat until a round produces no confirmed findings. The implementer never marks its own finding as resolved without a reviewer pass confirming it.
 
 ### Completion criterion
@@ -187,7 +187,7 @@ The lead you draft, and the prose the author later writes over your stubs, ship 
 - **Writing finished prose.** This skill produces a skeleton. Long generated paragraphs defeat the point and dilute the author's voice. Stubs and section headings only.
 - **Performing the repository workflow.** This skill does not branch, commit, push, or open pull requests. Producing those is the operator's job — stop at writing content into their checkout and handing off.
 - **Hardcoding blog conventions.** The repo evolves. Always discover frontmatter shape, slug rules, blog directory, author shape, and the formatting step from the operator's checkout in Step 4.
-- **Contradicting positioning.** Read the positioning asset first. Do not write claims or framing that conflict with how Prisma describes itself; surface conflicts instead of papering over them.
+- **Contradicting positioning.** Read the positioning doc (fetched from the prisma/ignite repo) first. Do not write claims or framing that conflict with how Prisma describes itself; surface conflicts instead of papering over them.
 - **Skipping the author profile step for first-time contributors.** The missing profile is a common trip-wire. Surface it and scaffold it alongside the post.
 - **Inventing the pitch.** If the operator gave no direction, ask. Do not generate a topic from imagination.
 - **Over-linking.** Adding links to every proper noun, tangential reference, or vaguely related page produces a link farm, not a useful post. Link only when the reader genuinely benefits. If in doubt, leave it out — the operator can always add links later. The one exception is the first mention of Prisma Postgres, Prisma Compute, and Prisma 8: always link those to docs for SEO.

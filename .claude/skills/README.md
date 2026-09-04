@@ -33,7 +33,7 @@ Produces a blog-post **skeleton** (frontmatter, section headings, short stubs), 
 5. It writes the skeleton, then adds contextual links: the first mention of Prisma Postgres, Prisma Compute, and Prisma 8 links to docs for SEO, and topic mentions cross-link to related posts (for example, a bloom-filter mention links to the bloom-index post).
 6. It hands back a link inventory and a next-step reminder. You flesh out the prose and open a draft PR.
 
-**Note:** the skill reads `content-write-blog/assets/positioning.md`, Prisma's internal positioning doc. It is **not committed to this public repo** (it's gitignored). Place it locally before drafting, or the skill will ask for it.
+**Note:** the skill reads the positioning doc from the **prisma/ignite** repository at `docs/prisma/positioning.md` (fetched at draft time from `https://raw.githubusercontent.com/prisma/ignite/main/docs/prisma/positioning.md`). There is no local vendored copy in this repo.
 
 ## content-create-hero-image
 
