@@ -317,7 +317,7 @@ Generated from the original asset snapshot captured before optimization and the 
 | `apps/blog/public/connect-your-apps-to-prisma-postgres-via-vercel-marketplace-integration/imgs/37841e4d757e5ec1c09e6285933fc7ec16ad1902-3248x2112.png` | modified | 672,533 | 363,847 | 308,686 |
 | `apps/blog/public/connect-your-apps-to-prisma-postgres-via-vercel-marketplace-integration/imgs/hero-b06562c14b921f9c72bd78bcd5b04717f20cf9e4-844x474.svg` | modified | 73,940 | 38,027 | 35,913 |
 | `apps/blog/public/connect-your-apps-to-prisma-postgres-via-vercel-marketplace-integration/imgs/meta-1e5148009a4294ebba377f758ce1139e3c46bcef-1266x711.png` | modified | 903,894 | 821,234 | 82,660 |
-| `apps/blog/public/connections-edges-nodes-in-relay-758d358aa4c7/imgs/0*sPafc6eXHJvRSJhZ.png` | modified | 24,542 | 11,660 | 12,882 |
+| `apps/blog/public/connections-edges-nodes-in-relay-758d358aa4c7/imgs/0-sPafc6eXHJvRSJhZ.png` | modified | 24,542 | 11,660 | 12,882 |
 | `apps/blog/public/connections-edges-nodes-in-relay-758d358aa4c7/imgs/meta-cc730c78d87244cb877764a6a4a850b2c9223871-1200x775.png` | modified | 79,453 | 69,274 | 10,179 |
 | `apps/blog/public/convergence/imgs/hero-532d75ec739a13ee528e8b2a085d47fc962a3ca7-840x472.png` | modified | 432,583 | 381,325 | 51,258 |
 | `apps/blog/public/convergence/imgs/meta-3963296cdd515c9ae5cb17379fcff0da144c7b35-1266x711.png` | modified | 793,577 | 715,363 | 78,214 |
@@ -417,9 +417,9 @@ Generated from the original asset snapshot captured before optimization and the 
 | `apps/blog/public/elsevier-customer-story-SsAASKagMHtN/imgs/elsevier-architecture-diagram.png` | modified | 36,410 | 36,362 | 48 |
 | `apps/blog/public/elsevier-customer-story-SsAASKagMHtN/imgs/hero-4eaa561121a703742d0016b7a60b69e0cc262dc8-1692x852.png` | modified | 85,851 | 52,585 | 33,266 |
 | `apps/blog/public/elsevier-customer-story-SsAASKagMHtN/imgs/peer-review-diagram-V3.png` | modified | 189,214 | 188,852 | 362 |
-| `apps/blog/public/enabling-cors-for-express-graphql-apollo-server-1ef999bfb38d/imgs/1*LnVsDQuQtSl-Wt-m6DfO5g.png` | modified | 115,488 | 73,392 | 42,096 |
-| `apps/blog/public/enabling-cors-for-express-graphql-apollo-server-1ef999bfb38d/imgs/1*ZbsVGATAeIp5iU2504VP2A.png` | modified | 80,011 | 55,578 | 24,433 |
-| `apps/blog/public/enabling-cors-for-express-graphql-apollo-server-1ef999bfb38d/imgs/1*m6QGz5tXtLt7uVapNCpBEw.png` | modified | 129,909 | 107,452 | 22,457 |
+| `apps/blog/public/enabling-cors-for-express-graphql-apollo-server-1ef999bfb38d/imgs/1-LnVsDQuQtSl-Wt-m6DfO5g.png` | modified | 115,488 | 73,392 | 42,096 |
+| `apps/blog/public/enabling-cors-for-express-graphql-apollo-server-1ef999bfb38d/imgs/1-ZbsVGATAeIp5iU2504VP2A.png` | modified | 80,011 | 55,578 | 24,433 |
+| `apps/blog/public/enabling-cors-for-express-graphql-apollo-server-1ef999bfb38d/imgs/1-m6QGz5tXtLt7uVapNCpBEw.png` | modified | 129,909 | 107,452 | 22,457 |
 | `apps/blog/public/esop-exercise-windows/imgs/hero-187cb6c0e9ac7a4c48892a3e196329e955984278-844x474.svg` | modified | 36,005 | 19,843 | 16,162 |
 | `apps/blog/public/formbricks-and-prisma-accelerate-solving-scalability-together/imgs/b3991bb21717cf3caaeacd5e46d17a6189105a1c-512x512.png` | modified | 595,309 | 406,178 | 189,131 |
 | `apps/blog/public/formbricks-and-prisma-accelerate-solving-scalability-together/imgs/c4d6d20630e17f115e3b5740d6b5aba945e6b007-2000x1337.png` | modified | 381,527 | 342,214 | 39,313 |
@@ -542,7 +542,7 @@ Generated from the original asset snapshot captured before optimization and the 
 | `apps/blog/public/fullstack-remix-prisma-mongodb-5-gOhQsnfUPXSx/imgs/congrats.gif` | modified | 10,686,165 | 9,781,431 | 904,734 |
 | `apps/blog/public/fullstack-remix-prisma-mongodb-5-gOhQsnfUPXSx/imgs/hero-a00a8da49b238e170ebeea1caa4d9a67fec1db3d-844x474.svg` | modified | 77,953 | 39,955 | 37,998 |
 | `apps/blog/public/fullstack-remix-prisma-mongodb-5-gOhQsnfUPXSx/imgs/success.gif` | modified | 7,326,671 | 6,554,201 | 772,470 |
-| `apps/blog/public/getting-started-with-relay-modern-46f8de6bd6ec/imgs/0*p_mSrJU2L90IXDSi.jpg` | modified | 38,562 | 37,455 | 1,107 |
+| `apps/blog/public/getting-started-with-relay-modern-46f8de6bd6ec/imgs/0-p_mSrJU2L90IXDSi.jpg` | modified | 38,562 | 37,455 | 1,107 |
 | `apps/blog/public/grover-customer-success-story-nxkWGcGNuvFd/imgs/hero-3fcd833a161c68af69d2c13eafb3369f343e0856-844x474.png` | added | 0 | 177,368 | -177,368 |
 | `apps/blog/public/grover-customer-success-story-nxkWGcGNuvFd/imgs/hero-3fcd833a161c68af69d2c13eafb3369f343e0856-844x474.svg` | deleted | 2,504,116 | 0 | 2,504,116 |
 | `apps/blog/public/helping-rapha-access-data-across-platforms-n3jfhtyu6rgn/imgs/hero-b0f3d722a514f161e410fc12ccf0e00e562b5ecb-1692x852.jpg` | modified | 63,794 | 62,988 | 806 |
@@ -585,7 +585,7 @@ Generated from the original asset snapshot captured before optimization and the 
 | `apps/blog/public/nestjs-prisma-error-handling-7D056s1kOop2/imgs/hero-c86e8991069ead629ccc386f69880911bbb014c8-844x474.svg` | modified | 74,063 | 40,699 | 33,364 |
 | `apps/blog/public/nestjs-prisma-rest-api-7D056s1BmOL0/imgs/hero-4bb8a42e7fe028072f5e7d90b2eff2435ad6dabb-844x474.svg` | modified | 75,567 | 41,297 | 34,270 |
 | `apps/blog/public/nestjs-prisma-validation-7D056s1kOla1/imgs/hero-adc0af7eb5b3f3e751cd795ba7e184ce98a3ed81-844x474.svg` | modified | 90,147 | 48,031 | 42,116 |
-| `apps/blog/public/new-tooling-to-improve-your-graphql-workflows-7240c81e1ba3/imgs/0*c56E4V22_pl88Si4.gif` | modified | 3,466,380 | 3,010,344 | 456,036 |
+| `apps/blog/public/new-tooling-to-improve-your-graphql-workflows-7240c81e1ba3/imgs/0-c56E4V22_pl88Si4.gif` | modified | 3,466,380 | 3,010,344 | 456,036 |
 | `apps/blog/public/operations-based-billing/imgs/hero-1d997b49de7986be043f844425adc9214c468725-844x474.svg` | modified | 87,699 | 45,800 | 41,899 |
 | `apps/blog/public/optimize-now-generally-available/imgs/3e399b441533267eb607869ff0be34162b175b23-1816x586.gif` | modified | 1,032,363 | 1,026,789 | 5,574 |
 | `apps/blog/public/optimize-now-generally-available/imgs/8a49d78ed717ef163ffb6927acc80362c00e1055-754x706.gif` | modified | 1,947,819 | 1,929,992 | 17,827 |
