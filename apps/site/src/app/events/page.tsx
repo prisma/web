@@ -4,6 +4,7 @@ import { RoleKicker } from "@/components/brand/role-kicker";
 import { Texture } from "@/components/brand/texture";
 import { createCollectionPageStructuredData } from "@/lib/structured-data";
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
+import { cn } from "@prisma-docs/ui/lib/cn";
 import {
   meetups,
   pastEvents,
@@ -39,11 +40,15 @@ const eventsStructuredData = createCollectionPageStructuredData({
       url: event.link,
       description: "Sponsored event supported by Prisma.",
     })),
-    ...pastEvents.map((event) => ({
-      name: event.name,
-      url: event.link,
-      description: event.description,
-    })),
+    // Retired past events carry no link, and a ListItem without a url is not
+    // a useful entity, so they are left out of the collection.
+    ...pastEvents
+      .filter((event): event is PastEvent & { link: string } => Boolean(event.link))
+      .map((event) => ({
+        name: event.name,
+        url: event.link,
+        description: event.description,
+      })),
   ],
 });
 
@@ -105,14 +110,12 @@ function SponsoredEventCard({ event }: { event: SponsoredEvent }) {
   );
 }
 
+const pastEventCardClass =
+  "flex flex-col gap-2 rounded-2xl border border-black/[0.06] bg-white p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04)]";
+
 function PastEventCard({ event }: { event: PastEvent }) {
-  return (
-    <a
-      href={event.link}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group flex flex-col gap-2 rounded-2xl border border-black/[0.06] bg-white p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04)] transition-[border-color,box-shadow] duration-300 hover:border-black/[0.12] hover:shadow-[0_6px_20px_rgba(21,21,21,0.07)]"
-    >
+  const body = (
+    <>
       <div className="flex items-start justify-between gap-3">
         <h3 className="text-lg leading-snug">{event.name}</h3>
         {event.virtual && (
@@ -125,6 +128,27 @@ function PastEventCard({ event }: { event: PastEvent }) {
       <p className="line-clamp-3 text-sm leading-relaxed text-muted-foreground">
         {event.description}
       </p>
+    </>
+  );
+
+  // The 2019–2022 event pages were retired and now redirect to the homepage.
+  // Those entries render as a plain card: a "Read more" that lands on the
+  // homepage is worse than no link at all.
+  if (!event.link) {
+    return <div className={pastEventCardClass}>{body}</div>;
+  }
+
+  return (
+    <a
+      href={event.link}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={cn(
+        pastEventCardClass,
+        "group transition-[border-color,box-shadow] duration-300 hover:border-black/[0.12] hover:shadow-[0_6px_20px_rgba(21,21,21,0.07)]",
+      )}
+    >
+      {body}
       <span className="mt-auto flex items-center gap-1.5 pt-2 text-sm font-semibold text-foreground">
         Read more
         <ArrowRight

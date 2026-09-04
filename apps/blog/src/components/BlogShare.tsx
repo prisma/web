@@ -24,7 +24,7 @@ export const BlogShare = ({ desc }: { desc: string }) => {
                 <TooltipTrigger asChild>
                   <a
                     href={socialLink.url({
-                      current_page: `https://prisma.io/blog${pathname}`,
+                      current_page: `https://www.prisma.io/blog${pathname}`,
                       text_data: desc,
                     })}
                     target="_blank"
@@ -58,7 +58,7 @@ export const BlogShare = ({ desc }: { desc: string }) => {
                       setTimeout(() => {
                         setTooltip(defaultCopyText);
                       }, 500);
-                      navigator.clipboard.writeText(`https://prisma.io/blog${pathname}`);
+                      navigator.clipboard.writeText(`https://www.prisma.io/blog${pathname}`);
                     }}
                     className="cursor-pointer text-[1.375rem] transition-colors hover:bg-background-neutral hover:[&_i]:text-foreground-neutral"
                   >

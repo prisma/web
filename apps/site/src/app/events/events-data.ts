@@ -9,7 +9,12 @@ export type PastEvent = {
   name: string;
   date: string;
   description: string;
-  link: string;
+  /**
+   * Optional: the 2019–2022 Prisma Day and Enterprise Event pages were retired
+   * and now redirect to the homepage, so those entries render without a link
+   * rather than sending a reader somewhere that does not answer the card.
+   */
+  link?: string;
   virtual: boolean;
 };
 
@@ -72,7 +77,6 @@ export const pastEvents: PastEvent[] = [
     date: "June 15–16, 2022",
     description:
       "Prisma Day was a two-day hybrid event of talks and workshops about modern application development and databases, featuring and led by members of our community.",
-    link: "https://www.prisma.io/day",
     virtual: false,
   },
   {
@@ -88,7 +92,6 @@ export const pastEvents: PastEvent[] = [
     date: "June 29–30, 2021",
     description:
       "Prisma Day was a two day event of talks and workshops by members of the Prisma community, on modern application development.",
-    link: "https://www.prisma.io/day-2021",
     virtual: false,
   },
   {
@@ -96,7 +99,6 @@ export const pastEvents: PastEvent[] = [
     date: "March 25, 2021",
     description:
       "An online conference focused on the challenges large companies and enterprises face with the management of application data.",
-    link: "https://www.prisma.io/enterprise-event-2021",
     virtual: true,
   },
   {
@@ -104,7 +106,6 @@ export const pastEvents: PastEvent[] = [
     date: "June 25–26, 2020",
     description:
       "Prisma Day 2020 was a two day, community-focused online conference on modern application development and databases.",
-    link: "https://www.prisma.io/day-2020",
     virtual: true,
   },
   {
@@ -112,7 +113,6 @@ export const pastEvents: PastEvent[] = [
     date: "June 19, 2019",
     description:
       "Prisma Day was a one day, single-track conference in Berlin focused on databases and application development.",
-    link: "https://www.prisma.io/day-2019",
     virtual: false,
   },
 ];

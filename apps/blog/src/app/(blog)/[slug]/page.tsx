@@ -90,7 +90,9 @@ function getPostOrRedirect(slug: string): NonNullable<ReturnType<typeof blog.get
   const lowered = slug.toLowerCase();
   const canonical = blog.getPages().find((candidate) => {
     const first = candidate.slugs[0];
-    return candidate.slugs.length === 1 && typeof first === "string" && first.toLowerCase() === lowered;
+    return (
+      candidate.slugs.length === 1 && typeof first === "string" && first.toLowerCase() === lowered
+    );
   });
 
   // `permanentRedirect` throws, so control never falls through.

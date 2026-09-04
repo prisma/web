@@ -439,7 +439,8 @@ const config = {
       {
         permanent: false,
         source: "/blog/prisma-the-complete-orm-inw24qjeawmb",
-        destination: "https://www.prisma.io/docs/orm/overview/introduction/why-prisma",
+        // The unversioned docs URL itself redirects to the v6 page.
+        destination: "/docs/orm/v6/overview/introduction/why-prisma",
       },
       {
         permanent: true,
@@ -565,19 +566,21 @@ const config = {
         destination: "/data-platform/:any*",
         permanent: true,
       },
+      // Chain-free: /accelerate and /optimize are themselves redirected to /
+      // by vercel.json, and /pulse to /postgres by the entry below.
       {
         source: "/data-platform/accelerate",
-        destination: "/accelerate",
+        destination: "/",
         permanent: true,
       },
       {
         source: "/data-platform/pulse",
-        destination: "/pulse",
+        destination: "/postgres",
         permanent: true,
       },
       {
         source: "/data-platform/optimize",
-        destination: "/optimize",
+        destination: "/",
         permanent: true,
       },
       {
@@ -632,7 +635,8 @@ const config = {
       },
       {
         source: "/ambassador",
-        destination: "/partners",
+        // /partners itself redirects to /programs/partners.
+        destination: "/programs/partners",
         permanent: true,
       },
       {
@@ -657,7 +661,8 @@ const config = {
       },
       {
         source: "/blog/prisma-studio-3rtf78dg99fe",
-        destination: "/docs/orm/tools/prisma-studio",
+        // /docs/orm/tools/prisma-studio itself redirects here.
+        destination: "/docs/studio/getting-started",
         permanent: true,
       },
       {
@@ -672,13 +677,9 @@ const config = {
       },
       {
         source: "/blog/performance-engineering-aeduv0rei0jk",
-        destination: "/blog/optimize-now-generally-available",
+        // The blog app redirects /blog/optimize-now-generally-available to /blog.
+        destination: "/blog",
         permanent: true,
-      },
-      {
-        source: "/learn",
-        destination: "/docs/guides",
-        permanent: false,
       },
       {
         source: "/:path*", // Match all routes under playground.prisma.io
@@ -699,11 +700,6 @@ const config = {
       {
         permanent: true,
         source: "/blog/build-real-time-durable-workflows-with-pulse-and-inngest",
-        destination: "https://www.prisma.io/docs/postgres",
-      },
-      {
-        permanent: true,
-        source: "/blog/increased-security-static-ip-support-prisma-pulse",
         destination: "https://www.prisma.io/docs/postgres",
       },
       {
@@ -734,16 +730,6 @@ const config = {
       {
         permanent: false,
         source: "/affiliates",
-        destination: "/",
-      },
-      {
-        permanent: true,
-        source: "/react-server-components",
-        destination: "/react",
-      },
-      {
-        permanent: false,
-        source: "/partners/affiliates",
         destination: "/",
       },
     ];

@@ -1,43 +1,50 @@
+// Footer link data shared by the site, blog and docs chrome.
+//
+// Same-site destinations are root-relative. The apex host (prisma.io) 301s to
+// www on every request, and the consumer renders these as plain `<a>` tags
+// served from www.prisma.io, so a path avoids both that hop and any basePath
+// the consuming app might otherwise prepend. Values are the URL that returns
+// 200 today, not one that redirects again.
 const footerItems = [
   {
     _type: "footerColumnType",
     title: "Product",
-    url: "https://prisma.io/product",
+    url: "/product",
     links: [
       {
         title: "ORM",
-        url: "https://prisma.io/docs/orm",
+        url: "/docs/orm",
         _type: "footerLinkType",
       },
       {
         title: "Prisma Postgres",
-        url: "https://prisma.io/postgres",
+        url: "/postgres",
         _type: "footerLinkType",
       },
       {
         title: "Prisma Compute",
-        url: "https://prisma.io/compute",
+        url: "/compute",
         _type: "footerLinkType",
       },
       {
         title: "Studio",
-        url: "https://prisma.io/studio",
+        url: "/studio",
         _type: "footerLinkType",
       },
       {
         title: "Query Insights",
-        url: "https://prisma.io/query-insights",
+        url: "/query-insights",
         _type: "footerLinkType",
       },
       {
         _type: "footerLinkType",
         title: "Pricing",
-        url: "https://prisma.io/pricing",
+        url: "/pricing",
       },
       {
         _type: "footerLinkType",
         title: "Changelog",
-        url: "https://prisma.io/changelog",
+        url: "/changelog",
       },
       {
         _type: "footerLinkType",
@@ -48,28 +55,28 @@ const footerItems = [
   },
   {
     title: "Resources",
-    url: "https://prisma.io/resources",
+    url: "/resources",
     _type: "footerColumnType",
     links: [
       {
         _type: "footerLinkType",
         title: "Docs",
-        url: "https://prisma.io/docs",
+        url: "/docs",
       },
       {
         _type: "footerLinkType",
         title: "Ecosystem",
-        url: "https://prisma.io/ecosystem",
+        url: "/ecosystem",
       },
       {
         _type: "footerLinkType",
         title: "Customer stories",
-        url: "https://prisma.io/showcase",
+        url: "/customers",
       },
       {
         _type: "footerLinkType",
         title: "Data guide",
-        url: "https://prisma.io/dataguide",
+        url: "/dataguide",
       },
       {
         _type: "footerLinkType",
@@ -79,56 +86,56 @@ const footerItems = [
     ],
   },
   {
-    url: "https://prisma.io/contact",
+    url: "/contact",
     _type: "footerColumnType",
     title: "Contact",
     links: [
       {
         _type: "footerLinkType",
         title: "Community",
-        url: "https://prisma.io/community",
+        url: "/community",
       },
       {
         _type: "footerLinkType",
         title: "Support",
-        url: "https://prisma.io/support",
+        url: "/support",
       },
       {
         _type: "footerLinkType",
         title: "Partners",
-        url: "https://prisma.io/partners",
+        url: "/programs/partners",
       },
       {
         _type: "footerLinkType",
         title: "Enterprise",
-        url: "https://prisma.io/enterprise",
+        url: "/enterprise",
       },
       {
         _type: "footerLinkType",
         title: "OSS Friends",
-        url: "https://prisma.io/oss-friends",
+        url: "/programs/oss-friends",
       },
     ],
   },
   {
     title: "Company",
-    url: "https://prisma.io/company",
+    url: "/company",
     _type: "footerColumnType",
     links: [
       {
         _type: "footerLinkType",
         title: "About",
-        url: "https://prisma.io/about",
+        url: "/company",
       },
       {
         _type: "footerLinkType",
         title: "Blog",
-        url: "https://prisma.io/blog",
+        url: "/blog",
       },
       {
         _type: "footerLinkType",
         title: "Careers",
-        url: "https://prisma.io/careers",
+        url: "/company/careers",
         //tag: "We're hiring"
       },
       {
@@ -137,19 +144,19 @@ const footerItems = [
         links: [
           {
             title: "Terms of Service",
-            url: "https://prisma.io/terms",
+            url: "/legal/terms",
           },
           {
             title: "Service Level Agreement",
-            url: "https://prisma.io/sla",
+            url: "/legal/sla",
           },
           {
             title: "Privacy Policy",
-            url: "https://prisma.io/privacy",
+            url: "/legal/privacy",
           },
           {
             title: "Event Code of Conduct",
-            url: "https://prisma.io/event-code-of-conduct",
+            url: "/event-code-of-conduct",
           },
           {
             title: "Security & Compliance",
