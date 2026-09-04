@@ -1,5 +1,4 @@
 import { defineConfig, devices } from "@playwright/test";
-import { createArgosReporterOptions } from "@argos-ci/playwright/reporter";
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -15,24 +14,8 @@ export default defineConfig({
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: process.env.ARGOS_TOKEN
-    ? [
-        // Use "dot" reporter on CI, "list" otherwise (Playwright default).
-        process.env.CI ? ["dot"] : ["list"],
-        // Add Argos reporter.
-        [
-          "@argos-ci/playwright/reporter",
-          createArgosReporterOptions({
-            // Upload to Argos on CI only.
-            uploadToArgos: !!process.env.CI,
-            token: process.env.ARGOS_TOKEN,
-          }),
-        ],
-      ]
-    : [
-        // Use "dot" reporter on CI, "list" otherwise (Playwright default).
-        process.env.CI ? ["dot"] : ["list"],
-      ],
+  // Use "dot" reporter on CI, "list" otherwise (Playwright default).
+  reporter: process.env.CI ? "dot" : "list",
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */

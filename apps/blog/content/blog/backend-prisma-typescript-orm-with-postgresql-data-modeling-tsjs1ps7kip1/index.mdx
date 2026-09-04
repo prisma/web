@@ -42,7 +42,7 @@ The series focuses on the role of the database in every aspect of backend develo
 This first article lays out the problem domain and develops the following aspects of the backend:
 
 1. **Data modeling:** Mapping the problem domain to a database schema
-2. **CRUD:** Implementing Create, Read, Update, and Delete queries with [Prisma Client](https://www.prisma.io/docs/orm/prisma-client)
+2. **CRUD:** Implementing Create, Read, Update, and Delete queries with [Prisma Client](https://www.prisma.io/docs/orm/v7/prisma-client)
 3. **Aggregation:** Implementing aggregate queries with Prisma Client to calculate averages and more
 
 By the end of this article you will have a Prisma schema, a corresponding database schema created by Prisma Migrate, and a seed script that uses Prisma Client to perform CRUD and aggregation queries.
@@ -79,8 +79,8 @@ npm install typescript tsx @types/node --save-dev
 Install Prisma ORM and the packages it needs to talk to PostgreSQL:
 
 ```sh
-npm install prisma @types/pg --save-dev
-npm install @prisma/client @prisma/adapter-pg pg dotenv
+npm install prisma@7.9.1 @types/pg --save-dev
+npm install @prisma/client@7.9.1 @prisma/adapter-pg pg dotenv
 ```
 
 Here is what each package does:
@@ -241,7 +241,7 @@ The diagram has the following relations:
   - `User` ↔ `TestResult` (via `graderId`)
   - `User` ↔ `TestResult` (via `studentId`)
 - **many-to-many (also known as `m-n`):**
-  - `User` ↔ `Course` via the `CourseEnrollment` [relation table](https://www.prisma.io/docs/orm/prisma-schema/data-model/relations/many-to-many-relations) with two _foreign keys_: `userId` and `courseId`. Many-to-many relations typically require an additional table. This is necessary so that the grading system can have the following properties:
+  - `User` ↔ `Course` via the `CourseEnrollment` [relation table](https://www.prisma.io/docs/orm/v7/prisma-schema/data-model/relations/many-to-many-relations) with two _foreign keys_: `userId` and `courseId`. Many-to-many relations typically require an additional table. This is necessary so that the grading system can have the following properties:
     - A single course can have many associated users (as students or teachers)
     - A single user can be associated with many courses.
 
@@ -249,11 +249,11 @@ The diagram has the following relations:
 
 ### Understanding the Prisma schema
 
-To create the tables in your database, you first define your [Prisma schema](https://www.prisma.io/docs/orm/prisma-schema). The Prisma schema is a declarative definition of your database tables. It serves as the source of truth for both the generated Prisma Client and for [Prisma Migrate](https://www.prisma.io/docs/orm/prisma-migrate), which creates the database schema.
+To create the tables in your database, you first define your [Prisma schema](https://www.prisma.io/docs/orm/prisma-schema). The Prisma schema is a declarative definition of your database tables. It serves as the source of truth for both the generated Prisma Client and for [Prisma Migrate](https://www.prisma.io/docs/orm/v7/prisma-migrate), which creates the database schema.
 
 ### Define models
 
-The fundamental building block of the Prisma schema is the [`model`](https://www.prisma.io/docs/orm/prisma-schema/data-model/models). Every model maps to a database table.
+The fundamental building block of the Prisma schema is the [`model`](https://www.prisma.io/docs/orm/v7/prisma-schema/data-model/models). Every model maps to a database table.
 
 Here is an example showing the basic signature of a model:
 
@@ -277,7 +277,7 @@ Each field has a name followed by a type and optional field attributes. The `Use
 | `lastName`  | `String` | Scalar             | -              | -                                                 |
 | `social`    | `Json`   | Scalar             | `?` (optional) | -                                                 |
 
-Prisma defines a [set of data types](https://www.prisma.io/docs/orm/prisma-schema/data-model/models#scalar-fields) that map to native database types depending on the database used.
+Prisma defines a [set of data types](https://www.prisma.io/docs/orm/v7/prisma-schema/data-model/models#scalar-fields) that map to native database types depending on the database used.
 
 The `Json` type stores free-form JSON. This is useful for information that can vary across `User` records and change without affecting the core functionality of the backend. In the `User` model it stores social links, for example a Bluesky or LinkedIn handle. Adding a new social profile link requires no database migration.
 
@@ -318,7 +318,7 @@ Each model has all the relevant fields while ignoring relations, which come next
 
 #### One-to-many
 
-To define a [one-to-many](https://www.prisma.io/docs/orm/prisma-schema/data-model/relations/one-to-many-relations) relation between `Test` and `TestResult`, add the following three fields:
+To define a [one-to-many](https://www.prisma.io/docs/orm/v7/prisma-schema/data-model/relations/one-to-many-relations) relation between `Test` and `TestResult`, add the following three fields:
 
 - A `testId` field of type `Int` (_relation scalar_) on the "many" side of the relation, `TestResult`. This field represents the _foreign key_ in the underlying database table.
 - A `test` field of type `Test` (_relation field_) with a `@relation` attribute mapping the relation scalar `testId` to the `id` primary key of the `Test` model.
@@ -348,7 +348,7 @@ Relation fields like `test` and `testResults` can be identified by their value t
 
 #### Many-to-many
 
-Many-to-many relations can be [_implicit_ or _explicit_](https://www.prisma.io/docs/orm/prisma-schema/data-model/relations/many-to-many-relations) in the Prisma schema.
+Many-to-many relations can be [_implicit_ or _explicit_](https://www.prisma.io/docs/orm/v7/prisma-schema/data-model/relations/many-to-many-relations) in the Prisma schema.
 
 To create an implicit many-to-many relation between `User` and `Course`, you would define relation fields as lists on both sides:
 
@@ -416,7 +416,7 @@ Things to note about the `CourseEnrollment` model:
 - It uses the `UserRole` enum to denote whether a user is a student or a teacher of a course.
 - `@@id([userId, courseId])` defines a multi-field primary key of the two fields. This ensures that every `User` can only be associated with a `Course` once, either as a student or as a teacher but never both.
 
-To learn more about relations, check out the [relations documentation](https://www.prisma.io/docs/orm/prisma-schema/data-model/relations).
+To learn more about relations, check out the [relations documentation](https://www.prisma.io/docs/orm/v7/prisma-schema/data-model/relations).
 
 ### The full schema
 
@@ -501,7 +501,7 @@ enum UserRole {
 }
 ```
 
-Note that `TestResult` has two relations to the `User` model: `student` and `gradedBy`, representing both the student who took the test and the teacher who graded it. The `name` argument on the `@relation` attribute [disambiguates the relations](https://www.prisma.io/docs/orm/prisma-schema/data-model/relations#disambiguating-relations) when a single model has more than one relation to the same model.
+Note that `TestResult` has two relations to the `User` model: `student` and `gradedBy`, representing both the student who took the test and the teacher who graded it. The `name` argument on the `@relation` attribute [disambiguates the relations](https://www.prisma.io/docs/orm/v7/prisma-schema/data-model/relations#disambiguating-relations) when a single model has more than one relation to the same model.
 
 ## Migrating the database
 
@@ -544,7 +544,7 @@ The client is generated into `generated/prisma` in your project, as configured b
 
 ## Seeding the database
 
-In this step, you will write a seed script that fills the database with sample data using Prisma Client CRUD operations. You will also use [nested writes](https://www.prisma.io/docs/orm/prisma-client/queries/relation-queries#nested-writes) to create database rows for related entities in a single operation.
+In this step, you will write a seed script that fills the database with sample data using Prisma Client CRUD operations. You will also use [nested writes](https://www.prisma.io/docs/orm/v7/prisma-client/queries/relation-queries#nested-writes) to create database rows for related entities in a single operation.
 
 First, register the seed script in `prisma.config.ts` so the Prisma CLI knows how to run it:
 
@@ -678,7 +678,7 @@ In the case of `tests`, you passed an array of objects to `create` which are all
 
 In the case of `members`, both `create` and `connect` were used: even though the user already exists, a _new_ row in the `CourseEnrollment` relation table needs to be created, and `connect` links it to the existing user.
 
-> **Note:** The [`include`](https://www.prisma.io/docs/orm/prisma-client/queries/select-fields) argument fetches relations in the result. Here it returns the created tests, which you will need to relate test results to tests in a later step.
+> **Note:** The [`include`](https://www.prisma.io/docs/orm/v7/prisma-client/queries/select-fields) argument fetches relations in the result. Here it returns the created tests, which you will need to relate test results to tests in a later step.
 
 ### Creating users and relating them to a course
 
@@ -870,7 +870,7 @@ In this step, you will run two kinds of aggregate operations:
 
 ### Grouping aggregates with groupBy
 
-Prisma Client also supports [`groupBy`](https://www.prisma.io/docs/orm/prisma-client/queries/aggregation-grouping-summarizing#group-by) queries, which combine grouping and aggregation in a single database query. The per-test loop above can be expressed as one query:
+Prisma Client also supports [`groupBy`](https://www.prisma.io/docs/orm/v7/prisma-client/queries/aggregation-grouping-summarizing#group-by) queries, which combine grouping and aggregation in a single database query. The per-test loop above can be expressed as one query:
 
 ```ts
 const resultsByTest = await prisma.testResult.groupBy({
@@ -904,4 +904,4 @@ In the next parts of this series, you'll learn more about:
 
 The database you created with `npx create-db` runs on [Prisma Postgres](https://www.prisma.io/postgres), which you can claim and manage in the [Prisma Console](https://console.prisma.io). If AI agents are part of your development workflow, the [Prisma MCP server](https://www.prisma.io/docs/postgres/integrations/mcp-server) lets them create and manage databases as they need them. And when you reach the deployment part of this series, [Prisma Compute](https://www.prisma.io/compute) runs your backend on the same platform as your database.
 
-This series teaches Prisma ORM 7, the current production release. If you want to see where Prisma ORM is heading for AI-assisted development, read [The Next Evolution of Prisma ORM](https://www.prisma.io/blog/the-next-evolution-of-prisma-orm). Prisma Next is the agent-native evolution of the ORM, available in Early Access today, and it becomes Prisma 8 at GA. It builds on the idea at the heart of this article: your schema acts as a single data contract, and every query against it is type-safe and returns structured output that humans and coding agents can build on safely. It runs in parallel with an existing project so you can migrate incrementally, and the [performance benchmark](https://www.prisma.io/blog/prisma-next-performance-benchmark) covers what the rewrite means for throughput and client size.
+This series teaches Prisma ORM 7, the current production release. If you want to see where Prisma ORM is heading for AI-assisted development, read [The Next Evolution of Prisma ORM](https://www.prisma.io/blog/the-next-evolution-of-prisma-orm). Prisma 8 is the agent-native evolution of the ORM, now available as a Release Candidate. It builds on the idea at the heart of this article: your schema acts as a single data contract, and every query against it is type-safe and returns structured output that humans and coding agents can build on safely. It runs in parallel with an existing project so you can migrate incrementally, and the [performance benchmark](https://www.prisma.io/blog/prisma-next-performance-benchmark) covers what the rewrite means for throughput and client size.

@@ -1,381 +1,257 @@
-import {
-  Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@prisma/eclipse";
+import { createPageMetadata } from "@/lib/page-metadata";
+import type { ReactNode } from "react";
+import { RoleKicker } from "@/components/brand/role-kicker";
+import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button";
 import {
   publicHolidays,
   responseTimes,
   severityLevels,
   supportChannels,
 } from "@/data/support-policy";
-import { createPageMetadata } from "@/lib/page-metadata";
 
 export const metadata = createPageMetadata({
-  title: "Prisma Support Policy | Prisma",
+  title: "Support Policy",
   description: "Read our support policy and see how it relates to you.",
   path: "/support-policy",
-  ogImage: "/og/og-support.png",
+  ogKicker: "Support",
 });
 
-function SupportPolicyTableCheck({ enabled }: { enabled: boolean }) {
+// Restyled from the old support-policy page: same data tables and prose, on
+// the legal-document shell of the new design system.
+
+function Check({ enabled }: { enabled: boolean }) {
   return enabled ? (
-    <span aria-label="Included">Yes</span>
+    <span aria-label="Included" className="font-semibold text-prism-cyan-700">
+      Yes
+    </span>
   ) : (
-    <span aria-label="Not included">-</span>
+    <span aria-label="Not included" className="text-muted-foreground">
+      -
+    </span>
+  );
+}
+
+function PolicyTable({ head, children }: { head: string[]; children: ReactNode }) {
+  return (
+    <div className="overflow-x-auto rounded-2xl border border-black/[0.06]">
+      <table className="w-full min-w-[36rem] border-collapse text-left text-sm">
+        <thead>
+          <tr className="bg-[#eef4f3]">
+            {head.map((h) => (
+              <th key={h} className="px-4 py-3 font-semibold text-foreground">
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="[&_td]:px-4 [&_td]:py-3 [&_tr]:border-t [&_tr]:border-black/[0.05]">
+          {children}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="border-b border-black/[0.05] py-8 last:border-b-0">
+      <h2 className="text-xl leading-snug sm:text-2xl">{title}</h2>
+      <div className="mt-4 flex flex-col gap-4 text-[0.9375rem] leading-relaxed text-muted-foreground [&_a]:font-semibold [&_a]:text-prism-cyan-700">
+        {children}
+      </div>
+    </section>
   );
 }
 
 export default function SupportPolicyPage() {
   return (
-    <main className="flex-1 w-full z-1 bg-background-default">
-      <div className="hero -mt-24 pt-40 flex items-end justify-center px-4 relative">
-        <div className="absolute inset-0 pointer-events-none z-1 bg-[linear-gradient(180deg,var(--color-foreground-orm)_0%,var(--color-background-default)_100%)] opacity-20" />
-        <div className="content relative z-2 my-12 py-12 flex flex-col gap-8">
-          <div className="flex flex-col gap-4 items-center text-center">
-            <div className="flex items-center gap-2 text-foreground-orm-weak type-title-sm">
-              <i className="fa-regular fa-headset" />
-              <span>Support</span>
-            </div>
-            <h1 className="text-4xl sm:text-5xl md:text-6xl stretch-display mb-0 text-center mt-0 font-sans-display text-foreground-neutral max-w-224 mx-auto">
-              Prisma Support Policy
-            </h1>
-          </div>
-          <p className="text-center text-foreground-neutral max-w-3xl mx-auto text-xl">
-            At Prisma, developer experience is at the heart of everything we do.
-            This page explains how to get help, which support channels are
-            available, and how requests are prioritized.
+    <article className="bg-white px-4 pb-24 pt-32 sm:px-8 sm:pb-32 md:pt-40">
+      <div className="mx-auto max-w-4xl">
+        <header className="border-b border-black/[0.07] pb-10">
+          <RoleKicker color="bg-prism-cyan-400">Support</RoleKicker>
+          <h1 className="mt-4 text-balance text-3xl leading-[1.1] sm:text-4xl md:text-5xl">
+            Prisma Support Policy
+          </h1>
+          <p className="mt-5 max-w-[58ch] text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground">
+            At Prisma, developer experience is at the heart of everything we do. This page explains
+            how to get help, which support channels are available, and how requests are prioritized.
           </p>
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
-            <Button asChild variant="orm" size="3xl">
-              <a href="https://www.prisma.io/docs">
-                <span>Read the docs</span>
-                <i className="fa-regular fa-book-open" />
-              </a>
-            </Button>
-            <Button asChild variant="default-strong" size="3xl">
-              <a href="/support">
-                <span>Visit support</span>
-                <i className="fa-regular fa-arrow-right" />
-              </a>
-            </Button>
+          <div className="mt-6 flex flex-wrap gap-4">
+            <PrismButton href="/docs">Read the docs</PrismButton>
+            <PrismButtonOutline href="/support">Visit support</PrismButtonOutline>
           </div>
+        </header>
+
+        <div className="mt-4 flex flex-col">
+          <Section title="Getting help">
+            <p>
+              Getting help when you need it is an essential part of developer experience, just like
+              great tooling, docs, or a great API are.
+            </p>
+            <p>
+              To resolve issues with our products, we recommend starting with our comprehensive{" "}
+              <a href="/docs">documentation</a>. Additionally, our Ask AI feature within the docs is
+              available to assist all users and customers.
+            </p>
+          </Section>
+
+          <Section title="Support services for Prisma ORM">
+            <p>
+              Support for Prisma&apos;s open-source software, including{" "}
+              <a href="https://github.com/prisma/orm">Prisma ORM</a>, is provided through our
+              community channels on{" "}
+              <a href="https://github.com/prisma/orm/discussions">GitHub</a> and{" "}
+              <a href="https://pris.ly/discord">Discord</a>.
+            </p>
+            <p>
+              Prisma also offers custom support packages for enterprises and solutions providers.
+            </p>
+          </Section>
+
+          <Section title="Support services for Prisma Data Platform">
+            <p>
+              Prisma provides support for Prisma Data Platform customers based on their selected
+              plan. More details are available on our <a href="/pricing">pricing page</a>.
+            </p>
+          </Section>
+
+          <Section title="Support channels">
+            <p>
+              Whenever possible, we recommend contacting us through the built-in integration on{" "}
+              <a href="https://console.prisma.io">console.prisma.io</a> instead of direct email
+              support. It gives us additional context and helps us respond faster and more
+              accurately.
+            </p>
+            <PolicyTable
+              head={[
+                "Platform plan",
+                "Support plan",
+                "Discord",
+                "Contact via Console",
+                "Email via support@prisma.io",
+                "Dedicated contact",
+              ]}
+            >
+              {supportChannels.map((row) => (
+                <tr key={row.platformPlan}>
+                  <td className="font-semibold text-foreground">{row.platformPlan}</td>
+                  <td>{row.supportPlan}</td>
+                  <td>
+                    <Check enabled={row.discord} />
+                  </td>
+                  <td>
+                    <Check enabled={row.console} />
+                  </td>
+                  <td>
+                    <Check enabled={row.email} />
+                  </td>
+                  <td>
+                    <Check enabled={row.dedicatedContact} />
+                  </td>
+                </tr>
+              ))}
+            </PolicyTable>
+          </Section>
+
+          <Section title="Response times">
+            <p>
+              We aim to respond to all requests in a timely manner. Requests are prioritized based
+              on the requester&apos;s plan and the severity of the issue.
+            </p>
+            <PolicyTable head={["Platform plan", "Support plan", "Response time"]}>
+              {responseTimes.map((row) => (
+                <tr key={row.platformPlan}>
+                  <td className="font-semibold text-foreground">{row.platformPlan}</td>
+                  <td>{row.supportPlan}</td>
+                  <td>{row.responseTime}</td>
+                </tr>
+              ))}
+            </PolicyTable>
+          </Section>
+
+          <Section title="Business hours">
+            <p>
+              Our business hours are 9am-5pm CET on regular weekdays, Monday to Friday, except for
+              public holidays in Germany.
+            </p>
+            <p>
+              We provide additional coverage under our dedicated support plans for customers on our
+              Enterprise plan.
+            </p>
+          </Section>
+
+          <Section title="Severity levels">
+            <p>
+              The severity level is indicated by the customer when submitting a support request.
+              Prisma may set, upgrade, or downgrade the severity level at its discretion based on
+              the information available.
+            </p>
+            <PolicyTable head={["Level", "Definition"]}>
+              {severityLevels.map((row) => (
+                <tr key={row.level}>
+                  <td className="font-semibold text-foreground">{row.level}</td>
+                  <td>{row.definition}</td>
+                </tr>
+              ))}
+            </PolicyTable>
+          </Section>
+
+          <Section title="Definitions and terminology">
+            <ol className="list-decimal pl-6 [&_li]:mt-2">
+              <li>
+                <strong className="font-semibold text-foreground">Production Environment</strong>{" "}
+                means an environment serving your end-users or customers.
+              </li>
+              <li>
+                <strong className="font-semibold text-foreground">Initial Response</strong> means an
+                initial response to a support request that, at a minimum, acknowledges receipt of
+                the request.
+              </li>
+              <li>
+                <strong className="font-semibold text-foreground">Support Services</strong> means
+                the product and services support that Prisma has agreed to provide to you, the
+                customer.
+              </li>
+              <li>
+                <strong className="font-semibold text-foreground">Workaround</strong> means a method
+                that can be used by the customer to avoid an error or issue without substantially
+                impairing their use of the software or services.
+              </li>
+              <li>
+                <strong className="font-semibold text-foreground">
+                  Unscheduled Service Outage
+                </strong>{" "}
+                refers to an interruption of the service, not previously communicated to the
+                customer, that causes the customer&apos;s projects to be unavailable to end users.
+                This does not include any downtime planned by the customer.
+              </li>
+            </ol>
+            <p>
+              More information is available in our <a href="/legal/privacy">Privacy Policy</a> and{" "}
+              <a href="/legal/terms">Terms of Service</a>.
+            </p>
+          </Section>
+
+          <Section title="Etiquette">
+            <p>
+              Prisma is dedicated to providing a positive experience for everyone using our support
+              services. Please communicate in a professional and respectful manner. Prisma reserves
+              the right to cease providing support services if communication includes abusive,
+              profane, or otherwise inappropriate language. More information is available in our{" "}
+              <a href="/event-code-of-conduct">Code of Conduct</a>.
+            </p>
+          </Section>
+
+          <Section title="List of public holidays">
+            <ul className="list-disc pl-6 [&_li]:mt-1">
+              {publicHolidays.map((holiday) => (
+                <li key={holiday}>{holiday}</li>
+              ))}
+            </ul>
+            <p>Prisma reserves the right to update this Support Policy.</p>
+          </Section>
         </div>
       </div>
-
-      <section className="px-4 pb-20">
-        <div className="mx-auto flex max-w-[996px] flex-col gap-12">
-          <div className="rounded-2xl border border-stroke-neutral bg-background-default p-6 md:p-8">
-            <div className="flex flex-col gap-4 text-base leading-7 text-foreground-neutral-weak [&_a]:text-foreground-orm-strong [&_a]:underline [&_a]:underline-offset-3">
-              <p className="m-0">
-                Getting help when you need it is an essential part of developer
-                experience, just like great tooling, docs, or a great API are.
-              </p>
-              <p className="m-0">
-                To resolve issues with our products, we recommend starting with
-                our comprehensive{" "}
-                <a href="https://prisma.io/docs">documentation</a>.
-                Additionally, our Ask AI feature within the docs is available to
-                assist all users and customers.
-              </p>
-            </div>
-          </div>
-
-          <section className="flex flex-col gap-4">
-            <h2 className="m-0 text-3xl text-foreground-neutral font-sans-display [font-variation-settings:'wght'_900]">
-              Support Services for Prisma ORM
-            </h2>
-            <div className="flex flex-col gap-4 text-base leading-7 text-foreground-neutral-weak [&_a]:text-foreground-orm-strong [&_a]:underline [&_a]:underline-offset-3">
-              <p className="m-0">
-                Support for Prisma's open-source software, including{" "}
-                <a href="https://github.com/prisma/prisma">Prisma ORM</a>, is
-                provided through our community channels on{" "}
-                <a href="https://github.com/prisma/prisma/discussions">
-                  GitHub
-                </a>{" "}
-                and <a href="https://pris.ly/discord">Discord</a>.
-              </p>
-              <p className="m-0">
-                Prisma also offers custom support packages for enterprises and
-                solutions providers.
-              </p>
-            </div>
-          </section>
-
-          <section className="flex flex-col gap-4">
-            <h2 className="m-0 text-3xl text-foreground-neutral font-sans-display [font-variation-settings:'wght'_900]">
-              Support Services for Prisma Data Platform
-            </h2>
-            <p className="m-0 text-base leading-7 text-foreground-neutral-weak [&_a]:text-foreground-orm-strong [&_a]:underline [&_a]:underline-offset-3">
-              Prisma provides support for Prisma Data Platform customers based
-              on their selected plan. More details are available on our{" "}
-              <a href="https://prisma.io/pricing">pricing page</a>.
-            </p>
-          </section>
-
-          <section className="flex flex-col gap-6">
-            <div className="flex flex-col gap-2">
-              <h2 className="m-0 text-3xl text-foreground-neutral font-sans-display [font-variation-settings:'wght'_900]">
-                Support Channels
-              </h2>
-              <p className="m-0 text-base leading-7 text-foreground-neutral-weak">
-                Whenever possible, we recommend contacting us through the
-                built-in integration on{" "}
-                <a
-                  href="https://console.prisma.io"
-                  className="text-foreground-orm-strong underline underline-offset-3"
-                >
-                  console.prisma.io
-                </a>{" "}
-                instead of direct email support. It gives us additional context
-                and helps us respond faster and more accurately.
-              </p>
-            </div>
-
-            <div className="overflow-hidden rounded-2xl border border-stroke-neutral">
-              <Table className="table-fixed">
-                <TableHeader className="[&_tr]:border-b border-stroke-neutral">
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="text-foreground-neutral">
-                      Platform plan
-                    </TableHead>
-                    <TableHead className="text-foreground-neutral">
-                      Support plan
-                    </TableHead>
-                    <TableHead className="text-foreground-neutral">
-                      Discord
-                    </TableHead>
-                    <TableHead className="text-foreground-neutral">
-                      Contact via Console
-                    </TableHead>
-                    <TableHead className="text-foreground-neutral">
-                      Email via support@prisma.io
-                    </TableHead>
-                    <TableHead className="text-foreground-neutral">
-                      Dedicated contact
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {supportChannels.map((row) => (
-                    <TableRow
-                      key={row.platformPlan}
-                      className="hover:bg-transparent"
-                    >
-                      <TableCell className="font-semibold text-foreground-neutral">
-                        {row.platformPlan}
-                      </TableCell>
-                      <TableCell className="text-foreground-neutral-weak">
-                        {row.supportPlan}
-                      </TableCell>
-                      <TableCell className="text-foreground-neutral-weak">
-                        <SupportPolicyTableCheck enabled={row.discord} />
-                      </TableCell>
-                      <TableCell className="text-foreground-neutral-weak">
-                        <SupportPolicyTableCheck enabled={row.console} />
-                      </TableCell>
-                      <TableCell className="text-foreground-neutral-weak">
-                        <SupportPolicyTableCheck enabled={row.email} />
-                      </TableCell>
-                      <TableCell className="text-foreground-neutral-weak">
-                        <SupportPolicyTableCheck
-                          enabled={row.dedicatedContact}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </section>
-
-          <section className="flex flex-col gap-6">
-            <div className="flex flex-col gap-2">
-              <h2 className="m-0 text-3xl text-foreground-neutral font-sans-display [font-variation-settings:'wght'_900]">
-                Response Times
-              </h2>
-              <p className="m-0 text-base leading-7 text-foreground-neutral-weak">
-                We aim to respond to all requests in a timely manner. Requests
-                are prioritized based on the requester's plan and the severity
-                of the issue.
-              </p>
-            </div>
-
-            <div className="overflow-hidden rounded-2xl border border-stroke-neutral">
-              <Table className="table-fixed">
-                <TableHeader className="[&_tr]:border-b border-stroke-neutral">
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="text-foreground-neutral">
-                      Platform plan
-                    </TableHead>
-                    <TableHead className="text-foreground-neutral">
-                      Support plan
-                    </TableHead>
-                    <TableHead className="text-foreground-neutral">
-                      Response time
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {responseTimes.map((row) => (
-                    <TableRow
-                      key={row.platformPlan}
-                      className="hover:bg-transparent"
-                    >
-                      <TableCell className="font-semibold text-foreground-neutral">
-                        {row.platformPlan}
-                      </TableCell>
-                      <TableCell className="text-foreground-neutral-weak">
-                        {row.supportPlan}
-                      </TableCell>
-                      <TableCell className="text-foreground-neutral-weak">
-                        {row.responseTime}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </section>
-
-          <section className="flex flex-col gap-4">
-            <h2 className="m-0 text-3xl text-foreground-neutral font-sans-display [font-variation-settings:'wght'_900]">
-              Business Hours
-            </h2>
-            <div className="flex flex-col gap-4 text-base leading-7 text-foreground-neutral-weak">
-              <p className="m-0">
-                Our business hours are 9am-5pm CET on regular weekdays, Monday
-                to Friday, except for public holidays in Germany.
-              </p>
-              <p className="m-0">
-                We provide additional coverage under our dedicated support plans
-                for customers on our Enterprise plan.
-              </p>
-            </div>
-          </section>
-
-          <section className="flex flex-col gap-8">
-            <div className="flex flex-col gap-4">
-              <h2 className="m-0 text-3xl text-foreground-neutral font-sans-display [font-variation-settings:'wght'_900]">
-                Additional Information
-              </h2>
-            </div>
-
-            <div className="flex flex-col gap-6">
-              <h3 className="m-0 text-2xl text-foreground-neutral font-sans-display font-bold">
-                Severity levels
-              </h3>
-              <p className="m-0 text-base leading-7 text-foreground-neutral-weak">
-                The severity level is indicated by the customer when submitting
-                a support request. Prisma may set, upgrade, or downgrade the
-                severity level at its discretion based on the information
-                available.
-              </p>
-              <div className="overflow-hidden rounded-2xl border border-stroke-neutral">
-                <Table className="table-fixed">
-                  <TableHeader className="[&_tr]:border-b border-stroke-neutral">
-                    <TableRow className="hover:bg-transparent">
-                      <TableHead className="text-foreground-neutral">
-                        Level
-                      </TableHead>
-                      <TableHead className="text-foreground-neutral">
-                        Definition
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {severityLevels.map((row) => (
-                      <TableRow
-                        key={row.level}
-                        className="hover:bg-transparent"
-                      >
-                        <TableCell className="font-semibold text-foreground-neutral">
-                          {row.level}
-                        </TableCell>
-                        <TableCell className="text-foreground-neutral-weak">
-                          {row.definition}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-4">
-              <h3 className="m-0 text-2xl text-foreground-neutral font-sans-display font-bold">
-                Definitions and terminology
-              </h3>
-              <ol className="m-0 pl-6 text-base leading-7 text-foreground-neutral-weak">
-                <li>
-                  <strong>Production Environment</strong> means an environment
-                  serving your end-users or customers.
-                </li>
-                <li>
-                  <strong>Initial Response</strong> means an initial response to
-                  a support request that, at a minimum, acknowledges receipt of
-                  the request.
-                </li>
-                <li>
-                  <strong>Support Services</strong> means the product and
-                  services support that Prisma has agreed to provide to you, the
-                  customer.
-                </li>
-                <li>
-                  <strong>Workaround</strong> means a method that can be used by
-                  the customer to avoid an error or issue without substantially
-                  impairing their use of the software or services.
-                </li>
-                <li>
-                  <strong>Unscheduled Service Outage</strong> refers to an
-                  interruption of the service, not previously communicated to
-                  the customer, that causes the customer's projects to be
-                  unavailable to end users. This does not include any downtime
-                  planned by the customer.
-                </li>
-              </ol>
-              <p className="m-0 text-base leading-7 text-foreground-neutral-weak [&_a]:text-foreground-orm-strong [&_a]:underline [&_a]:underline-offset-3">
-                More information is available in our{" "}
-                <a href="https://pris.ly/privacy">Privacy Policy</a> and{" "}
-                <a href="https://pris.ly/terms">Terms of Service</a>.
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-4">
-              <h3 className="m-0 text-2xl text-foreground-neutral font-sans-display font-bold">
-                Etiquette
-              </h3>
-              <p className="m-0 text-base leading-7 text-foreground-neutral-weak [&_a]:text-foreground-orm-strong [&_a]:underline [&_a]:underline-offset-3">
-                Prisma is dedicated to providing a positive experience for
-                everyone using our support services. Please communicate in a
-                professional and respectful manner. Prisma reserves the right to
-                cease providing support services if communication includes
-                abusive, profane, or otherwise inappropriate language. More
-                information is available in our{" "}
-                <a href="https://pris.ly/code-conduct">Code of Conduct</a>.
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-4">
-              <h3 className="m-0 text-2xl text-foreground-neutral font-sans-display font-bold">
-                List of Public Holidays
-              </h3>
-              <ul className="m-0 pl-6 text-base leading-7 text-foreground-neutral-weak">
-                {publicHolidays.map((holiday) => (
-                  <li key={holiday}>{holiday}</li>
-                ))}
-              </ul>
-              <p className="m-0 text-base leading-7 text-foreground-neutral-weak">
-                Prisma reserves the right to update this Support Policy.
-              </p>
-            </div>
-          </section>
-        </div>
-      </section>
-    </main>
+    </article>
   );
 }

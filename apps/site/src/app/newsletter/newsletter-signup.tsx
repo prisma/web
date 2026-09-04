@@ -1,7 +1,8 @@
 "use client";
 
-import { Button, Input } from "@prisma/eclipse";
 import { useNewsletter } from "@prisma-docs/ui/hooks/use-newsletter";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export function NewsletterSignup() {
   const { email, setEmail, isSubmitting, isSubmitted, isAlreadySubscribed, error, subscribe } =
@@ -15,16 +16,16 @@ export function NewsletterSignup() {
   };
 
   const statusMessage = error
-    ? { text: error, className: "text-foreground-error" }
+    ? { text: error, className: "text-prism-red-600" }
     : isSubmitted
       ? {
-          text: "Please check your email to confirm your subscription!",
-          className: "text-foreground-success",
+          text: "You're subscribed. Welcome to the Prisma newsletter!",
+          className: "text-prism-cyan-700",
         }
       : isAlreadySubscribed
         ? {
             text: "You're already subscribed to our newsletter!",
-            className: "text-foreground-ppg",
+            className: "text-prism-cyan-700",
           }
         : null;
 
@@ -34,32 +35,21 @@ export function NewsletterSignup() {
         <label htmlFor="newsletter-email" className="sr-only">
           Email Address
         </label>
-        <div className="relative flex-1">
-          <i
-            className="fa-regular fa-envelope pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-foreground-neutral-weaker"
-            aria-hidden
-          />
-          <Input
-            id="newsletter-email"
-            type="email"
-            placeholder="Email Address"
-            value={email}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-            disabled={disabled}
-            size="2xl"
-            className="pl-9"
-          />
-        </div>
-        <Button variant="ppg" size="2xl" disabled={disabled}>
-          <input
-            type="submit"
-            value={isSubmitting ? "..." : "Sign me up"}
-            className="cursor-pointer"
-          />
+        <Input
+          id="newsletter-email"
+          type="email"
+          placeholder="Email address"
+          value={email}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+          disabled={disabled}
+          className="h-11 flex-1"
+        />
+        <Button type="submit" disabled={disabled} className="h-11 shrink-0 px-5">
+          {isSubmitting ? "Signing up…" : "Sign me up"}
         </Button>
       </div>
       {statusMessage ? (
-        <p className={`m-0 text-sm ${statusMessage.className}`}>{statusMessage.text}</p>
+        <p className={`text-sm ${statusMessage.className}`}>{statusMessage.text}</p>
       ) : null}
     </form>
   );

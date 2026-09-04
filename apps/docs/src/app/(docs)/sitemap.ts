@@ -5,7 +5,15 @@ import { getBaseUrl, withDocsBasePath } from "@/lib/urls";
 export const revalidate = 3600;
 
 function isLegacyPage(url: string) {
-  return url.startsWith("/v6") || url.startsWith("/orm/v6");
+  return (
+    url.startsWith("/v6") ||
+    url.startsWith("/orm/v6") ||
+    url === "/v7" ||
+    url.startsWith("/v7/") ||
+    url.startsWith("/orm/v7") ||
+    url.startsWith("/cli/v7") ||
+    url.startsWith("/guides/v7")
+  );
 }
 
 function getPriority(url: string, slugCount: number) {

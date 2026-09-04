@@ -1,0 +1,146 @@
+---
+title: Configuration
+description: Configure Prisma 8 CLI commands with prisma.config.ts and global flags.
+url: /cli/configuration
+metaTitle: Prisma 8 CLI configuration
+metaDescription: 'Learn how Prisma 8 CLI commands find config, read database URLs, and format output.'
+---
+
+Prisma 8 CLI commands read `prisma.config.ts` in your project root. The file has one section per part of the CLI. The Prisma 8 data commands read the `orm` section; the [agent skills commands](/cli/skills) read the `skills` section.
+
+## Config file
+
+The outer `definePrismaConfig` comes from `prisma/config` and marks the file as a Prisma 8 CLI config. A Prisma 7 `prisma.config.ts` without that marker is rejected rather than misread. The import resolves from your project's `node_modules`, so `prisma` must be a local dependency. The `orm` section uses the config helper for your database. For PostgreSQL:
+
+```typescript title="prisma.config.ts"
+import "dotenv/config";
+import { definePrismaConfig } from "prisma/config";
+import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
+
+export default definePrismaConfig({
+  orm: ormConfig({
+    contract: "./prisma/contract.prisma",
+    db: {
+      connection: process.env["DATABASE_URL"]!,
+    },
+  }),
+});
+```
+
+For MongoDB projects, import the section helper from `@prisma/orm-mongo/config` instead. `defineConfig` from `@prisma/cli-engine` is the former name of `definePrismaConfig` and still works, so configs scaffolded by earlier release candidates keep evaluating.
+
+[`orm init`](/cli/orm-init) writes this file for you. Pass `--config` when your config file is not at `./prisma.config.ts`:
+
+```npm
+npx prisma@latest contract emit --config ./config/prisma.config.ts
+```
+
+## Emit-only config
+
+`contract emit` does not connect to a database, so the `orm` section can omit `db.connection`:
+
+```typescript title="prisma.config.ts"
+import { definePrismaConfig } from "prisma/config";
+import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
+
+export default definePrismaConfig({
+  orm: ormConfig({
+    contract: "./prisma/contract.prisma",
+  }),
+});
+```
+
+Add `db.connection` before running commands such as `db verify`, `db sign`, `db init`, `db update`, `db schema`, `contract infer`, or `db migrate`.
+
+## Extension packs
+
+Add extension control descriptors to the `orm` section when your contract uses extension-provided types:
+
+```typescript title="prisma.config.ts"
+import { definePrismaConfig } from "prisma/config";
+import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
+import pgvector from "@prisma/orm-extension-pgvector/control";
+
+export default definePrismaConfig({
+  orm: ormConfig({
+    contract: "./prisma/contract.prisma",
+    extensions: [pgvector],
+    db: {
+      connection: process.env["DATABASE_URL"]!,
+    },
+  }),
+});
+```
+
+Re-run `contract emit` after changing extension packs, then update the matching runtime client.
+
+## Agent skills
+
+The `skills` section controls the [agent skills commands](/cli/skills) and the staleness check:
+
+```typescript title="prisma.config.ts"
+import { definePrismaConfig } from "prisma/config";
+
+export default definePrismaConfig({
+  skills: {
+    agents: ["claude", "cursor"],
+    check: true,
+  },
+});
+```
+
+| Field | What it does |
+| --- | --- |
+| `agents` | The agent harnesses `skills sync` writes and `skills list` reports: `claude`, `cursor`, `agents`, `devin`. An empty array records that no agent skills are wanted. Default: all of them. |
+| `check` | Set `false` to stop commands reporting out-of-date skills, for everyone working in the project. Default: `true`. |
+
+[`init`](/cli/init) scaffolds this section for you.
+
+## Database URLs
+
+Database commands accept `--db <url>`. If you omit it, Prisma 8 uses the database connection from `prisma.config.ts`.
+
+```npm
+npx prisma@latest db verify --db "$DATABASE_URL"
+```
+
+## Environment variables
+
+| Variable | What it does |
+| --- | --- |
+| `DATABASE_URL` | Common place to store the database connection string used by config files and scripts. |
+| `NO_COLOR=1` | Disables colored terminal output. |
+| `PRISMA_SKILLS_CHECK=0` | Disables the [agent skills staleness check](/cli/skills#the-staleness-check). |
+
+## Platform environment variables
+
+The [platform commands](/cli#platform-commands) read these:
+
+| Variable               | Description                                                        |
+| ---------------------- | ------------------------------------------------------------------- |
+| `PRISMA_SERVICE_TOKEN` | Authenticate without a browser, for CI. Takes priority over any stored session |
+| `PRISMA_WORKSPACE_ID`  | Workspace to target when authenticating with a service token         |
+| `PRISMA_PROJECT_ID`    | Override the project stored in `.prisma/local.json` (useful in CI)   |
+| `PRISMA_SERVICE_ID`    | Set the target service when no positional argument is passed (useful in CI) |
+
+## Output modes
+
+Use the default text output when running commands locally. Use `--json` in CI or automation:
+
+```npm
+npx prisma@latest db verify --db "$DATABASE_URL" --json
+```
+
+Use `--no-interactive` for scripts that must never pause for user input. Use `--confirm <token>` to grant a consent prompt non-interactively. For example, [`db update`](/cli/db-update) asks for the database name before a destructive change.
+
+## JSON output
+
+In `--json` mode, commands emit newline-delimited JSON events. Progress events have `kind: "step-finished"`. The final event has `kind: "result"` and carries the `envelope` object your script branches on:
+
+- `envelope.ok`: `true` or `false`.
+- `envelope.result`: the command's data, when `ok` is `true`.
+- `envelope.error.code`: a dotted `NAMESPACE.SUBCODE`, for example `PROJECT.NOT_FOUND` or `SERVICE.PROJECT_SETUP_REQUIRED`.
+- `envelope.error.summary` and `envelope.error.why`: what failed and why it was rejected.
+- `envelope.nextActions`: machine-readable follow-up commands, so agents can drive the CLI.
+
+Branch on `envelope.error.code`, not the message text: codes are a stable contract, while message wording can change between releases.

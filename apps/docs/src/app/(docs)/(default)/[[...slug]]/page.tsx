@@ -30,9 +30,19 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
 
   const aiPromptSlug = (page.data as { aiPrompt?: string }).aiPrompt;
   const promptContent = aiPromptSlug ? await getPromptContent(aiPromptSlug) : null;
+  const hideSidebar = (page.data as { hideSidebar?: boolean }).hideSidebar;
 
   return (
     <>
+      {hideSidebar && (
+        // Server-rendered so the sidebar never flashes in. Desktop-only: the
+        // mobile drawer stays available behind the hamburger. Pages remain in
+        // nav, search, sitemap, and llms.txt.
+        <style>{`@media (min-width: 768px){
+#nd-notebook-layout{--fd-sidebar-col:0px !important}
+#nd-sidebar,#nd-notebook-layout div:has(> #nd-sidebar){display:none !important}
+}`}</style>
+      )}
       {/* The hidden llms.txt directive for AI agents lives in the root layout
           (src/app/layout.tsx) as the first child of <body> — agent-readiness
           audits require it near the top of the HTML, before the sidebar. */}
@@ -49,7 +59,7 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
           <DocsTitle>{page.data.title}</DocsTitle>
           <div className="flex flex-row gap-2 items-center" data-markdown-ignore>
             {promptContent && <CopyPromptButton fullPrompt={promptContent.fullPrompt} />}
-            {!page.url.startsWith("/management-api/endpoints") && (
+            {!page.url.startsWith("/rest-api/endpoints") && (
               <LLMCopyButton markdownUrl={`${withDocsBasePath(page.url)}.mdx`} />
             )}
 

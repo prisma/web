@@ -1,7 +1,9 @@
 import type * as PageTree from "fumadocs-core/page-tree";
 
 export const LATEST_VERSION = "latest";
-const NAMED_VERSIONS = ["next", "v6"] as const;
+// Prisma 8 is the unversioned "Latest" tree. Prisma 7 and Prisma 6 live under
+// explicit version segments (/orm/v7, /orm/v6, /v7, /cli/v7, /guides/v7).
+const NAMED_VERSIONS = ["v7", "v6"] as const;
 export type Version = string;
 
 type TreeNode = {
@@ -17,50 +19,13 @@ type TreeNode = {
 const VERSION_SEGMENT_REGEX = /^v\d+$/i;
 const LEGACY_ORM_VERSION_REGEX = /^\/(?<version>[a-z0-9-]+)\/orm(?:\/|$)/i;
 const DOCS_PREFIX = "/docs";
-const NEXT_GETTING_STARTED_ROOT = "/next";
+const V7_GETTING_STARTED_ROOT = "/v7";
+const LATEST_GETTING_STARTED_ROOT = "/getting-started";
+const V7_GETTING_STARTED_PAGE = "/v7/getting-started";
 const LATEST_CLI_ROOT = "/cli";
-const NEXT_CLI_ROOT = "/cli/next";
+const V7_CLI_ROOT = "/cli/v7";
 const LATEST_GUIDES_ROOT = "/guides";
-const NEXT_GUIDES_ROOT = "/guides/next";
-const NEXT_GETTING_STARTED_PATHS_BY_LATEST_PATH = new Map<string, string>([
-  ["/", NEXT_GETTING_STARTED_ROOT],
-  ["/getting-started", "/next/getting-started"],
-  ["/prisma-orm", NEXT_GETTING_STARTED_ROOT],
-  ["/prisma-orm/quickstart/postgresql", "/next/quickstart/postgresql"],
-  ["/prisma-orm/quickstart/mongodb", "/next/quickstart/mongodb"],
-  ["/prisma-orm/add-to-existing-project/postgresql", "/next/add-to-existing-project/postgresql"],
-  ["/prisma-orm/add-to-existing-project/mongodb", "/next/add-to-existing-project/mongodb"],
-  ["/prisma-postgres", "/next/prisma-postgres/quickstart/prisma-next"],
-  ["/prisma-postgres/quickstart/prisma-orm", "/next/prisma-postgres/quickstart/prisma-next"],
-  [
-    "/prisma-postgres/import-from-existing-database-postgresql",
-    "/next/prisma-postgres/import-from-existing-database-postgresql",
-  ],
-  [
-    "/prisma-postgres/import-from-existing-database-mysql",
-    "/next/prisma-postgres/import-from-existing-database-mysql",
-  ],
-  ["/prisma-postgres/from-the-cli", "/next/prisma-postgres/from-the-cli"],
-]);
-const LATEST_GETTING_STARTED_PATHS_BY_NEXT_PATH = new Map<string, string>([
-  // Bare "/" redirects to /next, so the Latest getting-started anchor is /getting-started.
-  [NEXT_GETTING_STARTED_ROOT, "/getting-started"],
-  ["/next/getting-started", "/getting-started"],
-  ["/next/quickstart/postgresql", "/prisma-orm/quickstart/postgresql"],
-  ["/next/quickstart/mongodb", "/prisma-orm/quickstart/mongodb"],
-  ["/next/add-to-existing-project/postgresql", "/prisma-orm/add-to-existing-project/postgresql"],
-  ["/next/add-to-existing-project/mongodb", "/prisma-orm/add-to-existing-project/mongodb"],
-  ["/next/prisma-postgres/quickstart/prisma-next", "/prisma-postgres/quickstart/prisma-orm"],
-  [
-    "/next/prisma-postgres/import-from-existing-database-postgresql",
-    "/prisma-postgres/import-from-existing-database-postgresql",
-  ],
-  [
-    "/next/prisma-postgres/import-from-existing-database-mysql",
-    "/prisma-postgres/import-from-existing-database-mysql",
-  ],
-  ["/next/prisma-postgres/from-the-cli", "/prisma-postgres/from-the-cli"],
-]);
+const V7_GUIDES_ROOT = "/guides/v7";
 
 function normalizePathname(pathname: string) {
   const path = pathname.split(/[?#]/, 1)[0] || "/";
@@ -168,13 +133,6 @@ export function getVersionLabel(version: Version) {
     return "Latest";
   }
 
-  if (version === "next") {
-    return "Next";
-  }
-  if (version === "v6") {
-    return "v6";
-  }
-
   return version;
 }
 
@@ -182,10 +140,20 @@ export function getVersionRoot(version: Version) {
   return version === LATEST_VERSION ? "/orm" : `/orm/${version}`;
 }
 
+function getAvailablePathnameSet(availablePathnames: Iterable<string>) {
+  const available = new Set<string>();
+
+  for (const pathname of availablePathnames) {
+    available.add(withoutDocsPrefix(pathname));
+  }
+
+  return available;
+}
+
 function isLatestGettingStartedPathname(pathname: string) {
   return (
     pathname === "/" ||
-    pathname === "/getting-started" ||
+    pathname === LATEST_GETTING_STARTED_ROOT ||
     pathname === "/prisma-orm" ||
     pathname.startsWith("/prisma-orm/") ||
     pathname === "/prisma-postgres" ||
@@ -193,19 +161,43 @@ function isLatestGettingStartedPathname(pathname: string) {
   );
 }
 
-function isNextGettingStartedPathname(pathname: string) {
-  return (
-    pathname === NEXT_GETTING_STARTED_ROOT || pathname.startsWith(`${NEXT_GETTING_STARTED_ROOT}/`)
-  );
+function isV7GettingStartedPathname(pathname: string) {
+  return pathname === V7_GETTING_STARTED_ROOT || pathname.startsWith(`${V7_GETTING_STARTED_ROOT}/`);
 }
 
-function getGettingStartedSwitchPathname(docsPathname: string, targetVersion: Version) {
-  if (targetVersion === "next") {
-    return NEXT_GETTING_STARTED_PATHS_BY_LATEST_PATH.get(docsPathname) ?? NEXT_GETTING_STARTED_ROOT;
+// The Prisma 7 getting-started tree mirrors the Latest one under /v7, so the
+// switch is a prefix change, checked against the pages that actually exist.
+function getGettingStartedSwitchPathname(
+  docsPathname: string,
+  targetVersion: Version,
+  availablePathnames: Iterable<string>,
+) {
+  const available = getAvailablePathnameSet(availablePathnames);
+
+  if (targetVersion === "v7") {
+    if (isV7GettingStartedPathname(docsPathname)) {
+      return docsPathname;
+    }
+
+    const candidate =
+      docsPathname === "/" ? V7_GETTING_STARTED_PAGE : `${V7_GETTING_STARTED_ROOT}${docsPathname}`;
+
+    return available.size === 0 || available.has(candidate) ? candidate : V7_GETTING_STARTED_PAGE;
   }
 
   if (targetVersion === LATEST_VERSION) {
-    return LATEST_GETTING_STARTED_PATHS_BY_NEXT_PATH.get(docsPathname) ?? "/getting-started";
+    if (!isV7GettingStartedPathname(docsPathname)) {
+      return docsPathname;
+    }
+
+    const candidate =
+      docsPathname === V7_GETTING_STARTED_ROOT
+        ? LATEST_GETTING_STARTED_ROOT
+        : docsPathname.slice(V7_GETTING_STARTED_ROOT.length);
+
+    return available.size === 0 || available.has(candidate)
+      ? candidate
+      : LATEST_GETTING_STARTED_ROOT;
   }
 
   return getVersionRoot(targetVersion);
@@ -214,87 +206,39 @@ function getGettingStartedSwitchPathname(docsPathname: string, targetVersion: Ve
 function isLatestCliPathname(pathname: string) {
   return (
     pathname === LATEST_CLI_ROOT ||
-    (pathname.startsWith(`${LATEST_CLI_ROOT}/`) && !isNextCliPathname(pathname))
+    (pathname.startsWith(`${LATEST_CLI_ROOT}/`) && !isV7CliPathname(pathname))
   );
 }
 
-function isNextCliPathname(pathname: string) {
-  return pathname === NEXT_CLI_ROOT || pathname.startsWith(`${NEXT_CLI_ROOT}/`);
+function isV7CliPathname(pathname: string) {
+  return pathname === V7_CLI_ROOT || pathname.startsWith(`${V7_CLI_ROOT}/`);
 }
 
 function isLatestGuidesPathname(pathname: string) {
   return (
     pathname === LATEST_GUIDES_ROOT ||
-    (pathname.startsWith(`${LATEST_GUIDES_ROOT}/`) && !isNextGuidesPathname(pathname))
+    (pathname.startsWith(`${LATEST_GUIDES_ROOT}/`) && !isV7GuidesPathname(pathname))
   );
 }
 
-function isNextGuidesPathname(pathname: string) {
-  return pathname === NEXT_GUIDES_ROOT || pathname.startsWith(`${NEXT_GUIDES_ROOT}/`);
+function isV7GuidesPathname(pathname: string) {
+  return pathname === V7_GUIDES_ROOT || pathname.startsWith(`${V7_GUIDES_ROOT}/`);
 }
 
-function getGuidesSwitchPathname(
+function getSectionSwitchPathname(
   docsPathname: string,
   targetVersion: Version,
+  latestRoot: string,
+  v7Root: string,
+  isV7: (pathname: string) => boolean,
   availablePathnames: Iterable<string>,
 ) {
-  if (targetVersion !== LATEST_VERSION && targetVersion !== "next") {
+  if (targetVersion !== LATEST_VERSION && targetVersion !== "v7") {
     return getVersionRoot(targetVersion);
   }
 
-  const targetRoot = targetVersion === "next" ? NEXT_GUIDES_ROOT : LATEST_GUIDES_ROOT;
-  const currentRoot = isNextGuidesPathname(docsPathname) ? NEXT_GUIDES_ROOT : LATEST_GUIDES_ROOT;
-  const suffix =
-    docsPathname === currentRoot
-      ? ""
-      : docsPathname.startsWith(`${currentRoot}/`)
-        ? docsPathname.slice(currentRoot.length)
-        : "";
-  const candidate = `${targetRoot}${suffix}`;
-  const available = getAvailablePathnameSet(availablePathnames);
-
-  if (available.size === 0 || available.has(candidate)) {
-    return candidate;
-  }
-
-  return targetRoot;
-}
-
-export function getGuidesVersionFromPathname(pathname: string): Version | null {
-  const docsPathname = withoutDocsPrefix(pathname);
-
-  if (isNextGuidesPathname(docsPathname)) {
-    return "next";
-  }
-
-  if (isLatestGuidesPathname(docsPathname)) {
-    return LATEST_VERSION;
-  }
-
-  return null;
-}
-
-export function isGuidesVersionPathname(pathname: string) {
-  return getGuidesVersionFromPathname(pathname) !== null;
-}
-
-function getAvailablePathnameSet(availablePathnames: Iterable<string>) {
-  return new Set(
-    Array.from(availablePathnames, (availablePathname) => withoutDocsPrefix(availablePathname)),
-  );
-}
-
-function getCliSwitchPathname(
-  docsPathname: string,
-  targetVersion: Version,
-  availablePathnames: Iterable<string>,
-) {
-  if (targetVersion !== LATEST_VERSION && targetVersion !== "next") {
-    return getVersionRoot(targetVersion);
-  }
-
-  const targetRoot = targetVersion === "next" ? NEXT_CLI_ROOT : LATEST_CLI_ROOT;
-  const currentRoot = isNextCliPathname(docsPathname) ? NEXT_CLI_ROOT : LATEST_CLI_ROOT;
+  const targetRoot = targetVersion === "v7" ? v7Root : latestRoot;
+  const currentRoot = isV7(docsPathname) ? v7Root : latestRoot;
   const suffix =
     docsPathname === currentRoot
       ? ""
@@ -314,8 +258,8 @@ function getCliSwitchPathname(
 export function getGettingStartedVersionFromPathname(pathname: string): Version | null {
   const docsPathname = withoutDocsPrefix(pathname);
 
-  if (isNextGettingStartedPathname(docsPathname)) {
-    return "next";
+  if (isV7GettingStartedPathname(docsPathname)) {
+    return "v7";
   }
 
   if (isLatestGettingStartedPathname(docsPathname)) {
@@ -332,8 +276,8 @@ export function isGettingStartedVersionPathname(pathname: string) {
 export function getCliVersionFromPathname(pathname: string): Version | null {
   const docsPathname = withoutDocsPrefix(pathname);
 
-  if (isNextCliPathname(docsPathname)) {
-    return "next";
+  if (isV7CliPathname(docsPathname)) {
+    return "v7";
   }
 
   if (isLatestCliPathname(docsPathname)) {
@@ -345,6 +289,24 @@ export function getCliVersionFromPathname(pathname: string): Version | null {
 
 export function isCliVersionPathname(pathname: string) {
   return getCliVersionFromPathname(pathname) !== null;
+}
+
+export function getGuidesVersionFromPathname(pathname: string): Version | null {
+  const docsPathname = withoutDocsPrefix(pathname);
+
+  if (isV7GuidesPathname(docsPathname)) {
+    return "v7";
+  }
+
+  if (isLatestGuidesPathname(docsPathname)) {
+    return LATEST_VERSION;
+  }
+
+  return null;
+}
+
+export function isGuidesVersionPathname(pathname: string) {
+  return getGuidesVersionFromPathname(pathname) !== null;
 }
 
 export function getOrmVersionFromPathname(pathname: string): Version | null {
@@ -373,19 +335,33 @@ export function getVersionSwitchPathname(
   const gettingStartedVersion = getGettingStartedVersionFromPathname(docsPathname);
 
   if (gettingStartedVersion) {
-    return getGettingStartedSwitchPathname(docsPathname, targetVersion);
+    return getGettingStartedSwitchPathname(docsPathname, targetVersion, availablePathnames);
   }
 
   const cliVersion = getCliVersionFromPathname(docsPathname);
 
   if (cliVersion) {
-    return getCliSwitchPathname(docsPathname, targetVersion, availablePathnames);
+    return getSectionSwitchPathname(
+      docsPathname,
+      targetVersion,
+      LATEST_CLI_ROOT,
+      V7_CLI_ROOT,
+      isV7CliPathname,
+      availablePathnames,
+    );
   }
 
   const guidesVersion = getGuidesVersionFromPathname(docsPathname);
 
   if (guidesVersion) {
-    return getGuidesSwitchPathname(docsPathname, targetVersion, availablePathnames);
+    return getSectionSwitchPathname(
+      docsPathname,
+      targetVersion,
+      LATEST_GUIDES_ROOT,
+      V7_GUIDES_ROOT,
+      isV7GuidesPathname,
+      availablePathnames,
+    );
   }
 
   const currentVersion = getOrmVersionFromPathname(docsPathname);
@@ -414,32 +390,32 @@ export function getVersionSwitchPathname(
 
 export function getVersionedNavPathname(targetPathname: string, currentPathname: string) {
   const targetDocsPathname = withoutDocsPrefix(targetPathname);
-  const isNextDocsPathname =
-    getGettingStartedVersionFromPathname(currentPathname) === "next" ||
-    getOrmVersionFromPathname(currentPathname) === "next" ||
-    getCliVersionFromPathname(currentPathname) === "next" ||
-    getGuidesVersionFromPathname(currentPathname) === "next";
+  const isV7DocsPathname =
+    getGettingStartedVersionFromPathname(currentPathname) === "v7" ||
+    getOrmVersionFromPathname(currentPathname) === "v7" ||
+    getCliVersionFromPathname(currentPathname) === "v7" ||
+    getGuidesVersionFromPathname(currentPathname) === "v7";
 
-  // Bare "/" redirects to /next, so route the Getting Started tab to the reachable
-  // landing for the active version instead of the redirecting root.
+  // Route the Getting Started tab to the reachable landing for the active
+  // version rather than the docs home, which is the product overview.
   if (targetDocsPathname === "/") {
-    return isNextDocsPathname ? NEXT_GETTING_STARTED_ROOT : "/getting-started";
+    return isV7DocsPathname ? V7_GETTING_STARTED_PAGE : LATEST_GETTING_STARTED_ROOT;
   }
 
-  if (!isNextDocsPathname) {
+  if (!isV7DocsPathname) {
     return targetPathname;
   }
 
   if (targetDocsPathname === "/orm") {
-    return "/orm/next";
+    return "/orm/v7";
   }
 
   if (targetDocsPathname === LATEST_CLI_ROOT) {
-    return NEXT_CLI_ROOT;
+    return V7_CLI_ROOT;
   }
 
   if (targetDocsPathname === LATEST_GUIDES_ROOT) {
-    return NEXT_GUIDES_ROOT;
+    return V7_GUIDES_ROOT;
   }
 
   return targetPathname;

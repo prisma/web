@@ -7,7 +7,7 @@ export const metadata = createPageMetadata({
   description:
     "Manage your data at scale with CockroachDB and Prisma – a next-generation ORM for Node.js and TypeScript.",
   path: "/cockroachdb",
-  ogImage: "/og/prisma-with/cockroachdb.png",
+  ogKicker: "Prisma ORM",
 });
 
 export default async function CockroachDbPage() {

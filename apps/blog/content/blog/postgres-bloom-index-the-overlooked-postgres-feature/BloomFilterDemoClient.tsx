@@ -87,7 +87,8 @@ const PHASES: Phase[] = [
     step: 4,
     label: 'check("carol")',
     shortLabel: "Check carol",
-    caption: "Carol hashes to 0, 5 and 9. Position 0 is still 0, so carol was never added. Hard no.",
+    caption:
+      "Carol hashes to 0, 5 and 9. Position 0 is still 0, so carol was never added. Hard no.",
     bits: makeBits([...ALICE, ...BOB]),
     flipping: [],
     probe: CAROL,
