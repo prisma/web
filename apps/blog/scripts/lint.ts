@@ -20,6 +20,13 @@ async function checkLinks() {
     },
   });
 
+  // Same-page anchors first: `next-validate-link` resolves cross-page
+  // fragments (it has the target's heading ids) but has nothing to check a
+  // bare `](#foo)` against, so stale anchors inside a post slip through. They
+  // are the common rot — a heading gets reworded and every anchor pointing at
+  // it dies silently.
+  const anchorErrors = await checkSameFileAnchors();
+
   printErrors(
     await validateFiles(await getFiles(), {
       scanned,
@@ -31,8 +38,41 @@ async function checkLinks() {
       },
       checkRelativePaths: "as-url",
     }),
-    true,
+    // Let the anchor failures be reported too rather than exiting here.
+    anchorErrors === 0,
   );
+
+  if (anchorErrors > 0) process.exit(1);
+}
+
+/** Validates `](#anchor)` and `href="#anchor"` against the page's own headings. */
+async function checkSameFileAnchors(): Promise<number> {
+  let errors = 0;
+
+  for (const page of blog.getPages()) {
+    const ids = new Set(getHeadings(page));
+    const raw = await page.data.getText("raw");
+    const anchors = new Set<string>();
+    for (const match of raw.matchAll(/\]\(#([^)\s]+)\)/g)) anchors.add(match[1]);
+    for (const match of raw.matchAll(/href="#([^"]+)"/g)) anchors.add(match[1]);
+
+    for (const anchor of anchors) {
+      let decoded = anchor;
+      try {
+        decoded = decodeURIComponent(anchor);
+      } catch {
+        // A malformed escape is not a reason to crash the linter.
+      }
+      if (ids.has(anchor) || ids.has(decoded)) continue;
+      console.error(
+        `Invalid anchor in ${page.absolutePath}: #${anchor} matches no heading on this page`,
+      );
+      errors += 1;
+    }
+  }
+
+  if (errors > 0) console.error(`------\n${errors} invalid same-page anchor(s)`);
+  return errors;
 }
 
 function getHeadings({ data }: InferPageType<typeof blog>): string[] {

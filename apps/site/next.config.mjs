@@ -406,7 +406,8 @@ const config = {
       {
         permanent: true,
         source: "/tutorials/postgres-configuring-user-authentication-db06",
-        destination: "https://www.prisma.io/dataguide/postgresql/configuring-user-authentication",
+        destination:
+          "/dataguide/postgresql/authentication-and-authorization/configuring-user-authentication",
       },
       {
         permanent: true,
@@ -541,7 +542,7 @@ const config = {
       {
         permanent: true,
         source: "/blog/introducing-prisma-cloud-a-graphql-database-platform-ed591baa8737",
-        destination: "https://www.prisma.io/cloud",
+        destination: "https://app.prisma.io",
       },
       {
         permanent: true,
@@ -590,7 +591,7 @@ const config = {
       },
       {
         source: "/optimise",
-        destination: "/optimize",
+        destination: "/",
         permanent: true,
       },
       {
@@ -610,7 +611,7 @@ const config = {
       },
       {
         source: "/jobs",
-        destination: "/careers",
+        destination: "/company/careers",
         permanent: true,
       },
       {
