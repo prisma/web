@@ -1,6 +1,6 @@
 import React from "react";
 import { formatTag, formatDate } from "@/lib/format";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { getMDXComponents } from "@/mdx-components";
 import { createRelativeLink } from "fumadocs-ui/mdx";
 import { blog } from "@/lib/source";
@@ -69,6 +69,34 @@ interface BlogPostingSchema {
       url: string;
     };
   };
+}
+
+/**
+ * Resolves a post for a requested slug, tolerating case differences.
+ *
+ * Legacy slugs carry a mixed-case suffix (`...-7D056s1s0k3l`) and lowercased
+ * copies still arrive from old links and search results. Rather than a
+ * per-slug redirect in `next.config.mjs` — Next.js matches redirect sources
+ * case-insensitively, so `source` and `destination` differing only in case is
+ * an infinite loop — resolve the canonical slug here and issue a single 308.
+ *
+ * Returns the page when the slug is already canonical. Otherwise it either
+ * redirects (throws) to the canonical URL or 404s; it never returns null.
+ */
+function getPostOrRedirect(slug: string): NonNullable<ReturnType<typeof blog.getPage>> {
+  const page = blog.getPage([slug]);
+  if (page) return page;
+
+  const lowered = slug.toLowerCase();
+  const canonical = blog.getPages().find((candidate) => {
+    const first = candidate.slugs[0];
+    return candidate.slugs.length === 1 && typeof first === "string" && first.toLowerCase() === lowered;
+  });
+
+  // `permanentRedirect` throws, so control never falls through.
+  if (canonical) permanentRedirect(`/${canonical.slugs[0]}`);
+
+  notFound();
 }
 
 const isAbsoluteUrl = (value: string) => /^https?:\/\//i.test(value);
@@ -175,9 +203,8 @@ function extractText(node: React.ReactNode): string {
 
 export default async function Page(props: { params: Promise<{ slug: string }> }) {
   const params = await props.params;
-  const page = blog.getPage([params.slug]);
+  const page = getPostOrRedirect(params.slug);
 
-  if (!page) notFound();
   const MDX = page.data.body;
   const blogPostingJsonLd = getBlogPostingJsonLd(page);
   const seriesContext = getSeriesContext(page);
@@ -323,8 +350,7 @@ export async function generateMetadata({
   params: Promise<PageParams>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const page = blog.getPage([slug]);
-  if (!page) notFound();
+  const page = getPostOrRedirect(slug);
 
   const title = page.data.metaTitle ?? page.data.title;
   const description = page.data.metaDescription ?? page.data.description;

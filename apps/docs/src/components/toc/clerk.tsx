@@ -1,5 +1,6 @@
 "use client";
 import * as Primitive from "fumadocs-core/toc";
+import { toPlainTitle } from "./plain-title";
 import { type ComponentProps, useEffect, useRef, useState } from "react";
 import { cn } from "@prisma-docs/ui/lib/cn";
 import { TocThumb, useTOCItems } from "./index";
@@ -160,7 +161,7 @@ function TOCItem({
           insetInlineStart: offset,
         }}
       />
-      {item.title}
+      {toPlainTitle(item.title)}
     </Primitive.TOCItem>
   );
 }

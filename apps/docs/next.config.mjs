@@ -707,10 +707,18 @@ const config = {
       { source: "/cli/studio", destination: "/cli/v7/studio", permanent: false },
       { source: "/cli/debug", destination: "/cli/v7/debug", permanent: false },
       { source: "/cli/version", destination: "/cli/v7/version", permanent: false },
-      { source: "/cli/migrate/:path*", destination: "/cli/v7/migrate/:path*", permanent: false },
-      { source: "/cli/dev/:path*", destination: "/cli/v7/dev/:path*", permanent: false },
-      { source: "/cli/db/:path*", destination: "/cli/v7/db/:path*", permanent: false },
-      { source: "/cli/console/:path*", destination: "/cli/v7/console/:path*", permanent: false },
+      // `:path*` also matches the empty segment, so `/cli/dev` used to rewrite
+      // to `/cli/v7/dev/` — a trailing slash that Next.js then 308s away,
+      // making every bare command URL a two-hop chain. Exact entries first,
+      // then `:path+` (one or more segments) for the subcommands.
+      { source: "/cli/migrate", destination: "/cli/v7/migrate", permanent: true },
+      { source: "/cli/migrate/:path+", destination: "/cli/v7/migrate/:path+", permanent: true },
+      { source: "/cli/dev", destination: "/cli/v7/dev", permanent: true },
+      { source: "/cli/dev/:path+", destination: "/cli/v7/dev/:path+", permanent: true },
+      { source: "/cli/db", destination: "/cli/v7/db", permanent: true },
+      { source: "/cli/db/:path+", destination: "/cli/v7/db/:path+", permanent: true },
+      { source: "/cli/console", destination: "/cli/v7/console", permanent: true },
+      { source: "/cli/console/:path+", destination: "/cli/v7/console/:path+", permanent: true },
       // ───────────────────────────────────────────────────────────────────────
     ];
   },

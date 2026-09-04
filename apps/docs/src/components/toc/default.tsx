@@ -5,6 +5,7 @@ import { type ComponentProps, useRef } from "react";
 import { mergeRefs } from "../../lib/merge-refs";
 import { TocThumb, useTOCItems } from "./index";
 import * as Primitive from "fumadocs-core/toc";
+import { toPlainTitle } from "./plain-title";
 
 export function TOCItems({ ref, className, ...props }: ComponentProps<"div">) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -48,7 +49,7 @@ function TOCItem({ item }: { item: Primitive.TOCItemType }) {
         item.depth >= 4 && "ps-8",
       )}
     >
-      {item.title}
+      {toPlainTitle(item.title)}
     </Primitive.TOCItem>
   );
 }
