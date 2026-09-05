@@ -1,6 +1,6 @@
 import React from "react";
 import { formatTag, formatDate } from "@/lib/format";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { getMDXComponents } from "@/mdx-components";
 import { createRelativeLink } from "fumadocs-ui/mdx";
 import { blog } from "@/lib/source";
@@ -22,6 +22,7 @@ import { BackToBlogLink } from "@/components/BackToBlogLink";
 import { getSeriesContext } from "@/lib/series";
 import { getRelatedPosts } from "@/lib/related-posts";
 import { getBaseUrl, withBlogBasePath, withBlogBasePathForImageSrc } from "@/lib/url";
+import { findCanonicalSlug } from "@/lib/slug-fallback";
 import Link from "next/link";
 import { Text } from "lucide-react";
 import type { Metadata } from "next";
@@ -173,11 +174,37 @@ function extractText(node: React.ReactNode): string {
   return "";
 }
 
+/**
+ * Resolves a requested slug to a post, recovering mis-cased legacy links.
+ *
+ * A miss is not immediately a 404: if a post exists whose slug differs only in
+ * case, we 308 once to the canonical URL. `permanentRedirect` takes a
+ * basePath-free path — Next.js prepends `basePath` itself when it writes the
+ * `Location` header (see `addPathPrefix` in
+ * next/dist/server/app-render/app-render.js) — so `/${slug}` becomes
+ * `/blog/${slug}` on the wire. Passing `withBlogBasePath(...)` here would
+ * double the prefix.
+ *
+ * Called from both the page and `generateMetadata`, so the redirect wins over
+ * metadata generation whichever runs first.
+ */
+function getPageOrRedirect(slug: string) {
+  const page = blog.getPage([slug]);
+  if (page) return page;
+
+  const canonicalSlug = findCanonicalSlug(
+    slug,
+    blog.getPages().map((candidate) => candidate.slugs[0]),
+  );
+  if (canonicalSlug) permanentRedirect(`/${canonicalSlug}`);
+
+  notFound();
+}
+
 export default async function Page(props: { params: Promise<{ slug: string }> }) {
   const params = await props.params;
-  const page = blog.getPage([params.slug]);
+  const page = getPageOrRedirect(params.slug);
 
-  if (!page) notFound();
   const MDX = page.data.body;
   const blogPostingJsonLd = getBlogPostingJsonLd(page);
   const seriesContext = getSeriesContext(page);
@@ -323,8 +350,7 @@ export async function generateMetadata({
   params: Promise<PageParams>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const page = blog.getPage([slug]);
-  if (!page) notFound();
+  const page = getPageOrRedirect(slug);
 
   const title = page.data.metaTitle ?? page.data.title;
   const description = page.data.metaDescription ?? page.data.description;

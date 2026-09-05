@@ -106,7 +106,9 @@ export default async function SeriesPage(props: { params: Promise<SeriesPagePara
                 <span key={relKey}>
                   {i > 0 ? ", " : ""}
                   <Link
-                    href={withBlogBasePath(`/series/${relKey}`)}
+                    // next/link prepends the /blog basePath itself; passing
+                    // withBlogBasePath() here produced /blog/blog/series/... (404).
+                    href={`/series/${relKey}`}
                     className="font-medium text-foreground-neutral-strong underline decoration-prism-cyan-400/50 underline-offset-4 transition-colors duration-300 hover:decoration-prism-cyan-500 motion-reduce:transition-none"
                   >
                     {getSeriesMetadata(relKey).title}

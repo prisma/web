@@ -294,7 +294,7 @@ const config = {
       // The former /v8 (and older /next) version segments are now the
       // unversioned tree. Permanent: those URLs circulated during Early Access
       // and the Release Candidate and will not come back in that form.
-      { source: "/v8", destination: "/prisma-orm", permanent: true },
+      { source: "/v8", destination: "/prisma-postgres/quickstart/prisma-orm", permanent: true },
       { source: "/v8/getting-started", destination: "/getting-started", permanent: true },
       { source: "/v8/create-prisma", destination: "/prisma-orm/create-prisma", permanent: true },
       {
@@ -327,7 +327,11 @@ const config = {
         destination: "/prisma-postgres/:path*",
         permanent: true,
       },
-      { source: "/v8/:path*", destination: "/prisma-orm", permanent: true },
+      {
+        source: "/v8/:path*",
+        destination: "/prisma-postgres/quickstart/prisma-orm",
+        permanent: true,
+      },
       {
         source: "/orm/v8/create-prisma",
         destination: "/prisma-orm/create-prisma",
@@ -346,11 +350,11 @@ const config = {
       { source: "/orm/v8", destination: "/orm", permanent: true },
       { source: "/orm/v8/:path*", destination: "/orm/:path*", permanent: true },
       { source: "/cli/v8", destination: "/cli", permanent: true },
-      { source: "/cli/v8/:path*", destination: "/cli/:path*", permanent: true },
+      { source: "/cli/v8/:path+", destination: "/cli/:path+", permanent: true },
       { source: "/guides/v8", destination: "/guides", permanent: true },
       { source: "/guides/v8/:path*", destination: "/guides/:path*", permanent: true },
       { source: "/llms/v8.txt", destination: "/llms/orm.txt", permanent: true },
-      { source: "/next", destination: "/prisma-orm", permanent: true },
+      { source: "/next", destination: "/prisma-postgres/quickstart/prisma-orm", permanent: true },
       { source: "/next/getting-started", destination: "/getting-started", permanent: true },
       { source: "/next/create-prisma", destination: "/prisma-orm/create-prisma", permanent: true },
       {
@@ -383,7 +387,11 @@ const config = {
         destination: "/prisma-postgres/:path*",
         permanent: true,
       },
-      { source: "/next/:path*", destination: "/prisma-orm", permanent: true },
+      {
+        source: "/next/:path*",
+        destination: "/prisma-postgres/quickstart/prisma-orm",
+        permanent: true,
+      },
       {
         source: "/orm/next/create-prisma",
         destination: "/prisma-orm/create-prisma",
@@ -402,7 +410,7 @@ const config = {
       { source: "/orm/next", destination: "/orm", permanent: true },
       { source: "/orm/next/:path*", destination: "/orm/:path*", permanent: true },
       { source: "/cli/next", destination: "/cli", permanent: true },
-      { source: "/cli/next/:path*", destination: "/cli/:path*", permanent: true },
+      { source: "/cli/next/:path+", destination: "/cli/:path+", permanent: true },
       { source: "/guides/next", destination: "/guides", permanent: true },
       { source: "/guides/next/:path*", destination: "/guides/:path*", permanent: true },
       { source: "/llms/next.txt", destination: "/llms/orm.txt", permanent: true },
@@ -707,10 +715,18 @@ const config = {
       { source: "/cli/studio", destination: "/cli/v7/studio", permanent: false },
       { source: "/cli/debug", destination: "/cli/v7/debug", permanent: false },
       { source: "/cli/version", destination: "/cli/v7/version", permanent: false },
-      { source: "/cli/migrate/:path*", destination: "/cli/v7/migrate/:path*", permanent: false },
-      { source: "/cli/dev/:path*", destination: "/cli/v7/dev/:path*", permanent: false },
-      { source: "/cli/db/:path*", destination: "/cli/v7/db/:path*", permanent: false },
-      { source: "/cli/console/:path*", destination: "/cli/v7/console/:path*", permanent: false },
+      // `:path*` also matches the empty string, so `/cli/dev` used to rewrite to
+      // `/cli/v7/dev/` and pick up a second 308 for the trailing slash. Exact
+      // entries answer the bare prefix in one hop; `:path+` requires at least
+      // one segment, so the wildcards only handle real sub-paths.
+      { source: "/cli/migrate", destination: "/cli/v7/migrate", permanent: true },
+      { source: "/cli/migrate/:path+", destination: "/cli/v7/migrate/:path+", permanent: true },
+      { source: "/cli/dev", destination: "/cli/v7/dev", permanent: true },
+      { source: "/cli/dev/:path+", destination: "/cli/v7/dev/:path+", permanent: true },
+      { source: "/cli/db", destination: "/cli/v7/db", permanent: true },
+      { source: "/cli/db/:path+", destination: "/cli/v7/db/:path+", permanent: true },
+      { source: "/cli/console", destination: "/cli/v7/console", permanent: true },
+      { source: "/cli/console/:path+", destination: "/cli/v7/console/:path+", permanent: true },
       // ───────────────────────────────────────────────────────────────────────
     ];
   },

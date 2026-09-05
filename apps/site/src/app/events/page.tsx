@@ -39,11 +39,14 @@ const eventsStructuredData = createCollectionPageStructuredData({
       url: event.link,
       description: "Sponsored event supported by Prisma.",
     })),
-    ...pastEvents.map((event) => ({
-      name: event.name,
-      url: event.link,
-      description: event.description,
-    })),
+    // Retired event pages have no link left to point at.
+    ...pastEvents
+      .filter((event): event is PastEvent & { link: string } => Boolean(event.link))
+      .map((event) => ({
+        name: event.name,
+        url: event.link,
+        description: event.description,
+      })),
   ],
 });
 
@@ -105,14 +108,20 @@ function SponsoredEventCard({ event }: { event: SponsoredEvent }) {
   );
 }
 
+const pastEventCardClass =
+  "group flex flex-col gap-2 rounded-2xl border border-black/[0.06] bg-white p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04)] transition-[border-color,box-shadow] duration-300 hover:border-black/[0.12] hover:shadow-[0_6px_20px_rgba(21,21,21,0.07)]";
+
 function PastEventCard({ event }: { event: PastEvent }) {
+  // Events whose page was retired render as a plain card: their old URLs all
+  // redirect to the homepage, so a "Read more" that lands there is worse than
+  // no link at all.
+  const Container = event.link ? "a" : "div";
+  const linkProps = event.link
+    ? ({ href: event.link, target: "_blank", rel: "noopener noreferrer" } as const)
+    : {};
+
   return (
-    <a
-      href={event.link}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group flex flex-col gap-2 rounded-2xl border border-black/[0.06] bg-white p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04)] transition-[border-color,box-shadow] duration-300 hover:border-black/[0.12] hover:shadow-[0_6px_20px_rgba(21,21,21,0.07)]"
-    >
+    <Container {...linkProps} className={pastEventCardClass}>
       <div className="flex items-start justify-between gap-3">
         <h3 className="text-lg leading-snug">{event.name}</h3>
         {event.virtual && (
@@ -125,14 +134,16 @@ function PastEventCard({ event }: { event: PastEvent }) {
       <p className="line-clamp-3 text-sm leading-relaxed text-muted-foreground">
         {event.description}
       </p>
-      <span className="mt-auto flex items-center gap-1.5 pt-2 text-sm font-semibold text-foreground">
-        Read more
-        <ArrowRight
-          className="size-4 transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transition-none"
-          aria-hidden
-        />
-      </span>
-    </a>
+      {event.link ? (
+        <span className="mt-auto flex items-center gap-1.5 pt-2 text-sm font-semibold text-foreground">
+          Read more
+          <ArrowRight
+            className="size-4 transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transition-none"
+            aria-hidden
+          />
+        </span>
+      ) : null}
+    </Container>
   );
 }
 

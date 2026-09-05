@@ -5,6 +5,7 @@ import { type ComponentProps, useRef } from "react";
 import { mergeRefs } from "../../lib/merge-refs";
 import { TocThumb, useTOCItems } from "./index";
 import * as Primitive from "fumadocs-core/toc";
+import { stripTocLinks } from "../../lib/toc-title";
 
 export function TOCItems({ ref, className, ...props }: ComponentProps<"div">) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -48,7 +49,9 @@ function TOCItem({ item }: { item: Primitive.TOCItemType }) {
         item.depth >= 4 && "ps-8",
       )}
     >
-      {item.title}
+      {/* Anchors are unwrapped: a heading that contains a link would otherwise nest
+          an <a> inside this one and emit a basePath-less href. */}
+      {stripTocLinks(item.title)}
     </Primitive.TOCItem>
   );
 }
