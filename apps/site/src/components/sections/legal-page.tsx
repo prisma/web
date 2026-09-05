@@ -22,9 +22,9 @@ export function LegalPage({
   intro?: ReactNode;
 }) {
   return (
-    <article className="bg-white px-4 pb-24 pt-32 sm:px-8 sm:pb-32 md:pt-40">
+    <article className="bg-card px-4 pb-24 pt-32 sm:px-8 sm:pb-32 md:pt-40">
       <div className="mx-auto max-w-3xl">
-        <header className="border-b border-black/[0.07] pb-10">
+        <header className="border-b border-foreground/[0.07] pb-10">
           <RoleKicker color="bg-prism-cyan-400">Legal</RoleKicker>
           <h1 className="mt-4 text-balance text-3xl leading-[1.1] sm:text-4xl md:text-5xl">
             {title}
@@ -43,7 +43,7 @@ export function LegalPage({
           {sections.map((section) => (
             <section
               key={section.title}
-              className="border-b border-black/[0.05] py-8 last:border-b-0"
+              className="border-b border-foreground/[0.05] py-8 last:border-b-0"
             >
               <h2 className="text-xl leading-snug sm:text-2xl">{section.title}</h2>
               <div className="prose mt-4 max-w-none text-[0.9375rem] prose-a:text-prism-cyan-700 prose-p:leading-relaxed">

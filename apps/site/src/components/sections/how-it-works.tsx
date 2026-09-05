@@ -29,7 +29,7 @@ function DefineIllustration() {
   return (
     <div
       aria-hidden
-      className="relative flex h-52 select-none items-center justify-center bg-gradient-to-br from-prism-cyan-50 to-prism-cyan-100 px-6"
+      className="relative flex h-52 select-none items-center justify-center bg-prism-cyan-50 px-6"
     >
       <RayBeam index={0} />
       <DefineMock className="relative z-20" />
@@ -41,7 +41,7 @@ function DeployIllustration() {
   return (
     <div
       aria-hidden
-      className="relative flex h-52 select-none items-center justify-center bg-gradient-to-br from-prism-yellow-50 to-prism-yellow-100 px-6"
+      className="relative flex h-52 select-none items-center justify-center bg-prism-yellow-50 px-6"
     >
       <RayBeam index={1} />
       <DeployMock className="relative z-20" />
@@ -53,7 +53,7 @@ function IterateIllustration() {
   return (
     <div
       aria-hidden
-      className="relative flex h-52 select-none items-center justify-center bg-gradient-to-br from-prism-red-50 to-prism-red-100 px-6"
+      className="relative flex h-52 select-none items-center justify-center bg-prism-red-50 px-6"
     >
       <RayBeam index={2} />
       <IterateMock className="relative z-20" />
@@ -106,7 +106,7 @@ const STEPS = [
 
 export function HowItWorks() {
   return (
-    <section className="bg-white px-4 py-24 sm:px-8 sm:py-32">
+    <section className="bg-card px-4 py-24 sm:px-8 sm:py-32">
       <div className="mx-auto max-w-site">
         <Reveal>
           <h2 className="max-w-[24ch] text-balance text-[clamp(2.125rem,3.5vw,3rem)] leading-[1.1]">
@@ -119,7 +119,7 @@ export function HowItWorks() {
             <Reveal
               key={number}
               delay={i * 0.1}
-              className={`overflow-hidden rounded-2xl border border-black/[0.06] bg-card motion-reduce:animate-none ${borderAnim}`}
+              className={`overflow-hidden rounded-2xl border border-foreground/[0.06] bg-card motion-reduce:animate-none ${borderAnim}`}
             >
               <Illustration />
               <div className="p-6">

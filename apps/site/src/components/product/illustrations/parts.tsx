@@ -57,7 +57,7 @@ export function RayFrame({
   return (
     <div
       className={cn(
-        "relative flex h-full overflow-hidden rounded-2xl border border-black/[0.06] p-5 sm:p-6",
+        "relative flex h-full overflow-hidden rounded-2xl border border-foreground/[0.06] p-5 sm:p-6",
         className,
       )}
     >

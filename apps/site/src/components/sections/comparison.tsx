@@ -24,7 +24,7 @@ const AFTER = [
 // decorative UI illustration (same idiom as ConsoleIllustration).
 export function Comparison() {
   return (
-    <section className="bg-white px-4 py-24 sm:px-8 sm:py-32">
+    <section className="bg-card px-4 py-24 sm:px-8 sm:py-32">
       <div className="mx-auto max-w-site">
         <Reveal>
           <h2 className="mx-auto max-w-[24ch] text-balance text-center text-[clamp(2.125rem,3.5vw,3rem)] leading-[1.1]">
@@ -60,7 +60,7 @@ export function Comparison() {
           {/* after — lifted on white with the brand cube pattern, greyscaled */}
           <Reveal
             delay={0.15}
-            className="spectrum-border spectrum-border-on relative flex flex-col overflow-hidden rounded-[1.25rem] border border-transparent bg-white p-6 sm:p-8"
+            className="spectrum-border spectrum-border-on relative flex flex-col overflow-hidden rounded-[1.25rem] border border-transparent bg-card p-6 sm:p-8"
           >
             <div
               aria-hidden

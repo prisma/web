@@ -22,7 +22,6 @@ import { useCopyButton } from "fumadocs-ui/utils/use-copy-button";
 import { buttonVariants } from "@prisma-docs/ui/components/button";
 import { cn } from "@prisma-docs/ui/lib/cn";
 import { withDocsBasePath } from "@/lib/urls";
-import { PrismRay } from "@/components/chrome/prism-ray";
 
 function copyText(container: HTMLElement | null): string {
   const pre = container?.querySelector("pre");
@@ -425,50 +424,10 @@ export function IconLink({
   );
 }
 
-// The prismatic halo from the reference hero (hero-home.tsx HALO): the
-// spectrum swept around a card's perimeter — yellow up top, red right, cyan
-// below — radiating out as a soft glow behind the card.
-const halo =
-  "conic-gradient(var(--color-prism-yellow-300), var(--color-prism-red-500) 32%, var(--color-prism-cyan-400) 64%, var(--color-prism-yellow-300))";
-
-/**
- * Full-width hero for the build-then-deploy overview. Children are the intro
- * paragraph(s), a WorkflowGrid, and a CliCallout; the wrapper only supplies
- * the brand light (spectral washes plus the structural prism ray) and intro
- * typography. Static by design — nothing here moves, so no reduced-motion
- * variant is needed.
- */
+/** Intro and workflow panels on a clear, solid surface. */
 export function WorkflowHero({ children }: { children: ReactNode }) {
   return (
     <div className="not-prose relative isolate pb-12 pt-4">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -inset-x-10 top-0 -bottom-8 -z-10 overflow-hidden"
-        // The wash box stops at the hero's top and fades in over the first
-        // 5rem, so no glow reaches the title row and its buttons above, and
-        // the crop never shows as a hard edge (visible in dark mode).
-        style={{
-          maskImage: "linear-gradient(to bottom, transparent, #000 5rem)",
-          WebkitMaskImage: "linear-gradient(to bottom, transparent, #000 5rem)",
-        }}
-      >
-        <div
-          className="absolute inset-0"
-          style={{
-            background: [
-              // Washes stay in the hero's upper half: a bottom bloom would
-              // spill past the last content row and dangle over the section
-              // below (the wash box extends beyond the content bounds).
-              "radial-gradient(38% 45% at 78% 16%, color-mix(in srgb, var(--color-prism-cyan-400) 20%, transparent), transparent 68%)",
-              "radial-gradient(30% 38% at 94% 55%, color-mix(in srgb, var(--color-prism-yellow-300) 15%, transparent), transparent 66%)",
-            ].join(","),
-          }}
-        />
-        <PrismRay
-          intensity="structural"
-          className="left-[24%] top-[48%] h-12 w-[90rem] -translate-y-1/2"
-        />
-      </div>
       <div className="flex flex-col gap-8 [&>p]:text-[1.0625rem] [&>p]:leading-relaxed [&>p]:text-fd-foreground/80 [&>p_a]:font-medium [&>p_a]:text-fd-foreground [&>p_a]:underline [&>p_a]:decoration-fd-primary/50 [&>p_a]:underline-offset-4 hover:[&>p_a]:decoration-fd-primary">
         {children}
       </div>
@@ -506,7 +465,7 @@ export function WorkflowGrid({ children }: { children: ReactNode }) {
 
 /**
  * One stage of the workflow: a titled panel of WorkflowLink tiles. The panel
- * carries the prismatic halo so the pair reads as the page's centrepiece.
+ * uses a small brand accent to establish the workflow hierarchy.
  */
 export function WorkflowStage({
   title,
@@ -523,20 +482,12 @@ export function WorkflowStage({
     .trim()
     .replace(/\s+/g, "-");
   return (
-    <section className="relative isolate flex flex-col rounded-2xl border bg-gradient-to-br from-fd-primary/[0.06] via-fd-card to-fd-card p-5 sm:p-6">
-      {/* The card's own gradient is translucent toward its top-left corner, so
-          the tight ring bleeds into the panel — kept subtle in light, where it
-          reads as tint; dark gets the fuller glassy glow. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -inset-px -z-10 rounded-2xl opacity-20 blur-[18px] dark:opacity-40"
-        style={{ background: halo }}
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -inset-3 -z-10 rounded-3xl opacity-15 blur-[44px] dark:opacity-25"
-        style={{ background: halo }}
-      />
+    <section className="relative flex flex-col rounded-2xl border bg-fd-card p-5 sm:p-6">
+      <div aria-hidden className="mb-4 flex h-1 w-16 overflow-hidden rounded-full">
+        <span className="flex-1 bg-prism-cyan-400" />
+        <span className="flex-1 bg-prism-yellow-300" />
+        <span className="flex-1 bg-prism-red-500" />
+      </div>
       <h2 id={id} className="scroll-m-24 text-lg font-semibold text-fd-foreground">
         <a href={`#${id}`} className="hover:underline">
           {title}

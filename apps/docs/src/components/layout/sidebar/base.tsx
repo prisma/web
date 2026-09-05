@@ -184,6 +184,13 @@ export function SidebarDrawerOverlay(props: ComponentProps<"div">) {
   const { open, setOpen, mode } = useSidebar();
   const [hidden, setHidden] = useState(!open);
 
+  // Exit events may not fire when animations are disabled or interrupted.
+  useEffect(() => {
+    if (open) return;
+    const timeout = window.setTimeout(() => setHidden(true), 250);
+    return () => window.clearTimeout(timeout);
+  }, [open]);
+
   if (open && hidden) setHidden(false);
   if (mode !== "drawer" || hidden) return;
   return (
@@ -201,6 +208,13 @@ export function SidebarDrawerOverlay(props: ComponentProps<"div">) {
 export function SidebarDrawerContent({ className, children, ...props }: ComponentProps<"aside">) {
   const { open, mode } = useSidebar();
   const [hidden, setHidden] = useState(!open);
+
+  // Exit events may not fire when animations are disabled or interrupted.
+  useEffect(() => {
+    if (open) return;
+    const timeout = window.setTimeout(() => setHidden(true), 250);
+    return () => window.clearTimeout(timeout);
+  }, [open]);
 
   if (open && hidden) setHidden(false);
   if (mode !== "drawer") return;
@@ -372,10 +386,17 @@ export function SidebarFolderContent(props: CollapsibleContentProps) {
 }
 
 export function SidebarTrigger({ children, ...props }: ComponentProps<"button">) {
-  const { setOpen } = useSidebar();
+  const { open, setOpen } = useSidebar();
 
   return (
-    <button aria-label="Open Sidebar" onClick={() => setOpen((prev) => !prev)} {...props}>
+    <button
+      type="button"
+      aria-label={open ? "Close Sidebar" : "Open Sidebar"}
+      aria-expanded={open}
+      aria-controls="nd-sidebar-mobile"
+      onClick={() => setOpen((prev) => !prev)}
+      {...props}
+    >
       {children}
     </button>
   );

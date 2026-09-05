@@ -30,7 +30,7 @@ const TOPICS = [
 // default size it read as an admin form dropped into a marketing panel. White
 // rather than transparent so the hero's spectral wash never runs under a field.
 const FIELD =
-  "rounded-lg border-black/[0.09] bg-white text-[15px] shadow-[0_1px_2px_rgba(21,21,21,0.04)]";
+  "rounded-lg border-foreground/[0.09] bg-card text-[15px] shadow-[0_1px_2px_rgba(21,21,21,0.04)]";
 
 // The message form: the hero panel's right half. A solid white card, not the
 // glass treatment used for content cards over the wash — legibility of the
@@ -50,7 +50,7 @@ export function ContactMessageForm() {
     // positioned sibling, so a static card would paint UNDER it — positioned
     // elements sit above non-positioned ones in the same stacking context, and
     // the ray drew straight across the fields.
-    <div className="relative rounded-2xl border border-black/[0.06] bg-card p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04),0_16px_40px_-20px_rgba(21,21,21,0.22)] sm:p-8">
+    <div className="relative rounded-2xl border border-foreground/[0.06] bg-card p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04),0_16px_40px_-20px_rgba(21,21,21,0.22)] sm:p-8">
       <h2 className="text-2xl leading-tight">Send us a message</h2>
 
       {sent ? (

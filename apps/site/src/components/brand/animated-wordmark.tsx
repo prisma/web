@@ -27,7 +27,7 @@ export function AnimatedWordmark() {
   return (
     <div className="relative w-full select-none" aria-hidden>
       {/* black letters — always visible */}
-      <img src={BLACK} alt="" className="block w-full" draggable={false} />
+      <img src={BLACK} alt="" className="block w-full dark:invert" draggable={false} />
 
       {/* colour (stripes + rays), clipped in from the right, looping */}
       <motion.img

@@ -78,7 +78,7 @@ export function Pattern({ className = "", scale }: { className?: string; scale?:
         });
 
         const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        if (reduced) return;
+        if (reduced || !window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
 
         const mouse = { x: -9999, y: -9999 };
 
@@ -147,14 +147,14 @@ export function Pattern({ className = "", scale }: { className?: string; scale?:
   }, [scale]);
 
   return (
-    <div ref={containerRef} className={`relative overflow-hidden bg-white ${className}`}>
+    <div ref={containerRef} className={`relative overflow-hidden bg-card ${className}`}>
       <div ref={hostRef} className="absolute inset-0" />
       <div
         ref={glowRef}
         aria-hidden
         className="pointer-events-none absolute h-[120px] w-[120px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-0 transition-opacity duration-300"
         style={{
-          background: "radial-gradient(circle, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 65%)",
+          background: "transparent",
           mixBlendMode: "overlay",
         }}
       />

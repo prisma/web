@@ -33,7 +33,7 @@ export default async function UnsubscribePage({ searchParams }: UnsubscribePageP
   const isInvalid = !isSuccess && !canConfirm;
 
   return (
-    <main className="flex min-h-[70vh] items-center bg-white px-4 py-32 sm:px-8">
+    <main className="flex min-h-[70vh] items-center bg-card px-4 py-32 sm:px-8">
       <section className="mx-auto flex w-full max-w-xl flex-col items-start gap-5">
         <RoleKicker color="bg-prism-yellow-300">Prisma newsletter</RoleKicker>
         <h1 className="text-balance text-3xl leading-[1.1] sm:text-4xl">

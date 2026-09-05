@@ -58,22 +58,15 @@ export function HeroBackdrop() {
         <div
           className="absolute -bottom-1/3 left-1/2 h-[120%] w-[160%] -translate-x-1/2"
           style={{
-            background: [
-              "radial-gradient(52% 40% at 30% 100%, color-mix(in srgb, var(--color-prism-cyan-400) 58%, transparent), transparent 68%)",
-              "radial-gradient(44% 36% at 52% 100%, color-mix(in srgb, var(--color-prism-yellow-300) 46%, transparent), transparent 66%)",
-              "radial-gradient(42% 30% at 74% 100%, color-mix(in srgb, var(--color-prism-red-500) 50%, transparent), transparent 68%)",
-            ].join(","),
+            background: "var(--paper)",
           }}
         />
       </div>
       <div ref={beams} className="absolute inset-0">
         {/* beam fan rising from below */}
-        <div className="absolute bottom-[-24rem] left-[10%] h-[60rem] w-36 origin-bottom rotate-[-28deg] bg-prism-cyan-400/70 blur-[56px]" />
-        <div className="absolute bottom-[-26rem] left-1/2 h-[62rem] w-44 origin-bottom -translate-x-1/2 rotate-[5deg] bg-prism-yellow-300/65 blur-[64px]" />
-        <div className="absolute bottom-[-28rem] right-[8%] h-[60rem] w-36 origin-bottom rotate-[28deg] bg-prism-red-500/60 blur-[56px]" />
       </div>
       {/* dispersion back to white above — static, outside the damped layers */}
-      <div className="absolute inset-x-0 top-0 h-80 bg-gradient-to-t from-transparent via-white/45 to-white" />
+      <div className="absolute inset-x-0 top-0 h-80 bg-transparent" />
     </div>
   );
 }

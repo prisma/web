@@ -5,18 +5,9 @@ import { ConnectorStrip } from "@/components/sections/connector-strip";
 import { OrmIllustration } from "@/components/sections/orm-illustration";
 import { PostgresIllustration } from "@/components/sections/postgres-illustration";
 import { ComputeIllustration } from "@/components/sections/compute-illustration";
-import { GlassPrismSpin } from "@/components/brand/glass-prism-spin";
 import { Pattern } from "@/components/brand/pattern";
-import { Texture } from "@/components/brand/texture";
 import { Reveal } from "@/components/motion/reveal";
 import { RoleKicker } from "@/components/brand/role-kicker";
-
-// Spectrum gradient matching the brand CTA glow (see prism-button.tsx).
-const SPECTRUM =
-  "linear-gradient(85deg, #01d7e4 0%, #f3c306 25%, #f37a03 50%, #f43531 74%, #f00e5c 100%)";
-
-// TODO: /orm, /postgres, /compute and /docs are Phase 1 sitemap routes not
-// built yet (see design-ref/sitemap.md).
 
 function Bullet({ children }: { children: React.ReactNode }) {
   return (
@@ -35,45 +26,8 @@ function Bullet({ children }: { children: React.ReactNode }) {
 // backdrop and grain.
 export function StackBento() {
   return (
-    <section className="bg-white px-3 py-3 sm:px-4">
-      <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
-        {/* prismatic backdrop — the hero's treatment with the wash spread
-            wider across the panel: broad spectral blooms along the bottom
-            edge, beam fan rising from below, dispersing to white above */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-[44rem] overflow-hidden"
-        >
-          <div
-            className="absolute -bottom-1/3 left-1/2 h-[120%] w-[160%] -translate-x-1/2"
-            style={{
-              background: [
-                "radial-gradient(72% 58% at 14% 100%, color-mix(in srgb, var(--color-prism-cyan-400) 30%, transparent), transparent 72%)",
-                "radial-gradient(64% 52% at 50% 100%, color-mix(in srgb, var(--color-prism-yellow-300) 24%, transparent), transparent 70%)",
-                "radial-gradient(68% 54% at 88% 100%, color-mix(in srgb, var(--color-prism-red-400) 26%, transparent), transparent 72%)",
-              ].join(","),
-            }}
-          />
-          <div className="absolute bottom-[-24rem] left-[6%] h-[60rem] w-56 origin-bottom rotate-[-28deg] bg-prism-cyan-300/50 blur-[96px]" />
-          <div className="absolute bottom-[-26rem] left-1/2 h-[62rem] w-64 origin-bottom -translate-x-1/2 rotate-[5deg] bg-prism-yellow-200/60 blur-[104px]" />
-          <div className="absolute bottom-[-28rem] right-[4%] h-[60rem] w-56 origin-bottom rotate-[28deg] bg-prism-red-300/50 blur-[96px]" />
-          <div className="absolute inset-x-0 top-0 h-80 bg-gradient-to-t from-transparent via-white/60 to-white" />
-        </div>
-        {/* the glass triangle — the classic prism — rising out of the corner
-            where the spectrum concentrates behind it */}
-        <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div
-            className="absolute bottom-[-14rem] right-[-10rem] h-[34rem] w-[52rem] rounded-full opacity-30 blur-[90px]"
-            style={{ backgroundImage: SPECTRUM }}
-          />
-          <GlassPrismSpin
-            shape="triangle"
-            tint="ink"
-            className="bottom-[-2rem] left-[-9rem] w-[34rem] max-md:bottom-[-1rem] max-md:left-[-6rem] max-md:w-[18rem]"
-          />
-        </div>
-        <Texture opacity={0.06} blend="multiply" />
-
+    <section className="bg-card px-3 py-3 sm:px-4">
+      <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-border bg-paper">
         <div className="relative px-4 py-20 sm:px-8 sm:py-24">
           <Reveal className="mx-auto flex max-w-3xl flex-col items-start text-left md:items-center md:text-center">
             <h2 className="max-w-[24ch] text-balance text-[clamp(2.125rem,3.5vw,3rem)] leading-[1.1]">
@@ -87,7 +41,7 @@ export function StackBento() {
 
           <div className="mx-auto mt-16 flex max-w-site flex-col">
             {/* Prisma ORM — the foundation, full width */}
-            <Reveal className="overflow-hidden rounded-2xl border border-black/[0.06] bg-card">
+            <Reveal className="overflow-hidden rounded-2xl border border-foreground/[0.06] bg-card">
               <div className="grid lg:grid-cols-2">
                 <OrmIllustration />
                 <div className="p-7 max-lg:order-last sm:p-9 lg:order-first">
@@ -117,11 +71,11 @@ export function StackBento() {
             <ConnectorStrip
               file="contract.prisma"
               caption="The shared contract across your stack"
-              gradient="from-prism-cyan-400 to-prism-yellow-400"
+              color="bg-prism-cyan-400"
             />
 
             {/* Prisma Postgres — full-width row, illustration left */}
-            <Reveal className="overflow-hidden rounded-2xl border border-black/[0.06] bg-card">
+            <Reveal className="overflow-hidden rounded-2xl border border-foreground/[0.06] bg-card">
               <div className="grid lg:grid-cols-2">
                 <PostgresIllustration />
                 <div className="p-7 sm:p-9">
@@ -149,11 +103,11 @@ export function StackBento() {
             <ConnectorStrip
               file="prisma.config.ts"
               caption="One config, both products"
-              gradient="from-prism-yellow-400 to-prism-red-500"
+              color="bg-prism-red-500"
             />
 
             {/* Prisma Compute — full-width row, illustration right */}
-            <Reveal className="overflow-hidden rounded-2xl border border-black/[0.06] bg-card">
+            <Reveal className="overflow-hidden rounded-2xl border border-foreground/[0.06] bg-card">
               <div className="grid lg:grid-cols-2">
                 <ComputeIllustration />
                 <div className="flex flex-col p-7 max-lg:order-last sm:p-9 lg:order-first">
@@ -182,7 +136,7 @@ export function StackBento() {
             {/* Working across the stack — half the connector-strip gap: close
                 enough to read as part of the stack, distinct from the wired
                 product rows */}
-            <Reveal className="relative mt-20 overflow-hidden rounded-2xl border border-black/[0.06] bg-card p-7 sm:p-9">
+            <Reveal className="relative mt-20 overflow-hidden rounded-2xl border border-foreground/[0.06] bg-card p-7 sm:p-9">
               <div
                 aria-hidden
                 className="pointer-events-none absolute inset-0 opacity-[0.04] grayscale [mask-image:linear-gradient(to_bottom,black,transparent_55%)]"

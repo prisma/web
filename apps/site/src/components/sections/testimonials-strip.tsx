@@ -96,7 +96,7 @@ function Attribution({ t, onPhoto = false }: { t: Testimonial; onPhoto?: boolean
         alt=""
         className={cn(
           "size-9 shrink-0 rounded-full border object-cover",
-          onPhoto ? "border-white/30" : "border-black/[0.06]",
+          onPhoto ? "border-white/30" : "border-foreground/[0.06]",
         )}
       />
       <div>
@@ -114,10 +114,10 @@ function Attribution({ t, onPhoto = false }: { t: Testimonial; onPhoto?: boolean
 function PhotoCard({ t }: { t: Extract<Testimonial, { kind: "photo" }> }) {
   return (
     <figure
-      className="relative flex h-[28rem] w-[22rem] shrink-0 flex-col justify-end overflow-hidden rounded-lg border border-black/[0.06] bg-cover bg-center"
+      className="relative flex h-[28rem] w-[22rem] shrink-0 flex-col justify-end overflow-hidden rounded-lg border border-foreground/[0.06] bg-cover bg-center"
       style={{ backgroundImage: `url(${t.photo})` }}
     >
-      <div className="relative bg-gradient-to-t from-black/95 via-black/60 to-transparent px-6 pb-6 pt-28">
+      <div className="relative bg-black/95 px-6 pb-6 pt-28">
         <blockquote className="text-pretty text-[1.375rem] font-semibold leading-snug tracking-[-0.01em] text-white">
           {t.quote}
         </blockquote>
@@ -131,7 +131,7 @@ function PatternCard({ t }: { t: Extract<Testimonial, { kind: "pattern" }> }) {
   return (
     <figure
       className={cn(
-        "relative flex h-[28rem] w-[22rem] shrink-0 flex-col overflow-hidden rounded-lg border border-black/[0.06] p-6",
+        "relative flex h-[28rem] w-[22rem] shrink-0 flex-col overflow-hidden rounded-lg border border-foreground/[0.06] p-6",
         TINTS[t.tint],
       )}
     >
@@ -177,7 +177,7 @@ function Row({ hidden = false }: { hidden?: boolean }) {
 
 export function TestimonialsStrip() {
   return (
-    <section className="overflow-hidden bg-white py-24 sm:py-32">
+    <section className="overflow-hidden bg-card py-24 sm:py-32">
       <div className="mx-auto max-w-6xl px-4 sm:px-8">
         <h2 className="mx-auto max-w-[24ch] text-balance text-center text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
           Real teams, real builds

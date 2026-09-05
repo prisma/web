@@ -87,8 +87,8 @@ export default async function NewsletterPage() {
 
   return (
     <>
-      <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
-        <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
+      <section className="bg-card px-3 pt-3 sm:px-4 sm:pt-4">
+        <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-foreground/[0.06] bg-card">
           <Texture opacity={0.06} blend="multiply" />
           <div className="relative px-4 sm:px-8">
             <div className="mx-auto flex max-w-site flex-col items-center pb-14 pt-32 text-center md:pb-16 md:pt-44">
@@ -110,7 +110,7 @@ export default async function NewsletterPage() {
       </section>
 
       {posts.length > 0 && (
-        <section className="bg-white px-4 pb-24 pt-16 sm:px-8 sm:pb-32">
+        <section className="bg-card px-4 pb-24 pt-16 sm:px-8 sm:pb-32">
           <div className="mx-auto max-w-site">
             <h2 className="mx-auto max-w-[24ch] text-balance text-center text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
               Latest from the blog
@@ -120,7 +120,7 @@ export default async function NewsletterPage() {
                 <Link
                   key={post.link}
                   href={post.link}
-                  className="group flex flex-col overflow-hidden rounded-2xl border border-black/[0.06] bg-white shadow-[0_1px_2px_rgba(21,21,21,0.04)] transition-[border-color,box-shadow] duration-300 hover:border-black/[0.12] hover:shadow-[0_6px_20px_rgba(21,21,21,0.07)]"
+                  className="group flex flex-col overflow-hidden rounded-2xl border border-foreground/[0.06] bg-card shadow-[0_1px_2px_rgba(21,21,21,0.04)] transition-[border-color,box-shadow] duration-300 hover:border-foreground/[0.12] hover:shadow-[0_6px_20px_rgba(21,21,21,0.07)]"
                 >
                   {post.image && (
                     <div className="relative aspect-video w-full overflow-hidden bg-[#eef4f3]">

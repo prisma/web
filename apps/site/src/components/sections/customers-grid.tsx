@@ -11,7 +11,7 @@ export function CustomersGrid() {
   const [lead, ...rest] = CUSTOMER_STORIES;
 
   return (
-    <section className="bg-white px-4 pb-24 pt-14 sm:px-8 sm:pb-32">
+    <section className="bg-card px-4 pb-24 pt-14 sm:px-8 sm:pb-32">
       <div className="mx-auto max-w-site">
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           <StoryCard story={lead} className="sm:col-span-2" lead />
@@ -37,7 +37,7 @@ function StoryCard({
     <Link
       href={story.href}
       className={cn(
-        "group flex flex-col overflow-hidden rounded-2xl border border-black/[0.06] bg-white shadow-[0_1px_2px_rgba(21,21,21,0.04)] transition-[border-color,box-shadow,translate] duration-300 hover:-translate-y-0.5 hover:border-black/[0.12] hover:shadow-[0_10px_30px_rgba(21,21,21,0.08)] motion-reduce:transition-none",
+        "group flex flex-col overflow-hidden rounded-2xl border border-foreground/[0.06] bg-card shadow-[0_1px_2px_rgba(21,21,21,0.04)] transition-[border-color,box-shadow,translate] duration-300 hover:-translate-y-0.5 hover:border-foreground/[0.12] hover:shadow-[0_10px_30px_rgba(21,21,21,0.08)] motion-reduce:transition-none",
         className,
       )}
     >

@@ -12,15 +12,13 @@ import { Reveal } from "@/components/motion/reveal";
 import { cn } from "@/lib/utils";
 
 // Spectrum gradient matching the brand CTA glow (see prism-button.tsx).
-const SPECTRUM =
-  "linear-gradient(85deg, #01d7e4 0%, #f3c306 25%, #f37a03 50%, #f43531 74%, #f00e5c 100%)";
+const SPECTRUM = "var(--color-prism-cyan-400)";
 
 // The site's prismatic halo, lifted verbatim from hero-home.tsx. Conic rather
 // than linear is the whole point: it wraps the perimeter, so a single layer
 // gives an even glow on all four sides. An earlier attempt here stacked ten
 // radial gradients to fake that and read as separate coloured blobs.
-const HALO =
-  "conic-gradient(var(--color-prism-yellow-300), var(--color-prism-red-500) 32%, var(--color-prism-cyan-400) 64%, var(--color-prism-yellow-300))";
+const HALO = "var(--color-prism-cyan-400)";
 
 // Detailed spec table — Shane (2026-07-29): "we'd need to bring back the
 // detailed spec tables further down the page, these tend to be quite
@@ -289,7 +287,7 @@ function Cell({ value, highlight }: { value: string; highlight: boolean }) {
 function MobileRow({ row }: { row: Row }) {
   const uniform = row.values.every((v) => v === row.values[0]);
   return (
-    <div className="border-t border-black/[0.06] px-5 py-3.5 first:border-t-0">
+    <div className="border-t border-foreground/[0.06] px-5 py-3.5 first:border-t-0">
       {uniform ? (
         <div className="flex items-start justify-between gap-4">
           <dt className="text-sm leading-relaxed text-muted-foreground">{row.label}</dt>
@@ -308,7 +306,7 @@ function MobileRow({ row }: { row: Row }) {
                   "rounded-lg px-3 py-2",
                   // Recommended plan lifted on white, the rest recessed — the
                   // site's before/after language from pricing-comparison.tsx.
-                  i === HIGHLIGHT ? "bg-white ring-1 ring-black/[0.09]" : "bg-foreground/[0.03]",
+                  i === HIGHLIGHT ? "bg-card ring-1 ring-black/[0.09]" : "bg-foreground/[0.03]",
                 )}
               >
                 <p className="text-[0.6875rem] font-medium text-muted-foreground">
@@ -329,7 +327,7 @@ function MobileRow({ row }: { row: Row }) {
 // One row of the desktop table, same sharing rationale as MobileRow.
 function DesktopRow({ row }: { row: Row }) {
   return (
-    <tr className="border-t border-black/[0.06]">
+    <tr className="border-t border-foreground/[0.06]">
       <th
         scope="row"
         className="px-5 py-3.5 text-sm font-normal leading-relaxed text-muted-foreground"
@@ -350,7 +348,7 @@ function DesktopRow({ row }: { row: Row }) {
 // sideways. `clip` rather than `hidden` so it doesn't become a scroll container.
 export function PricingSpecTable() {
   return (
-    <section className="overflow-x-clip bg-white px-4 sm:px-8">
+    <section className="overflow-x-clip bg-card px-4 sm:px-8">
       <div className="mx-auto max-w-site py-16 sm:py-24">
         <Reveal>
           <h2 className="text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
@@ -403,16 +401,16 @@ export function PricingSpecTable() {
               plus the section's 64px of gutter, so at md (768px) it still hid
               130px inside the scroller. It fits cleanly from ~900px, and lg is
               the first standard breakpoint past that. */}
-          <div className="relative overflow-hidden rounded-2xl border border-black/[0.06] bg-white lg:hidden">
+          <div className="relative overflow-hidden rounded-2xl border border-foreground/[0.06] bg-card lg:hidden">
             {/* Monthly price sits above the product groups, ungrouped — it's
                 the plan's price, not a Postgres or Compute feature. */}
-            <div className="border-b border-black/[0.06]">
+            <div className="border-b border-foreground/[0.06]">
               <dl>
                 <MobileRow row={PLAN_ROW} />
               </dl>
             </div>
             {GROUPS.map((group) => (
-              <div key={group.label} className="border-b border-black/[0.06] last:border-b-0">
+              <div key={group.label} className="border-b border-foreground/[0.06] last:border-b-0">
                 <p className="flex items-center gap-2.5 bg-foreground/[0.03] px-5 py-3 text-sm font-semibold text-foreground">
                   <group.icon className={cn("size-4 shrink-0", group.color)} />
                   {group.label}
@@ -426,7 +424,7 @@ export function PricingSpecTable() {
             ))}
           </div>
 
-          <div className="relative hidden overflow-x-auto rounded-2xl border border-black/[0.06] bg-white lg:block">
+          <div className="relative hidden overflow-x-auto rounded-2xl border border-foreground/[0.06] bg-card lg:block">
             <table className="w-full min-w-[52rem] border-collapse text-left">
               <caption className="sr-only">
                 Feature and limit comparison across the Free, Starter, Pro and Business plans
@@ -451,7 +449,7 @@ export function PricingSpecTable() {
                         <span
                           aria-hidden
                           className="absolute inset-x-0 top-0 h-[3px]"
-                          style={{ backgroundImage: SPECTRUM }}
+                          style={{ background: SPECTRUM }}
                         />
                       )}
                       <span className="flex items-center gap-2">
@@ -484,7 +482,7 @@ export function PricingSpecTable() {
                     <th
                       scope="colgroup"
                       colSpan={5}
-                      className="border-t border-black/[0.06] bg-card px-5 py-3"
+                      className="border-t border-foreground/[0.06] bg-card px-5 py-3"
                     >
                       <span className="flex items-center gap-2.5 text-sm font-semibold text-foreground">
                         <group.icon className={cn("size-4 shrink-0", group.color)} />

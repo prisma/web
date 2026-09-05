@@ -4,8 +4,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 // Spectrum gradient matching the brand CTA glow (see prism-button.tsx).
-const SPECTRUM =
-  "linear-gradient(85deg, #01d7e4 0%, #f3c306 25%, #f37a03 50%, #f43531 74%, #f00e5c 100%)";
+const SPECTRUM = "var(--color-prism-cyan-400)";
 
 type CostBarProps = {
   /** Share of the widest bar in the row, 0–1. Null renders an empty track. */
@@ -34,7 +33,7 @@ export function CostBar({ fraction, spectrum = false, delay = 0, className }: Co
     return (
       <div
         className={cn(
-          "h-2 w-full rounded-full border border-dashed border-black/15 bg-transparent",
+          "h-2 w-full rounded-full border border-dashed border-foreground/15 bg-transparent",
           className,
         )}
         aria-hidden
@@ -43,7 +42,7 @@ export function CostBar({ fraction, spectrum = false, delay = 0, className }: Co
   }
 
   const fill: React.CSSProperties = spectrum
-    ? { backgroundImage: SPECTRUM }
+    ? { background: SPECTRUM }
     : { backgroundColor: "color-mix(in srgb, var(--foreground) 28%, transparent)" };
 
   if (reduceMotion) {

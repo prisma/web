@@ -7,8 +7,7 @@ import { PRODUCT_ILLUSTRATIONS } from "./illustrations";
 import type { ProductPageContent } from "./types";
 
 // Spectrum gradient matching the brand CTA glow (see prism-button.tsx).
-const SPECTRUM =
-  "linear-gradient(85deg, #01d7e4 0%, #f3c306 25%, #f37a03 50%, #f43531 74%, #f00e5c 100%)";
+const SPECTRUM = "var(--color-prism-cyan-400)";
 
 // Feature ray photos cycled across the cards — same backdrops (and crops) as
 // the homepage illustrations, saturation boosted on their own layer.
@@ -45,8 +44,8 @@ function centreLastPair(count: number, i: number) {
 // stack's wrapped panel.
 export function ProductFeatures({ features }: Pick<ProductPageContent, "features">) {
   return (
-    <section className="bg-white px-3 py-3 sm:px-4">
-      <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
+    <section className="bg-card px-3 py-3 sm:px-4">
+      <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-foreground/[0.06] bg-card">
         {/* the wrapped panels' spectral bottom — wash + beam fan dispersing
             to white above, same values as hero-home.tsx */}
         <div
@@ -56,24 +55,18 @@ export function ProductFeatures({ features }: Pick<ProductPageContent, "features
           <div
             className="absolute -bottom-1/3 left-1/2 h-[120%] w-[160%] -translate-x-1/2"
             style={{
-              background: [
-                "radial-gradient(52% 40% at 30% 100%, color-mix(in srgb, var(--color-prism-cyan-400) 34%, transparent), transparent 68%)",
-                "radial-gradient(44% 36% at 52% 100%, color-mix(in srgb, var(--color-prism-yellow-300) 26%, transparent), transparent 66%)",
-                "radial-gradient(48% 36% at 68% 100%, color-mix(in srgb, var(--color-prism-red-400) 36%, transparent), transparent 70%)",
-              ].join(","),
+              background: "var(--paper)",
             }}
           />
-          <div className="absolute bottom-[-24rem] left-[10%] h-[60rem] w-36 origin-bottom rotate-[-28deg] bg-prism-cyan-300/50 blur-[64px]" />
-          <div className="absolute bottom-[-26rem] left-1/2 h-[62rem] w-44 origin-bottom -translate-x-1/2 rotate-[5deg] bg-prism-yellow-200/60 blur-[72px]" />
-          <div className="absolute bottom-[-28rem] right-[18%] h-[60rem] w-44 origin-bottom rotate-[22deg] bg-prism-red-300/60 blur-[64px]" />
-          <div className="absolute inset-x-0 top-0 h-64 bg-gradient-to-t from-transparent via-white/60 to-white" />
+
+          <div className="absolute inset-x-0 top-0 h-64 bg-transparent" />
         </div>
         {/* the glass prism rising out of the corner where the red
             concentrates behind it (stack-bento idiom) */}
         <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
           <div
             className="absolute bottom-[-12rem] right-[-8rem] h-[30rem] w-[46rem] rounded-full opacity-30 blur-[90px]"
-            style={{ backgroundImage: SPECTRUM }}
+            style={{ background: SPECTRUM }}
           />
           <GlassPrismSpin
             shape="triangle"
@@ -106,7 +99,7 @@ export function ProductFeatures({ features }: Pick<ProductPageContent, "features
                   delay={(i % 3) * 0.1}
                   className={cn("h-full", centreLastPair(features.items.length, i))}
                 >
-                  <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-black/[0.06] bg-card">
+                  <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-foreground/[0.06] bg-card">
                     {/* illustration and content split the card roughly in half */}
                     <div className="relative flex h-64 select-none items-center justify-center overflow-hidden p-5">
                       <div
@@ -123,7 +116,7 @@ export function ProductFeatures({ features }: Pick<ProductPageContent, "features
                       ) : (
                         <div
                           aria-hidden
-                          className="relative flex h-full w-full items-center justify-center rounded-xl border border-dashed border-black/20 bg-white/70 backdrop-blur-sm"
+                          className="relative flex h-full w-full items-center justify-center rounded-xl border border-dashed border-foreground/20 bg-card/70 backdrop-blur-sm"
                         >
                           <p className="text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                             [Feature abstraction]

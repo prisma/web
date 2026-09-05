@@ -47,8 +47,8 @@ const PROGRAMS = [
 export default function ProgramsPage() {
   return (
     <>
-      <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
-        <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
+      <section className="bg-card px-3 pt-3 sm:px-4 sm:pt-4">
+        <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-foreground/[0.06] bg-card">
           <Texture opacity={0.06} blend="multiply" />
           <div className="relative px-4 sm:px-8">
             <div className="mx-auto flex max-w-site flex-col items-center pb-14 pt-32 text-center md:pb-16 md:pt-44">
@@ -67,14 +67,14 @@ export default function ProgramsPage() {
         </div>
       </section>
 
-      <section className="bg-white px-4 pb-24 pt-14 sm:px-8 sm:pb-32">
+      <section className="bg-card px-4 pb-24 pt-14 sm:px-8 sm:pb-32">
         <div className="mx-auto max-w-site">
           <div className="grid gap-5 md:grid-cols-3">
             {PROGRAMS.map((program) => (
               <Link
                 key={program.href}
                 href={program.href}
-                className="group relative flex flex-col gap-3 overflow-hidden rounded-2xl border border-black/[0.06] bg-white p-7 shadow-[0_1px_2px_rgba(21,21,21,0.04)] transition-[border-color,box-shadow,translate] duration-300 hover:-translate-y-0.5 hover:border-black/[0.12] hover:shadow-[0_10px_30px_rgba(21,21,21,0.08)] sm:p-8"
+                className="group relative flex flex-col gap-3 overflow-hidden rounded-2xl border border-foreground/[0.06] bg-card p-7 shadow-[0_1px_2px_rgba(21,21,21,0.04)] transition-[border-color,box-shadow,translate] duration-300 hover:-translate-y-0.5 hover:border-foreground/[0.12] hover:shadow-[0_10px_30px_rgba(21,21,21,0.08)] sm:p-8"
               >
                 <RoleKicker color={program.accent}>{program.kicker}</RoleKicker>
                 <h2 className="text-xl leading-snug sm:text-2xl">{program.title}</h2>

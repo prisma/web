@@ -54,9 +54,9 @@ export function OrmIllustration() {
         <div className="flex items-center gap-2 border-b border-border/70 px-4 py-3">
           <span className="size-2 rounded-full bg-border" />
           <span className="size-2 rounded-full bg-border" />
-          <span className="ml-1.5 font-mono text-xs text-black">app.ts</span>
+          <span className="ml-1.5 font-mono text-xs text-primary">app.ts</span>
         </div>
-        <div className="flex flex-1 flex-col justify-between px-4 py-4 font-mono text-xs leading-none text-black">
+        <div className="flex flex-1 flex-col justify-between px-4 py-4 font-mono text-xs leading-none text-primary">
           <div>
             <p className="flex items-center gap-2">
               <span className="text-prism-cyan-600">import</span> <Bar className="w-16" />{" "}
@@ -146,7 +146,7 @@ export function OrmIllustration() {
               <p>{"}"}</p>
             </div>
           </div>
-          <p className="flex items-center gap-2 border-t border-border/60 pt-3 text-[0.6875rem] text-black">
+          <p className="flex items-center gap-2 border-t border-border/60 pt-3 text-[0.6875rem] text-primary">
             <span className="size-1.5 rounded-full bg-prism-cyan-400" />
             users: User[]
             <Bar className="ml-auto w-14" />

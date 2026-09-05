@@ -1,15 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { BrandLogo } from "@/components/brand-logo";
+
+import { useId, useRef, useState } from "react";
 import { CheckBold, X } from "@/components/icons/forma";
 import { PrismButton } from "@/components/brand/prism-button";
 import { Reveal } from "@/components/motion/reveal";
-import { CountUp } from "@/components/motion/count-up";
 import { cn } from "@/lib/utils";
 
 // Spectrum gradient matching the brand CTA glow (see prism-button.tsx).
-const SPECTRUM =
-  "linear-gradient(85deg, #01d7e4 0%, #f3c306 25%, #f37a03 50%, #f43531 74%, #f00e5c 100%)";
+const SPECTRUM = "var(--color-prism-cyan-400)";
 
 // Grain applied at a fixed scale (instead of <Texture />'s object-cover) so
 // the active tab and the panel share the same grain size — the pattern reads
@@ -105,7 +105,7 @@ const SCENARIOS: Scenario[] = [
 
 // The comparison as the site's before/after idiom in miniature: the typical
 // stack ghosted on the muted wash, Prisma lifted on the spectrum glow.
-function ComparisonSlide({ scenario, active }: { scenario: Scenario; active: boolean }) {
+function ComparisonSlide({ scenario }: { scenario: Scenario }) {
   return (
     <div className="flex min-w-0 shrink-0 grow-0 basis-full flex-col px-5 pb-6 pt-7 sm:px-9 sm:pb-8 sm:pt-9">
       <div className="grid flex-1 gap-4 sm:gap-6 md:grid-cols-2">
@@ -113,11 +113,9 @@ function ComparisonSlide({ scenario, active }: { scenario: Scenario; active: boo
           <p className="text-sm font-semibold leading-snug text-muted-foreground">
             Typical stack (Neon + Vercel)
           </p>
-          <CountUp
-            value={scenario.typicalCost}
-            active={active}
-            className="mt-3 block font-heading text-3xl leading-none text-muted-foreground sm:text-4xl"
-          />
+          <span className="mt-3 block font-heading text-3xl leading-none text-muted-foreground sm:text-4xl tabular-nums">
+            {scenario.typicalCost}
+          </span>
           <p className="mt-2 text-xs text-muted-foreground/80">per month</p>
           <ul className="mt-6 flex flex-col gap-3">
             {scenario.typical.map((item) => (
@@ -140,16 +138,14 @@ function ComparisonSlide({ scenario, active }: { scenario: Scenario; active: boo
           <div
             aria-hidden
             className="absolute -inset-1 rounded-[0.9375rem] opacity-20 blur-[14px]"
-            style={{ backgroundImage: SPECTRUM }}
+            style={{ background: SPECTRUM }}
           />
           <div className="relative flex h-full flex-col rounded-xl border border-border bg-card p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04),0_12px_24px_-12px_rgba(21,21,21,0.12)] sm:p-7">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo/full-color.svg" alt="Prisma" className="h-4 w-auto self-start" />
-            <CountUp
-              value={scenario.prismaCost}
-              active={active}
-              className="mt-3 block font-heading text-3xl leading-none text-foreground sm:text-4xl"
-            />
+            <BrandLogo className="h-4 self-start" />
+            <span className="mt-3 block font-heading text-3xl leading-none text-foreground sm:text-4xl tabular-nums">
+              {scenario.prismaCost}
+            </span>
             <p className="mt-2 text-xs text-muted-foreground">per month</p>
             <ul className="mt-6 flex flex-col gap-3">
               {scenario.prisma.map((item) => (
@@ -171,6 +167,8 @@ function ComparisonSlide({ scenario, active }: { scenario: Scenario; active: boo
 
 function ScenarioCarousel() {
   const [active, setActive] = useState(1);
+  const id = useId();
+  const tabs = useRef<(HTMLButtonElement | null)[]>([]);
 
   return (
     <div className="relative">
@@ -180,7 +178,7 @@ function ScenarioCarousel() {
       <div
         role="tablist"
         aria-label="Pricing scenarios"
-        className="relative z-10 -mb-px inline-grid grid-cols-3 overflow-hidden rounded-t-2xl border border-b-0 border-black/[0.06]"
+        className="relative z-10 -mb-px inline-grid grid-cols-3 overflow-hidden rounded-t-2xl border border-b-0 border-foreground/[0.06]"
       >
         {/* one grain plane behind the whole row, sharing the panel's x-origin
             — whichever tab is active exposes the same continuous texture
@@ -190,11 +188,33 @@ function ScenarioCarousel() {
         {SCENARIOS.map(({ tab, mau }, i) => (
           <button
             key={tab}
+            ref={(el) => {
+              tabs.current[i] = el;
+            }}
+            id={`${id}-tab-${i}`}
+            aria-controls={`${id}-panel`}
+            tabIndex={i === active ? 0 : -1}
+            onKeyDown={(event) => {
+              const next =
+                event.key === "ArrowRight"
+                  ? (i + 1) % SCENARIOS.length
+                  : event.key === "ArrowLeft"
+                    ? (i + SCENARIOS.length - 1) % SCENARIOS.length
+                    : event.key === "Home"
+                      ? 0
+                      : event.key === "End"
+                        ? SCENARIOS.length - 1
+                        : null;
+              if (next === null) return;
+              event.preventDefault();
+              setActive(next);
+              tabs.current[next]?.focus();
+            }}
             role="tab"
             aria-selected={i === active}
             onClick={() => setActive(i)}
             className={cn(
-              "relative border-b border-black/[0.06] px-2.5 pb-3 pt-3.5 text-left transition-colors sm:px-6 sm:pb-3.5 sm:pt-4",
+              "relative border-b border-foreground/[0.06] px-2.5 pb-3 pt-3.5 text-left transition-colors sm:px-6 sm:pb-3.5 sm:pt-4",
               i > 0 && "border-l",
               i === active
                 ? "border-b-transparent"
@@ -217,40 +237,20 @@ function ScenarioCarousel() {
       </div>
 
       {/* top-left corner squared off — the tab group above owns that corner */}
-      <div className="relative flex h-full flex-col overflow-hidden rounded-2xl rounded-tl-none border border-black/[0.06] bg-card shadow-[0_1px_2px_rgba(21,21,21,0.03),0_16px_32px_-16px_rgba(21,21,21,0.1)]">
-        {/* prismatic backdrop — the hero's treatment scaled to the card:
-          spectral wash along the bottom, beam fan rising, dispersing to
-          white above */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-full overflow-hidden"
-        >
-          <div
-            className="absolute -bottom-1/3 left-1/2 h-[120%] w-[160%] -translate-x-1/2"
-            style={{
-              background: [
-                "radial-gradient(52% 40% at 30% 100%, color-mix(in srgb, var(--color-prism-cyan-400) 34%, transparent), transparent 68%)",
-                "radial-gradient(44% 36% at 52% 100%, color-mix(in srgb, var(--color-prism-yellow-300) 26%, transparent), transparent 66%)",
-                "radial-gradient(42% 30% at 74% 100%, color-mix(in srgb, var(--color-prism-red-400) 28%, transparent), transparent 68%)",
-              ].join(","),
-            }}
-          />
-          <div className="absolute bottom-[-18rem] left-[10%] h-[44rem] w-24 origin-bottom rotate-[-28deg] bg-prism-cyan-300/50 blur-[56px]" />
-          <div className="absolute bottom-[-20rem] left-1/2 h-[46rem] w-28 origin-bottom -translate-x-1/2 rotate-[5deg] bg-prism-yellow-200/60 blur-[64px]" />
-          <div className="absolute bottom-[-21rem] right-[8%] h-[44rem] w-24 origin-bottom rotate-[28deg] bg-prism-red-300/50 blur-[56px]" />
-          <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-t from-transparent via-white/60 to-white" />
-        </div>
+      <div className="relative flex h-full flex-col overflow-hidden rounded-2xl rounded-tl-none border border-foreground/[0.06] bg-card shadow-[0_1px_2px_rgba(21,21,21,0.03),0_16px_32px_-16px_rgba(21,21,21,0.1)]">
         <div aria-hidden className="pointer-events-none absolute inset-0" style={GRAIN} />
 
-        <div className="relative flex-1 overflow-hidden pt-2">
-          <div
-            className="flex h-full transition-transform duration-500 ease-out motion-reduce:transition-none"
-            style={{ transform: `translateX(-${active * 100}%)` }}
-          >
-            {SCENARIOS.map((scenario, i) => (
-              <ComparisonSlide key={scenario.tab} scenario={scenario} active={i === active} />
-            ))}
-          </div>
+        <div
+          id={`${id}-panel`}
+          role="tabpanel"
+          aria-labelledby={`${id}-tab-${active}`}
+          tabIndex={0}
+          className="relative flex-1 pt-2"
+        >
+          <ComparisonSlide scenario={SCENARIOS[active]} />
+          <p className="px-5 pb-5 text-xs leading-relaxed text-muted-foreground sm:px-9">
+            Illustrative monthly estimates. Actual costs depend on usage and plan.
+          </p>
         </div>
       </div>
     </div>
@@ -259,7 +259,7 @@ function ScenarioCarousel() {
 
 export function PricingScale() {
   return (
-    <section className="bg-white px-4 py-24 sm:px-8 sm:py-32">
+    <section className="bg-card px-4 py-24 sm:px-8 sm:py-32">
       <div className="mx-auto max-w-site">
         {/* Top: heading + description (left), bullets + CTA (right) */}
         <div className="grid gap-10 lg:grid-cols-2 lg:items-start lg:gap-16">

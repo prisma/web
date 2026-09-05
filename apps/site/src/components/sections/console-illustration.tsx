@@ -30,7 +30,7 @@ function Bar({ className }: { className?: string }) {
     >
       <span
         aria-hidden
-        className="absolute inset-0 animate-line-shimmer bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.7),transparent)] motion-reduce:hidden"
+        className="absolute inset-0 animate-line-shimmer bg-prism-cyan-400 motion-reduce:hidden"
       />
     </span>
   );
@@ -78,7 +78,7 @@ export function ConsoleIllustration() {
           {/* sidebar */}
           <aside className="hidden w-52 shrink-0 flex-col border-r border-border/70 bg-muted/50 px-3 pb-3 pt-4 md:flex">
             <div className="flex items-center gap-2 px-1.5">
-              <span className="size-4 rounded bg-[conic-gradient(from_220deg,var(--color-prism-cyan-400),var(--color-prism-yellow-300),var(--color-prism-red-500),var(--color-prism-cyan-400))]" />
+              <span className="size-4 rounded bg-prism-cyan-400" />
               <Bar className="w-14 bg-foreground/20" />
               <span className="h-3 w-7 rounded-sm bg-prism-cyan-100" />
               <ChevronsUpDown className="ml-auto size-3 text-muted-foreground/60" />

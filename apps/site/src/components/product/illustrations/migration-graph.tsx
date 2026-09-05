@@ -132,7 +132,7 @@ export function MigrationGraph() {
               {["plan", "apply", "inspect"].map((verb) => (
                 <span
                   key={verb}
-                  className="rounded border border-white/15 bg-white/10 px-1.5 py-0.5 text-primary-foreground"
+                  className="rounded border border-white/15 bg-card/10 px-1.5 py-0.5 text-primary-foreground"
                 >
                   {verb}
                 </span>

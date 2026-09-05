@@ -105,8 +105,8 @@ const QUOTES = [
 export default function PartnersProgramPage() {
   return (
     <>
-      <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
-        <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
+      <section className="bg-card px-3 pt-3 sm:px-4 sm:pt-4">
+        <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-foreground/[0.06] bg-card">
           <Texture opacity={0.06} blend="multiply" />
           <div className="relative px-4 sm:px-8">
             <div className="mx-auto flex max-w-site flex-col items-center pb-14 pt-32 text-center md:pb-16 md:pt-44">
@@ -129,7 +129,7 @@ export default function PartnersProgramPage() {
         </div>
       </section>
 
-      <section className="bg-white px-4 py-20 sm:px-8 sm:py-24">
+      <section className="bg-card px-4 py-20 sm:px-8 sm:py-24">
         <div className="mx-auto max-w-site">
           <h2 className="mx-auto max-w-[28ch] text-balance text-center text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
             Everything you need from data to deployment
@@ -175,7 +175,7 @@ export default function PartnersProgramPage() {
                 </div>
                 <div
                   className={cn(
-                    "relative overflow-hidden rounded-2xl border border-black/[0.06] bg-card-wash",
+                    "relative overflow-hidden rounded-2xl border border-foreground/[0.06] bg-card-wash",
                     i % 2 === 1 && "md:order-1",
                   )}
                 >
@@ -194,7 +194,7 @@ export default function PartnersProgramPage() {
         </div>
       </section>
 
-      <section className="bg-white px-4 pb-20 sm:px-8 sm:pb-24">
+      <section className="bg-card px-4 pb-20 sm:px-8 sm:pb-24">
         <div className="mx-auto max-w-4xl">
           <h2 className="mx-auto max-w-[24ch] text-balance text-center text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
             Built for modern platforms
@@ -203,7 +203,7 @@ export default function PartnersProgramPage() {
             {PLATFORM_TYPES.map((type) => (
               <div
                 key={type.title}
-                className="grid gap-2 border-b border-black/[0.06] py-6 last:border-b-0 sm:grid-cols-[14rem_1fr] sm:gap-8"
+                className="grid gap-2 border-b border-foreground/[0.06] py-6 last:border-b-0 sm:grid-cols-[14rem_1fr] sm:gap-8"
               >
                 <h3 className="text-base font-semibold leading-snug">{type.title}</h3>
                 <p className="text-sm leading-relaxed text-muted-foreground">{type.description}</p>
@@ -213,7 +213,7 @@ export default function PartnersProgramPage() {
         </div>
       </section>
 
-      <section className="bg-white px-4 pb-24 sm:px-8 sm:pb-32">
+      <section className="bg-card px-4 pb-24 sm:px-8 sm:pb-32">
         <div className="mx-auto max-w-site">
           <div className="grid gap-5 md:grid-cols-2">
             {QUOTES.map((q) => (
@@ -232,7 +232,7 @@ export default function PartnersProgramPage() {
             ))}
           </div>
 
-          <div className="mt-14 flex flex-col items-center gap-5 rounded-2xl border border-black/[0.06] p-8 text-center sm:p-12">
+          <div className="mt-14 flex flex-col items-center gap-5 rounded-2xl border border-foreground/[0.06] p-8 text-center sm:p-12">
             <h2 className="text-[clamp(1.5rem,2.25vw,2rem)] leading-[1.15]">Get in touch</h2>
             <p className="max-w-[48ch] text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground">
               Discuss your platform, pricing, and integration approach. Our team works closely with

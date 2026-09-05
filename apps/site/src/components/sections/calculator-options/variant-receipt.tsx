@@ -16,7 +16,7 @@ export function VariantReceipt() {
   const { best } = rec;
 
   return (
-    <section className="bg-white">
+    <section className="bg-card">
       <div className="mx-auto grid max-w-6xl items-start gap-12 px-4 py-20 sm:px-8 md:grid-cols-[1fr_400px] lg:gap-20">
         <div>
           <h2 className="text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
@@ -33,7 +33,7 @@ export function VariantReceipt() {
                 key={p.id}
                 type="button"
                 onClick={() => setPreset(p.ops, p.gb)}
-                className="rounded-xl border border-black/[0.06] bg-card p-4 text-left transition-colors hover:border-black/[0.14]"
+                className="rounded-xl border border-foreground/[0.06] bg-card p-4 text-left transition-colors hover:border-foreground/[0.14]"
               >
                 <span className="block text-sm font-semibold text-foreground">{p.label}</span>
                 <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
@@ -85,7 +85,7 @@ export function VariantReceipt() {
               Prisma · Estimate
             </p>
 
-            <div className="mt-6 border-t border-dashed border-black/20 pt-5">
+            <div className="mt-6 border-t border-dashed border-foreground/20 pt-5">
               <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
                 Recommended plan
               </p>
@@ -100,7 +100,7 @@ export function VariantReceipt() {
               </div>
             </div>
 
-            <dl className="mt-5 space-y-2.5 border-t border-dashed border-black/20 pt-5 font-mono text-[13px] tabular-nums">
+            <dl className="mt-5 space-y-2.5 border-t border-dashed border-foreground/20 pt-5 font-mono text-[13px] tabular-nums">
               <div className="flex justify-between gap-4">
                 <dt className="text-muted-foreground">Base plan</dt>
                 <dd className="text-foreground">{fmtUSD(best.plan.base)}</dd>
@@ -129,7 +129,7 @@ export function VariantReceipt() {
               </div>
             </dl>
 
-            <div className="mt-5 flex items-center gap-2.5 border-t border-dashed border-black/20 pt-5">
+            <div className="mt-5 flex items-center gap-2.5 border-t border-dashed border-foreground/20 pt-5">
               <Shield className="size-4 shrink-0 text-prism-red-500" aria-hidden />
               <p className="font-mono text-xs leading-relaxed text-foreground">
                 Spend limit on by default — the bill can&apos;t pass it.
@@ -156,8 +156,7 @@ export function VariantReceipt() {
             aria-hidden
             className="h-3 w-full"
             style={{
-              backgroundImage:
-                "linear-gradient(45deg, var(--primary-foreground) 25%, transparent 25%), linear-gradient(-45deg, var(--primary-foreground) 25%, transparent 25%)",
+              background: "var(--paper)",
               backgroundSize: "14px 14px",
               backgroundRepeat: "repeat-x",
             }}

@@ -4,8 +4,7 @@ import { useRef } from "react";
 import { motion, useInView, useReducedMotion } from "framer-motion";
 import { Copy } from "@/components/icons/forma";
 
-const SPECTRUM =
-  "linear-gradient(85deg, #01d7e4 0%, #f3c306 25%, #f37a03 50%, #f43531 74%, #f00e5c 100%)";
+const SPECTRUM = "var(--color-prism-cyan-400)";
 
 // Shatter lines radiating from one impact point (120,70). Ordered main cracks
 // first, then the short secondary splinters — so they draw in that sequence.
@@ -153,7 +152,7 @@ export function LiveCard() {
       <div
         aria-hidden
         className="absolute -inset-1 rounded-[1.25rem] opacity-20 blur-[18px]"
-        style={{ backgroundImage: SPECTRUM }}
+        style={{ background: SPECTRUM }}
       />
       <div className="relative flex min-h-[13.5rem] flex-col justify-between overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-[0_1px_2px_rgba(21,21,21,0.04),0_16px_32px_-12px_rgba(21,21,21,0.12)]">
         <p className="text-center font-heading text-[0.9375rem] leading-snug text-foreground">
@@ -190,7 +189,7 @@ export function LiveCard() {
           <span
             aria-hidden
             className="absolute -inset-0.5 rounded-full opacity-70 blur-[3px]"
-            style={{ backgroundImage: SPECTRUM }}
+            style={{ background: SPECTRUM }}
           />
           <span className="relative flex h-9 items-center justify-center rounded-full bg-primary text-[0.75rem] font-semibold text-primary-foreground">
             Deploy preview

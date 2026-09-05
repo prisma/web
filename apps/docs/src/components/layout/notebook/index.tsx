@@ -90,7 +90,7 @@ export function DocsLayout(props: DocsLayoutProps) {
   const links = resolveLinkItems(props);
 
   function sidebar() {
-    const { banner, footer, components, collapsible = true, ...rest } = sidebarProps;
+    const { banner, footer, components, collapsible: _collapsible, ...rest } = sidebarProps;
 
     const iconLinks = links.filter(
       (item): item is Extract<LinkItemType, { type: "icon" }> =>
@@ -151,6 +151,14 @@ export function DocsLayout(props: DocsLayoutProps) {
               </LinkItem>
             ))}
           </Footer>
+          {themeSwitch.enabled !== false && (
+            <div className="flex items-center justify-between border-t border-stroke-neutral px-4 py-3">
+              <span className="text-sm text-fd-muted-foreground">Appearance</span>
+              {themeSwitch.component ?? (
+                <ThemeToggle mode={themeSwitch.mode ?? "light-dark-system"} />
+              )}
+            </div>
+          )}
         </SidebarContent>
         <SidebarDrawer {...rest}>
           <div className="flex flex-row p-4 pb-2">
@@ -225,7 +233,7 @@ export function DocsLayout(props: DocsLayoutProps) {
               theme control. */}
           {themeSwitch.enabled !== false && (
             <div className="flex items-center justify-between border-t border-stroke-neutral px-4 py-3">
-              <span className="text-sm text-fd-muted-foreground">Theme</span>
+              <span className="text-sm text-fd-muted-foreground">Appearance</span>
               {themeSwitch.component ?? (
                 <ThemeToggle mode={themeSwitch.mode ?? "light-dark-system"} />
               )}
@@ -263,9 +271,7 @@ function DocsNavbar({
   links,
   sidebar: { collapsible: sidebarCollapsible = true } = {},
   searchToggle = {},
-  themeSwitch = {},
   nav = {},
-  i18n,
 }: DocsLayoutProps & {
   links: LinkItemType[];
 }) {
@@ -372,9 +378,6 @@ function DocsNavbar({
                 ))}
               </div>
 
-              {themeSwitch.enabled !== false && (
-                <ThemeToggle mode={themeSwitch.mode ?? "light-dark-system"} />
-              )}
               <SidebarEnabledGate>
                 {sidebarCollapsible && (
                   <SidebarCollapseTrigger

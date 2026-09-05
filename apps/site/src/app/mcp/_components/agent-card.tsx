@@ -33,7 +33,7 @@ export function AgentCard({ name, logo, alt, href, copyText }: McpAgent) {
   return (
     <Tag
       aria-label={alt}
-      className="group relative flex h-32 w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border border-black/[0.06] bg-white p-4 shadow-[0_1px_2px_rgba(21,21,21,0.04)] transition-[border-color,box-shadow] duration-300 hover:border-black/[0.12] hover:shadow-[0_6px_20px_rgba(21,21,21,0.07)]"
+      className="group relative flex h-32 w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border border-foreground/[0.06] bg-card p-4 shadow-[0_1px_2px_rgba(21,21,21,0.04)] transition-[border-color,box-shadow] duration-300 hover:border-foreground/[0.12] hover:shadow-[0_6px_20px_rgba(21,21,21,0.07)]"
       {...linkProps}
     >
       {logo ? (

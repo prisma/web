@@ -10,8 +10,7 @@ import { cn } from "@/lib/utils";
 import { CostBar } from "./pricing-cost-bar";
 
 // Spectrum gradient matching the brand CTA glow (see prism-button.tsx).
-const SPECTRUM =
-  "linear-gradient(85deg, #01d7e4 0%, #f3c306 25%, #f37a03 50%, #f43531 74%, #f00e5c 100%)";
+const SPECTRUM = "var(--color-prism-cyan-400)";
 
 // V2 copy verbatim, with "No connection limits" removed — Gregory confirmed
 // pooled limits do exist (10/100/500/1000).
@@ -79,8 +78,7 @@ const ALTERNATIVES = [
       // the same promise as Prisma's. Don't trim it.
       {
         label: "Spend limits",
-        value:
-          "Spend cap on by default for covered usage; database compute excluded",
+        value: "Spend cap on by default for covered usage; database compute excluded",
       },
     ],
   },
@@ -135,8 +133,7 @@ function costFraction(cost: string): number | null {
 // claim about Supabase and is wrong by more than 3x. The multiple only ever
 // describes the widest column, so it says which one that is.
 const PRISMA_MID = costMidpoint(PRISMA.cost);
-const SAVINGS_MULTIPLE =
-  PRISMA_MID && MAX_COST ? Math.round(MAX_COST / PRISMA_MID) : null;
+const SAVINGS_MULTIPLE = PRISMA_MID && MAX_COST ? Math.round(MAX_COST / PRISMA_MID) : null;
 const WIDEST = ALTERNATIVES.reduce((a, b) =>
   (costMidpoint(b.cost) ?? 0) > (costMidpoint(a.cost) ?? 0) ? b : a,
 );
@@ -147,7 +144,7 @@ function PendingBadge() {
   return (
     <span
       title="Awaiting figures from Prisma"
-      className="inline-flex rounded border border-dashed border-black/20 px-1.5 py-0.5 text-xs font-medium text-muted-foreground/70"
+      className="inline-flex rounded border border-dashed border-foreground/20 px-1.5 py-0.5 text-xs font-medium text-muted-foreground/70"
     >
       {PENDING}
     </span>
@@ -165,8 +162,8 @@ function PendingBadge() {
 // gets the emphasis rather than sitting in a table cell.
 export function PricingComparison() {
   return (
-    <section className="bg-white px-3 py-16 sm:px-4 sm:py-24">
-      <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
+    <section className="bg-card px-3 py-16 sm:px-4 sm:py-24">
+      <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-foreground/[0.06] bg-card">
         {/* spectral bottom — wash plus the three brand beams */}
         <div
           aria-hidden
@@ -175,24 +172,18 @@ export function PricingComparison() {
           <div
             className="absolute -bottom-1/3 left-1/2 h-[120%] w-[160%] -translate-x-1/2"
             style={{
-              background: [
-                "radial-gradient(52% 40% at 30% 100%, color-mix(in srgb, var(--color-prism-cyan-400) 30%, transparent), transparent 68%)",
-                "radial-gradient(44% 36% at 52% 100%, color-mix(in srgb, var(--color-prism-yellow-300) 24%, transparent), transparent 66%)",
-                "radial-gradient(42% 30% at 74% 100%, color-mix(in srgb, var(--color-prism-red-400) 26%, transparent), transparent 68%)",
-              ].join(","),
+              background: "var(--paper)",
             }}
           />
-          <div className="absolute bottom-[-24rem] left-[12%] h-[60rem] w-40 origin-bottom rotate-[-26deg] bg-prism-cyan-300/45 blur-[80px]" />
-          <div className="absolute bottom-[-26rem] left-1/2 h-[62rem] w-44 origin-bottom -translate-x-1/2 rotate-[4deg] bg-prism-yellow-200/50 blur-[72px]" />
-          <div className="absolute bottom-[-28rem] right-[12%] h-[60rem] w-40 origin-bottom rotate-[26deg] bg-prism-red-300/45 blur-[80px]" />
-          <div className="absolute inset-x-0 top-0 h-56 bg-gradient-to-t from-transparent via-white/60 to-white" />
+
+          <div className="absolute inset-x-0 top-0 h-56 bg-transparent" />
         </div>
 
         {/* glass prism turning at the bottom edge, light concentrating behind it */}
         <div
           aria-hidden
           className="pointer-events-none absolute bottom-[-6rem] right-[-4rem] h-[16rem] w-[24rem] rounded-full opacity-25 blur-[70px]"
-          style={{ backgroundImage: SPECTRUM }}
+          style={{ background: SPECTRUM }}
         />
         <GlassPrismSpin
           shape="pentagon"
@@ -211,20 +202,18 @@ export function PricingComparison() {
             </Reveal>
             <Reveal delay={0.1}>
               <p className="mx-auto mt-6 max-w-3xl text-pretty text-center text-base leading-relaxed text-muted-foreground">
-                Prisma charges per operation: each query your app runs against
-                your database counts as one. No seats. No egress fees. And every
-                paid plan includes a hard spend limit so there are no surprises.
+                Prisma charges per operation: each query your app runs against your database counts
+                as one. No seats. No egress fees. And every paid plan includes a hard spend limit so
+                there are no surprises.
               </p>
             </Reveal>
             <Reveal delay={0.15}>
               <p className="mx-auto mt-5 max-w-3xl text-pretty text-center text-base leading-relaxed text-muted-foreground">
                 At around 50K monthly active users,{" "}
                 <strong className="font-semibold text-foreground">
-                  Prisma Pro can cost up to 5x less than a typical Neon + Vercel
-                  setup
+                  Prisma Pro can cost up to 5x less than a typical Neon + Vercel setup
                 </strong>
-                , with one bill, included data transfer, and spend limits on by
-                default.
+                , with one bill, included data transfer, and spend limits on by default.
               </p>
             </Reveal>
 
@@ -242,8 +231,8 @@ export function PricingComparison() {
                   className={cn(
                     "flex flex-col rounded-[1.25rem] border p-6 backdrop-blur-[2px]",
                     alt.pending
-                      ? "border-dashed border-black/15 bg-white/25"
-                      : "border-black/[0.05] bg-white/45",
+                      ? "border-dashed border-foreground/15 bg-card/25"
+                      : "border-foreground/[0.05] bg-card/45",
                   )}
                 >
                   <RoleKicker color="bg-foreground/20">{alt.name}</RoleKicker>
@@ -257,9 +246,7 @@ export function PricingComparison() {
                   ) : (
                     <p className="mt-5 font-heading text-[clamp(2rem,3.4vw,2.75rem)] font-medium leading-none tracking-tight text-muted-foreground">
                       <CountUp value={alt.cost} />
-                      <span className="ml-1.5 align-baseline text-base font-normal">
-                        /month
-                      </span>
+                      <span className="ml-1.5 align-baseline text-base font-normal">/month</span>
                     </p>
                   )}
                   <p className="mt-2 text-sm text-muted-foreground">
@@ -272,12 +259,10 @@ export function PricingComparison() {
                     delay={0.3 + i * 0.05}
                   />
 
-                  <dl className="mt-7 flex flex-col gap-5 border-t border-black/[0.06] pt-6">
+                  <dl className="mt-7 flex flex-col gap-5 border-t border-foreground/[0.06] pt-6">
                     {alt.rows.map((r) => (
                       <div key={r.label}>
-                        <dt className="text-sm font-semibold text-foreground/70">
-                          {r.label}
-                        </dt>
+                        <dt className="text-sm font-semibold text-foreground/70">{r.label}</dt>
                         <dd className="mt-1.5 flex items-start gap-3 text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground">
                           {alt.pending ? (
                             <PendingBadge />
@@ -306,11 +291,11 @@ export function PricingComparison() {
                 <div
                   aria-hidden
                   className="pointer-events-none absolute -inset-x-4 -bottom-6 top-8 rounded-full opacity-25 blur-[52px]"
-                  style={{ backgroundImage: SPECTRUM }}
+                  style={{ background: SPECTRUM }}
                 />
                 <Reveal
                   delay={0.3}
-                  className="spectrum-border spectrum-border-on relative flex h-full flex-col overflow-hidden rounded-[1.25rem] border border-transparent bg-white p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_48px_-24px_rgba(21,21,21,0.25)]"
+                  className="spectrum-border spectrum-border-on relative flex h-full flex-col overflow-hidden rounded-[1.25rem] border border-transparent bg-card p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_48px_-24px_rgba(21,21,21,0.25)]"
                 >
                   <div
                     aria-hidden
@@ -320,9 +305,7 @@ export function PricingComparison() {
                   </div>
 
                   <div className="relative flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
-                    <RoleKicker color="bg-prism-cyan-400">
-                      {PRISMA.name}
-                    </RoleKicker>
+                    <RoleKicker color="bg-prism-cyan-400">{PRISMA.name}</RoleKicker>
                     {SAVINGS_MULTIPLE !== null && (
                       <Marker className="-mt-0.5 shrink-0">
                         Up to {SAVINGS_MULTIPLE}x less vs {WIDEST.shortName}
@@ -335,9 +318,7 @@ export function PricingComparison() {
                       /month
                     </span>
                   </p>
-                  <p className="relative mt-2 text-sm text-muted-foreground">
-                    at ~50K MAU
-                  </p>
+                  <p className="relative mt-2 text-sm text-muted-foreground">at ~50K MAU</p>
 
                   <CostBar
                     className="relative mt-5"
@@ -346,12 +327,10 @@ export function PricingComparison() {
                     delay={0.4}
                   />
 
-                  <dl className="relative mt-7 flex flex-col gap-5 border-t border-black/[0.06] pt-6">
+                  <dl className="relative mt-7 flex flex-col gap-5 border-t border-foreground/[0.06] pt-6">
                     {PRISMA.rows.map((r) => (
                       <div key={r.label}>
-                        <dt className="text-sm font-semibold text-foreground/70">
-                          {r.label}
-                        </dt>
+                        <dt className="text-sm font-semibold text-foreground/70">{r.label}</dt>
                         <dd className="mt-1.5 flex items-start gap-3 text-pretty text-[0.9375rem] font-semibold leading-relaxed text-foreground">
                           <CheckBold
                             className="mt-1 size-4 shrink-0 text-prism-cyan-500"

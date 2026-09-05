@@ -116,8 +116,8 @@ export default function StudioPage() {
       <JsonLd id="studio-software-application" data={studioStructuredData} />
 
       {/* Hero: wrapped-panel title band, yellow wash only (one accent per page) */}
-      <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
-        <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
+      <section className="bg-card px-3 pt-3 sm:px-4 sm:pt-4">
+        <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-foreground/[0.06] bg-card">
           <div
             aria-hidden
             className="pointer-events-none absolute inset-x-0 bottom-0 h-[24rem] overflow-hidden"
@@ -125,14 +125,10 @@ export default function StudioPage() {
             <div
               className="absolute -bottom-1/2 left-1/2 h-full w-[140%] -translate-x-1/2"
               style={{
-                background: [
-                  "radial-gradient(50% 62% at 30% 100%, color-mix(in srgb, var(--color-prism-yellow-300) 18%, transparent), transparent 70%)",
-                  "radial-gradient(44% 54% at 56% 100%, color-mix(in srgb, var(--color-prism-yellow-100) 30%, transparent), transparent 68%)",
-                  "radial-gradient(40% 48% at 78% 100%, color-mix(in srgb, var(--color-prism-yellow-400) 14%, transparent), transparent 70%)",
-                ].join(","),
+                background: "var(--paper)",
               }}
             />
-            <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-t from-transparent to-white" />
+            <div className="absolute inset-x-0 top-0 h-24 bg-transparent" />
           </div>
           <Texture opacity={0.06} blend="multiply" />
 
@@ -174,12 +170,12 @@ export default function StudioPage() {
       </section>
 
       {/* Three ways in: card grid with accent top bars */}
-      <section className="bg-white px-4 pt-14 sm:px-8">
+      <section className="bg-card px-4 pt-14 sm:px-8">
         <div className="mx-auto grid max-w-5xl gap-5 md:grid-cols-3">
           {FEATURE_CARDS.map((card) => (
             <div
               key={card.title}
-              className="relative flex flex-col gap-3 overflow-hidden rounded-2xl border border-black/[0.06] bg-white p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04)] sm:p-7"
+              className="relative flex flex-col gap-3 overflow-hidden rounded-2xl border border-foreground/[0.06] bg-card p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04)] sm:p-7"
             >
               <span aria-hidden className={`absolute left-0 top-0 h-1 w-full ${card.accent}`} />
               <h2 className="text-lg leading-snug">{card.title}</h2>
@@ -190,7 +186,7 @@ export default function StudioPage() {
       </section>
 
       {/* Feature tour: alternating two-column rows, mockups in ink frames */}
-      <section className="bg-white px-4 py-20 sm:px-8 sm:py-24">
+      <section className="bg-card px-4 py-20 sm:px-8 sm:py-24">
         <div className="mx-auto flex max-w-site flex-col gap-16 sm:gap-20">
           {FEATURE_ROWS.map((feature, index) => (
             <div
@@ -224,7 +220,7 @@ export default function StudioPage() {
       </section>
 
       {/* Video walkthrough */}
-      <section className="bg-white px-4 pb-20 sm:px-8 sm:pb-24">
+      <section className="bg-card px-4 pb-20 sm:px-8 sm:pb-24">
         <div className="mx-auto flex max-w-3xl flex-col gap-10">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div className="max-w-[44ch]">
@@ -248,14 +244,14 @@ export default function StudioPage() {
             </a>
           </div>
 
-          <div className="overflow-hidden rounded-2xl border border-black/[0.06] bg-[#151515] shadow-[0_12px_32px_-18px_rgba(21,21,21,0.3)] [&>iframe]:block [&>iframe]:w-full">
+          <div className="overflow-hidden rounded-2xl border border-foreground/[0.06] bg-[#151515] shadow-[0_12px_32px_-18px_rgba(21,21,21,0.3)] [&>iframe]:block [&>iframe]:w-full">
             <Youtube videoId="s3NS9KBRMcQ" width="100%" title="See how Prisma Studio works" />
           </div>
         </div>
       </section>
 
       {/* Try it out: ink terminal card */}
-      <section className="bg-white px-4 pb-24 sm:px-8 sm:pb-32">
+      <section className="bg-card px-4 pb-24 sm:px-8 sm:pb-32">
         <div className="mx-auto flex max-w-2xl flex-col items-center gap-8 text-center">
           <div>
             <h2 className="text-[clamp(1.5rem,2.25vw,2rem)] leading-[1.15]">Try it out</h2>

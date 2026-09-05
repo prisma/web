@@ -16,7 +16,7 @@ function Bar({ className }: { className?: string }) {
     >
       <span
         aria-hidden
-        className="absolute inset-0 animate-line-shimmer bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.7),transparent)] motion-reduce:hidden"
+        className="absolute inset-0 animate-line-shimmer bg-prism-cyan-400 motion-reduce:hidden"
       />
     </span>
   );
@@ -110,13 +110,13 @@ export function ComputeIllustration() {
         />
 
         <div className="relative flex items-center justify-between border-b border-border/70 px-3.5 py-2.5">
-          <span className="font-mono text-[0.6875rem] text-black">Deployments</span>
+          <span className="font-mono text-[0.6875rem] text-primary">Deployments</span>
           <span className="flex items-center gap-1 rounded-full bg-prism-cyan-100 px-1.5 py-0.5 text-[0.5625rem] font-semibold text-prism-cyan-800">
             <span className="size-1 rounded-full bg-prism-cyan-400 animate-status-pulse motion-reduce:animate-none" />
             Live
           </span>
         </div>
-        <div className="relative flex flex-1 flex-col justify-evenly px-3.5 py-1.5 font-mono text-[0.6875rem] text-black">
+        <div className="relative flex flex-1 flex-col justify-evenly px-3.5 py-1.5 font-mono text-[0.6875rem] text-primary">
           <p className="flex items-center gap-2.5 py-1">
             v12
             <Bar className="w-24" />
@@ -152,7 +152,7 @@ export function ComputeIllustration() {
             <Bar className="w-10" />
           </p>
         </div>
-        <div className="relative flex items-center gap-2 border-t border-border/70 px-3.5 py-2.5 font-mono text-[0.625rem] text-black">
+        <div className="relative flex items-center gap-2 border-t border-border/70 px-3.5 py-2.5 font-mono text-[0.625rem] text-primary">
           <span className="text-prism-cyan-600">$</span>
           git push
           <span
@@ -168,8 +168,7 @@ export function ComputeIllustration() {
             aria-hidden
             className="pointer-events-none absolute inset-[-18%] rounded-full"
             style={{
-              background:
-                "radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--color-prism-cyan-300) 55%, transparent), transparent 68%)",
+              background: "var(--paper)",
               filter: "blur(10px)",
             }}
             initial={false}

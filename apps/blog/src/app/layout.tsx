@@ -1,3 +1,4 @@
+import "@prisma-docs/ui/search.css";
 import { Provider } from "@/components/provider";
 import { createBlogStructuredData } from "@/lib/structured-data";
 import { getBaseUrl } from "@/lib/url";

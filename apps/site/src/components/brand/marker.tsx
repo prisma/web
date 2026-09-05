@@ -24,7 +24,7 @@ export function Marker({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-md border border-black/[0.09] bg-white px-2 py-1 text-xs font-semibold leading-none text-foreground shadow-[0_1px_2px_rgba(21,21,21,0.05)]",
+        "inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-xs font-semibold leading-none text-foreground shadow-[0_1px_2px_rgba(21,21,21,0.05)]",
         className,
       )}
     >

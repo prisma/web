@@ -1,3 +1,4 @@
+import { BrandStripe } from "@/components/brand/brand-stripe";
 import { CheckBold } from "@/components/icons/forma";
 import { GlassGlide } from "@/components/brand/glass-glide";
 import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button";
@@ -47,8 +48,8 @@ export function ProductHero({
   const Illustration = hero.illustration ? PRODUCT_ILLUSTRATIONS[hero.illustration] : null;
 
   return (
-    <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
-      <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
+    <section className="bg-card px-3 pt-3 sm:px-4 sm:pt-4">
+      <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-foreground/[0.06] bg-card">
         {/* spectral bottom — wash + beam fan dispersing to white above,
             same values as hero-home.tsx */}
         <div
@@ -58,17 +59,11 @@ export function ProductHero({
           <div
             className="absolute -bottom-1/3 left-1/2 h-[120%] w-[160%] -translate-x-1/2"
             style={{
-              background: [
-                "radial-gradient(52% 40% at 30% 100%, color-mix(in srgb, var(--color-prism-cyan-400) 34%, transparent), transparent 68%)",
-                "radial-gradient(44% 36% at 52% 100%, color-mix(in srgb, var(--color-prism-yellow-300) 26%, transparent), transparent 66%)",
-                "radial-gradient(42% 30% at 74% 100%, color-mix(in srgb, var(--color-prism-red-400) 28%, transparent), transparent 68%)",
-              ].join(","),
+              background: "var(--paper)",
             }}
           />
-          <div className="absolute bottom-[-24rem] left-[10%] h-[60rem] w-36 origin-bottom rotate-[-28deg] bg-prism-cyan-300/50 blur-[64px]" />
-          <div className="absolute bottom-[-26rem] left-1/2 h-[62rem] w-44 origin-bottom -translate-x-1/2 rotate-[5deg] bg-prism-yellow-200/60 blur-[72px]" />
-          <div className="absolute bottom-[-28rem] right-[8%] h-[60rem] w-36 origin-bottom rotate-[28deg] bg-prism-red-300/50 blur-[64px]" />
-          <div className="absolute inset-x-0 top-0 h-64 bg-gradient-to-t from-transparent via-white/60 to-white" />
+
+          <div className="absolute inset-x-0 top-0 h-64 bg-transparent" />
         </div>
         <Texture opacity={0.06} blend="multiply" />
 
@@ -77,12 +72,13 @@ export function ProductHero({
               so the gap under the navbar matches the wrapper's bottom */}
           {/* the demo takes the larger half — the copy column is short enough
               now that an even split left it stranded beside a tall panel */}
-          <div className="mx-auto grid max-w-site items-center gap-12 pb-20 pt-36 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1fr)] md:pb-28 md:pt-48 lg:gap-16">
+          <div className="mx-auto grid max-w-site items-center gap-12 pb-20 pt-36 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1fr)] lg:pb-28 lg:pt-48 lg:gap-16">
             {/* copy */}
             <div className="flex flex-col items-start">
               {/* the site's standard tagline: sentence case, ink at 70%, colour
                   carried by the dot — never uppercase, letter-spaced or grey
                   (documented on /brand) */}
+              <BrandStripe className="mb-5" />
               <RoleKicker color={PLATFORM_PRODUCT_ACCENTS[accent]}>{name}</RoleKicker>
               {/* 16ch is the intended measure, but at the top of the clamp it
                   resolves wider than this column, so the column has to be the
@@ -109,7 +105,7 @@ export function ProductHero({
                   below it now, so they can carry their original weight without
                   competing — it's the position that was pushing the CTA down,
                   not the type. */}
-              <ul className="mt-8 flex flex-col gap-2.5 border-t border-black/[0.07] pt-7">
+              <ul className="mt-8 flex flex-col gap-2.5 border-t border-foreground/[0.07] pt-7">
                 {hero.benefits.map((label, i) => (
                   <li
                     key={i}
@@ -146,7 +142,7 @@ export function ProductHero({
                     <Illustration />
                   </div>
                 ) : (
-                  <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-black/20 bg-white/70 backdrop-blur-sm max-md:aspect-[4/3]">
+                  <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-foreground/20 bg-card/70 backdrop-blur-sm max-md:aspect-[4/3]">
                     <p className="text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                       [Product abstraction]
                     </p>

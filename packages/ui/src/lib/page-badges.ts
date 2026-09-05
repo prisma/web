@@ -1,10 +1,9 @@
-import { sourceV7, sourceV6 } from "./source";
-
 export type BadgeType = "early-access" | "deprecated" | "preview";
 
 // Create a map of page URLs to their badge values
-export function getPageBadges(version: "v7" | "v6" = "v7"): Map<string, BadgeType> {
-  const source = version === "v6" ? sourceV6 : sourceV7;
+export function getPageBadges(source: {
+  getPages(): { url: string; data: { badge?: string } }[];
+}): Map<string, BadgeType> {
   const badges = new Map<string, BadgeType>();
 
   // Get all pages from the source
@@ -12,7 +11,7 @@ export function getPageBadges(version: "v7" | "v6" = "v7"): Map<string, BadgeTyp
 
   for (const page of pages) {
     const badge = page.data.badge as BadgeType | undefined;
-    if (badge) {
+    if (badge === "early-access" || badge === "deprecated" || badge === "preview") {
       badges.set(page.url, badge);
     }
   }

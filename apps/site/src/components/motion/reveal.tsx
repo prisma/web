@@ -8,7 +8,7 @@ type RevealProps = {
   className?: string;
   /** Delay in seconds — stagger a row of siblings by passing index * 0.1. */
   delay?: number;
-  /** Vertical travel distance in px (default 44). */
+  /** Vertical travel distance in px (default 12). */
   y?: number;
   /** Replay every time it re-enters the viewport instead of once (default false). */
   repeat?: boolean;
@@ -21,7 +21,7 @@ type RevealProps = {
 //
 // Pass `className` to make the Reveal *be* the layout element (grid/flex cell)
 // so wrapping never changes the box model; pass none to wrap neutrally.
-export function Reveal({ children, className, delay = 0, y = 44, repeat = false }: RevealProps) {
+export function Reveal({ children, className, delay = 0, y = 12, repeat = false }: RevealProps) {
   const reduceMotion = useReducedMotion();
 
   if (reduceMotion) {
@@ -33,8 +33,8 @@ export function Reveal({ children, className, delay = 0, y = 44, repeat = false 
       className={className}
       initial={{ opacity: 0, y }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: !repeat, margin: "0px 0px -20% 0px" }}
-      transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1], delay }}
+      viewport={{ once: !repeat, margin: "0px 0px -32px 0px" }}
+      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1], delay }}
     >
       {children}
     </motion.div>

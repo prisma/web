@@ -1,5 +1,6 @@
 "use client";
 
+import { UnifiedSearchTrigger } from "@prisma-docs/ui/components/unified-search";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowRight, Menu } from "@/components/icons/forma";
@@ -50,23 +51,22 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 h-0 flow-root">
       {/* one element morphs between two states: docked inside the hero wrapper
-          (transparent, wrapper-wide) and the floating pill. Every property is
-          transitioned so the change is smooth in both directions. */}
+          (transparent, inset from the hero border) and the floating pill. */}
       <div
         className={cn(
-          "mx-auto flex items-center justify-between rounded-full border transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+          "mx-auto flex items-center justify-between gap-3 rounded-full border transition-[background-color,border-color,box-shadow] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
           floating
-            ? "mt-3 h-14 max-w-[calc(100%-1.5rem)] border-black/[0.06] bg-white/85 px-5 shadow-[0_1px_2px_rgba(21,21,21,0.04),0_8px_24px_-8px_rgba(21,21,21,0.16)] backdrop-blur-md sm:max-w-4xl"
-            : "mt-5 h-16 max-w-[96rem] border-transparent bg-white/0 px-10 shadow-[0_1px_2px_rgba(21,21,21,0),0_8px_24px_-8px_rgba(21,21,21,0)] backdrop-blur-0 sm:mt-7 sm:h-[4.5rem] sm:px-16",
+            ? "mt-3 h-14 max-w-[calc(100%-1.5rem)] border-border bg-background/95 px-4 sm:px-6 shadow-[0_1px_2px_rgba(21,21,21,0.04),0_8px_24px_-8px_rgba(21,21,21,0.16)] backdrop-blur-md sm:max-w-[calc(100%-2rem)] lg:max-w-5xl"
+            : "mt-3 h-16 max-w-[calc(100%-1.5rem)] border-transparent bg-transparent px-4 shadow-[0_1px_2px_rgba(21,21,21,0),0_8px_24px_-8px_rgba(21,21,21,0)] backdrop-blur-0 sm:mt-4 sm:h-[4.5rem] sm:max-w-[calc(100%-2rem)] sm:px-8 xl:max-w-[87.5rem]",
         )}
       >
         <Logo />
 
-        <nav className="hidden md:flex items-center gap-6">
+        <nav aria-label="Main navigation" className="hidden lg:flex items-center gap-1">
           <NavigationMenu viewport={false}>
             <NavigationMenuList>
               <NavigationMenuItem>
-                <NavigationMenuTrigger className="h-auto bg-transparent p-0 text-sm font-medium text-muted-foreground hover:bg-transparent hover:text-foreground focus:bg-transparent data-[state=open]:bg-transparent data-[state=open]:text-foreground data-[state=open]:hover:bg-transparent data-[state=open]:focus:bg-transparent">
+                <NavigationMenuTrigger className="h-auto rounded-full bg-transparent px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground focus:bg-accent data-[state=open]:bg-accent data-[state=open]:text-foreground data-[state=open]:hover:bg-transparent data-[state=open]:focus:bg-transparent">
                   Platform
                 </NavigationMenuTrigger>
                 <NavigationMenuContent>
@@ -109,15 +109,16 @@ export function Header() {
             <SiteLink
               key={item.href}
               href={item.href}
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              className="rounded-full px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
               {item.label}
             </SiteLink>
           ))}
         </nav>
 
-        <div className="hidden md:flex items-center gap-3">
-          <Button variant="ghost" asChild className="spectrum-ink-text">
+        <div className="hidden lg:flex items-center gap-2">
+          <UnifiedSearchTrigger />
+          <Button variant="ghost" asChild className="h-9 px-3">
             <a
               href="https://console.prisma.io/login"
               onClick={() =>
@@ -132,7 +133,7 @@ export function Header() {
               Log in
             </a>
           </Button>
-          <Button asChild>
+          <Button asChild className="h-9 px-4">
             <a
               href="https://console.prisma.io/sign-up"
               onClick={() =>
@@ -149,75 +150,85 @@ export function Header() {
           </Button>
         </div>
 
-        <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger asChild className="md:hidden">
-            <Button variant="ghost" size="icon">
-              <Menu className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-[300px]" aria-describedby={undefined}>
-            <SheetTitle className="sr-only">Menu</SheetTitle>
-            <nav className="mt-8 flex flex-col gap-4 px-5 pb-6 text-left">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Platform
-              </p>
-              {[...siteConfig.platform, siteConfig.stack].map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="text-lg font-medium"
-                  onClick={() => setOpen(false)}
-                >
-                  {item.label}
-                </Link>
-              ))}
-              <div className="border-t pt-4 flex flex-col gap-4">
-                {siteConfig.nav.map((item) => (
-                  <SiteLink
+        <div className="flex items-center gap-2 lg:hidden">
+          <UnifiedSearchTrigger />
+          <Sheet open={open} onOpenChange={setOpen}>
+            <SheetTrigger asChild className="lg:hidden">
+              <Button variant="ghost" size="icon" aria-label="Open navigation menu">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent
+              side="right"
+              className="w-[min(22rem,100vw)] overflow-y-auto overscroll-contain"
+              aria-describedby={undefined}
+            >
+              <SheetTitle className="sr-only">Menu</SheetTitle>
+              <nav
+                aria-label="Mobile navigation"
+                className="mt-8 flex flex-col gap-4 px-5 pb-6 text-left"
+              >
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Platform
+                </p>
+                {[...siteConfig.platform, siteConfig.stack].map((item) => (
+                  <Link
                     key={item.href}
                     href={item.href}
                     className="text-lg font-medium"
                     onClick={() => setOpen(false)}
                   >
                     {item.label}
-                  </SiteLink>
+                  </Link>
                 ))}
-              </div>
-              <div className="flex flex-col gap-2 mt-4 pt-4 border-t">
-                <Button variant="outline" asChild>
-                  <a
-                    href="https://console.prisma.io/login"
-                    onClick={() =>
-                      trackCTA({
-                        cta_text: "Log in",
-                        cta_location: "navbar",
-                        cta_destination: "https://console.prisma.io/login",
-                        section: "website",
-                      })
-                    }
-                  >
-                    Log in
-                  </a>
-                </Button>
-                <Button asChild>
-                  <a
-                    href="https://console.prisma.io/sign-up"
-                    onClick={() =>
-                      trackCTA({
-                        cta_text: "Get Started",
-                        cta_location: "navbar",
-                        cta_destination: "https://console.prisma.io/sign-up",
-                        section: "website",
-                      })
-                    }
-                  >
-                    Get Started
-                  </a>
-                </Button>
-              </div>
-            </nav>
-          </SheetContent>
-        </Sheet>
+                <div className="border-t pt-4 flex flex-col gap-4">
+                  {siteConfig.nav.map((item) => (
+                    <SiteLink
+                      key={item.href}
+                      href={item.href}
+                      className="text-lg font-medium"
+                      onClick={() => setOpen(false)}
+                    >
+                      {item.label}
+                    </SiteLink>
+                  ))}
+                </div>
+                <div className="flex flex-col gap-2 mt-4 pt-4 border-t">
+                  <Button variant="outline" asChild>
+                    <a
+                      href="https://console.prisma.io/login"
+                      onClick={() =>
+                        trackCTA({
+                          cta_text: "Log in",
+                          cta_location: "navbar",
+                          cta_destination: "https://console.prisma.io/login",
+                          section: "website",
+                        })
+                      }
+                    >
+                      Log in
+                    </a>
+                  </Button>
+                  <Button asChild>
+                    <a
+                      href="https://console.prisma.io/sign-up"
+                      onClick={() =>
+                        trackCTA({
+                          cta_text: "Get Started",
+                          cta_location: "navbar",
+                          cta_destination: "https://console.prisma.io/sign-up",
+                          section: "website",
+                        })
+                      }
+                    >
+                      Get Started
+                    </a>
+                  </Button>
+                </div>
+              </nav>
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
     </header>
   );

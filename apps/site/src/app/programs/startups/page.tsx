@@ -61,8 +61,8 @@ const TESTIMONIALS = [
 export default function StartupsProgramPage() {
   return (
     <>
-      <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
-        <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
+      <section className="bg-card px-3 pt-3 sm:px-4 sm:pt-4">
+        <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-foreground/[0.06] bg-card">
           <Texture opacity={0.06} blend="multiply" />
           <div className="relative px-4 sm:px-8">
             <div className="mx-auto flex max-w-site flex-col items-center pb-14 pt-32 text-center md:pb-16 md:pt-44">
@@ -87,7 +87,7 @@ export default function StartupsProgramPage() {
         </div>
       </section>
 
-      <section className="bg-white px-4 py-20 sm:px-8 sm:py-24">
+      <section className="bg-card px-4 py-20 sm:px-8 sm:py-24">
         <div className="mx-auto grid max-w-5xl gap-12 md:grid-cols-2 md:gap-20">
           <div>
             <h2 className="text-[clamp(1.5rem,2.25vw,2rem)] leading-[1.15]">
@@ -108,7 +108,7 @@ export default function StartupsProgramPage() {
               {BENEFITS.map((benefit) => (
                 <li
                   key={benefit.title}
-                  className="flex items-start gap-3 rounded-2xl border border-black/[0.06] bg-white p-5 shadow-[0_1px_2px_rgba(21,21,21,0.04)]"
+                  className="flex items-start gap-3 rounded-2xl border border-foreground/[0.06] bg-card p-5 shadow-[0_1px_2px_rgba(21,21,21,0.04)]"
                 >
                   <CheckBold className="mt-0.5 size-4 shrink-0 text-prism-cyan-600" aria-hidden />
                   <p className="text-sm leading-relaxed text-muted-foreground">
@@ -121,7 +121,7 @@ export default function StartupsProgramPage() {
           </div>
         </div>
 
-        <div className="mx-auto mt-16 grid max-w-5xl gap-12 border-t border-black/[0.07] pt-14 md:grid-cols-2 md:gap-20">
+        <div className="mx-auto mt-16 grid max-w-5xl gap-12 border-t border-foreground/[0.07] pt-14 md:grid-cols-2 md:gap-20">
           <div>
             <h2 className="text-[clamp(1.375rem,2vw,1.75rem)] leading-[1.15]">Eligibility</h2>
             <ul className="mt-5 flex flex-col gap-2.5">
@@ -163,7 +163,7 @@ export default function StartupsProgramPage() {
         </div>
       </section>
 
-      <section className="bg-white px-4 pb-24 sm:px-8 sm:pb-32">
+      <section className="bg-card px-4 pb-24 sm:px-8 sm:pb-32">
         <div className="mx-auto max-w-site">
           <h2 className="mx-auto max-w-[24ch] text-balance text-center text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
             Startups building with Prisma
@@ -172,7 +172,7 @@ export default function StartupsProgramPage() {
             {TESTIMONIALS.map((t) => (
               <figure
                 key={t.author}
-                className="flex flex-col gap-4 rounded-2xl border border-black/[0.06] bg-white p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04)] sm:p-7"
+                className="flex flex-col gap-4 rounded-2xl border border-foreground/[0.06] bg-card p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04)] sm:p-7"
               >
                 <blockquote className="text-pretty text-[0.9375rem] font-medium leading-relaxed text-foreground">
                   &ldquo;{t.quote}&rdquo;

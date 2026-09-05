@@ -52,7 +52,7 @@ function TemplateCard({ template }: { template: Template }) {
   deployUrl.searchParams.set("utm_medium", "templates");
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-black/[0.06] bg-white p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04)]">
+    <div className="flex flex-col gap-3 rounded-2xl border border-foreground/[0.06] bg-card p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04)]">
       <h3 className="break-words text-lg leading-snug">{template.name}</h3>
       <p className="text-sm leading-relaxed text-muted-foreground">{template.description}</p>
       <div className="mt-auto flex flex-col gap-4 pt-3">
@@ -86,8 +86,8 @@ export default async function AppsPage() {
 
   return (
     <>
-      <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
-        <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
+      <section className="bg-card px-3 pt-3 sm:px-4 sm:pt-4">
+        <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-foreground/[0.06] bg-card">
           {/* compute-red wash — these apps deploy to Prisma Compute, so the
               hero carries its accent (same treatment as /ecosystem's cyan) */}
           <div
@@ -97,11 +97,10 @@ export default async function AppsPage() {
             <div
               className="absolute -bottom-1/2 left-1/2 h-full w-[140%] -translate-x-1/2"
               style={{
-                background:
-                  "radial-gradient(52% 60% at 50% 100%, color-mix(in srgb, var(--color-prism-red-400) 14%, transparent), transparent 70%)",
+                background: "var(--paper)",
               }}
             />
-            <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-t from-transparent to-white" />
+            <div className="absolute inset-x-0 top-0 h-24 bg-transparent" />
           </div>
           <Texture opacity={0.06} blend="multiply" />
           <div className="relative px-4 sm:px-8">
@@ -121,7 +120,7 @@ export default async function AppsPage() {
         </div>
       </section>
 
-      <section className="bg-white px-4 py-16 pb-24 sm:px-8 sm:pb-32">
+      <section className="bg-card px-4 py-16 pb-24 sm:px-8 sm:pb-32">
         <div className="mx-auto max-w-site">
           {templates.length > 0 ? (
             <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
@@ -130,7 +129,7 @@ export default async function AppsPage() {
               ))}
             </div>
           ) : (
-            <div className="mx-auto flex max-w-[36rem] flex-col items-center gap-3 rounded-2xl border border-dashed border-black/[0.12] bg-white px-6 py-14 text-center">
+            <div className="mx-auto flex max-w-[36rem] flex-col items-center gap-3 rounded-2xl border border-dashed border-foreground/[0.12] bg-card px-6 py-14 text-center">
               <h2 className="text-[clamp(1.375rem,2vw,1.75rem)] leading-[1.15]">
                 Apps are unavailable
               </h2>

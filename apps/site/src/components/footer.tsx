@@ -1,3 +1,5 @@
+import { ThemeToggle } from "@/components/theme-toggle";
+import { BrandLogo } from "@/components/brand-logo";
 import Link from "next/link";
 import { Github, Linkedin, Mail, XSocial } from "@/components/icons/forma";
 import { AnimatedWordmark } from "@/components/brand/animated-wordmark";
@@ -25,12 +27,12 @@ const SOCIALS = [
 
 export function Footer() {
   return (
-    <footer className="overflow-hidden bg-white pt-16">
+    <footer className="overflow-hidden bg-card pt-16">
       <div className="mx-auto max-w-[96rem] px-6 sm:px-10">
         <div className="grid gap-12 lg:grid-cols-[1.1fr_2.4fr] lg:gap-20">
           <div className="max-w-xs">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo/full-color.svg" alt={siteConfig.name} className="h-7 w-auto" />
+            <BrandLogo className="h-7" />
             <p className="mt-5 text-sm leading-relaxed text-muted-foreground">
               {siteConfig.description}
             </p>
@@ -56,7 +58,7 @@ export function Footer() {
               ))}
             </div>
             <GooglePreferredSourceButton
-              className="mt-8 border-black/10 bg-white text-foreground hover:bg-black/[0.04]"
+              className="mt-8 border-foreground/10 bg-card text-foreground hover:bg-black/[0.04]"
               data-attr="footer-google-preferred-source"
             />
           </div>
@@ -101,7 +103,7 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-16 grid items-center gap-4 border-t border-black/[0.06] py-6 md:grid-cols-3">
+        <div className="mt-16 grid items-center gap-4 border-t border-foreground/[0.06] py-6 md:grid-cols-3">
           <p className="text-sm text-muted-foreground">
             &copy; {new Date().getFullYear()} {siteConfig.name}. All rights reserved.
           </p>
@@ -115,6 +117,10 @@ export function Footer() {
                 {item.label}
               </Link>
             ))}
+          </div>
+          <div className="flex items-center gap-3 md:justify-end">
+            <span className="text-sm text-muted-foreground">Appearance</span>
+            <ThemeToggle />
           </div>
         </div>
 

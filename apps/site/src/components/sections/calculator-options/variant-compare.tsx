@@ -12,7 +12,7 @@ export function VariantCompare() {
   const { ops, gb, opsT, gbT, setOpsT, setGbT, setPreset, rec } = useEstimator();
 
   return (
-    <section className="bg-white">
+    <section className="bg-card">
       <div className="mx-auto max-w-6xl px-4 py-20 sm:px-8">
         <div className="max-w-2xl">
           <h2 className="text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
@@ -25,7 +25,7 @@ export function VariantCompare() {
         </div>
 
         {/* control bar */}
-        <div className="mt-10 rounded-2xl border border-black/[0.06] bg-card p-6 sm:p-7">
+        <div className="mt-10 rounded-2xl border border-foreground/[0.06] bg-card p-6 sm:p-7">
           <div className="grid items-center gap-x-10 gap-y-6 lg:grid-cols-[1fr_1fr_auto]">
             <div>
               <div className="flex items-baseline justify-between">
@@ -61,7 +61,7 @@ export function VariantCompare() {
                   key={p.id}
                   type="button"
                   onClick={() => setPreset(p.ops, p.gb)}
-                  className="rounded-full border border-black/[0.08] bg-white px-3.5 py-1.5 text-sm font-semibold text-foreground transition-colors hover:border-black/[0.2]"
+                  className="rounded-full border border-foreground/[0.08] bg-card px-3.5 py-1.5 text-sm font-semibold text-foreground transition-colors hover:border-foreground/[0.2]"
                 >
                   {p.label}
                 </button>
@@ -78,10 +78,10 @@ export function VariantCompare() {
               <div
                 key={e.plan.id}
                 className={cn(
-                  "relative flex flex-col rounded-2xl border bg-white p-6 transition-opacity",
+                  "relative flex flex-col rounded-2xl border bg-card p-6 transition-opacity",
                   isBest
                     ? "spectrum-border spectrum-border-on border-transparent shadow-[0_24px_48px_-24px_rgba(21,21,21,0.25)]"
-                    : "border-black/[0.06]",
+                    : "border-foreground/[0.06]",
                   !e.eligible && "opacity-45",
                 )}
               >
@@ -106,7 +106,7 @@ export function VariantCompare() {
                           e.opsOverage + e.storageOverage,
                         )} overage`}
                 </p>
-                <dl className="mt-5 space-y-1.5 border-t border-black/[0.06] pt-4 text-sm text-muted-foreground">
+                <dl className="mt-5 space-y-1.5 border-t border-foreground/[0.06] pt-4 text-sm text-muted-foreground">
                   <div className="flex justify-between">
                     <dt>Included ops</dt>
                     <dd className="font-mono tabular-nums">{fmtOps(e.plan.opsIncluded)}</dd>

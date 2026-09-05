@@ -2,7 +2,7 @@ import type { LinkItemType } from "@/components/layout/link-item";
 import type { BaseLayoutProps } from "@/components/layout/shared";
 import Image from "next/image";
 import logoLight from "../../public/logo/full-color.svg";
-import logoDark from "../../public/logo/full-color-white.svg";
+import logoDark from "../../public/logo/full-color-dark.svg";
 import { DiscordIcon } from "@/components/icons/discord";
 import Link from "next/link";
 
@@ -54,7 +54,7 @@ export function baseOptions(): BaseLayoutProps {
         <>
           <Link
             href="https://www.prisma.io"
-            className="mb-0 hover:mb-1 transition-[margin] duration-300 motion-reduce:transition-none"
+            className="rounded-md transition-opacity duration-150 hover:opacity-80 motion-reduce:transition-none"
           >
             {logo}
           </Link>

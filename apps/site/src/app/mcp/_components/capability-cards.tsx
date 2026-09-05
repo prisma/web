@@ -32,7 +32,7 @@ export function CapabilityCard({
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 rounded-2xl border border-black/[0.06] bg-white p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04)]",
+        "flex flex-col gap-3 rounded-2xl border border-foreground/[0.06] bg-card p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04)]",
         size === "wide" ? "xl:col-span-3" : "xl:col-span-2",
       )}
     >

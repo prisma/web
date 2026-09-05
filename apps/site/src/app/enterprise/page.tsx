@@ -77,8 +77,8 @@ const DATABASES = [
 export default function EnterprisePage() {
   return (
     <>
-      <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
-        <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
+      <section className="bg-card px-3 pt-3 sm:px-4 sm:pt-4">
+        <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-foreground/[0.06] bg-card">
           <Texture opacity={0.06} blend="multiply" />
           <div className="relative px-4 sm:px-8">
             <div className="mx-auto flex max-w-site flex-col items-center pb-14 pt-32 text-center md:pb-16 md:pt-44">
@@ -101,7 +101,7 @@ export default function EnterprisePage() {
         </div>
       </section>
 
-      <section className="bg-white px-4 py-20 sm:px-8 sm:py-24">
+      <section className="bg-card px-4 py-20 sm:px-8 sm:py-24">
         <div className="mx-auto max-w-site">
           <h2 className="mx-auto max-w-[26ch] text-balance text-center text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
             What an enterprise engagement includes
@@ -110,7 +110,7 @@ export default function EnterprisePage() {
             {BENEFITS.map((benefit, i) => (
               <div
                 key={benefit.title}
-                className="relative flex flex-col gap-2.5 overflow-hidden rounded-2xl border border-black/[0.06] bg-white p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04)] sm:p-7"
+                className="relative flex flex-col gap-2.5 overflow-hidden rounded-2xl border border-foreground/[0.06] bg-card p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04)] sm:p-7"
               >
                 <span
                   aria-hidden
@@ -129,7 +129,7 @@ export default function EnterprisePage() {
         </div>
       </section>
 
-      <section className="bg-white px-4 pb-20 sm:px-8 sm:pb-24">
+      <section className="bg-card px-4 pb-20 sm:px-8 sm:pb-24">
         <div className="mx-auto max-w-4xl rounded-2xl bg-card-wash px-6 py-10 sm:px-10">
           <p className="text-center text-sm font-semibold text-foreground/70">
             Bring your own database
@@ -146,8 +146,8 @@ export default function EnterprisePage() {
         </div>
       </section>
 
-      <section className="bg-white px-4 pb-24 sm:px-8 sm:pb-32">
-        <div className="mx-auto flex max-w-3xl flex-col items-center gap-5 rounded-2xl border border-black/[0.06] p-8 text-center sm:p-12">
+      <section className="bg-card px-4 pb-24 sm:px-8 sm:pb-32">
+        <div className="mx-auto flex max-w-3xl flex-col items-center gap-5 rounded-2xl border border-foreground/[0.06] p-8 text-center sm:p-12">
           <h2 className="text-[clamp(1.5rem,2.25vw,2rem)] leading-[1.15]">Connect with us</h2>
           <p className="max-w-[52ch] text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground">
             Tell us about your team, and we&apos;ll show you how our support options fit your agency

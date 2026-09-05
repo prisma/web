@@ -6,8 +6,8 @@ import { Texture } from "@/components/brand/texture";
 // so the hero stays a quiet paper surface).
 export function CustomersHero() {
   return (
-    <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
-      <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
+    <section className="bg-card px-3 pt-3 sm:px-4 sm:pt-4">
+      <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-foreground/[0.06] bg-card">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 bottom-0 h-[16rem] overflow-hidden"
@@ -15,14 +15,10 @@ export function CustomersHero() {
           <div
             className="absolute -bottom-1/2 left-1/2 h-full w-[140%] -translate-x-1/2"
             style={{
-              background: [
-                "radial-gradient(46% 60% at 32% 100%, color-mix(in srgb, var(--color-prism-cyan-400) 20%, transparent), transparent 70%)",
-                "radial-gradient(40% 52% at 55% 100%, color-mix(in srgb, var(--color-prism-yellow-300) 16%, transparent), transparent 68%)",
-                "radial-gradient(38% 46% at 76% 100%, color-mix(in srgb, var(--color-prism-red-400) 17%, transparent), transparent 70%)",
-              ].join(","),
+              background: "var(--paper)",
             }}
           />
-          <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-t from-transparent to-white" />
+          <div className="absolute inset-x-0 top-0 h-24 bg-transparent" />
         </div>
         <Texture opacity={0.06} blend="multiply" />
 

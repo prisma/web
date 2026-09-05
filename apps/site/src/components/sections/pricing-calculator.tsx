@@ -44,7 +44,7 @@ export function PricingCalculator() {
   const activePreset = PRESETS.find((p) => p.ops === ops && p.gb === gb)?.id;
 
   return (
-    <section className="bg-white px-4 sm:px-8">
+    <section className="bg-card px-4 sm:px-8">
       <div className="mx-auto max-w-site py-12 sm:py-16">
         <Reveal>
           <h2 className="text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
@@ -74,8 +74,8 @@ export function PricingCalculator() {
                 className={cn(
                   "flex items-baseline justify-between gap-3 rounded-xl border px-4 py-3 text-left transition-colors",
                   activePreset === p.id
-                    ? "border-primary bg-white"
-                    : "border-black/[0.06] bg-paper hover:border-black/[0.14]",
+                    ? "border-primary bg-card"
+                    : "border-foreground/[0.06] bg-paper hover:border-foreground/[0.14]",
                 )}
               >
                 <span className="text-sm font-semibold text-foreground">{p.label}</span>
@@ -90,7 +90,7 @@ export function PricingCalculator() {
         <div className="mt-4 grid gap-4 lg:grid-cols-5">
           {/* inputs */}
           <Reveal delay={0.2} className="lg:col-span-3">
-            <div className="flex h-full flex-col rounded-2xl border border-black/[0.06] bg-paper p-6 sm:p-7">
+            <div className="flex h-full flex-col rounded-2xl border border-foreground/[0.06] bg-paper p-6 sm:p-7">
               <RoleKicker color="bg-prism-cyan-400">Estimate your monthly usage</RoleKicker>
 
               <div className="mt-6">
@@ -126,7 +126,7 @@ export function PricingCalculator() {
                 />
               </div>
 
-              <div className="mt-auto flex items-center gap-2.5 border-t border-black/[0.06] pt-5">
+              <div className="mt-auto flex items-center gap-2.5 border-t border-foreground/[0.06] pt-5">
                 <CheckBold className="size-4 shrink-0 text-prism-cyan-500" aria-hidden />
                 <p className="text-sm text-muted-foreground">
                   <span className="font-semibold text-foreground">Data transfer</span> — unlimited,
@@ -147,8 +147,8 @@ export function PricingCalculator() {
                       "flex h-full flex-col justify-center rounded-2xl border px-5 py-4",
                       !e.eligible && "opacity-60",
                       isRec
-                        ? "spectrum-border spectrum-border-on border-transparent bg-white shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_48px_-24px_rgba(21,21,21,0.25)]"
-                        : "border-black/[0.06] bg-paper",
+                        ? "spectrum-border spectrum-border-on border-transparent bg-card shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_48px_-24px_rgba(21,21,21,0.25)]"
+                        : "border-foreground/[0.06] bg-paper",
                     )}
                   >
                     <div className="flex items-center justify-between gap-3">
