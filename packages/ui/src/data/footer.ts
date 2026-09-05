@@ -3,8 +3,8 @@
 // Same-site destinations are root-relative and point at the page that answers
 // with 200. Two reasons (audit findings 1.2 and 1.3):
 //
-//   * `https://prisma.io/...` is the apex domain; every one of those URLs 301s
-//     to `https://www.prisma.io/...`, so each footer link cost a redirect.
+//   * These used the bare apex domain, and every apex URL 301s to the www
+//     host, so each footer link cost a redirect before it did anything.
 //   * Several of the old paths were themselves redirected (`/showcase`,
 //     `/partners`, `/about`, `/careers`, `/terms`, `/sla`, `/privacy`,
 //     `/oss-friends`), so a link chained twice.

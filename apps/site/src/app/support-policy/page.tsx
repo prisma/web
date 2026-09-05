@@ -99,9 +99,8 @@ export default function SupportPolicyPage() {
             <p>
               Support for Prisma&apos;s open-source software, including{" "}
               <a href="https://github.com/prisma/orm">Prisma ORM</a>, is provided through our
-              community channels on{" "}
-              <a href="https://github.com/prisma/orm/discussions">GitHub</a> and{" "}
-              <a href="https://pris.ly/discord">Discord</a>.
+              community channels on <a href="https://github.com/prisma/orm/discussions">GitHub</a>{" "}
+              and <a href="https://pris.ly/discord">Discord</a>.
             </p>
             <p>
               Prisma also offers custom support packages for enterprises and solutions providers.
