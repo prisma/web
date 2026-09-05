@@ -17,7 +17,7 @@ const SIDEBAR_SLIDES: BannerSlide[] = [
     title: "Building the Stack for the Next Million Products",
     description:
       "Prisma is building a software factory: ORM, Postgres, and Compute connected into one loop for builders and agents.",
-    href: "https://www.prisma.io/blog/building-the-stack-for-the-next-million-products?utm_source=docs&utm_medium=sidebar-banner&utm_campaign=prisma-rebrand-2026",
+    href: "https://www.prisma.io/blog/building-the-stack-for-the-next-million-products",
     gradient: "ppg" as const,
     badge: "New",
     cta: "Read the post",

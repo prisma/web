@@ -261,13 +261,12 @@ const config = {
         destination: "/series/prisma-8",
         permanent: true,
       },
-      // Legacy slug suffixes are mixed case; lowercased copies of this one
-      // still arrive from old links and search results.
-      {
-        source: "/nestjs-prisma-authentication-7d056s1s0k3l",
-        destination: "/nestjs-prisma-authentication-7D056s1s0k3l",
-        permanent: true,
-      },
+      // Mis-cased legacy slugs (e.g. the all-lowercase copy of
+      // /nestjs-prisma-authentication-7D056s1s0k3l) are NOT handled here.
+      // Next.js matches redirect `source` case-insensitively, so a rule whose
+      // source and destination differ only in case matches its own destination
+      // and 308-redirects forever. The case-insensitive fallback lives in
+      // src/app/(blog)/[slug]/page.tsx instead.
       {
         source: "/xeito-prisma-customer-story",
         destination: "/how-xeito-builds-features-not-database-infrastructure-with-prisma",

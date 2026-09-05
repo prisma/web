@@ -679,7 +679,7 @@ const communityProjects = [
       title: "Backend Engineer",
       socials: {
         linkedin: "https://www.linkedin.com/in/bayram-baris-sari/",
-        github: "http://github.com/barissari",
+        github: "https://github.com/barissari",
       },
     },
   },

@@ -1,5 +1,6 @@
 "use client";
 import * as Primitive from "fumadocs-core/toc";
+import { flattenTocTitle } from "../../lib/toc-title";
 import { type ComponentProps, useEffect, useRef, useState } from "react";
 import { cn } from "@prisma-docs/ui/lib/cn";
 import { TocThumb, useTOCItems } from "./index";
@@ -160,7 +161,9 @@ function TOCItem({
           insetInlineStart: offset,
         }}
       />
-      {item.title}
+      {/* Plain text only: a heading that contains a link would otherwise nest
+          an <a> inside this one and emit a basePath-less href. */}
+      {flattenTocTitle(item.title)}
     </Primitive.TOCItem>
   );
 }
