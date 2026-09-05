@@ -18,8 +18,8 @@ export function McpHeroSection({
   features: readonly McpHeroFeature[];
 }) {
   return (
-    <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
-      <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
+    <section className="bg-card px-3 pt-3 sm:px-4 sm:pt-4">
+      <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-foreground/[0.06] bg-card">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 bottom-0 h-[16rem] overflow-hidden"
@@ -27,11 +27,10 @@ export function McpHeroSection({
           <div
             className="absolute -bottom-1/2 left-1/2 h-full w-[140%] -translate-x-1/2"
             style={{
-              background:
-                "radial-gradient(52% 60% at 50% 100%, color-mix(in srgb, var(--color-prism-cyan-400) 18%, transparent), transparent 70%)",
+              background: "var(--paper)",
             }}
           />
-          <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-t from-transparent to-white" />
+          <div className="absolute inset-x-0 top-0 h-24 bg-transparent" />
         </div>
         <Texture opacity={0.06} blend="multiply" />
 

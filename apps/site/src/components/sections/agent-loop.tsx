@@ -4,8 +4,7 @@ import { Texture } from "@/components/brand/texture";
 import { Reveal } from "@/components/motion/reveal";
 
 // Spectrum gradient matching the brand CTA glow (see prism-button.tsx).
-const SPECTRUM =
-  "linear-gradient(85deg, #01d7e4 0%, #f3c306 25%, #f37a03 50%, #f43531 74%, #f00e5c 100%)";
+const SPECTRUM = "var(--color-prism-cyan-400)";
 
 // One orbit of the comet, in seconds — the flare animation shares this
 // duration so each node lights up exactly as the comet passes.
@@ -57,23 +56,6 @@ function LoopDiagram() {
       className="relative mx-auto aspect-square w-full max-w-[22rem] select-none sm:max-w-[26rem] lg:max-w-none"
     >
       <svg className="absolute inset-0 h-full w-full" viewBox="0 0 400 400" fill="none">
-        <defs>
-          {/* The three brand primaries laid along the comet's arc (chord from
-              the dash tail at 3 o'clock to its head at 50.4°, in user space so
-              it rotates with the group): cyan tail → yellow → red head. */}
-          <linearGradient
-            id="loop-spectrum"
-            gradientUnits="userSpaceOnUse"
-            x1="360"
-            y1="200"
-            x2="302"
-            y2="323"
-          >
-            <stop offset="0%" stopColor="#01d7e4" />
-            <stop offset="50%" stopColor="#f3c306" />
-            <stop offset="100%" stopColor="#f34a60" />
-          </linearGradient>
-        </defs>
         <g className="text-foreground/15" stroke="currentColor" strokeWidth="1">
           {STEPS.map(({ label, x, y }) => (
             <line key={label} x1="200" y1="200" x2={x * 4} y2={y * 4} />
@@ -92,7 +74,7 @@ function LoopDiagram() {
             pathLength="100"
             strokeDasharray="14 86"
             strokeLinecap="round"
-            stroke="url(#loop-spectrum)"
+            stroke="var(--color-prism-cyan-400)"
             strokeWidth="8"
             opacity="0.5"
           />
@@ -103,7 +85,7 @@ function LoopDiagram() {
             pathLength="100"
             strokeDasharray="14 86"
             strokeLinecap="round"
-            stroke="url(#loop-spectrum)"
+            stroke="var(--color-prism-cyan-400)"
             strokeWidth="3"
           />
         </g>
@@ -118,7 +100,7 @@ function LoopDiagram() {
           <span
             aria-hidden
             className="absolute -inset-1 animate-loop-flare rounded-full opacity-0 blur-[6px] motion-reduce:hidden"
-            style={{ backgroundImage: SPECTRUM, animationDelay: `${passDelay(angle)}s` }}
+            style={{ background: SPECTRUM, animationDelay: `${passDelay(angle)}s` }}
           />
           <span className="relative block rounded-full border border-border bg-card px-2.5 py-1 font-mono text-[0.6875rem] text-foreground shadow-sm sm:px-3.5 sm:py-1.5 sm:text-xs">
             {label}
@@ -132,7 +114,7 @@ function LoopDiagram() {
         <div
           aria-hidden
           className="absolute -inset-1.5 animate-loop-breathe rounded-[1.25rem] blur-[18px] motion-reduce:animate-none motion-reduce:opacity-20"
-          style={{ backgroundImage: SPECTRUM }}
+          style={{ background: SPECTRUM }}
         />
         <div className="relative flex flex-col items-center rounded-2xl border border-border bg-card px-4 pb-4 pt-10 shadow-[0_16px_32px_-12px_rgba(21,21,21,0.12)] sm:px-7 sm:pb-6 sm:pt-14">
           {/* the agent itself — 3D robot head breaking the card's top edge.
@@ -165,7 +147,7 @@ function LoopDiagram() {
 
 export function AgentLoop() {
   return (
-    <section className="bg-white px-4 py-24 sm:px-8 sm:py-32">
+    <section className="bg-card px-4 py-24 sm:px-8 sm:py-32">
       <div className="mx-auto max-w-site">
         <div className="grid gap-14 lg:grid-cols-2 lg:gap-20">
           <div>
@@ -194,7 +176,7 @@ export function AgentLoop() {
 
           <Reveal
             delay={0.15}
-            className="relative flex items-center justify-center overflow-hidden rounded-2xl border border-black/[0.06] bg-[url('/brand/agent-loop.jpg')] bg-[length:135%] bg-[position:50%_100%] p-6 sm:p-8"
+            className="relative flex items-center justify-center overflow-hidden rounded-2xl border border-foreground/[0.06] bg-[url('/brand/agent-loop.jpg')] bg-[length:135%] bg-[position:50%_100%] p-6 sm:p-8"
           >
             <Texture opacity={0.06} blend="multiply" />
             <LoopDiagram />

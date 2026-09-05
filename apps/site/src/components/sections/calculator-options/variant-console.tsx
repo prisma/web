@@ -4,8 +4,7 @@ import { fmtGB, fmtOps, fmtUSD, PRESETS } from "./calc";
 import { RangeInput, useEstimator } from "./controls";
 
 // Spectrum swept around the card's perimeter, like the hero console's halo.
-const HALO =
-  "conic-gradient(var(--color-prism-yellow-300), var(--color-prism-red-500) 32%, var(--color-prism-cyan-400) 64%, var(--color-prism-yellow-300))";
+const HALO = "var(--color-prism-cyan-400)";
 
 // Option C — "The Console". The estimate rendered as a terminal run: flags
 // in, answer out. Speaks to the agent-native story and echoes the homepage
@@ -15,7 +14,7 @@ export function VariantConsole() {
   const { best } = rec;
 
   return (
-    <section className="bg-white">
+    <section className="bg-card">
       <div className="mx-auto max-w-3xl px-4 py-20 sm:px-8">
         <div className="text-center">
           <h2 className="text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
@@ -37,9 +36,9 @@ export function VariantConsole() {
           <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-primary text-primary-foreground shadow-[0_32px_64px_-24px_rgba(21,21,21,0.5)]">
             {/* titlebar */}
             <div className="flex items-center gap-2 border-b border-white/10 px-5 py-3.5">
-              <span aria-hidden className="size-2.5 rounded-full bg-white/15" />
-              <span aria-hidden className="size-2.5 rounded-full bg-white/15" />
-              <span aria-hidden className="size-2.5 rounded-full bg-white/15" />
+              <span aria-hidden className="size-2.5 rounded-full bg-card/15" />
+              <span aria-hidden className="size-2.5 rounded-full bg-card/15" />
+              <span aria-hidden className="size-2.5 rounded-full bg-card/15" />
               <p className="ml-3 font-mono text-xs text-white/50">
                 prisma estimate — console.prisma.io
               </p>
@@ -61,9 +60,9 @@ export function VariantConsole() {
                   onT={setOpsT}
                   label="Operations per month"
                   className="mt-2"
-                  trackClassName="bg-white/10"
+                  trackClassName="bg-card/10"
                   fillClassName="bg-prism-cyan-400"
-                  thumbClassName="border-white/20 bg-white"
+                  thumbClassName="border-white/20 bg-card"
                 />
               </div>
 
@@ -78,9 +77,9 @@ export function VariantConsole() {
                   onT={setGbT}
                   label="Storage"
                   className="mt-2"
-                  trackClassName="bg-white/10"
+                  trackClassName="bg-card/10"
                   fillClassName="bg-prism-yellow-300"
-                  thumbClassName="border-white/20 bg-white"
+                  thumbClassName="border-white/20 bg-card"
                 />
               </div>
 

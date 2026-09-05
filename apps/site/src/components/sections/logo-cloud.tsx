@@ -1,5 +1,3 @@
-import { Reveal } from "@/components/motion/reveal";
-
 type CompanyLogo = {
   name: string;
   /** File in /public/logos/companies, in official brand colors. */
@@ -38,55 +36,26 @@ const companies: CompanyLogo[] = [
   { name: "Inbox Zero", src: "/logos/companies/inboxzero.svg", height: 18 },
 ];
 
-/* The row is rendered twice per track (and the track twice) so the strip is
-   wider than any viewport and the -50% marquee loop is seamless. */
-function Track({ hidden = false }: { hidden?: boolean }) {
-  return (
-    <div
-      className="flex shrink-0 items-center gap-x-14 pr-14 lg:gap-x-20 lg:pr-20"
-      aria-hidden={hidden || undefined}
-    >
-      {[0, 1].map((copy) =>
-        companies.map((company) => (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            key={`${copy}-${company.name}`}
-            src={company.src}
-            alt={hidden || copy === 1 ? "" : company.name}
-            className="w-auto shrink-0"
-            style={{ height: company.height }}
-            loading="lazy"
-            draggable={false}
-          />
-        )),
-      )}
-    </div>
-  );
-}
-
 export function LogoCloud() {
   return (
-    <section className="px-6 py-16 lg:px-8 lg:py-24">
+    <section className="px-6 py-14 lg:px-8 lg:py-20">
       <div className="mx-auto max-w-site">
-        <Reveal>
-          <p className="text-center text-sm font-medium uppercase tracking-wider text-muted-foreground">
-            Trusted by leading companies
-          </p>
-        </Reveal>
-
-        <Reveal
-          delay={0.1}
-          className="group relative mt-12 overflow-hidden motion-reduce:overflow-x-auto"
-        >
-          {/* Edge fades so wordmarks dissolve rather than clip at the margins */}
-          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-background to-transparent sm:w-24" />
-          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-background to-transparent sm:w-24" />
-
-          <div className="flex w-max animate-logo-marquee items-center hover:[animation-play-state:paused] motion-reduce:animate-none">
-            <Track />
-            <Track hidden />
-          </div>
-        </Reveal>
+        <p className="text-center text-xs font-medium uppercase tracking-widest text-muted-foreground">
+          Trusted by leading companies
+        </p>
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-x-10 gap-y-8 sm:gap-x-14">
+          {companies.map((company) => (
+            <img
+              key={company.name}
+              src={company.src}
+              alt={company.name}
+              className="w-auto max-w-28 opacity-65 dark:brightness-0 dark:invert"
+              style={{ height: company.height }}
+              loading="lazy"
+              draggable={false}
+            />
+          ))}
+        </div>
       </div>
     </section>
   );

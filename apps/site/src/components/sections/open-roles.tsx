@@ -69,7 +69,7 @@ export function OpenRoles() {
   const depts = jobs ? Object.keys(jobs) : [];
 
   return (
-    <section id="open-positions" className="scroll-m-24 bg-white px-4 pb-24 sm:px-8 sm:pb-32">
+    <section id="open-positions" className="scroll-m-24 bg-card px-4 pb-24 sm:px-8 sm:pb-32">
       <div className="mx-auto max-w-4xl">
         <h2 className="mx-auto max-w-[24ch] text-balance text-center text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
           Open roles
@@ -94,7 +94,7 @@ export function OpenRoles() {
                   <li key={job.id ?? job.url}>
                     <a
                       href={job.url}
-                      className="group flex flex-col justify-between gap-2 rounded-2xl border border-black/[0.06] bg-white p-5 shadow-[0_1px_2px_rgba(21,21,21,0.04)] transition-[border-color,box-shadow] duration-300 hover:border-black/[0.12] hover:shadow-[0_6px_20px_rgba(21,21,21,0.07)] sm:flex-row sm:items-center sm:px-6"
+                      className="group flex flex-col justify-between gap-2 rounded-2xl border border-foreground/[0.06] bg-card p-5 shadow-[0_1px_2px_rgba(21,21,21,0.04)] transition-[border-color,box-shadow] duration-300 hover:border-foreground/[0.12] hover:shadow-[0_6px_20px_rgba(21,21,21,0.07)] sm:flex-row sm:items-center sm:px-6"
                     >
                       <span className="min-w-0">
                         {job.location && (

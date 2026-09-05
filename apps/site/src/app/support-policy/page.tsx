@@ -33,7 +33,7 @@ function Check({ enabled }: { enabled: boolean }) {
 
 function PolicyTable({ head, children }: { head: string[]; children: ReactNode }) {
   return (
-    <div className="overflow-x-auto rounded-2xl border border-black/[0.06]">
+    <div className="overflow-x-auto rounded-2xl border border-foreground/[0.06]">
       <table className="w-full min-w-[36rem] border-collapse text-left text-sm">
         <thead>
           <tr className="bg-[#eef4f3]">
@@ -44,7 +44,7 @@ function PolicyTable({ head, children }: { head: string[]; children: ReactNode }
             ))}
           </tr>
         </thead>
-        <tbody className="[&_td]:px-4 [&_td]:py-3 [&_tr]:border-t [&_tr]:border-black/[0.05]">
+        <tbody className="[&_td]:px-4 [&_td]:py-3 [&_tr]:border-t [&_tr]:border-foreground/[0.05]">
           {children}
         </tbody>
       </table>
@@ -54,7 +54,7 @@ function PolicyTable({ head, children }: { head: string[]; children: ReactNode }
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="border-b border-black/[0.05] py-8 last:border-b-0">
+    <section className="border-b border-foreground/[0.05] py-8 last:border-b-0">
       <h2 className="text-xl leading-snug sm:text-2xl">{title}</h2>
       <div className="mt-4 flex flex-col gap-4 text-[0.9375rem] leading-relaxed text-muted-foreground [&_a]:font-semibold [&_a]:text-prism-cyan-700">
         {children}
@@ -65,9 +65,9 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 export default function SupportPolicyPage() {
   return (
-    <article className="bg-white px-4 pb-24 pt-32 sm:px-8 sm:pb-32 md:pt-40">
+    <article className="bg-card px-4 pb-24 pt-32 sm:px-8 sm:pb-32 md:pt-40">
       <div className="mx-auto max-w-4xl">
-        <header className="border-b border-black/[0.07] pb-10">
+        <header className="border-b border-foreground/[0.07] pb-10">
           <RoleKicker color="bg-prism-cyan-400">Support</RoleKicker>
           <h1 className="mt-4 text-balance text-3xl leading-[1.1] sm:text-4xl md:text-5xl">
             Prisma Support Policy
@@ -99,9 +99,8 @@ export default function SupportPolicyPage() {
             <p>
               Support for Prisma&apos;s open-source software, including{" "}
               <a href="https://github.com/prisma/orm">Prisma ORM</a>, is provided through our
-              community channels on{" "}
-              <a href="https://github.com/prisma/orm/discussions">GitHub</a> and{" "}
-              <a href="https://pris.ly/discord">Discord</a>.
+              community channels on <a href="https://github.com/prisma/orm/discussions">GitHub</a>{" "}
+              and <a href="https://pris.ly/discord">Discord</a>.
             </p>
             <p>
               Prisma also offers custom support packages for enterprises and solutions providers.

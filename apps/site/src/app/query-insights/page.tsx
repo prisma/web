@@ -68,8 +68,8 @@ export default function QueryInsightsPage() {
   return (
     <>
       {/* Hero: wrapped-panel title band, yellow wash only (one accent per page) */}
-      <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
-        <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
+      <section className="bg-card px-3 pt-3 sm:px-4 sm:pt-4">
+        <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-foreground/[0.06] bg-card">
           <div
             aria-hidden
             className="pointer-events-none absolute inset-x-0 bottom-0 h-[16rem] overflow-hidden"
@@ -77,14 +77,10 @@ export default function QueryInsightsPage() {
             <div
               className="absolute -bottom-1/2 left-1/2 h-full w-[140%] -translate-x-1/2"
               style={{
-                background: [
-                  "radial-gradient(50% 62% at 30% 100%, color-mix(in srgb, var(--color-prism-yellow-300) 18%, transparent), transparent 70%)",
-                  "radial-gradient(44% 54% at 56% 100%, color-mix(in srgb, var(--color-prism-yellow-100) 30%, transparent), transparent 68%)",
-                  "radial-gradient(40% 48% at 78% 100%, color-mix(in srgb, var(--color-prism-yellow-400) 14%, transparent), transparent 70%)",
-                ].join(","),
+                background: "var(--paper)",
               }}
             />
-            <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-t from-transparent to-white" />
+            <div className="absolute inset-x-0 top-0 h-24 bg-transparent" />
           </div>
           <Texture opacity={0.06} blend="multiply" />
 
@@ -117,7 +113,7 @@ export default function QueryInsightsPage() {
       </section>
 
       {/* Feature tour: alternating two-column rows, light shots on wash cards */}
-      <section className="bg-white px-4 py-20 sm:px-8 sm:py-24">
+      <section className="bg-card px-4 py-20 sm:px-8 sm:py-24">
         <div className="mx-auto flex max-w-site flex-col gap-16 sm:gap-20">
           {FEATURES.map((feature, index) => (
             <div
@@ -135,7 +131,7 @@ export default function QueryInsightsPage() {
                   {feature.description}
                 </p>
               </div>
-              <div className="rounded-2xl border border-black/[0.06] bg-prism-yellow-50 p-4 shadow-[0_1px_2px_rgba(21,21,21,0.04)] sm:p-6">
+              <div className="rounded-2xl border border-foreground/[0.06] bg-prism-yellow-50 p-4 shadow-[0_1px_2px_rgba(21,21,21,0.04)] sm:p-6">
                 <Image
                   src={feature.imageSrc}
                   alt={feature.imageAlt}
@@ -157,8 +153,8 @@ export default function QueryInsightsPage() {
       </section>
 
       {/* Closer */}
-      <section className="bg-white px-4 pb-24 sm:px-8 sm:pb-32">
-        <div className="relative mx-auto flex max-w-3xl flex-col items-center gap-5 overflow-hidden rounded-2xl border border-black/[0.06] p-8 text-center sm:p-12">
+      <section className="bg-card px-4 pb-24 sm:px-8 sm:pb-32">
+        <div className="relative mx-auto flex max-w-3xl flex-col items-center gap-5 overflow-hidden rounded-2xl border border-foreground/[0.06] p-8 text-center sm:p-12">
           <span aria-hidden className="absolute left-0 top-0 h-1 w-full bg-prism-yellow-300" />
           <h2 className="text-[clamp(1.5rem,2.25vw,2rem)] leading-[1.15]">Built in and free</h2>
           <p className="max-w-[52ch] text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground">

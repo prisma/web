@@ -48,8 +48,8 @@ const OPTIONS = [
 // directions for the V2 "Estimate usage before you upgrade" section.
 export default function CalculatorOptionsPage() {
   return (
-    <div className="bg-white">
-      <header className="border-b border-black/[0.06] px-4 pb-10 pt-28 text-center sm:px-8">
+    <div className="bg-card">
+      <header className="border-b border-foreground/[0.06] px-4 pb-10 pt-28 text-center sm:px-8">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           Internal · design exploration
         </p>
@@ -60,7 +60,7 @@ export default function CalculatorOptionsPage() {
         </p>
       </header>
       {OPTIONS.map(({ label, thesis, Component }) => (
-        <div key={label} className="border-b border-black/[0.06]">
+        <div key={label} className="border-b border-foreground/[0.06]">
           <div className="mx-auto max-w-6xl px-4 pt-12 sm:px-8">
             <p className="inline-flex rounded-full bg-foreground px-4 py-1.5 text-sm font-semibold text-white">
               {label}

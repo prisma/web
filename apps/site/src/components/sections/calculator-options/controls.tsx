@@ -66,7 +66,7 @@ export function RangeInput({
       <div
         aria-hidden
         className={cn(
-          "absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border border-black/[0.08] bg-white shadow-[0_1px_3px_rgba(21,21,21,0.25)] transition-transform group-active:scale-110",
+          "absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border border-foreground/[0.08] bg-card shadow-[0_1px_3px_rgba(21,21,21,0.25)] transition-transform group-active:scale-110",
           thumbClassName,
         )}
         style={{ left: pct }}

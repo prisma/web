@@ -6,7 +6,6 @@ import { MDXRemote, type MDXRemoteProps } from "next-mdx-remote/rsc";
 import { rehypeCode } from "fumadocs-core/mdx-plugins";
 import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button";
 import { ArrowRight } from "@/components/icons/forma";
-import { siteConfig } from "@/lib/config";
 import { getContentSlugs } from "@/lib/content";
 import { formatChangelogDate, getChangelogEntry, rewriteChangelogAssets } from "@/lib/changelog";
 
@@ -53,7 +52,7 @@ export default async function ChangelogEntryPage({ params }: Props) {
   if (!entry) notFound();
 
   return (
-    <article className="bg-white px-4 pb-24 pt-32 sm:px-8 sm:pb-32 md:pt-40">
+    <article className="bg-card px-4 pb-24 pt-32 sm:px-8 sm:pb-32 md:pt-40">
       <div className="mx-auto max-w-3xl">
         <Link
           href="/changelog"
@@ -73,7 +72,7 @@ export default async function ChangelogEntryPage({ params }: Props) {
           {entry.frontmatter.headline ?? entry.frontmatter.title}
         </h1>
 
-        <div className="prose mt-10 max-w-none prose-headings:font-heading prose-a:text-prism-cyan-700 prose-img:rounded-xl prose-img:border prose-img:border-black/[0.06]">
+        <div className="prose mt-10 max-w-none prose-headings:font-heading prose-a:text-prism-cyan-700 prose-img:rounded-xl prose-img:border prose-img:border-foreground/[0.06]">
           <MDXRemote
             source={rewriteChangelogAssets(entry.content)}
             components={components}

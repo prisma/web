@@ -5,7 +5,9 @@ import { cn } from "@prisma-docs/ui/lib/cn";
 // top-to-bottom, crossing the frame at the brand angle (-16°, rising to the
 // right). Kept API-identical so values stay comparable with the reference.
 export function prismBands(direction = "to bottom") {
-  return `linear-gradient(${direction}, var(--color-prism-cyan-400) 0% 33%, var(--color-prism-yellow-300) 33% 66%, var(--color-prism-red-500) 66% 100%)`;
+  const transform = direction === "to right" ? " transform='rotate(-90 1.5 1.5)'" : "";
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='3' height='3' viewBox='0 0 3 3' preserveAspectRatio='none'><g${transform}><path fill='#01d7e4' d='M0 0h3v1H0z'/><path fill='#f3c306' d='M0 1h3v1H0z'/><path fill='#f34a60' d='M0 2h3v1H0z'/></g></svg>`;
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}") 0 0 / 100% 100%`;
 }
 
 const BANDS = prismBands();

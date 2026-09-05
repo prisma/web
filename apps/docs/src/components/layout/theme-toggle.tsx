@@ -6,7 +6,7 @@ import { ComponentProps, useEffect, useState } from "react";
 import { cn } from "@prisma-docs/ui/lib/cn";
 
 const itemVariants = cva(
-  "size-6.5 rounded-full p-1.5 text-fd-muted-foreground transition-colors duration-300 motion-reduce:transition-none",
+  "size-9 rounded-full p-2.5 text-fd-muted-foreground transition-colors duration-150 motion-reduce:transition-none",
   {
     variants: {
       active: {
@@ -71,6 +71,8 @@ export function ThemeToggle({
         <button
           key={key}
           aria-label={key}
+          aria-pressed={value === key}
+          type="button"
           className={cn(itemVariants({ active: value === key }))}
           onClick={() => setTheme(key)}
         >

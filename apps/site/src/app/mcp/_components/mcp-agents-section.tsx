@@ -26,7 +26,7 @@ const MANUAL_CONFIG = JSON.stringify(
 
 export function McpAgentsSection({ agents }: { agents: readonly McpAgent[] }) {
   return (
-    <section className="bg-white px-4 pt-16 sm:px-8">
+    <section className="bg-card px-4 pt-16 sm:px-8">
       <div className="mx-auto max-w-site">
         <div className="mx-auto max-w-4xl">
           <div className="flex flex-col items-center gap-4 text-center">
@@ -46,7 +46,7 @@ export function McpAgentsSection({ agents }: { agents: readonly McpAgent[] }) {
           </div>
 
           <div className="mt-5 grid gap-5 md:grid-cols-[1fr_auto] md:items-stretch">
-            <div className="flex flex-col gap-3 rounded-2xl border border-black/[0.06] bg-white p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04)]">
+            <div className="flex flex-col gap-3 rounded-2xl border border-foreground/[0.06] bg-card p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04)]">
               <p className="text-sm font-semibold text-foreground">
                 Or add the server to any MCP client
               </p>

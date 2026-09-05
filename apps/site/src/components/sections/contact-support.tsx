@@ -32,7 +32,7 @@ export function ContactSupport() {
   return (
     // Short tail: CtaBurst below brings its own py-32, and the two together
     // left 240px of white between the email note and the CTA panel.
-    <section className="bg-white px-4 pb-8 pt-24 sm:px-8 sm:pb-10 sm:pt-28">
+    <section className="bg-card px-4 pb-8 pt-24 sm:px-8 sm:pb-10 sm:pt-28">
       <div className="mx-auto max-w-site">
         <Reveal>
           <h2 className="text-balance text-center text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1] max-md:text-left">
@@ -43,7 +43,7 @@ export function ContactSupport() {
         <div className="mt-12 grid gap-5 md:grid-cols-3">
           {CHANNELS.map(({ name, Icon, description, cta }, i) => (
             <Reveal key={name} delay={i * 0.1} className="h-full">
-              <div className="flex h-full flex-col rounded-2xl border border-black/[0.06] bg-card p-7">
+              <div className="flex h-full flex-col rounded-2xl border border-foreground/[0.06] bg-card p-7">
                 <IconTile>
                   <Icon className="size-5 text-foreground" aria-hidden />
                 </IconTile>
@@ -63,7 +63,7 @@ export function ContactSupport() {
 
         {/* Full width, matching the row of cards above it (André, 2026-08-12). */}
         <Reveal delay={0.3} className="mt-5">
-          <p className="flex items-start justify-center gap-2.5 rounded-2xl border border-black/[0.06] bg-card px-6 py-5 font-semibold sm:items-center">
+          <p className="flex items-start justify-center gap-2.5 rounded-2xl border border-foreground/[0.06] bg-card px-6 py-5 font-semibold sm:items-center">
             <Mail className="mt-0.5 size-4 shrink-0 text-muted-foreground sm:mt-0" aria-hidden />
             <span>
               Need email instead? You can reach us at{" "}

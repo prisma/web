@@ -1,3 +1,4 @@
+import "@prisma-docs/ui/search.css";
 import { Provider } from "@/components/provider";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@prisma-docs/ui/lib/cn";

@@ -7,8 +7,8 @@ import { CAREERS_BENEFITS, CAREERS_STATS, CAREERS_WHY, COMPANY_VALUES } from "@/
 
 export function CareersHero() {
   return (
-    <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
-      <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
+    <section className="bg-card px-3 pt-3 sm:px-4 sm:pt-4">
+      <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-foreground/[0.06] bg-card">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 bottom-0 h-[14rem] overflow-hidden"
@@ -16,14 +16,10 @@ export function CareersHero() {
           <div
             className="absolute -bottom-1/2 left-1/2 h-full w-[140%] -translate-x-1/2"
             style={{
-              background: [
-                "radial-gradient(46% 60% at 32% 100%, color-mix(in srgb, var(--color-prism-red-400) 16%, transparent), transparent 70%)",
-                "radial-gradient(40% 52% at 58% 100%, color-mix(in srgb, var(--color-prism-yellow-300) 15%, transparent), transparent 68%)",
-                "radial-gradient(38% 46% at 80% 100%, color-mix(in srgb, var(--color-prism-cyan-400) 16%, transparent), transparent 70%)",
-              ].join(","),
+              background: "var(--paper)",
             }}
           />
-          <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-t from-transparent to-white" />
+          <div className="absolute inset-x-0 top-0 h-20 bg-transparent" />
         </div>
         <Texture opacity={0.06} blend="multiply" />
 
@@ -42,7 +38,7 @@ export function CareersHero() {
               <PrismButton href="#open-positions">View open positions</PrismButton>
             </div>
 
-            <dl className="mt-14 grid w-full max-w-2xl grid-cols-3 gap-4 border-t border-black/[0.07] pt-10">
+            <dl className="mt-14 grid w-full max-w-2xl grid-cols-3 gap-4 border-t border-foreground/[0.07] pt-10">
               {CAREERS_STATS.map((stat) => (
                 <div key={stat.label} className="flex flex-col items-center gap-1">
                   <dd className="font-heading text-3xl font-semibold text-foreground sm:text-4xl">
@@ -61,7 +57,7 @@ export function CareersHero() {
 
 export function CareersCulture() {
   return (
-    <section className="bg-white px-4 py-20 sm:px-8 sm:py-24">
+    <section className="bg-card px-4 py-20 sm:px-8 sm:py-24">
       <div className="mx-auto max-w-site">
         <h2 className="mx-auto max-w-[24ch] text-balance text-center text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
           Why Prisma?
@@ -70,7 +66,7 @@ export function CareersCulture() {
           {CAREERS_WHY.map((item) => (
             <div
               key={item.title}
-              className="flex flex-col gap-3 rounded-2xl border border-black/[0.06] bg-white p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04)] sm:p-7"
+              className="flex flex-col gap-3 rounded-2xl border border-foreground/[0.06] bg-card p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04)] sm:p-7"
             >
               <h3 className="text-lg leading-snug">{item.title}</h3>
               <p className="text-sm leading-relaxed text-muted-foreground">{item.description}</p>
@@ -106,7 +102,7 @@ export function CareersCulture() {
 
 export function CareersBenefits() {
   return (
-    <section className="bg-white px-4 pb-20 sm:px-8 sm:pb-24">
+    <section className="bg-card px-4 pb-20 sm:px-8 sm:pb-24">
       <div className="mx-auto max-w-4xl">
         <h2 className="mx-auto max-w-[24ch] text-balance text-center text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
           Benefits

@@ -121,7 +121,7 @@ export function ProductTour({
                 <motion.span
                   key={active}
                   aria-hidden
-                  className="absolute inset-x-0 bottom-0 h-[2px] origin-left bg-gradient-to-r from-prism-cyan-400 via-prism-yellow-300 to-prism-red-500"
+                  className="absolute inset-x-0 bottom-0 h-[2px] origin-left bg-prism-cyan-400"
                   initial={{ scaleX: 0 }}
                   animate={{ scaleX: 1 }}
                   transition={{ duration: HOLD, ease: "linear" }}

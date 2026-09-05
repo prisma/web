@@ -54,7 +54,7 @@ export function PostgresIllustration() {
         className="absolute inset-0 bg-[url('/brand/feature-postgres.jpg')] bg-cover bg-[position:50%_55%] [filter:saturate(1.45)_contrast(1.04)]"
       />
       <div className="relative flex w-full flex-col overflow-hidden rounded-lg border border-border bg-card shadow-[0_8px_24px_-12px_rgba(21,21,21,0.16)]">
-        <div className="relative flex items-center justify-between px-4 pt-3 font-mono text-[0.625rem] uppercase tracking-[0.08em] text-black">
+        <div className="relative flex items-center justify-between px-4 pt-3 font-mono text-[0.625rem] uppercase tracking-[0.08em] text-primary">
           <span>Prisma Postgres · us-west-1</span>
           <span className="flex items-center gap-1.5">
             <motion.span

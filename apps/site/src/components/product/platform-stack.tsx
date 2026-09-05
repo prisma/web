@@ -70,7 +70,7 @@ const LAYERS: Layer[] = [
       border: "border-prism-cyan-300",
       glow: "shadow-[0_0_0_4px_rgba(1,215,228,0.09),0_14px_32px_-16px_rgba(1,215,228,0.5)]",
     },
-    pipe: "from-prism-cyan-400 to-prism-yellow-400",
+    pipe: "bg-prism-cyan-400",
     options: [
       {
         name: "Prisma ORM",
@@ -102,7 +102,7 @@ const LAYERS: Layer[] = [
       border: "border-prism-yellow-300",
       glow: "shadow-[0_0_0_4px_rgba(243,195,6,0.1),0_14px_32px_-16px_rgba(243,195,6,0.55)]",
     },
-    pipe: "from-prism-yellow-400 to-prism-red-500",
+    pipe: "bg-prism-red-500",
     options: [
       {
         name: "Prisma Postgres",
@@ -222,7 +222,7 @@ function Pipe({
     >
       <div
         className={cn(
-          "absolute inset-x-0 top-0 h-1 rounded-full bg-gradient-to-r transition-opacity duration-500",
+          "absolute inset-x-0 top-0 h-1 rounded-full transition-opacity duration-500",
           gradient,
           live ? "opacity-100" : "opacity-0",
         )}
@@ -235,7 +235,7 @@ function Pipe({
       />
       {live && !reduce && (
         <motion.span
-          className="absolute top-0 size-1 rounded-full bg-white shadow-[0_0_0_1px_rgba(21,21,21,0.15)]"
+          className="absolute top-0 size-1 rounded-full bg-card shadow-[0_0_0_1px_rgba(21,21,21,0.15)]"
           initial={{ left: "-12%" }}
           animate={{ left: "112%" }}
           transition={{ duration: 1.4, repeat: Infinity, ease: "linear" }}
@@ -318,8 +318,8 @@ export function PlatformStack() {
   };
 
   return (
-    <div className="mx-auto mt-14 max-w-5xl overflow-hidden rounded-2xl border border-black/[0.08] bg-white shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_64px_-32px_rgba(21,21,21,0.2)]">
-      <div className="flex items-center gap-4 border-b border-black/[0.06] px-6 py-4 sm:px-8">
+    <div className="mx-auto mt-14 max-w-5xl overflow-hidden rounded-2xl border border-foreground/[0.08] bg-card shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_64px_-32px_rgba(21,21,21,0.2)]">
+      <div className="flex items-center gap-4 border-b border-foreground/[0.06] px-6 py-4 sm:px-8">
         <p className="text-[0.8125rem] font-semibold text-foreground">
           Swap any layer. <span className="font-normal text-muted-foreground">It still works.</span>
         </p>
@@ -344,7 +344,7 @@ export function PlatformStack() {
             className={cn(
               "relative flex items-center gap-2 overflow-hidden rounded-full border px-3 py-1.5 text-[0.8125rem] font-semibold transition-colors duration-500",
               isGolden
-                ? "border-black/[0.08] text-foreground"
+                ? "border-foreground/[0.08] text-foreground"
                 : "border-transparent text-muted-foreground",
             )}
           >
@@ -353,8 +353,7 @@ export function PlatformStack() {
                 aria-hidden
                 className="absolute inset-0 opacity-25"
                 style={{
-                  background:
-                    "linear-gradient(85deg, #01d7e4 0%, #f3c306 35%, #f37a03 60%, #f43531 100%)",
+                  background: "var(--color-prism-cyan-400)",
                 }}
               />
             )}
@@ -398,7 +397,7 @@ export function PlatformStack() {
                   "mt-2 flex h-[3.75rem] items-center rounded-xl border px-4 transition-shadow duration-500",
                   lit
                     ? cn(layer.lit.border, layer.lit.bg, layer.lit.glow)
-                    : "border-black/[0.12] bg-muted/40",
+                    : "border-foreground/[0.12] bg-muted/40",
                   // advertise the target the moment a drag starts, so the
                   // gesture has somewhere obvious to land
                   dragging === li &&
@@ -511,7 +510,7 @@ export function PlatformStack() {
                           if (event.detail === 0) slotRefs.current[li]?.focus();
                         }}
                         className={cn(
-                          "group relative flex items-center gap-2 rounded-lg border border-black/[0.09] bg-white px-3 py-2 text-left text-[0.875rem] font-medium text-muted-foreground transition-colors duration-200 hover:border-black/20 hover:text-foreground",
+                          "group relative flex items-center gap-2 rounded-lg border border-foreground/[0.09] bg-card px-3 py-2 text-left text-[0.875rem] font-medium text-muted-foreground transition-colors duration-200 hover:border-foreground/20 hover:text-foreground",
                           canDrag ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
                         )}
                       >
@@ -544,7 +543,7 @@ export function PlatformStack() {
       {/* The consequence of whatever you just picked. The honest half, and the
           place the best-together argument actually gets made — every swap says
           what still works and what you now own yourself. */}
-      <div className="border-t border-black/[0.06] bg-muted/25 px-6 py-5 sm:px-8">
+      <div className="border-t border-foreground/[0.06] bg-muted/25 px-6 py-5 sm:px-8">
         <motion.p
           key={isGolden ? "golden" : note}
           initial={reduce ? undefined : { opacity: 0, y: 4 }}
@@ -559,7 +558,7 @@ export function PlatformStack() {
       {/* The agent row sits outside the pipeline on purpose: there is no Prisma
           option to pick here, every agent is equally supported, and a highlight
           that cycles on its own says that faster than four more controls. */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-black/[0.06] px-6 py-4 sm:px-8">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-foreground/[0.06] px-6 py-4 sm:px-8">
         <span className="flex items-center gap-1.5 text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
           <Bot className="size-3" aria-hidden />
           Driven by
@@ -581,7 +580,7 @@ export function PlatformStack() {
               <motion.span
                 layoutId="pick-agent"
                 aria-hidden
-                className="absolute inset-0 rounded-lg border border-black/[0.14] bg-muted/70"
+                className="absolute inset-0 rounded-lg border border-foreground/[0.14] bg-muted/70"
                 transition={reduce ? { duration: 0 } : SWAP_SPRING}
               />
             )}

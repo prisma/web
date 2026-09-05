@@ -21,11 +21,11 @@ function FileChip({ children }: { children: React.ReactNode }) {
 export function ConnectorStrip({
   file,
   caption,
-  gradient,
+  color,
 }: {
   file: string;
   caption: string;
-  gradient: string;
+  color: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -49,16 +49,25 @@ export function ConnectorStrip({
       fills.forEach((f, i) => {
         f.style.transform = `scaleY(${clamp(p * 2 - i)})`;
       });
-      raf = requestAnimationFrame(tick);
+      raf = 0;
     };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    const schedule = () => {
+      if (!raf) raf = requestAnimationFrame(tick);
+    };
+    tick();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+    };
   }, []);
 
   return (
     <div ref={ref} className="flex flex-col items-center gap-2 py-3 text-center">
       <span aria-hidden className="relative h-7 w-0.5 overflow-hidden rounded-full bg-border/70">
-        <span data-fill className={cn("absolute inset-0 origin-top bg-gradient-to-b", gradient)} />
+        <span data-fill className={cn("absolute inset-0 origin-top", color)} />
       </span>
       <div className="flex items-center gap-2.5">
         <span className="flex size-9 items-center justify-center rounded-full border border-border bg-card shadow-[0_8px_20px_-8px_rgba(21,21,21,0.25)]">
@@ -68,7 +77,7 @@ export function ConnectorStrip({
       </div>
       <em className="text-sm text-muted-foreground">{caption}</em>
       <span aria-hidden className="relative h-7 w-0.5 overflow-hidden rounded-full bg-border/70">
-        <span data-fill className={cn("absolute inset-0 origin-top bg-gradient-to-b", gradient)} />
+        <span data-fill className={cn("absolute inset-0 origin-top", color)} />
       </span>
     </div>
   );

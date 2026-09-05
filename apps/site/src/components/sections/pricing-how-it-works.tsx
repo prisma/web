@@ -17,7 +17,7 @@ import { PricingIncludes } from "./pricing-includes";
 // spend-limit promise carry over from V2.
 export function PricingHowItWorks() {
   return (
-    <section className="bg-white px-4 sm:px-8">
+    <section className="bg-card px-4 sm:px-8">
       {/* Standard section rhythm: the plan cards now sit inside the hero panel,
           so this is the first block outside it rather than a continuation of the
           card row, and the tight pt-20 coupling no longer applies. */}

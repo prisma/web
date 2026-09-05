@@ -18,8 +18,8 @@ export const metadata = createPageMetadata({
 export default function StackPage() {
   return (
     <>
-      <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
-        <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
+      <section className="bg-card px-3 pt-3 sm:px-4 sm:pt-4">
+        <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-foreground/[0.06] bg-card">
           <Texture opacity={0.06} blend="multiply" />
           <div className="relative px-4 sm:px-8">
             <div className="mx-auto flex max-w-site flex-col items-center pb-10 pt-32 text-center md:pb-12 md:pt-44">

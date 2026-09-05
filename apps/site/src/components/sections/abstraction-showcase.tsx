@@ -7,8 +7,7 @@ import { cn } from "@/lib/utils";
 
 // Spectrum gradient matching the brand CTA glow (see prism-button.tsx) — the
 // same colored drop shadow used on cards elsewhere in the design.
-const SPECTRUM =
-  "linear-gradient(85deg, #01d7e4 0%, #f3c306 25%, #f37a03 50%, #f43531 74%, #f00e5c 100%)";
+const SPECTRUM = "var(--color-prism-cyan-400)";
 
 // The three "Ship a production TypeScript app" abstractions, cycling inside one
 // frame on an infinite loop: the mockup, the frame's background tint, and the
@@ -28,7 +27,7 @@ const STAGES: Stage[] = [
     key: "define",
     label: "Define",
     Mock: DefineMock,
-    gradient: "from-prism-cyan-50 to-prism-cyan-100",
+    gradient: "bg-prism-cyan-50",
     chip: "text-prism-cyan-800",
     dot: "bg-prism-cyan-400",
   },
@@ -36,7 +35,7 @@ const STAGES: Stage[] = [
     key: "deploy",
     label: "Deploy",
     Mock: DeployMock,
-    gradient: "from-prism-yellow-50 to-prism-yellow-100",
+    gradient: "bg-prism-yellow-50",
     chip: "text-prism-yellow-700",
     dot: "bg-prism-yellow-400",
   },
@@ -44,7 +43,7 @@ const STAGES: Stage[] = [
     key: "iterate",
     label: "Iterate",
     Mock: IterateMock,
-    gradient: "from-prism-red-50 to-prism-red-100",
+    gradient: "bg-prism-red-50",
     chip: "text-prism-red-700",
     dot: "bg-prism-red-500",
   },
@@ -69,14 +68,14 @@ export function AbstractionShowcase() {
 
   return (
     <figure className="flex w-full flex-col items-center">
-      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-black/[0.06] shadow-lg">
+      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-foreground/[0.06] shadow-lg">
         {/* Background tint — crossfades to the active stage's color */}
         {STAGES.map((stage, i) => (
           <div
             key={stage.key}
             aria-hidden
             className={cn(
-              "absolute inset-0 bg-gradient-to-br transition-opacity duration-700 ease-out",
+              "absolute inset-0 transition-opacity duration-700 ease-out",
               stage.gradient,
               i === active ? "opacity-100" : "opacity-0",
             )}
@@ -117,7 +116,7 @@ export function AbstractionShowcase() {
                 <div
                   aria-hidden
                   className="absolute -inset-1 rounded-xl opacity-20 blur-[16px]"
-                  style={{ backgroundImage: SPECTRUM }}
+                  style={{ background: SPECTRUM }}
                 />
                 <StageMock className="relative w-full max-w-none" />
               </div>
@@ -129,7 +128,7 @@ export function AbstractionShowcase() {
         <div className="absolute inset-x-0 bottom-0 flex items-center justify-between px-5 py-4">
           <span
             className={cn(
-              "rounded-full bg-white/70 px-3 py-1 text-xs font-semibold backdrop-blur-sm transition-colors duration-700",
+              "rounded-full bg-card/70 px-3 py-1 text-xs font-semibold backdrop-blur-sm transition-colors duration-700",
               STAGES[active].chip,
             )}
           >

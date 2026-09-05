@@ -365,7 +365,7 @@ function ProductShowcase() {
   }, []);
 
   return (
-    <figure className="relative h-[24rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] sm:h-[28rem] lg:h-auto">
+    <figure className="relative h-[24rem] overflow-hidden rounded-[1.5rem] border border-foreground/[0.06] sm:h-[28rem] lg:h-auto">
       {PRODUCTS.map(({ key, Abstraction }, i) => (
         <div
           key={key}
@@ -386,28 +386,22 @@ function ProductShowcase() {
 
 export function CtaSplit() {
   return (
-    <section className="bg-white px-3 pb-3 pt-24 sm:px-4 sm:pt-32">
+    <section className="bg-card px-3 pb-3 pt-24 sm:px-4 sm:pt-32">
       <div className="mx-auto grid max-w-[96rem] gap-3 lg:h-[34rem] lg:grid-cols-[1.55fr_1fr]">
         <ProductShowcase />
 
         {/* the pitch on the wrapped prismatic panel */}
-        <div className="relative overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
+        <div className="relative overflow-hidden rounded-[1.5rem] border border-foreground/[0.06] bg-card">
           {/* prismatic backdrop — spectral wash + beam fan rising from below */}
           <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
             <div
               className="absolute -bottom-1/3 left-1/2 h-[130%] w-[170%] -translate-x-1/2"
               style={{
-                background: [
-                  "radial-gradient(56% 44% at 26% 100%, color-mix(in srgb, var(--color-prism-cyan-400) 34%, transparent), transparent 68%)",
-                  "radial-gradient(48% 40% at 52% 100%, color-mix(in srgb, var(--color-prism-yellow-300) 26%, transparent), transparent 66%)",
-                  "radial-gradient(46% 34% at 78% 100%, color-mix(in srgb, var(--color-prism-red-400) 28%, transparent), transparent 68%)",
-                ].join(","),
+                background: "var(--paper)",
               }}
             />
-            <div className="absolute bottom-[-18rem] left-[12%] h-[44rem] w-24 origin-bottom rotate-[-28deg] bg-prism-cyan-300/50 blur-[56px]" />
-            <div className="absolute bottom-[-20rem] left-1/2 h-[46rem] w-28 origin-bottom -translate-x-1/2 rotate-[5deg] bg-prism-yellow-200/60 blur-[64px]" />
-            <div className="absolute bottom-[-21rem] right-[10%] h-[44rem] w-24 origin-bottom rotate-[28deg] bg-prism-red-300/50 blur-[56px]" />
-            <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-t from-transparent via-white/60 to-white" />
+
+            <div className="absolute inset-x-0 top-0 h-40 bg-transparent" />
           </div>
           <Texture opacity={0.06} blend="multiply" />
 

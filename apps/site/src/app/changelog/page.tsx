@@ -20,8 +20,8 @@ export default function ChangelogPage() {
 
   return (
     <>
-      <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
-        <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
+      <section className="bg-card px-3 pt-3 sm:px-4 sm:pt-4">
+        <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-foreground/[0.06] bg-card">
           <Texture opacity={0.06} blend="multiply" />
           <div className="relative px-4 sm:px-8">
             <div className="mx-auto flex max-w-site flex-col items-center pb-14 pt-32 text-center md:pb-16 md:pt-44">
@@ -40,7 +40,7 @@ export default function ChangelogPage() {
         </div>
       </section>
 
-      <section className="bg-white px-4 pb-24 pt-14 sm:px-8 sm:pb-32">
+      <section className="bg-card px-4 pb-24 pt-14 sm:px-8 sm:pb-32">
         <div className="mx-auto max-w-3xl">
           <ol className="flex flex-col">
             {entries.map((entry) => {
@@ -48,7 +48,7 @@ export default function ChangelogPage() {
               return (
                 <li
                   key={entry.slug}
-                  className="group relative border-l border-black/[0.08] pb-12 pl-8 last:pb-0"
+                  className="group relative border-l border-foreground/[0.08] pb-12 pl-8 last:pb-0"
                 >
                   <span
                     aria-hidden

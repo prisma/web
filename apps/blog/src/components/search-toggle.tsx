@@ -10,7 +10,7 @@ export function LargeSearchToggle({ className, onClick, ...props }: ComponentPro
   return (
     <Button
       {...props}
-      aria-label={props["aria-label"] ?? "Search the blog"}
+      aria-label={props["aria-label"] ?? "Search Prisma"}
       variant="default"
       className={cn(
         "flex items-center justify-center gap-2 py-2.5 hover:cursor-pointer md:justify-between",
@@ -24,7 +24,7 @@ export function LargeSearchToggle({ className, onClick, ...props }: ComponentPro
       }}
     >
       <span className="sr-only text-sm text-foreground-neutral-weak md:not-sr-only md:inline-flex">
-        Search the blog
+        Search Prisma
       </span>
       <Search className="size-4 justify-end" />
     </Button>

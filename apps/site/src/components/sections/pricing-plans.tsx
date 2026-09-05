@@ -136,10 +136,10 @@ export function PricingPlans() {
           <div
             key={plan.name}
             className={cn(
-              "relative flex flex-col rounded-2xl border bg-white p-6 sm:p-7",
+              "relative flex flex-col rounded-2xl border bg-card p-6 sm:p-7",
               plan.popular
                 ? "spectrum-border spectrum-border-on border-transparent shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_48px_-24px_rgba(21,21,21,0.25)]"
-                : "border-black/[0.06]",
+                : "border-foreground/[0.06]",
             )}
           >
             {plan.popular && (
@@ -160,7 +160,7 @@ export function PricingPlans() {
                   return null;
                 }
                 return (
-                  <div key={key} className="border-t border-black/[0.06] py-5 last:pb-0">
+                  <div key={key} className="border-t border-foreground/[0.06] py-5 last:pb-0">
                     <p className="text-xs font-semibold text-muted-foreground">{label}</p>
                     <ul className="mt-3 space-y-3">
                       {items.map((feature) => (
@@ -202,7 +202,7 @@ export function PricingPlans() {
       {/* Need more? — sits inside the panel with the cards, since it's part of
           the pricing block rather than the start of the next section. It falls
           below the fold, which is fine; the four cards are what had to clear it. */}
-      <div className="mt-6 flex flex-col items-start justify-between gap-5 rounded-2xl border border-black/[0.06] bg-white p-7 sm:flex-row sm:items-center sm:p-8">
+      <div className="mt-6 flex flex-col items-start justify-between gap-5 rounded-2xl border border-foreground/[0.06] bg-card p-7 sm:flex-row sm:items-center sm:p-8">
         <div>
           <p className="font-heading text-lg font-medium text-foreground">Need more?</p>
           <p className="mt-1 text-sm leading-relaxed text-muted-foreground">

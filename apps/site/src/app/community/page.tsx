@@ -117,7 +117,7 @@ function LinkCardGrid({
         <a
           key={item.title}
           href={item.link}
-          className="group flex flex-col gap-3 rounded-2xl border border-black/[0.06] bg-white p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04)] transition-[border-color,box-shadow] duration-300 hover:border-black/[0.12] hover:shadow-[0_6px_20px_rgba(21,21,21,0.07)] sm:p-7"
+          className="group flex flex-col gap-3 rounded-2xl border border-foreground/[0.06] bg-card p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04)] transition-[border-color,box-shadow] duration-300 hover:border-foreground/[0.12] hover:shadow-[0_6px_20px_rgba(21,21,21,0.07)] sm:p-7"
         >
           <h3 className="text-lg leading-snug">{item.title}</h3>
           <p className="text-sm leading-relaxed text-muted-foreground">{item.description}</p>
@@ -137,8 +137,8 @@ function LinkCardGrid({
 export default function CommunityPage() {
   return (
     <>
-      <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
-        <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
+      <section className="bg-card px-3 pt-3 sm:px-4 sm:pt-4">
+        <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-foreground/[0.06] bg-card">
           <Texture opacity={0.06} blend="multiply" />
           <div className="relative px-4 sm:px-8">
             <div className="mx-auto flex max-w-site flex-col items-center pb-14 pt-32 text-center md:pb-16 md:pt-44">
@@ -160,7 +160,7 @@ export default function CommunityPage() {
         </div>
       </section>
 
-      <section className="bg-white px-4 pt-14 sm:px-8">
+      <section className="bg-card px-4 pt-14 sm:px-8">
         <div className="mx-auto max-w-site">
           <h2 className="text-[clamp(1.5rem,2.25vw,2rem)] leading-[1.15]">Connect with Prisma</h2>
           <div className="mt-8">
@@ -176,7 +176,7 @@ export default function CommunityPage() {
         </div>
       </section>
 
-      <section className="bg-white px-4 pt-16 sm:px-8">
+      <section className="bg-card px-4 pt-16 sm:px-8">
         <div className="mx-auto max-w-site">
           <h2 className="text-[clamp(1.5rem,2.25vw,2rem)] leading-[1.15]">New here? Start with</h2>
           <div className="mt-8">
@@ -185,7 +185,7 @@ export default function CommunityPage() {
         </div>
       </section>
 
-      <section className="bg-white px-4 pt-16 sm:px-8">
+      <section className="bg-card px-4 pt-16 sm:px-8">
         <div className="mx-auto max-w-site">
           <h2 className="text-[clamp(1.5rem,2.25vw,2rem)] leading-[1.15]">Meetups and events</h2>
           <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -195,7 +195,7 @@ export default function CommunityPage() {
                 href={meetup.link}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group flex flex-col overflow-hidden rounded-2xl border border-black/[0.06] bg-white shadow-[0_1px_2px_rgba(21,21,21,0.04)] transition-[border-color,box-shadow] duration-300 hover:border-black/[0.12] hover:shadow-[0_6px_20px_rgba(21,21,21,0.07)]"
+                className="group flex flex-col overflow-hidden rounded-2xl border border-foreground/[0.06] bg-card shadow-[0_1px_2px_rgba(21,21,21,0.04)] transition-[border-color,box-shadow] duration-300 hover:border-foreground/[0.12] hover:shadow-[0_6px_20px_rgba(21,21,21,0.07)]"
               >
                 <div className="relative aspect-video w-full overflow-hidden bg-card-wash">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -225,7 +225,7 @@ export default function CommunityPage() {
         </div>
       </section>
 
-      <section className="bg-white px-4 py-16 pb-24 sm:px-8 sm:pb-32">
+      <section className="bg-card px-4 py-16 pb-24 sm:px-8 sm:pb-32">
         <div className="mx-auto max-w-site">
           <h2 className="text-[clamp(1.5rem,2.25vw,2rem)] leading-[1.15]">Contribute to Prisma</h2>
           <div className="mt-8">

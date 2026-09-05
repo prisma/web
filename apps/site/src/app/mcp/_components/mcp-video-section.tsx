@@ -1,8 +1,8 @@
 export function McpVideoSection() {
   return (
-    <section className="bg-white px-4 pt-14 sm:px-8">
+    <section className="bg-card px-4 pt-14 sm:px-8">
       <div className="mx-auto max-w-site">
-        <div className="mx-auto max-w-3xl overflow-hidden rounded-2xl border border-black/[0.06] bg-white shadow-[0_1px_2px_rgba(21,21,21,0.04)]">
+        <div className="mx-auto max-w-3xl overflow-hidden rounded-2xl border border-foreground/[0.06] bg-card shadow-[0_1px_2px_rgba(21,21,21,0.04)]">
           <div className="relative aspect-video w-full">
             <iframe
               className="size-full"

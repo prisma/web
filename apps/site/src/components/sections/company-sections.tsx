@@ -16,8 +16,8 @@ import {
 
 export function CompanyHero() {
   return (
-    <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
-      <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
+    <section className="bg-card px-3 pt-3 sm:px-4 sm:pt-4">
+      <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-foreground/[0.06] bg-card">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 bottom-0 h-[14rem] overflow-hidden"
@@ -25,14 +25,10 @@ export function CompanyHero() {
           <div
             className="absolute -bottom-1/2 left-1/2 h-full w-[140%] -translate-x-1/2"
             style={{
-              background: [
-                "radial-gradient(46% 60% at 30% 100%, color-mix(in srgb, var(--color-prism-cyan-400) 18%, transparent), transparent 70%)",
-                "radial-gradient(40% 52% at 56% 100%, color-mix(in srgb, var(--color-prism-yellow-300) 14%, transparent), transparent 68%)",
-                "radial-gradient(38% 46% at 78% 100%, color-mix(in srgb, var(--color-prism-red-400) 15%, transparent), transparent 70%)",
-              ].join(","),
+              background: "var(--paper)",
             }}
           />
-          <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-t from-transparent to-white" />
+          <div className="absolute inset-x-0 top-0 h-20 bg-transparent" />
         </div>
         <Texture opacity={0.06} blend="multiply" />
 
@@ -55,7 +51,7 @@ export function CompanyHero() {
               {COMPANY_PILLARS.map((pillar) => (
                 <div
                   key={pillar.title}
-                  className="flex flex-col gap-3 rounded-2xl border border-black/[0.06] bg-white/80 p-6 text-left backdrop-blur-sm sm:p-7"
+                  className="flex flex-col gap-3 rounded-2xl border border-foreground/[0.06] bg-card/80 p-6 text-left backdrop-blur-sm sm:p-7"
                 >
                   <h2 className="text-lg leading-snug">{pillar.title}</h2>
                   <p className="text-sm leading-relaxed text-muted-foreground">
@@ -85,12 +81,12 @@ export function CompanyHero() {
 // the right edge), and it keeps well under the old masonry's height.
 export function TeamPhotos() {
   return (
-    <section className="bg-white px-4 py-14 sm:px-8 sm:py-20">
+    <section className="bg-card px-4 py-14 sm:px-8 sm:py-20">
       <div className="mx-auto grid max-w-site grid-cols-2 gap-4 lg:grid-cols-3">
         {TEAM_PHOTOS.map((photo) => (
           <div
             key={photo.src}
-            className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-black/[0.06]"
+            className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-foreground/[0.06]"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -109,7 +105,7 @@ export function TeamPhotos() {
 
 export function CompanyInvestors() {
   return (
-    <section className="bg-white px-4 py-20 sm:px-8 sm:py-24">
+    <section className="bg-card px-4 py-20 sm:px-8 sm:py-24">
       <div className="mx-auto max-w-site">
         <h2 className="mx-auto max-w-[24ch] text-balance text-center text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
           Our investors
@@ -130,7 +126,7 @@ export function CompanyInvestors() {
           ))}
         </div>
 
-        <div className="mt-14 grid grid-cols-1 gap-x-8 gap-y-6 border-t border-black/[0.07] pt-12 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <div className="mt-14 grid grid-cols-1 gap-x-8 gap-y-6 border-t border-foreground/[0.07] pt-12 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {INVESTOR_PEOPLE.map((person) => (
             <div key={person.name} className="flex items-center gap-3.5">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -148,7 +144,7 @@ export function CompanyInvestors() {
           ))}
         </div>
 
-        <div className="mt-14 flex flex-wrap items-center justify-center gap-x-10 gap-y-4 border-t border-black/[0.07] pt-10">
+        <div className="mt-14 flex flex-wrap items-center justify-center gap-x-10 gap-y-4 border-t border-foreground/[0.07] pt-10">
           {PRESS_LINKS.map((link) => (
             <a
               key={link.label}
@@ -169,7 +165,7 @@ export function CompanyInvestors() {
 
 export function CompanyCares() {
   return (
-    <section className="bg-white px-4 pb-24 sm:px-8 sm:pb-32">
+    <section className="bg-card px-4 pb-24 sm:px-8 sm:pb-32">
       <div className="mx-auto max-w-site">
         <h2 className="mx-auto max-w-[24ch] text-balance text-center text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
           What we care about
@@ -178,7 +174,7 @@ export function CompanyCares() {
           {CARE_ABOUT.map((item, i) => (
             <div
               key={item.title}
-              className="relative overflow-hidden rounded-2xl border border-black/[0.06] bg-card-wash p-7 sm:p-9"
+              className="relative overflow-hidden rounded-2xl border border-foreground/[0.06] bg-card-wash p-7 sm:p-9"
             >
               <span
                 aria-hidden

@@ -48,7 +48,7 @@ export function VariantBento() {
   ].filter((p) => p.value > 0);
 
   return (
-    <section className="bg-white">
+    <section className="bg-card">
       <div className="mx-auto max-w-6xl px-4 py-20 sm:px-8">
         <div className="max-w-2xl">
           <h2 className="text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
@@ -63,7 +63,7 @@ export function VariantBento() {
         <div className="mt-10 grid gap-4 lg:grid-cols-5">
           <div className="grid gap-4 lg:col-span-3">
             {/* preset tile */}
-            <div className="rounded-2xl border border-black/[0.06] bg-card p-6">
+            <div className="rounded-2xl border border-foreground/[0.06] bg-card p-6">
               <RoleKicker color="bg-prism-cyan-400">Where are you now?</RoleKicker>
               <div className="mt-4 grid gap-2 sm:grid-cols-3">
                 {PRESETS.map((p) => (
@@ -77,8 +77,8 @@ export function VariantBento() {
                     className={cn(
                       "rounded-xl border p-4 text-left transition-colors",
                       activePreset === p.id
-                        ? "spectrum-border spectrum-border-on border-transparent bg-white"
-                        : "border-black/[0.06] bg-white/60 hover:border-black/[0.14]",
+                        ? "spectrum-border spectrum-border-on border-transparent bg-card"
+                        : "border-foreground/[0.06] bg-card/60 hover:border-foreground/[0.14]",
                     )}
                   >
                     <span className="block text-sm font-semibold text-foreground">{p.label}</span>
@@ -91,7 +91,7 @@ export function VariantBento() {
             </div>
 
             {/* ops tile */}
-            <div className="rounded-2xl border border-black/[0.06] bg-card p-6">
+            <div className="rounded-2xl border border-foreground/[0.06] bg-card p-6">
               <div className="flex items-baseline justify-between">
                 <p className="text-sm font-semibold text-foreground">Operations per month</p>
                 <p className="font-mono text-lg tabular-nums text-foreground">
@@ -111,7 +111,7 @@ export function VariantBento() {
             </div>
 
             {/* storage tile */}
-            <div className="rounded-2xl border border-black/[0.06] bg-card p-6">
+            <div className="rounded-2xl border border-foreground/[0.06] bg-card p-6">
               <div className="flex items-baseline justify-between">
                 <p className="text-sm font-semibold text-foreground">Storage</p>
                 <p className="font-mono text-lg tabular-nums text-foreground">{fmtGB(gbSnapped)}</p>
@@ -127,13 +127,13 @@ export function VariantBento() {
           </div>
 
           {/* result tile */}
-          <div className="spectrum-border spectrum-border-on relative flex flex-col rounded-2xl border border-transparent bg-white p-7 shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_48px_-24px_rgba(21,21,21,0.25)] lg:col-span-2">
+          <div className="spectrum-border spectrum-border-on relative flex flex-col rounded-2xl border border-transparent bg-card p-7 shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_48px_-24px_rgba(21,21,21,0.25)] lg:col-span-2">
             <RoleKicker color="bg-prism-cyan-400">Your estimate</RoleKicker>
             <p className="mt-4 font-heading text-5xl font-medium tracking-tight text-foreground">
               {fmtUSD(best.total, best.total % 1 !== 0)}
               <span className="ml-1 text-lg font-normal text-muted-foreground">/mo</span>
             </p>
-            <p className="mt-3 inline-flex w-fit rounded-full border border-black/[0.08] bg-card px-3 py-1 text-sm font-semibold text-foreground">
+            <p className="mt-3 inline-flex w-fit rounded-full border border-foreground/[0.08] bg-card px-3 py-1 text-sm font-semibold text-foreground">
               {rec.custom ? "Custom — talk to us" : `${best.plan.name} plan`}
             </p>
 
@@ -161,7 +161,7 @@ export function VariantBento() {
               </dl>
             </div>
 
-            <div className="mt-auto flex items-center gap-2.5 border-t border-black/[0.06] pt-5">
+            <div className="mt-auto flex items-center gap-2.5 border-t border-foreground/[0.06] pt-5">
               <Shield className="size-4 shrink-0 text-prism-red-500" aria-hidden />
               <p className="text-sm leading-relaxed text-muted-foreground">
                 Hard spend limit, on by default — never a surprise bill.

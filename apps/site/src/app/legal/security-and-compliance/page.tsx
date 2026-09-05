@@ -45,9 +45,9 @@ const RELATED = [
 
 export default function SecurityCompliancePage() {
   return (
-    <article className="bg-white px-4 pb-24 pt-32 sm:px-8 sm:pb-32 md:pt-40">
+    <article className="bg-card px-4 pb-24 pt-32 sm:px-8 sm:pb-32 md:pt-40">
       <div className="mx-auto max-w-3xl">
-        <header className="border-b border-black/[0.07] pb-10">
+        <header className="border-b border-foreground/[0.07] pb-10">
           <RoleKicker color="bg-prism-cyan-400">Legal</RoleKicker>
           <h1 className="mt-4 text-balance text-3xl leading-[1.1] sm:text-4xl md:text-5xl">
             Security &amp; Compliance
@@ -67,7 +67,7 @@ export default function SecurityCompliancePage() {
             {STANDARDS.map((standard) => (
               <div
                 key={standard.name}
-                className="rounded-2xl border border-black/[0.06] bg-white p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04)]"
+                className="rounded-2xl border border-foreground/[0.06] bg-card p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04)]"
               >
                 <h3 className="text-base font-semibold">{standard.name}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
@@ -85,7 +85,7 @@ export default function SecurityCompliancePage() {
           </p>
         </section>
 
-        <section className="border-t border-black/[0.05] py-10">
+        <section className="border-t border-foreground/[0.05] py-10">
           <h2 className="text-xl leading-snug sm:text-2xl">Related policies</h2>
           <div className="mt-5 flex flex-col gap-2.5">
             {RELATED.map((item) => (

@@ -15,7 +15,7 @@ export function ProductNarrative({
   illustration: React.ReactNode;
 }) {
   return (
-    <section className="bg-white px-4 py-24 sm:px-8 sm:py-32">
+    <section className="bg-card px-4 py-24 sm:px-8 sm:py-32">
       {/* columns stretch rather than centre, so the graphic reads as a panel
           the height of the argument beside it instead of a card floating in it */}
       <div className="mx-auto grid max-w-site gap-12 lg:grid-cols-2 lg:gap-16">

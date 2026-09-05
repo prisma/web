@@ -78,7 +78,7 @@ function SearchButton({ className }: { className?: string }) {
   return (
     <button
       type="button"
-      aria-label="Search the blog"
+      aria-label="Search Prisma"
       onClick={() => setOpenSearch(true)}
       className={cn(
         "text-foreground-neutral-weak hover:text-foreground-neutral hover:bg-background-neutral rounded-circle flex size-8 cursor-pointer items-center justify-center transition-colors duration-300 outline-none",

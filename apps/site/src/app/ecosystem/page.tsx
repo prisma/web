@@ -35,7 +35,7 @@ const packages = ecosystem.list as EcosystemPackage[];
 
 function PackageCard({ pkg }: { pkg: EcosystemPackage }) {
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-black/[0.06] bg-white p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04)]">
+    <div className="flex flex-col gap-3 rounded-2xl border border-foreground/[0.06] bg-card p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04)]">
       <h3 className="break-words text-lg leading-snug">{pkg.name}</h3>
       <p className="text-sm leading-relaxed text-muted-foreground">{pkg.description}</p>
       <div className="mt-auto flex flex-wrap gap-x-6 gap-y-2 pt-2">
@@ -71,8 +71,8 @@ function PackageCard({ pkg }: { pkg: EcosystemPackage }) {
 export default function EcosystemPage() {
   return (
     <>
-      <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
-        <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
+      <section className="bg-card px-3 pt-3 sm:px-4 sm:pt-4">
+        <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-foreground/[0.06] bg-card">
           <div
             aria-hidden
             className="pointer-events-none absolute inset-x-0 bottom-0 h-[16rem] overflow-hidden"
@@ -80,11 +80,10 @@ export default function EcosystemPage() {
             <div
               className="absolute -bottom-1/2 left-1/2 h-full w-[140%] -translate-x-1/2"
               style={{
-                background:
-                  "radial-gradient(52% 60% at 50% 100%, color-mix(in srgb, var(--color-prism-cyan-400) 16%, transparent), transparent 70%)",
+                background: "var(--paper)",
               }}
             />
-            <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-t from-transparent to-white" />
+            <div className="absolute inset-x-0 top-0 h-24 bg-transparent" />
           </div>
           <Texture opacity={0.06} blend="multiply" />
           <div className="relative px-4 sm:px-8">
@@ -108,7 +107,7 @@ export default function EcosystemPage() {
         </div>
       </section>
 
-      <section className="bg-white px-4 py-16 pb-24 sm:px-8 sm:pb-32">
+      <section className="bg-card px-4 py-16 pb-24 sm:px-8 sm:pb-32">
         <div className="mx-auto max-w-site">
           <h2 className="mx-auto max-w-[28ch] text-balance text-center text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
             Dedicated ORM support options

@@ -32,7 +32,7 @@ import { Texture } from "@/components/brand/texture";
 // run edge to edge and the section clips them.
 export function PricingHero({ children }: { children?: React.ReactNode }) {
   return (
-    <section className="relative overflow-hidden bg-white px-4 sm:px-8">
+    <section className="relative overflow-hidden bg-card px-4 sm:px-8">
       {/* Spectral wash pooling behind the cards. Unlike everywhere else on the
           site there's no panel clipping this, so both the wash and the grain have
           to dissolve into white on their own — anchored hard to bottom-0 they cut
@@ -46,19 +46,15 @@ export function PricingHero({ children }: { children?: React.ReactNode }) {
         <div
           className="absolute -bottom-1/3 left-1/2 h-[120%] w-[150%] -translate-x-1/2"
           style={{
-            background: [
-              "radial-gradient(50% 38% at 28% 100%, color-mix(in srgb, var(--color-prism-cyan-400) 30%, transparent), transparent 70%)",
-              "radial-gradient(44% 34% at 52% 100%, color-mix(in srgb, var(--color-prism-yellow-300) 24%, transparent), transparent 68%)",
-              "radial-gradient(46% 32% at 76% 100%, color-mix(in srgb, var(--color-prism-red-400) 26%, transparent), transparent 70%)",
-            ].join(","),
+            background: "var(--paper)",
           }}
         />
-        <div className="absolute inset-x-0 top-0 h-72 bg-gradient-to-t from-transparent via-white/70 to-white" />
+        <div className="absolute inset-x-0 top-0 h-72 bg-transparent" />
       </div>
       <Texture className="[mask-image:linear-gradient(to_bottom,black_55%,transparent_92%)]" />
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-white"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-transparent"
       />
 
       {/* Generous top padding: the fixed header is 100px, and the rest is
