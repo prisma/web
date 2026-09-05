@@ -406,7 +406,8 @@ const config = {
       {
         permanent: true,
         source: "/tutorials/postgres-configuring-user-authentication-db06",
-        destination: "https://www.prisma.io/dataguide/postgresql/configuring-user-authentication",
+        destination:
+          "/dataguide/postgresql/authentication-and-authorization/configuring-user-authentication",
       },
       {
         permanent: true,
@@ -470,7 +471,7 @@ const config = {
       {
         permanent: true,
         source: "/with-graphql",
-        destination: "/docs/understand-prisma/prisma-in-your-stack/graphql",
+        destination: "/docs/orm/v6/overview/prisma-in-your-stack/graphql",
       },
       {
         permanent: true,
@@ -480,12 +481,12 @@ const config = {
       {
         permanent: true,
         source: "/client/client-javascript",
-        destination: "/docs/reference/tools-and-interfaces/prisma-client/api",
+        destination: "/docs/orm/v7/reference/prisma-client-reference",
       },
       {
         permanent: true,
         source: "/client/client-typescript",
-        destination: "/docs/reference/tools-and-interfaces/prisma-client/api",
+        destination: "/docs/orm/v7/reference/prisma-client-reference",
       },
       {
         permanent: true,
@@ -495,27 +496,27 @@ const config = {
       {
         permanent: true,
         source: "/features/bindings",
-        destination: "/docs/understand-prisma/prisma-in-your-stack/graphql",
+        destination: "/docs/orm/v6/overview/prisma-in-your-stack/graphql",
       },
       {
         permanent: true,
         source: "/features/data-modeling",
-        destination: "/docs/understand-prisma/data-modeling",
+        destination: "/docs/orm/v6/overview/introduction/data-modeling",
       },
       {
         permanent: true,
         source: "/features/databases",
-        destination: "/docs/more/supported-databases",
+        destination: "/docs/orm/v7/core-concepts/supported-databases",
       },
       {
         permanent: true,
         source: "/features/graphql-api",
-        destination: "/docs/understand-prisma/prisma-in-your-stack/graphql",
+        destination: "/docs/orm/v6/overview/prisma-in-your-stack/graphql",
       },
       {
         permanent: true,
         source: "/features/query-engine",
-        destination: "/docs/understand-prisma/prisma-in-your-stack/graphql",
+        destination: "/docs/orm/v6/overview/prisma-in-your-stack/graphql",
       },
       {
         permanent: true,
@@ -536,12 +537,12 @@ const config = {
       {
         permanent: true,
         source: "/blog/prisma-now-supports-postgres-aad74ba479cb",
-        destination: "https://www.prisma.io/docs/orm/overview/databases/postgresql",
+        destination: "/docs/orm/v7/core-concepts/supported-databases/postgresql",
       },
       {
         permanent: true,
         source: "/blog/introducing-prisma-cloud-a-graphql-database-platform-ed591baa8737",
-        destination: "https://www.prisma.io/cloud",
+        destination: "https://app.prisma.io",
       },
       {
         permanent: true,
@@ -590,7 +591,7 @@ const config = {
       },
       {
         source: "/optimise",
-        destination: "/optimize",
+        destination: "/",
         permanent: true,
       },
       {
@@ -610,7 +611,7 @@ const config = {
       },
       {
         source: "/jobs",
-        destination: "/careers",
+        destination: "/company/careers",
         permanent: true,
       },
       {
@@ -667,12 +668,12 @@ const config = {
       },
       {
         source: "/blog/fullstack-remix-prisma-mongodb-1-7D0BfTXBmB6r",
-        destination: "/docs/guides/react-router-7",
+        destination: "/docs/guides/frameworks/react-router-7",
         permanent: true,
       },
       {
         source: "/blog/series/fullstack-nextjs-and-graphql-md1tczpfz1",
-        destination: "/docs/guides/nextjs",
+        destination: "/docs/guides/frameworks/nextjs",
         permanent: true,
       },
       {

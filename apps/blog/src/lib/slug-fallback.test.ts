@@ -37,7 +37,10 @@ test("is a no-op on an empty corpus", () => {
 });
 
 test("the recovered slug is never equal to the requested slug", () => {
-  for (const requested of ["nestjs-prisma-authentication-7d056s1s0k3l", "AGENTS-MD-FOR-DATABASES"]) {
+  for (const requested of [
+    "nestjs-prisma-authentication-7d056s1s0k3l",
+    "AGENTS-MD-FOR-DATABASES",
+  ]) {
     const canonical = findCanonicalSlug(requested, SLUGS);
     assert.ok(canonical !== undefined, `expected a match for ${requested}`);
     assert.notEqual(canonical, requested);

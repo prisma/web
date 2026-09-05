@@ -62,7 +62,9 @@ export function findBasePathLinkViolations(source: string): number[] {
 
 test("the violation matcher recognises the shape it is guarding against", () => {
   assert.deepEqual(
-    findBasePathLinkViolations('<Link\n  href={withBlogBasePath(`/series/${k}`)}\n  className="x"\n>'),
+    findBasePathLinkViolations(
+      '<Link\n  href={withBlogBasePath(`/series/${k}`)}\n  className="x"\n>',
+    ),
     [1],
   );
   assert.deepEqual(findBasePathLinkViolations("<Link href={`/series/${k}`}>"), []);

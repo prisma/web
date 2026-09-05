@@ -36,6 +36,16 @@
  * the content: every cross-zone link in apps/site/content is absolute today,
  * and every intra-blog link in apps/blog/content is blog-relative.
  *
+ * ── Chains that end at the homepage ────────────────────────────────────────
+ * Nine retired URLs (/accelerate, /optimize, /data-platform/*, /serverless,
+ * /day*, /enterprise-event-2021) redirect all the way to `/`. Following those
+ * would turn "[Prisma Accelerate](...)" into a link to the homepage: it removes
+ * a hop but points ~40 descriptive anchors at a page that answers none of them,
+ * and it destroys the record of what each link meant. Those links keep their
+ * single (already permanent) redirect and are listed in the report so a human
+ * can map them to a real page. Their apex domain and tracking parameters are
+ * still fixed. Pass `--allow-root-destination` to follow them anyway.
+ *
  * Usage:
  *   pnpm links:fix                 rewrite in place
  *   pnpm links:fix -- --dry-run    report only
@@ -316,14 +326,21 @@ export function parseNextRedirects(source: string): Array<{ source: string; dest
   const sourceRe = /\bsource:\s*"([^"]*)"/g;
 
   for (let m = sourceRe.exec(block); m; m = sourceRe.exec(block)) {
-    const tail = block.slice(m.index + m[0].length, m.index + m[0].length + 400);
+    const tail = block.slice(m.index + m[0].length);
     const dest = /\bdestination:\s*"([^"]*)"/.exec(tail);
-    const before = block.slice(Math.max(0, m.index - 400), m.index);
     if (!dest) continue;
+
+    // The whole object literal, so a `basePath: false` written after
+    // `destination:` is still seen.
+    const before = block.slice(0, m.index);
+    const openBrace = before.lastIndexOf("{");
+    const closeBrace = tail.indexOf("}");
+    const entry = `${before.slice(openBrace + 1)}${closeBrace === -1 ? tail : tail.slice(0, closeBrace)}`;
+
     // Host-conditional and basePath-free rules do not apply to plain
     // www.prisma.io path requests.
-    const entry = `${before.slice(before.lastIndexOf("{") + 1)}${tail.slice(0, dest.index)}`;
     if (/\b(has|missing|basePath)\s*:/.test(entry)) continue;
+    if (!entry.includes(dest[0])) continue; // destination belongs to a later entry
     rules.push({ source: m[1], destination: dest[1] });
   }
 
@@ -492,6 +509,12 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const dryRun = args.includes("--dry-run");
   let offline = args.includes("--offline");
+  // A chain that ends at the bare homepage is a special case: following it
+  // would point an anchor like "Prisma Accelerate" at "/", which loses the
+  // record of what the link meant and dilutes the site's anchor text. Those
+  // links keep their (permanent, already-live) single redirect and are listed
+  // in the report so a human can map them to a real page.
+  const allowRootDestination = args.includes("--allow-root-destination");
   const reportIndex = args.indexOf("--report");
   const reportPath = reportIndex === -1 ? null : args[reportIndex + 1];
 
@@ -598,6 +621,7 @@ async function main(): Promise<void> {
   let misplacedQueries = 0;
   let rewritten = 0;
   const recoveredByNewRedirect = new Set<string>();
+  const skippedRootDestination = new Map<string, Unresolved>();
 
   for (const item of pending) {
     const key = `${item.normalised.origin}${item.normalised.pathname}${item.normalised.search}`;
@@ -630,7 +654,32 @@ async function main(): Promise<void> {
       finalUrl.pathname = finalUrl.pathname.replace(/\/+$/, "");
     }
 
-    const replacement = toHrefForZone(finalUrl, item.zone.basePath);
+    const chainEndsAtHomepage =
+      finalUrl.hostname === "www.prisma.io" &&
+      finalUrl.pathname === "/" &&
+      item.normalised.pathname !== "/";
+
+    // The chain is left in place, but the href is still normalised: the apex
+    // domain and the tracking parameters are fixed regardless of where the
+    // link ends up.
+    const target = allowRootDestination || !chainEndsAtHomepage ? finalUrl : item.normalised;
+
+    if (chainEndsAtHomepage && !allowRootDestination) {
+      const existing = skippedRootDestination.get(key);
+      if (existing) {
+        if (!existing.files.includes(relative)) existing.files.push(relative);
+      } else {
+        skippedRootDestination.set(key, {
+          href: item.occurrence.raw,
+          resolvedFrom: key,
+          finalUrl: resolution.finalUrl,
+          status: resolution.status,
+          files: [relative],
+        });
+      }
+    }
+
+    const replacement = toHrefForZone(target, item.zone.basePath);
     if (replacement === item.occurrence.raw) continue;
 
     if (resolution.viaRepoRedirect) recoveredByNewRedirect.add(key);
@@ -662,6 +711,9 @@ async function main(): Promise<void> {
     distinctUrlsResolved: targets.length,
     recoveredByRedirectAddedInThisBranch: [...recoveredByNewRedirect].sort(),
     resolvedOffline: offline,
+    skippedBecauseChainEndsAtHomepage: [...skippedRootDestination.values()].sort((a, b) =>
+      a.resolvedFrom.localeCompare(b.resolvedFrom),
+    ),
     unresolved: [...unresolved.values()].sort((a, b) => a.resolvedFrom.localeCompare(b.resolvedFrom)),
   };
 
@@ -672,6 +724,10 @@ async function main(): Promise<void> {
   console.log(`${dryRun ? "[dry run] " : ""}distinct URLs:        ${summary.distinctUrlsResolved}`);
   console.log(`${dryRun ? "[dry run] " : ""}healed by new redirect: ${summary.recoveredByRedirectAddedInThisBranch.length}`);
   console.log(`${dryRun ? "[dry run] " : ""}resolved offline:     ${summary.resolvedOffline}`);
+  console.log(`${dryRun ? "[dry run] " : ""}skipped, chain ends at /: ${summary.skippedBecauseChainEndsAtHomepage.reduce((n, i) => n + i.files.length, 0)} link(s) across ${summary.skippedBecauseChainEndsAtHomepage.length} URL(s)`);
+  for (const item of summary.skippedBecauseChainEndsAtHomepage) {
+    console.log(`  ${item.resolvedFrom}  (${item.files.length} file(s))`);
+  }
   console.log(`${dryRun ? "[dry run] " : ""}unresolved (non-200): ${summary.unresolved.length}`);
   for (const item of summary.unresolved) {
     console.log(`  ${item.status}${item.error ? ` (${item.error})` : ""}  ${item.resolvedFrom}  (${item.files.length} file(s): ${item.files.slice(0, 3).join(", ")}${item.files.length > 3 ? ", …" : ""})`);
