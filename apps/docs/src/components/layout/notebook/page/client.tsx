@@ -26,7 +26,7 @@ import { getVersionedSidebarTree } from "@/lib/versioned-sidebar-tree";
 import { isActive } from "../../../../lib/urls";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../../ui/collapsible";
 import { useTOCItems } from "../../../toc";
-import { flattenTocTitle } from "@/lib/toc-title";
+import { stripTocLinks } from "@/lib/toc-title";
 import { useActiveAnchor } from "fumadocs-core/toc";
 import { LayoutContext, SidebarEnabledSetterContext } from "../client";
 import { flattenTree } from "fumadocs-core/page-tree";
@@ -160,10 +160,10 @@ export function PageTOCPopoverTrigger({ className, ...props }: ComponentProps<"b
             !showItem && "opacity-0 translate-y-full pointer-events-none",
           )}
         >
-          {/* Plain text only: the trigger is a <button>, and a heading that
+          {/* Anchors are unwrapped: the trigger is a <button>, and a heading that
               contains a link would otherwise nest an <a> inside it with a
               basePath-less href. */}
-          {flattenTocTitle(items[selected]?.title)}
+          {stripTocLinks(items[selected]?.title)}
         </span>
       </span>
       <ChevronDown className={cn("shrink-0 transition-transform mx-0.5", open && "rotate-180")} />
