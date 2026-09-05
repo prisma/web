@@ -164,9 +164,17 @@ export default defineConfig({
 });
 ```
 
+- To seed the database, run the `db seed` CLI command:
+
+```npm
+npx prisma db seed
+```
+
+We're using TypeScript here, but it's possible to do the same thing in vanilla JavaScript. The same steps would be followed, expect with a `prisma/seed.js` file (without types), and calling `node prisma/seed.js` instead of `tsx`.
+
 ### Use Nub for a TypeScript seed script
 
-Nub can run the same seed script without changing Prisma Client, the driver adapter, or your package manager. Install the released Nub package as a development dependency:
+[Nub](https://www.npmjs.com/package/@nubjs/nub) can run the same seed script without changing Prisma Client, the driver adapter, or your package manager. Install it as a development dependency:
 
 ```npm
 npm install -D @nubjs/nub@0.8.3
@@ -175,21 +183,22 @@ npm install -D @nubjs/nub@0.8.3
 Replace the `tsx` seed command in `prisma.config.ts` with the Nub command:
 
 ```ts title="prisma.config.ts"
-migrations: {
-  path: "prisma/migrations",
-  seed: "nub prisma/seed.ts",
-},
+import "dotenv/config";
+import { defineConfig, env } from "prisma/config";
+export default defineConfig({
+  schema: "prisma/schema.prisma",
+  migrations: {
+    path: "prisma/migrations",
+    seed: "tsx prisma/seed.ts", // [!code --]
+    seed: "nub prisma/seed.ts", // [!code ++]
+  },
+  datasource: {
+    url: env("DATABASE_URL"),
+  },
+});
 ```
 
-The `prisma db seed` command runs the configured command and forwards arguments after `--`.
-
-- To seed the database, run the `db seed` CLI command:
-
-```npm
-npx prisma db seed
-```
-
-We're using TypeScript here, but it's possible to do the same thing in vanilla JavaScript. The same steps would be followed, expect with a `prisma/seed.js` file (without types), and calling `node prisma/seed.js` instead of `tsx`.
+`npx prisma db seed` runs the configured command as before and still forwards any arguments after `--` to the script; see [User-defined arguments](#user-defined-arguments).
 
 ### Seeding your database via raw SQL queries
 
