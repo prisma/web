@@ -4,6 +4,7 @@ import Image from "next/image";
 import logoLight from "../../public/logo/full-color.svg";
 import logoDark from "../../public/logo/full-color-white.svg";
 import { DiscordIcon } from "@/components/icons/discord";
+import { NavBreadcrumb } from "@/components/layout/nav-breadcrumb";
 import Link from "next/link";
 
 // The full-colour lockup (prism mark + wordmark) from the redesign. Two files
@@ -15,8 +16,8 @@ import Link from "next/link";
 // hidden by CSS, and announcing "Prisma" twice inside one link helps nobody.
 export const logo = (
   <>
-    <Image alt="Prisma" src={logoLight} aria-hidden className="h-7 w-auto dark:hidden" />
-    <Image alt="Prisma" src={logoDark} aria-hidden className="hidden h-7 w-auto dark:block" />
+    <Image alt="Prisma" src={logoLight} aria-hidden className="h-7 w-auto shrink-0 dark:hidden" />
+    <Image alt="Prisma" src={logoDark} aria-hidden className="hidden h-7 w-auto shrink-0 dark:block" />
   </>
 );
 
@@ -50,18 +51,26 @@ export function baseOptions(): BaseLayoutProps {
     nav: {
       title: (
         <>
-          {/* An image-only anchor reads as an empty link to crawlers, so the
-              link carries both an aria-label (for assistive tech) and a
-              visually hidden text node (for text-only crawlers). */}
-          <Link
-            href="https://www.prisma.io"
-            aria-label="Prisma home"
-            className="mb-0 hover:mb-1 transition-[margin] duration-300 motion-reduce:transition-none"
-          >
-            {logo}
-            <span className="sr-only">Prisma home</span>
-          </Link>
-          <span className="text-fd-muted-foreground">/</span>
+          {/* The lockup is the segment that gives way when the navbar runs out
+              of room: below `lg` the crumb keeps `docs / <section>` instead of
+              truncating the section name. `lg:contents` so the link and its
+              separator stay flex items of the navbar row when shown. */}
+          <span className="max-lg:hidden lg:contents">
+            {/* An image-only anchor reads as an empty link to crawlers, so the
+                link carries both an aria-label (for assistive tech) and a
+                visually hidden text node (for text-only crawlers). */}
+            <Link
+              href="https://www.prisma.io"
+              aria-label="Prisma home"
+              className="mb-0 hover:mb-1 transition-[margin] duration-300 motion-reduce:transition-none"
+            >
+              {logo}
+              <span className="sr-only">Prisma home</span>
+            </Link>
+            <span className="text-fd-muted-foreground" aria-hidden="true">
+              /
+            </span>
+          </span>
           {/* The visible wordmark stays "docs"; the hidden text makes the
               anchor specific rather than one more generic "docs" link. */}
           <Link
@@ -72,6 +81,7 @@ export function baseOptions(): BaseLayoutProps {
             <span className="font-mono text-lg block translate-y-px">docs</span>
             <span className="sr-only">Prisma documentation home</span>
           </Link>
+          <NavBreadcrumb />
         </>
       ),
       transparentMode: "none",

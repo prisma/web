@@ -396,10 +396,11 @@ export function getVersionedNavPathname(targetPathname: string, currentPathname:
     getCliVersionFromPathname(currentPathname) === "v7" ||
     getGuidesVersionFromPathname(currentPathname) === "v7";
 
-  // Route the Getting Started tab to the reachable landing for the active
-  // version rather than the docs home, which is the product overview.
+  // Latest keeps the docs home ("Get started with Prisma") as its Getting
+  // Started landing; v7 has no page at the docs root, so it routes to the
+  // reachable v7 getting-started page instead.
   if (targetDocsPathname === "/") {
-    return isV7DocsPathname ? V7_GETTING_STARTED_PAGE : LATEST_GETTING_STARTED_ROOT;
+    return isV7DocsPathname ? V7_GETTING_STARTED_PAGE : "/";
   }
 
   if (!isV7DocsPathname) {
