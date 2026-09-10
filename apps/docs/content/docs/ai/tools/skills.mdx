@@ -16,7 +16,7 @@ Prisma ships skills from three repositories, matched to what you are building:
 | You are working with | Skills repository | Install command |
 | --- | --- | --- |
 | Prisma ORM v7, Prisma Postgres, Prisma Compute | [prisma/skills](https://github.com/prisma/skills) | `npx skills add prisma/skills` |
-| [Prisma 8](/orm) | [prisma/prisma](https://github.com/prisma/orm) (`skills/`) | `npx skills add prisma/prisma/skills` |
+| [Prisma 8](/orm) | ships inside the `@prisma/orm-*` packages | `npx prisma@latest init` |
 | [Prisma Composer](/composer) | [prisma/composer](https://github.com/prisma/composer) (`skills/`) | `npx skills add prisma/composer` |
 
 ## Install
@@ -99,19 +99,23 @@ Covers `SqlDriverAdapter`, `Transaction`, savepoint hooks, argument and result m
 
 ## Available skills for Prisma 8
 
-[Prisma 8](/orm) ships its own skills from the [prisma/prisma](https://github.com/prisma/orm) repository, versioned with the product. Projects scaffolded with `create-prisma` or [`orm init`](/cli/orm-init) install them automatically for every agent runtime the installer supports (Claude Code, Cursor, Codex, Windsurf). Add them to an existing project with:
+[Prisma 8](/orm) ships one skill, `prisma-8`. It travels inside the `@prisma/orm-postgres`, `@prisma/orm-sqlite`, and `@prisma/orm-mongo` packages, so the copy in your project always describes the version you installed.
+
+Projects scaffolded with `create-prisma` already have it: the scaffold runs `prisma init` for you. [`orm init`](/cli/orm-init) does not install skills; its only skill work is deleting retired skill directories. To install the skill in an existing project, or to refresh it after adding an agent runtime, use the family-level CLI:
 
 ```npm
-npx skills add prisma/prisma/skills
+npx prisma@latest init
 ```
+
+That sets up the skill for every agent runtime the installer supports (Claude Code, Cursor, Codex, Windsurf). [`prisma skills sync`](/cli/skills) copies the skill out of the installed package into those directories, and every `prisma` command prints one line on stderr when the copies have drifted from the installed packages.
 
 | Skill | What your agent uses it for |
 | --- | --- |
-| `prisma-8` | Everything Prisma 8: contract authoring (PSL and TypeScript builders), queries in the right lane (the ORM API, the SQL query builder, the MongoDB pipeline builder), migrations and reviews, runtime wiring (`db.ts`, middleware, `DATABASE_URL`), build-tool integration, Supabase and RLS, and reading `PN-*` structured errors. Routes each task to a bundled reference file. |
-| `prisma-next-upgrade` | Move a project between Prisma 8 releases |
-| `prisma-8-extension-upgrade` | Upgrade extension packs alongside the core |
+| `prisma-8` | Everything Prisma 8: contract authoring (PSL and TypeScript builders), queries in the right lane (the ORM API, the SQL query builder, the MongoDB pipeline builder), migrations and reviews, runtime wiring (`db.ts`, middleware, `DATABASE_URL`), build-tool integration, Supabase and RLS, reading `PN-*` structured errors, and upgrading an application or an extension package. Routes each task to a bundled reference file. |
 
-The `prisma-8` usage skill describes the exact CLI and runtime surface of one release, so pin it to your installed version when adding it by hand: `npx skills add prisma/prisma/skills#v<your-version> --skill prisma-8`. The two upgrade skills are intentionally unpinned; the latest revision covers every prior transition. `orm init` applies this pinning for you.
+Upgrading is a branch inside `prisma-8`, not a separate skill. The two flows live in its `references/upgrade-app.md` and `references/upgrade-extension.md`, and the per-transition instructions under `prisma-8/upgrading/`; the version you upgrade to carries the instructions for the transitions leading to it.
+
+If you want the skill without installing the packages, `npx skills add prisma/prisma/skills#v<your-version> --skill prisma-8` still reads the repository. That is a fallback: nothing keeps a copy installed that way up to date.
 
 The Prisma 8 docs reference the `prisma-8` skill in each page's "Prompt your coding agent" section, with prompts that map to the page you are reading.
 
