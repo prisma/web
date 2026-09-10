@@ -25,7 +25,7 @@ If you would rather hand the work to a coding agent, this prompt runs the same j
 ```text
 Create a new Hono API composed with Prisma Composer and Prisma 8, run it locally, and deploy it to Prisma Compute.
 
-1. Scaffold: `npx create-prisma@latest create my-app --template hono --provider postgres --yes`. Then run `npx prisma@latest init` in `my-app` so the Prisma agent skills are installed and stay current, and use them.
+1. Scaffold: `npx create-prisma@latest create my-app --template hono --provider postgres --yes`. Then run `npx prisma@latest init` in `my-app` to confirm the Prisma agent skills the scaffold installed are current, and use them.
 2. Read `module.ts` and `service.ts` first: the Composer module provisions the database and the service, and it is what `dev` and `deploy` operate on.
 3. Build and run locally: `npm run build`, then `npx prisma@latest dev module.ts`. This provisions a local Prisma Postgres database and applies the contract; no DATABASE_URL is needed. Sample users are seeded on the app's first query. Verify the local URL that `dev` prints: its /users endpoint returns the seeded users.
 4. Deploy: check `npx prisma@latest auth whoami`; if I am not signed in, stop and ask me to run `npx prisma@latest auth login` (it opens a browser). Capture the baseline migration first with `npx prisma@latest migration plan --name init` and note the migration directory it writes. Then run `npx prisma@latest deploy module.ts` and verify the live URL's /users endpoint with curl. The deploy creates the project and provisions the database from the module declaration; do not pass a DATABASE_URL.
@@ -42,13 +42,13 @@ One command creates a Composer-declared app with Prisma 8 wired in:
 npx create-prisma@latest create my-app --template hono --provider postgres
 ```
 
-Answer the prompts for contract authoring style and package manager, then enter the project:
+Answer the prompts for contract authoring style and package manager, or pass `--authoring psl|typescript` and `--package-manager npm|pnpm|yarn|bun|deno` to skip them. Then enter the project:
 
 ```npm
 cd my-app
 ```
 
-If you work with a coding agent, run [`npx prisma@latest init`](/cli/init) once. The scaffold has already synced the [Prisma agent skills](/ai/tools/skills) that ship inside its Prisma packages and added the `postinstall` hook that keeps them current, so on a fresh scaffold `init` confirms that setup and reports each step as already done. It is still worth running, because it is the command that repairs the setup after you upgrade a Prisma package. See [`skills`](/cli/skills).
+If you work with a coding agent, run [`npx prisma@latest init`](/cli/init) once. The scaffold ran it already, so on a fresh project `init` confirms the setup and reports each step as already done: the [Prisma agent skills](/ai/tools/skills) that ship inside the Prisma packages are synced, and a `skills:sync` script is in `package.json` for refreshing them. Running `init` again is what repairs the setup after you upgrade a Prisma package. See [`skills`](/cli/skills).
 
 ## 2. The Composer app
 
@@ -198,8 +198,8 @@ model User {
   name      String?
   role      String   @default("member")
   posts     Post[]
-  createdAt DateTime @default(now())
-  updatedAt temporal.updatedAt()
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
 }
 ```
 
