@@ -8,7 +8,7 @@ metaDescription: 'Set up a Prisma 8 project with Bun and Prisma Postgres, from s
 
 ## Introduction
 
-In this guide, you scaffold a Prisma 8 project with Bun, initialize a PostgreSQL database from your schema, run your first typed query, serve query results over HTTP with `Bun.serve`, and deploy the server to [Prisma Compute](/compute). Bun runs TypeScript directly, so there is no build step anywhere in the flow.
+In this guide, you scaffold a Prisma 8 project with Bun, initialize a PostgreSQL database from your schema, run your first typed query, serve query results over HTTP with `Bun.serve`, and deploy the server to [Prisma Compute](/compute). Bun runs TypeScript directly, so nothing has to be compiled to work locally; the deploy bundles the server with `tsdown`.
 
 Every command and code sample below was run end to end against a live Prisma Postgres database.
 
@@ -28,9 +28,9 @@ Create a new Bun app with Prisma 8, run a first typed query, and deploy it to Pr
 
 1. Scaffold: `bunx create-prisma@latest create my-bun-app --template minimal --provider postgres --package-manager bun --yes`. Then run `bunx prisma@latest init` in `my-bun-app` so the Prisma agent skills are installed and stay current, and use them. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `bunx create-db` and show me the claim URL it prints. Export it as `DATABASE_URL` in the shell; the generated scripts read the environment variable, not `.env`.
 2. In `my-bun-app`, run `bun run contract:emit`, then `bun run db:init`, with `DATABASE_URL` exported.
-3. Replace `src/index.ts` with a script that creates a user and reads all users back via `db.orm.public.User`, following https://www.prisma.io/docs/guides/runtimes/bun.md, and verify `bun run dev` prints the created user.
+3. Replace `src/index.ts` with a script that creates a user and reads all users back via `db.orm.public.User`, following https://www.prisma.io/docs/guides/runtimes/bun.md, and verify `bun src/index.ts` prints the created user (`bun run dev` is `tsx watch`, which does not exit).
 4. Add `src/server.ts` with a `Bun.serve` server exposing GET /users, and verify `curl http://localhost:3000/users` returns the users.
-5. Deploy: check `bunx prisma@latest auth whoami`; if I am not signed in, stop and ask me to run `bunx prisma@latest auth login`. Then point the `build` script at the server (`esbuild src/server.ts --bundle --platform=node --format=esm --outfile=dist/server.mjs`), run `bun run build`, then `bunx prisma@latest deploy module.ts`, and verify the live URL's /users endpoint returns `[]`. The deployed app provisions its own fresh Prisma Postgres database, so the local users are not there; do not pass the local DATABASE_URL. If the deploy fails with `HostedStateBootstrapError`, a project with the module's name exists in my workspace but its hosted state cannot be verified; re-run the deploy with `--name <a unique name>`.
+5. Deploy: check `bunx prisma@latest auth whoami`; if I am not signed in, stop and ask me to run `bunx prisma@latest auth login`. Then point the build at the server by setting `entry` in `tsdown.config.ts` to `{ server: "src/server.ts" }`, run `bun run build`, then `bunx prisma@latest deploy module.ts`, and verify the live URL's /users endpoint returns `[]`. The deployed app provisions its own fresh Prisma Postgres database, so the local users are not there; do not pass the local DATABASE_URL. If the deploy fails with `HostedStateBootstrapError`, a project with the module's name exists in my workspace but its hosted state cannot be verified; re-run the deploy with `--name <a unique name>`.
 
 Use the installed Prisma 8 skills.
 ```
@@ -59,7 +59,7 @@ export DATABASE_URL="<your connection string>"
 
 ## 2. Emit the contract and initialize the database
 
-Prisma 8 compiles your schema (`src/prisma/contract.prisma`) into a contract that your queries are type-checked against. Emit it, then apply the schema to the database:
+Prisma 8 compiles your schema (`src/prisma/contract.prisma`) into a contract that your queries are type-checked against. If you chose TypeScript authoring (`--authoring typescript`), the source is `src/prisma/contract.ts` and the emitted files land in `src/prisma/generated/` instead. Emit it, then apply the schema to the database:
 
 ```bash
 bun run contract:emit
@@ -100,8 +100,10 @@ await db.close();
 
 ## 4. Run it
 
+The generated `dev` script is `tsx watch src/index.ts`, which re-runs the file on every save. For a single run, call Bun directly:
+
 ```bash
-bun run dev
+bun src/index.ts
 ```
 
 ```text no-copy
@@ -153,14 +155,13 @@ The server listens on port 3000; set `PORT` to change it. Unlike the script, the
 
 ## 6. Deploy to Prisma Compute
 
-Plain Bun servers are supported on [Prisma Compute](/compute). The scaffold declares the app for [Prisma Composer](/composer) in `module.ts` and `service.ts`, which deploy whatever the `build` script bundles into `dist/server.mjs`. That script bundles `src/index.ts`, so point it at your server instead:
+Plain Bun servers are supported on [Prisma Compute](/compute). The scaffold declares the app for [Prisma Composer](/composer) in `module.ts` and `service.ts`, which deploy whatever the `build` script bundles into `dist/server.mjs`. That script runs `tsdown`, and the generated `tsdown.config.ts` sets its entry to `src/index.ts`, so point the entry at your server instead:
 
-```json title="package.json"
-{
-  "scripts": {
-    "build": "esbuild src/server.ts --bundle --platform=node --format=esm --outfile=dist/server.mjs"
-  }
-}
+```ts title="tsdown.config.ts"
+export default defineConfig({
+  entry: { server: "src/server.ts" },
+  // the rest of the generated config is unchanged
+});
 ```
 
 Sign in once (it opens a browser):
