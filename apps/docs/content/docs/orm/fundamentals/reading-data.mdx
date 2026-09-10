@@ -1,12 +1,12 @@
 ---
 title: Reading data
-description: 'Fetch one record or many with Prisma 8, then filter, select, sort, paginate, and stream the results.'
+description: 'Fetch one record or many with Prisma 8, then filter, select, sort, paginate, and iterate the results.'
 url: /orm/fundamentals/reading-data
 metaTitle: Reading data with Prisma 8
-metaDescription: 'Query PostgreSQL and MongoDB with Prisma 8. Filter with where, project with select, sort with orderBy, paginate with limit and offset, and stream large results.'
+metaDescription: 'Query PostgreSQL and MongoDB with Prisma 8. Filter with where, project with select, sort with orderBy, paginate with limit and offset, and iterate large results one record at a time.'
 ---
 
-This page shows how to read data with Prisma 8: fetching [many records or one](#fetch-many-records-or-one), [filtering](#filter-records), [selecting fields](#select-fields), [sorting and paginating](#sort-and-paginate), [counting](#count-records), and [streaming large results](#stream-large-results).
+This page shows how to read data with Prisma 8: fetching [many records or one](#fetch-many-records-or-one), [filtering](#filter-records), [selecting fields](#select-fields), [sorting and paginating](#sort-and-paginate), [counting](#count-records), and [iterating large results](#iterate-a-large-result).
 
 Every query chains methods on a model and runs when you call `.all()` or `.first()`:
 
@@ -277,13 +277,11 @@ const result = await db.orm.public.Post
 
 There is no `.count()` method on the query chain. On MongoDB, count with a `$group` stage in the [pipeline builder](/orm/fundamentals/advanced-queries#mongodb-pipeline-builder).
 
-## Stream large results
+## Iterate a large result
 
-Streaming means processing records one at a time as they arrive from the database, instead of waiting for the full result and holding it in memory. For a query that returns millions of rows, that is the difference between a steady, flat memory footprint and buffering the entire table; it also lets you start working on the first record before the last one has arrived.
+Every read is both a promise and an async iterator, so you choose how to consume it.
 
-Prisma 8 builds this into every read: a query result is both a promise and an async iterator, so you choose how to consume it.
-
-`await` runs the query and buffers every record into an array. This is the right default: the whole result is in memory, and you can read the array as often as you like.
+`await` runs the query and gives you an array. This is the right default: the whole result is decoded into memory, and you can read the array as often as you like.
 
 ```typescript
 const posts = await db.orm.public.Post.all();
@@ -292,7 +290,7 @@ console.log(posts.length);
 console.log(posts[0]);
 ```
 
-`for await` streams the result instead. Records are handed to your loop one at a time, without buffering the full result first. Use it when the result is too large to hold in memory, or when you want to start processing before the last record arrives:
+`for await` hands you one record at a time, decoding each one as your loop pulls it:
 
 ```typescript
 for await (const post of db.orm.public.Post.all()) {
@@ -300,17 +298,13 @@ for await (const post of db.orm.public.Post.all()) {
 }
 ```
 
-You can also leave the loop early; unprocessed records are never buffered:
+What this saves is the decoding work and the decoded array, not the fetch. On `postgres()` the driver runs with cursors disabled, so the whole result set is read from the database into memory before the first iteration; leaving the loop early skips the remaining decode, but every row has already been fetched.
 
-```typescript
-for await (const post of db.orm.public.Post.all()) {
-  if (isMatch(post)) break;
-}
-```
+For a result too large to hold in memory, page through it instead: `.limit(n)` with `.cursor(...)` (see [Sort and paginate](#sort-and-paginate)), or a key-set loop over your own ordering. The serverless facade, `@prisma/orm-postgres/serverless`, takes a `cursor` option that turns on the driver's batched reads, so it fetches in batches rather than all at once.
 
-### A streamed result can only be read once
+### An iterated result can only be read once
 
-Streaming hands each record to your loop and then lets go of it; nothing is kept. So once a `for await` loop has touched a result, that result is finished, even if the loop exited early. Iterating it again, or `await`ing it afterwards, throws an error explaining the result was already consumed:
+`for await` hands each record to your loop and then lets go of it; nothing is kept. So once a `for await` loop has touched a result, that result is finished, even if the loop exited early. Iterating it again, or `await`ing it afterwards, throws an error explaining the result was already consumed:
 
 ```typescript
 const result = db.orm.public.Post.all();
@@ -359,11 +353,11 @@ const user = await db.orm.public.User.where({ email }).first();
 
 ### Forgetting that .all() has no limit
 
-`.all()` returns every match. On a table that grows, yesterday's fast query becomes today's slow one. Add `.limit(n)` when you don't genuinely need every record, or [stream the result](#stream-large-results) when you do.
+`.all()` returns every match. On a table that grows, yesterday's fast query becomes today's slow one. Add `.limit(n)` when you don't genuinely need every record, or page through the table with `.cursor(...)` when you do.
 
-### Reusing a streamed result
+### Reusing an iterated result
 
-You streamed a result with `for await`, then tried to read it again. The second read throws, because a streamed result is consumed as it is read. Store the data if you need it twice:
+You read a result with `for await`, then tried to read it again. The second read throws, because a result is consumed as it is iterated. Store the data if you need it twice:
 
 ```typescript
 const posts = await db.orm.public.Post.all();
@@ -377,7 +371,7 @@ Projects scaffolded with `create-prisma@latest` install [Prisma 8 skills](/ai/to
 - "Using the prisma-8 skill, write a query that returns the 20 newest published posts."
 - "Add a case-insensitive title search to the posts query, using the field-proxy operators."
 - "Convert this offset pagination to cursor pagination with the .cursor() API."
-- "This export loops over a huge table. Rewrite it to stream with for await instead of buffering."
+- "This export loops over a huge table. Rewrite it to page through the rows with .limit() and .cursor()."
 
 ## Next
 
