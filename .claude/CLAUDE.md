@@ -96,7 +96,8 @@ Prisma documentation site built with **Fumadocs** on **Next.js 16 App Router**.
 - Versions are content folders, not a route segment: the unversioned tree is the
   latest release (Prisma 8), and older supported versions live beside it in
   `content/docs/orm/v6/`, `content/docs/orm/v7/`, `content/docs/cli/v7/`,
-  `content/docs/guides/v7/`, and `content/docs/v7/` (getting started)
+  `content/docs/guides/v7/`, and `content/docs/(index)/v7/` (getting started,
+  served at `/v7`)
 - Each section has a `meta.json` defining page order, icons, and hierarchy
 - MDX frontmatter supports `badge: "early-access" | "release-candidate" | "beta" | "deprecated" | "preview"`
 

@@ -1,5 +1,5 @@
 import { getBaseUrl, withDocsBasePath } from "@/lib/urls";
-import { resolveCanonicalUrl } from "@/lib/canonical";
+import { absoluteCanonicalUrl, resolveCanonicalUrl } from "@/lib/canonical";
 import { getPageVersion, withVersionDescription, withVersionTitle } from "@/lib/version-metadata";
 import { formatSlugDisplayName } from "@/lib/breadcrumb-utils";
 import { getPageTitleText } from "@/lib/page-title";
@@ -106,7 +106,7 @@ export function TechArticleSchema({ page }: StructuredDataProps) {
     },
     mainEntityOfPage: {
       "@type": "WebPage",
-      "@id": `${baseUrl}${canonical}`,
+      "@id": absoluteCanonicalUrl(canonical, baseUrl),
     },
   };
 

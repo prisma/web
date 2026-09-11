@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { resolveCanonicalUrl } from "./canonical";
+import { absoluteCanonicalUrl, resolveCanonicalUrl } from "./canonical";
 
 test("pages are self-canonical without frontmatter", () => {
   assert.equal(
@@ -35,6 +35,27 @@ test("an absolute canonical is passed through", () => {
     resolveCanonicalUrl(
       "/orm/v6/more/troubleshooting/nuxt",
       "https://www.prisma.io/docs/orm/v7/more/troubleshooting/nuxt",
+    ),
+    "https://www.prisma.io/docs/orm/v7/more/troubleshooting/nuxt",
+  );
+});
+
+test("absoluteCanonicalUrl joins a docs path onto the base URL", () => {
+  assert.equal(
+    absoluteCanonicalUrl("/docs/orm/v7/more/troubleshooting/nuxt", "https://www.prisma.io"),
+    "https://www.prisma.io/docs/orm/v7/more/troubleshooting/nuxt",
+  );
+  assert.equal(
+    absoluteCanonicalUrl("/docs/orm/v7/more/troubleshooting/nuxt", "https://www.prisma.io/"),
+    "https://www.prisma.io/docs/orm/v7/more/troubleshooting/nuxt",
+  );
+});
+
+test("absoluteCanonicalUrl leaves an absolute canonical alone", () => {
+  assert.equal(
+    absoluteCanonicalUrl(
+      "https://www.prisma.io/docs/orm/v7/more/troubleshooting/nuxt",
+      "https://docs-preview.vercel.app",
     ),
     "https://www.prisma.io/docs/orm/v7/more/troubleshooting/nuxt",
   );
