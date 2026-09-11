@@ -29,12 +29,8 @@ export type ExtensionEntry = {
   name: string;
   /** npm package name. */
   package: string;
-  /** Import specifier when it differs from the package name (built-in middleware). */
-  importPath?: string;
   source: ExtensionSource;
   status: ExtensionStatus;
-  /** True when the code ships inside a database package and needs no extra install. */
-  builtIn?: boolean;
   /** One sentence, shown on cards and in the docs table. */
   tldr: string;
   /** One short paragraph, shown on the detail page. Inline code allowed. */
@@ -129,22 +125,11 @@ export function validateExtensionEntry(input: unknown): string[] {
   if (!isNonEmptyString(entry.package, 214) || !NPM_PACKAGE_PATTERN.test(entry.package)) {
     problems.push("package must be a valid npm package name");
   }
-  if (entry.importPath !== undefined && !isNonEmptyString(entry.importPath, 214)) {
-    problems.push("importPath must be a non-empty string when set");
-  }
   if (!isOneOf(EXTENSION_SOURCES, entry.source)) {
     problems.push(`source must be one of ${EXTENSION_SOURCES.join(", ")}`);
   }
   if (!isOneOf(EXTENSION_STATUSES, entry.status)) {
     problems.push(`status must be one of ${EXTENSION_STATUSES.join(", ")}`);
-  }
-  if (entry.builtIn !== undefined && typeof entry.builtIn !== "boolean") {
-    problems.push("builtIn must be a boolean when set");
-  }
-  // The detail page and the docs table print the import specifier for
-  // built-in entries, so it cannot be left implicit.
-  if (entry.builtIn === true && entry.importPath === undefined) {
-    problems.push("importPath is required when builtIn is true");
   }
   if (!isNonEmptyString(entry.tldr, 140)) problems.push("tldr is required (max 140 characters)");
   if (!isNonEmptyString(entry.description, 600)) {

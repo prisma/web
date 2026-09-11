@@ -85,9 +85,7 @@ function renderTable(options) {
     // entries whose surface is still moving.
     const status =
       entry.status === "experimental" ? ` (${STATUS_LABELS[entry.status].toLowerCase()})` : "";
-    const pkg = entry.builtIn
-      ? `\`${entry.importPath ?? entry.package}\` (built in)`
-      : `\`${entry.package}\``;
+    const pkg = `\`${entry.package}\``;
     const databases = entry.databases.map(databaseLabel).join(", ");
     const by =
       entry.source === "official"

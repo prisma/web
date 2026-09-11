@@ -38,10 +38,8 @@ the build instead of shipping. The validation lives in `../extensions.ts`.
 | `slug`        | yes      | URL segment. Lowercase letters, digits, dashes. Unique across both files.        |
 | `name`        | yes      | Display name.                                                                    |
 | `package`     | yes      | npm package name. Must be published.                                             |
-| `importPath`  | no       | Import specifier when it differs from `package` (built-in middleware).           |
 | `source`      | yes      | `official` or `community`.                                                       |
 | `status`      | yes      | `stable`, `release-candidate`, or `experimental`.                                |
-| `builtIn`     | no       | `true` when the code ships inside a database package and needs no extra install. |
 | `tldr`        | yes      | One sentence, max 140 characters. Shown on cards and in the docs table.          |
 | `description` | yes      | One paragraph, max 600 characters. Shown on the detail page.                     |
 | `databases`   | yes      | Lowercase slugs the extension works with (`postgresql`, `mongodb`, ...). An extension that adds a database names the database it adds. |

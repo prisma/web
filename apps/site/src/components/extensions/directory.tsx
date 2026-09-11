@@ -11,7 +11,7 @@ import {
   type ExtensionSource,
 } from "@prisma-docs/ui/data/extensions";
 import { cn } from "@/lib/utils";
-import { ExtensionRow } from "./extension-row";
+import { ExtensionCard } from "./extension-card";
 
 type SourceFilter = ExtensionSource | "all";
 
@@ -164,9 +164,9 @@ export function ExtensionsDirectory({ entries }: { entries: ExtensionEntry[] }) 
           </div>
         </div>
       ) : (
-        <ul className="flex flex-col">
+        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((entry) => (
-            <ExtensionRow key={entry.slug} entry={entry} />
+            <ExtensionCard key={entry.slug} entry={entry} />
           ))}
         </ul>
       )}

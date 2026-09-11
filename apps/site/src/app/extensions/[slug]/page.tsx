@@ -86,9 +86,6 @@ export default async function ExtensionPage({ params }: { params: Promise<Params
 
   const facts: { label: string; value: React.ReactNode }[] = [
     { label: "Package", value: <code className={MONO}>{entry.package}</code> },
-    ...(entry.importPath
-      ? [{ label: "Import from", value: <code className={MONO}>{entry.importPath}</code> }]
-      : []),
     { label: "Maintainer", value: EXTENSION_SOURCE_LABELS[entry.source] },
     { label: "Status", value: EXTENSION_STATUS_LABELS[entry.status] },
     { label: "Databases", value: entry.databases.map(getDatabaseLabel).join(", ") },
@@ -138,15 +135,7 @@ export default async function ExtensionPage({ params }: { params: Promise<Params
           <DatabaseBadges databases={entry.databases} />
         </div>
         <div className="mt-6 flex w-full max-w-xl flex-col gap-3">
-          {entry.builtIn ? (
-            <p className="text-[15px] leading-relaxed text-foreground">
-              Built into <code className={MONO}>{entry.package}</code>, which every Prisma 8
-              PostgreSQL project already installs. Import it from{" "}
-              <code className={MONO}>{entry.importPath}</code>.
-            </p>
-          ) : (
-            <CopyCommand command={getInstallCommand(entry)} tone="ink" />
-          )}
+          <CopyCommand command={getInstallCommand(entry)} tone="ink" />
           <div className="flex flex-wrap gap-2">
             {links.map((link, index) => (
               <Button

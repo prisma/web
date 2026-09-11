@@ -9,7 +9,7 @@ import { createCollectionPageStructuredData } from "@/lib/structured-data";
 
 const PAGE_TITLE = "Prisma 8 Extensions | Databases, column types, indexes, and middleware";
 const PAGE_DESCRIPTION =
-  "Every package that plugs into Prisma ORM 8: database support, pgvector, PostGIS, full-text search, typed JSON, caching, and query guardrails, by Prisma and the community.";
+  "Every package that plugs into Prisma ORM 8: PostgreSQL, MongoDB, and SQLite support, pgvector, PostGIS, full-text search, typed JSON, and caching, by Prisma and the community.";
 const DOCS_EXTENSIONS = "https://www.prisma.io/docs/orm/extensions/using-extensions";
 
 export const metadata = createPageMetadata({

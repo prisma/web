@@ -79,6 +79,35 @@ export const db = mongo<Contract>({
 });`,
     },
   ],
+  sqlite: [
+    {
+      title: "Configure the database",
+      file: "prisma.config.ts",
+      code: `import { definePrismaConfig } from 'prisma/config';
+import { defineConfig as ormConfig } from '@prisma/orm-sqlite/config';
+
+export default definePrismaConfig({
+  orm: ormConfig({
+    contract: './src/prisma/contract.prisma',
+    db: {
+      connection: './app.db',
+    },
+  }),
+});`,
+    },
+    {
+      title: "Create the client",
+      file: "src/prisma/db.ts",
+      code: `import sqlite from '@prisma/orm-sqlite/runtime';
+import type { Contract } from './contract.d';
+import contractJson from './contract.json' with { type: 'json' };
+
+export const db = sqlite<Contract>({
+  contractJson,
+  path: './app.db',
+});`,
+    },
+  ],
   pgvector: [
     {
       title: "Declare a vector column",
@@ -158,14 +187,6 @@ export const db = supabase<Contract>({
   "middleware-cache": middlewareRegistration(
     "import { createCacheMiddleware } from '@prisma/orm-extension-middleware-cache';",
     "createCacheMiddleware({ maxEntries: 1_000 })",
-  ),
-  lints: middlewareRegistration(
-    "import { lints } from '@prisma/orm-postgres/family-runtime';",
-    "lints()",
-  ),
-  budgets: middlewareRegistration(
-    "import { budgets } from '@prisma/orm-postgres/family-runtime';",
-    "budgets({ maxRows: 10_000, maxLatencyMs: 1_000 })",
   ),
 };
 

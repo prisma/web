@@ -59,8 +59,6 @@ test("validateExtensionEntry rejects malformed entries", () => {
   assert.match(problem({ databases: ["postgresql", "postgresql"] }), /repeat/);
   assert.match(problem({ tags: ["json", "json"] }), /repeat/);
   assert.match(problem({ tags: ["Middleware"] }), /lowercase/);
-  assert.match(problem({ builtIn: true }), /^importPath is required/);
-  assert.deepEqual(problem({ builtIn: true, importPath: "@scope/pkg/runtime" }), "");
   assert.match(problem({ author: { name: "x", url: "ftp://x" } }), /^author/);
   assert.match(problem({ addedAt: "09/09/2026" }), /^addedAt/);
   assert.match(problem({ addedAt: "2026-02-30" }), /^addedAt/);
