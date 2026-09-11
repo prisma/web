@@ -1,248 +1,663 @@
 ---
 title: Schema management in teams
-description: Learn how to use Prisma Migrate effectively when collaborating on a project as a team
+description: 'Plan, merge, and apply Prisma 8 migrations when several developers change the schema at the same time.'
 image: /img/guides/schema-migration-cover.png
 url: /guides/database/schema-changes
-metaTitle: How to manage schema changes in a team with Prisma Migrate and Prisma ORM
-metaDescription: Learn how to use Prisma Migrate effectively when collaborating on a project as a team
+metaTitle: How to manage schema changes in a team with Prisma 8
+metaDescription: 'Learn how a team collaborates on Prisma 8 migrations: what to commit, how to pull and apply teammates'' changes, and how to resolve two branches that planned migrations from the same starting point.'
 ---
 
 ## Introduction
 
-When working in a team, managing database schema changes can be challenging. This guide shows you how to effectively collaborate on schema changes using Prisma Migrate, ensuring that all team members can safely contribute to and incorporate schema changes.
+When a team works on one schema, two people change it at the same time. In Prisma 8, migrations form a graph rather than a numbered list, so parallel changes do not force anyone to rename files or rebuild history. This guide shows how that works day to day: what to commit, how to incorporate a teammate's migration, and how to resolve the case where two branches planned a migration from the same starting point and both merged.
+
+Every command and every output below was run against a Git repository with three checkouts (two teammates and you), each with its own local PostgreSQL database.
+
+:::note[Using Prisma 7?]
+
+Prisma 8 is the current release of Prisma ORM. Prisma 7 remains fully supported; the Prisma 7 version of this guide is at [/guides/v7/database/schema-changes](/guides/v7/database/schema-changes).
+
+:::
 
 ## Prerequisites
 
-Before starting this guide, make sure you have:
+- [Node.js](https://nodejs.org) 24 or later
+- A Prisma 8 project with a contract and at least one migration (the [PostgreSQL quickstart](/prisma-orm/quickstart/postgresql) gives you one)
+- A PostgreSQL database per developer, reachable as `DATABASE_URL`
+- Basic familiarity with Git branches and merges
+- The [migration loop](/orm/migrations/how-migrations-work): `contract emit`, `migration plan`, `db migrate`
 
-- Node.js installed (version 20 or higher)
-- A Prisma project set up with migrations
-- A relational database (PostgreSQL, MySQL, SQLite, SQL Server, etc.)
-- Basic understanding of Git
-- Basic familiarity with Prisma Migrate
+## Use with your agent
 
-:::warning
+To delegate the pull-and-apply part of this guide to your coding agent, copy the prompt below and hand it over:
 
-This guide **does not apply for MongoDB**.<br />
-Instead of `migrate dev`, [`db push`](/orm/v7/prisma-migrate/workflows/prototyping-your-schema) is used for [MongoDB](/orm/v7/core-concepts/supported-databases/mongodb).
+<AgentPrompt>
 
-:::
+```text
+Bring my local database up to date with the migrations on this branch using Prisma 8, following https://www.prisma.io/docs/guides/database/schema-changes.md.
+
+1. Run `npx prisma@latest migration status` and tell me what is pending. If it reports "Up to date", stop.
+2. If it warns that there is no migration path from the database state to the contract, the graph has two branch tips. Run `npx prisma@latest migration graph`, then plan one merge migration from each tip with `npx prisma@latest migration plan --from <migration-dir> --name merge_<other-change>`, and show me both DDL previews before continuing.
+3. Apply with `npx prisma@latest db migrate --advance-ref db`, then run `npx prisma@latest migration check` and `npx prisma@latest db verify`.
+4. If `migration plan` fails with MIGRATION.AMBIGUOUS_TARGET or MIGRATION.PLAN_ORIGIN_UNKNOWN, do not delete any migration directory. Pass `--from` explicitly as in step 2 and show me the error text.
+```
+
+</AgentPrompt>
 
 ## 1. Understand migration basics
 
-### 1.1. Migration order
+### 1.1. Migrations form a graph
 
-Migrations are **applied in the same order as they were created**. The creation date is part of the migration subfolder name - for example, `20210316081837-updated-fields` was created on `2021-03-16-08:18:37`.
+Each migration directory records the contract state it starts `from` and the state it moves the database `to`, as hashes in its `migration.json`. Those links are the migration history. The timestamp in the directory name is for humans; nothing depends on it. That is why two developers can plan migrations from the same state on separate branches and merge without renaming anything. [The migration graph](/orm/migrations/the-migration-graph) explains the model in full.
 
-### 1.2. Source control requirements
+Three commands answer the questions a team asks most:
 
-You should commit the following files to source control:
+| Question | Command | Needs a database? |
+| --- | --- | --- |
+| What does the history look like? | `npx prisma@latest migration graph` | No |
+| Where is my database, and what is pending? | `npx prisma@latest migration status` | Yes |
+| Do the migration files on this branch hold together? | `npx prisma@latest migration check` | No |
 
-- The contents of the `.prisma/migrations` folder, including the `migration_lock.toml` file
-- The Prisma Schema (`schema.prisma`)
+### 1.2. Commit these files
 
-Source-controlling the `schema.prisma` file is not enough - you must include your migration history because:
+Commit everything Prisma 8 needs to rebuild a database from scratch:
 
-- Customized migrations contain information that cannot be represented in the Prisma schema
-- The `prisma migrate deploy` command only runs migration files
+- `src/prisma/contract.prisma`, the schema you author
+- `src/prisma/contract.json` and `src/prisma/contract.d.ts`, the emitted contract (generated, but committed; `orm init` marks them `linguist-generated` in `.gitattributes`)
+- `migrations/app/`, every migration directory: `migration.ts`, `ops.json`, and `migration.json` together
+- `migrations/snapshots/`, the contract snapshots migrations are typed against
+- `migrations/app/refs/`, named refs, including the `db` ref described next
+- `prisma.config.ts`
 
-### 1.3. Configure Prisma
+Do not commit `.env`. `orm init` already lists it in `.gitignore`.
 
-Create a `prisma.config.ts` file in the root of your project with the following content:
+### 1.3. Where a plan starts
 
-```typescript title="prisma.config.ts"
-import "dotenv/config";
-import { defineConfig, env } from "prisma/config";
-
-export default defineConfig({
-  schema: "prisma/schema.prisma",
-  migrations: {
-    path: "prisma/migrations",
-  },
-  datasource: {
-    url: env("DATABASE_URL"),
-  },
-});
-```
-
-:::note
-
-You'll need to install the `dotenv` package to load environment variables. If you haven't already, install it using your package manager:
+`migration plan` is offline. It never asks the database where it is, so you have to tell it which state to plan from. It resolves the origin in this order: an explicit `--from`, otherwise the ref named `db` in `migrations/app/refs/db.json`, otherwise the empty database. Keep the `db` ref pointing at the state your local database is on by applying with `--advance-ref db`:
 
 ```npm
-npm install dotenv
+npx prisma@latest db migrate --advance-ref db
 ```
 
-:::
+Do that every time you apply, and every plan chains from the right place without flags. Section 3 shows what happens when it cannot.
+
+### 1.4. The project this guide starts from
+
+The project was created with `npx prisma@latest orm init --yes --target postgres --authoring psl` and has this contract:
+
+```prisma title="src/prisma/contract.prisma"
+// use prisma-next
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  username  String?
+  name      String?
+  posts     Post[]
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+}
+
+model Post {
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String?
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  Int
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+}
+```
+
+Its first migration was planned and applied on `main` with:
+
+```npm
+npx prisma@latest migration plan --name init
+npx prisma@latest db migrate --advance-ref db
+```
+
+```text no-copy
+✔ Applied 1 migration(s) (6 operation(s)) across 1 contract space(s)
+
+App space
+├─ Create schema "public"
+├─ Create table "post"
+├─ Create table "user"
+├─ Add unique constraint on "user" (email)
+├─ Create index "post_authorId_idx_e47547ed" on "post"
+├─ Add foreign key "post_authorId_fkey" on "post"
+└─ marker 1e8412e162dbbe69f4bb3bf8d07f0280ae67eaab15c34dcf201e67468315428d
+
+✔ Advanced ref "db" → 1e8412e162dbbe69f4bb3bf8d07f0280ae67eaab15c34dcf201e67468315428d
+→ Check every space against the database: {bin} migration status
+```
+
+The `{bin}` in the hint is the CLI's placeholder for however you invoked it. Read it as `npx prisma@latest migration status`. Every developer clones this repository, points `DATABASE_URL` in their `.env` at their own database, and runs `npx prisma@latest db migrate` once to bring it to the same state.
 
 ## 2. Incorporate team changes
 
-### 2.1. Pull latest changes
+### 2.1. Pull, check, apply
 
-To incorporate changes from collaborators:
+When a teammate merges a schema change, it arrives as three things: an edited `contract.prisma`, the re-emitted `contract.json` and `contract.d.ts`, and a new migration directory. Pull them, then ask Prisma where your database is:
 
-1. Pull the changed Prisma schema and `./prisma/migrations` folder
-2. Run the migrate command:
+```bash
+git pull
+```
 
 ```npm
-npx prisma migrate dev
+npx prisma@latest migration status
 ```
+
+If nothing changed, you see the whole history marked applied:
+
+```text no-copy
+○   1e8412e  @contract @db (db)
+│↑  20260910T1543_init         ∅ → 1e8412e  6 ops  ✓ applied
+○   ∅
+
+✔ Up to date
+```
+
+`@db` marks where your database is, `@contract` where the emitted contract is, and `(db)` where the `db` ref points. When migrations are pending, the tree flags each one with `⧗ pending` and a summary line tells you how many. Apply them and move the ref in one step:
+
+```npm
+npx prisma@latest db migrate --advance-ref db
+```
+
+There is no generate step after applying: your typed client reads `contract.json`, which you just pulled.
 
 ### 2.2. Example scenario
 
-Consider a sample scenario with three developers sharing schema changes:
+The rest of this guide follows three developers changing the same contract. Ania adds a `favoriteColor` field, Javier adds a `Tag` model, and you add a `bestPacmanScore` field:
 
-```prisma title="schema.prisma" tab="Before"
-model Post {
-  id        Int     @id @default(autoincrement())
-  title     String
-  content   String?
-  published Boolean @default(false)
-  author    User?   @relation(fields: [authorId], references: [id])
-  authorId  Int?
-}
-
+```prisma title="src/prisma/contract.prisma" tab="Before"
 model User {
-  id    Int     @id @default(autoincrement())
-  email String  @unique
-  name  String?
-  posts Post[]
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  username  String?
+  name      String?
+  posts     Post[]
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
 }
 ```
 
-```prisma title="schema.prisma" tab="After"
-model Post {
-  id        Int     @id @default(autoincrement())
-  title     String
-  content   String?
-  published Boolean @default(false)
-  author    User?   @relation(fields: [authorId], references: [id])
-  authorId  Int?
-}
-
+```prisma title="src/prisma/contract.prisma" tab="After"
 model User {
-  id              Int     @id @default(autoincrement())
-  email           String  @unique
+  id              Int      @id @default(autoincrement())
+  email           String   @unique
+  username        String?
   name            String?
   favoriteColor   String? // Added by Ania // [!code ++]
-  bestPacmanScore Int? // Added by you // [!code ++]
+  bestPacmanScore Int?    // Added by you // [!code ++]
   posts           Post[]
+  createdAt       TimestamptzString @default(now())
+  updatedAt       temporal.updatedAtString()
 }
 
 // Added by Javier // [!code ++]
 model Tag { // [!code ++]
-  tagName     String   @id // [!code ++]
-  tagCategory Category // [!code ++]
+  tagName     String @id // [!code ++]
+  tagCategory String // [!code ++]
 } // [!code ++]
 ```
 
 ## 3. Handle concurrent changes
 
-### 3.1. Developer A's changes
+Ania and Javier both branch from the same commit on `main`, where the `db` ref points at the `init` state.
 
-Ania adds a new field:
+### 3.1. Ania adds a field
 
-```prisma
+On her branch, Ania adds the field:
+
+```prisma title="src/prisma/contract.prisma"
 model User {
   /* ... */
   favoriteColor String?
 }
 ```
 
-And generates a migration:
+Then she emits, plans, and applies to her own database:
 
 ```npm
-npx prisma migrate dev --name new-field
+npx prisma@latest contract emit
+npx prisma@latest migration plan --name add_favorite_color
 ```
+
+```text no-copy
+✔ Planned 1 operation(s)
+
+migrations/app/20260910T1546_add_favorite_color
+└─ Add column "favoriteColor" to "user"
+
+from:       1e8412e162dbbe69f4bb3bf8d07f0280ae67eaab15c34dcf201e67468315428d
+to:         9bba644e909dce3cb2023d438c413e60b0d95cdc8600fddeab6d202259a2ab43
+app space:  migrations/app/20260910T1546_add_favorite_color
+
+ℹ DDL preview
+
+ALTER TABLE "public"."user" ADD COLUMN "favoriteColor" text;
+```
+
+The `from:` line is the `init` state, taken from the `db` ref. She applies and commits:
 
 ```npm
-npx prisma generate
+npx prisma@latest db migrate --advance-ref db
 ```
 
-### 3.2. Developer B's changes
+```text no-copy
+✔ Applied 1 migration(s) (1 operation(s)) across 1 contract space(s)
 
-Javier adds a new model:
+App space
+├─ Add column "favoriteColor" to "user"
+└─ marker 9bba644e909dce3cb2023d438c413e60b0d95cdc8600fddeab6d202259a2ab43
 
-```prisma
+✔ Advanced ref "db" → 9bba644e909dce3cb2023d438c413e60b0d95cdc8600fddeab6d202259a2ab43
+```
+
+```bash
+git add -A
+git commit -m "Add User.favoriteColor"
+```
+
+### 3.2. Javier adds a model
+
+On his branch, from the same starting commit, Javier adds a model:
+
+```prisma title="src/prisma/contract.prisma"
 model Tag {
-  tagName     String   @id
-  tagCategory Category
+  tagName     String @id
+  tagCategory String
 }
 ```
 
-And generates a migration:
+```npm
+npx prisma@latest contract emit
+npx prisma@latest migration plan --name add_tag_model
+```
+
+```text no-copy
+✔ Planned 1 operation(s)
+
+migrations/app/20260910T1547_add_tag_model
+└─ Create table "tag"
+
+from:       1e8412e162dbbe69f4bb3bf8d07f0280ae67eaab15c34dcf201e67468315428d
+to:         6210aa4a044bdb77cd9274bfd45fa326bf4cd685317aade4dfbfdd9f09935ed1
+app space:  migrations/app/20260910T1547_add_tag_model
+
+ℹ DDL preview
+
+CREATE TABLE "public"."tag" (
+  "tagCategory" text NOT NULL,
+  "tagName" text NOT NULL,
+  PRIMARY KEY ("tagName")
+);
+```
+
+His plan also starts `from:` the `init` state. He applies with `db migrate --advance-ref db` and commits. Both migrations now leave the same node and arrive at different ones. Neither developer knows about the other yet, and neither needs to.
+
+### 3.3. Merge both branches
+
+Ania's branch merges into `main` first, as a fast-forward. Javier's merge conflicts:
+
+```bash
+git merge javier/tag-model
+```
+
+```text no-copy
+Auto-merging migrations/app/refs/db.json
+CONFLICT (content): Merge conflict in migrations/app/refs/db.json
+Auto-merging src/prisma/contract.d.ts
+CONFLICT (content): Merge conflict in src/prisma/contract.d.ts
+Auto-merging src/prisma/contract.json
+CONFLICT (content): Merge conflict in src/prisma/contract.json
+Auto-merging src/prisma/contract.prisma
+Automatic merge failed; fix conflicts and then commit the result.
+```
+
+Read the list carefully. `contract.prisma`, the file you author, merged cleanly: the two edits touch different parts of the schema. The three conflicts are all in files Prisma writes for you, and none of them needs hand editing:
+
+- `contract.json` and `contract.d.ts` are emitted from `contract.prisma`. Re-emit and they are regenerated from the merged source, conflict markers and all:
 
 ```npm
-npx prisma migrate dev --name new-model
+npx prisma@latest contract emit
+```
+
+```text no-copy
+✔ Emitted contract.json and contract.d.ts
+
+storageHash:    cb575cf009f55f442986c9f51655d0b48d40a8157f05427d525fe114e5f90b52
+```
+
+- `migrations/app/refs/db.json` records where a local database was. Each branch advanced it to its own state, and neither is where your database is. Take either side; you will set it correctly when you apply in section 3.5.
+
+```bash
+git checkout --ours migrations/app/refs/db.json
+```
+
+Do not commit yet. The graph is not finished.
+
+### 3.4. What Prisma reports after the merge
+
+Draw the graph:
+
+```npm
+npx prisma@latest migration graph
+```
+
+```text no-copy
+○     cb575cf  @contract
+
+○     9bba644  (db)
+│↑    20260910T1546_add_favorite_color  1e8412e → 9bba644  1 ops
+│ ○   6210aa4
+│ │↑  20260910T1547_add_tag_model       1e8412e → 6210aa4  1 ops
+│─╯
+○     1e8412e
+│↑    20260910T1543_init                      ∅ → 1e8412e  6 ops
+○     ∅
+
+1 space(s), 4 contract(s), 3 migration(s)
+```
+
+Read it bottom-up. From `init` (`1e8412e`) two branches leave: Ania's ends at `9bba644`, Javier's at `6210aa4`. The merged contract you just emitted, `cb575cf`, sits at the top with no edge arriving at it. No database can reach it yet. `migration status` says the same against your database, which is still on `init`:
+
+```npm
+npx prisma@latest migration status
+```
+
+```text no-copy
+○     1e8412e  @db
+│↑    20260910T1543_init                      ∅ → 1e8412e  6 ops  ✓ applied
+○     ∅
+
+⚠ No migration path from the database state (1e8412e162db) to the application's contract (cb575cf009f5). Run `{bin} migration plan --name <name>` to author one.
+```
+
+Follow that hint without an origin and the planner refuses, because it cannot decide which branch tip to continue from:
+
+```npm
+npx prisma@latest migration plan --name merge_schema
+```
+
+```text no-copy
+✘ [MIGRATION.AMBIGUOUS_TARGET] Ambiguous migration target
+  why: The migration history has diverged into multiple branches: 9bba644e909dce3cb2023d438c413e60b0d95cdc8600fddeab6d202259a2ab43, 6210aa4a044bdb77cd9274bfd45fa326bf4cd685317aade4dfbfdd9f09935ed1. This typically happens when two developers plan migrations from the same starting point.
+Divergence point: 1e8412e162dbbe69f4bb3bf8d07f0280ae67eaab15c34dcf201e67468315428d
+Branches:
+  → 9bba644e909dce3cb2023d438c413e60b0d95cdc8600fddeab6d202259a2ab43 (1 edge(s): 20260910T1546_add_favorite_color)
+  → 6210aa4a044bdb77cd9274bfd45fa326bf4cd685317aade4dfbfdd9f09935ed1 (1 edge(s): 20260910T1547_add_tag_model)
+→ Use `{bin} migration ref set <name> <hash>` to target a specific branch, delete one of the conflicting migration directories and re-run `{bin} migration plan`, or use --from <hash> to explicitly select a starting point.
+```
+
+This is the error the graph exists to give you. It names the divergence point and both tips. Do not take the "delete one of the conflicting migration directories" option: Ania's and Javier's databases have already applied those migrations.
+
+### 3.5. Close the diamond
+
+Plan one merge migration from each tip. Each one carries the change its branch is missing, and both arrive at the merged contract:
+
+```npm
+npx prisma@latest migration plan --from 20260910T1546_add_favorite_color --name merge_add_tag_model
+```
+
+```text no-copy
+✔ Planned 1 operation(s)
+
+migrations/app/20260910T1550_merge_add_tag_model
+└─ Create table "tag"
+
+from:       9bba644e909dce3cb2023d438c413e60b0d95cdc8600fddeab6d202259a2ab43
+to:         cb575cf009f55f442986c9f51655d0b48d40a8157f05427d525fe114e5f90b52
 ```
 
 ```npm
-npx prisma generate
+npx prisma@latest migration plan --from 20260910T1547_add_tag_model --name merge_add_favorite_color
 ```
 
-### 3.3. Merge changes
+```text no-copy
+✔ Planned 1 operation(s)
 
-The migration history now has two new migrations:
+migrations/app/20260910T1550_merge_add_favorite_color
+└─ Add column "favoriteColor" to "user"
 
-![A diagram showing changes by two separate developers converging in a single migration history.](/img/guides/migrate-team-dev.png)
+from:       6210aa4a044bdb77cd9274bfd45fa326bf4cd685317aade4dfbfdd9f09935ed1
+to:         cb575cf009f55f442986c9f51655d0b48d40a8157f05427d525fe114e5f90b52
+```
+
+`--from` accepts a migration directory name, as here, or a hash from the error message. The planner diffs the two contract snapshots and writes exactly the operations that are missing on that side. Review both DDL previews the way you would review any migration. The graph is now a diamond, and every database on either branch has a path to the top:
+
+```npm
+npx prisma@latest migration graph
+```
+
+```text no-copy
+○     cb575cf  @contract
+│─╮
+│↑│   20260910T1550_merge_add_tag_model       9bba644 → cb575cf  1 ops
+│ │↑  20260910T1550_merge_add_favorite_color  6210aa4 → cb575cf  1 ops
+○ │   9bba644  (db)
+│↑│   20260910T1546_add_favorite_color        1e8412e → 9bba644  1 ops
+│ ○   6210aa4
+│ │↑  20260910T1547_add_tag_model             1e8412e → 6210aa4  1 ops
+│─╯
+○     1e8412e
+│↑    20260910T1543_init                            ∅ → 1e8412e  6 ops
+○     ∅
+
+1 space(s), 5 contract(s), 5 migration(s)
+```
+
+Your own database is still on `init`, so two migrations are pending for it. Apply them and let `--advance-ref db` set the `db` ref to where the database actually ends up, which also settles the `db.json` conflict from section 3.3:
+
+```npm
+npx prisma@latest db migrate --advance-ref db
+```
+
+```text no-copy
+✔ Applied 2 migration(s) (2 operation(s)) across 1 contract space(s)
+
+App space
+├─ Add column "favoriteColor" to "user"
+├─ Create table "tag"
+└─ marker cb575cf009f55f442986c9f51655d0b48d40a8157f05427d525fe114e5f90b52
+
+✔ Advanced ref "db" → cb575cf009f55f442986c9f51655d0b48d40a8157f05427d525fe114e5f90b52
+```
+
+The runner walked `init → add_favorite_color → merge_add_tag_model`. It could equally have walked the other side; both paths end at the same contract. Now commit the merge, the re-emitted contract, both merge migrations, and the `db` ref together:
+
+```bash
+git add -A
+git commit -m "Merge javier/tag-model and plan merge migrations"
+```
+
+### 3.6. Every database catches up on its own path
+
+Ania pulls `main`. Her database is on `9bba644`, so only the migration that adds Javier's table is pending for her:
+
+```npm
+npx prisma@latest migration status
+```
+
+```text no-copy
+○     cb575cf  @contract (db)
+│─╮
+│↑│   20260910T1550_merge_add_tag_model       9bba644 → cb575cf  1 ops  ⧗ pending
+│ │↑  20260910T1550_merge_add_favorite_color  6210aa4 → cb575cf  1 ops
+○ │   9bba644  @db
+│↑│   20260910T1546_add_favorite_color        1e8412e → 9bba644  1 ops  ✓ applied
+│ ○   6210aa4
+│ │↑  20260910T1547_add_tag_model             1e8412e → 6210aa4  1 ops
+│─╯
+○     1e8412e
+│↑    20260910T1543_init                            ∅ → 1e8412e  6 ops  ✓ applied
+○     ∅
+
+⚠ 1 pending: run `{bin} db migrate --to cb575cf009f5`
+```
+
+```npm
+npx prisma@latest db migrate --advance-ref db
+```
+
+```text no-copy
+✔ Applied 1 migration(s) (1 operation(s)) across 1 contract space(s)
+
+App space
+├─ Create table "tag"
+└─ marker cb575cf009f55f442986c9f51655d0b48d40a8157f05427d525fe114e5f90b52
+```
+
+Javier does the same, and for him the pending migration is `merge_add_favorite_color`, which adds Ania's column. Nobody re-created anything, and the database's own ledger shows the route each one took:
+
+```npm
+npx prisma@latest migration log
+```
+
+```text no-copy
+Applied at                  Migration                          Change             Ops
+2026-09-10 17:45:41 +02:00  20260910T1543_init                 ∅ → 1e8412e        6 ops
+2026-09-10 17:46:17 +02:00  20260910T1546_add_favorite_color   1e8412e → 9bba644  1 ops
+2026-09-10 17:52:47 +02:00  20260910T1550_merge_add_tag_model  9bba644 → cb575cf  1 ops
+```
 
 ## 4. Integrate your changes
 
-### 4.1. Pull team changes
+### 4.1. Pull first
 
-1. Pull the most recent changes:
-   - Two new migrations
-   - Updated schema file
+With `main` merged and your database on the merged state, add your own field. Always pull and apply before you plan, so your plan chains from the state everyone shares:
 
-2. Review the merged schema:
+```bash
+git pull
+```
 
-```prisma
+```npm
+npx prisma@latest migration status
+```
+
+### 4.2. Edit, emit, plan
+
+```prisma title="src/prisma/contract.prisma"
 model User {
   /* ... */
   favoriteColor   String?
   bestPacmanScore Int?
 }
-
-model Tag {
-  tagName     String   @id
-  tagCategory Category
-  posts       Post[]
-}
-```
-
-### 4.2. Generate your migration
-
-Run the migrate command:
-
-```npm
-npx prisma migrate dev
 ```
 
 ```npm
-npx prisma generate
+npx prisma@latest contract emit
+npx prisma@latest migration plan --name add_best_pacman_score
 ```
 
-This will:
+```text no-copy
+✔ Planned 1 operation(s)
 
-1. Apply your team's migrations
-2. Create a new migration for your changes
-3. Apply your new migration
+migrations/app/20260910T1554_add_best_pacman_score
+└─ Add column "bestPacmanScore" to "user"
 
-### 4.3. Commit changes
+from:       cb575cf009f55f442986c9f51655d0b48d40a8157f05427d525fe114e5f90b52
+to:         e52378240fb01b0d958736cac7ca35199d9dd6ac83512c9d98105ad07d92b72a
+app space:  migrations/app/20260910T1554_add_best_pacman_score
 
-Commit:
+ℹ DDL preview
 
-- The merged `schema.prisma`
-- Your new migration file
+ALTER TABLE "public"."user" ADD COLUMN "bestPacmanScore" int4;
+```
+
+No `--from` was needed: the `db` ref points at the merged state because the last apply advanced it. Check the `from:` line anyway. If it does not name the state you expect, stop and read [Common gotchas](#common-gotchas).
+
+### 4.3. Apply and check
+
+```npm
+npx prisma@latest db migrate --advance-ref db
+npx prisma@latest migration check
+```
+
+```text no-copy
+✔ Applied 1 migration(s) (1 operation(s)) across 1 contract space(s)
+
+App space
+├─ Add column "bestPacmanScore" to "user"
+└─ marker e52378240fb01b0d958736cac7ca35199d9dd6ac83512c9d98105ad07d92b72a
+
+✔ Advanced ref "db" → e52378240fb01b0d958736cac7ca35199d9dd6ac83512c9d98105ad07d92b72a
+```
+
+```text no-copy
+✔ All checks passed
+```
+
+`migration check` is offline and verifies every migration's hash and the graph's integrity. Run it in CI on every pull request so a `migration.ts` edited without a recompile, or a `migration.json` edited by hand, fails before it reaches a shared database.
+
+### 4.4. Commit
+
+Commit the same set of files your teammates did:
+
+```bash
+git add src/prisma/contract.prisma src/prisma/contract.json src/prisma/contract.d.ts migrations
+git commit -m "Add User.bestPacmanScore"
+```
+
+The final graph on `main` is a diamond with one more step on top, and your application code can use all three changes right away:
+
+```ts title="script.ts"
+const user = await db.orm.public.User.create({
+  email: "pacman@prisma.io",
+  favoriteColor: "yellow",
+  bestPacmanScore: 3333360,
+});
+const tag = await db.orm.public.Tag.create({ tagName: "arcade", tagCategory: "games" });
+```
+
+## Common gotchas
+
+:::warning
+
+`migration plan` fails with `MIGRATION.PLAN_ORIGIN_UNKNOWN` when the project has migrations but no `db` ref and you passed no `--from`. This happens in a fresh clone that has never run `db migrate --advance-ref db`, or after a merge dropped `refs/db.json`. The error lists the three exits:
+
+```text no-copy
+✘ [MIGRATION.PLAN_ORIGIN_UNKNOWN] Cannot determine the plan origin: migrations exist but no origin is named
+  why: Migrations exist on disk, but there is no `db` ref and no --from was given, so the plan origin would silently fall back to an empty database and the resulting migration would recreate everything the existing migrations already create.
+→ Point the db ref at the origin contract: {bin} migration ref set db cb575cf009f55f442986c9f51655d0b48d40a8157f05427d525fe114e5f90b52
+→ Plan from an explicit origin: {bin} migration plan --from cb575cf009f55f442986c9f51655d0b48d40a8157f05427d525fe114e5f90b52
+→ Plan from an empty database deliberately: {bin} migration plan --from @empty
+```
+
+Pick the first or second. `--from @empty` over an existing history is only right for a deliberate rebuild.
+
+:::
+
+:::warning
+
+Never run `db update` against a database another developer, CI, or production shares. It reconciles the database to your contract directly and leaves no migration behind, so the next `db migrate` from a teammate finds a marker the graph does not know. Use `db update` only on your own throwaway database, and switch to `migration plan` before you open a pull request.
+
+:::
+
+:::note
+
+The merge conflict in `migrations/app/refs/db.json` is expected whenever two branches both applied with `--advance-ref db`. The file records where one developer's database was, so no merged value is "correct" for everyone. Resolve it with either side and let your next `db migrate --advance-ref db` write the truth.
+
+:::
+
+:::note
+
+Renaming a field plans as a destructive drop column plus add column, because the planner has no rename hint yet. Before a rename reaches a shared database, [edit the migration](/orm/migrations/editing-a-migration) to replace the pair with a `rawSql` `ALTER TABLE ... RENAME COLUMN`, then recompile it with `node migration.ts`.
+
+:::
+
+## Prompt your coding agent
+
+Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
+
+- "Using the prisma-8 skill, check whether my database is behind the migrations on this branch and apply what is pending."
+- "Two branches both added migrations from the same state. Draw the migration graph and plan the merge migrations from each tip."
+- "Run `migration check` and explain any integrity failure before I open this pull request."
 
 ## Next steps
 
-Now that you understand team schema management, you can:
-
-- Learn about [customizing migrations](/orm/v7/prisma-migrate/workflows/customizing-migrations)
-- Explore [deployment workflows](/orm/v7/prisma-migrate/workflows/development-and-production)
-
-For more information:
-
-- [Prisma Migrate documentation](/orm/v7/prisma-migrate)
-- [Team development workflows](/orm/v7/prisma-migrate/workflows/development-and-production)
+- [The migration graph](/orm/migrations/the-migration-graph): refs, markers, and how `db migrate` finds a path
+- [Applying a migration](/orm/migrations/applying-a-migration): the status, preview, apply rhythm for staging and production
+- [Rollbacks and recovery](/orm/migrations/rollbacks-and-recovery): planning a backwards edge when a merged change has to come out
+- [Editing a migration](/orm/migrations/editing-a-migration): backfills and raw SQL when a schema change needs a data step

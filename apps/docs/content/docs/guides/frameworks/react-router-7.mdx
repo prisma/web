@@ -1,408 +1,355 @@
 ---
-title: React Router 7
-description: Learn how to use Prisma ORM and Prisma Postgres in a React Router 7 app
-image: /img/guides/prisma-react-router-7-cover.png
+title: React Router
+description: 'Add Prisma 8 to a React Router app in framework mode with orm init, then build user and post pages with loaders and a form action.'
 url: /guides/frameworks/react-router-7
-metaTitle: How to use Prisma ORM and Prisma Postgres with React Router 7
-metaDescription: Learn how to use Prisma ORM and Prisma Postgres in a React Router 7 app.
+metaTitle: How to use Prisma 8 with React Router
+metaDescription: 'Add Prisma 8 and Prisma Postgres to a React Router framework-mode app: orm init, a typed contract, a seed script, loaders that read users and posts, and a form action that creates posts.'
 ---
 
 ## Introduction
 
-This guide shows you how to use Prisma ORM with [React Router 7](https://reactrouter.com/), a multi-strategy router that can be as minimal as declarative routing or as full-featured as a fullstack framework.
+This guide shows you how to use Prisma 8 in a [React Router](https://reactrouter.com/) app running in framework mode. There is no `create-prisma` template for React Router, so you start from `create-react-router` and add Prisma 8 to the existing project with `orm init`. You then define a contract for users and posts, seed the database, read it from route loaders, and write to it from a form action.
 
-You'll learn how to set up Prisma ORM and Prisma Postgres with React Router 7 and handle migrations. You can find a [deployment-ready example on GitHub](https://github.com/prisma/prisma-examples/blob/latest/orm/react-router-7).
+`create-react-router@latest` scaffolds React Router 8. The route APIs this guide uses (`loader`, `action`, `routes.ts`, and the generated `Route` types) are the same in React Router 7, and the finished app was run on both majors.
+
+Every command, page, and response below was run end to end against a local PostgreSQL database.
+
+:::note[Using Prisma 7?]
+
+Prisma 8 is the current release of Prisma ORM. Prisma 7 remains fully supported; the Prisma 7 version of this guide is at [/guides/v7/frameworks/react-router-7](/guides/v7/frameworks/react-router-7).
+
+:::
 
 ## Prerequisites
 
-- [Node.js 20+](https://nodejs.org)
+- [Node.js](https://nodejs.org) 24 or later
+- A PostgreSQL connection string, or nothing at all: `npx create-db@latest` can create a [Prisma Postgres](/postgres) database for you
+
+## Use with your agent
+
+To delegate this guide to your coding agent, copy the prompt below and hand it over:
+
+<AgentPrompt>
+
+```text
+Create a new React Router app in framework mode, add Prisma 8 to it, and build a small blog on top.
+
+1. Scaffold: `npx create-react-router@latest my-app --yes`, then `cd my-app`. Run `npx prisma@latest orm init --yes --target postgres --authoring psl` so Prisma 8 is added to the existing project, then `npx prisma@latest init` so the Prisma agent skills are installed and stay current, and use them.
+2. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Write it to `.env` as `DATABASE_URL`; the scaffolded `src/prisma/db.ts` and `prisma.config.ts` both load `.env`.
+3. Edit `src/prisma/contract.prisma` so `User` has `id`, `email`, `name`, `posts`, `createdAt`, `updatedAt` and `Post` has `id`, `title`, `content`, `published`, `author`, `authorId`, `createdAt`, `updatedAt`, following https://www.prisma.io/docs/guides/frameworks/react-router-7.md. Run `npx prisma@latest contract emit` and `npx prisma@latest db init`.
+4. Add `allowImportingTsExtensions: true` to `tsconfig.json`, write `src/prisma/seed.ts` that creates two users with posts and closes the client, and run it with `node src/prisma/seed.ts`.
+5. Create `app/lib/db.server.ts` that re-exports `db` from `src/prisma/db.ts`. Build these routes in `app/routes.ts`: `/` lists users, `/posts` lists posts with their author, `/posts/new` has a form whose action creates a post and redirects to it, `/posts/:postId` shows one post or a 404.
+6. Start `npm run dev` in the background, wait until it reports ready, verify every route with curl including a POST to `/posts/new`, then stop the dev server. Run `npm run typecheck` and fix anything it reports.
+```
+
+</AgentPrompt>
 
 ## 1. Set up your project
 
-From the directory where you want to create your project, run `create-react-router` to create a new React Router app that you will be using for this guide.
+Create a new React Router app in framework mode:
 
 ```npm
-npx create-react-router@latest react-router-7-prisma
+npx create-react-router@latest my-app
 ```
 
-You'll be prompted to select the following, select `Yes` for both:
+Accept the defaults at the prompts: initialize a git repository and install dependencies with npm.
 
-:::info
+```text no-copy
+         create-react-router v8.3.1
 
-- _Initialize a new git repository?_ `Yes`
-- _Install dependencies with npm?_ `Yes`
-:::
+      ◼  Directory: Using my-app as project directory
+      ◼  Using default template See https://github.com/remix-run/react-router-templates for more
+      ✔  Template copied
+      ✔  Dependencies installed
+      ✔  Git initialized
 
-Now, navigate to the project directory:
+  done   That's it!
+```
+
+Move into the project:
 
 ```bash
-cd react-router-7-prisma
+cd my-app
 ```
 
-## 2. Install and Configure Prisma
+## 2. Add Prisma 8 to the project
 
-### 2.1. Install dependencies
+### 2.1. Run `orm init`
 
-To get started with Prisma, you'll need to install a few dependencies:
+`orm init` adds Prisma 8 to a project that already exists. Run it after the scaffold has installed dependencies so it picks up npm from the lockfile:
 
 ```npm
-npm install prisma@7.10.0 tsx @types/pg --save-dev
+npx prisma@latest orm init --yes --target postgres --authoring psl
 ```
 
-```npm
-npm install @prisma/client@7.10.0 @prisma/adapter-pg dotenv pg
+`--target postgres` selects PostgreSQL, `--authoring psl` keeps the schema in Prisma Schema Language, and `--yes` accepts the default contract path. Run [`orm init`](/cli/orm-init) without flags for the guided version that asks the same questions.
+
+```text no-copy
+Updated tsconfig.json with required compiler options.
+npm add @prisma/orm-postgres dotenv
+npm add -D prisma@next
+npm add -D @prisma/cli-engine@0.2.3
+Emit the contract
+
+filesWritten: src/prisma/contract.prisma, prisma.config.ts, src/prisma/db.ts,
+              prisma-next.md, .env.example, tsconfig.json, .gitignore,
+              .gitattributes, package.json
+contractEmitted: true
 ```
 
-:::info
+The command installs `@prisma/orm-postgres` (the Postgres runtime) and `dotenv`, adds the `prisma` CLI as a dev dependency, and writes:
 
-If you are using a different database provider (MySQL, SQL Server, SQLite), install the corresponding driver adapter package instead of `@prisma/adapter-pg`. For more information, see [Database drivers](/orm/v7/core-concepts/supported-databases/database-drivers).
+- `prisma.config.ts`: the CLI configuration. It loads `.env` and points at your contract.
+- `src/prisma/contract.prisma`: your schema, with starter `User` and `Post` models.
+- `src/prisma/db.ts`: the Prisma 8 client your loaders import.
+- `src/prisma/contract.json` and `src/prisma/contract.d.ts`: emitted from the contract; the runtime validates against the first and your queries are typed by the second.
+- A `contract:emit` script in `package.json`, and `"module": "preserve"` in `tsconfig.json`.
 
-:::
+There is no `prisma generate` step and no driver adapter package. The emitted contract is what `@prisma/client` and the adapter used to provide.
 
-Once installed, initialize Prisma in your project:
+### 2.2. Set your database connection string
 
-```npm
-npx prisma init --output ../app/generated/prisma
+Create a `.env` file at the project root. Use your own PostgreSQL connection string, or run `npx create-db@latest` to get a Prisma Postgres one:
+
+```bash title=".env"
+DATABASE_URL="postgres://user:password@localhost:5432/mydb"
 ```
 
-:::info
+Both `prisma.config.ts` and `src/prisma/db.ts` import `dotenv/config`, so the CLI, the seed script, and the dev server all read this file.
 
-`prisma init` creates the Prisma scaffolding and a local `DATABASE_URL`. In the next step, you will create a Prisma Postgres database and replace that value with a direct `postgres://...` connection string.
+### 2.3. Define your contract
 
-:::
+Replace the starter models in `src/prisma/contract.prisma` with the blog schema this guide builds. `User` loses the `username` column and `Post` gains a `published` flag:
 
-This will create:
+```prisma title="src/prisma/contract.prisma"
+// use prisma-next
 
-- A `prisma` directory with a `schema.prisma` file.
-- A `prisma.config.ts` file for configuring Prisma
-- A `.env` file containing a local `DATABASE_URL` at the project root.
-- An `output` directory for the generated Prisma Client as `app/generated/prisma`.
-
-Create a Prisma Postgres database and replace the generated `DATABASE_URL` in your `.env` file with the `postgres://...` connection string from the CLI output:
-
-```npm
-npx create-db
-```
-
-### 2.2. Define your Prisma Schema
-
-In the `prisma/schema.prisma` file, add the following models and change the generator to use the `prisma-client` provider:
-
-```prisma title="prisma/schema.prisma"
-generator client {
-  provider = "prisma-client"
-  output   = "../app/generated/prisma"
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String?
+  posts     Post[]
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
 }
 
-datasource db {
-  provider = "postgresql"
+model Post {
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String?
+  published Boolean  @default(false)
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  Int
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
 }
-
-model User { // [!code ++]
-  id    Int     @id @default(autoincrement()) // [!code ++]
-  email String  @unique // [!code ++]
-  name  String? // [!code ++]
-  posts Post[] // [!code ++]
-} // [!code ++]
- // [!code ++]
-model Post { // [!code ++]
-  id        Int     @id @default(autoincrement()) // [!code ++]
-  title     String // [!code ++]
-  content   String? // [!code ++]
-  published Boolean @default(false) // [!code ++]
-  authorId  Int // [!code ++]
-  author    User    @relation(fields: [authorId], references: [id]) // [!code ++]
-} // [!code ++]
 ```
 
-This creates two models: `User` and `Post`, with a one-to-many relationship between them.
+`TimestamptzString` and `temporal.updatedAtString()` are the Prisma 8 idioms for a `timestamptz` column that reaches your code as an ISO string, which is what a React Router loader can hand to the browser without extra serialization.
 
-### 2.3 Add `dotenv` to `prisma.config.ts`
-
-To get access to the variables in the `.env` file, they can either be loaded by your runtime, or by using `dotenv`.
-Include an import for `dotenv` at the top of the `prisma.config.ts`
-
-```ts
-import "dotenv/config"; // [!code ++]
-import { defineConfig, env } from "prisma/config";
-export default defineConfig({
-  schema: "prisma/schema.prisma",
-  migrations: {
-    path: "prisma/migrations",
-  },
-  datasource: {
-    url: env("DATABASE_URL"),
-  },
-});
-```
-
-### 2.4. Configure the Prisma Client generator
-
-Now, run the following command to create the database tables and generate the Prisma Client:
+Emit the contract again so `contract.json` and `contract.d.ts` match:
 
 ```npm
-npx prisma migrate dev --name init
+npx prisma@latest contract emit
 ```
 
-```npm
-npx prisma generate
+```text no-copy
+"files": {
+  "json": "src/prisma/contract.json",
+  "dts": "src/prisma/contract.d.ts"
+}
 ```
+
+### 2.4. Initialize the database
+
+`db init` creates the tables from the contract and signs the database, so later commands can tell whether it still matches:
+
+```npm
+npx prisma@latest db init
+```
+
+```text no-copy
+"summary": "Applied 5 operation(s) across 1 space(s), database signed"
+```
+
+The five operations are the `user` and `post` tables, the unique constraint on `email`, the index on `authorId`, and the foreign key. If you change the contract later, run `npx prisma@latest contract emit` followed by `npx prisma@latest db update`, or plan a checked-in migration with [`migration plan`](/cli/migration-plan). There is no `prisma migrate dev`.
 
 ### 2.5. Seed the database
 
-Add some seed data to populate the database with sample users and posts.
+The seed is a plain script that Node.js 24 runs directly, so it imports the client with its `.ts` extension. Tell TypeScript to allow that:
 
-Create a new file called `seed.ts` in the `prisma/` directory:
+```json title="tsconfig.json"
+{
+  "compilerOptions": {
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": true, // [!code ++]
+    "skipLibCheck": true,
+    "strict": true
+  }
+}
+```
 
-```typescript title="prisma/seed.ts"
-import { PrismaClient, Prisma } from "../app/generated/prisma/client.js";
-import { PrismaPg } from "@prisma/adapter-pg";
+Create `src/prisma/seed.ts`:
 
-const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL!,
-});
+```typescript title="src/prisma/seed.ts"
+import { db } from "./db.ts";
 
-const prisma = new PrismaClient({
-  adapter,
-});
-
-const userData: Prisma.UserCreateInput[] = [
+const users = [
   {
-    name: "Alice",
     email: "alice@prisma.io",
-    posts: {
-      create: [
-        {
-          title: "Join the Prisma Discord",
-          content: "https://pris.ly/discord",
-          published: true,
-        },
-        {
-          title: "Prisma on YouTube",
-          content: "https://pris.ly/youtube",
-        },
-      ],
-    },
+    name: "Alice",
+    posts: [
+      { title: "Join the Prisma Discord", content: "https://pris.ly/discord", published: true },
+      { title: "Prisma on YouTube", content: "https://pris.ly/youtube" },
+    ],
   },
   {
-    name: "Bob",
     email: "bob@prisma.io",
-    posts: {
-      create: [
-        {
-          title: "Follow Prisma on Twitter",
-          content: "https://www.twitter.com/prisma",
-          published: true,
-        },
-      ],
-    },
+    name: "Bob",
+    posts: [
+      { title: "Follow Prisma on Twitter", content: "https://www.twitter.com/prisma", published: true },
+    ],
   },
 ];
 
-export async function main() {
-  for (const u of userData) {
-    await prisma.user.create({ data: u });
+for (const { posts, ...data } of users) {
+  const user = await db.orm.public.User.create(data);
+  for (const post of posts) {
+    await db.orm.public.Post.create({ ...post, authorId: user.id });
   }
+  console.log(`Created ${user.name} with ${posts.length} post(s)`);
 }
 
-main();
+await db.close();
 ```
 
-Now, tell Prisma how to run this script by updating your `prisma.config.ts`:
+`create` returns the inserted row, so the user's generated `id` is available for the posts without a second query. The script closes the client at the end; without that call the connection pool keeps the process alive.
 
-```ts title="prisma.config.ts"
-import "dotenv/config";
-import { defineConfig, env } from "prisma/config";
-export default defineConfig({
-  schema: "prisma/schema.prisma",
-  migrations: {
-    path: "prisma/migrations",
-    seed: `tsx prisma/seed.ts`, // [!code ++]
-  },
-  datasource: {
-    url: env("DATABASE_URL"),
-  },
-});
+Run it:
+
+```bash
+node src/prisma/seed.ts
 ```
 
-Run the seed script:
-
-```npm
-npx prisma db seed
+```text no-copy
+Created Alice with 2 post(s)
+Created Bob with 1 post(s)
 ```
 
-And open Prisma Studio to inspect your data:
+## 3. Integrate Prisma into React Router
 
-```npm
-npx prisma studio
+### 3.1. Create a server-only `db` helper
+
+React Router bundles route modules for the browser as well as the server. Loaders and actions are stripped from the browser build, but the safest way to keep the database client out of it is a module with a `.server` suffix, which React Router refuses to include in client code. Create `app/lib/db.server.ts` and re-export the scaffolded client from it:
+
+```typescript title="app/lib/db.server.ts"
+export { db } from "../../src/prisma/db";
 ```
 
-## 3. Integrate Prisma into React Router 7
+Routes import it as `~/lib/db.server` through the `~` alias the template configures. The client is created once per process and shared by every request; never close it in a loader or action.
 
-### 3.1. Create a Prisma Client
+### 3.2. Query your database from a loader
 
-Inside of your `app` directory, create a new `lib` directory and add a `prisma.ts` file to it. This file will be used to create and export your Prisma Client instance.
-
-Set up the Prisma client like this:
-
-```typescript title="app/lib/prisma.ts"
-import { PrismaClient } from "../generated/prisma/client.js";
-import { PrismaPg } from "@prisma/adapter-pg";
-
-const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL!,
-});
-
-const globalForPrisma = global as unknown as {
-  prisma: PrismaClient;
-};
-
-const prisma =
-  globalForPrisma.prisma ||
-  new PrismaClient({
-    adapter,
-  });
-
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
-
-export default prisma;
-```
-
-:::warning
-We recommend using a connection pooler (like [Prisma Accelerate](https://www.prisma.io/accelerate)) to manage database connections efficiently.
-
-If you choose not to use one, **avoid** instantiating `PrismaClient` globally in long-lived environments. Instead, create and dispose of the client per request to prevent exhausting your database connections.
-:::
-
-You'll use this client in the next section to run your first queries.
-
-### 3.2. Query your database with Prisma
-
-Now that you have an initialized Prisma Client, a connection to your database, and some initial data, you can start querying your data with Prisma ORM.
-
-In this example, you'll be making the "home" page of your application display all of your users.
-
-Open the `app/routes/home.tsx` file and replace the existing code with the following:
+Replace `app/routes/home.tsx` so the home page lists users from the database:
 
 ```tsx title="app/routes/home.tsx"
 import type { Route } from "./+types/home";
+import { Link } from "react-router";
+import { db } from "~/lib/db.server";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "New React Router App" },
-    { name: "description", content: "Welcome to React Router!" },
-  ];
-}
-
-export default function Home({ loaderData }: Route.ComponentProps) {
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center -mt-16">
-      <h1 className="text-4xl font-bold mb-8 font-[family-name:var(--font-geist-sans)]">
-        Superblog
-      </h1>
-      <ol className="list-decimal list-inside font-[family-name:var(--font-geist-sans)]">
-        <li className="mb-2">Alice</li>
-        <li>Bob</li>
-      </ol>
-    </div>
-  );
-}
-```
-
-:::note
-
-If you see an error on the first line, `import type { Route } from "./+types/home";`, make sure you run `npm run dev` so React Router generates needed types.
-
-:::
-
-This gives you a basic page with a title and a list of users. However, the list of users is static. Update the page to fetch the users from your database and make it dynamic.
-
-```tsx title="app/routes/home.tsx"
-import type { Route } from "./+types/home";
-import prisma from "~/lib/prisma"; // [!code ++]
-
-export function meta({}: Route.MetaArgs) {
-  return [
-    { title: "New React Router App" },
-    { name: "description", content: "Welcome to React Router!" },
+    { title: "Superblog" },
+    { name: "description", content: "A React Router app on Prisma 8" },
   ];
 }
 
 export async function loader() {
-  // [!code ++]
-  const users = await prisma.user.findMany(); // [!code ++]
-  return { users }; // [!code ++]
-} // [!code ++]
+  const users = await db.orm.public.User.select("id", "name", "email").all();
+  return { users };
+}
 
 export default function Home({ loaderData }: Route.ComponentProps) {
-  const { users } = loaderData; // [!code ++]
+  const { users } = loaderData;
   return (
     <div className="min-h-screen flex flex-col items-center justify-center -mt-16">
-      <h1 className="text-4xl font-bold mb-8 font-[family-name:var(--font-geist-sans)]">
-        Superblog
-      </h1>
-      <ol className="list-decimal list-inside font-[family-name:var(--font-geist-sans)]">
-        {users.map(
-          (
-            user, // [!code ++]
-          ) => (
-            <li key={user.id} className="mb-2">
-              {" "}
-              // [!code ++]
-              {user.name} // [!code ++]
-            </li> // [!code ++]
-          ),
-        )}{" "}
-        // [!code ++]
+      <h1 className="text-4xl font-bold mb-8">Superblog</h1>
+      <ol className="list-decimal list-inside">
+        {users.map((user) => (
+          <li key={user.id} className="mb-2">
+            {user.name} ({user.email})
+          </li>
+        ))}
       </ol>
+      <Link to="/posts" className="mt-8 underline">
+        View posts
+      </Link>
     </div>
   );
 }
 ```
 
-You are now importing your client, using [a React Router loader](https://reactrouter.com/start/framework/data-loading#server-data-loading) to query the `User` model for all users, and then displaying them in a list.
+Model access is namespace-qualified on PostgreSQL: `db.orm.public.User`. `select` narrows the columns and `all()` runs the query. The `Route.ComponentProps` type carries the loader's return type into the component, so `users` is typed without any annotation.
 
-Now your home page is dynamic and will display the users from your database.
+The template's `app/welcome` directory is no longer imported; delete it.
 
-### 3.4 Update your data (optional)
+Start the dev server:
 
-If you want to see what happens when data is updated, you could:
-
-- update your `User` table via an SQL browser of your choice
-- change your `seed.ts` file to add more users
-- change the call to `prisma.user.findMany` to re-order the users, filter the users, or similar.
-
-Reload the page to see the changes.
-
-## 4. Add a new Posts list page
-
-You have your home page working, but you should add a new page that displays all of your posts.
-
-First, create a new `posts` directory under the `app/routes` directory and add a `home.tsx` file:
-
-```bash
-mkdir -p app/routes/posts && touch app/routes/posts/home.tsx
+```npm
+npm run dev
 ```
 
-Second, add the following code to the `app/routes/posts/home.tsx` file:
+```text no-copy
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+```
+
+Open [http://localhost:5173](http://localhost:5173). The page lists Alice and Bob.
+
+:::note
+
+If your editor reports an error on `import type { Route } from "./+types/home"`, run `npm run dev` or `npm run typecheck` once so React Router generates the route types.
+
+:::
+
+## 4. Add a posts list page
+
+Create `app/routes/posts/home.tsx`. The loader includes each post's author so the page can show the name:
 
 ```tsx title="app/routes/posts/home.tsx"
 import type { Route } from "./+types/home";
-import prisma from "~/lib/prisma";
+import { Link } from "react-router";
+import { db } from "~/lib/db.server";
 
-export default function Home() {
+export async function loader() {
+  const posts = await db.orm.public.Post.include("author").orderBy((p) => p.id.asc()).all();
+  return { posts };
+}
+
+export default function Posts({ loaderData }: Route.ComponentProps) {
+  const { posts } = loaderData;
   return (
     <div className="min-h-screen flex flex-col items-center justify-center -mt-16">
-      <h1 className="text-4xl font-bold mb-8 font-[family-name:var(--font-geist-sans)]">Posts</h1>
-      <ul className="font-[family-name:var(--font-geist-sans)] max-w-2xl space-y-4">
-        <li>My first post</li>
+      <h1 className="text-4xl font-bold mb-8">Posts</h1>
+      <ul className="max-w-2xl space-y-4">
+        {posts.map((post) => (
+          <li key={post.id}>
+            <Link to={`/posts/${post.id}`} className="font-semibold underline">
+              {post.title}
+            </Link>
+            <span className="text-sm text-gray-600 ml-2">by {post.author.name}</span>
+          </li>
+        ))}
       </ul>
+      <Link to="/posts/new" className="mt-8 underline">
+        Create a post
+      </Link>
     </div>
   );
 }
 ```
 
-Second, update the `app/routes.ts` file so when you visit the `/posts` route, the `posts/home.tsx` page is shown:
+Register the route in `app/routes.ts`:
 
 ```tsx title="app/routes.ts"
 import { type RouteConfig, index, route } from "@react-router/dev/routes"; // [!code highlight]
@@ -413,87 +360,46 @@ export default [
 ] satisfies RouteConfig;
 ```
 
-Now `localhost:5173/posts` will load, but the content is static. Update it to be dynamic, similarly to the home page:
+Open [http://localhost:5173/posts](http://localhost:5173/posts): three posts, each with its author. `include("author")` fetches the relation in the same query, and the result type gains an `author` object, so `post.author.name` type-checks.
 
-```tsx title="app/routes/posts/home.tsx"
-import type { Route } from "./+types/home";
-import prisma from "~/lib/prisma";
+## 5. Add a post detail page
 
-export async function loader() {
-  // [!code ++]
-  const posts = await prisma.post.findMany({
-    // [!code ++]
-    include: {
-      // [!code ++]
-      author: true, // [!code ++]
-    }, // [!code ++]
-  }); // [!code ++]
-  return { posts }; // [!code ++]
-} // [!code ++]
-
-export default function Posts({ loaderData }: Route.ComponentProps) {
-  const { posts } = loaderData; // [!code ++]
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center -mt-16">
-      <h1 className="text-4xl font-bold mb-8 font-[family-name:var(--font-geist-sans)]">Posts</h1>
-      <ul className="font-[family-name:var(--font-geist-sans)] max-w-2xl space-y-4">
-        {posts.map(
-          (
-            post, // [!code ++]
-          ) => (
-            <li key={post.id}>
-              {" "}
-              // [!code ++]
-              <span className="font-semibold">{post.title}</span> // [!code ++]
-              <span className="text-sm text-gray-600 ml-2">
-                {" "}
-                // [!code ++] by {post.author.name} // [!code ++]
-              </span>{" "}
-              // [!code ++]
-            </li> // [!code ++]
-          ),
-        )}{" "}
-        // [!code ++]
-      </ul>
-    </div>
-  );
-}
-```
-
-This works similarly to the home page, but instead of displaying users, it displays posts. You can also see that you've used `include` in your Prisma Client query to fetch the author of each post so you can display the author's name.
-
-This "list view" is one of the most common patterns in web applications. You're going to add two more pages to your application which you'll also commonly need: a "detail view" and a "create view".
-
-## 5. Add a new Posts detail page
-
-To complement the Posts list page, you'll add a Posts detail page.
-
-In the `routes/posts` directory, create a new `post.tsx` file.
-
-```bash
-touch app/routes/posts/post.tsx
-```
-
-This page will display a single post's title, content, and author. Just like your other pages, add the following code to the `app/routes/posts/post.tsx` file:
+Create `app/routes/posts/post.tsx`. The loader reads the post by primary key and throws a 404 when there is none:
 
 ```tsx title="app/routes/posts/post.tsx"
 import type { Route } from "./+types/post";
-import prisma from "~/lib/prisma";
+import { data } from "react-router";
+import { db } from "~/lib/db.server";
+
+export async function loader({ params }: Route.LoaderArgs) {
+  const id = Number(params.postId);
+  const post = Number.isInteger(id)
+    ? await db.orm.public.Post.include("author").first({ id })
+    : null;
+
+  if (!post) {
+    throw data("Post Not Found", { status: 404 });
+  }
+  return { post };
+}
 
 export default function Post({ loaderData }: Route.ComponentProps) {
+  const { post } = loaderData;
   return (
     <div className="min-h-screen flex flex-col items-center justify-center -mt-16">
-      <article className="max-w-2xl space-y-4 font-[family-name:var(--font-geist-sans)]">
-        <h1 className="text-4xl font-bold mb-8">My first post</h1>
-        <p className="text-gray-600 text-center">by Anonymous</p>
-        <div className="prose prose-gray mt-8">No content available.</div>
+      <article className="max-w-2xl space-y-4">
+        <h1 className="text-4xl font-bold mb-8">{post.title}</h1>
+        <p className="text-gray-600 text-center">by {post.author.name}</p>
+        <div className="prose prose-gray mt-8">{post.content || "No content available."}</div>
       </article>
     </div>
   );
 }
 ```
 
-And then add a new route for this page:
+`first({ id })` is the primary-key lookup; it returns the row or `null`. Route params are strings, so the loader converts `postId` and refuses anything that is not an integer before it queries.
+
+Add the route:
 
 ```tsx title="app/routes.ts"
 export default [
@@ -503,85 +409,40 @@ export default [
 ] satisfies RouteConfig;
 ```
 
-As before, this page is static. Update it to be dynamic based on the `params` passed to the page:
+Open [http://localhost:5173/posts/1](http://localhost:5173/posts/1) and [http://localhost:5173/posts/2](http://localhost:5173/posts/2). Then try [http://localhost:5173/posts/999](http://localhost:5173/posts/999): the template's root `ErrorBoundary` renders the 404.
 
-```tsx title="app/routes/posts/post.tsx"
-import { data } from "react-router"; // [!code ++]
-import type { Route } from "./+types/post";
-import prisma from "~/lib/prisma";
+## 6. Add a create page with an action
 
-export async function loader({ params }: Route.LoaderArgs) {
-  // [!code ++]
-  const { postId } = params; // [!code ++]
-  const post = await prisma.post.findUnique({
-    // [!code ++]
-    where: { id: parseInt(postId) }, // [!code ++]
-    include: {
-      // [!code ++]
-      author: true, // [!code ++]
-    }, // [!code ++]
-  }); // [!code ++]
-  // [!code ++]
-  if (!post) {
-    // [!code ++]
-    throw data("Post Not Found", { status: 404 }); // [!code ++]
-  } // [!code ++]
-  return { post }; // [!code ++]
-} // [!code ++]
-
-export default function Post({ loaderData }: Route.ComponentProps) {
-  const { post } = loaderData; // [!code ++]
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center -mt-16">
-      <article className="max-w-2xl space-y-4 font-[family-name:var(--font-geist-sans)]">
-        <h1 className="text-4xl font-bold mb-8">{post.title}</h1> // [!code ++]
-        <p className="text-gray-600 text-center">by {post.author.name}</p> // [!code ++]
-        <div className="prose prose-gray mt-8">
-          {" "}
-          // [!code ++]
-          {post.content || "No content available."} // [!code ++]
-        </div>{" "}
-        // [!code ++]
-      </article>
-    </div>
-  );
-}
-```
-
-There's a lot of changes here, so break it down:
-
-- You're using Prisma Client to fetch the post by its `id`, which you get from the `params` object.
-- In case the post doesn't exist (maybe it was deleted or maybe you typed a wrong ID), you throw an error to display a 404 page.
-- You then display the post's title, content, and author. If the post doesn't have content, you display a placeholder message.
-
-It's not the prettiest page, but it's a good start. Try it out by navigating to `localhost:5173/posts/1` and `localhost:5173/posts/2`. You can also test the 404 page by navigating to `localhost:5173/posts/999`.
-
-## 6. Add a new Posts create page
-
-To round out your application, you'll add a "create" page for posts. This will allow you to write your own posts and save them to the database.
-
-As with the other pages, you'll start with a static page and then update it to be dynamic.
-
-```bash
-touch app/routes/posts/new.tsx
-```
-
-Now, add the following code to the `app/routes/posts/new.tsx` file:
+Create `app/routes/posts/new.tsx`. The `action` receives the form submission, inserts the post, and redirects to its detail page:
 
 ```tsx title="app/routes/posts/new.tsx"
 import type { Route } from "./+types/new";
-import { Form } from "react-router";
+import { Form, redirect } from "react-router";
+import { db } from "~/lib/db.server";
 
 export async function action({ request }: Route.ActionArgs) {
   const formData = await request.formData();
-  const title = formData.get("title") as string;
-  const content = formData.get("content") as string;
+  const title = String(formData.get("title") ?? "").trim();
+  const content = String(formData.get("content") ?? "").trim();
+
+  if (!title) {
+    return { error: "Title is required" };
+  }
+
+  const post = await db.orm.public.Post.create({
+    title,
+    content: content || null,
+    authorId: 1,
+  });
+
+  return redirect(`/posts/${post.id}`);
 }
 
-export default function NewPost() {
+export default function NewPost({ actionData }: Route.ComponentProps) {
   return (
     <div className="max-w-2xl mx-auto p-4">
       <h1 className="text-2xl font-bold mb-6">Create New Post</h1>
+      {actionData?.error && <p className="text-red-600 mb-4">{actionData.error}</p>}
       <Form method="post" className="space-y-6">
         <div>
           <label htmlFor="title" className="block text-lg mb-2">
@@ -607,10 +468,7 @@ export default function NewPost() {
             className="w-full px-4 py-2 border rounded-lg"
           />
         </div>
-        <button
-          type="submit"
-          className="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600"
-        >
+        <button type="submit" className="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600">
           Create Post
         </button>
       </Form>
@@ -619,7 +477,9 @@ export default function NewPost() {
 }
 ```
 
-You can't open the `posts/new` page in your app yet. To do that, you need to add it to `routes.tsx` again:
+`create` returns the inserted row with its generated `id`, `published: false` default, and timestamps, so the redirect target is known without another query. The post is attributed to user `1` (Alice from the seed) to keep the example short; a real app takes the author from the session.
+
+Register the route. React Router ranks static segments above dynamic ones, so `/posts/new` reaches this route and not `posts/:postId`, whichever order you list them in:
 
 ```tsx title="app/routes.ts"
 export default [
@@ -630,96 +490,76 @@ export default [
 ] satisfies RouteConfig;
 ```
 
-Now you can view the form at the new URL. It looks good, but it doesn't do anything yet. Update the `action` to save the post to the database:
+Open [http://localhost:5173/posts/new](http://localhost:5173/posts/new) and submit the form, or post to it from the terminal:
 
-```tsx title="app/routes/posts/new.tsx"
-import type { Route } from "./+types/new";
-import { Form, redirect } from "react-router"; // [!code ++]
-import prisma from "~/lib/prisma"; // [!code ++]
-
-export async function action({ request }: Route.ActionArgs) {
-  const formData = await request.formData();
-  const title = formData.get("title") as string;
-  const content = formData.get("content") as string;
-
-  try {
-    // [!code ++]
-    await prisma.post.create({
-      // [!code ++]
-      data: {
-        // [!code ++]
-        title, // [!code ++]
-        content, // [!code ++]
-        authorId: 1, // [!code ++]
-      }, // [!code ++]
-    }); // [!code ++]
-  } catch (error) {
-    // [!code ++]
-    console.error(error); // [!code ++]
-    return Response.json({ error: "Failed to create post" }, { status: 500 }); // [!code ++]
-  } // [!code ++]
-  // [!code ++]
-  return redirect("/posts"); // [!code ++]
-}
-
-export default function NewPost() {
-  return (
-    <div className="max-w-2xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-6">Create New Post</h1>
-      <Form method="post" className="space-y-6">
-        <div>
-          <label htmlFor="title" className="block text-lg mb-2">
-            Title
-          </label>
-          <input
-            type="text"
-            id="title"
-            name="title"
-            placeholder="Enter your post title"
-            className="w-full px-4 py-2 border rounded-lg"
-          />
-        </div>
-        <div>
-          <label htmlFor="content" className="block text-lg mb-2">
-            Content
-          </label>
-          <textarea
-            id="content"
-            name="content"
-            placeholder="Write your post content here..."
-            rows={6}
-            className="w-full px-4 py-2 border rounded-lg"
-          />
-        </div>
-        <button
-          type="submit"
-          className="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600"
-        >
-          Create Post
-        </button>
-      </Form>
-    </div>
-  );
-}
+```bash
+curl -i -X POST http://localhost:5173/posts/new \
+  --data-urlencode "title=Hello from curl" \
+  --data-urlencode "content=Posted with a form action"
 ```
 
-When you submit the form, the action creates a new post in the database and redirects you to the posts list page.
+```text no-copy
+HTTP/1.1 302
+location: /posts/4
+```
 
-Try it out by navigating to `localhost:5173/posts/new` and submitting the form.
+Follow the redirect and the new post renders with Alice as its author. Submitting without a title returns the page with the `Title is required` message instead.
 
-## 7. Next steps
+## 7. Type-check and build
 
-Now that you have a working React Router application with Prisma ORM, here are some ways you can expand and improve your application:
+React Router's `typecheck` script generates the route types and runs `tsc` across the app, the seed script, and the Prisma files:
 
-- Add authentication to protect your routes
-- Add the ability to edit and delete posts
-- Add comments to posts
-- Use [Prisma Studio](/studio) for visual database management
+```npm
+npm run typecheck
+```
 
-For more information and updates:
+A production build works the same way as before Prisma was added. `react-router build` bundles the server, and `react-router-serve` runs it on port 3000 (set `PORT` to change it):
 
-- [Prisma ORM documentation](/orm/v7)
-- [Prisma Client API reference](/orm/v7/prisma-client/setup-and-configuration/introduction)
-- [React Router documentation](https://reactrouter.com/home)
-- Join our [Discord community](https://pris.ly/discord)
-- Follow us on [Twitter](https://twitter.com/prisma) and [YouTube](https://youtube.com/prismadata)
+```npm
+npm run build
+npm run start
+```
+
+```text no-copy
+[react-router-serve] http://localhost:3000 (http://192.168.1.16:3000)
+GET /posts 200 - - 7.514 ms
+```
+
+The server reads `DATABASE_URL` the same way the dev server does, through the `dotenv/config` import in `src/prisma/db.ts`, so a `.env` file next to the build is enough locally. On a host, set the variable in the environment instead.
+
+## Common gotchas
+
+:::warning
+
+Keep the client out of the browser bundle. Import `db` from `~/lib/db.server` only in `loader`, `action`, or other server code. If a component or a shared module reaches it, the build stops with `Error: Server-only module referenced by client` from the `react-router:dot-server` plugin, naming the offending import. That is the `.server` suffix doing its job.
+
+:::
+
+:::warning
+
+Do not call `db.close()` in a loader or action. The client in `src/prisma/db.ts` is a module-level singleton whose pool serves every request; closing it after one request breaks the next. Close it only in short scripts such as the seed.
+
+:::
+
+:::info
+
+`orm init` installs `prisma@next` as the dev dependency, so `npm run contract:emit` may run an older CLI than `npx prisma@latest`. The guide uses `npx prisma@latest` for every CLI step; pin the `prisma` dev dependency to the same version if you want the package script to match.
+
+:::
+
+## Prompt your coding agent
+
+Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
+
+- "Using the prisma-8 skill, add an edit page at `/posts/:postId/edit` whose action updates the post with `db.orm.public.Post.where({ id }).update(...)`."
+- "Add a delete button to the post page that removes the post in an action and redirects to `/posts`."
+- "Only list published posts on `/posts`, using a `where` predicate on `published`."
+- "Add a `Comment` model to `src/prisma/contract.prisma`, emit the contract, plan a migration, and render comments under each post."
+
+## Next steps
+
+- Change the schema in `src/prisma/contract.prisma`, then run `npx prisma@latest contract emit` and `npx prisma@latest db update`, or plan a checked-in migration with [`migration plan`](/cli/migration-plan).
+- [Learn the fundamentals](/orm/fundamentals/reading-data): filtering, sorting, pagination, and writes.
+- [Relations and joins](/orm/fundamentals/relations-and-joins) covers `include` in depth.
+- [Read the Prisma 8 overview](/orm) for the concepts behind contracts and typed queries.
+- [React Router documentation](https://reactrouter.com/home) for loaders, actions, and routing.
