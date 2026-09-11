@@ -78,7 +78,7 @@ model Profile {
 }
 ```
 
-Declare the relation on the side that holds the foreign key (`Profile` here). The mirror field on the other model (`profile Profile?` on `User`) is not supported yet, so [query the relation from the profile side](/orm/fundamentals/relations-and-joins#one-to-one).
+Declare the relation on the side that holds the foreign key (`Profile` here). You can add the mirror field on the other model as well (`profile Profile?` on `User`); a bare optional model-typed field is enough, and it needs no `@relation` of its own. The foreign key it mirrors must be unique, or emit rejects the field with `PSL_NON_UNIQUE_BACKRELATION`. With the mirror field in place, [the relation reads from either side](/orm/fundamentals/relations-and-joins#one-to-one).
 
 ### Which side owns the foreign key
 
@@ -114,13 +114,13 @@ A single foreign key cannot express this, because each side needs to point at ma
 model Post {
   id    Int       @id @default(autoincrement())
   title String
-  tags  PostTag[]
+  tags  Tag[]
 }
 
 model Tag {
   id    Int       @id @default(autoincrement())
   label String    @unique
-  posts PostTag[]
+  posts Post[]
 }
 
 model PostTag {
@@ -133,11 +133,17 @@ model PostTag {
 }
 ```
 
-The junction model is two one-to-many relations back to back. Its composite primary key, `@@id([postId, tagId])`, enforces one record per pair.
+The junction model is two one-to-many relations back to back. Its composite primary key, `@@id([postId, tagId])`, enforces one record per pair. The list fields on `Post` and `Tag` name the far side (`Tag[]`, `Post[]`), and the schema compiler routes them through the junction, so queries read `post.tags` directly.
 
-Connecting a post to a tag is a plain create on the junction model, and disconnecting is a delete:
+Connect a post to a tag with a nested write on the list field, or create the junction record yourself. Both write the same row, so pick one per pair: running both inserts the same composite key twice, and the second fails.
 
 ```typescript
+// Nested write on the list field
+await db.orm.public.Post.where({ id: post.id }).update({
+  tags: (t) => t.connect([{ id: tag.id }]),
+});
+
+// Or, equivalently, create the junction record yourself
 await db.orm.public.PostTag.create({ postId: post.id, tagId: tag.id });
 ```
 
@@ -189,7 +195,13 @@ model Feature {
 
 `@@discriminator(type)` marks the field that records the variant. `@@base(Task, "bug")` declares that `Bug` is the `"bug"` variant of `Task`.
 
-Variants appear as their own models in queries (`db.orm.public.Bug` alongside `db.orm.public.Task`), and a query on the base model returns every variant. When writing, pass the discriminator value explicitly when you create through a variant (`{ title, severity, type: "bug" }`); it is not filled in automatically yet.
+Variants appear as their own models in queries (`db.orm.public.Bug` alongside `db.orm.public.Task`), and a query on the base model returns every variant. To write a variant, narrow the base collection with `.variant(...)` and create through it; the discriminator is injected for you:
+
+```typescript
+await db.orm.public.Task.variant("Bug").create({ title: "Crash on save", severity: "high" });
+```
+
+Chaining `.variant(...)` on a read narrows the same way, applying the discriminator filter and giving the collection the variant's row shape.
 
 Each variant picks one of two storage layouts:
 
@@ -211,4 +223,4 @@ Projects scaffolded with `create-prisma@latest` install [Prisma 8 skills](/ai/to
 
 - [Query relations](/orm/fundamentals/relations-and-joins) with `.include(...)`, relation predicates, and junction traversal.
 - To model for MongoDB, see the [MongoDB data modeling guide](/orm/data-modeling/mongodb).
-- Referential actions (what happens to related rows on delete) are covered in the relations reference as it lands.
+- Referential actions work today: add `onDelete` and `onUpdate` to `@relation` with `Cascade`, `Restrict`, `SetNull`, `SetDefault`, or `NoAction`, as in `@relation(fields: [userId], references: [id], onDelete: Cascade)`, and the emitter lowers them to the foreign key's `ON DELETE` / `ON UPDATE` clause.

@@ -79,7 +79,7 @@ Open a connection and return a runtime.
 #### Remarks
 
 - Returns a `Promise<Runtime>`. The runtime is what runs plans directly (`runtime.query(...)` for rows, `runtime.execute(...)` for writes that return none), opens connections (`runtime.connection()`), and prepares statements (`runtime.prepare(...)`).
-- Calling `connect()` after the client has been closed rejects with `Error: Postgres client is closed`.
+- Calling `connect()` after the client has been closed rejects with a structured `DRIVER.NOT_CONNECTED` error (`Postgres client is closed`).
 
 #### Return type
 
@@ -125,7 +125,7 @@ Close the client and release its pool.
 #### Remarks
 
 - Returns a `Promise<void>`.
-- After `close()`, calling `connect()` again rejects with `Error: Postgres client is closed`.
+- After `close()`, calling `connect()` again rejects with `DRIVER.NOT_CONNECTED` (`Postgres client is closed`).
 - When you bound the client with `pg` (your own pool or client), close that instance yourself; the client only owns pools it created from a `url`.
 
 #### Return type
@@ -152,7 +152,7 @@ The client implements `Symbol.asyncDispose`, so `await using` closes it automati
 #### Remarks
 
 - Disposal fires at the end of the **block** the `await using` declaration lives in, not on the next line. Scope the client to the block where you need it.
-- After the block exits, the client is closed the same way `close()` closes it: a later `connect()` rejects with `Error: Postgres client is closed`.
+- After the block exits, the client is closed the same way `close()` closes it: a later `connect()` rejects with `DRIVER.NOT_CONNECTED`.
 - `await using` requires `@types/node` (which augments `SymbolConstructor` with `asyncDispose`) or a `lib` that declares the symbol.
 
 #### Examples
@@ -230,8 +230,8 @@ Open a connection and return a runtime.
 #### Remarks
 
 - Returns a `Promise<MongoRuntime>`.
-- Calling `connect()` when the client is already connected rejects with `Error: Mongo client already connected`. The first connection can happen implicitly, the moment any query builds the runtime, so a later explicit `connect()` collides the same way.
-- After the client has been closed, `connect()` rejects with `Error: Mongo client is closed`.
+- Calling `connect()` when the client is already connected rejects with `DRIVER.ALREADY_CONNECTED`. The first connection can happen implicitly, the moment any query builds the runtime, so a later explicit `connect()` collides the same way. PostgreSQL raises the same code from the same situation.
+- After the client has been closed, `connect()` rejects with `DRIVER.NOT_CONNECTED` (`Mongo client is closed`).
 
 #### Return type
 
@@ -245,7 +245,7 @@ Open a connection and return a runtime.
 
 ```typescript
 await db.connect();
-await db.connect(); // throws Error: Mongo client already connected
+await db.connect(); // throws DRIVER.ALREADY_CONNECTED
 ```
 
 ### `runtime()`
@@ -308,7 +308,7 @@ Close the client.
 #### Remarks
 
 - Returns a `Promise<void>`.
-- After `close()`, any further use throws `Error: Mongo client is closed`. This is verified against both `db.runtime()` and ORM access such as `db.orm.users.first()`, since both route through the same runtime.
+- After `close()`, any further use throws `DRIVER.NOT_CONNECTED` (`Mongo client is closed`). This is verified against both `db.runtime()` and ORM access such as `db.orm.users.first()`, since both route through the same runtime.
 - When you supplied a `mongoClient`, `close()` does not close your client (see [`mongo(options)`](#mongooptions)).
 
 #### Return type
@@ -323,7 +323,7 @@ Close the client.
 
 ```typescript
 await db.close();
-await db.runtime(); // throws Error: Mongo client is closed
+await db.runtime(); // throws DRIVER.NOT_CONNECTED
 ```
 
 ### `await using` (automatic disposal)
@@ -333,7 +333,7 @@ The MongoDB client implements `Symbol.asyncDispose` too, so `await using` closes
 #### Remarks
 
 - Disposal fires at the end of the block, exactly as on PostgreSQL.
-- After the block exits, a later `connect()` rejects with `Error: Mongo client is closed`.
+- After the block exits, a later `connect()` rejects with `DRIVER.NOT_CONNECTED`.
 
 #### Examples
 
@@ -632,6 +632,7 @@ Prepare a statement off the client facade.
 #### Remarks
 
 - Same result as `runtime.prepare(...)`, but the callback receives **two** arguments, `(sql, params)`, because the client has no closed-over SQL builder for you to reach for. Use the injected `sql` to build the plan: `sql.public.<table>`.
+- `prepare()` starts the connection itself, so calling `db.connect()` afterwards throws `DRIVER.ALREADY_CONNECTED`. Reach for the runtime with `db.runtime()` instead, which returns the one `prepare()` already built.
 
 #### Options
 
@@ -659,8 +660,7 @@ const ps = await db.prepare({ label: 'pg/text@1' }, (sql, params) =>
     .build(),
 );
 
-const runtime = await db.connect();
-const rows = await ps.query(runtime, { label: 'typescript' });
+const rows = await ps.query(db.runtime(), { label: 'typescript' });
 ```
 
 ### `PreparedStatement.query(target, params)`

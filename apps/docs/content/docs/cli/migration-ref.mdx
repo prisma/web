@@ -8,7 +8,17 @@ metaDescription: 'Learn how to set, list, and delete named Prisma 8 contract ref
 
 Use `migration ref` commands to manage named refs stored with your migration history. A ref maps a logical environment name, such as `staging` or `production`, to a contract hash. Other commands can then target that environment by name: [`db migrate --to production`](/cli/db-migrate), [`db update --to production`](/cli/db-update), or [`db sign production`](/cli/db-sign).
 
-Refs live on disk as `migrations/app/refs/<name>.json`, so they are versioned with your migrations. The commands are offline. The contract a ref points at must already be part of the on-disk migration graph.
+Refs live on disk as `migrations/app/refs/<name>.json`, so they are versioned with your migrations. The commands are offline. The contract a ref points at must already be part of the on-disk migration graph, which is why `migration ref set` does not accept `@db`: that token stands for the live database's marker, and the offline commands never read one.
+
+## The db ref
+
+One name is special. A ref called `db` is what [`migration plan`](/cli/migration-plan) starts from when you do not pass `--from`, so keeping it current is what keeps plans incremental.
+
+Three things move it:
+
+- [`db init`](/cli/db-init) and [`db update`](/cli/db-update) advance it automatically when you run them without `--db` and let the connection come from `prisma.config.ts`. Passing `--db` suppresses that unless you also pass `--advance-ref db`.
+- [`db migrate --advance-ref db`](/cli/db-migrate) advances it after an apply. Plain `db migrate` never advances anything, which is deliberate: a deploy or CI apply should not move a repository ref.
+- `migration ref set db <contract>` sets it by hand.
 
 ## Usage
 

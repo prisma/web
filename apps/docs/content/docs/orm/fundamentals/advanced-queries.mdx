@@ -103,12 +103,12 @@ const topAuthors = await db.runtime().query(plan);
 
 ```js no-copy
 [
-  { authorId: 'cuid20000000000000000001', posts: '2' },
-  { authorId: 'cuid20000000000000000002', posts: '1' }
+  { authorId: 'cuid20000000000000000001', posts: 2 },
+  { authorId: 'cuid20000000000000000002', posts: 1 }
 ]
 ```
 
-PostgreSQL returns counts as strings; convert with `Number(row.posts)`.
+`count()` returns a JavaScript `number`, and raises `RUNTIME.DECODE_FAILED` past the safe-integer range rather than rounding. Use `countBigInt()` when the tally can grow that large.
 
 ### Write with RETURNING
 
@@ -124,9 +124,9 @@ const [insertedUser] = await db.runtime().query(plan);
 // Contract defaults such as generated IDs are applied
 ```
 
-### Raw SQL fragments
+### Raw SQL
 
-Prisma 8 does not run standalone raw SQL statements: every query goes through the typed builder. When the operators don't cover an expression you need, embed a raw fragment with `fns.raw` and declare its type with `.returns(...)`. The rest of the query stays typed:
+Raw SQL comes in two sizes. When the operators don't cover an expression you need, embed a raw **fragment** with `fns.raw` and declare its type with `.returns(...)`. The rest of the query stays typed:
 
 ```typescript
 const plan = db.sql.public.user
@@ -139,7 +139,31 @@ const users = await db.runtime().query(plan);
 // [{ id: 'cuid20000000000000000001', email: 'alice@prisma.io', upperEmail: 'ALICE@PRISMA.IO' }, ...]
 ```
 
-Interpolated values are AST nodes, not string splices, so a fragment can reference columns and other typed expressions safely. If the builder plus `fns.raw` still can't express a shape you need, [share the use case](https://pris.ly/discord).
+Interpolated values are AST nodes, not string splices, so a fragment can reference columns and other typed expressions safely.
+
+When the whole statement has to be raw, write it with `db.raw.sql` and terminate it. `.returnsRow(spec)` declares the result columns and yields a plan `query()` streams decoded rows from; `.affectedCount()` declares none and yields a plan `execute()` reports statistics for:
+
+```typescript
+const user = db.sql.public.user;
+
+const plan = db.raw.sql`
+  SELECT u.id, u.email, count(p.id) AS "postCount"
+  FROM "user" u
+  LEFT JOIN "post" p ON p."userId" = u.id
+  GROUP BY u.id, u.email
+  LIMIT ${limit}
+`
+  .returnsRow({
+    id: user.columns.id,
+    email: user.columns.email,
+    postCount: "pg/int8@1",
+  })
+  .build();
+
+const rows = await db.runtime().query(plan);
+```
+
+A row-returning raw query can be interpolated into another raw template as a subquery or a CTE. The [raw queries reference](/orm/reference/raw-queries) has the full surface.
 
 ## MongoDB: Pipeline builder
 

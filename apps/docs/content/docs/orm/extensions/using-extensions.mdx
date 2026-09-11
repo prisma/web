@@ -10,7 +10,7 @@ An extension is a package that adds a database capability Prisma 8 does not have
 
 Use an extension when you need one of these database features while keeping typed schema declarations, generated TypeScript, migration support, and query helpers in your Prisma 8 project.
 
-To add an extension, install its package and register it in two places: the config and the client. The steps below use pgvector, the vector search extension, as the example.
+To add an extension, install its package and register it in two places: the config and the client. The steps below use pgvector, the vector search extension, as the example. Supabase is wired differently; see [the note on the catalog](#available-extensions).
 
 ## 1. Install the package
 
@@ -86,6 +86,8 @@ const plan = db.sql.public.post
 const similar = await db.runtime().query(plan);
 ```
 
+pgvector contributes `fns.cosineSimilarity` alongside `fns.cosineDistance`. Both take two vector expressions and return a `float8`; similarity sorts descending where distance sorts ascending.
+
 ## How the pieces fit
 
 One package, two registrations, one database:
@@ -107,13 +109,19 @@ You can build an extension that does not exist yet. The catalog is first-party t
 
 | Extension | Adds | Package |
 | --- | --- | --- |
-| [pgvector](https://github.com/prisma/orm/tree/main/packages/3-extensions/pgvector#readme) | Vector columns and similarity search | `@prisma/orm-extension-pgvector` |
-| [PostGIS](https://github.com/prisma/orm/tree/main/packages/3-extensions/postgis#readme) | Geometry columns and geo queries | `@prisma/orm-extension-postgis` |
-| [ParadeDB](https://github.com/prisma/orm/tree/main/packages/3-extensions/paradedb#readme) | BM25 full-text search indexes | `@prisma/orm-extension-paradedb` |
-| [Supabase](https://github.com/prisma/orm/tree/main/packages/3-extensions/supabase#readme) | Supabase auth and storage tables, role-bound clients | `@prisma/orm-extension-supabase` |
-| [arktype-json](https://github.com/prisma/orm/tree/main/packages/3-extensions/arktype-json#readme) | JSON columns validated by an arktype schema | `@prisma/orm-extension-arktype-json` |
+| [pgvector](https://www.npmjs.com/package/@prisma/orm-extension-pgvector) | Vector columns and similarity search | `@prisma/orm-extension-pgvector` |
+| [PostGIS](https://www.npmjs.com/package/@prisma/orm-extension-postgis) | Geometry columns and geo queries | `@prisma/orm-extension-postgis` |
+| [ParadeDB](https://www.npmjs.com/package/@prisma/orm-extension-paradedb) | BM25 full-text search indexes | `@prisma/orm-extension-paradedb` |
+| [Supabase](https://www.npmjs.com/package/@prisma/orm-extension-supabase) | Supabase auth and storage tables, role-bound clients | `@prisma/orm-extension-supabase` |
+| [arktype-json](https://www.npmjs.com/package/@prisma/orm-extension-arktype-json) | JSON columns validated by an arktype schema | `@prisma/orm-extension-arktype-json` |
 
-All target PostgreSQL. ParadeDB and Supabase are experimental (ParadeDB supports the `key_field` index option only so far). The rest ship with Prisma 8. Extension names link to each package's README on GitHub.
+All target PostgreSQL. ParadeDB and Supabase are experimental (ParadeDB supports the `key_field` index option only so far). The rest ship with Prisma 8. Extension names link to each package on npm.
+
+:::note[Supabase does not follow the recipe above]
+
+Supabase ships no `/control` subpath. Import its pack from `@prisma/orm-extension-supabase/pack` instead and pass it to the same `ormConfig({ extensions: [supabasePack] })` call the recipe above uses. The client is where the wiring differs: build it with the `supabase()` factory from `@prisma/orm-extension-supabase/runtime` rather than `postgres()`. That factory is role-first (`asUser(jwt)`, `asAnon()`, `asServiceRole()`) and carries the JWT validation and RLS binding. See the [runnable example](https://github.com/prisma/orm/tree/main/examples/supabase) for the whole wiring.
+
+:::
 
 For a working project per extension, see the runnable examples: [pgvector](https://github.com/prisma/orm/tree/main/examples/prisma-8-demo), [PostGIS](https://github.com/prisma/orm/tree/main/examples/prisma-8-postgis-demo), [ParadeDB](https://github.com/prisma/orm/tree/main/examples/paradedb-demo), and [Supabase](https://github.com/prisma/orm/tree/main/examples/supabase).
 

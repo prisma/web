@@ -182,6 +182,7 @@ Use `.upsert(...)` to update a record if it exists and create it otherwise. Pass
 await db.orm.public.User.upsert({
   create: { email: "eve@prisma.io", name: "Eve" },
   update: { name: "Eve Exists" },
+  conflictOn: { email: "eve@prisma.io" },
 });
 ```
 
@@ -192,7 +193,9 @@ await db.orm.users.where({ email: "eve@prisma.io" }).upsert({
 });
 ```
 
-On PostgreSQL, the record is matched on the model's unique fields (here `email`). On MongoDB, put the match in `.where(...)` before `.upsert(...)`.
+On PostgreSQL, `conflictOn` names the unique constraint to match on. Leave it out and the conflict target is the model's primary key, which is usually not what you want when the row you are upserting is identified by something else: without `conflictOn: { email }` the example above inserts a second row, or fails on the unique constraint on `email`.
+
+On MongoDB, there is no `conflictOn`; put the match in `.where(...)` before `.upsert(...)`.
 
 ## Write many records
 

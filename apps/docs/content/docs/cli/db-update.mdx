@@ -23,9 +23,15 @@ npx prisma@latest db update --db "$DATABASE_URL"
 | `--db <url>` | Connects to the database. |
 | `--dry-run` | Shows planned operations without applying them. |
 | `--to <contract>` | Updates to a specific contract (hash, prefix, ref name, migration directory name, or `./path`). |
-| `--advance-ref <name>` | Advances the named [ref](/cli/migration-ref) to the post-command contract hash. |
+| `--advance-ref <name>` | Advances the named [ref](/cli/migration-ref) to the post-command contract hash. Without it, `db update` advances `db` when `--db` is omitted, and advances nothing when `--db` is passed. |
 | `--config <path>` | Read this config file instead of `./prisma.config.ts`. |
 | `--json` | Prints a machine-readable result. |
+
+## How the db ref moves
+
+Run without `--db`, `db update` takes the connection from `db.connection` in `prisma.config.ts` and advances the [ref](/cli/migration-ref) named `db` to the contract it just applied. Pass `--db` and that advancement is suppressed, even when the URL is the same one the config holds. Pass `--advance-ref db` alongside `--db` to get it back.
+
+The `db` ref is what [`migration plan`](/cli/migration-plan) uses as its starting point when you do not pass `--from`. Passing `--db` only suppresses the advancement; it never removes a `db` ref that already exists. So a loop that always passes `--db` without `--advance-ref db` leaves the ref wherever it was last set, and the next `migration plan` starts from that stale contract. If the ref was never created, `migration plan` plans from an empty database while `migrations/app/` is empty, and refuses with `MIGRATION.PLAN_ORIGIN_UNKNOWN` once migrations exist on disk.
 
 ## Destructive changes need consent
 
@@ -40,7 +46,7 @@ npx prisma@latest db update --db "$DATABASE_URL" --no-interactive --confirm appd
 ```npm
 npx prisma@latest contract emit
 npx prisma@latest db update --db "$DATABASE_URL" --dry-run
-npx prisma@latest db update --db "$DATABASE_URL"
+npx prisma@latest db update --db "$DATABASE_URL" --advance-ref db
 npx prisma@latest db verify --db "$DATABASE_URL"
 ```
 
