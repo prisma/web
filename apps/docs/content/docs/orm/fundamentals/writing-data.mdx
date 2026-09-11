@@ -47,7 +47,7 @@ model User {
   id        ObjectId @id @map("_id")
   email     String   @unique
   name      String?
-  createdAt DateTime @default(now())
+  createdAt DateTime
   posts     Post[]
   @@map("users")
 }
@@ -60,7 +60,7 @@ model Post {
   tags      String[]
   author    User     @relation(fields: [authorId], references: [id])
   authorId  ObjectId
-  createdAt DateTime @default(now())
+  createdAt DateTime
   @@map("posts")
 }
 ```
@@ -105,7 +105,7 @@ const user = await db.orm.users.create({
 // user._id is filled in by the server
 ```
 
-The returned record is complete, so you can use the generated values right away:
+The returned record is complete, so you can use the generated values right away (PostgreSQL shown; on MongoDB the key is `_id`):
 
 ```js no-copy
 { id: 'cuid20000000000000000003', email: 'jane@prisma.io', name: 'Jane', createdAt: 2026-07-06T09:09:56.119Z }
@@ -125,7 +125,7 @@ const account = await db.orm.public.User
 
 `.select(...)` works the same before `update`, `delete`, `upsert`, `createAll`, `updateAll`, and `deleteAll`. The `AndCount` methods give you back a number, so `.select(...)` has no effect on them.
 
-When a write breaks a unique constraint, the call throws. Errors have no shared class. A PostgreSQL database error carries `sqlState` (a five-character SQL state code), a MongoDB driver error carries a numeric `code`, and a Prisma ORM error carries a string `code` such as `RUNTIME.ITERATOR_CONSUMED`. On PostgreSQL, `23505` is the SQL state code for a unique violation. The [error reference](/orm/reference/error-reference) lists the other codes:
+When a write breaks a unique constraint, the call throws. Errors have no shared class. A PostgreSQL database error carries `sqlState` (a five-character SQL state code), a MongoDB driver error carries a numeric `code`, and a Prisma ORM error carries a string `code` such as `RUNTIME.ITERATOR_CONSUMED`. On PostgreSQL, `23505` is the SQL state code for a unique violation. The [error reference](/orm/reference/error-reference) lists Prisma ORM's own codes:
 
 ```typescript
 try {
@@ -141,7 +141,7 @@ On MongoDB the driver throws its own error. A duplicate key gives you an error w
 
 :::note
 
-On MongoDB, pass timestamp fields such as `createdAt` yourself. `@default(now())` is not applied when you insert. On PostgreSQL the database fills them in.
+MongoDB contracts do not support `@default`, so pass timestamp fields such as `createdAt` yourself. On PostgreSQL the database fills them in.
 
 `@map("_id")` renames the id field to `_id` everywhere, so the returned document has an `_id` key and not an `id` key.
 
@@ -198,7 +198,7 @@ When nothing matches the filter, `.update(...)` returns `null`. It does not thro
 
 When the filter matches more than one record, `.update(...)` still changes only one of the matching records, with no guaranteed order. Use [`updateAll` or `updateAndCount`](#write-many-records) if you mean all of them.
 
-On MongoDB you can also pass a callback instead of an object, and change a field with an operation rather than a value. The callback's argument, named `p` here, is the field-operation builder, which holds one method per operation:
+On MongoDB you can also pass a callback instead of an object, and change a field with an operation rather than a value. The callback's argument, named `p` here, gives you one entry per field, and each field carries the operations you can apply to it:
 
 ```typescript
 await db.orm.posts
@@ -208,15 +208,15 @@ await db.orm.posts
 
 The callback returns an array, so you can apply several operations in one update.
 
-The field operations `set`, `unset`, `inc`, and `mul` work on ordinary fields. `push`, `pull`, `addToSet`, and `pop` work on array fields, and you call them the same way: `p.tags.push("news")`. These field operations are MongoDB only. PostgreSQL has no callback form of `update`, so on PostgreSQL you pass an object. See [Field update operations](/orm/reference/orm-client#field-update-operations) in the reference.
+`set` and `unset` work on any field. `inc` and `mul` are on number fields only. `push`, `pull`, `addToSet`, and `pop` are for array fields, and you call them the same way: `p.tags.push("news")`. These field operations are MongoDB only. PostgreSQL has no callback form of `update`, so on PostgreSQL you pass an object. See [Field update operations](/orm/reference/orm-client#field-update-operations) in the reference.
 
-There is no `increment` on PostgreSQL. To add to a number in place, write the update as raw SQL. For a `views` column on `post`, `db.raw.sql` writes a raw statement, `.affectedCount()` says you want the row count, `.build()` finishes it, and `db.runtime().execute(...)` runs it; [Advanced queries](/orm/fundamentals/advanced-queries) explains raw SQL:
+There is no `increment` on PostgreSQL. To add to a number in place, write the update as raw SQL. For a `views Int` column added to `Post`, `db.raw.sql` writes a raw statement, `.affectedCount()` says you want the row count back as `{ affectedRows }`, `.build()` finishes it, and `db.runtime().execute(...)` runs it; [Advanced queries](/orm/fundamentals/advanced-queries) explains raw SQL:
 
 ```typescript
 const query = db.raw.sql`UPDATE post SET views = views + 1 WHERE id = ${postId}`
   .affectedCount()
   .build();
-const updatedCount = await db.runtime().execute(query);
+const { affectedRows } = await db.runtime().execute(query);
 ```
 
 ## Delete one record
@@ -296,7 +296,7 @@ const deletedCount = await db.orm.public.Post.where((p) => p.title.ilike("draft%
 
 The `AndCount` methods return a plain number. If three posts match, `updatedCount` is `3`, not an object.
 
-`.where((p) => p.title.ilike("draft%"))` is the callback form of a filter, for conditions an object cannot express. Its argument is the filter builder, which holds one method per comparison. [Reading data](/orm/fundamentals/reading-data) covers the filters you can write.
+`.where((p) => p.title.ilike("draft%"))` is the callback form of a filter, for conditions an object cannot express. Its argument gives you one entry per field, and each field carries the comparisons you can apply to it. [Reading data](/orm/fundamentals/reading-data) covers the filters you can write.
 
 The bulk methods work the same on MongoDB, on the collection: `db.orm.posts`. Pass `createdAt` in every object you give `createAll`, as with `create`.
 
@@ -334,7 +334,7 @@ for await (const post of updated) {
 }
 ```
 
-Either `await` the result or loop it with `for await`, not both and not twice. Anything else throws an error whose `error.code` is `RUNTIME.ITERATOR_CONSUMED`.
+Pick one: `await` it or loop it with `for await`. Mixing the two throws an error whose `error.code` is `RUNTIME.ITERATOR_CONSUMED`.
 
 ## Common mistakes
 
