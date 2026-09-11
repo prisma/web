@@ -11,7 +11,7 @@ Read in this order:
 5. `changes.md` — every proposed change by kind: restructure (A), corrections to existing pages (B, shipped), new pages (C), ORM changes (D). Leads with the suggested order.
 6. `naming.md` — the "Prisma ORM" naming rule.
 7. `slice-corrections.md` — how the shipped corrections were sliced, and the decisions taken.
-8. `brief-db-ref-on-adoption.md`, `brief-skills-opt-out.md` — two ORM changes handed to other agents.
+8. `brief-db-ref-on-adoption.md`, `brief-skills-opt-out.md`, `brief-skill-staleness.md` — three ORM-side changes handed to other agents (adoption sets the `db` ref; a skills opt-out in create-prisma; bringing the `prisma-8` agent skill up to rc.9).
 9. `audit/` — the page-by-page audit findings that section B and much of C and D were built from. `INSTRUCTIONS.md` and `AREAS.md` describe how the audit was run; the seven area files hold the findings with source citations.
 
 Prose is a draft throughout; the structure and the cited facts are what has been verified.
