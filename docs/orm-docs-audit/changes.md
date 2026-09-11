@@ -10,17 +10,19 @@ Status as of 2026-09-11.
 
 **Shipped, or nearly.** Every correction to an existing page (section B, 35 items) is in three PRs: prisma/web #8236 (API names, flags, and paths that no longer exist) and #8237 (pages whose explanations were wrong) are merged; #8238 (facts on the getting-started pages and guides) is open as of 2026-09-11. Each commit cites the source line it was verified against. Section B below is a summary of what changed; the details are in the PRs.
 
-**In progress.** A7 (moving the sixteen Prisma 7 guides out of the Latest tree) is with Ankur. D1 (adoption sets the `db` ref) and D3 (a skills opt-out in create-prisma) have briefs and are with ORM-side agents. D14 (the agent skill) has a brief ready to hand over.
+**Landed since the audit.** A7 shipped as prisma/web #8242 (merged 2026-09-11), in a different shape from the move proposed below: fifteen of the sixteen Prisma 7 guides were rewritten for Prisma ORM 8 at the same slugs, each with its Prisma 7 page preserved under `guides/v7/`; Cloudflare D1 moved to `guides/v7/` only, with a redirect; thirteen other pages (authentication, some integrations, some Prisma Postgres guides) stay in the Latest tree with a "This guide uses Prisma 7" note. C9, C11, and C12 need re-scoping against the pages #8242 added.
+
+**In progress.** D1 (adoption sets the `db` ref) and D3 (a skills opt-out in create-prisma) have briefs and are with ORM-side agents. D14 (the agent skill) has a brief ready to hand over.
 
 **Not started.** The naming pass, the restructure (A1 to A3, A5, A6, A8), every new page (C), and the rest of D.
 
 ## Recommended order for the open work
 
-1. **Naming pass**: "Prisma 8" to "Prisma ORM" everywhere (691 occurrences in 109 files). Mechanical, one PR, done after A7 lands so the two do not conflict.
+1. **Naming pass**: "Prisma 8" to "Prisma ORM" everywhere (679 occurrences in 109 files). Mechanical, one PR. A7 has landed (#8242), so nothing blocks it.
 2. **C4, release status page.** Half a page; unblocks J4 (the reader who got upgraded by accident). Needs the GA window and the Prisma ORM 7 support policy from Will.
 3. **C2, add Prisma ORM to an app you already started.** The J1 page and the complaint that started this work. One page, written from `mental-model.md`.
 4. **C1, coming from Prisma 7.** The mapping table and the "not yet" list. Unblocks J3.
-5. **C9, deployment.** The largest hole: zero Prisma ORM 8 coverage for any host, and the six pages A7 removes had been standing in for it.
+5. **C9, deployment.** Was the largest hole; #8242 shipped Prisma ORM 8 guides for Docker, Cloudflare Workers, Turborepo, pnpm workspaces, and Bun workspaces. What remains is what those pages do not cover (see C9).
 6. **The restructure** (A1, A2, A3, A5, A6) as one piece of work, after the pages above exist to be organised.
 7. **Everything else in C** as its dependency in D clears.
 
@@ -42,11 +44,11 @@ Status as of 2026-09-11.
 The proposed sidebar trees and the `/orm` page structure are in `ia.md`. These are the moves that tree implies.
 
 - **A1. Give the ORM its own front door, organised by starting state.** Replace the quickstart-versus-existing-project split with four doors on `/prisma-orm` and `/orm`: new app from scratch; app already started with an empty database; existing database with data; existing Prisma 7 app. Each door is one page that carries the whole path. Today three of the four starting states share one page written for the third. Unblocks J1, J2, J5.
-- **A2. "Coming from Prisma 7" at the top level of the ORM sidebar**, linked from the root page, `/getting-started`, `/orm`, and reading-data. The sixteen inline diff blocks stay but point at it. Unblocks J3, J4. The page itself is C1.
+- **A2. "Coming from Prisma 7" at the top level of the ORM sidebar**, linked from the root page, `/getting-started`, `/orm`, and reading-data. The fourteen inline diff blocks stay but point at it. Unblocks J3, J4. The page itself is C1.
 - **A3. Human content first, agent prompts last.** `/prisma-orm`, `/getting-started`, and every framework guide open with a copyable agent prompt before any human instruction. Move the prompt to the end or into a collapsed block. This is the direct answer to the "written for AI" complaint.
 - **A5. Root page: give the ORM a section**, not one line ("Here for the ORM? Jump to Prisma 7 or Prisma 8"). The four doors from A1 in one row. File: `(index)/index.mdx`.
 - **A6. Rewrite `orm/core-concepts.mdx` as a narrative** from `mental-model.md`. The current page is a glossary; the mental model explains why, in the order a reader meets each piece. Keep the glossary as a closing section.
-- **A7. Move the sixteen Prisma 7 guides out of the Latest tree.** In progress (Ankur). `guides/frameworks/react-router-7`, `solid-start`, all of `guides/deployment/*`, `guides/integrations/github-actions`, `ai-sdk`, all of `guides/switch-to-prisma-orm/*` and `guides/database/*` are Prisma 7 end to end and have no copy under `guides/v7/`. Move with the same slugs and redirects; the Latest sidebar loses those labels until C9, C11, and C12 replace them.
+- **A7. Move the sixteen Prisma 7 guides out of the Latest tree.** Landed as #8242 (2026-09-11), in a different shape. `guides/frameworks/react-router-7`, `solid-start`, `guides/deployment/*` except Cloudflare D1, `guides/integrations/github-actions`, `ai-sdk`, all of `guides/switch-to-prisma-orm/*` and `guides/database/*` were rewritten for Prisma ORM 8 at the same slugs, each with its Prisma 7 page preserved under `guides/v7/`; Cloudflare D1 moved to `guides/v7/` only (there is no Prisma ORM 8 D1 driver). The Latest sidebar keeps those labels. Thirteen further pages stay in Latest with a "This guide uses Prisma 7" note; #8242 says which are blocked on third-party adapters and which are portable follow-ups.
 - **A8. One error reference, or two that link.** `cli/error-reference.mdx` claims to list every CLI code but carries only the platform namespaces; every `MIGRATION.*`, `CONTRACT.*`, `CONFIG.*` code is on `orm/reference/error-reference.mdx`, and the structured errors' `docsUrl` points there. Merge them, or state the split on both and cross-link.
 - **A4** (sidebar labels and the guides index) is in #8238, open as of 2026-09-11.
 
@@ -84,9 +86,9 @@ Grouped by where the page lives. Each says what the page is for, what it must co
 
 ### Guides
 
-- **C9. Deploying Prisma ORM 8.** Zero coverage today for any host. What a deploy needs: `prisma contract emit` as a `prebuild` step, `db migrate` (or `db init`) from the pipeline before the app starts, `db.close()` on shutdown, and for edge runtimes the per-request facade `@prisma/orm-postgres/serverless` (`postgresServerless<Contract>({ contractJson })` at module scope, `await using runtime = await db.connect({ url })` per request). Sections or pages for Docker, Vercel, Cloudflare Workers, monorepos. The monorepo's `docs/Serverless Deployment Guide.md` is the source for the Cloudflare path (Hyperdrive, `nodejs_compat`, migrations against the origin URL never through Hyperdrive, one runtime per `connect()`, the 128 MiB isolate limit) and carries a production caveat with no site presence: against real Hyperdrive the serverless facade's default cursor path hangs (SQLSTATE 58000, request killed at 30 s); the workaround is `cursor: { disabled: true }`. Source: `skills/prisma-8/references/build.md:421-435`, `packages/3-extensions/postgres/README.md:41-60`, `docs/Serverless Deployment Guide.md:97,274`.
-- **C11. CI.** `prisma migration status --to <env> --db "$URL" --json`, fail the job on any `diagnostics[]` entry (the process exits 0 on warnings, so exit codes alone miss `MIGRATION.DIVERGED` and friends), then `prisma db migrate --to <env> --db "$URL"`. Source: `skills/prisma-8/references/migration-review.md:172-197`. D16 would make this one line.
-- **C12. Switching from another ORM; team schema workflow.** Replaces the six Prisma 7 guides A7 removes. The brownfield flow (`orm init`, `contract infer`, review, `contract emit`, `db sign`, `db verify`) and the team loop (`migration plan`, refs, `db update` for local iteration, `db verify`, `migration status` in CI). Reuses C3 and C11.
+- **C9. Deploying Prisma ORM 8.** Partly overtaken by #8242, which added Prisma ORM 8 guides for Docker, Cloudflare Workers, Turborepo, pnpm workspaces, and Bun workspaces; re-scope against those pages before writing. What a deploy needs: `prisma contract emit` as a `prebuild` step, `db migrate` (or `db init`) from the pipeline before the app starts, `db.close()` on shutdown, and for edge runtimes the per-request facade `@prisma/orm-postgres/serverless` (`postgresServerless<Contract>({ contractJson })` at module scope, `await using runtime = await db.connect({ url })` per request). Sections or pages for Docker, Vercel, Cloudflare Workers, monorepos. The monorepo's `docs/Serverless Deployment Guide.md` is the source for the Cloudflare path (Hyperdrive, `nodejs_compat`, migrations against the origin URL never through Hyperdrive, one runtime per `connect()`, the 128 MiB isolate limit) and carries a production caveat with no site presence: against real Hyperdrive the serverless facade's default cursor path hangs (SQLSTATE 58000, request killed at 30 s); the workaround is `cursor: { disabled: true }`. Source: `skills/prisma-8/references/build.md:421-435`, `packages/3-extensions/postgres/README.md:41-60`, `docs/Serverless Deployment Guide.md:97,274`.
+- **C11. CI.** #8242 rewrote `guides/integrations/github-actions.mdx` for Prisma ORM 8; check it against this before writing. `prisma migration status --to <env> --db "$URL" --json`, fail the job on any `diagnostics[]` entry (the process exits 0 on warnings, so exit codes alone miss `MIGRATION.DIVERGED` and friends), then `prisma db migrate --to <env> --db "$URL"`. Source: `skills/prisma-8/references/migration-review.md:172-197`. D16 would make this one line.
+- **C12. Switching from another ORM; team schema workflow.** #8242 rewrote the three `guides/switch-to-prisma-orm/*` and three `guides/database/*` pages for Prisma ORM 8; re-scope against them. The brownfield flow (`orm init`, `contract infer`, review, `contract emit`, `db sign`, `db verify`) and the team loop (`migration plan`, refs, `db update` for local iteration, `db verify`, `migration status` in CI). Reuses C3 and C11.
 - **C10. Supabase and row level security.** The Supabase extension is one table row on the site. What ships: `@@rls` on a model, the five `policy_*` block kinds with `target` / `roles` / `using` / `withCheck`, the cross-space foreign key `supabase:auth.AuthUser`, `supabase<Contract>({ contractJson, url, jwksUrl | jwtSecret })`, `db.asUser(jwt)` / `db.asAnon()` / `db.asServiceRole()`, the session-pooler requirement, the one-time `GRANT` for `auth.*`, and the `SUPABASE.*` errors. Source: `packages/9-public/@prisma/orm-extension-supabase/`, `skills/prisma-8/references/supabase.md`.
 
 ### Reference completeness
@@ -142,7 +144,7 @@ Places where the docs are hard because the tool is. Grouped by who owns the fix.
 
 ## Naming
 
-The product is "Prisma ORM". A version number appears only when two versions are contrasted ("Prisma ORM 7 to 8"). Never "Prisma 8" as a product name. Rule, counts, and exceptions in `naming.md`. Applies to every item above and to the proposed nodes in `ia.md`. Not started; planned as its own PR after A7.
+The product is "Prisma ORM". A version number appears only when two versions are contrasted ("Prisma ORM 7 to 8"). Never "Prisma 8" as a product name. Rule, counts, and exceptions in `naming.md`. Applies to every item above and to the proposed nodes in `ia.md`. Not started; planned as its own PR (A7 has landed, so nothing blocks it).
 
 ## Open questions
 

@@ -49,7 +49,7 @@ Upgrade Prisma ORM
     GitHub Actions, AI SDK, React Router 7, SolidStart
 ```
 
-The six Guides labels that leave come back as Prisma ORM 8 pages when C9 (deployment), C11 (CI), and C12 (switching, team workflow) are written.
+The Prisma ORM 8 replacements for those labels sit at the same slugs; C9 (deployment), C11 (CI), and C12 (switching, team workflow) in `changes.md` say what they must cover.
 
 ### The ORM root page (`/orm`)
 
@@ -162,6 +162,8 @@ Reference
 
 ### Guides (ORM-relevant parts)
 
+Snapshot of 2026-09-10. On 2026-09-11, #8242 rewrote the Deployment, Database, Switch to Prisma ORM, GitHub Actions, AI SDK, React Router 7, and SolidStart pages for Prisma ORM 8 at the same slugs, moved their Prisma 7 versions (and Cloudflare D1) under `guides/v7`, and gave the overview an Upgrading section.
+
 ```
 Overview                                     /guides   says "Upgrading: moving from Prisma 7" is coming
 v7
@@ -180,5 +182,5 @@ Making guides
 ### Where Prisma 7 readers are pointed today
 
 - Root page: one line, "Here for the ORM? Jump straight to Prisma 7 or Prisma 8".
-- A "Using Prisma 7?" note box on `/orm`, `/prisma-orm`, both PostgreSQL getting-started pages, and `/cli`. It says Prisma 7 remains supported and links to `/orm/v7` and `/v7/getting-started`. Both links are for staying on 7.
+- A note box ("Using Prisma 7?", "Prisma 7", or "Prisma 7 users") on `/orm`, `/prisma-orm`, `/prisma-orm/create-prisma`, all four getting-started pages (PostgreSQL and MongoDB), and `/cli`. It says Prisma 7 remains supported and links to `/orm/v7` and `/v7/getting-started`. Both links are for staying on 7.
 - Nothing under Getting Started or ORM links to the upgrade guide. It is reachable only through Guides, where the label is "PostgreSQL".

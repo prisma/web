@@ -34,7 +34,7 @@ Done: for every Prisma ORM 7 call in their code, they know the Prisma ORM 8 call
 
 What the docs must provide: one mapping page in four sections (schema and types, CLI commands, client API, not-yet list with a status per item), reachable from every ORM entry point. The not-yet list is the part readers ask for most: `createMany` and `skipDuplicates`, `findUniqueOrThrow`, atomic `increment`/`decrement`, case-insensitive filters, JSON path filters, `$transaction` arrays, the payload types.
 
-Where the structure fails: there is no node. The mapping exists as sixteen inline "For Prisma 7 users" blocks across nine pages, so the reader finds it by luck, and nothing admits what does not exist. The accessor change (`prisma.user` to `db.orm.public.User`) is stated once.
+Where the structure fails: there is no node. The mapping exists as fourteen inline diff blocks across six `orm/` pages (twelve of them introduced with "For Prisma 7 users"), so the reader finds it by luck, and nothing admits what does not exist. The accessor change (`prisma.user` to `db.orm.public.User`) is stated once.
 
 Verdict: **red**. IA node: "Coming from Prisma 7" (C1, placed by A2); the not-yet list depends on D4.
 

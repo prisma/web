@@ -24,12 +24,14 @@ One pass over the whole site, as its own PR. Not a global replace: each of the 1
 
 ## Scope on the site (2026-09-10, outside the v6 and v7 trees)
 
+Counted with `git grep -o` over the `.mdx` and `meta.json` files under `apps/docs/content/docs/`, excluding every `v6/` and `v7/` directory, on `main` as of 2026-09-10 (`684dcbf6`).
+
 | Term | Occurrences | Files |
 | --- | --- | --- |
-| "Prisma 8" | 691 | 109 |
-| "Prisma 7" | 198 | 33 |
-| "Prisma ORM" | 2816 | 95 |
+| "Prisma 8" | 679 | 109 |
+| "Prisma 7" | 135 | 33 |
+| "Prisma ORM" | 487 | 95 |
 
-By area: `orm/` 225, `guides/` 196, `(index)/` 135, `cli/` 81. 96 page titles or meta titles contain "Prisma 8". No sidebar label does; the labels come from titles.
+By area: `orm/` 221, `guides/` 196, `(index)/` 131, `cli/` 77. 96 frontmatter titles contain "Prisma 8": 7 `title:` values, which are also the sidebar labels of those pages, and 89 `metaTitle:` values. No `meta.json` group title does.
 
 The common sentence shapes ("Add Prisma 8 to an ...", "Prisma 8 is the ...", "Prisma 8 app with ...", "Prisma 8 skills for ...") all take "Prisma ORM" as a drop-in replacement. The contrast sentences keep the number and add "ORM".
