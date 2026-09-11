@@ -8,7 +8,7 @@ Status as of 2026-09-11.
 
 ## Where things stand
 
-**Shipped.** Every correction to an existing page (section B, 35 items) went out in three PRs: prisma/web #8236 (API names, flags, and paths that no longer exist), #8237 (pages whose explanations were wrong), and #8238 (facts on the getting-started pages and guides). Each commit cites the source line it was verified against. Section B below is a summary of what changed; the details are in the PRs.
+**Shipped, or nearly.** Every correction to an existing page (section B, 35 items) is in three PRs: prisma/web #8236 (API names, flags, and paths that no longer exist) and #8237 (pages whose explanations were wrong) are merged; #8238 (facts on the getting-started pages and guides) is open as of 2026-09-11. Each commit cites the source line it was verified against. Section B below is a summary of what changed; the details are in the PRs.
 
 **In progress.** A7 (moving the sixteen Prisma 7 guides out of the Latest tree) is with Ankur. D1 (adoption sets the `db` ref) and D3 (a skills opt-out in create-prisma) have briefs and are with ORM-side agents. D14 (the agent skill) has a brief ready to hand over.
 
@@ -48,11 +48,11 @@ The proposed sidebar trees and the `/orm` page structure are in `ia.md`. These a
 - **A6. Rewrite `orm/core-concepts.mdx` as a narrative** from `mental-model.md`. The current page is a glossary; the mental model explains why, in the order a reader meets each piece. Keep the glossary as a closing section.
 - **A7. Move the sixteen Prisma 7 guides out of the Latest tree.** In progress (Ankur). `guides/frameworks/react-router-7`, `solid-start`, all of `guides/deployment/*`, `guides/integrations/github-actions`, `ai-sdk`, all of `guides/switch-to-prisma-orm/*` and `guides/database/*` are Prisma 7 end to end and have no copy under `guides/v7/`. Move with the same slugs and redirects; the Latest sidebar loses those labels until C9, C11, and C12 replace them.
 - **A8. One error reference, or two that link.** `cli/error-reference.mdx` claims to list every CLI code but carries only the platform namespaces; every `MIGRATION.*`, `CONTRACT.*`, `CONFIG.*` code is on `orm/reference/error-reference.mdx`, and the structured errors' `docsUrl` points there. Merge them, or state the split on both and cross-link.
-- **A4** (sidebar labels and the guides index) shipped in #8238.
+- **A4** (sidebar labels and the guides index) is in #8238, open as of 2026-09-11.
 
-## B. Corrections to existing pages (shipped)
+## B. Corrections to existing pages (#8236 and #8237 merged; #8238 open)
 
-Thirty-five items, all verified against rc.9 source and shipped in #8236, #8237, #8238. What they fixed, in order of how many readers they hit:
+Thirty-five items, all verified against rc.9 source, in #8236 and #8237 (merged) and #8238 (open as of 2026-09-11). What they fixed, in order of how many readers they hit:
 
 | Theme | What was wrong | Items |
 |---|---|---|
@@ -93,7 +93,7 @@ Grouped by where the page lives. Each says what the page is for, what it must co
 
 - **C7. Advanced Postgres.** All of it ships and none of it is documented: RLS and policies in PSL and the TypeScript builder; expression and partial indexes (`@@index(expression:, where:, unique:, type:)`); `@@check`; `@noCheck`; `installExtension` / `createExtension` migration factories; `@@control` for how much of a table Prisma manages. Unblocks J8. Source: `skills/prisma-8/references/contract.md:101-108,265-367`, `packages/2-sql/2-authoring/contract-psl/README.md`. Waits on the product call about how to label these.
 - **C8. Money and Decimal.** Cents as integers (already there), `Numeric(p, s)` in type position, what `@default` accepts, `avgDecimal`, and that a decimal string avoids float loss while the declared scale still rounds. Answers an open Discord question.
-- **C6. Types.** Model, result, where, and input types with the Prisma 7 names beside each. Written from `docs/reference/model-and-result-types.md` on the PR branch; publish when prisma/orm#30231, #30236, #30158 ship. Also what `contract.d.ts` already exports today. Unblocks J9.
+- **C6. Types.** Model, result, where, and input types with the Prisma 7 names beside each. Written from `docs/reference/model-and-result-types.md` on prisma/orm `main` (#30231 and #30236 merged 2026-09-10); publish when the first tagged release after rc.9 ships them. #30158 (reusable where filter types) is already in rc.9. Also what `contract.d.ts` already exports today. Unblocks J9.
 - **C13. Migration factory reference.** The site shows six factories; the `Migration` base class has about thirty (indexes, foreign keys, uniques, checks, column changes, native enums, `installExtension`, RLS and policies), plus free factories and the `node migration.ts --dry-run` / `--config` self-emit CLI. Source: `packages/3-targets/3-targets/postgres/src/core/migrations/postgres-migration.ts:159-506`.
 - **C14. PSL and TypeScript builder completeness.** A rewrite of `psl-syntax.mdx` and `typescript-schema-builder.mdx` large enough to plan as one. The PSL page lacks native types in type position, the `@default` generator list, the `temporal.*` presets, scalar lists, `@@unique`, `@@index` options, `@@check`, `@noCheck`, `@@control`, `namespace` blocks, `native_enum`, `@relation("Name")`, `onDelete`/`onUpdate`, inline extension types, MongoDB index options, `.variant()`. The TypeScript page lacks most field helpers, composite keys (`.attributes()`), indexes and checks, `foreignKeyDefaults`, the `output` option, and the MongoDB builder's value objects, indexes, enums, vectors, and polymorphism. The full list is in `audit/contract.md` under Missing. Source: the two `contract-psl` and `contract-ts` READMEs.
 - **C15. Runtime reference completeness.** Additions to `transactions-and-runtime.mdx` and `orm-client.mdx`: `query` vs `execute`; `verifyMarker`; `binding`; `db.raw`, `db.nativeEnums`, `db.context`, `db.contract`, `db.stack`; the flat `db.orm.User` accessor for single-namespace contracts; `AsyncIterableResult.first()` / `.firstOrThrow()`; the `configure(meta)` callback and `meta.annotate(...)` (how cache opt-in works); `distinctOn`'s capability; MongoDB `mode` and the extra filter classes; the SQLite facade; the static client; `db.prepare`; `ctx.signal` and `MongoMiddleware`; `createInMemoryCacheStore`. Full list in `audit/orm-client.md` and `audit/builders.md` under Missing.
@@ -122,7 +122,7 @@ Places where the docs are hard because the tool is. Grouped by who owns the fix.
 
 ### Product decisions
 
-- **D4. Missing client API.** Verified absent: `firstOrThrow` on the collection (it exists on the result, so `.all().firstOrThrow()` works), atomic `increment`/`decrement`, case-insensitive string filters, insert with on-conflict-do-nothing (`skipDuplicates`), JSON path or containment filters (the `jsonb` codec has only the `equality` trait). Also not supported: soft delete, validations, lifecycle callbacks, custom `Collection` subclasses, read replicas, MongoDB referential actions. Each needs a decision: build it, or document the workaround and say it is not planned. The types work (`Models`, `Shape<>`) is in PRs.
+- **D4. Missing client API.** Verified absent: `firstOrThrow` on the collection (it exists on the result, so `.all().firstOrThrow()` works), atomic `increment`/`decrement`, case-insensitive string filters, insert with on-conflict-do-nothing (`skipDuplicates`), JSON path or containment filters (the `jsonb` codec has only the `equality` trait). Also not supported: soft delete, validations, lifecycle callbacks, custom `Collection` subclasses, read replicas, MongoDB referential actions. Each needs a decision: build it, or document the workaround and say it is not planned. The types work is merged: the where filter types (#30158) are in rc.9; `Models` and `Shape<>` (#30231, #30236) are on `main` awaiting a tagged release.
 - **D6. The npm `latest` tag.** `prisma@latest` is 8.0.0-rc.13 while `@prisma/client@latest` is 7.10.0, so a Prisma 7 project's routine `npx prisma` picks up the 8 CLI against a 7 client. Move the release candidate to `next` until GA, or state the policy on C4.
 
 ### create-prisma

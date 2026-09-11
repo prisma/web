@@ -50,7 +50,7 @@ Path today:
 - The bulk count mutations are taught as `createCount`/`updateCount`/`deleteCount` (31 sites on two pages). They were renamed to `createAndCount` and friends in 0.17.
 - `createMany` appears on no Prisma 8 page. `createAll` and `createAndCount` are documented but nothing says they replace it. `skipDuplicates` has no equivalent and no page says so.
 - `findUniqueOrThrow`, `findFirstOrThrow`, atomic `increment`/`decrement`, and case-insensitive filters have no Prisma 8 equivalent in the SQL ORM client source. No page says so.
-- `$transaction([...])` is covered in one inline block. `Prisma.UserGetPayload` and the model types have no page at all; the replacements are in open PRs.
+- `$transaction([...])` is covered in one inline block. `Prisma.UserGetPayload` and the model types have no page at all; the replacements (`Models`, `Shape<>`) merged to prisma/orm `main` on 2026-09-10 (#30231, #30236) and are not in a tagged release as of rc.9.
 - Accessor casing (`prisma.user` became `db.orm.public.User`) is stated once in reading-data and nowhere else.
 
 Verdict: **red**. The answers that exist are scattered, two of them are wrong, and the missing features are not admitted.
@@ -117,9 +117,9 @@ Who: Newcomer and Upgrader.
 
 Done: `type User = ...` and the type of a query result, without reading `contract.d.ts`.
 
-Path today: no page. `ResultType` for SQL builder plans is the only documented helper. The `Models` namespace, `Shape<>`, and where-type exports are in open PRs.
+Path today: no page. `ResultType` for SQL builder plans is the only documented helper. The `Models` namespace and `Shape<>` (prisma/orm#30231, #30236) merged to `main` on 2026-09-10 and are not in a tagged release as of rc.9; the where-type exports (#30158) shipped in rc.9.
 
-Verdict: **red** until the PRs ship, then a page is needed on release day.
+Verdict: **red** until the next tagged release carries `Models` and `Shape<>`, then a page is needed on release day.
 
 ## J10. Stop Prisma from writing agent files into my repo
 
@@ -143,5 +143,5 @@ Verdict: **amber** for docs, **red** for the tool.
 | J6 data types | amber | remove `@db.` example, add attribute map |
 | J7 editor | red | new page |
 | J8 advanced Postgres | red | product decision first |
-| J9 types | red | page on PR merge |
+| J9 types | red | page on the next tagged release |
 | J10 agent files | amber | one line on three pages |

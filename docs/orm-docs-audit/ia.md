@@ -96,7 +96,7 @@ No change to the top-level section list, to Data Modeling, Contract Authoring, F
 | J6 data types | Data Modeling > Overview | right node; one stale example |
 | J7 editor setup | none | no node |
 | J8 advanced Postgres | none | no node; needs product answers |
-| J9 types | none | no node; API in PRs |
+| J9 types | none | no node; API merged, awaiting a tagged release |
 | J10 opt out of agent files | CLI > configuration | right node, unreachable from Getting Started |
 
 Two observations follow from the table.

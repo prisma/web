@@ -1,6 +1,6 @@
 # Brief: set the `db` ref when a database is adopted
 
-Written 2026-09-10 for an agent with no prior context. Repo: `prisma/prisma` `main` (the Prisma 8 monorepo, rc.9). PRs go to `prisma/orm`.
+Written 2026-09-10 for an agent with no prior context. Repo: `prisma/orm` `main` (the Prisma 8 monorepo, rc.9; formerly `prisma/prisma`, and the old name still redirects).
 
 ## What we want
 

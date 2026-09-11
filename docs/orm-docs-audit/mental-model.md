@@ -100,7 +100,7 @@ Why a graph and not a list: two branches can each add a migration, and the graph
 | `createMany` | `createAll` (rows back) or `createAndCount` (count back) | the return shape is in the name |
 | `$transaction([...])` | `db.transaction(async tx => ...)` | callback form only |
 | `@db.Text`, `@db.VarChar(n)` | `Text`, `VarChar(n)` in type position | native types are types, not attributes |
-| `Prisma.UserGetPayload<...>` | `Shape<...>` (in an open PR) | not shipped yet |
+| `Prisma.UserGetPayload<...>` | `Shape<...>` (merged to prisma/orm `main` 2026-09-10, #30231) | not in a tagged release as of rc.9 |
 | `skipDuplicates`, `increment`, `findUniqueOrThrow`, `mode: "insensitive"` | no equivalent yet | say so plainly |
 
 ## The eight words
