@@ -17,18 +17,20 @@ export const dynamic = "force-dynamic";
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 const RATE_LIMIT_MAX = 5;
 const recentSubmissions = new Map<string, number[]>();
+let lastSweep = 0;
 
 /** Best-effort per-instance limiter. Enough to stop a runaway script. */
 function isRateLimited(key: string): boolean {
   const now = Date.now();
-  // Forget addresses whose window has passed so a warm instance does not keep
-  // every address it has ever seen.
-  if (recentSubmissions.size > 100) {
+  // Once per window, forget addresses whose window has passed so a warm
+  // instance does not keep every address it has ever seen.
+  if (now - lastSweep >= RATE_LIMIT_WINDOW_MS) {
     for (const [address, stamps] of recentSubmissions) {
       if (stamps.every((timestamp) => now - timestamp >= RATE_LIMIT_WINDOW_MS)) {
         recentSubmissions.delete(address);
       }
     }
+    lastSweep = now;
   }
   const timestamps = (recentSubmissions.get(key) ?? []).filter(
     (timestamp) => now - timestamp < RATE_LIMIT_WINDOW_MS,

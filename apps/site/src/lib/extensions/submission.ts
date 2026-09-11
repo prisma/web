@@ -1,6 +1,5 @@
 import { z } from "zod";
 import {
-  EXTENSION_STATUSES,
   extensions,
   validateExtensionEntry,
   type ExtensionEntry,
@@ -15,14 +14,12 @@ const httpsUrl = z
   .url()
   .refine((value) => value.startsWith("https://"), "Must be an https URL");
 
-const optionalHttpsUrl = z.preprocess(
-  (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
-  httpsUrl.optional(),
-);
-
-/** Shape of the submission form. Shared by the client form and the API route. */
+/**
+ * Shape of the submission form. Shared by the client form and the API route.
+ * The form asks for what only the author knows; slug, display name, and the
+ * author link are derived from the package name and repository.
+ */
 export const submissionSchema = z.object({
-  name: z.string().trim().min(1).max(80),
   package: z
     .string()
     .trim()
@@ -32,13 +29,9 @@ export const submissionSchema = z.object({
       /^(?:@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/,
       "Not a valid npm package name",
     ),
-  slug: z
-    .string()
-    .trim()
-    .min(1)
-    .max(64)
-    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Lowercase letters, digits, and dashes only"),
-  status: z.enum(EXTENSION_STATUSES),
+  repo: httpsUrl,
+  tldr: z.string().trim().min(10).max(140),
+  description: z.string().trim().min(40).max(600),
   databases: z
     .array(
       z
@@ -49,22 +42,15 @@ export const submissionSchema = z.object({
     )
     .min(1, "Name at least one database")
     .max(6),
-  tldr: z.string().trim().min(10).max(140),
-  description: z.string().trim().min(40).max(600),
-  // Lowercase because `middleware` and `database` tags drive the docs tables.
-  tags: z.array(z.string().trim().toLowerCase().min(1).max(32)).max(6),
-  repo: httpsUrl,
-  docs: optionalHttpsUrl,
-  example: optionalHttpsUrl,
   authorName: z.string().trim().min(1).max(80),
-  authorUrl: httpsUrl,
+  experimental: z.boolean().optional(),
   /** Honeypot. Real users never fill it; the route drops anything that does. */
   website: z.string().optional(),
 });
 
 export type SubmissionInput = z.infer<typeof submissionSchema>;
 
-/** Derive a directory slug from an npm package name. */
+/** Derive a directory slug (and display name) from an npm package name. */
 export function slugFromPackage(packageName: string): string {
   return packageName
     .toLowerCase()
@@ -75,22 +61,34 @@ export function slugFromPackage(packageName: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+/**
+ * The author's profile link: the owner of a GitHub or GitLab repository, or
+ * the repository itself for any other host.
+ */
+export function authorUrlFromRepo(repo: string): string {
+  const url = new URL(repo);
+  const owner = url.pathname.split("/").filter(Boolean)[0];
+  if (owner && (url.hostname === "github.com" || url.hostname === "gitlab.com")) {
+    return `${url.origin}/${owner}`;
+  }
+  return repo;
+}
+
 export function toRegistryEntry(input: SubmissionInput, addedAt: string): ExtensionEntry {
+  const slug = slugFromPackage(input.package);
   const entry: ExtensionEntry = {
-    slug: input.slug,
-    name: input.name,
+    slug,
+    name: slug,
     package: input.package,
     source: "community",
-    status: input.status,
+    status: input.experimental ? "experimental" : "release-candidate",
     tldr: input.tldr,
     description: input.description,
     // The form can name a database twice (checkbox plus the free-form field).
     databases: [...new Set(input.databases)],
-    tags: [...new Set(input.tags)],
+    tags: [],
     repo: input.repo,
-    ...(input.docs ? { docs: input.docs } : {}),
-    ...(input.example ? { example: input.example } : {}),
-    author: { name: input.authorName, url: input.authorUrl },
+    author: { name: input.authorName, url: authorUrlFromRepo(input.repo) },
     addedAt,
   };
   const problems = validateExtensionEntry(entry);
@@ -312,25 +310,16 @@ export async function openPullRequest(
   const body = [
     `Adds **${entry.name}** (\`${entry.package}\`) to the community extension directory.`,
     "",
-    `- Databases: ${entry.databases.join(", ")}`,
-    `- Status: ${entry.status}`,
-    `- Source: ${entry.repo}`,
-    entry.docs ? `- Docs: ${entry.docs}` : null,
-    entry.example ? `- Example: ${entry.example}` : null,
-    `- Author: [${entry.author.name}](${entry.author.url})`,
-    "",
     `> ${entry.tldr}`,
     "",
-    entry.description,
+    `- Databases: ${entry.databases.join(", ")}`,
+    `- Source: ${entry.repo}`,
+    `- Author: [${entry.author.name}](${entry.author.url})`,
     "",
-    "---",
-    "",
-    "Submitted through the form at https://www.prisma.io/extensions/submit. The entry passed",
-    "schema validation and the package resolves on npm. Reviewers: confirm the package targets",
-    "Prisma 8, skim its README, then merge. The docs catalog table regenerates on merge.",
-  ]
-    .filter((line): line is string => line !== null)
-    .join("\n");
+    "Submitted through https://www.prisma.io/extensions/submit. The entry passed schema",
+    "validation and the package resolves on npm. Review: confirm it targets Prisma 8, skim the",
+    "README, then merge. The docs catalog table regenerates on push.",
+  ].join("\n");
 
   const pull = await github<{ html_url: string; number: number }>(
     config,

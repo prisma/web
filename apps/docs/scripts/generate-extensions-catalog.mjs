@@ -12,8 +12,9 @@
 //   ...generated...
 //   {/* extensions-catalog:end */}
 //
-// Options: none (every entry), `tag=<tag>` (entries carrying the tag), or
-// `not-tag=<tag>` (entries without it). MDX comments are stripped from
+// Options: none (every entry), `tag=<tag>` (entries carrying the tag),
+// `not-tag=<tag>` (entries without it), and `source=official|community`.
+// Options combine. MDX comments are stripped from
 // the rendered page and from the llms.txt renditions, so the generated table is
 // plain markdown that agents and search engines read as-is.
 
@@ -71,6 +72,7 @@ function renderTable(options) {
   const rows = entries.filter((entry) => {
     if (options.tag && !entry.tags.includes(options.tag)) return false;
     if (options["not-tag"] && entry.tags.includes(options["not-tag"])) return false;
+    if (options.source && entry.source !== options.source) return false;
     return true;
   });
   const header = [

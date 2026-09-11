@@ -32,19 +32,12 @@ const REPO_ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const REGISTRY_DIR = path.join(REPO_ROOT, "packages/ui/src/data/extensions");
 
 const validInput = {
-  name: "my-thing",
   package: "prisma-orm-extension-my-thing",
-  slug: "my-thing",
-  status: "release-candidate" as const,
-  databases: ["postgresql"],
+  repo: "https://github.com/someone/prisma-orm-extension-my-thing",
   tldr: "Adds a thing to PostgreSQL columns.",
   description: "A long enough description of the thing this extension adds to a Prisma 8 project.",
-  tags: ["thing"],
-  repo: "https://github.com/someone/prisma-orm-extension-my-thing",
-  docs: "",
-  example: "",
+  databases: ["postgresql"],
   authorName: "Someone",
-  authorUrl: "https://github.com/someone",
   website: "",
 };
 
@@ -87,25 +80,31 @@ test("COMMUNITY_REGISTRY_PATH is the file the registry loads", () => {
   assert.equal(path.basename(COMMUNITY_REGISTRY_PATH), "community.json");
 });
 
-test("toRegistryEntry builds a community entry and drops repeated databases and tags", () => {
+test("toRegistryEntry derives slug, name, and author link and drops repeated databases", () => {
   const parsed = submissionSchema.parse({
     ...validInput,
     databases: ["postgresql", "PostgreSQL ", "cockroachdb"],
-    tags: ["thing", "Thing ", "other"],
-    docs: "   ",
+    experimental: true,
   });
   const entry = toRegistryEntry(parsed, "2026-09-09");
   assert.equal(entry.source, "community");
+  assert.equal(entry.slug, "my-thing");
+  assert.equal(entry.name, "my-thing");
+  assert.equal(entry.status, "experimental");
+  assert.equal(entry.author.url, "https://github.com/someone");
   assert.deepEqual(entry.databases, ["postgresql", "cockroachdb"]);
-  assert.deepEqual(entry.tags, ["thing", "other"]);
+  assert.deepEqual(entry.tags, []);
   assert.equal(entry.addedAt, "2026-09-09");
   assert.equal("docs" in entry, false);
-  assert.equal("example" in entry, false);
   assert.deepEqual(validateExtensionEntry(entry), []);
+  assert.equal(
+    toRegistryEntry(submissionSchema.parse(validInput), "2026-09-09").status,
+    "release-candidate",
+  );
 });
 
 test("submissionSchema rejects what the registry would reject", () => {
-  assert.equal(submissionSchema.safeParse({ ...validInput, slug: "Bad Slug" }).success, false);
+  assert.equal(submissionSchema.safeParse({ ...validInput, package: "Bad Name" }).success, false);
   assert.equal(submissionSchema.safeParse({ ...validInput, databases: [] }).success, false);
   assert.equal(submissionSchema.safeParse({ ...validInput, repo: "http://x.dev" }).success, false);
   assert.equal(submissionSchema.safeParse({ ...validInput, tldr: "short" }).success, false);

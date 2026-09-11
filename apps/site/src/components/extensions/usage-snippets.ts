@@ -103,7 +103,7 @@ model Post {
   .limit(10)
   .build();
 
-const similar = await db.runtime().execute(plan);`,
+const similar = await db.runtime().query(plan);`,
     },
   ],
   postgis: [
@@ -119,6 +119,40 @@ model Place {
   name     String
   location Point4326
 }`,
+    },
+  ],
+  supabase: [
+    {
+      title: "Register it in the config",
+      file: "prisma.config.ts",
+      code: `import { definePrismaConfig } from 'prisma/config';
+import supabasePack from '@prisma/orm-extension-supabase/pack';
+import { defineConfig as ormConfig } from '@prisma/orm-postgres/config';
+
+export default definePrismaConfig({
+  orm: ormConfig({
+    contract: './src/prisma/contract.prisma',
+    extensions: [supabasePack],
+    db: {
+      connection: process.env['DATABASE_URL']!,
+    },
+  }),
+});`,
+    },
+    {
+      title: "Create the role-bound client",
+      file: "src/prisma/db.ts",
+      code: `import { supabase } from '@prisma/orm-extension-supabase/runtime';
+import type { Contract } from './contract.d';
+import contractJson from './contract.json' with { type: 'json' };
+
+export const db = supabase<Contract>({
+  contractJson,
+  url: process.env['DATABASE_URL']!,
+  jwtSecret: process.env['SUPABASE_JWT_SECRET']!,
+});
+
+// Per request: db.asUser(jwt), db.asAnon(), or db.asServiceRole().`,
     },
   ],
   "middleware-cache": middlewareRegistration(
@@ -146,6 +180,9 @@ export function getUsageSnippets(entry: ExtensionEntry): UsageSnippet[] {
   const handWritten = HAND_WRITTEN[entry.slug] ?? [];
   if (entry.source !== "official") return handWritten;
   if (isMiddleware(entry) || isDatabase(entry)) return handWritten;
+  // Supabase ships a `/pack` entrypoint and its own client factory instead of
+  // the `/control` + `/runtime` pair, so its snippets are hand-written above.
+  if (entry.slug === "supabase") return handWritten;
 
   const identifier = entry.slug.replace(/-([a-z0-9])/g, (_, char: string) => char.toUpperCase());
   return [

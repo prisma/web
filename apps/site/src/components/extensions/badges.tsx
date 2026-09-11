@@ -10,13 +10,17 @@ import {
 export function SourceBadge({ source }: { source: ExtensionEntry["source"] }) {
   if (source === "official") {
     return (
-      <Badge variant="secondary" className="bg-prism-cyan-50 text-prism-cyan-900">
+      <Badge variant="secondary" className="bg-prism-cyan-900 text-white">
         <CheckBold aria-hidden />
         {EXTENSION_SOURCE_LABELS.official}
       </Badge>
     );
   }
-  return <Badge variant="outline">{EXTENSION_SOURCE_LABELS.community}</Badge>;
+  return (
+    <Badge variant="outline" className="border-black/[0.25] text-primary">
+      {EXTENSION_SOURCE_LABELS.community}
+    </Badge>
+  );
 }
 
 /**
@@ -29,7 +33,7 @@ export function StatusBadge({ status }: { status: ExtensionEntry["status"] }) {
   return (
     <Badge
       variant="outline"
-      className="border-prism-yellow-200 bg-prism-yellow-50 text-prism-yellow-700"
+      className="border-prism-yellow-700/40 bg-prism-yellow-50 text-prism-yellow-700"
     >
       {EXTENSION_STATUS_LABELS[status]}
     </Badge>
@@ -40,7 +44,7 @@ export function DatabaseBadges({ databases }: { databases: ExtensionEntry["datab
   return (
     <>
       {databases.map((database) => (
-        <Badge key={database} variant="outline" className="text-muted-foreground">
+        <Badge key={database} variant="outline" className="border-black/[0.2] text-foreground">
           <Database aria-hidden />
           {getDatabaseLabel(database)}
         </Badge>

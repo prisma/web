@@ -6,15 +6,19 @@ import { cn } from "@/lib/utils";
 
 export const MONO = "font-[ui-monospace,SFMono-Regular,Menlo,Consolas,monospace]";
 
-/** A monospace install command that copies itself on click. */
+/**
+ * A monospace install command that copies itself on click. `ink` is the
+ * brand's dark surface for the one command a page leads with; `paper` is the
+ * quiet version used in list rows.
+ */
 export function CopyCommand({
   command,
   className,
-  size = "md",
+  tone = "paper",
 }: {
   command: string;
   className?: string;
-  size?: "md" | "lg";
+  tone?: "paper" | "ink";
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -30,27 +34,41 @@ export function CopyCommand({
     }
   };
 
+  const ink = tone === "ink";
   return (
     <button
       type="button"
       onClick={copy}
       aria-label={copied ? "Copied" : `Copy ${command}`}
       className={cn(
-        "group/copy flex w-full cursor-pointer items-center gap-3 rounded-xl border border-black/[0.06] bg-paper text-left text-foreground transition-colors hover:border-prism-cyan-400/60",
+        "group/copy flex w-full cursor-pointer items-center gap-3 rounded-xl border text-left transition-colors",
         MONO,
-        size === "lg" ? "px-4 py-3 text-sm sm:text-[15px]" : "px-3 py-2 text-[13px]",
+        ink
+          ? "border-primary bg-primary px-4 py-3 text-sm text-primary-foreground hover:border-prism-cyan-400 sm:text-[15px]"
+          : "border-black/[0.12] bg-paper px-3 py-2 text-[13px] text-primary hover:border-black/[0.4]",
         className,
       )}
     >
-      <span className="select-none text-muted-foreground" aria-hidden>
+      <span
+        className={cn("select-none", ink ? "text-prism-cyan-400" : "text-muted-foreground")}
+        aria-hidden
+      >
         $
       </span>
       <span className="min-w-0 flex-1 truncate">{command}</span>
       {copied ? (
-        <Check className="size-4 shrink-0 text-prism-cyan-700" aria-hidden />
+        <Check
+          className={cn("size-4 shrink-0", ink ? "text-prism-cyan-400" : "text-prism-cyan-700")}
+          aria-hidden
+        />
       ) : (
         <Copy
-          className="size-4 shrink-0 text-muted-foreground transition-colors group-hover/copy:text-foreground"
+          className={cn(
+            "size-4 shrink-0 transition-colors",
+            ink
+              ? "text-primary-foreground/70 group-hover/copy:text-primary-foreground"
+              : "text-muted-foreground group-hover/copy:text-primary",
+          )}
           aria-hidden
         />
       )}

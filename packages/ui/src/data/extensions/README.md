@@ -27,7 +27,7 @@ the build instead of shipping. The validation lives in `../extensions.ts`.
   "tags": ["vector search", "embeddings"],
   "repo": "https://github.com/prisma/orm/tree/main/packages/3-extensions/pgvector",
   "docs": "https://www.prisma.io/docs/orm/extensions/using-extensions",
-  "example": "https://github.com/prisma/prisma-next/tree/main/examples/prisma-next-demo",
+  "example": "https://github.com/prisma/orm/tree/main/examples/prisma-8-demo",
   "author": { "name": "Prisma", "url": "https://github.com/prisma" },
   "addedAt": "2026-09-09"
 }
