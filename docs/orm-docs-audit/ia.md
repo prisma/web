@@ -4,7 +4,7 @@ Proposal first, then why, then the current state it changes. Source: the `meta.j
 
 ## Proposed
 
-Scope: the Getting Started > Prisma ORM subtree, the ORM > Introduction group, and the Guides tree (two labels, and the Prisma 7 pages leaving it). Nothing else moves. `+` is a new node, `~` is a renamed or rewritten node, unmarked is unchanged.
+Scope: the Getting Started > Prisma ORM subtree, the ORM > Introduction group, and the Guides tree (two labels, and the Prisma 7 pages leaving it). Nothing else moves. `+` is a new node, `~` is a renamed or rewritten node, `-` is content leaving the tree, unmarked is unchanged.
 
 ### Getting Started > Prisma ORM
 
@@ -42,7 +42,7 @@ Introduction
 ```
 Overview                                            no "coming soon" line for upgrading; it exists
 Upgrade Prisma ORM
-  ~ Prisma 7 to 8 (PostgreSQL)                      was "PostgreSQL"
+  ~ Prisma 7 to 8 (PostgreSQL)                      was "Migrate from Prisma 7 to Prisma 8"
   ~ Prisma 6 to 8 (MongoDB)                         was "MongoDB"
     v7, v6, v5, v4, v3, v1
   - Deployment, Database, Switch to Prisma ORM,      Prisma 7 content; lives under guides/v7
@@ -98,7 +98,7 @@ No change to the top-level section list, to Data Modeling, Contract Authoring, F
 | J2 existing database with data | Add to Existing Project > PostgreSQL | right node, page stops before the ref step |
 | J3 Prisma 7 query mapping | Fundamentals > Reading data | no node; fourteen diff blocks spread over six pages |
 | J4 should I move now | root, `/prisma-orm` | no node; note box only says 7 is supported |
-| J5 incremental upgrade | Guides > Upgrade Prisma ORM > PostgreSQL | not linked from any ORM node; label hides it |
+| J5 incremental upgrade | Guides > Upgrade Prisma ORM > Migrate from Prisma 7 to Prisma 8 | not linked from any ORM node; three levels down, and the MongoDB twin is labelled only "MongoDB" |
 | J6 data types | Data Modeling > Overview | right node; one stale example |
 | J7 editor setup | none | no node |
 | J8 advanced Postgres | none | no node; needs product answers |
@@ -109,7 +109,7 @@ Two observations follow from the table.
 
 First, the Getting Started > Prisma ORM subtree is organised by the tool that runs (`create-prisma` for Quickstart, `orm init` for Add to Existing Project) and then by database. The reader does not know those tools yet. The failures in J1 and J2 both happen at the point where the reader's situation differs from the page's assumption about it. The reader knows their situation: do I have an app, do I have a database, does it have data, was it Prisma 7. That is why I proposed organising this subtree by starting state. The database split (PostgreSQL / MongoDB) stays inside each.
 
-Second, the Upgrader has no node anywhere in Getting Started or ORM. Every Prisma 7 pointer is for staying on 7. The one page written for moving to 8 is filed under Guides with a database name as its label.
+Second, the Upgrader has no node anywhere in Getting Started or ORM. Every Prisma 7 pointer is for staying on 7. The one page written for moving to 8 is filed under Guides, three levels down, and its MongoDB twin carries only a database name as its label.
 
 ## Current state
 
@@ -173,7 +173,7 @@ Deployment, Authentication, Integrations, Postgres
 Database     (Expand-and-contract migrations, Multiple databases, Schema management in teams)
 Switch to Prisma ORM, Switch to Prisma Postgres
 Upgrade Prisma ORM
-  PostgreSQL                                 /guides/upgrade-prisma-orm/postgresql   title: "Migrate from Prisma 7 to Prisma 8"
+  Migrate from Prisma 7 to Prisma 8          /guides/upgrade-prisma-orm/postgresql   Prisma 7 to 8
   MongoDB                                    /guides/upgrade-prisma-orm/mongodb      v6 Mongo to 8
   v7, v6, v5, v4, v3, v1                     older version-to-version guides
 Making guides
@@ -183,4 +183,4 @@ Making guides
 
 - Root page: one line, "Here for the ORM? Jump straight to Prisma 7 or Prisma 8".
 - A note box ("Using Prisma 7?", "Prisma 7", or "Prisma 7 users") on `/orm`, `/prisma-orm`, `/prisma-orm/create-prisma`, all four getting-started pages (PostgreSQL and MongoDB), and `/cli`. It says Prisma 7 remains supported and links to `/orm/v7` and `/v7/getting-started`. Both links are for staying on 7.
-- Nothing under Getting Started or ORM links to the upgrade guide. It is reachable only through Guides, where the label is "PostgreSQL".
+- Nothing under Getting Started or ORM links to the upgrade guide. It is reachable only through Guides > Upgrade Prisma ORM, where the PostgreSQL page is labelled "Migrate from Prisma 7 to Prisma 8" and the MongoDB page just "MongoDB" (#8238 relabels both).
