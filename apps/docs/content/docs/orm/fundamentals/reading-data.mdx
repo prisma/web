@@ -175,7 +175,7 @@ const recentPosts = await db.orm.public.Post
 
 ### Filter operators on PostgreSQL
 
-On PostgreSQL, `.where(...)` also accepts a callback for richer comparisons, as in the range example above. The callback receives one object, written `p` here, with a property per field of your model. Each of those fields has `.eq`, `.neq`, `.lt`, `.lte`, `.gt`, `.gte`, `.like`, `.ilike`, `.in([...])`, `.isNull()`, and `.isNotNull()`. `.like` and `.ilike` take SQL `LIKE` patterns, where `%` matches any run of characters:
+On PostgreSQL, `.where(...)` also accepts a callback for richer comparisons, as in the range example above. The callback receives one object, written `p` here, with a property per field of your model. Each of those fields has `.eq`, `.neq`, `.lt`, `.lte`, `.gt`, `.gte`, `.like`, `.ilike`, `.in([...])`, `.notIn([...])`, `.isNull()`, and `.isNotNull()`. `.like` and `.ilike` take SQL `LIKE` patterns, where `%` matches any run of characters:
 
 ```typescript
 // Case-insensitive text search
@@ -338,7 +338,7 @@ const result = await db.orm.public.Post
 { total: 2 }
 ```
 
-The callback offers `a.count()`, `a.sum(...)`, `a.avg(...)`, `a.min(...)`, and `a.max(...)`. All but `a.count()` take a field name as a string, such as `a.max("createdAt")`. Ask for as many as you like in one call, one key each:
+The callback offers `a.count()`, `a.sum(...)`, `a.avg(...)`, `a.min(...)`, and `a.max(...)`, plus `countBigInt()`, `sumBigInt(...)`, and `avgDecimal(...)` for values beyond a JavaScript `number`. All but `a.count()` take a field name as a string, such as `a.max("createdAt")`. Ask for as many as you like in one call, one key each:
 
 ```typescript
 const stats = await db.orm.public.Post
@@ -368,7 +368,7 @@ const [result] = await (await db.runtime()).query(built);
 
 ## Iterate a large result
 
-You can `await` a read for an array, or loop over it with `for await`. Pick one; a result can only be read once (see below).
+You can `await` a read for an array, or loop over it with `for await`. Pick one; once you iterate a result with `for await` it is used up (see below).
 
 `await` runs the query and gives you an array. This is the right default. You get the whole result in memory and can read the array as often as you like.
 
@@ -379,13 +379,15 @@ console.log(posts.length);
 console.log(posts[0]);
 ```
 
-Use `for await` to handle records one at a time, for example to write each to a file. It does not fetch less: on the standard client (`postgres({...})` in `src/prisma/db.ts`) every row is loaded first. For large tables page with `.limit()` and `.cursor()` (see [Sort and paginate](#sort-and-paginate)). `for await` hands you records one at a time, as your loop asks for them:
+Use `for await` to handle records one at a time, as your loop asks for them, for example to write each one to a file:
 
 ```typescript
 for await (const post of db.orm.public.Post.all()) {
   await exportToSearchIndex(post);
 }
 ```
+
+It does not fetch less: on the standard client (`postgres({...})` in `src/prisma/db.ts`) every row is loaded first. For large tables page with `.limit()` and `.cursor()` (see [Sort and paginate](#sort-and-paginate)).
 
 The serverless client, `postgresServerless(...)`, does fetch rows as you iterate, but it has no `db.orm`, so none of the queries on this page run on it: see [Transactions and runtime](/orm/reference/transactions-and-runtime).
 
@@ -404,7 +406,7 @@ await result;
 ```
 
 ```text no-copy
-Error: AsyncIterableResult iterator has already been consumed via for-await loop.
+RuntimeError: AsyncIterableResult iterator has already been consumed via for-await loop.
 Each AsyncIterableResult can only be iterated once.
 ```
 

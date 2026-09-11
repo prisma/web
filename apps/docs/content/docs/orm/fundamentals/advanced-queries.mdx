@@ -6,9 +6,9 @@ metaTitle: Advanced queries in Prisma ORM
 metaDescription: 'Use the Prisma ORM SQL query builder for explicit joins, grouped aggregates, and RETURNING, and the typed aggregation pipeline builder on MongoDB.'
 ---
 
-Most queries fit the ORM API. When one doesn't, PostgreSQL has the SQL query builder and MongoDB has the pipeline builder. Neither one asks you to write SQL as a string. Both builders come with `@prisma/orm-postgres` and `@prisma/orm-mongo`, so there is nothing extra to install.
+Most queries fit the ORM API. When one doesn't, there is a query builder. Prisma ORM 8 supports PostgreSQL, SQLite, and MongoDB; the SQL query builder is for PostgreSQL and SQLite, the pipeline builder for MongoDB. Neither builder asks you to write SQL as a string. When the builder cannot express a query, `db.raw.sql` lets you write one, with values still sent as parameters. Both builders come with `@prisma/orm-postgres` and `@prisma/orm-mongo`, so there is nothing extra to install.
 
-Your contract is the `contract.prisma` file that replaced `schema.prisma`. TypeScript checks both builders against it. It is the same schema language as Prisma ORM 7, with the type changes listed on [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7#schema).
+The schema file is now `contract.prisma`; it is the same schema language as Prisma ORM 7 (with the type changes on [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7#schema)). The docs call it your contract. TypeScript checks both builders against it.
 
 You choose per query, not per app. Using the ORM API everywhere and a builder in the three places that need it is normal.
 
@@ -55,7 +55,7 @@ In Prisma ORM 8 a many-to-many relation is the two list fields plus a model for 
 
 ## PostgreSQL: SQL query builder
 
-A SQL builder query takes two steps. First you build it, which gives you a value you can hold in a variable, so you can run the same built query more than once, or inside a transaction. Then you run it. You decide the exact SQL: the joins, the grouping, and the columns that come back.
+A SQL builder query takes two steps. First you build it, then you run it. You decide the exact SQL: the joins, the grouping, and the columns that come back.
 
 **Use it when:**
 
@@ -68,9 +68,9 @@ A SQL builder query takes two steps. First you build it, which gives you a value
 
 ### Build a query and run it
 
-Start from a table with `db.sql.public.<table>`. `db.sql` is the SQL query builder, and it is keyed by table name. A table's name is the model name with a lowercase first letter, unless the model sets `@@map`. Column names are the field names, unless a field sets `@map`. `public` is the PostgreSQL schema your tables are in, unless the model sits in a `namespace` block in your contract.
+Start from a table with `db.sql.public.<table>`. `db.sql` is the SQL query builder, and it is keyed by table name. A table's name is the model name with a lowercase first letter, unless the model sets `@@map`. Column names are the field names, unless a field sets `@map`. `public` is the PostgreSQL schema your tables are in, unless the model sits in a `namespace billing { ... }` block in your contract, in which case the path is `db.sql.billing.<table>`.
 
-`db.runtime()` is the database connection. On MongoDB it returns a promise, so await it: `(await db.runtime()).query(...)`. Calling it per query is fine. `query()` always resolves to an array of rows, even when the query matches one row.
+`db.runtime()` is the database connection; call it whenever you run a query. `query()` always resolves to an array of rows, even when the query matches one row.
 
 Chain the clauses you want, call `.build()`, and pass the result to `db.runtime().query(...)`:
 
@@ -114,7 +114,7 @@ function titles(posts: PublishedPost[]) {
 
 ### Join tables with precise control
 
-Alias each side with `.as(...)`, join on any condition, and project columns from both sides into a flat result:
+Alias each side with `.as(...)`, join on any condition, and project columns from both sides into a flat result. `.select(...)` takes column names, or a callback that builds the row from the aliases, or a name plus an expression for a computed column:
 
 ```typescript
 const postsWithAuthors = db.sql.public.post
@@ -175,7 +175,7 @@ const rows = await db.runtime().query(topAuthors);
 ]
 ```
 
-Pass the same aggregate to `.orderBy(...)` that you passed to `.select(...)`, and the database does the sorting and the limiting. The built query holds the aggregate in both clauses, so `count(*)` appears twice in the SQL text.
+Pass the same aggregate to `.orderBy(...)` that you passed to `.select(...)`, and the database does the sorting and the limiting.
 
 Use `fns.countBigInt()` when a count can grow past `Number.MAX_SAFE_INTEGER`. It returns a `bigint`. `fns.count()` returns a JavaScript `number`. A count larger than `Number.MAX_SAFE_INTEGER` throws an error with code `RUNTIME.DECODE_FAILED` rather than rounding.
 
@@ -200,10 +200,10 @@ The builder writes updates and deletes too. Choose the rows with `.where(...)`, 
 const publishPost = db.sql.public.post
   .update({ published: true })
   .where((f, fns) => fns.eq(f.id, postId)).build();
-
 const deleteTag = db.sql.public.tag.delete().where((f, fns) => fns.eq(f.id, tagId)).build();
 
 const { affectedRows } = await db.runtime().execute(publishPost);
+await db.runtime().execute(deleteTag);
 ```
 
 Neither of those two returns rows, so both go to `execute()`. Add `.returning(...)` to either one and you run it with `query()` instead.
@@ -224,15 +224,15 @@ const rows = await db.runtime().query(users);
 // [{ id: 'cuid20000000000000000001', email: 'alice@prisma.io', upperEmail: 'ALICE@PRISMA.IO' }, ...]
 ```
 
-`.returns(...)` takes a type name as a string. `"pg/text@1"` is the PostgreSQL type `text`. The `@1` is a version number; today every type name ends in it. The [raw queries reference](/orm/reference/raw-queries) lists the names.
+`.returns(...)` takes a type name as a string. `"pg/text@1"` is the PostgreSQL type `text`. Type names always end in `@1`. The [raw queries reference](/orm/reference/raw-queries) lists the names.
 
-Each `${...}` in a raw fragment goes to the database as a query parameter too, so a raw fragment is as safe as an operator. You can interpolate columns and other typed expressions the same way.
+A raw fragment is as safe as an operator. You can interpolate columns and other typed expressions the same way.
 
 When the whole statement has to be raw, write it with `db.raw.sql` and end it with one of two calls. Use `.returnsRow(...)` when the statement returns rows, then run the built query with `query()`:
 
 ```typescript
 const limit = 10;
-const user = db.sql.public.user; // shorthand
+const user = db.sql.public.user; // alias, to shorten user.columns.id
 
 const authorPostCounts = db.raw.sql`
   SELECT u.id, u.email, count(p.id) AS "postCount"
@@ -259,7 +259,7 @@ const publishDrafts = db.raw.sql`
 const { affectedRows } = await db.runtime().execute(publishDrafts);
 ```
 
-To write a subquery or a CTE, interpolate one raw statement into another with `${...}`. The inner statement stops at `.returnsRow(...)`. Only the outer statement gets `.build()`:
+To use one raw statement inside another, interpolate it with `${...}`. End the inner statement at `.returnsRow(...)` without `.build()`; call `.build()` only on the outer one. Every un-built raw statement exposes its declared columns as `.returns`, so the outer statement can reuse them:
 
 ```typescript
 const minPosts = 5;
@@ -302,13 +302,13 @@ All MongoDB aggregation happens here. The ORM API has no `.aggregate(...)` on Mo
 - A query needs MongoDB pipeline stages that don't map to the ORM API, such as multi-stage filtering and projection.
 - You want to filter with an operator such as `gt` or `ne`. On MongoDB the ORM API's `.where(...)` matches exact values only, and `.match(...)` here takes the operators.
 
-**Prefer the ORM API when** the query is document create, read, update, or delete. Prefer it as well for reading a reference relation, which is a relation stored as an id in the document rather than as an embedded document. `.include(...)` already covers the common `$lookup` case.
+**Prefer the ORM API when** the query is document create, read, update, or delete. Prefer it as well for reading a reference relation. A reference relation is a relation stored as an id in the document rather than as an embedded document, and `.include(...)` already covers the common `$lookup` case.
 
 ### Build a pipeline and run it
 
 Start from a collection with `db.query.from(...)`. It takes the collection name as a string: the model's `@@map` value, or the model name with a lowercase first letter when the model has no `@@map`. The models above set no `@@map` except `PostTag`, so the collections are `user`, `post`, `tag`, and `post_tag`. That is the same name the ORM API uses, as in `db.orm.post`.
 
-`acc` is the set of accumulators you use inside `.group(...)`, such as `acc.count()` and `acc.max(f.createdAt)`. `_id` is the grouping key, MongoDB's own name for it. Chain stages, call `.build()`, and await `db.runtime()` before you run anything:
+`acc` holds the aggregate functions you can use inside `.group(...)`, such as `acc.count()` and `acc.max(f.createdAt)`. In the pipeline builder, fields use their stored names: the id is `_id`, the name a MongoDB contract gives it with `@map("_id")`, and `_id` is also the grouping key in `.group(...)`. On MongoDB `db.runtime()` returns a promise, so await it before you run anything. Chain stages, call `.build()`, and run the result:
 
 ```typescript
 import { acc } from "@prisma/orm-mongo/query-builder";
@@ -333,7 +333,7 @@ const rows = await runtime.query(postsByAuthor);
 ]
 ```
 
-A pipeline built through `db.query` carries a result shape, so the rows are typed by the stages you built.
+The rows are typed by the stages you built.
 
 ### Filter and group in stages
 
@@ -364,10 +364,11 @@ const postsWithAuthors = db.query
   .build();
 
 const rows = await runtime.query(postsWithAuthors);
-const mine = rows.filter((row) => String(row.author[0]._id) === authorId);
+const authorId = "68e1f0c2a4b9d3e5f7a1b2c3";
+const mine = rows.filter((row) => String(row.author[0]?._id) === authorId);
 ```
 
-Each row is a post document with an extra `author` field, and that field is an array of the matching user documents. A document pulled in by `.lookup(...)` keeps MongoDB's own `ObjectId` for `_id`, so wrap it in `String(...)` before you compare it with an id from your own code. The [pipeline builder reference](/orm/reference/pipeline-builder#lookup) has the rest of the stages.
+Each row is a post document with an extra `author` field, and that field is an array of the matching user documents. `row.author` is empty when the author is missing. A document pulled in by `.lookup(...)` keeps MongoDB's own `ObjectId` for `_id`, so wrap it in `String(...)` before you compare it with an id from your own code. The [pipeline builder reference](/orm/reference/pipeline-builder#lookup) has the rest of the stages.
 
 ## Choose the right query API
 
@@ -382,7 +383,7 @@ Each row is a post document with an extra `author` field, and that field is an a
 
 A built query that returns rows runs through `db.runtime().query(builtQuery)` on PostgreSQL. On MongoDB, await the connection first: `(await db.runtime()).query(builtQuery)`. A write that returns no rows goes to `execute(builtQuery)` instead, which resolves to `{ affectedRows }`.
 
-Inside a [transaction](/orm/fundamentals/transactions), `tx` is the argument your callback receives, and you run the built query on it: `await db.transaction(async (tx) => tx.query(builtQuery))`.
+Inside a transaction, `tx` is the argument your callback receives, and you run the built query on it: `await db.transaction(async (tx) => tx.query(builtQuery))`. `tx.query(...)` and `tx.execute(...)` run built queries inside a transaction; see [Transactions](/orm/fundamentals/transactions).
 
 ## Prompt your coding agent
 

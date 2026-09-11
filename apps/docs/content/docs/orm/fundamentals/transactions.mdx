@@ -45,7 +45,7 @@ A helper that runs inside the caller's transaction takes `tx` as a parameter:
 
 ```typescript
 import { db, type Tx } from "./prisma/db";
-async function createWelcomePost(tx: Tx, authorId: number) {
+async function createWelcomePost(tx: Tx, authorId: string) {
   return tx.orm.public.Post.create({ title: "Welcome", published: false, authorId });
 }
 await db.transaction(async (tx) => {
@@ -65,7 +65,7 @@ Do not open a second transaction inside the helper. Calling `db.transaction(...)
 await tx.execute(db.raw.sql`SET TRANSACTION ISOLATION LEVEL SERIALIZABLE`.affectedCount().build());
 ```
 
-There is no transaction timeout either, so a transaction stays open for as long as your callback runs. If you need a limit, set PostgreSQL's `statement_timeout` on the connection.
+There is no transaction timeout either, so a transaction stays open for as long as your callback runs. If you need a limit, set PostgreSQL's `idle_in_transaction_session_timeout` on the connection (`transaction_timeout` on PostgreSQL 17 and later).
 
 ## Roll back on errors
 
@@ -84,7 +84,7 @@ try {
 
 ### Write conflicts
 
-When PostgreSQL cannot commit your transaction because another transaction touched the same rows, it aborts yours. Errors from the database arrive with a `sqlState` property holding the PostgreSQL error code (`40001` for a serialization failure, when two transactions changed the same rows and one had to give way; `40P01` for a deadlock). There is no exported error class to check with `instanceof`, so test for the property. Prisma ORM does not retry write conflicts for you, so write the retry yourself around the `db.transaction(...)` call:
+When PostgreSQL cannot commit your transaction because another transaction touched the same rows, it aborts yours. Errors from the database arrive with a `sqlState` property holding the PostgreSQL error code (`40001` for a serialization failure, when two transactions changed the same rows and one had to give way; `40P01` for a deadlock). When the conflict surfaces at commit, the error you catch has the code `RUNTIME.TRANSACTION_COMMIT_FAILED` and the database error sits on its `cause`. There is no exported error class to check with `instanceof`, so test for the property, on the error and on its `cause`. Prisma ORM does not retry write conflicts for you, so write the retry yourself around the `db.transaction(...)` call:
 
 ```typescript
 async function withRetry<T>(run: () => Promise<T>, attempts = 3): Promise<T> {
@@ -92,7 +92,8 @@ async function withRetry<T>(run: () => Promise<T>, attempts = 3): Promise<T> {
     try {
       return await run();
     } catch (error) {
-      const code = typeof error === "object" && error && "sqlState" in error ? error.sqlState : null;
+      const source = error instanceof Error && error.cause ? error.cause : error;
+      const code = typeof source === "object" && source && "sqlState" in source ? source.sqlState : null;
       if ((code !== "40001" && code !== "40P01") || attempt === attempts) throw error;
     }
   }
@@ -105,7 +106,7 @@ await withRetry(() => db.transaction(async (tx) => { /* your writes */ }));
 The [SQL query builder](/orm/fundamentals/advanced-queries) works the same way inside a transaction. `tx.sql` has the methods `db.sql` has, and you run the finished query with `tx.execute(...)`:
 
 ```typescript
-const cutoff = new Date("2026-01-01");
+const cutoff = Temporal.Instant.from("2026-01-01T00:00:00Z");
 await db.transaction(async (tx) => {
   const query = tx.sql.public.post
     .update({ published: false })

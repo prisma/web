@@ -28,21 +28,21 @@ const posts = await db.orm.posts
 // posts[0].author is the referenced user document
 ```
 
-If this is your first Prisma ORM 8 query, start with the two files it needs. Your contract is `src/prisma/contract.prisma`, the file that replaced `schema.prisma`. You declare your models in it. `db` is the client, and you create it once in `src/prisma/db.ts`:
+If this is your first Prisma ORM 8 query, start with the two files it needs. Your models live in `src/prisma/contract.prisma`. It is the same file Prisma ORM 7 called `schema.prisma`; the docs call it your contract. Both commands below write `src/prisma/db.ts`, which creates the client and exports it as `db`. It reads `DATABASE_URL` from `.env`.
 
 ```bash
 npm create prisma@latest -- my-app   # a new project
 npx prisma orm init                  # a project you already have
 ```
 
-Either way you get `src/prisma/db.ts`. That is the file the examples above import as `./prisma/db`, from a file directly inside `src/`. Here is what the rest of those lines are made of:
+That is the file the examples above import as `./prisma/db`, from a file directly inside `src/`. Here is what the rest of those lines are made of:
 
-- On PostgreSQL the path is `db.orm.<schema>.<ModelName>`. The schema is `public` unless you wrap the model in a `namespace` block. Write `namespace billing { model Invoice { ... } }` in your contract and the path becomes `db.orm.billing.Invoice`.
+- On PostgreSQL the path is `db.orm.<schema>.<ModelName>`. `db.orm` is the model API; `db.sql` and `db.raw.sql` are for SQL. The PostgreSQL schema (not the contract file) is `public` unless you wrap the model in a `namespace` block. Write `namespace billing { model Invoice { ... } }` in your contract and the path becomes `db.orm.billing.Invoice`.
 - On MongoDB there is no schema segment. The path is `db.orm.<collectionName>`. The collection name is the `@@map(...)` on the model, or the model name with a lowercase first letter. The models behind the MongoDB query above are [further down this page](#postgresql-and-mongodb-differences).
 - You `await` the whole chain, and the last call says what you want back. `.all()` returns every matching record as an array. `.first()` returns one record, or `null` when nothing matches.
 - `.where(...)` takes two forms. Pass an object, like `.where({ published: true })`, to match fields to exact values. Pass a callback for a comparison, like `.where((p) => p.title.like("Hello%"))`. Chaining `.where(...)` twice requires both to match.
 
-The name you pass to `.include(...)` is the relation field name you declared in your contract. It is not a table name. `.include("author")` replaces Prisma ORM 7's `include: { author: true }`; see [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7#queries) for the rest of the query API side by side. Use `.include(...)` when the caller needs the related data in the same response. Skip it when the foreign key already on the record is enough. This page walks through the three kinds of relationship, from the data model to the query and the result. If you already know how relational data is modeled, jump to [filtering by relation data](#filter-parent-records-by-relation-data) or the [limitations](#current-limitations).
+The name you pass to `.include(...)` is the relation field name you declared in your contract. It is not a table name. `.include(...)` fetches the relation in the same query as the parent: one SQL statement, which reads the relation with a correlated subquery. `.include("author")` replaces Prisma ORM 7's `include: { author: true }`; see [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7#queries) for the rest of the query API side by side. Use `.include(...)` when the caller needs the related data in the same response. Skip it when the foreign key already on the record is enough. This page walks through the three kinds of relationship, from the data model to the query and the result. If you already know how relational data is modeled, jump to [filtering by relation data](#filter-parent-records-by-relation-data) or the [limitations](#current-limitations).
 
 ## One-to-one
 
@@ -61,14 +61,14 @@ model Profile {
 }
 ```
 
-Write `@default(cuid(2))` to give each new record a generated id, so you never pass `id` yourself. To read a profile with its user, query from the profile and include the relation:
+Write `@default(cuid(2))` and you never pass `id` yourself: `cuid(2)` generates the id (the `2` is the CUID version). To read a profile with its user, query from the profile and include the relation:
 
 ```typescript
 const profileWithUser = await db.orm.public.Profile
-  .where({ userId: "usr_01hq" })
+  .where({ userId: "tz4a98xxat96iws9zmbrgj3a" })
   .include("user")
   .first();
-// { id, bio, userId, user: { id, email, name, createdAt } }
+// { id, bio, userId, user: { id, email } }
 ```
 
 `.first()` returns `null` when the profile doesn't exist, so a user without a profile is a `null` check, not an error. You can also declare the matching field on the other side and start from users. An optional field typed as the other model is enough. It needs no `@relation` of its own:
@@ -81,9 +81,9 @@ model User {
 }
 ```
 
-This works as long as the foreign key on the other side is unique. So `Profile.userId` must carry `@unique`. Leave it off and `User.profile` is rejected; the error code is `PSL_NON_UNIQUE_BACKRELATION`.
+This works as long as the foreign key on the other side is unique. So `Profile.userId` must carry `@unique`. Without it, `npx prisma contract emit` fails with the error code `PSL_NON_UNIQUE_BACKRELATION`.
 
-Then run `prisma contract emit`, the command that regenerates the client types from your contract. Run it after every change you make to the contract. Then apply the change to the database with `prisma db update` during development, or with a migration; see [Generating a migration](/orm/migrations/generating-a-migration). With the field in place, `include("profile")` returns one record or `null`:
+Then run `npx prisma contract emit`, the command that regenerates the client types from your contract. Run it after every change you make to the contract. Then apply the change to the database with `npx prisma db update` (the replacement for `prisma db push`) during development, or with a migration: run `npx prisma migration plan` then `npx prisma db migrate`; see [Generating a migration](/orm/migrations/generating-a-migration). With the field in place, `include("profile")` returns one record or `null`:
 
 ```typescript
 const usersWithProfiles = await db.orm.public.User
@@ -93,7 +93,7 @@ const usersWithProfiles = await db.orm.public.User
 // Array<{ id, email, profile: { id, bio, userId } | null }>
 ```
 
-`.select(...)` narrows the parent's own fields only. An included relation still comes back with all of its fields, which is why `profile` above has `bio` and `userId`.
+`.select(...)` narrows the parent's own fields only. An included relation still comes back with all of its fields, which is why `profile` above has `bio` and `userId`. To narrow the included relation's fields, use the callback form shown in the next section.
 
 ## One-to-many
 
@@ -111,10 +111,12 @@ model User {
 }
 
 model Post {
-  id       String @id @default(cuid(2))
-  title    String
-  authorId String
-  author   User   @relation(fields: [authorId], references: [id])
+  id        String   @id @default(cuid(2))
+  title     String
+  published Boolean  @default(false)
+  createdAt DateTime @default(now())
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
 }
 ```
 
@@ -127,7 +129,7 @@ const usersWithPosts = await db.orm.public.User.include("posts").all();
 
 // Each post with its author
 const postsWithAuthors = await db.orm.public.Post.include("author").all();
-// Array<{ id, title, authorId, author: User }>
+// Array<{ id, title, published, createdAt, authorId, author: User }>
 ```
 
 To choose what each relation returns, pass a callback as the second argument. Inside it, chain `.where`, `.select`, `.orderBy`, and `.limit` exactly like a top-level query. `.desc()` sorts newest first, and `.asc()` sorts the other way. This is how you fetch "each user with their five newest posts" in one query:
@@ -152,10 +154,10 @@ The callback also takes `.include(...)`, so you can go two levels deep in one qu
 const usersWithPostsAndComments = await db.orm.public.User
   .include("posts", (post) => post.include("comments"))
   .all();
-// Array<{ id, email, posts: Array<{ id, title, comments: Comment[] }> }>
+// Array<{ id, email, posts: Array<{ id, title, published, createdAt, authorId, comments: Comment[] }> }>
 ```
 
-To write a parent and its children in one call, pass a callback for the list field and Prisma ORM fills in the foreign key on each child. [Create a record and its related records](/orm/fundamentals/writing-data#create-a-record-and-its-related-records) has the example. The common mistake here is the N+1 loop: fetching users, then querying posts inside a `for` loop over them. That runs one query per user. One `.include("posts")` on the user query returns the same data in a single query.
+To write a parent and its children in one call, pass a callback for the list field and Prisma ORM fills in the foreign key on each child: `db.orm.public.User.create({ email: "jane@prisma.io", posts: (p) => p.create([{ title: "Hello", published: false }]) })` writes the user and the post together. The common mistake here is the N+1 loop: fetching users, then querying posts inside a `for` loop over them. That runs one query per user. One `.include("posts")` on the user query returns the same data in a single query.
 
 ## Many-to-many
 
@@ -167,9 +169,10 @@ Write three models. On each side, declare a list field typed as the other model.
 
 ```prisma
 model Post {
-  id    String @id @default(cuid(2))
-  title String
-  tags  Tag[]
+  id        String  @id @default(cuid(2))
+  title     String
+  published Boolean @default(false)
+  tags      Tag[]
 }
 
 model Tag {
@@ -188,7 +191,7 @@ model PostTag {
 }
 ```
 
-That primary key is a requirement, not a suggestion. Meet it and `Post.tags` and `Tag.posts` are paired through `PostTag`. You do not add a `PostTag[]` field to `Post` or `Tag`. `.include(...)` then reads a post's tags in one query, and returns the tags themselves, not the link records. The callback that filters and narrows a relation works here like anywhere else:
+Prisma ORM finds the model for the join table by that shape: the one model whose primary key is exactly a foreign key to `Post` and a foreign key to `Tag`. There is no other way to name it. If two models have that shape, `npx prisma contract emit` fails with `PSL_AMBIGUOUS_BACKRELATION`, and you pick one by adding the same `@relation("...")` name to the list field and to the foreign key pointing back at it. You do not add a `PostTag[]` field to `Post` or `Tag`. `.include(...)` then reads a post's tags in one query, and returns the tags themselves, not the link records. The callback that filters and narrows a relation works here like anywhere else:
 
 ```typescript
 const postsWithTags = await db.orm.public.Post
@@ -246,7 +249,7 @@ const links = await db.orm.public.PostTag.include("tag").all();
 // Array<{ postId, tagId, tag: { id, name } }>
 ```
 
-A join table may carry columns beyond the two foreign keys, as long as they are not part of the primary key. Reading through `Post.tags` still works, and so does `disconnect`. What stops working is nested `create` and `connect` when one of those extra columns is required. Neither can supply a value for it, so both are rejected. Insert the link records yourself instead:
+A join table may carry columns beyond the two foreign keys. Those extra columns must not be part of the primary key. Nested `create` and `connect` are rejected when one of them is required, because neither can supply a value for it, so insert the link records yourself:
 
 ```typescript
 await db.orm.public.PostTag.create({ postId: post.id, tagId: tag.id, addedBy: "me" });
@@ -264,11 +267,11 @@ const activeAuthors = await db.orm.public.User
 
 // Posts that carry a specific tag
 const taggedPosts = await db.orm.public.Post
-  .where((p) => p.tags.some((t) => t.id.eq("tag_01hq")))
+  .where((p) => p.tags.some((t) => t.id.eq("pfh0haxfpzowht3oi213cqos")))
   .all();
 ```
 
-Chaining `.where(...)` combines conditions with AND. For OR, call the `or` helper inside a single callback:
+Chaining `.where(...)` combines conditions with AND. For OR, call the `or` helper inside a single callback. It comes from `@prisma/orm-postgres/orm-client`, already installed with `@prisma/orm-postgres`:
 
 ```typescript
 import { or } from "@prisma/orm-postgres/orm-client";
@@ -278,7 +281,7 @@ const posts = await db.orm.public.Post
   .all();
 ```
 
-See [filter operators](/orm/fundamentals/reading-data#filter-operators-on-postgresql) for the comparisons you can pass to it. On MongoDB, relation filters are not available. Query the child collection directly instead, and include the parent:
+See [filter operators](/orm/fundamentals/reading-data#filter-operators-on-postgresql) for the comparisons you can pass to `.where(...)`. On MongoDB, relation filters are not available. Query the child collection directly instead, and include the parent:
 
 ```typescript
 // MongoDB: the published posts, each with its author
@@ -293,7 +296,7 @@ To group or reshape the result, use the [pipeline builder](/orm/fundamentals/adv
 
 ## PostgreSQL and MongoDB differences
 
-On MongoDB, a related document stored in its own collection and linked by id is a reference relation. Declare it as you would on PostgreSQL, and the three kinds of relationship above all apply:
+MongoDB calls a related document that lives in its own collection, linked by id, a reference relation. Declare it as you would on PostgreSQL, and the three kinds of relationship above all apply:
 
 ```prisma
 type Address {
@@ -302,7 +305,7 @@ type Address {
 }
 
 model User {
-  id      ObjectId @id @map("_id")
+  id      ObjectId @id @map("_id") // the property is _id, because of @map("_id")
   address Address?
   posts   Post[]
 
@@ -330,7 +333,7 @@ model Post {
 
 ## Prompt your coding agent
 
-Projects created with `npm create prisma@latest` include the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8), instruction files for your coding agent. The `prisma-8` skill covers both relation queries and the relation fields in your contract. Prompts that map to each section:
+Projects created with `npm create prisma@latest -- my-app` include the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8), instruction files for your coding agent. The `prisma-8` skill covers both relation queries and the relation fields in your contract. Prompts that map to each section:
 
 - "Using the prisma-8 skill, add a one-to-one Profile model with a unique foreign key to User."
 - "Using the prisma-8 skill, fetch each user with their five newest posts in one query."

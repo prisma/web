@@ -8,17 +8,15 @@ metaDescription: 'Create, update, delete, and upsert records in PostgreSQL and M
 
 This page shows how to write data with Prisma ORM: [creating](#create-one-record), [updating](#update-one-record), [deleting](#delete-one-record), and [upserting](#upsert-a-record) single records, and [writing many records at once](#write-many-records).
 
-Every example imports `db`. `db` is the client you create once in `src/prisma/db.ts`. `npx prisma orm init` writes that file for you, and a project scaffolded with `npm create prisma@latest` already has it. The import is `./prisma/db` from a file in `src/`.
+Every example imports `db`. New project: `npm create prisma@latest -- my-app`. Existing project: `npx prisma orm init`. Either way you get `src/prisma/db.ts`, which exports `db`. The import is `./prisma/db` from a file in `src/`.
 
 This page uses `db.orm`, which holds your models. The rest of `db` is `db.sql` for the SQL query builder, `db.raw.sql` for raw SQL, and `db.transaction` for running several writes together.
 
-On PostgreSQL the path to a model is `db.orm.<schema>.<ModelName>`, so the `User` model is `db.orm.public.User`. The schema is the PostgreSQL schema your tables are in, and it is `public` unless you declare another one.
-
-On MongoDB there is no schema segment. The path is `db.orm.<collectionName>`, so the model below is `db.orm.users`. The collection name comes from `@@map`. Without `@@map` it is the model name with a lowercase first letter, so `User` would be `db.orm.user`.
+On PostgreSQL the path to a model is `db.orm.<schema>.<ModelName>`, so the `User` model is `db.orm.public.User`. `public` is the PostgreSQL schema; you type it. It is `public` unless the model sits in a `namespace` block (shown under [Example schema](#example-schema)). On MongoDB there is no schema segment. The path is `db.orm.<collectionName>`, so the model below is `db.orm.users`. The collection name is the model's `@@map(...)`, or the model name with a lowercase first letter.
 
 ## Example schema
 
-All examples on this page use the following contract, the `contract.prisma` file that replaced `schema.prisma`. `@default(cuid(2))` means Prisma ORM generates the `id` for you, so you never pass one:
+Examples use this contract. In Prisma ORM 8 the schema file is `contract.prisma` instead of `schema.prisma`; the docs call it your contract. `@default(cuid(2))` means Prisma ORM generates the `id` for you, so you never pass one:
 
 <details>
 
@@ -59,6 +57,7 @@ model Post {
   title     String
   content   String?
   published Boolean
+  tags      String[]
   author    User     @relation(fields: [authorId], references: [id])
   authorId  ObjectId
   createdAt DateTime @default(now())
@@ -72,11 +71,14 @@ To put models in another PostgreSQL schema, wrap them in a `namespace` block:
 
 ```prisma
 namespace billing {
-  model User { ... }
+  model Invoice {
+    id     String @id @default(cuid(2))
+    amount Int
+  }
 }
 ```
 
-Those models are then at `db.orm.billing.User`.
+The model is then only at `db.orm.billing.Invoice`, and the block name is the PostgreSQL schema name.
 
 ## Create one record
 
@@ -121,9 +123,9 @@ const account = await db.orm.public.User
 { id: 'cuid20000000000000000003', email: 'jane@prisma.io' }
 ```
 
-`.select(...)` works the same before `update`, `delete`, `createAll`, `updateAll`, and `deleteAll`. The `AndCount` methods give you back a number, so a selection changes nothing there.
+`.select(...)` works the same before `update`, `delete`, `upsert`, `createAll`, `updateAll`, and `deleteAll`. The `AndCount` methods give you back a number, so `.select(...)` has no effect on them.
 
-When a write breaks a unique constraint, the call throws. On PostgreSQL the error carries the standard SQL state code in `sqlState`, and `23505` is the code for a unique violation. The [error reference](/orm/reference/error-reference) lists the other codes:
+When a write breaks a unique constraint, the call throws. Errors have no shared class. A PostgreSQL database error carries `sqlState` (a five-character SQL state code), a MongoDB driver error carries a numeric `code`, and a Prisma ORM error carries a string `code` such as `RUNTIME.ITERATOR_CONSUMED`. On PostgreSQL, `23505` is the SQL state code for a unique violation. The [error reference](/orm/reference/error-reference) lists the other codes:
 
 ```typescript
 try {
@@ -208,17 +210,14 @@ The callback returns an array, so you can apply several operations in one update
 
 The field operations `set`, `unset`, `inc`, and `mul` work on ordinary fields. `push`, `pull`, `addToSet`, and `pop` work on array fields, and you call them the same way: `p.tags.push("news")`. These field operations are MongoDB only. PostgreSQL has no callback form of `update`, so on PostgreSQL you pass an object. See [Field update operations](/orm/reference/orm-client#field-update-operations) in the reference.
 
-There is no `increment` on PostgreSQL. To add to a number in place, write the update as raw SQL. For a `views` column on `post`:
+There is no `increment` on PostgreSQL. To add to a number in place, write the update as raw SQL. For a `views` column on `post`, `db.raw.sql` writes a raw statement, `.affectedCount()` says you want the row count, `.build()` finishes it, and `db.runtime().execute(...)` runs it; [Advanced queries](/orm/fundamentals/advanced-queries) explains raw SQL:
 
 ```typescript
 const query = db.raw.sql`UPDATE post SET views = views + 1 WHERE id = ${postId}`
   .affectedCount()
   .build();
-
 const updatedCount = await db.runtime().execute(query);
 ```
-
-[Advanced queries](/orm/fundamentals/advanced-queries) covers raw SQL and the SQL query builder.
 
 ## Delete one record
 
@@ -257,9 +256,7 @@ await db.orm.users.where({ email: "eve@prisma.io" }).upsert({
 });
 ```
 
-On PostgreSQL, always pass `conflictOn`. It names the unique field that decides whether the record already exists, written as a field and a value. Give the same value you pass in `create`. When the unique constraint covers several columns, pass every one of those columns.
-
-Without `conflictOn`, the upsert matches on the primary key, which a new record does not have.
+`conflictOn` repeats the unique field and its value from `create`; Prisma ORM uses it to look for an existing row. For a unique constraint over several columns, pass them all in one object: `conflictOn: { tenantId, email }`. Without `conflictOn` on PostgreSQL, the upsert looks for a row by primary key, which a new record does not have, so the insert runs and fails on the unique constraint. Always pass `conflictOn`.
 
 On MongoDB, there is no `conflictOn`. Put the match in `.where(...)` before `.upsert(...)`.
 
@@ -268,6 +265,8 @@ On MongoDB, there is no `conflictOn`. Put the match in `.where(...)` before `.up
 Use the `All` and `AndCount` methods when you intend to write every record you pass, or change every record the filter matches:
 
 ```typescript
+const user = await db.orm.public.User.first({ email: "jane@prisma.io" });
+if (!user) throw new Error("no such user");
 // Insert many records
 const newPosts = await db.orm.public.Post.createAll([
   { title: "One", content: null, published: false, authorId: user.id },
@@ -313,7 +312,7 @@ Each write comes in three forms. Pick by what you need back:
 
 `update` and `delete` return `null` when nothing matches. Use the `AndCount` forms when the number is all you need, because they do not send the records back.
 
-The `All` forms return a result you can use two ways. `await` it for an array of records:
+The `All` forms return a result you can use two ways. Nothing is sent to the database until you `await` the result or loop over it, so an `updateAll` you never await changes nothing. `await` it for an array of records:
 
 ```typescript
 const publishedPosts = await db.orm.public.Post
@@ -378,7 +377,7 @@ You called `.update(...)` or `.delete()` straight on the model:
 await db.orm.public.User.delete();
 ```
 
-Both need a `.where(...)` first, and the call does not type-check without one. If you truly mean every record, pass an empty filter, which adds no condition and so matches everything:
+Both need a `.where(...)` first, and the call does not type-check without one. If you truly mean every record, pass an empty filter, which adds no condition and so matches everything. `.delete()` needs a `.where(...)` for the same reason, and `.where({})` satisfies it there too:
 
 ```typescript
 await db.orm.public.User.where({}).deleteAll();
@@ -408,7 +407,7 @@ Prisma ORM 7 supported `$transaction([query1, query2])`. Prisma ORM 8 does not: 
 
 ## Prompt your coding agent
 
-Projects created with `npm create prisma@latest` include the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. Skills are instruction files that tell the agent how Prisma ORM 8 works, and the `prisma-8` skill covers everything on this page. Prompts that map to each section:
+Projects created with `npm create prisma@latest` include the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent; in an existing project, run `npx prisma skills sync`. Skills are instruction files that tell the agent how Prisma ORM 8 works, and the `prisma-8` skill covers everything on this page. Prompts that map to each section:
 
 - "Using the prisma-8 skill, add a signup function that creates a User and returns only its id and email."
 - "Write an upsert that creates a user by email or updates their name if they exist."
