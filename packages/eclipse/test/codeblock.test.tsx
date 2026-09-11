@@ -113,3 +113,42 @@ test("escapeTabValue is idempotent, id-safe and keeps distinct labels distinct",
   assert.equal(escapeTabValue("npm"), "npm");
   assert.equal(escapeTabValue(""), "");
 });
+
+test("the variant axis still matches tabs whose labels contain whitespace", () => {
+  const html = renderToStaticMarkup(
+    <CodeBlockTabs
+      defaultValue="Relational databases"
+      variants={["TypeScript", "Python"]}
+      defaultVariant="TypeScript"
+    >
+      <CodeBlockTabsList>
+        <CodeBlockTabsTrigger value="Relational databases">
+          Relational databases
+        </CodeBlockTabsTrigger>
+        <CodeBlockTabsTrigger value="MongoDB">MongoDB</CodeBlockTabsTrigger>
+      </CodeBlockTabsList>
+      <CodeBlockTab value="Relational databases" variant="TypeScript">
+        <pre>relational typescript</pre>
+      </CodeBlockTab>
+      <CodeBlockTab value="MongoDB" variant="Python">
+        <pre>mongo python</pre>
+      </CodeBlockTab>
+    </CodeBlockTabs>,
+  );
+
+  const triggers = [...html.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/g)].map(
+    ([, attributes, inner]) => ({
+      attributes,
+      label: inner.replace(/<[^>]*>/g, "").trim(),
+    }),
+  );
+
+  const relational = triggers.find((t) => t.label === "Relational databases");
+  const mongo = triggers.find((t) => t.label === "MongoDB");
+
+  // "Relational databases" has TypeScript content, "MongoDB" does not: the
+  // availability lookup has to escape both sides or every tab reads as missing.
+  assert.ok(relational, "expected the whitespace-labelled trigger");
+  assert.doesNotMatch(relational.attributes, /disabled/);
+  assert.match(mongo?.attributes ?? "", /disabled/);
+});
