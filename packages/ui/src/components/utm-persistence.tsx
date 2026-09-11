@@ -10,6 +10,8 @@ import {
   syncUtmAttribution,
   writeStoredUtmAttribution,
 } from "../lib/utm";
+import { ATTRIBUTION_CHANGE_EVENT, type AttributionChangeDetail } from "../lib/attribution";
+import { hasAnalyticsConsent } from "../lib/consent";
 
 interface UtmPersistenceProps {
   /**
@@ -29,12 +31,37 @@ interface UtmPersistenceProps {
 }
 
 function getActiveAttribution(storageKey: string) {
-  const currentUtmParams = getUtmParams(new URLSearchParams(window.location.search));
-  const attribution = mergeUtmAttribution(readStoredUtmAttribution(storageKey), currentUtmParams);
+  const currentUtmParams = getUtmParams(new URLSearchParams(window.location.search), {
+    // Click IDs are advertising identifiers. Without analytics consent nothing
+    // downstream records them, so there is no reason to hold one.
+    includeClickIds: hasAnalyticsConsent(),
+  });
+  const stored = readStoredUtmAttribution(storageKey);
+  const attribution = mergeUtmAttribution(stored, currentUtmParams, new Date().toISOString());
 
-  if (attribution && Object.keys(currentUtmParams).length > 0) {
-    writeStoredUtmAttribution(storageKey, attribution);
+  if (!attribution || Object.keys(currentUtmParams).length === 0) {
+    return attribution;
   }
+
+  // The same tagged URL is re-read on every route change and every eligible
+  // anchor click. Only persist and announce a touch that actually changed
+  // something, or ordinary navigation would keep restamping last-touch.
+  const isUnchanged =
+    stored !== undefined &&
+    JSON.stringify(stored.first) === JSON.stringify(attribution.first) &&
+    JSON.stringify(stored.last) === JSON.stringify(attribution.last);
+
+  if (isUnchanged) {
+    return stored;
+  }
+
+  writeStoredUtmAttribution(storageKey, attribution);
+
+  document.dispatchEvent(
+    new CustomEvent<AttributionChangeDetail>(ATTRIBUTION_CHANGE_EVENT, {
+      detail: { attribution },
+    }),
+  );
 
   return attribution;
 }

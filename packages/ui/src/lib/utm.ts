@@ -5,10 +5,47 @@ export type UtmParams = Record<string, string>;
 export interface UtmAttribution {
   first: UtmParams;
   last: UtmParams;
+  /** ISO time the first tagged landing was recorded. */
+  firstSeenAt?: string;
+  /** ISO time the most recent tagged landing was recorded. */
+  lastSeenAt?: string;
 }
 
+/**
+ * Ad-platform click identifiers.
+ *
+ * Paid traffic usually arrives carrying only one of these — Google auto-tagging
+ * appends `gclid` and no UTM params at all — so without capturing them a paid
+ * visit is indistinguishable from direct traffic.
+ *
+ * These are captured and persisted like UTM params, but deliberately are NOT
+ * written back onto internal links (see `syncUtmParams`): they are opaque and
+ * long, and only matter at the point a visitor crosses into the console, where
+ * `syncUtmAttribution` appends them.
+ */
+const CLICK_ID_KEYS = new Set([
+  "gclid", // Google Ads
+  "wbraid", // Google Ads, web-to-app, iOS
+  "gbraid", // Google Ads, app-to-web, iOS
+  "msclkid", // Microsoft Advertising
+  "fbclid", // Meta
+  "li_fat_id", // LinkedIn
+  "twclid", // X/Twitter
+  "ttclid", // TikTok
+]);
+
+function isClickIdKey(key: string) {
+  return CLICK_ID_KEYS.has(key);
+}
+
+/** Keys that are rewritten onto internal links. */
 function isAttributionKey(key: string) {
   return key.startsWith("utm_") || key === "ref";
+}
+
+/** Keys that are captured into stored attribution. */
+function isCapturedKey(key: string) {
+  return isAttributionKey(key) || isClickIdKey(key);
 }
 
 function sanitizeUtmParams(input: unknown): UtmParams {
@@ -18,16 +55,25 @@ function sanitizeUtmParams(input: unknown): UtmParams {
 
   return Object.fromEntries(
     Object.entries(input).filter(
-      ([key, value]) => isAttributionKey(key) && typeof value === "string" && value.length > 0,
+      ([key, value]) => isCapturedKey(key) && typeof value === "string" && value.length > 0,
     ),
   );
 }
 
-export function getUtmParams(searchParams: URLSearchParams): UtmParams {
+/**
+ * @param includeClickIds Capture ad-platform click IDs too. These are
+ *   advertising identifiers, so callers gate this on analytics consent —
+ *   without consent nothing downstream records them anyway.
+ */
+export function getUtmParams(
+  searchParams: URLSearchParams,
+  { includeClickIds = true }: { includeClickIds?: boolean } = {},
+): UtmParams {
   const utmParams: UtmParams = {};
 
   for (const [key, value] of searchParams.entries()) {
-    if (isAttributionKey(key) && value) {
+    if (!value) continue;
+    if (isClickIdKey(key) ? includeClickIds : isAttributionKey(key)) {
       utmParams[key] = value;
     }
   }
@@ -48,12 +94,24 @@ function sanitizeUtmAttribution(input: unknown): UtmAttribution | undefined {
   const first = sanitizeUtmParams(candidate.first);
   const last = sanitizeUtmParams(candidate.last);
 
-  return hasUtmParams(first) && hasUtmParams(last) ? { first, last } : undefined;
+  if (!hasUtmParams(first) || !hasUtmParams(last)) return undefined;
+
+  return {
+    first,
+    last,
+    ...(typeof candidate.firstSeenAt === "string" && {
+      firstSeenAt: candidate.firstSeenAt,
+    }),
+    ...(typeof candidate.lastSeenAt === "string" && {
+      lastSeenAt: candidate.lastSeenAt,
+    }),
+  };
 }
 
 export function mergeUtmAttribution(
   existing: UtmAttribution | undefined,
   latest: UtmParams,
+  now?: string,
 ): UtmAttribution | undefined {
   const validExisting = sanitizeUtmAttribution(existing);
   const validLatest = sanitizeUtmParams(latest);
@@ -62,9 +120,21 @@ export function mergeUtmAttribution(
     return validExisting;
   }
 
+  const isFirst = !validExisting;
+
   return {
     first: validExisting?.first ?? validLatest,
     last: validLatest,
+    // Recorded at capture time so replaying stored attribution on a later
+    // page load cannot restamp the touch as if it just happened.
+    ...(now && {
+      firstSeenAt: isFirst ? now : (validExisting?.firstSeenAt ?? now),
+      lastSeenAt: now,
+    }),
+    ...(!now && {
+      firstSeenAt: validExisting?.firstSeenAt,
+      lastSeenAt: validExisting?.lastSeenAt,
+    }),
   };
 }
 
@@ -78,7 +148,13 @@ export function syncUtmParams(url: URL, utmParams: UtmParams) {
     }
   }
 
+  // Click IDs are captured but never rewritten onto internal links — only
+  // `syncUtmAttribution` puts them on console links.
   for (const [key, value] of Object.entries(utmParams)) {
+    if (isClickIdKey(key)) {
+      continue;
+    }
+
     if (url.searchParams.get(key) !== value) {
       url.searchParams.set(key, value);
       updated = true;
@@ -102,6 +178,15 @@ export function syncUtmAttribution(
   const firstTouchParams = Object.fromEntries(
     Object.entries(attribution.first).map(([key, value]) => [`first_${key}`, value]),
   );
+
+  // Carry click IDs across to the console so a signup there can be tied back to
+  // the ad click that started the visit.
+  for (const [key, value] of Object.entries(attribution.last)) {
+    if (isClickIdKey(key) && url.searchParams.get(key) !== value) {
+      url.searchParams.set(key, value);
+      updated = true;
+    }
+  }
 
   for (const key of Array.from(url.searchParams.keys())) {
     if ((key.startsWith("first_utm_") || key === "first_ref") && !(key in firstTouchParams)) {
