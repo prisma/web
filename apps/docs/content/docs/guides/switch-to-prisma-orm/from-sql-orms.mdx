@@ -1,220 +1,420 @@
 ---
 title: SQL ORMs
-description: Learn how to migrate from Sequelize or TypeORM to Prisma ORM
+description: Learn how to migrate from Sequelize or TypeORM to Prisma 8
 url: /guides/switch-to-prisma-orm/from-sql-orms
-metaTitle: How to migrate from TypeORM to Prisma ORM
-metaDescription: Learn how to migrate from TypeORM to Prisma ORM
+metaTitle: How to migrate from TypeORM or Sequelize to Prisma 8
+metaDescription: 'Add Prisma 8 to an existing Sequelize or TypeORM project: infer a contract from the live database, sign it, and replace queries one at a time.'
 ---
 
 ## Introduction
 
-This guide shows you how to migrate your application from Sequelize or TypeORM to Prisma ORM.
+This guide shows you how to migrate an application from Sequelize or TypeORM to Prisma 8. Your database already exists and your current ORM already shaped it, so Prisma 8 starts from the live schema: it reads the tables into a contract, records that the database matches it, and lets you replace queries one at a time while the old ORM keeps running.
 
-You can learn how Prisma ORM compares to these ORMs on the comparison pages:
-- [Prisma ORM vs Sequelize](/orm/v7/more/comparisons/prisma-and-sequelize)
-- [Prisma ORM vs TypeORM](/orm/v7/more/comparisons/prisma-and-typeorm)
+The example is a small TypeORM app with users and posts. Every command and query below was run against it on a local PostgreSQL database; the Sequelize calls in the [query mapping](#6-query-mapping) table map onto the same Prisma 8 calls.
+
+:::note[Using Prisma 7?]
+
+Prisma 8 is the current release of Prisma ORM. Prisma 7 remains fully supported; the Prisma 7 version of this guide is at [/guides/v7/switch-to-prisma-orm/from-sql-orms](/guides/v7/switch-to-prisma-orm/from-sql-orms).
+
+:::
 
 ## Prerequisites
 
-Before starting this guide, make sure you have:
+- [Node.js](https://nodejs.org) 24 or later
+- A Sequelize or TypeORM project that already connects to a PostgreSQL database
+- `"type": "module"` in your `package.json` (the generated Prisma 8 files are ES modules)
 
-- A Sequelize or TypeORM project you want to migrate
-- Node.js installed (version 18 or higher)
-- PostgreSQL, MySQL, or another [supported database](/orm/v7/reference/supported-databases)
+## Use with your agent
 
-## Overview of the migration process
+To delegate this guide to your coding agent, copy the prompt below and hand it over:
 
-The steps for migrating from Sequelize or TypeORM to Prisma ORM are always the same:
+<AgentPrompt>
 
-1. Install the Prisma CLI
-2. Introspect your database
-3. Create a baseline migration
-4. Install and generate Prisma Client
-5. Gradually replace your ORM queries with Prisma Client
+```text
+Add Prisma 8 to this Sequelize or TypeORM project so I can migrate queries incrementally.
 
-Prisma ORM supports **incremental adoption**, so you can migrate your project step-by-step rather than all at once.
+1. From the project root, run `npx prisma@latest orm init --yes --target postgres --authoring psl`, then `npx prisma@latest init` so the Prisma agent skills are installed, and use them. Make sure `.env` contains the DATABASE_URL the app already uses and that package.json has "type": "module".
+2. Run `npx prisma@latest contract infer --output ./src/prisma/contract.prisma` to read the existing tables into a contract. Open the file, change every `Timestamptz` field type to `TimestamptzString`, and keep the `@@map` attributes so model names stay clean while table names stay as they are.
+3. Run `npx prisma@latest contract emit`, then `npx prisma@latest db sign`, then `npx prisma@latest db verify`. Do not run `db init` or `db update`; the tables already exist.
+4. Following https://www.prisma.io/docs/guides/switch-to-prisma-orm/from-sql-orms.md, rewrite the read queries first, then the writes, importing `db` from `src/prisma/db.ts`. Run each rewritten query with `node <script>.ts` and show me the output. Leave the old ORM in place for queries you have not rewritten yet, but turn off its schema sync (`synchronize` in TypeORM, `sequelize.sync()` in Sequelize).
+```
 
-## Step 1. Install the Prisma CLI
+</AgentPrompt>
+
+## 1. The starting point
+
+The app has two TypeORM entities. `synchronize: true` in the data source created the `user` and `post` tables in PostgreSQL, and a script inserted two users and a post through TypeORM repositories.
+
+```typescript title="src/entities/User.ts"
+@Entity()
+export class User {
+  @PrimaryGeneratedColumn()
+  id!: number;
+
+  @Column({ type: "varchar", unique: true })
+  email!: string;
+
+  @Column({ type: "varchar", nullable: true })
+  name!: string | null;
+
+  @Column({ type: "boolean", default: true })
+  active!: boolean;
+
+  @CreateDateColumn({ type: "timestamptz" })
+  createdAt!: Date;
+
+  @OneToMany(() => Post, (post) => post.author)
+  posts!: Post[];
+}
+```
+
+```typescript title="src/entities/Post.ts"
+@Entity()
+export class Post {
+  @PrimaryGeneratedColumn()
+  id!: number;
+
+  @Column({ type: "varchar" })
+  title!: string;
+
+  @Column({ type: "text", nullable: true })
+  content!: string | null;
+
+  @Column({ type: "boolean", default: false })
+  published!: boolean;
+
+  @CreateDateColumn({ type: "timestamptz" })
+  createdAt!: Date;
+
+  @ManyToOne(() => User, (user) => user.posts, { nullable: false, onDelete: "CASCADE" })
+  author!: User;
+}
+```
+
+The project reads its connection string from `DATABASE_URL`:
+
+```bash title=".env"
+DATABASE_URL="postgres://user:password@localhost:5432/mydb"
+```
+
+Nothing about the database changes in this guide. Prisma 8 adopts the tables as they are, TypeORM keeps working next to it, and both read and write the same rows.
+
+## 2. Initialize Prisma 8
+
+From the project root, run:
 
 ```npm
-npm install prisma@7.10.0 --save-dev
-npm install @prisma/client@7.10.0
+npx prisma@latest orm init --target postgres
 ```
 
-## Step 2. Introspect your database
+Pick `PSL` as the authoring style and keep the default contract path, `src/prisma/contract.prisma`. The command adds `@prisma/orm-postgres` and `dotenv` to your dependencies, adds `prisma` and `@prisma/cli-engine` as dev dependencies, and finishes by emitting the starter contract:
 
-Run the following command to create a basic Prisma setup:
-
-```npm
-npx prisma init
+```json no-copy
+"target": "postgres",
+"authoring": "psl",
+"schemaPath": "src/prisma/contract.prisma",
+"filesWritten": ["src/prisma/contract.prisma", "prisma.config.ts", "src/prisma/db.ts", ".env.example", "tsconfig.json"],
+"packagesInstalled": { "status": "installed", "deps": ["@prisma/orm-postgres", "dotenv"], "devDeps": ["prisma", "@prisma/cli-engine"] },
+"contractEmitted": true
 ```
 
-This creates a `prisma` directory with a `schema.prisma` file and a `.env` file. Update the `DATABASE_URL` in `.env` with your connection string:
+Three files matter for the migration:
 
-```bash
-DATABASE_URL="postgresql://user:password@localhost:5432/mydb?schema=public"
-```
+- `prisma.config.ts` loads `.env` and points the CLI at the contract and `DATABASE_URL`. Every command below reads the connection string from there.
+- `src/prisma/db.ts` creates the client your code imports.
+- `src/prisma/contract.prisma` is the starter contract. The next step overwrites it with your real schema.
 
-Then introspect your database to generate Prisma models:
+```typescript title="src/prisma/db.ts"
+import 'dotenv/config';
+import postgres from '@prisma/orm-postgres/runtime';
+import type { Contract } from './contract.d';
+import contractJson from './contract.json' with { type: 'json' };
 
-```npm
-npx prisma db pull
-```
-
-To create a baseline migration, run:
-
-```npm
-mkdir -p prisma/migrations/0_init
-npx prisma migrate diff --from-empty --to-schema prisma/schema.prisma --script > prisma/migrations/0_init/migration.sql
-npx prisma migrate resolve --applied 0_init
-```
-
-## Step 3. Install and generate Prisma Client
-
-```npm
-npx prisma generate
-```
-
-Create a file to instantiate Prisma Client (e.g., `db/prisma.ts`):
-
-```typescript
-import { PrismaClient } from "@prisma/client";
-
-export const prisma = new PrismaClient();
-```
-
-## Step 4. Replace your ORM queries with Prisma Client
-
-```typescript tab="Sequelize"
-// Find records
-const user = await User.findOne({ where: { id: 1 } });
-const users = await User.findAll({
-  where: { active: true },
-  limit: 10,
-  order: [['createdAt', 'DESC']]
+export const db = postgres<Contract>({
+  contractJson,
+  url: process.env['DATABASE_URL']!,
 });
+```
+
+There is no `prisma generate` and no driver adapter in Prisma 8: the runtime reads `contract.json`, which `contract emit` writes, and connects with the `url` you pass. `orm init` also rewrites `tsconfig.json` so `contract.json` can be imported; it keeps `experimentalDecorators` and `emitDecoratorMetadata` in place for TypeORM.
+
+## 3. Infer the contract from your database
+
+Read the live schema into the contract:
+
+```npm
+npx prisma@latest contract infer --output ./src/prisma/contract.prisma
+```
+
+```json no-copy
+"summary": "Contract inferred successfully",
+"target": { "familyId": "sql", "id": "postgres" },
+"psl": { "path": "src/prisma/contract.prisma" }
+```
+
+The inferred contract mirrors what TypeORM created, down to the constraint names and the `CASCADE` on the foreign key. Model names are PascalCase; `@@map` keeps the physical table names, so no table is renamed:
+
+```prisma title="src/prisma/contract.prisma"
+model User {
+  id        Int         @id(map: "PK_cace4a159ff9f2512dd42373760") @default(autoincrement())
+  email     VarChar     @unique(map: "UQ_e12875dfb3b1d92d7d7c5377e22")
+  name      VarChar?
+  active    Boolean     @default(true)
+  createdAt Timestamptz @default(now())
+  posts     Post[]
+
+  @@map("user")
+}
+
+model Post {
+  id        Int         @id(map: "PK_be5fda3aac270b134ff9c21cdee") @default(autoincrement())
+  title     VarChar
+  content   String?
+  published Boolean     @default(false)
+  createdAt Timestamptz @default(now())
+  authorId  Int
+  author    User        @relation(fields: [authorId], references: [id], onDelete: Cascade, map: "FK_c6fb082a3114f35d0cc27c518e0", index: false)
+
+  @@map("post")
+}
+```
+
+Review the file before you go on. One edit is required for this schema: the `timestamptz` columns come back as `Timestamptz`, whose runtime codec returns `Temporal` values and fails on Node.js with `RUNTIME.TEMPORAL_UNAVAILABLE` because Node.js has no global `Temporal` yet. Change them to `TimestamptzString`, which reads and writes PostgreSQL's own text form and maps to the same column type:
+
+```prisma title="src/prisma/contract.prisma"
+model User {
+  createdAt Timestamptz @default(now()) // [!code --]
+  createdAt TimestamptzString @default(now()) // [!code ++]
+}
+
+model Post {
+  createdAt Timestamptz @default(now()) // [!code --]
+  createdAt TimestamptzString @default(now()) // [!code ++]
+}
+```
+
+This is also the moment to drop tables you do not want Prisma 8 to see yet, or to rename a model while keeping its `@@map`. The [PSL syntax](/orm/contract-authoring/psl-syntax) page lists the attributes.
+
+## 4. Emit and sign
+
+Turn the reviewed contract into the artifacts the runtime and CLI use:
+
+```npm
+npx prisma@latest contract emit
+```
+
+```json no-copy
+"files": { "json": "src/prisma/contract.json", "dts": "src/prisma/contract.d.ts" }
+```
+
+Then record that the live database matches the contract:
+
+```npm
+npx prisma@latest db sign
+```
+
+```json no-copy
+"summary": "Database signed (marker created)",
+"target": { "expected": "postgres", "actual": "postgres" },
+"marker": { "created": true, "updated": false }
+```
+
+`db sign` verifies the schema first and refuses to sign if the database does not satisfy the contract. It replaces the baseline migration from Prisma 7 (`migrate diff` plus `migrate resolve`): the database is not touched, only marked. Check it at any time with:
+
+```npm
+npx prisma@latest db verify
+```
+
+```json no-copy
+"summary": "Database marker and schema match contract"
+```
+
+If you edit the contract again later, run `contract emit` and then `db sign` again; `db verify` reports `Hash mismatch` until you do.
+
+## 5. Replace queries
+
+Rewrite queries one at a time. The TypeORM tab shows the queries the app runs today; the Prisma 8 tab shows the same operations rewritten, in a script that runs against the rows TypeORM created (it uses new emails so both scripts can run against the same database). The sequence covers the calls most apps live on: create, a transaction, find many, find one with a relation, update, and delete.
+
+```typescript tab="TypeORM" title="src/typeorm-queries.ts"
+import { AppDataSource } from "./data-source.js";
+import { User } from "./entities/User.js";
+import { Post } from "./entities/Post.js";
+
+await AppDataSource.initialize();
+const userRepository = AppDataSource.getRepository(User);
+const postRepository = AppDataSource.getRepository(Post);
 
 // Create
-const user = await User.create({
-  name: 'Alice',
-  email: 'alice@example.com'
-});
-
-// Update
-await User.update(
-  { name: 'Alicia' },
-  { where: { id: 1 } }
-);
-
-// Delete
-await User.destroy({ where: { id: 1 } });
-
-// With relations
-const posts = await Post.findAll({
-  include: [{ model: User }],
-  limit: 10
-});
+const alice = userRepository.create({ email: "alice@prisma.io", name: "Alice" });
+await userRepository.save(alice);
 
 // Transaction
-const result = await sequelize.transaction(async (t) => {
-  const user = await User.create({ name: 'Alice' }, { transaction: t });
-  const post = await Post.create({ title: 'Hello', userId: user.id }, { transaction: t });
-  return { user, post };
+await AppDataSource.transaction(async (manager) => {
+  const bob = manager.create(User, { email: "bob@prisma.io", name: "Bob" });
+  await manager.save(bob);
+  const post = manager.create(Post, { title: "Hello from TypeORM", author: bob });
+  await manager.save(post);
 });
-```
 
-```typescript tab="TypeORM"
-// Find records
-const user = await userRepository.findOne({ where: { id: 1 } });
+// Find many
 const users = await userRepository.find({
   where: { active: true },
   take: 10,
-  order: { createdAt: 'DESC' }
+  order: { createdAt: "DESC" },
 });
 
-// Create
-const user = userRepository.create({
-  name: 'Alice',
-  email: 'alice@example.com'
-});
-await userRepository.save(user);
-
-// Update
-await userRepository.update(1, { name: 'Alicia' });
-
-// Delete
-await userRepository.delete(1);
-
-// With relations
-const posts = await postRepository.find({
-  relations: ['author'],
-  take: 10
-});
-
-// Transaction
-await connection.transaction(async (manager) => {
-  const user = manager.create(User, { name: 'Alice' });
-  await manager.save(user);
-  const post = manager.create(Post, { title: 'Hello', author: user });
-  await manager.save(post);
-});
-```
-
-```typescript tab="Prisma"
-// Find records
-const user = await prisma.user.findUnique({ where: { id: 1 } });
-const users = await prisma.user.findMany({
-  where: { active: true },
-  take: 10,
-  orderBy: { createdAt: 'desc' }
-});
-
-// Create
-const user = await prisma.user.create({
-  data: {
-    name: 'Alice',
-    email: 'alice@example.com'
-  }
+// Find one with relation
+const bobWithPosts = await userRepository.findOne({
+  where: { email: "bob@prisma.io" },
+  relations: { posts: true },
 });
 
 // Update
-await prisma.user.update({
-  where: { id: 1 },
-  data: { name: 'Alicia' }
-});
+await userRepository.update(alice.id, { name: "Alicia" });
 
 // Delete
-await prisma.user.delete({ where: { id: 1 } });
+await userRepository.delete(alice.id);
 
-// With relations
-const posts = await prisma.post.findMany({
-  include: { author: true },
-  take: 10
-});
-
-// Transaction
-const result = await prisma.$transaction(async (tx) => {
-  const user = await tx.user.create({
-    data: {
-      name: 'Alice',
-      posts: { create: { title: 'Hello' } }
-    },
-    include: { posts: true }
-  });
-  return user;
-});
+console.log("count", await userRepository.count());
+await AppDataSource.destroy();
 ```
 
-## Migration tips
+```typescript tab="Prisma 8" title="src/prisma-queries.ts"
+import { db } from "./prisma/db.ts";
 
-- **Incremental adoption**: Start by replacing read operations, then gradually move to write operations
-- **Schema naming**: Use `@map` and `@@map` to map Prisma model names to existing table/column names
-- **Type safety**: Run `npx prisma generate` after any schema changes
-- **Performance**: Use `select` to fetch only needed fields and avoid N+1 issues with `include`
+// Create
+const carol = await db.orm.public.User.create({ email: "carol@prisma.io", name: "Carol" });
+console.log("created", carol);
+
+// Transaction
+const result = await db.transaction(async (tx) => {
+  const dave = await tx.orm.public.User.create({ email: "dave@prisma.io", name: "Dave" });
+  const post = await tx.orm.public.Post.create({ title: "Hello from Prisma 8", authorId: dave.id });
+  return { dave, post };
+});
+console.log("transaction", result);
+
+// Find many
+const users = await db.orm.public.User
+  .where({ active: true })
+  .orderBy((u) => u.createdAt.desc())
+  .limit(10)
+  .all();
+console.log("users", users);
+
+// Find one with relation
+const bobWithPosts = await db.orm.public.User
+  .where({ email: "bob@prisma.io" })
+  .include("posts")
+  .first();
+console.log("bobWithPosts", bobWithPosts);
+
+// Update
+const updated = await db.orm.public.User.where({ id: carol.id }).update({ name: "Caroline" });
+console.log("updated", updated);
+
+// Delete
+const deleted = await db.orm.public.User.where({ id: carol.id }).delete();
+console.log("deleted", deleted);
+
+const totals = await db.orm.public.User.aggregate((a) => ({ users: a.count() }));
+console.log("totals", totals);
+await db.runtime().close();
+```
+
+Run it with Node.js 24, which executes TypeScript directly:
+
+```bash
+node src/prisma-queries.ts
+```
+
+```text no-copy
+created { active: true, createdAt: '2026-09-10 21:57:22.667511+06', email: 'carol@prisma.io', id: 9, name: 'Carol' }
+transaction {
+  dave: { active: true, createdAt: '2026-09-10 21:57:22.67978+06', email: 'dave@prisma.io', id: 10, name: 'Dave' },
+  post: { authorId: 10, content: null, createdAt: '2026-09-10 21:57:22.67978+06', id: 4, published: false, title: 'Hello from Prisma 8' }
+}
+users [
+  { active: true, createdAt: '2026-09-10 21:57:22.67978+06', email: 'dave@prisma.io', id: 10, name: 'Dave' },
+  { active: true, createdAt: '2026-09-10 21:57:22.667511+06', email: 'carol@prisma.io', id: 9, name: 'Carol' },
+  { active: true, createdAt: '2026-09-10 21:29:00.614611+06', email: 'bob@prisma.io', id: 2, name: 'Bob' }
+]
+bobWithPosts {
+  active: true, createdAt: '2026-09-10 21:29:00.614611+06', email: 'bob@prisma.io', id: 2, name: 'Bob',
+  posts: [ { authorId: 2, content: null, createdAt: '2026-09-10 21:29:00.614611+06', id: 1, published: false, title: 'Hello from TypeORM' } ]
+}
+updated { active: true, createdAt: '2026-09-10 21:57:22.667511+06', email: 'carol@prisma.io', id: 9, name: 'Caroline' }
+deleted { active: true, createdAt: '2026-09-10 21:57:22.667511+06', email: 'carol@prisma.io', id: 9, name: 'Caroline' }
+totals { users: 2 }
+```
+
+What changed, in the order the script runs:
+
+- Models are addressed by schema on PostgreSQL: `db.orm.public.User`, not a repository or a model class. There is no `save()` step; `create` inserts and returns the full row, defaults included.
+- `db.transaction` gives the callback a `tx` with the same `orm` surface. Use `tx.orm` inside it; whatever the callback returns comes out of `db.transaction`.
+- Filters and sorting chain: `.where({ active: true })` for equality, a lambda such as `(u) => u.createdAt.desc()` for sorting, `.limit()` for `take`, and `.all()` or `.first()` to run the query.
+- `.include("posts")` replaces `relations: { posts: true }`. The row Prisma 8 returned for Bob carries the post TypeORM wrote, because both ORMs read the same table.
+- `.update()` and `.delete()` act on one row and return it. For many rows use `updateAll()` and `deleteAll()`, or `updateAndCount()` and `deleteAndCount()` when you only need the number.
+- A total count is an aggregate: `.aggregate((a) => ({ users: a.count() }))`.
+- The script closes the pool with `db.runtime().close()` because it is a one-off process. A server keeps the client open for its lifetime.
+
+TypeORM still reads everything Prisma 8 wrote; a `find({ relations: { posts: true } })` after the script returned Dave and his post alongside Bob. Keep TypeORM for the queries you have not rewritten yet, and remove it when the last one is gone.
+
+## 6. Query mapping
+
+Every Prisma 8 call in this table was run against the sandbox app above. The Sequelize and TypeORM columns show the call it replaces.
+
+| Operation | Sequelize | TypeORM | Prisma 8 |
+| --- | --- | --- | --- |
+| Find many | `User.findAll({ where: { active: true }, order: [["createdAt", "DESC"]], limit: 10 })` | `repo.find({ where: { active: true }, order: { createdAt: "DESC" }, take: 10 })` | `db.orm.public.User.where({ active: true }).orderBy((u) => u.createdAt.desc()).limit(10).all()` |
+| Find one | `User.findOne({ where: { email } })` | `repo.findOne({ where: { email } })` | `db.orm.public.User.where({ email }).first()` |
+| Find by primary key | `User.findByPk(id)` | `repo.findOneBy({ id })` | `db.orm.public.User.first({ id })` |
+| Pattern filter, selected columns | `User.findAll({ where: { email: { [Op.iLike]: "%@prisma.io" } }, attributes: ["id", "email"] })` | `repo.find({ where: { email: ILike("%@prisma.io") }, select: { id: true, email: true } })` | `db.orm.public.User.where((u) => u.email.ilike("%@prisma.io")).select("id", "email").all()` |
+| Offset pagination | `User.findAll({ offset: 20, limit: 10 })` | `repo.find({ skip: 20, take: 10 })` | `db.orm.public.User.orderBy((u) => u.id.asc()).offset(20).limit(10).all()` |
+| Load a relation | `User.findAll({ include: [Post] })` | `repo.find({ relations: { posts: true } })` | `db.orm.public.User.include("posts").all()` |
+| Load the parent | `Post.findAll({ include: [User] })` | `postRepo.find({ relations: { author: true } })` | `db.orm.public.Post.include("author").all()` |
+| Shape a relation | `include: [{ model: Post, attributes: ["id", "title"], limit: 5 }]` | separate query | `.include("posts", (p) => p.select("id", "title").orderBy((x) => x.createdAt.desc()).limit(5))` |
+| Count a relation | `Post.count({ group: ["authorId"] })` | `postRepo.countBy({ author: { id } })` per user | `db.orm.public.User.include("posts", (p) => p.count()).all()` |
+| Count rows | `User.count()` | `repo.count()` | `db.orm.public.User.aggregate((a) => ({ users: a.count() }))` |
+| Create | `User.create({ email, name })` | `repo.save(repo.create({ email, name }))` | `db.orm.public.User.create({ email, name })` |
+| Create many | `User.bulkCreate([...])` | `repo.save([...])` | `db.orm.public.User.createAll([...])` |
+| Update one | `User.update({ name }, { where: { id } })` | `repo.update(id, { name })` | `db.orm.public.User.where({ id }).update({ name })` |
+| Update many | `User.update({ active: false }, { where: { email: emails } })` | `repo.update({ email: In(emails) }, { active: false })` | `db.orm.public.User.where((u) => u.email.in(emails)).updateAll({ active: false })` |
+| Update many, count only | `const [count] = await User.update(...)` | `(await repo.update(...)).affected` | `db.orm.public.User.where({ active: false }).updateAndCount({ active: true })` |
+| Delete one | `User.destroy({ where: { id } })` | `repo.delete(id)` | `db.orm.public.User.where({ id }).delete()` |
+| Delete many | `User.destroy({ where: { email: emails } })` | `repo.delete({ email: In(emails) })` | `db.orm.public.User.where((u) => u.email.in(emails)).deleteAll()` |
+| Transaction | `sequelize.transaction(async (t) => { ... { transaction: t } })` | `dataSource.transaction(async (manager) => { ... })` | `db.transaction(async (tx) => { ... tx.orm.public.User.create(...) })` |
+
+Two differences to keep in mind while you translate:
+
+- Prisma 8 queries return plain objects, not entity instances. There is nothing to `save()` after changing a field; call `.update()` with the fields.
+- A thrown error inside `db.transaction` rolls everything back, the same as both ORMs. The sandbox confirmed that a user created before a `throw` did not exist afterwards.
+
+## Common gotchas
+
+:::warning
+
+Turn off schema synchronization in the ORM you are leaving once the database is signed: `synchronize: false` in the TypeORM data source, and no `sequelize.sync()` on startup. Prisma 8 only knows the columns in the contract, so a column the old ORM adds behind it is invisible to your Prisma 8 queries until you update the contract and run `contract emit` again. `db verify` accepts extra columns, so it will not warn you.
+
+:::
+
+- `.update()` and `.delete()` change exactly one row, even when the filter matches several. Use `updateAll()` or `deleteAll()` for bulk changes; this is the opposite default from TypeORM's `repo.update(criteria, ...)`, which updates every match.
+- `contract infer` writes `Timestamptz` for `timestamptz` columns. Change them to `TimestamptzString` before you emit, as in step 3, or every query that reads the column fails with `RUNTIME.TEMPORAL_UNAVAILABLE` on Node.js.
+- If `package.json` declares `"type": "commonjs"`, `orm init` keeps it and prints a warning. Set `"type": "module"`; the generated `db.ts` and `prisma.config.ts` are ES modules.
+- Do not run `db init` or `db update` on the existing database. `db sign` is the step for a database that already has the tables; `db update` and `migration plan` come later, when you change the contract yourself.
+- Do not call `db.runtime().close()` in a request handler. The pool is shared across requests; close it only when a script or the process ends.
+
+## Prompt your coding agent
+
+Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
+
+- "Using the prisma-8 skill, rewrite every TypeORM read in `src/services/users.ts` as a Prisma 8 query and leave the writes on TypeORM."
+- "Translate the Sequelize `include` in the posts list to a Prisma 8 `.include()` with only `id` and `title` selected."
+- "Move the signup flow's two inserts into a single [`db.transaction`](/orm/fundamentals/transactions)."
 
 ## Next steps
 
-- [Prisma Client API Reference](/orm/v7/reference/prisma-client-reference)
-- [Schema Reference](/orm/v7/reference/prisma-schema-reference)
-- [Prisma ORM vs Sequelize](/orm/v7/more/comparisons/prisma-and-sequelize)
-- [Prisma ORM vs TypeORM](/orm/v7/more/comparisons/prisma-and-typeorm)
+- [Reading data](/orm/fundamentals/reading-data) and [writing data](/orm/fundamentals/writing-data): the full filter, sort, pagination, and mutation surface.
+- [Relations and joins](/orm/fundamentals/relations-and-joins): `.include()` with refinements and relation filters.
+- [How migrations work](/orm/migrations/how-migrations-work): once Prisma 8 owns the schema, change the contract and use [`db update`](/cli/db-update) in development or [`migration plan`](/cli/migration-plan) for checked-in migrations.
+- [Add Prisma 8 to an existing PostgreSQL project](/prisma-orm/add-to-existing-project/postgresql): the same `orm init`, `contract infer`, `db sign` flow without the ORM context.

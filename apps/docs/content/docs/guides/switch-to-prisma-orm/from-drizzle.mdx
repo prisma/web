@@ -1,548 +1,832 @@
 ---
 title: Drizzle
-description: Learn how to migrate from Drizzle to Prisma ORM
+description: 'Switch an existing Drizzle app to Prisma 8: infer a contract from your database, sign it, and replace Drizzle queries route by route.'
 image: /img/guides/migrate-from-drizzle-cover.png
 url: /guides/switch-to-prisma-orm/from-drizzle
-metaTitle: How to migrate from Drizzle to Prisma ORM
-metaDescription: Learn how to migrate from Drizzle to Prisma ORM
+metaTitle: How to migrate from Drizzle to Prisma 8
+metaDescription: 'Move a Drizzle app to Prisma 8 without touching the database: run orm init, infer and review a contract, sign the database, and swap the queries one route at a time.'
 ---
 
 ## Introduction
 
-This guide shows you how to migrate your application from Drizzle to Prisma ORM. The examples use a sample project based off of the [Drizzle Next.js example](https://orm.drizzle.team/docs/tutorials/drizzle-nextjs-neon). You can find the example used for this guide on [GitHub](https://github.com/prisma/migrate-from-drizzle-to-prisma).
+This guide shows you how to migrate an application from Drizzle to Prisma 8. The sample app is a Next.js project with API routes for users, profiles, posts and categories. Posts and categories are connected through a `posts_to_categories` join table, the schema was pushed to a local PostgreSQL database with `drizzle-kit push`, and the routes read and write through `drizzle-orm`.
 
-You can learn how Prisma ORM compares to Drizzle on the [Prisma ORM vs Drizzle](/orm/v7/more/comparisons/prisma-and-drizzle) page.
+Prisma 8 reads the schema that Drizzle already created, so you do not rebuild the database. You add Prisma 8 to the project, infer a contract from the live tables, sign the database, and then replace Drizzle queries one at a time. The routes keep working during the switch, so you can move as slowly or as quickly as you like.
+
+Every command and response below was run end to end against the sample app and a local PostgreSQL 17 database.
+
+:::note[Using Prisma 7?]
+
+Prisma 8 is the current release of Prisma ORM. Prisma 7 remains fully supported; the Prisma 7 version of this guide is at [/guides/v7/switch-to-prisma-orm/from-drizzle](/guides/v7/switch-to-prisma-orm/from-drizzle).
+
+:::
 
 ## Prerequisites
 
-Before starting this guide, make sure you have:
-
-- A Drizzle project you want to migrate
-- Node.js installed (version 16 or higher)
-- PostgreSQL or another supported database
+- [Node.js](https://nodejs.org) 24 or later
+- A Drizzle project that talks to a PostgreSQL database, and its connection string in `DATABASE_URL`
 - Basic familiarity with Drizzle and Next.js
 
-:::note
+## Use with your agent
 
-this migration guide uses Neon PostgreSQL as the example database, but it equally applies to any other relational database that are [supported by Prisma ORM](/orm/v7/reference/supported-databases).
+To delegate this guide to your coding agent, copy the prompt below and hand it over:
 
-:::
+<AgentPrompt>
 
-You can learn how Prisma ORM compares to Drizzle on the [Prisma ORM vs Drizzle](/orm/v7/more/comparisons/prisma-and-drizzle) page.
+```text
+Migrate this Drizzle project to Prisma 8 without changing the database.
+
+1. Run `npx prisma@latest orm init --target postgres` in the project root, choose PSL and the default schema path. Then run `npx prisma@latest init` so the Prisma agent skills are installed, and use them. Keep the existing `DATABASE_URL` in `.env`; Drizzle and Prisma 8 use the same connection string format.
+2. Run `npx prisma@latest contract infer --output ./src/prisma/contract.prisma` to read the live schema into `src/prisma/contract.prisma`. Review it with me: singularize the model names (keep the `@@map` attributes so the table names do not change), replace every `Timestamptz` field type with `TimestamptzString`, and for each many-to-many join model add a direct list field on both sides (for example `categories Category[]` on `Post` and `posts Post[]` on `Category`).
+3. Run `npx prisma@latest contract emit`, then `npx prisma@latest db sign`, then `npx prisma@latest db verify`. All three must succeed before you touch application code.
+4. Replace the Drizzle queries one route at a time following https://www.prisma.io/docs/guides/switch-to-prisma-orm/from-drizzle.md: import `db` from `src/prisma/db.ts`, use `db.orm.public.<Model>` with `.include(...)`, `.create(...)`, `.where(...).update(...)` and `.where(...).delete(...)`. Run each route with curl before and after, and show me the responses.
+5. When no file imports `drizzle-orm` any more, remove `src/db/`, `drizzle.config.ts` and the Drizzle packages, and confirm `next build` passes.
+```
+
+</AgentPrompt>
 
 ## Overview of the migration process
 
-Note that the steps for migrating from Drizzle to Prisma ORM are always the same, no matter what kind of application or API layer you're building:
-
-1. Install the Prisma CLI
-1. Introspect your database
-1. Create a baseline migration
-1. Install Prisma Client
-1. Gradually replace your Drizzle queries with Prisma Client
-
-These steps apply, no matter if you're building a REST API (e.g. with Express, koa or NestJS), a GraphQL API (e.g. with Apollo Server, TypeGraphQL or Nexus) or any other kind of application that uses Drizzle for database access.
-
-Prisma ORM supports **incremental adoption**, so you don't have to migrate your entire project from Drizzle at once. You can move your database queries to Prisma ORM one at a time.
-
-## Step 1. Install the Prisma CLI
-
-The first step to adopt Prisma ORM is to [install the Prisma CLI](/orm/v7/reference/prisma-cli-reference) in your project:
-
-```npm
-npm install prisma@7.10.0 @types/pg --save-dev
-npm install @prisma/client@7.10.0 @prisma/adapter-pg pg
-```
-
-:::info
-
-If you are using a different database provider (MySQL, SQL Server, SQLite), install the corresponding driver adapter package instead of `@prisma/adapter-pg`. For more information, see [Database drivers](/orm/v7/core-concepts/supported-databases/database-drivers).
-
-:::
-
-## Step 2. Introspect your database
-
-### 2.1. Set up Prisma ORM
-
-Before you can introspect your database, you need to set up your [Prisma schema](/orm/v7/prisma-schema/overview) and connect Prisma to your database. Run the following command in the root of your project to create a basic Prisma schema file:
-
-```npm
-npx prisma init --output ../generated/prisma
-```
-
-This command created a new directory called `prisma` with the following files for you:
-
-- `schema.prisma`: Your Prisma schema that specifies your database connection and models
-- `.env`: A [`dotenv`](https://github.com/motdotla/dotenv) to configure your database connection URL as an environment variable
-
-:::note
-
-You may already have a `.env` file. If so, the `prisma init` command will append lines to it rather than creating a new file.
-
-:::
-
-The Prisma schema currently looks as follows:
-
-```prisma title="prisma/schema.prisma" showLineNumbers
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-datasource db {
-  provider = "postgresql"
-}
-
-generator client {
-  provider = "prisma-client"
-  output   = "./generated/prisma"
-}
-```
-
-:::tip
-
-If you're using VS Code, be sure to install the [Prisma VS Code extension](https://marketplace.visualstudio.com/items?itemName=Prisma.prisma) for syntax highlighting, formatting, and auto-completion.
-
-:::
-
-### 2.2. Connect your database
-
-If you're not using PostgreSQL, you need to adjust the `provider` field on the `datasource` block to the database you currently use:
-
-```prisma title="schema.prisma" showLineNumbers tab="PostgreSQL"
-datasource db {
-  provider = "postgresql"
-}
-```
-
-```prisma title="schema.prisma" showLineNumbers tab="MySQL"
-datasource db {
-  provider = "mysql"
-}
-```
-
-```prisma title="schema.prisma" showLineNumbers tab="Microsoft SQL Server"
-datasource db {
-  provider = "sqlserver"
-}
-```
-
-```prisma title="schema.prisma" showLineNumbers tab="SQLite"
-datasource db {
-  provider = "sqlite"
-}
-```
-
-Once that's done, you can configure your [database connection URL](/orm/v7/reference/connection-urls) in the `.env` file. Drizzle and Prisma ORM use the same format for connection URLs, so your existing connection URL should work fine.
-
-### 2.3. Configure Prisma
-
-Create a `prisma.config.ts` file in the root of your project with the following content:
-
-```typescript title="prisma.config.ts"
-import "dotenv/config";
-import { defineConfig, env } from "prisma/config";
-
-export default defineConfig({
-  schema: "prisma/schema.prisma",
-  migrations: {
-    path: "prisma/migrations",
-  },
-  datasource: {
-    url: env("DATABASE_URL"),
-  },
-});
-```
-
-:::note
-
-You'll need to install the `dotenv` package to load environment variables. If you haven't already, install it using your package manager:
-
-```npm
-npm install dotenv
-```
-
-:::
-
-### 2.4. Introspect your database using Prisma ORM
-
-With your connection URL in place, you can [introspect](/orm/v7/prisma-schema/introspection) your database to generate your Prisma models:
-
-```npm
-npx prisma db pull
-```
-
-If you're using the [sample project](https://github.com/prisma/migrate-from-drizzle-to-prisma) the following model would be created:
-
-```prisma title="prisma/schema.prisma" showLineNumbers
-model todo {
-  id   Int     @id
-  text String
-  done Boolean @default(false)
-}
-```
-
-The generated Prisma model represents a database table. Prisma models are the foundation for your programmatic Prisma Client API which allows you to send queries to your database.
-
-### 2.5. Create a baseline migration
-
-To continue using Prisma Migrate to evolve your database schema, you will need to [baseline your database](/orm/v7/prisma-migrate/getting-started).
-
-First, create a `migrations` directory and add a directory inside with your preferred name for the migration. In this example, we will use `0_init` as the migration name:
-
-```bash
-mkdir -p prisma/migrations/0_init
-```
-
-Next, generate the migration file with `prisma migrate diff`. Use the following arguments:
-
-- `--from-empty`: assumes the data model you're migrating from is empty
-- `--to-schema`: the current database state using the URL in the `datasource` block
-- `--script`: output a SQL script
-
-```npm
-npx prisma migrate diff --from-empty --to-schema prisma/schema.prisma --script > prisma/migrations/0_init/migration.sql
-```
-
-Review the generated migration to ensure everything is correct.
-
-Next, mark the migration as applied using `prisma migrate resolve` with the `--applied` argument.
-
-```npm
-npx prisma migrate resolve --applied 0_init
-```
-
-The command will mark `0_init` as applied by adding it to the `_prisma_migrations` table.
-
-You now have a baseline for your current database schema. To make further changes to your database schema, you can update your Prisma schema and use `prisma migrate dev` to apply the changes to your database.
-
-### 2.6. Adjust the Prisma schema (optional)
-
-Models that are generated via introspection currently _exactly_ map to your database tables. In this section, you'll learn how you can adjust the naming of the Prisma models to adhere to [Prisma ORM's naming conventions](/orm/v7/reference/prisma-schema-reference#naming-conventions).
-
-All of these adjustment are entirely optional and you are free to skip to the next step already if you don't want to adjust anything for now. You can go back and make the adjustments at any later point.
-
-As opposed to the current camelCase notation of Drizzle models, Prisma ORM's naming conventions are:
-
-- PascalCase for model names
-- camelCase for field names
-
-You can adjust the naming by _mapping_ the Prisma model and field names to the existing table and column names in the underlying database using `@@map` and `@map`.
-
-Here's an example on how you could modify the model above:
-
-```prisma title="prisma/schema.prisma" showLineNumbers
-model Todo {
-  id   Int     @id
-  text String
-  done Boolean @default(false)
-
-  @@map("todo")
-}
-```
-
-## Step 3. Generate Prisma Client
-
-Now that you have installed Prisma Client in Step 1, you need to run `generate` in order to have your schema reflected in TypeScript types and autocomplete.
-
-```npm
-npx prisma generate
-```
-
-## Step 4. Replace your Drizzle queries with Prisma Client
-
-This section shows a few sample queries migrated from Drizzle to Prisma Client based on the example routes from the sample REST API project. For a comprehensive overview of how the Prisma Client API differs from Drizzle, check out the [comparison page](/orm/v7/more/comparisons/prisma-and-drizzle#).
-
-First, to set up the `PrismaClient` instance that you'll use to send database queries from the various route handlers. Create a new file named `prisma.ts` in the `db` directory:
-
-```bash copy
-touch db/prisma.ts
-```
-
-Now, instantiate `PrismaClient` and export it from the file so you can use it in your route handlers later:
-
-```ts copy title="db/prisma.ts" showLineNumbers
-import { PrismaClient } from "../generated/prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-import "dotenv/config";
-
-const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL,
+The steps are the same for any app that uses Drizzle, whether it serves a REST API, a GraphQL API or server-rendered pages:
+
+1. Add Prisma 8 to the project with `orm init`.
+2. Infer a contract from the live database.
+3. Review the inferred contract.
+4. Emit the contract and sign the database.
+5. Replace Drizzle queries with Prisma 8 queries.
+
+Prisma 8 supports incremental adoption. Both ORMs can talk to the same database while you migrate, so you can move one route at a time and ship in between.
+
+If you migrated to Prisma 7 before, you will notice what is missing: there is no `prisma init`, no `db pull`, no baseline migration, no `prisma generate`, and no driver adapter package. The contract you emit is checked in, the runtime is typed from it directly, and `db sign` replaces the baseline migration.
+
+## The sample app
+
+The Drizzle schema declares a `role` enum, four tables and an explicit join table:
+
+```typescript title="src/db/schema.ts"
+import { relations } from "drizzle-orm";
+import {
+  boolean,
+  integer,
+  pgEnum,
+  pgTable,
+  primaryKey,
+  serial,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core";
+
+export const roleEnum = pgEnum("role", ["USER", "ADMIN"]);
+
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  name: text("name"),
+  role: roleEnum("role").default("USER").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
-export const prisma = new PrismaClient({
-  adapter,
+export const profiles = pgTable("profiles", {
+  id: serial("id").primaryKey(),
+  bio: text("bio"),
+  userId: integer("user_id")
+    .notNull()
+    .unique()
+    .references(() => users.id, { onDelete: "cascade" }),
 });
-```
 
-### 4.1. Replacing `getData` queries
-
-The fullstack Next.js app has several `actions` including `getData`.
-
-The `getData` action is currently implemented as follows:
-
-```ts title="actions/todoActions.ts" showLineNumbers
-import db from "@/db/drizzle";
-import { todo } from "@/db/schema";
-
-export const getData = async () => {
-  const data = await db.select().from(todo);
-  return data;
-};
-```
-
-Here is the same action implemented using Prisma Client:
-
-```ts title="src/controllers/FeedAction.ts" showLineNumbers
-import { prisma } from "@/db/prisma";
-
-export const getData = async () => {
-  const data = await prisma.todo.findMany();
-  return data;
-};
-```
-
-### 4.2. Replacing queries in `POST` requests
-
-The [sample project](https://github.com/prisma/migrate-from-drizzle-to-prisma) has four actions that are utilized during `POST` requests:
-
-- `addTodo`: Creates a new `Todo` record
-- `deleteTodo`: Deletes an existing `Todo` record
-- `toggleTodo`: Toggles the boolean `done` field on an existing `Todo` record
-- `editTodo`: Edits the `text` field on an existing `Todo` record
-
-#### `addTodo`
-
-The `addTodo` action is currently implemented as follows:
-
-```ts title="actions/todoActions.ts" showLineNumbers
-import { revalidatePath } from "next/cache";
-
-import db from "@/db/drizzle";
-import { todo } from "@/db/schema";
-
-export const addTodo = async (id: number, text: string) => {
-  await db.insert(todo).values({
-    id: id,
-    text: text,
-  });
-  revalidatePath("/");
-};
-```
-
-Here is the same action implemented using Prisma Client:
-
-```ts title="actions/todoActions.ts" showLineNumbers
-import { revalidatePath } from "next/cache";
-
-import { prisma } from "@/db/prisma";
-
-export const addTodo = async (id: number, text: string) => {
-  await prisma.todo.create({
-    data: { id, text },
-  });
-  revalidatePath("/");
-};
-```
-
-#### `deleteTodo`
-
-The `deleteTodo` action is currently implemented as follows:
-
-```ts title="actions/todoActions.ts" showLineNumbers
-import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
-
-import db from "@/db/drizzle";
-import { todo } from "@/db/schema";
-
-export const deleteTodo = async (id: number) => {
-  await db.delete(todo).where(eq(todo.id, id));
-  revalidatePath("/");
-};
-```
-
-Here is the same action implemented using Prisma Client:
-
-```ts title="actions/todoActions.ts" showLineNumbers
-import { revalidatePath } from "next/cache";
-
-import { prisma } from "@/db/prisma";
-
-export const deleteTodo = async (id: number) => {
-  await prisma.todo.delete({ where: { id } });
-  revalidatePath("/");
-};
-```
-
-#### `toggleTodo`
-
-The `ToggleTodo` action is currently implemented as follows:
-
-```ts title="actions/todoActions.ts" showLineNumbers
-import { eq, not } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
-
-import db from "@/db/drizzle";
-import { todo } from "@/db/schema";
-
-export const toggleTodo = async (id: number) => {
-  await db
-    .update(todo)
-    .set({
-      done: not(todo.done),
-    })
-    .where(eq(todo.id, id));
-  revalidatePath("/");
-};
-```
-
-Here is the same action implemented using Prisma Client:
-
-```ts title="actions/todoActions.ts" showLineNumbers
-import { revalidatePath } from "next/cache";
-
-import { prisma } from "@/db/prisma";
-
-export const toggleTodo = async (id: number) => {
-  const todo = await prisma.todo.findUnique({ where: { id } });
-  if (todo) {
-    await prisma.todo.update({
-      where: { id: todo.id },
-      data: { done: !todo.done },
-    });
-    revalidatePath("/");
-  }
-};
-```
-
-Note that Prisma ORM does not have the ability to edit a boolean field "in place", so the record must be fetched before hand.
-
-#### `editTodo`
-
-The `editTodo` action is currently implemented as follows:
-
-```ts title="actions/todoActions.ts" showLineNumbers
-import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
-
-import db from "@/db/drizzle";
-import { todo } from "@/db/schema";
-
-export const editTodo = async (id: number, text: string) => {
-  await db
-    .update(todo)
-    .set({
-      text: text,
-    })
-    .where(eq(todo.id, id));
-
-  revalidatePath("/");
-};
-```
-
-Here is the same action implemented using Prisma Client:
-
-```ts title="actions/todoActions.ts" showLineNumbers
-import { revalidatePath } from "next/cache";
-
-import { prisma } from "@/db/prisma";
-
-export const editTodo = async (id: number, text: string) => {
-  await prisma.todo.update({
-    where: { id },
-    data: { text },
-  });
-  revalidatePath("/");
-};
-```
-
-## More
-
-### Implicit many-to-many relations
-
-Unlike Drizzle, Prisma ORM allows you to [model many-to-many relations _implicitly_](/orm/v7/prisma-schema/data-model/relations/many-to-many-relations#implicit-many-to-many-relations). That is, a many-to-many relation where you do not have to manage the [relation table](/orm/v7/prisma-schema/data-model/relations/many-to-many-relations#relation-table-conventions) (also sometimes called JOIN table) _explicitly_ in your schema. Here is an example comparing Drizzle with Prisma ORM:
-
-```ts title="schema.ts"
-import { boolean, integer, pgTable, serial, text } from "drizzle-orm/pg-core";
-
-export const posts = pgTable("post", {
-  id: serial("serial").primaryKey(),
+export const posts = pgTable("posts", {
+  id: serial("id").primaryKey(),
   title: text("title").notNull(),
   content: text("content"),
   published: boolean("published").default(false).notNull(),
+  authorId: integer("author_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
-export const categories = pgTable("category", {
-  id: serial("serial").primaryKey(),
-  name: text("name").notNull(),
+export const categories = pgTable("categories", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
 });
 
-export const postsToCategories = pgTable("posts_to_categories", {
-  postId: integer("post_id")
-    .notNull()
-    .references(() => users.id),
-  categoryId: integer("category_id")
-    .notNull()
-    .references(() => chatGroups.id),
+export const postsToCategories = pgTable(
+  "posts_to_categories",
+  {
+    postId: integer("post_id")
+      .notNull()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    categoryId: integer("category_id")
+      .notNull()
+      .references(() => categories.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.postId, t.categoryId] })],
+);
+
+export const usersRelations = relations(users, ({ one, many }) => ({
+  profile: one(profiles, { fields: [users.id], references: [profiles.userId] }),
+  posts: many(posts),
+}));
+
+export const profilesRelations = relations(profiles, ({ one }) => ({
+  user: one(users, { fields: [profiles.userId], references: [users.id] }),
+}));
+
+export const postsRelations = relations(posts, ({ one, many }) => ({
+  author: one(users, { fields: [posts.authorId], references: [users.id] }),
+  postsToCategories: many(postsToCategories),
+}));
+
+export const categoriesRelations = relations(categories, ({ many }) => ({
+  postsToCategories: many(postsToCategories),
+}));
+
+export const postsToCategoriesRelations = relations(postsToCategories, ({ one }) => ({
+  post: one(posts, { fields: [postsToCategories.postId], references: [posts.id] }),
+  category: one(categories, {
+    fields: [postsToCategories.categoryId],
+    references: [categories.id],
+  }),
+}));
+```
+
+The Drizzle client reads the same `DATABASE_URL` that Prisma 8 will use:
+
+```typescript title="src/db/drizzle.ts"
+import "dotenv/config";
+import { drizzle } from "drizzle-orm/node-postgres";
+import * as schema from "./schema";
+
+export const db = drizzle(process.env.DATABASE_URL!, { schema });
+```
+
+The API routes live under `src/app/api/`: `GET` and `POST /api/users`, `GET` and `POST /api/posts`, `PATCH` and `DELETE /api/posts/[id]`, and `GET /api/categories`. Their Drizzle code is shown next to its Prisma 8 replacement in [step 5](#5-replace-your-drizzle-queries).
+
+## 1. Add Prisma 8 to the project
+
+Run `orm init` in the root of the Drizzle project. It preselects PostgreSQL and adds Prisma 8 to the app you already have; it does not scaffold a new project.
+
+```npm
+npx prisma@latest orm init --target postgres
+```
+
+Choose `PSL` as the authoring style and keep the default schema path, `src/prisma/contract.prisma`. The command installs the runtime and CLI packages, writes the Prisma 8 files, and emits a starter contract:
+
+```text no-copy
+✔ npm add @prisma/orm-postgres dotenv
+✔ npm add -D prisma@next
+✔ npm add -D @prisma/cli-engine@0.2.3
+✔ Emit the contract
+│  target:     postgres
+│  authoring:  psl
+│  schema:     src/prisma/contract.prisma
+written
+├─ src/prisma/contract.prisma
+├─ prisma.config.ts
+├─ src/prisma/db.ts
+├─ prisma-next.md
+├─ .env.example
+├─ tsconfig.json
+├─ .gitignore
+├─ .gitattributes
+└─ package.json
+✔ Done. Open prisma-next.md to get started.
+→ Set DATABASE_URL in your environment (export it or add it to .env)
+→ Edit your schema at src/prisma/contract.prisma, then emit again
+```
+
+Three files matter for the migration. `prisma.config.ts` tells the CLI where the contract lives and how to reach the database; it loads `.env` through `dotenv/config`, so the `DATABASE_URL` your Drizzle config already uses works unchanged:
+
+```typescript title="prisma.config.ts"
+import 'dotenv/config';
+import { definePrismaConfig } from '@prisma/cli-engine';
+import { defineConfig as ormConfig } from '@prisma/orm-postgres/config';
+
+export default definePrismaConfig({
+  orm: ormConfig({
+    contract: "./src/prisma/contract.prisma",
+    db: {
+      connection: process.env['DATABASE_URL']!,
+    },
+  }),
 });
 ```
 
-This schema is equivalent to the following Prisma schema:
+`src/prisma/db.ts` is the client your routes will import. It talks to PostgreSQL directly, so there is no driver adapter and no generated client package:
 
-```prisma title="schema.prisma"
+```typescript title="src/prisma/db.ts"
+import 'dotenv/config';
+import postgres from '@prisma/orm-postgres/runtime';
+import type { Contract } from './contract.d';
+import contractJson from './contract.json' with { type: 'json' };
+
+export const db = postgres<Contract>({
+  contractJson,
+  url: process.env['DATABASE_URL']!,
+});
+```
+
+`src/prisma/contract.prisma` holds a placeholder `User` and `Post` model. You replace it in the next step.
+
+`orm init` also sets `"type": "module"` in `package.json` and adds `"types": ["node"]` plus `"module": "preserve"` to `tsconfig.json`. Next.js runs, builds and type-checks with those settings, so leave them in place.
+
+## 2. Infer a contract from your database
+
+Read the schema that Drizzle pushed into a PSL contract. `--output` points at the file `orm init` created, and the command overwrites the placeholder:
+
+```npm
+npx prisma@latest contract infer --output ./src/prisma/contract.prisma
+```
+
+```text no-copy
+✔ Connecting to database...
+✔ Introspecting database schema...
+Overwriting existing file: src/prisma/contract.prisma
+│  database:  postgres://****@localhost:5432/drizzle_app
+✔ Contract written to src/prisma/contract.prisma
+```
+
+For the sample app, the inferred contract looks like this:
+
+```prisma title="src/prisma/contract.prisma"
+// use prisma-next
+// Contract inferred from the live database schema. Edit as needed, then run `prisma contract emit`.
+
+namespace public {
+  model Categories {
+    id                Int                 @id(map: "categories_pkey") @default(autoincrement())
+    name              String              @unique(map: "categories_name_unique")
+    postsToCategories PostsToCategories[]
+
+    @@map("categories")
+  }
+
+  model Users {
+    id        Int           @id(map: "users_pkey") @default(autoincrement())
+    email     String        @unique(map: "users_email_unique")
+    name      String?
+    role      pg.enum(Role) @default("USER")
+    createdAt Timestamptz   @default(now()) @map("created_at")
+    posts     Posts[]
+    profiles  Profiles?
+
+    @@map("users")
+  }
+
+  model Posts {
+    id                Int                 @id(map: "posts_pkey") @default(autoincrement())
+    title             String
+    content           String?
+    published         Boolean             @default(false)
+    authorId          Int                 @map("author_id")
+    createdAt         Timestamptz         @default(now()) @map("created_at")
+    postsToCategories PostsToCategories[]
+    author            Users               @relation(fields: [authorId], references: [id], onDelete: Cascade, map: "posts_author_id_users_id_fk", index: false)
+
+    @@map("posts")
+  }
+
+  model PostsToCategories {
+    postId     Int        @map("post_id")
+    categoryId Int        @map("category_id")
+    category   Categories @relation(fields: [categoryId], references: [id], onDelete: Cascade, map: "posts_to_categories_category_id_categories_id_fk", index: false)
+    post       Posts      @relation(fields: [postId], references: [id], onDelete: Cascade, map: "posts_to_categories_post_id_posts_id_fk", index: false)
+
+    @@id([postId, categoryId], map: "posts_to_categories_post_id_category_id_pk")
+    @@map("posts_to_categories")
+  }
+
+  model Profiles {
+    id     Int     @id(map: "profiles_pkey") @default(autoincrement())
+    bio    String?
+    userId Int     @unique(map: "profiles_user_id_unique") @map("user_id")
+    user   Users   @relation(fields: [userId], references: [id], onDelete: Cascade, map: "profiles_user_id_users_id_fk")
+
+    @@map("profiles")
+  }
+
+  native_enum Role {
+    USER = "USER"
+    ADMIN = "ADMIN"
+    @@map("role")
+  }
+}
+```
+
+Here is how each part of the Drizzle schema came through:
+
+- **Namespace.** Every model sits inside `namespace public { ... }`, the PostgreSQL schema Drizzle pushed to. This is why queries are written as `db.orm.public.User` later.
+- **Names.** Model names are PascalCase versions of the table names, so they are plural (`Users`, `Posts`); `@@map` keeps the real table name. Snake case columns become camelCase fields with `@map`, so `created_at` is `createdAt`.
+- **Constraints and defaults.** Primary keys, unique constraints and foreign keys keep their database names through `map:`. `serial` columns become `Int @id @default(autoincrement())`. The `default(false)` and `defaultNow()` calls come back as `@default(false)` and `@default(now())`.
+- **Enum.** The `pgEnum("role", ...)` type is a `native_enum Role` block with `@@map("role")`, and the column uses it as `pg.enum(Role) @default("USER")`. The TypeScript type of the field is `'USER' | 'ADMIN'`.
+- **Timestamps.** `timestamp(..., { withTimezone: true })` columns are typed `Timestamptz`. You change this in the next step.
+- **Relations.** Each `.references(...)` is an `@relation(...)` on the side that holds the foreign key, with `onDelete: Cascade` carried over. `index: false` records that Drizzle created no separate index for the foreign key. The list side (`posts Posts[]`) is derived for you; the `relations(...)` helpers in `schema.ts` have no equivalent because the contract already knows both directions.
+- **One-to-one.** The unique `user_id` on `profiles` came through as `profiles Profiles?` on `Users` and `user Users` on `Profiles`.
+- **Many-to-many.** The join table is an explicit `PostsToCategories` model with a composite `@@id`, and `Posts` and `Categories` each hold a list of the join model, not of each other. Prisma 8 has no implicit many-to-many; the [many-to-many section](#many-to-many-relations-in-prisma-8) below shows how to add the direct traversal.
+
+## 3. Review the contract
+
+Inference is a starting point. Make three edits before you emit.
+
+### 3.1. Singularize the model names
+
+Rename the models to singular PascalCase and keep every `@@map`, so the table names do not change: `Categories` becomes `Category`, `Users` becomes `User`, `Posts` becomes `Post`, `Profiles` becomes `Profile`, and `PostsToCategories` becomes `PostToCategory`. Update the relation field types to match, and rename the `profiles` field on `User` to `profile`.
+
+### 3.2. Use string timestamps
+
+Change both `Timestamptz` fields to `TimestamptzString`. `Timestamptz` reads and writes through the `Temporal` API, which Node.js does not ship yet; with the inferred type, the first query that touches a timestamp fails:
+
+```text no-copy
+Error [StructuredError]: Codec 'pg/timestamptz-temporal@1' cannot decode a value because this runtime has no global Temporal implementation.
+  code: 'RUNTIME.TEMPORAL_UNAVAILABLE',
+  fix: "Run on a runtime with Temporal available, install a Temporal polyfill before creating the client, or author the column with its *String type to read and write PostgreSQL's own text instead."
+```
+
+`TimestamptzString` keeps the `timestamptz` column exactly as it is and hands your code the value as a string. Drizzle gave you a `Date` here, so a JSON response changes from `"2026-09-10T15:32:51.298Z"` to `"2026-09-10 21:32:51.298482+06"`. If a client depends on the ISO form, convert with `new Date(value).toISOString()` at the edge.
+
+### 3.3. Add direct many-to-many fields
+
+Add `categories Category[]` to `Post` and `posts Post[]` to `Category`, next to the existing `postsToCategories` lists. The join model stays, and the two new fields resolve through it, so `Post` can include its categories directly. This is a contract-only change: the storage hash stays the same and no migration is needed.
+
+After the three edits the contract looks like this:
+
+```prisma title="src/prisma/contract.prisma"
+// use prisma-next
+
+namespace public {
+  model Category {
+    id                Int              @id(map: "categories_pkey") @default(autoincrement())
+    name              String           @unique(map: "categories_name_unique")
+    postsToCategories PostToCategory[]
+    posts             Post[]
+
+    @@map("categories")
+  }
+
+  model User {
+    id        Int               @id(map: "users_pkey") @default(autoincrement())
+    email     String            @unique(map: "users_email_unique")
+    name      String?
+    role      pg.enum(Role)     @default("USER")
+    createdAt TimestamptzString @default(now()) @map("created_at")
+    posts     Post[]
+    profile   Profile?
+
+    @@map("users")
+  }
+
+  model Post {
+    id                Int               @id(map: "posts_pkey") @default(autoincrement())
+    title             String
+    content           String?
+    published         Boolean           @default(false)
+    authorId          Int               @map("author_id")
+    createdAt         TimestamptzString @default(now()) @map("created_at")
+    postsToCategories PostToCategory[]
+    categories        Category[]
+    author            User              @relation(fields: [authorId], references: [id], onDelete: Cascade, map: "posts_author_id_users_id_fk", index: false)
+
+    @@map("posts")
+  }
+
+  model PostToCategory {
+    postId     Int      @map("post_id")
+    categoryId Int      @map("category_id")
+    category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade, map: "posts_to_categories_category_id_categories_id_fk", index: false)
+    post       Post     @relation(fields: [postId], references: [id], onDelete: Cascade, map: "posts_to_categories_post_id_posts_id_fk", index: false)
+
+    @@id([postId, categoryId], map: "posts_to_categories_post_id_category_id_pk")
+    @@map("posts_to_categories")
+  }
+
+  model Profile {
+    id     Int     @id(map: "profiles_pkey") @default(autoincrement())
+    bio    String?
+    userId Int     @unique(map: "profiles_user_id_unique") @map("user_id")
+    user   User    @relation(fields: [userId], references: [id], onDelete: Cascade, map: "profiles_user_id_users_id_fk")
+
+    @@map("profiles")
+  }
+
+  native_enum Role {
+    USER = "USER"
+    ADMIN = "ADMIN"
+    @@map("role")
+  }
+}
+```
+
+## 4. Emit the contract and sign the database
+
+Emit the contract to refresh `contract.json` and `contract.d.ts`, the two files the runtime and the CLI read:
+
+```npm
+npx prisma@latest contract emit
+```
+
+```text no-copy
+✔ Emitted contract.json and contract.d.ts
+storageHash:  7cbfecc26820132f373d82c4e3ba43ce2ec6d4a4c3f6da73a58e5a31d461d09c
+profileHash:  3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2
+```
+
+Then sign the database. This records that the live schema matches the emitted contract, and it is the Prisma 8 replacement for the baseline migration you would have created with Prisma 7:
+
+```npm
+npx prisma@latest db sign
+```
+
+```text no-copy
+✔ Verifying database schema...
+✔ Signing database...
+│  contract:  src/prisma/contract.json
+│  database:  postgres://****@localhost:5432/drizzle_app
+✔ Database signed
+from:  none
+to:    7cbfecc26820132f373d82c4e3ba43ce2ec6d4a4c3f6da73a58e5a31d461d09c
+```
+
+`db sign` verifies the schema before it writes the signature; if a table or column in the contract does not match the database, it exits with code 4 and signs nothing. Confirm the result with `db verify`:
+
+```npm
+npx prisma@latest db verify
+```
+
+```text no-copy
+✔ Database marker and schema match contract
+storageHash:  7cbfecc26820132f373d82c4e3ba43ce2ec6d4a4c3f6da73a58e5a31d461d09c
+profileHash:  3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2
+```
+
+From here on, schema changes go through the contract: edit `contract.prisma`, run `contract emit`, then [`db update`](/cli/db-update) for a direct development update or [`migration plan`](/cli/migration-plan) and [`db migrate`](/cli/db-migrate) for a checked-in migration. You can delete `drizzle.config.ts` and stop running `drizzle-kit` once you no longer want it to own the schema.
+
+## 5. Replace your Drizzle queries
+
+Every route imports the same client, `db` from `src/prisma/db.ts`, and reaches models as `db.orm.public.<Model>`. Migrate one route, run it, then move to the next. For the full query surface, see [Reading data](/orm/fundamentals/reading-data), [Writing data](/orm/fundamentals/writing-data) and the [ORM client reference](/orm/reference/orm-client).
+
+### 5.1. Reads with relations
+
+The users route loads each user with their profile and posts. In Drizzle, that is `db.query.users.findMany` with a `with` clause:
+
+```typescript title="src/app/api/users/route.ts"
+import { NextResponse } from "next/server";
+import { db } from "@/db/drizzle";
+
+export async function GET() {
+  const result = await db.query.users.findMany({
+    with: { profile: true, posts: true },
+    orderBy: (u, { asc }) => [asc(u.id)],
+  });
+  return NextResponse.json(result);
+}
+```
+
+With Prisma 8, each relation is an `.include(...)`, and sorting is `.orderBy(...)` with a lambda over the fields:
+
+```typescript title="src/app/api/users/route.ts"
+import { NextResponse } from "next/server";
+import { db } from "@/prisma/db";
+
+export async function GET() {
+  const result = await db.orm.public.User
+    .include("profile")
+    .include("posts")
+    .orderBy((u) => u.id.asc())
+    .all();
+  return NextResponse.json(result);
+}
+```
+
+The response has the same shape as before; the only visible change is the timestamp format from step 3.2:
+
+```bash
+curl http://localhost:3000/api/users
+```
+
+```json no-copy
+[
+  {
+    "createdAt": "2026-09-10 21:32:51.298482+06",
+    "email": "alice@prisma.io",
+    "id": 1,
+    "name": "Alice",
+    "role": "ADMIN",
+    "profile": { "bio": "Writes about databases", "id": 1, "userId": 1 },
+    "posts": [
+      { "authorId": 1, "content": "First post", "createdAt": "2026-09-10 21:32:51.929589+06", "id": 1, "published": true, "title": "Hello Drizzle" }
+    ]
+  },
+  {
+    "createdAt": "2026-09-10 21:32:51.298482+06",
+    "email": "bob@prisma.io",
+    "id": 2,
+    "name": "Bob",
+    "role": "USER",
+    "profile": null,
+    "posts": [
+      { "authorId": 2, "content": null, "createdAt": "2026-09-10 21:32:51.929589+06", "id": 2, "published": false, "title": "Typed queries" }
+    ]
+  }
+]
+```
+
+### 5.2. Reads through a join table
+
+The posts route loads the author and the categories. Drizzle traverses the join table explicitly, so every post carries `postsToCategories` entries with a nested `category`:
+
+```typescript title="src/app/api/posts/route.ts"
+import { NextResponse } from "next/server";
+import { db } from "@/db/drizzle";
+
+export async function GET() {
+  const result = await db.query.posts.findMany({
+    with: {
+      author: true,
+      postsToCategories: { with: { category: true } },
+    },
+    orderBy: (p, { asc }) => [asc(p.id)],
+  });
+  return NextResponse.json(result);
+}
+```
+
+With the `categories` field you added in step 3.3, Prisma 8 includes the categories directly and drops the join records from the result:
+
+```typescript title="src/app/api/posts/route.ts"
+import { NextResponse } from "next/server";
+import { db } from "@/prisma/db";
+
+export async function GET() {
+  const result = await db.orm.public.Post
+    .include("author")
+    .include("categories")
+    .orderBy((p) => p.id.asc())
+    .all();
+  return NextResponse.json(result);
+}
+```
+
+```bash
+curl http://localhost:3000/api/posts
+```
+
+```json no-copy
+[
+  {
+    "authorId": 1,
+    "content": "First post",
+    "createdAt": "2026-09-10 21:32:51.929589+06",
+    "id": 1,
+    "published": true,
+    "title": "Hello Drizzle",
+    "author": { "createdAt": "2026-09-10 21:32:51.298482+06", "email": "alice@prisma.io", "id": 1, "name": "Alice", "role": "ADMIN" },
+    "categories": [
+      { "id": 1, "name": "databases" },
+      { "id": 2, "name": "typescript" }
+    ]
+  },
+  {
+    "authorId": 2,
+    "content": null,
+    "createdAt": "2026-09-10 21:32:51.929589+06",
+    "id": 2,
+    "published": false,
+    "title": "Typed queries",
+    "author": { "createdAt": "2026-09-10 21:32:51.298482+06", "email": "bob@prisma.io", "id": 2, "name": "Bob", "role": "USER" },
+    "categories": [{ "id": 2, "name": "typescript" }]
+  }
+]
+```
+
+If you want the join records in the response, keep the shape Drizzle produced with a nested include: `.include("postsToCategories", (link) => link.include("category"))`.
+
+### 5.3. Creates
+
+Creating a post with Drizzle is an insert with `.returning()` followed by a second insert into the join table:
+
+```typescript title="src/app/api/posts/route.ts"
+import { NextResponse } from "next/server";
+import { db } from "@/db/drizzle";
+import { posts, postsToCategories } from "@/db/schema";
+
+export async function POST(request: Request) {
+  const body = (await request.json()) as {
+    title: string;
+    content?: string;
+    authorId: number;
+    categoryIds?: number[];
+  };
+  const [post] = await db
+    .insert(posts)
+    .values({ title: body.title, content: body.content, authorId: body.authorId })
+    .returning();
+  if (body.categoryIds?.length) {
+    await db
+      .insert(postsToCategories)
+      .values(body.categoryIds.map((categoryId) => ({ postId: post.id, categoryId })));
+  }
+  return NextResponse.json(post, { status: 201 });
+}
+```
+
+`.create(...)` returns the inserted row, defaults included, and a nested `connect` writes the join rows in the same transaction:
+
+```typescript title="src/app/api/posts/route.ts"
+import { NextResponse } from "next/server";
+import { db } from "@/prisma/db";
+
+export async function POST(request: Request) {
+  const body = (await request.json()) as {
+    title: string;
+    content?: string;
+    authorId: number;
+    categoryIds?: number[];
+  };
+  const post = await db.orm.public.Post.create({
+    title: body.title,
+    content: body.content ?? null,
+    authorId: body.authorId,
+    categories: (c) => c.connect((body.categoryIds ?? []).map((id) => ({ id }))),
+  });
+  return NextResponse.json(post, { status: 201 });
+}
+```
+
+```bash
+curl -X POST http://localhost:3000/api/posts \
+  -H "content-type: application/json" \
+  -d '{"title":"Drizzle to Prisma","content":"Migration notes","authorId":1,"categoryIds":[1,2]}'
+```
+
+```json no-copy
+{ "authorId": 1, "content": "Migration notes", "createdAt": "2026-09-10 21:58:28.179323+06", "id": 5, "published": false, "title": "Drizzle to Prisma" }
+```
+
+Optional fields are explicit: pass `null` for a nullable column you do not set, as `content` shows. The users route follows the same pattern with two plain creates, `User.create(...)` and then `Profile.create({ userId: user.id, bio })`.
+
+### 5.4. Updates and deletes
+
+The toggle route flips `published`. Drizzle can do that in place with `not(posts.published)`:
+
+```typescript title="src/app/api/posts/[id]/route.ts"
+import { eq, not } from "drizzle-orm";
+import { NextResponse } from "next/server";
+import { db } from "@/db/drizzle";
+import { posts } from "@/db/schema";
+
+type Params = { params: Promise<{ id: string }> };
+
+export async function PATCH(_request: Request, { params }: Params) {
+  const id = Number((await params).id);
+  const [post] = await db
+    .update(posts)
+    .set({ published: not(posts.published) })
+    .where(eq(posts.id, id))
+    .returning();
+  if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  return NextResponse.json(post);
+}
+
+export async function DELETE(_request: Request, { params }: Params) {
+  const id = Number((await params).id);
+  const [post] = await db.delete(posts).where(eq(posts.id, id)).returning();
+  if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  return NextResponse.json(post);
+}
+```
+
+Prisma 8 updates take a data object, so read the row first with `.first({ id })` and write the negated value. `.update()` and `.delete()` act on one row selected by `.where(...)`, return that row, and return `null` when nothing matched:
+
+```typescript title="src/app/api/posts/[id]/route.ts"
+import { NextResponse } from "next/server";
+import { db } from "@/prisma/db";
+
+type Params = { params: Promise<{ id: string }> };
+
+export async function PATCH(_request: Request, { params }: Params) {
+  const id = Number((await params).id);
+  const current = await db.orm.public.Post.first({ id });
+  if (!current) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const post = await db.orm.public.Post.where({ id }).update({ published: !current.published });
+  return NextResponse.json(post);
+}
+
+export async function DELETE(_request: Request, { params }: Params) {
+  const id = Number((await params).id);
+  const post = await db.orm.public.Post.where({ id }).delete();
+  if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  return NextResponse.json(post);
+}
+```
+
+```bash
+curl -X PATCH http://localhost:3000/api/posts/2
+curl -X DELETE http://localhost:3000/api/posts/5
+curl -X DELETE http://localhost:3000/api/posts/5
+```
+
+```json no-copy
+{ "authorId": 2, "content": null, "createdAt": "2026-09-10 21:32:51.929589+06", "id": 2, "published": true, "title": "Typed queries" }
+{ "authorId": 1, "content": "Migration notes", "createdAt": "2026-09-10 21:58:28.179323+06", "id": 5, "published": false, "title": "Drizzle to Prisma" }
+{ "error": "Not found" }
+```
+
+The `onDelete: Cascade` that came through inference still applies: deleting post 5 removed its two `posts_to_categories` rows. To update or delete several rows at once, use `.updateAll(...)` and `.deleteAll()` instead.
+
+### 5.5. Remove Drizzle
+
+When no file imports `drizzle-orm` any more, delete `src/db/` and `drizzle.config.ts` and uninstall the packages:
+
+```npm
+npm uninstall drizzle-orm drizzle-kit pg
+```
+
+Keep `pg` if other code uses it directly; Prisma 8 brings its own copy. Run `next build` to confirm the app compiles and type-checks without Drizzle.
+
+## Many-to-many relations in Prisma 8
+
+Drizzle has no implicit many-to-many relations: you always declare the join table, as `postsToCategories` shows. Prisma 8 works the same way. `contract infer` gives you the join table as an explicit model with a composite primary key, and a list field on both sides that points at the join model:
+
+```prisma title="src/prisma/contract.prisma"
 model Post {
-  id                Int                @id @default(autoincrement())
-  title             String
-  content           String?
-  published         Boolean            @default(false)
-  postsToCategories PostToCategories[]
-
-  @@map("post")
+  postsToCategories PostToCategory[]
 }
 
 model Category {
-  id                Int                @id @default(autoincrement())
-  name              String
-  postsToCategories PostToCategories[]
-
-  @@map("category")
+  postsToCategories PostToCategory[]
 }
 
-model PostToCategories {
-  postId     Int
-  categoryId Int
-  category   Category @relation(fields: [categoryId], references: [id])
-  post       Post     @relation(fields: [postId], references: [id])
+model PostToCategory {
+  postId     Int      @map("post_id")
+  categoryId Int      @map("category_id")
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  post       Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@id([postId, categoryId])
-  @@index([postId])
-  @@index([categoryId])
   @@map("posts_to_categories")
 }
 ```
 
-In this Prisma schema, the many-to-many relation is modeled _explicitly_ via the relation table `PostToCategories`.
+The implicit form from Prisma 7, list fields on both sides with no join model, is not supported: the contract compiler rejects it and asks for an explicit join model. If you are coming from Prisma 7 and expected a hidden `_CategoryToPost` table, there is none; the join table you already have is the model.
 
-By instead adhering to the conventions for Prisma ORM relation tables, the relation could look as follows:
+What you can do is add direct list fields on both sides next to the join model, as step 3.3 did. The contract records the relation as many-to-many through the join table's columns, the storage hash does not change, and the direct fields unlock three query shapes:
 
-```prisma title="schema.prisma" showLineNumbers
-model Post {
-  id         Int        @id @default(autoincrement())
-  title      String
-  content    String?
-  published  Boolean    @default(false)
-  categories Category[]
-}
+```typescript
+// Categories nested directly under each post, without the join records
+const posts = await db.orm.public.Post
+  .select("id", "title")
+  .include("categories")
+  .all();
 
-model Category {
-  id    Int    @id @default(autoincrement())
-  name  String
-  posts Post[]
-}
+// Posts that carry a given category
+const tagged = await db.orm.public.Post
+  .where((p) => p.categories.some((c) => c.name.eq("databases")))
+  .select("id", "title")
+  .all();
+
+// Link and unlink without touching the join model by hand
+await db.orm.public.Post.where({ id: postId }).update({
+  categories: (c) => c.disconnect([{ id: 2 }]),
+});
+await db.orm.public.Post.where({ id: postId }).update({
+  categories: (c) => c.connect([{ id: 2 }]),
+});
 ```
 
-This would also result in a more ergonomic and less verbose Prisma Client API to modify the records in this relation, because you have a direct path from `Post` to `Category` (and the other way around) instead of needing to traverse the `PostToCategories` model first.
+```js no-copy
+[
+  { id: 1, title: 'Hello Drizzle', categories: [ { id: 1, name: 'databases' }, { id: 2, name: 'typescript' } ] },
+  { id: 2, title: 'Typed queries', categories: [ { id: 2, name: 'typescript' } ] }
+]
+[ { id: 1, title: 'Hello Drizzle' } ]
+```
+
+`disconnect` removes only the join row; the `Category` record stays. The join model remains available for anything that needs the pair itself, for example `db.orm.public.PostToCategory.create({ postId, categoryId })`, and for a flat one-row-per-pair result you can [join through it with the SQL builder](/orm/fundamentals/advanced-queries#join-tables-with-precise-control). See [Relational data modeling](/orm/data-modeling/relational-databases#many-to-many) for the modeling rules and [Relations and joins](/orm/fundamentals/relations-and-joins#many-to-many) for the query side.
+
+## Common gotchas
 
 :::warning
 
-If your database provider requires tables to have primary keys then you have to use explicit syntax, and manually create the join model with a primary key. This is because relation tables (JOIN tables) created by Prisma ORM (expressed via `@relation`) for many-to-many relations using implicit syntax do not have primary keys.
+If you edit the contract after signing, `db verify` fails with `CONTRACT.MARKER_MISMATCH` (`Contract storageHash does not match database marker`). When the database still matches the new contract, as with a type change from `Timestamptz` to `TimestamptzString`, run `contract emit` and then `db sign` again; the signature moves from the old hash to the new one. When the change needs new columns or tables, use `db update` or `migration plan` instead of re-signing.
 
 :::
+
+- Inferred `Timestamptz` fields fail at query time with `RUNTIME.TEMPORAL_UNAVAILABLE` on Node.js. Change them to `TimestamptzString` before you emit, as in step 3.2.
+- `.count()` is only valid inside an `.include(...)` callback. To count rows, use `.aggregate((a) => ({ total: a.count() }))`.
+- In a long-running server, do not call `db.runtime().close()` in route handlers; the connection pool is shared across requests. Close it only on process shutdown, and never in a Next.js route.
+- Bare `.update()` and `.delete()` need a `.where(...)` and touch one row. Use `.updateAll(...)` and `.deleteAll()` for many rows.
+
+## Prompt your coding agent
+
+Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
+
+- "Using the prisma-8 skill, migrate `src/app/api/categories/route.ts` from Drizzle to `db.orm.public.Category` and run it with curl."
+- "Rename the inferred models in `src/prisma/contract.prisma` to singular names and keep every `@@map`, then emit and verify."
+- "Add a `GET /api/categories/[id]/posts` route that uses the `posts` list field on `Category`."
+
+## Next steps
+
+- [Learn the fundamentals](/orm/fundamentals/reading-data): filtering, sorting, pagination, and writes.
+- [Evolve the schema with migrations](/orm/migrations/how-migrations-work) now that Prisma 8 owns it.
+- [Read the Prisma 8 overview](/orm) for the concepts behind contracts and typed queries.

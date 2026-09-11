@@ -10,15 +10,13 @@ import Link from "next/link";
 // rather than one recoloured file: the wordmark is solid black in the light
 // asset and solid white in the dark one, while the prism mark keeps its own
 // cyan/yellow/red in both.
+// The link that wraps this lockup names itself (aria-label + a visually hidden
+// text node), so the two images are decorative here: one of the pair is always
+// hidden by CSS, and announcing "Prisma" twice inside one link helps nobody.
 export const logo = (
   <>
-    <Image alt="Prisma" src={logoLight} aria-label="Prisma" className="h-7 w-auto dark:hidden" />
-    <Image
-      alt="Prisma"
-      src={logoDark}
-      aria-label="Prisma"
-      className="hidden h-7 w-auto dark:block"
-    />
+    <Image alt="Prisma" src={logoLight} aria-hidden className="h-7 w-auto dark:hidden" />
+    <Image alt="Prisma" src={logoDark} aria-hidden className="hidden h-7 w-auto dark:block" />
   </>
 );
 
@@ -52,15 +50,27 @@ export function baseOptions(): BaseLayoutProps {
     nav: {
       title: (
         <>
+          {/* An image-only anchor reads as an empty link to crawlers, so the
+              link carries both an aria-label (for assistive tech) and a
+              visually hidden text node (for text-only crawlers). */}
           <Link
             href="https://www.prisma.io"
+            aria-label="Prisma home"
             className="mb-0 hover:mb-1 transition-[margin] duration-300 motion-reduce:transition-none"
           >
             {logo}
+            <span className="sr-only">Prisma home</span>
           </Link>
           <span className="text-fd-muted-foreground">/</span>
-          <Link href="/" className="group relative inline-block pl-3 -ml-3!">
+          {/* The visible wordmark stays "docs"; the hidden text makes the
+              anchor specific rather than one more generic "docs" link. */}
+          <Link
+            href="/"
+            aria-label="Prisma documentation home"
+            className="group relative inline-block pl-3 -ml-3!"
+          >
             <span className="font-mono text-lg block translate-y-px">docs</span>
+            <span className="sr-only">Prisma documentation home</span>
           </Link>
         </>
       ),

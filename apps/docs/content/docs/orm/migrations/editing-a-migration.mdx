@@ -2,11 +2,11 @@
 title: Editing a migration
 description: 'A migration is TypeScript you own. Fill in backfills, reorder steps, or drop to raw SQL, then recompile it with one command.'
 url: /orm/migrations/editing-a-migration
-metaTitle: Editing a migration in Prisma 8
-metaDescription: 'How to edit a Prisma 8 migration.ts by filling placeholder data transforms, writing typed backfills, using rawSql, and recompiling ops.json with node migration.ts.'
+metaTitle: Editing a migration in Prisma ORM
+metaDescription: 'How to edit a Prisma ORM migration.ts by filling placeholder data transforms, writing typed backfills, using rawSql, and recompiling ops.json with node migration.ts.'
 ---
 
-The planner writes a good first draft, but plenty of real migrations need a human (or agent) decision: what to put in existing rows when a column becomes required, which order two steps must run in, one statement the planner has no factory for. In Prisma 8 you make those changes by editing `migration.ts`, ordinary TypeScript with autocomplete and type checking, and recompiling it. You never hand-edit SQL files or `ops.json`.
+The planner writes a good first draft, but plenty of real migrations need a human (or agent) decision: what to put in existing rows when a column becomes required, which order two steps must run in, one statement the planner has no factory for. In Prisma ORM you make those changes by editing `migration.ts`, ordinary TypeScript with autocomplete and type checking, and recompiling it. You never hand-edit SQL files or `ops.json`.
 
 The rule that makes this safe:
 
@@ -57,13 +57,17 @@ override get operations() {
 }
 ```
 
-A `dataTransform` takes two closures. `check` asks "are there rows that still need this?" It must be a row-returning query where *any row* means work remains. The conventional shape is `select('id').where(<violation>).limit(1)`. `run` performs the change. Fill them with the typed SQL query builder, wired to the contract snapshot sitting next to the migration:
+A `dataTransform` takes two closures. `check` asks "are there rows that still need this?" It must be a row-returning query where *any row* means work remains. The conventional shape is `select('id').where(<violation>).limit(1)`. `run` performs the change. Fill them with the typed SQL query builder, wired to the contract snapshot the migration imports from `migrations/snapshots/`:
 
 ```ts title="migration.ts (filled in)"
-import type { Contract as End } from './end-contract';
-import endContractJson from './end-contract.json' with { type: 'json' };
-import type { Contract as Start } from './start-contract';
-import startContractJson from './start-contract.json' with { type: 'json' };
+import type { Contract as End } from '../../snapshots/e6b5c2849eca8d24ff1e8e88ab2a4234db8e74c497c035cb7ce42e814f31cd63/contract';
+import endContractJson from '../../snapshots/e6b5c2849eca8d24ff1e8e88ab2a4234db8e74c497c035cb7ce42e814f31cd63/contract.json' with {
+  type: 'json',
+};
+import type { Contract as Start } from '../../snapshots/925198f3cc272c5fd19c24ac02f251661775ddac21cdac4e634bbc0dda8b2d72/contract';
+import startContractJson from '../../snapshots/925198f3cc272c5fd19c24ac02f251661775ddac21cdac4e634bbc0dda8b2d72/contract.json' with {
+  type: 'json',
+};
 import { Migration, MigrationCLI, col } from '@prisma/orm-postgres/migration';
 import postgresAdapter from '@prisma/orm-postgres/adapter/runtime';
 import { sql } from '@prisma/orm-postgres/builder/runtime';
@@ -71,12 +75,11 @@ import { createExecutionContext, createSqlExecutionStack } from '@prisma/orm-pos
 import postgresTarget, { PostgresContractSerializer } from '@prisma/orm-postgres/target/runtime';
 
 const endContract = new PostgresContractSerializer().deserializeContract(endContractJson);
+const stack = createSqlExecutionStack({ target: postgresTarget, adapter: postgresAdapter });
 
 const db = sql<End>({
-  context: createExecutionContext({
-    contract: endContract,
-    stack: createSqlExecutionStack({ target: postgresTarget, adapter: postgresAdapter }),
-  }),
+  context: createExecutionContext({ contract: endContract, stack }),
+  rawCodecInferer: stack.adapter.rawCodecInferer,
 });
 
 export default class M extends Migration<Start, End> {
@@ -109,9 +112,11 @@ export default class M extends Migration<Start, End> {
 MigrationCLI.run(import.meta.url, M);
 ```
 
+`sql()` needs both a `context` and the adapter's `rawCodecInferer`, which is what lets an interpolated bare value in a raw fragment pick a codec. It is a required field, so a call without it does not typecheck and `node migration.ts` fails before writing `ops.json`. Hoisting the execution stack into its own `const` is what makes it reachable as `stack.adapter.rawCodecInferer`; the runtime wires it the same way.
+
 Two details worth pausing on:
 
-- **The types come from the migration's own contract snapshot** (`./end-contract`), not your live app contract. You're type-checking against the schema *as it will exist when this step runs*. That's why the builder happily references `displayName` even though the column doesn't exist yet, and why a migration written months ago keeps compiling after your contract moves on.
+- **The types come from the migration's end-contract snapshot** (`migrations/snapshots/<contract hash>/contract`), not your live app contract. You're type-checking against the schema *as it will exist when this step runs*. That's why the builder happily references `displayName` even though the column doesn't exist yet, and why a migration written months ago keeps compiling after your contract moves on.
 - **The query is real application-grade TypeScript.** You can import shared constants, and typos in column names fail the type check instead of failing in production.
 
 The wiring block at the top (deserializing the contract, building the `db` handle) is the current shape. Expect it to shrink to a one-liner. It's the price of a query builder that's typed against this migration's snapshot instead of your live app client.
@@ -194,7 +199,7 @@ override get operations() {
 }
 ```
 
-The full working migration, including the two query-plan helpers, is in the Prisma 8 repo's [retail-store example](https://github.com/prisma/orm/blob/main/examples/retail-store/migrations/app/20260513T0508_backfill_product_status/migration.ts).
+The full working migration, including the two query-plan helpers, is in the Prisma ORM repo's [retail-store example](https://github.com/prisma/orm/blob/main/examples/retail-store/migrations/app/20260513T0508_backfill_product_status/migration.ts).
 
 ## Starting from a blank migration
 
@@ -222,7 +227,7 @@ The typed-builder wiring and the raw Mongo command shapes above are the current 
 
 ## Prompt your coding agent
 
-Projects scaffolded with `create-prisma@latest` install [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. Ask your agent to:
+Projects scaffolded with `create-prisma@latest` install [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. Ask your agent to:
 
 - "Fill in the placeholder in the latest migration: backfill `displayName` with the user's email prefix."
 - "Add a data transform to this migration that normalizes existing `phone` values before the unique constraint."

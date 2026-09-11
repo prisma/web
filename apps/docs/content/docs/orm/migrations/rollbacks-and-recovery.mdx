@@ -2,13 +2,13 @@
 title: Rollbacks and recovery
 description: 'Rolling back is planning one more migration to a state you''ve already been in. Recovery is fixing the cause and re-running, safely.'
 url: /orm/migrations/rollbacks-and-recovery
-metaTitle: Rollbacks and recovery in Prisma 8
-metaDescription: 'How to roll back a Prisma 8 migration with a reverse plan, and how precheck/postcheck verification makes failed migrations safe to diagnose and retry.'
+metaTitle: Rollbacks and recovery in Prisma ORM
+metaDescription: 'How to roll back a Prisma ORM migration with a reverse plan, and how precheck/postcheck verification makes failed migrations safe to diagnose and retry.'
 ---
 
-Two different situations get called "rollback", and Prisma 8 treats them differently:
+Two different situations get called "rollback", and Prisma ORM treats them differently:
 
-- **The migration applied, but the change was wrong.** You need to move the database *back* to an earlier state. That's a **rollback**, and in Prisma 8 it's one more migration.
+- **The migration applied, but the change was wrong.** You need to move the database *back* to an earlier state. That's a **rollback**, and in Prisma ORM it's one more migration.
 - **The migration failed partway.** You need to get *unstuck*. That's **recovery**, and it usually means fixing the cause and re-running, because re-running is safe.
 
 ## Rollback: a migration like any other
@@ -34,8 +34,8 @@ npx prisma@latest migration plan \
 
 ⚠ This migration contains destructive operations that may cause data loss.
 
-from:   sha256:e6b5c2849eca8d24ff1e8e88ab2a4234db8e74c497c035cb7ce42e814f31cd63
-to:     sha256:705b1a62f26f0913caa4bfe3f8b7cb491a1b94bd47fc43471d8711bc480bcbb5
+from:   e6b5c2849eca8d24ff1e8e88ab2a4234db8e74c497c035cb7ce42e814f31cd63
+to:     705b1a62f26f0913caa4bfe3f8b7cb491a1b94bd47fc43471d8711bc480bcbb5
 
 DDL preview
 
@@ -80,12 +80,10 @@ A failed `db migrate` run stops at the failing operation and reports it precisel
 
 ```text
 ✖ Operation alterNullability.setNotNull.user.nickname failed during precheck:
-  ensure no NULL values in "nickname" (PN-RUN-3000)
+  ensure no NULL values in "nickname" (MIGRATION.RUNNER_FAILED)
   Why: Migration runner failed
-  Fix: Fix the issue and re-run `prisma-cli migrate --to <contract>` — previously applied migrations are preserved.
+  Fix: Fix the issue and re-run `prisma db migrate --to <contract>` — previously applied migrations are preserved.
 ```
-
-The hint is the CLI's literal output: `prisma-cli migrate` is its internal name for `db migrate`, so the command to re-run is `npx prisma@latest db migrate --to <contract>`.
 
 The playbook:
 
@@ -101,7 +99,7 @@ If someone changed the database outside of migrations (a hand-run `ALTER`, a res
 
 - **`db verify`** checks whether the database still matches your contract, and fails with a precise error when it doesn't.
 - **In development**, `db update` reconciles the database directly to your contract without walking the graph. It's quick, but it leaves no record in the migration history, so treat it as a dev-only reset.
-- **For a database with no history at all** (a fresh environment, or adopting Prisma 8 on an existing schema), `db init` bootstraps it to the current contract and signs the marker.
+- **For a database with no history at all** (a fresh environment, or adopting Prisma ORM on an existing schema), `db init` bootstraps it to the current contract and signs the marker.
 
 :::note[What's early]
 
@@ -111,7 +109,7 @@ Reverse planning (`--to <dir>^`), destructive-operation warnings, resumable re-r
 
 ## Prompt your coding agent
 
-Projects scaffolded with `create-prisma@latest` install [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. Ask your agent to:
+Projects scaffolded with `create-prisma@latest` install [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. Ask your agent to:
 
 - "Plan a rollback for the last migration and show me its destructive operations before I decide."
 - "This db migrate run failed. Read the error, fix the migration, and re-run it."

@@ -155,9 +155,9 @@ export default function Layout({ children }: { children: ReactNode }) {
           className="prisma-next-banner text-fd-foreground"
         >
           <div className="prisma-next-banner-content flex w-full items-center justify-center gap-2 pr-8 text-xs sm:text-sm">
-            <span className="font-semibold">Prisma 8 is here.</span>
+            <span className="font-semibold">Prisma ORM 8 is here.</span>
             <span className="hidden text-fd-muted-foreground sm:inline">
-              The docs now default to Prisma 8. Prisma 7 docs stay at /orm/v7.
+              The docs now default to Prisma ORM 8. Prisma ORM 7 docs stay at /orm/v7.
             </span>
             <Link
               href="/getting-started"

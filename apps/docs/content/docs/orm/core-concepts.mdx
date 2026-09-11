@@ -1,12 +1,12 @@
 ---
 title: Core concepts
-description: "The ideas every Prisma 8 command and API builds on: contracts, emitting, plans, the database signature, codecs, and the migration graph."
+description: "The ideas every Prisma ORM command and API builds on: contracts, emitting, plans, the database signature, codecs, and the migration graph."
 url: /orm/core-concepts
-metaTitle: Prisma 8 core concepts
-metaDescription: Learn the core concepts behind Prisma 8 in one page. What a contract is, what emitting does, how queries compile to plans, and how the CLI commands combine.
+metaTitle: Prisma ORM core concepts
+metaDescription: Learn the core concepts behind Prisma ORM in one page. What a contract is, what emitting does, how queries compile to plans, and how the CLI commands combine.
 ---
 
-Prisma 8 is the current major version of Prisma ORM. To meet the evolving needs of developers, it has been rebuilt in TypeScript according to one idea: your application and database follow an explicit, checkable agreement of how all data is structured.
+Prisma ORM 8 is the current major version. To meet the evolving needs of developers, it has been rebuilt in TypeScript according to one idea: your application and database follow an explicit, checkable agreement of how all data is structured.
 
 This idea relies upon a small vocabulary which repeats throughout: in the CLI, in the query APIs, and in error messages. The sections below define each term in plain language; each also links to relevant in-depth information.
 
@@ -32,11 +32,11 @@ model Post {
 }
 ```
 
-The schema differs in that it is the actual structure of the database: the tables and indexes that exist right now. The contract lives in your repository; the schema lives in the database. Everything Prisma 8 does is a relationship between the two: queries are typed against the contract, migrations move the schema toward the contract, and verification checks that the schema still satisfies it.
+The schema differs in that it is the actual structure of the database: the tables or collections, plus their indexes, that exist right now. The contract lives in your repository; the schema lives in the database. Everything Prisma ORM does is a relationship between the two: queries are typed against the contract, migrations move the schema toward the contract, and verification checks that the schema still satisfies it.
 
 :::note[Contract vs. schema]
 
-Other tools use "schema" to refer to the file that you write. However, in Prisma 8, you author a **contract** and the **schema** is held by the database; therefore, be aware that when a command or error message mentions the "schema", this refers to the database side.
+Other tools use "schema" to refer to the file that you write. However, in Prisma ORM, you author a **contract** and the **schema** is held by the database; therefore, be aware that when a command or error message mentions the "schema", this refers to the database side.
 
 
 :::
@@ -62,7 +62,7 @@ See [The emitted artifacts](/orm/contract-authoring/the-contract-artifact) for w
 
 ## Hashes and the database signature
 
-A hash is a short fingerprint computed from a file's content: the same content always produces the same hash, while any change will produce a different one. Because emission is deterministic, hashing `contract.json` gives an identifier for that exact schema state, the way a Git commit hash identifies an exact state of your code. Contract hashes appear throughout the CLI; a migration, for example, records the hash it starts from and the hash it produces.
+A hash is a short fingerprint computed from a file's content: the same content always produces the same hash, while any change will produce a different one. Because emission is deterministic, hashing `contract.json` gives an identifier for that exact contract state, the way a Git commit hash identifies an exact state of your code. Contract hashes appear throughout the CLI; a migration, for example, records the hash it starts from and the hash it produces.
 
 The database carries the other half of the agreement: a **signature**, a small marker record stored in the database itself that names the contract hash the database currently satisfies. [`db sign`](/cli/db-sign) writes it, and [`db migrate`](/cli/db-migrate) updates it each time it applies a migration.
 
@@ -88,7 +88,7 @@ const plan = db.sql.public.post
   .limit(10)
   .build();
 
-const publishedPosts = await db.runtime().execute(plan);
+const publishedPosts = await db.runtime().query(plan);
 ```
 
 Plans matter for two reasons:
@@ -107,25 +107,25 @@ Beneath it, each database family has a typed builder for the queries that the OR
 | | PostgreSQL | MongoDB |
 | --- | --- | --- |
 | Typed builder | [The SQL query builder](/orm/fundamentals/advanced-queries): composable joins, grouping, projections | [The pipeline builder](/orm/reference/pipeline-builder): typed aggregation pipelines |
-| Raw escape hatch | [Raw SQL fragments](/orm/reference/raw-queries) spliced into builder queries | [Raw commands](/orm/reference/raw-queries) sent to the driver |
+| Raw escape hatch | [Raw SQL](/orm/reference/raw-queries): `fns.raw` fragments spliced into builder queries, or whole statements written with `db.raw.sql` | [Raw commands](/orm/reference/raw-queries) sent to the driver |
 
-Raw queries are still plans, so middleware and telemetry see them as any other query. However, their results skip codec decoding, so you must handle raw values yourself; the [raw queries reference](/orm/reference/raw-queries) explains what that means for different databases.
+Raw queries are still plans, so middleware and telemetry see them as any other query. A whole `db.raw.sql` statement declares its row shape with `.returnsRow(spec)`, so its rows come back decoded. `fns.raw` fragments and MongoDB raw commands carry no result shape, so you must handle those values yourself; the [raw queries reference](/orm/reference/raw-queries) explains what that means for different databases.
 
 ## The stack behind one package
 
 One facade package connects your code to your database. A PostgreSQL project installs `@prisma/orm-postgres`, and its config helper wires up everything underneath: the database **family** (SQL), the **target** dialect (PostgreSQL), the **adapter** that translates plans into that dialect, and the **driver** that holds the network connection. These four names recur in error messages and extension docs; day to day, you configure the one facade package and move on.
 
-Prisma 8's layering exists for extensibility. Our core remains small, because it is focused; everything around it, including PostgreSQL support, plugs in through the same public interfaces. A new database is supported by writing a new target, adapter and driver, without any need to change the core.
+Prisma ORM's layering exists for extensibility. Our core remains small, because it is focused; everything around it, including PostgreSQL support, plugs in through the same public interfaces. A new database is supported by writing a new target, adapter and driver, without any need to change the core.
 
 ## Capabilities
 
-A **capability** is a specific feature that a database may or may not support, such as `RETURNING` clauses or vector indexes. Your contract declares the capabilities it needs; the adapter reports what the connected database provides. Prisma 8 compares the two at startup, so a missing feature surfaces as one clear error when the app boots, instead of as a failed query later. See [Capabilities](/orm/contract-authoring/capabilities) for more information.
+A **capability** is a specific feature that a database may or may not support, such as `RETURNING` clauses or vector indexes. Your contract declares the capabilities it needs; the adapter reports what the connected database provides. Prisma ORM compares the two at startup, so a missing feature surfaces as one clear error when the app boots, instead of as a failed query later. See [Capabilities](/orm/contract-authoring/capabilities) for more information.
 
 ## Codecs
 
 A **codec** converts values between JavaScript and the database's wire format, in both directions. Every column type in your contract is backed by one: a PostgreSQL `timestamptz` column has a codec that produces a JavaScript `Date` when you read and encodes it back when you write. This means that when you pick a column type in PSL, you are also picking the codec that will handle every value that column carries.
 
-Extensions bring codecs for the types they add: with pgvector installed, a `Vector(1536)` column comes back as a typed vector rather than a string. This is also why raw query results, which skip codecs, put value handling back in your hands.
+Extensions bring codecs for the types they add: with pgvector installed, a `Vector(1536)` column comes back as a typed vector rather than a string. This is also why raw fragments and raw commands, which skip codecs, put value handling back in your hands.
 
 ## Extensions
 
@@ -155,7 +155,7 @@ Subsequently, `pgvector.Vector(1536)` is a column type in your contract, vector 
 
 A middleware is a plain object with a name and one or more hooks that run around every query, following the same principles as in Express or Koa. You need only register it once, in the `middleware` option of your client setup. Because every query is a plan, middleware gets a structured object to inspect: it can log it, enforce limits on it, or reject it, without changing how queries are written. That makes middleware the place for one policy that must cover the whole app, such as an authorization rule that examines every plan before it runs.
 
-Three middleware ship with Prisma 8 at present, and they are in the early stages: treat them as working demonstrations of the pattern rather than finished products. [Budgets](/orm/middleware/built-in-budgets) caps row counts and surfaces slow queries, [lints](/orm/middleware/built-in-lints) blocks risky query shapes, and [cache](/orm/middleware/built-in-cache) serves repeated reads from memory. For policy that your app depends on, [write your own](/orm/middleware/authoring-custom-middleware); the middleware API is the durable surface. Start by exploring [How middleware works](/orm/middleware/how-middleware-works).
+Three middleware ship with Prisma ORM at present, and they are in the early stages: treat them as working demonstrations of the pattern rather than finished products. [Budgets](/orm/middleware/built-in-budgets) caps row counts and surfaces slow queries, [lints](/orm/middleware/built-in-lints) blocks risky query shapes, and [cache](/orm/middleware/built-in-cache) serves repeated reads from memory. For policy that your app depends on, [write your own](/orm/middleware/authoring-custom-middleware); the middleware API is the durable surface. Start by exploring [How middleware works](/orm/middleware/how-middleware-works).
 
 ## Migrations: a graph of contracts
 
@@ -169,7 +169,7 @@ A **ref** is a named pointer at a contract, such as `production` or `staging`, m
 
 If you know Git, the whole vocabulary maps across:
 
-| Git | Prisma 8 |
+| Git | Prisma ORM |
 | --- | --- |
 | A commit | A contract, identified by its hash |
 | A patch between commits | A migration |
@@ -221,7 +221,7 @@ npx prisma@latest db migrate --db "$DATABASE_URL" --to production
 
 ## Prompt your coding agent
 
-Projects scaffolded with `create-prisma@latest` install [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. Ask your agent to:
+Projects scaffolded with `create-prisma@latest` install [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. Ask your agent to:
 
 - "Using the prisma-8 skill, explain the difference between our contract and the database schema."
 - "Show me the plan the SQL query builder produces for this query."

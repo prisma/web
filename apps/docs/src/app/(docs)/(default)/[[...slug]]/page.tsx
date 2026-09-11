@@ -1,6 +1,9 @@
 import { getPageImage, source } from "@/lib/source";
 import { getPageTitleText } from "@/lib/page-title";
 import { withDocsBasePath } from "@/lib/urls";
+import { resolveCanonicalUrl } from "@/lib/canonical";
+import { getPageVersion, withVersionDescription, withVersionTitle } from "@/lib/version-metadata";
+import { Badge } from "@prisma/eclipse";
 import { notFound } from "next/navigation";
 import { getMDXComponents } from "@/mdx-components";
 import type { Metadata } from "next";
@@ -31,6 +34,7 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
   const aiPromptSlug = (page.data as { aiPrompt?: string }).aiPrompt;
   const promptContent = aiPromptSlug ? await getPromptContent(aiPromptSlug) : null;
   const hideSidebar = (page.data as { hideSidebar?: boolean }).hideSidebar;
+  const pageVersion = getPageVersion(page.url);
 
   return (
     <>
@@ -56,7 +60,24 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
         full={page.data.full}
       >
         <div className="flex flex-col md:flex-row items-start gap-4 pt-2 pb-1 md:justify-between">
-          <DocsTitle>{page.data.title}</DocsTitle>
+          <div className="flex flex-row flex-wrap items-center gap-3">
+            <DocsTitle>{page.data.title}</DocsTitle>
+            {/* Versioned trees (`/orm/v6`, `/cli/v7`, ...) repeat the title of
+                their twin in every other tree, so the page carries the version
+                as a visible signal next to — never inside — the <h1>. */}
+            {pageVersion && (
+              <Badge
+                color="neutral"
+                label={pageVersion.label}
+                size="md"
+                // `rounded-full!`: the eclipse badge ships `rounded-square`,
+                // which tailwind-merge cannot collapse without the important
+                // flag. Same pattern as the sidebar badges.
+                className="shrink-0 rounded-full!"
+                data-markdown-ignore
+              />
+            )}
+          </div>
           <div className="flex flex-row gap-2 items-center" data-markdown-ignore>
             {promptContent && <CopyPromptButton fullPrompt={promptContent.fullPrompt} />}
             {!page.url.startsWith("/rest-api/endpoints") && (
@@ -106,16 +127,27 @@ export async function generateMetadata({
   const page = source.getPage(slug);
   if (!page) notFound();
 
-  const title = page.data.metaTitle ?? getPageTitleText(page.data.title, page.url);
-  const description = page.data.metaDescription ?? page.data.description;
+  // Versioned pages share their frontmatter title and description with their
+  // twin in every other version tree, so the version is folded into both. The
+  // `| Prisma Documentation` template lives in the root layout and is untouched.
+  const pageVersion = getPageVersion(page.url);
+  const title = withVersionTitle(
+    page.data.metaTitle ?? getPageTitleText(page.data.title, page.url),
+    pageVersion,
+  );
+  const description = withVersionDescription(
+    page.data.metaDescription ?? page.data.description,
+    pageVersion,
+  );
   const noindex = (page.data as { noindex?: boolean }).noindex;
+  const canonical = resolveCanonicalUrl(page.url, (page.data as { canonical?: string }).canonical);
 
   return {
     title,
     description,
     ...(noindex && { robots: { index: false, follow: true } }),
     alternates: {
-      canonical: withDocsBasePath(page.url),
+      canonical,
     },
     openGraph: {
       siteName: "Prisma",

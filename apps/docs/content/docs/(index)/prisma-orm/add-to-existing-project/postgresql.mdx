@@ -1,18 +1,18 @@
 ---
 title: PostgreSQL
-description: Add Prisma 8 to an existing PostgreSQL project.
+description: Add Prisma ORM to an existing PostgreSQL project.
 url: /prisma-orm/add-to-existing-project/postgresql
-metaTitle: Add Prisma 8 to an existing PostgreSQL project
-metaDescription: Add Prisma 8 to an existing PostgreSQL project.
+metaTitle: Add Prisma ORM to an existing PostgreSQL project
+metaDescription: Add Prisma ORM to an existing PostgreSQL project.
 ---
 
-To add Prisma 8 to a project that already uses PostgreSQL, you will run `orm init`, infer a contract from the live schema, sign the database, and run a couple of queries.
+To add Prisma ORM to a project that already uses PostgreSQL, you will run `orm init`, infer a contract from the live schema, sign the database, and run a couple of queries.
 
-Use this path when you already have an application and database. Make sure the app can already reach its PostgreSQL database and runs on Node.js 24 or newer. If you want Prisma 8 to create a new app for you, use the [PostgreSQL quickstart](/prisma-orm/quickstart/postgresql).
+Use this path when you already have an application and database. Make sure the app can already reach its PostgreSQL database and runs on Node.js 24 or newer. If you want Prisma ORM to create a new app for you, use the [PostgreSQL quickstart](/prisma-orm/quickstart/postgresql).
 
-:::note[Using Prisma 7?]
+:::note[Using Prisma ORM 7?]
 
-Prisma 8 is the current release of Prisma ORM. Prisma 7 remains fully supported; its docs live at [/orm/v7](/orm/v7) and its setup paths at [/v7/getting-started](/v7/getting-started).
+Prisma ORM 8 is the current release. Prisma ORM 7 remains fully supported; its docs live at [/orm/v7](/orm/v7) and its setup paths at [/v7/getting-started](/v7/getting-started).
 
 :::
 
@@ -26,9 +26,9 @@ Otherwise, install the script tooling:
 npm install --save-dev tsx typescript
 ```
 
-Later, `orm init` will also add the Node.js types it needs and make sure the generated Prisma 8 files can run as ES modules. If your project already declares `"type": "commonjs"`, Prisma 8 leaves that choice alone and prints a warning so you can decide how to wire the generated helper into your app.
+Later, `orm init` will also add the Node.js types it needs and make sure the generated Prisma ORM files can run as ES modules. If your project already declares `"type": "commonjs"`, Prisma ORM leaves that choice alone and prints a warning so you can decide how to wire the generated helper into your app.
 
-## 2. Initialize Prisma 8
+## 2. Initialize Prisma ORM
 
 From the root of your existing project, run:
 
@@ -36,22 +36,39 @@ From the root of your existing project, run:
 npx prisma@latest orm init --target postgres
 ```
 
-This is the existing-project path. It preselects PostgreSQL, adds Prisma 8 files and package scripts to the app you already have, and does not scaffold a new framework project.
+This is the existing-project path. It preselects PostgreSQL, adds Prisma ORM files and package scripts to the app you already have, and does not scaffold a new framework project.
 
-It also adds `prisma-next.md` and project-level Prisma 8 skills for Cursor, Claude Code, Codex, and Windsurf so your agent can read the Prisma 8 usage, upgrade, and extension-author guidance from the project.
+It also adds `prisma-next.md`, a short project-level reference your coding agent can read. It does not install agent skills; the Prisma ORM skill ships inside the `@prisma/orm-postgres` package your project installs.
 
-When Prisma 8 asks the remaining setup questions:
+When Prisma ORM asks the remaining setup questions:
 
 - choose `PSL`
-- keep the default schema path, `prisma/contract.prisma`
+- keep the default schema path, `src/prisma/contract.prisma`. Pass `--schema-path` if you want the contract somewhere else; the rest of this page assumes the default.
+- answer the last question, `Also write a .env file from .env.example? (gitignored)`, with Yes. It defaults to No, and `--write-env` skips the prompt and writes the file.
 
 ## 3. Set your database connection string
 
-Update `.env` with the connection string for the database your app already uses:
+`orm init` always writes `.env.example`, and writes `.env` only if you asked it to. Put the connection string for the database your app already uses into `.env`:
 
 ```text title=".env"
 DATABASE_URL="postgres://username:password@host:5432/database?sslmode=require"
 ```
+
+`orm init` also writes `src/prisma/db.ts`, the file your application imports. It builds the Prisma ORM client from the emitted contract and reads the connection string from the environment:
+
+```typescript title="src/prisma/db.ts"
+import "dotenv/config";
+import postgres from "@prisma/orm-postgres/runtime";
+import type { Contract } from "./contract.d";
+import contractJson from "./contract.json" with { type: "json" };
+
+export const db = postgres<Contract>({
+  contractJson,
+  url: process.env["DATABASE_URL"]!,
+});
+```
+
+The first line is `import "dotenv/config"`, so any script that imports `db` loads `.env` for itself. You do not need to pass the URL again at the call site.
 
 ## 4. Infer a starter contract from the live database
 
@@ -60,12 +77,18 @@ This step gives you a starting contract by reading the schema that already exist
 Run:
 
 ```npm
-npx prisma@latest contract infer --output ./prisma/contract.prisma
+npx prisma@latest contract infer --output ./src/prisma/contract.prisma
 ```
 
-The command writes a first draft of `prisma/contract.prisma`.
+The command writes a first draft of `src/prisma/contract.prisma`.
 
-Open that file and review it before you go on. This is the moment to clean up model names, keep only the tables you want Prisma 8 to know about first, and make the file easier to read.
+Open that file and review it before you go on. This is the moment to clean up model names, keep only the tables you want Prisma ORM to know about first, and make the file easier to read.
+
+:::note[Temporal types on inferred date and time columns]
+
+`contract infer` maps `timestamp` columns to `Timestamp` and `timestamptz` columns to `Timestamptz`. Both read and write their values through the global `Temporal` API. Node.js 26 ships it enabled by default (check with `node -p "typeof Temporal"`, which prints `object` when it is there); on Node.js 24 and earlier, reading such a column fails with `RUNTIME.TEMPORAL_UNAVAILABLE` unless you install [`temporal-polyfill`](https://www.npmjs.com/package/temporal-polyfill) and add `import "temporal-polyfill/full/global";` before the first query. If you would rather not add the polyfill, change the field's type in the contract to `TimestamptzString` and read and write PostgreSQL's own text instead.
+
+:::
 
 ## 5. Emit the generated artifacts
 
@@ -77,7 +100,7 @@ After you are happy with the contract, run:
 npx prisma@latest contract emit
 ```
 
-This refreshes `prisma/contract.json` and `prisma/contract.d.ts` so the runtime and query APIs are aligned with the contract you just reviewed.
+This refreshes `src/prisma/contract.json` and `src/prisma/contract.d.ts` so the runtime and query APIs are aligned with the contract you just reviewed.
 
 ## 6. Sign the database
 
@@ -89,30 +112,27 @@ npx prisma@latest db sign
 
 This step matters in two common cases:
 
-- the database has never been signed by Prisma 8 before
+- the database has never been signed by Prisma ORM before
 - the database was signed earlier, but under an older contract hash
 
 ## 7. Run a simple high-level query
 
-With the database signed, you can test the higher-level API first and confirm Prisma 8 is reading the existing schema correctly.
+With the database signed, you can test the higher-level API first and confirm Prisma ORM is reading the existing schema correctly.
 
 Create a `script.ts` file:
 
 ```typescript title="script.ts"
-import "dotenv/config";
-import { db } from "./prisma/db";
+import { db } from "./src/prisma/db";
 
 async function main() {
-  const runtime = await db.connect({ url: process.env.DATABASE_URL! });
-
-  const users = await db.orm.User
+  const users = await db.orm.public.User
     .select("id", "email", "name")
-    .take(2)
+    .limit(2)
     .all();
 
   console.log(users);
 
-  await runtime.close();
+  await db.close();
 }
 
 main().catch((error) => {
@@ -134,21 +154,18 @@ After the ORM example, this step shows the lower-level SQL builder against the s
 Replace `script.ts` with this version:
 
 ```typescript title="script.ts"
-import "dotenv/config";
-import { db } from "./prisma/db";
+import { db } from "./src/prisma/db";
 
 async function main() {
-  const runtime = await db.connect({ url: process.env.DATABASE_URL! });
-
-  const plan = db.sql.user
+  const plan = db.sql.public.user
     .select("id", "email", "name")
     .limit(2)
     .build();
 
-  const rows = await db.runtime().execute(plan);
+  const rows = await db.runtime().query(plan);
   console.log(rows);
 
-  await runtime.close();
+  await db.close();
 }
 
 main().catch((error) => {
@@ -165,7 +182,7 @@ npx tsx script.ts
 
 ## 9. Next steps
 
-When you change `prisma/contract.prisma`, emit the contract again:
+When you change `src/prisma/contract.prisma`, emit the contract again:
 
 ```npm
 npx prisma@latest contract emit

@@ -1,12 +1,12 @@
 ---
 title: Author in TypeScript
-description: 'Define the Prisma 8 contract with a typed builder API instead of a schema file. Same models, same artifacts, no separate language.'
+description: 'Define the Prisma ORM contract with a typed builder API instead of a schema file. Same models, same artifacts, no separate language.'
 url: /orm/contract-authoring/typescript-schema-builder
-metaTitle: Author the Prisma 8 contract in TypeScript
-metaDescription: 'Learn how to define a Prisma 8 contract in TypeScript with defineContract, including fields, relations, enums, storage mapping, and extension types.'
+metaTitle: Author the Prisma ORM contract in TypeScript
+metaDescription: 'Learn how to define a Prisma ORM contract in TypeScript with defineContract, including fields, relations, enums, storage mapping, and extension types.'
 ---
 
-With TypeScript authoring, you define the Prisma 8 [data contract](/orm/contract-authoring/the-data-contract) in code. Instead of a `.prisma` file, you write `prisma/contract.ts` with the `defineContract` builder, and [`contract emit`](/cli/contract-emit) produces exactly the same `contract.json` and `contract.d.ts` a PSL schema would.
+With TypeScript authoring, you define the Prisma ORM [data contract](/orm/contract-authoring/the-data-contract) in code. Instead of a `.prisma` file, you write `prisma/contract.ts` with the `defineContract` builder, and [`contract emit`](/cli/contract-emit) produces exactly the same `contract.json` and `contract.d.ts` a PSL schema would.
 
 ## When to choose TypeScript over PSL
 
@@ -63,7 +63,7 @@ const Priority = enumType(
 
 export const contract = defineContract(
   {
-    extensionPacks: { pgvector },
+    extensions: { pgvector },
   },
   ({ field, model, type }) => {
     const types = {
@@ -162,9 +162,9 @@ The two builders share the same shape but differ where the databases do. On Post
 
 `defineContract` takes two arguments: an options object and a factory function.
 
-The options object declares what the contract is built from, most importantly `extensionPacks`. The target and database family are already bound by the import: `@prisma/orm-postgres/contract-builder` produces PostgreSQL contracts, so you never name them yourself.
+The options object declares what the contract is built from, most importantly `extensions`. The target and database family are already bound by the import: `@prisma/orm-postgres/contract-builder` produces PostgreSQL contracts, so you never name them yourself.
 
-The factory receives authoring helpers composed from the target and every extension pack you declared: `field` for field definitions, `model` for models, and `type` for pack-provided types. `type.pgvector` in the example exists only because `pgvector` is listed in `extensionPacks`. The factory returns the contract's content: `models`, plus optional `enums` and `types`.
+The factory receives authoring helpers composed from the target and every extension pack you declared: `field` for field definitions, `model` for models, and `type` for pack-provided types. `type.pgvector` in the example exists only because `pgvector` is listed in `extensions`. The factory returns the contract's content: `models`, plus optional `enums` and `types`.
 
 The MongoDB builder is simpler: it exports `field`, `model`, and `rel` directly, and its `defineContract` takes a single definition object with the `models`, as in the MongoDB tab above. The sections below use the PostgreSQL builder.
 
@@ -244,7 +244,7 @@ Declare packs in `defineContract`'s options and the factory's `type` helper expo
 import pgvector from "@prisma/orm-extension-pgvector/pack";
 
 export const contract = defineContract(
-  { extensionPacks: { pgvector } },
+  { extensions: { pgvector } },
   ({ field, model, type }) => {
     const types = { Embedding1536: type.pgvector.Vector(1536) } as const;
     // ... use field.namedType(types.Embedding1536) in a model
@@ -257,7 +257,7 @@ The same pack must also be composed in `prisma.config.ts` (as `extensions: [pgve
 
 ## Keep the contract file pure
 
-The contract file describes structure. When you emit it, Prisma 8 canonicalizes it to JSON and hashes it, and the same source must always produce the same bytes. That works only if the file is pure data:
+The contract file describes structure. When you emit it, Prisma ORM canonicalizes it to JSON and hashes it, and the same source must always produce the same bytes. That works only if the file is pure data:
 
 - Do not read `process.env`, the current time, or random values into the contract. A contract that changes per machine or per run breaks hashing and verification.
 - Keep field values plain: strings, numbers, booleans, and the builder's own objects. Functions, class instances, and `Date` objects do not serialize.
@@ -271,7 +271,7 @@ TypeScript and [PSL](/orm/contract-authoring/psl-syntax) authoring emit the same
 
 ## Prompt your coding agent
 
-Projects scaffolded with `create-prisma@latest` install [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. The `prisma-8` skill covers this page. Ask your agent to:
+Projects scaffolded with `create-prisma@latest` install [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. The `prisma-8` skill covers this page. Ask your agent to:
 
 - "Convert this contract.prisma to the TypeScript schema builder."
 - "Using the prisma-8 skill, add a unique index to the email field in our TypeScript schema."
