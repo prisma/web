@@ -1,8 +1,8 @@
-# Prisma 8 extension registry
+# Prisma ORM extension registry
 
-Everything that plugs into Prisma 8 is an extension: database packages, column types and query operations, indexes, and middleware. This folder is the single source of truth for the extension directory at
+Everything that plugs into Prisma ORM is an extension: database packages, column types and query operations, indexes, and middleware. This folder is the single source of truth for the extension directory at
 [prisma.io/extensions](https://www.prisma.io/extensions) and the catalog table in
-the [Prisma 8 extensions docs](https://www.prisma.io/docs/orm/extensions).
+the [Prisma ORM extensions docs](https://www.prisma.io/docs/orm/extensions).
 
 - `official.json`: packages maintained by Prisma.
 - `community.json`: packages maintained by the community. This is the file the

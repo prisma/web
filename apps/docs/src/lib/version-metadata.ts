@@ -45,14 +45,14 @@ export function getPageVersion(pageUrl: string): PageVersion | null {
 
   const guidesVersion = getGuidesVersionFromPathname(pageUrl);
   if (isNamedVersion(guidesVersion)) {
-    return { version: guidesVersion, label: `Prisma ${guidesVersion.replace(/^v/i, "")}` };
+    return { version: guidesVersion, label: `Prisma ORM ${guidesVersion}` };
   }
 
   const gettingStartedVersion = getGettingStartedVersionFromPathname(pageUrl);
   if (isNamedVersion(gettingStartedVersion)) {
     return {
       version: gettingStartedVersion,
-      label: `Prisma ${gettingStartedVersion.replace(/^v/i, "")}`,
+      label: `Prisma ORM ${gettingStartedVersion}`,
     };
   }
 
