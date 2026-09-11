@@ -215,7 +215,6 @@ Update your `package.json`:
 
 ```json title="package.json"
 {
-  {
   "name": "prisma-gha-demo",
   "version": "1.0.0",
   "description": "",
@@ -317,7 +316,9 @@ jobs:
   provision-database:
     if: (github.event_name == 'pull_request' && github.event.action != 'closed') || (github.event_name == 'workflow_dispatch' && inputs.action == 'provision')
     runs-on: ubuntu-latest
-    permissions: write-all
+    permissions:
+      contents: read
+      pull-requests: write
     timeout-minutes: 15
     steps:
       - name: Checkout
@@ -447,6 +448,8 @@ jobs:
       - name: Comment PR
         if: success() && github.event_name == 'pull_request'
         uses: actions/github-script@v7
+        env:
+          DB_NAME: ${{ env.DB_NAME }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -454,7 +457,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `🗄️ Database provisioned successfully!\n\nDatabase name: ${{ env.DB_NAME }}\nStatus: Ready and seeded with sample data`
+              body: `🗄️ Database provisioned successfully!\n\nDatabase name: ${process.env.DB_NAME}\nStatus: Ready and seeded with sample data`
             })
 
       - name: Output Database Info
