@@ -3,7 +3,7 @@ name: docs-writer
 description: Use when writing, rewriting, or improving technical docs (quickstarts, how-tos, tutorials, concept pages, or API references).
 metadata:
   author: Prisma
-  version: "2026.6.23"
+  version: "2026.9.11"
 ---
 
 # Docs Writer
@@ -193,3 +193,4 @@ Before you finish, check:
 - [ ] Did you cut every phrase from "Cut the slop"?
 - [ ] Did you check the page against every pattern in "Don't write like a model"?
 - [ ] Are product names and limitations accurate?
+- [ ] Has the page been through `docs-reader-review`? A fact review checks truth; the reader review checks whether a reader without your context can follow it. Nothing is finished until that pass reports no sentence the reader could not restate.
