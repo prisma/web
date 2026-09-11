@@ -25,7 +25,6 @@ All examples on this page run against the following schema, and every example is
 ```prisma
 types {
   Embedding1536 = pgvector.Vector(1536)
-  Uuid          = String @db.Uuid
 }
 
 type Address {
@@ -133,7 +132,7 @@ You build queries from the client's `sql` facet, which carries your contract's e
 
 ### The `db.sql` facet
 
-Create the client with `postgres(...)`, connect it to get a runtime, and build queries off `db.sql.public`. A `select()`, `insert()`, `update()`, or `delete()` call starts a query; you finish it with [`build()`](#build) and run the resulting plan with `runtime.execute(...)`.
+Create the client with `postgres(...)`, connect it to get a runtime, and build queries off `db.sql.public`. A `select()`, `insert()`, `update()`, or `delete()` call starts a query; you finish it with [`build()`](#build) and run the resulting plan with `runtime.query(...)`.
 
 ```ts
 import postgres from '@prisma/orm-postgres/runtime';
@@ -144,7 +143,7 @@ const db = postgres<Contract>({ contractJson, url: process.env.DATABASE_URL });
 const runtime = await db.connect();
 
 const plan = db.sql.public.user.select('id', 'email').build();
-const users = await runtime.execute(plan);
+const users = await runtime.query(plan);
 ```
 
 The facet is built from the `sql()` factory: `db.sql` holds the result of an internal `sql({ context, rawCodecInferer })` call, wired to the client's execution context and the adapter's codec inferer. You call `sql(...)` directly only when you're building your own database wrapper instead of using the `postgres()` client's facet. Pass your execution `context` (from your database client) and a `rawCodecInferer` (a fallback codec for raw expressions that have no column to infer one from):
@@ -159,7 +158,7 @@ This page reaches tables through the client facet and refers to the root as `db.
 
 ### Table access
 
-Every table on `db.sql.public` exposes the query-building methods. A `select()`, `insert()`, `update()`, or `delete()` call starts a query; you finish it with [`build()`](#build) and run the resulting plan with `runtime.execute(...)`.
+Every table on `db.sql.public` exposes the query-building methods. A `select()`, `insert()`, `update()`, or `delete()` call starts a query; you finish it with [`build()`](#build) and run the resulting plan with `runtime.query(...)`.
 
 ```ts
 db.sql.public.user.select('id', 'email'); // start a SELECT
@@ -183,7 +182,7 @@ const highPriorityPosts = db.sql.public.post
 
 ## SELECT queries
 
-These methods build and refine a `SELECT`. They chain, and you resolve the query with [`build()`](#build) followed by `runtime.execute(...)`.
+These methods build and refine a `SELECT`. They chain, and you resolve the query with [`build()`](#build) followed by `runtime.query(...)`.
 
 The `where()`, `select()`, `orderBy()`, `update()`, and other callback forms receive two arguments: a field accessor `f` (columns keyed by name, or namespace-qualified after a join, such as `f.post.id`) and a function bag `fns` (the [expression helpers](#expressions-and-functions)).
 
@@ -215,7 +214,7 @@ A computed expression's result type comes from `.returns(...)` on `fns.raw`, or 
 
 ```ts
 const plan = db.sql.public.user.select('id', 'email').build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // rows[0] is { id, email } — no displayName
 ```
 
@@ -227,7 +226,7 @@ const plan = db.sql.public.user
   .select('emailLength', (f, fns) => fns.raw`LENGTH(${f.email})`.returns('pg/int4@1'))
   .where((f, fns) => fns.eq(f.id, aliceId))
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 ```
 
 ##### Project multiple computed columns at once
@@ -241,7 +240,7 @@ const plan = db.sql.public.user
   }))
   .where((f, fns) => fns.eq(f.id, aliceId))
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // rows === [{ id: aliceId, upperEmail: 'ALICE@EXAMPLE.COM', emailLength: 17 }]
 ```
 
@@ -275,7 +274,7 @@ const plan = db.sql.public.post
     ),
   )
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 ```
 
 ### `innerJoin()`
@@ -305,7 +304,7 @@ const plan = db.sql.public.post
   .select((f) => ({ postId: f.post.id, authorEmail: f.user.email }))
   .where((f, fns) => fns.eq(f.post.id, helloWorldId))
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // rows === [{ postId: helloWorldId, authorEmail: 'alice@example.com' }]
 ```
 
@@ -327,7 +326,7 @@ const plan = db.sql.public.post
   .select((f) => ({ postId: f.post.id, tagId: f.post_tag.tagId }))
   .where((f, fns) => fns.eq(f.post.id, untaggedPostId))
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // rows === [{ postId: untaggedPostId, tagId: null }]
 ```
 
@@ -372,7 +371,7 @@ const plan = db.sql.public.user
   .select((f) => ({ userId: f.user.id, latestPostId: f.latestPost.id }))
   .where((f, fns) => fns.eq(f.user.id, aliceId))
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // rows === [{ userId: aliceId, latestPostId: newestPostId }]
 ```
 
@@ -402,7 +401,7 @@ Sort the result set by a column, a computed expression, or with explicit directi
 
 ```ts
 const plan = db.sql.public.user.select('id', 'email').orderBy('email', { direction: 'asc' }).build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 ```
 
 ##### Sort by a computed value
@@ -412,7 +411,7 @@ const plan = db.sql.public.user
   .select('id', 'email')
   .orderBy((f, fns) => fns.raw`LENGTH(${f.email})`.returns('pg/int4@1'), { direction: 'asc' })
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 ```
 
 ##### Control direction and null placement
@@ -422,7 +421,7 @@ const plan = db.sql.public.post
   .select('id', 'embedding')
   .orderBy('embedding', { direction: 'asc', nulls: 'first' })
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 ```
 
 ### `distinct()`
@@ -441,7 +440,7 @@ De-duplicate identical projected rows (`SELECT DISTINCT`).
 
 ```ts
 const plan = db.sql.public.post.select('priority').distinct().build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // distinct priorities: ['high', 'low', 'urgent']
 ```
 
@@ -477,7 +476,7 @@ const plan = db.sql.public.post
   .orderBy('createdAt', { direction: 'asc' })
   .distinctOn('userId')
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // one row per user, each the earliest post by createdAt
 ```
 
@@ -509,7 +508,7 @@ const plan = db.sql.public.user
   .limit(1)
   .offset(1)
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 ```
 
 ### Subquery via `.as()`
@@ -542,7 +541,7 @@ const plan = db.sql.public.user
   .innerJoin(highPriorityPosts, (f, fns) => fns.eq(f.user.id, f.hp.userId))
   .select((f) => ({ userId: f.user.id, postId: f.hp.id }))
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 ```
 
 ## Grouped queries
@@ -556,10 +555,6 @@ The examples below use a separate `customer` / `order` schema, where `order.amou
 <summary>Expand for the aggregate example schema</summary>
 
 ```prisma
-types {
-  Uuid = String @db.Uuid
-}
-
 model Customer {
   id      Uuid   @id @default(uuid())
   name    String
@@ -585,8 +580,8 @@ model Order {
 
 </details>
 
-:::warning[Aggregate results can decode as strings]
-At this raw SQL layer there is no ORM decode step, so the PostgreSQL driver's default parsers apply. `COUNT()` (bigint) and `SUM()` / `AVG()` over an integer column (PostgreSQL promotes these to `numeric`) decode as JavaScript **strings**, not numbers, to avoid precision loss. `MIN()` and `MAX()` over an integer column stay integers and decode as numbers. Call `Number(...)` on `COUNT` / `SUM` / `AVG` results before doing arithmetic. A `.returns(...)` codec annotation does not change this: it's a compile-time type declaration, not a runtime cast, so a raw `EXTRACT(...)` typed `.returns('pg/int4@1')` still decodes as a string. Comparisons inside `having()` and `where()` are unaffected, because PostgreSQL evaluates them server-side.
+:::note[Aggregates decode as numbers, with lossless variants beside them]
+`count()`, `sum()` over an integer column, and `avg()` over an integer column all return a JavaScript `number`. For `count()` and integer `sum()`, a value outside the safe-integer range, ±(2^53 − 1), raises `RUNTIME.DECODE_FAILED` rather than answering with a rounded value (`avg()` is computed as `float8` and has no such guard), so reach for the lossless form when the magnitude is real: `countBigInt()` returns a `bigint`, `sumBigInt(field)` returns a `bigint`, and `avgDecimal(field)` returns an exact decimal string. `min()` and `max()` return the input column's own type.
 :::
 
 ### `groupBy()`
@@ -617,8 +612,8 @@ const plan = db.sql.public.order
   .groupBy('customerId')
   .orderBy('customerId', { direction: 'asc' })
   .build();
-const rows = await runtime.execute(plan);
-// orderCount decodes as a string: e.g. { customerId: acmeId, orderCount: '5' }
+const rows = await runtime.query(plan);
+// e.g. { customerId: acmeId, orderCount: 5 }
 ```
 
 ##### Group by a computed value
@@ -629,8 +624,9 @@ const plan = db.sql.public.order
   .select('orderCount', (f, fns) => fns.count(f.id))
   .groupBy((f, fns) => fns.raw`EXTRACT(YEAR FROM ${f.placedAt})`.returns('pg/int4@1'))
   .build();
-const rows = await runtime.execute(plan);
-// rows === [{ yearPlaced: '2024', orderCount: '10' }] — both decode as strings
+const rows = await runtime.query(plan);
+// rows === [{ yearPlaced: '2024', orderCount: 10 }]
+// yearPlaced is a string: a raw expression is not decoded through a codec, and EXTRACT returns numeric.
 ```
 
 ### `having()`
@@ -639,7 +635,7 @@ Filter groups by an aggregate comparison. Build the predicate from the aggregate
 
 #### Remarks
 
-- PostgreSQL evaluates the comparison server-side, so it works correctly even though the aggregate value would decode as a string on the JavaScript side (see the warning above).
+- PostgreSQL evaluates the comparison server-side. Compare against a plain JavaScript number: `fns.gt(fns.count(), 1)`, not `1n`.
 
 #### Options
 
@@ -664,8 +660,8 @@ const plan = db.sql.public.order
   .groupBy('customerId')
   .having((f, fns) => fns.gt(fns.sum(f.amount), 1000))
   .build();
-const rows = await runtime.execute(plan);
-// only the customer whose orders sum over 1000; totalAmount decodes as '1500'
+const rows = await runtime.query(plan);
+// only the customer whose orders sum over 1000; totalAmount is 1500
 ```
 
 ##### Compare with `count()`, `avg()`, `min()`, `max()`
@@ -686,10 +682,10 @@ const minMaxPlan = db.sql.public.order
   .having((f, fns) => fns.eq(fns.min(f.amount), 100))
   .build();
 
-const avgRows = await runtime.execute(avgPlan);
-const minMaxRows = await runtime.execute(minMaxPlan);
-// avgAmount decodes as a string ('300.0000000000000000');
-// minAmount / maxAmount decode as numbers (100 / 500)
+const avgRows = await runtime.query(avgPlan);
+const minMaxRows = await runtime.query(minMaxPlan);
+// avgAmount is 300; avgDecimal(f.amount) would give the exact '300.0000000000000000'
+// minAmount / maxAmount are 100 / 500
 ```
 
 ### Ordering and limiting a grouped query
@@ -708,7 +704,7 @@ const plan = db.sql.public.order
   .orderBy('totalAmount', { direction: 'desc' })
   .limit(1)
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // the single highest-spending customer
 ```
 
@@ -785,7 +781,7 @@ Return columns from the rows affected by an `insert()`, `update()`, or `delete()
 ```ts
 const id = crypto.randomUUID();
 const plan = db.sql.public.tag.insert([{ id, label: 'returned-tag' }]).returning('id', 'label').build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // rows === [{ id, label: 'returned-tag' }]
 ```
 
@@ -818,7 +814,7 @@ const plan = db.sql.public.user
   .where((f, fns) => fns.eq(f.id, bobId))
   .returning('id', 'displayName')
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // rows === [{ id: bobId, displayName: 'Bobby' }]
 ```
 
@@ -830,7 +826,7 @@ const plan = db.sql.public.user
   .where((f, fns) => fns.eq(f.id, carolId))
   .returning('id', 'displayName')
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // rows === [{ id: carolId, displayName: 'CAROL' }]
 ```
 
@@ -854,7 +850,7 @@ const plan = db.sql.public.tag
   .where((f, fns) => fns.eq(f.id, id))
   .returning('id', 'label')
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // rows === [{ id, label: 'to-delete' }]
 ```
 
@@ -894,7 +890,7 @@ const plan = db.sql.public.user
   .where((f, fns) => fns.raw`${f.email} LIKE ${targetEmailDomain}`.returns('pg/bool@1'))
   .orderBy('email', { direction: 'asc' })
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 ```
 
 ## Expressions and functions
@@ -903,7 +899,7 @@ Callback forms receive a function bag `fns` alongside the field accessor. `fns` 
 
 ### Built-in functions
 
-The complete built-in set is fixed:
+These are fixed:
 
 | Category | Functions |
 |---|---|
@@ -912,9 +908,21 @@ The complete built-in set is fixed:
 | Boolean | `and`, `or` |
 | Existence | `exists`, `notExists` |
 | Raw SQL | `raw` |
-| Aggregate (grouped queries) | `count`, `sum`, `avg`, `min`, `max` |
 
-Nothing else is built in. Any further function is registered dynamically: `ilike` is registered by the Postgres adapter for textual columns, while functions like `cosineDistance` come from an extension pack (pgvector) registered for your contract; without the matching adapter or extension pack, those functions are absent.
+The aggregates are not a fixed list. They come from the aggregate map in your emitted contract, which each target and extension contributes to, so which ones exist depends on your database. PostgreSQL contributes eight:
+
+| Function | Returns |
+|---|---|
+| `count()` / `count(field)` | `number`. With no argument it counts rows; with a field it counts that field's non-null values |
+| `countBigInt()` / `countBigInt(field)` | `bigint`, the lossless form of `count` |
+| `sum(field)` | `number` over an integer column, the column's own float or decimal type otherwise |
+| `sumBigInt(field)` | `bigint`, the lossless form of `sum` over an integer column |
+| `avg(field)` | `number` over an integer or float column |
+| `avgDecimal(field)` | An exact decimal string, the lossless form of `avg` |
+| `min(field)` | The input column's own type |
+| `max(field)` | The input column's own type |
+
+Any further function is registered dynamically: `ilike` is registered by the Postgres adapter for textual columns, while functions like `cosineDistance` come from an extension pack (pgvector) registered for your contract; without the matching adapter or extension pack, those functions are absent.
 
 :::note[No `COALESCE` or `CAST` helpers]
 There is no `fns.coalesce` or `fns.cast`. Express `COALESCE`, `CAST`, and any other SQL function you need with [`fns.raw`](#fnsraw-and-returns) and an explicit `.returns(...)` codec.
@@ -922,7 +930,7 @@ There is no `fns.coalesce` or `fns.cast`. Express `COALESCE`, `CAST`, and any ot
 
 ### `fns.raw` and `.returns()`
 
-Write a raw SQL fragment as a tagged template. Interpolate columns and typed expressions with `${...}`; each interpolation is parameterized. For bare JavaScript values, always wrap them in `param(...)` with an explicit codec id: bare-scalar interpolation is currently broken on PostgreSQL (see the [raw queries reference](/orm/reference/raw-queries#binding-a-bare-value-with-param) for the verified details). Call `.returns(codecId)` to declare the fragment's result type.
+Write a raw SQL fragment as a tagged template. Interpolate columns, typed expressions, and bare JavaScript values with `${...}`; each interpolation is parameterized. A bare value's codec is inferred from its type; wrap it in `param(...)` with an explicit codec id when you want a different one (see the [raw queries reference](/orm/reference/raw-queries#binding-a-bare-value-with-param)). Call `.returns(codecId)` to declare the fragment's result type.
 
 #### Options
 
@@ -933,7 +941,7 @@ Write a raw SQL fragment as a tagged template. Interpolate columns and typed exp
 
 #### Remarks
 
-- `.returns(codecId)` is a **compile-time type annotation only**. It does not cast the value in SQL or change how the driver decodes it. A raw expression PostgreSQL computes as `numeric` still decodes as a string even when annotated `'pg/int4@1'` (see the [grouped-query warning](#grouped-queries)).
+- `.returns(codecId)` is a **compile-time type annotation only**. It does not cast the value in SQL or change how the driver decodes it. A raw expression PostgreSQL computes as `numeric` still decodes as a string even when annotated `'pg/int4@1'`, because raw fragments are not decoded through a codec (see [Group by a computed value](#group-by-a-computed-value)).
 - Use `fns.raw` for any SQL feature without a dedicated helper: `COALESCE`, `CAST`, `LENGTH`, `UPPER`, `EXTRACT`, and so on.
 
 #### Examples
@@ -944,7 +952,7 @@ Write a raw SQL fragment as a tagged template. Interpolate columns and typed exp
 const plan = db.sql.public.user
   .select('emailLength', (f, fns) => fns.raw`LENGTH(${f.email})`.returns('pg/int4@1'))
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 ```
 
 ##### `COALESCE` via `fns.raw`
@@ -953,7 +961,7 @@ const rows = await runtime.execute(plan);
 const plan = db.sql.public.order
   .select('amountOrZero', (f, fns) => fns.raw`COALESCE(${f.amount}, 0)`.returns('pg/int4@1'))
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 ```
 
 ## Compiling and executing
@@ -970,15 +978,15 @@ Compile a query into an executable plan.
 
 | Return type | Example | Description |
 |---|---|---|
-| Query plan | `db.sql.public.user.select('id').build()` | A plan you run with `runtime.execute(...)`. Its per-row type is recoverable with [`ResultType`](#resulttype). |
+| Query plan | `db.sql.public.user.select('id').build()` | A plan you run with `runtime.query(...)`. Its per-row type is recoverable with [`ResultType`](#resulttype). |
 
 ### Executing a plan
 
-Run a plan with `runtime.execute(plan)`, where `runtime` is the runtime you got from connecting your database client (`const runtime = await db.connect()`). It resolves to an array of rows (`Row[]`).
+Run a plan with `runtime.query(plan)`, where `runtime` is the runtime you got from connecting your database client (`const runtime = await db.connect()`). It returns an `AsyncIterableResult`: `await` it for an array of rows (`Row[]`), or `for await` over it to take one row at a time. `runtime.execute(plan)` is the separate call for writes that return no rows; it resolves to `{ affectedRows }`.
 
 ```ts
 const plan = db.sql.public.user.select('id', 'email').build();
-const rows = await runtime.execute(plan); // Row[]
+const rows = await runtime.query(plan); // Row[]
 ```
 
 ### `ResultType`
@@ -988,7 +996,7 @@ Recover a plan's row type at the type level.
 #### Remarks
 
 - Import `ResultType` from `@prisma/orm-postgres/components/runtime`. It's a family-agnostic utility, not specific to the SQL builder.
-- `ResultType<typeof plan>` is the **per-row** shape, not an array. `runtime.execute(plan)` resolves to `Row[]`, but `ResultType<typeof plan>` is `Row`.
+- `ResultType<typeof plan>` is the **per-row** shape, not an array. `await runtime.query(plan)` resolves to `Row[]`, but `ResultType<typeof plan>` is `Row`.
 
 #### Examples
 
@@ -1000,9 +1008,9 @@ import type { ResultType } from '@prisma/orm-postgres/components/runtime';
 const plan = db.sql.public.user.select('id', 'email').build();
 type Row = ResultType<typeof plan>; // { id: string; email: string }
 
-const rows = await runtime.execute(plan); // Row[]
+const rows = await runtime.query(plan); // Row[]
 ```
 
 ### Streaming vs. collecting
 
-`runtime.execute(plan)` collects every row into an array. This is the common case and what every example on this page uses. For large result sets that you'd rather process incrementally, use the ORM client's streaming terminals, documented under [`AsyncIterableResult`](/orm/reference/orm-client#asynciterableresult).
+`await runtime.query(plan)` collects every row into an array. This is the common case and what every example on this page uses. For large result sets that you'd rather process incrementally, use the ORM client's streaming terminals, documented under [`AsyncIterableResult`](/orm/reference/orm-client#asynciterableresult).

@@ -1,4 +1,3 @@
-import React from "react";
 import { formatTag, formatDate } from "@/lib/format";
 import { notFound, permanentRedirect } from "next/navigation";
 import { getMDXComponents } from "@/mdx-components";
@@ -23,6 +22,7 @@ import { getSeriesContext } from "@/lib/series";
 import { getRelatedPosts } from "@/lib/related-posts";
 import { getBaseUrl, withBlogBasePath, withBlogBasePathForImageSrc } from "@/lib/url";
 import { findCanonicalSlug } from "@/lib/slug-fallback";
+import { containsLink, extractText, headingAnchorId } from "@/lib/heading-anchor";
 import Link from "next/link";
 import { Text } from "lucide-react";
 import type { Metadata } from "next";
@@ -165,15 +165,6 @@ function getBlogPostingJsonLd(page: ReturnType<typeof blog.getPage>): BlogPostin
   return jsonLd;
 }
 
-function extractText(node: React.ReactNode): string {
-  if (typeof node === "string") return node;
-  if (typeof node === "number") return String(node);
-  if (Array.isArray(node)) return node.map(extractText).join("");
-  if (React.isValidElement(node))
-    return extractText((node.props as { children?: React.ReactNode }).children);
-  return "";
-}
-
 /**
  * Resolves a requested slug to a post, recovering mis-cased legacy links.
  *
@@ -247,23 +238,24 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
               </>
             ) : null}
           </div>
-          {page.data.tags && page.data.tags.length > 0 && (
-            // Same ghost pill as the home page's category chips, so a tag reads
-            // identically wherever it appears. Hover is the docs shell's accent
-            // wash (`fd-accent` = cyan-100 light / cyan-950 dark) rather than a
-            // grey tint, so pointing at a pill answers in the brand hue.
-            <div className="filter-badge flex flex-wrap gap-2">
-              {page.data?.tags?.map((tag) => (
-                <Link
-                  href={{ pathname: "/", query: { tag } }}
-                  key={tag}
-                  className="inline-flex items-center rounded-circle border border-stroke-neutral px-3 py-1 text-xs font-medium capitalize text-foreground-neutral-weak transition-colors duration-300 hover:border-stroke-ppg-weak hover:bg-fd-accent hover:text-fd-accent-foreground motion-reduce:transition-none"
-                >
-                  {formatTag(tag)}
-                </Link>
-              ))}
-            </div>
-          )}
+          {page.data.tags &&
+            page.data.tags.length > 0 && (
+              // Same ghost pill as the home page's category chips, so a tag reads
+              // identically wherever it appears. Hover is the docs shell's accent
+              // wash (`fd-accent` = cyan-100 light / cyan-950 dark) rather than a
+              // grey tint, so pointing at a pill answers in the brand hue.
+              <div className="filter-badge flex flex-wrap gap-2">
+                {page.data?.tags?.map((tag) => (
+                  <Link
+                    href={{ pathname: "/", query: { tag } }}
+                    key={tag}
+                    className="inline-flex items-center rounded-circle border border-stroke-neutral px-3 py-1 text-xs font-medium capitalize text-foreground-neutral-weak transition-colors duration-300 hover:border-stroke-ppg-weak hover:bg-fd-accent hover:text-fd-accent-foreground motion-reduce:transition-none"
+                  >
+                    {formatTag(tag)}
+                  </Link>
+                ))}
+              </div>
+            )}
           {seriesContext ? <SeriesMarker series={seriesContext} /> : null}
         </header>
 
@@ -278,24 +270,37 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
                     typeof (props as { id?: unknown }).id === "string"
                       ? ((props as { id?: string }).id ?? "")
                       : "";
-                  const final_id =
-                    providedId ||
-                    extractText(props.children)
-                      .trim()
-                      .toLowerCase()
-                      .replace(/\s+/g, "-")
-                      .replace(/[^a-z0-9-]/g, "")
-                      .replace(/-+/g, "-")
-                      .replace(/^-|-$/g, "");
+                  const final_id = providedId || headingAnchorId(props.children);
+                  // A heading whose MDX contains a link cannot also be wrapped
+                  // in the permalink anchor — that nests <a> inside <a>. There
+                  // the link icon becomes the permalink instead.
+                  const hasLink = containsLink(props.children);
+                  const icon = (
+                    <i className="fa-regular text-lg! fa-link shrink-0 text-fd-muted-foreground opacity-0 transition-opacity" />
+                  );
                   return (
                     <h2
-                      className="type-title-2xl flex scroll-m-28 flex-row items-center gap-2 hover:[&>i]:opacity-100"
+                      className="type-title-2xl flex scroll-m-28 flex-row items-center gap-2 hover:[&_i]:opacity-100"
                       id={final_id}
                     >
-                      <a data-card href={`#${final_id}`}>
-                        {props.children}
-                      </a>
-                      <i className="fa-regular text-lg! fa-link shrink-0 text-fd-muted-foreground opacity-0 transition-opacity" />
+                      {hasLink ? (
+                        props.children
+                      ) : (
+                        <a data-card href={`#${final_id}`}>
+                          {props.children}
+                        </a>
+                      )}
+                      {hasLink ? (
+                        <a
+                          data-card
+                          href={`#${final_id}`}
+                          aria-label={`Permalink to ${extractText(props.children)}`}
+                        >
+                          {icon}
+                        </a>
+                      ) : (
+                        icon
+                      )}
                     </h2>
                   );
                 },

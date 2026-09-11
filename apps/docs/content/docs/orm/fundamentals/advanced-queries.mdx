@@ -36,7 +36,7 @@ const plan = db.sql.public.post
   .limit(10)
   .build();
 
-const publishedPosts = await db.runtime().execute(plan);
+const publishedPosts = await db.runtime().query(plan);
 ```
 
 The `.where(...)` callback receives `(fields, fns)`: `fields` holds the column references, `fns` the operators (`eq`, `ne`, `gt`, `lt`, `ilike`, `and`, `count`, and operators added by extensions).
@@ -58,7 +58,7 @@ const plan = db.sql.public.post
   .limit(10)
   .build();
 
-const postsWithAuthors = await db.runtime().execute(plan);
+const postsWithAuthors = await db.runtime().query(plan);
 // Array<{ postId, title, authorEmail }>
 ```
 
@@ -72,7 +72,7 @@ const plan = db.sql.public.post_tag
   .select((f) => ({ postTitle: f.p.title, tagName: f.t.name }))
   .build();
 
-const postTagPairs = await db.runtime().execute(plan);
+const postTagPairs = await db.runtime().query(plan);
 ```
 
 ```js no-copy
@@ -98,17 +98,17 @@ const plan = db.sql.public.post
   .limit(5)
   .build();
 
-const topAuthors = await db.runtime().execute(plan);
+const topAuthors = await db.runtime().query(plan);
 ```
 
 ```js no-copy
 [
-  { authorId: 'cuid20000000000000000001', posts: '2' },
-  { authorId: 'cuid20000000000000000002', posts: '1' }
+  { authorId: 'cuid20000000000000000001', posts: 2 },
+  { authorId: 'cuid20000000000000000002', posts: 1 }
 ]
 ```
 
-PostgreSQL returns counts as strings; convert with `Number(row.posts)`.
+`count()` returns a JavaScript `number`, and raises `RUNTIME.DECODE_FAILED` past the safe-integer range rather than rounding. Use `countBigInt()` when the tally can grow that large.
 
 ### Write with RETURNING
 
@@ -120,13 +120,13 @@ const plan = db.sql.public.user
   .returning("id", "email")
   .build();
 
-const [insertedUser] = await db.runtime().execute(plan);
+const [insertedUser] = await db.runtime().query(plan);
 // Contract defaults such as generated IDs are applied
 ```
 
-### Raw SQL fragments
+### Raw SQL
 
-Prisma 8 does not run standalone raw SQL statements: every query goes through the typed builder. When the operators don't cover an expression you need, embed a raw fragment with `fns.raw` and declare its type with `.returns(...)`. The rest of the query stays typed:
+Raw SQL comes in two sizes. When the operators don't cover an expression you need, embed a raw **fragment** with `fns.raw` and declare its type with `.returns(...)`. The rest of the query stays typed:
 
 ```typescript
 const plan = db.sql.public.user
@@ -135,11 +135,35 @@ const plan = db.sql.public.user
   .limit(10)
   .build();
 
-const users = await db.runtime().execute(plan);
+const users = await db.runtime().query(plan);
 // [{ id: 'cuid20000000000000000001', email: 'alice@prisma.io', upperEmail: 'ALICE@PRISMA.IO' }, ...]
 ```
 
-Interpolated values are AST nodes, not string splices, so a fragment can reference columns and other typed expressions safely. If the builder plus `fns.raw` still can't express a shape you need, [share the use case](https://pris.ly/discord).
+Interpolated values are AST nodes, not string splices, so a fragment can reference columns and other typed expressions safely.
+
+When the whole statement has to be raw, write it with `db.raw.sql` and terminate it. `.returnsRow(spec)` declares the result columns and yields a plan `query()` streams decoded rows from; `.affectedCount()` declares none and yields a plan `execute()` reports statistics for:
+
+```typescript
+const user = db.sql.public.user;
+
+const plan = db.raw.sql`
+  SELECT u.id, u.email, count(p.id) AS "postCount"
+  FROM "user" u
+  LEFT JOIN "post" p ON p."userId" = u.id
+  GROUP BY u.id, u.email
+  LIMIT ${limit}
+`
+  .returnsRow({
+    id: user.columns.id,
+    email: user.columns.email,
+    postCount: "pg/int8@1",
+  })
+  .build();
+
+const rows = await db.runtime().query(plan);
+```
+
+A row-returning raw query can be interpolated into another raw template as a subquery or a CTE. The [raw queries reference](/orm/reference/raw-queries) has the full surface.
 
 ## MongoDB: Pipeline builder
 
@@ -174,7 +198,7 @@ const plan = db.query
   .sort({ postCount: -1 })
   .build();
 
-const postsByAuthor = await runtime.execute(plan);
+const postsByAuthor = await runtime.query(plan);
 ```
 
 ```js no-copy
@@ -197,7 +221,7 @@ const plan = db.query
   .group((f) => ({ _id: f.authorId, draftCount: acc.count() }))
   .build();
 
-const draftsByAuthor = await runtime.execute(plan);
+const draftsByAuthor = await runtime.query(plan);
 ```
 
 ### Join collections with $lookup
@@ -215,7 +239,7 @@ const plan = db.query
   )
   .build();
 
-const postsWithAuthors = await runtime.execute(plan);
+const postsWithAuthors = await runtime.query(plan);
 // Each post carries an "author" array with the matching user documents
 ```
 
@@ -227,7 +251,7 @@ const postsWithAuthors = await runtime.execute(plan);
 | Explicit join, computed projection, grouped top-N, `RETURNING` | SQL query builder (`db.sql.public.<table>`) |
 | `$group`, `$lookup` with reshaping, any MongoDB aggregation | Pipeline builder (`db.query.from(...)`) |
 
-Plans execute through `db.runtime().execute(plan)` on PostgreSQL and `(await db.runtime()).execute(plan)` on MongoDB. Inside a [transaction](/orm/fundamentals/transactions), use `tx.execute(plan)`.
+Plans that return rows run through `db.runtime().query(plan)` on PostgreSQL and `(await db.runtime()).query(plan)` on MongoDB. Inside a [transaction](/orm/fundamentals/transactions), use `tx.query(plan)`. A write that returns no rows runs through `execute(plan)` instead, which resolves `{ affectedRows }`.
 
 ## Prompt your coding agent
 

@@ -253,7 +253,7 @@ const articles = await prisma.post.findMany({ where: { kind: 'article' } });
 
 ### 3c. Aggregations
 
-v6's `groupBy` / `aggregate` become a typed pipeline: build a plan with `db.query`, then run it with `db.execute`. `acc` provides the group totals (`acc.count()`, `acc.max(...)`, and friends), the equivalent of v6's `_count` / `_sum` / `_max`.
+v6's `groupBy` / `aggregate` become a typed pipeline: build a plan with `db.query`, then run it with `(await db.runtime()).query`. `acc` provides the group totals (`acc.count()`, `acc.max(...)`, and friends), the equivalent of v6's `_count` / `_sum` / `_max`.
 
 ```typescript tab="After"
 import { acc } from '@prisma/orm-mongo/query-builder';
@@ -263,7 +263,7 @@ const plan = db.query
   .group((f) => ({ _id: f.kind, postCount: acc.count(), latest: acc.max(f.createdAt) }))
   .sort({ postCount: -1 })
   .build();
-const byKind = await db.execute(plan).toArray();
+const byKind = await (await db.runtime()).query(plan).toArray();
 ```
 
 ```typescript tab="Before"
@@ -290,7 +290,7 @@ const plan = db.query.rawCommand(
     { $sort: { postCount: -1 } },
   ]),
 );
-const byKind = await db.execute(plan).toArray();
+const byKind = await (await db.runtime()).query(plan).toArray();
 ```
 
 :::
@@ -342,7 +342,7 @@ const plan = db.raw
   .collection('posts')
   .aggregate([ ... ])
   .build();
-const rows = await db.execute(plan).toArray();
+const rows = await (await db.runtime()).query(plan).toArray();
 ```
 
 ```typescript tab="Before"
@@ -389,8 +389,8 @@ For raw reads and writes scoped to a single collection (anything the typed build
 | `prisma.user.findFirst(...)` | `db.orm.users.where({ ... }).first()` |
 | `create` / `update` / `delete` / `upsert` | same names on `db.orm.<collection>` |
 | `updateMany` / `deleteMany` | `updateAll` / `deleteAll` |
-| `aggregate` / `groupBy` | `db.query.from(...).group(...).build()` → `db.execute(plan)` |
-| `findRaw` / `aggregateRaw` | `db.raw.collection(...).aggregate(...).build()` → `db.execute(plan)`, or `db.query.rawCommand(...)` |
+| `aggregate` / `groupBy` | `db.query.from(...).group(...).build()` → `(await db.runtime()).query(plan)` |
+| `findRaw` / `aggregateRaw` | `db.raw.collection(...).aggregate(...).build()` → `(await db.runtime()).query(plan)`, or `db.query.rawCommand(...)` |
 | `$runCommandRaw` | share a `MongoClient` with the binding, then `mongoClient.db(...).command(...)` (see 3e) |
 | `$transaction(...)` | no wrapper yet. Use driver sessions on a replica set (see 3d) |
 | `$connect` / `$disconnect` | connects lazily on first use. Call `db.close()` to disconnect |

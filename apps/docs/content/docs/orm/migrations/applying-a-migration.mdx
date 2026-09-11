@@ -23,18 +23,16 @@ npx prisma@latest db migrate --db $DATABASE_URL
 A successful run reports every operation it performed and the marker it left behind:
 
 ```text
-✔ Applied 1 migration(s) (3 operation(s)) across 1 contract space(s)
+✔ Applied 3 operation(s) across 1 contract space
 
 App space
   ├─ Add column "displayName" to "user"
   ├─ Data transform: backfill-user-displayName
   └─ Set NOT NULL on "user"."displayName" (destructive)
-  marker: sha256:e6b5c2849eca8d24ff1e8e88ab2a4234db8e74c497c035cb7ce42e814f31cd63
+  marker: e6b5c2849eca8d24ff1e8e88ab2a4234db8e74c497c035cb7ce42e814f31cd63
 
-Next: prisma-cli migration status
+Next: prisma migration status
 ```
-
-The `prisma-cli` in that hint is the binary's own name for itself. When you invoke it as `npx prisma@latest`, run the suggested subcommand the same way (`npx prisma@latest migration status`).
 
 `App space` is your application's migration lane, one of the run's *contract spaces*. Projects that use database extensions gain additional spaces, covered in [Extension spaces](#extension-spaces) below.
 
@@ -62,10 +60,8 @@ npx prisma@latest db migrate --db $DATABASE_URL
 |^  20260707T1005_init                  - -> 705b1a6  2 ops  + applied
 *   -
 
-1 pending — run `prisma-cli migrate --to 925198f3cc27`
+1 pending — run `prisma db migrate --to 925198f3cc27`
 ```
-
-The output above is verbatim. `prisma-cli migrate` is the binary's internal name for the command; run it as `npx prisma@latest db migrate --to 925198f3cc27`.
 
 Read the markers on the right: `@db` is where the database is, `@contract` is where your emitted contract is, and `(db)` is the [ref](/orm/migrations/the-migration-graph#name-important-states-with-refs) of that name pointing at the same node.
 
@@ -101,19 +97,17 @@ npx prisma@latest db migrate --to prod --db $DATABASE_URL
 
 If the graph has branched and more than one tip is reachable, `db migrate` stops and asks for an explicit `--to`. That's the graph protecting you: two feature branches may both be valid futures, and picking one is a human decision.
 
-`--advance-ref` moves a named ref to the post-apply state in the same step, which is what keeps [`migration plan`](/orm/migrations/generating-a-migration#the-db-ref-skipping---from) incremental. The [`db migrate` reference](/cli/db-migrate#options) has the full `--to` grammar (refs, hashes, migration names, `<dir>^`) and the flag contract.
+`--advance-ref` moves a named ref to the post-apply state in the same step, which is what keeps [`migration plan`](/orm/migrations/generating-a-migration#the-db-ref-skipping---from) incremental. Plain `db migrate` never moves a ref. That is deliberate: a deploy or a CI apply should not move a ref that lives in the repository, so in development you pass `--advance-ref db` and in production you leave it off. The [`db migrate` reference](/cli/db-migrate#options) has the full `--to` grammar (refs, hashes, migration names, `<dir>^`) and the flag contract.
 
 ## When something goes wrong
 
 The runner stops at the first failing operation and tells you which one, why, and what to do:
 
 ```text
-✖ Operation pgvector.install-vector-extension failed during execution: create extension "vector" (PN-RUN-3000)
+✖ Operation pgvector.install-vector-extension failed during execution: create extension "vector" (MIGRATION.RUNNER_FAILED)
   Why: extension "vector" is not available
-  Fix: Fix the issue and re-run `prisma-cli migrate --to <contract>` — previously applied migrations are preserved.
+  Fix: Fix the issue and re-run `prisma db migrate --to <contract>` — previously applied migrations are preserved.
 ```
-
-That hint is the CLI's literal output; `prisma-cli migrate` is its internal name for `db migrate`, so re-run `npx prisma@latest db migrate --to <contract>`.
 
 Three properties make failure boring instead of terrifying:
 
@@ -150,7 +144,7 @@ Concurrent deploys are safe: on PostgreSQL the whole apply runs inside a transac
 If your project uses [database extensions](/orm/extensions/using-extensions) (say pgvector), you'll see more than one *contract space* in the output. Extensions ship their own migrations (for example `CREATE EXTENSION vector`), tracked in `migrations/<extension>/` next to your app's. One `db migrate` run walks them all (extensions first, then your app) and reports each space separately:
 
 ```text
-✔ Applied 2 migration(s) (20 operation(s)) across 2 contract space(s)
+✔ Applied 20 operation(s) across 2 contract spaces
 
 Extension space: pgvector
   └─ Enable extension "vector"

@@ -59,45 +59,31 @@ In your Vercel project, you can now click the **Storage** tab, select the databa
 
 To view and edit the data in your Prisma Postgres instance, you can use the local version of [Prisma Studio](/studio).
 
-In the local version of your project where you have your `DATABASE_URL` set, run the following command to open Prisma Studio:
+Studio ships with the Prisma 7 CLI and works with Prisma 7 and Prisma 8 databases alike. Point it at the connection string from the **Storage** tab:
 
 ```npm
-npx prisma studio
+npx prisma@7.10.0 studio --url="$DATABASE_URL"
 ```
 
 ## Using with Next.js
 
-If you're building a Next.js app and want a step-by-step walkthrough covering schema, migrations, querying from Server Components, and deploying, see the [Next.js guide](/guides/v7/frameworks/nextjs).
+If you're building a Next.js app and want a step-by-step walkthrough covering the contract, migrations, querying from Server Components, and deploying, see the [Next.js guide](/guides/frameworks/nextjs).
 
 The key things to set up on the Vercel side:
 
 ### Ensure your project uses the correct environment variable
 
-Make sure your `prisma.config.ts` reads from `DATABASE_URL`:
+The generated `src/prisma/db.ts` reads `process.env.DATABASE_URL`, which is the variable the **Connect** step above sets on your Vercel project. Nothing else needs to be configured for the runtime to find the database.
 
-```ts title="prisma.config.ts"
-import "dotenv/config";
-import { defineConfig, env } from "prisma/config";
+### Commit the emitted contract files
 
-export default defineConfig({
-  datasource: {
-    url: env("DATABASE_URL"),
-  },
-  schema: "prisma/schema.prisma",
-});
-```
+Prisma 8 has no build-time generate step. `npx prisma@latest contract emit` writes `src/prisma/contract.json` and `src/prisma/contract.d.ts`, and those files are committed with your code, so Vercel's `next build` needs no `postinstall` hook. Apply schema changes to the database before you deploy, with `npx prisma@latest db migrate` from your machine or CI. See [Applying a migration](/orm/migrations/applying-a-migration).
 
-### Generate Prisma Client on every deploy
+:::note[Using Prisma 7?]
 
-Add a `postinstall` script so Prisma Client is generated after Vercel installs dependencies:
+For a Prisma 7 project, keep the `prisma.config.ts` that reads `DATABASE_URL` and add `"postinstall": "prisma generate"` to `package.json` so Prisma Client is generated on every deploy. See the [Prisma 7 Next.js guide](/guides/v7/frameworks/nextjs).
 
-```json title="package.json"
-{
-  "scripts": {
-    "postinstall": "prisma generate" // [!code ++]
-  }
-}
-```
+:::
 
 ## Billing and pricing
 

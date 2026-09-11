@@ -1,462 +1,486 @@
 ---
 title: Multiple databases
-description: 'Learn how to use multiple Prisma Clients in a single app to connect to multiple databases, handle migrations, and deploy your application to Vercel'
+description: 'Connect one Next.js app to two PostgreSQL databases with Prisma 8: one contract, config, and client per database, selected with the --config flag.'
 image: /img/guides/multiple-databases.png
 url: /guides/database/multiple-databases
-metaTitle: How to use Prisma ORM with multiple databases in a single app
-metaDescription: 'Learn how to use multiple Prisma Clients in a single app to connect to multiple databases, handle migrations, and deploy your application to Vercel.'
+metaTitle: How to use Prisma 8 with multiple databases in a single app
+metaDescription: 'Give each database its own contract, prisma.config.ts, and Prisma 8 client, run the CLI per database with --config, render data from both in Next.js, and deploy to Vercel.'
 ---
 
 ## Introduction
 
-This guide shows you how to use multiple databases using Prisma ORM in a single [Next.js app](https://nextjs.org/). You will learn how to connect to two different Prisma Postgres databases, manage migrations, and deploy your application to Vercel. This approach is useful for multi-tenant applications or when you need to separate concerns when managing connections to multiple databases.
+This guide shows you how to use two databases from one [Next.js](https://nextjs.org/) app with Prisma 8. You give each database its own data contract, its own `prisma.config.ts`, and its own Prisma 8 client, then render data from both on one page. The same layout works for any number of databases and is a good fit for multi-tenant apps or for keeping unrelated data in separate databases.
+
+Every command and code block below was run against two local PostgreSQL databases, `users` and `posts`.
+
+:::note[Using Prisma 7?]
+
+Prisma 8 is the current release of Prisma ORM. Prisma 7 remains fully supported; the Prisma 7 version of this guide is at [/guides/v7/database/multiple-databases](/guides/v7/database/multiple-databases).
+
+:::
 
 ## Prerequisites
 
-Before you begin, make sure that you have the following:
+- [Node.js](https://nodejs.org) 24 or later
+- Two PostgreSQL connection strings, or nothing at all: `npx create-db@latest` can create a [Prisma Postgres](/postgres) database for you, run it twice for two
+- A [Vercel](https://vercel.com/) account if you want to deploy at the end
 
-- Node.js 20+ installed.
-- A [Prisma Data Platform account](https://pris.ly/pdp?utm_campaign=multi-client&utm_source=docs).
-- A Vercel account (if you plan to deploy your application).
+## Use with your agent
+
+To delegate this guide to your coding agent, copy the prompt below and hand it over:
+
+<AgentPrompt>
+
+```text
+Create a Next.js app that reads from two PostgreSQL databases with Prisma 8, following https://www.prisma.io/docs/guides/database/multiple-databases.md.
+
+1. Scaffold with `npx create-next-app@latest my-multi-db-app --yes`, then in the project run `npx prisma@latest orm init --yes --target postgres --authoring psl --schema-path ./prisma/users/contract.prisma`. Run `npx prisma@latest init` so the Prisma agent skills are installed, and use them.
+2. Rename `prisma.config.ts` to `prisma.users.config.ts`, point it at `USERS_DATABASE_URL` and `./prisma/users/migrations`, and reduce `prisma/users/contract.prisma` to a `User` model. Create the same three files for the posts database: `prisma.posts.config.ts` reading `POSTS_DATABASE_URL`, `prisma/posts/contract.prisma` with a `Post` model that stores `authorId Int` (no relation across databases), and `prisma/posts/db.ts`. Export `usersDb` and `postsDb` from the two `db.ts` files.
+3. Put both connection strings in `.env` (use the ones I give you, or create two Prisma Postgres databases with `npx create-db@latest` and show me the claim URLs). Add package scripts that run `prisma contract emit`, `prisma db init`, and `prisma db verify` once per config with `--config`, then run them.
+4. Write a seed script that inserts two users and two posts, run it with `node prisma/seed.ts`, and rewrite `app/page.tsx` as a server component that lists users from `usersDb` and posts from `postsDb`, joining authors in application code.
+5. Start `npm run dev` in the background, verify http://localhost:3000 renders both lists, stop the server, and confirm `npm run build` passes.
+```
+
+</AgentPrompt>
 
 ## 1. Set up a Next.js project
 
-Create a new Next.js app using `create-next-app` from your desired directory:
+Create a new Next.js app and accept the defaults (TypeScript, Tailwind CSS, App Router, no `src` directory):
 
 ```npm
-npx create-next-app@latest my-multi-client-app
+npx create-next-app@latest my-multi-db-app
+cd my-multi-db-app
 ```
 
-You will be prompted to answer a few questions about your project. Select all of the defaults.
+This guide starts from `create-next-app` and adds Prisma 8 with `orm init` instead of using the `next` template of `create-prisma`. That template wires a single database and declares it for Prisma Compute; here you want exactly the Prisma files, once per database, and nothing else.
 
-:::info
+## 2. Add Prisma 8 for the users database
 
-For completeness, those are:
+Run `orm init` from the project root. The `--schema-path` flag puts the contract in a folder named after the database, and `orm init` places the client file next to it:
 
-- TypeScript
-- ESLint
-- Tailwind CSS
-- No `src` directory
-- App Router
-- Turbopack
-- Default custom import alias: `@/*`
+```npm
+npx prisma@latest orm init --target postgres --authoring psl --schema-path ./prisma/users/contract.prisma
+```
 
-:::
+The command installs `@prisma/orm-postgres` and `dotenv`, adds `prisma` as a dev dependency, sets `"type": "module"` in `package.json`, updates `tsconfig.json`, and writes these files:
 
-Then, navigate to the project directory:
+```text no-copy
+prisma/users/contract.prisma
+prisma/users/db.ts
+prisma.config.ts
+prisma-next.md
+.env.example
+```
+
+There is no `prisma generate` and no generated client package. The emitted `contract.json` and `contract.d.ts` next to the contract are what the runtime and the type checker read.
+
+### 2.1. Give the config a database-specific name
+
+Prisma 8 commands read `./prisma.config.ts` by default and take a different file with the global [`--config`](/cli/global-flags) flag. Rename the generated config so each database has one:
 
 ```bash
-cd my-multi-client-app
+mv prisma.config.ts prisma.users.config.ts
 ```
 
-## 2. Set up your databases and Prisma Clients
+Point it at the users contract, a users-only migrations folder, and a `USERS_DATABASE_URL` variable:
 
-In this section, you will create two separate Prisma Postgres instances, one for user data and one for post data. You will also configure the Prisma schema and environment variables for each.
+```typescript title="prisma.users.config.ts"
+import "dotenv/config";
+import { definePrismaConfig } from "prisma/config";
+import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
 
-First, install Prisma and the required dependencies:
-
-```npm
-npm install prisma@7.10.0 tsx @types/pg --save-dev
+export default definePrismaConfig({
+  orm: ormConfig({
+    contract: "./prisma/users/contract.prisma",
+    migrations: {
+      dir: "./prisma/users/migrations", // [!code ++]
+    },
+    db: {
+      connection: process.env.USERS_DATABASE_URL!, // [!code ++]
+    },
+  }),
+});
 ```
 
-```npm
-npm install @prisma/client@7.10.0 @prisma/adapter-pg dotenv pg
+`migrations.dir` matters once you use checked-in migrations: without it both configs would write to the same `./migrations` folder.
+
+### 2.2. Define the users contract
+
+Replace the starter contract with a single `User` model:
+
+```prisma title="prisma/users/contract.prisma"
+// use prisma-next
+
+model User {
+  id        Int               @id @default(autoincrement())
+  email     String            @unique
+  name      String?
+  createdAt TimestamptzString @default(now())
+}
 ```
 
-:::info
+### 2.3. Name the client after the database
 
-If you are using a different database provider (MySQL, SQL Server, SQLite), install the corresponding driver adapter package instead of `@prisma/adapter-pg`. For more information, see [Database drivers](/orm/v7/core-concepts/supported-databases/database-drivers).
+Change `prisma/users/db.ts` to read `USERS_DATABASE_URL` and export a name you can tell apart from the second client:
 
-:::
+```typescript title="prisma/users/db.ts"
+import "dotenv/config";
+import postgres from "@prisma/orm-postgres/runtime";
+import type { Contract } from "./contract.d";
+import contractJson from "./contract.json" with { type: "json" };
 
-You have installed the required dependencies for the project.
-
-### 2.1. Create a Prisma Postgres instance to contain user data
-
-Initialize Prisma with a [Prisma Postgres](/postgres) instance by running:
-
-```npm
-npx prisma@7.10.0 init --db
+export const usersDb = postgres<Contract>({ // [!code ++]
+  contractJson,
+  url: process.env.USERS_DATABASE_URL!, // [!code ++]
+});
 ```
 
-:::info
+`contract.d.ts` and `contract.json` do not exist yet; you emit them in step 4.
 
-If you are not using a Prisma Postgres database, do not use the `--db` flag. Instead, create two PostgreSQL database instances and add their connection URLs to the `.env` file as `PPG_USER_DATABASE_URL` and `PPG_POST_DATABASE_URL`.
+## 3. Add the posts database
 
-:::
-
-Follow the prompts to name your project and choose a database region.
-
-The `prisma@7.10.0 init --db` command:
-
-- Connects your CLI to your [Prisma Data Platform](https://console.prisma.io) account. If you are not logged in or do not have an account, your browser will open to guide you through creating a new account or signing into your existing one.
-- Creates a `prisma` directory containing a `schema.prisma` file for your database models.
-- Creates a `.env` file with your `DATABASE_URL` (e.g., `DATABASE_URL="postgresql://user:password@host:5432/database?sslmode=require"`).
-
-Rename the `prisma` folder to `prisma-user-database`:
+The second database needs the same three files. Create them by hand; running `orm init` again would replace the files from step 2.
 
 ```bash
-mv prisma prisma-user-database
+mkdir -p prisma/posts
 ```
 
-Edit your `.env` file to rename `DATABASE_URL` to `PPG_USER_DATABASE_URL`:
+```typescript title="prisma.posts.config.ts"
+import "dotenv/config";
+import { definePrismaConfig } from "prisma/config";
+import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
+
+export default definePrismaConfig({
+  orm: ormConfig({
+    contract: "./prisma/posts/contract.prisma",
+    migrations: {
+      dir: "./prisma/posts/migrations",
+    },
+    db: {
+      connection: process.env.POSTS_DATABASE_URL!,
+    },
+  }),
+});
+```
+
+```prisma title="prisma/posts/contract.prisma"
+// use prisma-next
+
+model Post {
+  id        Int               @id @default(autoincrement())
+  title     String
+  content   String?
+  authorId  Int
+  createdAt TimestamptzString @default(now())
+}
+```
+
+`authorId` is a plain integer, not a relation. A contract describes one database, and PostgreSQL cannot enforce a foreign key into another database, so the link between a post and its author is resolved in application code in step 5.
+
+```typescript title="prisma/posts/db.ts"
+import "dotenv/config";
+import postgres from "@prisma/orm-postgres/runtime";
+import type { Contract } from "./contract.d";
+import contractJson from "./contract.json" with { type: "json" };
+
+export const postsDb = postgres<Contract>({
+  contractJson,
+  url: process.env.POSTS_DATABASE_URL!,
+});
+```
+
+Now set both connection strings. Both config files and both clients load `.env` through `dotenv/config`, and Next.js loads it as well:
 
 ```bash title=".env"
-DATABASE_URL="postgresql://user:password@host:5432/database?sslmode=require" # [!code --]
-PPG_USER_DATABASE_URL="postgresql://user:password@host:5432/database?sslmode=require" # [!code ++]
+USERS_DATABASE_URL="postgres://user:password@localhost:5432/users"
+POSTS_DATABASE_URL="postgres://user:password@localhost:5432/posts"
 ```
 
-Open `prisma-user-database/schema.prisma` file and update it to define a `User` model. Also, set the environment variable and specify a [custom `output` directory](/orm/v7/reference/prisma-schema-reference#fields-for-prisma-client-provider) for the generated Prisma Client:
+`orm init` already added `.env` to `.gitignore`. Update `.env.example` with the two variable names so collaborators know what to set.
 
-```prisma title="prisma-user-database/schema.prisma"
-generator client {
-  provider = "prisma-client"
-  output = "../prisma-user-database/user-database-client-types" // [!code ++]
-}
+## 4. Emit the contracts and initialize both databases
 
-datasource db {
-  provider = "postgresql"
-}
-
-model User { // [!code ++]
-  id    Int     @id @default(autoincrement()) // [!code ++]
-  email String  @unique // [!code ++]
-  name  String? // [!code ++]
-} // [!code ++]
-```
-
-Create a `prisma.config.ts` file for the user database:
-
-```typescript title="prisma-user-database/prisma.config.ts"
-import "dotenv/config"; // [!code ++]
-import { defineConfig, env } from "prisma/config"; // [!code ++]
-// [!code ++]
-export default defineConfig({
-  // [!code ++]
-  schema: "prisma-user-database/schema.prisma", // [!code ++]
-  migrations: {
-    // [!code ++]
-    path: "prisma-user-database/migrations", // [!code ++]
-  }, // [!code ++]
-  datasource: {
-    // [!code ++]
-    url: env("PPG_USER_DATABASE_URL"), // [!code ++]
-  }, // [!code ++]
-}); // [!code ++]
-```
-
-:::note
-
-You'll need to install the `dotenv` package if you haven't already:
-
-```npm
-npm install dotenv
-```
-
-:::
-
-Your user database schema is now ready.
-
-### 2.2. Create a Prisma Postgres instance for post data
-
-Repeat the initialization for the post database:
-
-```npm
-npx prisma init
-npx create-db
-```
-
-Replace the generated `DATABASE_URL` in your `.env` file with the value from `npx create-db`, then rename the new `prisma` folder to `prisma-post-database`:
-
-```bash
-mv prisma prisma-post-database
-```
-
-Rename the `DATABASE_URL` variable in `.env` to `PPG_POST_DATABASE_URL`:
-
-```bash title=".env"
-DATABASE_URL="postgresql://user:password@host:5432/database?sslmode=require" # [!code --]
-PPG_POST_DATABASE_URL="postgresql://user:password@host:5432/database?sslmode=require" # [!code ++]
-```
-
-Edit the `prisma-post-database/schema.prisma` file to define a `Post` model. Also, update the datasource URL and set a [custom `output` directory](/orm/v7/reference/prisma-schema-reference#fields-for-prisma-client-provider):
-
-```prisma title="prisma-post-database/schema.prisma"
-generator client {
-  provider = "prisma-client"
-  output = "../prisma-post-database/post-database-client-types" // [!code ++]
-}
-
-datasource db {
-  provider = "postgresql"
-}
-
-model Post { // [!code ++]
-  id    Int     @id @default(autoincrement()) // [!code ++]
-  title String // [!code ++]
-  content  String? // [!code ++]
-} // [!code ++]
-```
-
-Create a `prisma.config.ts` file for the post database:
-
-```typescript title="prisma-post-database/prisma.config.ts"
-import "dotenv/config"; // [!code ++]
-import { defineConfig, env } from "prisma/config"; // [!code ++]
-// [!code ++]
-export default defineConfig({
-  // [!code ++]
-  schema: "prisma-post-database/schema.prisma", // [!code ++]
-  migrations: {
-    // [!code ++]
-    path: "prisma-post-database/migrations", // [!code ++]
-  }, // [!code ++]
-  datasource: {
-    // [!code ++]
-    url: env("PPG_POST_DATABASE_URL"), // [!code ++]
-  }, // [!code ++]
-}); // [!code ++]
-```
-
-Your post database schema is now set.
-
-### 2.3. Add helper scripts and migrate the schemas
-
-So you don't have to pass `--schema` for each database on every command, add helper scripts to your `package.json` file that run Prisma commands for both databases:
+Each Prisma 8 command works on one config. Add scripts that run every command once per database so you do not have to type `--config` twice:
 
 ```json title="package.json"
-"script":{
-    "dev": "next dev --turbopack",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "postinstall": "npx prisma generate --schema ./prisma-user-database/schema.prisma && npx prisma generate --schema ./prisma-post-database/schema.prisma", // [!code ++]
-    "generate": "npx prisma generate --schema ./prisma-user-database/schema.prisma && npx prisma generate --schema ./prisma-post-database/schema.prisma", // [!code ++]
-    "migrate": "npx prisma migrate dev --schema ./prisma-user-database/schema.prisma && npx prisma migrate dev --schema ./prisma-post-database/schema.prisma", // [!code ++]
-    "deploy": "npx prisma migrate deploy --schema ./prisma-user-database/schema.prisma && npx prisma migrate deploy --schema ./prisma-post-database/schema.prisma", // [!code ++]
-    "studio": "npx prisma studio --schema ./prisma-user-database/schema.prisma --port 5555 & npx prisma studio --schema ./prisma-post-database/schema.prisma --port 5556" // [!code ++]
+"scripts": {
+  "dev": "next dev",
+  "build": "next build",
+  "start": "next start",
+  "contract:emit": "prisma contract emit --config ./prisma.users.config.ts && prisma contract emit --config ./prisma.posts.config.ts", // [!code ++]
+  "db:init": "prisma db init --config ./prisma.users.config.ts && prisma db init --config ./prisma.posts.config.ts", // [!code ++]
+  "db:verify": "prisma db verify --config ./prisma.users.config.ts && prisma db verify --config ./prisma.posts.config.ts", // [!code ++]
+  "db:update": "prisma db update --config ./prisma.users.config.ts && prisma db update --config ./prisma.posts.config.ts", // [!code ++]
+  "db:seed": "node prisma/seed.ts", // [!code ++]
+  "prebuild": "npm run contract:emit" // [!code ++]
 }
 ```
 
-Here is an explanation of the custom scripts:
+`prebuild` re-emits both contracts before every `next build`, locally and on Vercel, so the build never runs against stale artifacts.
 
-- `postinstall`: Runs immediately after installing dependencies to generate Prisma Clients for both the user and post databases using their respective schema files.
-- `generate`: Manually triggers the generation of Prisma Clients for both schemas, ensuring your client code reflects the latest models.
-- `migrate`: Applies pending migrations in development mode for both databases using [Prisma Migrate](/orm/v7/prisma-migrate), updating their schemas based on changes in your Prisma files.
-- `deploy`: Executes migrations in a production environment, synchronizing your live databases with your Prisma schemas.
-- `studio`: Opens Prisma Studio for both databases simultaneously on different ports (`5555` for the user database and `5556` for the post database) for visual data management.
-
-Run the migrations:
+Emit the contract artifacts for both databases. This step is offline:
 
 ```npm
-npm run migrate
+npm run contract:emit
 ```
 
-When prompted, name the migration for each database accordingly.
+```text no-copy
+✔ Emitted contract.json and contract.d.ts
+│  contract:  prisma/users/contract.json
+│  types:     prisma/users/contract.d.ts
 
-## 3. Prepare the application to use multiple Prisma Clients
-
-Next, create a `lib` folder to store helper files for instantiating and exporting your Prisma Clients:
-
-```bash
-mkdir -p lib && touch lib/user-prisma-client.ts lib/post-prisma-client.ts
+✔ Emitted contract.json and contract.d.ts
+│  contract:  prisma/posts/contract.json
+│  types:     prisma/posts/contract.d.ts
 ```
 
-### 3.1. Instantiate and export the Prisma Client for the user database
-
-In `lib/user-prisma-client.ts`, add the following code:
-
-```ts title="lib/user-prisma-client.ts"
-import { PrismaClient } from "../prisma-user-database/user-database-client-types/client"; // [!code ++]
-import { PrismaPg } from "@prisma/adapter-pg"; // [!code ++]
-// [!code ++]
-const adapter = new PrismaPg({
-  // [!code ++]
-  connectionString: process.env.PPG_USER_DATABASE_URL, // [!code ++]
-}); // [!code ++]
-// [!code ++]
-const getPrisma = () =>
-  new PrismaClient({
-    // [!code ++]
-    adapter, // [!code ++]
-  }); // [!code ++]
-// [!code ++]
-const globalForUserDBPrismaClient = global as unknown as {
-  // [!code ++]
-  userDBPrismaClient: ReturnType<typeof getPrisma>; // [!code ++]
-}; // [!code ++]
-// [!code ++]
-export const userDBPrismaClient = globalForUserDBPrismaClient.userDBPrismaClient || getPrisma(); // [!code ++] // [!code ++]
-// [!code ++]
-if (process.env.NODE_ENV !== "production")
-  // [!code ++]
-  globalForUserDBPrismaClient.userDBPrismaClient = userDBPrismaClient; // [!code ++]
-```
-
-### 3.2. Instantiate and export the Prisma Client for the post database
-
-In `lib/post-prisma-client.ts`, add this code:
-
-```ts title="lib/post-prisma-client.ts"
-import { PrismaClient } from "../prisma-post-database/post-database-client-types/client"; // [!code ++]
-import { PrismaPg } from "@prisma/adapter-pg"; // [!code ++]
-// [!code ++]
-const adapter = new PrismaPg({
-  // [!code ++]
-  connectionString: process.env.PPG_POST_DATABASE_URL, // [!code ++]
-}); // [!code ++]
-// [!code ++]
-const getPrisma = () =>
-  new PrismaClient({
-    // [!code ++]
-    adapter, // [!code ++]
-  }); // [!code ++]
-// [!code ++]
-const globalForPostDBPrismaClient = global as unknown as {
-  // [!code ++]
-  postDBPrismaClient: ReturnType<typeof getPrisma>; // [!code ++]
-}; // [!code ++]
-// [!code ++]
-export const postDBPrismaClient = globalForPostDBPrismaClient.postDBPrismaClient || getPrisma(); // [!code ++] // [!code ++]
-// [!code ++]
-if (process.env.NODE_ENV !== "production")
-  // [!code ++]
-  globalForPostDBPrismaClient.postDBPrismaClient = postDBPrismaClient; // [!code ++]
-```
-
-## 4. Integrate multiple Prisma Clients in your Next.js app
-
-Modify your application code to fetch data from both databases. Update the `app/page.tsx` file as follows:
-
-```ts title="app/page.tsx"
-import { postDBPrismaClient } from "@/lib/post-prisma-client"; // [!code ++]
-import { userDBPrismaClient } from "@/lib/user-prisma-client"; // [!code ++]
- // [!code ++]
-export default async function Home() { // [!code ++]
-  const user = await userDBPrismaClient.user.findFirst(); // [!code ++]
-  const post = await postDBPrismaClient.post.findFirst(); // [!code ++]
- // [!code ++]
-  return ( // [!code ++]
-    <main className="min-h-screen bg-gray-50 py-12"> // [!code ++]
-      <div className="max-w-4xl mx-auto px-4"> // [!code ++]
-        <header className="mb-12 text-center"> // [!code ++]
-          <h1 className="text-5xl font-extrabold text-gray-900">Multi-DB Showcase</h1> // [!code ++]
-          <p className="mt-4 text-xl text-gray-600"> // [!code ++]
-            Data fetched from two distinct databases. // [!code ++]
-          </p> // [!code ++]
-        </header> // [!code ++]
- // [!code ++]
-        <section className="mb-8 bg-white shadow-md rounded-lg p-6"> // [!code ++]
-          <h2 className="text-2xl font-semibold text-gray-800 border-b pb-2 mb-4"> // [!code ++]
-            User Data // [!code ++]
-          </h2> // [!code ++]
-          <pre className="whitespace-pre-wrap text-sm text-gray-700"> // [!code ++]
-            {user ? JSON.stringify(user, null, 2) : "No user data available."} // [!code ++]
-          </pre> // [!code ++]
-        </section> // [!code ++]
- // [!code ++]
-        <section className="bg-white shadow-md rounded-lg p-6"> // [!code ++]
-          <h2 className="text-2xl font-semibold text-gray-800 border-b pb-2 mb-4"> // [!code ++]
-            Post Data // [!code ++]
-          </h2> // [!code ++]
-          <pre className="whitespace-pre-wrap text-sm text-gray-700"> // [!code ++]
-            {post ? JSON.stringify(post, null, 2) : "No post data available."} // [!code ++]
-          </pre> // [!code ++]
-        </section> // [!code ++]
-      </div> // [!code ++]
-    </main> // [!code ++]
-  ); // [!code ++]
-} // [!code ++]
-```
-
-### 4.1. Populate your databases with data
-
-In a separate terminal window, open two instances of [Prisma Studio](/studio) to add data to your databases by running the script:
+Create the tables in both databases and sign each one with its contract:
 
 ```npm
-npm run studio
+npm run db:init
 ```
 
-This will open up two browser windows, one in `http://localhost:5555` and one in `http://localhost:5556`. Navigate to those windows and add sample data to both databases.
+```text no-copy
+│  contract:  prisma/users/contract.json
+│  database:  postgres://****@localhost:5432/users
 
-### 4.2. Run the development server
+✔ Applied 2 operation(s) across 1 contract space
 
-Before starting the development server, note that if you are using Next.js `v15.2.0`, do not use Turbopack as there is a known [issue](https://github.com/vercel/next.js/issues/76497). Remove Turbopack from your dev script by updating your `package.json`:
+App space
+├─ Create table "user"
+├─ Add unique constraint on "user" (email)
+└─ marker 3bb5103a83e513d042e9a53dec29c899f92b5209b3b88944fee251cbe86c0e9b
 
-```json title="package.json"
-"script":{
-    "dev": "next dev --turbopack", // [!code --]
-    "dev": "next dev", // [!code ++]
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "postinstall": "npx prisma generate --schema ./prisma-user-database/schema.prisma && npx prisma generate --schema ./prisma-post-database/schema.prisma",
-    "generate": "npx prisma generate --schema ./prisma-user-database/schema.prisma && npx prisma generate --schema ./prisma-post-database/schema.prisma",
-    "migrate": "npx prisma migrate dev --schema ./prisma-user-database/schema.prisma && npx prisma migrate dev --schema ./prisma-post-database/schema.prisma",
-    "deploy": "npx prisma migrate deploy --schema ./prisma-user-database/schema.prisma && npx prisma migrate deploy --schema ./prisma-post-database/schema.prisma",
-    "studio": "npx prisma studio --schema ./prisma-user-database/schema.prisma --port 5555 & npx prisma studio --schema ./prisma-post-database/schema.prisma --port 5556"
+│  contract:  prisma/posts/contract.json
+│  database:  postgres://****@localhost:5432/posts
+
+✔ Applied 1 operation(s) across 1 contract space
+
+App space
+├─ Create table "post"
+└─ marker 556eb8244a0431fc6f1483efacdf220c5daca7a0106048892be1142e807bced1
+```
+
+Each database now carries a marker with the hash of the contract it was initialized from. Confirm both match:
+
+```npm
+npm run db:verify
+```
+
+```text no-copy
+│  contract:  prisma/users/contract.json
+│  database:  postgres://****@localhost:5432/users
+
+✔ Database marker and schema match contract
+
+│  contract:  prisma/posts/contract.json
+│  database:  postgres://****@localhost:5432/posts
+
+✔ Database marker and schema match contract
+```
+
+The marker is also what protects you from crossing the wires. Verifying the users contract against the posts database stops immediately:
+
+```npm
+npx prisma@latest db verify --config ./prisma.users.config.ts --db "$POSTS_DATABASE_URL"
+```
+
+```text no-copy
+✘ [CONTRACT.MARKER_MISMATCH] Hash mismatch
+  why: Contract storageHash does not match database marker
+```
+
+## 5. Query both databases from the app
+
+### 5.1. Seed both databases
+
+Create a script that writes through both clients. Node.js 24 runs TypeScript directly, so no extra tooling is needed:
+
+```typescript title="prisma/seed.ts"
+import { usersDb } from "./users/db.ts";
+import { postsDb } from "./posts/db.ts";
+
+async function main() {
+  const alice = await usersDb.orm.public.User.create({
+    email: "alice@prisma.io",
+    name: "Alice",
+  });
+  const bob = await usersDb.orm.public.User.create({
+    email: "bob@prisma.io",
+    name: "Bob",
+  });
+
+  await postsDb.orm.public.Post.create({
+    title: "Hello from the posts database",
+    content: "This row lives in the posts database.",
+    authorId: alice.id,
+  });
+  await postsDb.orm.public.Post.create({
+    title: "Two databases, one app",
+    content: null,
+    authorId: bob.id,
+  });
+
+  console.log("Seeded", alice.email, "and", bob.email, "with one post each.");
+  await usersDb.runtime().close();
+  await postsDb.runtime().close();
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
+```
+
+The `.ts` extensions in the imports are what Node.js needs to resolve the files. Allow them in `tsconfig.json`, otherwise `next build` fails its type check with `TS5097`:
+
+```json title="tsconfig.json"
+{
+  "compilerOptions": {
+    "allowImportingTsExtensions": true // [!code ++]
+  }
 }
 ```
 
-In a separate terminal window, start the development server by running:
+Run the seed:
+
+```npm
+npm run db:seed
+```
+
+```text no-copy
+Seeded alice@prisma.io and bob@prisma.io with one post each.
+```
+
+Both clients open their connection pool on the first query. The script closes them at the end so the process can exit.
+
+### 5.2. Render data from both databases
+
+Replace `app/page.tsx` with a server component that queries each client and joins posts to their authors in memory:
+
+```tsx title="app/page.tsx"
+import { usersDb } from "@/prisma/users/db";
+import { postsDb } from "@/prisma/posts/db";
+
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  const users = await usersDb.orm.public.User.select("id", "email", "name").all();
+  const posts = await postsDb.orm.public.Post
+    .select("id", "title", "authorId")
+    .orderBy((p) => p.id.asc())
+    .all();
+
+  const authorById = new Map(users.map((u) => [u.id, u]));
+
+  return (
+    <main className="mx-auto max-w-2xl p-8 font-sans">
+      <h1 className="text-3xl font-bold">Multi-database showcase</h1>
+      <p className="mt-2 text-zinc-600">
+        Users come from one PostgreSQL database, posts from another.
+      </p>
+
+      <h2 className="mt-8 text-xl font-semibold">Users</h2>
+      <ul className="mt-2 list-disc pl-6">
+        {users.map((user) => (
+          <li key={user.id}>
+            {user.name} ({user.email})
+          </li>
+        ))}
+      </ul>
+
+      <h2 className="mt-8 text-xl font-semibold">Posts</h2>
+      <ul className="mt-2 list-disc pl-6">
+        {posts.map((post) => (
+          <li key={post.id}>
+            {post.title}, by {authorById.get(post.authorId)?.name ?? "unknown"}
+          </li>
+        ))}
+      </ul>
+    </main>
+  );
+}
+```
+
+Each client is typed by its own `contract.d.ts`: `usersDb.orm.public` only knows `User`, `postsDb.orm.public` only knows `Post`, and mixing them up is a type error. `force-dynamic` keeps Next.js from trying to render the page at build time, when no database is reachable.
+
+### 5.3. Run the development server
 
 ```npm
 npm run dev
 ```
 
-Navigate to `http://localhost:3000` to see your Next.js app display data from both databases:
+```text no-copy
+▲ Next.js 16.3.4 (Turbopack)
+- Local:         http://localhost:3000
+- Environments: .env
+✓ Ready in 894ms
+```
 
-![App displaying data by querying two separate database instances](/img/guides/multi-client-app-demo.png)
+Open [http://localhost:3000](http://localhost:3000). The page lists Alice and Bob under **Users** and the two posts under **Posts**, each attributed to its author. One request, two databases, no adapter or extra client package in between.
 
-Congratulations, you have a Next.js app running with two Prisma Client instances querying different databases.
+Finally, confirm the production build passes. `prebuild` emits both contracts first:
 
-## 5. Deploy your Next.js app using multiple databases to Vercel
+```npm
+npm run build
+```
 
-Deploy your app by following these steps:
+```text no-copy
+> prisma contract emit --config ./prisma.users.config.ts && prisma contract emit --config ./prisma.posts.config.ts
+...
+✓ Compiled successfully
+```
 
-1. Ensure your project is version-controlled and pushed to a GitHub repository. If you do not have a repository yet, [create one on GitHub](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-new-repository). Once the repository is ready, run the following commands:
+## 6. Deploy to Vercel
+
+The app needs two environment variables in production and nothing else that is Prisma-specific: `prebuild` runs on Vercel, and there is no client to generate and no engine binary to ship.
+
+1. Push the project to a GitHub repository. If you do not have one yet, [create one on GitHub](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-new-repository), then run:
    ```bash
    git add .
-   git commit -m "Initial commit with Prisma Postgres integration"
+   git commit -m "Next.js app with two Prisma 8 databases"
    git branch -M main
    git remote add origin https://github.com/<your-username>/<repository-name>.git
    git push -u origin main
    ```
-   :::note
-   Replace `<your-username>` and `<repository-name>` with your GitHub username and the name of your repository.
-   :::
-2. Log in to [Vercel](https://vercel.com/) and navigate to your [Dashboard](https://vercel.com/docs/deployments).
-3. Create a new project. Follow Vercel's [Import an existing project](https://vercel.com/docs/getting-started-with-vercel/import) guide, but stop at [step 3](https://vercel.com/docs/getting-started-with-vercel/import#optionally-configure-any-settings) where you will configure environment variables _before_ clicking **Deploy**.
-4. Configure the `DATABASE_URL` environment variable:
-   1. Expand the **Environment variables** section.
-   1. Add the `PPG_USER_DATABASE_URL` environment variable:
-      - **Key**: `PPG_USER_DATABASE_URL`
-      - **Value**: Paste your user database connection URL, e.g. by copying it from the `.env` file in your project.
-   1. Add the `PPG_POST_DATABASE_URL` environment variable:
-      - **Key**: `PPG_POST_DATABASE_URL`
-      - **Value**: Paste your post database connection URL, e.g. by copying it from the `.env` file in your project.
-        :::warning
-        Do not deploy without setting the environment variables. Your deployment will fail if the application cannot connect to the databases.
-        :::
-5. Click the **Deploy** button. Vercel will build your project and deploy it to a live URL.
+2. In the [Vercel dashboard](https://vercel.com/), follow [Import an existing project](https://vercel.com/docs/getting-started-with-vercel/import) and stop at the step where you configure the project, before clicking **Deploy**.
+3. Expand **Environment variables** and add both connection strings:
+   - **Key**: `USERS_DATABASE_URL`, **Value**: the users database connection string from your `.env`
+   - **Key**: `POSTS_DATABASE_URL`, **Value**: the posts database connection string from your `.env`
+4. Click **Deploy**. Vercel runs `npm run build`, which emits both contracts and builds the app.
 
-Open the live URL provided by Vercel and verify that your application is working.
+:::warning
 
-Your application now runs on Vercel and uses two Prisma Clients to query two different databases.
+Set both variables before the first deploy. Each config file reads its variable with a non-null assertion, and a missing one fails the first request to the page.
+
+:::
+
+Open the live URL. The page renders the same two lists from the same two databases. The Vercel deploy was not run while validating this guide; the `npm run build` it executes is the one from step 5.
+
+## Common gotchas
+
+:::warning
+
+Commands without `--config` fail once the default config is gone. Running `npx prisma@latest contract emit` with no `./prisma.config.ts` (or with one that has no `orm` section) stops with `[CONFIG.FILE_NOT_FOUND]` and a hint that the `orm` config section is absent. Use the package scripts from step 4, or pass `--config` explicitly.
+
+:::
+
+- **No relations across databases.** A contract covers one database. Keep a plain id column such as `authorId` on the side that references the other database, and join in application code.
+- **`npx prisma@latest init` writes a third config.** It creates a `prisma.config.ts` that holds only the `skills` section for agent skills. That is expected; the database commands keep using `--config` with the two database configs.
+- **Do not close a client per request.** In `page.tsx` and route handlers, never call `usersDb.runtime().close()`. The pools are shared across requests and close when the process exits. Only scripts such as `prisma/seed.ts` close them.
+- **`orm init` picks the package manager from your lockfile.** Run it after `create-next-app` has written `package-lock.json`, `pnpm-lock.yaml`, or `bun.lock`, or it may install with a different package manager than the one you use.
+
+## Prompt your coding agent
+
+Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
+
+- "Using the prisma-8 skill, add a `Comment` model to `prisma/posts/contract.prisma`, emit with `--config ./prisma.posts.config.ts`, and update the posts database."
+- "Add a third database for billing following the same layout: `prisma.billing.config.ts`, `prisma/billing/contract.prisma`, `prisma/billing/db.ts`, and extend the package scripts."
+- "Write a route handler that creates a post for the signed-in user, validating that the `authorId` exists in the users database first."
 
 ## Next steps
 
-In this guide, you learned how to use multiple databases using Prisma ORM in a single Next.js app by:
-
-- Setting up separate Prisma schemas for user and post databases.
-- Configuring custom output directories and environment variables.
-- Creating helper scripts to generate and migrate each schema.
-- Instantiating and integrating multiple Prisma Clients into your application.
-- Deploying your multi-database application to Vercel.
-
-This approach allows you to maintain a clear separation of data models and simplifies multi-tenant or multi-database scenarios.
-
-For further improvements in managing your project, consider using a monorepo setup. Check out our related guides:
-
-- [How to use Prisma ORM in a pnpm workspaces monorepo](/guides/deployment/pnpm-workspaces)
-- [How to use Prisma ORM with Turborepo](/guides/deployment/turborepo)
+- Change a contract, then run `npm run contract:emit` and `npm run db:update` to apply the change to both databases in development. For checked-in migrations, run [`migration plan`](/cli/migration-plan) and [`db migrate`](/cli/db-migrate) with the `--config` of the database you changed; each writes to its own `migrations.dir`.
+- [Learn the fundamentals](/orm/fundamentals/reading-data): filtering, sorting, pagination, and writes.
+- [CLI configuration](/cli/configuration) covers everything `prisma.config.ts` can hold.
+- Splitting the app itself into packages? See [pnpm workspaces](/guides/deployment/pnpm-workspaces) and [Turborepo](/guides/deployment/turborepo).

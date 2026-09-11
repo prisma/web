@@ -27,7 +27,7 @@ export const db = postgres<Contract>({
 
 ## The rules
 
-Lints run in `beforeExecute`, against the query plan's AST. Each rule has a severity: `error` throws and blocks the query before it reaches the database, `warn` logs through the runtime log and lets the query run.
+Lints run before the driver. For a plan with a typed AST, the rules inspect that AST; [Raw SQL](#raw-sql) below covers plans without one. The middleware registers the same check as both `beforeQuery` and `beforeExecute`, so it covers row-returning queries and non-returning writes alike. Each rule has a severity: `error` throws and blocks the query before it reaches the database, `warn` logs through the runtime log and lets the query run.
 
 | Rule | Code | Default severity | Fires when |
 | --- | --- | --- | --- |
@@ -65,15 +65,19 @@ lints({
 });
 ```
 
-The severity keys are `deleteWithoutWhere`, `updateWithoutWhere`, `noLimit`, and `selectStar`, plus `readOnlyMutation` for the raw-SQL guardrail described below. The options type also accepts `unindexedPredicate`, but no rule emits that finding in v0.14.
+There are five severity keys: `deleteWithoutWhere`, `updateWithoutWhere`, `noLimit`, and `selectStar`, plus `readOnlyMutation` for the raw-SQL guardrail described below.
 
 ## Raw SQL
 
-Queries built with the ORM client or the SQL query builder carry a typed AST, and the rules above inspect it structurally. Raw SQL does not have that structure, so `lints` falls back to text heuristics for raw plans: it flags `select *`, a missing `LIMIT`, and a mutation smuggled through a raw query marked read-only (`LINT.READ_ONLY_MUTATION`). The raw heuristics carry their own defaults: `select *` escalates to `error` for raw plans (stricter than the AST rule's `warn`), a missing `LIMIT` stays a warning, and a read-only-intent mutation is an `error`. The `severities` keys above override raw findings too. Control the fallback with `fallbackWhenAstMissing`:
+Queries built with the ORM client or the SQL query builder carry a typed AST, and the rules above inspect it structurally.
+
+A whole-query raw statement built with [`db.raw.sql`](/orm/reference/raw-queries) does have an AST, of kind `raw-query`. It has no structural shape the runtime authored, so the structural rules are skipped for it and the text heuristics always run instead: they flag `select *`, a missing `LIMIT`, and a mutation smuggled through a query marked read-only (`LINT.READ_ONLY_MUTATION`). The raw heuristics carry their own defaults: `select *` escalates to `error` for raw plans (stricter than the AST rule's `warn`), a missing `LIMIT` stays a warning, and a read-only-intent mutation is an `error`. The `severities` keys above override raw findings too.
+
+`fallbackWhenAstMissing` matters only for a plan that has no `plan.ast` at all, not for `raw-query` plans:
 
 ```ts title="src/prisma/db.ts"
 lints({ fallbackWhenAstMissing: 'raw' }); // default: heuristic checks on the SQL text
-lints({ fallbackWhenAstMissing: 'skip' }); // skip linting for plans without an AST
+lints({ fallbackWhenAstMissing: 'skip' }); // skip linting for plans with no AST
 ```
 
 Heuristics can misread SQL that a structural check would classify correctly, so treat raw-SQL lint findings as a prompt to look at the query rather than a verdict.
