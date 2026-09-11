@@ -21,7 +21,7 @@ Use it after `docs-writer` (or any other writing pass) and after the fact review
 
 ### 1. Run the banned-term check
 
-Run `scripts/check-plain.sh` on every changed page. It fails on words from `references/banned-terms.md`, which lists source-code vocabulary and the plain words to use instead. Replace every hit before going further. Do not argue that a term is fine in context; if the reader needs the term, the sentence that first uses it defines it in plain words, and that is not a hit.
+Run `scripts/check-plain.sh` on every changed page. It fails on the words in `references/banned-terms.md`, which lists source-code vocabulary and the plain words to use instead, and it ignores code blocks and inline code. Replace every hit before going further. Do not argue that a term is fine in context. The one exception: if the sentence itself defines the term in plain words, add `{/* plain-language:defined */}` to that line; the checker skips it and the reader review will confirm the definition landed. Terms the list marks "(unexplained)" are not checked by the script; the reviewer catches them.
 
 ### 2. Dispatch the reader
 

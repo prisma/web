@@ -2,6 +2,8 @@
 
 These words come from the source code and the release notes. Readers do not have them. Do not use them in prose. Where the reader needs the idea, the replacement is the idea. Code identifiers (`db.orm.public.User`, `contractJson`, an error code) are not prose and are not banned.
 
+`scripts/check-plain.sh` enforces every row below except the ones marked "(unexplained)", which are allowed when the sentence that first uses them says what they mean; the reader review judges those. If a sentence genuinely defines a checked term in plain words, add `{/* plain-language:defined */}` to that line and the checker skips it. Use that marker rarely; if you reach for it twice on one page, the page is teaching internals.
+
 | Do not write | Write |
 | --- | --- |
 | terminal, terminal call, terminal method | the call that runs the query (`.all()`, `.first()`, `.create(...)`) |
