@@ -6,12 +6,12 @@ metaTitle: Prisma ORM raw queries reference
 metaDescription: 'Reference for Prisma ORM raw query escape hatches: PostgreSQL raw SQL and MongoDB raw commands.'
 ---
 
-Raw queries are the escape hatches for the queries the typed surfaces can't express. Reach for a typed surface first: the [ORM client](/orm/reference/orm-client) for everyday reads and writes, the [SQL query builder](/orm/reference/sql-query-builder) for PostgreSQL joins and aggregates, and the [pipeline builder](/orm/reference/pipeline-builder) for MongoDB aggregation. When none of them reaches the SQL clause or MongoDB command you need, drop down to raw.
+Raw queries are the escape hatches for queries the typed APIs can't express. Reach for a typed API first: the [ORM client](/orm/reference/orm-client) for everyday reads and writes, the [SQL query builder](/orm/reference/sql-query-builder) for PostgreSQL joins and aggregates, and the [pipeline builder](/orm/reference/pipeline-builder) for MongoDB aggregation. When none of them reaches the SQL clause or MongoDB command you need, drop down to raw.
 
 This page covers two escape hatches: **PostgreSQL raw SQL** (the `fns.raw` tagged template for fragments and the `db.raw.sql` tag for whole statements) and **MongoDB raw commands** (`db.raw.collection(...)` and `db.query.rawCommand(...)`). Every example is transcribed from an executable test suite that runs against a live database.
 
-:::warning[Fragments and raw commands bypass codec decoding]
-Only a whole `db.raw.sql` statement carries a result shape: `.returnsRow(spec)` names a codec per column, so its rows are decoded like a builder query's. Everything else on this page is **not codec-decoded**. A `fns.raw` fragment's `.returns(codecId)` is a type annotation only, so the value is whatever the driver hands back. On MongoDB, raw results come back as native BSON: `_id` fields are raw driver `ObjectId` instances (not decoded hex strings), and write methods return the driver's own result envelopes (`{ insertedId }`, `{ matchedCount, modifiedCount }`, `{ deletedCount }`). You are responsible for value handling: compare an `ObjectId` with `String(...)`, and read the envelope keys directly.
+:::warning[Fragments and raw commands return raw driver values]
+Only a whole `db.raw.sql` statement converts its results for you. `.returnsRow(spec)` names a `codecId` for every column, so its rows are converted just like a builder query's. Nothing else on this page is converted. A `fns.raw` fragment's `.returns(codecId)` only tells TypeScript what type to expect, so the value is whatever the driver returns. On MongoDB, raw results are native BSON: `_id` fields are driver `ObjectId` instances rather than hex strings, and write methods return the driver's own result objects (`{ insertedId }`, `{ matchedCount, modifiedCount }`, `{ deletedCount }`). Converting the values is up to you: compare an `ObjectId` with `String(...)`, and read those result keys directly.
 :::
 
 ## PostgreSQL raw SQL
@@ -81,7 +81,7 @@ const rows = await runtime.query(plan);
 
 ### Binding a bare value with `param()`
 
-A bare JavaScript value can be interpolated directly: the adapter infers a codec from its type (`number` becomes `pg/int4@1`, `pg/int8number@1`, or `pg/float8@1` by range; `bigint` becomes `pg/int8@1`; `string` becomes `pg/text@1`; `boolean` becomes `pg/bool@1`; `Uint8Array` becomes `pg/bytea@1`). Wrap it in `param(value, { codecId })` when you want a different codec than the inferred one, or when the value's type has no inference rule. Import `param` from `@prisma/orm-postgres/relational-core/expression`.
+A bare JavaScript value can be interpolated directly, and the adapter picks a `codecId` for it from its JavaScript type: `number` becomes `pg/int4@1`, `pg/int8number@1`, or `pg/float8@1` depending on its range; `bigint` becomes `pg/int8@1`; `string` becomes `pg/text@1`; `boolean` becomes `pg/bool@1`; `Uint8Array` becomes `pg/bytea@1`. Wrap the value in `param(value, { codecId })` when you want a different `codecId`, or when the value's type is not in that list. Import `param` from `@prisma/orm-postgres/relational-core/expression`.
 
 ```ts
 import { param } from '@prisma/orm-postgres/relational-core/expression';
@@ -115,7 +115,7 @@ const rows = await runtime.query(plan);
 
 ### The client-level `db.raw.sql` tag
 
-`db.raw` is the client's raw lane, sitting beside `db.sql` and `db.orm`. Its one key, `sql`, is the same tagged template as `fns.raw`, reachable outside a builder callback and with the terminators that turn a whole statement into a plan.
+`db.raw` is the client's raw SQL API, beside `db.sql` and `db.orm`. Its one key, `sql`, is the same tagged template as `fns.raw`. Unlike `fns.raw`, you can use it outside a builder callback, and it has the extra methods that turn a whole statement into a query you can run.
 
 Use `.returns(...)` to build a standalone `Expression` ahead of time and splice it into a builder query:
 
@@ -128,7 +128,7 @@ const plan = db.sql.public.user
 const rows = await runtime.query(plan);
 ```
 
-Use `.returnsRow(spec)` to run a whole statement and get decoded rows back. Each entry in the spec is either a contract column, which brings its codec, nullability, and TypeScript type with it, or an explicit codec id for a column the contract has no counterpart for:
+Use `.returnsRow(spec)` to run a whole statement and get decoded rows back. Each entry in the spec is either a contract column, which brings its own value conversion, nullability, and TypeScript type, or an explicit `codecId` for a column the contract has no counterpart for:
 
 ```ts
 const user = db.sql.public.user;
@@ -205,7 +205,7 @@ Interpolation accepts columns, typed expressions, `param(...)` values, row-retur
 ... wrap this value in `param(...)` with an explicit codec ...
 ```
 
-TypeScript already rejects an unsupported value at compile time. If you need to bind a `Date` (or any value with no supported type), wrap it in [`param(value, { codecId })`](#binding-a-bare-value-with-param) with the right codec.
+TypeScript already rejects an unsupported value at compile time. If you need to bind a `Date` (or any value with no supported type), wrap it in [`param(value, { codecId })`](#binding-a-bare-value-with-param) with the right `codecId`.
 
 ## MongoDB raw commands
 
@@ -220,7 +220,7 @@ import { ObjectId } from 'mongodb';
 The examples in this section run against the `users` / `posts` schema from the pipeline builder page. See its [example schema](/orm/reference/pipeline-builder#example-schema) for the full model definitions.
 
 :::warning[Raw command results are undecoded]
-As noted in the page-level warning at the top, raw command results are native BSON. `_id` and other ObjectId-valued fields come back as raw driver `ObjectId` instances, and write methods return the driver's result envelopes rather than decoded documents. Compare an `ObjectId` with `String(...)`, and read envelope keys (`insertedId`, `matchedCount`, `deletedCount`) directly.
+As noted in the page-level warning at the top, raw command results are native BSON. `_id` and other ObjectId-valued fields come back as raw driver `ObjectId` instances, and write methods return the driver's own result objects rather than converted documents. Compare an `ObjectId` with `String(...)`, and read the result keys (`insertedId`, `matchedCount`, `deletedCount`) directly.
 :::
 
 ### `aggregate<Row>()`
@@ -239,7 +239,7 @@ const rows = await (await db.runtime()).query(plan);
 
 ### `insertOne()` and `insertMany()`
 
-Insert one or many documents. Both return the driver's insert envelope, with `ObjectId` instances for the generated ids.
+Insert one or many documents. Both return the driver's own insert result, with `ObjectId` instances for the generated ids.
 
 ```ts
 const onePlan = db.raw
@@ -333,7 +333,7 @@ const third = await runtime.query(counter.findOneAndUpdate(filter, update, { ups
 
 ### `findOneAndDelete()`
 
-Atomically delete a matching document and return it. The yielded row is the raw matched document itself, not an envelope, so its `_id` is a raw `ObjectId`.
+Atomically delete a matching document and return it. The yielded row is the raw matched document itself, not a wrapper object, so its `_id` is a raw `ObjectId`.
 
 ```ts
 const plan = db.raw.collection('users').findOneAndDelete({ _id: new ObjectId(aliceId) }).build();
