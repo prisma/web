@@ -2,11 +2,7 @@ import { getPageImage, source } from "@/lib/source";
 import { getPageTitleText } from "@/lib/page-title";
 import { withDocsBasePath } from "@/lib/urls";
 import { resolveCanonicalUrl } from "@/lib/canonical";
-import {
-  getPageVersion,
-  withVersionDescription,
-  withVersionTitle,
-} from "@/lib/version-metadata";
+import { getPageVersion, withVersionDescription, withVersionTitle } from "@/lib/version-metadata";
 import { Badge } from "@prisma/eclipse";
 import { notFound } from "next/navigation";
 import { getMDXComponents } from "@/mdx-components";

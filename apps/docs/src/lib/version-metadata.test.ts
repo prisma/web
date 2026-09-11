@@ -58,19 +58,28 @@ test("exposes the raw version segment alongside the label", () => {
 
 test("appends the label to a title", () => {
   const version = getPageVersion("/orm/v6/reference/supported-databases");
-  assert.equal(withVersionTitle("Supported databases", version), "Supported databases (Prisma ORM v6)");
+  assert.equal(
+    withVersionTitle("Supported databases", version),
+    "Supported databases (Prisma ORM v6)",
+  );
 });
 
 test("leaves a title that already names the version alone", () => {
   const version = getPageVersion("/orm/v6/upgrade-guides/upgrading-to-prisma-6");
   assert.equal(withVersionTitle("Upgrade to Prisma ORM v6", version), "Upgrade to Prisma ORM v6");
   assert.equal(withVersionTitle("What is new in v6", version), "What is new in v6");
-  assert.equal(withVersionTitle("Prisma ORM V6 release notes", version), "Prisma ORM V6 release notes");
+  assert.equal(
+    withVersionTitle("Prisma ORM V6 release notes", version),
+    "Prisma ORM V6 release notes",
+  );
 });
 
 test("does not treat a lookalike token as the version", () => {
   const version = getPageVersion("/orm/v6/reference");
-  assert.equal(withVersionTitle("Migrate from v65 tooling", version), "Migrate from v65 tooling (Prisma ORM v6)");
+  assert.equal(
+    withVersionTitle("Migrate from v65 tooling", version),
+    "Migrate from v65 tooling (Prisma ORM v6)",
+  );
   assert.equal(withVersionTitle("Upgrading to v7", version), "Upgrading to v7 (Prisma ORM v6)");
 });
 

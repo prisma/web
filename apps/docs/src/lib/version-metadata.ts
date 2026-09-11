@@ -76,7 +76,9 @@ function escapeRegExp(value: string) {
  */
 export function mentionsVersion(text: string, pageVersion: PageVersion): boolean {
   if (text.toLowerCase().includes(pageVersion.label.toLowerCase())) return true;
-  return new RegExp(`(?<![a-z0-9])${escapeRegExp(pageVersion.version)}(?![a-z0-9])`, "i").test(text);
+  return new RegExp(`(?<![a-z0-9])${escapeRegExp(pageVersion.version)}(?![a-z0-9])`, "i").test(
+    text,
+  );
 }
 
 /**
