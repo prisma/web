@@ -73,12 +73,16 @@ function escapeRegExp(value: string) {
 /**
  * True when the text already names the version, so we do not append a label
  * that would read as a stutter ("Upgrade to Prisma ORM v7 (Prisma ORM v7)").
+ * Three spellings count: the full label, the bare `v7` token, and the product
+ * form without the `v` ("What is Prisma 7?", "Prisma ORM 6 overview").
  */
 export function mentionsVersion(text: string, pageVersion: PageVersion): boolean {
   if (text.toLowerCase().includes(pageVersion.label.toLowerCase())) return true;
-  return new RegExp(`(?<![a-z0-9])${escapeRegExp(pageVersion.version)}(?![a-z0-9])`, "i").test(
-    text,
-  );
+  const token = escapeRegExp(pageVersion.version);
+  if (new RegExp(`(?<![a-z0-9])${token}(?![a-z0-9])`, "i").test(text)) return true;
+  const number = escapeRegExp(pageVersion.version.replace(/^v/i, ""));
+  // `Prisma 6.16` still names the 6 line; `Prisma 60` does not.
+  return new RegExp(`\\bprisma(?:\\s+(?:orm|cli))?\\s+${number}(?![0-9])`, "i").test(text);
 }
 
 /**

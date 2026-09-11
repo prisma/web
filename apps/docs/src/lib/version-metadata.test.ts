@@ -74,6 +74,24 @@ test("leaves a title that already names the version alone", () => {
   );
 });
 
+test("leaves a title that names the version without the v alone", () => {
+  assert.equal(
+    withVersionTitle("What is Prisma 7?", getPageVersion("/orm/v7/overview")),
+    "What is Prisma 7?",
+  );
+  assert.equal(
+    withVersionTitle(
+      "What is Prisma ORM? (Prisma 6 overview)",
+      getPageVersion("/orm/v6/overview/introduction/what-is-prisma"),
+    ),
+    "What is Prisma ORM? (Prisma 6 overview)",
+  );
+  assert.equal(
+    withVersionDescription("Upgrade to Prisma ORM 6.16.", getPageVersion("/orm/v6/upgrade")),
+    "Upgrade to Prisma ORM 6.16.",
+  );
+});
+
 test("does not treat a lookalike token as the version", () => {
   const version = getPageVersion("/orm/v6/reference");
   assert.equal(
@@ -81,6 +99,11 @@ test("does not treat a lookalike token as the version", () => {
     "Migrate from v65 tooling (Prisma ORM v6)",
   );
   assert.equal(withVersionTitle("Upgrading to v7", version), "Upgrading to v7 (Prisma ORM v6)");
+  assert.equal(
+    withVersionTitle("Prisma 60 features", version),
+    "Prisma 60 features (Prisma ORM v6)",
+  );
+  assert.equal(withVersionTitle("What is Prisma 7?", version), "What is Prisma 7? (Prisma ORM v6)");
 });
 
 test("leaves latest titles and descriptions untouched", () => {
@@ -125,4 +148,7 @@ test("mentionsVersion matches the label and the bare segment", () => {
   assert.ok(mentionsVersion("Getting started with Prisma 7", version));
   assert.ok(mentionsVersion("Install the v7 CLI", version));
   assert.ok(!mentionsVersion("Getting started with Prisma Postgres", version));
+  assert.ok(mentionsVersion("Prisma ORM 7 release notes", version));
+  assert.ok(mentionsVersion("Prisma CLI 7 commands", version));
+  assert.ok(!mentionsVersion("Prisma 6 release notes", version));
 });
