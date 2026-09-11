@@ -53,6 +53,10 @@ export const docs = defineDocs({
       url: z.string(),
       metaTitle: z.string(),
       metaDescription: z.string(),
+      // Docs-relative URL of the page this one consolidates into, e.g.
+      // `/orm/v7/more/troubleshooting/nuxt`. Set only where two docs URLs are
+      // materially the same document; pages are self-canonical otherwise.
+      canonical: z.string().optional(),
       aiPrompt: z.string().optional(),
       noindex: z.boolean().optional(),
       // Visually hides the docs sidebar on landing pages; the pages stay in
