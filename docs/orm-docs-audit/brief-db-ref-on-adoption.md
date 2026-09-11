@@ -1,6 +1,6 @@
 # Brief: set the `db` ref when a database is adopted
 
-Written 2026-09-10 for an agent with no prior context. Repo: `prisma/orm` `main` (the Prisma 8 monorepo, rc.9; formerly `prisma/prisma`, and the old name still redirects).
+Written 2026-09-10 for an agent with no prior context. Repo: `prisma/orm` `main` (the Prisma ORM 8 monorepo; formerly `prisma/prisma`, and the old name still redirects). Verified against rc.9.
 
 ## What we want
 
@@ -28,9 +28,9 @@ The docs site (`prisma/web`) changes are handled separately; note in the PR what
 
 ## The problem
 
-A user with an existing database brings it under Prisma 8 by running `contract infer`, `contract emit`, and `db sign`. That is what the getting-started page for existing projects tells them to do. Then they change the contract and run `migration plan`. The plan proposes creating every table again.
+A user with an existing database brings it under Prisma ORM 8 by running `contract infer`, `contract emit`, and `db sign`. That is what the getting-started page for existing projects tells them to do. Then they change the contract and run `migration plan`. The plan proposes creating every table again.
 
-Cause: `migration plan` takes its origin from `--from`, else the `db` ref, else the empty contract. `db sign` writes the database marker but never sets the `db` ref, and there are no migrations on disk, so the plan resolves to the empty origin and the CLI does not refuse (the `MIGRATION.PLAN_ORIGIN_UNKNOWN` refusal only fires when migrations already exist on disk).
+Cause: `migration plan` takes its origin from `--from`, else the `db` ref, else the empty contract. `db sign` writes the database marker but never sets the `db` ref, and there are no migrations on disk, so the plan resolves to the empty origin and the CLI does not refuse (the `MIGRATION.PLAN_ORIGIN_UNKNOWN` refusal only fires when migrations already exist on disk). Once the graph has a snapshot the `db` ref can point at, `migration plan` writes an automatic baseline package; the gap is only that nothing after `db sign` creates that snapshot or the ref.
 
 Two Discord users hit this in one week and asked what `--from` is for. The incremental upgrade guide avoids it by teaching three extra commands (`migration plan --name baseline`, `db sign`, `migration ref set db <dir>`), and the "add to existing project" page does not teach them at all.
 
@@ -49,5 +49,5 @@ Two Discord users hit this in one week and asked what `--from` is for. The incre
 - Plan command and origin flag: `packages/1-framework/3-tooling/cli/src/orm/migration/plan.ts`, `control-api/operations/migration-plan.ts`
 - Refusal text: `PLAN_ORIGIN_UNKNOWN` in `packages/1-framework/3-tooling/cli/src/utils/cli-errors.ts`
 - Existing ref tests: `test/integration/test/cli.db-ref-advancement.e2e.test.ts`
-- The documented workaround: `wip/web/apps/docs/content/docs/guides/upgrade-prisma-orm/postgresql.mdx` §4.1 to 4.3
+- The documented workaround: `prisma/web` `apps/docs/content/docs/guides/upgrade-prisma-orm/postgresql.mdx`, sections 4.1 to 4.3
 - Migration graph ADRs: search `docs/architecture docs/adrs/` for "ref"

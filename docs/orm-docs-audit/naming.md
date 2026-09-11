@@ -14,17 +14,15 @@
 
 ## How to do it
 
-Not a global replace. Each of the 109 files needs a read, because "Prisma 8" in a contrast sentence becomes "Prisma ORM 8" and elsewhere becomes "Prisma ORM". Do it per page as each page is touched by the restructure and the content fixes, and sweep the remainder at the end. The 96 titles are the visible part and should go first, since they are the sidebar and the browser tab.
+One pass over the whole site, as its own PR. Not a global replace: each of the 109 files needs a read, because "Prisma 8" in a contrast sentence becomes "Prisma ORM 8" and elsewhere becomes "Prisma ORM". The 96 titles are the visible part and go first; they are the sidebar and the browser tab.
 
 ## What stays as is
 
-- Identifiers: `prisma-next.md`, `// use prisma-next`, `@prisma/orm-postgres`, `/studio/prisma-next`, package names, error codes. 40 occurrences of `prisma-next` as an identifier; none as prose ("Prisma Next" appears zero times on the site).
+- Identifiers: `prisma-next.md`, `// use prisma-next`, `@prisma/orm-postgres`, `/studio/prisma-next`, package names, error codes. 40 occurrences of `prisma-next` as an identifier; none as prose.
 - The "Prisma 7" group at the bottom of Getting Started and the v7 doc trees.
 - Release notes and changelogs, which name versions by nature.
 
-## Scope on the site today
-
-Outside the v6 and v7 trees:
+## Scope on the site (2026-09-10, outside the v6 and v7 trees)
 
 | Term | Occurrences | Files |
 | --- | --- | --- |
@@ -34,4 +32,4 @@ Outside the v6 and v7 trees:
 
 By area: `orm/` 225, `guides/` 196, `(index)/` 135, `cli/` 81. 96 page titles or meta titles contain "Prisma 8". No sidebar label does; the labels come from titles.
 
-The most common sentence shapes ("Add Prisma 8 to an ...", "Prisma 8 is the ...", "Prisma 8 app with ...", "Prisma 8 skills for ...") all take "Prisma ORM" as a drop-in replacement. The ones that do not are the contrast sentences, which should keep the number and add "ORM".
+The common sentence shapes ("Add Prisma 8 to an ...", "Prisma 8 is the ...", "Prisma 8 app with ...", "Prisma 8 skills for ...") all take "Prisma ORM" as a drop-in replacement. The contrast sentences keep the number and add "ORM".

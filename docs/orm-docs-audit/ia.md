@@ -1,17 +1,17 @@
 # Information architecture: proposal
 
-Proposal first, then why, then the current state it changes. Source: the `meta.json` files and page titles in `wip/web/apps/docs/content/docs/` on 2026-09-10. Labels are what the sidebar shows.
+Proposal first, then why, then the current state it changes. Source: the `meta.json` files and page titles under `apps/docs/content/docs/` in `prisma/web` on 2026-09-10. Labels are what the sidebar shows.
 
 ## Proposed
 
-Scope: the Getting Started > Prisma ORM subtree, the ORM > Introduction group, and two labels under Guides. Nothing else moves. `+` is a new node, `~` is a renamed or rewritten node, unmarked is unchanged.
+Scope: the Getting Started > Prisma ORM subtree, the ORM > Introduction group, and the Guides tree (two labels, and the Prisma 7 pages leaving it). Nothing else moves. `+` is a new node, `~` is a renamed or rewritten node, unmarked is unchanged.
 
 ### Getting Started > Prisma ORM
 
 ```
 Prisma ORM
-    Introduction to Prisma 8                        human content first, agent prompt last
-  + Prisma 8 release status                         RC, GA window, 7 support period, what npx prisma installs, how to pin 7
+    Introduction to Prisma ORM                      human content first, agent prompt last
+  + Release status                                  RC, GA window, 7 support period, what npx prisma installs, how to pin 7
   ~ Start a new app                                 was "Quickstart"; same two pages
       PostgreSQL
       MongoDB
@@ -32,7 +32,7 @@ Four starting states, one group each. "Coming from Prisma 7" is a link node here
 
 ```
 Introduction
-    Prisma 8
+    Prisma ORM
   + Coming from Prisma 7                            the mapping page: schema and types, CLI, client API, not-yet list
   ~ Core concepts                                   rewritten as narrative from mental-model.md; glossary kept at the end
 ```
@@ -40,16 +40,20 @@ Introduction
 ### Guides
 
 ```
-Overview                                            remove "Upgrading: moving from Prisma 7" from the coming-soon list
+Overview                                            no "coming soon" line for upgrading; it exists
 Upgrade Prisma ORM
   ~ Prisma 7 to 8 (PostgreSQL)                      was "PostgreSQL"
   ~ Prisma 6 to 8 (MongoDB)                         was "MongoDB"
     v7, v6, v5, v4, v3, v1
+  - Deployment, Database, Switch to Prisma ORM,      Prisma 7 content; lives under guides/v7
+    GitHub Actions, AI SDK, React Router 7, SolidStart
 ```
+
+The six Guides labels that leave come back as Prisma ORM 8 pages when C9 (deployment), C11 (CI), and C12 (switching, team workflow) are written.
 
 ### The ORM root page (`/orm`)
 
-Today the page has five sections: "Your schema becomes a contract", "What changed for developers", "Supported databases", "Get started" (three cards), "Go deeper" (five cards), and "Learn more about the design of Prisma 8" (five blog links). Three of the six argue for the design against Prisma 7. There is no query on the page. A Newcomer cannot tell from it what the product does; an Upgrader is told why it is different before being shown what it is.
+Today the page has six sections: "Your schema becomes a contract", "What changed for developers", "Supported databases", "Get started" (three cards), "Go deeper" (five cards), and "Learn more about the design of Prisma 8" (five blog links). Three of the six argue for the design against Prisma 7. There is no query on the page. A Newcomer cannot tell from it what the product does; an Upgrader is told why it is different before being shown what it is.
 
 Proposed structure, in order:
 
@@ -59,6 +63,8 @@ Proposed structure, in order:
 4. What you can do with it: one line and one link each for modeling, querying, relations, transactions, migrations, middleware, extensions. This is the section map, not an argument.
 5. Coming from Prisma 7: one line linking to the mapping page.
 6. Release status: one line linking to the status page.
+
+The page name follows the naming rule: "Prisma ORM", not "Prisma 8".
 
 Removed from this page: the three-step workflow explanation, "What changed for developers", and the blog list. The first moves into Core concepts; the other two go, or the blog list moves to the bottom of Core concepts.
 
@@ -70,7 +76,7 @@ The ORM line becomes a short row with the four starting states, linking into the
 
 | Node | Jobs |
 | --- | --- |
-| Prisma 8 release status | J4 |
+| Release status | J4 |
 | Add to an app you already have | J1 |
 | Adopt an existing database (rewritten) | J2 |
 | Coming from Prisma 7 | J3, J5 (links to the incremental guide), J6 (attribute map) |
@@ -82,7 +88,7 @@ J8, J9, and J10 need product decisions or shipped code before a node makes sense
 
 ### Not proposed
 
-No change to the top-level section list, to Data Modeling, Contract Authoring, Fundamentals, Migrations, Middleware, Extensions, Reference, or to any Guides subtree except the two labels. The "Prisma 7" group at the bottom of Getting Started stays as the home for people staying on 7.
+No change to the top-level section list, to Data Modeling, Contract Authoring, Fundamentals, Migrations, Middleware, Extensions, or Reference. Under Guides, only the label changes above and the removal of the Prisma 7 pages (A7). The "Prisma 7" group at the bottom of Getting Started stays as the home for people staying on 7.
 
 ## Why: where each job lands today, and where the structure fails it
 
@@ -96,7 +102,7 @@ No change to the top-level section list, to Data Modeling, Contract Authoring, F
 | J6 data types | Data Modeling > Overview | right node; one stale example |
 | J7 editor setup | none | no node |
 | J8 advanced Postgres | none | no node; needs product answers |
-| J9 types | none | no node; API merged, awaiting a tagged release |
+| J9 types | none | no node; API in PRs |
 | J10 opt out of agent files | CLI > configuration | right node, unreachable from Getting Started |
 
 Two observations follow from the table.

@@ -1,95 +1,78 @@
-# Jobs users come to the docs to do, and how the docs serve them today
+# Jobs readers come to the docs to do
 
-Each job has: who, where they land, what "done" looks like, the path through the current site, and a verdict. Paths were traced in the `prisma/web` source at `wip/web/apps/docs/content/docs/` and checked against the live site on 2026-09-10. Verdicts: **green** works, **amber** works with friction, **red** fails or is missing.
+Ten jobs. Each names who does it, what "done" looks like, what the docs must provide for it, and where the site's structure fails it. The jobs are the design input for `ia.md` (which node serves each job) and `changes.md` (which page or ORM change supplies what is missing). Verdicts describe the structure, not the state of any one sentence: **green** a page exists for the job and carries it end to end, **amber** the job can be done but the reader has to assemble it from several places or work around a gap, **red** no page is written for the job.
 
-## J1. Add Prisma 8 to an app I already started, with an empty database
+## J1. Add Prisma ORM to an app I already started, with an empty database
 
-Who: Newcomer, sometimes Upgrader. The Bun user in Discord is this job.
+Who: Newcomer, sometimes Upgrader. The most common Discord complaint is this job.
 
 Done: models defined, tables created, one query returns rows, from inside the app they already have.
 
-Path today:
+What the docs must provide: one page that starts from "you have a project directory and no tables", runs `orm init`, edit the contract, `contract emit`, `db init`, one query, and shows `db.ts` and where `DATABASE_URL` comes from.
 
-- Search "prisma bun" lands on the Bun guide. It starts with `create-prisma`, so it scaffolds a new app instead of joining theirs.
-- `/getting-started` offers "Add to an existing project", which goes to the existing-project PostgreSQL page. That page assumes the database already has tables: step 4 is `contract infer`. There is no branch for "empty database".
-- The right three commands (`orm init`, `contract emit`, `db init`) exist only as a snippet on the CLI reference overview, under "Start in an existing project".
-- Whichever page they use, the query example is wrong: the existing-project page uses `db.orm.User` (must be `db.orm.public.User` on Postgres) and `.take(2)` (removed in rc.7).
-- `orm init` writes `src/prisma/db.ts`, but no getting-started page shows the file, so `import { db } from "./prisma/db"` is unexplained.
-- The quickstart says scripts read `DATABASE_URL` from the environment, not `.env`; the existing-project page uses `.env` with `dotenv/config`. The two pages disagree and neither says why.
-- The existing-project script calls both `db.connect()` and `db.runtime()`. The difference is explained only deep in the transactions-and-runtime reference.
-- Skill files land in the repo with no mention of how to stop that.
+Where the structure fails: the getting-started subtree is organised by which tool runs (`create-prisma` for new apps, `orm init` for "existing project"). The reader's situation, an app with no database yet, falls between the two: the scaffold page creates a new app, and the existing-project page assumes tables exist and starts with `contract infer`. The three commands that fit exist only as a snippet on the CLI overview.
 
-Verdict: **red**. No page is written for this job, and the nearest page has two copy-paste errors.
+Verdict: **red**. IA node: "Add to an app you already have" (C2).
 
-## J2. Bring an existing database with data under Prisma 8, then make the next schema change
+## J2. Bring an existing database with data under Prisma ORM, then make the next schema change
 
 Who: Upgrader mostly, some Newcomers with a legacy database.
 
 Done: contract matches the database, database is signed, first query works, and `migration plan` for the next change produces one small migration rather than a full recreate.
 
-Path today: the existing-project PostgreSQL page, steps 2 to 9.
+What the docs must provide: the adoption sequence end to end, including what to expect from `contract infer` (removed attributes, non-`public` schemas, defaults it cannot express, Temporal-backed timestamp types), what `db sign` checks and what its exit codes mean, and whatever makes the next `migration plan` chain from the signed state.
 
-- Steps 2 to 7 are in the right order: init, connection, infer, review, emit, sign, query.
-- Step 4 says "review the inferred contract" but not what to expect. Users hit `@db.*` attributes (removed in 0.17), non-`public` schemas, and a `Decimal` default that fails to emit, with no guidance.
-- Step 6 signs the database but never explains what a signature is or what to do if `db sign` exits 4.
-- Step 9 says "use `db update` or `migration plan`". It never mentions the `db` ref. `db sign` does not set the ref (only `db init`, `db update`, and `db migrate --advance-ref` do). With no migrations on disk and no ref, `migration plan` silently plans from an empty database and proposes recreating every table. This is the `--from` confusion reported twice in Discord.
-- The upgrade guide gets this right (baseline migration, sign, `migration ref set db`, then `--advance-ref db` on each migrate), but J2 users on the existing-project page never see it.
+Where the structure fails: the existing-project page stops at "sign, then query". The step that makes the next migration work (today: a baseline migration and `migration ref set db`) is taught only in the incremental upgrade guide, which this reader never sees. That step exists because `db sign` does not record where migrations start from; the design in `brief-db-ref-on-adoption.md` removes it.
 
-Verdict: **red**. The page stops one step short and the missing step produces a destructive-looking plan.
+Verdict: **red**. IA node: "Adopt an existing database" (C3); ORM change D1.
 
-## J3. Rewrite Prisma 7 queries in Prisma 8
+## J3. Rewrite Prisma ORM 7 queries in Prisma ORM 8
 
 Who: Upgrader.
 
-Done: for every Prisma 7 call in their code, they know the Prisma 8 call or that it does not exist.
+Done: for every Prisma ORM 7 call in their code, they know the Prisma ORM 8 call or that it does not exist.
 
-Path today:
+What the docs must provide: one mapping page in four sections (schema and types, CLI commands, client API, not-yet list with a status per item), reachable from every ORM entry point. The not-yet list is the part readers ask for most: `createMany` and `skipDuplicates`, `findUniqueOrThrow`, atomic `increment`/`decrement`, case-insensitive filters, JSON path filters, `$transaction` arrays, the payload types.
 
-- No single mapping page. Sixteen inline "For Prisma 7 users" diff blocks are spread across reading-data, writing-data, transactions-and-runtime, pipeline-builder, data-modeling, and eight places in the ORM reference.
-- Pagination is taught as `.take()`/`.skip()` on eight pages (29 sites). Those were renamed to `.limit()`/`.offset()` in rc.7 and the old names removed.
-- The bulk count mutations are taught as `createCount`/`updateCount`/`deleteCount` (31 sites on two pages). They were renamed to `createAndCount` and friends in 0.17.
-- `createMany` appears on no Prisma 8 page. `createAll` and `createAndCount` are documented but nothing says they replace it. `skipDuplicates` has no equivalent and no page says so.
-- `findUniqueOrThrow`, `findFirstOrThrow`, atomic `increment`/`decrement`, and case-insensitive filters have no Prisma 8 equivalent in the SQL ORM client source. No page says so.
-- `$transaction([...])` is covered in one inline block. `Prisma.UserGetPayload` and the model types have no page at all; the replacements (`Models`, `Shape<>`) merged to prisma/orm `main` on 2026-09-10 (#30231, #30236) and are not in a tagged release as of rc.9.
-- Accessor casing (`prisma.user` became `db.orm.public.User`) is stated once in reading-data and nowhere else.
+Where the structure fails: there is no node. The mapping exists as sixteen inline "For Prisma 7 users" blocks across nine pages, so the reader finds it by luck, and nothing admits what does not exist. The accessor change (`prisma.user` to `db.orm.public.User`) is stated once.
 
-Verdict: **red**. The answers that exist are scattered, two of them are wrong, and the missing features are not admitted.
+Verdict: **red**. IA node: "Coming from Prisma 7" (C1, placed by A2); the not-yet list depends on D4.
 
-## J4. Decide whether to move to Prisma 8 now
+## J4. Decide whether to move to Prisma ORM 8 now
 
 Who: Upgrader, also a Newcomer choosing an ORM.
 
-Done: they know Prisma 8 is a release candidate, when GA is expected, how long 7 is supported, what `npx prisma` now installs, and how to pin 7.
+Done: they know Prisma ORM 8 is a release candidate, when GA is expected, how long 7 is supported, what `npx prisma` now installs, and how to pin 7.
 
-Path today: the root page says "Prisma 7 remains fully supported" and shows `npx prisma@7.10.0 init`. Nothing on the site says Prisma 8 is an RC, gives a GA window, states the 12-month support commitment for 7, or explains the npm `latest` tag. Five people asked this in Discord in one week.
+What the docs must provide: one short page with those five facts, linked from the root page and from every "Using Prisma 7?" note.
 
-Verdict: **red**, and the cheapest fix on the list.
+Where the structure fails: no node. The only signal is a note box saying Prisma 7 remains supported, with links for staying on 7. Nothing says "release candidate", gives a window, or explains that `npm install prisma` now resolves to 8 while `@prisma/client` resolves to 7.
 
-## J5. Migrate a whole Prisma 7 app incrementally
+Verdict: **red**. IA node: "Release status" (C4); the npm tag question is D6.
+
+## J5. Migrate a whole Prisma ORM 7 app incrementally
 
 Who: Upgrader with a team and a production database.
 
-Done: both versions run side by side, routes move one at a time, migrations hand over, Prisma 7 is removed.
+Done: both versions run side by side, routes move one at a time, migrations hand over, Prisma ORM 7 is removed.
 
-Path today: `guides/upgrade-prisma-orm/postgresql` covers all five phases and is the best page on the site for the Upgrader. Getting there is the problem: the root page, `/getting-started`, and the ORM overview never link to it. The guides index lists "Upgrading: moving from Prisma 7" under "Coming as they land". In the sidebar it sits under "Upgrade Prisma ORM" as "PostgreSQL", with no "7 to 8" in the label. It is also pinned to rc.6 and rc.4 and says so in a callout.
+What the docs must provide: the five-phase guide that exists (`guides/upgrade-prisma-orm/postgresql`), reachable from the ORM entry points and from the mapping page, with a label that says what it is.
 
-Verdict: content **amber**, discoverability **red**.
+Where the structure fails: the page is filed under Guides and nothing under Getting Started or ORM links to it. It is the best page on the site for this reader and the hardest to find.
 
-## J6. Model my data, especially types Prisma 7 handled with `@db.*`
+Verdict: content **green**, discoverability **amber**. IA: link it from "Coming from Prisma 7" and the ORM front door (A2).
+
+## J6. Model my data, especially types Prisma ORM 7 handled with `@db.*`
 
 Who: Newcomer and Upgrader.
 
-Done: they can write `Text`, `VarChar(100)`, `Uuid`, `Decimal`, enums, relations, and know which Prisma 7 attributes are gone.
+Done: they can write `Text`, `VarChar(100)`, `Uuid`, `Decimal`, enums, relations, and know which Prisma ORM 7 attributes are gone.
 
-Path today:
+What the docs must provide: the scalar table, the native types in type position, the `@default` generators, index and check options, and a Prisma ORM 7 attribute map (`@db.Text`, `@db.VarChar(n)`, `@db.Decimal(p,s)` to their type-position forms), plus a money and `Decimal` section.
 
-- The data-modeling overview has a scalar table (`String` is `Text`) and a money-in-cents recommendation. Good.
-- The PSL syntax page shows `Uuid = String @db.Uuid` in its opening example and again at line 177. That syntax was removed in 0.17. Copying it fails emission.
-- No page maps Prisma 7 attributes (`@db.Text`, `@db.VarChar(n)`, `@db.Decimal(p,s)`) to Prisma 8 types.
-- `Decimal` defaults and money beyond "use cents" are not covered. One user asked and got no answer.
-- Implicit many-to-many is honestly marked unsupported. Good.
+Where the structure fails: the right nodes exist (Data Modeling, Contract Authoring) but cover a fraction of the authoring surface, and the attribute map has no home.
 
-Verdict: **amber**, with one stale example that must go.
+Verdict: **amber**. Pages: C1 (schema section), C14, C8.
 
 ## J7. Set up my editor
 
@@ -97,9 +80,11 @@ Who: Newcomer and Upgrader.
 
 Done: syntax highlighting and formatting work for `contract.prisma`.
 
-Path today: no page. The facts (extension is on open-vsx not the Microsoft marketplace, no bundled language server, needs the CLI installed locally, file needs `// use prisma-next` on line one) were given by Serhii in a Discord thread. The `// use prisma-next` line appears in examples but is never explained.
+What the docs must provide: where the VS Code extension lives (open-vsx, not the Microsoft marketplace), that there is no bundled language server and the locally installed CLI is used, that `// use prisma-next` on line one is what the language server keys on, and `prisma contract format` as the fallback.
 
-Verdict: **red**, missing.
+Where the structure fails: no node. The facts were given once, in a Discord thread.
+
+Verdict: **red**. IA node: "Editor setup" (C5).
 
 ## J8. Use advanced Postgres features
 
@@ -107,9 +92,11 @@ Who: Newcomer and Upgrader on real projects. RLS, policies, expression and funct
 
 Done: they know whether the contract can express it, and how, or that they must manage it outside Prisma.
 
-Path today: nothing under `orm/`. RLS is covered only through the Supabase extension in the shipped skill. One user's agent invented a contract-builder API because there was nothing to read.
+What the docs must provide: one page: `@@rls` and the `policy_*` blocks, `@@index(expression:, where:, unique:, type:)`, `@@check` and `@noCheck`, `installExtension` / `createExtension` in migrations, `@@control` for tables Prisma should not manage.
 
-Verdict: **red**, missing. Needs a product answer before a docs answer.
+Where the structure fails: no node. All of it ships and none of it is documented; readers' agents invent APIs because there is nothing to read.
+
+Verdict: **red**. Page: C7.
 
 ## J9. Name a model or result type for reuse
 
@@ -117,31 +104,35 @@ Who: Newcomer and Upgrader.
 
 Done: `type User = ...` and the type of a query result, without reading `contract.d.ts`.
 
-Path today: no page. `ResultType` for SQL builder plans is the only documented helper. The `Models` namespace and `Shape<>` (prisma/orm#30231, #30236) merged to `main` on 2026-09-10 and are not in a tagged release as of rc.9; the where-type exports (#30158) shipped in rc.9.
+What the docs must provide: a types page with model, result, where, and input types, each beside its Prisma ORM 7 name. The `Models` namespace and `Shape<>` are in `prisma/orm` `main` and ship with the next tagged release; `ResultType` for SQL builder plans exists today.
 
-Verdict: **red** until the next tagged release carries `Models` and `Shape<>`, then a page is needed on release day.
+Where the structure fails: no node.
+
+Verdict: **red**. Page: C6, on the release that carries the types.
 
 ## J10. Stop Prisma from writing agent files into my repo
 
-Who: Newcomer and Upgrader, five people in one week.
+Who: Newcomer and Upgrader.
 
 Done: one config line, and they know it.
 
-Path today: `skills: { agents: [] }` is documented on the CLI configuration page and `init --skills=none` on the init page. Neither is linked from create-prisma, the quickstarts, or the existing-project page. The advice circulating in Discord (`skills sync --disable`, an env var) is wrong. `create-prisma` has no flag.
+What the docs must provide: the one line (`skills: { agents: [] }` in `prisma.config.ts`) at the point where the scaffold introduces the files, linking to the configuration reference; and, once it exists, the scaffold-time opt-out.
 
-Verdict: **amber** for docs, **red** for the tool.
+Where the structure fails: the reader meets the files on the scaffold pages and the answer lives on the CLI configuration page, which those pages must link. The tool itself has no prompt or flag, and `skills sync` with an empty list does not remove what it wrote.
+
+Verdict: docs **amber**, tool **red**. Tool change D3.
 
 ## Summary
 
-| Job | Verdict | Cheapest fix |
+| Job | Verdict | What serves it |
 | --- | --- | --- |
-| J1 existing app, empty DB | red | new page |
-| J2 existing DB, next migration | red | add baseline and ref steps |
-| J3 Prisma 7 query mapping | red | one mapping page plus rename fixes |
-| J4 should I move now | red | one short page, linked from root |
-| J5 incremental upgrade | amber / red | links and a nav label |
-| J6 data types | amber | remove `@db.` example, add attribute map |
-| J7 editor | red | new page |
-| J8 advanced Postgres | red | product decision first |
-| J9 types | red | page on the next tagged release |
-| J10 agent files | amber | one line on three pages |
+| J1 existing app, empty DB | red | new node: Add to an app you already have (C2) |
+| J2 existing DB, next migration | red | Adopt an existing database (C3) after D1 |
+| J3 Prisma ORM 7 query mapping | red | Coming from Prisma 7 (C1, A2); D4 for the not-yet list |
+| J4 should I move now | red | Release status (C4); D6 |
+| J5 incremental upgrade | green / amber | links from the ORM entry points (A2) |
+| J6 data types | amber | C1 schema section, C14, C8 |
+| J7 editor | red | Editor setup (C5) |
+| J8 advanced Postgres | red | Advanced Postgres (C7) |
+| J9 types | red | Types (C6) on the next tagged release |
+| J10 agent files | amber / red | the line on scaffold pages; D3 |
