@@ -3,7 +3,7 @@ title: create-prisma
 description: Scaffold a new Prisma ORM app with create-prisma, with Prisma Composer, Prisma Postgres, and a deploy path built in.
 url: /prisma-orm/create-prisma
 metaTitle: Scaffold a Prisma ORM app with create-prisma
-metaDescription: Use npx create-prisma@latest to create a Prisma ORM app from a framework template, pick PostgreSQL or MongoDB, choose PSL or TypeScript contract authoring, and deploy to Prisma.
+metaDescription: Use npm create prisma@latest to create a Prisma ORM app from a framework template, pick PostgreSQL or MongoDB, choose PSL or TypeScript contract authoring, and deploy to Prisma.
 ---
 
 `create-prisma` creates a new Prisma ORM project from an app template. It installs Prisma ORM, emits the contract, and generates a deployable [Prisma Composer](/composer) app. PostgreSQL projects use Composer's native Prisma Postgres provider, including migrations and a typed runtime client.
@@ -21,10 +21,10 @@ Use it when you want to start from a working app. If you already have an app, fo
 Run the CLI with your package manager and answer the prompts:
 
 ```npm
-npx create-prisma@latest my-app
+npm create prisma@latest -- my-app
 ```
 
-The prompts cover the project name, the app template, the database provider, the contract authoring style, the package manager, and whether to deploy right away. Generated Node.js projects expect Node.js 24 LTS or newer.
+The prompts cover the project name, the app template, the database provider, the contract authoring style, the package manager, and whether to deploy right away. Prisma writes skill files for coding agents into your repo. To stop that, set `skills: { agents: [] }` in `prisma.config.ts`; see [Configuration](/cli/configuration). Generated Node.js projects expect Node.js 22.18 or newer (on the 24 line, 24.11 or newer); Node.js 24 is recommended.
 
 The last prompt is:
 
@@ -32,17 +32,17 @@ The last prompt is:
 Deploy to Prisma now?
 ```
 
-Choose no to deploy later with the generated `deploy` script. When more than one Prisma workspace session is available, the CLI asks which workspace receives the deployment; pass `--workspace <id-or-name>` to pick one without a prompt, or omit it to use the active workspace. Choosing another workspace also updates the Prisma CLI's active workspace session.
+The prompt defaults to Yes. `--yes` accepts the defaults for the other prompts but answers No here, so `--yes` on its own never deploys; `--json` deploys unless you pass `--no-deploy`. Choose no to deploy later with the generated `deploy` script. When more than one Prisma workspace session is available, the CLI asks which workspace receives the deployment; pass `--workspace <id-or-name>` to pick one without a prompt, or omit it to use the active workspace. Choosing another workspace also updates the Prisma CLI's active workspace session.
 
 ## Skip the prompts
 
 Pass flags when you already know the project shape. `--yes` accepts the defaults for anything you leave out:
 
 ```npm
-npx create-prisma@latest my-app --template next --provider postgres --yes
+npm create prisma@latest -- my-app --template next --provider postgres --yes
 ```
 
-`create` is the default subcommand, so `npx create-prisma@latest create my-app ...` is the same command.
+`create` is the default subcommand, so `npm create prisma@latest -- create my-app ...` and `npm create prisma@latest -- my-app ...` are the same command. Everything after `--` goes to `create-prisma`; without the separator npm keeps the flags for itself.
 
 | Flag | What it does |
 | --- | --- |
@@ -53,9 +53,10 @@ npx create-prisma@latest my-app --template next --provider postgres --yes
 | `--package-manager npm\|pnpm\|yarn\|bun\|deno` | Chooses the package manager used to install dependencies. |
 | `--deploy` / `--no-deploy` | Deploys the generated app to Prisma immediately, or skips that step. |
 | `--workspace <id-or-name>` | The Prisma workspace to deploy into. |
-| `--yes` | Skips prompts and accepts the default choices. |
-| `--force` | Allows scaffolding into a non-empty directory. |
-| `--verbose` | Shows the full command output during setup. |
+| `--yes` | Skips prompts and accepts the default choices, which means no deploy. |
+| `--force` | Scaffolds into a non-empty directory, overwriting the generated starter and Prisma files (config, contract, and `db.ts`). It refuses when the target has a non-empty `migrations/` directory. |
+| `--verbose` | Shows the full command output during setup. Not compatible with `--json`. |
+| `--json` | Runs non-interactively and writes one JSON result object to stdout, for agents and automation. Deploys unless you pass `--no-deploy`. |
 
 ## Templates
 
@@ -76,14 +77,14 @@ Every template supports PostgreSQL and MongoDB, PSL or TypeScript contract autho
 Deno is supported for local minimal PostgreSQL apps:
 
 ```bash
-deno run -A npm:create-prisma@latest my-deno-app --template minimal --provider postgres --package-manager deno --no-deploy
+deno run -A --minimum-dependency-age=0 npm:create-prisma@latest my-deno-app --template minimal --provider postgres --package-manager deno --no-deploy
 ```
 
-Prisma Compute does not support Deno deployments yet, so Deno projects stop at a verified local run.
+Deno 2.9 skips packages published in the previous 24 hours by default, so without `--minimum-dependency-age=0` a newly published `create-prisma` release resolves to an older cached version. Prisma Compute does not support Deno deployments yet, so Deno projects stop at a verified local run.
 
 ## Start the app
 
-Review `DATABASE_URL` in `.env`, then initialize the database and start the dev server:
+Set the connection string in your environment, then initialize the database and start the dev server. The generated `prisma.config.ts` reads `DATABASE_URL` for PostgreSQL and `MONGODB_URL` for MongoDB from the process environment and loads no dotenv file (Deno projects are the exception: their scripts pass `--env-file=.env`), so export the variable in the shell before running the scripts.
 
 ```bash
 cd my-app
@@ -91,7 +92,30 @@ npm run db:init
 npm run dev
 ```
 
-Sample records are seeded on the app's first query. From there, evolve the contract under `src/prisma/`, run `npm run contract:emit`, and plan and apply the migration with `npx prisma@latest migration plan` and `npx prisma@latest db migrate`. The [quickstart](/prisma-orm/quickstart/postgresql) covers that loop in detail, and the [MongoDB quickstart](/prisma-orm/quickstart/mongodb) covers the replica set setup MongoDB needs.
+Sample records are seeded on the app's first query. From there, evolve the contract under `src/prisma/`, run `npm run contract:emit`, and plan and apply the migration with `npx prisma@latest migration plan` and `npx prisma@latest db migrate`. The [quickstart](/prisma-orm/quickstart/postgresql) covers that loop in detail, and the [MongoDB quickstart](/prisma-orm/quickstart/mongodb) covers the MongoDB connection string.
+
+### Generated scripts
+
+The scaffold adds these scripts to `package.json`:
+
+| Script | Runs |
+| --- | --- |
+| `contract:emit` | `prisma contract emit` |
+| `db:init` | `prisma db init` |
+| `db:update` | `prisma db update` |
+| `db:verify` | `prisma db verify` |
+| `migration:plan` | `prisma migration plan` |
+| `migrate` | `prisma db migrate` |
+| `migration:status` | `prisma migration status` |
+| `migration:show` | `prisma migration show` |
+| `skills:sync` | `prisma skills sync \|\| exit 0` |
+| `postinstall` | `prisma skills sync \|\| exit 0`, added by the `prisma init` the scaffold runs |
+| `composer:dev` | `prisma dev module.ts` |
+| `composer:deploy` | `prisma deploy module.ts` |
+| `dev:composer` | the build script, then `composer:dev` |
+| `deploy` | the build script, then `composer:deploy` |
+
+Deno projects get the Prisma scripts only, each wrapped in `deno run -A npm:...`, without `skills:sync`, without `postinstall`, and without the Composer scripts.
 
 ## Telemetry
 
