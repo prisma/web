@@ -199,7 +199,7 @@ export const llmsSections: LLMsSection[] = [
     slug: "guides",
     title: "Guides",
     description:
-      "End-to-end guides for using Prisma ORM and Prisma Postgres with popular frameworks and runtimes (Prisma ORM 8 guides live in the Prisma 8 section).",
+      "End-to-end guides for using Prisma ORM 8 and Prisma Postgres with popular frameworks, runtimes, deployment targets, and integrations (the Prisma ORM 7 guides live in the Prisma ORM v7 section).",
     prefixes: ["/guides"],
     excludePrefixes: ["/guides/v7"],
   },
@@ -214,7 +214,7 @@ export const llmsSections: LLMsSection[] = [
     slug: "cli",
     title: "Prisma CLI",
     description:
-      "Prisma CLI command reference for init, generate, migrate, db, studio, and more (Prisma ORM 8 CLI docs live in the Prisma 8 section).",
+      "Unified Prisma CLI command reference: the Prisma ORM 8 commands (orm init, contract, db, migration, skills) and the platform commands (auth, project, postgres, deploy, and more). The Prisma ORM 7 CLI docs live in the Prisma ORM v7 section.",
     prefixes: ["/cli"],
     excludePrefixes: ["/cli/v7"],
   },
