@@ -29,7 +29,9 @@ export const db = postgres<Contract>({
 });
 ```
 
-When you combine it with other middleware that implement `intercept`, register the cache first when cached rows should win. `beforeExecute` hooks still run before a cache hit is served, and `afterExecute` still fires afterward with `result.source` set to `'middleware'`.
+The cache implements three hooks, all on the row-query lifecycle: `interceptQuery`, `onRow`, and `afterQuery`. So the hooks that run around a cache hit are every middleware's `beforeQuery`, which has already run before any interceptor is consulted, and every middleware's `afterQuery`, which fires afterward with `result.source` set to `'middleware'`. When you combine the cache with other middleware that implement `interceptQuery`, register the cache first if cached rows should win.
+
+Because it lives on that lifecycle, a read run through `runtime.execute(plan)` is neither cached nor returned as rows; `execute` is the write path and reports affected rows.
 
 The cache is family-agnostic: unlike `budgets` and `lints`, it works on MongoDB runtimes as well as PostgreSQL.
 
@@ -76,7 +78,7 @@ The annotation payload has three fields:
 
 By default the cache key is a content hash of the executed query: the post-lowering statement plus its bound parameters, combined with the contract's storage hash. Two lookups with different parameter values land in different slots; the same lookup hits. Because schema migrations rotate the storage hash, entries cached before a migration cannot serve queries against the new schema.
 
-Cache hits are still visible to the rest of the middleware chain: `beforeExecute` hooks have already run, the driver and `onRow` are skipped, and `afterExecute` fires on every middleware with `result.source` set to `'middleware'` instead of `'driver'`, so logging and metrics keep working for cached reads.
+Cache hits are still visible to the rest of the middleware chain: `beforeQuery` hooks have already run, the driver and `onRow` are skipped, and `afterQuery` fires on every middleware with `result.source` set to `'middleware'` instead of `'driver'`, so logging and metrics keep working for cached reads.
 
 The cache only acts at runtime scope. Queries executed inside a transaction or on an explicitly checked-out connection always go to the database, because read-after-write consistency is the caller's expectation there.
 
@@ -99,5 +101,5 @@ The default store is in-memory and per-process. Two instances of your app do not
 ## See also
 
 - [How middleware works](/orm/middleware/how-middleware-works)
-- [Authoring custom middleware](/orm/middleware/authoring-custom-middleware), including how `intercept` short-circuiting works
+- [Authoring custom middleware](/orm/middleware/authoring-custom-middleware), including how `interceptQuery` short-circuiting works
 - [Built-in: budgets](/orm/middleware/built-in-budgets)

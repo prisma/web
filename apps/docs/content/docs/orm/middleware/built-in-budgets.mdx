@@ -42,18 +42,18 @@ All options are optional.
 | `defaultTableRows` | `number` | `10_000` | Assumed row count for tables not listed in `tableRows`, used by the estimator |
 | `tableRows` | `Record<string, number>` | `{}` | Per-table row-count assumptions for the estimator, keyed by table name |
 | `maxLatencyMs` | `number` | `1_000` | Latency budget for one query, checked after execution |
-| `severities.rowCount` | `'warn' \| 'error'` | `'error'` | Whether pre-execution row-budget violations block the query or log a warning in permissive mode. Strict mode always blocks |
-| `severities.latency` | `'warn' \| 'error'` | (none) | Accepted by the options type but not read by the middleware in v0.14; latency behavior follows the runtime mode (see below) |
+| `severities.rowCount` | `'warn' \| 'error'` | `'error'` | Whether pre-execution row-budget violations block the query or log a warning. Strict mode always blocks |
+| `severities.latency` | `'warn' \| 'error'` | `'warn'` | Whether an over-budget latency blocks the query or logs a warning. Strict mode always blocks |
 
-The runtime defaults to strict mode. In strict mode, over-budget latency throws `BUDGET.TIME_EXCEEDED`; in permissive mode, the same event is logged as a warning. The latency check happens after execution, so it is a visibility tool rather than a cancellation mechanism. Setting `severities.latency` does not change this in v0.14: the key exists on the options type, but the middleware does not consult it yet.
+A latency violation blocks when `severities.latency` is `'error'`, or when the runtime is in strict mode. The `postgres(...)` client is always strict: it never forwards a mode, so `BUDGET.TIME_EXCEEDED` throws there whatever you set. Only `mongo(...)` accepts `mode: 'permissive'`, and there the default `'warn'` logs instead of throwing. Either way the check happens after execution, so it is a visibility tool rather than a cancellation mechanism.
 
 ## How it enforces the budget
 
 The middleware checks at three points in the query lifecycle:
 
-1. **Before execution**, it inspects the query plan's AST. A `SELECT` with no `LIMIT` (and no aggregation that collapses the result) is treated as unbounded, and a bounded query whose estimated rows exceed `maxRows` is over budget. The estimate comes from `tableRows` and `defaultTableRows`, so tune those to your data. Violations raise `BUDGET.ROWS_EXCEEDED` before the driver runs, or warn in permissive mode when `severities.rowCount` is set to `'warn'`.
-2. **While rows stream**, it counts what the database actually returns. If the observed count passes `maxRows`, it throws `BUDGET.ROWS_EXCEEDED` and aborts the stream, which protects you when the estimate was wrong.
-3. **After execution**, it compares the measured `latencyMs` against `maxLatencyMs` and reports `BUDGET.TIME_EXCEEDED` when the query ran too long. This check runs after the work is done, so it cannot save the slow query itself; it exists to make slow queries loud instead of invisible.
+1. **Before execution** (in `beforeQuery` for row queries, `beforeExecute` for writes), it inspects the query plan's AST. A `SELECT` with no `LIMIT` (and no aggregation that collapses the result) is treated as unbounded, and a bounded query whose estimated rows exceed `maxRows` is over budget. The estimate comes from `tableRows` and `defaultTableRows`, so tune those to your data. Violations raise `BUDGET.ROWS_EXCEEDED` before the driver runs, or warn when `severities.rowCount` is `'warn'` and the runtime is not strict.
+2. **As rows arrive** (in `onRow`), it counts what the database actually returns. If the observed count passes `maxRows`, it throws `BUDGET.ROWS_EXCEEDED` and aborts the stream, which protects you when the estimate was wrong.
+3. **After execution** (in `afterQuery` and `afterExecute`), it compares the measured `latencyMs` against `maxLatencyMs` and reports `BUDGET.TIME_EXCEEDED` when the query ran too long. This check runs after the work is done, so it cannot save the slow query itself; it exists to make slow queries loud instead of invisible.
 
 ## What you see when a budget trips
 
@@ -64,14 +64,14 @@ BUDGET.ROWS_EXCEEDED: Unbounded SELECT query exceeds budget
   { source: 'ast', maxRows: 10000 }
 ```
 
-The `source` field tells you whether the violation came from the pre-execution estimate (`'ast'`) or the observed row stream (`'observed'`). In strict mode, latency violations carry the measured and allowed values:
+The `source` field tells you whether the violation came from the pre-execution estimate (`'ast'`) or the observed rows (`'observed'`). A blocking latency violation carries the measured and allowed values:
 
 ```text title="Latency budget error"
 BUDGET.TIME_EXCEEDED: Query latency exceeds budget
   { latencyMs: 2481, maxLatencyMs: 1000 }
 ```
 
-In permissive mode, the same information is emitted through the runtime logger as a warning. To fix an unbounded-select violation, add a limit to the query ([`limit(...)` on the ORM API](/orm/fundamentals/reading-data#sort-and-paginate), `.limit(...)` on the SQL query builder) or raise the budget deliberately.
+When the violation only warns, the same information is emitted through the runtime logger. To fix an unbounded-select violation, add a limit to the query ([`limit(...)` on the ORM API](/orm/fundamentals/reading-data#sort-and-paginate), `.limit(...)` on the SQL query builder) or raise the budget deliberately.
 
 ## Common gotchas
 

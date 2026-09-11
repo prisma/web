@@ -40,20 +40,37 @@ npx prisma@latest orm init --target mongodb
 
 This is the existing-project path. It preselects MongoDB, adds Prisma 8 files and package scripts to the app you already have, and does not scaffold a new framework project.
 
-It also adds `prisma-next.md` and project-level Prisma 8 skills for Cursor, Claude Code, Codex, and Windsurf so your agent can read the Prisma 8 usage, upgrade, and extension-author guidance from the project.
+It also adds `prisma-next.md`, a short project-level reference your coding agent can read. It does not install agent skills; the Prisma 8 skill ships inside the `@prisma/orm-mongo` package your project installs.
 
 When Prisma 8 asks the remaining setup questions:
 
 - choose `PSL`
-- keep the default schema path, `prisma/contract.prisma`
+- keep the default schema path, `src/prisma/contract.prisma`. Pass `--schema-path` if you want the contract somewhere else; the rest of this page assumes the default.
+- answer the last question, `Also write a .env file from .env.example? (gitignored)`, with Yes. It defaults to No, and `--write-env` skips the prompt and writes the file.
 
 ## 3. Set your database connection string
 
-Update `.env` with the connection string for the MongoDB deployment your app already uses:
+`orm init` always writes `.env.example`, and writes `.env` only if you asked it to. Put the connection string for the MongoDB deployment your app already uses into `.env`:
 
 ```text title=".env"
 DATABASE_URL="mongodb://127.0.0.1:27017/app?replicaSet=rs0"
 ```
+
+`orm init` also writes `src/prisma/db.ts`, the file your application imports. It builds the Prisma 8 client from the emitted contract and reads the connection string from the environment:
+
+```typescript title="src/prisma/db.ts"
+import "dotenv/config";
+import mongo from "@prisma/orm-mongo/runtime";
+import type { Contract } from "./contract.d";
+import contractJson from "./contract.json" with { type: "json" };
+
+export const db = mongo<Contract>({
+  contractJson,
+  url: process.env["DATABASE_URL"]!,
+});
+```
+
+The first line is `import "dotenv/config"`, so any script that imports `db` loads `.env` for itself. You do not need to pass the URL again at the call site.
 
 ## 4. Describe the collections you want Prisma 8 to know about
 
@@ -61,9 +78,9 @@ This is the key adoption step for MongoDB, because you decide which part of the 
 
 PostgreSQL has `contract infer`. MongoDB does not, so this step is manual.
 
-Open `prisma/contract.prisma` and make it match the collections you want Prisma 8 to query first. If your existing database already has `users` and `posts` collections with `email`, `name`, `title`, and `authorId`, the starter contract is already a useful first draft:
+Open `src/prisma/contract.prisma` and make it match the collections you want Prisma 8 to query first. If your existing database already has `users` and `posts` collections with `email`, `name`, `title`, and `authorId`, the starter contract is already a useful first draft:
 
-```prisma title="prisma/contract.prisma"
+```prisma title="src/prisma/contract.prisma"
 // use prisma-next
 
 model User {
@@ -96,7 +113,7 @@ Run:
 npx prisma@latest contract emit
 ```
 
-This refreshes `prisma/contract.json` and `prisma/contract.d.ts` so the runtime and query APIs are aligned with the contract you just reviewed.
+This refreshes `src/prisma/contract.json` and `src/prisma/contract.d.ts` so the runtime and query APIs are aligned with the contract you just reviewed.
 
 ## 6. Run a simple high-level query
 
@@ -105,8 +122,7 @@ With the emitted artifacts in place, you can test the higher-level API first and
 Create a `script.ts` file:
 
 ```typescript title="script.ts"
-import "dotenv/config";
-import { db } from "./prisma/db";
+import { db } from "./src/prisma/db";
 
 async function main() {
   const user = await db.orm.users.where({ email: "existing@example.com" }).first();
@@ -131,11 +147,12 @@ npx tsx script.ts
 
 After the ORM example, this step shows the lower-level MongoDB pipeline builder against the same existing collections.
 
+Pipeline plans run through the runtime. On MongoDB `db.runtime()` returns a promise, so it has to be awaited; on PostgreSQL the same call is synchronous.
+
 Replace `script.ts` with this version:
 
 ```typescript title="script.ts"
-import "dotenv/config";
-import { db } from "./prisma/db";
+import { db } from "./src/prisma/db";
 
 async function main() {
   const runtime = await db.runtime();
@@ -165,7 +182,7 @@ npx tsx script.ts
 
 ## 8. Next steps
 
-When you change `prisma/contract.prisma`, emit the contract again:
+When you change `src/prisma/contract.prisma`, emit the contract again:
 
 ```npm
 npx prisma@latest contract emit
