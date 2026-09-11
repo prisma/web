@@ -28,7 +28,7 @@ The largest change is that native types moved from attributes into type position
 | `String @db.VarChar(255)` | `VarChar(255)` | native types are types, not attributes |
 | `Decimal @db.Decimal(10, 2)` | `Numeric(10, 2)` | `Decimal` still exists as a bare type for unconstrained `numeric`; the parameterized spelling is `Numeric` |
 | `String @db.Uuid` | `Uuid` | |
-| `DateTime` | `DateTime` | unchanged in name; it is `timestamptz` storage read as a `Temporal.Instant`. `Temporal` ships in Node.js 26.8.2 and later; on earlier releases import `temporal-polyfill/full/global` before the first read, or author the column as `TimestamptzString` to read and write text |
+| `DateTime` | `DateTime` | unchanged in name; it is `timestamptz` storage read as a `Temporal.Instant`. `Temporal` ships in Node.js 26 and later; on Node.js 24 and earlier import `temporal-polyfill/full/global` before the first read, or author the column as `TimestamptzString` to read and write text |
 | `DateTime @updatedAt` | `updatedAt temporal.updatedAt()` | a field preset in type position, applied on create and on every non-empty update |
 | `DateTime @default(now())` | `DateTime @default(now())` or `createdAt temporal.createdAt()` | both work; the preset carries its own type |
 | `String @default(cuid())` | `String @default(cuid(2))` | bare `cuid()` is rejected with a hint pointing at `cuid(2)` |
@@ -66,7 +66,7 @@ The Prisma ORM 8 CLI groups its commands by what they touch: `contract` for your
 | `prisma generate` | `prisma contract emit` | writes `contract.json` and `contract.d.ts`; commit both. Run it after every contract change |
 | `prisma migrate dev` | `prisma db update` while iterating, or `prisma migration plan` then `prisma db migrate` | `db update` applies the difference directly; `migration plan` writes a migration package you can read and check in |
 | `prisma migrate deploy` | `prisma db migrate` | applies the migration packages on disk |
-| `prisma db push` | `prisma db update` | same job, and it also signs the database |
+| `prisma db push` | `prisma db update` | same job. Run without `--db` it also advances the `db` ref that `prisma migration plan` starts from |
 | `prisma db pull` | `prisma contract infer` | writes a draft contract from the live schema |
 | `prisma migrate diff` | `prisma migration plan --from <contract>` | the diff is written as a migration package rather than printed. To see whether the database and contract disagree without writing anything, use `prisma db verify` |
 | `prisma migrate resolve` | `prisma db sign`, and `prisma migration ref set db <hash>` | `db sign` records that the database satisfies the emitted contract; the ref records where the next migration starts from |
@@ -191,7 +191,7 @@ Also absent, each with no equivalent today:
 - The list filters `has` / `hasEvery` / `hasSome` / `isEmpty` on scalar list fields (the fields themselves are supported on PostgreSQL).
 - Transaction options: `isolationLevel`, `timeout`, `maxWait`, and nested transactions.
 - `omit`, `relationLoadStrategy`, `Prisma.skip`, and `findUnique` auto-batching.
-- The `P2002` / `P2025` error codes. Errors are structured envelopes instead, and a database error carries its SQLSTATE (`23505` for a unique violation). See the [error reference](/orm/reference/error-reference).
+- The `P2002` / `P2025` error codes. Errors are structured envelopes with dotted codes instead, for example `RUNTIME.NO_ROWS` when `firstOrThrow()` finds nothing. See the [error reference](/orm/reference/error-reference).
 - `Prisma.sql`, `Prisma.join`, `Prisma.raw`, `Prisma.empty`, and TypedSQL. A row-returning `db.raw.sql` template interpolates into another raw template as a subquery, which covers composition.
 - Soft delete, declarative model validations, lifecycle callbacks, and read replicas. Add a nullable `deletedAt` and filter for the first, validate in application code for the second, use middleware for the third, and hold one client per database for the fourth.
 
