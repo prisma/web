@@ -79,6 +79,12 @@ const sitePages: LlmsPage[] = [
     title: "Prisma ORM Ecosystem",
     description: "Community-built tools, generators, middleware, and integrations around Prisma.",
   },
+  {
+    path: "/extensions",
+    title: "Prisma 8 Extensions | Vector search, geospatial, caching, and more",
+    description:
+      "Directory of extensions and middleware for Prisma ORM 8, by Prisma and the community, with install commands and a submission form.",
+  },
 ];
 
 function toAbsoluteUrl(baseUrl: string, path: string) {

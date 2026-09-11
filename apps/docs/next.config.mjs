@@ -637,11 +637,9 @@ const config = {
         destination: "/orm/v7/reference/database-features",
         permanent: false,
       },
-      {
-        source: "/orm/reference/supported-databases",
-        destination: "/orm/v7/reference/supported-databases",
-        permanent: false,
-      },
+      // /orm/reference/supported-databases is a live Prisma 8 page again
+      // (content/docs/orm/reference/supported-databases.mdx), so it is not
+      // redirected to the Prisma 7 tree like its siblings.
       {
         source: "/orm/reference/system-requirements",
         destination: "/orm/v7/reference/system-requirements",
