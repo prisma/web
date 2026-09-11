@@ -328,7 +328,7 @@ Eagerly load a relation onto the returned rows.
 #### Remarks
 
 - Available for PostgreSQL and MongoDB, with different capabilities.
-- On PostgreSQL, `include(relationName, refineFn?)` loads to-one and to-many relations, and the optional refinement callback receives a nested `Collection` you can filter, order, limit, and reduce (see [Refinements, reducers, and combine](#refinements-reducers-and-combine)).
+- On PostgreSQL, `include(relationName, refineFn?)` loads to-one and to-many relations, and the optional callback receives a nested `Collection` you can filter, order, limit, and aggregate (see [Refinements, aggregates, and combine](#refinements-aggregates-and-combine)).
 - On MongoDB, `include(relationName)` adds a `$lookup` for a reference relation and takes only a relation name; there is no refinement-callback overload.
 - On MongoDB, a looked-up sub-document's `_id` comes back as a raw driver `ObjectId`, not decoded to a hex string the way top-level `_id` fields are. Compare it with `String(...)`.
 - On MongoDB, passing a second argument to `include()` does **not** throw. JavaScript does not arity-check, so the extra argument is silently ignored and a plain, unrefined `$lookup` runs. This differs from calling a genuinely absent method, which throws `TypeError`.
@@ -371,15 +371,15 @@ const posts = await db.orm.posts.include('author').where({ title: 'Hello world' 
 
 For a task-oriented guide to loading related records, see [Relations and joins](/orm/fundamentals/relations-and-joins).
 
-### Refinements, reducers, and combine
+### Refinements, aggregates, and combine
 
-On PostgreSQL, `include()`'s refinement callback receives the nested relation as a full `Collection`. You can filter, order, and paginate it, reduce it to a scalar, or `combine()` several sub-views into one shape.
+On PostgreSQL, the callback you pass to `include()` receives the nested relation as a full `Collection`. You can filter, order, and paginate it, reduce it to a single value, or `combine()` several sub-views into one shape.
 
 #### Remarks
 
-- PostgreSQL only. MongoDB's `include()` has no refinement callback; the scalar reducers `count`/`sum`/`avg`/`min`/`max`/`combine` do not exist on the Mongo collection at all (calling them throws `TypeError`).
-- The reducers are only callable **inside** an `include()` refinement callback. Called elsewhere on a PostgreSQL collection, they throw `Error` (the method exists but asserts refinement mode).
-- Which fields each reducer admits is read from the aggregate map in your emitted contract, not from a fixed rule. On PostgreSQL, `sum()` and `avg()` take numeric columns, and `min()` and `max()` also take textual, date/time-string, and Temporal-backed columns, so `min('createdAt')` type-checks. A field the contract's map does not claim for that operation is a compile error at the call site.
+- PostgreSQL only. MongoDB's `include()` takes no callback, and `count`/`sum`/`avg`/`min`/`max`/`combine` do not exist on the Mongo collection at all (calling them throws `TypeError`).
+- `count`, `sum`, `avg`, `min`, `max` and `combine` are only callable **inside** an `include()` callback. Called anywhere else on a PostgreSQL collection, they throw `Error`.
+- Which fields each of those functions accepts comes from the aggregate map in your emitted contract, not from a fixed rule. On PostgreSQL, `sum()` and `avg()` take numeric columns, and `min()` and `max()` also take textual, date/time-string, and Temporal-backed columns, so `min('createdAt')` type-checks. A field the contract's map does not claim for that operation is a compile error at the call site.
 - `count()` returns a `number` and has a zero-argument form; `countBigInt()` is the lossless `bigint` variant. `sum()` over an integer column returns `number` and raises `RUNTIME.DECODE_FAILED` outside ±(2^53 − 1); `avg()` over an integer column returns a `float8` `number`; `sumBigInt(field)` and `avgDecimal(field)` are the lossless forms.
 - Over a to-many relation with no rows, `sum()` and `avg()` resolve to `null`, not `0`.
 
@@ -388,10 +388,10 @@ On PostgreSQL, `include()`'s refinement callback receives the nested relation as
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `filter` / `orderBy` / `limit` / `offset` | Chained on the nested collection | No | Refine which related rows load. |
-| `count()` | Reducer, no arguments | No | Reduces the relation to a row count. |
-| `sum(field)` / `avg(field)` | Reducer over a numeric field | No | Reduces the relation to a numeric aggregate; `null` over an empty relation. `sumBigInt` / `avgDecimal` are the lossless forms. |
-| `min(field)` / `max(field)` | Reducer over a field the contract's aggregate map claims | No | Reduces the relation to a minimum/maximum, in the column's own type. |
-| `combine(shape)` | Object of sub-views and reducers | No | Projects several refinements into one shape. |
+| `count()` | Aggregate, no arguments | No | Reduces the relation to a row count. |
+| `sum(field)` / `avg(field)` | Aggregate over a numeric field | No | Reduces the relation to a numeric aggregate; `null` over an empty relation. `sumBigInt` / `avgDecimal` are the lossless forms. |
+| `min(field)` / `max(field)` | Aggregate over a field the contract's aggregate map claims | No | Reduces the relation to a minimum/maximum, in the column's own type. |
+| `combine(shape)` | Object of sub-views and aggregates | No | Projects several refinements into one shape. |
 
 #### Return type
 
@@ -463,7 +463,7 @@ const users = await db.orm.public.User.include('posts', (posts) =>
 ```
 
 :::note[Which fields `min()` / `max()` accept]
-`min()` and `max()` are typed from the aggregate map in your emitted contract. On PostgreSQL that map claims numeric and textual columns, the date/time-string codecs, and the Temporal-backed ones, so `min('createdAt')` over a `DateTime` column type-checks and returns a `Temporal.Instant`. `sum()` and `avg()` are narrower: PostgreSQL declares no `SUM`/`AVG` over a date or time-stamp column, so those calls are a compile error, naming the operation that is unavailable for that input.
+`min()` and `max()` are typed from the aggregate map in your emitted contract. On PostgreSQL that map claims numeric and textual columns, and columns stored as date/time strings or backed by `Temporal`. So `min('createdAt')` over a `DateTime` column type-checks and returns a `Temporal.Instant`. `sum()` and `avg()` are narrower: PostgreSQL declares no `SUM`/`AVG` over a date or time-stamp column, so those calls are a compile error, naming the operation that is unavailable for that input.
 :::
 
 ### `orderBy()`

@@ -11,7 +11,7 @@ The SQL query builder gives you table-level, SQL-shaped methods for building typ
 This page documents every method, its options, and its return type. Where a method is capability-gated or has a runtime caveat, the Remarks call that out. For a task-oriented guide to when and how to reach for the builder, see [Advanced queries](/orm/fundamentals/advanced-queries).
 
 :::note[This is the SQL-family builder]
-The SQL query builder targets SQL databases; PostgreSQL is supported today. MongoDB has no SQL builder: use the [ORM client](/orm/reference/orm-client) for MongoDB queries, and the [pipeline builder](/orm/reference/pipeline-builder) for aggregation pipelines.
+The SQL query builder targets SQL databases; PostgreSQL and SQLite are supported today. MongoDB has no SQL builder: use the [ORM client](/orm/reference/orm-client) for MongoDB queries, and the [pipeline builder](/orm/reference/pipeline-builder) for aggregation pipelines.
 :::
 
 ## Example schema
@@ -925,23 +925,23 @@ The aggregates are not a fixed list. They come from the aggregate map in your em
 Any further function is registered dynamically: `ilike` is registered by the Postgres adapter for textual columns, while functions like `cosineDistance` come from an extension pack (pgvector) registered for your contract; without the matching adapter or extension pack, those functions are absent.
 
 :::note[No `COALESCE` or `CAST` helpers]
-There is no `fns.coalesce` or `fns.cast`. Express `COALESCE`, `CAST`, and any other SQL function you need with [`fns.raw`](#fnsraw-and-returns) and an explicit `.returns(...)` codec.
+There is no `fns.coalesce` or `fns.cast`. Express `COALESCE`, `CAST`, and any other SQL function you need with [`fns.raw`](#fnsraw-and-returns) and an explicit `.returns(...)` call.
 :::
 
 ### `fns.raw` and `.returns()`
 
-Write a raw SQL fragment as a tagged template. Interpolate columns, typed expressions, and bare JavaScript values with `${...}`; each interpolation is parameterized. A bare value's codec is inferred from its type; wrap it in `param(...)` with an explicit codec id when you want a different one (see the [raw queries reference](/orm/reference/raw-queries#binding-a-bare-value-with-param)). Call `.returns(codecId)` to declare the fragment's result type.
+Write a raw SQL fragment as a tagged template. Interpolate columns, typed expressions, and bare JavaScript values with `${...}`; each interpolation is parameterized. For a bare value, the builder picks the `codecId` from its JavaScript type. Wrap it in `param(...)` with an explicit `codecId` when you want a different one (see the [raw queries reference](/orm/reference/raw-queries#binding-a-bare-value-with-param)). Call `.returns(codecId)` to declare the fragment's result type.
 
 #### Options
 
 | Name | Type | Required | Description |
 |---|---|---|---|
 | SQL fragment | Tagged template | Yes | The raw SQL, with `${...}` interpolations for columns and values. |
-| `.returns(codecId)` | `string` | Yes for a projected or compared value | Declares the result codec, for example `'pg/int4@1'`, `'pg/text@1'`, `'pg/bool@1'`. |
+| `.returns(codecId)` | `string` | Yes for a projected or compared value | Declares the result type, for example `'pg/int4@1'`, `'pg/text@1'`, `'pg/bool@1'`. |
 
 #### Remarks
 
-- `.returns(codecId)` is a **compile-time type annotation only**. It does not cast the value in SQL or change how the driver decodes it. A raw expression PostgreSQL computes as `numeric` still decodes as a string even when annotated `'pg/int4@1'`, because raw fragments are not decoded through a codec (see [Group by a computed value](#group-by-a-computed-value)).
+- `.returns(codecId)` is a **compile-time type annotation only**. It does not cast the value in SQL or change how the driver decodes it. A raw expression PostgreSQL computes as `numeric` still arrives as a string even when annotated `'pg/int4@1'`, because Prisma ORM does not convert the values a raw fragment returns (see [Group by a computed value](#group-by-a-computed-value)).
 - Use `fns.raw` for any SQL feature without a dedicated helper: `COALESCE`, `CAST`, `LENGTH`, `UPPER`, `EXTRACT`, and so on.
 
 #### Examples
