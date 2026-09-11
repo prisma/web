@@ -73,7 +73,11 @@ export const FooterNewsletterForm = ({
               stacked ? "w-full flex-col items-start gap-3" : "w-full items-center gap-2 sm:w-auto",
             )}
           >
-            <label htmlFor="MERGE0" aria-label="Email" className={stacked ? "w-full" : "flex-grow"}>
+            {/* The label text is visually hidden rather than absent: a label
+                with no text names nothing, and an aria-label on a <label> does
+                not reach the input either. */}
+            <label htmlFor="MERGE0" className={stacked ? "w-full" : "flex-grow"}>
+              <span className="sr-only">Email address</span>
               <Input
                 type="email"
                 name="EMAIL"
@@ -88,17 +92,18 @@ export const FooterNewsletterForm = ({
                 disabled={isSubmitting || isSubmitted || isAlreadySubscribed}
               />
             </label>
+            {/* One control, not a submit <input> nested inside a <button>: the
+                nested input made this a nested interactive control and left the
+                button itself without an accessible name. */}
             <Button
+              type="submit"
+              name="subscribe"
+              id="mc-embedded-subscribe"
               variant="ppg"
               size="xl"
               disabled={isSubmitting || isSubmitted || isAlreadySubscribed}
             >
-              <input
-                type="submit"
-                value={getButtonText()}
-                name="subscribe"
-                id="mc-embedded-subscribe"
-              />
+              {getButtonText()}
             </Button>
           </div>
           <div className={cn("mt-2 min-h-5", stacked ? "" : "absolute")}>

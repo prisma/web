@@ -12,6 +12,7 @@ import {
 } from "react";
 import * as Primitive from "@radix-ui/react-tabs";
 import { mergeRefs } from "../../lib/merge-refs";
+import { escapeTabValue } from "../../lib/tab-value";
 
 type ChangeListener = (v: string) => void;
 const listeners = new Map<string, Set<ChangeListener>>();
@@ -45,7 +46,16 @@ function useTabContext() {
 
 export const TabsList = Primitive.TabsList;
 
-export const TabsTrigger = Primitive.TabsTrigger;
+/**
+ * The single place where a tab value crosses into Radix, which builds DOM ids
+ * out of it. Everything is escaped here so a label with whitespace ("Relational
+ * databases") cannot produce an id — and therefore an `aria-controls` /
+ * `aria-labelledby` — containing a space. `escapeTabValue` is idempotent, so
+ * callers that already escaped (see `tabs.tsx`, `codeblock.tsx`) are unaffected.
+ */
+export function TabsTrigger({ value, ...props }: ComponentProps<typeof Primitive.TabsTrigger>) {
+  return <Primitive.TabsTrigger value={escapeTabValue(value)} {...props} />;
+}
 
 export function Tabs({
   ref,
@@ -63,16 +73,18 @@ export function Tabs({
   useLayoutEffect(() => {
     onValueChangeRef.current = _onValueChange;
   }, [_onValueChange]);
-  const [internalValue, setInternalValue] = useState(defaultValue);
+  const [internalValue, setInternalValue] = useState(
+    defaultValue !== undefined ? escapeTabValue(defaultValue) : undefined,
+  );
   const stableOnValueChange = useCallback((v: string) => onValueChangeRef.current?.(v), []);
-  const value = _value !== undefined ? _value : internalValue;
+  const value = _value !== undefined ? escapeTabValue(_value) : internalValue;
   const setValue = _value !== undefined ? stableOnValueChange : setInternalValue;
 
   useLayoutEffect(() => {
     if (!groupId) return;
     let previous = sessionStorage.getItem(groupId);
     if (persist) previous ??= localStorage.getItem(groupId);
-    if (previous) setValue(previous);
+    if (previous) setValue(escapeTabValue(previous));
 
     const groupListeners = listeners.get(groupId) ?? new Set();
     groupListeners.add(setValue);
@@ -131,13 +143,14 @@ export function Tabs({
 
 export function TabsContent({ value, ...props }: ComponentProps<typeof Primitive.TabsContent>) {
   const { valueToIdMap } = useTabContext();
+  const escaped = escapeTabValue(value);
 
   if (props.id) {
-    valueToIdMap.set(value, props.id);
+    valueToIdMap.set(escaped, props.id);
   }
 
   return (
-    <Primitive.TabsContent value={value} {...props}>
+    <Primitive.TabsContent value={escaped} {...props}>
       {props.children}
     </Primitive.TabsContent>
   );
