@@ -18,7 +18,7 @@ One pass over the whole site, as its own PR. Not a global replace: each of the 1
 
 ## What stays as is
 
-- Identifiers: `prisma-next.md`, `// use prisma-next`, `@prisma/orm-postgres`, `/studio/prisma-next`, package names, error codes. 40 occurrences of `prisma-next` as an identifier; none as prose.
+- Identifiers: `prisma-next.md`, `// use prisma-next`, `@prisma/orm-postgres`, `/studio/prisma-next`, package names, error codes. 39 occurrences of `prisma-next` as an identifier; none as prose.
 - The "Prisma 7" group at the bottom of Getting Started and the v7 doc trees.
 - Release notes and changelogs, which name versions by nature.
 

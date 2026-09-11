@@ -96,7 +96,7 @@ No change to the top-level section list, to Data Modeling, Contract Authoring, F
 | --- | --- | --- |
 | J1 existing app, empty database | Add to Existing Project > PostgreSQL | page assumes tables exist; no node for this state |
 | J2 existing database with data | Add to Existing Project > PostgreSQL | right node, page stops before the ref step |
-| J3 Prisma 7 query mapping | Fundamentals > Reading data | no node; content spread over nine pages |
+| J3 Prisma 7 query mapping | Fundamentals > Reading data | no node; fourteen diff blocks spread over six pages |
 | J4 should I move now | root, `/prisma-orm` | no node; note box only says 7 is supported |
 | J5 incremental upgrade | Guides > Upgrade Prisma ORM > PostgreSQL | not linked from any ORM node; label hides it |
 | J6 data types | Data Modeling > Overview | right node; one stale example |
