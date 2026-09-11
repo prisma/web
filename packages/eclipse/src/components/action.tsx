@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "../lib/cn";
@@ -123,18 +124,27 @@ const actionVariants = cva("flex items-center justify-center rounded-square shri
 export interface ActionProps
   extends
     Omit<React.HTMLAttributes<HTMLDivElement>, "color">,
-    VariantProps<typeof actionVariants> {}
+    VariantProps<typeof actionVariants> {
+  /**
+   * Render the action's styling onto the single child element instead of a
+   * `<div>`. Use it whenever the action is interactive: a click handler on a
+   * `<div>` gives a control with no role, no place in the tab order and no
+   * accessible name.
+   */
+  asChild?: boolean;
+}
 
 const Action = React.forwardRef<HTMLDivElement, ActionProps>(
-  ({ className, color, size, isFramed, children, ...props }, ref) => {
+  ({ className, color, size, isFramed, asChild = false, children, ...props }, ref) => {
+    const Comp = asChild ? Slot : "div";
     return (
-      <div
+      <Comp
         ref={ref}
         className={cn(actionVariants({ color, size, isFramed }), className)}
         {...props}
       >
         {children}
-      </div>
+      </Comp>
     );
   },
 );
