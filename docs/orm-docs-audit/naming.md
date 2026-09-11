@@ -10,7 +10,7 @@
 - The release status page says "Prisma ORM 8 is a release candidate; Prisma ORM 7 is supported until ...".
 - The Prisma 7 docs trees (`orm/v7`, `(index)/v7`, `guides/v7`, `cli/v7`) keep their version label in the nav, because that is what they are.
 
-"Prisma 8" as a bare product name reads as a different product from "Prisma ORM", which is the Upgrader's fear stated back to them. It also collides with the platform, where "Prisma" alone means the whole stack.
+Why: the Prisma brand identity is being separated from the ORM. Prisma is the company and the platform; the ORM is one product on it. Calling the ORM "Prisma 8" ties the whole brand to one product's release cycle, and it leaves no name for the platform, where "Prisma" alone already means the stack. So the ORM is never "Prisma" plus a version; it is "Prisma ORM", and that name is what gets a version number.
 
 ## How to do it
 
