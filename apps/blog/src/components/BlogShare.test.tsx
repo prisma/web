@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { BlogShare } from "./BlogShare";
+import { textContent } from "@prisma-docs/ui/lib/html-text";
 
 // The share row sits on every post. The copy-link control used to be a <div>
 // with an onClick: no role, no tab stop, no accessible name, and dead to
@@ -33,10 +34,7 @@ test("every share anchor still has an accessible name", () => {
 
   assert.ok(anchors.length > 0, "expected the social share links");
   for (const [, attributes, inner] of anchors) {
-    const text = inner
-      .replace(/<[^>]*>/g, "")
-      .replace(/\s+/g, " ")
-      .trim();
+    const text = textContent(inner);
     const ariaLabel = /aria-label="([^"]+)"/.exec(attributes)?.[1] ?? "";
     assert.ok(text.length > 0 || ariaLabel.length > 0, `unnamed anchor: <a ${attributes}>`);
   }

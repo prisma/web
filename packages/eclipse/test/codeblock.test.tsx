@@ -9,6 +9,7 @@ import {
 } from "../src/components/codeblock";
 import { Tab, Tabs } from "../src/components/tabs";
 import { escapeTabValue } from "../src/lib/tab-value";
+import { textContent } from "./html-text";
 
 // MDX authors label code fences with prose ("```ts tab=\"Relational databases\"").
 // Radix builds `id`, `aria-controls` and `aria-labelledby` out of the tab value,
@@ -139,7 +140,7 @@ test("the variant axis still matches tabs whose labels contain whitespace", () =
   const triggers = [...html.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/g)].map(
     ([, attributes, inner]) => ({
       attributes,
-      label: inner.replace(/<[^>]*>/g, "").trim(),
+      label: textContent(inner),
     }),
   );
 

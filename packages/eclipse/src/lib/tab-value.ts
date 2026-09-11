@@ -35,7 +35,9 @@ export function escapeTabValue(value: string): string {
     .replace(/\s+/g, "-")
     .replace(/[^a-z0-9_-]+/g, "")
     .replace(/-{2,}/g, "-")
-    .replace(/^-+|-+$/g, "");
+    // Dashes are already collapsed, so at most one can sit at either end. Matching a
+    // single character (no `+`) keeps the pattern linear on adversarial input.
+    .replace(/^-|-$/g, "");
 
   const suffix = hashLabel(value);
   return slug ? `${slug}-${suffix}` : `tab-${suffix}`;

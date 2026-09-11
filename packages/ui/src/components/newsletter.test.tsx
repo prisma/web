@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { FooterNewsletterForm } from "./newsletter";
+import { textContent } from "../lib/html-text";
 
 // This form ships in the footer of every blog page, so anything wrong with it is
 // wrong ~137 times over. It used to render <button><input type="submit"></button>:
@@ -15,10 +16,7 @@ function buttons(html: string) {
     ([, attributes, inner]) => ({
       attributes,
       inner,
-      text: inner
-        .replace(/<[^>]*>/g, "")
-        .replace(/\s+/g, " ")
-        .trim(),
+      text: textContent(inner),
     }),
   );
 }

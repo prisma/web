@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { baseOptions } from "./layout.shared";
+import { textContent } from "@prisma-docs/ui/lib/html-text";
 
 /**
  * Every anchor the docs shell renders on every page. An anchor whose only child
@@ -12,10 +13,7 @@ import { baseOptions } from "./layout.shared";
 function anchors(html: string) {
   return [...html.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/g)].map(([, attributes, inner]) => ({
     attributes,
-    text: inner
-      .replace(/<[^>]*>/g, "")
-      .replace(/\s+/g, " ")
-      .trim(),
+    text: textContent(inner),
     ariaLabel: /aria-label="([^"]*)"/.exec(attributes)?.[1] ?? "",
     href: /href="([^"]*)"/.exec(attributes)?.[1] ?? "",
   }));
