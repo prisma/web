@@ -163,7 +163,7 @@ export const llmsSections: LLMsSection[] = [
     slug: "orm",
     title: "Prisma ORM",
     description:
-      "Current Prisma ORM (Prisma ORM 8) docs: setup, contracts and data modeling, the ORM client, migrations, middleware, and references. A ground-up TypeScript rewrite that keeps the schema-first workflow while making it extensible, composable, and AI-agent friendly (excludes the Prisma 7 and legacy v6 trees).",
+      "Current Prisma ORM (Prisma ORM 8) docs: setup, contracts and data modeling, the ORM client, migrations, middleware, and references. A ground-up TypeScript rewrite that keeps the schema-first workflow while making it extensible, composable, and AI-agent friendly (excludes the Prisma ORM 7 and legacy v6 trees).",
     prefixes: ["/orm", "/prisma-orm", "/getting-started", "/full-stack-tutorial"],
     excludePrefixes: ["/orm/v6", "/orm/v7"],
   },
