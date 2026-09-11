@@ -28,14 +28,14 @@ const CODE_HEADING = /^### ([A-Z0-9_]+\.[A-Z0-9_.]+)$/;
 
 // The canonical ORM source still uses the product's internal conventions.
 // Until upstream adopts the published names, rewrite them to the site
-// standard: the working name "Prisma Next" is now "Prisma 8" (ADR 242
+// standard: the working name "Prisma Next" is now "Prisma ORM" (ADR 242
 // rebrand), and app developers import from a facade package, not the
 // unpublished @internal scope. Each rule is a narrow literal so it no-ops
 // once upstream catches up.
 function applyOrmNamingStandard(body) {
   return (
     body
-      .replace(/Prisma Next\b/g, "Prisma 8")
+      .replace(/Prisma Next\b/g, "Prisma ORM")
       .replace(
         /`@internal\/utils\/structured-error`/g,
         "your facade package's `utils/structured-error` subpath (for example `@prisma/orm-postgres/utils/structured-error`)",
@@ -87,10 +87,10 @@ const TARGETS = {
       "repository, whose CI requires every code in production source to be documented before it ships.",
     frontmatter: `---
 title: Error reference
-description: Every structured error code Prisma 8 can emit, by namespace, with the condition that raises it.
+description: Every structured error code Prisma ORM can emit, by namespace, with the condition that raises it.
 url: /orm/reference/error-reference
-metaTitle: Prisma 8 error reference
-metaDescription: Every structured error code Prisma 8 can emit, by namespace, with the condition that raises it.
+metaTitle: Prisma ORM error reference
+metaDescription: Every structured error code Prisma ORM can emit, by namespace, with the condition that raises it.
 ---
 `,
   },
@@ -106,7 +106,7 @@ metaDescription: Every structured error code Prisma 8 can emit, by namespace, wi
 title: Error reference
 description: Every structured error code the unified Prisma CLI can emit, by namespace, with the condition that raises it.
 url: /cli/error-reference
-metaTitle: Error reference | Prisma 8 CLI
+metaTitle: Error reference | Prisma CLI
 metaDescription: Every structured error code the unified Prisma CLI can emit, by namespace, with the condition that raises it.
 ---
 `,
