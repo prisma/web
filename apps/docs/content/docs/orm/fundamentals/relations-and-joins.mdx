@@ -239,7 +239,7 @@ See [what is not available yet](/orm/coming-from-prisma-orm-7#not-available-yet)
 
 ```typescript
 const user = await db.orm.users.create({ email: "jane@prisma.io" });
-const post = await db.orm.posts.create({ title: "Hello", authorId: user._id });
+const post = await db.orm.posts.create({ title: "Hello", published: false, authorId: user._id });
 ```
 
 If you need the link records themselves, for example because the join table has columns of its own, query its model directly:
@@ -252,7 +252,8 @@ const links = await db.orm.public.PostTag.include("tag").all();
 A join table may carry columns beyond the two foreign keys. Those extra columns must not be part of the primary key. Nested `create` and `connect` are rejected when one of them is required, because neither can supply a value for it, so insert the link records yourself:
 
 ```typescript
-await db.orm.public.PostTag.create({ postId: post.id, tagId: tag.id, addedBy: "me" });
+const tag = await db.orm.public.Tag.first({ name: "typescript" });
+await db.orm.public.PostTag.create({ postId: post.id, tagId: tag!.id, addedBy: "me" });
 ```
 
 ## Filter parent records by relation data
@@ -306,6 +307,7 @@ type Address {
 
 model User {
   id      ObjectId @id @map("_id") // the property is _id, because of @map("_id")
+  email   String
   address Address?
   posts   Post[]
 
