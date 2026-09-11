@@ -6,7 +6,7 @@ metaTitle: Editing a migration in Prisma ORM
 metaDescription: 'How to edit a Prisma ORM migration.ts by filling placeholder data transforms, writing typed backfills, using rawSql, and recompiling ops.json with node migration.ts.'
 ---
 
-The planner writes a good first draft, but plenty of real migrations need a human (or agent) decision: what to put in existing rows when a column becomes required, which order two steps must run in, one statement the planner has no factory for. In Prisma ORM you make those changes by editing `migration.ts`, ordinary TypeScript with autocomplete and type checking, and recompiling it. You never hand-edit SQL files or `ops.json`.
+The planner writes a good first draft, but many migrations require the input of a human (or agent) for key decisions: what to put in existing rows when a column becomes required, which order to run two steps in, one statement the planner has no factory for. In Prisma ORM you make those changes by editing `migration.ts` (ordinary TypeScript with autocomplete and type checking) and recompiling it. You never hand-edit SQL files or `ops.json`.
 
 The rule that makes this safe:
 
@@ -26,7 +26,7 @@ The recompile also **re-attests** the migration: `migration.json` gets a fresh `
 
 ## Worked example: making a column required
 
-This is the classic case. `User` gets a required `displayName`, but the table already has rows, and those rows have no `displayName`. Plan it:
+This is the classic case: `User` gets a required `displayName`, but the table already has rows and those rows have no `displayName`. Plan it:
 
 ```npm
 npx prisma@latest migration plan --name add_display_name
@@ -114,7 +114,7 @@ MigrationCLI.run(import.meta.url, M);
 
 `sql()` needs both a `context` and the adapter's `rawCodecInferer`. `rawCodecInferer` is what works out how to convert a bare JavaScript value you interpolate into a raw fragment. It is a required field, so a call without it does not typecheck and `node migration.ts` fails before writing `ops.json`. Hoisting the execution stack into its own `const` is what makes it reachable as `stack.adapter.rawCodecInferer`; the runtime wires it the same way.
 
-Two details worth pausing on:
+These two details should be noted:
 
 - **The types come from the migration's end-contract snapshot** (`migrations/snapshots/<contract hash>/contract`), not your live app contract. You're type-checking against the schema *as it will exist when this step runs*. That's why the builder happily references `displayName` even though the column doesn't exist yet, and why a migration written months ago keeps compiling after your contract moves on.
 - **The query is real application-grade TypeScript.** You can import shared constants, and typos in column names fail the type check instead of failing in production.
@@ -174,7 +174,7 @@ rawSql({
 }),
 ```
 
-The prechecks and postchecks are optional, but they're what makes a failed run resumable and a mistake diagnosable, so skipping them trades away most of what this system gives you. If you write the same `rawSql` twice, lift it into a function. The built-in factories are plain functions doing exactly this.
+The prechecks and postchecks are optional, but they're what makes a failed run resumable and a mistake diagnosable: skipping them trades away most of what this system gives you. If you write the same `rawSql` twice, lift it into a function. The built-in factories are plain functions doing exactly this.
 
 ## The same pattern on MongoDB
 
@@ -203,7 +203,7 @@ The full working migration, including the two query-plan helpers, is in the Pris
 
 ## Starting from a blank migration
 
-Sometimes there's no contract change at all: you want a data-only migration, or you'd rather write the whole thing by hand. `migration new` scaffolds an empty migration directory (already attested, like everything the CLI writes):
+Sometimes there's no contract change at all: you want a data-only migration, or you'd rather write the whole thing by hand. `migration new` scaffolds an empty migration directory (already attested, as is everything the CLI writes):
 
 ```npm
 npx prisma@latest migration new --name backfill_scores

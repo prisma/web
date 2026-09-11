@@ -6,9 +6,9 @@ metaTitle: Generating a migration in Prisma ORM
 metaDescription: 'A step-by-step tutorial for the migration plan command, from contract change to a planned, reviewable migration, entirely offline.'
 ---
 
-This tutorial takes a contract change from your editor to a planned migration on disk. Planning is **fully offline**. `migration plan` reads your emitted contract and your existing migrations, and it never connects to a database. That means you can plan on a plane, in CI, or in a sandbox with no credentials.
+This tutorial takes a contract change from your editor to a planned migration on disk. Planning is **fully offline**. `migration plan` reads your emitted contract and your existing migrations; it never connects to a database. This means you can plan on a plane, in CI, or in a sandbox with no credentials.
 
-Start from a minimal project. `npm create prisma@latest` scaffolds one.
+Start from a minimal project; you can scaffold one with `npm create prisma@latest`.
 
 ## Your first migration
 
@@ -30,7 +30,7 @@ First, emit the contract. This compiles the schema into the `contract.json` arti
 npx prisma@latest contract emit
 ```
 
-Now plan. `--name` sets the human-readable part of the directory name. If you omit it, the directory is called `migration`:
+Now plan. `--name` sets the human-readable part of the directory name. If you omit it, the directory will be called `migration`:
 
 ```npm
 npx prisma@latest migration plan --name init
@@ -60,12 +60,12 @@ CREATE TABLE "public"."user" (
 );
 ```
 
-Four things to notice:
+Four things to note:
 
-- **The DDL preview is right there.** You see the exact SQL before anything exists but files.
+- **The DDL preview is in the output.** You will see the exact SQL before anything exists but files.
 - **`from: (baseline)`** means this migration starts from an empty database. It's the root of your [migration graph](/orm/migrations/the-migration-graph).
-- **`to:` is your contract's hash.** The migration promises to deliver a database matching exactly the contract you just emitted.
-- **`App space`** is your application's migration lane. Database extensions bring their own lanes. See [extension spaces](/orm/migrations/applying-a-migration#extension-spaces).
+- **`to:` is your contract's hash.** The migration promises to deliver a database matching exactly the contract that you have emitted.
+- **`App space`** is your application's migration lane. Database extensions bring their own lanes. See [extension spaces](/orm/migrations/applying-a-migration#extension-spaces) for more information.
 
 The planned migration directory contains the TypeScript source, the compiled operations, and the history marker. The contract snapshots it imports live once per migrations root, under `migrations/snapshots/<contract hash>/`:
 
@@ -82,7 +82,7 @@ migrations/
         └── contract.d.ts
 ```
 
-Open `migration.ts`. It reads like a description of the change, because it is one:
+Open `migration.ts`. It is a description of the change, so it reads like one:
 
 ```ts title="migrations/app/20260707T1005_init/migration.ts"
 import type { Contract as End } from '../../snapshots/705b1a62f26f0913caa4bfe3f8b7cb491a1b94bd47fc43471d8711bc480bcbb5/contract';
@@ -114,9 +114,9 @@ export default class M extends Migration<never, End> {
 MigrationCLI.run(import.meta.url, M);
 ```
 
-Two notes on reading it: the `col(...)` calls mirror your contract fields, and you never write `codecRef` by hand. The planner fills it in to pin how values convert between TypeScript and Postgres. Treat it as noise when reviewing.
+When reading it, note two things: the `col(...)` calls mirror your contract fields, and you never write `codecRef` by hand. The planner fills it in to pin how values convert between TypeScript and Postgres. Treat it as noise when reviewing.
 
-For a simple change you don't need to touch this file. When you do (to add a data backfill, reorder operations, or drop in raw SQL), see [Editing a migration](/orm/migrations/editing-a-migration).
+For a simple change you don't need to touch this file. When you do (to add a data backfill, reorder operations, or drop in raw SQL), refer to [Editing a migration](/orm/migrations/editing-a-migration).
 
 ## The second migration: planning a delta
 
@@ -190,7 +190,7 @@ To retrofit a deployed database you must not touch, do the same thing explicitly
 
 ## When the planner needs your input
 
-Some changes can't be planned from the schema diff alone. Add a **required** field to a table that already has rows, and the planner can write the `ADD COLUMN` and the `SET NOT NULL`, but only you know what the existing rows should contain. Rather than guessing, it scaffolds the decision as a **placeholder**:
+Some changes can't be planned from the schema diff alone. Add a **required** field to a table that already has rows; the planner can write the `ADD COLUMN` and the `SET NOT NULL`, but only you know what the existing rows should contain. Rather than guessing, it scaffolds the decision as a **placeholder**:
 
 ```text
 ⚠ Planned migration with placeholder(s) — edit migration.ts then run `node migration.ts` to self-emit
@@ -199,7 +199,7 @@ Open migration.ts and replace each `placeholder(...)` call with your actual quer
 Then run: node migrations/app/20260707T1008_add_display_name/migration.ts
 ```
 
-The generated migration sandwiches a `dataTransform` between the schema steps, with `placeholder(...)` where your backfill query goes. Filling it in is the subject of [Editing a migration](/orm/migrations/editing-a-migration).
+The generated migration sandwiches a `dataTransform` between the schema steps, with `placeholder(...)` where your backfill query goes. Filling it in is explained in [Editing a migration](/orm/migrations/editing-a-migration).
 
 ## Reviewing what you planned
 
