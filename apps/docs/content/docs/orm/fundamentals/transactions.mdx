@@ -12,7 +12,7 @@ Run several writes as one unit with `db.transaction(...)`: they all commit toget
 
 Use a transaction whenever one business operation spans more than one write: creating a user with their first records, moving a value between two rows, or deleting a parent after its children.
 
-Pass a callback to `db.transaction(...)`. Inside it, query through `tx.orm` instead of `db.orm`; every call rides the same transaction. The callback's return value passes through:
+Pass a callback to `db.transaction(...)`. Inside it, query through `tx.orm` instead of `db.orm`. Every query you make on `tx` runs inside the transaction. `db.transaction(...)` returns whatever your callback returns:
 
 ```typescript
 import { db } from "./prisma/db";
@@ -21,7 +21,6 @@ const result = await db.transaction(async (tx) => {
   const user = await tx.orm.public.User.create({ email: "jane@prisma.io", name: "Jane" });
   const post = await tx.orm.public.Post.create({
     title: "Hello",
-    content: null,
     published: false,
     authorId: user.id,
   });
@@ -30,7 +29,15 @@ const result = await db.transaction(async (tx) => {
 // Both records exist now
 ```
 
+`db` is the client you create once in `src/prisma/db.ts`; `prisma orm init` writes that file. `db.orm` holds your models by model name, so `User` and `Post` are spelled the way you spelled them in your contract, the `contract.prisma` file that replaced `schema.prisma`. `public` is the PostgreSQL schema, the namespace your tables live in. It is `public` unless you set one.
+
+`create(...)` takes the fields of the record directly. There is no `data:` wrapper; see [wrapping create fields in a data object](/orm/fundamentals/writing-data#wrapping-create-fields-in-a-data-object). You have to pass a field only when it is required: a field you can leave out is one that is nullable or has a default. In the example, `published` is a non-null `Boolean` with no default, so it must be passed, while `content` is nullable and can be left out.
+
 You don't need a transaction for a single write; every mutation is already atomic on its own.
+
+:::note
+`db.transaction(...)` takes the callback and nothing else. There are no `isolationLevel`, `timeout`, or `maxWait` options, and calling `db.transaction(...)` again inside a transaction callback is not supported. See [what is not available yet](/orm/coming-from-prisma-orm-7#not-available-yet).
+:::
 
 ## Roll back on errors
 
@@ -49,23 +56,29 @@ try {
 
 ## Use the SQL builder in a transaction
 
-[SQL builder](/orm/fundamentals/advanced-queries) plans run inside a transaction through `tx.execute(...)`, with `tx.sql` mirroring `db.sql`:
+The [SQL query builder](/orm/fundamentals/advanced-queries) works the same way inside a transaction. `tx.sql` has the methods `db.sql` has, and you run the finished query with `tx.execute(...)`:
 
 ```typescript
+const cutoff = new Date("2026-01-01");
+
 await db.transaction(async (tx) => {
-  const plan = tx.sql.public.post
+  const query = tx.sql.public.post
     .update({ published: false })
     .where((f, fns) => fns.lt(f.createdAt, cutoff))
     .build();
-  await tx.execute(plan);
+  await tx.execute(query);
 });
 ```
+
+Two things differ from `tx.orm`. The builder is keyed by table name, so it is `tx.sql.public.post` where the ORM API has `tx.orm.public.Post`. The table name is the model name with a lowercase first letter unless the model sets `@@map`. And you chain clauses, then call `.build()` to finish the query. `.build()` returns the query without running it; `tx.execute(...)` runs it and returns `{ affectedRows }`. The `.where(...)` callback receives two arguments: `f` holds the columns, and `fns` holds the operators (`lt` is less-than). [Advanced queries](/orm/fundamentals/advanced-queries#build-and-run-a-plan) covers both.
 
 ## Transactions on MongoDB
 
 Prisma ORM does not support MongoDB transactions yet: there is no `db.transaction(...)` on the MongoDB client, and each ORM write is atomic per document.
 
-To run a multi-document transaction today, use the MongoDB driver directly. Share one `MongoClient` between Prisma ORM and your code, and group the writes in a driver session. MongoDB requires a replica set for transactions.
+To run a multi-document transaction today, use the MongoDB driver directly. Share one `MongoClient` between Prisma ORM and your code, and group the writes in a driver session. MongoDB only runs transactions on a replica set, so a standalone server rejects them.
+
+`prisma orm init` writes `src/prisma/db.ts`. Edit it to create the `MongoClient` yourself and export it, so your driver code and Prisma ORM use the same connection:
 
 ```typescript title="src/prisma/db.ts"
 import mongo from "@prisma/orm-mongo/runtime";
@@ -82,6 +95,8 @@ export const db = mongo<Contract>({
 });
 ```
 
+`contract.json` and `contract.d.ts` are written by `prisma contract emit`, which you run after every change to the contract.
+
 ```typescript
 import { client, db } from "./prisma/db";
 
@@ -93,7 +108,7 @@ try {
       .collection("users")
       .insertOne({ email: "jane@prisma.io", name: "Jane", createdAt: new Date() }, { session });
     await database.collection("posts").insertOne(
-      { title: "Hello", content: null, published: false, authorId: user.insertedId, createdAt: new Date() },
+      { title: "Hello", published: false, authorId: user.insertedId, createdAt: new Date() },
       { session },
     );
   });
@@ -105,13 +120,52 @@ try {
 const jane = await db.orm.users.where({ email: "jane@prisma.io" }).first();
 ```
 
-Writes made through the driver skip the type-checking that Prisma ORM queries get, so keep these sections small: one function per atomic operation, with Prisma ORM queries for everything around it.
+On MongoDB there is no schema segment in the path, and the accessor is the collection name: `db.orm.users`, not `db.orm.public.User`.
+
+Writes you make through the driver skip the type-checking that Prisma ORM queries get. Keep the driver code to one function per atomic operation, and write everything around it as Prisma ORM queries.
+
+## Coming from Prisma ORM 7
+
+Prisma ORM 8 has no `$transaction`. Both of the Prisma ORM 7 forms become `db.transaction(async (tx) => ...)`.
+
+The interactive form maps one for one. Rename the method and query through `tx`:
+
+```diff
+- const result = await prisma.$transaction(async (prisma) => {
+-   const user = await prisma.user.create({ data: { email, name } });
+-   return prisma.post.create({ data: { title, authorId: user.id } });
+- });
++ const result = await db.transaction(async (tx) => {
++   const user = await tx.orm.public.User.create({ email, name });
++   return tx.orm.public.Post.create({ title, published: false, authorId: user.id });
++ });
+```
+
+The array form has no replacement of its own. Write the queries out in the callback, one after another:
+
+```diff
+- const [user, post] = await prisma.$transaction([
+-   prisma.user.create({ data: { email, name } }),
+-   prisma.post.create({ data: { title, authorId } }),
+- ]);
++ const { user, post } = await db.transaction(async (tx) => {
++   const user = await tx.orm.public.User.create({ email, name });
++   const post = await tx.orm.public.Post.create({
++     title,
++     published: false,
++     authorId: user.id,
++   });
++   return { user, post };
++ });
+```
+
+You get the same atomicity. You also get what the array form never allowed: one query's result (here `user.id`) can feed the next query in the same transaction.
 
 ## Common mistakes
 
 ### Side effects inside the callback
 
-You sent an email or queued a job inside the transaction, next to the write it belongs to:
+If you send an email or queue a job inside the transaction, next to the write it belongs to:
 
 ```typescript
 await db.transaction(async (tx) => {
@@ -136,7 +190,7 @@ Now the email can only go out for a user that actually exists.
 
 ### Querying through db instead of tx
 
-You opened a transaction but kept writing `db.orm` inside the callback:
+If you open a transaction but keep writing `db.orm` inside the callback:
 
 ```typescript
 await db.transaction(async (tx) => {
@@ -144,34 +198,11 @@ await db.transaction(async (tx) => {
 });
 ```
 
-Queries on `db` run on their own connection, outside the open transaction. They commit immediately and won't roll back with the rest of the callback. Use the `tx` handle for every query inside the callback: `tx.orm` for models, `tx.sql` and `tx.execute` for SQL builder plans.
-
-### Passing an array of queries
-
-Prisma ORM 7 supported `$transaction([query1, query2])`. Prisma ORM 8 has no `$transaction` and no array form; the callback replaces it:
-
-```diff
-- const [user, post] = await prisma.$transaction([
--   prisma.user.create({ data: { email, name } }),
--   prisma.post.create({ data: { title, authorId } }),
-- ]);
-+ const { user, post } = await db.transaction(async (tx) => {
-+   const user = await tx.orm.public.User.create({ email, name });
-+   const post = await tx.orm.public.Post.create({
-+     title,
-+     content: null,
-+     published: false,
-+     authorId: user.id,
-+   });
-+   return { user, post };
-+ });
-```
-
-You get the same atomicity, plus something the array form never had: one query's result (here `user.id`) can feed the next query in the same transaction.
+Queries on `db` run on their own connection, outside the open transaction. They commit immediately and won't roll back with the rest of the callback. Use `tx` for every query inside the callback: `tx.orm` for models, `tx.sql` and `tx.execute` for the SQL query builder.
 
 ## Prompt your coding agent
 
-Projects scaffolded with `create-prisma@latest` install [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent; the `prisma-8` skill covers transactions. Prompts that map to each section:
+Projects created with `npm create prisma@latest` include the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8), instruction files for coding agents. The `prisma-8` skill covers transactions. Prompts that map to each section:
 
 - "Using the prisma-8 skill, wrap this signup flow (create user, create welcome post) in a db.transaction so both writes commit together."
 - "Check this transaction callback for queries that use db instead of tx."
@@ -181,4 +212,4 @@ Projects scaffolded with `create-prisma@latest` install [Prisma ORM skills](/ai/
 ## Next
 
 - [Write data](/orm/fundamentals/writing-data): the single-record and bulk mutations you group in a transaction.
-- [Use advanced queries](/orm/fundamentals/advanced-queries) to run SQL builder plans inside or outside transactions.
+- [Use advanced queries](/orm/fundamentals/advanced-queries) to run SQL query builder statements inside or outside transactions.
