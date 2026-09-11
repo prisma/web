@@ -1,0 +1,205 @@
+---
+title: Coming from Prisma ORM 7
+description: 'What every Prisma ORM 7 schema attribute, CLI command, and client method is called in Prisma ORM 8, and what has no equivalent yet.'
+url: /orm/coming-from-prisma-orm-7
+metaTitle: Coming from Prisma ORM 7
+metaDescription: 'A mapping from Prisma ORM 7 to Prisma ORM 8: schema attributes to contract types, CLI commands, client API methods, and the list of Prisma ORM 7 features that have no Prisma ORM 8 equivalent yet.'
+---
+
+This page maps what you already know from Prisma ORM 7 onto what it is called in Prisma ORM 8. It is a lookup table, not a tutorial: four tables covering the schema, the CLI, the client API, and the Prisma ORM 7 features that have no Prisma ORM 8 equivalent yet.
+
+To move a running application, follow [Migrate from Prisma 7 to Prisma 8](/guides/upgrade-prisma-orm/postgresql) instead. That guide runs both versions side by side against the same database and moves routes over one at a time. To decide whether to move at all, see [Release status](/prisma-orm/release-status).
+
+All examples are PostgreSQL.
+
+## Schema and types
+
+Your `schema.prisma` becomes a `contract.prisma`. The word "schema" now means what the database actually has; the contract is what you write. See [Core concepts](/orm/core-concepts).
+
+The largest change is that native types moved from attributes into type position: `@db.VarChar(255)` is now the type `VarChar(255)`.
+
+| Prisma ORM 7 | Prisma ORM 8 | Why |
+| --- | --- | --- |
+| `schema.prisma` | `contract.prisma` | the file describes an agreement between your code and the database, not the database itself |
+| (no marker) | `// use prisma-next` as the first non-whitespace line | tells the language server the file is a Prisma ORM 8 contract; unmarked files are left to the Prisma ORM 7 language server |
+| `generator client { ... }` | nothing | no client package is generated; `prisma contract emit` writes `contract.json` and `contract.d.ts` next to the contract |
+| `datasource db { ... }` | the `orm` section of `prisma.config.ts` | connection and paths are configuration, not schema |
+| `String @db.Text` | `String` | `String` already means `text` storage on PostgreSQL. Note that the compiler's generic hint for a removed `@db.*` attribute suggests "use `Text` in type position"; there is no `Text` type, and `String` is the answer |
+| `String @db.VarChar(255)` | `VarChar(255)` | native types are types, not attributes |
+| `Decimal @db.Decimal(10, 2)` | `Numeric(10, 2)` | `Decimal` still exists as a bare type for unconstrained `numeric`; the parameterized spelling is `Numeric` |
+| `String @db.Uuid` | `Uuid` | |
+| `DateTime` | `DateTime` | unchanged in name; it is `timestamptz` storage read as a `Temporal` value |
+| `DateTime @updatedAt` | `updatedAt temporal.updatedAt()` | a field preset in type position, applied on create and on every non-empty update |
+| `DateTime @default(now())` | `DateTime @default(now())` or `createdAt temporal.createdAt()` | both work; the preset carries its own type |
+| `String @default(cuid())` | `String @default(cuid(2))` | bare `cuid()` is rejected with a hint pointing at `cuid(2)` |
+| `Json` (stored as `jsonb`) | `Jsonb` | `Json` in Prisma ORM 8 means native `json`; `Jsonb` is what a Prisma ORM 7 `Json` field meant |
+| `enum Role { ADMIN USER }` | the same block plus `@@type("pg/text@1")` on its first line | an enum names the codec its values are stored with. Members may carry explicit values (`ADMIN = "admin"`, or `Low = 0` for an integer codec); without one the member name is the value |
+| `enum Role` mapped to a PostgreSQL enum type | `native_enum Role { ... @@map("role") }`, used as `pg.enum(Role)` in field position | a real PostgreSQL enum type is its own block kind |
+| `String[]` and other scalar lists | no equivalent | scalar lists, enum lists, and named-type lists are rejected |
+| implicit many-to-many (`Post[]` and `Tag[]` on both sides) | an explicit junction model with two foreign keys and `@@id([postId, tagId])` | the list fields stay; the join table becomes a model you can see |
+| `@id`, `@unique`, `@default`, `@relation`, `@map`, `@@map`, `@@index`, `@@id`, `@@unique` | unchanged | |
+
+`prisma.config.ts` replaces the `generator` and `datasource` blocks. It has two layers: the CLI envelope, and the ORM section for your database:
+
+```ts title="prisma.config.ts"
+import "dotenv/config";
+import { defineConfig } from "@prisma/cli-engine";
+import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
+
+export default defineConfig({
+  orm: ormConfig({
+    contract: "./src/prisma/contract.prisma",
+    db: {
+      connection: process.env.DATABASE_URL!,
+    },
+  }),
+});
+```
+
+The `orm` section takes four keys: `contract` (a path to a `.prisma` or `.ts` file), `db`, `extensions`, and `migrations`. The extension of the `contract` path is what decides whether you author in PSL or in TypeScript; there is no `provider` setting.
+
+## CLI commands
+
+The Prisma ORM 8 CLI groups its commands by what they touch: `contract` for your source, `db` for the live database, `migration` for the migration packages on disk.
+
+| Prisma ORM 7 | Prisma ORM 8 | Notes |
+| --- | --- | --- |
+| `prisma generate` | `prisma contract emit` | writes `contract.json` and `contract.d.ts`; commit both. Run it after every contract change |
+| `prisma migrate dev` | `prisma db update` while iterating, or `prisma migration plan` then `prisma db migrate` | `db update` applies the difference directly; `migration plan` writes a migration package you can read and check in |
+| `prisma migrate deploy` | `prisma db migrate` | applies the migration packages on disk |
+| `prisma db push` | `prisma db update` | same job, and it also signs the database |
+| `prisma db pull` | `prisma contract infer` | writes a draft contract from the live schema |
+| `prisma migrate diff` | `prisma migration plan --from <contract>` | the diff is written as a migration package rather than printed. To see whether the database and contract disagree without writing anything, use `prisma db verify` |
+| `prisma migrate resolve` | `prisma db sign`, and `prisma migration ref set db <hash>` | `db sign` records that the database satisfies the emitted contract; the ref records where the next migration starts from |
+| `prisma db seed` | no equivalent | there is no seed command and no seed hook in `prisma.config.ts`. Run your own script |
+| `prisma studio` | `prisma studio --url "<connection string>"` | Studio has no `schema.prisma` to read in Prisma ORM 8, so pass the connection string. See [Studio with Prisma 8](/studio/prisma-next) |
+| `prisma format` | `prisma contract format` | formats the PSL contract in place; a TypeScript contract is left alone |
+| `prisma validate` | no equivalent | `prisma contract emit` fails on an invalid contract, and `prisma db verify` checks the contract against the database |
+
+Commands that have no Prisma ORM 7 counterpart at all: `prisma orm init`, `prisma db init`, `prisma db sign`, `prisma db verify`, `prisma db schema`, `prisma migration new`, `prisma migration check`, `prisma migration graph`, `prisma migration list`, `prisma migration log`, `prisma migration show`, `prisma migration status`, `prisma migration ref list|set|delete`.
+
+## Client API
+
+Two things change at once. The client is built from the contract at runtime instead of being generated, and queries are chains that end in a terminal call rather than one object argument.
+
+| Prisma ORM 7 | Prisma ORM 8 |
+| --- | --- |
+| `new PrismaClient()` | `postgres<Contract>({ contractJson, url })` in `src/prisma/db.ts` |
+| `prisma.user` | `db.orm.public.User` |
+| `findMany({ where })` | `.where(...).all()` |
+| `findFirst({ where })` | `.where(...).first()` or `.first({ ... })` |
+| `findUnique({ where })` | `.where(...).first()` |
+| `where: { id: 1, active: true }` | `.where({ id: 1, active: true })`, or `.where((u) => u.age.gt(18))` for operators |
+| `select: { id: true, email: true }` | `.select("id", "email")` |
+| `include: { posts: true }` | `.include("posts")`, with an optional second argument to refine the related collection |
+| `orderBy: { createdAt: "desc" }` | `.orderBy((u) => u.createdAt.desc())` |
+| `take` / `skip` | `.limit(n)` / `.offset(n)` |
+| `distinct: ["country"]` | `.distinct("country")`, or `.distinctOn("country")` after an `.orderBy(...)` |
+| `create({ data: { ... } })` | `.create({ ... })` — no `data` wrapper |
+| `createMany({ data: [...] })` | `.createAll([...])` for the inserted rows, `.createAndCount([...])` for the count |
+| `update({ where, data })` | `.where(...).update({ ... })` — the `where` is required |
+| `updateMany({ where, data })` | `.where(...).updateAll({ ... })` for the rows, `.updateAndCount({ ... })` for the count |
+| `delete({ where })` | `.where(...).delete()` |
+| `deleteMany({ where })` | `.where(...).deleteAll()` for the rows, `.deleteAndCount()` for the count |
+| `upsert({ where, create, update })` | `.upsert({ create, update, conflictOn })` — `conflictOn` names the unique constraint; omit it for the primary key |
+| `count({ where })` | `.where(...).aggregate((agg) => ({ total: agg.count() }))` |
+| `aggregate({ _sum, _avg })` | `.aggregate((agg) => ({ total: agg.sum("views"), average: agg.avg("views") }))` |
+| `groupBy({ by, _count })` | `.groupBy("userId").aggregate((agg) => ({ count: agg.count() }))` |
+| `$transaction(async (tx) => ...)` | `db.transaction(async (tx) => ...)`, querying through `tx.orm` |
+| `$queryRaw` | ``db.raw.sql`...`.returnsRow(spec).build()``, run with `db.runtime().query(plan)` |
+| `$executeRaw` | ``db.raw.sql`...`.affectedCount().build()``, run with `db.runtime().execute(plan)` |
+| `$connect()` | `db.connect()` — the client connects lazily on the first query, so you rarely call it, and never more than once |
+| `$disconnect()` | `db.close()` |
+
+On MongoDB the accessor is the collection's storage name, `db.orm.users`, and there is no schema namespace.
+
+### Find with a filter
+
+```ts title="Prisma ORM 7"
+const users = await prisma.user.findMany({
+  where: { active: true },
+  select: { id: true, email: true },
+  orderBy: { createdAt: "desc" },
+  take: 10,
+});
+```
+
+```ts title="Prisma ORM 8"
+import { db } from "./prisma/db";
+
+const users = await db.orm.public.User
+  .where({ active: true })
+  .select("id", "email")
+  .orderBy((u) => u.createdAt.desc())
+  .limit(10)
+  .all();
+```
+
+### Create a record
+
+```ts title="Prisma ORM 7"
+const user = await prisma.user.create({
+  data: { email: "alice@prisma.io", name: "Alice" },
+});
+```
+
+```ts title="Prisma ORM 8"
+const user = await db.orm.public.User.create({
+  email: "alice@prisma.io",
+  name: "Alice",
+});
+```
+
+### Transaction
+
+```ts title="Prisma ORM 7"
+const [user, post] = await prisma.$transaction([
+  prisma.user.create({ data: { email: "jane@prisma.io" } }),
+  prisma.post.create({ data: { title: "Hello" } }),
+]);
+```
+
+```ts title="Prisma ORM 8"
+const result = await db.transaction(async (tx) => {
+  const user = await tx.orm.public.User.create({ email: "jane@prisma.io" });
+  const post = await tx.orm.public.Post.create({ title: "Hello", authorId: user.id });
+  return { user, post };
+});
+```
+
+## Not in Prisma ORM 8 yet
+
+These are Prisma ORM 7 features with no direct Prisma ORM 8 form today. Status is one of "no equivalent", "planned", or "shipped in a different form".
+
+| Prisma ORM 7 feature | Status | What to do instead |
+| --- | --- | --- |
+| `createMany({ skipDuplicates: true })` | no equivalent | `.upsert({ create, update: {}, conflictOn })` per row, which compiles to `ON CONFLICT DO NOTHING`. There is no batch form |
+| Atomic `{ increment: n }` / `{ decrement: n }` on update | no equivalent | write the arithmetic in `db.raw.sql`, or read and write inside `db.transaction(...)` |
+| `findUniqueOrThrow` / `findFirstOrThrow` | shipped in a different form | `.all().firstOrThrow()` throws `RUNTIME.NO_ROWS` when nothing matched. It buffers every matching row, so narrow with `.where(...)` first |
+| `mode: "insensitive"` | shipped in a different form | on PostgreSQL, `.ilike("%alice%")` on a text column. The wildcards are yours to write |
+| `contains` / `startsWith` / `endsWith` filters | no equivalent | `.like("alice%")` with explicit `%` wildcards |
+| JSON path and containment filters (`path`, `string_contains`, `array_contains`) | no equivalent | a `Jsonb` column supports whole-document equality only (`eq`, `neq`, `in`, `notIn`); a `Json` column supports no filters. Write the path query with `db.raw.sql` |
+| `$transaction([...])`, the array form | no equivalent | `db.transaction(async (tx) => ...)`. The calls inside run one after another |
+| `Prisma.UserGetPayload<...>` and the generated model types | no equivalent {/* Will: confirm status */} | `DefaultModelRow<Contract, "User">` names the full row. There is no type that encodes a `select` projection the way `GetPayload` did |
+| Implicit many-to-many relations | no equivalent | declare the junction model, with both foreign keys and `@@id([aId, bId])`. The `Post[]` / `Tag[]` navigation fields stay |
+| `@@map` on an `enum` | no equivalent | an `enum` block accepts only `@@type("<codec>")`. For a real PostgreSQL enum type declare a `native_enum` block, which does accept `@@map` |
+| `$use` middleware | shipped in a different form | runtime middleware, passed as `middleware: [...]` when you construct the client. Hooks sit at the query-plan level, not the model-operation level. See [How middleware works](/orm/middleware/how-middleware-works) |
+| `$extends` (result, model, client, and query components) | no equivalent | extensions add types and operators to the contract rather than wrapping the client. See [Using extensions](/orm/extensions/using-extensions) |
+
+Also absent, each with no equivalent today:
+
+- Nested writes beyond create and connect: `connectOrCreate`, nested `update`, `updateMany`, `upsert`, `delete`, `deleteMany`, and relation `set`.
+- Scalar list fields, and therefore the `has` / `hasEvery` / `hasSome` / `isEmpty` filters.
+- Transaction options: `isolationLevel`, `timeout`, `maxWait`, and nested transactions.
+- `omit`, `relationLoadStrategy`, `Prisma.skip`, and `findUnique` auto-batching.
+- The `P2002` / `P2025` error codes. Errors are structured envelopes instead, and a database error carries its SQLSTATE (`23505` for a unique violation). See the [error reference](/orm/reference/error-reference).
+- `Prisma.sql`, `Prisma.join`, `Prisma.raw`, `Prisma.empty`, and TypedSQL. A row-returning `db.raw.sql` template interpolates into another raw template as a subquery, which covers composition.
+- Soft delete, declarative model validations, lifecycle callbacks, and read replicas. Add a nullable `deletedAt` and filter for the first, validate in application code for the second, use middleware for the third, and hold one client per database for the fourth.
+
+## Where to go next
+
+- [Migrate from Prisma 7 to Prisma 8](/guides/upgrade-prisma-orm/postgresql) — the five-phase incremental migration for a running PostgreSQL application.
+- [Core concepts](/orm/core-concepts) — what a contract, an emit, a signature, and a plan are.
+- [ORM client reference](/orm/reference/orm-client) — every builder and terminal method.
+- [Reading data](/orm/fundamentals/reading-data) and [writing data](/orm/fundamentals/writing-data) — the query API in full.
+- [Release status](/prisma-orm/release-status) — where Prisma ORM 8 is in its release cycle and how to stay on Prisma ORM 7.
