@@ -16,6 +16,7 @@ import {
   useState,
 } from "react";
 import { cn } from "../lib/cn";
+import { escapeTabValue } from "../lib/tab-value";
 import { buttonVariants } from "./ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./select"; // adjust to your actual path
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
@@ -226,12 +227,16 @@ export function CodeBlockTabs({
   const nested = use(TabsContext) !== null;
 
   // ── track the active tab ──
+  // Tab values become DOM ids inside Radix, so a human label ("Relational
+  // databases") is escaped before it is compared with anything or handed to
+  // Tabs. `escapeTabValue` is idempotent, so values that arrive already escaped
+  // pass through unchanged.
   const [internalActiveTab, setInternalActiveTab] = useState<string>(
-    controlledValue ?? defaultValue ?? "",
+    escapeTabValue(controlledValue ?? defaultValue ?? ""),
   );
 
   // Use controlled value if provided, otherwise use internal state
-  const activeTab = controlledValue ?? internalActiveTab;
+  const activeTab = controlledValue !== undefined ? escapeTabValue(controlledValue) : internalActiveTab;
 
   // ── variant state (only when variants are provided) ──
   const hasVariants = (variants?.length ?? 0) > 0;
@@ -254,7 +259,7 @@ export function CodeBlockTabs({
         value?: string;
         variant?: string;
       };
-      if (value && variant) s.add(`${value}__${variant}`);
+      if (value && variant) s.add(`${escapeTabValue(value)}__${variant}`);
     });
     return s;
   }, [children, variants]);
@@ -283,7 +288,7 @@ export function CodeBlockTabs({
         variant?: string;
       };
       if (value && variant === activeVariant) {
-        allTabs.add(value);
+        allTabs.add(escapeTabValue(value));
       }
     });
     return allTabs;
@@ -392,7 +397,9 @@ export function CodeBlockTabsTrigger({ children, ...props }: ComponentProps<type
   // Check if this tab has content for the currently selected variant
   const hasVariants = (ctx?.variants?.length ?? 0) > 0;
   const isAvailable =
-    !hasVariants || !ctx?.availableTabs || ctx.availableTabs.has(props.value as string);
+    !hasVariants ||
+    !ctx?.availableTabs ||
+    ctx.availableTabs.has(escapeTabValue(props.value as string));
 
   return (
     <TabsTrigger

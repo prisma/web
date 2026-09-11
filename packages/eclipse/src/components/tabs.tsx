@@ -12,6 +12,7 @@ import {
   useState,
 } from "react";
 import { cn } from "../lib/cn";
+import { escapeTabValue } from "../lib/tab-value";
 import * as Unstyled from "./ui/tabs";
 
 type CollectionKey = string | symbol;
@@ -99,7 +100,7 @@ export function Tabs({
   color = "default",
   label,
   defaultIndex = 0,
-  defaultValue = items ? escapeValue(items[defaultIndex]) : undefined,
+  defaultValue = items ? escapeTabValue(items[defaultIndex]) : undefined,
   // Extract onValueChange so it isn't forwarded via ...props (which would
   // override the internal handler). We call it ourselves after updating state.
   onValueChange,
@@ -114,7 +115,7 @@ export function Tabs({
       className={cn("flex flex-col overflow-hidden my-4", className)}
       value={value}
       onValueChange={(v: string) => {
-        if (items && !items.some((item) => escapeValue(item) === v)) return;
+        if (items && !items.some((item) => escapeTabValue(item) === v)) return;
         setValue(v);
         onValueChange?.(v);
       }}
@@ -127,7 +128,7 @@ export function Tabs({
           <TabsList>
             {label && <span className="type-text-sm-strong my-auto me-auto">{label}</span>}
             {items.map((item) => (
-              <TabsTrigger key={item} value={escapeValue(item)}>
+              <TabsTrigger key={item} value={escapeTabValue(item)}>
                 {item}
               </TabsTrigger>
             ))}
@@ -158,7 +159,7 @@ export function Tab({ value, ...props }: TabProps) {
     );
 
   return (
-    <TabsContent value={escapeValue(resolved)} {...props}>
+    <TabsContent value={escapeTabValue(resolved)} {...props}>
       {props.children}
     </TabsContent>
   );
@@ -204,11 +205,4 @@ function useCollectionIndex() {
 
   if (!collection.includes(key)) collection.push(key);
   return collection.indexOf(key);
-}
-
-/**
- * only escape whitespaces in values in simple mode
- */
-function escapeValue(v: string): string {
-  return v.toLowerCase().replace(/\s/, "-");
 }
