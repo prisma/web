@@ -15,12 +15,12 @@ test("labels ORM pages with their version", () => {
 
 test("labels CLI and guides pages", () => {
   assert.equal(getPageVersionLabel("/cli/v7/commands"), "Prisma CLI v7");
-  assert.equal(getPageVersionLabel("/guides/v7/nextjs"), "Prisma 7");
+  assert.equal(getPageVersionLabel("/guides/v7/nextjs"), "Prisma ORM v7");
 });
 
 test("labels the versioned getting-started tree", () => {
-  assert.equal(getPageVersionLabel("/v7"), "Prisma 7");
-  assert.equal(getPageVersionLabel("/v7/getting-started"), "Prisma 7");
+  assert.equal(getPageVersionLabel("/v7"), "Prisma ORM v7");
+  assert.equal(getPageVersionLabel("/v7/getting-started"), "Prisma ORM v7");
 });
 
 test("returns null for latest and unversioned pages", () => {
