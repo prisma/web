@@ -1,643 +1,478 @@
 ---
 title: AI SDK (with Next.js)
-description: 'Build a chat application with AI SDK, Prisma, and Next.js to store chat sessions and messages'
+description: 'Build a chat application with AI SDK, Prisma 8, and Next.js that stores chat sessions and messages in Prisma Postgres.'
 image: /img/guides/prisma-ai-sdk-nextjs-cover.png
 url: /guides/integrations/ai-sdk
-metaTitle: 'How to use AI SDK with Prisma ORM, Prisma Postgres, and Next.js for chat applications'
-metaDescription: 'Build a chat application with AI SDK, Prisma, and Next.js to store chat sessions and messages'
+metaTitle: 'How to use AI SDK with Prisma 8, Prisma Postgres, and Next.js for chat applications'
+metaDescription: 'Build a chat application with AI SDK, Prisma 8, and Next.js that stores chat sessions and messages in Prisma Postgres.'
 ---
 
 ## Introduction
 
-[AI SDK](https://sdk.vercel.ai/) streams model responses to the browser, and a [Next.js](https://nextjs.org/) route handler gives you a place to persist each exchange with Prisma ORM, so a conversation survives page reloads.
+[AI SDK](https://ai-sdk.dev/) streams model responses to the browser, and a [Next.js](https://nextjs.org/) route handler gives you a place to persist each exchange with Prisma 8, so a conversation survives page reloads.
 
-In this guide, you'll learn to build a chat application using AI SDK with Next.js and Prisma ORM to store chat sessions and messages in a Prisma Postgres database. You can find a complete example of this guide on [GitHub](https://github.com/prisma/prisma-examples/tree/latest/orm/ai-sdk-nextjs).
+In this guide, you scaffold a Next.js app with Prisma 8, define a contract for chat sessions and messages, save every completed exchange from the AI SDK route handler, and load a session back into the UI when the page opens.
+
+:::note[Using Prisma 7?]
+
+Prisma 8 is the current release of Prisma ORM. Prisma 7 remains fully supported; the Prisma 7 version of this guide is at [/guides/v7/integrations/ai-sdk](/guides/v7/integrations/ai-sdk).
+
+:::
 
 ## Prerequisites
 
-- [Node.js 20+](https://nodejs.org)
-- An [OpenAI API key](https://platform.openai.com/api-keys) or other AI provider API key
+- [Node.js](https://nodejs.org) 24 or later
+- An [OpenAI API key](https://platform.openai.com/api-keys)
+- A PostgreSQL connection string, or nothing at all: `npx create-db@latest` can create a [Prisma Postgres](/postgres) database for you
 
-## 1. Set up your project
+## Use with your agent
 
-To get started, you'll need to create a new Next.js project.
+To delegate this guide to your coding agent, copy the prompt below and hand it over:
 
-```npm
-npx create-next-app@latest ai-sdk-prisma
+<AgentPrompt>
+
+```text
+Build a Next.js chat app with AI SDK that stores chat sessions and messages with Prisma 8, following https://www.prisma.io/docs/guides/integrations/ai-sdk.md.
+
+1. Scaffold: `npx create-prisma@latest create ai-sdk-prisma --template next --provider postgres --yes`. Then run `npx prisma@latest init` in `ai-sdk-prisma` so the Prisma agent skills are installed and stay current, and use them. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Export it as `DATABASE_URL` in the shell; the Prisma CLI reads the environment variable, not `.env`.
+2. Replace `src/prisma/contract.prisma` with the `Session` and `Message` models from the guide (a `MessageRole` enum, `parts` stored as `Json`, `position` for ordering, `onDelete: Cascade` on the relation). Delete the starter files the template generated for its own schema: `src/prisma/users.ts`, `src/prisma/seed.ts`, and the `migrations/` directory. Run `npm run contract:emit` and then `npm run db:init` with `DATABASE_URL` exported.
+3. Install `ai`, `@ai-sdk/react`, and `@ai-sdk/openai`. Put `OPENAI_API_KEY` and `DATABASE_URL` in `.env`.
+4. Create `src/prisma/chat.ts` with `saveChat(id, messages)` (upsert the session, then upsert each message by id inside `db.transaction`) and `loadChat(id)` (messages for a session ordered by `position`), `src/app/api/chat/route.ts` (streamText with `openai("gpt-5.1")`, `toUIMessageStream` with `originalMessages`, `generateMessageId`, and an `onEnd` that calls `saveChat`), `src/app/api/messages/route.ts` (GET, `?chat=<id>`), a server `src/app/page.tsx` that redirects to `/?chat=<generateId()>` when the id is missing, and a client `src/app/chat.tsx` built on `useChat({ id })` that fetches `/api/messages` on mount.
+5. Run `npx tsc --noEmit` and `npm run build`. Start `npm run dev` in the background, open http://localhost:3000, send a message, reload the page, and confirm the conversation is still there. Stop the dev server when done.
 ```
 
-It will prompt you to customize your setup. Choose the defaults:
+</AgentPrompt>
 
-:::info
+## 1. Scaffold the project
 
-- _Would you like to use TypeScript?_ `Yes`
-- _Would you like to use ESLint?_ `Yes`
-- _Would you like to use Tailwind CSS?_ `Yes`
-- _Would you like your code inside a `src/` directory?_ `No`
-- _Would you like to use App Router?_ (recommended) `Yes`
-- _Would you like to use Turbopack for `next dev`?_ `Yes`
-- _Would you like to customize the import alias (`@/_`by default)?*`No`
+The `next` template generates a Next.js app with Prisma 8 already wired in: the contract, the client in `src/prisma/db.ts`, and package scripts for the database steps. That replaces the `create-next-app`, `prisma init`, driver adapter, and `prisma generate` steps of the Prisma 7 guide.
 
-:::
-
-Navigate to the project directory:
-
-```bash
+```npm
+npx create-prisma@latest create ai-sdk-prisma --template next --provider postgres
 cd ai-sdk-prisma
 ```
 
-## 2. Install and Configure Prisma
+Answer the prompts for contract authoring style (this guide uses PSL) and package manager. The scaffold installs dependencies and emits the contract your queries are type-checked against.
 
-### 2.1. Install dependencies
-
-To get started with Prisma, you'll need to install a few dependencies:
-
-```npm
-npm install prisma@7.10.0 tsx @types/pg --save-dev
-```
-
-```npm
-npm install @prisma/client@7.10.0 @prisma/adapter-pg dotenv pg
-```
-
-:::info
-
-If you are using a different database provider (MySQL, SQL Server, SQLite), install the corresponding driver adapter package instead of `@prisma/adapter-pg`. For more information, see [Database drivers](/orm/v7/core-concepts/supported-databases/database-drivers).
-
-:::
-
-Once installed, initialize Prisma in your project:
-
-```npm
-npx prisma init --output ../app/generated/prisma
-```
-
-:::info
-
-`prisma init` creates the Prisma scaffolding and a local `DATABASE_URL`. In the next step, you will create a Prisma Postgres database and replace that value with a direct `postgres://...` connection string.
-
-:::
-
-This will create:
-
-- A `prisma` directory with a `schema.prisma` file.
-- A `prisma.config.ts` file for configuring Prisma
-- A `.env` file containing a local `DATABASE_URL` at the project root.
-- The `output` field specifies where the generated Prisma Client will be stored.
-
-Create a Prisma Postgres database and replace the generated `DATABASE_URL` in your `.env` file with the `postgres://...` connection string from the CLI output:
-
-```npm
-npx create-db
-```
-
-### 2.2. Define your Prisma Schema
-
-In the `prisma/schema.prisma` file, add the following models:
-
-```prisma title="prisma/schema.prisma"
-generator client {
-  provider = "prisma-client"
-  output   = "../app/generated/prisma"
-}
-
-datasource db {
-  provider = "postgresql"
-}
-
-model Session { // [!code ++]
-  id        String    @id // [!code ++]
-  createdAt DateTime  @default(now()) // [!code ++]
-  updatedAt DateTime  @updatedAt // [!code ++]
-  messages  Message[] // [!code ++]
-} // [!code ++]
- // [!code ++]
-model Message { // [!code ++]
-  id        String      @id @default(cuid()) // [!code ++]
-  role      MessageRole // [!code ++]
-  content   String // [!code ++]
-  createdAt DateTime    @default(now()) // [!code ++]
-  sessionId String // [!code ++]
-  session   Session     @relation(fields: [sessionId], references: [id], onDelete: Cascade) // [!code ++]
-} // [!code ++]
- // [!code ++]
-enum MessageRole { // [!code ++]
-  USER // [!code ++]
-  ASSISTANT // [!code ++]
-} // [!code ++]
-```
-
-This creates three models: `Session`, `Message`, and `MessageRole`.
-
-### 2.3 Add `dotenv` to `prisma.config.ts`
-
-To get access to the variables in the `.env` file, they can either be loaded by your runtime, or by using `dotenv`.
-Include an import for `dotenv` at the top of the `prisma.config.ts`
-
-```ts
-import "dotenv/config"; // [!code ++]
-import { defineConfig, env } from "prisma/config";
-export default defineConfig({
-  schema: "prisma/schema.prisma",
-  migrations: {
-    path: "prisma/migrations",
-  },
-  datasource: {
-    url: env("DATABASE_URL"),
-  },
-});
-```
-
-### 2.4. Configure the Prisma Client generator
-
-Now, run the following command to create the database tables and generate the Prisma Client:
-
-```npm
-npx prisma migrate dev --name init
-```
-
-```npm
-npx prisma generate
-```
-
-## 3. Integrate Prisma into Next.js
-
-Create a `/lib` directory and a `prisma.ts` file inside it. This file will be used to create and export your Prisma Client instance.
+Next, set the database connection for the CLI steps. Use your own PostgreSQL connection string, or create a Prisma Postgres database with `npx create-db@latest`; it prints a connection string and a claim URL you can open to keep the database. Export the variable in the shell you work in; the Prisma CLI reads the environment variable, not `.env`:
 
 ```bash
-mkdir lib
-touch lib/prisma.ts
+export DATABASE_URL="<your connection string>"
 ```
 
-Set up the Prisma client like this:
+## 2. Define the data contract
 
-```tsx title="lib/prisma.ts"
-import { PrismaClient } from "../app/generated/prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
+The template ships a `User` and `Post` starter schema. Replace the whole of `src/prisma/contract.prisma` with the chat models:
 
-const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL!,
-});
+```prisma title="src/prisma/contract.prisma"
+// use prisma-next
 
-const globalForPrisma = global as unknown as {
-  prisma: PrismaClient;
-};
+enum MessageRole {
+  @@type("pg/text@1")
+  user      = "user"
+  assistant = "assistant"
+}
 
-const prisma =
-  globalForPrisma.prisma ||
-  new PrismaClient({
-    adapter,
-  });
+model Session {
+  id        String            @id
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+  messages  Message[]
+}
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
-
-export default prisma;
+model Message {
+  id        String            @id
+  role      MessageRole
+  parts     Json
+  position  Int
+  createdAt TimestamptzString @default(now())
+  sessionId String
+  session   Session           @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
 ```
 
-:::warning
-We recommend using a connection pooler (like [Prisma Accelerate](https://www.prisma.io/accelerate)) to manage database connections efficiently.
+A few things to note:
 
-If you choose not to use one, **avoid** instantiating `PrismaClient` globally in long-lived environments. Instead, create and dispose of the client per request to prevent exhausting your database connections.
-:::
+- `Session.id` and `Message.id` have no default. AI SDK generates a chat id on the client and stable message ids on the server, and you store those.
+- `MessageRole` is a Prisma 8 enum: it is stored as `text` and enforced with a `CHECK` constraint. The values match AI SDK's `role` strings, so you can save `message.role` as is.
+- `parts` is `Json`. AI SDK messages carry an array of parts (text, reasoning, tool calls), and storing it verbatim means the UI can render a saved message exactly like a live one.
+- `position` records where a message sits in the conversation, so `loadChat` can return messages in order.
 
-## 4. Set up AI SDK
+The template also generated a seed helper and an initial migration for the starter schema. Remove them so nothing references models that no longer exist:
 
-### 4.1. Install AI SDK and get an API key
+```bash
+rm src/prisma/users.ts src/prisma/seed.ts
+rm -r migrations
+```
 
-Install the AI SDK package:
+Emit the contract and initialize the database:
 
 ```npm
-npm install ai @ai-sdk/react @ai-sdk/openai zod
+npm run contract:emit
+npm run db:init
 ```
 
-To use AI SDK, you'll need to obtain an API key from [OpenAI](https://platform.openai.com/api-keys).
-
-1. Navigate to [OpenAI API Keys](https://platform.openai.com/api-keys)
-2. Click on `Create new secret key`
-3. Fill in the form:
-   - Give your key a name like `Next.js AI SDK Project`
-   - Select `All` access
-4. Click on `Create secret key`
-5. Copy the API key
-6. Add the API key to the `.env` file:
-
-```text title=".env"
-DATABASE_URL=<YOUR_DATABASE_URL_HERE>
-OPENAI_API_KEY=<YOUR_OPENAI_API_KEY_HERE>
+```text no-copy
+"summary": "Applied 4 operation(s) across 1 space(s), database signed"
 ```
 
-### 4.2. Create a route handler
+`contract:emit` regenerates `src/prisma/contract.json` and `src/prisma/contract.d.ts`, which is where your query types come from. `db:init` creates the `session` and `message` tables, the index on `sessionId`, and the cascading foreign key, then signs the database. There is no separate `generate` step and no client to instantiate: `src/prisma/db.ts` already exports `db`, and its types follow the contract you just emitted.
 
-You need to create a route handler to handle the AI SDK requests. This handler will process chat messages and stream AI responses back to the client.
+If `db:init` stops with `Connection terminated unexpectedly`, a database you just created is still starting; wait a few seconds and run it again.
 
-```bash
-mkdir -p app/api/chat
-touch app/api/chat/route.ts
+## 3. Install AI SDK and set your API key
+
+```npm
+npm install ai @ai-sdk/react @ai-sdk/openai
 ```
 
-Set up the basic route handler:
+Add your OpenAI API key to `.env`. Put `DATABASE_URL` there too: `next dev` and `next build` load `.env`, so the app finds both values without the shell export. The Prisma CLI does not read `.env`, which is why you still export `DATABASE_URL` for `db:init` and the other `prisma` commands.
 
-```tsx title="app/api/chat/route.ts"
-import { openai } from "@ai-sdk/openai";
-import { streamText, UIMessage, convertToModelMessages } from "ai";
-
-export const maxDuration = 300;
-
-export async function POST(req: Request) {
-  const { messages }: { messages: UIMessage[] } = await req.json();
-
-  const result = streamText({
-    model: openai("gpt-4o"),
-    messages: convertToModelMessages(messages),
-  });
-
-  return result.toUIMessageStreamResponse();
-}
+```bash title=".env"
+DATABASE_URL="<your connection string>"
+OPENAI_API_KEY="<your OpenAI API key>"
 ```
 
-This route handler:
+## 4. Save and load chats with Prisma 8
 
-1. Extracts the conversation history from the request body
-2. Converts UI messages to the format expected by the AI model
-3. Streams the AI response back to the client in real-time
+Create `src/prisma/chat.ts` with two functions: `saveChat` persists a session and its messages, and `loadChat` reads them back in order.
 
-To save chat sessions and messages to the database, we need to:
+```typescript title="src/prisma/chat.ts"
+import type { JsonValue } from "@prisma/orm-postgres/target/codec-types";
+import type { UIMessage } from "ai";
 
-1. Add a session `id` parameter to the request
-2. Include an `onFinish` callback in the response
-3. Pass the `id` and `messages` parameters to the `saveChat` function (which we'll build next)
+import { db } from "./db.ts";
 
-```tsx title="app/api/chat/route.ts"
-import { openai } from "@ai-sdk/openai";
-import { streamText, UIMessage, convertToModelMessages } from "ai";
-import { saveChat } from "@/lib/save-chat"; // [!code ++]
-
-export const maxDuration = 300;
-
-export async function POST(req: Request) {
-  const { messages, id }: { messages: UIMessage[]; id: string } = await req.json(); // [!code highlight]
-
-  const result = streamText({
-    model: openai("gpt-4o"),
-    messages: convertToModelMessages(messages),
-  });
-
-  return result.toUIMessageStreamResponse({
-    originalMessages: messages, // [!code ++]
-    onFinish: async ({ messages }) => {
-      // [!code ++]
-      await saveChat(messages, id); // [!code ++]
-    }, // [!code ++]
-  });
-}
-```
-
-### 4.3. Create a `saveChat` function
-
-Create a new file at `lib/save-chat.ts` to save the chat sessions and messages to the database:
-
-```bash
-touch lib/save-chat.ts
-```
-
-To start, create a basic function called `saveChat` that will be used to save the chat sessions and messages to the database.
-
-Pass into it the `messages` and `id` parameters typed as `UIMessage[]` and `string` respectively:
-
-```tsx title="lib/save-chat.ts"
-import { UIMessage } from "ai";
-
-export async function saveChat(messages: UIMessage[], id: string) {}
-```
-
-Now, add the logic to create a session with the given `id`:
-
-```tsx title="lib/save-chat.ts"
-import prisma from "./prisma"; // [!code ++]
-import { UIMessage } from "ai";
-
-export async function saveChat(messages: UIMessage[], id: string) {
-  const session = await prisma.session.upsert({
-    // [!code ++]
-    where: { id }, // [!code ++]
-    update: {}, // [!code ++]
-    create: { id }, // [!code ++]
-  }); // [!code ++]
-  // [!code ++]
-  if (!session) throw new Error("Session not found"); // [!code ++]
-}
-```
-
-Add the logic to save the messages to the database. You'll only be saving the last two messages _(Users and Assistants last messages)_ to avoid any overlapping messages.
-
-```tsx title="lib/save-chat.ts"
-import prisma from "./prisma";
-import { UIMessage } from "ai";
-
-export async function saveChat(messages: UIMessage[], id: string) {
-  const session = await prisma.session.upsert({
-    where: { id },
-    update: {},
-    create: { id },
-  });
-
-  if (!session) throw new Error("Session not found");
-
-  const lastTwoMessages = messages.slice(-2); // [!code ++]
-  // [!code ++]
-  for (const msg of lastTwoMessages) {
-    // [!code ++]
-    let content = JSON.stringify(msg.parts); // [!code ++]
-    if (msg.role === "assistant") {
-      // [!code ++]
-      const textParts = msg.parts.filter((part) => part.type === "text"); // [!code ++]
-      content = JSON.stringify(textParts); // [!code ++]
-    } // [!code ++]
-    // [!code ++]
-    await prisma.message.create({
-      // [!code ++]
-      data: {
-        // [!code ++]
-        role: msg.role === "user" ? "USER" : "ASSISTANT", // [!code ++]
-        content: content, // [!code ++]
-        sessionId: session.id, // [!code ++]
-      }, // [!code ++]
-    }); // [!code ++]
-  } // [!code ++]
-}
-```
-
-This function:
-
-1. Upserts a session with the given `id` to create a session if it doesn't exist
-2. Saves the messages to the database under the `sessionId`
-
-## 5. Create a messages API route
-
-Create a new file at `app/api/messages/route.ts` to fetch the messages from the database:
-
-```bash
-mkdir -p app/api/messages
-touch app/api/messages/route.ts
-```
-
-Create a basic API route to fetch the messages from the database.
-
-```tsx title="app/api/messages/route.ts"
-import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
-
-export async function GET() {
-  try {
-    const messages = await prisma.message.findMany({
-      orderBy: { createdAt: "asc" },
+export async function saveChat(id: string, messages: UIMessage[]) {
+  await db.transaction(async (tx) => {
+    await tx.orm.public.Session.upsert({
+      create: { id },
+      update: {},
+      conflictOn: { id },
     });
 
-    const uiMessages = messages.map((msg) => ({
-      id: msg.id,
-      role: msg.role.toLowerCase(),
-      parts: JSON.parse(msg.content),
-    }));
+    for (const [position, message] of messages.entries()) {
+      if (message.role !== "user" && message.role !== "assistant") continue;
 
-    return NextResponse.json({ messages: uiMessages });
-  } catch (error) {
-    console.error("Error fetching messages:", error);
-    return NextResponse.json({ messages: [] });
+      await tx.orm.public.Message.upsert({
+        create: {
+          id: message.id,
+          sessionId: id,
+          role: message.role,
+          parts: message.parts as JsonValue,
+          position,
+        },
+        update: { parts: message.parts as JsonValue, position },
+        conflictOn: { id: message.id },
+      });
+    }
+  });
+}
+
+export async function loadChat(id: string): Promise<UIMessage[]> {
+  const rows = await db.orm.public.Message.select("id", "role", "parts")
+    .where({ sessionId: id })
+    .orderBy((m) => m.position.asc())
+    .all();
+
+  return rows.map((row) => ({
+    id: row.id,
+    role: row.role,
+    parts: row.parts as UIMessage["parts"],
+  }));
+}
+```
+
+How it works:
+
+- Model access is namespace-qualified on PostgreSQL: `db.orm.public.Session`, not `db.session`. `db.transaction` hands you a `tx` with the same `orm` surface, and everything inside it commits together or not at all.
+- `upsert` takes `create`, `update`, and `conflictOn`. AI SDK sends the whole conversation with every request, so upserting each message by its id keeps saves idempotent: messages that already exist are left alone, and the new user and assistant messages are inserted.
+- `message.parts` is typed by AI SDK as an array of part objects. The `as JsonValue` cast tells Prisma 8 to store it in the `Json` column; the reverse cast in `loadChat` hands it back to AI SDK as `UIMessage["parts"]`.
+- `.select("id", "role", "parts")` narrows the returned row type to the fields the UI needs, and `.orderBy((m) => m.position.asc())` restores conversation order.
+
+## 5. Create the chat route handler
+
+The route handler streams the model response to the browser and, once the stream ends, saves the full conversation:
+
+```bash
+mkdir -p src/app/api/chat
+```
+
+```typescript title="src/app/api/chat/route.ts"
+import { openai } from "@ai-sdk/openai";
+import {
+  convertToModelMessages,
+  createIdGenerator,
+  createUIMessageStreamResponse,
+  streamText,
+  toUIMessageStream,
+  type UIMessage,
+} from "ai";
+
+import { saveChat } from "../../../prisma/chat";
+
+export const maxDuration = 300;
+
+export async function POST(req: Request) {
+  const { messages, id }: { messages: UIMessage[]; id: string } = await req.json();
+
+  const result = streamText({
+    model: openai("gpt-5.1"),
+    messages: await convertToModelMessages(messages),
+  });
+
+  return createUIMessageStreamResponse({
+    stream: toUIMessageStream({
+      stream: result.stream,
+      originalMessages: messages,
+      generateMessageId: createIdGenerator({ prefix: "msg", size: 16 }),
+      onEnd: async ({ messages }) => {
+        await saveChat(id, messages);
+      },
+    }),
+  });
+}
+```
+
+This handler:
+
+1. Reads the conversation and the chat `id` that `useChat` sends in the request body.
+2. Converts the UI messages to model messages and streams the response.
+3. Passes `originalMessages` so `onEnd` receives the whole conversation, including the new assistant message, and saves it with `saveChat`.
+
+`generateMessageId` gives the assistant message a stable id on the server before it is stored. Without it the id is empty, and every assistant message in a session would collide on the primary key.
+
+## 6. Create the messages API route
+
+The UI calls this route on load to restore a session:
+
+```bash
+mkdir -p src/app/api/messages
+```
+
+```typescript title="src/app/api/messages/route.ts"
+import { NextResponse } from "next/server";
+
+import { loadChat } from "../../../prisma/chat";
+
+export async function GET(req: Request) {
+  const id = new URL(req.url).searchParams.get("chat");
+  if (!id) {
+    return NextResponse.json({ error: "Missing chat id" }, { status: 400 });
   }
+
+  const messages = await loadChat(id);
+  return NextResponse.json({ messages });
 }
 ```
 
-## 6. Create the UI
+## 7. Build the UI
 
-Replace the content of the `app/page.tsx` file with the following:
+The page is a server component. It reads the chat id from the URL, creates one when it is missing, and renders the chat component. Replace `src/app/page.tsx`:
 
-```tsx title="app/page.tsx"
-"use client";
+```tsx title="src/app/page.tsx"
+import { generateId } from "ai";
+import { redirect } from "next/navigation";
 
-export default function Page() {}
-```
+import Chat from "./chat";
 
-### 6.1. Set up the basic imports and state
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ chat?: string }>;
+}) {
+  const { chat } = await searchParams;
+  if (!chat) redirect(`/?chat=${generateId()}`);
 
-Start by importing the required dependencies and setting up the state variables that will manage the chat interface:
-
-```tsx title="app/page.tsx"
-"use client";
-
-import { useChat } from "@ai-sdk/react"; // [!code ++]
-import { useState, useEffect } from "react"; // [!code ++]
-
-export default function Chat() {
-  const [input, setInput] = useState(""); // [!code ++]
-  const [isLoading, setIsLoading] = useState(true); // [!code ++]
-  // [!code ++]
-  const { messages, sendMessage, setMessages } = useChat(); // [!code ++]
+  return <Chat id={chat} />;
 }
 ```
 
-### 6.2. Load existing messages
+Keeping the id in the URL is what makes a session survive a reload: the same URL loads the same session.
 
-Create a `useEffect` hook that will automatically fetch and display any previously saved messages when the chat component loads:
+The chat component is a client component. `useChat({ id })` sends that id with every request, and the `useEffect` loads any saved messages into the hook when the component mounts. Create `src/app/chat.tsx`:
 
-```tsx title="app/page.tsx"
+```tsx title="src/app/chat.tsx"
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { useState, useEffect } from "react";
+import type { UIMessage } from "ai";
+import { useEffect, useState } from "react";
 
-export default function Chat() {
+export default function Chat({ id }: { id: string }) {
   const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-
-  const { messages, sendMessage, setMessages } = useChat();
-
-  useEffect(() => {
-    // [!code ++]
-    fetch("/api/messages") // [!code ++]
-      .then((res) => res.json()) // [!code ++]
-      .then((data) => {
-        // [!code ++]
-        if (data.messages && data.messages.length > 0) {
-          // [!code ++]
-          setMessages(data.messages); // [!code ++]
-        } // [!code ++]
-        setIsLoading(false); // [!code ++]
-      }) // [!code ++]
-      .catch(() => setIsLoading(false)); // [!code ++]
-  }, [setMessages]); // [!code ++]
-}
-```
-
-This loads any existing messages from your database when the component first mounts, so users can see their previous conversation history.
-
-### 6.3. Add message display
-
-Build the UI components that will show a loading indicator while fetching data and render the chat messages with proper styling:
-
-```tsx title="app/page.tsx"
-'use client';
-
-import { useChat } from '@ai-sdk/react';
-import { useState, useEffect } from 'react';
-
-export default function Chat() {
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-
-  const { messages, sendMessage, setMessages } = useChat();
+  const [loading, setLoading] = useState(true);
+  const { messages, sendMessage, setMessages } = useChat({ id });
 
   useEffect(() => {
-    fetch('/api/messages')
-      .then(res => res.json())
-      .then(data => {
-        if (data.messages && data.messages.length > 0) {
-          setMessages(data.messages);
-        }
-        setIsLoading(false);
-      })
-      .catch(() => setIsLoading(false));
-  }, [setMessages]);
-
-  if (isLoading) { // [!code ++]
-    return <div className="flex justify-center items-center h-screen">Loading...</div>; // [!code ++]
-  } // [!code ++]
- // [!code ++]
-  return ( // [!code ++]
-    <div className="flex flex-col w-full max-w-md py-24 mx-auto stretch"> // [!code ++]
-      {messages.map(message => ( // [!code ++]
-        <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} mb-4`}> // [!code ++]
-          <div className={`max-w-[80%] rounded-lg px-4 py-3 ${ // [!code ++]
-            message.role === 'user' // [!code ++]
-              ? 'bg-neutral-600 text-white' // [!code ++]
-              : 'bg-neutral-200 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100' // [!code ++]
-          }`}> // [!code ++]
-            <div className="whitespace-pre-wrap"> // [!code ++]
-              <p className="text-xs font-extralight mb-1 opacity-70">{message.role === 'user' ? 'YOU ' : 'AI '}</p> // [!code ++]
-              {message.parts.map((part, i) => { // [!code ++]
-                switch (part.type) { // [!code ++]
-                  case 'text': // [!code ++]
-                    return <div key={`${message.id}-${i}`}>{part.text}</div>; // [!code ++]
-                } // [!code ++]
-              })} // [!code ++]
-            </div> // [!code ++]
-          </div> // [!code ++]
-        </div> // [!code ++]
-      ))} // [!code ++]
-```
-
-The message rendering logic handles different message types and applies appropriate styling - user messages appear on the right with a dark background, while AI responses appear on the left with a light background.
-
-### 6.4. Add the input form
-
-Now we need to create the input interface that allows users to type and send messages to the AI:
-
-```tsx title="app/page.tsx"
-"use client";
-
-import { useChat } from "@ai-sdk/react";
-import { useState, useEffect } from "react";
-
-export default function Chat() {
-  const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-
-  const { messages, sendMessage, setMessages } = useChat();
-
-  useEffect(() => {
-    fetch("/api/messages")
+    fetch(`/api/messages?chat=${id}`)
       .then((res) => res.json())
-      .then((data) => {
-        if (data.messages && data.messages.length > 0) {
-          setMessages(data.messages);
-        }
-        setIsLoading(false);
+      .then((data: { messages: UIMessage[] }) => {
+        if (data.messages.length > 0) setMessages(data.messages);
+        setLoading(false);
       })
-      .catch(() => setIsLoading(false));
-  }, [setMessages]);
+      .catch(() => setLoading(false));
+  }, [id, setMessages]);
 
-  if (isLoading) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>;
-  }
+  if (loading) return <p className="empty">Loading...</p>;
 
   return (
-    <div className="flex flex-col w-full max-w-md py-24 mx-auto stretch">
+    <main className="shell chat">
       {messages.map((message) => (
-        <div
-          key={message.id}
-          className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} mb-4`}
-        >
-          <div
-            className={`max-w-[80%] rounded-lg px-4 py-3 ${
-              message.role === "user"
-                ? "bg-neutral-600 text-white"
-                : "bg-neutral-200 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100"
-            }`}
-          >
-            <div className="whitespace-pre-wrap">
-              <p className="text-xs font-extralight mb-1 opacity-70">
-                {message.role === "user" ? "YOU " : "AI "}
-              </p>
-              {message.parts.map((part, i) => {
-                switch (part.type) {
-                  case "text":
-                    return <div key={`${message.id}-${i}`}>{part.text}</div>;
-                }
-              })}
-            </div>
-          </div>
+        <div key={message.id} className={`bubble ${message.role}`}>
+          <p className="eyebrow">{message.role === "user" ? "You" : "AI"}</p>
+          {message.parts.map((part, i) =>
+            part.type === "text" ? <div key={`${message.id}-${i}`}>{part.text}</div> : null,
+          )}
         </div>
       ))}
-      <form // [!code ++]
+
+      <form
         onSubmit={(e) => {
-          // [!code ++]
-          e.preventDefault(); // [!code ++]
-          sendMessage({ text: input }); // [!code ++]
-          setInput(""); // [!code ++]
-        }} // [!code ++]
+          e.preventDefault();
+          if (!input.trim()) return;
+          sendMessage({ text: input });
+          setInput("");
+        }}
       >
-        {" "}
-        // [!code ++]
-        <input // [!code ++]
-          className="fixed dark:bg-zinc-900 bottom-0 w-full max-w-md p-2 mb-8 border border-zinc-300 dark:border-zinc-800 rounded shadow-xl" // [!code ++]
-          value={input} // [!code ++]
-          placeholder="Say something..." // [!code ++]
-          onChange={(e) => setInput(e.currentTarget.value)} // [!code ++]
-        />{" "}
-        // [!code ++]
-      </form>{" "}
-      // [!code ++]
-    </div>
+        <input
+          className="composer"
+          value={input}
+          placeholder="Say something..."
+          onChange={(e) => setInput(e.currentTarget.value)}
+        />
+      </form>
+    </main>
   );
 }
 ```
 
-## 7. Test your application
+The template does not include Tailwind, so add a few rules to the end of `src/app/globals.css` for the bubbles and the input:
 
-To test your application, run the following command:
+```css title="src/app/globals.css"
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-bottom: 6rem;
+}
+
+.bubble {
+  max-width: 80%;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  white-space: pre-wrap;
+  background: #f0f0f0;
+  align-self: flex-start;
+}
+
+.bubble.user {
+  background: #111;
+  color: #fff;
+  align-self: flex-end;
+}
+
+.bubble .eyebrow {
+  color: inherit;
+  opacity: 0.6;
+}
+
+.composer {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  width: min(40rem, calc(100% - 3rem));
+  transform: translateX(-50%);
+  padding: 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 0.5rem;
+  font: inherit;
+}
+```
+
+## 8. Run and verify
+
+Check the types first, then start the dev server:
 
 ```npm
+npx tsc --noEmit
 npm run dev
 ```
 
-Open your browser and navigate to [`http://localhost:3000`](http://localhost:3000) to see your application in action.
+```text no-copy
+▲ Next.js 16.1.6 (Turbopack)
+- Local:         http://localhost:3000
+- Environments: .env
 
-Test it by sending a message to the AI and see if it's saved to the database. Check Prisma Studio to see the messages in the database.
-
-```npm
-npx prisma studio
+✓ Ready in 5.5s
 ```
 
-Your AI SDK chat application now stores every session and message in Prisma Postgres and reloads them when the page opens.
+Open [http://localhost:3000](http://localhost:3000). The page redirects to `/?chat=<id>`, and the first request compiles the app, so it takes a few seconds. Send a message, wait for the reply, then reload the page: both messages come back from the database.
 
-## Next Steps
+You can also read a session directly from the API. Replace the id with the one in your address bar. The session below was captured with AI SDK's mock language model instead of a live OpenAI call, which is why the assistant text reads the way it does; the persistence path is the same:
 
-Now that you have a working AI SDK chat application connected to a Prisma Postgres database, you can:
+```bash
+curl "http://localhost:3000/api/messages?chat=<id>"
+```
 
-- Extend your Prisma schema with more models and relationships
-- Add create/update/delete routes and forms
-- Explore authentication and validation
+```json no-copy
+{"messages":[{"id":"user-1789055570091","role":"user","parts":[{"type":"text","text":"Hello from the mock test"}]},{"id":"msg-abc123def456","role":"assistant","parts":[{"type":"step-start"},{"type":"text","text":"Hi! I am a mock model.","state":"done"}]}]}
+```
 
-### More Info
+A session that has no messages yet returns `{"messages":[]}`, and a request without `?chat=` returns a `400`.
 
-- [Prisma Documentation](/orm/v7)
-- [AI SDK Documentation](https://ai-sdk.dev/)
+Finally, make sure the production build passes:
+
+```npm
+npm run build
+```
+
+```text no-copy
+✓ Compiled successfully in 30.9s
+
+Route (app)
+┌ ƒ /
+├ ○ /_not-found
+├ ƒ /api/chat
+└ ƒ /api/messages
+```
+
+## Where things live
+
+- `src/prisma/contract.prisma`: your schema. Edit it, then run `npm run contract:emit` and `npm run db:update`.
+- `src/prisma/db.ts`: the Prisma 8 client the template generated. It is a module-level singleton, so its connection pool is shared across requests.
+- `src/prisma/chat.ts`: the two functions that touch the database.
+- `src/app/api/chat/route.ts` and `src/app/api/messages/route.ts`: the write path and the read path.
+
+## Common gotchas
+
+:::warning
+
+If the model reply is `An error occurred.` and the server log shows `AI_LoadAPIKeyError: OpenAI API key is missing`, `OPENAI_API_KEY` is not in `.env`. The route handler returns a `200` with the error inside the stream, so check the terminal running `next dev` rather than the network tab.
+
+:::
+
+:::warning
+
+Do not call `db.runtime().close()` in a route handler. The client in `src/prisma/db.ts` lives for the whole process and its pool is shared across requests; close it only on process shutdown.
+
+:::
+
+- `db:init` and the other `prisma` scripts read `DATABASE_URL` from the environment, while Next.js reads `.env`. If a Prisma command reports a missing connection string, export the variable in that shell.
+- If you keep the template's `migrations/` directory and later run `npm run migration:plan`, the plan starts from the starter `User` and `Post` schema instead of from an empty database. Delete the directory before your first emit, as in step 2, and run `npx prisma@latest migration plan --name init` when you want a checked-in migration for your own contract.
+- `parts` needs the `as JsonValue` cast on the way in. AI SDK types the parts array with interfaces, and Prisma 8's `Json` input type wants plain JSON values; the cast is safe because the parts are serializable objects.
+
+## Prompt your coding agent
+
+Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
+
+- "Using the prisma-8 skill, add a `title` field to `Session` and a `PATCH /api/sessions/:id` route that updates it."
+- "Add a `GET /api/sessions` route that lists sessions with their message count, using `include` with a `count()` reducer."
+- "Add a `DELETE /api/sessions/:id` route and confirm the cascade removes the session's messages."
+
+## Next steps
+
+- [Deploy the app to Prisma Compute](/guides/frameworks/nextjs#4-deploy-to-prisma-compute): the template already declares it in `module.ts` and `service.ts`.
+- [Learn the fundamentals](/orm/fundamentals/reading-data): filtering, sorting, pagination, and writes.
+- [Read the Prisma 8 overview](/orm) for the concepts behind contracts and typed queries.
+- [AI SDK documentation](https://ai-sdk.dev/docs/ai-sdk-ui/chatbot-message-persistence) on message persistence, including sending only the last message and handling client disconnects.
