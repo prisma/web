@@ -6,10 +6,12 @@ const STUBS = {
 };
 
 const SVG_STUB = new URL("./stubs/svg.mjs", import.meta.url).href;
+const EMPTY_STUB = new URL("./stubs/empty.mjs", import.meta.url).href;
 
 export async function resolve(specifier, context, nextResolve) {
   const stub = STUBS[specifier];
   if (stub) return { url: stub, shortCircuit: true };
   if (specifier.endsWith(".svg")) return { url: SVG_STUB, shortCircuit: true };
+  if (specifier.endsWith(".css")) return { url: EMPTY_STUB, shortCircuit: true };
   return nextResolve(specifier, context);
 }
