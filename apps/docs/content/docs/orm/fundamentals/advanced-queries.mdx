@@ -6,15 +6,56 @@ metaTitle: Advanced queries in Prisma ORM
 metaDescription: 'Use the Prisma ORM SQL query builder for explicit joins, grouped aggregates, and RETURNING, and the typed aggregation pipeline builder on MongoDB.'
 ---
 
-Most queries fit the ORM API. When one doesn't, PostgreSQL has the SQL query builder and MongoDB has the pipeline builder. Both are checked against your contract, the `contract.prisma` file that replaced `schema.prisma`. Neither one asks you to write SQL as a string.
+Most queries fit the ORM API. When one doesn't, PostgreSQL has the SQL query builder and MongoDB has the pipeline builder. Neither one asks you to write SQL as a string. Both builders come with `@prisma/orm-postgres` and `@prisma/orm-mongo`, so there is nothing extra to install.
+
+Your contract is the `contract.prisma` file that replaced `schema.prisma`. TypeScript checks both builders against it. It is the same schema language as Prisma ORM 7, with the type changes listed on [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7#schema).
 
 You choose per query, not per app. Using the ORM API everywhere and a builder in the three places that need it is normal.
 
 Every example here imports `db`. `db` is the client you create once in `src/prisma/db.ts`, and `prisma orm init` writes that file for you. The examples run from a file directly inside `src/`.
 
+Every example on this page queries these four models:
+
+```prisma
+model User {
+  id    String  @id @default(cuid(2))
+  email String  @unique
+  name  String?
+  posts Post[]
+}
+
+model Post {
+  id        String   @id @default(cuid(2))
+  title     String
+  published Boolean  @default(false)
+  createdAt DateTime @default(now())
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  tags      Tag[]
+}
+
+model Tag {
+  id    String @id @default(cuid(2))
+  name  String @unique
+  posts Post[]
+}
+
+model PostTag {
+  postId String
+  tagId  String
+  post   Post   @relation(fields: [postId], references: [id])
+  tag    Tag    @relation(fields: [tagId], references: [id])
+
+  @@id([postId, tagId])
+  @@map("post_tag")
+}
+```
+
+In Prisma ORM 8 a many-to-many relation is the two list fields plus a model for the join table, as `PostTag` here; see [Relations and joins](/orm/fundamentals/relations-and-joins).
+
 ## PostgreSQL: SQL query builder
 
-A SQL builder query takes two steps. First you build it, which gives you a value you can hold in a variable. Then you run it. You decide the exact SQL: the joins, the grouping, and the columns that come back. TypeScript checks all of it against your contract.
+A SQL builder query takes two steps. First you build it, which gives you a value you can hold in a variable, so you can run the same built query more than once, or inside a transaction. Then you run it. You decide the exact SQL: the joins, the grouping, and the columns that come back.
 
 **Use it when:**
 
@@ -27,7 +68,9 @@ A SQL builder query takes two steps. First you build it, which gives you a value
 
 ### Build a query and run it
 
-Start from a table with `db.sql.public.<table>`. `db.sql` is the SQL query builder, and it is keyed by table name. A table's name is the model name with a lowercase first letter, unless the model sets `@@map`. Column names are the field names, unless a field sets `@map`. `public` is the PostgreSQL schema, the namespace your tables are in, which is `public` unless you set one.
+Start from a table with `db.sql.public.<table>`. `db.sql` is the SQL query builder, and it is keyed by table name. A table's name is the model name with a lowercase first letter, unless the model sets `@@map`. Column names are the field names, unless a field sets `@map`. `public` is the PostgreSQL schema your tables are in, unless the model sits in a `namespace` block in your contract.
+
+`db.runtime()` is the database connection. On MongoDB it returns a promise, so await it: `(await db.runtime()).query(...)`. Calling it per query is fine. `query()` always resolves to an array of rows, even when the query matches one row.
 
 Chain the clauses you want, call `.build()`, and pass the result to `db.runtime().query(...)`:
 
@@ -37,22 +80,37 @@ import { db } from "./prisma/db";
 const publishedPosts = db.sql.public.post
   .select("id", "title", "authorId")
   .where((f, fns) => fns.eq(f.published, true))
-  .limit(10)
-  .offset(20)
+  .limit(10).offset(20)
   .build();
 
 const rows = await db.runtime().query(publishedPosts);
 ```
 
-`.limit(10)` caps how many rows come back and `.offset(20)` skips rows, so the two together page through a result.
+The `.where(...)` callback receives two arguments. The first, `f`, holds the column references. The second, `fns`, holds the operators: `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `notIn`, `and`, `or`, aggregates such as `count`, and `ilike` for text columns on PostgreSQL. There are more; the [SQL query builder reference](/orm/reference/sql-query-builder#built-in-functions) has the full list.
 
-:::note[`db.runtime()` differs by database]
-`db.runtime()` is the connection that runs a built query. On PostgreSQL it hands you the connection directly, as above. On MongoDB you have to await it first: `(await db.runtime()).query(builtQuery)`.
-:::
+Pass a value from your own code straight into an operator. Here `authorId` is a variable, such as one you read from a request:
 
-The `.where(...)` callback receives two arguments. The first, `f`, holds the column references. The second, `fns`, holds the operators: `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `notIn`, `and`, `or`, `exists`, `notExists`, aggregates such as `count`, and `ilike` for text columns on PostgreSQL. The [SQL query builder reference](/orm/reference/sql-query-builder#built-in-functions) has the full list.
+```typescript
+const postsByAuthor = db.sql.public.post
+  .select("id", "title")
+  .where((f, fns) => fns.eq(f.authorId, authorId)).build();
+```
 
-To name the row type in your own function signatures, use `ResultType<typeof publishedPosts>`. See [`ResultType`](/orm/reference/sql-query-builder#resulttype) in the reference.
+The builder sends every value you pass this way to the database as a query parameter, never as text pasted into the SQL, so it is safe against SQL injection.
+
+`ResultType` names the type of one row of a built query, so you can use that type in your own function signatures:
+
+```typescript
+import type { ResultType } from "@prisma/orm-postgres/components/runtime";
+
+type PublishedPost = ResultType<typeof publishedPosts>;
+
+function titles(posts: PublishedPost[]) {
+  return posts.map((post) => post.title);
+}
+```
+
+`ResultType<...>` is one row, not the array. `await db.runtime().query(publishedPosts)` resolves to `PublishedPost[]`. See [`ResultType`](/orm/reference/sql-query-builder#resulttype) in the reference.
 
 ### Join tables with precise control
 
@@ -62,11 +120,7 @@ Alias each side with `.as(...)`, join on any condition, and project columns from
 const postsWithAuthors = db.sql.public.post
   .as("p")
   .innerJoin(db.sql.public.user.as("u"), (f, fns) => fns.eq(f.p.authorId, f.u.id))
-  .select((f) => ({
-    postId: f.p.id,
-    title: f.p.title,
-    authorEmail: f.u.email,
-  }))
+  .select((f) => ({ postId: f.p.id, title: f.p.title, authorEmail: f.u.email }))
   .where((f, fns) => fns.eq(f.p.published, true))
   .limit(10)
   .build();
@@ -93,7 +147,6 @@ const rows = await db.runtime().query(postTagPairs);
 ```js no-copy
 [
   { postTitle: 'Hello Prisma 8', tagName: 'databases' },
-  { postTitle: 'Hello Prisma 8', tagName: 'typescript' },
   { postTitle: 'Typed queries', tagName: 'typescript' }
 ]
 ```
@@ -106,10 +159,7 @@ Answer "top N groups" questions, such as the authors with the most posts, by ord
 
 ```typescript
 const topAuthors = db.sql.public.post
-  .select((f, fns) => ({
-    authorId: f.authorId,
-    posts: fns.count(),
-  }))
+  .select((f, fns) => ({ authorId: f.authorId, posts: fns.count() }))
   .groupBy((f) => f.authorId)
   .orderBy((f, fns) => fns.count(), { direction: "desc" })
   .limit(5)
@@ -125,9 +175,9 @@ const rows = await db.runtime().query(topAuthors);
 ]
 ```
 
-Pass the same aggregate to `.orderBy(...)` that you passed to `.select(...)`, and the database does the sorting and the limiting.
+Pass the same aggregate to `.orderBy(...)` that you passed to `.select(...)`, and the database does the sorting and the limiting. The built query holds the aggregate in both clauses, so `count(*)` appears twice in the SQL text.
 
-`count()` returns a JavaScript `number`. If a count is larger than `Number.MAX_SAFE_INTEGER`, it throws an error with code `RUNTIME.DECODE_FAILED` instead of rounding. Use `countBigInt()` when a count can grow that large.
+Use `fns.countBigInt()` when a count can grow past `Number.MAX_SAFE_INTEGER`. It returns a `bigint`. `fns.count()` returns a JavaScript `number`. A count larger than `Number.MAX_SAFE_INTEGER` throws an error with code `RUNTIME.DECODE_FAILED` rather than rounding.
 
 ### Write with RETURNING
 
@@ -136,72 +186,108 @@ SQL builder writes take an array of rows. Use `.returning(...)` to choose which 
 ```typescript
 const insertUser = db.sql.public.user
   .insert([{ email: "sql@prisma.io" }])
-  .returning("id", "email")
-  .build();
+  .returning("id", "email").build();
 
 const [insertedUser] = await db.runtime().query(insertUser);
-// Contract defaults such as generated IDs are applied
+// insertedUser is { id, email }. The id comes from the @default(cuid(2)) in the contract.
 ```
+
+Drop the `.returning(...)` call and the insert returns no rows, so run it with `db.runtime().execute(...)`, which resolves to `{ affectedRows }`.
+
+The builder writes updates and deletes too. Choose the rows with `.where(...)`, and add `.returning(...)` when you want columns back. `postId` and `tagId` here are values from your own code:
+
+```typescript
+const publishPost = db.sql.public.post
+  .update({ published: true })
+  .where((f, fns) => fns.eq(f.id, postId)).build();
+
+const deleteTag = db.sql.public.tag.delete().where((f, fns) => fns.eq(f.id, tagId)).build();
+
+const { affectedRows } = await db.runtime().execute(publishPost);
+```
+
+Neither of those two returns rows, so both go to `execute()`. Add `.returning(...)` to either one and you run it with `query()` instead.
 
 ### Raw SQL
 
-Raw SQL comes in two sizes. When the operators don't cover a single expression you need, write that expression with `fns.raw` and declare what type it returns with `.returns(...)`. The rest of the query stays typed:
+Raw SQL comes in two sizes. When the operators don't cover a single expression you need, write that expression with `fns.raw` and declare what type it returns with `.returns(...)`. The rest of the query stays typed.
+
+Calling `.select` a second time adds columns rather than replacing the ones already chosen. The second call takes a name for the new column, then the expression:
 
 ```typescript
 const users = db.sql.public.user
   .select("id", "email")
   .select("upperEmail", (f, fns) => fns.raw`UPPER(${f.email})`.returns("pg/text@1"))
-  .limit(10)
-  .build();
+  .limit(10).build();
 
 const rows = await db.runtime().query(users);
 // [{ id: 'cuid20000000000000000001', email: 'alice@prisma.io', upperEmail: 'ALICE@PRISMA.IO' }, ...]
 ```
 
-Calling `.select` again adds columns rather than replacing the ones already chosen. That second call uses a different form of `.select`: a name for the new column, then the expression.
+`.returns(...)` takes a type name as a string. `"pg/text@1"` is the PostgreSQL type `text`. The `@1` is a version number; today every type name ends in it. The [raw queries reference](/orm/reference/raw-queries) lists the names.
 
-`"pg/text@1"` is the PostgreSQL type with a version after it, which is always `@1` today. Where the value comes from a column, take the type from the table instead of typing the name: `db.sql.public.user.columns.email`. The [raw queries reference](/orm/reference/raw-queries) lists the type names.
+Each `${...}` in a raw fragment goes to the database as a query parameter too, so a raw fragment is as safe as an operator. You can interpolate columns and other typed expressions the same way.
 
-Each `${...}` in a raw fragment goes to the database as a query parameter, not as text pasted into the SQL, so interpolating a value is safe against SQL injection. You can interpolate columns and other typed expressions the same way.
-
-When the whole statement has to be raw, write it with `db.raw.sql` and end it with one of two calls. Use `.returnsRow(spec)` when the statement returns rows, then run the built query with `query()`:
+When the whole statement has to be raw, write it with `db.raw.sql` and end it with one of two calls. Use `.returnsRow(...)` when the statement returns rows, then run the built query with `query()`:
 
 ```typescript
 const limit = 10;
-const user = db.sql.public.user;
+const user = db.sql.public.user; // shorthand
 
 const authorPostCounts = db.raw.sql`
   SELECT u.id, u.email, count(p.id) AS "postCount"
   FROM "user" u
-  LEFT JOIN "post" p ON p."userId" = u.id
+  LEFT JOIN "post" p ON p."authorId" = u.id
   GROUP BY u.id, u.email
   LIMIT ${limit}
 `
-  .returnsRow({
-    id: user.columns.id,
-    email: user.columns.email,
-    postCount: "pg/int8@1",
-  })
+  .returnsRow({ id: user.columns.id, email: user.columns.email, postCount: "pg/int8@1" })
   .build();
 
 const rows = await db.runtime().query(authorPostCounts);
 ```
 
-Each entry in the `.returnsRow(...)` object says how to read one result column. `user.columns.id` takes that from the contract, and a type name such as `"pg/int8@1"` covers a column the contract has no counterpart for.
+Quote identifiers as PostgreSQL requires; `"authorId"` keeps the camel case. Each entry in the `.returnsRow(...)` object says how to read one result column. An entry is either a column from the contract, as in `user.columns.id`, or a type name as a string for a result column the contract has no counterpart for. `"pg/int8@1"` is a 64-bit integer, so `postCount` comes back as a `bigint`.
 
 Use `.affectedCount()` when the statement returns no rows, then run the built query with `execute()`. It resolves to `{ affectedRows }`:
 
 ```typescript
 const publishDrafts = db.raw.sql`
   UPDATE "post" SET "published" = true WHERE "published" = false
-`
-  .affectedCount()
-  .build();
+`.affectedCount().build();
 
 const { affectedRows } = await db.runtime().execute(publishDrafts);
 ```
 
-A raw statement that returns rows can be interpolated into another raw template with `${...}`, which is how you write a subquery or a CTE. Interpolate it before you call `.build()` on the outer statement. The [raw queries reference](/orm/reference/raw-queries#the-client-level-dbrawsql-tag) shows a CTE end to end and documents every raw query method.
+To write a subquery or a CTE, interpolate one raw statement into another with `${...}`. The inner statement stops at `.returnsRow(...)`. Only the outer statement gets `.build()`:
+
+```typescript
+const minPosts = 5;
+
+const authorsWithPosts = db.raw.sql`
+  SELECT p."authorId" AS "authorId", count(*) AS "postCount"
+  FROM "post" p
+  GROUP BY p."authorId"
+  HAVING count(*) >= ${minPosts}
+`.returnsRow({
+  authorId: db.sql.public.post.columns.authorId,
+  postCount: "pg/int8@1",
+});
+
+const activeAuthors = db.raw.sql`
+  WITH active AS (${authorsWithPosts})
+  SELECT u.email, active."postCount"
+  FROM active
+  JOIN "user" u ON u.id = active."authorId"
+`.returnsRow({
+  email: db.sql.public.user.columns.email,
+  postCount: authorsWithPosts.returns.postCount,
+}).build();
+
+const rows = await db.runtime().query(activeAuthors);
+```
+
+A column the inner statement already declared can be reused in the outer row object, as `authorsWithPosts.returns.postCount` is here. The [raw queries reference](/orm/reference/raw-queries#the-client-level-dbrawsql-tag) documents every raw query method.
 
 ## MongoDB: Pipeline builder
 
@@ -214,13 +300,15 @@ All MongoDB aggregation happens here. The ORM API has no `.aggregate(...)` on Mo
 - You need an aggregation: counts, grouping, or summaries per key.
 - You want to join and reshape documents across collections with `$lookup`.
 - A query needs MongoDB pipeline stages that don't map to the ORM API, such as multi-stage filtering and projection.
-- You want to write a filter with operators. On MongoDB the ORM API's `.where(...)` takes an object of values to match, and `.match(...)` here gives you the operator form.
+- You want to filter with an operator such as `gt` or `ne`. On MongoDB the ORM API's `.where(...)` matches exact values only, and `.match(...)` here takes the operators.
 
-**Prefer the ORM API when** the query is document CRUD or a reference-relation read; `.include(...)` already covers the common `$lookup` case.
+**Prefer the ORM API when** the query is document create, read, update, or delete. Prefer it as well for reading a reference relation, which is a relation stored as an id in the document rather than as an embedded document. `.include(...)` already covers the common `$lookup` case.
 
 ### Build a pipeline and run it
 
-Start from a collection with `db.query.from(...)`, which takes the collection name as a string. Chain stages and call `.build()`. On MongoDB you have to await `db.runtime()` before you can run anything:
+Start from a collection with `db.query.from(...)`. It takes the collection name as a string: the model's `@@map` value, or the model name with a lowercase first letter when the model has no `@@map`. The models above set no `@@map` except `PostTag`, so the collections are `user`, `post`, `tag`, and `post_tag`. That is the same name the ORM API uses, as in `db.orm.post`.
+
+`acc` is the set of accumulators you use inside `.group(...)`, such as `acc.count()` and `acc.max(f.createdAt)`. `_id` is the grouping key, MongoDB's own name for it. Chain stages, call `.build()`, and await `db.runtime()` before you run anything:
 
 ```typescript
 import { acc } from "@prisma/orm-mongo/query-builder";
@@ -230,12 +318,9 @@ const runtime = await db.runtime();
 
 // Post count per author, most prolific first
 const postsByAuthor = db.query
-  .from("posts")
-  .group((f) => ({
-    _id: f.authorId,
-    postCount: acc.count(),
-  }))
-  .sort({ postCount: -1 })
+  .from("post")
+  .group((f) => ({ _id: f.authorId, postCount: acc.count() }))
+  .sort({ postCount: -1 }) // -1 is descending
   .build();
 
 const rows = await runtime.query(postsByAuthor);
@@ -243,12 +328,12 @@ const rows = await runtime.query(postsByAuthor);
 
 ```js no-copy
 [
-  { _id: new ObjectId('650000000000000000000001'), postCount: 3 },
-  { _id: new ObjectId('650000000000000000000002'), postCount: 2 }
+  { _id: "clx3n9x4v0000abc123def456", postCount: 3 },
+  { _id: "clx3n9x4v0001abc123def457", postCount: 2 }
 ]
 ```
 
-Accumulators such as `acc.count()` and `acc.max(...)` import from `@prisma/orm-mongo/query-builder`.
+A pipeline built through `db.query` carries a result shape, so the rows are typed by the stages you built.
 
 ### Filter and group in stages
 
@@ -256,15 +341,14 @@ Chain `.match(...)` before `.group(...)` to aggregate over a subset, the pipelin
 
 ```typescript
 const draftsByAuthor = db.query
-  .from("posts")
+  .from("post")
   .match((f) => f.published.eq(false))
-  .group((f) => ({ _id: f.authorId, draftCount: acc.count() }))
-  .build();
+  .group((f) => ({ _id: f.authorId, draftCount: acc.count() })).build();
 
 const rows = await runtime.query(draftsByAuthor);
 ```
 
-In a `.match(...)` callback the operators are on the field itself, as in `f.published.eq(false)`. The SQL query builder puts them on `fns` instead.
+In a `.match(...)` callback the operators are on the field itself, as in `f.published.eq(false)`. The SQL query builder puts them on `fns` instead. The [pipeline builder reference](/orm/reference/pipeline-builder#match) lists the operators you can use here.
 
 ### Join collections with $lookup
 
@@ -272,18 +356,18 @@ Use `.lookup(...)` for a type-checked join against another collection. The joine
 
 ```typescript
 const postsWithAuthors = db.query
-  .from("posts")
+  .from("post")
   .match((f) => f.published.eq(true))
   .lookup((from) =>
-    from("users")
-      .on((local, foreign) => ({ local: local.authorId, foreign: foreign._id }))
-      .as("author"),
+    from("user").on((local, foreign) => ({ local: local.authorId, foreign: foreign._id })).as("author"),
   )
   .build();
 
 const rows = await runtime.query(postsWithAuthors);
-// Each post carries an "author" array with the matching user documents
+const mine = rows.filter((row) => String(row.author[0]._id) === authorId);
 ```
+
+Each row is a post document with an extra `author` field, and that field is an array of the matching user documents. A document pulled in by `.lookup(...)` keeps MongoDB's own `ObjectId` for `_id`, so wrap it in `String(...)` before you compare it with an id from your own code. The [pipeline builder reference](/orm/reference/pipeline-builder#lookup) has the rest of the stages.
 
 ## Choose the right query API
 
@@ -291,11 +375,14 @@ const rows = await runtime.query(postsWithAuthors);
 | --- | --- |
 | CRUD, filters, relations, simple aggregates | ORM API (`db.orm`) |
 | Explicit join, computed projection, grouped top-N, `RETURNING` | SQL query builder (`db.sql.public.<table>`) |
+| A whole SQL statement of your own, such as a CTE | Raw SQL (`db.raw.sql`) |
 | `$group`, `$lookup` with reshaping, any MongoDB aggregation | Pipeline builder (`db.query.from(...)`) |
 
-`db.orm` holds your models by model name. On PostgreSQL that is `db.orm.public.User`; on MongoDB there is no schema segment and the accessor is the collection name, as in `db.orm.users`.
+`db.orm` holds your models by model name, as in `db.orm.public.User` on PostgreSQL. On MongoDB there is no schema segment, and the name is the collection: `db.orm.post`.
 
-A built query that returns rows runs through `db.runtime().query(builtQuery)` on PostgreSQL. On MongoDB, await the connection first: `(await db.runtime()).query(builtQuery)`. Inside a [transaction](/orm/fundamentals/transactions), use `tx.query(builtQuery)`. A write that returns no rows goes to `execute(builtQuery)` instead, which resolves to `{ affectedRows }`.
+A built query that returns rows runs through `db.runtime().query(builtQuery)` on PostgreSQL. On MongoDB, await the connection first: `(await db.runtime()).query(builtQuery)`. A write that returns no rows goes to `execute(builtQuery)` instead, which resolves to `{ affectedRows }`.
+
+Inside a [transaction](/orm/fundamentals/transactions), `tx` is the argument your callback receives, and you run the built query on it: `await db.transaction(async (tx) => tx.query(builtQuery))`.
 
 ## Prompt your coding agent
 
@@ -309,5 +396,5 @@ Projects created with `npm create prisma@latest` include the [Prisma ORM skills]
 ## Next
 
 - [Read data](/orm/fundamentals/reading-data): the ORM API these builders extend.
-- [Understand relationships](/orm/fundamentals/relations-and-joins) before reaching for explicit joins.
-- [Run SQL builder queries](/orm/fundamentals/transactions) inside a transaction.
+- [Relations and joins](/orm/fundamentals/relations-and-joins): understand relationships before reaching for explicit joins.
+- [Transactions](/orm/fundamentals/transactions): run built queries inside one.
