@@ -69,8 +69,10 @@ npx prisma@latest bucket key create <bucket-id>
 ```npm
 npx prisma@latest orm init --target postgres --authoring psl
 npx prisma@latest contract emit
-npx prisma@latest db init --db "$DATABASE_URL"
+npx prisma@latest db init --db "$DATABASE_URL" --advance-ref db
 ```
+
+`db init` and `db update` advance the [ref](/cli/migration-ref) named `db` on their own when you leave `--db` off and let the connection come from `prisma.config.ts`. Passing `--db` suppresses that, so add `--advance-ref db` to keep the ref current. Without it, `--db` leaves any existing `db` ref where it was, and a later [`migration plan`](/cli/migration-plan) starts from that stale contract; if the ref was never created, `migration plan` refuses with `MIGRATION.PLAN_ORIGIN_UNKNOWN` as soon as migrations exist on disk.
 
 ### Adopt an existing database
 
@@ -85,11 +87,13 @@ npx prisma@latest db verify --db "$DATABASE_URL"
 
 ```npm
 npx prisma@latest contract emit
-npx prisma@latest migration plan --name add-users
+npx prisma@latest migration plan --name add_users
 npx prisma@latest migration status --db "$DATABASE_URL"
-npx prisma@latest db migrate --db "$DATABASE_URL"
+npx prisma@latest db migrate --db "$DATABASE_URL" --advance-ref db
 npx prisma@latest db verify --db "$DATABASE_URL"
 ```
+
+Plain `db migrate` never moves a ref; `--advance-ref db` is what keeps the next `migration plan` incremental. Leave it off in deploy and CI applies, where a repository ref should not move.
 
 ## Agent skills
 

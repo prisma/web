@@ -159,18 +159,34 @@ ALTER TABLE "public"."user" ADD COLUMN "phone" text;
 
 ### The db ref: skipping --from
 
-You don't have to pass `--from` every time. If a [ref](/orm/migrations/the-migration-graph#name-important-states-with-refs) named **`db`** exists, planning starts from whatever it points at by default. Move the ref forward each time you apply:
+You don't have to pass `--from` every time. If a [ref](/orm/migrations/the-migration-graph#name-important-states-with-refs) named **`db`** exists, planning starts from whatever it points at by default. Three things move it forward:
+
+- `db init` and `db update` advance it after a successful run, but only when you leave `--db` off and let the connection come from `prisma.config.ts`. Passing `--db` suppresses the advancement unless you also pass `--advance-ref db`.
+- `db migrate --advance-ref db` advances it after an apply. Plain `db migrate` never advances anything; that is deliberate, so a deploy or CI apply cannot move a repository ref.
+- `migration ref set db <contract>` sets it by hand.
 
 ```npm
+npx prisma@latest db update                                          # advances db on its own
+npx prisma@latest db update --db "$DATABASE_URL" --advance-ref db    # with --db, ask for it
 npx prisma@latest db migrate --advance-ref db
 npx prisma@latest migration plan --name next_change   # starts from the db ref automatically
 ```
 
-:::warning[Without `--from` or a `db` ref, plans start from empty]
+:::warning[Without `--from` or a `db` ref, planning stops]
 
-If there's no `db` ref and you omit `--from`, `migration plan` plans from an **empty database**: a full `CREATE`-everything migration, not a delta. If you expected a one-column change and got a wall of `CREATE TABLE`, this is why. Pass `--from` or set up the `db` ref.
+If there's no `db` ref and you omit `--from`, `migration plan` refuses with `MIGRATION.PLAN_ORIGIN_UNKNOWN` whenever migrations already exist on disk. Planning from empty there would produce a full `CREATE`-everything package that no database carrying the earlier migrations could apply, so the command stops instead and names the three exits: `migration ref set db <contract>`, `--from <ref>`, or `--from @empty` to plan from an empty database deliberately.
+
+Only an empty `migrations/app/` still plans from empty on its own. That is the greenfield first migration above.
 
 :::
+
+### The automatic baseline
+
+When `migrations/app/` is empty but the `db` ref already points at a contract whose snapshot is stored under `migrations/snapshots/` — the usual state after a few `db update` cycles — one `migration plan` run writes a baseline package from nothing to the ref's contract and, when your emitted contract differs from the ref's, a second package with the delta. Expect one or two new directories in `git status`.
+
+The baseline never runs against a database that already carries a marker: the runner starts at the marker and applies only the edges past it. It exists so the ref's contract is a node in the graph and the delta has somewhere to attach.
+
+To retrofit a deployed database you must not touch, do the same thing explicitly: bring the contract source back to the deployed state, `contract emit`, `migration plan --name baseline --from @empty`, then restore your current contract and plan the delta from the baseline.
 
 ## When the planner needs your input
 

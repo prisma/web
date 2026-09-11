@@ -148,16 +148,21 @@ A duplicate `(userId, tagId)` pair would be meaningless, so the pair is the key.
 
 A scalar field holds a single value. The common types:
 
-| Type       | Stores                      |
-| ---------- | --------------------------- |
-| `String`   | Text                        |
-| `Int`      | 32-bit integer              |
-| `BigInt`   | 64-bit integer              |
-| `Float`    | Floating-point number       |
-| `Boolean`  | `true` / `false`            |
-| `DateTime` | Timestamp                   |
-| `Json`     | Arbitrary JSON value        |
-| `ObjectId` | MongoDB document identifier |
+| Type       | Stores                                                                      |
+| ---------- | --------------------------------------------------------------------------- |
+| `String`   | Text                                                                          |
+| `Int`      | 32-bit integer                                                                |
+| `BigInt`   | 64-bit integer                                                                |
+| `Float`    | Floating-point number                                                         |
+| `Decimal`  | Exact decimal, PostgreSQL `numeric`. The runtime value is a decimal string, so binary floating point never loses digits. Write `Numeric(10, 2)` in type position when you want an explicit precision and scale; PostgreSQL then rounds stored values to that scale and rejects values that exceed the precision |
+| `Boolean`  | `true` / `false`                                                              |
+| `DateTime` | Timestamp                                                                     |
+| `Bytes`    | Binary data, PostgreSQL `bytea`. The runtime value is a `Uint8Array`          |
+| `Json`     | Arbitrary JSON value, stored in PostgreSQL's native `json`                     |
+| `Jsonb`    | Arbitrary JSON value, stored in PostgreSQL's `jsonb`. This is what `field.json()` and value objects use, and what a `Json` field meant before 0.17 |
+| `ObjectId` | MongoDB document identifier                                                   |
+
+Filtering on a `Jsonb` field is whole-value equality only: you can ask whether the column equals a given document, not whether a key inside it matches. A `Json` field offers no comparison at all in the ORM filter. Reach into the document with [raw SQL](/orm/reference/raw-queries) when you need a path query.
 
 Prisma 8's type system is extensible, so extensions can add more types, such as vectors or geometry.
 

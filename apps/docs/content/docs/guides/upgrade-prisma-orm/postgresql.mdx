@@ -467,7 +467,7 @@ Point a [ref](/orm/migrations/the-migration-graph#name-important-states-with-ref
 npx prisma migration ref set db <timestamp>_baseline
 ```
 
-Without a ref, the next `migration plan` starts from scratch and plans `CREATE TABLE` operations all over again. With it, plans chain from the baseline and contain only your actual changes.
+Without a ref, the next `migration plan` has no origin. Because migrations now exist on disk, it refuses with `MIGRATION.PLAN_ORIGIN_UNKNOWN` rather than plan a full `CREATE TABLE` package. With the ref set, plans chain from the baseline and contain only your actual changes.
 
 ### 4.4. Retire the Prisma 7 migration scripts
 
@@ -506,7 +506,7 @@ npx prisma db migrate --advance-ref db
 npx prisma db verify
 ```
 
-**Expected result:** `migration plan` contains a single operation, `Add column "bio" to "User"`. If you see `CREATE TABLE` operations instead, the `db` ref from step 4.3 is missing. `db migrate` applies the migration, `--advance-ref db` moves the ref so the next plan chains correctly, and `db verify` reports that marker and schema match the contract.
+**Expected result:** `migration plan` contains a single operation, `Add column "bio" to "User"`. If it fails with `MIGRATION.PLAN_ORIGIN_UNKNOWN` instead, the `db` ref from step 4.3 is missing. `db migrate` applies the migration, `--advance-ref db` moves the ref so the next plan chains correctly, and `db verify` reports that marker and schema match the contract.
 
 Restart the app: the Prisma 8 route returns users with `bio`, and the Prisma 7 route keeps working untouched, because its client doesn't know about the new column. Additive changes like nullable columns are safe next to legacy Prisma 7 code. Be careful with renames or drops of columns that Prisma 7 routes still read.
 

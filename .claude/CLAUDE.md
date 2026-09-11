@@ -92,8 +92,12 @@ Prisma documentation site built with **Fumadocs** on **Next.js 16 App Router**.
 
 **Content Structure:**
 
-- `content/docs/` - v7 documentation (latest), served at `/docs/v7/*`
-- `content/docs.v6/` - v6 documentation, served at `/docs/v6/*`
+- `content/docs/` - all documentation, served under `basePath: "/docs"`
+- Versions are content folders, not a route segment: the unversioned tree is the
+  latest release (Prisma 8), and older supported versions live beside it in
+  `content/docs/orm/v6/`, `content/docs/orm/v7/`, `content/docs/cli/v7/`,
+  `content/docs/guides/v7/`, and `content/docs/(index)/v7/` (getting started,
+  served at `/v7`)
 - Each section has a `meta.json` defining page order, icons, and hierarchy
 - MDX frontmatter supports `badge: "early-access" | "release-candidate" | "beta" | "deprecated" | "preview"`
 
@@ -104,7 +108,7 @@ apps/docs/
 ├── content/                  # MDX documentation files
 ├── src/
 │   ├── app/
-│   │   ├── docs/[version]/[[...slug]]/  # Main docs pages
+│   │   ├── (docs)/(default)/[[...slug]]/ # Main docs pages
 │   │   ├── api/search/                   # Orama search endpoint
 │   │   └── og/docs/                      # OG image generation
 │   ├── components/
@@ -124,8 +128,15 @@ apps/docs/
 - Package managers: npm commands auto-convert to pnpm/yarn/bun
 - Custom components: `APIPage` (defined in `src/mdx-components.tsx`)
 
-**Version Fallback:**
-When a page doesn't exist in v6, it falls back to v7 content with a banner. See `src/app/docs/[version]/[[...slug]]/page.tsx`.
+**Versions:**
+There is no content fallback between versions: every versioned page exists as its
+own file, and a page missing from `orm/v6` is simply a 404 under `/docs/orm/v6`.
+`src/lib/version.ts` maps a pathname to its version and powers the version
+switcher; `src/lib/version-metadata.ts` turns that version into the label that
+`generateMetadata` folds into the page title and description, so a v6 page and
+its v7 twin are distinguishable in search results. Where two versioned URLs are
+materially the same document, the older one sets `canonical:` in its frontmatter
+(see `src/lib/canonical.ts`).
 
 ## TypeScript Paths
 

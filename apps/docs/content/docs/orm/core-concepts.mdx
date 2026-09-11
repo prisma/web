@@ -103,9 +103,9 @@ Beneath it, each database family has a typed builder for the queries the ORM cli
 | | PostgreSQL | MongoDB |
 | --- | --- | --- |
 | Typed builder | [The SQL query builder](/orm/fundamentals/advanced-queries): composable joins, grouping, projections | [The pipeline builder](/orm/reference/pipeline-builder): typed aggregation pipelines |
-| Raw escape hatch | [Raw SQL fragments](/orm/reference/raw-queries) spliced into builder queries | [Raw commands](/orm/reference/raw-queries) sent to the driver |
+| Raw escape hatch | [Raw SQL](/orm/reference/raw-queries): `fns.raw` fragments spliced into builder queries, or whole statements written with `db.raw.sql` | [Raw commands](/orm/reference/raw-queries) sent to the driver |
 
-Raw queries are still plans, so middleware and telemetry see them like any other query. Their results skip codec decoding, though, so you handle raw values yourself; the [raw queries reference](/orm/reference/raw-queries) spells out what that means per database.
+Raw queries are still plans, so middleware and telemetry see them like any other query. A whole `db.raw.sql` statement declares its row shape with `.returnsRow(spec)`, so its rows come back decoded. `fns.raw` fragments and MongoDB raw commands carry no result shape, so you handle those values yourself; the [raw queries reference](/orm/reference/raw-queries) spells out what that means per database.
 
 ## The stack behind one package
 
@@ -121,7 +121,7 @@ A **capability** is a specific feature a database may or may not support, like `
 
 A **codec** converts values between JavaScript and the database's wire format, in both directions. Every column type in your contract is backed by one: a PostgreSQL `timestamptz` column has a codec that produces a JavaScript `Date` when you read and encodes it back when you write. So when you pick a column type in PSL, you are also picking the codec that will handle every value that column carries.
 
-Extensions bring codecs for the types they add: with pgvector installed, a `Vector(1536)` column comes back as a typed vector rather than a string. This is also why raw query results, which skip codecs, put value handling back in your hands.
+Extensions bring codecs for the types they add: with pgvector installed, a `Vector(1536)` column comes back as a typed vector rather than a string. This is also why raw fragments and raw commands, which skip codecs, put value handling back in your hands.
 
 ## Extensions
 

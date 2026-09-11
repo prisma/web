@@ -26,7 +26,7 @@ npm run db:init
 
 ## 1. Create the middleware
 
-Create a new file next to your database setup. The middleware implements one hook, `afterExecute`, which runs once after every query with the outcome:
+Create a new file next to your database setup. The middleware implements one hook, `afterQuery`, which runs once after every row-returning query with the outcome:
 
 ```ts title="src/prisma/query-logger.ts"
 import type { SqlMiddleware } from "@prisma/orm-postgres/family-runtime";
@@ -36,13 +36,24 @@ export function queryLogger(): SqlMiddleware {
     name: "query-logger",
     familyId: "sql",
 
-    async afterExecute(plan, result) {
+    async afterQuery(plan, result) {
       console.log(
         `[query-logger] ${result.rowCount} rows in ${Math.round(result.latencyMs)}ms · ${plan.sql}`,
       );
     },
   };
 }
+```
+
+`afterQuery` is the row-query half of the lifecycle. Statements run through `runtime.execute(plan)`, which report affected rows instead of returning them, go down the other path and end in `afterExecute`. If you want the logger to cover those too, add a second hook that reads `result.stats.affectedRows`, which is where the write path puts its count:
+
+```ts title="src/prisma/query-logger.ts (excerpt)"
+    async afterExecute(plan, result) {
+      const affected = result.completed ? result.stats.affectedRows : 0;
+      console.log(
+        `[query-logger] ${affected} affected in ${Math.round(result.latencyMs)}ms · ${plan.sql}`,
+      );
+    },
 ```
 
 Typing the object as `SqlMiddleware` gives you inferred parameter types on every hook, so you rarely import the plan or result types yourself. `familyId: "sql"` says this middleware is for SQL databases; [step 5](#5-know-which-family-to-declare) explains when to set it.
@@ -119,7 +130,7 @@ export function queryLogger(options?: QueryLoggerOptions): SqlMiddleware {
     name: "query-logger",
     familyId: "sql",
 
-    async afterExecute(plan, result) {
+    async afterQuery(plan, result) {
       if (result.latencyMs < thresholdMs) return;
       console.log(
         `[query-logger] ${result.rowCount} rows in ${Math.round(result.latencyMs)}ms · ${plan.sql}`,
@@ -143,23 +154,28 @@ Hooks run in registration order, and a middleware that throws stops the ones aft
 
 Prisma 8 groups databases into families: SQL (PostgreSQL) and document (MongoDB). Set `familyId: 'sql'` when your middleware touches anything SQL-shaped, like `plan.sql` in the logger above. The runtime then rejects it on MongoDB at startup with `RUNTIME.MIDDLEWARE_FAMILY_MISMATCH`, instead of failing at query time.
 
-Leave `familyId` out only when the middleware sticks to family-neutral surfaces (`intercept`, `onRow`, `afterExecute` on the shared result shape). Such a middleware runs on PostgreSQL and MongoDB alike; the [cache](/orm/middleware/built-in-cache) works this way.
+Leave `familyId` out only when the middleware sticks to family-neutral surfaces (`interceptQuery`, `onRow`, `afterQuery` on the shared result shape). Such a middleware runs on PostgreSQL and MongoDB alike; the [cache](/orm/middleware/built-in-cache) works this way.
 
 You have a working, configurable middleware. The rest of this page is the surface you reach for as your middleware grows.
 
 ## The hooks
 
-`afterExecute` is one of five hooks. Implement any subset:
+`afterQuery` is one hook on one of two lifecycles. Row queries and non-returning writes take different paths, and `beforeCompile` is the only hook they share. Implement any subset:
 
-| Hook | Runs | Use it to |
-| --- | --- | --- |
-| `beforeCompile(draft, ctx)` | Before the query AST becomes SQL | Rewrite the query, for example add a tenant filter |
-| `beforeExecute(plan, ctx, params?)` | Before the driver, with `plan.sql` rendered | Validate, throw to block, or adjust parameter values |
-| `intercept(plan, ctx)` | Right before the driver | Return `{ rows }` to answer the query yourself |
-| `onRow(row, plan, ctx)` | Once per streamed row | Count or sample rows; throw to abort |
-| `afterExecute(plan, result, ctx)` | After the query finishes | Log timing, row count, and outcome |
+| Hook | Lifecycle | Runs | Use it to |
+| --- | --- | --- | --- |
+| `beforeCompile(draft, ctx)` | both | Before the query AST becomes SQL | Rewrite the query, for example add a tenant filter |
+| `beforeQuery(plan, ctx, params?)` | row query | Before the driver, with `plan.sql` rendered | Validate, throw to block, or adjust parameter values |
+| `interceptQuery(plan, ctx)` | row query | Right before the driver | Return `{ rows }` to answer the query yourself |
+| `onRow(row, plan, ctx)` | row query | Once per row | Count or sample rows; throw to abort |
+| `afterQuery(plan, result, ctx)` | row query | After the query finishes | Log `result.rowCount`, `result.latencyMs`, `result.completed`, `result.source` |
+| `beforeExecute(plan, ctx, params?)` | write | Before the driver, with `plan.sql` rendered | Validate, throw to block, or adjust parameter values |
+| `interceptExecute(plan, ctx)` | write | Right before the driver | Return `{ stats }` to answer the statement yourself |
+| `afterExecute(plan, result, ctx)` | write | After the statement finishes | Log `result.stats.affectedRows`, `result.latencyMs`, `result.completed`, `result.source` |
 
-[How middleware works](/orm/middleware/how-middleware-works#the-five-hooks) walks the order with an animation. Two hooks deserve a closer look here, because they change the query rather than observe it.
+There is no generic `intercept` and no fallback between the two lifecycles. A middleware that wants to cover both registers the same function under both names; that is how `lints` and `budgets` apply to reads and writes alike.
+
+[How middleware works](/orm/middleware/how-middleware-works#the-two-lifecycles) walks the order with an animation. Two hooks deserve a closer look here, because they change the query rather than observe it.
 
 ### Rewrite queries with beforeCompile
 
@@ -187,9 +203,9 @@ export function scopeUserSelects(predicate: BinaryExpr): SqlMiddleware {
 
 Return `undefined` to pass the query through unchanged. Because each middleware's returned draft feeds the next, rewrites compose in registration order.
 
-### Answer queries with intercept
+### Answer queries with interceptQuery
 
-Return rows from `intercept` and the driver never runs. Caches, test fixtures, rate limiters, and circuit breakers all fit this hook. Return raw row objects; the runtime decodes them normally, and `afterExecute` reports `source: 'middleware'` so the short-circuit stays visible to your logging. The [cache middleware](/orm/middleware/built-in-cache) is the reference implementation.
+Return `{ rows }` from `interceptQuery` and the driver never runs. Caches, test fixtures, rate limiters, and circuit breakers all fit this hook. Return raw row objects; the runtime decodes them normally, and `afterQuery` reports `source: 'middleware'` so the short-circuit stays visible to your logging. `interceptExecute` is the write-path counterpart and returns `{ stats }`. The [cache middleware](/orm/middleware/built-in-cache) is the reference implementation.
 
 ## The context object
 
@@ -200,7 +216,7 @@ Every hook receives a context (`ctx`) as its last argument:
 | `ctx.planExecutionId` | The same unique ID in every hook of one query, for correlating observations |
 | `ctx.now()` | The runtime's clock; prefer it over `Date.now()` so tests can control time |
 | `ctx.scope` | `'runtime'`, `'connection'`, or `'transaction'`; skip work in scopes you should not touch |
-| `ctx.mode` | `'strict'` or `'permissive'`; throw in strict environments, warn elsewhere |
+| `ctx.mode` | `'strict'` or `'permissive'`; throw in strict, warn elsewhere. On PostgreSQL it is always `'strict'`, because `postgres(...)` never forwards a mode; only `mongo(...)` accepts one |
 | `ctx.contentHash(plan)` | A stable digest of statement plus parameters, for cache keys |
 | `ctx.contract` | The runtime's contract, when a hook needs schema information |
 | `ctx.log` | Structured log sinks (`info`, `warn`, `error`) wired to the runtime's logger |
@@ -211,8 +227,8 @@ The `postgres(...)` client does not expose a way to attach a log sink yet, so ev
 
 :::warning
 
-- Throwing from `afterExecute` on a successful query fails the call even though the database work already happened. Reserve it for cases where failing loudly is the point, as the [budgets](/orm/middleware/built-in-budgets) latency check does.
-- `afterExecute` also runs when the driver fails, with `result.completed` set to `false`. Errors you throw on that failure path are swallowed so they cannot mask the driver error.
+- Throwing from `afterQuery` on a successful query fails the call even though the database work already happened. Reserve it for cases where failing loudly is the point, as the [budgets](/orm/middleware/built-in-budgets) latency check does.
+- `afterQuery` and `afterExecute` also run when the driver fails, with `result.completed` set to `false`. On that path `afterExecute` has no `stats`, so read it only under `result.completed`. Errors you throw on the failure path are swallowed so they cannot mask the driver error.
 
 :::
 
@@ -222,7 +238,7 @@ Projects scaffolded with `create-prisma@latest` install [Prisma 8 skills](/ai/to
 
 - "Write a Prisma 8 middleware that logs every query slower than 250ms, and register it before budgets."
 - "Add a beforeCompile middleware that scopes every SELECT on the user table to the current tenant."
-- "Write an intercept middleware that returns fixture rows for the products table in tests."
+- "Write an interceptQuery middleware that returns fixture rows for the products table in tests."
 
 ## Next steps
 

@@ -379,8 +379,9 @@ On PostgreSQL, `include()`'s refinement callback receives the nested relation as
 
 - PostgreSQL only. MongoDB's `include()` has no refinement callback; the scalar reducers `count`/`sum`/`avg`/`min`/`max`/`combine` do not exist on the Mongo collection at all (calling them throws `TypeError`).
 - The reducers are only callable **inside** an `include()` refinement callback. Called elsewhere on a PostgreSQL collection, they throw `Error` (the method exists but asserts refinement mode).
-- `sum()` and `avg()` require a field with the numeric codec trait (codec traits are capability tags on a column's type mapping; they gate which comparison and aggregate methods a field offers). Over a to-many relation with no rows, they resolve to `null`, not `0`.
-- `min()` and `max()` are typed for numeric fields (`NumericFieldNames`). At the SQL level, Postgres's `MIN`/`MAX` also accept date/time columns, so `min('createdAt')` returns a real value at runtime even though it fails the type check. Treat the numeric-only typing as a type-level restriction, not a runtime one, for date and time columns. Do not rely on this: it requires bypassing the type system.
+- Which fields each reducer admits is read from the aggregate map in your emitted contract, not from a fixed rule. On PostgreSQL, `sum()` and `avg()` take numeric columns, and `min()` and `max()` also take textual, date/time-string, and Temporal-backed columns, so `min('createdAt')` type-checks. A field the contract's map does not claim for that operation is a compile error at the call site.
+- `count()` returns a `number` and has a zero-argument form; `countBigInt()` is the lossless `bigint` variant. `sum()` over an integer column returns `number` and raises `RUNTIME.DECODE_FAILED` outside ±(2^53 − 1); `avg()` over an integer column returns a `float8` `number`; `sumBigInt(field)` and `avgDecimal(field)` are the lossless forms.
+- Over a to-many relation with no rows, `sum()` and `avg()` resolve to `null`, not `0`.
 
 #### Options
 
@@ -388,8 +389,8 @@ On PostgreSQL, `include()`'s refinement callback receives the nested relation as
 |---|---|---|---|
 | `filter` / `orderBy` / `limit` / `offset` | Chained on the nested collection | No | Refine which related rows load. |
 | `count()` | Reducer, no arguments | No | Reduces the relation to a row count. |
-| `sum(field)` / `avg(field)` | Reducer over a numeric field | No | Reduces the relation to a numeric aggregate; `null` over an empty relation. |
-| `min(field)` / `max(field)` | Reducer over a numeric field | No | Reduces the relation to a minimum/maximum. |
+| `sum(field)` / `avg(field)` | Reducer over a numeric field | No | Reduces the relation to a numeric aggregate; `null` over an empty relation. `sumBigInt` / `avgDecimal` are the lossless forms. |
+| `min(field)` / `max(field)` | Reducer over a field the contract's aggregate map claims | No | Reduces the relation to a minimum/maximum, in the column's own type. |
 | `combine(shape)` | Object of sub-views and reducers | No | Projects several refinements into one shape. |
 
 #### Return type
@@ -461,8 +462,8 @@ const users = await db.orm.public.User.include('posts', (posts) =>
 // users[0].posts.total is 2; users[0].posts.recent is a one-element array
 ```
 
-:::warning[`min()` / `max()` on date columns are type-restricted]
-`min()` and `max()` are typed as `<FieldName extends NumericFieldNames<...>>`. If your model has no field with the numeric codec trait, calling `min('createdAt')` is a compile error, even though Postgres's `MIN`/`MAX` accept the underlying `timestamptz` column at runtime. For date and time columns, treat this as a type-only restriction. `sum()` and `avg()` are stricter: Postgres itself rejects `SUM`/`AVG` over a date column, so those fail at both the type and SQL levels.
+:::note[Which fields `min()` / `max()` accept]
+`min()` and `max()` are typed from the aggregate map in your emitted contract. On PostgreSQL that map claims numeric and textual columns, the date/time-string codecs, and the Temporal-backed ones, so `min('createdAt')` over a `DateTime` column type-checks and returns a `Temporal.Instant`. `sum()` and `avg()` are narrower: PostgreSQL declares no `SUM`/`AVG` over a date or time-stamp column, so those calls are a compile error, naming the operation that is unavailable for that input.
 :::
 
 ### `orderBy()`

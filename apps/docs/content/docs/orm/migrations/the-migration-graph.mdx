@@ -134,12 +134,13 @@ npx prisma@latest db migrate --to prod
 
 Because refs are committed, "where production should be" is a reviewable fact in a pull request instead of tribal knowledge in someone's terminal history.
 
-One ref name is special. A ref called `db` is the default starting point `migration plan` uses when you do not pass `--from`. Keep it current with `db migrate --advance-ref db` and planning stays incremental on its own.
+One ref name is special. A ref called `db` is the default starting point `migration plan` uses when you do not pass `--from`. Keep it current and planning stays incremental on its own. `db init` and `db update` advance it after a successful run, but only when you leave `--db` off and let the connection come from `prisma.config.ts`; with `--db` you have to add `--advance-ref db`. At apply time, `db migrate --advance-ref db` moves it; plain `db migrate` never does.
 
-Two reserved tokens also work anywhere a command accepts a contract reference, without setting up a ref:
+Three reserved tokens also work where a command accepts a contract reference, without setting up a ref:
 
 - `@contract`: the contract you most recently emitted.
-- `@db`: whatever state the connected database's marker holds.
+- `@db`: whatever state the connected database's marker holds. Only the commands that connect accept it; the offline ones, `migration ref set` among them, do not.
+- `@empty`: the empty database, the origin with no prior storage state.
 
 ## What the graph gives you
 
@@ -159,6 +160,14 @@ An edge can point backwards, from a later contract state to an earlier one. Roll
 
 The graph accommodates whatever your workflow produces: long linear spines, wide fan-outs where many branches leave one node, diamonds that converge again, and fast-forward edges that jump several states in one hop.
 
+## Baselines
+
+A database that already exists can become the graph's starting node without replaying anything. When the graph is empty and the `db` ref names a contract whose snapshot is stored under `migrations/snapshots/`, one `migration plan` run writes two packages: a baseline from nothing to the ref's contract, and the delta from there to your emitted contract.
+
+For a deployed database you must not touch, `--from @empty` is the explicit retrofit: bring the contract source back to the deployed state, emit, plan the baseline, then restore the current contract and plan the delta from it.
+
+A baseline is never replayed against a database that already carries a marker. The runner starts at the marker and applies only the edges past it.
+
 ## Database-specific details
 
 The graph model is family-neutral: same nodes, same edges, same commands on every database. The parts that differ are in how the marker and ledger are stored.
@@ -170,8 +179,7 @@ The graph model is family-neutral: same nodes, same edges, same commands on ever
 
 The graph, pathfinding, refs, and the marker/ledger model all work today. A few things you might reach for do not exist yet:
 
-- **No squash.** You cannot yet collapse a long chain of migrations into one. The chain stays as-is.
-- **No baseline.** You cannot yet adopt an existing database's history as a starting node without replaying it.
+- **No squash.** You cannot yet collapse a long chain of migrations into one, including into a single baseline after the fact. The chain stays as-is.
 - **No split.** You cannot yet break one large migration into smaller ones after the fact.
 - **Ambiguous targets need a choice.** When two branch tips are both reachable, `db migrate` asks you to pick one with `--to` rather than guessing.
 
