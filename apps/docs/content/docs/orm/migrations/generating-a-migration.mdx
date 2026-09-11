@@ -43,11 +43,11 @@ npx prisma@latest migration plan --name init
 ├─ Create schema "public"
 └─ Create table "user"
 
-from:   null
-to:     sha256:705b1a62f26f0913caa4bfe3f8b7cb491a1b94bd47fc43471d8711bc480bcbb5
+from:   (baseline)
+to:     705b1a62f26f0913caa4bfe3f8b7cb491a1b94bd47fc43471d8711bc480bcbb5
 App space → migrations/app/20260707T1005_init
 
-Next: review migrations/app/20260707T1005_init if needed, then run prisma-cli migrate.
+Next: review migrations/app/20260707T1005_init if needed, then run prisma db migrate.
 
 DDL preview
 
@@ -60,30 +60,35 @@ CREATE TABLE "public"."user" (
 );
 ```
 
-(The `prisma-cli` in the hint is the binary's own name for itself. When invoking it as `npx prisma@latest`, run the suggested subcommand the same way: `npx prisma@latest db migrate`.)
-
 Four things to note:
 
 - **The DDL preview is in the output.** You will see the exact SQL before anything exists but files.
-- **`from: null`** means this migration starts from an empty database. It's the root of your [migration graph](/orm/migrations/the-migration-graph).
+- **`from: (baseline)`** means this migration starts from an empty database. It's the root of your [migration graph](/orm/migrations/the-migration-graph).
 - **`to:` is your contract's hash.** The migration promises to deliver a database matching exactly the contract that you have emitted.
 - **`App space`** is your application's migration lane. Database extensions bring their own lanes. See [extension spaces](/orm/migrations/applying-a-migration#extension-spaces) for more information.
 
-The planned migration directory contains the TypeScript source, the compiled operations, and the contract snapshots:
+The planned migration directory contains the TypeScript source, the compiled operations, and the history marker. The contract snapshots it imports live once per migrations root, under `migrations/snapshots/<contract hash>/`:
 
 ```text
-migrations/app/20260707T1005_init/
-├── migration.ts
-├── ops.json
-├── migration.json
-└── end-contract.json  (+ end-contract.d.ts)
+migrations/
+├── app/
+│   └── 20260707T1005_init/
+│       ├── migration.ts
+│       ├── ops.json
+│       └── migration.json
+└── snapshots/
+    └── 705b1a62f26f0913caa4bfe3f8b7cb491a1b94bd47fc43471d8711bc480bcbb5/
+        ├── contract.json
+        └── contract.d.ts
 ```
 
 Open `migration.ts`. It is a description of the change, so it reads like one:
 
 ```ts title="migrations/app/20260707T1005_init/migration.ts"
-import type { Contract as End } from './end-contract';
-import endContract from './end-contract.json' with { type: 'json' };
+import type { Contract as End } from '../../snapshots/705b1a62f26f0913caa4bfe3f8b7cb491a1b94bd47fc43471d8711bc480bcbb5/contract';
+import endContract from '../../snapshots/705b1a62f26f0913caa4bfe3f8b7cb491a1b94bd47fc43471d8711bc480bcbb5/contract.json' with {
+  type: 'json',
+};
 import { Migration, MigrationCLI, col, primaryKey } from '@prisma/orm-postgres/migration';
 
 export default class M extends Migration<never, End> {
@@ -141,8 +146,8 @@ npx prisma@latest migration plan --name add_user_phone --from 20260707T1005_init
 │
 └─ Add column "phone" to "user"
 
-from:   sha256:705b1a62f26f0913caa4bfe3f8b7cb491a1b94bd47fc43471d8711bc480bcbb5
-to:     sha256:925198f3cc272c5fd19c24ac02f251661775ddac21cdac4e634bbc0dda8b2d72
+from:   705b1a62f26f0913caa4bfe3f8b7cb491a1b94bd47fc43471d8711bc480bcbb5
+to:     925198f3cc272c5fd19c24ac02f251661775ddac21cdac4e634bbc0dda8b2d72
 App space → migrations/app/20260707T1006_add_user_phone
 
 DDL preview

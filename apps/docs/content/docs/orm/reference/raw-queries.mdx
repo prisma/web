@@ -16,7 +16,7 @@ Unlike the typed surfaces, raw queries do not carry a result shape, so their res
 
 ## PostgreSQL raw SQL
 
-Raw SQL lives inside the [SQL query builder](/orm/reference/sql-query-builder), not as a standalone statement. You write a SQL fragment as a tagged template and splice it into a `select()`, `where()`, `orderBy()`, or `update()` call. There is no way to run a bare raw SQL string on its own; every raw fragment is part of a builder query that you [`build()`](/orm/reference/sql-query-builder#build) and run with `runtime.execute(...)`.
+Raw SQL lives inside the [SQL query builder](/orm/reference/sql-query-builder), not as a standalone statement. You write a SQL fragment as a tagged template and splice it into a `select()`, `where()`, `orderBy()`, or `update()` call. There is no way to run a bare raw SQL string on its own; every raw fragment is part of a builder query that you [`build()`](/orm/reference/sql-query-builder#build) and run with `runtime.query(...)`.
 
 The examples in this section run against the `user` / `post` schema from the SQL query builder page. See its [example schema](/orm/reference/sql-query-builder#example-schema) for the full model definitions. As on that page, create the client with `postgres(...)`, connect it for a runtime, and reach tables through `db.sql.public`:
 
@@ -39,7 +39,7 @@ const plan = db.sql.public.user
   .select('upperEmail', (f, fns) => fns.raw`UPPER(${f.email})`.returns('pg/text@1'))
   .where((f, fns) => fns.eq(f.id, aliceId))
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // rows === [{ id: aliceId, upperEmail: 'ALICE@EXAMPLE.COM' }]
 ```
 
@@ -54,7 +54,7 @@ const plan = db.sql.public.user
   .select('id', 'email')
   .where((f, fns) => fns.raw`LENGTH(${f.email}) > 15`.returns('pg/bool@1'))
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // only users whose email is longer than 15 characters
 ```
 
@@ -71,7 +71,7 @@ const plan = db.sql.public.user
     ),
   )
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // each row's kindLabel is 'admin' or 'regular user'
 ```
 
@@ -87,7 +87,7 @@ const plan = db.sql.public.user
   .select('id', 'email')
   .where((f, fns) => fns.raw`LENGTH(${f.email}) = ${targetLength}`.returns('pg/bool@1'))
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // users whose email is exactly 15 characters long
 ```
 
@@ -109,7 +109,7 @@ const plan = db.sql.public.user
     }),
   )
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // adminName is the displayName for admins, null for everyone else
 ```
 
@@ -123,7 +123,7 @@ const plan = db.sql.public.user
   .select((f) => ({ id: f.id, serverNow }))
   .where((f, fns) => fns.eq(f.id, aliceId))
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // rows[0].serverNow is a Date
 ```
 
@@ -143,7 +143,7 @@ TypeScript already rejects an unsupported value at compile time. If you need to 
 
 `db.raw.collection(rootName)` returns a raw collection with nine methods for running MongoDB commands directly against a collection. The root name is the contract's lowercase plural root (`'users'`, `'posts'`), the same name the ORM client uses (`db.orm.users`).
 
-Each method returns a buildable command: call `.build()` to get a plan, then run it with `db.execute(plan)`. Because raw filters carry native BSON values, the examples below construct ids with the driver's `ObjectId` class:
+Each method returns a buildable command: call `.build()` to get a plan, then run it with `(await db.runtime()).query(plan)`. Because raw filters carry native BSON values, the examples below construct ids with the driver's `ObjectId` class:
 
 ```ts
 import { ObjectId } from 'mongodb';
@@ -164,7 +164,7 @@ const plan = db.raw
   .collection('posts')
   .aggregate<{ _id: unknown; title: string }>([{ $match: { title: 'Hello world' } }])
   .build();
-const rows = await db.execute(plan);
+const rows = await (await db.runtime()).query(plan);
 // rows[0].title === 'Hello world'
 // rows[0]._id is a raw ObjectId — String(rows[0]._id) is the hex string
 ```
@@ -178,7 +178,7 @@ const onePlan = db.raw
   .collection('users')
   .insertOne({ name: 'Dave', email: 'dave@example.com', role: 'author' })
   .build();
-const [oneResult] = await db.execute(onePlan);
+const [oneResult] = await (await db.runtime()).query(onePlan);
 // { insertedId: <ObjectId> }
 
 const manyPlan = db.raw
@@ -188,7 +188,7 @@ const manyPlan = db.raw
     { name: 'Frank', email: 'frank@example.com', role: 'author' },
   ])
   .build();
-const [manyResult] = await db.execute(manyPlan);
+const [manyResult] = await (await db.runtime()).query(manyPlan);
 // { insertedCount: 2, insertedIds: [<ObjectId>, <ObjectId>] }
 ```
 
@@ -205,7 +205,7 @@ const plan = db.raw
   .collection('users')
   .updateOne({ _id: new ObjectId(aliceId) }, { $set: { bio: 'Updated bio' } })
   .build();
-const [result] = await db.execute(plan);
+const [result] = await (await db.runtime()).query(plan);
 // { matchedCount: 1, modifiedCount: 1, ... }
 ```
 
@@ -218,7 +218,7 @@ const plan = db.raw
   .collection('users')
   .updateMany({ role: 'author' }, [{ $set: { bio: { $concat: ['bio for ', '$name'] } } }])
   .build();
-const [result] = await db.execute(plan);
+const [result] = await (await db.runtime()).query(plan);
 // { matchedCount: 2, modifiedCount: 2, ... }
 ```
 
@@ -228,11 +228,11 @@ Delete one or every matching document. Both return `{ deletedCount }`.
 
 ```ts
 const onePlan = db.raw.collection('users').deleteOne({ _id: new ObjectId(bobId) }).build();
-const [oneResult] = await db.execute(onePlan);
+const [oneResult] = await (await db.runtime()).query(onePlan);
 // { deletedCount: 1 }
 
 const manyPlan = db.raw.collection('users').deleteMany({ role: 'author' }).build();
-const [manyResult] = await db.execute(manyPlan);
+const [manyResult] = await (await db.runtime()).query(manyPlan);
 // { deletedCount: 2 }
 ```
 
@@ -253,10 +253,11 @@ Because the wrapper always uses the driver's `'before'` default, the **first** c
 const filter = { _id: 'pageViews' };
 const update = { $inc: { count: 1 }, $setOnInsert: { _id: 'pageViews' } };
 const counter = db.raw.collection('users');
+const runtime = await db.runtime();
 
-const first = await db.execute(counter.findOneAndUpdate(filter, update, { upsert: true }).build());
-const second = await db.execute(counter.findOneAndUpdate(filter, update, { upsert: true }).build());
-const third = await db.execute(counter.findOneAndUpdate(filter, update, { upsert: true }).build());
+const first = await runtime.query(counter.findOneAndUpdate(filter, update, { upsert: true }).build());
+const second = await runtime.query(counter.findOneAndUpdate(filter, update, { upsert: true }).build());
+const third = await runtime.query(counter.findOneAndUpdate(filter, update, { upsert: true }).build());
 // first  === []                    — no pre-image exists on the insert
 // second === [{ ..., count: 1 }]   — the pre-image after the first increment
 // third  === [{ ..., count: 2 }]
@@ -268,7 +269,7 @@ Atomically delete a matching document and return it. The yielded row is the raw 
 
 ```ts
 const plan = db.raw.collection('users').findOneAndDelete({ _id: new ObjectId(aliceId) }).build();
-const [deleted] = await db.execute(plan);
+const [deleted] = await (await db.runtime()).query(plan);
 // deleted is the removed document; deleted._id is a raw ObjectId
 ```
 
@@ -280,7 +281,7 @@ const [deleted] = await db.execute(plan);
 import { RawAggregateCommand } from '@prisma/orm-mongo/query-ast/execution';
 
 const plan = db.query.rawCommand(new RawAggregateCommand('posts', [{ $count: 'total' }]));
-const rows = await db.execute(plan);
+const rows = await (await db.runtime()).query(plan);
 // [{ total: 2 }]
 ```
 

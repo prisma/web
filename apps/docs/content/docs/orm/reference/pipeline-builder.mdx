@@ -114,16 +114,16 @@ Enter the pipeline builder on a collection.
 
 ```typescript
 const plan = db.query.from('posts').build();
-const posts = await db.execute(plan);
+const posts = await (await db.runtime()).query(plan);
 ```
 
 ### Building and executing a pipeline
 
-A pipeline is inert until you execute it. `build()` (or its alias `aggregate()`) turns the chain into a plan; `db.execute(plan)` runs it.
+A pipeline is inert until you run it. `build()` (or its alias `aggregate()`) turns the chain into a plan; `(await db.runtime()).query(plan)` runs it.
 
 #### Remarks
 
-- `db.execute(plan)` is the client-level executor. It accepts any plan, including one built by the pipeline builder. If you hold a connected runtime directly, `runtime.execute(plan)` is the equivalent lower-level call.
+- `runtime.query(plan)` is the executor. It accepts any plan, including one built by the pipeline builder. On MongoDB `db.runtime()` returns a promise, so the call reads `(await db.runtime()).query(plan)`; hold the runtime in a variable if you run several plans. It returns an `AsyncIterableResult`: `await` it for an array of documents, or `for await` over it to take one at a time. There is no `db.execute` on the MongoDB client.
 - **Read results are codec-decoded.** Unlike [raw queries](/orm/reference/raw-queries), a pipeline built through `db.query` carries a result shape, so top-level `_id` fields come back as decoded hex strings, and other fields are decoded to their contract types.
 - A sub-document pulled in by `lookup()` is **not** decoded the same way: its `_id` comes back as a raw driver `ObjectId`. Compare it with `String(...)`. This matches the ORM client's `include()` behavior.
 
@@ -133,7 +133,7 @@ A pipeline is inert until you execute it. `build()` (or its alias `aggregate()`)
 
 ```typescript
 const plan = db.query.from('posts').sort({ createdAt: 1 }).build();
-const posts = await db.execute(plan);
+const posts = await (await db.runtime()).query(plan);
 ```
 
 ## Pipeline stages
@@ -172,7 +172,7 @@ const plan = db.query
   .from('posts')
   .match((f) => f.kind.eq('tutorial'))
   .build();
-const tutorials = await db.execute(plan);
+const tutorials = await (await db.runtime()).query(plan);
 ```
 
 ##### Aggregation-expression predicate
@@ -184,7 +184,7 @@ const plan = db.query
   .from('posts')
   .match((f) => expr(fn.gt(fn.year(f.createdAt), fn.literal(2023))))
   .build();
-const recent = await db.execute(plan);
+const recent = await (await db.runtime()).query(plan);
 ```
 
 :::warning[`_id` equality filters do not work through the pipeline builder]
@@ -219,7 +219,7 @@ Order documents by a field spec.
 
 ```typescript
 const plan = db.query.from('posts').sort({ createdAt: -1 }).build();
-const newestFirst = await db.execute(plan);
+const newestFirst = await (await db.runtime()).query(plan);
 ```
 
 ### `limit()`
@@ -248,7 +248,7 @@ Cap the number of documents.
 
 ```typescript
 const plan = db.query.from('posts').sort({ createdAt: 1 }).limit(1).build();
-const [oldest] = await db.execute(plan);
+const [oldest] = await (await db.runtime()).query(plan);
 ```
 
 ### `skip()`
@@ -273,7 +273,7 @@ Offset into the sorted result set.
 
 ```typescript
 const plan = db.query.from('posts').sort({ createdAt: 1 }).skip(1).build();
-const afterFirst = await db.execute(plan);
+const afterFirst = await (await db.runtime()).query(plan);
 ```
 
 ### `sample()`
@@ -298,7 +298,7 @@ Draw a random subset of documents.
 
 ```typescript
 const plan = db.query.from('posts').sample(1).build();
-const oneRandom = await db.execute(plan);
+const oneRandom = await (await db.runtime()).query(plan);
 ```
 
 ### `addFields()`
@@ -332,7 +332,7 @@ const plan = db.query
   .from('posts')
   .addFields((f) => ({ shoutTitle: fn.toUpper(f.title) }))
   .build();
-const withShout = await db.execute(plan);
+const withShout = await (await db.runtime()).query(plan);
 ```
 
 ### `lookup()`
@@ -371,7 +371,7 @@ const plan = db.query
       .as('author'),
   )
   .build();
-const withAuthor = await db.execute(plan);
+const withAuthor = await (await db.runtime()).query(plan);
 // withAuthor[0].author is an array; author[0]._id is a raw ObjectId — compare with String(...)
 ```
 
@@ -403,7 +403,7 @@ Reshape each document.
 
 ```typescript
 const plan = db.query.from('posts').project('title', 'kind').build();
-const trimmed = await db.execute(plan);
+const trimmed = await (await db.runtime()).query(plan);
 // each document has title, kind, and _id — no content
 ```
 
@@ -416,7 +416,7 @@ const plan = db.query
   .from('posts')
   .project((f) => ({ title: 1, shout: fn.toUpper(f.title) }))
   .build();
-const projected = await db.execute(plan);
+const projected = await (await db.runtime()).query(plan);
 ```
 
 ### `unwind()`
@@ -479,7 +479,7 @@ const plan = db.query
     titles: acc.push(f.title),
   }))
   .build();
-const perAuthor = await db.execute(plan);
+const perAuthor = await (await db.runtime()).query(plan);
 ```
 
 ##### Group the whole collection
@@ -491,7 +491,7 @@ const plan = db.query
   .from('posts')
   .group((f) => ({ _id: null, total: acc.count(), latest: acc.max(f.createdAt) }))
   .build();
-const [summary] = await db.execute(plan);
+const [summary] = await (await db.runtime()).query(plan);
 // { _id: null, total: 2, latest: <Date> }
 ```
 
@@ -499,7 +499,7 @@ For Prisma 7 users, `groupBy` becomes a `group()` stage on the pipeline builder:
 
 ```diff
 - const perAuthor = await prisma.post.groupBy({ by: ['authorId'], _count: true });
-+ const perAuthor = await db.execute(
++ const perAuthor = await (await db.runtime()).query(
 +   db.query.from('posts').group((f) => ({ _id: f.authorId, postCount: acc.count() })).build(),
 + );
 ```
@@ -542,7 +542,7 @@ const plan = db.query
   )
   .replaceRoot((f) => fn.arrayElemAt(f.author, fn.literal(0)))
   .build();
-const authors = await db.execute(plan);
+const authors = await (await db.runtime()).query(plan);
 // each document is the promoted author sub-document
 ```
 
@@ -568,7 +568,7 @@ Reduce the pipeline to a single document holding the count.
 
 ```typescript
 const plan = db.query.from('posts').count('total').build();
-const [{ total }] = await db.execute(plan);
+const [{ total }] = await (await db.runtime()).query(plan);
 // { total: 2 }
 ```
 
@@ -601,7 +601,7 @@ const plan = db.query
   .from('posts')
   .sortByCount((f) => f.kind)
   .build();
-const byKind = await db.execute(plan);
+const byKind = await (await db.runtime()).query(plan);
 // two buckets, each { _id: <kind>, count: 1 } — order of tied counts is not guaranteed
 ```
 
@@ -632,7 +632,7 @@ Several stages take a single MongoDB stage options object rather than a typed fi
 
 ```typescript
 const plan = db.query.from('posts').unionWith('users').build();
-const combined = await db.execute(plan);
+const combined = await (await db.runtime()).query(plan);
 // posts followed by users
 ```
 
@@ -700,7 +700,7 @@ const plan = db.query
   .from('posts')
   .group((f) => ({ _id: null, total: acc.count(), durationSum: acc.sum(fn.literal(1)) }))
   .build();
-const [{ total, durationSum }] = await db.execute(plan);
+const [{ total, durationSum }] = await (await db.runtime()).query(plan);
 // { total: 2, durationSum: 2 }
 ```
 
@@ -718,7 +718,7 @@ const plan = db.query
     avgYear: acc.avg(fn.year(f.createdAt)),
   }))
   .build();
-const [stats] = await db.execute(plan);
+const [stats] = await (await db.runtime()).query(plan);
 // { earliest: <Date>, latest: <Date>, avgYear: 2024 }
 ```
 
@@ -732,7 +732,7 @@ const plan = db.query
   .sort({ createdAt: 1 })
   .group((f) => ({ _id: null, firstTitle: acc.first(f.title), lastTitle: acc.last(f.title) }))
   .build();
-const [{ firstTitle, lastTitle }] = await db.execute(plan);
+const [{ firstTitle, lastTitle }] = await (await db.runtime()).query(plan);
 // { firstTitle: 'Hello world', lastTitle: 'Tutorial one' }
 ```
 
@@ -749,7 +749,7 @@ const plan = db.query
     distinctKinds: acc.addToSet(f.kind),
   }))
   .build();
-const [{ allTitles, distinctKinds }] = await db.execute(plan);
+const [{ allTitles, distinctKinds }] = await (await db.runtime()).query(plan);
 ```
 
 ##### `firstN()` (an `N`-variant)
@@ -762,7 +762,7 @@ const plan = db.query
   .sort({ createdAt: 1 })
   .group((f) => ({ _id: null, firstTwo: acc.firstN({ input: f.title, n: fn.literal(2) }) }))
   .build();
-const [{ firstTwo }] = await db.execute(plan);
+const [{ firstTwo }] = await (await db.runtime()).query(plan);
 // firstTwo is ['Hello world', 'Tutorial one']
 ```
 
@@ -807,7 +807,7 @@ const plan = db.query
     computed: fn.add(fn.literal(1), fn.multiply(fn.literal(2), fn.literal(3))),
   }))
   .build();
-const rows = await db.execute(plan);
+const rows = await (await db.runtime()).query(plan);
 // computed is 7 for every document
 ```
 
@@ -820,7 +820,7 @@ const plan = db.query
   .from('posts')
   .project((f) => ({ shout: fn.concat(fn.toUpper(f.title), fn.literal('!')) }))
   .build();
-const rows = await db.execute(plan);
+const rows = await (await db.runtime()).query(plan);
 ```
 
 ##### Branch with `cond()`
@@ -839,7 +839,7 @@ const plan = db.query
     ),
   }))
   .build();
-const rows = await db.execute(plan);
+const rows = await (await db.runtime()).query(plan);
 ```
 
 ##### Array length
@@ -851,7 +851,7 @@ const plan = db.query
   .from('posts')
   .project((f) => ({ title: 1, titleWords: fn.size(fn.split(f.title, fn.literal(' '))) }))
   .build();
-const rows = await db.execute(plan);
+const rows = await (await db.runtime()).query(plan);
 ```
 
 ### `pipe()`
@@ -866,7 +866,7 @@ Append an arbitrary raw pipeline stage the typed methods don't cover.
 
 ## Read terminals
 
-A read terminal turns the chain into an executable plan. Pass the plan to `db.execute(plan)` to run it.
+A read terminal turns the chain into an executable plan. Pass the plan to `(await db.runtime()).query(plan)` to run it.
 
 ### `build()` and `aggregate()`
 
@@ -875,13 +875,13 @@ Compile the pipeline into a plan.
 #### Remarks
 
 - `build()` produces the plan. `aggregate()` is an alias: it returns the identical plan and executes identically.
-- Neither runs the query. Pass the plan to `db.execute(plan)` (or `runtime.execute(plan)`) to fetch documents.
+- Neither runs the query. Pass the plan to `(await db.runtime()).query(plan)` to fetch documents.
 
 #### Return type
 
 | Return type | Example | Description |
 |---|---|---|
-| Query plan | `db.query.from('posts').build()` | A plan you execute with `db.execute(...)`. |
+| Query plan | `db.query.from('posts').build()` | A plan you run with `(await db.runtime()).query(...)`. |
 
 #### Examples
 
@@ -892,7 +892,7 @@ const built = db.query.from('posts').sort({ createdAt: 1 }).build();
 const aggregated = db.query.from('posts').sort({ createdAt: 1 }).aggregate();
 // built and aggregated produce the same plan
 
-const rows = await db.execute(aggregated);
+const rows = await (await db.runtime()).query(aggregated);
 ```
 
 ## Write methods
@@ -911,7 +911,7 @@ Updater callbacks (the `(f) => [...]` argument to the update methods) must retur
 
 #### Remarks
 
-- These return a plan; execute it with `db.execute(plan)`.
+- These return a plan; run it with `(await db.runtime()).query(plan)`.
 - Write results are the driver's own result envelopes (`{ insertedId }`, `{ insertedIds }`, `{ deletedCount }`, `{ modifiedCount }`, `{ upsertedId }`), not decoded documents.
 
 #### Examples
@@ -926,14 +926,14 @@ const onePlan = db.query.from('users').insertOne({
   role: 'author',
   address: null,
 });
-const [insertOneResult] = await db.execute(onePlan);
+const [insertOneResult] = await (await db.runtime()).query(onePlan);
 // { insertedId: <ObjectId> }
 
 const manyPlan = db.query.from('users').insertMany([
   { name: 'Carol', email: 'carol@example.com', bio: null, role: 'author', address: null },
   { name: 'Dave', email: 'dave@example.com', bio: null, role: 'reader', address: null },
 ]);
-const [insertManyResult] = await db.execute(manyPlan);
+const [insertManyResult] = await (await db.runtime()).query(manyPlan);
 // { insertedIds: { '0': <ObjectId>, '1': <ObjectId> } }
 ```
 
@@ -941,14 +941,14 @@ const [insertManyResult] = await db.execute(manyPlan);
 
 ```typescript
 const plan = db.query.from('users').updateAll((f) => [f.bio.set('everyone now has bio')]);
-await db.execute(plan);
+await (await db.runtime()).query(plan);
 ```
 
 ##### `deleteAll()`
 
 ```typescript
 const plan = db.query.from('users').deleteAll();
-const [result] = await db.execute(plan);
+const [result] = await (await db.runtime()).query(plan);
 // { deletedCount: 2 }
 ```
 
@@ -961,7 +961,7 @@ const plan = db.query.from('users').upsertOne(
   (f) => f.email.eq('erin@example.com'),
   (f) => [f.name.set('Erin'), f.email.set('erin@example.com'), f.bio.set(null)],
 );
-const [result] = await db.execute(plan);
+const [result] = await (await db.runtime()).query(plan);
 // inserts when no document matches: result.upsertedId is defined
 ```
 
@@ -984,13 +984,13 @@ const manyPlan = db.query
   .from('users')
   .match((f) => f.role.eq('author'))
   .updateMany((f) => [f.bio.set('matched-many')]);
-await db.execute(manyPlan);
+await (await db.runtime()).query(manyPlan);
 
 const onePlan = db.query
   .from('users')
   .match((f) => f.email.eq('alice@example.com'))
   .updateOne((f) => [f.bio.set('single-update')]);
-const [result] = await db.execute(onePlan);
+const [result] = await (await db.runtime()).query(onePlan);
 // { matchedCount: 1, modifiedCount: 1 }
 ```
 
@@ -1001,7 +1001,7 @@ const plan = db.query
   .from('users')
   .match((f) => f.role.eq('author'))
   .deleteMany();
-const [result] = await db.execute(plan);
+const [result] = await (await db.runtime()).query(plan);
 // { deletedCount: 2 }
 ```
 
@@ -1012,7 +1012,7 @@ const plan = db.query
   .from('users')
   .match((f) => f.email.eq('alice@example.com'))
   .upsertOne((f) => [f.bio.set('upserted via match')]);
-const [result] = await db.execute(plan);
+const [result] = await (await db.runtime()).query(plan);
 // updates on a hit: result.modifiedCount is 1
 ```
 
@@ -1025,14 +1025,14 @@ const afterPlan = db.query
   .from('users')
   .match((f) => f.email.eq('alice@example.com'))
   .findOneAndUpdate((f) => [f.bio.set('changed')], { returnDocument: 'after' });
-const [afterDoc] = await db.execute(afterPlan);
+const [afterDoc] = await (await db.runtime()).query(afterPlan);
 // afterDoc.bio is 'changed'
 
 const beforePlan = db.query
   .from('users')
   .match((f) => f.email.eq('alice@example.com'))
   .findOneAndUpdate((f) => [f.bio.set('changed')], { returnDocument: 'before' });
-const [beforeDoc] = await db.execute(beforePlan);
+const [beforeDoc] = await (await db.runtime()).query(beforePlan);
 // beforeDoc.bio is the pre-update value
 ```
 
@@ -1047,7 +1047,7 @@ const plan = db.query
   .from('users')
   .match((f) => f.email.eq('alice@example.com'))
   .findOneAndDelete();
-const [deleted] = await db.execute(plan);
+const [deleted] = await (await db.runtime()).query(plan);
 // deleted is the removed document
 ```
 
@@ -1070,7 +1070,7 @@ const plan = db.query
   .from('users')
   .match((f) => f.role.eq('author'))
   .updateMany((f) => [f.bio.set('operator form')]);
-await db.execute(plan);
+await (await db.runtime()).query(plan);
 ```
 
 ##### Pipeline form (`f.stage.*`)
@@ -1080,7 +1080,7 @@ const plan = db.query
   .from('users')
   .match((f) => f.role.eq('author'))
   .updateMany((f) => [f.stage.set({ bio: f.name.node })]);
-await db.execute(plan);
+await (await db.runtime()).query(plan);
 // each author's bio is set to that author's own name
 ```
 
@@ -1092,7 +1092,7 @@ await db.execute(plan);
 
 - `out(collection)` materializes the pipeline output into a destination collection, replacing its contents.
 - `merge({ into })` streams the pipeline output into a target collection, merging with existing documents.
-- Both are terminals: they return a plan you execute with `db.execute(plan)`, and produce no rows of their own.
+- Both are terminals: they return a plan you run with `(await db.runtime()).query(plan)`, and produce no rows of their own.
 
 #### Examples
 
@@ -1100,7 +1100,7 @@ await db.execute(plan);
 
 ```typescript
 const plan = db.query.from('users').out('users_snapshot');
-await db.execute(plan);
+await (await db.runtime()).query(plan);
 // the users_snapshot collection now holds the pipeline output
 ```
 
@@ -1108,7 +1108,7 @@ await db.execute(plan);
 
 ```typescript
 const plan = db.query.from('users').merge({ into: 'users_archive' });
-await db.execute(plan);
+await (await db.runtime()).query(plan);
 ```
 
 ## `rawCommand()`
@@ -1129,7 +1129,7 @@ Run a raw MongoDB aggregate command through the pipeline builder, bypassing the 
 import { RawAggregateCommand } from '@prisma/orm-mongo/query-ast/execution';
 
 const plan = db.query.rawCommand(new RawAggregateCommand('posts', [{ $count: 'total' }]));
-const rows = await db.execute(plan);
+const rows = await (await db.runtime()).query(plan);
 // [{ total: 2 }]
 ```
 
@@ -1142,6 +1142,6 @@ import { ObjectId } from 'mongodb';
 const plan = db.query.rawCommand(
   new RawAggregateCommand('posts', [{ $match: { _id: new ObjectId(postId) } }]),
 );
-const rows = await db.execute(plan);
+const rows = await (await db.runtime()).query(plan);
 // a real ObjectId in a raw pipeline document matches correctly
 ```

@@ -3,7 +3,7 @@ title: Reading data
 description: 'Fetch one record or many with Prisma 8, then filter, select, sort, paginate, and stream the results.'
 url: /orm/fundamentals/reading-data
 metaTitle: Reading data with Prisma 8
-metaDescription: 'Query PostgreSQL and MongoDB with Prisma 8. Filter with where, project with select, sort with orderBy, paginate with take and skip, and stream large results.'
+metaDescription: 'Query PostgreSQL and MongoDB with Prisma 8. Filter with where, project with select, sort with orderBy, paginate with limit and offset, and stream large results.'
 ---
 
 This page shows how to read data with Prisma 8: fetching [many records or one](#fetch-many-records-or-one), [filtering](#filter-records), [selecting fields](#select-fields), [sorting and paginating](#sort-and-paginate), [counting](#count-records), and [streaming large results](#stream-large-results).
@@ -109,7 +109,7 @@ const users = await db.orm.public.User.all();
 ]
 ```
 
-`.all()` applies no limit of its own, so combine it with [`take`](#sort-and-paginate) on tables that can grow.
+`.all()` applies no limit of its own, so combine it with [`limit`](#sort-and-paginate) on tables that can grow.
 
 Use `.first()` when you want a single record. It returns the record, or `null` when nothing matches, and on PostgreSQL it fetches at most one row:
 
@@ -189,7 +189,7 @@ const plan = db.query
   .match((f) => f.createdAt.gte(new Date("2026-06-01")))
   .match((f) => f.createdAt.lte(new Date("2026-07-01")))
   .build();
-const junePosts = await runtime.execute(plan);
+const junePosts = await runtime.query(plan);
 ```
 
 `.match(...)` calls AND-compose exactly like chained `.where(...)`, and `.in([...])` works the same way: `.match((f) => f.title.in(["Old", "New"]))`.
@@ -215,14 +215,14 @@ const users = await db.orm.users.select("_id", "email").all();
 
 ## Sort and paginate
 
-Use `.orderBy(...)` to sort, `.take(n)` to limit, and `.skip(n)` to offset. On PostgreSQL, sort with a lambda that calls `.asc()` or `.desc()` on a field; on MongoDB, sort with the driver's direction values, `1` for ascending and `-1` for descending:
+Use `.orderBy(...)` to sort, `.limit(n)` to limit, and `.offset(n)` to offset. On PostgreSQL, sort with a lambda that calls `.asc()` or `.desc()` on a field; on MongoDB, sort with the driver's direction values, `1` for ascending and `-1` for descending:
 
 ```typescript tab="PostgreSQL"
 // Second page of posts, newest first
 const page = await db.orm.public.Post
   .orderBy((p) => p.createdAt.desc())
-  .take(20)
-  .skip(20)
+  .limit(20)
+  .offset(20)
   .all();
 ```
 
@@ -230,8 +230,8 @@ const page = await db.orm.public.Post
 // Second page of posts, newest first
 const page = await db.orm.posts
   .orderBy({ createdAt: -1 })
-  .take(20)
-  .skip(20)
+  .limit(20)
+  .offset(20)
   .all();
 ```
 
@@ -243,21 +243,21 @@ const posts = await db.orm.public.Post
   .all();
 ```
 
-Offset pagination (`.skip`) re-counts skipped rows on every page, which gets slower as readers go deeper. For stable pagination over large tables on PostgreSQL, follow `.orderBy(...)` with `.cursor(...)` to resume from the last record you returned.
+Offset pagination (`.offset`) re-counts skipped rows on every page, which gets slower as readers go deeper. For stable pagination over large tables on PostgreSQL, follow `.orderBy(...)` with `.cursor(...)` to resume from the last record you returned.
 
 Keep the `id` tiebreaker in both the sort and the cursor: `createdAt` is not unique, and a cursor on a non-unique field alone can skip or repeat records that share the boundary value. With the composite cursor, pages never overlap even when timestamps tie:
 
 ```typescript
 const page1 = await db.orm.public.Post
   .orderBy([(p) => p.createdAt.desc(), (p) => p.id.desc()])
-  .take(20)
+  .limit(20)
   .all();
 
 const last = page1[page1.length - 1]!;
 const page2 = await db.orm.public.Post
   .orderBy([(p) => p.createdAt.desc(), (p) => p.id.desc()])
   .cursor({ createdAt: last.createdAt, id: last.id })
-  .take(20)
+  .limit(20)
   .all();
 ```
 
@@ -359,7 +359,7 @@ const user = await db.orm.public.User.where({ email }).first();
 
 ### Forgetting that .all() has no limit
 
-`.all()` returns every match. On a table that grows, yesterday's fast query becomes today's slow one. Add `.take(n)` when you don't genuinely need every record, or [stream the result](#stream-large-results) when you do.
+`.all()` returns every match. On a table that grows, yesterday's fast query becomes today's slow one. Add `.limit(n)` when you don't genuinely need every record, or [stream the result](#stream-large-results) when you do.
 
 ### Reusing a streamed result
 

@@ -23,7 +23,6 @@ All examples on this page run against the following schema, and every example is
 ```prisma tab="PostgreSQL"
 types {
   Embedding1536 = pgvector.Vector(1536)
-  Uuid          = String @db.Uuid
 }
 
 type Address {
@@ -329,7 +328,7 @@ Eagerly load a relation onto the returned rows.
 #### Remarks
 
 - Available for PostgreSQL and MongoDB, with different capabilities.
-- On PostgreSQL, `include(relationName, refineFn?)` loads to-one and to-many relations, and the optional refinement callback receives a nested `Collection` you can filter, order, take, and reduce (see [Refinements, reducers, and combine](#refinements-reducers-and-combine)).
+- On PostgreSQL, `include(relationName, refineFn?)` loads to-one and to-many relations, and the optional refinement callback receives a nested `Collection` you can filter, order, limit, and reduce (see [Refinements, reducers, and combine](#refinements-reducers-and-combine)).
 - On MongoDB, `include(relationName)` adds a `$lookup` for a reference relation and takes only a relation name; there is no refinement-callback overload.
 - On MongoDB, a looked-up sub-document's `_id` comes back as a raw driver `ObjectId`, not decoded to a hex string the way top-level `_id` fields are. Compare it with `String(...)`.
 - On MongoDB, passing a second argument to `include()` does **not** throw. JavaScript does not arity-check, so the extra argument is silently ignored and a plain, unrefined `$lookup` runs. This differs from calling a genuinely absent method, which throws `TypeError`.
@@ -387,7 +386,7 @@ On PostgreSQL, `include()`'s refinement callback receives the nested relation as
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `filter` / `orderBy` / `take` / `skip` | Chained on the nested collection | No | Refine which related rows load. |
+| `filter` / `orderBy` / `limit` / `offset` | Chained on the nested collection | No | Refine which related rows load. |
 | `count()` | Reducer, no arguments | No | Reduces the relation to a row count. |
 | `sum(field)` / `avg(field)` | Reducer over a numeric field | No | Reduces the relation to a numeric aggregate; `null` over an empty relation. |
 | `min(field)` / `max(field)` | Reducer over a numeric field | No | Reduces the relation to a minimum/maximum. |
@@ -401,14 +400,14 @@ On PostgreSQL, `include()`'s refinement callback receives the nested relation as
 
 #### Examples
 
-##### Filter, order, and take within a relation (PostgreSQL)
+##### Filter, order, and limit within a relation (PostgreSQL)
 
 ```typescript
 const users = await db.orm.public.User.include('posts', (posts) =>
   posts
     .where((p) => p.priority.eq('low'))
     .orderBy((p) => p.createdAt.desc())
-    .take(1),
+    .limit(1),
 )
   .where({ id: aliceId })
   .all();
@@ -453,7 +452,7 @@ const rows = await db.orm.public.Customer.include('orders', (orders) => orders.s
 ```typescript
 const users = await db.orm.public.User.include('posts', (posts) =>
   posts.combine({
-    recent: posts.orderBy((p) => p.createdAt.desc()).take(1),
+    recent: posts.orderBy((p) => p.createdAt.desc()).limit(1),
     total: posts.count(),
   }),
 )
@@ -475,7 +474,7 @@ Sort the result set.
 - Available for PostgreSQL and MongoDB, with different argument shapes.
 - On PostgreSQL, `orderBy()` takes a callback returning a per-column `.asc()`/`.desc()` directive, or an array of such callbacks for multiple sort keys.
 - On MongoDB, `orderBy()` takes a plain object spec, `{ field: 1 }` for ascending or `{ field: -1 }` for descending.
-- On PostgreSQL, native enum columns sort in the enum's **declaration order**, not alphabetically. A `Priority` enum declared `Low`, `High`, `Urgent` sorts in that order under `.asc()`.
+- On PostgreSQL, **native** enum columns sort in the enum's declaration order, not alphabetically. A native `Priority` enum declared `Low`, `High`, `Urgent` sorts in that order under `.asc()`. A text-backed enum sorts by its stored value instead, so declaration order does not apply; for semantic ranking, use numeric enum values or an explicit ranking expression.
 
 #### Options
 
@@ -510,10 +509,10 @@ const byPriorityThenDate = await db.orm.public.Post.orderBy([
   (p) => p.priority.asc(),
   (p) => p.createdAt.asc(),
 ]).all();
-// priority sorts in enum declaration order (low, high, urgent), not alphabetically
+// a text-backed priority sorts by stored value ('high', 'low', 'urgent'); a native enum sorts in declaration order
 ```
 
-### `take()`
+### `limit()`
 
 Limit the number of returned rows.
 
@@ -531,28 +530,28 @@ Limit the number of returned rows.
 
 | Return type | Example | Description |
 |---|---|---|
-| `Collection` | `db.orm.public.Post.take(2)` | A collection limited to `count` rows. |
+| `Collection` | `db.orm.public.Post.limit(2)` | A collection limited to `count` rows. |
 
 #### Examples
 
 ##### Limit the result set
 
 ```typescript tab="PostgreSQL"
-const firstTwo = await db.orm.public.Post.orderBy((p) => p.createdAt.asc()).take(2).all();
+const firstTwo = await db.orm.public.Post.orderBy((p) => p.createdAt.asc()).limit(2).all();
 ```
 
 ```typescript tab="MongoDB"
-const firstOne = await db.orm.posts.orderBy({ createdAt: 1 }).take(1).all();
+const firstOne = await db.orm.posts.orderBy({ createdAt: 1 }).limit(1).all();
 ```
 
-### `skip()`
+### `offset()`
 
 Offset into the ordered result set.
 
 #### Remarks
 
 - Available for PostgreSQL and MongoDB.
-- Combine with `orderBy()` and `take()` for pagination.
+- Combine with `orderBy()` and `limit()` for pagination.
 
 #### Options
 
@@ -564,18 +563,18 @@ Offset into the ordered result set.
 
 | Return type | Example | Description |
 |---|---|---|
-| `Collection` | `db.orm.public.Post.skip(2)` | A collection offset by `count` rows. |
+| `Collection` | `db.orm.public.Post.offset(2)` | A collection offset by `count` rows. |
 
 #### Examples
 
 ##### Offset into the result set
 
 ```typescript tab="PostgreSQL"
-const page2 = await db.orm.public.Post.orderBy((p) => p.createdAt.asc()).skip(2).take(2).all();
+const page2 = await db.orm.public.Post.orderBy((p) => p.createdAt.asc()).offset(2).limit(2).all();
 ```
 
 ```typescript tab="MongoDB"
-const secondPost = await db.orm.posts.orderBy({ createdAt: 1 }).skip(1).take(1).all();
+const secondPost = await db.orm.posts.orderBy({ createdAt: 1 }).offset(1).limit(1).all();
 ```
 
 ### `cursor()`
@@ -604,12 +603,12 @@ Resume pagination from a known position.
 ##### Resume pagination (PostgreSQL)
 
 ```typescript
-const page1 = await db.orm.public.Post.orderBy((p) => p.createdAt.asc()).take(2).all();
+const page1 = await db.orm.public.Post.orderBy((p) => p.createdAt.asc()).limit(2).all();
 const last = page1[page1.length - 1];
 
 const page2 = await db.orm.public.Post.orderBy((p) => p.createdAt.asc())
   .cursor({ createdAt: last.createdAt })
-  .take(2)
+  .limit(2)
   .all();
 ```
 
@@ -679,7 +678,7 @@ Narrow a polymorphic (PostgreSQL) or discriminated (MongoDB) model to one varian
 #### Remarks
 
 - Available for PostgreSQL and MongoDB.
-- On PostgreSQL, variants use multi-table inheritance (a base table plus a variant table). This affects some mutations; see [`createCount()`](#createcount) and [`upsert()`](#upsert).
+- On PostgreSQL, variants use multi-table inheritance (a base table plus a variant table). This affects some mutations; see [`createAndCount()`](#createandcount) and [`upsert()`](#upsert).
 - On MongoDB, variants are a single document shape discriminated by a field value, in one collection.
 
 #### Options
@@ -865,10 +864,10 @@ const features = await db.Task.features().all();
 
 ## Mutation terminals
 
-Mutations write to the database. `create`, `createAll`, `createCount`, `update`, `updateAll`, `updateCount`, `delete`, `deleteAll`, `deleteCount`, and `upsert` are available on both databases, with several behavioral differences called out per method. For a task-oriented walkthrough, see [Writing data](/orm/fundamentals/writing-data); for grouping several writes into one unit, see [Transactions](/orm/fundamentals/transactions).
+Mutations write to the database. `create`, `createAll`, `createAndCount`, `update`, `updateAll`, `updateAndCount`, `delete`, `deleteAll`, `deleteAndCount`, and `upsert` are available on both databases, with several behavioral differences called out per method. For a task-oriented walkthrough, see [Writing data](/orm/fundamentals/writing-data); for grouping several writes into one unit, see [Transactions](/orm/fundamentals/transactions).
 
 :::warning[`where()` enforcement differs sharply between databases]
-Always call `where()` before `update`, `updateAll`, `updateCount`, `delete`, `deleteAll`, `deleteCount`, or `upsert`. On **MongoDB** all seven enforce this at runtime: calling them with no filter throws `Error: <method>() requires a .where() filter`. On **PostgreSQL** only `update()` and `delete()` are typed to require a prior `where()`, and even there it is a **type-only** guard with no runtime check. If you bypass the type system, `update()` and `delete()` do not throw and do not mass-mutate; they narrow to a single row by identity (a `SELECT ... LIMIT 1` over the current, possibly empty, filters, then act on that one row). The `*All`/`*Count` variants on PostgreSQL compile with no `WHERE` clause and affect every row. Always call `where()` first.
+Always call `where()` before `update`, `updateAll`, `updateAndCount`, `delete`, `deleteAll`, `deleteAndCount`, or `upsert`. On **MongoDB** all seven enforce this at runtime: calling them with no filter throws `Error: <method>() requires a .where() filter`. On **PostgreSQL** only `update()` and `delete()` are typed to require a prior `where()`, and even there it is a **type-only** guard with no runtime check. If you bypass the type system, `update()` and `delete()` do not throw and do not mass-mutate; they narrow to a single row by identity (a `SELECT ... LIMIT 1` over the current, possibly empty, filters, then act on that one row). The `*All`/`*Count` variants on PostgreSQL compile with no `WHERE` clause and affect every row. Always call `where()` first.
 :::
 
 ### `create()`
@@ -986,15 +985,15 @@ for await (const tag of db.orm.public.Tag.createAll([{ label: 'gamma' }, { label
 }
 ```
 
-### `createCount()`
+### `createAndCount()`
 
 Insert rows without materializing them, returning the count.
 
 #### Remarks
 
 - Available for PostgreSQL and MongoDB.
-- On PostgreSQL, `createCount()` is **not supported on a multi-table-inheritance variant**. The base and variant rows live in separate tables, so a single `RETURNING`-less `INSERT` can't populate both. It throws `Error: createCount() is not supported for MTI variant "<Variant>" ... Use createAll() instead.`
-- On MongoDB, `createCount()` on a discriminated variant works normally. Mongo variants are one document shape in one collection, so there is no split-table restriction.
+- On PostgreSQL, `createAndCount()` is **not supported on a multi-table-inheritance variant**. The base and variant rows live in separate tables, so a single `RETURNING`-less `INSERT` can't populate both. It throws `Error: createAndCount() is not supported for MTI variant "<Variant>" ... Use createAll() instead.`
+- On MongoDB, `createAndCount()` on a discriminated variant works normally. Mongo variants are one document shape in one collection, so there is no split-table restriction.
 
 #### Options
 
@@ -1006,21 +1005,21 @@ Insert rows without materializing them, returning the count.
 
 | Return type | Example | Description |
 |---|---|---|
-| `number` | `await db.orm.public.Tag.createCount([...])` | The count of inserted rows. |
+| `number` | `await db.orm.public.Tag.createAndCount([...])` | The count of inserted rows. |
 
 #### Examples
 
 ##### Insert and count
 
 ```typescript tab="PostgreSQL"
-const inserted = await db.orm.public.Tag.createCount([{ label: 'epsilon' }, { label: 'zeta' }]);
+const inserted = await db.orm.public.Tag.createAndCount([{ label: 'epsilon' }, { label: 'zeta' }]);
 // 2
 ```
 
 ```typescript tab="MongoDB"
-const inserted = await db.orm.posts.variant('Tutorial').createCount([
+const inserted = await db.orm.posts.variant('Tutorial').createAndCount([
   {
-    title: 'Variant createCount',
+    title: 'Variant createAndCount',
     content: 'body',
     authorId: aliceId,
     createdAt: new Date('2024-02-01T00:00:00.000Z'),
@@ -1139,14 +1138,14 @@ const updated = await db.orm.users.where({ role: 'author' }).updateAll({ role: '
 // non-atomic: ids are captured, updated, then re-read
 ```
 
-### `updateCount()`
+### `updateAndCount()`
 
 Update every matching row and return the count.
 
 #### Remarks
 
 - Available for PostgreSQL and MongoDB. Call `where()` first: MongoDB enforces this at runtime; PostgreSQL does not (see the section warning above: without a filter these affect every row).
-- On MongoDB, `updateCount()` accepts a data object or a field-operations callback.
+- On MongoDB, `updateAndCount()` accepts a data object or a field-operations callback.
 
 #### Options
 
@@ -1158,18 +1157,18 @@ Update every matching row and return the count.
 
 | Return type | Example | Description |
 |---|---|---|
-| `number` | `await db.orm.public.Post.where(...).updateCount(...)` | The count of updated rows. |
+| `number` | `await db.orm.public.Post.where(...).updateAndCount(...)` | The count of updated rows. |
 
 #### Examples
 
 ##### Update and count
 
 ```typescript tab="PostgreSQL"
-const count = await db.orm.public.Post.where({ userId: carolId }).updateCount({ priority: 'low' });
+const count = await db.orm.public.Post.where({ userId: carolId }).updateAndCount({ priority: 'low' });
 ```
 
 ```typescript tab="MongoDB"
-const count = await db.orm.users.where({ role: 'author' }).updateCount({ role: 'admin' });
+const count = await db.orm.users.where({ role: 'author' }).updateAndCount({ role: 'admin' });
 ```
 
 ##### Field-operations callback (MongoDB)
@@ -1178,7 +1177,7 @@ const count = await db.orm.users.where({ role: 'author' }).updateCount({ role: '
 const count = await db.orm.posts
   .variant('Tutorial')
   .where({ _id: tutorialId })
-  .updateCount((t) => [t.duration.mul(2)]);
+  .updateAndCount((t) => [t.duration.mul(2)]);
 ```
 
 ### `delete()`
@@ -1251,7 +1250,7 @@ const deleted = await db.orm.public.Post.where({ userId: carolId }).deleteAll();
 const deleted = await db.orm.users.where({ role: 'reader' }).deleteAll();
 ```
 
-### `deleteCount()`
+### `deleteAndCount()`
 
 Remove every matching row and return the count.
 
@@ -1262,24 +1261,24 @@ Remove every matching row and return the count.
 
 #### Options
 
-`deleteCount()` takes no arguments; filter with `where()` first.
+`deleteAndCount()` takes no arguments; filter with `where()` first.
 
 #### Return type
 
 | Return type | Example | Description |
 |---|---|---|
-| `number` | `await db.orm.public.Post.where(...).deleteCount()` | The count of deleted rows. |
+| `number` | `await db.orm.public.Post.where(...).deleteAndCount()` | The count of deleted rows. |
 
 #### Examples
 
 ##### Delete and count
 
 ```typescript tab="PostgreSQL"
-const count = await db.orm.public.Post.where({ userId: carolId }).deleteCount();
+const count = await db.orm.public.Post.where({ userId: carolId }).deleteAndCount();
 ```
 
 ```typescript tab="MongoDB"
-const count = await db.orm.users.where({ role: 'reader' }).deleteCount();
+const count = await db.orm.users.where({ role: 'reader' }).deleteAndCount();
 ```
 
 ### `upsert()`
@@ -1291,7 +1290,7 @@ Insert a row if none matches, otherwise update the existing row.
 - Available for PostgreSQL and MongoDB. Requires a prior `where()` on MongoDB (see the section warning).
 - On PostgreSQL, `upsert()` uses `conflictOn` to name the unique target. The `update` side is a plain data object.
 - On MongoDB, the `update` side may be a data object **or** a field-operations callback. On insert, `update` fields apply via `$set` and the remaining create-only fields via `$setOnInsert`, so `update` values win over `create` values on any overlapping field.
-- On PostgreSQL, `upsert()` is **not supported on a multi-table-inheritance variant** (same restriction as [`createCount()`](#createcount)): it throws `Error: upsert() is not supported for MTI variant "<Variant>" ...`.
+- On PostgreSQL, `upsert()` is **not supported on a multi-table-inheritance variant** (same restriction as [`createAndCount()`](#createandcount)): it throws `Error: upsert() is not supported for MTI variant "<Variant>" ...`.
 - On MongoDB, the returned `_id` on the update path comes back as a raw driver `ObjectId`, not a decoded hex string. Compare it with `String(...)`.
 
 #### Options
@@ -1389,10 +1388,6 @@ The examples below use a separate `Customer` / `Order` schema, where `Order.amou
 <summary>Expand for the aggregate example schema</summary>
 
 ```prisma
-types {
-  Uuid = String @db.Uuid
-}
-
 model Customer {
   id      Uuid   @id @default(uuid())
   name    String
@@ -1791,7 +1786,7 @@ const usersInSf = await db.orm.users
 
 ## Field update operations
 
-MongoDB field operations are accessed through a field accessor inside `update()`, `updateCount()`, and `upsert()` callbacks (for example `t.duration.inc(5)`). Each operation targets a field and produces a Mongo update operator. PostgreSQL's `update()` has no equivalent callback form (see [`update()`](#update)).
+MongoDB field operations are accessed through a field accessor inside `update()`, `updateAndCount()`, and `upsert()` callbacks (for example `t.duration.inc(5)`). Each operation targets a field and produces a Mongo update operator. PostgreSQL's `update()` has no equivalent callback form (see [`update()`](#update)).
 
 ### Available operations (MongoDB)
 

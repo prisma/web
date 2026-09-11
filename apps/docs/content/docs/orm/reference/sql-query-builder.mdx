@@ -25,7 +25,6 @@ All examples on this page run against the following schema, and every example is
 ```prisma
 types {
   Embedding1536 = pgvector.Vector(1536)
-  Uuid          = String @db.Uuid
 }
 
 type Address {
@@ -133,7 +132,7 @@ You build queries from the client's `sql` facet, which carries your contract's e
 
 ### The `db.sql` facet
 
-Create the client with `postgres(...)`, connect it to get a runtime, and build queries off `db.sql.public`. A `select()`, `insert()`, `update()`, or `delete()` call starts a query; you finish it with [`build()`](#build) and run the resulting plan with `runtime.execute(...)`.
+Create the client with `postgres(...)`, connect it to get a runtime, and build queries off `db.sql.public`. A `select()`, `insert()`, `update()`, or `delete()` call starts a query; you finish it with [`build()`](#build) and run the resulting plan with `runtime.query(...)`.
 
 ```ts
 import postgres from '@prisma/orm-postgres/runtime';
@@ -144,7 +143,7 @@ const db = postgres<Contract>({ contractJson, url: process.env.DATABASE_URL });
 const runtime = await db.connect();
 
 const plan = db.sql.public.user.select('id', 'email').build();
-const users = await runtime.execute(plan);
+const users = await runtime.query(plan);
 ```
 
 The facet is built from the `sql()` factory: `db.sql` holds the result of an internal `sql({ context, rawCodecInferer })` call, wired to the client's execution context and the adapter's codec inferer. You call `sql(...)` directly only when you're building your own database wrapper instead of using the `postgres()` client's facet. Pass your execution `context` (from your database client) and a `rawCodecInferer` (a fallback codec for raw expressions that have no column to infer one from):
@@ -159,7 +158,7 @@ This page reaches tables through the client facet and refers to the root as `db.
 
 ### Table access
 
-Every table on `db.sql.public` exposes the query-building methods. A `select()`, `insert()`, `update()`, or `delete()` call starts a query; you finish it with [`build()`](#build) and run the resulting plan with `runtime.execute(...)`.
+Every table on `db.sql.public` exposes the query-building methods. A `select()`, `insert()`, `update()`, or `delete()` call starts a query; you finish it with [`build()`](#build) and run the resulting plan with `runtime.query(...)`.
 
 ```ts
 db.sql.public.user.select('id', 'email'); // start a SELECT
@@ -183,7 +182,7 @@ const highPriorityPosts = db.sql.public.post
 
 ## SELECT queries
 
-These methods build and refine a `SELECT`. They chain, and you resolve the query with [`build()`](#build) followed by `runtime.execute(...)`.
+These methods build and refine a `SELECT`. They chain, and you resolve the query with [`build()`](#build) followed by `runtime.query(...)`.
 
 The `where()`, `select()`, `orderBy()`, `update()`, and other callback forms receive two arguments: a field accessor `f` (columns keyed by name, or namespace-qualified after a join, such as `f.post.id`) and a function bag `fns` (the [expression helpers](#expressions-and-functions)).
 
@@ -215,7 +214,7 @@ A computed expression's result type comes from `.returns(...)` on `fns.raw`, or 
 
 ```ts
 const plan = db.sql.public.user.select('id', 'email').build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // rows[0] is { id, email } — no displayName
 ```
 
@@ -227,7 +226,7 @@ const plan = db.sql.public.user
   .select('emailLength', (f, fns) => fns.raw`LENGTH(${f.email})`.returns('pg/int4@1'))
   .where((f, fns) => fns.eq(f.id, aliceId))
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 ```
 
 ##### Project multiple computed columns at once
@@ -241,7 +240,7 @@ const plan = db.sql.public.user
   }))
   .where((f, fns) => fns.eq(f.id, aliceId))
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // rows === [{ id: aliceId, upperEmail: 'ALICE@EXAMPLE.COM', emailLength: 17 }]
 ```
 
@@ -275,7 +274,7 @@ const plan = db.sql.public.post
     ),
   )
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 ```
 
 ### `innerJoin()`
@@ -305,7 +304,7 @@ const plan = db.sql.public.post
   .select((f) => ({ postId: f.post.id, authorEmail: f.user.email }))
   .where((f, fns) => fns.eq(f.post.id, helloWorldId))
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // rows === [{ postId: helloWorldId, authorEmail: 'alice@example.com' }]
 ```
 
@@ -327,7 +326,7 @@ const plan = db.sql.public.post
   .select((f) => ({ postId: f.post.id, tagId: f.post_tag.tagId }))
   .where((f, fns) => fns.eq(f.post.id, untaggedPostId))
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // rows === [{ postId: untaggedPostId, tagId: null }]
 ```
 
@@ -372,7 +371,7 @@ const plan = db.sql.public.user
   .select((f) => ({ userId: f.user.id, latestPostId: f.latestPost.id }))
   .where((f, fns) => fns.eq(f.user.id, aliceId))
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // rows === [{ userId: aliceId, latestPostId: newestPostId }]
 ```
 
@@ -402,7 +401,7 @@ Sort the result set by a column, a computed expression, or with explicit directi
 
 ```ts
 const plan = db.sql.public.user.select('id', 'email').orderBy('email', { direction: 'asc' }).build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 ```
 
 ##### Sort by a computed value
@@ -412,7 +411,7 @@ const plan = db.sql.public.user
   .select('id', 'email')
   .orderBy((f, fns) => fns.raw`LENGTH(${f.email})`.returns('pg/int4@1'), { direction: 'asc' })
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 ```
 
 ##### Control direction and null placement
@@ -422,7 +421,7 @@ const plan = db.sql.public.post
   .select('id', 'embedding')
   .orderBy('embedding', { direction: 'asc', nulls: 'first' })
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 ```
 
 ### `distinct()`
@@ -441,7 +440,7 @@ De-duplicate identical projected rows (`SELECT DISTINCT`).
 
 ```ts
 const plan = db.sql.public.post.select('priority').distinct().build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // distinct priorities: ['high', 'low', 'urgent']
 ```
 
@@ -477,7 +476,7 @@ const plan = db.sql.public.post
   .orderBy('createdAt', { direction: 'asc' })
   .distinctOn('userId')
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // one row per user, each the earliest post by createdAt
 ```
 
@@ -509,7 +508,7 @@ const plan = db.sql.public.user
   .limit(1)
   .offset(1)
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 ```
 
 ### Subquery via `.as()`
@@ -542,7 +541,7 @@ const plan = db.sql.public.user
   .innerJoin(highPriorityPosts, (f, fns) => fns.eq(f.user.id, f.hp.userId))
   .select((f) => ({ userId: f.user.id, postId: f.hp.id }))
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 ```
 
 ## Grouped queries
@@ -556,10 +555,6 @@ The examples below use a separate `customer` / `order` schema, where `order.amou
 <summary>Expand for the aggregate example schema</summary>
 
 ```prisma
-types {
-  Uuid = String @db.Uuid
-}
-
 model Customer {
   id      Uuid   @id @default(uuid())
   name    String
@@ -617,7 +612,7 @@ const plan = db.sql.public.order
   .groupBy('customerId')
   .orderBy('customerId', { direction: 'asc' })
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // orderCount decodes as a string: e.g. { customerId: acmeId, orderCount: '5' }
 ```
 
@@ -629,7 +624,7 @@ const plan = db.sql.public.order
   .select('orderCount', (f, fns) => fns.count(f.id))
   .groupBy((f, fns) => fns.raw`EXTRACT(YEAR FROM ${f.placedAt})`.returns('pg/int4@1'))
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // rows === [{ yearPlaced: '2024', orderCount: '10' }] — both decode as strings
 ```
 
@@ -664,7 +659,7 @@ const plan = db.sql.public.order
   .groupBy('customerId')
   .having((f, fns) => fns.gt(fns.sum(f.amount), 1000))
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // only the customer whose orders sum over 1000; totalAmount decodes as '1500'
 ```
 
@@ -686,8 +681,8 @@ const minMaxPlan = db.sql.public.order
   .having((f, fns) => fns.eq(fns.min(f.amount), 100))
   .build();
 
-const avgRows = await runtime.execute(avgPlan);
-const minMaxRows = await runtime.execute(minMaxPlan);
+const avgRows = await runtime.query(avgPlan);
+const minMaxRows = await runtime.query(minMaxPlan);
 // avgAmount decodes as a string ('300.0000000000000000');
 // minAmount / maxAmount decode as numbers (100 / 500)
 ```
@@ -708,7 +703,7 @@ const plan = db.sql.public.order
   .orderBy('totalAmount', { direction: 'desc' })
   .limit(1)
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // the single highest-spending customer
 ```
 
@@ -785,7 +780,7 @@ Return columns from the rows affected by an `insert()`, `update()`, or `delete()
 ```ts
 const id = crypto.randomUUID();
 const plan = db.sql.public.tag.insert([{ id, label: 'returned-tag' }]).returning('id', 'label').build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // rows === [{ id, label: 'returned-tag' }]
 ```
 
@@ -818,7 +813,7 @@ const plan = db.sql.public.user
   .where((f, fns) => fns.eq(f.id, bobId))
   .returning('id', 'displayName')
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // rows === [{ id: bobId, displayName: 'Bobby' }]
 ```
 
@@ -830,7 +825,7 @@ const plan = db.sql.public.user
   .where((f, fns) => fns.eq(f.id, carolId))
   .returning('id', 'displayName')
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // rows === [{ id: carolId, displayName: 'CAROL' }]
 ```
 
@@ -854,7 +849,7 @@ const plan = db.sql.public.tag
   .where((f, fns) => fns.eq(f.id, id))
   .returning('id', 'label')
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // rows === [{ id, label: 'to-delete' }]
 ```
 
@@ -894,7 +889,7 @@ const plan = db.sql.public.user
   .where((f, fns) => fns.raw`${f.email} LIKE ${targetEmailDomain}`.returns('pg/bool@1'))
   .orderBy('email', { direction: 'asc' })
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 ```
 
 ## Expressions and functions
@@ -944,7 +939,7 @@ Write a raw SQL fragment as a tagged template. Interpolate columns and typed exp
 const plan = db.sql.public.user
   .select('emailLength', (f, fns) => fns.raw`LENGTH(${f.email})`.returns('pg/int4@1'))
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 ```
 
 ##### `COALESCE` via `fns.raw`
@@ -953,7 +948,7 @@ const rows = await runtime.execute(plan);
 const plan = db.sql.public.order
   .select('amountOrZero', (f, fns) => fns.raw`COALESCE(${f.amount}, 0)`.returns('pg/int4@1'))
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 ```
 
 ## Compiling and executing
@@ -970,15 +965,15 @@ Compile a query into an executable plan.
 
 | Return type | Example | Description |
 |---|---|---|
-| Query plan | `db.sql.public.user.select('id').build()` | A plan you run with `runtime.execute(...)`. Its per-row type is recoverable with [`ResultType`](#resulttype). |
+| Query plan | `db.sql.public.user.select('id').build()` | A plan you run with `runtime.query(...)`. Its per-row type is recoverable with [`ResultType`](#resulttype). |
 
 ### Executing a plan
 
-Run a plan with `runtime.execute(plan)`, where `runtime` is the runtime you got from connecting your database client (`const runtime = await db.connect()`). It resolves to an array of rows (`Row[]`).
+Run a plan with `runtime.query(plan)`, where `runtime` is the runtime you got from connecting your database client (`const runtime = await db.connect()`). It returns an `AsyncIterableResult`: `await` it for an array of rows (`Row[]`), or `for await` over it to take one row at a time. `runtime.execute(plan)` is the separate call for writes that return no rows; it resolves to `{ affectedRows }`.
 
 ```ts
 const plan = db.sql.public.user.select('id', 'email').build();
-const rows = await runtime.execute(plan); // Row[]
+const rows = await runtime.query(plan); // Row[]
 ```
 
 ### `ResultType`
@@ -988,7 +983,7 @@ Recover a plan's row type at the type level.
 #### Remarks
 
 - Import `ResultType` from `@prisma/orm-postgres/components/runtime`. It's a family-agnostic utility, not specific to the SQL builder.
-- `ResultType<typeof plan>` is the **per-row** shape, not an array. `runtime.execute(plan)` resolves to `Row[]`, but `ResultType<typeof plan>` is `Row`.
+- `ResultType<typeof plan>` is the **per-row** shape, not an array. `await runtime.query(plan)` resolves to `Row[]`, but `ResultType<typeof plan>` is `Row`.
 
 #### Examples
 
@@ -1000,9 +995,9 @@ import type { ResultType } from '@prisma/orm-postgres/components/runtime';
 const plan = db.sql.public.user.select('id', 'email').build();
 type Row = ResultType<typeof plan>; // { id: string; email: string }
 
-const rows = await runtime.execute(plan); // Row[]
+const rows = await runtime.query(plan); // Row[]
 ```
 
 ### Streaming vs. collecting
 
-`runtime.execute(plan)` collects every row into an array. This is the common case and what every example on this page uses. For large result sets that you'd rather process incrementally, use the ORM client's streaming terminals, documented under [`AsyncIterableResult`](/orm/reference/orm-client#asynciterableresult).
+`await runtime.query(plan)` collects every row into an array. This is the common case and what every example on this page uses. For large result sets that you'd rather process incrementally, use the ORM client's streaming terminals, documented under [`AsyncIterableResult`](/orm/reference/orm-client#asynciterableresult).

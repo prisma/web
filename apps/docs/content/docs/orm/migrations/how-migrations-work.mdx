@@ -41,7 +41,7 @@ ALTER TABLE "public"."user" ADD COLUMN "phone" text;
 and `db migrate` applies the migration to your database and confirms what it applied:
 
 ```text
-✔ Applied 1 migration(s) (1 operation(s)) across 1 contract space(s)
+✔ Applied 1 operation(s) across 1 contract space
 ```
 
 The contract-space count only matters once you add database extensions and can be disregarded until then. If you see the `✔ Applied` line, you've already run the entire workflow. The rest of this page provides further details on what a migration is, and why it looks the way it does.
@@ -52,15 +52,18 @@ A migration is a directory under `migrations/app/`, named with a timestamp and a
 
 ```text
 migrations/
-└── app/
-    └── 20260707T1006_add_user_phone/
-        ├── migration.ts         # the file you edit
-        ├── ops.json             # the file Prisma runs
-        ├── migration.json       # where this migration fits in history
-        ├── start-contract.json  # snapshot of the contract before
-        ├── end-contract.json    # snapshot of the contract after
-        └── *-contract.d.ts      # types for those snapshots; they type-check migration.ts
+├── app/
+│   └── 20260707T1006_add_user_phone/
+│       ├── migration.ts     # the file you edit
+│       ├── ops.json         # the file Prisma runs
+│       └── migration.json   # where this migration fits in history
+└── snapshots/
+    └── <contract hash>/
+        ├── contract.json    # snapshot of one contract state
+        └── contract.d.ts    # types for that snapshot; they type-check migration.ts
 ```
+
+Contract snapshots live once per migrations root, in `migrations/snapshots/`, keyed by the contract's hash. A migration imports the states it moves between from there (a baseline migration starts from nothing and imports only its end contract), so a contract state shared by several migrations is stored once.
 
 Three files matter day to day. Each has one job:
 
@@ -80,7 +83,7 @@ this.createTable(...)
 this.dataTransform(...)
 ```
 
-As it is TypeScript, type-checked against the contract snapshots sitting next to it, your editor autocompletes table and column names and catches mistakes before the migration touches a database.
+Because it is TypeScript, type-checked against the contract snapshots it imports from `migrations/snapshots/`, your editor autocompletes table and column names and catches mistakes before the migration touches a database.
 
 When you want to review or change what the migration does, use this file. For more information, see [Editing a migration](/orm/migrations/editing-a-migration).
 
@@ -116,11 +119,11 @@ what you author   exact operations to run
 
 ```json title="migrations/app/20260707T1006_add_user_phone/migration.json"
 {
-  "from": "sha256:705b1a62f26f0913caa4bfe3f8b7cb491a1b94bd47fc43471d8711bc480bcbb5",
-  "to": "sha256:925198f3cc272c5fd19c24ac02f251661775ddac21cdac4e634bbc0dda8b2d72",
+  "from": "705b1a62f26f0913caa4bfe3f8b7cb491a1b94bd47fc43471d8711bc480bcbb5",
+  "to": "925198f3cc272c5fd19c24ac02f251661775ddac21cdac4e634bbc0dda8b2d72",
   "providedInvariants": [],
   "createdAt": "2026-07-07T10:06:55.937Z",
-  "migrationHash": "sha256:4b57fa2141c8ad94476d5de66c451468fd6c864210481ad00ac89b259491fbcf"
+  "migrationHash": "4b57fa2141c8ad94476d5de66c451468fd6c864210481ad00ac89b259491fbcf"
 }
 ```
 
@@ -222,6 +225,12 @@ Here is the whole loop in motion, from idea to typed code against the new schema
 ## The same model for SQL and MongoDB
 
 Everything on this page applies to both database families. On PostgreSQL, operations compile to SQL DDL and the applied state is tracked in a **marker**, a record Prisma 8 keeps in the database itself naming the contract state the database currently matches. On MongoDB, operations create collections, indexes, and JSON Schema validators, and the marker lives in a `_prisma_migrations` collection. The commands, the file layout, the graph, and the precheck/execute/postcheck structure are identical.
+
+:::note[Migrations are early]
+
+Migrations are one of the newest parts of Prisma 8. The core loop on this page (plan, edit, apply, roll back) works today and is exercised in the Prisma 8 test suite. Some things classic migration tools grew over years are not built yet: there are no squash/baseline commands, and no shadow-database dry run. We call out what's missing on each page rather than papering over it.
+
+:::
 
 ## Prompt your coding agent
 
