@@ -122,9 +122,7 @@ const actionVariants = cva("flex items-center justify-center rounded-square shri
 });
 
 export interface ActionProps
-  extends
-    Omit<React.HTMLAttributes<HTMLDivElement>, "color">,
-    VariantProps<typeof actionVariants> {
+  extends Omit<React.HTMLAttributes<HTMLDivElement>, "color">, VariantProps<typeof actionVariants> {
   /**
    * Render the action's styling onto the single child element instead of a
    * `<div>`. Use it whenever the action is interactive: a click handler on a

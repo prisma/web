@@ -64,7 +64,9 @@ test("the docs wordmark link keeps its visible text but is no longer a generic a
 });
 
 test("the lockup images are decorative and keep their alt text", () => {
-  const images = [...renderNavTitle().matchAll(/<img\b([^>]*)>/g)].map(([, attributes]) => attributes);
+  const images = [...renderNavTitle().matchAll(/<img\b([^>]*)>/g)].map(
+    ([, attributes]) => attributes,
+  );
 
   assert.equal(images.length, 2, "expected the light and dark lockup");
   for (const attributes of images) {

@@ -236,7 +236,8 @@ export function CodeBlockTabs({
   );
 
   // Use controlled value if provided, otherwise use internal state
-  const activeTab = controlledValue !== undefined ? escapeTabValue(controlledValue) : internalActiveTab;
+  const activeTab =
+    controlledValue !== undefined ? escapeTabValue(controlledValue) : internalActiveTab;
 
   // ── variant state (only when variants are provided) ──
   const hasVariants = (variants?.length ?? 0) > 0;

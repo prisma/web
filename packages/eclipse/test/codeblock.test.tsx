@@ -1,9 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { CodeBlockTab, CodeBlockTabs, CodeBlockTabsList, CodeBlockTabsTrigger } from "./codeblock";
-import { Tab, Tabs } from "./tabs";
-import { escapeTabValue } from "../lib/tab-value";
+import {
+  CodeBlockTab,
+  CodeBlockTabs,
+  CodeBlockTabsList,
+  CodeBlockTabsTrigger,
+} from "../src/components/codeblock";
+import { Tab, Tabs } from "../src/components/tabs";
+import { escapeTabValue } from "../src/lib/tab-value";
 
 // MDX authors label code fences with prose ("```ts tab=\"Relational databases\"").
 // Radix builds `id`, `aria-controls` and `aria-labelledby` out of the tab value,

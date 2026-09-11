@@ -11,14 +11,16 @@ function render(props: Parameters<typeof FooterNewsletterForm>[0] = {}) {
 }
 
 function buttons(html: string) {
-  return [...html.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/g)].map(([, attributes, inner]) => ({
-    attributes,
-    inner,
-    text: inner
-      .replace(/<[^>]*>/g, "")
-      .replace(/\s+/g, " ")
-      .trim(),
-  }));
+  return [...html.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/g)].map(
+    ([, attributes, inner]) => ({
+      attributes,
+      inner,
+      text: inner
+        .replace(/<[^>]*>/g, "")
+        .replace(/\s+/g, " ")
+        .trim(),
+    }),
+  );
 }
 
 test("the submit control is a single button with text, not a nested input", () => {
