@@ -1,190 +1,278 @@
 ---
 title: Turborepo
-description: 'Learn step-by-step how to integrate Prisma ORM with Turborepo through a shared database package'
+description: 'Share one Prisma 8 database package across the apps in a Turborepo monorepo, with contract emit and migrations wired into turbo tasks.'
 image: /img/guides/prisma-turborepo-setup.png
 url: /guides/deployment/turborepo
-metaTitle: How to use Prisma ORM and Prisma Postgres with Turborepo
-metaDescription: 'Learn step-by-step how to integrate Prisma ORM with Turborepo through a shared database package.'
+metaTitle: How to use Prisma 8 with Turborepo
+metaDescription: 'Set up Prisma 8 as a shared database package in a Turborepo monorepo, wire contract emit and migrations into turbo.json, and render data from a Next.js app.'
 ---
 
-This guide shows you how to set up Prisma ORM as a standalone package in a [Turborepo](https://turborepo.dev/docs) monorepo, so that multiple apps share one Prisma Client, one set of generated types, and one migration workflow.
+## Introduction
 
-#### What you'll learn:
+This guide shows you how to set up Prisma 8 as a standalone package in a [Turborepo](https://turborepo.dev/docs) monorepo, so that every app shares one database client, one contract, and one migration workflow. You scaffold a monorepo, add a `packages/database` package that owns the Prisma 8 setup, wire its tasks into `turbo.json`, and render users from the `web` Next.js app.
 
-- How to set up Prisma in a Turborepo monorepo.
-- Steps to generate and reuse PrismaClient across packages.
-- Integrating the Prisma package into other applications in the monorepo.
+Every command and output below was run end to end against a local PostgreSQL database.
 
-### Prerequisites
+:::note[Using Prisma 7?]
 
-- [Node.js 20.19.0+](https://nodejs.org/)
-- [TypeScript 5.4.0+](https://www.typescriptlang.org/)
+Prisma 8 is the current release of Prisma ORM. Prisma 7 remains fully supported; the Prisma 7 version of this guide is at [/guides/v7/deployment/turborepo](/guides/v7/deployment/turborepo).
 
-## 1. Set up your project
+:::
 
-To set up a Turborepo monorepo named `turborepo-prisma`, run the following command:
+## Prerequisites
+
+- [Node.js](https://nodejs.org) 24 or later
+- [pnpm](https://pnpm.io) (this guide uses pnpm; the Turborepo scaffold also supports npm, yarn, and Bun)
+- A PostgreSQL connection string, or nothing at all: `npx create-db@latest` can create a [Prisma Postgres](/postgres) database for you
+
+## Use with your agent
+
+To delegate this guide to your coding agent, copy the prompt below and hand it over:
+
+<AgentPrompt>
+
+```text
+Set up Prisma 8 as a shared database package in a new Turborepo monorepo and render users from the web app.
+
+1. Scaffold: `npx create-turbo@latest turborepo-prisma` with pnpm. Then run `npx prisma@latest init` at the monorepo root so the Prisma agent skills are installed and stay current, and use them.
+2. Create `packages/database` with `{ "name": "@repo/db", "version": "0.0.0", "private": true }` as its package.json. Because pnpm refuses to run dependency build scripts until they are allowed, add `allowBuilds: { esbuild: true, msgpackr-extract: true, workerd: true }` to `pnpm-workspace.yaml` first. Then run `npx prisma@latest orm init --yes --target postgres --authoring psl` inside `packages/database`, and move the package to the current CLI with `pnpm add -D prisma@latest --filter @repo/db`.
+3. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Write it as `DATABASE_URL` into `packages/database/.env`.
+4. In `packages/database/package.json`, add `"exports": { ".": "./src/index.ts" }` and the scripts `contract:emit` (`prisma contract emit`), `migration:plan` (`prisma migration plan`), `db:migrate` (`prisma db migrate --advance-ref db`), `migration:status` (`prisma migration status`), and `check-types` (`tsc --noEmit`). Create `src/index.ts` that re-exports `db` from `./prisma/db` and the `Contract` type from `./prisma/contract.d`.
+5. In `turbo.json`, add `"globalEnv": ["DATABASE_URL"]`, a cached `contract:emit` task with inputs `src/prisma/contract.prisma` and `prisma.config.ts` and outputs `src/prisma/contract.json` and `src/prisma/contract.d.ts`, make `build`, `dev`, and `check-types` depend on `^contract:emit`, add `migration:plan` (dependsOn `contract:emit`, cache false) and `db:migrate` (cache false).
+6. Run `pnpm turbo run migration:plan --filter=@repo/db -- --name init`, review the DDL preview, then `pnpm turbo run db:migrate --filter=@repo/db`.
+7. Add `"@repo/db": "workspace:*"` to `apps/web/package.json`, run `pnpm install`, copy `packages/database/.env` to `apps/web/.env`, and replace `apps/web/app/page.tsx` with a server component that exports `const dynamic = "force-dynamic"` and renders `await db.orm.public.User.select("id", "email", "name").all()` as a list, following https://www.prisma.io/docs/guides/deployment/turborepo.md.
+8. Start `pnpm turbo run dev --filter=web` in the background, wait until it reports ready, verify http://localhost:3000 renders, then stop the dev server.
+```
+
+</AgentPrompt>
+
+## 1. Scaffold the monorepo
+
+Create a Turborepo monorepo named `turborepo-prisma`:
 
 ```npm
 npx create-turbo@latest turborepo-prisma
 ```
 
-You'll be prompted to select your package manager, this guide will use `npm`:
+When asked which package manager to use, pick `pnpm`. The scaffold creates two Next.js apps and three shared packages, then installs dependencies:
 
-:::info
+```text no-copy
+>>> Creating a new Turborepo with:
 
-- _Which package manager do you want to use?_ `npm`
+Application packages
+ - apps/docs
+ - apps/web
+Library packages
+ - packages/eslint-config
+ - packages/typescript-config
+ - packages/ui
 
-:::
+>>> Success! Created your Turborepo at turborepo-prisma
+```
 
-After the setup, navigate to the project root directory:
+Move into the project root:
 
 ```bash
 cd turborepo-prisma
 ```
 
-## 2. Add a new `database` package to the monorepo
+## 2. Create the `database` package
 
-### 2.1 Create the package and install Prisma
+### 2.1. Create the package
 
-Create a `database` directory inside `packages` and navigate into it:
+Create a `database` directory inside `packages` with a minimal `package.json`:
 
 ```bash
 mkdir -p packages/database
-cd packages/database
 ```
-
-Then initialize it with a `package.json`:
-
-```json title="packages/database/package.json"
-{
-  "name": "@repo/db",
-  "version": "0.0.0"
-}
-```
-
-Then install the required Prisma ORM dependencies:
-
-```npm
-npm install prisma@7.10.0 --save-dev
-npm install @prisma/client@7.10.0 @prisma/adapter-pg pg dotenv
-```
-
-:::info
-
-If you are using a different database provider (MySQL, SQL Server, SQLite), install the corresponding driver adapter package instead of `@prisma/adapter-pg`. For more information, see [Database drivers](/orm/v7/core-concepts/supported-databases/database-drivers).
-
-:::
-
-### 2.2. Initialize Prisma and define models
-
-Inside the `database` directory, initialize Prisma by running:
-
-```npm
-npx prisma init
-```
-
-This will create several files inside `packages/database`:
-
-- A `prisma` directory with a `schema.prisma` file.
-- A `prisma.config.ts` file for configuring Prisma.
-- A `.env` file containing a local `DATABASE_URL` in the `packages/database` directory.
-
-Create a Prisma Postgres database and replace the generated `DATABASE_URL` in your `.env` file with the `postgres://...` connection string from the CLI output:
-
-```bash
-npx create-db
-```
-
-In the `packages/database/prisma/schema.prisma` file, add the following models:
-
-```prisma title="packages/database/prisma/schema.prisma"
-generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
-}
-
-datasource db {
-  provider = "postgresql"
-}
-
-model User { // [!code ++]
-  id    Int     @id @default(autoincrement()) // [!code ++]
-  email String  @unique // [!code ++]
-  name  String? // [!code ++]
-  posts Post[] // [!code ++]
-} // [!code ++]
- // [!code ++]
-model Post { // [!code ++]
-  id        Int     @id @default(autoincrement()) // [!code ++]
-  title     String // [!code ++]
-  content   String? // [!code ++]
-  published Boolean @default(false) // [!code ++]
-  authorId  Int // [!code ++]
-  author    User    @relation(fields: [authorId], references: [id]) // [!code ++]
-} // [!code ++]
-```
-
-The `prisma.config.ts` file created in the `packages/database` directory should look like this:
-
-```typescript title="packages/database/prisma.config.ts"
-import "dotenv/config";
-import { defineConfig, env } from "prisma/config";
-
-export default defineConfig({
-  schema: "prisma/schema.prisma",
-  migrations: {
-    path: "prisma/migrations",
-  },
-  datasource: {
-    url: env("DATABASE_URL"),
-  },
-});
-```
-
-:::warning
-
-It is recommended to add `packages/database/generated` to your root `.gitignore` because generated Prisma Client code is a build artifact that can be recreated with `db:generate`.
-
-:::
-
-#### The importance of generating Prisma types in a custom directory
-
-In the `schema.prisma` file, we specify a custom [`output`](/orm/v7/reference/prisma-schema-reference#fields-for-prisma-client-provider) path where Prisma will generate its types. This ensures Prisma's types are resolved correctly across different package managers.
-
-:::info
-
-In this guide, the types will be generated in the `database/generated/prisma` directory.
-
-:::
-
-### 2.3. Add scripts and run migrations
-
-Add the following scripts to the `package.json` inside `packages/database`:
 
 ```json title="packages/database/package.json"
 {
   "name": "@repo/db",
   "version": "0.0.0",
-  "type": "module", // [!code ++]
-  "scripts": {
-    // [!code ++]
-    "db:generate": "prisma generate", // [!code ++]
-    "db:migrate": "prisma migrate dev", // [!code ++]
-    "db:deploy": "prisma migrate deploy" // [!code ++]
+  "private": true
+}
+```
+
+### 2.2. Allow the build scripts Prisma needs
+
+pnpm does not run dependency build scripts until you allow them, and pnpm 11 fails the install when it finds scripts it was not told about. Prisma 8's toolchain ships three packages with build scripts, so declare them in `pnpm-workspace.yaml` before you install anything:
+
+```yaml title="pnpm-workspace.yaml"
+packages:
+  - "apps/*"
+  - "packages/*"
+allowBuilds: # [!code ++]
+  esbuild: true # [!code ++]
+  msgpackr-extract: true # [!code ++]
+  workerd: true # [!code ++]
+```
+
+Skip this step on npm, yarn, or Bun. If you forget it, `orm init` in the next step stops with `CLI.INIT_INSTALL_FAILED`; run `pnpm approve-builds`, then re-run the `pnpm add` commands it printed and `pnpm contract:emit`.
+
+### 2.3. Initialize Prisma 8
+
+Run `orm init` inside the package. It is the existing-project path: it adds Prisma 8 to the package you just created instead of scaffolding a new app.
+
+```bash
+cd packages/database
+```
+
+```npm
+npx prisma@latest orm init --yes --target postgres --authoring psl
+```
+
+`--yes` accepts the defaults for the remaining prompts (the Prisma schema language for the contract, and `src/prisma/contract.prisma` as its path); drop it to answer them yourself.
+
+```text no-copy
+✔ pnpm add @prisma/orm-postgres dotenv
+✔ pnpm add -D prisma@next @types/node
+✔ pnpm add -D @prisma/cli-engine
+✔ Emit the contract
+│  target:     postgres
+│  authoring:  psl
+│  schema:     src/prisma/contract.prisma
+
+written
+├─ src/prisma/contract.prisma
+├─ prisma.config.ts
+├─ src/prisma/db.ts
+├─ prisma-next.md
+├─ .env.example
+├─ tsconfig.json
+├─ .gitignore
+├─ .gitattributes
+└─ package.json
+
+✔ Done. Open prisma-next.md to get started.
+```
+
+`orm init` detects pnpm from the workspace, adds the packages to `@repo/db`, sets `"type": "module"`, and writes four files that matter for the rest of this guide:
+
+- `src/prisma/contract.prisma`: your schema. It starts with `User` and `Post` models.
+- `src/prisma/contract.json` and `src/prisma/contract.d.ts`: the emitted contract the runtime and the CLI read. They replace Prisma 7's generated client: there is no `prisma generate` step and no generated directory to ignore. Commit both files; `.gitattributes` already marks them as generated so they collapse in diffs.
+- `src/prisma/db.ts`: the client instance, typed by the contract.
+- `prisma.config.ts`: where the CLI finds the contract and the database connection.
+
+The generated `db.ts` reads `DATABASE_URL` from the environment and is the module every app will import:
+
+```typescript title="packages/database/src/prisma/db.ts"
+import 'dotenv/config';
+import postgres from '@prisma/orm-postgres/runtime';
+import type { Contract } from './contract.d';
+import contractJson from './contract.json' with { type: 'json' };
+
+export const db = postgres<Contract>({
+  contractJson,
+  url: process.env['DATABASE_URL']!,
+});
+```
+
+`orm init` pins the `prisma` dev dependency to the `next` tag, which lags behind `latest`. Move the package to the current CLI so its scripts behave the same as the `npx prisma@latest` commands in this guide:
+
+```bash
+pnpm add -D prisma@latest --filter @repo/db
+```
+
+### 2.4. Set the database connection
+
+Create `packages/database/.env` with your PostgreSQL connection string. Use your own, or create a Prisma Postgres database with `npx create-db@latest`; it prints a connection string and a claim URL you can open to keep the database.
+
+```bash title="packages/database/.env"
+DATABASE_URL="postgres://user:password@localhost:5432/turborepo_prisma"
+```
+
+`prisma.config.ts` and `db.ts` both load this file through `dotenv/config`, so every CLI command in this package and every query at runtime picks it up. The root `.gitignore` from the scaffold already ignores `.env` files.
+
+### 2.5. Review the contract
+
+Open `src/prisma/contract.prisma`. The starter contract already has the two models this guide renders, so leave it as it is for now; you will change it in step 7.
+
+```prisma title="packages/database/src/prisma/contract.prisma"
+// use prisma-next
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  username  String?
+  name      String?
+  posts     Post[]
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+}
+
+model Post {
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String?
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  Int
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+}
+```
+
+### 2.6. Add scripts and export the client
+
+Add the database scripts and a package entrypoint to `packages/database/package.json`. `orm init` already added `contract:emit`; the rest map to the Prisma 8 migration loop:
+
+```json title="packages/database/package.json"
+{
+  "name": "@repo/db",
+  "type": "module",
+  "version": "0.0.0",
+  "private": true,
+  "exports": { // [!code ++]
+    ".": "./src/index.ts" // [!code ++]
   }, // [!code ++]
-  "devDependencies": {
-    "prisma": "7.10.0"
+  "scripts": {
+    "contract:emit": "prisma contract emit",
+    "migration:plan": "prisma migration plan", // [!code ++]
+    "migration:status": "prisma migration status", // [!code ++]
+    "db:migrate": "prisma db migrate --advance-ref db", // [!code ++]
+    "db:verify": "prisma db verify", // [!code ++]
+    "check-types": "tsc --noEmit" // [!code ++]
   },
   "dependencies": {
-    "@prisma/client": "7.10.0",
-    "@prisma/adapter-pg": "^7.0.0",
-    "pg": "^8.0.0",
-    "dotenv": "^16.0.0"
+    "@prisma/orm-postgres": "8.0.0",
+    "dotenv": "^17.4.2"
+  },
+  "devDependencies": {
+    "@prisma/cli-engine": "0.2.3",
+    "@types/node": "26.4.1",
+    "prisma": "8.0.0"
   }
 }
 ```
 
-Also add these scripts to `turbo.json` in the root and ensure that `DATABASE_URL` is added to the environment:
+Keep the versions `orm init` and the upgrade wrote for you; the ones shown are placeholders. The scripts replace the Prisma 7 trio of `db:generate`, `db:migrate`, and `db:deploy`:
+
+- `contract:emit` compiles `contract.prisma` into `contract.json` and `contract.d.ts`. It is offline and deterministic, which is what makes it cacheable in Turborepo.
+- `migration:plan` diffs the emitted contract against your migration history and writes a reviewable migration directory. Also offline.
+- `db:migrate` applies pending migrations to `DATABASE_URL`, in development and in CI alike. `--advance-ref db` records the applied state in `migrations/app/refs/db.json`, so the next `migration:plan` knows where to start from and plans only the delta.
+
+Then create the package entrypoint. It re-exports the client and the contract type so apps import one module:
+
+```typescript title="packages/database/src/index.ts"
+export { db } from "./prisma/db";
+export type { Contract } from "./prisma/contract.d";
+```
+
+This follows Turborepo's [Just-in-Time packaging](https://turborepo.dev/docs/core-concepts/internal-packages#just-in-time-packages) pattern: the package exports TypeScript source and the consuming app's bundler compiles it. Next.js handles this for workspace packages without extra configuration.
+
+:::warning
+
+If a consumer is not using a bundler, use the [Compiled Packages](https://turborepo.dev/docs/core-concepts/internal-packages#compiled-packages) strategy instead, and add `src/prisma/contract.json` to the files you ship.
+
+:::
+
+## 3. Configure tasks in `turbo.json`
+
+Go back to the project root and wire the database tasks into `turbo.json`:
+
+```bash
+cd ../..
+```
 
 ```json title="turbo.json"
 {
@@ -193,271 +281,316 @@ Also add these scripts to `turbo.json` in the root and ensure that `DATABASE_URL
   "globalEnv": ["DATABASE_URL"], // [!code ++]
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "^contract:emit"], // [!code highlight]
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**"]
+      "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**"]
     },
     "lint": {
       "dependsOn": ["^lint"]
     },
     "check-types": {
-      "dependsOn": ["^check-types"]
+      "dependsOn": ["^check-types", "^contract:emit"] // [!code highlight]
     },
     "dev": {
+      "dependsOn": ["^contract:emit"], // [!code ++]
       "cache": false,
       "persistent": true
     },
-    "db:generate": { // [!code ++]
+    "contract:emit": { // [!code ++]
+      "inputs": ["src/prisma/contract.prisma", "prisma.config.ts"], // [!code ++]
+      "outputs": ["src/prisma/contract.json", "src/prisma/contract.d.ts"] // [!code ++]
+    }, // [!code ++]
+    "migration:plan": { // [!code ++]
+      "dependsOn": ["contract:emit"], // [!code ++]
       "cache": false // [!code ++]
     }, // [!code ++]
     "db:migrate": { // [!code ++]
-      "cache": false // [!code ++]
-    }, // [!code ++]
-    "db:deploy": { // [!code ++]
       "cache": false // [!code ++]
     } // [!code ++]
   }
 }
 ```
 
-Run your first migration and generate Prisma Client
+What each entry does:
 
-Navigate to the project root and run the following command to create and apply your first migration:
+- `contract:emit` is a normal cached task. Its inputs are the contract source and the Prisma config, and its outputs are the two emitted files. When nothing changed, Turborepo replays the cache hit; when the contract changed, it re-emits before anything depends on it.
+- `build`, `dev`, and `check-types` depend on `^contract:emit`, so any app that depends on `@repo/db` gets a fresh contract before it compiles. In Prisma 7 this slot held `db:generate`; here the artifacts are committed, and the dependency keeps them from going stale when someone edits the contract and forgets to emit.
+- `migration:plan` depends on the package's own `contract:emit`, so a plan always diffs the current contract. Planning and migrating are never cached because they change files on disk and the database.
+- `globalEnv` lets `DATABASE_URL` from your shell reach every task and makes it part of the task hash. The `.env*` input on `build` does the same for the per-app `.env` files.
 
-```npm
-npx turbo run db:migrate -- --name init
+## 4. Plan and apply the first migration
+
+Plan the first migration from the project root. Turborepo runs `contract:emit` first, then passes `--name init` through to `migration plan`:
+
+```bash
+pnpm turbo run migration:plan --filter=@repo/db -- --name init
 ```
 
-In Prisma 7, `migrate dev` no longer runs `prisma generate` automatically, so run generate explicitly:
-
-```npm
-npx turbo run db:generate
+```text no-copy
+@repo/db:contract:emit: cache miss, executing
+@repo/db:contract:emit: ✔ Emitted contract.json and contract.d.ts
+@repo/db:migration:plan: $ prisma migration plan --name init
+@repo/db:migration:plan: ✔ Planned 6 operation(s)
+@repo/db:migration:plan: migrations/app/20260910T1601_init
+@repo/db:migration:plan: ├─ Create schema "public"
+@repo/db:migration:plan: ├─ Create table "post"
+@repo/db:migration:plan: ├─ Create table "user"
+@repo/db:migration:plan: ├─ Add unique constraint on "user" (email)
+@repo/db:migration:plan: ├─ Create index "post_authorId_idx_e47547ed" on "post"
+@repo/db:migration:plan: └─ Add foreign key "post_authorId_fkey" on "post"
+@repo/db:migration:plan: from:       (baseline)
+@repo/db:migration:plan: to:         1e8412e162dbbe69f4bb3bf8d07f0280ae67eaab15c34dcf201e67468315428d
+@repo/db:migration:plan: ℹ DDL preview
+@repo/db:migration:plan: CREATE SCHEMA IF NOT EXISTS "public";
+@repo/db:migration:plan: CREATE TABLE "public"."post" (
+...
 ```
 
-Use the same `npx turbo run db:generate` command after future schema changes.
+The command is offline: it writes `packages/database/migrations/app/<timestamp>_init/` with the migration as TypeScript (`migration.ts`), the compiled operations (`ops.json`), and the history marker (`migration.json`), and prints the exact DDL it will run. Review it, then apply it:
 
-### 2.4. Export the Prisma client and types
-
-Next, export the generated types and an instance of `PrismaClient` so it can be used in your applications.
-
-In the `packages/database` directory, create a `src` folder and add a `client.ts` file. This file will define an instance of `PrismaClient`:
-
-```ts title="packages/database/src/client.ts"
-import { PrismaClient } from "../generated/prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-
-const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL,
-});
-
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
-
-export const prisma =
-  globalForPrisma.prisma ||
-  new PrismaClient({
-    adapter,
-  });
-
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+```bash
+pnpm turbo run db:migrate --filter=@repo/db
 ```
 
-Then create an `index.ts` file in the `src` folder to re-export the generated prisma types and the `PrismaClient` instance:
-
-```ts title="packages/database/src/index.ts"
-export { prisma } from "./client"; // exports instance of prisma
-export * from "../generated/prisma/client"; // exports generated types from prisma
+```text no-copy
+@repo/db:db:migrate: $ prisma db migrate --advance-ref db
+@repo/db:db:migrate: ✔ Applied 1 migration(s) (6 operation(s)) across 1 contract space(s)
+@repo/db:db:migrate: App space
+@repo/db:db:migrate: ├─ Create schema "public"
+@repo/db:db:migrate: ├─ Create table "post"
+@repo/db:db:migrate: ├─ Create table "user"
+@repo/db:db:migrate: ├─ Add unique constraint on "user" (email)
+@repo/db:db:migrate: ├─ Create index "post_authorId_idx_e47547ed" on "post"
+@repo/db:db:migrate: ├─ Add foreign key "post_authorId_fkey" on "post"
+@repo/db:db:migrate: └─ marker 1e8412e162dbbe69f4bb3bf8d07f0280ae67eaab15c34dcf201e67468315428d
+@repo/db:db:migrate: ✔ Advanced ref "db" → 1e8412e162dbbe69f4bb3bf8d07f0280ae67eaab15c34dcf201e67468315428d
 ```
 
-Follow the [Just-in-Time packaging pattern](https://turborepo.dev/docs/core-concepts/internal-packages#just-in-time-packages) and create an entrypoint to the package inside `packages/database/package.json`:
+Commit the `migrations/` directory with the rest of the package. The same `db:migrate` task is what CI or a deploy hook runs against staging and production; there is no separate `migrate deploy` command in Prisma 8.
 
-:::warning
+## 5. Use the `database` package in the web app
 
-If you're not using a bundler, use the [Compiled Packages](https://turborepo.dev/docs/core-concepts/internal-packages#compiled-packages) strategy instead.
+### 5.1. Add the dependency
 
-:::
+Add `@repo/db` to `apps/web/package.json`:
+
+```json title="apps/web/package.json"
+{
+  // ...
+  "dependencies": {
+    "@repo/db": "workspace:*", // [!code ++]
+    "@repo/ui": "workspace:*",
+    // ...
+  }
+  // ...
+}
+```
+
+Link it from the project root:
+
+```bash
+pnpm install
+```
+
+### 5.2. Render users in a server component
+
+Replace `apps/web/app/page.tsx` with a server component that queries the database through the shared client:
+
+```tsx title="apps/web/app/page.tsx"
+import { db } from "@repo/db";
+import styles from "./page.module.css";
+
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  const users = await db.orm.public.User.select("id", "email", "name").all();
+
+  return (
+    <div className={styles.page}>
+      <main className={styles.main}>
+        <h1>Users</h1>
+        {users.length === 0 ? (
+          <p>No users added yet</p>
+        ) : (
+          <ul>
+            {users.map((user) => (
+              <li key={user.id}>
+                {user.name ?? "Anonymous"} ({user.email})
+              </li>
+            ))}
+          </ul>
+        )}
+      </main>
+    </div>
+  );
+}
+```
+
+Model access is namespace-qualified on PostgreSQL, so the `User` model lives at `db.orm.public.User`, and `select(...)` narrows both the query and the row type. `dynamic = "force-dynamic"` tells Next.js to run the query per request; without it, `next build` prerenders the page once and freezes the user list at build time.
+
+### 5.3. Give the app its connection string
+
+Each app reads its own `.env`, so copy the one from the database package:
+
+```bash
+cp packages/database/.env apps/web/.env
+```
+
+If you would rather keep a single value, export `DATABASE_URL` in your shell instead; the `globalEnv` entry from step 3 passes it into every task. Turborepo [recommends per-package `.env` files](https://turborepo.dev/docs/crafting-your-repository/using-environment-variables#use-env-files-in-packages); for one shared file across the monorepo, see the [`dotenvx` guide for Turborepo](https://dotenvx.com/docs/monorepos/turborepo).
+
+### 5.4. Seed a couple of users
+
+The page will render "No users added yet" against an empty database. Add a small seed script to the database package so there is something to see. It runs with `tsx`, because Node.js needs file extensions on imports and the package uses extensionless, bundler-style imports:
+
+```bash
+pnpm add -D tsx --filter @repo/db
+```
+
+```typescript title="packages/database/src/seed.ts"
+import { db } from "./index";
+
+const existing = await db.orm.public.User.select("id").all();
+if (existing.length === 0) {
+  await db.orm.public.User.create({ email: "alice@prisma.io", name: "Alice" });
+  await db.orm.public.User.create({ email: "bob@prisma.io", name: "Bob" });
+}
+console.log(await db.orm.public.User.select("id", "email", "name").all());
+await db.runtime().close();
+```
+
+Add it as a script and run it:
 
 ```json title="packages/database/package.json"
 {
-  "name": "@repo/db",
-  "version": "0.0.0",
-  "type": "module",
   "scripts": {
-    "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
-    "db:deploy": "prisma migrate deploy"
-  },
-  "devDependencies": {
-    "prisma": "7.10.0"
-  },
-  "dependencies": {
-    "@prisma/client": "7.10.0",
-    "@prisma/adapter-pg": "^7.0.0",
-    "pg": "^8.0.0",
-    "dotenv": "^16.0.0"
-  },
-  "exports": {
-    // [!code ++]
-    ".": "./src/index.ts" // [!code ++]
-  } // [!code ++]
-}
-```
-
-By completing these steps, you'll make the Prisma types and `PrismaClient` instance accessible throughout the monorepo.
-
-## 3. Import the `database` package in the web app
-
-The `turborepo-prisma` project should have an app called `web` at `apps/web`. Add the `database` dependency to `apps/web/package.json`:
-
-```json tab="npm"
-{
-  // ...
-  "dependencies": {
-    "@repo/db": "*" // [!code ++]
     // ...
+    "seed": "tsx src/seed.ts" // [!code ++]
   }
-  // ...
 }
 ```
 
-```json tab="pnpm"
-{
-  // ...
-  "dependencies": {
-    "@repo/db": "workspace:*" // [!code ++]
-    // ...
-  }
-  // ...
+```bash
+pnpm --filter @repo/db seed
+```
+
+```text no-copy
+[
+  { id: 1, email: 'alice@prisma.io', name: 'Alice' },
+  { id: 2, email: 'bob@prisma.io', name: 'Bob' }
+]
+```
+
+The script closes the client at the end because it is a one-off process; the web app never does, since its connection pool lives for the life of the server.
+
+## 6. Run the project
+
+Start the web app from the project root:
+
+```bash
+pnpm turbo run dev --filter=web
+```
+
+```text no-copy
+@repo/db:contract:emit: cache hit, replaying logs
+web:dev: ▲ Next.js 16.3.4 (Turbopack)
+web:dev: - Local:         http://localhost:3000
+web:dev: - Environments: .env
+web:dev: ✓ Ready in 1005ms
+```
+
+Turborepo replays the cached `contract:emit` for `@repo/db`, then starts Next.js. Open [http://localhost:3000](http://localhost:3000): the page lists the seeded users.
+
+```text no-copy
+Users
+Alice (alice@prisma.io)
+Bob (bob@prisma.io)
+```
+
+`pnpm turbo run build --filter=web` and `pnpm turbo run check-types` go through the same `^contract:emit` dependency, so a production build or a type check never sees a stale contract.
+
+## 7. Change the schema
+
+The loop for every later change is: edit the contract, plan, review, apply. Add a `bio` field to `User`:
+
+```prisma title="packages/database/src/prisma/contract.prisma"
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  username  String?
+  name      String?
+  bio       String? // [!code ++]
+  posts     Post[]
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
 }
 ```
 
-```json tab="bun"
-{
-  // ...
-  "dependencies": {
-    "@repo/db": "workspace:*" // [!code ++]
-    // ...
-  }
-  // ...
-}
+Plan it. `contract:emit` sees the changed input and re-emits, and because `db:migrate` advanced the `db` ref, the planner starts from the applied state and plans only the delta:
+
+```bash
+pnpm turbo run migration:plan --filter=@repo/db -- --name add-user-bio
 ```
 
-Run your package manager's install command from the project root to link the workspace dependency:
-
-```npm
-npm install
+```text no-copy
+@repo/db:contract:emit: cache miss, executing
+@repo/db:migration:plan: ✔ Planned 1 operation(s)
+@repo/db:migration:plan: migrations/app/20260910T1601_add_user_bio
+@repo/db:migration:plan: └─ Add column "bio" to "user"
+@repo/db:migration:plan: from:       1e8412e162dbbe69f4bb3bf8d07f0280ae67eaab15c34dcf201e67468315428d
+@repo/db:migration:plan: to:         155ebf55586e71f917e8b534544f97d97523544e862ae74b8e70d2af933df807
+@repo/db:migration:plan: ℹ DDL preview
+@repo/db:migration:plan: ALTER TABLE "public"."user" ADD COLUMN "bio" text;
 ```
 
-Import the instantiated `prisma` client from the `database` package in the `web` app.
+Apply it, then check where the database stands:
 
-In the `apps/web/app` directory, open the `page.tsx` file and add the following code:
-
-```tsx title="apps/web/app/page.tsx"
-import styles from "./page.module.css";
-import { prisma } from "@repo/db";
-
-export default async function Home() {
-  const user = await prisma.user.findFirst();
-  return <div className={styles.page}>{user?.name ?? "No user added yet"}</div>;
-}
+```bash
+pnpm turbo run db:migrate --filter=@repo/db
+pnpm --filter @repo/db migration:status
 ```
 
-Then, create a `.env` file in the `web` directory and copy into it the contents of the `.env` file from the `/database` directory containing the `DATABASE_URL`:
-
-```text title="apps/web/.env"
-DATABASE_URL="Same database URL as used in the database directory"
+```text no-copy
+○   155ebf5  @contract @db (db)
+│↑  20260910T1601_add_user_bio  1e8412e → 155ebf5  1 ops  ✓ applied
+○   1e8412e
+│↑  20260910T1601_init                ∅ → 1e8412e  6 ops  ✓ applied
+○   ∅
+✔ Up to date
 ```
 
-:::note
+The next `pnpm turbo run dev --filter=web` re-emits the contract before Next.js starts, and `user.bio` is available in the page's types. For a local change you do not want to keep as a migration, `npx prisma@latest db update` reconciles the database with the contract directly; see [db update](/cli/db-update).
 
-If you want to use a single `.env` file in the root directory across your apps and packages in a Turborepo setup, consider using a package like [`dotenvx`](https://dotenvx.com/docs/monorepos/turborepo).
+## Common gotchas
 
-To implement this, update the `package.json` files for each package or app to ensure they load the required environment variables from the shared `.env` file. For detailed instructions, refer to the [`dotenvx` guide for Turborepo](https://dotenvx.com/docs/monorepos/turborepo).
+:::warning
 
-Keep in mind that Turborepo [recommends using separate `.env` files for each package](https://turborepo.dev/docs/crafting-your-repository/using-environment-variables#use-env-files-in-packages) to promote modularity and avoid potential conflicts.
+Without a `db` ref or `--from`, `migration plan` has no origin and refuses with `MIGRATION.PLAN_ORIGIN_UNKNOWN` once migrations exist, because a plan from an empty database would recreate every table. The `--advance-ref db` flag on `db:migrate` keeps the ref current. If you applied a migration without it, point the ref at that migration once: `npx prisma@latest migration ref set db <migration directory name>`.
 
 :::
 
-## 4. Configure task dependencies in Turborepo
+:::warning
 
-The `db:generate` script is essential for `dev` and `build` tasks in a monorepo setup.
-
-If a new developer runs `turbo dev` on an application without first running `db:generate`, they will encounter errors.
-
-To prevent this, ensure that `db:generate` is always executed before running `dev` or `build`. Keep `db:deploy` uncached for staging/production migration runs in CI. Here's how to configure this in your `turbo.json` file:
-
-```json title="turbo.json"
-{
-  "$schema": "https://turborepo.dev/schema.json",
-  "ui": "tui",
-  "globalEnv": ["DATABASE_URL"],
-  "tasks": {
-    "build": {
-      "dependsOn": ["^build", "^db:generate"], // [!code highlight]
-      "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**"]
-    },
-    "lint": {
-      "dependsOn": ["^lint"]
-    },
-    "check-types": {
-      "dependsOn": ["^check-types"]
-    },
-    "dev": {
-      "dependsOn": ["^db:generate"], // [!code ++]
-      "cache": false,
-      "persistent": true
-    },
-    "db:generate": {
-      "cache": false
-    },
-    "db:migrate": {
-      "cache": false
-    },
-    "db:deploy": {
-      "cache": false
-    }
-  }
-}
-```
-
-## 5. Run the project in development
-
-Then from the project root run the project:
-
-```npm
-npx turbo run dev --filter=web
-```
-
-Navigate to the `http://localhost:3000` and you should see the message:
-
-```
-No user added yet
-```
-
-:::note
-
-You can add users to your database by creating a seed script or manually by using [Prisma Studio](/studio).
-
-To use Prisma Studio to add manually data via a GUI, navigate inside the `packages/database` directory and run `prisma studio` using your package manager:
-
-```npm
-npx prisma studio
-```
-
-This command starts a server with a GUI at http://localhost:5555, allowing you to view and modify your data.
+In the web app, never call `db.runtime().close()` in a page or route handler; the client's connection pool is shared across requests. Close it only in one-off scripts like the seed.
 
 :::
 
-Prisma ORM is now set up as a shared package in your Turborepo.
+:::note
 
-## Next Steps
+`orm init` picks the package manager from the workspace. Run it after `create-turbo` has installed dependencies, so it finds `pnpm-lock.yaml` and adds packages with `pnpm add` instead of guessing.
 
-- Expand your Prisma models to handle more complex data relationships.
-- Implement additional CRUD operations.
-- Check out [Prisma Postgres](https://www.prisma.io/postgres) to see how you can scale your application.
+:::
 
-### More Info
+## Prompt your coding agent
 
-- [Turborepo Docs](https://turborepo.dev/docs)
-- [Next.js Docs](https://nextjs.org/docs)
-- [Prisma ORM Docs](/orm/v7)
+Run [`npx prisma@latest init`](/cli/init) once at the monorepo root to install the [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. It adds a root `prisma.config.ts` that only configures the skills, a `prisma` dev dependency, and a `postinstall` hook that re-syncs them. Prompts that map to this guide:
+
+- "Using the prisma-8 skill, add a `apps/docs` page that lists posts with their authors through `@repo/db`."
+- "Add a `published Boolean @default(false)` field to Post, plan the migration, and show me the DDL before applying it."
+- "Add a `db:verify` task to turbo.json and run it in CI after `db:migrate`."
+
+## Next steps
+
+- [Learn the fundamentals](/orm/fundamentals/reading-data): filtering, sorting, pagination, and writes.
+- [How migrations work](/orm/migrations/how-migrations-work): the plan, review, apply loop your `turbo.json` tasks now run.
+- [Read the Prisma 8 overview](/orm) for the concepts behind contracts and typed queries.
+- [Turborepo docs](https://turborepo.dev/docs) and [Next.js docs](https://nextjs.org/docs) for the rest of the monorepo.

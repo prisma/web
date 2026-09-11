@@ -1,430 +1,313 @@
 ---
 title: Writing guides
-description: 'Learn how to write clear, consistent, and helpful guides for Prisma documentation'
+description: 'How to write, validate, and file a Prisma 8 guide for the Prisma documentation.'
 url: /guides/making-guides
-metaTitle: How to write guides for Prisma ORM
-metaDescription: 'Learn how to write clear, consistent, and helpful guides for Prisma ORM documentation'
+metaTitle: How to write guides for Prisma 8
+metaDescription: 'Structure, style, validation rules, and the file layout for Prisma 8 guides, including how the Prisma 7 twin of a guide is versioned.'
 ---
 
 ## Introduction
 
-This guide shows you how to write guides for Prisma ORM documentation. It covers the required structure, formatting, and style conventions to ensure consistency across all guides. You'll learn about frontmatter requirements, section organization, and writing style.
+This page is for people writing guides in this section. It covers the required structure, the formatting conventions, the validation rule every guide must pass, and how a guide's Prisma 7 twin is versioned.
+
+The short version: a guide is a walkthrough you ran end to end before publishing, written for Prisma 8, with every command shown alongside the real output it produced.
 
 ## Prerequisites
 
-Before writing a guide, make sure you have:
-
-- A clear understanding of the topic you're writing about
+- A clear understanding of the topic you are writing about
 - Access to the Prisma documentation repository
 - Familiarity with Markdown and MDX
-- Knowledge of the target audience for your guide
+- Node.js 24 or later and a PostgreSQL database to validate against (a local server or `npx create-db@latest`)
+
+## The validation rule
+
+Every command, file, and code block in a published guide was run by its author against a live database before it landed. Outputs shown in the guide are pasted from that run, trimmed for noise. If a step could not be run (a platform account you do not have, a paid service), the guide says so in the step and does not show output for it.
+
+Two reference guides show the finished shape. Read them before writing:
+
+- [Hono](/guides/frameworks/hono): a new project scaffolded with `create-prisma`, deployed to Prisma Compute.
+- [PostgreSQL, existing project](/prisma-orm/add-to-existing-project/postgresql): the `orm init` and `contract infer` path for an app that already exists.
 
 ## Guide structure
 
 ### Required frontmatter
 
-Every guide must include the following frontmatter at the top of the file:
-
 ```mdx
 ---
 title: '[Descriptive title]'
-description: '[One-sentence summary of what the guide covers]'
+description: '[One sentence: what the reader builds or accomplishes]'
+url: /guides/[category]/[slug]
+metaTitle: How to use Prisma 8 with [Topic]
+metaDescription: '[One sentence for search results]'
 ---
 ```
 
-- `title`: A clear, descriptive title (e.g., "Next.js", "Multiple databases", "GitHub Actions")
-- `description`: A one-sentence summary that describes what you'll learn or accomplish
-- `image`: A unique header image for social media sharing (coordinate with the design team)
-
-All frontmatter fields should use sentence case.
+- `title`: a short, descriptive title in sentence case (for example "Docker", "Multiple databases", "GitHub Actions")
+- `description`: one sentence describing what the reader accomplishes
+- `url`: the page path under `content/docs` without the extension; the build derives the URL from the file path, and this field must match it
+- `metaTitle` and `metaDescription`: the title and description for search engines
+- `image`: a header image for social sharing, only if one exists at `/img/guides/`
 
 ### Required sections
 
-1. **Introduction** (H2: `##`)
-   - Brief overview of what the guide covers
-   - What the reader will learn/accomplish
-   - Link to any example repositories or related resources on GitHub
-
-2. **Prerequisites** (H2: `##`)
-   - Required software/tools with version numbers (e.g., "Node.js 20+")
-   - Required accounts (e.g., "A Prisma Data Platform account")
-   - Keep it concise - only list what's truly necessary
-
-3. **Main content sections** (H2: `##`)
-   - Use numbered steps (e.g., "## 1. Set up your project", "## 2. Install and Configure Prisma")
-   - Use numbered subsections (e.g., "### 2.1. Install dependencies", "### 2.2. Define your Prisma Schema")
-   - Each step should build on previous steps
-   - Include all commands and code snippets needed
-
-4. **Next steps** (H2: `##`)
-   - What to do after completing the guide
-   - Related guides or documentation (with links)
-   - Additional resources
+1. **Introduction** (`## Introduction`): what the guide builds, in two or three sentences, followed by the `Using Prisma 7?` note (see [Versioning](#versioning-the-prisma-7-twin)).
+2. **Prerequisites** (`## Prerequisites`): Node.js 24 or later, a database connection string or `npx create-db@latest`, and any accounts the guide needs. Keep it to what is truly necessary.
+3. **Use with your agent** (`## Use with your agent`): an `<AgentPrompt>` block with a numbered prompt a coding agent can follow to complete the guide. Reference the guide's own `.md` URL (`https://www.prisma.io/docs/guides/[category]/[slug].md`) so the agent can read it.
+4. **Numbered steps** (`## 1. Scaffold the project`, `## 2. Initialize the database`, and so on): each step is one bounded action with its command, its real output in a `no-copy` block, and one or two sentences on what happened.
+5. **Common gotchas** (`## Common gotchas`): the failures you hit while validating, with the verbatim error text and the fix.
+6. **Prompt your coding agent** (`## Prompt your coding agent`): a pointer to `npx prisma@latest init` for the [Prisma 8 skills](/ai/tools/skills) and two or three follow-up prompts that map to the guide.
+7. **Next steps** (`## Next steps`): links to the fundamentals and the related Prisma 8 pages.
 
 ## Writing style and voice
 
-### General principles
-
-- Write in a clear, conversational tone
-- Use active voice and present tense
-- Address the reader directly using "you" (e.g., "You'll learn how to...")
-- Avoid jargon and explain technical terms when necessary
-- Be concise but thorough
-- Guide readers step-by-step through the process
+- Write direct instructional prose: say what to do, show the command, show the output.
+- Use active voice and present tense, and address the reader as "you".
+- Keep sentences short. One idea per sentence.
+- Do not use em dashes anywhere, including code comments. Use a period, a comma, or a colon.
+- Explain a removed Prisma 7 step in one sentence only where a reader coming from Prisma 7 would look for it (for example, "There is no `prisma generate` step; the runtime reads the emitted contract.").
+- Do not describe Prisma 8 as a preview or as not production ready, and do not mention release candidate numbers. Prisma 8 is the current release; Prisma 7 remains supported.
 
 ### Code examples
 
-- Include complete, runnable code examples
-- Use syntax highlighting with language specification
-- Include file paths in code block metadata using `title=`
-- Use ` ```bash title=".env" ` for `.env` files so inline `# [!code ++]`, `# [!code --]`, and `# [!code highlight]` annotations render correctly
-- Reserve ` ```text ` for other plain-text files that do not need Fumadocs code annotations
-- Use comments sparingly - only when needed to explain complex logic
-- Use ` ```npm ` for package manager commands (auto-converts to pnpm/yarn/bun)
-- Use ` ```bash ` for shell commands and `.env` files
-- Use ` ```text ` for other plain text files
-- Use ` ```typescript `, ` ```prisma `, ` ```json ` for respective languages
-
-Example with file path:
-
-```typescript title="src/lib/prisma.ts"
-import { PrismaClient } from "../generated/prisma";
-import { PrismaPg } from "@prisma/adapter-pg";
-
-const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL!,
-});
-
-const prisma = new PrismaClient({
-  adapter,
-});
-
-export default prisma;
-```
-
-Example showing changes:
-
-```typescript title="prisma.config.ts"
-import "dotenv/config"; // [!code ++]
-import { defineConfig, env } from "prisma/config";
-
-export default defineConfig({
-  schema: "prisma/schema.prisma",
-  migrations: {
-    path: "prisma/migrations",
-  },
-  datasource: {
-    url: env("DATABASE_URL"),
-  },
-});
-```
+- Every code block is complete and was run as shown.
+- Use `title=` on file blocks: ` ```ts title="src/prisma/db.ts" `.
+- Use ` ```npm ` for package manager commands (the UI converts them to pnpm, yarn, and bun).
+- Use ` ```bash ` for other shell commands and for `.env` files, so `# [!code ++]` and `# [!code --]` annotations render.
+- Use ` ```text no-copy ` and ` ```json no-copy ` for captured output.
+- Use ` ```prisma ` for contract files, ` ```typescript ` or ` ```ts ` for TypeScript, ` ```json ` for JSON.
+- Use `// [!code ++]`, `// [!code --]`, and `// [!code highlight]` to show changes inside a file.
 
 ### Formatting conventions
 
-- Use backticks for inline code:
-  - File names: `` `schema.prisma` ``
-  - Directory names: `` `prisma/` ``
-  - Code elements: `` `PrismaClient` ``
-  - Package manager commands: Use ` ```npm ` blocks (see [Package manager commands](#package-manager-commands))
-- Use admonitions for important information:
+- Backticks for file names (`contract.prisma`), directories (`src/prisma/`), commands, and code elements (`db.orm.public.User`).
+- Admonitions for asides:
   ```markdown
-  :::info
-  Context or background information
-  :::
-
   :::note
   Important details to remember
   :::
 
   :::warning
-  Critical information or gotchas
+  A gotcha that breaks the flow if missed
   :::
 
   :::tip
-  Helpful suggestions or best practices
+  A shortcut or best practice
   :::
   ```
-- Use proper heading hierarchy (never skip levels)
-- Use numbered sections (e.g., "## 1. Setup", "### 1.1. Install")
-- Link to other documentation pages using relative paths (e.g., `[Database drivers](/orm/v7/core-concepts/supported-databases/database-drivers)`)
+- Never skip heading levels.
+- Link Prisma 8 pages with relative paths: `/orm/...`, `/cli/...`, `/prisma-orm/...`. Never link `/orm/v7/...` from a Prisma 8 guide except in the `Using Prisma 7?` note.
 
-## Guide categories
+## Prisma 8 patterns
 
-| Category | Directory | Description | Examples |
-|----------|-----------|-------------|----------|
-| **Framework** | `guides/frameworks/` | Integrate Prisma with frameworks | [Next.js](/guides/v7/frameworks/nextjs), [NestJS](/guides/v7/frameworks/nestjs), [SvelteKit](/guides/v7/frameworks/sveltekit) |
-| **Deployment** | `guides/deployment/` | Deploy apps and set up monorepos | [Turborepo](/guides/deployment/turborepo), [Cloudflare Workers](/guides/deployment/cloudflare-workers) |
-| **Integration** | `guides/integrations/` | Use Prisma with platforms and tools | [GitHub Actions](/guides/integrations/github-actions), [Supabase](/guides/integrations/supabase-accelerate) |
-| **Database** | `guides/database/` | Database patterns and migrations | [Multiple databases](/guides/database/multiple-databases), [Data migration](/guides/database/data-migration) |
-| **Authentication** | `guides/authentication/` | Authentication patterns with Prisma | [Auth.js + Next.js](/guides/authentication/authjs/nextjs), [Better Auth + Next.js](/guides/authentication/better-auth/nextjs), [Clerk + Next.js](/guides/authentication/clerk/nextjs) |
-| **Prisma Postgres** | `guides/postgres/` | Prisma Postgres features | [Vercel](/guides/postgres/vercel), [Netlify](/guides/postgres/netlify), [Viewing data](/guides/postgres/viewing-data) |
-| **Migration** | `guides/switch-to-prisma-orm/` | Switch from other ORMs | [From Mongoose](/guides/switch-to-prisma-orm/from-mongoose), [From Drizzle](/guides/switch-to-prisma-orm/from-drizzle) |
+### Versions in commands
 
-## Common patterns
-
-### Package manager commands
-
-Use ` ```npm ` code blocks for package manager commands. These automatically convert to other package managers (pnpm, yarn, bun) in the UI:
+Guides use floating tags, never pinned versions:
 
 ```npm
-npm install prisma@7.10.0 --save-dev
+npx create-prisma@latest my-app --template hono --provider postgres
+npx prisma@latest orm init --target postgres
+npx create-db@latest
 ```
+
+Package installs happen inside `create-prisma` and `orm init`; show their output rather than hand-written `npm install` lines with version numbers.
+
+### New project
+
+Scaffold with `create-prisma` and one of its templates (`minimal`, `hono`, `elysia`, `nest`, `next`, `svelte`, `astro`, `nuxt`, `tanstack-start`):
+
+```npm
+npx create-prisma@latest my-app --template next --provider postgres
+```
+
+The template ships the contract in `src/prisma/contract.prisma`, the runtime in `src/prisma/db.ts`, and package scripts for `contract:emit`, `db:init`, `db:update`, `migration:plan`, and `migrate`.
+
+### Existing project
+
+Add Prisma 8 to an app that already exists:
+
+```npm
+npx prisma@latest orm init --target postgres
+```
+
+For a database that already has tables, follow with `npx prisma@latest contract infer --output ./src/prisma/contract.prisma`, review the contract, then `contract emit` and `db sign`. Two things to check in the review: `orm init` keeps `"type": "commonjs"` if your `package.json` declares it (set `"type": "module"`), and `contract infer` writes `Timestamptz` for timestamp columns while the runtime on Node.js needs `TimestamptzString`.
+
+### Runtime instantiation
+
+Show the scaffolded `src/prisma/db.ts` rather than writing a client by hand:
+
+```ts title="src/prisma/db.ts"
+import "dotenv/config";
+import postgres from "@prisma/orm-postgres/runtime";
+import type { Contract } from "./contract.d.ts";
+import contractJson from "./contract.json" with { type: "json" };
+
+export const db = postgres<Contract>({
+  contractJson,
+  url: process.env.DATABASE_URL!,
+});
+```
+
+Queries are namespace-qualified (`db.orm.public.User.select("id", "email").all()`). Close the runtime once on process shutdown with `await db.runtime().close()`, never per request; in a per-request environment such as Cloudflare Workers, create the client inside the handler instead (see [Cloudflare Workers](/guides/deployment/cloudflare-workers)).
+
+### Database lifecycle
+
+| Task | Command |
+| --- | --- |
+| First apply and sign | `npx prisma@latest db init` |
+| Check the database matches the contract | `npx prisma@latest db verify` |
+| Apply a contract change during development | `npx prisma@latest db update` |
+| Plan a checked-in migration | `npx prisma@latest migration plan --name <name>` |
+| Apply checked-in migrations | `npx prisma@latest db migrate` |
 
 ### Environment variables
 
-Show `.env` file examples using ` ```bash title=".env" ` blocks:
+Show `.env` files with ` ```bash title=".env" `:
 
 ```bash title=".env"
 DATABASE_URL="postgresql://user:password@localhost:5432/mydb"
 ```
 
-If you need to show changes in an `.env` file, use bash comments for the Fumadocs annotations:
+The CLI loads `.env` through `prisma.config.ts`. Scaffolded `db.ts` files import `dotenv/config`; `create-prisma` templates read the environment variable only, so tell the reader to export it in the shell.
 
-```bash title=".env"
-DATABASE_URL="postgresql://user:password@localhost:5432/mydb" # [!code --]
+## Versioning the Prisma 7 twin
 
-DATABASE_URL="postgresql://user:password@db.example.com:5432/mydb" # [!code ++]
-```
+The unversioned tree under `guides/` is Prisma 8. Prisma 7 guides live under `guides/v7/` with the same subpath, and the sidebar version dropdown switches between them.
 
-### Database provider compatibility
+When you port a Prisma 7 guide:
 
-Include an info admonition when commands or code are PostgreSQL-specific:
+1. Copy the Prisma 7 file to `guides/v7/<same subpath>` and change only its `url:` to the `/guides/v7/...` path. Keep its Prisma 7 pins.
+2. Add the file to the matching `guides/v7/<category>/meta.json` and to the list on [/guides/v7](/guides/v7).
+3. Write the Prisma 8 guide over the original path.
+4. Add this note right after the introduction of the Prisma 8 guide:
 
 ```markdown
-:::info
+:::note[Using Prisma 7?]
 
-If you are using a different database provider (MySQL, SQL Server, SQLite), install the corresponding driver adapter package instead of `@prisma/adapter-pg`. For more information, see [Database drivers](/orm/v7/core-concepts/supported-databases/database-drivers).
+Prisma 8 is the current release of Prisma ORM. Prisma 7 remains fully supported; the Prisma 7 version of this guide is at [/guides/v7/[category]/[slug]](/guides/v7/[category]/[slug]).
 
 :::
 ```
 
-### Prisma Client instantiation
+If a topic cannot be ported because Prisma 8 does not support it yet (for example Cloudflare D1, or a third-party adapter that requires Prisma Client), move the page under `guides/v7/` and add a redirect from the old URL in `apps/docs/vercel.json`. Do not leave a Prisma 7 page at a Prisma 8 URL without a version marker.
 
-Show the standard pattern for creating a Prisma Client with database adapters:
+## Guide categories
 
-```typescript title="lib/prisma.ts"
-import { PrismaClient } from "../generated/prisma";
-import { PrismaPg } from "@prisma/adapter-pg";
-
-const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL!,
-});
-
-const prisma = new PrismaClient({
-  adapter,
-});
-
-export default prisma;
-```
-
-Include a warning about connection pooling:
-
-```markdown
-:::warning
-We recommend using a connection pooler (like [Prisma Accelerate](https://www.prisma.io/accelerate)) to manage database connections efficiently.
-:::
-```
-
-## Best practices
-
-1. **Keep it focused**
-   - Each guide should cover one main topic
-   - Break complex topics into multiple guides
-   - Link to related guides instead of duplicating content
-
-2. **Show don't tell**
-   - Include practical, real-world examples
-   - Provide complete, working code samples
-   - Explain why certain approaches are recommended
-
-3. **Consider the context**
-   - Explain prerequisites clearly
-   - Don't assume prior knowledge
-   - Link to foundational concepts within or outside of our docs when needed
-
-4. **Maintain consistency**
-   - Follow the established guide structure
-   - Use consistent terminology
-   - Match the style of existing guides
-
-5. **Think about maintenance**
-   - Use version numbers where appropriate
-   - Avoid time-sensitive references
-   - Consider future updates when structuring content
+| Category | Directory | Description | Examples |
+|----------|-----------|-------------|----------|
+| **Framework** | `guides/frameworks/` | Integrate Prisma 8 with frameworks | [Next.js](/guides/frameworks/nextjs), [Hono](/guides/frameworks/hono), [React Router](/guides/frameworks/react-router-7) |
+| **Runtime** | `guides/runtimes/` | Run Prisma 8 on a runtime | [Bun](/guides/runtimes/bun), [Deno](/guides/runtimes/deno) |
+| **Deployment** | `guides/deployment/` | Deploy apps and set up monorepos | [Docker](/guides/deployment/docker), [Cloudflare Workers](/guides/deployment/cloudflare-workers), [Turborepo](/guides/deployment/turborepo) |
+| **Integration** | `guides/integrations/` | Use Prisma 8 with platforms and tools | [GitHub Actions](/guides/integrations/github-actions), [AI SDK](/guides/integrations/ai-sdk) |
+| **Database** | `guides/database/` | Database patterns and migrations | [Multiple databases](/guides/database/multiple-databases), [Expand-and-contract migrations](/guides/database/data-migration), [Schema changes](/guides/database/schema-changes) |
+| **Authentication** | `guides/authentication/` | Authentication patterns | [Clerk with Next.js](/guides/authentication/clerk/nextjs) |
+| **Prisma Postgres** | `guides/postgres/` | Prisma Postgres features | [Vercel](/guides/postgres/vercel), [Netlify](/guides/postgres/netlify), [Viewing data](/guides/postgres/viewing-data) |
+| **Migration** | `guides/switch-to-prisma-orm/` | Switch from other ORMs | [From Drizzle](/guides/switch-to-prisma-orm/from-drizzle), [From Mongoose](/guides/switch-to-prisma-orm/from-mongoose) |
+| **Upgrade** | `guides/upgrade-prisma-orm/` | Move between Prisma versions | [Prisma 7 to 8 on PostgreSQL](/guides/upgrade-prisma-orm/postgresql) |
 
 ## Guide template
 
-Use this template as a starting point for new guides. The template includes common sections and patterns used across Prisma guides.
-
-### Basic template structure
-
-Copy this template for a new guide:
+Copy this template for a new guide that adds Prisma 8 to an existing framework project. For a `create-prisma` template project, replace step 1 with the scaffold command and drop the `orm init` step.
 
 ````markdown
 ---
 title: '[Your guide title]'
-description: '[One-sentence summary of what you'll learn]'
-image: '/img/guides/[guide-name]-cover.png'
+description: '[One sentence: what the reader builds]'
+url: /guides/[category]/[slug]
+metaTitle: How to use Prisma 8 with [Topic]
+metaDescription: '[One sentence for search results]'
 ---
 
 ## Introduction
 
-[Brief overview of what this guide covers and what you'll accomplish. Include a link to an example repository if available.]
+[What this guide builds and what the reader ends up with. Two or three sentences.]
+
+:::note[Using Prisma 7?]
+
+Prisma 8 is the current release of Prisma ORM. Prisma 7 remains fully supported; the Prisma 7 version of this guide is at [/guides/v7/[category]/[slug]](/guides/v7/[category]/[slug]).
+
+:::
 
 ## Prerequisites
 
-- [Node.js 20+](https://nodejs.org)
-- [Any other prerequisites]
+- [Node.js](https://nodejs.org) 24 or later
+- A PostgreSQL connection string, or nothing at all: `npx create-db@latest` creates a [Prisma Postgres](/postgres) database for you
 
-## 1. Set up your project
+## Use with your agent
 
-[Instructions for creating or setting up the project]
+<AgentPrompt>
+
+```text
+[Numbered instructions an agent can follow to complete this guide, referencing https://www.prisma.io/docs/guides/[category]/[slug].md]
+```
+
+</AgentPrompt>
+
+## 1. Set up the project
 
 ```npm
-# Example command
-npx create-next-app@latest my-app
-cd my-app
+[Framework scaffold command]
 ```
 
-## 2. Install and Configure Prisma
-
-### 2.1. Install dependencies
-
-To get started with Prisma, you'll need to install a few dependencies:
+## 2. Add Prisma 8
 
 ```npm
-npm install prisma@7.10.0 tsx @types/pg --save-dev
+npx prisma@latest orm init --target postgres
+```
+
+```text no-copy
+[Trimmed real output]
+```
+
+Set the connection string:
+
+```bash title=".env"
+DATABASE_URL="postgresql://user:password@localhost:5432/mydb"
+```
+
+## 3. Define the contract
+
+```prisma title="src/prisma/contract.prisma"
+[Your models]
 ```
 
 ```npm
-npm install @prisma/client@7.10.0 @prisma/adapter-pg dotenv pg
+npx prisma@latest contract emit
 ```
 
-:::info
-
-If you are using a different database provider (MySQL, SQL Server, SQLite), install the corresponding driver adapter package instead of `@prisma/adapter-pg`. For more information, see [Database drivers](/orm/v7/core-concepts/supported-databases/database-drivers).
-
-:::
-
-Once installed, initialize Prisma in your project:
+## 4. Initialize the database
 
 ```npm
-npx prisma init --output ../generated/prisma
+npx prisma@latest db init
 ```
 
-:::info
-
-`prisma init` creates the Prisma scaffolding and a local `DATABASE_URL`. In the next step, you will create a Prisma Postgres database and replace that value with a direct `postgres://...` connection string.
-
-:::
-
-This will create:
-
-- A `prisma` directory with a `schema.prisma` file
-- A Prisma Postgres database
-- A `.env` file containing the `DATABASE_URL`
-- A `prisma.config.ts` file for configuration
-
-Create a Prisma Postgres database and replace the generated `DATABASE_URL` in your `.env` file with the `postgres://...` connection string from the CLI output:
-
-```npm
-npx create-db
+```text no-copy
+"summary": "Applied N operation(s) across 1 space(s), database signed"
 ```
 
-### 2.2. Define your Prisma Schema
+## 5. [Integration-specific steps]
 
-In the `prisma/schema.prisma` file, add your models:
+[Framework or platform steps, each with its command and real output]
 
-```prisma title="prisma/schema.prisma"
-generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
-}
+## Common gotchas
 
-datasource db {
-  provider = "postgresql"
-}
+[Failures you hit while validating, with the verbatim error and the fix]
 
-model User { // [!code ++]
-  id    Int     @id @default(autoincrement()) // [!code ++]
-  email String  @unique // [!code ++]
-  name  String? // [!code ++]
-  posts Post[] // [!code ++]
-} // [!code ++]
+## Prompt your coding agent
 
-model Post { // [!code ++]
-  id        Int     @id @default(autoincrement()) // [!code ++]
-  title     String // [!code ++]
-  content   String? // [!code ++]
-  published Boolean @default(false) // [!code ++]
-  authorId  Int // [!code ++]
-  author    User    @relation(fields: [authorId], references: [id]) // [!code ++]
-} // [!code ++]
-```
+Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. Prompts that map to this guide:
 
-### 2.3. Run migrations and generate Prisma Client
-
-Create the database tables:
-
-```npm
-npx prisma migrate dev --name init
-```
-
-Then generate Prisma Client:
-
-```npm
-npx prisma generate
-```
-
-## 3. [Integration-specific steps]
-
-[Add framework or platform-specific integration steps here]
+- "[Prompt 1]"
+- "[Prompt 2]"
 
 ## Next steps
 
-Now that you've completed this guide, you can:
-
-- [Suggestion 1]
-- [Suggestion 2]
-- [Related guide 1](/path/to/guide)
-- [Related guide 2](/path/to/guide)
-
-For more information:
-
-- [Prisma documentation](/orm/v7)
-- [Related documentation]
+- [Learn the fundamentals](/orm/fundamentals/reading-data): filtering, sorting, pagination, and writes.
+- [Read the Prisma 8 overview](/orm) for the concepts behind contracts and typed queries.
 ````
 
 ## Adding guides to navigation
 
-Guides are organized by category in subdirectories. To add a guide to the navigation, you need to update the appropriate `meta.json` file.
-
-### Main categories
-
-The main guide categories are listed in `meta.json`:
-
-```json title="apps/docs/content/docs/guides/meta.json"
-{
-  "title": "Guides",
-  "root": true,
-  "icon": "NotebookTabs",
-  "pages": [
-    "index",
-    "frameworks",
-    "deployment",
-    "authentication",
-    "integrations",
-    "postgres",
-    "database",
-    "switch-to-prisma-orm",
-    "upgrade-prisma-orm"
-  ]
-}
-```
-
-### Adding a guide to a category
-
-To add a guide to a category (e.g., `frameworks`), edit the category's `meta.json` file:
+Guides are organized by category in subdirectories. To add a guide to the navigation, update the category's `meta.json`:
 
 ```json title="apps/docs/content/docs/guides/frameworks/meta.json"
 {
@@ -439,13 +322,9 @@ To add a guide to a category (e.g., `frameworks`), edit the category's `meta.jso
 }
 ```
 
-The page name should match your `.mdx` filename without the extension. For example, if your file is `your-new-guide.mdx`, add `"your-new-guide"` to the `pages` array.
+The page name is the `.mdx` filename without the extension. The top-level `guides/meta.json` lists the categories, and `guides/v7/meta.json` plus `guides/v7/<category>/meta.json` do the same for the Prisma 7 tree.
 
 ## Next steps
 
-After reading this guide, you can:
-
-- Start writing your own guide using the provided template
-- Review existing guides in the category you're contributing to
-- Coordinate with the design team for a unique header image
-- Submit your guide for review
+- Read the [Hono](/guides/frameworks/hono) guide and match its shape.
+- Validate your guide end to end, then open a pull request with the sandbox commands you ran in the description.
