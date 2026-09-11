@@ -14,22 +14,28 @@ All examples use PostgreSQL.
 
 ## Before you start
 
-Install the two packages and let `orm init` set the project up. It writes `prisma.config.ts`, a starter `src/prisma/contract.prisma`, and `src/prisma/db.ts`, and installs `dotenv`:
+Install the command-line tool and the PostgreSQL library:
 
 ```npm
 npm install --save-dev prisma
 npm install @prisma/orm-postgres
+```
+
+Then run the setup command:
+
+```npm
 npx prisma orm init
 ```
 
-Every query example on this page imports `db` from that `src/prisma/db.ts`; the file is shown under [Queries](#queries).
+It writes three files: `prisma.config.ts`, a starter `src/prisma/contract.prisma`, and `src/prisma/db.ts`. It also installs `dotenv`, which `db.ts` uses to read `.env`.
 
-Two things to know first:
+The starter contract is a placeholder. If you have an existing database, generate your contract from it with `npx prisma contract infer` and check the result against the table below. If you would rather convert your `schema.prisma` by hand, the table is the mapping.
 
-- The starter contract `orm init` writes is a placeholder. For an existing database, generate your contract from it with `npx prisma contract infer`, then check the result against the schema table below. For a schema you want to convert by hand, the same table is the mapping.
-- In a project that still runs Prisma ORM 7, do not install `prisma` at version 8 on its own: it replaces the version 7 command-line tool. [Release status](/prisma-orm/release-status) shows how to install both.
+If your project still runs Prisma ORM 7, do not install `prisma` at version 8 on its own: it replaces the version 7 command-line tool. Step 1 of [Migrate from Prisma ORM 7 to 8](/guides/upgrade-prisma-orm/postgresql) installs both side by side.
 
-## Schema
+Commands are written as `prisma ...` in the tables below. Run them as `npx prisma ...`.
+
+## `schema.prisma` is now `contract.prisma`
 
 `schema.prisma` is now `src/prisma/contract.prisma`. It is the same file, renamed: you still describe your models in it. (In Prisma ORM 8 docs, "schema" means the live database structure. See [Core concepts](/orm/core-concepts).)
 
@@ -45,7 +51,7 @@ The biggest visible change is that database types are written as the type itself
 | `String @db.VarChar(255)` | `VarChar(255)` | |
 | `Decimal @db.Decimal(10, 2)` | `Numeric(10, 2)` | plain `Decimal` still exists when you do not need a precision and scale |
 | `String @db.Uuid` | `Uuid` | |
-| `DateTime` | `DateTime` | same name, but values come back as `Temporal.Instant` objects instead of JavaScript `Date`. See the note below the table |
+| `DateTime` | `DateTime` | same name. Values come back as `Temporal.Instant`, not JavaScript `Date`. See the note below the table |
 | `DateTime @updatedAt` | `updatedAt temporal.updatedAt()` | set on create and on every update. `temporal.` is built into the schema language; there is nothing to import |
 | `DateTime @default(now())` | `DateTime @default(now())`, or `createdAt temporal.createdAt()` | both work |
 | `String @default(cuid())` | `String @default(cuid(2))` | plain `cuid()` is rejected; the error message tells you to use `cuid(2)` |
@@ -58,7 +64,15 @@ The biggest visible change is that database types are written as the type itself
 
 :::note[DateTime values and Node.js versions]
 
-A `DateTime` column is read as a `Temporal.Instant`, not a JavaScript `Date`. Node.js 26 and later have `Temporal` built in (Homebrew's build of Node.js 26 does not; run `node -p "typeof Temporal"` to check). On Node.js 25 and earlier, which includes the supported 22 and 24 lines, this applies to every `DateTime` column: install `temporal-polyfill` and add `import "temporal-polyfill/full/global"` at the top of `src/prisma/db.ts`, or declare the column as `TimestamptzString` to read and write it as text. Nothing changes in the database either way.
+The `DateTime` type reads and writes its values as `Temporal.Instant` objects. That is what `DateTime` is defined to return; other date and time types return other representations. If you would rather work with strings, declare the column as `TimestamptzString`.
+
+`Temporal` is built into Node.js 26 and later. It is not in Node.js 22 or 24. On those versions, install `temporal-polyfill` and add this line at the top of `src/prisma/db.ts`:
+
+```ts
+import "temporal-polyfill/full/global";
+```
+
+Homebrew's build of Node.js 26 leaves `Temporal` out. Check with `node -p "typeof Temporal"`; if it prints `undefined`, add the polyfill.
 
 :::
 
@@ -103,7 +117,15 @@ export default definePrismaConfig({
 });
 ```
 
-The `orm` section takes `contract` (the path to your contract) and `db` (the connection), and optionally `output` (where `contract.json` and `contract.d.ts` are written; next to the contract by default), `extensions` (database extensions such as pgvector), and `migrations` (where migration files are kept; `migrations/` by default). There is no `provider` setting: for MongoDB you import `ormConfig` from `@prisma/orm-mongo/config` instead. You can also write the contract in TypeScript instead of the schema language by pointing `contract` at a `.ts` file; this page shows the schema language.
+The `orm` section takes these keys:
+
+- `contract`: the path to your contract file. A `.ts` path means you write the contract in TypeScript instead; this page shows the schema language.
+- `db`: the connection.
+- `output` (optional): where `contract.json` and `contract.d.ts` are written. Default: next to the contract.
+- `extensions` (optional): database extensions such as pgvector.
+- `migrations` (optional): where migration files are kept. Default: `migrations/`.
+
+There is no `provider` setting. For MongoDB, import `ormConfig` from `@prisma/orm-mongo/config` instead.
 
 ## Commands
 
@@ -135,9 +157,9 @@ New commands with no Prisma ORM 7 counterpart, the four you will meet first:
 
 The rest are in the [CLI reference](/cli).
 
-## Queries
+## `src/prisma/db.ts` replaces `PrismaClient`
 
-Instead of a generated `PrismaClient`, you create the client yourself in one file, `src/prisma/db.ts`, from the two files `prisma contract emit` wrote:
+There is no generated `PrismaClient`. You create the client once, in `src/prisma/db.ts`, from the two files `prisma contract emit` wrote:
 
 ```ts title="src/prisma/db.ts"
 import "dotenv/config";
@@ -151,9 +173,11 @@ export const db = postgres<Contract>({
 });
 ```
 
-`prisma orm init` writes this file for you. Every example below imports `db` from it.
+`prisma orm init` writes this file for you. Every example on this page imports `db` from it.
 
-On `db`: `db.orm` holds your models. `db.raw.sql` builds a raw SQL query and `db.runtime().query()` runs it. `db.transaction` runs several queries in one transaction. To add middleware, add a `middleware: [...]` key to the `postgres({ ... })` call above.
+`db.orm` holds your models. `db.raw.sql` builds a raw SQL query and `db.runtime().query()` runs it. `db.transaction` runs several queries in one transaction. To add middleware, add a `middleware: [...]` key to the `postgres({ ... })` call above.
+
+## Queries
 
 A query is a chain of calls that ends with the call that runs it (`.all()`, `.first()`, `.create(...)`, and so on), instead of one method with one big options object.
 
@@ -274,7 +298,7 @@ Prisma ORM 7 features that have no direct form in Prisma ORM 8 today, with what 
 
 | Prisma ORM 7 feature | Status | What to do instead |
 | --- | --- | --- |
-| `createMany({ skipDuplicates: true })` | available in a different form | `.upsert({ create, update: {}, conflictOn })` one row at a time skips rows that already exist. There is no batch form |
+| `skipDuplicates` on `createMany` | not available | `createMany` itself is `.createAll([...])` or `.createAndCount([...])` (see the queries table). To skip rows that already exist, `.upsert({ create, update: {}, conflictOn })` one row at a time; there is no batch form |
 | `{ increment: n }` / `{ decrement: n }` in an update | not available | write the arithmetic as raw SQL (see the example above), or read the value and write it back inside `db.transaction(...)` |
 | `findUniqueOrThrow` / `findFirstOrThrow` | not available on the query | the usual form is `.first()` and a `null` check. If you want the throw, `.where({ id }).all().firstOrThrow()` throws `RUNTIME.NO_ROWS` when nothing matches; it fetches every matching row first, so only with a unique `where` |
 | `mode: "insensitive"` | available in a different form | on PostgreSQL, `.ilike("%alice%")` on a text field. You write the `%` wildcards yourself |
@@ -285,7 +309,7 @@ Prisma ORM 7 features that have no direct form in Prisma ORM 8 today, with what 
 | implicit many-to-many relations | available in a different form | write the join table as a model; see the example under [Schema](#schema) |
 | `@@map` on an `enum` | not available | an `enum` cannot be renamed in the database. If you need a real PostgreSQL enum type with a specific name, declare it with `native_enum`, which does accept `@@map` |
 | `$use` middleware | available in a different form | pass `middleware: [...]` when you create the client in `db.ts`. Your function receives each query before it runs and can log it, change it, or block it; there is no `params.model` or `params.action`. [How middleware works](/orm/middleware/how-middleware-works) shows the function's shape |
-| `$extends` (computed fields, custom model methods, query wrapping) | not available | compute derived values in your own code after the query, and put custom model methods in your own functions. (Prisma ORM 8 has something also called extensions, which add database types such as pgvector; it is not a replacement for `$extends`.) |
+| `$extends` (computed fields, custom model methods, query wrapping) | will not be added | use middleware to wrap or change queries (see the `$use` row), compute derived values in your own code after the query, and put custom model methods in your own functions. Prisma ORM 8 has something also called extensions, which add database types such as pgvector; it is not a replacement for `$extends` |
 
 Also not available today:
 
