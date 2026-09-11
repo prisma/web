@@ -1,9 +1,9 @@
 ---
 title: SQL query builder reference
-description: 'Reference for the Prisma 8 SQL query builder''s select, mutation, and grouped query methods.'
+description: 'Reference for the Prisma ORM SQL query builder''s select, mutation, and grouped query methods.'
 url: /orm/reference/sql-query-builder
-metaTitle: Prisma 8 SQL query builder reference
-metaDescription: 'Reference for the Prisma 8 SQL query builder''s select, mutation, and grouped query methods.'
+metaTitle: Prisma ORM SQL query builder reference
+metaDescription: 'Reference for the Prisma ORM SQL query builder''s select, mutation, and grouped query methods.'
 ---
 
 The SQL query builder gives you table-level, SQL-shaped methods for building typed queries: `select()`, `innerJoin()`, `groupBy()`, and the rest. It's the lower-level escape hatch that sits alongside the [ORM client](/orm/reference/orm-client). Reach for it when you need a join, aggregate, or SQL feature the ORM client doesn't expose, or when you want direct control over the generated SQL.
@@ -336,7 +336,7 @@ Correlate a per-row subquery against the outer row: for each outer row, the join
 
 #### Remarks
 
-- **Availability:** `lateralJoin()` requires the adapter to report the `sql.lateral` capability. Prisma 8's PostgreSQL adapter reports it, so the method is available on PostgreSQL. Adapters that don't report `sql.lateral` won't expose the method.
+- **Availability:** `lateralJoin()` requires the adapter to report the `sql.lateral` capability. Prisma ORM's PostgreSQL adapter reports it, so the method is available on PostgreSQL. Adapters that don't report `sql.lateral` won't expose the method.
 - The callback receives a `lateral` builder. Start its subquery with `lateral.from(otherTable)`, then chain the usual `SELECT` methods. The subquery can filter on the outer row's columns (`f.user.id`).
 - Return the query chain **directly** from the callback. Do **not** call `.as(...)` on it: `lateralJoin()`'s own first argument already names the derived table, and `.as(...)` returns the wrong shape (a bare join source), which throws `subquery.getRowFields is not a function`.
 - When the outer table and the lateral table share a column name (for example both have `id` and `createdAt`), the merged scope **drops** the ambiguous names. Reach them through their table namespace instead (`f.post.id`, `f.post.createdAt`); a bare `select('id')` or `orderBy((f) => f.createdAt, ...)` throws because the ambiguous name isn't in scope.
@@ -450,7 +450,7 @@ Keep the first row per distinct key, according to the query's `orderBy()` (`DIST
 
 #### Remarks
 
-- **Availability:** `distinctOn()` requires the adapter to report the `postgres.distinctOn` capability. `DISTINCT ON` is a PostgreSQL-only SQL extension, so it lives under the `postgres` capability namespace rather than the shared `sql` one. It's available on Prisma 8's PostgreSQL adapter.
+- **Availability:** `distinctOn()` requires the adapter to report the `postgres.distinctOn` capability. `DISTINCT ON` is a PostgreSQL-only SQL extension, so it lives under the `postgres` capability namespace rather than the shared `sql` one. It's available on Prisma ORM's PostgreSQL adapter.
 - Pair it with an `orderBy()` on the same key(s) to control which row is kept per key. This ordering requirement is not type-enforced; supply it yourself for a meaningful result.
 
 #### Options
@@ -580,8 +580,8 @@ model Order {
 
 </details>
 
-:::warning[Aggregate results can decode as strings]
-At this raw SQL layer there is no ORM decode step, so the PostgreSQL driver's default parsers apply. `COUNT()` (bigint) and `SUM()` / `AVG()` over an integer column (PostgreSQL promotes these to `numeric`) decode as JavaScript **strings**, not numbers, to avoid precision loss. `MIN()` and `MAX()` over an integer column stay integers and decode as numbers. Call `Number(...)` on `COUNT` / `SUM` / `AVG` results before doing arithmetic. A `.returns(...)` codec annotation does not change this: it's a compile-time type declaration, not a runtime cast, so a raw `EXTRACT(...)` typed `.returns('pg/int4@1')` still decodes as a string. Comparisons inside `having()` and `where()` are unaffected, because PostgreSQL evaluates them server-side.
+:::note[Aggregates decode as numbers, with lossless variants beside them]
+`count()`, `sum()` over an integer column, and `avg()` over an integer column all return a JavaScript `number`. For `count()` and integer `sum()`, a value outside the safe-integer range, ±(2^53 − 1), raises `RUNTIME.DECODE_FAILED` rather than answering with a rounded value (`avg()` is computed as `float8` and has no such guard), so reach for the lossless form when the magnitude is real: `countBigInt()` returns a `bigint`, `sumBigInt(field)` returns a `bigint`, and `avgDecimal(field)` returns an exact decimal string. `min()` and `max()` return the input column's own type.
 :::
 
 ### `groupBy()`
@@ -613,7 +613,7 @@ const plan = db.sql.public.order
   .orderBy('customerId', { direction: 'asc' })
   .build();
 const rows = await runtime.query(plan);
-// orderCount decodes as a string: e.g. { customerId: acmeId, orderCount: '5' }
+// e.g. { customerId: acmeId, orderCount: 5 }
 ```
 
 ##### Group by a computed value
@@ -625,7 +625,8 @@ const plan = db.sql.public.order
   .groupBy((f, fns) => fns.raw`EXTRACT(YEAR FROM ${f.placedAt})`.returns('pg/int4@1'))
   .build();
 const rows = await runtime.query(plan);
-// rows === [{ yearPlaced: '2024', orderCount: '10' }] — both decode as strings
+// rows === [{ yearPlaced: '2024', orderCount: 10 }]
+// yearPlaced is a string: a raw expression is not decoded through a codec, and EXTRACT returns numeric.
 ```
 
 ### `having()`
@@ -634,7 +635,7 @@ Filter groups by an aggregate comparison. Build the predicate from the aggregate
 
 #### Remarks
 
-- PostgreSQL evaluates the comparison server-side, so it works correctly even though the aggregate value would decode as a string on the JavaScript side (see the warning above).
+- PostgreSQL evaluates the comparison server-side. Compare against a plain JavaScript number: `fns.gt(fns.count(), 1)`, not `1n`.
 
 #### Options
 
@@ -660,7 +661,7 @@ const plan = db.sql.public.order
   .having((f, fns) => fns.gt(fns.sum(f.amount), 1000))
   .build();
 const rows = await runtime.query(plan);
-// only the customer whose orders sum over 1000; totalAmount decodes as '1500'
+// only the customer whose orders sum over 1000; totalAmount is 1500
 ```
 
 ##### Compare with `count()`, `avg()`, `min()`, `max()`
@@ -683,8 +684,8 @@ const minMaxPlan = db.sql.public.order
 
 const avgRows = await runtime.query(avgPlan);
 const minMaxRows = await runtime.query(minMaxPlan);
-// avgAmount decodes as a string ('300.0000000000000000');
-// minAmount / maxAmount decode as numbers (100 / 500)
+// avgAmount is 300; avgDecimal(f.amount) would give the exact '300.0000000000000000'
+// minAmount / maxAmount are 100 / 500
 ```
 
 ### Ordering and limiting a grouped query
@@ -759,7 +760,7 @@ Return columns from the rows affected by an `insert()`, `update()`, or `delete()
 
 #### Remarks
 
-- **Availability:** `returning()` requires the adapter to report the `sql.returning` capability. Prisma 8's PostgreSQL adapter reports it. Adapters that don't (for example a SQL target without `RETURNING`) won't expose the method.
+- **Availability:** `returning()` requires the adapter to report the `sql.returning` capability. Prisma ORM's PostgreSQL adapter reports it. Adapters that don't (for example a SQL target without `RETURNING`) won't expose the method.
 
 #### Options
 
@@ -898,7 +899,7 @@ Callback forms receive a function bag `fns` alongside the field accessor. `fns` 
 
 ### Built-in functions
 
-The complete built-in set is fixed:
+These are fixed:
 
 | Category | Functions |
 |---|---|
@@ -907,9 +908,21 @@ The complete built-in set is fixed:
 | Boolean | `and`, `or` |
 | Existence | `exists`, `notExists` |
 | Raw SQL | `raw` |
-| Aggregate (grouped queries) | `count`, `sum`, `avg`, `min`, `max` |
 
-Nothing else is built in. Any further function is registered dynamically: `ilike` is registered by the Postgres adapter for textual columns, while functions like `cosineDistance` come from an extension pack (pgvector) registered for your contract; without the matching adapter or extension pack, those functions are absent.
+The aggregates are not a fixed list. They come from the aggregate map in your emitted contract, which each target and extension contributes to, so which ones exist depends on your database. PostgreSQL contributes eight:
+
+| Function | Returns |
+|---|---|
+| `count()` / `count(field)` | `number`. With no argument it counts rows; with a field it counts that field's non-null values |
+| `countBigInt()` / `countBigInt(field)` | `bigint`, the lossless form of `count` |
+| `sum(field)` | `number` over an integer column, the column's own float or decimal type otherwise |
+| `sumBigInt(field)` | `bigint`, the lossless form of `sum` over an integer column |
+| `avg(field)` | `number` over an integer or float column |
+| `avgDecimal(field)` | An exact decimal string, the lossless form of `avg` |
+| `min(field)` | The input column's own type |
+| `max(field)` | The input column's own type |
+
+Any further function is registered dynamically: `ilike` is registered by the Postgres adapter for textual columns, while functions like `cosineDistance` come from an extension pack (pgvector) registered for your contract; without the matching adapter or extension pack, those functions are absent.
 
 :::note[No `COALESCE` or `CAST` helpers]
 There is no `fns.coalesce` or `fns.cast`. Express `COALESCE`, `CAST`, and any other SQL function you need with [`fns.raw`](#fnsraw-and-returns) and an explicit `.returns(...)` codec.
@@ -917,7 +930,7 @@ There is no `fns.coalesce` or `fns.cast`. Express `COALESCE`, `CAST`, and any ot
 
 ### `fns.raw` and `.returns()`
 
-Write a raw SQL fragment as a tagged template. Interpolate columns and typed expressions with `${...}`; each interpolation is parameterized. For bare JavaScript values, always wrap them in `param(...)` with an explicit codec id: bare-scalar interpolation is currently broken on PostgreSQL (see the [raw queries reference](/orm/reference/raw-queries#binding-a-bare-value-with-param) for the verified details). Call `.returns(codecId)` to declare the fragment's result type.
+Write a raw SQL fragment as a tagged template. Interpolate columns, typed expressions, and bare JavaScript values with `${...}`; each interpolation is parameterized. A bare value's codec is inferred from its type; wrap it in `param(...)` with an explicit codec id when you want a different one (see the [raw queries reference](/orm/reference/raw-queries#binding-a-bare-value-with-param)). Call `.returns(codecId)` to declare the fragment's result type.
 
 #### Options
 
@@ -928,7 +941,7 @@ Write a raw SQL fragment as a tagged template. Interpolate columns and typed exp
 
 #### Remarks
 
-- `.returns(codecId)` is a **compile-time type annotation only**. It does not cast the value in SQL or change how the driver decodes it. A raw expression PostgreSQL computes as `numeric` still decodes as a string even when annotated `'pg/int4@1'` (see the [grouped-query warning](#grouped-queries)).
+- `.returns(codecId)` is a **compile-time type annotation only**. It does not cast the value in SQL or change how the driver decodes it. A raw expression PostgreSQL computes as `numeric` still decodes as a string even when annotated `'pg/int4@1'`, because raw fragments are not decoded through a codec (see [Group by a computed value](#group-by-a-computed-value)).
 - Use `fns.raw` for any SQL feature without a dedicated helper: `COALESCE`, `CAST`, `LENGTH`, `UPPER`, `EXTRACT`, and so on.
 
 #### Examples

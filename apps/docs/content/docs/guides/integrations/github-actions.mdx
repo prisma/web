@@ -1,276 +1,434 @@
 ---
 title: GitHub Actions
-description: Provision and manage Prisma Postgres databases per pull request using GitHub Actions and Prisma REST API
+description: 'Provision a Prisma Postgres database for every pull request with GitHub Actions and the Prisma CLI, apply your migrations and seed data to it, and delete it when the pull request closes.'
 image: /img/guides/prisma-postgres-github-actions-cover.png
 url: /guides/integrations/github-actions
 metaTitle: How to provision preview databases with GitHub Actions and Prisma Postgres
-metaDescription: Provision and manage Prisma Postgres databases per pull request using GitHub Actions and Prisma REST API
+metaDescription: 'Provision and manage Prisma Postgres databases per pull request with GitHub Actions and the Prisma 8 CLI: create the database, run migrations and seed it in CI, and clean it up on close.'
 ---
 
-## Overview
+## Introduction
 
-This guide shows you how to automatically create and delete [Prisma Postgres](https://www.prisma.io/postgres) databases using GitHub Actions and [the Prisma Postgres REST API](https://api.prisma.io/v1/swagger-editor). The setup provisions a new database for every pull request, seeds it with sample data, and the `github-actions` bot leaves a comment with the database name and the status.
+This guide shows you how to create and delete [Prisma Postgres](/postgres) databases from GitHub Actions with the Prisma CLI. The workflow provisions a database for every pull request, applies your checked-in migrations, seeds it with sample data, and leaves a comment on the pull request with the database name and status.
 
 ![GitHub Actions comment](/img/guides/github-comment.png)
 
-After the PR is closed, the database is automatically deleted. This allows you to test changes in isolation without affecting the main development database.
+When the pull request is closed, the workflow deletes the database. Every pull request gets its own isolated database, so migrations and data changes can be tested without touching a shared development database.
+
+The project setup, migrations, seed script, and the `postgres create`, `postgres list`, and `postgres connection create` commands below were run against a live Prisma Postgres database. The workflow file is assembled from those commands.
+
+:::note[Using Prisma 7?]
+
+Prisma 8 is the current release of Prisma ORM. Prisma 7 remains fully supported; the Prisma 7 version of this guide is at [/guides/v7/integrations/github-actions](/guides/v7/integrations/github-actions).
+
+:::
 
 ## Prerequisites
 
-Make sure you have the following:
-
-- Node.js 20 or later
+- [Node.js](https://nodejs.org) 24 or later
 - A [Prisma Data Platform](https://console.prisma.io?utm_source=actions_guide&utm_medium=docs) account
-- GitHub repository
+- A GitHub repository
+- `jq`, to read the CLI's JSON output (GitHub-hosted runners have it preinstalled)
 
-## 1. Set up your project
+## Use with your agent
 
-Initialize your project:
+To delegate this guide to your coding agent, copy the prompt below and hand it over:
+
+<AgentPrompt>
+
+```text
+Set up per-pull-request Prisma Postgres databases for this project with GitHub Actions and Prisma 8.
+
+1. Add Prisma 8 to the project with `npx prisma@latest orm init --yes --target postgres --authoring psl` (run it after a lockfile exists), then run `npx prisma@latest init` so the Prisma agent skills are installed and stay current, and use them. Define User and Post models in `src/prisma/contract.prisma`, run `npx prisma@latest contract emit`, then `npx prisma@latest migration plan --name init` and `npx prisma@latest db migrate` against the DATABASE_URL I give you (or one from `npx create-db@latest`).
+2. Write `src/prisma/seed.ts` that creates two users with posts through `db.orm.public.User.create` and `db.orm.public.Post.create`, skips when users already exist (use `.aggregate((a) => ({ total: a.count() }))`, not `.count()`), and ends with `await db.close()`. Add a `seed` script and verify `npm run seed` works twice.
+3. Check `npx prisma@latest auth whoami`; if I am not signed in, stop and ask me to run `npx prisma@latest auth login`. Create a dedicated platform project with `npx prisma@latest project create <name>` and show me the project id.
+4. Write `.github/workflows/prisma-postgres-preview.yml` following https://www.prisma.io/docs/guides/integrations/github-actions.md: a provision job that finds or creates a database named after the pull request with `npx prisma@latest postgres list|create --project "$PRISMA_PROJECT_ID" --json`, reads `.envelope.result.connectionString` with jq, runs `db migrate --db`, `db verify --db`, and `npm run seed`, then comments on the pull request; and a cleanup job that deletes the database with `postgres delete <id> --confirm <id>` when the pull request closes. Always pass `--project`; the CLI does not read PRISMA_PROJECT_ID from the environment for these commands.
+5. Tell me which GitHub secrets to add: PRISMA_SERVICE_TOKEN, PRISMA_WORKSPACE_ID, PRISMA_PROJECT_ID.
+```
+
+</AgentPrompt>
+
+## 1. Set up the project
+
+Create a project and make it an ES module:
 
 ```npm
 mkdir prisma-gha-demo && cd prisma-gha-demo
 npm init -y
+npm pkg set type=module
+npm install
 ```
 
-## 2. Install and configure Prisma
+The empty `npm install` writes a `package-lock.json`. `orm init` picks the package manager from the lockfile it finds, so creating one first keeps the setup on npm.
 
-In this section, you'll set up Prisma in your project and verify that it works locally before integrating it into GitHub Actions. This involves installing Prisma's dependencies, connecting to a Prisma Postgres database, defining your data models, applying your schema, and seeding the database with sample data.
+## 2. Add Prisma 8
 
-By the end of this section, your project will be fully prepared to use Prisma both locally and in a CI workflow.
+In this step you add Prisma 8 to the project, define the data model, create the first migration, and seed the database locally. Everything you do here runs again inside GitHub Actions in step 4, against a fresh database.
 
-### 2.1. Install dependencies
-
-To get started with Prisma, install the required dependencies:
+### 2.1. Initialize Prisma 8
 
 ```npm
-npm install prisma@7.10.0 tsx @types/pg dotenv --save-dev
+npx prisma@latest orm init --yes --target postgres --authoring psl
 ```
 
-```npm
-npm install @prisma/client@7.10.0 @prisma/adapter-pg pg
+This writes `prisma.config.ts`, `src/prisma/contract.prisma`, `src/prisma/db.ts`, `.env.example`, `tsconfig.json`, and `prisma-next.md`, installs `@prisma/orm-postgres` and `dotenv` plus the `prisma`, `@types/node`, and `@prisma/cli-engine` dev dependencies, and emits `src/prisma/contract.json` and `src/prisma/contract.d.ts`.
+
+Those two emitted files are the whole client. There is no generated client package, no `prisma generate`, and no driver adapter to install: the runtime in `src/prisma/db.ts` reads `contract.json` and connects with the `DATABASE_URL` it finds in `.env`.
+
+```typescript title="src/prisma/db.ts" no-copy
+import 'dotenv/config';
+import postgres from '@prisma/orm-postgres/runtime';
+import type { Contract } from './contract.d';
+import contractJson from './contract.json' with { type: 'json' };
+
+export const db = postgres<Contract>({
+  contractJson,
+  url: process.env['DATABASE_URL']!,
+});
 ```
 
-:::info
+### 2.2. Define the contract
 
-If you are using a different database provider (MySQL, SQL Server, SQLite), install the corresponding driver adapter package instead of `@prisma/adapter-pg`. For more information, see [Database drivers](/orm/v7/core-concepts/supported-databases/database-drivers).
+`orm init` starts you with `User` and `Post` models. Add a `published` flag to `Post`:
 
-:::
-
-Once installed, initialize Prisma:
-
-```npm
-npx prisma init --output ../src/generated/prisma
-```
-
-This creates:
-
-- A `prisma/` directory with `schema.prisma`
-- A `.env` file with `DATABASE_URL`
-- A generated client in `src/generated/prisma`
-
-Create a Prisma Postgres database and replace the generated `DATABASE_URL` in your `.env` file with the `postgres://...` connection string from the CLI output:
-
-```npm
-npx create-db
-```
-
-### 2.2. Define your Prisma schema
-
-Edit `prisma/schema.prisma` to:
-
-```prisma title="prisma/schema.prisma"
-generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
-}
-
-datasource db {
-  provider = "postgresql"
-}
+```prisma title="src/prisma/contract.prisma"
+// use prisma-next
 
 model User {
-  id    Int     @id @default(autoincrement())
-  email String  @unique
-  name  String?
-  posts Post[]
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  username  String?
+  name      String?
+  posts     Post[]
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
 }
 
 model Post {
-  id        Int     @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   title     String
   content   String?
-  published Boolean @default(false)
+  published Boolean  @default(false) // [!code ++]
+  author    User     @relation(fields: [authorId], references: [id])
   authorId  Int
-  author    User    @relation(fields: [authorId], references: [id])
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
 }
 ```
 
-Create a `prisma.config.ts` file to configure Prisma with seeding:
-
-```typescript title="prisma.config.ts"
-import "dotenv/config"; // [!code ++]
-import { defineConfig, env } from "prisma/config"; // [!code ++]
-// [!code ++]
-export default defineConfig({
-  // [!code ++]
-  schema: "prisma/schema.prisma", // [!code ++]
-  migrations: {
-    // [!code ++]
-    path: "prisma/migrations", // [!code ++]
-    seed: `tsx src/seed.ts`, // [!code ++]
-  }, // [!code ++]
-  datasource: {
-    // [!code ++]
-    url: env("DATABASE_URL"), // [!code ++]
-  }, // [!code ++]
-}); // [!code ++]
-```
-
-:::note
-
-You'll need to install the `dotenv` package:
+Emit the contract again so `contract.json` and the types match:
 
 ```npm
-npm install dotenv
+npx prisma@latest contract emit
 ```
 
-:::
+```text no-copy
+✔ Emitted contract.json and contract.d.ts
 
-### 2.3. Run initial migration and generate client
+storageHash:    be6f22ab71a1817feececf0649ec929885e503b612c712bb113d4b5012109a73
+executionHash:  4abff323cc88151ef9c9a0ec90122cfee6d46814a118cdb66a9fdd94a4123463
+profileHash:    3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2
+```
+
+### 2.3. Connect a development database
+
+Copy `.env.example` to `.env` and set `DATABASE_URL` to a PostgreSQL database you can use for development. A local PostgreSQL works, or create a Prisma Postgres database with `npx create-db@latest` and paste the connection string it prints:
+
+```bash title=".env"
+DATABASE_URL="postgres://user:password@localhost:5432/prisma_gha_demo"
+```
+
+`prisma.config.ts` loads `.env`, so every CLI command below reads this value. The workflow overrides it per run with `--db`.
+
+### 2.4. Plan and apply the first migration
+
+The workflow applies migrations that are committed to the repository, so create the first one now:
 
 ```npm
-npx prisma migrate dev --name init
+npx prisma@latest migration plan --name init
 ```
 
-Then generate Prisma Client:
+```text no-copy
+✔ Planned 6 operation(s)
+
+migrations/app/20260910T1549_init
+├─ Create schema "public"
+├─ Create table "post"
+├─ Create table "user"
+├─ Add unique constraint on "user" (email)
+├─ Create index "post_authorId_idx_e47547ed" on "post"
+└─ Add foreign key "post_authorId_fkey" on "post"
+
+from:       (baseline)
+to:         be6f22ab71a1817feececf0649ec929885e503b612c712bb113d4b5012109a73
+app space:  migrations/app/20260910T1549_init
+```
+
+`migration plan` is offline. It writes a migration directory under `migrations/app/` and prints a DDL preview; it does not touch the database. Apply it to your development database:
 
 ```npm
-npx prisma generate
+npx prisma@latest db migrate
 ```
 
-This pushes your schema and prepares the client.
+```text no-copy
+✔ Applied 1 migration(s) (6 operation(s)) across 1 contract space(s)
 
-### 2.4. Seed the database
+App space
+├─ Create schema "public"
+├─ Create table "post"
+├─ Create table "user"
+├─ Add unique constraint on "user" (email)
+├─ Create index "post_authorId_idx_e47547ed" on "post"
+├─ Add foreign key "post_authorId_fkey" on "post"
+└─ marker be6f22ab71a1817feececf0649ec929885e503b612c712bb113d4b5012109a73
+```
 
-Create a file at `src/seed.ts`:
+Commit the `migrations/` directory. Whenever you change the contract, run `contract emit`, `migration plan --name <change>`, and `db migrate` again; the pull request's database then receives exactly the migrations the pull request adds. See [How migrations work](/orm/migrations/how-migrations-work) for the full loop.
 
-```tsx title="src/seed.ts"
-import { PrismaClient } from "../src/generated/prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-import "dotenv/config";
+### 2.5. Seed the database
 
-const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL!,
-});
+Create `src/prisma/seed.ts`. Prisma 8 writes take one row at a time and return the inserted row, so create each user, then create its posts with the returned `id`:
 
-const prisma = new PrismaClient({
-  adapter,
-});
+```typescript title="src/prisma/seed.ts"
+import { db } from "./db.ts";
 
-const userData = [
+const users = [
   {
     name: "Alice",
     email: "alice@prisma.io",
-    posts: {
-      create: [
-        {
-          title: "Join the Prisma Discord",
-          content: "https://pris.ly/discord",
-          published: true,
-        },
-        {
-          title: "Prisma on YouTube",
-          content: "https://pris.ly/youtube",
-        },
-      ],
-    },
+    posts: [
+      { title: "Join the Prisma Discord", content: "https://pris.ly/discord", published: true },
+      { title: "Prisma on YouTube", content: "https://pris.ly/youtube", published: false },
+    ],
   },
   {
     name: "Bob",
     email: "bob@prisma.io",
-    posts: {
-      create: [
-        {
-          title: "Follow Prisma on Twitter",
-          content: "https://twitter.com/prisma",
-          published: true,
-        },
-      ],
-    },
+    posts: [
+      { title: "Follow Prisma on Twitter", content: "https://twitter.com/prisma", published: true },
+    ],
   },
 ];
 
-export async function main() {
-  for (const u of userData) {
-    await prisma.user.create({ data: u });
+async function main() {
+  const { total } = await db.orm.public.User.aggregate((a) => ({ total: a.count() }));
+  if (total > 0) {
+    console.log(`Database already has ${total} users, skipping seed`);
+    return;
+  }
+
+  for (const { posts, ...user } of users) {
+    const created = await db.orm.public.User.create(user);
+    for (const post of posts) {
+      await db.orm.public.Post.create({ ...post, authorId: created.id });
+    }
+    console.log(`Seeded ${created.email} with ${posts.length} posts`);
   }
 }
 
 main()
-  .catch(console.error)
-  .finally(() => prisma.$disconnect());
+  .catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  })
+  .finally(() => db.close());
 ```
 
-Update your `package.json`:
+The guard at the top makes the script safe to run twice, which matters when a pull request is reopened and the workflow runs against a database that already has data. The `db.close()` at the end releases the connection pool; without it the process keeps running after the seed finishes.
+
+Add a script for it:
 
 ```json title="package.json"
 {
-  {
-  "name": "prisma-gha-demo",
-  "version": "1.0.0",
-  "description": "",
   "scripts": {
-    "seed": "tsx src/seed.ts" // [!code ++]
-  },
-  // other configurations...
+    "contract:emit": "prisma contract emit",
+    "seed": "node src/prisma/seed.ts" // [!code ++]
+  }
 }
 ```
 
-Then run:
+Node.js 24 runs the TypeScript file directly. Run it:
 
 ```npm
 npm run seed
-npx prisma studio
 ```
 
-Navigate to `http://localhost:5555` and verify that the database has been seeded with sample data. Now you're ready to automate this process with GitHub Actions.
+```text no-copy
+Seeded alice@prisma.io with 2 posts
+Seeded bob@prisma.io with 1 posts
+```
 
-## 3. Add the GitHub Actions workflow
+Run it again and the guard reports `Database already has 2 users, skipping seed`.
 
-In this step, you will set up a GitHub Actions workflow that automatically provisions a Prisma Postgres database when a new pull request (PR) is opened. Once the PR is closed, the workflow will clean up the database.
+To check the data, put a query in `query.ts` and run it with `node query.ts`:
 
-### 3.1 Create the workflow file
+```typescript title="query.ts"
+import { db } from "./src/prisma/db.ts";
 
-Start by creating the required directory and file:
+const users = await db.orm.public.User.select("id", "email", "name")
+  .include("posts", (post) => post.select("title", "published"))
+  .all();
+console.log(JSON.stringify(users, null, 2));
+await db.close();
+```
+
+```json no-copy
+[
+  {
+    "id": 1,
+    "email": "alice@prisma.io",
+    "name": "Alice",
+    "posts": [
+      { "title": "Join the Prisma Discord", "published": true },
+      { "title": "Prisma on YouTube", "published": false }
+    ]
+  },
+  {
+    "id": 2,
+    "email": "bob@prisma.io",
+    "name": "Bob",
+    "posts": [{ "title": "Follow Prisma on Twitter", "published": true }]
+  }
+]
+```
+
+The project now works locally. Next, set up the platform side that the workflow will drive.
+
+## 3. Create a platform project for preview databases
+
+The Prisma CLI manages Prisma Postgres databases with the [`postgres`](/cli/postgres) commands. Databases live inside a platform [project](/cli/project), so create a dedicated project for the workflow. That keeps preview databases away from your development databases and gives the workflow a single project id to target.
+
+Sign in once (it opens a browser):
+
+```npm
+npx prisma@latest auth login
+```
+
+Create the project from your project directory:
+
+```npm
+npx prisma@latest project create prisma-gha-preview
+```
+
+This creates the project in your workspace and links the directory to it by writing `.prisma/local.json`, which it also adds to `.gitignore`. Show the link to get the project id:
+
+```npm
+npx prisma@latest project show
+```
+
+```text no-copy
+ℹ This directory is linked to the following platform project.
+
+local repo:  ~/prisma-gha-demo
+platform:    Prisma Sandbox / prisma-gha-preview
+url:         https://api.prisma.io/v1/projects/proj_abc123def456
+```
+
+The `proj_...` segment at the end of the URL is the project id. Keep it; you store it as a GitHub secret in step 6.
+
+Now try the exact commands the workflow runs. Create a database and ask for JSON output:
+
+```npm
+npx prisma@latest postgres create pr-test --project proj_abc123def456 --json
+```
+
+```json no-copy
+{
+  "kind": "result",
+  "envelope": {
+    "ok": true,
+    "commandId": "postgres.create",
+    "result": {
+      "projectId": "proj_abc123def456",
+      "projectName": "prisma-gha-preview",
+      "database": {
+        "id": "db_abc123def456",
+        "name": "pr-test",
+        "region": "us-east-1",
+        "status": "ready"
+      },
+      "connection": { "id": "con_abc123def456", "name": "Prisma Postgres API Key" },
+      "connectionString": "postgres://<credentials>@pooled.db.prisma.io:5432/postgres?sslmode=require"
+    }
+  }
+}
+```
+
+The connection string is shown once, in this result, and never again. In `--json` mode every command prints newline-delimited events and ends with one `"kind": "result"` line whose `envelope` carries `ok`, `result`, and on failure `error.code`. The workflow reads the connection string with `jq` from that line. Apply the migration and seed the new database by passing the connection string explicitly:
+
+```bash
+export PREVIEW_URL="<the connectionString from above>"
+npx prisma@latest db migrate --db "$PREVIEW_URL"
+npx prisma@latest db verify --db "$PREVIEW_URL"
+DATABASE_URL="$PREVIEW_URL" npm run seed
+```
+
+```text no-copy
+✔ Applied 1 migration(s) (6 operation(s)) across 1 contract space(s)
+✔ Database marker and schema match contract
+Seeded alice@prisma.io with 2 posts
+Seeded bob@prisma.io with 1 posts
+```
+
+`--db` overrides the `DATABASE_URL` from `.env` for the CLI, and the environment variable in front of `npm run seed` does the same for the seed script.
+
+List the project's databases to see it:
+
+```npm
+npx prisma@latest postgres list --project proj_abc123def456
+```
+
+```text no-copy
+project:  prisma-gha-preview
+
+Name     Branch                       Region     Status  Id
+pr-test  br_abc123def456  us-east-1  ready   db_abc123def456
+```
+
+Deleting a database is destructive, so `postgres delete` asks you to type the database id. In a script there is nobody to type it, so pass it with `--confirm`:
+
+```npm
+npx prisma@latest postgres delete db_abc123def456 --project proj_abc123def456 --confirm db_abc123def456
+```
+
+Without `--confirm`, a non-interactive run stops with `CLI.CONSENT_REQUIRED` and tells you the exact token to pass. The delete itself did not complete while validating this guide (the platform returned a server error for every delete that day), so no success output is shown.
+
+## 4. Add the GitHub Actions workflow
+
+In this step you set up a GitHub Actions workflow that provisions a Prisma Postgres database when a pull request is opened, reopened, or updated, and deletes it when the pull request is closed.
+
+### 4.1. Create the workflow file
 
 ```bash
 mkdir -p .github/workflows
-touch .github/workflows/prisma-postgres-rest-api.yml
+touch .github/workflows/prisma-postgres-preview.yml
 ```
 
-This file will contain the logic to manage databases on a per-PR basis. This GitHub Actions workflow:
+The workflow:
 
-- Provisions a temporary Prisma Postgres database when a PR is opened
-- Seeds the database with test data
-- Cleans up the database when the PR is closed
-- Supports manual execution for both provisioning and cleanup
+- Finds or creates a database named after the pull request
+- Applies the repository's migrations with `db migrate` and checks them with `db verify`
+- Seeds the database
+- Comments on the pull request
+- Deletes the database when the pull request is closed
+- Supports manual runs for both provisioning and cleanup
 
 :::note
 
-This workflow uses `us-east-1` as the default region for Prisma Postgres. You can change this to your preferred region by modifying the `region` parameter in the API calls, or even by adding a `region` input to the workflow.
+The workflow creates databases in `us-east-1`. Change `PRISMA_POSTGRES_REGION` in the `env` block to the [region](/postgres/npx-create-db#available-cli-options) closest to your runners.
 
 :::
 
-### 3.2. Add the base configuration
+### 4.2. Add the base configuration
 
-Paste the following into `.github/workflows/prisma-postgres-rest-api.yml`. This sets up when the workflow runs and provides required environment variables.
+Paste the following into `.github/workflows/prisma-postgres-preview.yml`. It sets the triggers, the secrets the CLI reads, and the raw database name:
 
-```yaml title=".github/workflows/prisma-postgres-rest-api.yml"
-name: Prisma Postgres REST API Workflow
+```yaml title=".github/workflows/prisma-postgres-preview.yml"
+name: Prisma Postgres preview database
 
 on:
   pull_request:
-    types: [opened, reopened, closed]
+    types: [opened, reopened, synchronize, closed]
   workflow_dispatch:
     inputs:
       action:
@@ -282,169 +440,115 @@ on:
           - provision
           - cleanup
       database_name:
-        description: "Database name (for testing, will be sanitized)"
+        description: "Database name (optional, sanitized before use)"
         required: false
         type: string
 
 env:
-  PRISMA_POSTGRES_SERVICE_TOKEN: ${{ secrets.PRISMA_POSTGRES_SERVICE_TOKEN }}
+  PRISMA_SERVICE_TOKEN: ${{ secrets.PRISMA_SERVICE_TOKEN }}
+  PRISMA_WORKSPACE_ID: ${{ secrets.PRISMA_WORKSPACE_ID }}
   PRISMA_PROJECT_ID: ${{ secrets.PRISMA_PROJECT_ID }}
-  # Sanitize database name once at workflow level
-  DB_NAME: ${{ github.event.pull_request.number != null && format('pr-{0}-{1}', github.event.pull_request.number, github.event.pull_request.head.ref) || (inputs.database_name != '' && inputs.database_name || format('test-{0}', github.run_number)) }}
+  PRISMA_POSTGRES_REGION: us-east-1
+  RAW_DB_NAME: ${{ github.event.pull_request.number != null && format('pr-{0}-{1}', github.event.pull_request.number, github.event.pull_request.head.ref) || (inputs.database_name != '' && inputs.database_name || format('test-{0}', github.run_number)) }}
 
-# Prevent concurrent runs of the same PR
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 ```
 
-Now you will be adding the provision and cleanup jobs to this workflow. These jobs will handle the creation and deletion of Prisma Postgres databases based on the pull request events.
+`PRISMA_SERVICE_TOKEN` and `PRISMA_WORKSPACE_ID` are how the CLI authenticates without a browser: with those two variables set, every platform command in the job runs as the service token. `PRISMA_PROJECT_ID` is passed to each command as `--project`, because the `postgres` commands do not pick the project up from the environment on their own.
 
-### 3.3. Add a provision job to the workflow
+### 4.3. Add the provision job
 
-Now add a job to provision the database when the PR is opened or when triggered manually. The provision job:
+Append the following under a `jobs:` key. The job installs dependencies, finds or creates the database, applies migrations, seeds, and comments on the pull request:
 
-- Installs dependencies
-- Checks for existing databases
-- Creates a new one if needed
-- Seeds the database
-- Comments on the PR with status
-
-Append the following under the `jobs:` key in your workflow file:
-
-```yaml title=".github/workflows/prisma-postgres-rest-api.yml"
+```yaml title=".github/workflows/prisma-postgres-preview.yml"
 jobs:
   provision-database:
     if: (github.event_name == 'pull_request' && github.event.action != 'closed') || (github.event_name == 'workflow_dispatch' && inputs.action == 'provision')
     runs-on: ubuntu-latest
-    permissions: write-all
+    permissions:
+      contents: read
+      pull-requests: write
     timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "24"
           cache: "npm"
 
-      - name: Install Dependencies
-        run: npm install
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Validate Environment Variables
+      - name: Validate secrets
         run: |
-          if [ -z "${{ env.PRISMA_POSTGRES_SERVICE_TOKEN }}" ]; then
-            echo "Error: PRISMA_POSTGRES_SERVICE_TOKEN secret is not set"
-            exit 1
-          fi
-          if [ -z "${{ env.PRISMA_PROJECT_ID }}" ]; then
-            echo "Error: PRISMA_PROJECT_ID secret is not set"
-            exit 1
-          fi
+          for name in PRISMA_SERVICE_TOKEN PRISMA_WORKSPACE_ID PRISMA_PROJECT_ID; do
+            if [ -z "${!name}" ]; then
+              echo "Error: $name secret is not set"
+              exit 1
+            fi
+          done
 
-      - name: Sanitize Database Name
+      - name: Sanitize database name
         run: |
-          # Sanitize the database name to match Prisma's requirements
-          DB_NAME="$(echo "${{ env.DB_NAME }}" | tr '/' '_' | tr '-' '_' | tr '[:upper:]' '[:lower:]')"
-          echo "DB_NAME=$DB_NAME" >> $GITHUB_ENV
+          DB_NAME="$(echo "$RAW_DB_NAME" | tr '/' '-' | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9-\n' '-' | cut -c1-63)"
+          echo "DB_NAME=$DB_NAME" >> "$GITHUB_ENV"
 
-      - name: Check If Database Exists
-        id: check-db
+      - name: Find existing database
+        id: find-db
         run: |
-          echo "Fetching all databases..."
-          RESPONSE=$(curl -s -X GET \
-            -H "Authorization: Bearer ${{ env.PRISMA_POSTGRES_SERVICE_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            "https://api.prisma.io/v1/projects/${{ env.PRISMA_PROJECT_ID }}/databases")
-
-          echo "Looking for database with name: ${{ env.DB_NAME }}"
-
-          # Extract database ID using jq to properly parse JSON
-          DB_EXISTS=$(echo "$RESPONSE" | jq -r ".data[]? | select(.name == \"${{ env.DB_NAME }}\") | .id")
-
-          if [ ! -z "$DB_EXISTS" ] && [ "$DB_EXISTS" != "null" ]; then
-            echo "Database ${{ env.DB_NAME }} exists with ID: $DB_EXISTS."
-            echo "exists=true" >> $GITHUB_OUTPUT
-            echo "db-id=$DB_EXISTS" >> $GITHUB_OUTPUT
+          DB_ID="$(npx prisma@latest postgres list --project "$PRISMA_PROJECT_ID" --json \
+            | jq -r --arg name "$DB_NAME" 'select(.kind == "result") | .envelope.result.items[] | select(.name == $name) | .id')"
+          if [ -n "$DB_ID" ]; then
+            echo "Database $DB_NAME exists with id $DB_ID"
+            echo "db-id=$DB_ID" >> "$GITHUB_OUTPUT"
           else
-            echo "No existing database found with name ${{ env.DB_NAME }}"
-            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "No database named $DB_NAME yet"
           fi
 
-      - name: Create Database
+      - name: Create database
         id: create-db
-        if: steps.check-db.outputs.exists != 'true'
+        if: steps.find-db.outputs.db-id == ''
         run: |
-          echo "Creating database ${{ env.DB_NAME }}..."
-          RESPONSE=$(curl -s -X POST \
-            -H "Authorization: Bearer ${{ env.PRISMA_POSTGRES_SERVICE_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d "{\"name\": \"${{ env.DB_NAME }}\", \"region\": \"us-east-1\"}" \
-            "https://api.prisma.io/v1/projects/${{ env.PRISMA_PROJECT_ID }}/databases")
-
-          # Check if response contains an id (success case)
-          if echo "$RESPONSE" | grep -q '"id":'; then
-            echo "Database created successfully"
-            CONNECTION_STRING=$(echo "$RESPONSE" | jq -r '.data.connectionString')
-            echo "connection-string=$CONNECTION_STRING" >> $GITHUB_OUTPUT
-          else
-            echo "Failed to create database"
-            echo "$RESPONSE"
+          RESULT="$(npx prisma@latest postgres create "$DB_NAME" --project "$PRISMA_PROJECT_ID" --region "$PRISMA_POSTGRES_REGION" --json \
+            | jq -c 'select(.kind == "result") | .envelope')"
+          if [ "$(echo "$RESULT" | jq -r '.ok')" != "true" ]; then
+            echo "Failed to create database:"
+            echo "$RESULT" | jq '.error'
             exit 1
           fi
+          DATABASE_URL="$(echo "$RESULT" | jq -r '.result.connectionString')"
+          echo "::add-mask::$DATABASE_URL"
+          echo "DATABASE_URL=$DATABASE_URL" >> "$GITHUB_ENV"
+          echo "Created database $DB_NAME ($(echo "$RESULT" | jq -r '.result.database.id'))"
 
-      - name: Get Connection String for Existing Database
-        id: get-connection
-        if: steps.check-db.outputs.exists == 'true'
+      - name: Create a connection for the existing database
+        if: steps.find-db.outputs.db-id != ''
         run: |
-          echo "Creating new connection string for existing database..."
-          CONNECTION_RESPONSE=$(curl -s -X POST \
-            -H "Authorization: Bearer ${{ env.PRISMA_POSTGRES_SERVICE_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d '{"name":"read_write_key"}' \
-            "https://api.prisma.io/v1/databases/${{ steps.check-db.outputs.db-id }}/connections")
-
-          CONNECTION_STRING=$(echo "$CONNECTION_RESPONSE" | jq -r '.data.connectionString')
-          echo "connection-string=$CONNECTION_STRING" >> $GITHUB_OUTPUT
-
-      - name: Setup Database Schema
-        run: |
-          # Get connection string from appropriate step
-          if [ "${{ steps.check-db.outputs.exists }}" = "true" ]; then
-            CONNECTION_STRING="${{ steps.get-connection.outputs.connection-string }}"
-          else
-            CONNECTION_STRING="${{ steps.create-db.outputs.connection-string }}"
+          RESULT="$(npx prisma@latest postgres connection create "${{ steps.find-db.outputs.db-id }}" --project "$PRISMA_PROJECT_ID" --json \
+            | jq -c 'select(.kind == "result") | .envelope')"
+          if [ "$(echo "$RESULT" | jq -r '.ok')" != "true" ]; then
+            echo "Failed to create a connection:"
+            echo "$RESULT" | jq '.error'
+            exit 1
           fi
+          DATABASE_URL="$(echo "$RESULT" | jq -r '.result.connectionString')"
+          echo "::add-mask::$DATABASE_URL"
+          echo "DATABASE_URL=$DATABASE_URL" >> "$GITHUB_ENV"
 
-          # Set the DATABASE_URL
-          export DATABASE_URL="$CONNECTION_STRING"
-
-          # Generate Prisma Client
-          npx prisma generate
-
-          # Push schema to database
-          npx prisma db push
-
-      - name: Seed Database
+      - name: Apply migrations
         run: |
-          # Get connection string from appropriate step
-          if [ "${{ steps.check-db.outputs.exists }}" = "true" ]; then
-            CONNECTION_STRING="${{ steps.get-connection.outputs.connection-string }}"
-          else
-            CONNECTION_STRING="${{ steps.create-db.outputs.connection-string }}"
-          fi
+          npx prisma@latest db migrate --db "$DATABASE_URL"
+          npx prisma@latest db verify --db "$DATABASE_URL"
 
-          # Set the DATABASE_URL environment variable for the seed script
-          export DATABASE_URL="$CONNECTION_STRING"
+      - name: Seed database
+        run: npm run seed
 
-          # Generate Prisma Client
-          npx prisma generate
-
-          # Run the seed script
-          npm run seed
-
-      - name: Comment PR
+      - name: Comment on the pull request
         if: success() && github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
@@ -454,201 +558,160 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `🗄️ Database provisioned successfully!\n\nDatabase name: ${{ env.DB_NAME }}\nStatus: Ready and seeded with sample data`
+              body: `Database provisioned successfully!\n\nDatabase name: ${process.env.DB_NAME}\nStatus: Ready and seeded with sample data`
             })
+```
 
-      - name: Output Database Info
-        if: success() && github.event_name == 'workflow_dispatch'
+Two details are worth knowing:
+
+- A database name is only known once; the connection string is not. When the pull request is reopened or gets a new commit, the database already exists, so the job asks for a fresh connection string with `postgres connection create` instead of creating a second database.
+- The connection string goes into `$GITHUB_ENV` as `DATABASE_URL` after `::add-mask::` hides it from the logs. The seed script and `src/prisma/db.ts` read `process.env.DATABASE_URL`, and the CLI steps pass it with `--db`, so no `.env` file is needed in CI.
+
+### 4.4. Add the cleanup job
+
+Append the cleanup job after `provision-database`, at the same indentation. It looks the database up by name and deletes it:
+
+```yaml title=".github/workflows/prisma-postgres-preview.yml"
+  cleanup-database:
+    if: (github.event_name == 'pull_request' && github.event.action == 'closed') || (github.event_name == 'workflow_dispatch' && inputs.action == 'cleanup')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Validate secrets
         run: |
-          echo "🗄️ Database provisioned successfully!"
-          echo "Database name: ${{ env.DB_NAME }}"
-          echo "Status: Ready and seeded with sample data"
-```
+          for name in PRISMA_SERVICE_TOKEN PRISMA_WORKSPACE_ID PRISMA_PROJECT_ID; do
+            if [ -z "${!name}" ]; then
+              echo "Error: $name secret is not set"
+              exit 1
+            fi
+          done
 
-### 3.4. Add a cleanup job to the workflow
+      - name: Sanitize database name
+        run: |
+          DB_NAME="$(echo "$RAW_DB_NAME" | tr '/' '-' | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9-\n' '-' | cut -c1-63)"
+          echo "DB_NAME=$DB_NAME" >> "$GITHUB_ENV"
 
-When a pull request is closed, you can automatically remove the associated database by adding a cleanup job. The cleanup job:
-
-- Finds the database by name
-- Deletes it from the Prisma Postgres project
-- Can also be triggered manually with `action: cleanup`
-
-Append the following to your `jobs:` section, after the `provision-database` job:
-
-```yaml title=".github/workflows/prisma-postgres-rest-api.yml"
-cleanup-database:
-  if: (github.event_name == 'pull_request' && github.event.action == 'closed') || (github.event_name == 'workflow_dispatch' && inputs.action == 'cleanup')
-  runs-on: ubuntu-latest
-  timeout-minutes: 5
-  steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-
-    - name: Validate Environment Variables
-      run: |
-        if [ -z "${{ env.PRISMA_POSTGRES_SERVICE_TOKEN }}" ]; then
-          echo "Error: PRISMA_POSTGRES_SERVICE_TOKEN secret is not set"
-          exit 1
-        fi
-        if [ -z "${{ env.PRISMA_PROJECT_ID }}" ]; then
-          echo "Error: PRISMA_PROJECT_ID secret is not set"
-          exit 1
-        fi
-
-    - name: Sanitize Database Name
-      run: |
-        # Sanitize the database name
-        DB_NAME="$(echo "${{ env.DB_NAME }}" | tr '/' '_' | tr '-' '_' | tr '[:upper:]' '[:lower:]')"
-        echo "DB_NAME=$DB_NAME" >> $GITHUB_ENV
-
-    - name: Delete Database
-      run: |
-        echo "Fetching all databases..."
-        RESPONSE=$(curl -s -X GET \
-          -H "Authorization: Bearer ${{ env.PRISMA_POSTGRES_SERVICE_TOKEN }}" \
-          -H "Content-Type: application/json" \
-          "https://api.prisma.io/v1/projects/${{ env.PRISMA_PROJECT_ID }}/databases")
-
-        echo "Looking for database with name: ${{ env.DB_NAME }}"
-
-        # Extract database ID using jq to properly parse JSON
-        DB_EXISTS=$(echo "$RESPONSE" | jq -r ".data[]? | select(.name == \"${{ env.DB_NAME }}\") | .id")
-
-        if [ ! -z "$DB_EXISTS" ] && [ "$DB_EXISTS" != "null" ]; then
-          echo "Database ${{ env.DB_NAME }} exists with ID: $DB_EXISTS. Deleting..."
-          DELETE_RESPONSE=$(curl -s -X DELETE \
-            -H "Authorization: Bearer ${{ env.PRISMA_POSTGRES_SERVICE_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            "https://api.prisma.io/v1/databases/$DB_EXISTS")
-
-          echo "Delete API Response: $DELETE_RESPONSE"
-
-          if echo "$DELETE_RESPONSE" | grep -q '"error":'; then
-            ERROR_MSG=$(echo "$DELETE_RESPONSE" | jq -r '.message // "Unknown error"')
-            echo "Failed to delete database: $ERROR_MSG"
-            exit 1
-          else
-            echo "Database deletion initiated successfully"
+      - name: Delete database
+        run: |
+          DB_ID="$(npx prisma@latest postgres list --project "$PRISMA_PROJECT_ID" --json \
+            | jq -r --arg name "$DB_NAME" 'select(.kind == "result") | .envelope.result.items[] | select(.name == $name) | .id')"
+          if [ -z "$DB_ID" ]; then
+            echo "No database named $DB_NAME, nothing to delete"
+            exit 0
           fi
-        else
-          echo "No existing database found with name ${{ env.DB_NAME }}"
-        fi
+          echo "Deleting $DB_NAME ($DB_ID)"
+          npx prisma@latest postgres delete "$DB_ID" --project "$PRISMA_PROJECT_ID" --confirm "$DB_ID"
 ```
 
-This completes your Prisma Postgres management workflow setup. In the next step, you'll configure the required GitHub secrets to authenticate with the Prisma API.
+The cleanup job does not check out the repository or install dependencies; it only needs Node.js to run `npx prisma@latest`.
 
-## 4. Store the code in GitHub
+## 5. Store the code in GitHub
 
-Initialize a git repository and push to [GitHub](https://github.com/):
-
-If you don't have a repository in GitHub yet, [create one on GitHub](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-new-repository). Once the repository is ready, run the following commands:
+If you do not have a repository yet, [create one on GitHub](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-new-repository). Then push the project, including `migrations/` and the workflow file:
 
 ```bash
+git init
 git add .
-git commit -m "Initial commit with Prisma Postgres integration"
+git commit -m "Add Prisma 8 and the preview database workflow"
 git branch -M main
 git remote add origin https://github.com/<your-username>/<repository-name>.git
 git push -u origin main
 ```
 
-:::note
+`.env` and `.prisma/` are gitignored, so neither your development connection string nor your local project link is pushed.
 
-Replace `<your-username>` and `<repository-name>` with your GitHub username and the name of your repository.
+## 6. Add the secrets in GitHub
 
-:::
+The workflow needs three secrets.
 
-## 5. Retrieve the secrets for the workflow
+### 6.1. Service token
 
-### 5.1. Retrieve your Prisma Postgres service token
+A service token lets the CLI act on your workspace without a browser:
 
-To manage Prisma Postgres databases, you also need a service token. Follow these steps to retrieve it:
+1. Open [Prisma Console](https://console.prisma.io) and select the workspace that holds your `prisma-gha-preview` project.
+2. Go to **Settings** and then **Service Tokens**.
+3. Click **New Service Token**, then copy the token. It is shown once.
 
-1. Make sure you are in the same workspace where you created your project in the last step.
-2. Navigate to the **Settings** page of your workspace and select **Service Tokens**.
-3. Click **New Service Token**.
-4. Copy the generated token and save it in your `.env` file as `PRISMA_POSTGRES_SERVICE_TOKEN`. This token is required for the next step's script and must also be added to your GitHub Actions secrets.
+Service tokens do not expire; revoke it from the same page when you no longer need it.
 
-### 5.2 Retrieve the project ID where you want to provision Prisma Postgres databases
+### 6.2. Workspace id and project id
 
-To avoid conflicts with your development databases, you'll now create a dedicated project specifically for CI workflows. Use the following curl command to create a new Prisma Postgres project using the Prisma Postgres REST API:
+The CLI needs the workspace the token belongs to and the project to create databases in. Print both from your project directory:
 
-```bash
-curl -X POST https://api.prisma.io/v1/projects \
-  -H "Authorization: Bearer $PRISMA_POSTGRES_SERVICE_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d "{\"region\": \"us-east-1\", \"name\": \"$PROJECT_NAME\"}"
+```npm
+npx prisma@latest auth whoami --json
+npx prisma@latest project show --json
 ```
 
-:::note
+Copy `workspace.id` from the first result and `project.id` (the `proj_...` value) from the second.
 
-Make sure to replace the `$PRISMA_POSTGRES_SERVICE_TOKEN` variable with the service token you stored earlier.
+### 6.3. Add them to the repository
 
-:::
+1. Open your GitHub repository and go to **Settings**.
+2. Expand **Secrets and variables** and click **Actions**.
+3. Click **New repository secret** and add each of the following:
+   - `PRISMA_SERVICE_TOKEN`: the service token
+   - `PRISMA_WORKSPACE_ID`: the workspace id
+   - `PRISMA_PROJECT_ID`: the project id
 
-Replace the $PRISMA_POSTGRES_SERVICE_TOKEN with the service token and the `$PROJECT_NAME`with a name for your project (e.g.,`my-gha-preview`). The script will create a new Prisma Postgres project in the `us-east-1` region.
-
-The CLI output will then look like this:
-
-```json
-{
-  "data": {
-    "id": "$PRISMA_PROJECT_ID",
-    "type": "project",
-    "name": "$PROJECT_NAME",
-    "createdAt": "2025-07-15T08:35:10.546Z",
-    "workspace": {
-      "id": "$PRISMA_WORKSPACE_ID",
-      "name": "$PRISMA_WORKSPACE_NAME"
-    }
-  }
-}
-```
-
-Copy and store the `$PRISMA_PROJECT_ID` from the output. This is your Prisma project ID, which you will use in the next step.
-
-## 6. Add secrets in GitHub
-
-To add secrets:
-
-1. Go to your GitHub repository.
-2. Navigate to **Settings**.
-3. Click and expand the **Secrets and variables** section.
-4. Click **Actions**.
-5. Click **New repository secret**.
-6. Add the following:
-   - `PRISMA_PROJECT_ID` - Your Prisma project ID from the Prisma Console.
-   - `PRISMA_POSTGRES_SERVICE_TOKEN` - Your service token.
-
-These secrets will be accessed in the workflow file via `env`.
+The workflow reads them through the `env` block in step 4.2.
 
 ## 7. Try the workflow
 
-You can test the setup in two ways:
+You can test the setup in two ways. The workflow run itself was not executed while validating this guide; the commands it runs were, in step 3.
 
-**Option 1: Automatic trigger via PR**
+**Option 1: Open a pull request**
 
-1. Open a pull request on the repository.
-2. GitHub Actions will provision a new Prisma Postgres database.
-3. It will push your schema and seed the database.
-4. A comment will be added to the PR confirming database creation.
-5. When the PR is closed, the database will be deleted automatically.
+1. Create a branch, change something, and open a pull request.
+2. The `provision-database` job creates a database named `pr-<number>-<branch>`, applies the migrations, seeds it, and comments on the pull request.
+3. Push another commit and the job runs again against the same database with a fresh connection string.
+4. Close the pull request and the `cleanup-database` job deletes the database.
 
-**Option 2: Manual trigger**
+**Option 2: Run it manually**
 
-1. Go to the **Actions** tab in your repository.
-2. Select the **Prisma Postgres REST API Workflow** on the left sidebar.
-3. Click the **Run workflow** dropdown
-4. Choose `provision` as the action and optionally provide a custom database name. You can also choose `cleanup` to delete an _existing_ database.
-5. Click **Run workflow**.
+1. Open the **Actions** tab and select **Prisma Postgres preview database**.
+2. Click **Run workflow**, choose `provision`, and optionally enter a database name.
+3. Run it again with `cleanup` and the same name to delete the database.
+
+## Common gotchas
+
+:::warning
+
+Always pass `--project` to the `postgres` commands in CI. From a fresh checkout there is no `.prisma/local.json`, and the commands do not fall back to the `PRISMA_PROJECT_ID` environment variable; without the flag they stop with `PROJECT.SETUP_REQUIRED`.
+
+:::
+
+:::warning
+
+Keep the seed script's `db.close()`. The runtime owns a connection pool that keeps the Node.js process alive, so a script that forgets to close it never exits and the job runs until its timeout.
+
+:::
+
+:::note
+
+Use `--json` in every CI step that needs a value back. The `--json` stream ends with a `"kind": "result"` line; select that line with `jq 'select(.kind == "result")'` before reading `.envelope`, because progress events come first on the same stream.
+
+:::
+
+## Prompt your coding agent
+
+Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
+
+- "Using the prisma-8 skill, add a `Comment` model to the contract, plan a migration for it, and update the seed script."
+- "Add a test job to the preview workflow that runs `npm test` against the provisioned database after the seed step."
+- "Change the workflow to create the preview database in `eu-central-1` and to skip the seed when the pull request is a draft."
 
 ## Next steps
 
-You now have a fully automated GitHub Actions setup for managing ephemeral Prisma Postgres databases.
+You now have an automated GitHub Actions setup for ephemeral Prisma Postgres databases: one database per pull request, migrations applied and checked, sample data seeded, and cleanup on close. Extend it by running your test suite against the provisioned database, or by writing the connection string into a preview deployment.
 
-This gives you:
-
-- Isolated databases for every pull request.
-- Automatic schema sync and seed.
-- Cleanup of unused databases after merges.
-
-Because each pull request gets its own database, changes can be tested without touching a shared development database. You can extend this by running your test suite against the provisioned database.
+- [`postgres` command reference](/cli/postgres): connections, backups, usage, and regions.
+- [Applying a migration](/orm/migrations/applying-a-migration): what `db migrate` checks before and after each step.
+- [Writing data](/orm/fundamentals/writing-data): the create, update, and upsert calls the seed script uses.

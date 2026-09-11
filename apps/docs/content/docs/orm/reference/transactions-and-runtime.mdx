@@ -1,9 +1,9 @@
 ---
 title: Transactions and runtime reference
-description: 'Reference for the Prisma 8 client lifecycle, transactions, prepared statements, and execution options.'
+description: 'Reference for the Prisma ORM client lifecycle, transactions, prepared statements, and execution options.'
 url: /orm/reference/transactions-and-runtime
-metaTitle: Prisma 8 transactions and runtime reference
-metaDescription: 'Reference for the Prisma 8 client lifecycle, transactions, prepared statements, and execution options.'
+metaTitle: Prisma ORM transactions and runtime reference
+metaDescription: 'Reference for the Prisma ORM client lifecycle, transactions, prepared statements, and execution options.'
 ---
 
 This page documents the client lifecycle (create, connect, close), transactions, prepared statements, and per-query execution options across PostgreSQL and MongoDB. Availability is stated per method: where the two databases differ, or where a surface exists on only one of them, the Remarks say so.
@@ -79,7 +79,7 @@ Open a connection and return a runtime.
 #### Remarks
 
 - Returns a `Promise<Runtime>`. The runtime is what runs plans directly (`runtime.query(...)` for rows, `runtime.execute(...)` for writes that return none), opens connections (`runtime.connection()`), and prepares statements (`runtime.prepare(...)`).
-- Calling `connect()` after the client has been closed rejects with `Error: Postgres client is closed`.
+- Calling `connect()` after the client has been closed rejects with a structured `DRIVER.NOT_CONNECTED` error (`Postgres client is closed`).
 
 #### Return type
 
@@ -125,7 +125,7 @@ Close the client and release its pool.
 #### Remarks
 
 - Returns a `Promise<void>`.
-- After `close()`, calling `connect()` again rejects with `Error: Postgres client is closed`.
+- After `close()`, calling `connect()` again rejects with `DRIVER.NOT_CONNECTED` (`Postgres client is closed`).
 - When you bound the client with `pg` (your own pool or client), close that instance yourself; the client only owns pools it created from a `url`.
 
 #### Return type
@@ -152,7 +152,7 @@ The client implements `Symbol.asyncDispose`, so `await using` closes it automati
 #### Remarks
 
 - Disposal fires at the end of the **block** the `await using` declaration lives in, not on the next line. Scope the client to the block where you need it.
-- After the block exits, the client is closed the same way `close()` closes it: a later `connect()` rejects with `Error: Postgres client is closed`.
+- After the block exits, the client is closed the same way `close()` closes it: a later `connect()` rejects with `DRIVER.NOT_CONNECTED`.
 - `await using` requires `@types/node` (which augments `SymbolConstructor` with `asyncDispose`) or a `lib` that declares the symbol.
 
 #### Examples
@@ -179,7 +179,7 @@ Create a MongoDB client.
 
 - Pass the contract with `contractJson` or `contract` (supply exactly one).
 - Bind to a database in one of three ways: `url` (a `mongodb://` connection string, with an optional `dbName` to select or override the database, the form the examples on this page use), `uri` plus an explicit `dbName`, or `mongoClient` (an existing `MongoClient` from the `mongodb` package) plus an explicit `dbName`.
-- **Client ownership** (source-read from `binding.ts` / `mongo-driver.ts`): with `url` or `uri`, Prisma 8 creates the underlying `MongoClient` and closes it on `close()`. With `mongoClient`, you supplied the client, so Prisma 8 does **not** close it: `close()` is a no-op on your client, and you close it yourself. This is what lets you share one `MongoClient` between Prisma 8 and driver-level code.
+- **Client ownership** (source-read from `binding.ts` / `mongo-driver.ts`): with `url` or `uri`, Prisma ORM creates the underlying `MongoClient` and closes it on `close()`. With `mongoClient`, you supplied the client, so Prisma ORM does **not** close it: `close()` is a no-op on your client, and you close it yourself. This is what lets you share one `MongoClient` between Prisma ORM and driver-level code.
 - `mongo(options)` does not open a connection. The runtime is built lazily on first use, or explicitly via [`connect()`](#connect-1).
 
 #### Options
@@ -230,8 +230,8 @@ Open a connection and return a runtime.
 #### Remarks
 
 - Returns a `Promise<MongoRuntime>`.
-- Calling `connect()` when the client is already connected rejects with `Error: Mongo client already connected`. The first connection can happen implicitly, the moment any query builds the runtime, so a later explicit `connect()` collides the same way.
-- After the client has been closed, `connect()` rejects with `Error: Mongo client is closed`.
+- Calling `connect()` when the client is already connected rejects with `DRIVER.ALREADY_CONNECTED`. The first connection can happen implicitly, the moment any query builds the runtime, so a later explicit `connect()` collides the same way. PostgreSQL raises the same code from the same situation.
+- After the client has been closed, `connect()` rejects with `DRIVER.NOT_CONNECTED` (`Mongo client is closed`).
 
 #### Return type
 
@@ -245,7 +245,7 @@ Open a connection and return a runtime.
 
 ```typescript
 await db.connect();
-await db.connect(); // throws Error: Mongo client already connected
+await db.connect(); // throws DRIVER.ALREADY_CONNECTED
 ```
 
 ### `runtime()`
@@ -308,7 +308,7 @@ Close the client.
 #### Remarks
 
 - Returns a `Promise<void>`.
-- After `close()`, any further use throws `Error: Mongo client is closed`. This is verified against both `db.runtime()` and ORM access such as `db.orm.users.first()`, since both route through the same runtime.
+- After `close()`, any further use throws `DRIVER.NOT_CONNECTED` (`Mongo client is closed`). This is verified against both `db.runtime()` and ORM access such as `db.orm.users.first()`, since both route through the same runtime.
 - When you supplied a `mongoClient`, `close()` does not close your client (see [`mongo(options)`](#mongooptions)).
 
 #### Return type
@@ -323,7 +323,7 @@ Close the client.
 
 ```typescript
 await db.close();
-await db.runtime(); // throws Error: Mongo client is closed
+await db.runtime(); // throws DRIVER.NOT_CONNECTED
 ```
 
 ### `await using` (automatic disposal)
@@ -333,7 +333,7 @@ The MongoDB client implements `Symbol.asyncDispose` too, so `await using` closes
 #### Remarks
 
 - Disposal fires at the end of the block, exactly as on PostgreSQL.
-- After the block exits, a later `connect()` rejects with `Error: Mongo client is closed`.
+- After the block exits, a later `connect()` rejects with `DRIVER.NOT_CONNECTED`.
 
 #### Examples
 
@@ -349,7 +349,7 @@ The MongoDB client implements `Symbol.asyncDispose` too, so `await using` closes
 
 ## Transactions (PostgreSQL)
 
-A transaction groups several writes into one unit: they all commit together, or they all roll back. Prisma 8 offers three levels of control, from the high-level `db.transaction(...)` facade down to a manual connection you commit yourself.
+A transaction groups several writes into one unit: they all commit together, or they all roll back. Prisma ORM offers three levels of control, from the high-level `db.transaction(...)` facade down to a manual connection you commit yourself.
 
 ### `db.transaction(callback)`
 
@@ -434,7 +434,7 @@ await escaped.rows.toArray(); // rejects with RUNTIME.TRANSACTION_CLOSED
 ```
 :::
 
-For Prisma 7 users, an array of queries becomes a callback:
+For Prisma ORM 7 users, an array of queries becomes a callback:
 
 ```diff
 - const [user, post] = await prisma.$transaction([
@@ -558,10 +558,10 @@ await connection.destroy(new Error('connection no longer trusted'));
 
 ## Transactions (MongoDB)
 
-:::note[MongoDB transactions are not available in Prisma 8 yet]
-There is no `db.transaction(...)` on the MongoDB client, and the MongoDB runtime has no `connection()`, `prepare()`, or `telemetry()`. This is verified: probing each surface returns `undefined` and calling it throws `TypeError`. Single-document write operations are atomic on their own; multi-document transactions through Prisma 8 are not shipped.
+:::note[MongoDB transactions are not available in Prisma ORM yet]
+There is no `db.transaction(...)` on the MongoDB client, and the MongoDB runtime has no `connection()`, `prepare()`, or `telemetry()`. This is verified: probing each surface returns `undefined` and calling it throws `TypeError`. Single-document write operations are atomic on their own; multi-document transactions through Prisma ORM are not shipped.
 
-To run a multi-document MongoDB transaction today, use the MongoDB driver directly, sharing one `MongoClient` between Prisma 8 and your driver code. See the [Fundamentals transactions guide](/orm/fundamentals/transactions#transactions-on-mongodb) for the driver-session pattern.
+To run a multi-document MongoDB transaction today, use the MongoDB driver directly, sharing one `MongoClient` between Prisma ORM and your driver code. See the [Fundamentals transactions guide](/orm/fundamentals/transactions#transactions-on-mongodb) for the driver-session pattern.
 :::
 
 A transaction surface for MongoDB is planned (source-read from an internal design document, not shipped): a `db.transaction(fn)` facade with `tx.orm` and `tx.query`, backed by a driver session. As designed, it will require a MongoDB replica set and must not silently degrade to non-transactional execution on a standalone server. Treat all of this as planned design, not current behavior. Nothing in this planned surface exists in the shipped packages today, so this page shows no example code for it.
@@ -632,6 +632,7 @@ Prepare a statement off the client facade.
 #### Remarks
 
 - Same result as `runtime.prepare(...)`, but the callback receives **two** arguments, `(sql, params)`, because the client has no closed-over SQL builder for you to reach for. Use the injected `sql` to build the plan: `sql.public.<table>`.
+- `prepare()` starts the connection itself, so calling `db.connect()` afterwards throws `DRIVER.ALREADY_CONNECTED`. Reach for the runtime with `db.runtime()` instead, which returns the one `prepare()` already built.
 
 #### Options
 
@@ -659,8 +660,7 @@ const ps = await db.prepare({ label: 'pg/text@1' }, (sql, params) =>
     .build(),
 );
 
-const runtime = await db.connect();
-const rows = await ps.query(runtime, { label: 'typescript' });
+const rows = await ps.query(db.runtime(), { label: 'typescript' });
 ```
 
 ### `PreparedStatement.query(target, params)`

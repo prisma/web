@@ -1,6 +1,15 @@
 "use client";
 
-import { Component, createRef, useEffect, useRef, useState, type RefObject } from "react";
+import {
+  Component,
+  createRef,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type RefObject,
+} from "react";
 import { Pre, type HighlightedCode } from "codehike/code";
 import {
   calculateTransitions,
@@ -100,6 +109,29 @@ export function PgvectorDemoRunnerClient({ steps }: Props) {
     setStepIndex(((index % steps.length) + steps.length) % steps.length);
   }
 
+  // The step pills are a real tablist: each pill names the panel it controls,
+  // and arrow keys move between them so the roving tab order stays reachable
+  // from the keyboard.
+  const baseId = useId();
+  const tabId = (index: number) => `${baseId}-tab-${index}`;
+  const panelId = `${baseId}-panel`;
+
+  function onTabKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
+    const count = steps.length;
+    let next = index;
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") next = (index + 1) % count;
+    else if (event.key === "ArrowLeft" || event.key === "ArrowUp")
+      next = (index - 1 + count) % count;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = count - 1;
+    else return;
+
+    event.preventDefault();
+    goTo(next);
+    const pills = event.currentTarget.parentElement?.children;
+    (pills?.[next] as HTMLElement | undefined)?.focus();
+  }
+
   const allOutput = steps.flatMap((s, i) => s.output.map((line) => ({ line, stepIdx: i })));
 
   function copyOutput() {
@@ -167,7 +199,13 @@ export function PgvectorDemoRunnerClient({ steps }: Props) {
             key={s.title}
             type="button"
             role="tab"
+            id={tabId(i)}
             aria-selected={i === stepIndex}
+            aria-controls={panelId}
+            // Roving tab order: the tablist is one tab stop, arrow keys move
+            // between the steps inside it.
+            tabIndex={i === stepIndex ? 0 : -1}
+            onKeyDown={(event) => onTabKeyDown(event, i)}
             data-active={i === stepIndex ? "true" : undefined}
             className="runner-step-pill"
             onClick={() => goTo(i)}
@@ -180,7 +218,7 @@ export function PgvectorDemoRunnerClient({ steps }: Props) {
 
       <div className="runner-caption">{step.caption}</div>
 
-      <div className="runner-body">
+      <div className="runner-body" role="tabpanel" id={panelId} aria-labelledby={tabId(stepIndex)}>
         <div className="runner-pane runner-pane-code">
           <div className="runner-pane-label">
             <span>{step.filename}</span>

@@ -29,7 +29,10 @@ export const BlogShare = ({ desc }: { desc: string }) => {
                     })}
                     target="_blank"
                     rel="noopener"
-                    aria-label={socialLink.title}
+                    // `shareSocials` entries carry `label`, not `title`, so this
+                    // used to render `aria-label={undefined}`: an icon-only,
+                    // unnamed link on every post.
+                    aria-label={socialLink.title ?? `Share on ${socialLink.label}`}
                     // Muted at rest, full ink on hover — the share row is a
                     // quiet utility, not an accent.
                     className={cn(
@@ -50,21 +53,26 @@ export const BlogShare = ({ desc }: { desc: string }) => {
             <TooltipProvider key={socialLink.label}>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Action
-                    color="neutral"
-                    size="2xl"
-                    onClick={() => {
-                      setTooltip("Link copied!");
-                      setTimeout(() => {
-                        setTooltip(defaultCopyText);
-                      }, 500);
-                      navigator.clipboard.writeText(`https://www.prisma.io/blog${pathname}`);
-                    }}
-                    className="cursor-pointer text-[1.375rem] transition-colors hover:bg-background-neutral hover:[&_i]:text-foreground-neutral"
-                  >
-                    <i
-                      className={`${socialLink.icon} text-current text-foreground-neutral-weak transition-colors`}
-                    />
+                  {/* A real button: as a <div> with an onClick this control had
+                      no role, no place in the tab order and no accessible name,
+                      and Enter/Space did nothing. */}
+                  <Action asChild color="neutral" size="2xl">
+                    <button
+                      type="button"
+                      aria-label={defaultCopyText}
+                      onClick={() => {
+                        setTooltip("Link copied!");
+                        setTimeout(() => {
+                          setTooltip(defaultCopyText);
+                        }, 500);
+                        navigator.clipboard.writeText(`https://www.prisma.io/blog${pathname}`);
+                      }}
+                      className="cursor-pointer text-[1.375rem] transition-colors hover:bg-background-neutral hover:[&_i]:text-foreground-neutral"
+                    >
+                      <i
+                        className={`${socialLink.icon} text-current text-foreground-neutral-weak transition-colors`}
+                      />
+                    </button>
                   </Action>
                 </TooltipTrigger>
                 <TooltipContent>{tooltip}</TooltipContent>

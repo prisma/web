@@ -1,0 +1,420 @@
+---
+title: Cloudflare Workers
+description: Learn how to use Prisma ORM and Prisma Postgres in a Cloudflare Workers project
+image: /img/guides/prisma-cloudflare-workers-cover.png
+url: /guides/v7/deployment/cloudflare-workers
+metaTitle: How to use Prisma ORM and Prisma Postgres with Cloudflare Workers
+metaDescription: Prisma Postgres works on Cloudflare Workers. Standard PostgreSQL clients use TCP which Cloudflare Workers doesn't support, but Prisma Postgres solves this via Node.js compatibility mode. This guide shows how to set it up.
+---
+
+## Introduction
+
+**Yes, Prisma Postgres works on Cloudflare Workers.**
+
+Standard PostgreSQL clients (like `pg` or `postgres.js`) use TCP connections, and Cloudflare Workers doesn't support TCP by default. That's why most Postgres databases can't be accessed directly from Workers. There are two ways around it with Prisma Postgres:
+
+1. **Node.js compatibility mode**: add the `nodejs_compat` flag to your `wrangler.jsonc` and Prisma ORM can use TCP via Cloudflare's Node.js TCP API. That's what this guide does.
+2. **Serverless HTTP driver**: the [`@prisma/ppg` driver](/postgres/database/serverless-driver) connects over HTTP instead of TCP, so no compatibility flag is needed.
+
+This guide uses the `nodejs_compat` approach. Prisma Postgres handles connection pooling, so you don't have to worry about Workers spinning up a new connection per request.
+
+You can find a complete example on [GitHub](https://github.com/prisma/prisma-examples/tree/latest/orm/cloudflare-workers).
+
+## Prerequisites
+
+- [Node.js 20+](https://nodejs.org)
+- A [Cloudflare account](https://dash.cloudflare.com/sign-up/workers-and-pages)
+
+## 1. Set up your project
+
+Create a new Cloudflare Workers project:
+
+```npm
+npm create cloudflare@latest prisma-cloudflare-worker -- --type=hello-world --ts=true --git=true --deploy=false
+```
+
+Navigate into the newly created project directory:
+
+```bash
+cd prisma-cloudflare-worker
+```
+
+## 2. Install and configure Prisma
+
+### 2.1. Install dependencies
+
+To get started with Prisma, you'll need to install a few dependencies:
+
+```npm
+npm install prisma@7.10.0 dotenv-cli @types/pg --save-dev
+```
+
+```npm
+npm install @prisma/client@7.10.0 @prisma/adapter-pg dotenv pg
+```
+
+:::info
+
+If you are using a different database provider (MySQL, SQL Server, SQLite), install the corresponding driver adapter package instead of `@prisma/adapter-pg`. For more information, see [Database drivers](/orm/v7/core-concepts/supported-databases/database-drivers).
+
+:::
+
+Once installed, initialize Prisma in your project:
+
+```npm
+npx prisma init
+```
+
+:::info
+
+`prisma init` creates the Prisma scaffolding and a local `DATABASE_URL`. In the next step, you will create a Prisma Postgres database and replace that value with a direct `postgres://...` connection string.
+
+:::
+
+This will create:
+
+- A `prisma/` directory with a `schema.prisma` file
+- A `prisma.config.ts` file with your Prisma configuration
+- A `.env` file with a local `DATABASE_URL` already set
+
+Create a Prisma Postgres database and replace the generated `DATABASE_URL` in your `.env` file with the `postgres://...` connection string from the CLI output:
+
+```npm
+npx create-db
+```
+
+### 2.2. Enable Node.js compatibility in Cloudflare Workers
+
+Cloudflare Workers needs Node.js compatibility enabled to work with Prisma. Add the `nodejs_compat` compatibility flag to your `wrangler.jsonc`:
+
+```json title="wrangler.jsonc"
+{
+  "name": "prisma-cloudflare-worker",
+  "main": "src/index.ts",
+  "compatibility_flags": ["nodejs_compat"], // [!code ++]
+  "compatibility_date": "2024-01-01"
+}
+```
+
+### 2.3. Define your Prisma Schema
+
+In the `prisma/schema.prisma` file, add the following `User` model and set the runtime to `cloudflare`:
+
+```prisma title="prisma/schema.prisma"
+generator client {
+  provider = "prisma-client"
+  runtime  = "cloudflare" // [!code ++]
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User { // [!code ++]
+  id    Int    @id @default(autoincrement()) // [!code ++]
+  email String // [!code ++]
+  name  String // [!code ++]
+} // [!code ++]
+```
+
+:::note
+
+Both the `cloudflare` and `workerd` runtimes are supported. Read more about runtimes in [Field reference](/orm/v7/prisma-schema/overview/generators#field-reference).
+
+:::
+
+This creates a `User` model with an auto-incrementing ID, email, and name.
+
+### 2.4. Configure Prisma scripts
+
+Add the following scripts to your `package.json` to work with Prisma in the Cloudflare Workers environment:
+
+```json title="package.json"
+{
+  "scripts": {
+    "migrate": "prisma migrate dev", // [!code ++]
+    "generate": "prisma generate", // [!code ++]
+    "studio": "prisma studio" // [!code ++]
+    // ... existing scripts
+  }
+}
+```
+
+### 2.5. Run migrations and generate Prisma Client
+
+Now, run the following command to create the database tables:
+
+```npm
+npm run migrate
+```
+
+When prompted, name your migration (e.g., `init`).
+
+Then generate the Prisma Client:
+
+```npm
+npm run generate
+```
+
+This generates the Prisma Client in the `src/generated/prisma/client` directory.
+
+## 3. Integrate Prisma into Cloudflare Workers
+
+### 3.1. Import Prisma Client and configure types
+
+At the top of `src/index.ts`, import the generated Prisma Client and the PostgreSQL adapter, and define the `Env` interface for type-safe environment variables:
+
+```typescript title="src/index.ts"
+import { PrismaClient } from "./generated/prisma/client"; // [!code ++]
+import { PrismaPg } from "@prisma/adapter-pg"; // [!code ++]
+// [!code ++]
+export interface Env {
+  // [!code ++]
+  DATABASE_URL: string; // [!code ++]
+} // [!code ++]
+
+export default {
+  async fetch(request, env, ctx): Promise<Response> {
+    return new Response("Hello World!");
+  },
+} satisfies ExportedHandler<Env>;
+```
+
+### 3.2. Handle favicon requests
+
+Add a check to filter out favicon requests, which browsers automatically send and can clutter your logs:
+
+```typescript title="src/index.ts"
+import { PrismaClient } from "./generated/prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+
+export interface Env {
+  DATABASE_URL: string;
+}
+
+export default {
+  async fetch(request, env, ctx): Promise<Response> {
+    const path = new URL(request.url).pathname; // [!code ++]
+    if (path === "/favicon.ico")
+      // [!code ++]
+      return new Response("Resource not found", {
+        // [!code ++]
+        status: 404, // [!code ++]
+        headers: {
+          // [!code ++]
+          "Content-Type": "text/plain", // [!code ++]
+        }, // [!code ++]
+      }); // [!code ++]
+
+    return new Response("Hello World!");
+  },
+} satisfies ExportedHandler<Env>;
+```
+
+### 3.3. Initialize the Prisma Client
+
+Create a database adapter and initialize Prisma Client with it. This must be done for each request in edge environments:
+
+```typescript title="src/index.ts"
+import { PrismaClient } from "./generated/prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+
+export interface Env {
+  DATABASE_URL: string;
+}
+
+export default {
+  async fetch(request, env, ctx): Promise<Response> {
+    const path = new URL(request.url).pathname;
+    if (path === "/favicon.ico")
+      return new Response("Resource not found", {
+        status: 404,
+        headers: {
+          "Content-Type": "text/plain",
+        },
+      });
+
+    const adapter = new PrismaPg({
+      // [!code ++]
+      connectionString: env.DATABASE_URL, // [!code ++]
+    }); // [!code ++]
+    // [!code ++]
+    const prisma = new PrismaClient({
+      // [!code ++]
+      adapter, // [!code ++]
+    }); // [!code ++]
+
+    return new Response("Hello World!");
+  },
+} satisfies ExportedHandler<Env>;
+```
+
+:::warning
+
+In edge environments like Cloudflare Workers, you create a new Prisma Client instance per request. This is different from long-running Node.js servers where you typically instantiate a single client and reuse it.
+
+:::
+
+### 3.4. Create a user and query the database
+
+Now use Prisma Client to create a new user and count the total number of users:
+
+```typescript title="src/index.ts"
+import { PrismaClient } from "./generated/prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+
+export interface Env {
+  DATABASE_URL: string;
+}
+
+export default {
+  async fetch(request, env, ctx): Promise<Response> {
+    const path = new URL(request.url).pathname;
+    if (path === "/favicon.ico")
+      return new Response("Resource not found", {
+        status: 404,
+        headers: {
+          "Content-Type": "text/plain",
+        },
+      });
+
+    const adapter = new PrismaPg({
+      connectionString: env.DATABASE_URL,
+    });
+
+    const prisma = new PrismaClient({
+      adapter,
+    });
+
+    const user = await prisma.user.create({
+      // [!code ++]
+      data: {
+        // [!code ++]
+        email: `Prisma-Postgres-User-${Math.ceil(Math.random() * 1000)}@gmail.com`, // [!code ++]
+        name: "Jon Doe", // [!code ++]
+      }, // [!code ++]
+    }); // [!code ++]
+    // [!code ++]
+    const userCount = await prisma.user.count(); // [!code ++]
+
+    return new Response("Hello World!");
+  },
+} satisfies ExportedHandler<Env>;
+```
+
+### 3.5. Return the results
+
+Finally, update the response to display the newly created user and the total user count:
+
+```typescript title="src/index.ts"
+import { PrismaClient } from "./generated/prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+
+export interface Env {
+  DATABASE_URL: string;
+}
+
+export default {
+  async fetch(request, env, ctx): Promise<Response> {
+    const path = new URL(request.url).pathname;
+    if (path === "/favicon.ico")
+      return new Response("Resource not found", {
+        status: 404,
+        headers: {
+          "Content-Type": "text/plain",
+        },
+      });
+
+    const adapter = new PrismaPg({
+      connectionString: env.DATABASE_URL,
+    });
+
+    const prisma = new PrismaClient({
+      adapter,
+    });
+
+    const user = await prisma.user.create({
+      data: {
+        email: `Prisma-Postgres-User-${Math.ceil(Math.random() * 1000)}@gmail.com`,
+        name: "Jon Doe",
+      },
+    });
+
+    const userCount = await prisma.user.count();
+
+    return new Response(`\ // [!code highlight]
+      Created new user: ${user.name} (${user.email}). // [!code highlight]
+      Number of users in the database: ${userCount}. // [!code highlight]
+    `); // [!code highlight]
+  },
+} satisfies ExportedHandler<Env>;
+```
+
+### 3.6. Test your Worker locally
+
+First, generate the TypeScript types for your Worker environment:
+
+```npm
+npx wrangler types --no-strict-vars
+```
+
+Then start the development server:
+
+```npm
+npm run dev
+```
+
+Open [`http://localhost:8787`](http://localhost:8787) in your browser. Each time you refresh the page, a new user will be created. You should see output similar to:
+
+```
+Created new user: Jon Doe (Prisma-Postgres-User-742@gmail.com).
+Number of users in the database: 5.
+```
+
+### 3.7. Inspect your data with Prisma Studio
+
+To view your database contents, open Prisma Studio:
+
+```npm
+npm run studio
+```
+
+This will open a browser window where you can view and edit your `User` table data.
+
+## 4. Deploy to Cloudflare Workers
+
+### 4.1. Set your database URL as a secret
+
+Before deploying, you need to set your `DATABASE_URL` as a secret in Cloudflare Workers. This keeps your database connection string secure in production.
+
+```npm
+npx wrangler secret put DATABASE_URL
+```
+
+When prompted, paste your database connection string from the `.env` file.
+
+### 4.2. Deploy your Worker
+
+Deploy your Worker to Cloudflare:
+
+```npm
+npm run deploy
+```
+
+Once deployed, Cloudflare will provide you with a URL where your Worker is live (e.g., `https://prisma-postgres-worker.your-subdomain.workers.dev`).
+
+Visit the URL in your browser, and you'll see your Worker creating users in production!
+
+## Next steps
+
+Now that you have a working Cloudflare Workers app connected to a Prisma Postgres database, you can:
+
+- Add routes to handle different HTTP methods (GET, POST, PUT, DELETE)
+- Extend your Prisma schema with more models and relationships
+- Implement authentication and authorization
+- Use [Hono](https://hono.dev/) for routing and middleware on Cloudflare Workers (see our [Hono guide](/guides/v7/frameworks/hono))
+- Use the [`@prisma/ppg` serverless driver](/postgres/database/serverless-driver) to connect over HTTP instead of TCP, which removes the need for the `nodejs_compat` flag
+- Read [Deploy to Cloudflare](/orm/v7/prisma-client/deployment/edge/deploy-to-cloudflare) for a deeper reference on edge deployment options
+- [Cloudflare Workers documentation](https://developers.cloudflare.com/workers/)
+- [Prisma ORM documentation](/orm/v7)

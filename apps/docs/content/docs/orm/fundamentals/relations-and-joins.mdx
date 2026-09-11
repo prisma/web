@@ -2,8 +2,8 @@
 title: Relations and joins
 description: 'Read related records in one query with .include(), and understand how one-to-one, one-to-many, and many-to-many relationships work.'
 url: /orm/fundamentals/relations-and-joins
-metaTitle: Relations and joins in Prisma 8
-metaDescription: 'Query one-to-one, one-to-many, and many-to-many relationships with Prisma 8 on PostgreSQL and MongoDB, with diagrams and tested examples.'
+metaTitle: Relations and joins in Prisma ORM
+metaDescription: 'Query one-to-one, one-to-many, and many-to-many relationships with Prisma ORM on PostgreSQL and MongoDB, with diagrams and tested examples.'
 ---
 
 Read related records in the same query by adding `.include(...)`. The related records come back nested on the parent, typed to match.
@@ -61,20 +61,24 @@ const profileWithUser = await db.orm.public.Profile
 
 `.first()` returns `null` when the profile doesn't exist, so a user without a profile is a `null` check, not an error.
 
-The mirror field on the other model (`profile Profile?` on `User`) is not supported in the contract yet, so include the relation from the side that owns the foreign key. To start from users and attach profiles in one query, join the two tables with the [SQL query builder](/orm/fundamentals/advanced-queries#join-tables-with-precise-control):
+You can also declare the mirror field on the other side and start from users. A bare optional model-typed field is enough; it needs no `@relation` of its own:
 
-```typescript
-const plan = db.sql.public.user
-  .as("u")
-  .innerJoin(db.sql.public.profile.as("pr"), (f, fns) => fns.eq(f.pr.userId, f.u.id))
-  .select((f) => ({ email: f.u.email, bio: f.pr.bio }))
-  .build();
-
-const usersWithProfiles = await db.runtime().query(plan);
+```prisma
+model User {
+  id      String   @id @default(cuid(2))
+  email   String   @unique
+  profile Profile?
+}
 ```
 
-```js no-copy
-[ { email: 'alice@prisma.io', bio: 'Writes about typed databases.' } ]
+The contract accepts it as long as the foreign key it mirrors is unique. If `Profile.userId` is not `@unique`, emit rejects the field with `PSL_NON_UNIQUE_BACKRELATION`, because a singular back side promises at most one related row. With it in place, `include("profile")` type-checks as a to-one include:
+
+```typescript
+const usersWithProfiles = await db.orm.public.User
+  .select("id", "email")
+  .include("profile")
+  .all();
+// Array<{ id, email, profile: { id, bio, userId } | null }>
 ```
 
 ## One-to-many
@@ -136,30 +140,37 @@ Records on both sides connect to many on the other: a post has many tags, and a 
 
 <ConceptAnimation name="relation-many-to-many" />
 
-Model the junction explicitly. Each `PostTag` record links one post to one tag:
+Model the junction explicitly, and declare the list field on each side pointing straight at the other model. The contract resolves the hop through the junction for you:
 
 ```prisma
+model Post {
+  id    String @id @default(cuid(2))
+  title String
+  tags  Tag[]
+}
+
 model Tag {
-  id    String    @id @default(cuid(2))
-  name  String    @unique
-  posts PostTag[]
+  id    String @id @default(cuid(2))
+  name  String @unique
+  posts Post[]
 }
 
 model PostTag {
-  id     String @id @default(cuid(2))
   postId String
   tagId  String
   post   Post   @relation(fields: [postId], references: [id])
   tag    Tag    @relation(fields: [tagId], references: [id])
+
+  @@id([postId, tagId])
 }
 ```
 
-Traverse both hops in one query by nesting an include inside the relation callback:
+`.include(...)` traverses both hops in one query and hands back the tags themselves, not the link records. The refinement callback works here like anywhere else:
 
 ```typescript
 const postsWithTags = await db.orm.public.Post
   .where({ published: true })
-  .include("tags", (postTag) => postTag.include("tag"))
+  .include("tags", (tag) => tag.select("id", "name").orderBy((t) => t.name.asc()))
   .all();
 ```
 
@@ -168,24 +179,33 @@ const postsWithTags = await db.orm.public.Post
   {
     title: 'Hello Prisma 8',
     // ...
-    tags: [
-      { id: 'k2…', postId: 'i3…', tagId: 't1…', tag: { id: 't1…', name: 'typescript' } },
-      { id: 'k3…', postId: 'i3…', tagId: 't2…', tag: { id: 't2…', name: 'databases' } }
-    ]
+    tags: [ { id: 't2…', name: 'databases' }, { id: 't1…', name: 'typescript' } ]
   },
-  { title: 'Typed queries', tags: [ /* one link record */ ] }
+  { title: 'Typed queries', tags: [ /* one tag */ ] }
 ]
 ```
 
-The result keeps the junction records in the shape, with each tag nested inside its link record. Read the tag names as `post.tags.map((pt) => pt.tag.name)`.
-
-Connecting a post to a tag is a plain create on the junction model:
+Nested writes go through the junction too. Pass a callback for the relation and use `create`, `connect`, or `disconnect`:
 
 ```typescript
-await db.orm.public.PostTag.create({ postId: post.id, tagId: tag.id });
+// Create a post and its tags in one call
+await db.orm.public.Post.create({
+  title: "Hello Prisma 8",
+  authorId: user.id,
+  tags: (t) => t.create([{ name: "typescript" }, { name: "databases" }]),
+});
+
+// Link and unlink existing tags
+await db.orm.public.Post.where({ id: post.id }).update({
+  tags: (t) => t.connect([{ id: tagId }]),
+});
+
+await db.orm.public.Post.where({ id: post.id }).update({
+  tags: (t) => t.disconnect([{ id: tagId }]),
+});
 ```
 
-For a flat result without the junction records (one row per post-tag pair), [join through the junction table with the SQL builder](/orm/fundamentals/advanced-queries#join-tables-with-precise-control).
+If you need the link records themselves, for example because the junction carries its own columns, query the junction model directly: `db.orm.public.PostTag.include("tag")`.
 
 ## Filter parent records by relation data
 
@@ -199,7 +219,7 @@ const activeAuthors = await db.orm.public.User
 
 // Posts that carry a specific tag
 const taggedPosts = await db.orm.public.Post
-  .where((p) => p.tags.some((pt) => pt.tagId.eq(tag.id)))
+  .where((p) => p.tags.some((t) => t.id.eq(tag.id)))
   .all();
 ```
 
@@ -207,19 +227,18 @@ On MongoDB, query the child collection directly, or express the shape as a pipel
 
 ## PostgreSQL and MongoDB differences
 
-On PostgreSQL, Prisma 8 fetches included relations with joins. On MongoDB, it uses `$lookup` for reference-style relations; embedded documents are already part of the parent and need no include.
+On PostgreSQL, Prisma ORM fetches included relations with joins. On MongoDB, it uses `$lookup` for reference-style relations; embedded documents are already part of the parent and need no include.
 
 The relationship shapes above apply to reference-style relations on both databases. On MongoDB, one-to-one and one-to-many data is often embedded in the parent document instead of referenced; embedded data comes back with every read automatically.
 
 ## Current limitations
 
-- Relations declared with an implicit many-to-many (a `through` junction the contract manages for you) are not supported by `.include(...)` yet. Model the junction explicitly, as shown [above](#many-to-many), and it works today.
-- A one-to-one relation can only declare its relation field on the side that holds the foreign key. The mirror field on the other model is not supported yet.
+- An implicit many-to-many, list fields on both sides with no junction model at all, is rejected by the schema compiler. Declare the junction model, as shown [above](#many-to-many); the list fields on either side then point straight at the other model and `.include(...)` traverses the hop for you.
 - The include refinement callback is tested on PostgreSQL. On MongoDB, start with the plain `.include("author")` form and use the [pipeline builder](/orm/fundamentals/advanced-queries#mongodb-pipeline-builder) to reshape joined documents.
 
 ## Prompt your coding agent
 
-Projects scaffolded with `create-prisma@latest` install [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent; the `prisma-8` skill covers both relation queries and the relation fields in your schema. Prompts that map to each section:
+Projects scaffolded with `create-prisma@latest` install [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent; the `prisma-8` skill covers both relation queries and the relation fields in your schema. Prompts that map to each section:
 
 - "Using the prisma-8 skill, add a one-to-one Profile model with a unique foreign key to User."
 - "Using the prisma-8 skill, fetch each user with their five newest posts in one query."

@@ -1,396 +1,617 @@
 ---
 title: Mongoose
-description: Learn how to migrate from Mongoose to Prisma ORM
+description: 'Migrate an existing Mongoose app to Prisma 8 step by step, against the same MongoDB database, without moving any data.'
 image: /img/guides/migrate-from-mongoose-cover.png
 url: /guides/switch-to-prisma-orm/from-mongoose
-metaTitle: How to migrate from Mongoose to Prisma ORM
-metaDescription: Learn how to migrate from Mongoose to Prisma ORM
+metaTitle: How to migrate from Mongoose to Prisma 8
+metaDescription: 'Add Prisma 8 to a Mongoose project, describe your collections in a contract, replace Mongoose queries and populate calls with typed Prisma 8 queries, and retire Mongoose.'
 ---
 
 ## Introduction
 
-This guide shows you how to migrate your application from Mongoose to Prisma ORM. The examples use a [sample project](https://github.com/prisma/migrate-from-mongoose-to-prisma).
+This guide shows you how to migrate an application from Mongoose to Prisma 8. The migration is gradual and runs against the database you already have: you add Prisma 8 next to Mongoose, describe the collections Mongoose manages in a contract, replace queries route by route, and remove Mongoose when nothing calls it anymore. Your data never moves.
 
-:::warning[MongoDB support for Prisma ORM v7]
+The examples use a small Express API with three Mongoose models (`User`, `Category`, `Post`) and four routes. Every command, code block, and response below was run end to end against a local MongoDB replica set.
 
-**MongoDB support for Prisma ORM v7 is coming in the near future.** In the meantime, please use **Prisma ORM v6.19** (the latest v6 release) when working with MongoDB.
+:::note[Using Prisma 7?]
 
-This guide uses Prisma ORM v6.19 to ensure full compatibility with MongoDB.
-
-:::
-
-You can learn how Prisma ORM compares to Mongoose on the [Prisma ORM vs Mongoose](/orm/v7/more/comparisons/prisma-and-mongoose) page.
-
-:::warning
-
-This guide currently assumes you are using **Prisma ORM v6**. Support for Prisma ORM v7 with MongoDB is in progress.
+Prisma 8 is the current release of Prisma ORM. Prisma 7 remains fully supported but has no MongoDB connector; the Prisma 7 version of this guide, which uses Prisma ORM 6.19 for MongoDB, is at [/guides/v7/switch-to-prisma-orm/from-mongoose](/guides/v7/switch-to-prisma-orm/from-mongoose).
 
 :::
 
 ## Prerequisites
 
-Before starting this guide, make sure you have:
+- A Mongoose project you want to migrate (this guide uses TypeScript and Express)
+- [Node.js](https://nodejs.org) 24 or later
+- A MongoDB replica set. MongoDB Atlas is one already; locally, start `mongod` with `--replSet rs0` and run `rs.initiate()` once
+- Basic familiarity with Mongoose
 
-- A Mongoose project you want to migrate
-- Node.js installed [with the supported version](/guides/upgrade-prisma-orm/v6#minimum-supported-nodejs-versions)
-- MongoDB database (4.2+ with replica set deployment recommended)
-- Basic familiarity with Mongoose and Express.js
+## Use with your agent
+
+To delegate this guide to your coding agent, copy the prompt below and hand it over:
+
+<AgentPrompt>
+
+```text
+Migrate this Mongoose app to Prisma 8 against the same MongoDB database, following https://www.prisma.io/docs/guides/switch-to-prisma-orm/from-mongoose.md.
+
+1. Run `npx prisma@latest orm init --target mongodb` in the project root, choose PSL, then run `npx prisma@latest init` so the Prisma agent skills are installed, and use them. Make sure `.env` has DATABASE_URL pointing at the database the Mongoose app already uses.
+2. `contract infer` does not support MongoDB. Write `src/prisma/contract.prisma` by hand from the Mongoose schemas: one model per collection with `id ObjectId @id @map("_id")` and `@@map("<collection>")`, a `type` block per nested schema, `ObjectId` plus `@relation` for each `ref`, and `ObjectId[]` for arrays of refs. Then run `npx prisma@latest contract emit`.
+3. Replace the Mongoose queries route by route with `db.orm.<collection>` calls and `.include(...)` for `populate` on single references. For `populate` on arrays of references, use the pipeline builder with `.lookup(...)`. Run the app and verify every route with curl before and after.
+4. When no code imports mongoose: run `npm uninstall mongoose && npm install mongodb`, remove the `__v` field from all documents, preview the validators with `npx prisma@latest db update --dry-run`, apply the previewed collMod statements, then run `npx prisma@latest db sign` and `npx prisma@latest db verify`.
+```
+
+</AgentPrompt>
 
 ## 1. Prepare for migration
 
 ### 1.1. Understand the migration process
 
-The steps for migrating from Mongoose to Prisma ORM are always the same, no matter what kind of application or API layer you're building:
+The steps for migrating from Mongoose to Prisma 8 are the same for any application, whether it is a REST API with Express, a GraphQL server, or a background worker:
 
-1. Install the Prisma CLI
-2. Introspect your database
-3. Install and generate Prisma Client
-4. Gradually replace your Mongoose queries with Prisma Client
+1. Add Prisma 8 to the project with `orm init`
+2. Describe the collections Mongoose manages in a contract and emit it
+3. Replace Mongoose queries with Prisma 8 queries, one route at a time
+4. Remove Mongoose and let Prisma 8 own the schema
 
-These steps apply whether you're building a REST API (e.g., with Express, Koa, or NestJS), a GraphQL API (e.g., with Apollo Server, TypeGraphQL, or Nexus), or any other kind of application that uses Mongoose for database access.
+Prisma 8 does not generate a client. There is no `prisma generate` step and no `schema.prisma`: the contract is emitted once to `contract.json` and `contract.d.ts`, and the runtime reads them.
 
-### 1.2. Install Prisma dependencies
+### 1.2. The example app
 
-First, install the required Prisma packages:
+The app has three Mongoose models. `User` has a nested `profile`, `Post` references a `User` and an array of `Category` documents:
+
+```typescript title="src/models/user.ts"
+import { Schema, model } from "mongoose";
+
+const userSchema = new Schema({
+  email: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  profile: { bio: String },
+});
+
+export const User = model("User", userSchema);
+```
+
+```typescript title="src/models/post.ts"
+import { Schema, model } from "mongoose";
+
+const postSchema = new Schema({
+  title: { type: String, required: true },
+  content: { type: String, required: true },
+  published: { type: Boolean, default: false },
+  author: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  categories: [{ type: Schema.Types.ObjectId, ref: "Category" }],
+});
+
+export const Post = model("Post", postSchema);
+```
+
+The Express server exposes `GET /users`, `GET /users/:id`, `POST /users`, and `GET /posts`, which populates `author` and `categories`:
+
+```typescript title="src/server.ts"
+import express from "express";
+import mongoose from "mongoose";
+import { User } from "./models/user";
+import { Post } from "./models/post";
+import "./models/category";
+
+await mongoose.connect(process.env.DATABASE_URL!);
+
+const app = express();
+app.use(express.json());
+
+app.get("/users", async (_req, res) => {
+  const users = await User.find().sort({ name: 1 });
+  res.json(users);
+});
+
+app.get("/users/:id", async (req, res) => {
+  const user = await User.findById(req.params.id);
+  if (!user) return res.status(404).json({ error: "Not found" });
+  res.json(user);
+});
+
+app.post("/users", async (req, res) => {
+  const user = await User.create({ email: req.body.email, name: req.body.name });
+  res.status(201).json(user);
+});
+
+app.get("/posts", async (_req, res) => {
+  const posts = await Post.find({ published: true }).populate("author").populate("categories");
+  res.json(posts);
+});
+
+const port = Number(process.env.PORT ?? 3000);
+app.listen(port, () => console.log(`Listening on http://localhost:${port}`));
+```
+
+The database is seeded with two users, two categories, and three posts. With the Mongoose server running, `GET /users` returns:
+
+```json no-copy
+[{"profile":{"bio":"Writes about databases"},"_id":"6aa2cd2ed97f8d7357dc9bd1","email":"alice@prisma.io","name":"Alice","__v":0},{"_id":"6aa2cd2ed97f8d7357dc9bd2","email":"bob@prisma.io","name":"Bob","__v":0}]
+```
+
+Keep this response around. The Prisma 8 version of the route returns the same documents.
+
+### 1.3. Add Prisma 8 to the project
+
+Run `orm init` in the project root. It adds Prisma 8 to the existing app; it does not scaffold a new one:
 
 ```npm
-npm install prisma@6.19 @types/node --save-dev
+npx prisma@latest orm init --target mongodb
 ```
+
+Choose `PSL` when asked for the contract authoring style and keep the default schema path. The command installs the packages, writes the Prisma 8 files, and emits a starter contract:
+
+```text no-copy
+✔ npm add @prisma/orm-mongo dotenv
+✔ npm add -D prisma@next
+✔ npm add -D @prisma/cli-engine@0.2.3
+✔ Emit the contract
+│  target:     mongodb
+│  authoring:  psl
+│  schema:     src/prisma/contract.prisma
+written
+├─ src/prisma/contract.prisma
+├─ prisma.config.ts
+├─ src/prisma/db.ts
+├─ prisma-next.md
+├─ .env.example
+├─ tsconfig.json
+├─ .gitignore
+├─ .gitattributes
+└─ package.json
+installed
+├─ @prisma/orm-mongo
+├─ dotenv
+├─ prisma@next (dev)
+└─ @prisma/cli-engine@0.2.3 (dev)
+✔ Done. Open prisma-next.md to get started.
+```
+
+`@prisma/orm-mongo` is the MongoDB runtime. It uses the `mongodb` driver, the same one Mongoose already depends on, so nothing else is installed. If your `package.json` declares `"type": "commonjs"`, `orm init` leaves it alone and prints a warning; the generated files are ES modules, so set `"type": "module"` if you can.
+
+`npx prisma@latest init` in step 1 already synced the Prisma agent skills. If you skipped it, or a later CLI command prints a reminder that the skills are out of date, refresh them:
 
 ```npm
-npm install @prisma/client@6.19 dotenv
+npx prisma@latest skills sync
 ```
 
-:::info[Why Prisma v6.19?]
+### 1.4. Configure the connection
 
-This is the latest stable version of Prisma ORM v6 that fully supports MongoDB. MongoDB support for Prisma ORM v7 is coming soon.
-
-You can also install `prisma@6` and `@prisma/client@6` to automatically get the latest v6 release.
-
-:::
-
-### 1.3. Set up Prisma configuration
-
-Create a new Prisma schema file:
-
-```npm
-npx prisma init --datasource-provider mongodb --output ../generated/prisma
-```
-
-This command creates:
-
-- A new directory called `prisma` that contains a `schema.prisma` file; your Prisma schema specifies your database connection and models
-- `.env`: A [`dotenv`](https://github.com/motdotla/dotenv) file at the root of your project (if it doesn't already exist), used to configure your database connection URL as an environment variable
-- `prisma.config.ts`: Configuration file for Prisma
-
-The Prisma schema uses the ESM-first `prisma-client` generator:
-
-```prisma title="prisma/schema.prisma" showLineNumbers
-generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
-}
-
-datasource db {
-  provider = "mongodb"
-  url      = env("DATABASE_URL")
-}
-```
-
-<br />
-
-:::tip
-
-For syntax highlighting, formatting, and auto-completion in your editor, see [editor setup](/orm/v7/more/dev-environment/editor-setup).
-
-:::
-
-Update the `DATABASE_URL` in the `.env` file with your MongoDB connection string:
-
-```text
-DATABASE_URL="mongodb+srv://username:password@cluster.mongodb.net/mydb"
-```
-
-:::tip
-
-Replace `username`, `password`, `cluster`, and `mydb` with your actual MongoDB credentials and database name. You can get your connection string from [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) or your MongoDB deployment.
-
-:::
-
-### 1.4. Configure Prisma
-
-The generated `prisma.config.ts` file should look like this:
+`orm init` wrote a `prisma.config.ts` that loads `.env` and points at the contract:
 
 ```typescript title="prisma.config.ts"
-import { defineConfig, env } from "prisma/config";
+import 'dotenv/config';
+import { definePrismaConfig } from '@prisma/cli-engine';
+import { defineConfig as ormConfig } from '@prisma/orm-mongo/config';
 
-export default defineConfig({
-  schema: "prisma/schema.prisma",
-  migrations: {
-    path: "prisma/migrations",
-  },
-  engine: "classic",
-  datasource: {
-    url: env("DATABASE_URL"),
-  },
+export default definePrismaConfig({
+  orm: ormConfig({
+    contract: "./src/prisma/contract.prisma",
+    db: {
+      connection: process.env['DATABASE_URL']!,
+    },
+  }),
 });
 ```
 
-Add `dotenv` to load environment variables from your `.env` file:
+It also wrote `src/prisma/db.ts`, the client the rest of the app imports. There is no adapter and no engine; the factory takes the emitted contract and the connection string:
 
-```typescript title="prisma.config.ts"
-import "dotenv/config"; // [!code ++]
-import { defineConfig, env } from "prisma/config";
+```typescript title="src/prisma/db.ts"
+import 'dotenv/config';
+import mongo from '@prisma/orm-mongo/runtime';
+import type { Contract } from './contract.d';
+import contractJson from './contract.json' with { type: 'json' };
 
-export default defineConfig({
-  schema: "prisma/schema.prisma",
-  migrations: {
-    path: "prisma/migrations",
-  },
-  engine: "classic",
-  datasource: {
-    url: env("DATABASE_URL"),
-  },
+export const db = mongo<Contract>({
+  contractJson,
+  url: process.env['DATABASE_URL']!,
 });
 ```
 
-## 2. Migrate the database schema
+Both read `DATABASE_URL`. Point it at the database your Mongoose app already uses. `orm init` writes an `.env.example` but never touches an existing `.env`:
 
-### 2.1. Introspect your database
+```bash title=".env"
+DATABASE_URL="mongodb://localhost:27017/blog?replicaSet=rs0&directConnection=true"
+```
 
-:::warning
+## 2. Describe your collections in a contract
 
-MongoDB is a _schemaless_ database. To incrementally adopt Prisma ORM in your project, ensure your database is populated with sample data. Prisma ORM introspects a MongoDB schema by sampling data stored and inferring the schema from the data in the database.
+### 2.1. Write the contract by hand
 
-:::
-
-Run Prisma's introspection to create the Prisma schema from your existing database:
+On PostgreSQL, `contract infer` reads the live schema and writes a starter contract. MongoDB has no schema to read, so the command stops:
 
 ```npm
-npx prisma db pull
+npx prisma@latest contract infer --output ./src/prisma/contract.prisma
 ```
 
-This will create a `schema.prisma` file with your database schema.
+```text no-copy
+✘ [CONTRACT.INFER_UNSUPPORTED] contract infer is not supported for this family
+  why: The configured family does not implement the PslContractInferCapable capability, so an inferred PSL contract cannot be produced from the live database schema.
+```
 
-```prisma title="prisma/schema.prisma" showLineNumbers
-type UsersProfile {
-  bio String
+Your Mongoose schemas are the source of truth instead. Translate them with these rules:
+
+| Mongoose | Prisma 8 contract |
+| --- | --- |
+| `model("User", schema)` stores in `users` | `model User { ... @@map("users") }` |
+| `_id` (implicit) | `id ObjectId @id @map("_id")` |
+| `{ type: String, required: true }` | `name String` |
+| `{ type: String }` | `name String?` |
+| `{ type: String, unique: true }` | `email String @unique` |
+| nested schema `profile: { bio: String }` | `type Profile { bio String? }` and `profile Profile?` |
+| `{ type: ObjectId, ref: "User" }` | `authorId ObjectId @map("author")` plus `author User @relation(fields: [authorId], references: [id])` |
+| `[{ type: ObjectId, ref: "Category" }]` | `categoryIds ObjectId[] @map("categories")` |
+
+Mongoose stores a model named `User` in the `users` collection, so every model needs `@@map` with the pluralized, lowercased collection name. Replace the starter contract with the models from the example app:
+
+```prisma title="src/prisma/contract.prisma"
+// use prisma-next
+
+type Profile {
+  bio String?
 }
 
-model categories {
-  id   String @id @default(auto()) @map("_id") @db.ObjectId
-  v    Int    @map("__v")
-  name String
-}
-
-model posts {
-  id         String   @id @default(auto()) @map("_id") @db.ObjectId
-  v          Int      @map("__v")
-  author     String   @db.ObjectId
-  categories String[] @db.ObjectId
-  content    String
-  published  Boolean
-  title      String
-}
-
-model users {
-  id      String        @id @default(auto()) @map("_id") @db.ObjectId
-  v       Int           @map("__v")
-  email   String        @unique(map: "email_1")
+model User {
+  id      ObjectId @id @map("_id")
+  email   String   @unique
   name    String
-  profile UsersProfile?
-}
-```
-
-### 2.2. Update relations
-
-MongoDB doesn't support relations between different collections. However, you can create references between documents using the [`ObjectId`](/orm/v7/core-concepts/supported-databases/mongodb#using-objectid) field type or from one document to many using an array of `ObjectIds` in the collection. The reference will store id(s) of the related document(s). You can use the `populate()` method that Mongoose provides to populate the reference with the data of the related document.
-
-Update the 1-n relationship between `posts` \<-> `users` as follows:
-
-- Rename the existing `author` reference in the `posts` model to `authorId` and add the `@map("author")` attribute
-- Add the `author` relation field in the `posts` model and it's `@relation` attribute specifying the `fields` and `references`
-- Add the `posts` relation in the `users` model
-
-Your schema should now look like this:
-
-```prisma title="schema.prisma"
-type UsersProfile {
-  bio String
+  profile Profile?
+  posts   Post[]
+  @@map("users")
 }
 
-model categories {
-  id   String @id @default(auto()) @map("_id") @db.ObjectId
-  v    Int    @map("__v")
+model Category {
+  id   ObjectId @id @map("_id")
   name String
+  @@map("categories")
 }
 
-model posts {
-  id        String  @id @default(auto()) @map("_id") @db.ObjectId
-  title     String
-  content   String
-  published Boolean
-  v         Int     @map("__v")
-  author   String   @db.ObjectId // [!code --]
-  author   users  @relation(fields: [authorId], references: [id]) // [!code ++]
-  authorId String @map("author") @db.ObjectId // [!code ++]
-
-  categories String[] @db.ObjectId
-}
-
-model users {
-  id      String        @id @default(auto()) @map("_id") @db.ObjectId
-  v       Int           @map("__v")
-  email   String        @unique(map: "email_1")
-  name    String
-  profile UsersProfile?
-  posts   posts[] // [!code ++]
+model Post {
+  id          ObjectId   @id @map("_id")
+  title       String
+  content     String
+  published   Boolean
+  author      User       @relation(fields: [authorId], references: [id])
+  authorId    ObjectId   @map("author")
+  categoryIds ObjectId[] @map("categories")
+  @@map("posts")
 }
 ```
 
-Then, update the m-n between `posts` \<-\> `categories` references as follows:
+Two things to know before you go on:
 
-- Rename the `categories` field to `categoryIds` and map it using `@map("categories")` in the `posts` model
-- Add a new `categories` relation field in the `posts` model
-- Add the `postIds` scalar list field in the `categories` model
-- Add the `posts` relation in the `categories` model
-- Add a [relation scalar](/orm/v7/prisma-schema/data-model/relations#annotated-relation-fields) on both models
-- Add the `@relation` attribute specifying the `fields` and `references` arguments on both sides
+- Prisma 8 reads and writes MongoDB fields by their stored names. `authorId @map("author")` is exposed by the query API as `author`, the key Mongoose stores, and `.include("author")` fills it with the user document the way `populate("author")` does. `db.orm.posts.where({ authorId })` is a type error.
+- Mongoose adds a `__v` version key to every document. It is not in the contract and Prisma 8 passes it through on reads. You remove it in step 4, before Prisma 8 adds validators.
 
-Your schema should now look like this:
+You do not have to model every collection on day one. Start with the ones the routes you migrate first touch.
 
-```prisma title="schema.prisma"
-type UsersProfile {
-  bio String
-}
+### 2.2. Emit the contract
 
-model categories {
-  id   String @id @default(auto()) @map("_id") @db.ObjectId
-  v    Int    @map("__v")
-  name String
-  posts    posts[]  @relation(fields: [postIds], references: [id]) // [!code ++]
-  postIds String[] @db.ObjectId // [!code ++]
-}
-
-model posts {
-  id        String  @id @default(auto()) @map("_id") @db.ObjectId
-  title     String
-  content   String
-  published Boolean
-  v         Int     @map("__v")
-
-  author   users  @relation(fields: [authorId], references: [id])
-  authorId String @map("author") @db.ObjectId
-
-  categories  String[] @db.ObjectId // [!code --]
-  categories  categories[] @relation(fields: [categoryIds], references: [id]) // [!code ++]
-  categoryIds String[] @map("categories") @db.ObjectId // [!code ++]
-}
-
-model users {
-  id      String        @id @default(auto()) @map("_id") @db.ObjectId
-  v       Int           @map("__v")
-  email   String        @unique(map: "email_1")
-  name    String
-  profile UsersProfile?
-  posts   posts[]
-}
-```
-
-## 3. Update your application code
-
-### 3.1. Generate Prisma Client
-
-Generate Prisma Client based on your schema:
+Turn the contract into the artifacts the runtime and the CLI read:
 
 ```npm
-npx prisma generate
+npx prisma@latest contract emit
 ```
 
-This creates a type-safe Prisma Client in the `generated/prisma` directory.
+```text no-copy
+✔ Resolving contract source...
+✔ Emitting contract...
+│  contract:  src/prisma/contract.json
+│  types:     src/prisma/contract.d.ts
 
-### 3.2. Replace Mongoose queries
+✔ Emitted contract.json and contract.d.ts
+```
 
-Start replacing your Mongoose queries with Prisma Client. Here's an example of how to convert some common queries:
+Run this again whenever you edit `contract.prisma`. Nothing else needs regenerating.
+
+## 3. Replace Mongoose queries with Prisma 8
+
+### 3.1. Query equivalents
+
+Prisma 8 addresses collections by their storage name (`db.orm.users`, not `db.orm.User`) and chains a filter before every read or write except `create`:
 
 ```typescript tab="Mongoose"
-// Find one
+// Find many, sorted
+const users = await User.find().sort({ name: 1 });
+
+// Find one by id
 const user = await User.findById(id);
 
+// Find one by field
+const alice = await User.findOne({ email: "alice@prisma.io" });
+
 // Create
-const user = await User.create({
-  email: "alice@prisma.io",
-  name: "Alice",
-});
+const user = await User.create({ email: "alice@prisma.io", name: "Alice" });
 
-// Update
-await User.findByIdAndUpdate(id, {
-  name: "New name",
-});
+// Update one
+await User.findByIdAndUpdate(id, { name: "New name" });
 
-// Delete
+// Delete one
 await User.findByIdAndDelete(id);
+
+// Populate a single reference
+const posts = await Post.find({ published: true }).populate("author");
 ```
 
-```typescript tab="Prisma Client"
-// Find one
-const user = await prisma.user.findUnique({
-  where: { id },
-});
+```typescript tab="Prisma 8"
+// Find many, sorted (1 ascending, -1 descending)
+const users = await db.orm.users.orderBy({ name: 1 }).all();
 
-// Create
-const user = await prisma.user.create({
-  data: {
-    email: "alice@prisma.io",
-    name: "Alice",
-  },
-});
+// Find one by id
+const user = await db.orm.users.where({ _id: id }).first();
 
-// Update
-await prisma.user.update({
-  where: { id },
-  data: { name: "New name" },
-});
+// Find one by field
+const alice = await db.orm.users.where({ email: "alice@prisma.io" }).first();
 
-// Delete
-await prisma.user.delete({
-  where: { id },
-});
+// Create; returns the inserted document with its _id
+const user = await db.orm.users.create({ email: "alice@prisma.io", name: "Alice", profile: null });
+
+// Update one; returns the updated document
+await db.orm.users.where({ _id: id }).update({ name: "New name" });
+
+// Delete one
+await db.orm.users.where({ _id: id }).delete();
+
+// Populate a single reference
+const posts = await db.orm.posts.where({ published: true }).include("author").all();
 ```
 
-### 3.3. Update your controllers
+`.where(...)` takes a plain object matched by equality. `.update(...)` and `.delete()` act on one document; use `.updateAll(...)` and `.deleteAll()` for many. Optional fields such as `profile` are required in the `create` input, so pass `null` when there is no value. For filters the object form does not cover, and for anything Mongoose did with `aggregate`, use the [pipeline builder](/orm/fundamentals/advanced-queries#mongodb-pipeline-builder).
 
-Update your Express controllers to use Prisma Client. For example, here's how to update a user controller:
+### 3.2. Populate an array of references
+
+`.include(...)` covers a single reference. `populate("categories")` on an array of ids has no `.include` equivalent yet, so express it as a pipeline: `.lookup(...)` is a typed `$lookup`, and MongoDB matches an array on the local side against `_id` on the foreign side. Adding `.unwind("author")` after a lookup on a single reference turns the one-element array `$lookup` produces into the object Mongoose returns:
 
 ```typescript
-import { prisma } from "../client";
+const runtime = await db.runtime();
+const plan = db.query
+  .from("posts")
+  .match((f) => f.published.eq(true))
+  .lookup((from) =>
+    from("users")
+      .on((post, user) => ({ local: post.author, foreign: user._id }))
+      .as("author"),
+  )
+  .unwind("author")
+  .lookup((from) =>
+    from("categories")
+      .on((post, category) => ({ local: post.categories, foreign: category._id }))
+      .as("categories"),
+  )
+  .build();
+const posts = await runtime.query(plan);
+```
 
-export class UserController {
-  async create(req: Request, res: Response) {
-    const { email, name } = req.body;
+Read plans run with `runtime.query(plan)`. `runtime.execute(plan)` is for write plans and rejects an `aggregate` command.
 
-    const result = await prisma.user.create({
-      data: {
-        email,
-        name,
-      },
-    });
+### 3.3. Update the routes
 
-    return res.json(result);
-  }
+Replace the Mongoose imports and the `mongoose.connect` call with the `db` client, then rewrite each handler. The finished server:
+
+```typescript title="src/server.ts"
+import express from "express";
+import { db } from "./prisma/db";
+
+const app = express();
+app.use(express.json());
+
+app.get("/users", async (_req, res) => {
+  const users = await db.orm.users.orderBy({ name: 1 }).all();
+  res.json(users);
+});
+
+app.get("/users/:id", async (req, res) => {
+  const user = await db.orm.users.where({ _id: req.params.id }).first();
+  if (!user) return res.status(404).json({ error: "Not found" });
+  res.json(user);
+});
+
+app.post("/users", async (req, res) => {
+  const user = await db.orm.users.create({
+    email: req.body.email,
+    name: req.body.name,
+    profile: req.body.bio ? { bio: req.body.bio } : null,
+  });
+  res.status(201).json(user);
+});
+
+app.get("/posts", async (_req, res) => {
+  const runtime = await db.runtime();
+  const plan = db.query
+    .from("posts")
+    .match((f) => f.published.eq(true))
+    .lookup((from) =>
+      from("users")
+        .on((post, user) => ({ local: post.author, foreign: user._id }))
+        .as("author"),
+    )
+    .unwind("author")
+    .lookup((from) =>
+      from("categories")
+        .on((post, category) => ({ local: post.categories, foreign: category._id }))
+        .as("categories"),
+    )
+    .build();
+  const posts = await runtime.query(plan);
+  res.json(posts);
+});
+
+const port = Number(process.env.PORT ?? 3000);
+app.listen(port, () => console.log(`Listening on http://localhost:${port}`));
+```
+
+There is no connect call: the client connects on the first query. Do not call `db.close()` in a handler; the connection pool is shared across requests and closes with the process.
+
+Start the server and check the routes:
+
+```bash
+curl http://localhost:3000/users
+```
+
+```json no-copy
+[{"profile":{"bio":"Writes about databases"},"__v":0,"_id":"6aa2cd2ed97f8d7357dc9bd1","email":"alice@prisma.io","name":"Alice"},{"__v":0,"_id":"6aa2cd2ed97f8d7357dc9bd2","email":"bob@prisma.io","name":"Bob"}]
+```
+
+The same documents Mongoose returned, `__v` included, because both read the same collection.
+
+```bash
+curl http://localhost:3000/posts
+```
+
+```json no-copy
+[{"_id":"6aa2cd2ed97f8d7357dc9bd5","title":"Hello MongoDB","content":"First post","published":true,"author":{"_id":"6aa2cd2ed97f8d7357dc9bd1","email":"alice@prisma.io","name":"Alice","profile":{"bio":"Writes about databases"},"__v":0},"categories":[{"_id":"6aa2cd2ed97f8d7357dc9bd3","name":"Databases","__v":0}],"__v":0},{"_id":"6aa2cd2ed97f8d7357dc9bd7","title":"Bob's post","content":"Hi","published":true,"author":{"_id":"6aa2cd2ed97f8d7357dc9bd2","email":"bob@prisma.io","name":"Bob","__v":0},"categories":[],"__v":0}]
+```
+
+```bash
+curl -X POST http://localhost:3000/users \
+  -H "content-type: application/json" \
+  -d '{"email":"carol@prisma.io","name":"Carol"}'
+```
+
+```json no-copy
+{"_id":"6aa2d3fcc0a1a4429529ba2c","email":"carol@prisma.io","name":"Carol","profile":null}
+```
+
+`.create(...)` returns the inserted document with its server-assigned `_id`, so the handler needs no second query.
+
+### 3.4. Run both side by side
+
+You do not have to migrate every route in one go. Mongoose and Prisma 8 can read and write the same collections while you work through the app: Prisma 8 reads Mongoose documents as shown above, and Mongoose reads documents Prisma 8 created. After the `POST /users` call above, the untouched Mongoose `GET /users` route returns Carol too, without a `__v` key:
+
+```json no-copy
+[{"profile":{"bio":"Writes about databases"},"_id":"6aa2cd2ed97f8d7357dc9bd1","email":"alice@prisma.io","name":"Alice","__v":0},{"_id":"6aa2cd2ed97f8d7357dc9bd2","email":"bob@prisma.io","name":"Bob","__v":0},{"profile":null,"_id":"6aa2d3fcc0a1a4429529ba2c","email":"carol@prisma.io","name":"Carol"}]
+```
+
+Hold off on `db update`, `db sign`, and migrations until step 4. They add strict validators to the collections, and Mongoose writes stop passing them.
+
+## 4. Finish the migration
+
+### 4.1. Remove Mongoose
+
+When no module imports `mongoose`, remove it and keep the driver Prisma 8 needs. `mongodb` was a transitive dependency of Mongoose; make it a direct one:
+
+```npm
+npm uninstall mongoose
+npm install mongodb
+```
+
+Delete the `models/` directory and any `mongoose.connect` call that is left.
+
+### 4.2. Remove the version key
+
+Mongoose wrote `__v` on every document. The validators Prisma 8 adds in the next step reject fields the contract does not declare, so strip it first. In `mongosh`, against your database:
+
+```javascript
+for (const c of ["users", "posts", "categories"]) {
+  const r = db[c].updateMany({}, { $unset: { __v: "" } });
+  print(c, r.modifiedCount);
 }
 ```
+
+```text no-copy
+users 2
+posts 3
+categories 2
+```
+
+If you cannot do this yet, add `v Int? @map("__v")` to every model instead and drop it later. The field must be optional, because documents Prisma 8 creates have no `__v` key.
+
+### 4.3. Let Prisma 8 own the schema
+
+Prisma 8 tracks a database by a signature and, on MongoDB, by a `$jsonSchema` validator per collection. Preview what it wants to apply:
+
+```npm
+npx prisma@latest db update --dry-run
+```
+
+```text no-copy
+✔ Planned 3 operation(s) across 1 contract space
+
+App space
+├─ ⚠ Add validator on categories
+├─ ⚠ Add validator on posts
+└─ ⚠ Add validator on users
+
+⚠ This migration contains destructive operations that may cause data loss.
+
+ℹ Operation preview
+
+db.runCommand({ collMod: "categories", validator: {"$jsonSchema":{"additionalProperties":false,"bsonType":"object","properties":{"_id":{"bsonType":"objectId"},"name":{"bsonType":"string"}},"required":["_id","name"]}}, validationLevel: "strict", validationAction: "error" })
+db.runCommand({ collMod: "posts", validator: {"$jsonSchema":{"additionalProperties":false,"bsonType":"object","properties":{"_id":{"bsonType":"objectId"},"author":{"bsonType":"objectId"},"categories":{"bsonType":"array","items":{"bsonType":"objectId"}},"content":{"bsonType":"string"},"published":{"bsonType":"bool"},"title":{"bsonType":"string"}},"required":["_id","author","categories","content","published","title"]}}, validationLevel: "strict", validationAction: "error" })
+db.runCommand({ collMod: "users", validator: {"$jsonSchema":{"additionalProperties":false,"bsonType":"object","properties":{"_id":{"bsonType":"objectId"},"email":{"bsonType":"string"},"name":{"bsonType":"string"},"profile":{"oneOf":[{"bsonType":"null"},{"additionalProperties":false,"bsonType":"object","properties":{"bio":{"bsonType":["null","string"]}}}]}},"required":["_id","email","name"]}}, validationLevel: "strict", validationAction: "error" })
+
+ℹ This is a dry run. No changes were applied.
+```
+
+Adding a validator to a populated collection counts as destructive, so `db update` asks you to type the database name before applying it. On MongoDB it currently cannot resolve that name and stops with `CLI.CONSENT_TOKEN_UNRESOLVED`. Apply the three previewed `collMod` commands yourself: paste them into `mongosh` against your database. Each returns `{ ok: 1 }`.
+
+Then record that the database matches the contract, and verify it:
+
+```npm
+npx prisma@latest db sign
+npx prisma@latest db verify
+```
+
+```text no-copy
+✔ Database signed
+
+from:  none
+to:    7a7760fc1ac91a781b0f6509b8c495fa3f6ae2be1ba2815bceccbf75286b93c6
+```
+
+```text no-copy
+✔ Database marker and schema match contract
+```
+
+From here on, schema changes go through the contract: edit `contract.prisma`, run `contract emit`, then `db update` for a direct development update or [`migration plan`](/cli/migration-plan) followed by `db migrate` for a checked-in migration.
+
+The validators are strict. A write that carries a field the contract does not declare now fails, which is what a leftover Mongoose model produces:
+
+```text no-copy
+Document failed validation
+{ operatorName: 'additionalProperties', specifiedAs: { additionalProperties: false }, additionalProperties: [ '__v' ] }
+```
+
+## Common gotchas
+
+:::warning[Field names are storage names]
+
+The query API uses the field names stored in MongoDB, not the names on the left of `@map`. With `authorId ObjectId @map("author")`, filter with `.where({ author: id })` and read `post.author`. TypeScript rejects the contract-side name.
+
+:::
+
+:::warning[Writing arrays of ObjectIds]
+
+Passing a whole `ObjectId[]` value, such as `categories: [id]`, to `.create(...)` or `.update({...})` fails with `Failed to encode parameter mongo/objectId@1`. Create the document without the array and add ids with a field operation: `db.orm.posts.where({ _id }).update((p) => [p.categories.push(id)])`.
+
+:::
+
+:::warning[ObjectId filters in the pipeline builder]
+
+`.match((f) => f._id.eq(id))` and `MongoFieldFilter.eq("_id", id)` send the id as a plain string and match nothing. Filter ObjectId fields through the ORM, `db.orm.posts.where({ _id: id })`, which encodes them for you.
+
+:::
+
+:::warning[No transactions on MongoDB yet]
+
+The MongoDB client has no `db.transaction(...)`. For multi-document atomicity, pass your own `MongoClient` to `mongo({ contractJson, mongoClient, dbName })` and use the driver's `session.withTransaction(...)`, as shown in the [transactions](/orm/fundamentals/transactions) docs.
+
+:::
+
+## Prompt your coding agent
+
+Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
+
+- "Using the prisma-8 skill, translate the Mongoose schemas in `src/models` into `src/prisma/contract.prisma` and emit it."
+- "Replace the Mongoose queries in `src/controllers/posts.ts` with `db.orm.posts` calls; use a `.lookup` pipeline for `populate` on arrays."
+- "Add `GET /users/:id/posts` that returns a user's published posts with `.where` and `.include`."
 
 ## Next steps
 
-Now that you've migrated to Prisma ORM, you can:
-
-- Add more complex queries, such as filters, relations, and aggregations
-- Set up Prisma Studio for database management
-- Implement database monitoring
-- Add automated tests using Prisma's testing utilities
-
-For more information:
-
-- [Prisma ORM documentation](/orm/v7)
-- [Prisma Client API reference](/orm/v7/prisma-client/setup-and-configuration/introduction)
+- [Model documents, embedded types, and references](/orm/data-modeling/mongodb) for MongoDB.
+- [Read data](/orm/fundamentals/reading-data) and [write data](/orm/fundamentals/writing-data) with the ORM API.
+- [Aggregate with the pipeline builder](/orm/fundamentals/advanced-queries#mongodb-pipeline-builder).
+- [Understand migrations](/orm/migrations/how-migrations-work) now that Prisma 8 owns the schema.
+- Coming from Prisma ORM 6 on MongoDB instead of Mongoose? See the [MongoDB upgrade guide](/guides/upgrade-prisma-orm/mongodb).
