@@ -27,30 +27,32 @@ export const CONCEPT_PRESETS = {
       {
         title: "1. First deploy",
         code:
-          "$ [[npx @prisma/cli@latest app deploy]]\n" +
+          "$ [[npx prisma@latest project create my-app]]\n" +
+          "$ [[npx prisma@latest git connect]]\n" +
+          "$ [[git push]]   # main\n" +
           "  │\n" +
           "  ▼\n" +
           "project: my-app\n" +
-          "└─ branch: main  (production)  → app + database",
+          "└─ branch: main  (production)  → service + database",
         caption:
-          "Run from your project directory, your first app deploy creates everything: the project (my-app), its production branch, and the app and database that run it. Nothing exists before this command.",
+          "Create or link a project, connect GitHub, and push to your default branch. The first production deploy creates the project, its main branch, and the service that runs it.",
       },
       {
         title: "2. Preview branch",
         code:
-          "$ [[npx @prisma/cli@latest app deploy --branch feature/login]]\n" +
+          "$ [[git push]]   # push feature/login\n" +
           "  │\n" +
           "  ▼\n" +
           "project: my-app\n" +
-          "├─ branch: main           (production)  → app + database\n" +
-          "└─ branch: feature/login  (preview)     → app + database  [[← new copy]]",
+          "├─ branch: main           (production)  → service + database\n" +
+          "└─ branch: feature/login  (preview)     → service + database  [[← new copy]]",
         caption:
-          "Deploy with a new branch name and Compute provisions a full copy of the infrastructure: feature/login gets its own app, database, and URL. Production stays untouched.",
+          "Push a new Git branch and your deploy workflow provisions an isolated preview: its own service, database, and URL. Production stays untouched.",
       },
       {
         title: "3. Connect GitHub",
         code:
-          "$ [[npx @prisma/cli@latest git connect]]\n" +
+          "$ [[npx prisma@latest git connect]]\n" +
           "$ [[git push]]   # push feature/login\n" +
           "  │\n" +
           "  ▼\n" +
@@ -79,7 +81,7 @@ export const CONCEPT_PRESETS = {
       {
         title: "1. Install the app",
         code:
-          "$ [[npx @prisma/cli@latest git connect]]\n" +
+          "$ [[npx prisma@latest git connect]]\n" +
           "  │\n" +
           "  ▼\n" +
           "workspace\n" +
@@ -90,7 +92,7 @@ export const CONCEPT_PRESETS = {
       {
         title: "2. Connect a repo",
         code:
-          "$ [[npx @prisma/cli@latest git connect]]\n" +
+          "$ [[npx prisma@latest git connect]]\n" +
           "  │\n" +
           "  ▼\n" +
           "workspace\n" +
@@ -117,7 +119,7 @@ export const CONCEPT_PRESETS = {
       {
         title: "1. Production",
         code:
-          "$ npx @prisma/cli@latest project env add \\\n" +
+          "$ npx prisma@latest project env add \\\n" +
           "    DATABASE_URL=postgres://prod [[--role production]]\n" +
           "  │\n" +
           "  ▼\n" +
@@ -129,7 +131,7 @@ export const CONCEPT_PRESETS = {
       {
         title: "2. Preview",
         code:
-          "$ npx @prisma/cli@latest project env add \\\n" +
+          "$ npx prisma@latest project env add \\\n" +
           "    DATABASE_URL=postgres://preview [[--role preview]]\n" +
           "  │\n" +
           "  ▼\n" +
@@ -141,7 +143,7 @@ export const CONCEPT_PRESETS = {
       {
         title: "3. Branch override",
         code:
-          "$ npx @prisma/cli@latest project env add \\\n" +
+          "$ npx prisma@latest project env add \\\n" +
           "    FEATURE_FLAG=on [[--branch feature/search]]\n" +
           "  │\n" +
           "  ▼\n" +
