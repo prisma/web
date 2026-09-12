@@ -8,13 +8,15 @@ metaDescription: 'Reference for the Prisma ORM client''s query, mutation, filter
 
 The ORM client gives you model-level methods for reading and writing data across PostgreSQL and MongoDB. This page documents every method, its availability on each database, and the behavior that differs between the two.
 
-Availability is stated per method. When a method behaves the same on both databases, the Remarks say so; when it differs, exists on only one, or is type-checked but not enforced at runtime, the Remarks call that out.
+Each method says which databases it works on. Where a method behaves differently on one of them, the Remarks say how. Where TypeScript rejects something the database itself would accept, the Remarks say that too.
 
 For task-oriented walkthroughs, see the Fundamentals guides: [Reading data](/orm/fundamentals/reading-data), [Writing data](/orm/fundamentals/writing-data), [Relations and joins](/orm/fundamentals/relations-and-joins), and [Transactions](/orm/fundamentals/transactions).
 
 ## Example schema
 
-All examples on this page run against the following schema, and every example is transcribed from an executable test suite that runs against a live database. The grouped-aggregate examples use a separate `Customer` / `Order` schema, shown under [Grouped aggregates](#grouped-aggregates).
+All examples on this page run against the schema below. Every example is copied from a test suite that runs against a live database. The grouped-aggregate examples use a separate `Customer` / `Order` schema, shown under [Grouped aggregates](#grouped-aggregates).
+
+You write this schema in your contract, the `contract.prisma` file that replaced `schema.prisma`. After every change to it, run `npx prisma contract emit`. That command writes `contract.json` and `contract.d.ts`, the two files the examples below import.
 
 <details>
 
@@ -177,13 +179,24 @@ model Tutorial {
 
 </details>
 
+Some parts of the schema the examples rely on:
+
+- `@@map("user")` sets the table or collection name. Without it, the table name is the model name with a lowercase first letter.
+- `Uuid` is the type for a PostgreSQL `uuid` column. `@default(uuid())` fills the id in when you insert a row.
+- `@@type("pg/text@1")` on an `enum` block stores the enum as a text column, with a check constraint that allows only the declared values. This page calls that a text-backed enum.
+- A `native_enum` block is the other kind. It creates a real PostgreSQL enum type with `CREATE TYPE ... AS ENUM`. This page calls that a native enum. The two sort differently; see [`orderBy()`](#orderby).
+- An enum member's stored value is the string after `=`, or the member name when there is no `=`. That string is what you pass to `.eq()`. So `Urgent = "urgent"` is matched by `.eq('urgent')`, and a bare `admin` member is matched by `.eq('admin')`.
+- `@@base(Task, "bug")` makes `Bug` a variant of `Task`: a model stored together with the model it is based on. `@@discriminator(type)` names the column that says which variant a row is. `variant('Bug')` narrows a collection to that variant, and the name you pass is the model name, not the string in `@@base`.
+- `PostTag` is required. A many-to-many needs the model for the join table, and a pair of list fields with no such model is rejected. See [Relations and joins](/orm/fundamentals/relations-and-joins#many-to-many).
+- `Embedding1536` comes from the pgvector extension. See [PostgreSQL](#postgresql) for the extra line it needs when you create the client.
+
 ## Setting up the client
 
-Create an ORM client with `postgres(...)` or `mongo(...)`, then query models through the client's `.orm` facet. The two databases have different entry points and different accessor conventions.
+Create a client with `postgres(...)` or `mongo(...)`, then read and write your models through `db.orm`. The two databases have different entry points, and they name the models differently.
 
 ### PostgreSQL
 
-Create a Postgres client with `postgres(...)`. Models hang off `db.orm.public` and use the contract's **root names**, which match your Prisma Schema Language (PSL) model names (`db.orm.public.User`, `db.orm.public.Post`). `public` is the default PostgreSQL schema namespace.
+Create a PostgreSQL client with `postgres(...)`. `db.orm` holds your models by model name, grouped by database schema: `db.orm.public.User`, `db.orm.public.Post`. `public` is the PostgreSQL schema your tables are in unless you put them in another one.
 
 ```typescript
 import postgres from '@prisma/orm-postgres/runtime';
@@ -195,13 +208,23 @@ const db = postgres<Contract>({ contractJson, url: process.env.DATABASE_URL });
 const users = await db.orm.public.User.all();
 ```
 
-If your contract uses types from an extension pack, pass the pack when you create the client. The example schema's `Embedding1536` (pgvector) type needs `extensions: [pgvector]`, with `pgvector` imported from `@prisma/orm-extension-pgvector/runtime`.
+If your contract uses a type from an extension package, pass that package to `extensions` when you create the client. The example schema's `Embedding1536` type comes from pgvector, so it needs this:
 
-To attach domain methods to a model, register a custom `Collection` subclass when you build the client. That path uses the `orm(...)` factory instead of the client's built-in facet; see [Custom `Collection` subclass](#custom-collection-subclass).
+```typescript
+import pgvector from '@prisma/orm-extension-pgvector/runtime';
+
+const db = postgres<Contract>({
+  contractJson,
+  url: process.env.DATABASE_URL,
+  extensions: [pgvector],
+});
+```
+
+To give a model your own methods on top of the built-in ones, subclass `Collection` and register the subclass with the `orm(...)` function instead of calling `postgres(...)`. [Custom `Collection` subclass](#custom-collection-subclass) has the code.
 
 ### MongoDB
 
-Create a Mongo client with `mongo(...)`. Models hang off `db.orm` and use the contract's **root names too, but those are the lowercase plural collection names** from the contract's `roots` map, not the PSL model names (`db.orm.users`, `db.orm.posts`, not `db.orm.User`).
+Create a MongoDB client with `mongo(...)`. `db.orm` holds your models by collection name, with no schema in between: `db.orm.users`, `db.orm.posts`, not `db.orm.User`. The collection name is the one you set with `@@map`, or the model name with a lowercase first letter when you did not set one.
 
 ```typescript
 import mongo from '@prisma/orm-mongo/runtime';
@@ -213,15 +236,25 @@ const db = mongo<Contract>({ contractJson, url: process.env.MONGODB_URL, dbName:
 const users = await db.orm.users.all();
 ```
 
-:::note[Accessor naming differs by database]
-PostgreSQL exposes models under their contract root names (matching PSL model names) and namespaced by schema: `db.orm.public.User`. MongoDB exposes them under the registered collection root names (lowercase plural), with no namespace: `db.orm.users`. The examples below follow each database's convention.
+:::note[The two databases name models differently]
+On PostgreSQL you write the model name under its schema: `db.orm.public.User`. On MongoDB you write the collection name with nothing in front of it: `db.orm.users`. The examples below follow each database's own form.
 :::
 
 ## Query-building methods
 
-These methods narrow a query. They return a collection you can chain further methods on, and you run the query with a [read method](#read-terminals) such as `all()` or `first()`. MongoDB supports a smaller set than PostgreSQL; each method's Remarks state its availability.
+These methods narrow a query. Each returns a collection you can chain more methods on. You run the query with a [read method](#read-terminals) such as `all()` or `first()`. MongoDB supports fewer of them than PostgreSQL, and each method's Remarks say which databases it works on.
 
-Import the standalone filter combinators used in some examples from `@prisma/orm-postgres/orm-client` (PostgreSQL) or `@prisma/orm-mongo/query-ast/execution` (MongoDB). See [Filter conditions and operators](#filter-conditions-and-operators).
+Some examples import a filter helper you can use on its own. On PostgreSQL those come from `@prisma/orm-postgres/orm-client`, on MongoDB from `@prisma/orm-mongo/query-ast/execution`. See [Filter conditions and operators](#filter-conditions-and-operators).
+
+The examples below use these ids, which stand for rows the test suite inserted first:
+
+```typescript
+const aliceId = '00000000-0000-4000-8000-000000000001';
+const carolId = '00000000-0000-4000-8000-000000000003';
+const postId = '00000000-0000-4000-8000-000000000010';
+const acmeId = '00000000-0000-4000-8000-000000000020';
+const emptyCustomerId = '00000000-0000-4000-8000-000000000021';
+```
 
 ### `where()`
 
@@ -230,9 +263,9 @@ Restrict a query to rows matching a filter.
 #### Remarks
 
 - Available for PostgreSQL and MongoDB, but the accepted filter shapes differ.
-- On PostgreSQL, `where()` accepts a callback with column-level operators (`u.email.eq(...)`) or a shorthand object of equality matches.
-- On MongoDB, `where()` accepts a shorthand object of equality matches or a `MongoFieldFilter` expression. The plain-object form supports equality only, not nested operators; for comparisons use `MongoFieldFilter` (see [MongoFieldFilter](#mongofieldfilter)).
-- Chaining multiple `where()` calls ANDs the filters together.
+- On PostgreSQL, `where()` takes either a callback that calls an operator on a column (`u.email.eq(...)`) or an object of field-and-value pairs that must match exactly.
+- On MongoDB, `where()` takes either an object of field-and-value pairs that must match exactly or a `MongoFieldFilter`. The object form can only test for equality. For anything else, such as greater-than, use `MongoFieldFilter` (see [MongoFieldFilter](#mongofieldfilter)).
+- Calling `where()` more than once on the same query requires a row to match all of the filters.
 
 #### Options
 
@@ -244,7 +277,7 @@ Restrict a query to rows matching a filter.
 
 | Return type | Example | Description |
 |---|---|---|
-| `Collection` | `db.orm.public.User.where(...)` | A collection narrowed by the filter, chainable; a read or write method runs it. |
+| `Collection` | `db.orm.public.User.where(...)` | A collection narrowed by the filter. Chain more methods on it, then run it with a read or write method. |
 
 #### Examples
 
@@ -294,7 +327,7 @@ Project a row down to a subset of scalar fields.
 
 - Available for PostgreSQL and MongoDB.
 - On PostgreSQL, `select()` narrows the returned row shape at the type level: fields you didn't select are absent from the result type.
-- On MongoDB, `select()` narrows the projected fields at runtime, but does not strip fields from the returned row type at compile time. The returned type is unchanged, even though the query projects fewer fields.
+- On MongoDB, `select()` changes what the database returns but not the TypeScript type. Only the fields you named come back, while the type still lists every field on the model.
 
 #### Options
 
@@ -328,17 +361,17 @@ Eagerly load a relation onto the returned rows.
 #### Remarks
 
 - Available for PostgreSQL and MongoDB, with differences noted below.
-- On PostgreSQL, `include(relationName, refineFn?)` loads to-one and to-many relations, and the optional callback receives a nested `Collection` you can filter, order, limit, and aggregate (see [Refinements, aggregates, and combine](#refinements-aggregates-and-combine)).
-- On MongoDB, `include(relationName)` adds a `$lookup` for a reference relation and takes only a relation name; there is no refinement-callback overload.
-- On MongoDB, a looked-up sub-document's `_id` comes back as a raw driver `ObjectId`, not decoded to a hex string the way top-level `_id` fields are. Compare it with `String(...)`.
-- On MongoDB, passing a second argument to `include()` does **not** throw. JavaScript does not arity-check, so the extra argument is silently ignored and a plain, unrefined `$lookup` runs. This differs from calling a genuinely absent method, which throws `TypeError`.
+- On PostgreSQL, `include(relationName, refineFn?)` loads both to-one and to-many relations. The optional callback receives the related rows as a collection, so you can filter, order, limit, and aggregate them. See [Refinements, aggregates, and combine](#refinements-aggregates-and-combine).
+- On MongoDB, `include(relationName)` loads a relation that is stored as a reference. It takes the relation name and nothing else: there is no callback.
+- On MongoDB, the `_id` of a loaded related document comes back as a driver `ObjectId`, not as the hex string you get for a top-level `_id`. Wrap it in `String(...)` before you compare it.
+- On MongoDB, a second argument to `include()` is ignored rather than rejected, and the relation loads unfiltered.
 
 #### Options
 
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `relationName` | `string` | Yes | The relation to load. |
-| `refineFn` | `(relation: Collection) => Collection \| reducer` | No | PostgreSQL only. Refines the loaded relation. |
+| `refineFn` | `(relation: Collection) => Collection \| aggregate` | No | PostgreSQL only. Narrows the loaded relation, or reduces it to one value. |
 
 #### Return type
 
@@ -366,22 +399,26 @@ const users = await db.orm.public.User.include('posts').where({ id: aliceId }).a
 
 ```typescript
 const posts = await db.orm.posts.include('author').where({ title: 'Hello world' }).all();
-// posts[0].author._id is a raw ObjectId — compare with String(posts[0].author._id)
+// posts[0].author._id is an ObjectId; compare it as String(posts[0].author._id)
 ```
 
 For a task-oriented guide to loading related records, see [Relations and joins](/orm/fundamentals/relations-and-joins).
 
 ### Refinements, aggregates, and combine
 
-On PostgreSQL, the callback you pass to `include()` receives the nested relation as a full `Collection`. You can filter, order, and paginate it, reduce it to a single value, or `combine()` several sub-views into one shape.
+On PostgreSQL, the callback you pass to `include()` receives the related rows as a collection. You can filter, order, and paginate them. You can also reduce them to a single value, or use `combine()` to return several results at once.
 
 #### Remarks
 
-- PostgreSQL only. MongoDB's `include()` takes no callback, and `count`/`sum`/`avg`/`min`/`max`/`combine` do not exist on the Mongo collection at all (calling them throws `TypeError`).
-- `count`, `sum`, `avg`, `min`, `max` and `combine` are only callable **inside** an `include()` callback. Called anywhere else on a PostgreSQL collection, they throw `Error`.
-- Which fields each of those functions accepts comes from the aggregate map in your emitted contract, not from a fixed rule. On PostgreSQL, `sum()` and `avg()` take numeric columns, and `min()` and `max()` also take textual, date/time-string, and Temporal-backed columns, so `min('createdAt')` type-checks. A field the contract's map does not claim for that operation is a compile error at the call site.
-- `count()` returns a `number` and has a zero-argument form; `countBigInt()` is the lossless `bigint` variant. `sum()` over an integer column returns `number` and raises `RUNTIME.DECODE_FAILED` outside ±(2^53 − 1); `avg()` over an integer column returns a `float8` `number`; `sumBigInt(field)` and `avgDecimal(field)` are the lossless forms.
-- Over a to-many relation with no rows, `sum()` and `avg()` resolve to `null`, not `0`.
+- PostgreSQL only. On MongoDB, `include()` takes no callback, and `count`, `sum`, `avg`, `min`, `max`, and `combine` do not exist on a collection at all. Calling one throws a `TypeError`.
+- On PostgreSQL, those six are only callable **inside** an `include()` callback. Called anywhere else, they throw an `Error`.
+- `sum()` and `avg()` take a numeric column: an integer, a floating-point number, or a decimal. They also take an interval or a time-of-day column. They do not take a date or a timestamp, and calling them on one is a compile error that names the operation the database has no version of.
+- `min()` and `max()` take more: numeric and text columns, dates, times, timestamps, intervals, IP addresses, and text arrays. They do not take a boolean, a `uuid`, binary data, a bit string, or JSON.
+- `count()` takes no argument and returns a `number`. `countBigInt()` returns a `bigint` instead, for a count too large for a JavaScript `number`.
+- `sum()` over an integer column returns a `number`. Past ±(2^53 − 1) a `number` cannot hold the total, and reading it throws an error whose `code` is `RUNTIME.DECODE_FAILED`. Use `sumBigInt(field)` for totals that large; it returns a `bigint`.
+- `avg()` over an integer column returns a `number`, which rounds. `avgDecimal(field)` returns the exact average instead.
+- When a to-many relation has no rows, `sum()` and `avg()` come back as `null`, not `0`.
+- `combine(shape)` takes an object whose keys you choose. Each value is either the relation with more methods chained on it, which comes back as an array of rows, or an aggregate such as `posts.count()`, which comes back as that single value. Each value must start from the collection the callback was given, which is why the example below writes `posts` inside its own callback.
 
 #### Options
 
@@ -389,15 +426,15 @@ On PostgreSQL, the callback you pass to `include()` receives the nested relation
 |---|---|---|---|
 | `filter` / `orderBy` / `limit` / `offset` | Chained on the nested collection | No | Refine which related rows load. |
 | `count()` | Aggregate, no arguments | No | Reduces the relation to a row count. |
-| `sum(field)` / `avg(field)` | Aggregate over a numeric field | No | Reduces the relation to a numeric aggregate; `null` over an empty relation. `sumBigInt` / `avgDecimal` are the lossless forms. |
-| `min(field)` / `max(field)` | Aggregate over a field the contract's aggregate map claims | No | Reduces the relation to a minimum/maximum, in the column's own type. |
-| `combine(shape)` | Object of sub-views and aggregates | No | Projects several refinements into one shape. |
+| `sum(field)` / `avg(field)` | Aggregate over a numeric field | No | Reduces the relation to one number. |
+| `min(field)` / `max(field)` | Aggregate over a sortable field | No | Reduces the relation to its smallest or largest value, in the column's own type. |
+| `combine(shape)` | Object of named collections and aggregates | No | Returns several results under one relation key. |
 
 #### Return type
 
 | Return type | Example | Description |
 |---|---|---|
-| Refined relation, scalar, or combined shape | `include('posts', (p) => p.count())` | The relation is replaced by the refinement's result. |
+| The narrowed relation, a single value, or an object of both | `include('posts', (p) => p.count())` | The relation key on each row holds the callback's result instead of the related rows. |
 
 #### Examples
 
@@ -425,7 +462,7 @@ const users = await db.orm.public.User.include('posts', (posts) => posts.count()
 
 ##### `sum()` / `avg()` over a numeric relation (PostgreSQL)
 
-This example uses the `Customer` / `Order` models from the aggregate example schema shown in [Grouped aggregates](#grouped-aggregates).
+This example uses the `Customer` and `Order` models, which are in the separate schema shown under [Grouped aggregates](#grouped-aggregates).
 
 ```typescript
 const customers = await db.orm.public.Customer.include('orders', (orders) => orders.sum('amount'))
@@ -462,8 +499,8 @@ const users = await db.orm.public.User.include('posts', (posts) =>
 // users[0].posts.total is 2; users[0].posts.recent is a one-element array
 ```
 
-:::note[Which fields `min()` / `max()` accept]
-`min()` and `max()` are typed from the aggregate map in your emitted contract. On PostgreSQL that map claims numeric and textual columns, and columns stored as date/time strings or backed by `Temporal`. So `min('createdAt')` over a `DateTime` column type-checks and returns a `Temporal.Instant`. `sum()` and `avg()` are narrower: PostgreSQL declares no `SUM`/`AVG` over a date or time-stamp column, so those calls are a compile error, naming the operation that is unavailable for that input.
+:::note[`min()` and `max()` over a date column]
+`min('createdAt')` over a `DateTime` column compiles, and it returns a `Temporal.Instant` (the standard JavaScript date and time object; Node.js 26 has it built in, earlier versions need `temporal-polyfill`). `sum('createdAt')` and `avg('createdAt')` do not compile, because PostgreSQL has no `SUM` or `AVG` over a date or a timestamp. The TypeScript error names the operation that is missing for that column.
 :::
 
 ### `orderBy()`
@@ -473,9 +510,9 @@ Sort the result set.
 #### Remarks
 
 - Available for PostgreSQL and MongoDB, with different argument shapes.
-- On PostgreSQL, `orderBy()` takes a callback returning a per-column `.asc()`/`.desc()` directive, or an array of such callbacks for multiple sort keys.
-- On MongoDB, `orderBy()` takes a plain object spec, `{ field: 1 }` for ascending or `{ field: -1 }` for descending.
-- On PostgreSQL, **native** enum columns sort in the enum's declaration order, not alphabetically. A native `Priority` enum declared `Low`, `High`, `Urgent` sorts in that order under `.asc()`. A text-backed enum sorts by its stored value instead, so declaration order does not apply; for semantic ranking, use numeric enum values or an explicit ranking expression.
+- On PostgreSQL, `orderBy()` takes a callback that returns `.asc()` or `.desc()` on one column. Pass an array of such callbacks to sort by more than one column.
+- On MongoDB, `orderBy()` takes an object instead: `{ field: 1 }` sorts ascending and `{ field: -1 }` sorts descending.
+- On PostgreSQL, a native enum column sorts in the order its members are declared, not alphabetically. A `native_enum Priority` declared `Low`, `High`, `Urgent` sorts in that order under `.asc()`. A text-backed enum sorts by its stored text instead, so `'high'` comes before `'low'` and `'urgent'`. To sort a text-backed enum by meaning, store numbers rather than words, or write your own ranking expression.
 
 #### Options
 
@@ -510,7 +547,7 @@ const byPriorityThenDate = await db.orm.public.Post.orderBy([
   (p) => p.priority.asc(),
   (p) => p.createdAt.asc(),
 ]).all();
-// a text-backed priority sorts by stored value ('high', 'low', 'urgent'); a native enum sorts in declaration order
+// Priority is text-backed here, so it sorts as 'high', 'low', 'urgent'
 ```
 
 ### `limit()`
@@ -585,7 +622,7 @@ Resume pagination from a known position.
 #### Remarks
 
 - PostgreSQL only. MongoDB's collection has no `cursor()`; calling it throws `TypeError`.
-- `cursor()` is typed to require a preceding `orderBy()`. This is a **type-only** guard: at runtime there is no such check. If you bypass the type system and call `cursor()` without an `orderBy()`, the cursor value is silently ignored and the full unfiltered result is returned. It does not throw.
+- Always call `orderBy()` before `cursor()`. TypeScript rejects the call if you do not, but nothing checks at runtime. If you get past the type system, the cursor value is ignored and you get every row back, with no error.
 
 #### Options
 
@@ -615,7 +652,7 @@ const page2 = await db.orm.public.Post.orderBy((p) => p.createdAt.asc())
 
 ### `distinct()`
 
-Emit `SELECT DISTINCT` on the given fields.
+Remove duplicate rows, comparing only the fields you name.
 
 #### Remarks
 
@@ -648,7 +685,7 @@ Keep the first row per key according to `orderBy()`.
 #### Remarks
 
 - PostgreSQL only. MongoDB's collection has no `distinctOn()`; calling it throws `TypeError`.
-- Requires a prior `orderBy()` to be meaningful. Like `cursor()`, this ordering requirement is a type-level guard, not a runtime check.
+- Call `orderBy()` first, so that "the first row per key" means something. As with `cursor()`, TypeScript checks this and the runtime does not.
 
 #### Options
 
@@ -674,25 +711,26 @@ const latestPerUser = await db.orm.public.Post.orderBy([(p) => p.userId.asc(), (
 
 ### `variant()`
 
-Narrow a polymorphic (PostgreSQL) or discriminated (MongoDB) model to one variant.
+Narrow a model to one of the variants declared with `@@base`.
 
 #### Remarks
 
 - Available for PostgreSQL and MongoDB.
-- On PostgreSQL, variants use multi-table inheritance (a base table plus a variant table). This affects some mutations; see [`createAndCount()`](#createandcount) and [`upsert()`](#upsert).
-- On MongoDB, variants are a single document shape discriminated by a field value, in one collection.
+- Pass the variant's model name, such as `'Bug'`, not the string in its `@@base` attribute.
+- On PostgreSQL, a variant's own fields are in a second table alongside the base model's table. That changes how some writes behave; see [`createAndCount()`](#createandcount) and [`upsert()`](#upsert).
+- On MongoDB, every variant is a document in the one collection, told apart by the field named in `@@discriminator`.
 
 #### Options
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `variantName` | `string` | Yes | The variant to narrow to. |
+| `variantName` | `string` | Yes | The model name of the variant. |
 
 #### Return type
 
 | Return type | Example | Description |
 |---|---|---|
-| `Collection` (variant-narrowed) | `db.orm.public.Task.variant('Bug')` | A collection scoped to the variant. |
+| `Collection`, narrowed to the variant | `db.orm.public.Task.variant('Bug')` | A collection holding only rows of that variant. |
 
 #### Examples
 
@@ -708,7 +746,11 @@ const tutorials = await db.orm.posts.variant('Tutorial').all();
 
 ## Read methods [#read-terminals]
 
-A read method runs the query and gives you the rows. `all()` and `first()` are available on both databases; `aggregate()` and `groupBy()` are PostgreSQL only and are documented under [Grouped aggregates](#grouped-aggregates). For a task-oriented walkthrough, see [Reading data](/orm/fundamentals/reading-data).
+A read method runs the query and gives you the rows. `all()` and `first()` are available on both databases. `aggregate()` and `groupBy()` are PostgreSQL only and are documented under [Grouped aggregates](#grouped-aggregates).
+
+There is no `count()` method on either database. On PostgreSQL, count with `aggregate((a) => ({ n: a.count() }))`. On MongoDB, count with the pipeline builder. Both are shown under [Count records](/orm/fundamentals/reading-data#count-records).
+
+For a task-oriented walkthrough, see [Reading data](/orm/fundamentals/reading-data).
 
 ### `all()`
 
@@ -718,8 +760,8 @@ Resolve the query to every matching row.
 
 - Available for PostgreSQL and MongoDB.
 - `all()` returns an [`AsyncIterableResult`](#asynciterableresult): you can `await` it to collect an array, or use `for await` to stream rows one at a time.
-- Re-`await`ing (or calling `.toArray()` on) an already-buffered result is safe: the cached array is returned, with no re-query and no throw.
-- **Switching consumption mode** on a consumed result throws `RUNTIME.ITERATOR_CONSUMED` (`already been consumed`). See [Single consumption and mode switching](#single-consumption-and-mode-switching).
+- `await`ing a result you have already `await`ed is safe. You get the same array back, and the query does not run again.
+- Each result can be used one way only. Awaiting it and then looping it with `for await`, or the reverse, throws an error whose `code` is `RUNTIME.ITERATOR_CONSUMED`. See [Single consumption and mode switching](#single-consumption-and-mode-switching).
 
 #### Options
 
@@ -772,7 +814,8 @@ Resolve the query to the first matching row, or `null` if none matches.
 
 - Available for PostgreSQL and MongoDB.
 - On PostgreSQL, `first()` accepts an inline filter: a shorthand object or a callback (`first((p) => p.priority.eq('urgent'))`).
-- On MongoDB, `first()` has no filter argument; filter first with `where(...)`, then call `first()`.
+- On PostgreSQL, an inline filter is added to any earlier `where()` call. Both have to match.
+- On MongoDB, `first()` takes no filter argument. Filter with `where(...)` first, then call `first()`.
 - Returns `null` when no row matches.
 
 #### Options
@@ -828,7 +871,8 @@ On PostgreSQL you can subclass `Collection` to attach domain methods, and regist
 #### Remarks
 
 - PostgreSQL only. The MongoDB ORM has no equivalent collection-subclassing mechanism.
-- Registering custom collections requires building the client with the `orm(...)` factory, not the `postgres()` client's built-in `.orm` facet. The `postgres()` client has no `collections` option, so its facet always resolves models to the base `Collection`. Pass a `collections` map to `orm({ runtime, context, collections })` to register subclasses.
+- To register a subclass, build the client with the `orm(...)` function and pass a `collections` object. The client's own `.orm` cannot do this: `postgres(...)` has no `collections` option, so `db.orm` always uses the plain `Collection`.
+- A method that returns `this.variant('Bug')` gives back a collection narrowed to the `Bug` model. It is chainable, so you finish it with `all()`, `first()`, or any other method.
 
 #### Examples
 
@@ -852,12 +896,13 @@ class TaskCollection extends Collection<Contract, 'Task'> {
 const client = postgres<Contract>({ contractJson, url: process.env.DATABASE_URL });
 const runtime = await client.connect();
 
-// The orm() factory accepts a `collections` map; the client's `.orm` facet does not.
+// orm() takes a `collections` option; the client's own `.orm` does not.
 const db = orm({
   runtime,
+  // client.context carries the contract, which orm() needs to build collections.
   context: client.context,
   collections: { Task: TaskCollection },
-}).public;
+}).public; // .public is the PostgreSQL schema
 
 const bugs = await db.Task.bugs().all();
 const features = await db.Task.features().all();
@@ -865,11 +910,15 @@ const features = await db.Task.features().all();
 
 ## Write methods [#mutation-terminals]
 
-Mutations write to the database. `create`, `createAll`, `createAndCount`, `update`, `updateAll`, `updateAndCount`, `delete`, `deleteAll`, `deleteAndCount`, and `upsert` are available on both databases, with several behavioral differences called out per method. For a task-oriented walkthrough, see [Writing data](/orm/fundamentals/writing-data); for grouping several writes into one unit, see [Transactions](/orm/fundamentals/transactions).
+A write method changes the database. `create`, `createAll`, `createAndCount`, `update`, `updateAll`, `updateAndCount`, `delete`, `deleteAll`, `deleteAndCount`, and `upsert` are available on both databases. The differences between the two are listed under each method.
 
-:::warning[`where()` enforcement differs sharply between databases]
-Always call `where()` before `update`, `updateAll`, `updateAndCount`, `delete`, `deleteAll`, `deleteAndCount`, or `upsert`. On **MongoDB** all seven enforce this at runtime: calling them with no filter throws `Error: <method>() requires a .where() filter`. On **PostgreSQL** only `update()` and `delete()` are typed to require a prior `where()`, and even there it is a **type-only** guard with no runtime check. If you bypass the type system, `update()` and `delete()` do not throw and do not mass-mutate; they narrow to a single row by identity (a `SELECT ... LIMIT 1` over the current, possibly empty, filters, then act on that one row). The `*All`/`*Count` variants on PostgreSQL compile with no `WHERE` clause and affect every row. Always call `where()` first.
+For a task-oriented walkthrough, see [Writing data](/orm/fundamentals/writing-data). For grouping several writes into one unit, see [Transactions](/orm/fundamentals/transactions).
+
+:::warning[Filter before you update or delete]
+Always call `where()` before an update or a delete. On MongoDB you get an error if you forget, with the message `updateAll() requires a .where() filter. Call .where() before .updateAll()`. On PostgreSQL you do not: `update()` and `delete()` change one arbitrary row, and `updateAll()` and `deleteAll()` change every row. TypeScript does refuse to compile `update()` and `delete()` without a `where()`, but nothing checks at run time.
 :::
+
+The examples below use `aliceId`, `bobId`, `carolId`, `postId`, `tagId`, `tutorialId`, and `userId` for the ids of rows that already exist. Substitute your own.
 
 ### `create()`
 
@@ -878,14 +927,19 @@ Insert a single row and return it.
 #### Remarks
 
 - Available for PostgreSQL and MongoDB.
-- On MongoDB, `create()` returns the input data plus the server-assigned `_id`. It does not re-read the stored document, unlike PostgreSQL's `RETURNING`-backed `create()`.
-- On PostgreSQL, `create()` supports nested `create()` on a child-owned relation and nested `connect()` on a parent-owned relation, all within one transaction. These nested mutators are type-checked but their runtime behavior on MongoDB is unverified on the current test contract.
+- On PostgreSQL, leave out any field your contract gives a default, including the id. Nullable fields can be left out too. Every other field is required.
+- On MongoDB, `_id` is the only field you can leave out. Give every other field a value, and write `null` for a field you want empty.
+- On MongoDB, `create()` returns the values you passed plus the `_id` the server assigned. It does not read the stored document back. On PostgreSQL the returned row comes from the database.
+- On PostgreSQL, `create()` can create or link related rows in the same transaction. Nest `create()` on the side that does not hold the foreign key, and `connect()` on the side that does.
+- Nested `create()` and `connect()` are not available on MongoDB.
 
 #### Options
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `data` | Object of field values, optionally with relation mutators (`create`, `connect`) | Yes | The row to insert. |
+| `data` | Object of field values | Yes | The row to insert. |
+
+On PostgreSQL, `data` can also carry a `create` or `connect` callback for a related row, as shown below.
 
 #### Return type
 
@@ -912,7 +966,7 @@ const user = await db.orm.users.create({
 // user._id is the server-assigned id
 ```
 
-##### Nested `create()` on a child-owned relation (PostgreSQL)
+##### Nested `create()` on the side without the foreign key (PostgreSQL) [#nested-create-on-a-child-owned-relation-postgresql]
 
 ```typescript
 const author = await db.orm.public.User.create({
@@ -925,7 +979,7 @@ const author = await db.orm.public.User.create({
 });
 ```
 
-##### Nested `connect()` on a parent-owned relation (PostgreSQL)
+##### Nested `connect()` on the side with the foreign key (PostgreSQL) [#nested-connect-on-a-parent-owned-relation-postgresql]
 
 ```typescript
 const post = await db.orm.public.Post.create({
@@ -988,13 +1042,14 @@ for await (const tag of db.orm.public.Tag.createAll([{ label: 'gamma' }, { label
 
 ### `createAndCount()`
 
-Insert rows without materializing them, returning the count.
+Insert rows and return how many were inserted, without reading them back.
 
 #### Remarks
 
 - Available for PostgreSQL and MongoDB.
-- On PostgreSQL, `createAndCount()` is **not supported on a multi-table-inheritance variant**. The base and variant rows live in separate tables, so a single `RETURNING`-less `INSERT` can't populate both. It throws `Error: createAndCount() is not supported for MTI variant "<Variant>" ... Use createAll() instead.`
-- On MongoDB, `createAndCount()` on a discriminated variant works normally. Mongo variants are one document shape in one collection, so there is no split-table restriction.
+- On PostgreSQL, `createAndCount()` does not work on a multi-table inheritance variant, a variant stored in its own table. Use `createAll()` instead.
+- Calling it on such a variant throws an error whose `code` is `ORM.OPERATION_UNSUPPORTED`, with the message `createAndCount() is not supported for MTI variant "Tutorial" on model "Post". Use createAll() instead.`
+- On MongoDB, a variant is one document in one collection, so `createAndCount()` works on a variant as usual.
 
 #### Options
 
@@ -1028,7 +1083,7 @@ const inserted = await db.orm.posts.variant('Tutorial').createAndCount([
     duration: 10,
   },
 ]);
-// 1 — no split-table restriction on Mongo variants
+// 1
 ```
 
 ### `update()`
@@ -1038,11 +1093,11 @@ Update the matched row and return it, or `null` if none matches.
 #### Remarks
 
 - Available for PostgreSQL and MongoDB. Requires a prior `where()` (see the warning at the top of this section).
-- On MongoDB, `update()` accepts a data object **or** a field-operations callback (`(t) => [t.field.inc(5), t.other.set(...)]`). The callback groups operators into one `findOneAndUpdate`; see [Field update operations](#field-update-operations).
-- On PostgreSQL, `update()` accepts a data object only. It has **no** field-operations callback overload: passing a function is silently a no-op (it resolves to `null`), not an error. A bare function has no enumerable own properties, so no column is targeted.
-- On PostgreSQL, `update()` supports nested `connect()` (relink a parent-owned foreign key) and nested `disconnect()` (unlink a many-to-many row without deleting it).
-- On MongoDB, `update()` is backed by `findOneAndUpdate` and is an atomic single-document update.
-- Returns `null` when no row matches.
+- On MongoDB, `update()` takes a data object or a callback that returns field operations, such as `(t) => [t.duration.inc(5)]`. See [Field update operations](#field-update-operations).
+- On PostgreSQL, `update()` takes a data object only. Passing a function is a mistake that returns `null`; pass an object.
+- On PostgreSQL, `update()` can also relink related rows. `connect()` points the foreign key at a different row, and `disconnect()` removes a many-to-many link without deleting either row.
+- On MongoDB, `update()` changes one document in a single database operation.
+- Returns `null` when no row matches. On PostgreSQL it also returns `null` when you passed a function instead of an object.
 
 #### Options
 
@@ -1094,7 +1149,7 @@ const updated = await db.orm.public.Post.where({ id: postId })
   .update({
     tags: (tag) => tag.disconnect([{ id: tagId }]),
   });
-// only the junction row is removed; the Tag row itself still exists
+// only the join-table row is removed; the Tag row itself still exists
 ```
 
 For Prisma ORM 7 users, `update()` moves the filter into `where()` and drops the `data` wrapper:
@@ -1111,8 +1166,9 @@ Update every matching row and collect the results.
 #### Remarks
 
 - Available for PostgreSQL and MongoDB. Call `where()` first: MongoDB enforces this at runtime; PostgreSQL does not (see the section warning above: without a filter these affect every row).
-- On PostgreSQL, `updateAll()` is a single `UPDATE ... RETURNING` statement, and is atomic.
-- On MongoDB, `updateAll()` is **not atomic**. It (1) reads the matching `_id`s, (2) runs an update against the original filter, then (3) re-reads by those captured `_id`s. A concurrent write between these steps could change which documents match or their values; the result reflects the `_id` set from step 1, not one atomic snapshot.
+- On PostgreSQL, `updateAll()` runs as one statement, so every matching row changes together.
+- On MongoDB, `updateAll()` is not one operation. It collects the matching ids, updates, then reads those documents back. A document someone else changes in between can come back with their values, and a document that starts matching only after the first step is updated but not returned.
+- Prisma ORM has no `db.transaction()` on MongoDB, so there is no way to avoid this from the client. If it matters, run the writes yourself in a MongoDB driver session. See [Transactions on MongoDB](/orm/fundamentals/transactions#transactions-on-mongodb).
 
 #### Options
 
@@ -1136,7 +1192,7 @@ const updated = await db.orm.public.Post.where({ userId: aliceId }).updateAll({ 
 
 ```typescript tab="MongoDB"
 const updated = await db.orm.users.where({ role: 'author' }).updateAll({ role: 'admin' });
-// non-atomic: ids are captured, updated, then re-read
+// see the remark above: this is not one operation
 ```
 
 ### `updateAndCount()`
@@ -1188,7 +1244,7 @@ Remove the matched row and return it, or `null` if none matches.
 #### Remarks
 
 - Available for PostgreSQL and MongoDB. Requires a prior `where()` (see the section warning above).
-- On MongoDB, `delete()` is backed by `findOneAndDelete`.
+- On MongoDB, `delete()` removes one document in a single database operation.
 - Returns `null` when no row matches.
 
 #### Options
@@ -1227,7 +1283,8 @@ Remove every matching row and collect the results.
 
 #### Remarks
 
-- Available for PostgreSQL and MongoDB. Call `where()` first: MongoDB enforces this at runtime; PostgreSQL does not (see the section warning above: without a filter these affect every row).
+- Available for PostgreSQL and MongoDB. Call `where()` first: MongoDB enforces this at run time; PostgreSQL does not (see the section warning above: without a filter this deletes every row).
+- Every matching row is deleted before the first row reaches you. Stopping the loop early still leaves nothing behind.
 
 #### Options
 
@@ -1288,11 +1345,13 @@ Insert a row if none matches, otherwise update the existing row.
 
 #### Remarks
 
-- Available for PostgreSQL and MongoDB. Requires a prior `where()` on MongoDB (see the section warning).
-- On PostgreSQL, `upsert()` uses `conflictOn` to name the unique target. The `update` side is a plain data object.
-- On MongoDB, the `update` side may be a data object **or** a field-operations callback. On insert, `update` fields apply via `$set` and the remaining create-only fields via `$setOnInsert`, so `update` values win over `create` values on any overlapping field.
-- On PostgreSQL, `upsert()` is **not supported on a multi-table-inheritance variant** (same restriction as [`createAndCount()`](#createandcount)): it throws `Error: upsert() is not supported for MTI variant "<Variant>" ...`.
-- On MongoDB, the returned `_id` on the update path comes back as a raw driver `ObjectId`, not a decoded hex string. Compare it with `String(...)`.
+- On MongoDB, call `where()` first; the filter decides which document is updated.
+- On PostgreSQL, `where()` is not used. `conflictOn` decides which row counts as already existing.
+- `conflictOn` takes one unique column with a value, such as `conflictOn: { label: 'typescript' }`. Only the column name is read: it names the unique constraint the database checks. The value is required by the type but is not used, so it does not have to match the value in `create`.
+- Leave `conflictOn` out to use the primary key instead.
+- On MongoDB, the `update` side takes a data object or a field-operations callback. If a field appears in both `create` and `update`, the `update` value is used, even when the row is inserted.
+- On PostgreSQL, `upsert()` does not work on a multi-table inheritance variant, the same restriction as [`createAndCount()`](#createandcount). It throws an error whose `code` is `ORM.OPERATION_UNSUPPORTED`, with the message `upsert() is not supported for MTI variant "Tutorial" on model "Post". Use createAll() instead.`
+- On MongoDB, the `_id` on the returned row comes back as the driver's `ObjectId`, not a hex string. Compare it as text: `String(user._id) === String(bobId)`.
 
 #### Options
 
@@ -1300,7 +1359,7 @@ Insert a row if none matches, otherwise update the existing row.
 |---|---|---|---|
 | `create` | Data object | Yes | The row to insert if none matches. |
 | `update` | Data object, or (MongoDB) a field-operations callback | Yes | The changes to apply if a row matches. |
-| `conflictOn` | Object naming the unique target (PostgreSQL) | PostgreSQL | The conflict target that decides insert vs. update. |
+| `conflictOn` | Object with one unique column and a value (PostgreSQL) | No | Names the unique constraint that decides insert or update. Omit to use the primary key. |
 
 #### Return type
 
@@ -1313,14 +1372,14 @@ Insert a row if none matches, otherwise update the existing row.
 ##### Insert or update (PostgreSQL)
 
 ```typescript
-// Insert path: no existing row has label 'brand-new', so the create side wins.
+// Insert: no existing row has label 'brand-new', so the create side is used.
 const inserted = await db.orm.public.Tag.upsert({
   create: { id: '30000000-0000-0000-0000-000000000099', label: 'brand-new' },
   update: { label: 'brand-new-updated' },
   conflictOn: { label: 'brand-new' },
 });
 
-// Update path: 'typescript' already exists, so the update runs against it.
+// Update: a row with label 'typescript' already exists, so the update runs against it.
 const updated = await db.orm.public.Tag.upsert({
   create: { id: '30000000-0000-0000-0000-000000000098', label: 'typescript' },
   update: { label: 'typescript-renamed' },
@@ -1341,7 +1400,7 @@ const user = await db.orm.users.where({ email: 'newperson@example.com' }).upsert
   },
   update: { bio: 'set on upsert' },
 });
-// on insert, update fields win over create fields on overlap
+// on insert, an `update` value replaces the `create` value for the same field
 ```
 
 ##### Field-operations callback on the update side (MongoDB)
@@ -1363,7 +1422,7 @@ const post = await db.orm.posts
   });
 ```
 
-For Prisma ORM 7 users, `upsert()` replaces the `where` conflict target with `conflictOn` (PostgreSQL):
+For Prisma ORM 7 users, `upsert()` replaces the `where` argument with `conflictOn` (PostgreSQL):
 
 ```diff
 - const tag = await prisma.tag.upsert({
@@ -1373,14 +1432,14 @@ For Prisma ORM 7 users, `upsert()` replaces the `where` conflict target with `co
 - });
 + const tag = await db.orm.public.Tag.upsert({
 +   update: { label: 'typescript-renamed' },
-+   create: { id, label: 'typescript' },
++   create: { label: 'typescript' },
 +   conflictOn: { label: 'typescript' },
 + });
 ```
 
 ## Grouped aggregates
 
-PostgreSQL supports aggregation over a result set, both flat (`aggregate()`) and grouped (`groupBy().aggregate()`), with `having()` to filter groups. MongoDB has no equivalent: `aggregate()` and `groupBy()` do not exist on the Mongo collection and calling them throws `TypeError`.
+PostgreSQL supports aggregation over a result set, both flat (`aggregate()`) and grouped (`groupBy().aggregate()`), with `having()` to filter groups. MongoDB has neither method: `aggregate()` and `groupBy()` do not exist on a MongoDB collection, and calling them throws a `TypeError`. Use the pipeline builder for MongoDB aggregation instead, described in [MongoDB: Pipeline builder](/orm/fundamentals/advanced-queries#mongodb-pipeline-builder).
 
 The examples below use a separate `Customer` / `Order` schema, where `Order.amount` is a numeric column:
 
@@ -1402,6 +1461,7 @@ model Customer {
 model Order {
   id         Uuid     @id @default(uuid())
   customerId Uuid
+  channel    String
   amount     Int
   quantity   Int
   placedAt   DateTime @default(now())
@@ -1421,16 +1481,17 @@ Compute aggregates over the current result set.
 #### Remarks
 
 - PostgreSQL only. Calling `aggregate()` on a Mongo collection throws `TypeError`.
-- `count()` needs no field argument and always resolves to a number (`0` over an empty set).
+- `count()` counts rows. It takes no argument and always resolves to a number (`0` over an empty set).
+- `count(field)` counts the rows where that field is not null.
 - `sum()` and `avg()` resolve to `null`, not `0`, over an empty result set. This is standard SQL: aggregating zero rows with `SUM`/`AVG` yields `NULL`. Their TypeScript return type is `number | null` for this reason.
 
 #### Options
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `selector` | Callback `(agg) => ({ alias: agg.fn(...) })` | Yes | The aggregates to compute, keyed by output alias. |
+| `selector` | Callback `(agg) => ({ alias: agg.sum('amount') })` | Yes | The aggregates to compute, keyed by output alias. |
 
-The selector's `agg` exposes `count()`, `sum(field)`, `avg(field)`, `min(field)`, `max(field)`.
+The selector's `agg` gives you `count()`, `count(field)`, `sum(field)`, `avg(field)`, `min(field)`, and `max(field)`.
 
 #### Return type
 
@@ -1447,10 +1508,19 @@ const stats = await db.orm.public.Order.aggregate((agg) => ({ total: agg.count()
 // { total: 10 }
 ```
 
+##### Count the rows where a field is set (PostgreSQL)
+
+```typescript
+const stats = await db.orm.public.Order.aggregate((agg) => ({ withQuantity: agg.count('quantity') }));
+// { withQuantity: 8 }
+```
+
 ##### Sum and average (PostgreSQL)
 
 ```typescript
-const stats = await db.orm.public.Order.where({ customerId: acmeId }).aggregate((agg) => ({
+const stats = await db.orm.public.Order.where({
+  customerId: '20000000-0000-0000-0000-000000000001',
+}).aggregate((agg) => ({
   totalAmount: agg.sum('amount'),
   avgAmount: agg.avg('amount'),
 }));
@@ -1492,13 +1562,17 @@ Group rows by one or more fields, then aggregate per group.
 #### Remarks
 
 - PostgreSQL only. Calling `groupBy()` on a Mongo collection throws `TypeError`.
-- `groupBy(...fields)` returns a `GroupedCollection`. Call `.aggregate(...)` on it to produce one row per distinct group key, carrying both the key field(s) and the aggregate aliases.
+- Pass field names as separate arguments: `groupBy('customerId', 'channel')`.
+- `groupBy(...)` returns a `GroupedCollection`. Call `.aggregate(...)` on it to get one row per group, carrying both the grouping fields and the aggregate aliases.
+- A `where(...)` before `groupBy(...)` filters the rows that get grouped.
+- `orderBy(...)` on a grouped collection sorts the groups by a grouping field. You cannot sort them by an aggregate value here. For that, use the SQL query builder, described in [Advanced queries](/orm/fundamentals/advanced-queries).
+- `limit(n)` and `offset(n)` page the groups, and both require an `orderBy(...)` before them. Without one they are a TypeScript error.
 
 #### Options
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `...fields` | Field names (`string`) | Yes | The grouping key(s). |
+| `...fields` | One or more field names (`string`) | Yes | The fields to group by. |
 
 #### Return type
 
@@ -1518,6 +1592,33 @@ const perCustomer = await db.orm.public.Order.groupBy('customerId').aggregate((a
 // one row per customer, each { customerId, orderCount, totalAmount }
 ```
 
+##### Group by two fields (PostgreSQL)
+
+```typescript
+const perCustomerAndChannel = await db.orm.public.Order.groupBy('customerId', 'channel').aggregate(
+  (agg) => ({ totalAmount: agg.sum('amount') }),
+);
+// one row per customer and channel, each { customerId, channel, totalAmount }
+```
+
+##### Filter rows, then group (PostgreSQL)
+
+```typescript
+const perCustomer = await db.orm.public.Order.where((o) => o.amount.gte(100))
+  .groupBy('customerId')
+  .having((h) => h.count().gt(1))
+  .aggregate((agg) => ({ totalAmount: agg.sum('amount') }));
+```
+
+##### Sort and page the groups (PostgreSQL)
+
+```typescript
+const firstTwoChannels = await db.orm.public.Order.groupBy('channel')
+  .orderBy((group) => group.channel.desc())
+  .limit(2)
+  .aggregate((agg) => ({ orderCount: agg.count() }));
+```
+
 For Prisma ORM 7 users, `groupBy()` chains into `aggregate()` instead of taking a `by` array with aggregate keys:
 
 ```diff
@@ -1532,13 +1633,16 @@ Filter groups by an aggregate comparison.
 #### Remarks
 
 - PostgreSQL only. Chained on a `GroupedCollection` between `groupBy()` and `aggregate()`.
-- The `having()` callback exposes `count()`, `sum(field)`, `avg(field)`, `min(field)`, `max(field)`, each returning comparison methods (`eq`, `neq`, `gt`, `lt`, `gte`, `lte`). It compiles to a SQL `HAVING` clause.
+- The `having()` callback gives you `count()`, `sum(field)`, `avg(field)`, `min(field)`, and `max(field)`. Each of those returns an object with `eq`, `neq`, `gt`, `lt`, `gte`, and `lte`.
+- You cannot refer to an alias from `aggregate()` here. Write the aggregate out again in `having()`.
 
 #### Options
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `predicate` | Callback `(h) => h.fn(field).cmp(value)` | Yes | The group-level condition. |
+| `predicate` | Callback `(h) => h.<aggregate>(<field>).<comparison>(<value>)` | Yes | The group-level condition. |
+
+The angle-bracket names above are placeholders. A real call is `h.sum('amount').gt(1000)`.
 
 #### Return type
 
@@ -1566,20 +1670,20 @@ const groupsWithAtLeastFive = await db.orm.public.Order.groupBy('customerId')
 
 ## Filter conditions and operators
 
-Filters build the predicate inside `where()` (and relation refinements). PostgreSQL and MongoDB use different filter surfaces.
+Filters build the condition inside `where()`, and inside relation filters. PostgreSQL and MongoDB have different filter APIs.
 
 - **PostgreSQL** uses column-level comparison methods (`u.email.eq(...)`) inside a callback, plus standalone combinator functions imported from `@prisma/orm-postgres/orm-client`.
 - **MongoDB** uses static factories on `MongoFieldFilter` imported from `@prisma/orm-mongo/query-ast/execution`, plus `.and()`/`.not()` instance methods and the standalone `MongoOrExpr.of(...)`.
 
 ### Scalar comparisons (PostgreSQL)
 
-Column-level comparison methods on a field accessor.
+Column-level comparison methods on a field.
 
 #### Remarks
 
-- PostgreSQL. Which methods a field has depends on its type: `eq`/`neq`/`in`/`notIn` on any field that can be compared for equality; `gt`/`lt`/`gte`/`lte` on any field that can be ordered; `like` on text fields; `isNull`/`isNotNull` on every field.
-- `like()` matches a SQL pattern case-sensitively.
-- `ilike()` matches case-insensitively. It is a Postgres-adapter-registered operation attached to any textual-trait field, not a core comparison method.
+- PostgreSQL. Which methods a field has depends on its type: `eq`/`neq`/`in`/`notIn` on any field that can be compared for equality; `gt`/`lt`/`gte`/`lte` on any field that can be ordered; `like` and `ilike` on text fields; `isNull`/`isNotNull` on every field.
+- `like()` matches a SQL pattern case-sensitively. `ilike()` matches the same pattern case-insensitively.
+- `in([])` matches no rows. `notIn([])` matches every row.
 
 #### Options
 
@@ -1628,9 +1732,10 @@ Combine or negate predicates.
 
 #### Remarks
 
-- On PostgreSQL, `and`, `or`, `not`, and `all` are **standalone functions** imported from `@prisma/orm-postgres/orm-client`. They build AST nodes directly and are independent of any model accessor.
-- On MongoDB, `.and(other)` and `.not()` are **instance methods** on any `MongoFieldFilter`. There is **no `.or()` instance method** and no `$nor` support. To OR filters, construct `MongoOrExpr.of([...])`.
-- On PostgreSQL, `all()` takes no arguments and returns a constant-true predicate, useful wherever a predicate is structurally required.
+- On PostgreSQL, `and`, `or`, `not`, and `all` are **standalone functions** imported from `@prisma/orm-postgres/orm-client`. You import them; they are not methods on a field.
+- On PostgreSQL, `all()` takes no arguments and returns a condition that is always true. Use it where the code has to pass a condition but you do not want to filter anything, such as a branch of your own helper. This `all()` is not the `.all()` you call at the end of a chain to run the query.
+- On MongoDB, `.and(other)` and `.not()` are **instance methods** on every filter expression, including `MongoFieldFilter`, `MongoOrExpr`, and `MongoAndExpr`. There is **no `.or()` instance method**. To OR filters, build `MongoOrExpr.of([...])`.
+- On MongoDB, an AND of two ORs is `MongoOrExpr.of([...]).and(MongoOrExpr.of([...]))`.
 
 #### Examples
 
@@ -1639,9 +1744,19 @@ Combine or negate predicates.
 ```typescript
 import { and, or, not } from '@prisma/orm-postgres/orm-client';
 
-const both = await db.orm.public.Post.where((p) => and(p.priority.eq('low'), p.userId.eq(carolId))).all();
+const both = await db.orm.public.Post.where((p) =>
+  and(p.priority.eq('low'), p.userId.eq('00000000-0000-0000-0000-000000000003')),
+).all();
 const either = await db.orm.public.Post.where((p) => or(p.priority.eq('urgent'), p.priority.eq('high'))).all();
 const negated = await db.orm.public.Post.where((p) => not(p.priority.eq('low'))).all();
+```
+
+##### `all` (PostgreSQL)
+
+```typescript
+import { all } from '@prisma/orm-postgres/orm-client';
+
+const everyPost = await db.orm.public.Post.where(() => all()).all();
 ```
 
 ##### `and` / `or` / `not` (MongoDB)
@@ -1658,8 +1773,20 @@ const either = await db.orm.users
 const negated = await db.orm.users.where(MongoFieldFilter.eq('name', 'Alice').not()).all();
 ```
 
+##### AND of two ORs (MongoDB)
+
+```typescript
+const authorsNamedAliceOrBob = await db.orm.users
+  .where(
+    MongoOrExpr.of([MongoFieldFilter.eq('name', 'Alice'), MongoFieldFilter.eq('name', 'Bob')]).and(
+      MongoOrExpr.of([MongoFieldFilter.eq('role', 'author'), MongoFieldFilter.eq('role', 'editor')]),
+    ),
+  )
+  .all();
+```
+
 :::note[No `.or()` instance method or `$nor` on MongoDB]
-`MongoFieldFilter` expressions have `.and(...)` and `.not()` instance methods, but no `.or(...)`. Accessing `.or` is `undefined` and calling it throws `TypeError`. Use `MongoOrExpr.of([...])` for disjunction. There is no `$nor` combinator anywhere in the library.
+MongoDB filter expressions have `.and(...)` and `.not()`, but no `.or(...)`. Use `MongoOrExpr.of([...])` instead. There is no `$nor` combinator in the library.
 :::
 
 ### Relation filters (PostgreSQL)
@@ -1668,10 +1795,12 @@ Filter parents by their related rows.
 
 #### Remarks
 
-- PostgreSQL. `some()`, `every()`, and `none()` are methods on a to-many relation accessor and compile to correlated `EXISTS` / `NOT EXISTS` subqueries.
-- `some()` with no predicate matches parents with at least one related row.
-- `every()` is vacuously true for a parent with zero related rows.
-- A to-one relation is filtered from the child side with the same `some(...)` shape (the compiled SQL is a correlated subquery regardless of cardinality).
+- PostgreSQL. `some()`, `every()`, and `none()` are methods on a to-many relation, and they compile to SQL `EXISTS` subqueries.
+- Each of the three takes either a callback or a plain object of equality matches: `u.posts.some((p) => p.priority.eq('urgent'))` and `u.posts.some({ priority: 'urgent' })` mean the same thing.
+- `some()` with no argument matches parents with at least one related row.
+- A user with no posts matches `every()`.
+- `not(u.posts.some(...))` and `u.posts.none(...)` match the same rows. Prefer `none(...)`.
+- A to-one relation is filtered the same way, from the side that holds the foreign key: `p.user.some(...)`.
 
 #### Examples
 
@@ -1697,14 +1826,19 @@ A plain object of equality matches, ANDed together.
 #### Remarks
 
 - Available for PostgreSQL and MongoDB.
-- Each key must support equality. Multiple keys are combined with implicit AND.
+- Multiple keys are combined with implicit AND.
+- A key set to `null` becomes an IS NULL check. A key set to `undefined` is skipped.
+- A field whose type cannot be compared for equality throws an error whose `code` is `ORM.FILTER_UNSUPPORTED`. Filter that field with a comparison method instead.
 
 #### Examples
 
 ##### Shorthand object
 
 ```typescript tab="PostgreSQL"
-const row = await db.orm.public.Post.where({ userId: aliceId, priority: 'high' }).first();
+const row = await db.orm.public.Post.where({
+  userId: '00000000-0000-0000-0000-000000000001',
+  priority: 'high',
+}).first();
 ```
 
 ```typescript tab="MongoDB"
@@ -1718,14 +1852,17 @@ Static factories that build MongoDB filter expressions.
 #### Remarks
 
 - MongoDB. Imported from `@prisma/orm-mongo/query-ast/execution`.
-- Exactly eleven factories exist: `of`, `eq`, `neq`, `gt`, `lt`, `gte`, `lte`, `in`, `nin`, `isNull`, `isNotNull`. The inequality factory is `neq`, **not** `ne` (`MongoFieldFilter.ne` is `undefined`).
-- `isNull` / `isNotNull` are sugar for equals-null / not-equals-null, not a `$exists` check.
-- The factories `exists`, `regex`, `elemMatch`, `all`, and `size` do **not** exist on `MongoFieldFilter`. There is a separate `MongoExistsExpr` class for `$exists`, but no regex, `elemMatch`, `$all`, or `$size` support anywhere in the library.
+- Exactly eleven factories exist: `of`, `eq`, `neq`, `gt`, `lt`, `gte`, `lte`, `in`, `nin`, `isNull`, `isNotNull`. There is no `ne`; use `neq`.
+- `of(field, operator, value)` takes a raw MongoDB operator string, for any operator the other ten factories do not cover.
+- `isNull` / `isNotNull` are shorthand for equals-null and not-equals-null, not a `$exists` check.
+- For `$exists`, import `MongoExistsExpr` from the same module and call `MongoExistsExpr.exists(field)` or `MongoExistsExpr.notExists(field)`.
+- The factories `exists`, `regex`, `elemMatch`, `all`, and `size` do **not** exist on `MongoFieldFilter`, and the library has no regex, `elemMatch`, `$all`, or `$size` support anywhere.
 
 #### Options
 
 | Method | Type | Description |
 |---|---|---|
+| `of(field, operator, value)` | Field + MongoDB operator string + value | Any operator, written out, such as `'$gt'`. |
 | `eq(field, value)` / `neq(field, value)` | Field + value | Equality / inequality. |
 | `gt` / `lt` / `gte` / `lte` `(field, value)` | Field + ordered value | Ordered comparisons. |
 | `in(field, values)` / `nin(field, values)` | Field + array | Membership / exclusion. |
@@ -1756,15 +1893,23 @@ const noBio = await db.orm.users.where(MongoFieldFilter.isNull('bio')).all();
 const hasBio = await db.orm.users.where(MongoFieldFilter.isNotNull('bio')).all();
 ```
 
+##### An operator written out, and `$exists` (MongoDB)
+
+```typescript
+import { MongoExistsExpr, MongoFieldFilter } from '@prisma/orm-mongo/query-ast/execution';
+
+const older = await db.orm.users.where(MongoFieldFilter.of('age', '$gt', 30)).all();
+const withBioField = await db.orm.users.where(MongoExistsExpr.exists('bio')).all();
+```
+
 ### Dot-notation into an embedded object (MongoDB)
 
 Filter into a field of an embedded value object using a dot path.
 
 #### Remarks
 
-- MongoDB. Runtime behavior is verified; the type surface does not declare embedded paths, so the object-shorthand form needs a cast.
-- `MongoWhereFilter` is typed against the model's own top-level field keys, so `{ 'address.city': ... }` is a compile error without a cast. At runtime there is no such restriction: the object key is used verbatim as the Mongo field path.
-- For a type-clean alternative, use `MongoFieldFilter.eq('address.city', ...)`, which takes a bare `string` and needs no cast.
+- MongoDB. This works at runtime, but the TypeScript types do not know nested paths, so the object form needs a cast. Prefer `MongoFieldFilter.eq`, which takes a bare `string` path and needs no cast.
+- `MongoWhereFilter` is typed against the model's own top-level field names. `{ 'address.city': ... }` is therefore a compile error without a cast.
 
 #### Examples
 
@@ -1773,21 +1918,21 @@ Filter into a field of an embedded value object using a dot path.
 ```typescript
 import { MongoFieldFilter } from '@prisma/orm-mongo/query-ast/execution';
 
-// Type-clean form: MongoFieldFilter takes a bare string path.
 const usersInSf = await db.orm.users.where(MongoFieldFilter.eq('address.city', 'San Francisco')).all();
 ```
 
-The object-shorthand form works at runtime but requires a cast, because the embedded path is not in the model's declared field keys:
+The object form works at runtime too, with a cast:
 
 ```typescript
 const usersInSf = await db.orm.users
   .where({ 'address.city': 'San Francisco' } as unknown as Record<string, unknown>)
   .all();
 ```
-
 ## Field update operations
 
-MongoDB field operations are accessed through a field accessor inside `update()`, `updateAndCount()`, and `upsert()` callbacks (for example `t.duration.inc(5)`). Each operation targets a field and produces a Mongo update operator. PostgreSQL's `update()` has no equivalent callback form (see [`update()`](#update)).
+On MongoDB, `update()`, `updateAndCount()`, and `upsert()` accept a callback in place of a data object. The callback receives one argument, written `u` or `t` below, with one property per field: `u.bio`, `t.duration`. Call an operation on that property, such as `u.bio.set('Hello')`. Each call returns an update instruction; collect them in the array you return. PostgreSQL's `update()` has no callback form (see [`update()`](#update)).
+
+All three methods require `.where()`. `update()` returns the updated document, or `null` when nothing matched. `updateAndCount()` returns the number of documents it changed.
 
 ### Available operations (MongoDB)
 
@@ -1797,88 +1942,115 @@ MongoDB field operations are accessed through a field accessor inside `update()`
 - `set()`, `unset()`, `inc()`, and `mul()` are available and verified.
   - `set(value)` assigns a field.
   - `unset()` removes a field.
-  - `inc(n)` increments a numeric field. Applied to a missing field, `$inc` initializes it to the increment.
+  - `inc(n)` increments a numeric field. Applied to a missing field, it sets the field to `n`.
   - `mul(n)` multiplies a numeric field. Applied to a missing field, MongoDB sets it to `0` regardless of the multiplier.
-- The field accessor is typed against the collection's **base** model, even after `variant(...)`. Accessing a variant-only field (such as `Tutorial.duration`) inside a callback is a compile error, though it works correctly at runtime because the accessor is a `Proxy` that resolves any field name.
+- The callback argument is typed against the collection's base model, even after `variant(...)`. TypeScript only knows the base model's fields, so `t.duration.inc(10)` is a type error even though it runs correctly. Put `// @ts-expect-error` on that line to accept it.
 
 #### Examples
 
+These examples use the MongoDB accessors from [Setting up the client](#setting-up-the-client).
 ##### `set()` (MongoDB)
+
+Return as many operations as you want. They are applied together, in one write.
 
 ```typescript
 const updated = await db.orm.users
-  .where({ _id: bobId })
-  .update((u) => [u.bio.set('Set via field op')]);
+  .where({ _id: '6650f1c2a1b2c3d4e5f60002' })
+  .update((u) => [u.bio.set('Set via field op'), u.name.set('Bob R.')]);
 ```
 
 ##### `inc()` and `mul()` (MongoDB)
 
+`duration` is declared on `Tutorial`, not on the base `Post` model, so each line that touches it needs `// @ts-expect-error`.
+
 ```typescript
 const incremented = await db.orm.posts
   .variant('Tutorial')
-  .where({ _id: tutorialId })
+  .where({ _id: '6650f1c2a1b2c3d4e5f60003' })
+  // @ts-expect-error duration is a Tutorial field, not a Post field
   .update((t) => [t.duration.inc(10)]);
 
 const multiplied = await db.orm.posts
   .variant('Tutorial')
-  .where({ _id: tutorialId })
+  .where({ _id: '6650f1c2a1b2c3d4e5f60003' })
+  // @ts-expect-error duration is a Tutorial field, not a Post field
   .update((t) => [t.duration.mul(3)]);
 ```
 
 ##### `unset()` (MongoDB)
 
+`updateAndCount()` takes the callback in the same place. `upsert()` takes it as its `update` key, beside `create`: `upsert({ create: { ... }, update: (u) => [u.bio.unset()] })`.
+
 ```typescript
-const updated = await db.orm.users.where({ _id: aliceId }).update((u) => [u.bio.unset()]);
+const updated = await db.orm.users.where({ _id: '6650f1c2a1b2c3d4e5f60001' }).update((u) => [u.bio.unset()]);
+const changed = await db.orm.users.where({ _id: '6650f1c2a1b2c3d4e5f60002' }).updateAndCount((u) => [u.bio.unset()]);
 ```
 
 ### Operations that do not exist (MongoDB)
 
 #### Remarks
 
-- MongoDB. These are library gaps, not contract limitations. `min()`, `max()`, `rename()`, and `currentDate()` have **no accessor method at all**. The library never generates `$min`, `$max`, `$rename`, or `$currentDate`.
+- MongoDB. `min()`, `max()`, `rename()`, and `currentDate()` have **no accessor method at all**.
 
 :::warning[No `min`, `max`, `rename`, or `currentDate` field operations]
-The field accessor implements `set`, `unset`, `inc`, `mul`, `push`, `pull`, `addToSet`, and `pop` only. `min`, `max`, `rename`, and `currentDate` are absent from the API. Because a field accessor is a `Proxy`, `u.bio.rename` resolves to `undefined` and only throws `TypeError` when you attempt to call it. Do not use these operations; they are not supported.
+The callback argument implements `set`, `unset`, `inc`, `mul`, `push`, `pull`, `addToSet`, and `pop` only. `min`, `max`, `rename`, and `currentDate` are absent from the API. A missing or misspelled operation is not a compile error: `u.bio.rename` is `undefined`, and you only get a `TypeError` when you call it. Do not use `min()`, `max()`, `rename()`, or `currentDate()`.
 :::
 
 ### Array operations (MongoDB, unverified)
 
 #### Remarks
 
-- MongoDB. `push()`, `pull()`, `addToSet()`, and `pop()` exist on the field accessor and compile, but they are **unverified** on the current test contract, which has no array (`many: true`) field to target. Applied to a non-array field, MongoDB rejects the write with a server-level error (`The field '...' must be an array but is of type ...`), not a library error.
-- Treat these as available but exercise them against a real array field in your own schema before relying on them.
+- MongoDB. `push()`, `pull()`, `addToSet()`, and `pop()` exist on the callback argument and compile. They are not tested; try them on a real array field before relying on them.
+- Applied to a field that is not an array, MongoDB rejects the write with a server-level error (`The field '...' must be an array but is of type ...`), not a library error. An array field is declared with `[]` in your contract, as in `tags String[]`.
+
+```typescript
+const updated = await db.orm.posts.where({ _id: '6650f1c2a1b2c3d4e5f60003' }).update((p) => [
+  p.tags.push('mongodb'), // appends one element
+  p.tags.addToSet('mongodb'), // appends it only if it is not already there
+  p.tags.pull('draft'), // removes every element equal to the argument
+  p.tags.pop(1), // removes the last element; pop(-1) removes the first
+]);
+```
 
 ## Result types
 
 ### `AsyncIterableResult`
 
-The methods `all()` / `createAll()` / `updateAll()` / `deleteAll()` return an `AsyncIterableResult`, imported (if you need the type) from `@prisma/orm-postgres/components/runtime`. It has a dual interface:
+The methods `all()` / `createAll()` / `updateAll()` / `deleteAll()` return an `AsyncIterableResult`. You can use it two ways:
 
-- **Buffered**: `await` the result (or call `.toArray()`) to collect every row into an array.
-- **Streaming**: use `for await ... of` to iterate rows one at a time.
+- `await` the result (or call `.toArray()`) to get every row in one array.
+- Loop over it with `for await ... of` to take rows one at a time.
+
+If you need the type by name, import it from `@prisma/orm-postgres/components/runtime` on PostgreSQL, or from `@prisma/orm-mongo/components/runtime` on MongoDB.
 
 #### Single consumption and mode switching
 
-A result is consumed once per mode:
+Each result is read once, one way:
 
-- Re-`await`ing (or calling `.toArray()` on) an already-buffered result is **safe**: it returns the cached array, with no re-query and no throw.
-- **Switching modes** on a consumed result throws `RUNTIME.ITERATOR_CONSUMED` (message: `already been consumed`). Awaiting a result and then iterating it with `for await` (or the reverse) is the failure mode.
+- Re-`await`ing (or calling `.toArray()` on) a result you already awaited is **safe**. It returns the same array.
+- Switching from one way to the other throws an error whose `code` is `RUNTIME.ITERATOR_CONSUMED` (message: `already been consumed`). Awaiting a result and then looping it with `for await`, or the reverse, is what throws.
+
+The example below uses the PostgreSQL accessor; on MongoDB the same methods are on `db.orm.users` (see [Setting up the client](#setting-up-the-client)).
 
 ```typescript
 const result = db.orm.public.User.all();
 const first = await result;
-const again = await result.toArray(); // safe: same cached array
+const again = await result.toArray(); // safe: same array
 
-// but switching mode throws:
-for await (const user of result) {
-  // throws RUNTIME.ITERATOR_CONSUMED
+try {
+  for await (const user of result) {
+  }
+} catch (error) {
+  if (error instanceof Error && 'code' in error && error.code === 'RUNTIME.ITERATOR_CONSUMED') {
+    // the result was already read as an array
+  }
 }
 ```
 
-This behavior is shared by the PostgreSQL and MongoDB implementations; the error message and rule are identical.
+PostgreSQL and MongoDB behave the same here. The error message and the rule are identical.
 
 ### Aggregate result shapes
 
-- `aggregate((agg) => ({ ... }))` resolves to a **single object** keyed by your aliases: `{ total: 10 }`.
-- `groupBy(...).aggregate((agg) => ({ ... }))` resolves to an **array**, one object per group, carrying both the group key field(s) and the aggregate aliases: `[{ customerId, orderCount, totalAmount }, ...]`.
+- `aggregate((agg) => ({ ... }))` resolves to a **single object** keyed by your aliases. `db.orm.public.Order.aggregate((agg) => ({ total: agg.count() }))` resolves to `{ total: 10 }`.
+- `groupBy(...).aggregate((agg) => ({ ... }))` resolves to an **array**, one object per group. Each object carries the group key field or fields plus your aliases. `db.orm.public.Order.groupBy('customerId').aggregate((agg) => ({ orderCount: agg.count(), totalAmount: agg.sum('amount') }))` resolves to `[{ customerId, orderCount, totalAmount }, ...]`.
 - `count()` is always a `number` (`0` over an empty set). `sum()` and `avg()` are `number | null`: they resolve to `null`, not `0`, over an empty result set.
