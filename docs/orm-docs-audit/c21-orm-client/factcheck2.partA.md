@@ -1,5 +1,0 @@
-# Final fact re-check, slice A (Example schema, Setting up the client, Query-building methods)
-
-Four corrections: `prisma db update` replaces `prisma migrate dev` (not all of `prisma migrate`); `db.raw` is "raw queries", since on MongoDB it is a raw collection API, not SQL; `sum()`/`avg()` accept an interval as well as a `Time` column (restored); `ORM.CURSOR_VALUE_MISSING` is thrown when the query runs, not by the `cursor()` call.
-
-Everything else confirmed, including the `native_enum` block and the bare-member rejection, the `@@base` discriminator value, the many-to-many rule, `db.close()`, MongoDB `select()` giving `undefined`, the `_id` decode difference for included relations, `DateTime` as `Temporal.Instant` on both read and filter, `distinct()` keeping an undefined row among ties, and `distinctOn()` ordering. Native enum sort order comes from code, not a test. Q: the illustrative result numbers in the `Customer`/`Order` and count examples have no fixture behind them (self-consistent, left as illustrations; the page no longer claims they come from tests).

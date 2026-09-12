@@ -1,7 +1,0 @@
-# Final fact re-check, slice B (Read methods, Custom Collection, Write methods)
-
-Three corrections: `count` maps to `aggregate()` on PostgreSQL only, with the two-step pipeline count on MongoDB; the error-handling pointer no longer sends readers to the `isRuntimeError` example, because `ORM.*` errors are `StructuredError`s without category/severity and `isRuntimeError` returns `false` for them (compare `error.code` directly); `create()` and `connect()` each take one object or an array on any relation, `disconnect()` takes an array, required on a many-to-many.
-
-Everything else confirmed, including the two-step MongoDB count, `firstOrThrow()` reading every row, the `orm(...)` example against `examples/paradedb-demo`, `ORM.WHERE_MISSING` at seven call sites, all six PostgreSQL write methods typed `never` without `where()`, nested create without `userId` type-checking (`NestedCreateInput` makes child foreign keys optional), `createAll()` single statement, the MTI messages character for character, `conflictOn` reading keys only and a multi-column set matching one `@@unique`, and the MongoDB upsert `_id` hex string. No Q items.
-
-Two verified omissions, added by the orchestrator after this report: MongoDB `updateAndCount()` returns the driver's `modifiedCount`, so documents already holding the new values are not counted; on MongoDB, `orderBy()`, `limit()`, or `offset()` before any write, and `include()` before any write except `updateAll()`/`deleteAll()`, throw `ORM.OPERATION_UNSUPPORTED`.
