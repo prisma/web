@@ -1858,7 +1858,7 @@ The field accessor implements `set`, `unset`, `inc`, `mul`, `push`, `pull`, `add
 - `Shape<M, Spec>` is a row with chosen fields and relations. In `Spec`, `"+"` names scalars and relations to keep, `"-"` names scalars to drop, and any other key is a relation with its own nested spec. Naming only relations in `"+"` keeps every scalar.
 - `ResultType<typeof query>` is one row of a query you already wrote.
 
-`Scalars` and `Shape` come from `@prisma/orm-postgres/family-contract/types` (`@prisma/orm-mongo/family-contract/types` on MongoDB); `ResultType` comes from `@prisma/orm-postgres/components/runtime`.
+`Scalars` and `Shape` come from `@prisma/orm-postgres/family-contract/types` (`@prisma/orm-mongo/family-contract` on MongoDB); `ResultType` comes from `@prisma/orm-postgres/components/runtime`.
 
 ```typescript
 import type { Models } from "./prisma/contract";
@@ -1876,7 +1876,7 @@ type UserWithPosts = ResultType<typeof usersWithPosts>;
 // the same type as Shape<Models.public_User, { "+": "posts" }>
 ```
 
-Use `Shape` to declare a function's return type once and let the compiler check the body at the `return`. Wrong field names, a relation under `"-"`, or a scalar in `"+"` next to a `"-"` are compile errors on that key. These types replace Prisma ORM 7's `Prisma.User` and `Prisma.UserGetPayload<...>`.
+Use `Shape` to declare a function's return type once and let the compiler check the body at the `return`. Wrong field names, a relation under `"-"`, or a scalar in `"+"` next to a `"-"` are compile errors on that key. These types replace Prisma ORM 7's `Prisma.User` and `Prisma.UserGetPayload<...>`. They need `8.0.0-rc.10` or newer; a `contract.d.ts` emitted by an earlier release lacks the `Models` namespace until you run `prisma contract emit` again.
 
 ### `AsyncIterableResult`
 
@@ -1904,23 +1904,6 @@ for await (const user of result) {
 ```
 
 This behavior is shared by the PostgreSQL and MongoDB implementations; the error message and rule are identical.
-
-### Named model types
-
-`contract.d.ts` exports a `Models` namespace and a `models` constant with one member per model, named `<namespace>_<Model>` (`Models.public_User`, or `typeof models.public.User`; bare model names on SQLite). Two helpers from `@prisma/orm-postgres/family-contract/types` turn a model into a row type without a client in scope: `Scalars<M>` is the row a default fetch returns, and `Shape<M, Spec>` derives a data structure with chosen scalars and nested relations (`'-'` drops fields, `'+'` on a relation picks its fields). `ResultType` from `@prisma/orm-postgres/components/runtime` names what a query returns.
-
-```typescript
-import type { Models } from './prisma/contract';
-import type { Scalars, Shape } from '@prisma/orm-postgres/family-contract/types';
-import type { ResultType } from '@prisma/orm-postgres/components/runtime';
-
-type UserRow = Scalars<Models.public_User>;
-type UserResponse = Shape<Models.public_User, { '-': 'passwordHash'; posts: { '+': 'id' | 'title' } }>;
-const usersWithPosts = db.orm.public.User.include('posts');
-type UserWithPosts = ResultType<typeof usersWithPosts>;
-```
-
-These need `8.0.0-rc.10` or newer. A `contract.d.ts` emitted by an earlier release lacks the `Models` namespace until you run `prisma contract emit` again. On MongoDB, import `Scalars` and `Shape` from the `@prisma/orm-mongo` equivalent of the types entrypoint.
 
 ### Aggregate result shapes
 
