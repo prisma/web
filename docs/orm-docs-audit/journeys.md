@@ -8,7 +8,7 @@ Who: Newcomer, sometimes Upgrader. The most common Discord complaint is this job
 
 Done: models defined, tables created, one query returns rows, from inside the app they already have, and they can open the database and see those rows.
 
-What the docs must provide: one page that starts from "you have a project directory and no tables", runs `orm init`, edit the contract, `contract emit`, `db init`, one query, and shows `db.ts` and where `DATABASE_URL` comes from (linking J11 for a database on the reader's machine). It ends by showing the rows in the database, with Studio or a Postgres client, because that is how a beginner confirms the page worked.
+What the docs must provide: one page that starts from "you have a project directory and no tables", runs `orm init`, edit the contract, `contract emit`, `db init`, one query, and shows `db.ts` and where `DATABASE_URL` comes from.
 
 Where the structure fails: the getting-started subtree is organised by which tool runs (`create-prisma` for new apps, `orm init` for "existing project"). The reader's situation, an app with no database yet, falls between the two: the scaffold page creates a new app, and the existing-project page assumes tables exist and starts with `contract infer`. The three commands that fit exist only as a snippet on the CLI overview.
 
@@ -34,7 +34,7 @@ Done: for every Prisma ORM 7 call in their code, they know the Prisma ORM 8 call
 
 What the docs must provide: one mapping page in four sections (schema and types, CLI commands, client API, not-yet list with a status per item), reachable from every ORM entry point. The not-yet list is the part readers ask for most: `createMany` and `skipDuplicates`, `findUniqueOrThrow`, atomic `increment`/`decrement`, case-insensitive filters, JSON path filters, `$transaction` arrays, the payload types.
 
-Where the structure fails: there is no node. The mapping exists as sixteen inline "For Prisma 7 users" blocks across nine pages, so the reader finds it by luck, and nothing admits what does not exist. The accessor change (`prisma.user` to `db.orm.public.User`) is stated once.
+Where the structure fails: there is no node. The mapping exists as fourteen inline diff blocks across six `orm/` pages (twelve of them introduced with "For Prisma 7 users"), so the reader finds it by luck, and nothing admits what does not exist. The accessor change (`prisma.user` to `db.orm.public.User`) is stated once.
 
 Verdict: **red**. IA node: "Coming from Prisma 7" (C1, placed by A2); the not-yet list depends on D4.
 
