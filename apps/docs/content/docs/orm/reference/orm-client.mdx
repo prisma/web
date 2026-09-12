@@ -1850,6 +1850,34 @@ The field accessor implements `set`, `unset`, `inc`, `mul`, `push`, `pull`, `add
 
 ## Result types
 
+### Model and result types
+
+`contract.d.ts` exports a `Models` namespace with one type per model. On PostgreSQL the schema is part of the name, `Models.public_User`; on SQLite, which has no schemas, it is `Models.User`. The same file exports a `models` constant for dotted access, `typeof models.public.User`. A model type carries every scalar field and every relation, so no query returns it directly. Three types derive what queries do return:
+
+- `Scalars<M>` is the model without its relations: what `all()` and `first()` return when you do not `select` or `include`.
+- `Shape<M, Spec>` is a row with chosen fields and relations. In `Spec`, `"+"` names scalars and relations to keep, `"-"` names scalars to drop, and any other key is a relation with its own nested spec. Naming only relations in `"+"` keeps every scalar.
+- `ResultType<typeof query>` is one row of a query you already wrote.
+
+`Scalars` and `Shape` come from `@prisma/orm-postgres/family-contract/types` (`@prisma/orm-mongo/family-contract/types` on MongoDB); `ResultType` comes from `@prisma/orm-postgres/components/runtime`.
+
+```typescript
+import type { Models } from "./prisma/contract";
+import type { Scalars, Shape } from "@prisma/orm-postgres/family-contract/types";
+import type { ResultType } from "@prisma/orm-postgres/components/runtime";
+
+type UserRow = Scalars<Models.public_User>;
+// { id: number; email: string; name: string | null }
+
+type UserResponse = Shape<Models.public_User, { "-": "email"; posts: { "+": "id" | "title" } }>;
+// { id: number; name: string | null; posts: { id: number; title: string }[] }
+
+const usersWithPosts = db.orm.public.User.include("posts");
+type UserWithPosts = ResultType<typeof usersWithPosts>;
+// the same type as Shape<Models.public_User, { "+": "posts" }>
+```
+
+Use `Shape` to declare a function's return type once and let the compiler check the body at the `return`. Wrong field names, a relation under `"-"`, or a scalar in `"+"` next to a `"-"` are compile errors on that key. These types replace Prisma ORM 7's `Prisma.User` and `Prisma.UserGetPayload<...>`.
+
 ### `AsyncIterableResult`
 
 The read terminals `all()` / `createAll()` / `updateAll()` / `deleteAll()` return an `AsyncIterableResult`, imported (if you need the type) from `@prisma/orm-postgres/components/runtime`. It has a dual interface:
