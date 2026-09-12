@@ -1905,6 +1905,23 @@ for await (const user of result) {
 
 This behavior is shared by the PostgreSQL and MongoDB implementations; the error message and rule are identical.
 
+### Named model types
+
+`contract.d.ts` exports a `Models` namespace and a `models` constant with one member per model, named `<namespace>_<Model>` (`Models.public_User`, or `typeof models.public.User`; bare model names on SQLite). Two helpers from `@prisma/orm-postgres/family-contract/types` turn a model into a row type without a client in scope: `Scalars<M>` is the row a default fetch returns, and `Shape<M, Spec>` derives a data structure with chosen scalars and nested relations (`'-'` drops fields, `'+'` on a relation picks its fields). `ResultType` from `@prisma/orm-postgres/components/runtime` names what a query returns.
+
+```typescript
+import type { Models } from './prisma/contract';
+import type { Scalars, Shape } from '@prisma/orm-postgres/family-contract/types';
+import type { ResultType } from '@prisma/orm-postgres/components/runtime';
+
+type UserRow = Scalars<Models.public_User>;
+type UserResponse = Shape<Models.public_User, { '-': 'passwordHash'; posts: { '+': 'id' | 'title' } }>;
+const usersWithPosts = db.orm.public.User.include('posts');
+type UserWithPosts = ResultType<typeof usersWithPosts>;
+```
+
+These need `8.0.0-rc.10` or newer. A `contract.d.ts` emitted by an earlier release lacks the `Models` namespace until you run `prisma contract emit` again. On MongoDB, import `Scalars` and `Shape` from the `@prisma/orm-mongo` equivalent of the types entrypoint.
+
 ### Aggregate result shapes
 
 - `aggregate((agg) => ({ ... }))` resolves to a **single object** keyed by your aliases: `{ total: 10 }`.
