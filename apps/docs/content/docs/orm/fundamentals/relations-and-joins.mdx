@@ -6,7 +6,7 @@ metaTitle: Relations and joins in Prisma ORM
 metaDescription: 'Query one-to-one, one-to-many, and many-to-many relationships with Prisma ORM on PostgreSQL and MongoDB, with diagrams and tested examples.'
 ---
 
-Read related records in the same query by adding `.include(...)`. The related records come back nested on the parent, typed to match.
+Read related records in the same query by adding `.include(...)`. The related records come back nested on the parent record, and their types match your models.
 
 ```typescript tab="PostgreSQL"
 import { db } from "./prisma/db";
@@ -28,9 +28,21 @@ const posts = await db.orm.posts
 // posts[0].author is the referenced user document
 ```
 
-The relation name in `.include(...)` is the field name from your contract, not a table name. Use `.include(...)` when the caller needs the related data in the same response; skip it when the foreign key on the record is enough.
+If this is your first Prisma ORM 8 query, start with the two files it needs. Your models live in `src/prisma/contract.prisma`. It is the same file Prisma ORM 7 called `schema.prisma`; the docs call it your contract. Both commands below write `src/prisma/db.ts`, which creates the client and exports it as `db`. It reads `DATABASE_URL` from `.env`.
 
-This page walks through the three relationship shapes, from the data model to the query and the result. If you already know how relational data is modeled, jump to [filtering by relation data](#filter-parent-records-by-relation-data) or the [limitations](#current-limitations).
+```bash
+npm create prisma@latest -- my-app   # a new project
+npx prisma orm init                  # a project you already have
+```
+
+That is the file the examples above import as `./prisma/db`, from a file directly inside `src/`. Here is what the rest of those lines are made of:
+
+- On PostgreSQL the path is `db.orm.<schema>.<ModelName>`. `db.orm` is the model API; `db.sql` and `db.raw.sql` are for SQL. The PostgreSQL schema (not the contract file) is `public` unless you wrap the model in a `namespace` block. Write `namespace billing { model Invoice { ... } }` in your contract and the path becomes `db.orm.billing.Invoice`.
+- On MongoDB there is no schema segment. The path is `db.orm.<collectionName>`. The collection name is the `@@map(...)` on the model, or the model name with a lowercase first letter. The models behind the MongoDB query above are [further down this page](#postgresql-and-mongodb-differences).
+- You `await` the whole chain, and the last call says what you want back. `.all()` returns every matching record as an array. `.first()` returns one record, or `null` when nothing matches.
+- `.where(...)` takes two forms. Pass an object, like `.where({ published: true })`, to match fields to exact values. Pass a callback for a comparison, like `.where((p) => p.title.like("Hello%"))`. Chaining `.where(...)` twice requires both to match.
+
+The name you pass to `.include(...)` is the relation field name you declared in your contract. It is not a table name. `.include(...)` fetches the relation in the same query as the parent: one SQL statement, which reads the relation with a correlated subquery. `.include("author")` replaces Prisma ORM 7's `include: { author: true }`; see [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7#queries) for the rest of the query API side by side. Use `.include(...)` when the caller needs the related data in the same response. Skip it when the foreign key already on the record is enough. This page walks through the three kinds of relationship, from the data model to the query and the result. If you already know how relational data is modeled, jump to [filtering by relation data](#filter-parent-records-by-relation-data) or the [limitations](#current-limitations).
 
 ## One-to-one
 
@@ -38,7 +50,7 @@ One record is linked to at most one other record. For example, every profile bel
 
 <ConceptAnimation name="relation-one-to-one" />
 
-The model that holds the foreign key declares the relation, and the `@unique` on the foreign key is what makes it one-to-one:
+The model that holds the foreign key declares the relation. The `@unique` on the foreign key is what makes it one-to-one:
 
 ```prisma
 model Profile {
@@ -49,19 +61,17 @@ model Profile {
 }
 ```
 
-To read a profile with its user, query from the profile and include the relation:
+Write `@default(cuid(2))` and you never pass `id` yourself: `cuid(2)` generates the id (the `2` is the CUID version). To read a profile with its user, query from the profile and include the relation:
 
 ```typescript
 const profileWithUser = await db.orm.public.Profile
-  .where({ userId: user.id })
+  .where({ userId: "cuid20000000000000000001" })
   .include("user")
   .first();
-// { id, bio, userId, user: { id, email, name, createdAt } }
+// { id, bio, userId, user: { id, email } }
 ```
 
-`.first()` returns `null` when the profile doesn't exist, so a user without a profile is a `null` check, not an error.
-
-You can also declare the mirror field on the other side and start from users. A bare optional model-typed field is enough; it needs no `@relation` of its own:
+`.first()` returns `null` when the profile doesn't exist, so a user without a profile is a `null` check, not an error. You can also declare the matching field on the other side and start from users. An optional field typed as the other model is enough. It needs no `@relation` of its own:
 
 ```prisma
 model User {
@@ -71,7 +81,9 @@ model User {
 }
 ```
 
-The contract accepts it as long as the foreign key it mirrors is unique. If `Profile.userId` is not `@unique`, emit rejects the field with `PSL_NON_UNIQUE_BACKRELATION`, because a singular back side promises at most one related row. With it in place, `include("profile")` type-checks as a to-one include:
+This works as long as the foreign key on the other side is unique. So `Profile.userId` must carry `@unique`. Without it, `npx prisma contract emit` fails with the error code `PSL_NON_UNIQUE_BACKRELATION`.
+
+Then run `npx prisma contract emit`, the command that regenerates the client types from your contract. Run it after every change you make to the contract. Then apply the change to the database with `npx prisma db update` (the replacement for `prisma db push`) during development, or with a migration: run `npx prisma migration plan` then `npx prisma db migrate`; see [Generating a migration](/orm/migrations/generating-a-migration). With the field in place, `include("profile")` returns one record or `null`:
 
 ```typescript
 const usersWithProfiles = await db.orm.public.User
@@ -80,6 +92,8 @@ const usersWithProfiles = await db.orm.public.User
   .all();
 // Array<{ id, email, profile: { id, bio, userId } | null }>
 ```
+
+`.select(...)` narrows the parent's own fields only. An included relation still comes back with all of its fields, which is why `profile` above has `bio` and `userId`. To narrow the included relation's fields, use the callback form shown in the next section.
 
 ## One-to-many
 
@@ -97,14 +111,16 @@ model User {
 }
 
 model Post {
-  id       String @id @default(cuid(2))
-  title    String
-  authorId String
-  author   User   @relation(fields: [authorId], references: [id])
+  id        String   @id @default(cuid(2))
+  title     String
+  published Boolean  @default(false)
+  createdAt DateTime @default(now())
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
 }
 ```
 
-Query it in either direction. From the parent, the children arrive as an array; from the child, the parent arrives as one object:
+Query it in either direction. From the parent, the children arrive as an array. From the child, the parent arrives as one object:
 
 ```typescript
 // Each user with their posts
@@ -113,10 +129,10 @@ const usersWithPosts = await db.orm.public.User.include("posts").all();
 
 // Each post with its author
 const postsWithAuthors = await db.orm.public.Post.include("author").all();
-// Array<{ id, title, authorId, author: User }>
+// Array<{ id, title, published, createdAt, authorId, author: User }>
 ```
 
-To shape what each relation returns, pass a callback as the second argument. Inside it, chain `.where`, `.select`, `.orderBy`, and `.limit` exactly like a top-level query. This is how you fetch "each user with their five newest posts" in one query:
+To choose what each relation returns, pass a callback as the second argument. Inside it, chain `.where`, `.select`, `.orderBy`, and `.limit` exactly like a top-level query. `.desc()` sorts newest first, and `.asc()` sorts the other way. This is how you fetch "each user with their five newest posts" in one query:
 
 ```typescript
 const usersWithRecentPosts = await db.orm.public.User
@@ -124,7 +140,7 @@ const usersWithRecentPosts = await db.orm.public.User
   .include("posts", (post) =>
     post
       .select("id", "title", "createdAt")
-      .orderBy((p) => p.createdAt.desc())
+      .orderBy((post) => post.createdAt.desc())
       .limit(5),
   )
   .limit(10)
@@ -132,21 +148,31 @@ const usersWithRecentPosts = await db.orm.public.User
 // Array<{ id, email, posts: Array<{ id, title, createdAt }> }>
 ```
 
-The common mistake here is the N+1 loop: fetching users, then querying posts inside a `for` loop over them. That runs one query per user. One `.include("posts")` on the user query returns the same data in a single query.
+The callback also takes `.include(...)`, so you can go two levels deep in one query. If `Post` also declares a `comments Comment[]` list field:
+
+```typescript
+const usersWithPostsAndComments = await db.orm.public.User
+  .include("posts", (post) => post.include("comments"))
+  .all();
+// Array<{ id, email, posts: Array<{ id, title, published, createdAt, authorId, comments: Comment[] }> }>
+```
+
+To write a parent and its children in one call, pass a callback for the list field and Prisma ORM fills in the foreign key on each child: `db.orm.public.User.create({ email: "jane@prisma.io", posts: (p) => p.create([{ title: "Hello", published: false }]) })` writes the user and the post together. The common mistake here is the N+1 loop: fetching users, then querying posts inside a `for` loop over them. That runs one query per user. One `.include("posts")` on the user query returns the same data in a single query.
 
 ## Many-to-many
 
-Records on both sides connect to many on the other: a post has many tags, and a tag appears on many posts. Neither table can hold the other's foreign key, so a junction model holds one link per pair.
+Records on both sides connect to many on the other: a post has many tags, and a tag appears on many posts. Neither table can hold the other's foreign key, so a separate table holds one link per pair.
 
 <ConceptAnimation name="relation-many-to-many" />
 
-Model the junction explicitly, and declare the list field on each side pointing straight at the other model. The contract resolves the hop through the junction for you:
+Write three models. On each side, declare a list field typed as the other model. Then write a third model for the join table, and give it a primary key made of exactly two foreign keys, one to each side:
 
 ```prisma
 model Post {
-  id    String @id @default(cuid(2))
-  title String
-  tags  Tag[]
+  id        String  @id @default(cuid(2))
+  title     String
+  published Boolean @default(false)
+  tags      Tag[]
 }
 
 model Tag {
@@ -165,51 +191,80 @@ model PostTag {
 }
 ```
 
-`.include(...)` traverses both hops in one query and returns the tags themselves, not the link records. The callback that filters and shapes a relation works here like anywhere else:
+Prisma ORM finds the model for the join table by that shape: the one model whose primary key is exactly a foreign key to `Post` and a foreign key to `Tag`. There is no other way to name it. If two models have that shape, `npx prisma contract emit` fails with `PSL_AMBIGUOUS_BACKRELATION`, and you pick one by adding the same `@relation("...")` name to the list field and to the foreign key pointing back at it. You do not add a `PostTag[]` field to `Post` or `Tag`. `.include(...)` then reads a post's tags in one query, and returns the tags themselves, not the link records. The callback that filters and narrows a relation works here like anywhere else:
 
 ```typescript
 const postsWithTags = await db.orm.public.Post
   .where({ published: true })
-  .include("tags", (tag) => tag.select("id", "name").orderBy((t) => t.name.asc()))
+  .include("tags", (tag) => tag.select("id", "name").orderBy((tag) => tag.name.asc()))
   .all();
 ```
 
 ```js no-copy
-[
-  {
-    title: 'Hello Prisma 8',
-    // ...
-    tags: [ { id: 't2…', name: 'databases' }, { id: 't1…', name: 'typescript' } ]
-  },
-  { title: 'Typed queries', tags: [ /* one tag */ ] }
-]
+[{ title: 'Hello Prisma 8', tags: [{ id: 't2…', name: 'databases' }] }]
 ```
 
-Nested writes go through the junction too. Pass a callback for the relation and use `create`, `connect`, or `disconnect`:
+Writes reach the join table the same way. Pass a callback for the relation and use `create`, `connect`, or `disconnect`:
 
 ```typescript
-// Create a post and its tags in one call
-await db.orm.public.Post.create({
+// Create a post and two new tags in one call
+const post = await db.orm.public.Post.create({
   title: "Hello Prisma 8",
-  authorId: user.id,
   tags: (t) => t.create([{ name: "typescript" }, { name: "databases" }]),
 });
 
-// Link and unlink existing tags
-await db.orm.public.Post.where({ id: post.id }).update({
-  tags: (t) => t.connect([{ id: tagId }]),
+// Link an existing tag
+const updated = await db.orm.public.Post.where({ id: post.id }).update({
+  tags: (t) => t.connect([{ name: "typescript" }]),
 });
 
+// Unlink it again
 await db.orm.public.Post.where({ id: post.id }).update({
-  tags: (t) => t.disconnect([{ id: tagId }]),
+  tags: (t) => t.disconnect([{ name: "typescript" }]),
 });
 ```
 
-If you need the link records themselves, for example because the join table has columns of its own, query its model directly: `db.orm.public.PostTag.include("tag")`.
+`connect` and `disconnect` identify the tag by any primary key or `@unique` field, so `{ name: "typescript" }` works here because `Tag.name` is `@unique`. When that key is made of several columns, pass every one of them in the object. `update(...)` returns the updated post, or `null` when no post matched the filter. `create` always inserts a new tag record, so creating a tag whose name already exists fails on that same unique constraint. Use `connect` for tags that already exist.
+
+There is no `connectOrCreate` in Prisma ORM 8. Upsert the tag first, which creates it or leaves an existing one alone, then connect it:
+
+```typescript
+const tag = await db.orm.public.Tag.upsert({
+  create: { name: "typescript" },
+  update: {},
+  conflictOn: { name: "typescript" },
+});
+await db.orm.public.Post.where({ id: post.id }).update({
+  tags: (t) => t.connect([{ id: tag.id }]),
+});
+```
+
+The upsert is safe when two requests create the same tag at once. The `connect` is not: if both requests also link that tag to the same post, the second fails with an error whose code is `ORM.RELATION_LINK_DUPLICATE`. Catch that code and treat it as done.
+
+See [what is not available yet](/orm/coming-from-prisma-orm-7#not-available-yet) for the rest of the gaps, and [Upsert a record](/orm/fundamentals/writing-data#upsert-a-record) for the top-level `.upsert(...)` call. These nested writes are for relational databases. On MongoDB, write the parent document and the child document in two calls, and set the reference field yourself:
+
+```typescript
+const user = await db.orm.users.create({ email: "jane@prisma.io" });
+const post = await db.orm.posts.create({ title: "Hello", published: false, authorId: user._id });
+```
+
+If you need the link records themselves, for example because the join table has columns of its own, query its model directly:
+
+```typescript
+const links = await db.orm.public.PostTag.include("tag").all();
+// Array<{ postId, tagId, tag: { id, name } }>
+```
+
+A join table may carry columns beyond the two foreign keys. Those extra columns must not be part of the primary key. Nested `create` and `connect` are rejected when one of them is required, because neither can supply a value for it, so insert the link records yourself:
+
+```typescript
+const tag = await db.orm.public.Tag.first({ name: "typescript" });
+await db.orm.public.PostTag.create({ postId: post.id, tagId: tag!.id, addedBy: "me" });
+```
 
 ## Filter parent records by relation data
 
-On PostgreSQL, `.where(...)` can reach into a relation: `.some(...)` matches parents with at least one matching child, `.none(...)` matches parents with none, and `.every(...)` requires all children to match.
+On PostgreSQL, `.where(...)` can reach into a relation. `.some(...)` matches parents with at least one matching child. `.none(...)` matches parents with none. `.every(...)` matches parents whose children all match. A parent with no children also matches.
 
 ```typescript
 // Users who have at least one published post
@@ -219,34 +274,82 @@ const activeAuthors = await db.orm.public.User
 
 // Posts that carry a specific tag
 const taggedPosts = await db.orm.public.Post
-  .where((p) => p.tags.some((t) => t.id.eq(tag.id)))
+  .where((p) => p.tags.some((t) => t.id.eq("cuid20000000000000000007")))
   .all();
 ```
 
-On MongoDB, query the child collection directly, or express the shape as a pipeline with `$lookup` and `$match`.
+Chaining `.where(...)` combines conditions with AND. For OR, call the `or` helper inside a single callback. It comes from `@prisma/orm-postgres/orm-client`, already installed with `@prisma/orm-postgres`:
+
+```typescript
+import { or } from "@prisma/orm-postgres/orm-client";
+
+const posts = await db.orm.public.Post
+  .where((p) => or(p.published.eq(true), p.title.eq("Hello Prisma 8")))
+  .all();
+```
+
+See [filter operators](/orm/fundamentals/reading-data#filter-operators-on-postgresql) for the comparisons you can pass to `.where(...)`. On MongoDB, relation filters are not available. Query the child collection directly instead, and include the parent:
+
+```typescript
+// MongoDB: the published posts, each with its author
+const publishedPosts = await db.orm.posts
+  .where({ published: true })
+  .include("author")
+  .all();
+// Every author that appears here has at least one published post
+```
+
+To group or reshape the result, use the [pipeline builder](/orm/fundamentals/advanced-queries#mongodb-pipeline-builder), which has `$lookup` and `$match`.
 
 ## PostgreSQL and MongoDB differences
 
-On PostgreSQL, Prisma ORM fetches included relations with joins. On MongoDB, it uses `$lookup` for reference-style relations; embedded documents are already part of the parent and need no include.
+MongoDB calls a related document that lives in its own collection, linked by id, a reference relation. Declare it as you would on PostgreSQL, and the three kinds of relationship above all apply:
 
-The relationship shapes above apply to reference-style relations on both databases. On MongoDB, one-to-one and one-to-many data is often embedded in the parent document instead of referenced; embedded data comes back with every read automatically.
+```prisma
+type Address {
+  street String
+  city   String
+}
+
+model User {
+  id      ObjectId @id @map("_id") // the property is _id, because of @map("_id")
+  email   String
+  address Address?
+  posts   Post[]
+
+  @@map("users")
+}
+
+model Post {
+  id        ObjectId @id @map("_id")
+  title     String
+  published Boolean
+  authorId  ObjectId
+  author    User     @relation(fields: [authorId], references: [id])
+
+  @@map("posts")
+}
+```
+
+`Post.author` is a reference: the user is a separate document in the `users` collection, and `.include("author")` reads it. `User.address` is an embedded document, and you can tell by the declaration: `Address` is written with `type`, not `model`, so its fields are stored inside the user document itself. Embedded documents come back with every read, so you never include them. Calling `.include(...)` on an embedded relation throws an error with code `ORM.INCLUDE_UNSUPPORTED`. Use `.include(...)` only for documents stored in their own collection. [MongoDB data modeling](/orm/data-modeling/mongodb#embed-or-reference) covers which to choose.
 
 ## Current limitations
 
-- The schema compiler rejects an implicit many-to-many: list fields on both sides with no model for the join table. Declare that model, as shown [above](#many-to-many). The list fields on either side then point straight at the other model, and `.include(...)` traverses the hop for you.
-- The callback form of `.include(...)` is tested on PostgreSQL. On MongoDB, start with the plain `.include("author")` form and use the [pipeline builder](/orm/fundamentals/advanced-queries#mongodb-pipeline-builder) to reshape joined documents.
+- A many-to-many needs the model for the join table. List fields on both sides with no such model are rejected. Write the model as shown [above](#many-to-many), with its primary key made of the two foreign keys.
+- On PostgreSQL, `.include(...)` takes an optional callback to filter and narrow the relation. On MongoDB it takes the relation name only. Reshape joined documents with the [pipeline builder](/orm/fundamentals/advanced-queries#mongodb-pipeline-builder) instead.
+- Relation filters (`.some(...)`, `.none(...)`, `.every(...)`) and nested writes on relations are for relational databases. They are not available on MongoDB.
 
 ## Prompt your coding agent
 
-Projects scaffolded with `create-prisma@latest` install [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent; the `prisma-8` skill covers both relation queries and the relation fields in your schema. Prompts that map to each section:
+Projects created with `npm create prisma@latest -- my-app` include the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8), instruction files for your coding agent. The `prisma-8` skill covers both relation queries and the relation fields in your contract. Prompts that map to each section:
 
 - "Using the prisma-8 skill, add a one-to-one Profile model with a unique foreign key to User."
 - "Using the prisma-8 skill, fetch each user with their five newest posts in one query."
-- "Model a many-to-many between Post and Tag with an explicit junction model, and write the nested include that reads a post's tag names."
-- "Find users that have at least one published post, using a relation predicate instead of a loop."
+- "Model a many-to-many between Post and Tag with a model for the join table, and write the nested include that reads a post's tag names."
+- "Find users that have at least one published post, using `.some(...)` in the where clause instead of a loop."
 
 ## Next
 
-- [Use advanced queries](/orm/fundamentals/advanced-queries) for explicit joins, flat junction traversals, and `$lookup` pipelines.
+- [Use advanced queries](/orm/fundamentals/advanced-queries) for the SQL query builder, explicit joins, and `$lookup` pipelines.
 - [Read data](/orm/fundamentals/reading-data) to filter, sort, paginate, and select fields from your models.
 - [Run writes that span several models atomically](/orm/fundamentals/transactions) with a transaction.
