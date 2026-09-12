@@ -1,9 +1,0 @@
-# Fact re-check 1, slice A (Example schema, Setting up the client, Query-building methods)
-
-746 lines before and after. Corrections: removed "every example is copied from a test suite" (no fixture in rc.9 has this schema; PR #8033 says the harness was kept out of git) and "rows the test suite inserted first"; MongoDB related `_id` wording; a second argument to MongoDB `include()` is a TypeScript error first, ignored at runtime; aggregates outside `include()` throw `ORM.INCLUDE_INVALID`; `sum`/`avg` accept interval and `Time` (not `timetz`), and the TypeScript error rejects the field name rather than naming the operation; `count(field)` counts non-null values; `avgDecimal` returns a decimal string; `min`/`max` also `null` over an empty relation; `Temporal` note replaced by the source's own polyfill instruction (`temporal-polyfill/full/global`); a variant gets its own table only when it sets `@@map`; em-dash removed.
-
-Confirmed: every PSL construct in the schema individually (`types`, `type`, `@@type("pg/text@1")`, `native_enum`, `Uuid @default(uuid())`, `@@base`, `@@discriminator`, `PostTag` requirement, `ObjectId @id @map("_id")`, `@@index(... sort: Desc)`), `.eq()` takes the stored value, `variant()` takes the model name on both databases, `postgres(...)`/`mongo(...)` options, `extensions: [pgvector]`, `orm(...)` registration, import paths, `where`/`select`/`include`/`orderBy`/`limit`/`offset`/`cursor`/`distinct`/`distinctOn` claims, native enum ordering (code only, no test sorts an enum).
-
-Q: every result comment and id literal (invented, internally consistent); "write your own ranking expression" is general SQL advice.
-
-Not changed, for the operator: `distinctOn()` also throws `ORM.CAPABILITY_MISSING` without `postgres.distinctOn` in the contract; `cursor()` throws `ORM.CURSOR_VALUE_MISSING` when the cursor object leaves out an `orderBy` column; MongoDB `select()` projects field names, so with `@map("_id")` the field is `_id`.
