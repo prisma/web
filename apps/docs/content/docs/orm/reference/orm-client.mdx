@@ -219,7 +219,7 @@ PostgreSQL exposes models under their contract root names (matching PSL model na
 
 ## Query-building methods
 
-These methods narrow a query. They return a collection you can chain further methods on, and you resolve the query with a [read terminal](#read-terminals) such as `all()` or `first()`. MongoDB supports a smaller set than PostgreSQL; each method's Remarks state its availability.
+These methods narrow a query. They return a collection you can chain further methods on, and you run the query with a [read method](#read-terminals) such as `all()` or `first()`. MongoDB supports a smaller set than PostgreSQL; each method's Remarks state its availability.
 
 Import the standalone filter combinators used in some examples from `@prisma/orm-postgres/orm-client` (PostgreSQL) or `@prisma/orm-mongo/query-ast/execution` (MongoDB). See [Filter conditions and operators](#filter-conditions-and-operators).
 
@@ -244,7 +244,7 @@ Restrict a query to rows matching a filter.
 
 | Return type | Example | Description |
 |---|---|---|
-| `Collection` | `db.orm.public.User.where(...)` | A collection narrowed by the filter, chainable and awaitable through a terminal. |
+| `Collection` | `db.orm.public.User.where(...)` | A collection narrowed by the filter, chainable; a read or write method runs it. |
 
 #### Examples
 
@@ -327,7 +327,7 @@ Eagerly load a relation onto the returned rows.
 
 #### Remarks
 
-- Available for PostgreSQL and MongoDB, with different capabilities.
+- Available for PostgreSQL and MongoDB, with differences noted below.
 - On PostgreSQL, `include(relationName, refineFn?)` loads to-one and to-many relations, and the optional callback receives a nested `Collection` you can filter, order, limit, and aggregate (see [Refinements, aggregates, and combine](#refinements-aggregates-and-combine)).
 - On MongoDB, `include(relationName)` adds a `$lookup` for a reference relation and takes only a relation name; there is no refinement-callback overload.
 - On MongoDB, a looked-up sub-document's `_id` comes back as a raw driver `ObjectId`, not decoded to a hex string the way top-level `_id` fields are. Compare it with `String(...)`.
@@ -706,9 +706,9 @@ const bugs = await db.orm.public.Task.variant('Bug').all();
 const tutorials = await db.orm.posts.variant('Tutorial').all();
 ```
 
-## Read terminals
+## Read methods [#read-terminals]
 
-Read terminals resolve a query. `all()` and `first()` are available on both databases; `aggregate()` and `groupBy()` are PostgreSQL only and are documented under [Grouped aggregates](#grouped-aggregates). For a task-oriented walkthrough, see [Reading data](/orm/fundamentals/reading-data).
+A read method runs the query and gives you the rows. `all()` and `first()` are available on both databases; `aggregate()` and `groupBy()` are PostgreSQL only and are documented under [Grouped aggregates](#grouped-aggregates). For a task-oriented walkthrough, see [Reading data](/orm/fundamentals/reading-data).
 
 ### `all()`
 
@@ -863,7 +863,7 @@ const bugs = await db.Task.bugs().all();
 const features = await db.Task.features().all();
 ```
 
-## Mutation terminals
+## Write methods [#mutation-terminals]
 
 Mutations write to the database. `create`, `createAll`, `createAndCount`, `update`, `updateAll`, `updateAndCount`, `delete`, `deleteAll`, `deleteAndCount`, and `upsert` are available on both databases, with several behavioral differences called out per method. For a task-oriented walkthrough, see [Writing data](/orm/fundamentals/writing-data); for grouping several writes into one unit, see [Transactions](/orm/fundamentals/transactions).
 
@@ -1577,7 +1577,7 @@ Column-level comparison methods on a field accessor.
 
 #### Remarks
 
-- PostgreSQL. Each method is gated by a codec trait: `eq`/`neq`/`in`/`notIn` need equality; `gt`/`lt`/`gte`/`lte` need ordering; `like` needs the textual trait; `isNull`/`isNotNull` are available on every field.
+- PostgreSQL. Which methods a field has depends on its type: `eq`/`neq`/`in`/`notIn` on any field that can be compared for equality; `gt`/`lt`/`gte`/`lte` on any field that can be ordered; `like` on text fields; `isNull`/`isNotNull` on every field.
 - `like()` matches a SQL pattern case-sensitively.
 - `ilike()` matches case-insensitively. It is a Postgres-adapter-registered operation attached to any textual-trait field, not a core comparison method.
 
@@ -1852,7 +1852,7 @@ The field accessor implements `set`, `unset`, `inc`, `mul`, `push`, `pull`, `add
 
 ### `AsyncIterableResult`
 
-The read terminals `all()` / `createAll()` / `updateAll()` / `deleteAll()` return an `AsyncIterableResult`, imported (if you need the type) from `@prisma/orm-postgres/components/runtime`. It has a dual interface:
+The methods `all()` / `createAll()` / `updateAll()` / `deleteAll()` return an `AsyncIterableResult`, imported (if you need the type) from `@prisma/orm-postgres/components/runtime`. It has a dual interface:
 
 - **Buffered**: `await` the result (or call `.toArray()`) to collect every row into an array.
 - **Streaming**: use `for await ... of` to iterate rows one at a time.
