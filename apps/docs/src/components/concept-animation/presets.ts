@@ -27,32 +27,31 @@ export const CONCEPT_PRESETS = {
       {
         title: "1. First deploy",
         code:
-          "$ [[npx prisma@latest project create my-app]]\n" +
-          "$ [[npx prisma@latest git connect]]\n" +
-          "$ [[git push]]   # main\n" +
+          "$ [[npx prisma@latest deploy module.ts]]\n" +
           "  │\n" +
           "  ▼\n" +
           "project: my-app\n" +
           "└─ branch: main  (production)  → service + database",
         caption:
-          "Create or link a project, connect GitHub, and push to your default branch. The first production deploy creates the project, its main branch, and the service that runs it.",
+          "Run from your project directory, your first deploy creates everything: the project (my-app), its production branch, and the service and database that run it. Nothing exists before this command.",
       },
       {
         title: "2. Preview branch",
         code:
-          "$ [[git push]]   # push feature/login\n" +
+          "$ [[npx prisma@latest deploy module.ts --stage feature/login]]\n" +
           "  │\n" +
           "  ▼\n" +
           "project: my-app\n" +
           "├─ branch: main           (production)  → service + database\n" +
           "└─ branch: feature/login  (preview)     → service + database  [[← new copy]]",
         caption:
-          "Push a new Git branch and your deploy workflow provisions an isolated preview: its own service, database, and URL. Production stays untouched.",
+          "Deploy with --stage and Compute provisions a full copy of the infrastructure as a preview branch: feature/login gets its own service, database, and URL. Production stays untouched.",
       },
       {
         title: "3. Connect GitHub",
         code:
           "$ [[npx prisma@latest git connect]]\n" +
+          "$ [[git add .github/workflows/prisma-deploy.yml]]   # prisma/cloud-deploy-action\n" +
           "$ [[git push]]   # push feature/login\n" +
           "  │\n" +
           "  ▼\n" +
@@ -60,7 +59,7 @@ export const CONCEPT_PRESETS = {
           "├─ branch: main           ← git: main\n" +
           "└─ branch: feature/login  ← git: feature/login  [[deploys]]",
         caption:
-          "Connect the repo once and you stop deploying by hand. Each Git branch maps to a branch by name, so pushing feature/login builds and deploys just that preview automatically.",
+          "Connect the repo once, commit a workflow that runs prisma/cloud-deploy-action, and you stop deploying by hand. The connection gives the workflow its credential, and each Git branch maps to a branch by name, so pushing feature/login deploys just that preview automatically.",
       },
       {
         title: "4. Ship to production",
@@ -109,7 +108,7 @@ export const CONCEPT_PRESETS = {
           "  ▼\n" +
           "project: my-app  →  deploys branch [[feature/x]]",
         caption:
-          "After that, every push builds the commit and deploys the matching branch, so your previews always track your Git branches.",
+          "After that, every push runs the deploy workflow in your repository with a credential from the connection, and it deploys the matching branch, so your previews always track your Git branches.",
       },
     ],
   },
