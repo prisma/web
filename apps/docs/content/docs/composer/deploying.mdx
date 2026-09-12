@@ -129,7 +129,7 @@ Error: Dependency conflict: alchemy resolves effect@<found>, but
 @prisma/composer requires effect@<required>.
 ```
 
-This happens when another dependency floats to a newer `effect` and your package manager hoists that copy where the deploy engine resolves it. The fix is what the error says: pin `effect` in your app's `package.json` to the exact version the error names, as shown in [Getting started](/composer/getting-started#1-set-up-the-project), and reinstall. The pin goes stale when you upgrade `@prisma/composer`; the error names the new version each time.
+This happens when your app, or another dependency of it, pins a different `effect` than `@prisma/composer` does and your package manager hoists that copy where the deploy engine resolves it. A plain Composer app never hits it: `@prisma/composer` and `@prisma/composer-prisma-cloud` pin every `effect`-family package the engine would otherwise float, so a fresh install resolves a single `effect`. The fix is to use the same `effect` as Composer: match your own `effect` dependency to the exact version the error names (`dependencies.effect` in `@prisma/composer`), or, when a dependency you cannot change pins another version, force Composer's with an `overrides` entry for `effect` in your `package.json` (`resolutions` in Yarn, under `"pnpm"` for pnpm) and reinstall. The pin goes stale when you upgrade `@prisma/composer`; the error names the new version each time.
 
 ## When a deploy stops on a missing connection value
 
@@ -157,6 +157,7 @@ Behavior you will run into once the app is deployed, and what to do about it:
 - **Bind `0.0.0.0`, not loopback.** Compute routes external HTTP to the VM; a `localhost` listener is unreachable from outside.
 - **A deployed `/rpc/<method>` returns `401` to you.** Calls are [authenticated for you](/composer/services-and-contracts#calls-are-authenticated-for-you), and your `curl` is not one of the services the app connected. Reach it through a consumer instead.
 - **Calls into a sleeping service can get `ECONNRESET`** while it cold-starts. Retry them; the generated RPC client already does.
+- **The `cron` scheduler stays awake on purpose.** It holds Compute's keep-awake guard for its whole lifetime, so it never scales to zero: one warm instance per app is the cost of the clock. Every other service, the runner included, sleeps as usual.
 - **The `COMPOSER_*` variables in your project belong to the deploy.** Config, secret pointers, and service keys all land there, and every deploy rewrites them. An edit made by hand does not survive the next deploy.
 - **Streaming responses do not stream.** The platform's HTTP front door buffers a response until it completes, so an open SSE tail delivers nothing and times out at 60 seconds. Do not build on streamed HTTP responses.
 - **Next.js pages that call `service.load()` need `export const dynamic = 'force-dynamic'`.** The runtime environment does not exist at build time, and Next.js will not re-read it for prerendered routes.
