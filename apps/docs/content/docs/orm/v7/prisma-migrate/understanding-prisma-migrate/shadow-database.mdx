@@ -125,10 +125,19 @@ In order to create and delete the shadow database when using `migrate dev`, Pris
 | Database             | Database user requirements                                                                                                                                                                                             |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | SQLite               | No special requirements.                                                                                                                                                                                               |
-| MySQL/MariaDB        | Database user must have `CREATE, ALTER, DROP, REFERENCES ON *.*` privileges                                                                                                                                            |
+| MySQL/MariaDB        | Database user must have `CREATE`, `ALTER`, `DROP`, and `REFERENCES` on shadow databases (see [MySQL/MariaDB shadow database privileges](#mysqlmariadb-shadow-database-privileges) below)                                 |
 | PostgreSQL           | The user must be a super user or have `CREATEDB` privilege. See `CREATE ROLE` ([PostgreSQL official documentation](https://www.postgresql.org/docs/12/sql-createrole.html))                                            |
 | Microsoft SQL Server | The user must be a site admin or have the `SERVER` securable. See the [official documentation](https://learn.microsoft.com/en-us/sql/relational-databases/security/permissions-database-engine?view=sql-server-ver15). |
 
+### MySQL/MariaDB shadow database privileges
+
+When Prisma Migrate creates shadow databases automatically during `migrate dev`, it names them `prisma_migrate_shadow_db_<id>`. Grant the required privileges on that name pattern instead of on all databases (`*.*`):
+
+```
+GRANT CREATE, ALTER, DROP, REFERENCES ON `prisma_migrate_shadow_db%`.* TO 'user'@'%';
+```
+
+If you configure a dedicated shadow database with `shadowDatabaseUrl`, grant the same privileges on that database (for example `` `myapp_shadow`.* ``) instead of on the `prisma_migrate_shadow_db%` pattern.
 
 Prisma Migrate throws the following error if it cannot create the shadow database with the credentials your connection URL supplied:
 

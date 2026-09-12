@@ -281,8 +281,10 @@ mysql -e "CREATE DATABASE IF NOT EXISTS $DB_PRISMA;"
 mysql -e "GRANT ALL PRIVILEGES ON $DB_PRISMA.* TO $DB_USER@'%' IDENTIFIED BY '$DB_PASSWORD';"
 ```
 
-The above is enough to run the `prisma db pull` and `prisma db push` commands. In order to also run `prisma migrate` commands these permissions need to be granted:
+The above is enough to run the `prisma db pull` and `prisma db push` commands. In order to also run `prisma migrate dev`, which creates temporary shadow databases named `prisma_migrate_shadow_db_<id>`, grant schema privileges on that name pattern instead of on all databases:
 
 ```
-mysql -e "GRANT CREATE, DROP, REFERENCES, ALTER ON *.* TO $DB_USER@'%';"
+mysql -e "GRANT CREATE, ALTER, DROP, REFERENCES ON \`prisma_migrate_shadow_db%\`.* TO $DB_USER@'%';"
 ```
+
+If you use a dedicated shadow database via `shadowDatabaseUrl`, grant the same privileges on that database (for example `` `myapp_shadow`.* ``) instead of on the `prisma_migrate_shadow_db%` pattern.
