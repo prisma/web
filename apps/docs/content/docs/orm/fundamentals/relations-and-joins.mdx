@@ -226,14 +226,20 @@ await db.orm.public.Post.where({ id: post.id }).update({
 
 `connect` and `disconnect` identify the tag by any primary key or `@unique` field, so `{ name: "typescript" }` works here because `Tag.name` is `@unique`. When that key is made of several columns, pass every one of them in the object. `update(...)` returns the updated post, or `null` when no post matched the filter. `create` always inserts a new tag record, so creating a tag whose name already exists fails on that same unique constraint. Use `connect` for tags that already exist.
 
-There is no `connectOrCreate` in Prisma ORM 8. Read the tag first, then branch:
+There is no `connectOrCreate` in Prisma ORM 8. Upsert the tag first, which creates it or leaves an existing one alone, then connect it:
 
 ```typescript
-const existing = await db.orm.public.Tag.where({ name: "typescript" }).first();
+const tag = await db.orm.public.Tag.upsert({
+  create: { name: "typescript" },
+  update: {},
+  conflictOn: { name: "typescript" },
+});
 await db.orm.public.Post.where({ id: post.id }).update({
-  tags: (t) => (existing ? t.connect([{ id: existing.id }]) : t.create([{ name: "typescript" }])),
+  tags: (t) => t.connect([{ id: tag.id }]),
 });
 ```
+
+The upsert is safe when two requests create the same tag at once. The `connect` is not: if both requests also link that tag to the same post, the second fails with an error whose code is `ORM.RELATION_LINK_DUPLICATE`. Catch that code and treat it as done.
 
 See [what is not available yet](/orm/coming-from-prisma-orm-7#not-available-yet) for the rest of the gaps, and [Upsert a record](/orm/fundamentals/writing-data#upsert-a-record) for the top-level `.upsert(...)` call. These nested writes are for relational databases. On MongoDB, write the parent document and the child document in two calls, and set the reference field yourself:
 

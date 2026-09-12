@@ -62,7 +62,10 @@ Do not open a second transaction inside the helper. Calling `db.transaction(...)
 `db.transaction(...)` takes the callback and nothing else. There are no `isolationLevel`, `timeout`, or `maxWait` options; see [what is not available yet](/orm/coming-from-prisma-orm-7#not-available-yet). Every transaction runs at the database's default isolation level, `READ COMMITTED` on PostgreSQL, and you cannot ask for another level yet. If you need one, set it yourself as the first statement in the callback:
 
 ```typescript
-await tx.execute(db.raw.sql`SET TRANSACTION ISOLATION LEVEL SERIALIZABLE`.affectedCount().build());
+await db.transaction(async (tx) => {
+  await tx.execute(db.raw.sql`SET TRANSACTION ISOLATION LEVEL SERIALIZABLE`.affectedCount().build());
+  // your writes
+});
 ```
 
 There is no transaction timeout either, so a transaction stays open for as long as your callback runs. If you need a limit, set PostgreSQL's `idle_in_transaction_session_timeout` on the connection (`transaction_timeout` on PostgreSQL 17 and later).
