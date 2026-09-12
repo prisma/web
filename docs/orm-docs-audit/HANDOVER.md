@@ -12,7 +12,7 @@ Search it for `C21`, `reader review`, `fact re-check`, `conventions.md`, or a pa
 
 - `prisma/web` on `main` has, merged this week: the three correction PRs (#8236, #8237, #8238), the naming pass (#8246), Release status and Coming from Prisma ORM 7 (#8245), the `docs-reader-review` skill (#8247), and the plain-language rewrite of the five `orm/fundamentals` pages (#8251).
 - Draft PR #8243 (branch `docs/orm8-docs-audit-design`) holds the design docs in `docs/orm-docs-audit/`: `personas.md`, `journeys.md`, `mental-model.md`, `ia.md`, `naming.md`, `changes.md`, `plain-language.md`, the briefs, and this file. It is not meant to merge; it is the shared copy Will links people to. Other people edit this branch: always `git fetch bot` and start from the branch head, and merge your additions rather than copying files over.
-- Draft PR #8260 (branch `docs/orm8-plain-language-orm-client`) is C21 in progress on `apps/docs/content/docs/orm/reference/orm-client.mdx`. See "Current task".
+- PR #8260 (branch `docs/orm8-plain-language-orm-client`) is C21 on `apps/docs/content/docs/orm/reference/orm-client.mdx`, finished on 2026-09-12 and out of draft: two fact re-checks against rc.9 and four reader rounds. The reader and checker reports for that page are in the branch history at d104536a5; they were removed from the tree before review.
 - The Prisma ORM 8 source used for every fact check is `prisma/orm` at tag `8.0.0-rc.9` (`f889eeb89e`). The previous worktree had it at `wip/prisma-src/`; in a fresh worktree, `git -C /Users/will/Projects/prisma/prisma worktree add <path> f889eeb89e`. The published CLI is newer than that tree: `prisma@8.0.0-rc.13` exists, `npx prisma skills sync` exists, and `prisma/config` is the config import. ORM packages are still rc.9.
 
 ## How to work (rules Will has given, in his words where possible)
@@ -40,15 +40,16 @@ The skill is `.claude/skills/docs-reader-review/` on `main`. Per page:
 
 Readers keep asking for MongoDB depth on every page (fewer examples, no `.aggregate`, no cursor). That is a content gap, not wording; it is logged as C24 in `changes.md` and is out of scope for C21.
 
-## Current task: C21 on `orm/reference/orm-client.mdx` (draft PR #8260)
+## Current task: the other seven pages under `orm/reference/`
 
-Done: banned terms replaced (headings "Read terminals" and "Mutation terminals" are now "Read methods" and "Write methods" with the old anchors pinned); round one read in four slices; round one fixes applied to all four slices and reassembled (2,058 lines; plain check, cspell, and link check pass).
+`orm-client.mdx` is done (PR #8260). Next is item 1 below. Two things learned on the orm-client page that the fundamentals pages did not show:
 
-Not done, and the reason it matters: the four fixer agents were stopped before they reported, so their factual changes are unverified. The page rules gave them a list of facts to look up (see `c21-orm-client/page-conventions.md`, last bullet). Start with a full fact re-check of the reassembled page against rc.9, apply corrections, then rounds two to four, then the final fact re-check, then take #8260 out of draft with a description in Will's format. Delete `docs/orm-docs-audit/c21-orm-client/` from the branch before it merges.
+- On a reference page, readers keep asking for getting-started material (installing, `prisma orm init`, creating tables). Answer with one sentence and a link; do not add it.
+- From round three on, fixers add answers and readers then trip on the additions. Give every fixer from round three a "no longer than now" budget, and tell round four's fixers to prefer cutting. The final fact re-check found thirteen drifts after four wording rounds, so do not skip it.
 
 ## After that, in order
 
-1. The other seven pages under `orm/reference/`, one PR for the section.
+1. The other seven pages under `orm/reference/`, one PR for the section (the current task).
 2. `orm/contract-authoring/`, `orm/data-modeling/`, `orm/migrations/`, `orm/middleware/`, `orm/extensions/` (20 pages), one PR per section.
 3. C2, "Add Prisma ORM to an app you already started": scaffold a Prisma 7 app with an older `npm create prisma`, add ORM 8, write the page from what happens.
 4. C22 (a database on your machine: `prisma dev` first, Composer, Docker Compose) and C23 (runnable example repositories), both from a Discord user's feedback; see `journeys.md` J11 and J12.
