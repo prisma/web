@@ -8,7 +8,7 @@ metaDescription: 'Reference for the Prisma ORM client''s query, mutation, filter
 
 The ORM client gives you model-level methods for reading and writing data across PostgreSQL and MongoDB. This page documents every method, its availability on each database, and the behavior that differs between the two. Each method's Remarks say which databases it works on, how it behaves differently on one of them, and where TypeScript rejects something the database itself would accept.
 
-This page assumes your tables already exist. [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7) has the packages to install and the `prisma orm init` command. It also covers `prisma db update`, which replaces `prisma migrate`, and `prisma contract emit`, which replaces `prisma generate`. [How migrations work](/orm/migrations/how-migrations-work) shows how the tables get created. For task-oriented walkthroughs, see the Fundamentals guides: [Reading data](/orm/fundamentals/reading-data), [Writing data](/orm/fundamentals/writing-data), [Relations and joins](/orm/fundamentals/relations-and-joins), and [Transactions](/orm/fundamentals/transactions).
+This page assumes your tables already exist. [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7) has the packages to install and the `prisma orm init` command. It also covers `prisma db update`, which replaces `prisma migrate dev`, and `prisma contract emit`, which replaces `prisma generate`. [How migrations work](/orm/migrations/how-migrations-work) shows how the tables get created. For task-oriented walkthroughs, see the Fundamentals guides: [Reading data](/orm/fundamentals/reading-data), [Writing data](/orm/fundamentals/writing-data), [Relations and joins](/orm/fundamentals/relations-and-joins), and [Transactions](/orm/fundamentals/transactions).
 
 ## Example schema
 
@@ -199,7 +199,7 @@ Some parts of the schema the examples rely on:
 
 ## Setting up the client
 
-Create a client with `postgres(...)` or `mongo(...)`, then read and write your models through `db.orm`. The same `db` also has a query builder, `db.sql` on PostgreSQL and `db.query` on MongoDB, plus `db.raw` for raw SQL. This page covers none of those three. See [Advanced queries](/orm/fundamentals/advanced-queries). Create `db` once per process, and close it with `await db.close()` when the process shuts down. The two databases have different entry points, and they name the models differently.
+Create a client with `postgres(...)` or `mongo(...)`, then read and write your models through `db.orm`. The same `db` also has a query builder, `db.sql` on PostgreSQL and `db.query` on MongoDB, plus `db.raw` for raw queries. This page covers none of those three. See [Advanced queries](/orm/fundamentals/advanced-queries). Create `db` once per process, and close it with `await db.close()` when the process shuts down. The two databases have different entry points, and they name the models differently.
 
 ### PostgreSQL
 
@@ -414,7 +414,7 @@ On PostgreSQL, the callback you pass to `include()` receives the related rows as
 
 - PostgreSQL only. On MongoDB, `include()` takes no callback, and `count`, `sum`, `avg`, `min`, `max`, and `combine` do not exist on a collection.
 - On PostgreSQL, those six are only callable **inside** an `include()` callback. Called anywhere else, they throw an error whose `code` is `ORM.INCLUDE_INVALID`.
-- `sum()` and `avg()` take a numeric column: an integer, a floating-point number, or a decimal. They also take a `Time` column, the time-of-day type. They do not take a date or a timestamp, and TypeScript rejects a date or timestamp field name here.
+- `sum()` and `avg()` take a numeric column: an integer, a floating-point number, or a decimal. They also take an interval or a `Time` column, the time-of-day type. They do not take a date or a timestamp, and TypeScript rejects a date or timestamp field name here.
 - `min()` and `max()` take more: numeric and text columns, dates, times, timestamps, intervals, IP addresses, and text arrays. They do not take a boolean, a `uuid`, binary data, a bit string, or JSON.
 - `count()` returns a `number`. With no argument it counts rows; with a field name it counts rows where that field is not null. `countBigInt()` returns a `bigint` instead, for a count too large for a JavaScript `number`.
 - `sum()` over an integer column returns a `number`. A total too large for a `number` throws an error whose `code` is `RUNTIME.DECODE_FAILED`. Use `sumBigInt(field)` for totals that large. It returns a `bigint`.
@@ -618,7 +618,7 @@ Resume pagination from a known position.
 
 - PostgreSQL only. `cursor()` does not exist on a MongoDB collection.
 - Always call `orderBy()` before `cursor()`. TypeScript rejects the call if you do not. Nothing checks this while the query runs, so without the `orderBy()` the cursor is ignored and every row comes back.
-- The cursor object must name every column the `orderBy()` sorts on. Leave one out and the call throws an error whose `code` is `ORM.CURSOR_VALUE_MISSING`. With two sort columns, give both keys. The cursor compares the sort columns in order: first by the first column, then by the second for rows that tie on the first.
+- The cursor object must name every column the `orderBy()` sorts on. Leave one out and running the query throws an error whose `code` is `ORM.CURSOR_VALUE_MISSING`. With two sort columns, give both keys. The cursor compares the sort columns in order: first by the first column, then by the second for rows that tie on the first.
 
 #### Options
 
@@ -914,9 +914,9 @@ const features = await tasks.Task.features().all();
 
 A write method changes the database. `create`, `createAll`, `createAndCount`, `update`, `updateAll`, `updateAndCount`, `delete`, `deleteAll`, `deleteAndCount`, and `upsert` are available on both databases. The differences between the two are listed under each method.
 
-For Prisma ORM 7 users: `createMany` is `createAll()` or `createAndCount()`, `updateMany` is `updateAll()` or `updateAndCount()`, `deleteMany` is `deleteAll()` or `deleteAndCount()`, and `count` is [`aggregate()`](#grouped-aggregates). There is no `skipDuplicates` option.
+For Prisma ORM 7 users: `createMany` is `createAll()` or `createAndCount()`, `updateMany` is `updateAll()` or `updateAndCount()`, `deleteMany` is `deleteAll()` or `deleteAndCount()`, and `count` is [`aggregate()`](#grouped-aggregates) on PostgreSQL, or the two steps shown under [Read methods](#read-terminals) on MongoDB. There is no `skipDuplicates` option.
 
-To catch one of the errors named below and check its `code`, copy the `catch` block under [`AsyncIterableResult`](#asynciterableresult). For a task-oriented walkthrough, see [Writing data](/orm/fundamentals/writing-data). For grouping several writes into one unit, see [Transactions](/orm/fundamentals/transactions).
+To catch one of the errors named below, wrap the call in `try` and `catch`, then compare `error.code` with the string given here. For a task-oriented walkthrough, see [Writing data](/orm/fundamentals/writing-data). On MongoDB, a write method rejects a chain that already has `orderBy()`, `limit()`, or `offset()` on it, and every write except `updateAll()` and `deleteAll()` also rejects `include()`. Both throw an error whose `code` is `ORM.OPERATION_UNSUPPORTED`. For grouping several writes into one unit, see [Transactions](/orm/fundamentals/transactions).
 
 :::warning[Filter before you update or delete]
 Always call `where()` before an update or a delete. On MongoDB the six update and delete methods and `upsert()` check for a filter and throw an error whose `code` is `ORM.WHERE_MISSING`, with a message naming the method you called, such as `updateAll() requires a .where() filter. Call .where() before .updateAll()`. On PostgreSQL, these methods do not compile without a `where()`. Nothing checks at run time. If a call without a filter does reach the database, `update()` and `delete()` change a single row and you cannot predict which one, and `updateAll()` and `deleteAll()` change every row.
@@ -943,7 +943,7 @@ Insert a single row and return it.
 |---|---|---|---|
 | The row's fields | Object of field values | Yes | The row to insert. Pass the object as the only argument. There is no `data` wrapper. |
 
-On PostgreSQL, that object can also carry a `create` or `connect` callback for a related row, as shown below. `posts.create([...])` and `tags.disconnect([...])` take arrays because a user can have many posts and a post can have many tags. `user.connect({...})` takes one object because a post has one user.
+On PostgreSQL, that object can also carry a `create` or `connect` callback for a related row, as shown below. `create()` and `connect()` each take one object or an array of objects, on any relation. `disconnect()` takes an array, and on a many-to-many relation the array is required.
 
 #### Return type
 
@@ -1204,6 +1204,7 @@ Update every matching row and return the count.
 #### Remarks
 
 - Available for PostgreSQL and MongoDB. Call `where()` first. Without a filter this changes every row. See the warning at the top of this section.
+- On MongoDB the count leaves out documents that already held the new values. On PostgreSQL it counts every matched row.
 
 #### Options
 
@@ -1474,7 +1475,7 @@ Compute aggregates over the rows the query matches. `aggregate()` runs the query
 #### Remarks
 
 - PostgreSQL only. Not available on MongoDB.
-- `count()` counts rows. It takes no argument and always returns a number, `0` when no rows match.
+- `count()` counts rows and returns a number, `0` when no rows match.
 - `count(field)` counts the rows where that field is not null.
 - To count or sum the related rows of each parent row, use the `include()` callback instead; see [Refinements, aggregates, and combine](#refinements-aggregates-and-combine).
 - `sum()`, `avg()`, `min()`, and `max()` return `null`, not `0`, when no rows match. Handle the `null`.
@@ -1494,7 +1495,7 @@ Use `sumBigInt()` when the total can pass `Number.MAX_SAFE_INTEGER`. A `sum()` w
 |---|---|---|---|
 | `selector` | Callback `(agg) => ({ total: agg.sum('amount') })` | Yes | The aggregates to compute. Each key you return becomes a key of the result object. |
 
-The callback's `agg` argument gives you `count()`, `count(field)`, `sum(field)`, `avg(field)`, `min(field)`, and `max(field)`, plus `countBigInt()`, `sumBigInt(field)`, and `avgDecimal(field)`. `agg.countBigInt()` takes no argument and returns a `bigint`.
+The callback's `agg` argument gives you `count()`, `count(field)`, `sum(field)`, `avg(field)`, `min(field)`, and `max(field)`, plus `countBigInt()`, `sumBigInt(field)`, and `avgDecimal(field)`. `agg.countBigInt()` counts the same rows as `agg.count()` and returns a `bigint`.
 
 #### Return type
 
@@ -1523,7 +1524,7 @@ const stats = await db.orm.public.Order.where({
   totalAmount: agg.sum('amount'),
   avgAmount: agg.avg('amount'),
 }));
-// { totalAmount: 1500, avgAmount: 300 }
+// { totalAmount: 900, avgAmount: 300 }
 ```
 
 ##### Min and max (PostgreSQL)
@@ -1574,7 +1575,7 @@ Group rows by one or more fields, then aggregate per group.
 - PostgreSQL only. Not available on MongoDB.
 - Pass field names as separate arguments: `groupBy('customerId', 'channel')`.
 - `groupBy(...)` returns a `GroupedCollection`. You cannot `await` it. Call `.aggregate(...)` on it, which runs the query and gives you one row per group. Each row holds the grouping fields, typed as they are on your model, plus the keys you returned from the aggregate callback.
-- Chain order: `where(...)` comes before `groupBy(...)` and filters the rows that get grouped. After `groupBy(...)` you can call `having(...)`, `orderBy(...)`, `limit(...)`, and `offset(...)` in any order. `aggregate(...)` comes last.
+- Chain order: `where(...)` comes before `groupBy(...)` and filters the rows that get grouped. After `groupBy(...)` come `having(...)` and `orderBy(...)`, then `limit(...)` and `offset(...)`. `aggregate(...)` comes last.
 - `orderBy(...)` on a grouped collection sorts the groups by a field you grouped on. You cannot sort groups by an aggregate value. To do that, write the query with the SQL query builder instead. See [Advanced queries](/orm/fundamentals/advanced-queries).
 - `limit(n)` and `offset(n)` take a slice of the groups, and both require an `orderBy(...)` before them. Without one they are a TypeScript error.
 
@@ -1695,7 +1696,9 @@ const notAlice = await db.orm.public.User.where((u) => u.email.neq('alice@exampl
 ##### Ordered comparisons (PostgreSQL)
 
 ```typescript
-const after = await db.orm.public.Post.where((p) => p.createdAt.gt(new Date('2024-01-02T10:00:00.000Z'))).all();
+const after = await db.orm.public.Post.where((p) =>
+  p.createdAt.gt(Temporal.Instant.from('2024-01-02T10:00:00.000Z')),
+).all();
 // gte() is the same comparison, including the boundary value.
 ```
 
@@ -1847,7 +1850,7 @@ Helpers that build one MongoDB filter condition. Use them for anything other tha
 
 - MongoDB. Import from `@prisma/orm-mongo/query-ast/execution`. `MongoExistsExpr` is in the same module.
 - The helpers are `of`, `eq`, `neq`, `gt`, `lt`, `gte`, `lte`, `in`, `nin`, `isNull`, and `isNotNull`. Each returns one filter, which you can pass straight to `.where()` or hold in a variable. There is no `ne`; use `neq`.
-- `of(field, operator, value)`: pass the MongoDB operator as a string, including the `$`, for example `'$regex'`. Use it for operators the named helpers do not cover, such as `MongoFieldFilter.of('tags', '$size', 3)`. A misspelled operator such as `'$regexp'` is not caught until the query runs.
+- `of(field, operator, value)`: pass the MongoDB operator as a string, including the `$`, for example `'$regex'`. Use it for operators the named helpers do not cover, such as `MongoFieldFilter.of('tags', '$size', 3)` on an array field `tags`. A misspelled operator such as `'$regexp'` is not caught until the query runs.
 - `isNull(field)` matches documents where the field is `null` and documents where the field is missing. `isNotNull(field)` matches everything else. To test only whether a field is present, use `MongoExistsExpr.exists(field)` or `MongoExistsExpr.notExists(field)`. Those two are all `MongoExistsExpr` offers.
 - There is no `regex`, `elemMatch`, `all`, or `size` helper. Write those operators through `of`.
 
@@ -1926,7 +1929,7 @@ const usersInSf = await db.orm.users
 On MongoDB, `update()`, `updateAll()`, `updateAndCount()`, and `upsert()` take a callback in place of a data object. The callback gets one argument, the update builder, written `u` in these examples, and returns an array of the operations you want. `updateAndCount()` takes the callback in the same place as `update()`. `upsert()` takes it as its `update` key, beside `create`. PostgreSQL has no callback form: pass an object to [`update()`](#update) instead.
 
 - For a top-level field, read it off the update builder as a property: `u.bio.set('Hello')`.
-- For a field inside an embedded object, call the update builder as a function with the dot path: `u('address.city').set('San Francisco')`. The `upsert()` callback cannot use a dot path. Given one, `upsert()` throws an error whose `code` is `ORM.OPERATION_UNSUPPORTED`. Set the whole embedded object on its top-level field instead, as in `u.address.set({ street: '1 Market St', city: 'San Francisco', country: 'US' })`.
+- For a field inside an embedded object, call the update builder as a function with the dot path: `u('address.city').set('San Francisco')`. The `upsert()` callback cannot use a dot path. Given one, `upsert()` throws an error whose `code` is `ORM.OPERATION_UNSUPPORTED`. Set the whole embedded object on its top-level field instead, as in `u.address.set({ street: '1 Market St', city: 'San Francisco', zip: '94105', country: 'US' })`. Give every field of the embedded object, including the optional ones.
 
 All four methods require `.where()`. Without one they throw an error whose `code` is `ORM.WHERE_MISSING`. `.where({})` does not satisfy that rule, because an empty object adds no condition. To change every document, pass a filter that matches them all, such as `MongoFieldFilter.isNotNull('_id')`. A `_id` filter takes the hex string that a read gives you back, as the examples below show. On `upsert()`, `.where()` picks the document to update, exactly as on `update()`, and the full example is under [`upsert()`](#upsert). `update()` returns the updated document, or `null` when nothing matched. `updateAll()` returns an [`AsyncIterableResult`](#asynciterableresult) of the changed documents. [`updateAndCount()`](#updateandcount) exists on both databases, and it returns the number of changed documents.
 

@@ -1,0 +1,5 @@
+# Final fact re-check, slice C (Grouped aggregates, Filter conditions through Shorthand object filter)
+
+Five corrections: `count()` no longer "always" returns a number (an out-of-range count throws); `countBigInt()` also takes a field; the sum/avg example result made internally consistent (900, not 1500); the grouped chain order is `having`/`orderBy` then `limit`/`offset` (the types require `orderBy` first); the PostgreSQL `DateTime` comparison example uses `Temporal.Instant.from(...)`, because the `pg/timestamptz-temporal@1` codec's input type is `Temporal.Instant`, not `Date`.
+
+Everything else confirmed, including the sum/avg return-type table, `aggregate()` after `limit()`, `every()` on a to-one relation, the `is`/`isNot` mapping, and the `Json` shorthand behaviour. No Q items. Two facts have code but no test: `RUNTIME.DECODE_FAILED` from an over-range `sum()`, and `every()` on a to-one relation with no related row. `ports/.../sum.test.ts` marks its "honors query arguments" cases `it.fails`; the ORM's own `aggregate.test.ts` passes for `limit()`/`offset()`.
