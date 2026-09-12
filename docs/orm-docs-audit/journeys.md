@@ -1,14 +1,14 @@
 # Jobs readers come to the docs to do
 
-Ten jobs. Each names who does it, what "done" looks like, what the docs must provide for it, and where the site's structure fails it. The jobs are the design input for `ia.md` (which node serves each job) and `changes.md` (which page or ORM change supplies what is missing). Verdicts describe the structure, not the state of any one sentence: **green** a page exists for the job and carries it end to end, **amber** the job can be done but the reader has to assemble it from several places or work around a gap, **red** no page is written for the job.
+Twelve jobs. Each names who does it, what "done" looks like, what the docs must provide for it, and where the site's structure fails it. The jobs are the design input for `ia.md` (which node serves each job) and `changes.md` (which page or ORM change supplies what is missing). Verdicts describe the structure, not the state of any one sentence: **green** a page exists for the job and carries it end to end, **amber** the job can be done but the reader has to assemble it from several places or work around a gap, **red** no page is written for the job.
 
 ## J1. Add Prisma ORM to an app I already started, with an empty database
 
 Who: Newcomer, sometimes Upgrader. The most common Discord complaint is this job.
 
-Done: models defined, tables created, one query returns rows, from inside the app they already have.
+Done: models defined, tables created, one query returns rows, from inside the app they already have, and they can open the database and see those rows.
 
-What the docs must provide: one page that starts from "you have a project directory and no tables", runs `orm init`, edit the contract, `contract emit`, `db init`, one query, and shows `db.ts` and where `DATABASE_URL` comes from.
+What the docs must provide: one page that starts from "you have a project directory and no tables", runs `orm init`, edit the contract, `contract emit`, `db init`, one query, and shows `db.ts` and where `DATABASE_URL` comes from (linking J11 for a database on the reader's machine). It ends by showing the rows in the database, with Studio or a Postgres client, because that is how a beginner confirms the page worked.
 
 Where the structure fails: the getting-started subtree is organised by which tool runs (`create-prisma` for new apps, `orm init` for "existing project"). The reader's situation, an app with no database yet, falls between the two: the scaffold page creates a new app, and the existing-project page assumes tables exist and starts with `contract infer`. The three commands that fit exist only as a snippet on the CLI overview.
 
@@ -34,7 +34,7 @@ Done: for every Prisma ORM 7 call in their code, they know the Prisma ORM 8 call
 
 What the docs must provide: one mapping page in four sections (schema and types, CLI commands, client API, not-yet list with a status per item), reachable from every ORM entry point. The not-yet list is the part readers ask for most: `createMany` and `skipDuplicates`, `findUniqueOrThrow`, atomic `increment`/`decrement`, case-insensitive filters, JSON path filters, `$transaction` arrays, the payload types.
 
-Where the structure fails: there is no node. The mapping exists as fourteen inline diff blocks across six `orm/` pages (twelve of them introduced with "For Prisma 7 users"), so the reader finds it by luck, and nothing admits what does not exist. The accessor change (`prisma.user` to `db.orm.public.User`) is stated once.
+Where the structure fails: there is no node. The mapping exists as sixteen inline "For Prisma 7 users" blocks across nine pages, so the reader finds it by luck, and nothing admits what does not exist. The accessor change (`prisma.user` to `db.orm.public.User`) is stated once.
 
 Verdict: **red**. IA node: "Coming from Prisma 7" (C1, placed by A2); the not-yet list depends on D4.
 
@@ -122,6 +122,30 @@ Where the structure fails: the reader meets the files on the scaffold pages and 
 
 Verdict: docs **amber**, tool **red**. Tool change D3.
 
+## J11. Run Prisma ORM against a database on my machine
+
+Who: Newcomer, often a junior or a learner who does not want a hosted database yet. Reported on Discord by a reader who spent several days getting a local setup running and ended up reading example repositories on GitHub instead of the site.
+
+Done: a database runs locally, `DATABASE_URL` points at it, the first migration or `db init` has run, and the reader can see the tables and rows.
+
+What the docs must provide: one page in the ORM subtree that names the three ways to get a local database, in order of effort, and links or shows each: `prisma dev` (a local Prisma Postgres, no install), the Composer local stack (`dev`, which also runs the app), and a PostgreSQL the reader runs themselves, with a Docker Compose file and the matching connection string. It ends with how to look at the data: Studio against the local instance, or any Postgres client such as pgAdmin.
+
+Where the structure fails: the answers exist on the site, under Local development and Composer, but those are top-level platform sections. Nothing in the ORM subtree points at them except the quickstart's "Path A", which a reader who arrived at the ORM section from a search result never sees. A reader who wants Docker Compose finds only the Docker deployment guide, which is about shipping, not developing.
+
+Verdict: **red**. IA node: "A database on your machine".
+
+## J12. Learn from a runnable example
+
+Who: Newcomer. The same Discord reader: "I would recommend tutorials which can be cloned, run locally, and have a lot of comments in the code to understand what files need to be created and coded, which files are generated and why."
+
+Done: the reader has cloned a repository, run it against a local database, and can tell from comments in the code which files they wrote, which files Prisma generated, and what each command in `package.json` does.
+
+What the docs must provide: one small example repository per starting state (new app, app you already have, existing database), each with a README that says which files are yours (`contract.prisma`, `db.ts`, `prisma.config.ts`, your queries), which are generated (`contract.json`, `contract.d.ts`, `migrations/`), and the command that produces each generated file. Every quickstart and starting-state page links the matching repository. The monorepo's `examples/prisma-8-demo` is the seed.
+
+Where the structure fails: no page links a runnable repository. The quickstarts are copy-and-paste sequences with no way to check a broken local setup against a known-good one.
+
+Verdict: **red**. IA node: links from every starting-state page; no new node.
+
 ## Summary
 
 | Job | Verdict | What serves it |
@@ -136,3 +160,5 @@ Verdict: docs **amber**, tool **red**. Tool change D3.
 | J8 advanced Postgres | red | Advanced Postgres (C7) |
 | J9 types | red | Types (C6) on the next tagged release |
 | J10 agent files | amber / red | the line on scaffold pages; D3 |
+| J11 local database | red | A database on your machine (C22) |
+| J12 runnable example | red | example repositories linked from every starting state (C23) |

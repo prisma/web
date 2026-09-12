@@ -4,7 +4,7 @@ Proposal first, then why, then the current state it changes. Source: the `meta.j
 
 ## Proposed
 
-Scope: the Getting Started > Prisma ORM subtree, the ORM > Introduction group, and the Guides tree (two labels, and the Prisma 7 pages leaving it). Nothing else moves. `+` is a new node, `~` is a renamed or rewritten node, `-` is content leaving the tree, unmarked is unchanged.
+Scope: the Getting Started > Prisma ORM subtree, the ORM > Introduction group, and the Guides tree (two labels, and the Prisma 7 pages leaving it). Nothing else moves. `+` is a new node, `~` is a renamed or rewritten node, unmarked is unchanged.
 
 ### Getting Started > Prisma ORM
 
@@ -22,11 +22,14 @@ Prisma ORM
       PostgreSQL
       MongoDB
   + Coming from Prisma 7                            link to the ORM page below, so the Upgrader finds it from here
+  + A database on your machine                      prisma dev (no install) first; Composer's local stack; your own Postgres (Docker Compose); how to look at the rows
   + Editor setup
     create-prisma                                   reference; moved to last
 ```
 
 Four starting states, one group each. "Coming from Prisma 7" is a link node here because the page itself belongs with the API it maps.
+
+"A database on your machine" answers the question every starting state runs into on the first page: where does `DATABASE_URL` come from when I have no hosted database. The site already has the answers, `prisma dev` under Local development and the Composer local stack, but a reader inside the ORM subtree never meets them; the quickstart's "Path A" is the only mention. The node names the three options in order of effort (`prisma dev`, Composer, a Postgres you run yourself with Docker Compose), links to the pages that already exist for the first two, gives the Docker Compose file and connection string for the third, and ends with how to look at the data (Studio against the local instance, or any Postgres client).
 
 ### ORM > Introduction
 
@@ -42,14 +45,14 @@ Introduction
 ```
 Overview                                            no "coming soon" line for upgrading; it exists
 Upgrade Prisma ORM
-  ~ Prisma 7 to 8 (PostgreSQL)                      was "Migrate from Prisma 7 to Prisma 8"
+  ~ Prisma 7 to 8 (PostgreSQL)                      was "PostgreSQL"
   ~ Prisma 6 to 8 (MongoDB)                         was "MongoDB"
     v7, v6, v5, v4, v3, v1
   - Deployment, Database, Switch to Prisma ORM,      Prisma 7 content; lives under guides/v7
     GitHub Actions, AI SDK, React Router 7, SolidStart
 ```
 
-The Prisma ORM 8 replacements for those labels sit at the same slugs; C9 (deployment), C11 (CI), and C12 (switching, team workflow) in `changes.md` say what they must cover.
+The six Guides labels that leave come back as Prisma ORM 8 pages when C9 (deployment), C11 (CI), and C12 (switching, team workflow) are written.
 
 ### The ORM root page (`/orm`)
 
@@ -80,6 +83,7 @@ The ORM line becomes a short row with the four starting states, linking into the
 | Add to an app you already have | J1 |
 | Adopt an existing database (rewritten) | J2 |
 | Coming from Prisma 7 | J3, J5 (links to the incremental guide), J6 (attribute map) |
+| A database on your machine | J1, J11 |
 | Editor setup | J7 |
 | Guides labels and overview line | J5 |
 | Core concepts rewritten | the "written for AI" complaint, by giving the Newcomer a why-first page |
@@ -96,9 +100,9 @@ No change to the top-level section list, to Data Modeling, Contract Authoring, F
 | --- | --- | --- |
 | J1 existing app, empty database | Add to Existing Project > PostgreSQL | page assumes tables exist; no node for this state |
 | J2 existing database with data | Add to Existing Project > PostgreSQL | right node, page stops before the ref step |
-| J3 Prisma 7 query mapping | Fundamentals > Reading data | no node; fourteen diff blocks spread over six pages |
+| J3 Prisma 7 query mapping | Fundamentals > Reading data | no node; content spread over nine pages |
 | J4 should I move now | root, `/prisma-orm` | no node; note box only says 7 is supported |
-| J5 incremental upgrade | Guides > Upgrade Prisma ORM > Migrate from Prisma 7 to Prisma 8 | not linked from any ORM node; three levels down, and the MongoDB twin is labelled only "MongoDB" |
+| J5 incremental upgrade | Guides > Upgrade Prisma ORM > PostgreSQL | not linked from any ORM node; label hides it |
 | J6 data types | Data Modeling > Overview | right node; one stale example |
 | J7 editor setup | none | no node |
 | J8 advanced Postgres | none | no node; needs product answers |
@@ -109,7 +113,7 @@ Two observations follow from the table.
 
 First, the Getting Started > Prisma ORM subtree is organised by the tool that runs (`create-prisma` for Quickstart, `orm init` for Add to Existing Project) and then by database. The reader does not know those tools yet. The failures in J1 and J2 both happen at the point where the reader's situation differs from the page's assumption about it. The reader knows their situation: do I have an app, do I have a database, does it have data, was it Prisma 7. That is why I proposed organising this subtree by starting state. The database split (PostgreSQL / MongoDB) stays inside each.
 
-Second, the Upgrader has no node anywhere in Getting Started or ORM. Every Prisma 7 pointer is for staying on 7. The one page written for moving to 8 is filed under Guides, three levels down, and its MongoDB twin carries only a database name as its label.
+Second, the Upgrader has no node anywhere in Getting Started or ORM. Every Prisma 7 pointer is for staying on 7. The one page written for moving to 8 is filed under Guides with a database name as its label.
 
 ## Current state
 
@@ -162,8 +166,6 @@ Reference
 
 ### Guides (ORM-relevant parts)
 
-Snapshot of 2026-09-10. On 2026-09-11, #8242 rewrote the Deployment, Database, Switch to Prisma ORM, GitHub Actions, AI SDK, React Router 7, and SolidStart pages for Prisma ORM 8 at the same slugs, moved their Prisma 7 versions (and Cloudflare D1) under `guides/v7`, and gave the overview an Upgrading section.
-
 ```
 Overview                                     /guides   says "Upgrading: moving from Prisma 7" is coming
 v7
@@ -173,7 +175,7 @@ Deployment, Authentication, Integrations, Postgres
 Database     (Expand-and-contract migrations, Multiple databases, Schema management in teams)
 Switch to Prisma ORM, Switch to Prisma Postgres
 Upgrade Prisma ORM
-  Migrate from Prisma 7 to Prisma 8          /guides/upgrade-prisma-orm/postgresql   Prisma 7 to 8
+  PostgreSQL                                 /guides/upgrade-prisma-orm/postgresql   title: "Migrate from Prisma 7 to Prisma 8"
   MongoDB                                    /guides/upgrade-prisma-orm/mongodb      v6 Mongo to 8
   v7, v6, v5, v4, v3, v1                     older version-to-version guides
 Making guides
@@ -182,5 +184,5 @@ Making guides
 ### Where Prisma 7 readers are pointed today
 
 - Root page: one line, "Here for the ORM? Jump straight to Prisma 7 or Prisma 8".
-- A note box ("Using Prisma 7?", "Prisma 7", or "Prisma 7 users") on `/orm`, `/prisma-orm`, `/prisma-orm/create-prisma`, all four getting-started pages (PostgreSQL and MongoDB), and `/cli`. It says Prisma 7 remains supported and links to `/orm/v7` and `/v7/getting-started`. Both links are for staying on 7.
-- Nothing under Getting Started or ORM links to the upgrade guide. It is reachable only through Guides > Upgrade Prisma ORM, where the PostgreSQL page is labelled "Migrate from Prisma 7 to Prisma 8" and the MongoDB page just "MongoDB" (#8238 relabels both).
+- A "Using Prisma 7?" note box on `/orm`, `/prisma-orm`, both PostgreSQL getting-started pages, and `/cli`. It says Prisma 7 remains supported and links to `/orm/v7` and `/v7/getting-started`. Both links are for staying on 7.
+- Nothing under Getting Started or ORM links to the upgrade guide. It is reachable only through Guides, where the label is "PostgreSQL".
