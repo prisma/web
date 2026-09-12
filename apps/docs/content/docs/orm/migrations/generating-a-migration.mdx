@@ -159,15 +159,17 @@ ALTER TABLE "public"."user" ADD COLUMN "phone" text;
 
 ### The db ref: skipping --from
 
-You don't have to pass `--from` every time. If a [ref](/orm/migrations/the-migration-graph#name-important-states-with-refs) named **`db`** exists, planning starts from whatever it points at by default. Three things move it forward:
+You don't have to pass `--from` every time. If a [ref](/orm/migrations/the-migration-graph#name-important-states-with-refs) named **`db`** exists, planning starts from whatever it points at by default. Four things move it forward:
 
 - `db init` and `db update` advance it after a successful run, but only when you leave `--db` off and let the connection come from `prisma.config.ts`. Passing `--db` suppresses the advancement unless you also pass `--advance-ref db`.
+- `db sign` advances it after a successful signature, with or without `--db`. This is what makes the first plan after adopting an existing database contain only your change. Pass `--no-advance-ref` to sign without moving it.
 - `db migrate --advance-ref db` advances it after an apply. Plain `db migrate` never advances anything; that is deliberate, so a deploy or CI apply cannot move a repository ref.
 - `migration ref set db <contract>` sets it by hand.
 
 ```npm
 npx prisma@latest db update                                          # advances db on its own
 npx prisma@latest db update --db "$DATABASE_URL" --advance-ref db    # with --db, ask for it
+npx prisma@latest db sign --db "$DATABASE_URL"                       # advances db on its own
 npx prisma@latest db migrate --advance-ref db
 npx prisma@latest migration plan --name next_change   # starts from the db ref automatically
 ```
@@ -176,7 +178,7 @@ npx prisma@latest migration plan --name next_change   # starts from the db ref a
 
 If there's no `db` ref and you omit `--from`, `migration plan` refuses with `MIGRATION.PLAN_ORIGIN_UNKNOWN` whenever migrations already exist on disk. Planning from empty there would produce a full `CREATE`-everything package that no database carrying the earlier migrations could apply, so the command stops instead and names the three exits: `migration ref set db <contract>`, `--from <ref>`, or `--from @empty` to plan from an empty database deliberately.
 
-Only an empty `migrations/app/` still plans from empty on its own. That is the first migration in a new project, described above.
+Only an empty `migrations/app/` still plans from empty on its own. That is the first migration in a new project, described above. The command prints `No db ref set — planning from an empty database` under its summary when that happens, so you can tell a fresh first plan from a plan that recreates a database you already have.
 
 :::
 

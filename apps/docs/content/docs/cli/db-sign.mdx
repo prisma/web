@@ -10,6 +10,8 @@ metaDescription: Learn how to sign a database once it matches the current Prisma
 
 It is idempotent and safe to run in CI or a deployment pipeline. Use it after importing or inferring an existing schema, or after a deployment flow that already applied the required database changes.
 
+After a successful signature, `db sign` also stores the signed contract as a snapshot and points the [ref](/cli/migration-ref) named `db` at it, so the next [`migration plan`](/cli/migration-plan) starts from the state you just signed instead of from an empty database. Unlike `db init` and `db update`, passing `--db` does not turn this off, because you normally sign the real database. Pass `--no-advance-ref` when you do not want the command to write a ref or a snapshot, for example in a deployment pipeline.
+
 ## Usage
 
 ```npm
@@ -23,8 +25,10 @@ npx prisma@latest db sign --db "$DATABASE_URL"
 | `[contract]` | Signs against a specific contract reference (hash, prefix, ref name, or migration directory name) instead of the emitted contract. |
 | `--db <url>` | Connects to the database. |
 | `--contract <contract>` | The contract reference as a flag. Also accepts the `<dir>^` and `./path` forms that the positional argument does not. |
+| `--advance-ref <name>` | Advances this ref instead of `db` after a successful signature. |
+| `--no-advance-ref` | Signs without writing any ref or snapshot. Cannot be combined with `--advance-ref`. |
 | `--config <path>` | Read this config file instead of `./prisma.config.ts`. |
-| `--json` | Prints a machine-readable result. |
+| `--json` | Prints a machine-readable result. It includes `advancedRef` with the ref name and contract hash, or `null` when no ref was written. |
 
 ## Exit codes
 
@@ -41,6 +45,17 @@ npx prisma@latest contract emit
 npx prisma@latest db sign --db "$DATABASE_URL"
 npx prisma@latest db verify --db "$DATABASE_URL"
 ```
+
+## Adopting an existing database
+
+After [`contract infer`](/cli/contract-infer) and `contract emit`, one `db sign` is enough to hand the database over to Prisma ORM:
+
+```npm
+npx prisma@latest db sign --db "$DATABASE_URL"
+npx prisma@latest migration plan --name add-users-bio
+```
+
+The plan starts from the signed contract, so it contains only the change you made after signing. Because `migrations/app/` is still empty, that first plan also writes a baseline package that records the schema you adopted; see [the automatic baseline](/cli/migration-plan#the-automatic-baseline).
 
 ## When to use it
 
