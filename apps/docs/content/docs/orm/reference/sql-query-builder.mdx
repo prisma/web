@@ -130,11 +130,11 @@ model Feature {
 
 In Prisma ORM 8 your `schema.prisma` is called `contract.prisma`. [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7) gets you from a Prisma ORM 7 project to that file, and has the rest of the setup steps. Install the client with `npm install @prisma/orm-postgres`. Run `npx prisma contract emit` to write `contract.json` and `contract.d.ts` beside `contract.prisma`. The examples below assume your own file is in `src/prisma/`, next to those two files, and they write the type import path as `./contract.d`, exactly like that.
 
-You build queries from the client's `sql` property. Create a Postgres client with `postgres(...)`, then reach tables through `db.sql.public`. `public` is the PostgreSQL schema your tables are in. Prisma ORM 8 puts every table in `public`. Table accessors are keyed by table name, not model name. A table name is the model name with a lowercase first letter unless the model sets `@@map`, so the `User` model mapped to `user` is reached as `db.sql.public.user`, and the model for the `Post`/`Tag` join table, mapped to `post_tag`, is reached as `db.sql.public.post_tag`. Column names are the field names unless a field sets `@map`.
+You build queries from the client's `sql` property. Create a Postgres client with `postgres(...)`, then reach tables through `db.sql.public`. `public` is the PostgreSQL schema your tables are in. A model goes in `public` unless your contract puts it in a `namespace` block. Table accessors are keyed by table name, not model name. A table name is the model name with a lowercase first letter unless the model sets `@@map`, so the `User` model mapped to `user` is reached as `db.sql.public.user`, and the model for the `Post`/`Tag` join table, mapped to `post_tag`, is reached as `db.sql.public.post_tag`. Column names are the field names unless a field sets `@map`.
 
 ### The `db.sql` builder [#the-dbsql-facet]
 
-`db.runtime()` returns the connection that runs a built query. Hold it in a variable and reuse it. When your app shuts down, close the client with [`db.close()`](/orm/reference/transactions-and-runtime#close).
+`db.runtime()` returns the connection that runs a built query. On PostgreSQL it is synchronous, so no `await` is needed. Hold it in a variable and reuse it. When your app shuts down, close the client with [`db.close()`](/orm/reference/transactions-and-runtime#close).
 
 A `select()`, `insert()`, `update()`, or `delete()` call starts a query. [`build()`](#build) turns the chain into a query object, which the examples name `plan`. Nothing touches the database until you pass that object to `runtime.query(...)`. You can run the same built query more than once.
 
@@ -479,8 +479,8 @@ Cap the number of returned rows and skip rows in the ordered result set.
 
 | Method | Argument | Description |
 |---|---|---|
-| `limit(n)` | `number` | Return at most `n` rows. |
-| `offset(n)` | `number` | Skip the first `n` rows. |
+| `limit(n)` | `number`, or a numeric expression | Return at most `n` rows. |
+| `offset(n)` | `number`, or a numeric expression | Skip the first `n` rows. |
 
 #### Return type
 
@@ -671,7 +671,7 @@ const rows = await runtime.query(plan); // avgAmount is 300, exactAvg is the exa
 
 ### Ordering and limiting a grouped query
 
-A `GroupedQuery` supports the same `orderBy()`, `limit()`, `offset()`, `distinct()`, and [`distinctOn()`](#distincton) methods as a `SelectQuery`. Sort by an aggregate alias to order groups. The alias must be one you selected in this query. Any other name throws an error whose `code` is `ORM.COLUMN_UNKNOWN`, at the moment you call `orderBy()`.
+A `GroupedQuery` supports the same `orderBy()`, `limit()`, `offset()`, `distinct()`, and [`distinctOn()`](#distincton) methods as a `SelectQuery`. Sort by an aggregate alias to order groups. A name that is neither a column of the table you started from nor an alias you selected throws an error whose `code` is `ORM.COLUMN_UNKNOWN`, at the moment you call `orderBy()`.
 
 #### Examples
 
@@ -844,7 +844,7 @@ Give a value its type by hand, for a value with no column to take the type from,
 #### Remarks
 
 - Import `param` from `@prisma/orm-postgres/relational-core/expression`.
-- Values passed to `insert()`, `update()`, and comparison functions such as `fns.eq(f.col, value)` each take their type from the column they are used with, so you rarely need `param()`. Reach for it when the type the builder would pick is not the one the column needs. A bare string becomes `pg/text@1`, so a value going into a `uuid` column needs `param(id, { codecId: 'pg/uuid@1' })`. A `Temporal.Instant` cannot be interpolated bare at all.
+- Values passed to `insert()`, `update()`, and comparison functions such as `fns.eq(f.col, value)` each take their type from the column they are used with, so you rarely need `param()`. Reach for it when the type the builder would pick is not the one the column needs. Inside `fns.raw` no column lends its type, so a bare string becomes `pg/text@1` and a value compared there with a `uuid` column needs `param(id, { codecId: 'pg/uuid@1' })`. A `Temporal.Instant` cannot be interpolated bare at all.
 - The option is called `codecId`, but it takes the same type id used everywhere else on this page. [Binding a bare value with `param()`](/orm/reference/raw-queries#binding-a-bare-value-with-param) lists the type id each kind of JavaScript value gets, which is where to look for a date, a uuid, a boolean, or an array.
 
 #### Options
@@ -934,7 +934,7 @@ Write a raw SQL fragment as a tagged template. Interpolate columns, typed expres
 | Name | Type | Required | Description |
 |---|---|---|---|
 | SQL fragment | Tagged template | Yes | The raw SQL, with `${...}` interpolations for columns and values. |
-| `.returns(typeId)` | `string` | Yes, always | Declares the result type, for example `'pg/int4@1'`, `'pg/text@1'`. For a fragment used as a `where()` predicate, write `.returns('pg/bool@1')`. |
+| `.returns(typeId)` | `string`, or `{ codecId, nullable }` | Yes, always | Declares the result type, for example `'pg/int4@1'`, `'pg/text@1'`. For a fragment used as a `where()` predicate, write `.returns('pg/bool@1')`. |
 
 #### Remarks
 

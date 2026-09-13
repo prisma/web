@@ -14,7 +14,7 @@ This page documents the client lifecycle (create, connect, close), transactions,
 
 Each method below has a Remarks list. If a method behaves differently on PostgreSQL and MongoDB, or exists on only one of them, that list says so.
 
-Transactions are PostgreSQL only. To run one on MongoDB, pass your own `MongoClient` with the `mongoClient` option and use the driver's `session.withTransaction(...)`, which [Transactions on MongoDB](/orm/fundamentals/transactions#transactions-on-mongodb) shows in code.
+Transactions are not available on MongoDB. To run one there, pass your own `MongoClient` with the `mongoClient` option and use the driver's `session.withTransaction(...)`, which [Transactions on MongoDB](/orm/fundamentals/transactions#transactions-on-mongodb) shows in code.
 
 ## Client lifecycle on PostgreSQL
 
@@ -58,7 +58,7 @@ Pass exactly one of `url`, `pg`, and `binding`.
 
 - `.orm` holds your models by model name. See the [ORM client reference](/orm/reference/orm-client).
 - `.sql` is the SQL query builder, keyed by schema, then table name: `db.sql.public.tag`. The table name is the model's `@@map` value, or the model name with a lowercase first letter when the model sets no `@@map`. See the [SQL query builder reference](/orm/reference/sql-query-builder). `.raw` writes raw SQL as a template string. See the [raw queries reference](/orm/reference/raw-queries).
-- `.enums` holds the enum values from your contract, by PostgreSQL schema: `db.enums.public.Role`. `.nativeEnums` holds the values of enum types that exist in PostgreSQL itself, created with `CREATE TYPE`, also by schema. Look the type up by name in brackets: `db.nativeEnums.public['AalLevel'].values` is `['aal1', 'aal2']`.
+- `.enums` holds the enum values from your contract, by PostgreSQL schema: `db.enums.public.Role`. `.nativeEnums` holds the values of enum types that exist in PostgreSQL itself, created with `CREATE TYPE`, also by schema. Look the type up by name in brackets: `db.nativeEnums.auth['AalLevel'].values` is `['aal1', 'aal2', 'aal3']`.
 - `.contract` is the contract as an object. [`connect()`](#connect), [`runtime()`](#runtime), [`transaction()`](#dbtransactioncallback), [`prepare()`](#dbpreparedeclaration-callback), and [`close()`](#close) are documented on this page.
 
 #### Examples
@@ -93,7 +93,7 @@ Open a connection and return a runtime.
 
 #### Remarks
 
-- Returns a `Promise<Runtime>`. The runtime is the connected object that runs queries. It has five calls:
+- Returns a `Promise<Runtime>`. The runtime is the connected object that runs queries. It has these calls:
   - `runtime.query(built)` runs a built query and returns its rows. A built query is the object you get from `.build()` at the end of a builder or raw chain. See [Running a built query](/orm/reference/sql-query-builder#executing-a-plan).
   - `runtime.execute(built)` runs a built query that returns no rows, such as an insert, and returns `{ affectedRows }`. See [Running a built query](/orm/reference/sql-query-builder#executing-a-plan).
   - `runtime.connection()` takes one connection out of the pool so that several queries run on the same connection. It returns a promise, and you put the connection back with `connection.release()`: `const connection = await runtime.connection(); try { await connection.query(built) } finally { await connection.release() }`. See [Manual connection and transaction control](#manual-connection-and-transaction-control).
@@ -189,7 +189,7 @@ Create a MongoDB client.
 
 - Pass the contract with `contractJson` or `contract` (supply exactly one), the same way as on PostgreSQL.
 - Tell the client which database to use in one of four ways: `url`, `uri`, `mongoClient`, or `binding`. A `binding` wraps the choices in one object, with a `kind` field saying which it is: `{ kind: 'url', url, dbName }` or `{ kind: 'mongoClient', client, dbName }`. Use it when your code picks the source at run time, and use the `url` kind for a `uri`. Pass exactly one of the four, or leave all four out and pass one to [MongoDB `connect()`](#connect-1). `dbName` is separate and does not count as one of the four, so `{ url, dbName }` is allowed.
-- With `url`, the database name comes from the path of the connection string, as in `mongodb://host:27017/app`. Add `dbName` to override that name, or when the string has no name in its path. Use `uri` only when you must pass `dbName` separately.
+- With `url`, the database name comes from the path of the connection string, as in `mongodb://host:27017/app`. Add `dbName` to override that name, or when the string has no name in its path. `uri` takes the same kind of string, and always needs `dbName`.
 - **Client ownership**: with `url` or `uri`, Prisma ORM creates the underlying `MongoClient` and closes it on `close()`. With `mongoClient`, you supplied the client, so Prisma ORM does **not** close it. Because `close()` leaves your client open, you can use one `MongoClient` both through Prisma ORM and in code you write against the `mongodb` package directly. You close that client yourself.
 - `mongo(options)` does not open a connection. The runtime is built on first use, or explicitly via [MongoDB `connect()`](#connect-1).
 
@@ -280,7 +280,7 @@ Run a built query through the runtime.
 
 - `(await db.runtime()).query(built)` runs any built MongoDB query, including one built by the [pipeline builder](/orm/reference/pipeline-builder) (`db.query`).
 - Returns an [`AsyncIterableResult`](#asynciterableresult), which holds the rows the query returns: `await` it for an array, or `for await` to read the rows one at a time as they arrive.
-- For a write that returns no rows, use `runtime.execute(built)`, which returns `{ affectedRows }`. There is no `execute()` on the client itself.
+- For an update or delete command, use `runtime.execute(built)`, which returns `{ affectedRows }`. Other commands throw an error whose `code` is `RUNTIME.MONGO_STATISTICS_UNSUPPORTED`. There is no `execute()` on the client itself.
 
 #### Return type
 
@@ -296,7 +296,6 @@ Run a built query through the runtime.
 // 'posts' is the collection name, the same key you use on `db.orm`
 const built = db.query.from('posts').build();
 const posts = await (await db.runtime()).query(built);
-const { affectedRows } = await (await db.runtime()).execute(built); // for a write that returns no rows
 ```
 
 ### `close()`
@@ -443,7 +442,7 @@ For Prisma ORM 7 users, an array of queries becomes a callback:
 -   prisma.post.create({ data: { title, userId } }),
 - ]);
 + const { user, post } = await db.transaction(async (tx) => {
-+   const user = await tx.orm.public.User.create({ email, displayName });
++   const user = await tx.orm.public.User.create({ email, displayName, kind: 'user' });
 +   const post = await tx.orm.public.Post.create({ title, userId: user.id });
 +   return { user, post };
 + });
@@ -560,7 +559,7 @@ There is no `db.transaction(...)` on the MongoDB client, and the MongoDB runtime
 
 ## Prepared statements (PostgreSQL)
 
-A prepared statement compiles a query once against a declaration of its parameters, then runs it repeatedly with different values. Prepared statements are PostgreSQL only.
+A prepared statement compiles a query once against a declaration of its parameters, then runs it repeatedly with different values. Prepared statements are not available on MongoDB.
 
 ### `runtime.prepare(declaration, callback)`
 
@@ -716,6 +715,7 @@ Per-query options for cancellation.
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `signal` | `AbortSignal` | No | Per-query cancellation signal. |
+| `scope` | `'runtime' \| 'connection' \| 'transaction'` | No | A label middleware reads. The runtime sets it; setting it yourself changes only the label, not where the query runs. |
 
 #### Examples
 
