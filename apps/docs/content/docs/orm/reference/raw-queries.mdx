@@ -22,7 +22,7 @@ A **raw fragment** is a piece of SQL spliced into a builder query: you write it 
 
 A **whole raw statement** is a complete SQL statement written with `db.raw.sql`, which you terminate with `.returnsRow(spec).build()` for a plan `runtime.query(...)` streams rows from, or `.affectedCount().build()` for a plan `runtime.execute(...)` reports statistics for. Both sizes end in a plan, so both go through the same middleware and the same runtime.
 
-The examples in this section run against the `user` / `post` schema from the SQL query builder page. See its [example schema](/orm/reference/sql-query-builder#example-schema) for the full model definitions. As on that page, create the client with `postgres(...)`, connect it for a runtime, and reach tables through `db.sql.public`:
+The examples in this section run against the `user` / `post` schema from the SQL query builder page. See its [example schema](/orm/reference/sql-query-builder#example-schema) for the full model definitions. As on that page, create the client with `postgres(...)`, connect it for a runtime, and reach tables through `db.sql.public`, which is keyed by table name (the model name with a lowercase first letter unless the model sets `@@map`):
 
 ```ts
 import postgres from '@prisma/orm-postgres/runtime';
@@ -158,7 +158,7 @@ Use `.affectedCount()` for a statement that returns no rows. It takes no spec, a
 ```ts
 const plan = db.raw.sql`
   UPDATE "post"
-  SET "viewCount" = "viewCount" + 1
+  SET priority = ${'urgent'}
   WHERE "userId" IN (SELECT id FROM "user" WHERE kind = ${kind})
 `
   .affectedCount()
@@ -211,7 +211,7 @@ TypeScript already rejects an unsupported value at compile time. If you need to 
 
 `db.raw.collection(rootName)` returns a raw collection with nine methods for running MongoDB commands directly against a collection. The root name is the contract's lowercase plural root (`'users'`, `'posts'`), the same name the ORM client uses (`db.orm.users`).
 
-Each method returns a buildable command: call `.build()` to get a plan, then run it with `(await db.runtime()).query(plan)`. Because raw filters carry native BSON values, the examples below construct ids with the driver's `ObjectId` class:
+Each method returns a buildable command: call `.build()` to get a plan, then run it with `(await db.runtime()).query(plan)`. On MongoDB `db.runtime()` returns a promise, so you await it; on PostgreSQL it is synchronous. Because raw filters carry native BSON values, the examples below construct ids with the driver's `ObjectId` class:
 
 ```ts
 import { ObjectId } from 'mongodb';
@@ -310,12 +310,12 @@ Atomically update a matching document and return an image of it. The third argum
 
 #### Remarks
 
-- The MongoDB command AST carries `sort` and `returnDocument` fields, but the public `findOneAndUpdate()` wrapper does **not** expose them. Passing them in the options object has no effect: they are silently dropped, not a type or runtime error. A caller who needs either must build the raw command directly, bypassing this collection wrapper.
+- The MongoDB command AST carries `sort` and `returnDocument` fields, but the public `findOneAndUpdate()` wrapper does **not** expose them. Its options argument is `{ upsert?: boolean }` and nothing else, so TypeScript rejects an options literal that names either key, and a value that reaches the call untyped is dropped without a run-time error. A caller who needs either must build the raw command directly with `new RawFindOneAndUpdateCommand(...)` and run it through `db.query.rawCommand(...)`, bypassing this collection wrapper.
 - Because `returnDocument` is never forwarded, the native driver's own default applies, which is `'before'` (the pre-update image). This has a surprising consequence for the classic upsert-counter pattern, shown below.
 
 ##### Upsert counter pattern
 
-Because the wrapper always uses the driver's `'before'` default, the **first** call to an upsert counter returns an **empty** result: the upsert creates a brand-new document, so there is no pre-image to return, and the driver yields `null`. Read the counter value on the second and later calls, each of which returns the pre-image of its own increment.
+Because the wrapper always uses the driver's `'before'` default, the **first** call to an upsert counter returns an **empty** result: the upsert creates a brand-new document, so there is no pre-image to return, the driver returns `null`, and the query yields no row. Read the counter value on the second and later calls, each of which returns the pre-image of its own increment.
 
 ```ts
 const filter = { _id: 'pageViews' };
