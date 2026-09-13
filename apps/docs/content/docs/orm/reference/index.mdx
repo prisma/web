@@ -14,7 +14,13 @@ Prisma ORM gives you three typed ways to write a query. In Prisma ORM 7 you wrot
 
 When none of the three can express the query you need, write raw SQL on PostgreSQL or a raw command on MongoDB. See [Raw queries](/orm/reference/raw-queries). For connecting and disconnecting the client, transactions, and prepared statements, see [Transactions and runtime](/orm/reference/transactions-and-runtime).
 
-How a query runs: the ORM client runs when you `await` it. The SQL query builder and the pipeline builder each give you a built query from `.build()`, which you run with `runtime.query(...)`, or with `runtime.execute(...)` for a write that returns no rows. Get `runtime` from `db.runtime()` once and reuse it.
+## Running a query
+
+The ORM client sends its own queries. `first()`, `create()`, `update()`, `upsert()`, `delete()`, and `aggregate()` send the query the moment you call them. `all()`, `createAll()`, `updateAll()`, and `deleteAll()` return a result object and send the query when you `await` that object or loop over it with `for await`. `all()` is what replaced `findMany`.
+
+The SQL query builder and the pipeline builder send nothing on their own. `.build()` gives you a built query. Pass it to `runtime.query(...)` for rows, or to `runtime.execute(...)` for a write that returns no rows. Get `runtime` from `db.runtime()` once and reuse it.
+
+### PostgreSQL
 
 ```ts
 const runtime = db.runtime();
@@ -23,15 +29,18 @@ const plan = db.sql.public.user.select('id', 'email').where((f, fns) => fns.eq(f
 const rows = await runtime.query(plan);
 ```
 
-`const runtime = db.runtime();` is the PostgreSQL form. On MongoDB the call returns a promise, so there you write `const runtime = await db.runtime();`. The two callbacks differ: the ORM client compares on the column (`u.kind.eq(...)`), and the SQL query builder compares through `fns` (`fns.eq(f.kind, ...)`). `.all()` runs the query and returns every row. It is what replaced `findMany`.
+`User` is the model name and `user` is the table name. The ORM client compares on the column, `u.kind.eq(...)`. The SQL query builder compares through `fns`, `fns.eq(f.kind, ...)`.
 
-Watch the casing: `User` is the model name and `user` is the table name.
+### MongoDB
 
-Two different things are both named `query`. `db.query` builds a MongoDB pipeline. `runtime.query(...)` runs a query that has already been built.
+```ts
+const runtime = await db.runtime();
+const admins = await db.orm.users.where({ role: 'admin' }).all();
+const plan = db.query.from('users').match((f) => f.role.eq('admin')).build();
+const docs = await runtime.query(plan);
+```
 
-## How database differences are documented
-
-Every method on a reference page has the same four parts: Remarks, Options, Return type, and Examples. If a method works differently on PostgreSQL and MongoDB, or exists on only one of them, its Remarks say so. For a walkthrough of reading and writing data rather than a method list, see [Reading data](/orm/fundamentals/reading-data), [Writing data](/orm/fundamentals/writing-data), [Relations and joins](/orm/fundamentals/relations-and-joins), [Transactions](/orm/fundamentals/transactions), and [Advanced queries](/orm/fundamentals/advanced-queries).
+`db.runtime()` returns a promise on MongoDB, so `await` it. `users` is the collection name, and both `db.orm` and `db.query.from()` are keyed by it. The ORM client's `where()` takes an object of field values. The pipeline builder's `match()` takes a callback that compares on the field, `f.role.eq(...)`. Two different things are named `query`: `db.query` builds a pipeline, and `runtime.query(...)` runs a query that has already been built.
 
 <Cards>
   <Card href="/orm/reference/orm-client" title="ORM client reference" icon={<BookOpen className="text-primary" />}>Every ORM client method, with PostgreSQL and MongoDB behavior documented side by side.</Card>
