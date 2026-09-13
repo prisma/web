@@ -8,7 +8,7 @@ metaDescription: 'Reference for the Prisma ORM MongoDB pipeline builder''s stage
 
 The pipeline builder gives you a typed way to build MongoDB aggregation pipelines. You reach it through `db.query`, chain aggregation stages onto a starting collection, and finish the chain with the call that builds the query. It is the MongoDB counterpart to the [SQL query builder](/orm/reference/sql-query-builder): a lower-level API for the queries the [ORM client](/orm/reference/orm-client) doesn't express.
 
-Everything the builder produces becomes a MongoDB aggregation pipeline. There is no `find()` or `distinct()` here. Use `db.orm` or [`rawCommand()`](#rawcommand) for those. To fetch a single document, filter and then `limit(1)`. Use the ORM client (`db.orm`) for everyday reads and writes across models and relations, and the pipeline builder when you need a stage the ORM client doesn't expose: grouping, `$lookup` joins with post-processing, computed projections, multi-stage transformations, or stages that write the results into a collection (`$out` and `$merge`). This page documents every stage, accumulator, expression helper, and write method.
+Everything the builder produces becomes a MongoDB aggregation pipeline. There is no `find()` or `distinct()` here. Use `db.orm` or [`rawCommand()`](#rawcommand) for those. To fetch a single document, filter and then `limit(1)`. Use the ORM client (`db.orm`) for everyday reads and writes across models and relations. Reach for the pipeline builder when you need to group documents, to join another collection and keep transforming the result, or to write the result into a collection (`$out` and `$merge`). This page documents every stage, accumulator, expression helper, and write method.
 
 :::note[This is the MongoDB pipeline builder]
 The pipeline builder targets MongoDB only. PostgreSQL has no pipeline builder: use the [SQL query builder](/orm/reference/sql-query-builder) for PostgreSQL joins and aggregates, and the [ORM client](/orm/reference/orm-client) for everyday queries on either database.
@@ -16,7 +16,7 @@ The pipeline builder targets MongoDB only. PostgreSQL has no pipeline builder: u
 
 ## Example schema
 
-All examples on this page run against the schema below. It is the same MongoDB schema as the [ORM client](/orm/reference/orm-client) page, so examples carry over between the two pages. `Article` and `Tutorial` are variants of `Post`. They are stored in the same `posts` collection and told apart by the value of the `kind` field. See [`variant()`](/orm/reference/orm-client#variant) on the ORM client page for how to query one variant. You do not need `variant()` on this page, because `kind` is an ordinary field you can filter and group on.
+All examples on this page run against the schema below. It is the same MongoDB schema as the [ORM client](/orm/reference/orm-client) page, so examples carry over between the two pages. `Article` and `Tutorial` are two kinds of `Post`, stored in one `posts` collection and told apart by the value of the `kind` field. `@@base(Post, "article")` and `@@discriminator(kind)` set that up. See [`@@base`](/orm/reference/orm-client#variant) on the ORM client page. `@@type("mongo/string@1")` says the enum is stored as a MongoDB string, and `@1` is the version of that type id, always `@1` today. On this page you never need any of that, because `kind` is an ordinary field you can filter and group on.
 
 <details>
 
@@ -81,7 +81,7 @@ model Tutorial {
 
 Every pipeline starts with `db.query.from('posts')`, naming the collection to aggregate over. It ends with a call that turns the chain into a query you can run. Between them you chain stages.
 
-`db` is the client you create with `mongo(...)`, whose `dbName` option is the name of the MongoDB database to use. See [Transactions and runtime](/orm/reference/transactions-and-runtime#mongooptions) for every option and for how to create the client.
+`db` is the client you create with `mongo(...)`, whose `dbName` option is the name of the MongoDB database to use. See [Transactions and runtime](/orm/reference/transactions-and-runtime#mongooptions) for every option and for how to create the client. Three import paths appear on this page: `@prisma/orm-mongo/runtime` holds the `mongo()` client, `@prisma/orm-mongo/query-builder` holds `mongoQuery`, `fn`, `acc`, and `expr`, and `@prisma/orm-mongo/query-ast/execution` holds the `Mongo*Stage` classes, `MongoAggFieldRef`, and `MongoFieldFilter`. Every example holds the built query in a variable named `plan`.
 
 Prisma ORM 8 renames `schema.prisma` to `contract.prisma`. Run `npx prisma contract emit` before any code on this page compiles: it writes `contract.json`, used at run time, and `contract.d.ts`, used for types. The example below imports `contract.json` with `with { type: 'json' }`, which works with the TypeScript settings `prisma orm init` writes for you. [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7) has the setup steps.
 
@@ -92,9 +92,9 @@ Enter the pipeline builder on a collection.
 #### Remarks
 
 - `from()` takes the collection name, the same name you use on `db.orm` (`'posts'`, `'users'`), not the model name `Post`. The collection name is the model's `@@map` value, or the model name with a lowercase first letter when there is no `@@map`.
-- Passing an unknown collection name throws right away, with an error whose `code` is `ORM.MODEL_UNKNOWN` and whose message is `Unknown root: "<name>". Valid roots: ...`.
+- Passing an unknown collection name throws right away, with an error whose `code` is `ORM.MODEL_UNKNOWN` and whose message is `Unknown root: "<name>". Valid roots: ...` (the message says root; it means the collection name).
 - `from()` returns a builder you chain stages onto. Call `insertOne()` and `insertMany()` on `from()` directly, before any stage.
-- You can build the same pipelines without a client. `import { mongoQuery } from '@prisma/orm-mongo/query-builder'`, then `mongoQuery({ contractJson }).from('posts')`. Import `contractJson` the same way the example below does.
+- You can build the same pipelines without a client. `import { mongoQuery } from '@prisma/orm-mongo/query-builder'`, then `mongoQuery({ contractJson }).from('posts')`. Import `contractJson` the same way the example below does. `mongoQuery` only builds queries. It never runs one, so you still need a client's `runtime` to get results. Use it in tests, or to build a query once and run it through any client you like.
 
 #### Options
 
@@ -126,15 +126,14 @@ const posts = await runtime.query(plan);
 
 ### Building and executing a pipeline
 
-Nothing runs until you execute the pipeline. `build()` turns the chain into a built query, which the examples hold in a variable named `plan`. `runtime.query(...)` runs it. Every later example reuses the `db` and `runtime` from the example above.
+`build()` returns the built query, which the examples hold in a variable named `plan`. Nothing runs until you pass it to `runtime.query(...)`. Every later example reuses the `db` and `runtime` from the example above.
 
 #### Remarks
 
 - On MongoDB, `db.runtime()` returns a promise, so you must await it: `const runtime = await db.runtime()`. Hold it in a variable and reuse it.
 - `await` that call for an array of documents, or write `for await (const doc of runtime.query(plan)) { ... }` to take one document at a time.
 - There is no `db.execute` on the MongoDB client.
-- **After `lookup()` or `group()`, compare ids with `String(a._id) === String(b._id)`**, where `a` is a looked-up sub-document and `b` is the parent document it came from. Both `_id` values are the driver's own `ObjectId` objects there, and two `ObjectId` objects are never `===` even when they hold the same id.
-- **Read results are decoded.** If every stage in your pipeline is one of `match()`, `sort()`, `limit()`, `skip()`, `sample()`, `project()`, `addFields()`, and `vectorSearch()`, results are decoded: `_id` is a hex string and dates are your contract's date type. If any stage is not in that list, including `lookup()` and `group()`, every document comes back raw: `_id` is the driver's `ObjectId` and dates are the driver's `Date`.
+- **Read results are decoded.** If every stage in your pipeline is one of `match()`, `sort()`, `limit()`, `skip()`, `sample()`, `project()`, `addFields()`, and `vectorSearch()`, `_id` comes back as a hex string. If any stage is not in that list, including `lookup()` and `group()`, every document comes back raw and `_id` is an `ObjectId` object from the `mongodb` package, the MongoDB driver Prisma ORM uses. Compare those ids as strings, as [`lookup()`](#lookup) shows. A `DateTime` field comes back as a JavaScript `Date` either way.
 
 #### Examples
 
@@ -156,9 +155,16 @@ Filter documents by a predicate.
 #### Remarks
 
 - `match()` takes a callback whose `f` argument has one property per field, and returns a filter expression (`(f) => f.kind.eq('tutorial')`).
-- Neither a hex string nor a driver `ObjectId` matches in `match()`. The builder sends the value as a plain object, so an `ObjectId` arrives as its bytes. See the warning below.
 - Scalar fields expose these filter operators: `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `nin`, `exists`, and `type`. They work like the MongoDB query operators of the same name (`$ne`, `$gt`, `$in`, `$exists`, `$type`, and so on).
-- To compare computed values rather than a field against a constant, wrap the comparison in `expr(...)`: `match((f) => expr(fn.gt(fn.year(f.createdAt), fn.literal(2023))))`. `fn` holds the helpers that build expressions, and `expr()` wraps one so `match()` accepts it. The `fn.*` helpers take expressions, not plain values, so wrap every constant in `fn.literal()`. See [Expression helpers](#expression-helpers).
+- To compare two computed values rather than a field against a constant, wrap the comparison in `expr(...)`: `match((f) => expr(fn.gt(fn.year(f.createdAt), fn.literal(2023))))`. `fn` holds the helpers that build expressions, one per MongoDB operator. `expr()` wraps one of those values so `match()` accepts it. The `fn.*` helpers take expressions, not plain values, so wrap every constant in `fn.literal()`. See [Expression helpers](#expression-helpers).
+
+Where each form goes. `.node` is the raw MongoDB expression inside an `fn.*` value:
+
+| Call site | What you pass |
+|---|---|
+| `project()`, `addFields()`, and the arguments of an accumulator | The `fn.*` value itself. |
+| The condition argument of `fn.cond()`, `redact()`, and the stages that take an options object | The `.node` property of the `fn.*` value. |
+| `match()` | The `fn.*` value wrapped in `expr(...)`. |
 
 #### Options
 
@@ -197,7 +203,7 @@ const recent = await runtime.query(plan);
 ```
 
 :::warning[`_id` equality filters do not work through the pipeline builder]
-Filtering by `_id` equality inside `match()` **never matches any document**. Neither a hex string (`f._id.eq('507f...')`) nor the driver's own `ObjectId` matches. There is no supported way to filter by `_id` equality through the typed pipeline builder. To fetch one document by its id, use the [ORM client](/orm/reference/orm-client), which converts the hex string for you. The pipeline builder does not convert it:
+Filtering by `_id` equality inside `match()` **never matches any document**. Neither a hex string (`f._id.eq('507f...')`) nor an `ObjectId` matches. There is no supported way to filter by `_id` equality through the typed pipeline builder. To fetch one document by its id, use the [ORM client](/orm/reference/orm-client), which converts the hex string for you. The pipeline builder does not convert it:
 
 ```typescript
 const postId = '6650f1c2a1b2c3d4e5f60003';
@@ -357,7 +363,8 @@ Join documents from another collection (`$lookup`).
 
 - `lookup()` takes a callback that builds the join with `from(collection).on((local, foreign) => ({ local, foreign })).as(name)`: the other collection, the two fields to match on, and the name of the output array field.
 - The object returned by `on()` has two fixed keys, `local` and `foreign`. Write `({ local: local.authorId, foreign: foreign._id })`.
-- The joined documents arrive in an array under the `as` name. Compare their ids with `String(a._id) === String(b._id)`.
+- The joined documents arrive in an array under the `as` name. When nothing matches, that array is empty.
+- A joined document's `_id` and the `_id` of the document it was joined to are both `ObjectId` objects, and two `ObjectId` objects are never `===` even when they hold the same id. Compare them as strings: `String(post.author[0]._id) === String(post.authorId)`.
 
 #### Options
 
@@ -536,7 +543,7 @@ Promote a computed sub-document to the top level.
 
 #### Remarks
 
-- `replaceRoot()` takes a callback returning a **document-shaped** expression. A bare scalar is rejected by MongoDB at runtime (`'newRoot' expression must evaluate to an object`).
+- `replaceRoot()` takes a callback returning an expression that evaluates to an object. A bare scalar is rejected by MongoDB at runtime (`'newRoot' expression must evaluate to an object`).
 - A common pattern is to promote the first element of a `lookup()` array with `fn.arrayElemAt(f.author, fn.literal(0))`.
 
 #### Options
@@ -573,7 +580,7 @@ const authors = await runtime.query(plan);
 
 ### `count()`
 
-Reduce the pipeline to a single document holding the count.
+Reduce the pipeline to a single document holding the count. It is not `acc.count()`, which counts the documents in one group inside `group()`.
 
 #### Options
 
@@ -626,7 +633,6 @@ const plan = db.query
   .sortByCount((f) => f.kind)
   .build();
 const byKind = await runtime.query(plan);
-// two buckets, each { _id: <kind>, count: 1 }. Order of tied counts is not guaranteed.
 ```
 
 ### `redact()`
@@ -636,14 +642,8 @@ Keep or prune documents (and sub-documents) based on an expression.
 #### Remarks
 
 - `redact()` maps to MongoDB's `$redact`, whose expression must evaluate to one of MongoDB's `$$` variables: `$$KEEP`, `$$DESCEND`, or `$$PRUNE`.
-- `f.rawPath(path)` names a field or a MongoDB `$$` variable by its raw string, with no checking against your model. It prefixes `$` to the string you give it, so `f.rawPath('$KEEP')` reaches MongoDB as `$$KEEP`. There is no expression helper for a `$$` variable, and `fn.literal(...)` cannot stand in. The server rejects both `fn.literal('KEEP')` and `fn.literal('$$KEEP')`.
-- For anything more involved, use [`rawCommand()`](#rawcommand), where you write the `$redact` stage with `$$KEEP` and `$$PRUNE` directly.
-
-| Call site | What you pass |
-|---|---|
-| `project()`, `addFields()`, and the arguments of an accumulator | The `fn.*` value itself. |
-| The condition argument of `fn.cond()`, `redact()`, and the option-object stages | The `.node` property of the `fn.*` value. |
-| `match()` | The `fn.*` value wrapped in `expr(...)`. |
+- Write those variables with `f.rawPath('$KEEP')` and `f.rawPath('$PRUNE')`. `f.rawPath(path)` names a field or a MongoDB `$$` variable by its raw string, with no checking against your model, and it prefixes `$` to the string you give it. There is no expression helper for a `$$` variable, and `fn.literal(...)` cannot stand in: the server rejects both `fn.literal('KEEP')` and `fn.literal('$$KEEP')`.
+- For which `fn.*` values need their `.node` property here, see the table under [`match()`](#match). For anything more involved, use [`rawCommand()`](#rawcommand), where you write the `$redact` stage with `$$KEEP` and `$$PRUNE` directly.
 
 #### Options
 
@@ -675,21 +675,20 @@ const tutorials = await runtime.query(plan);
 
 ### Option-object stages
 
-Several stages take a single MongoDB stage options object rather than a typed `(f) => ...` callback. Each one carries the same meaning it has in MongoDB.
+Several stages take a single MongoDB stage options object rather than a typed `(f) => ...` callback. Each one carries the same meaning it has in MongoDB. Where an option below is called a raw expression, it wants a MongoDB expression object rather than a typed builder value: build one with the `fn.*` helpers and pass its `.node` property, or name a field with `MongoAggFieldRef.of('duration')`, which is already a raw expression and takes no `.node`.
 
 #### Remarks
 
 - `bucket({ groupBy, boundaries, default_?, output? })` sorts documents into the ranges you name. `default` is a reserved word in JavaScript, so the key is `default_`. `groupBy` is a raw expression.
-- `bucketAuto({ groupBy, buckets, output?, granularity? })` sorts them into a given number of ranges, chosen so each holds about the same number of documents. `groupBy` is a raw expression. `granularity` picks the bucket size from one of MongoDB's preferred-number series.
+- `bucketAuto({ groupBy, buckets, output?, granularity? })` sorts them into a given number of ranges, chosen so each holds about the same number of documents. `groupBy` is a raw expression. `granularity` is a string that MongoDB reads as the series it rounds the bucket boundaries to. Prisma ORM passes it through unchanged, accepts any string, and MongoDB rejects the ones it does not know.
 - `geoNear({ near, distanceField, spherical?, maxDistance?, minDistance?, query?, key?, distanceMultiplier?, includeLocs? })` sorts documents by their distance from a point and writes that distance into `distanceField`. `near` is a raw expression.
 - `graphLookup({ from, startWith, connectFromField, connectToField, as, maxDepth?, depthField?, restrictSearchWithMatch? })` follows links from document to document through one collection and collects what it reaches into `as`. `startWith` is a raw expression.
-- `setWindowFields({ partitionBy?, sortBy?, output })` computes a value for each document from the documents around it, such as a running total. `partitionBy` is a raw expression. `output` is an object mapping each new field name to `{ operator, window? }`, where `operator` is the accumulator or expression to compute.
+- `setWindowFields({ partitionBy?, sortBy?, output })` computes a value for each document from the documents around it, such as a running total. `partitionBy` is a raw expression. `output` is an object mapping each new field name to `{ operator, window? }`, where `operator` is a raw expression, usually an accumulator: `{ runningTotal: { operator: MongoAggAccumulator.sum(MongoAggFieldRef.of('duration')), window: { documents: ['unbounded', 0] } } }`.
 - `densify({ field, partitionByFields?, range })` adds documents to fill the gaps in a sequence of numbers or dates. `range` is `{ step, unit?, bounds }`, where `bounds` is `'full'`, `'partition'`, or a pair of start and end values.
-- `fill({ partitionBy?, partitionByFields?, sortBy?, output })` replaces missing or null values with a value you choose. `partitionBy` is a raw expression. `output` is an object mapping each field name to `{ method }` or `{ value }`, where `value` is an expression.
+- `fill({ partitionBy?, partitionByFields?, sortBy?, output })` replaces missing or null values with a value you choose. `partitionBy` is a raw expression. `output` is an object mapping each field name to `{ method }` or `{ value }`, where `value` is an expression and `method` is a string that Prisma ORM passes through to MongoDB unchanged.
 - `facet(facets)` takes an object mapping each output field name to an array of stages.
 - `unionWith(collection, pipeline?)` takes a collection name and an optional array of stages.
-- Build a raw expression with the `fn.*` helpers and pass its `.node` property, or name a field with `MongoAggFieldRef.of('duration')`.
-- The stages you pass to `facet` and `unionWith` are classes: `MongoMatchStage`, `MongoProjectStage`, `MongoSortStage`, `MongoLimitStage`, `MongoSkipStage`, `MongoLookupStage`, `MongoUnwindStage`, `MongoGroupStage`, `MongoAddFieldsStage`, `MongoReplaceRootStage`, `MongoCountStage`, `MongoSortByCountStage`, `MongoSampleStage`, `MongoRedactStage`, `MongoOutStage`, `MongoUnionWithStage`, `MongoBucketStage`, `MongoBucketAutoStage`, `MongoGeoNearStage`, `MongoFacetStage`, `MongoGraphLookupStage`, `MongoMergeStage`, `MongoSetWindowFieldsStage`, `MongoDensifyStage`, `MongoFillStage`, `MongoSearchStage`, `MongoSearchMetaStage`, and `MongoVectorSearchStage`. Import them, and `MongoAggFieldRef`, from `@prisma/orm-mongo/query-ast/execution`. Each stage class takes the same arguments as the MongoDB stage it builds. The three used below are `MongoCountStage(field)`, `MongoSortStage(spec)`, and `MongoLimitStage(n)`.
+- The stages you pass to `facet` and `unionWith` are classes, one class per MongoDB stage, named `Mongo<Stage>Stage`. Import them, along with `MongoAggFieldRef` and `MongoAggAccumulator`, from `@prisma/orm-mongo/query-ast/execution`. Each class takes the same arguments as the MongoDB stage it builds. The three used below are `MongoCountStage(field)`, `MongoSortStage(spec)`, and `MongoLimitStage(n)`.
 
 #### Examples
 
@@ -719,7 +718,7 @@ const plan = db.query
   })
   .build();
 const [facets] = await runtime.query(plan);
-// facets.totalCount is [{ count: 2 }]; facets.newest is the two newest posts
+// facets.totalCount is [{ count: <number of posts> }]; facets.newest is the two newest posts
 ```
 
 ##### Sort into ranges with `bucket()`
@@ -747,7 +746,7 @@ const buckets = await runtime.query(plan);
 
 #### Remarks
 
-- These stages need MongoDB Atlas. The query builds, and MongoDB rejects it when it runs.
+- These stages need MongoDB Atlas. Nothing stops you from building them against a database that is not on Atlas. The error only appears when you run the query.
 - `search(config, index?)` takes an Atlas Search operator object, for example `{ text: { query: 'hello', path: 'title' } }`, and an optional `index`, which names the Atlas Search index to use.
 - `searchMeta(config, index?)` takes the same two arguments and returns counts and facets instead of documents.
 - `vectorSearch({ index, path, queryVector, numCandidates, limit, filter? })` takes the index name, the field holding the vectors, the vector to search for as an array of numbers, how many candidates to consider, how many documents to return, and an optional filter object.
@@ -792,7 +791,7 @@ The builder exposes nineteen accumulators:
 
 - `firstN`, `lastN`, `maxN`, and `minN` take `{ input, n }`. `input` is the expression whose values you collect.
 - `top` and `bottom` take `{ output, sortBy }`. `topN` and `bottomN` take the same two plus `n`.
-- `output` is the expression whose value you want back from each chosen document. `sortBy` is a plain object such as `{ createdAt: 1 }`, where `1` sorts ascending and `-1` sorts descending.
+- `output` is the expression whose value you want back from each chosen document. `sortBy` is a plain object such as `{ createdAt: 1 }`, where `1` sorts ascending and `-1` sorts descending. Its keys are plain strings because they name fields, not values.
 - Wherever a signature takes `n`, wrap the number: write `n: fn.literal(2)`, not `n: 2`. `fn.literal` comes from the [expression helpers](#expression-helpers) below.
 
 **Put a `sort()` before the `group()` when you use `acc.first()` or `acc.last()`.** Without one, the document MongoDB calls first is arbitrary and can change between runs.
@@ -801,7 +800,7 @@ The builder exposes nineteen accumulators:
 
 ##### `count()` and `sum()`
 
-`acc.sum(fn.literal(1))` adds 1 for each document, which counts them. To add up a field instead, pass the field, as in `acc.sum(f.views)` on a collection with a numeric `views` field.
+`acc.sum(fn.literal(1))` adds 1 for each document, which counts them. To add up a field instead, pass the field, as in `acc.sum(f.views)` on a collection with a numeric `views` field. The example schema's `posts` has no such field, so that call needs a collection of your own.
 
 ```typescript
 import { acc, fn } from '@prisma/orm-mongo/query-builder';
@@ -852,7 +851,7 @@ const [{ firstTwo, newestTitle }] = await runtime.query(plan);
 
 ## Expression helpers
 
-Expression helpers (`fn.*`) build the computed values used inside stages like `addFields()`, `project()`, `group()` accumulators, and `match()` (via `expr()`). An expression is an `f.field` value or an `fn.*` value, never a plain JavaScript value. Stage callbacks and these helpers take expressions. The update operators on the [write methods](#write-methods) and the `MongoFieldFilter` methods take plain JavaScript values instead. Import the helpers from `@prisma/orm-mongo/query-builder`:
+Expression helpers (`fn.*`) build the computed values used inside stages like `addFields()`, `project()`, `group()` accumulators, and `match()` (via `expr()`). Inside a stage, write `f.title` or `fn.toUpper(...)`, never `'hello'` or `3` on their own. Wrap a constant in `fn.literal('hello')`. The update operators on the [write methods](#write-methods) and the `MongoFieldFilter` methods work the other way round. They take ordinary JavaScript values, so write `f.bio.set('hello')`, not `f.bio.set(fn.literal('hello'))`. Import the helpers from `@prisma/orm-mongo/query-builder`:
 
 ```typescript
 import { fn } from '@prisma/orm-mongo/query-builder';
@@ -860,12 +859,14 @@ import { fn } from '@prisma/orm-mongo/query-builder';
 
 Each helper is the camelCase name of the MongoDB aggregation operator without its `$` prefix, so `$toUpper` is `fn.toUpper` and `$dateToString` is `fn.dateToString`. Five helpers are named differently:
 
-| MongoDB operator | Helper | Why |
-|---|---|---|
-| `$in` | `fn.isIn` | `in` is a reserved word in JavaScript. |
-| `$type` | `fn.typeOf` | `typeof` is a reserved word in JavaScript. |
-| `$toString` | `fn.toString_` | `toString` is already a method on every JavaScript object. |
-| `$first` and `$last` | `fn.firstElem` and `fn.lastElem` | none |
+| MongoDB operator | Helper |
+|---|---|
+| `$in` | `fn.isIn` |
+| `$type` | `fn.typeOf` |
+| `$toString` | `fn.toString_` |
+| `$first` and `$last` | `fn.firstElem` and `fn.lastElem` |
+
+The first three are renamed because `in` and `typeof` are reserved words in JavaScript and `toString` is already a method on every JavaScript object.
 
 Here is every helper. Anything missing from this list has no helper, including `$and`, `$or`, `$not`, `$switch`, `$ifNull`, `$map`, `$reduce`, and `$filter`.
 
@@ -882,13 +883,14 @@ Here is every helper. Anything missing from this list has no helper, including `
 | Objects | `objectToArray`, `arrayToObject`, `getField`, `setField` |
 | Constants and branching | `literal`, `cond` |
 
-`fn.literal(value)` wraps a constant so MongoDB reads it as a value and not as the name of a field. Every `fn.*` helper returns a typed wrapper, and `.node` is the raw MongoDB expression inside that wrapper. Arguments typed as an expression take the wrapper. Arguments typed as a raw MongoDB expression take `.node`, and those are the condition of `fn.cond()`, `redact()`, and the option-object stages: `bucket()`, `bucketAuto()`, `graphLookup()`, `setWindowFields()`, and `fill()`. Passing an `expr(...)` value where `.node` is expected throws a `TypeError`. This is what you pass at each call site:
+`fn.literal(value)` wraps a constant so MongoDB reads it as a value and not as the name of a field. `.node` is the raw MongoDB expression inside an `fn.*` value, and a field reference such as `f.title` has one too. Passing an `expr(...)` value where `.node` is expected throws a `TypeError`. This table is the whole rule for when to write `.node`:
 
 | Call site | What you pass |
 |---|---|
 | `project()`, `addFields()`, and the arguments of an accumulator | The `fn.*` value itself. |
-| The condition argument of `fn.cond()`, and `f.stage.set()`, `f.stage.replaceRoot()`, `f.stage.replaceWith()` | The `.node` property of the `fn.*` value. |
-| The `groupBy`, `startWith`, and `partitionBy` options of the option-object stages | The `.node` property of the `fn.*` value. |
+| The condition argument of `fn.cond()` | Its `.node` property. |
+| `f.stage.set()`, `f.stage.replaceRoot()`, and `f.stage.replaceWith()`, documented under [Update operation forms](#update-operation-forms) | The `.node` property. |
+| `redact()`, and the `groupBy`, `startWith`, and `partitionBy` options of `bucket()`, `bucketAuto()`, `graphLookup()`, `setWindowFields()`, and `fill()` | The `.node` property. |
 | `match()` | The `fn.*` value wrapped in `expr(...)`. |
 
 `expr()` is what lets a `match()` filter compare computed values. Import it beside `fn`:
@@ -902,7 +904,7 @@ const plan = db.query.from('posts').match((f) => expr(fn.gt(fn.year(f.createdAt)
 For OR, AND, or NOT, pass `match()` a filter you build yourself instead of a callback:
 
 ```typescript
-import { MongoFieldFilter, MongoOrExpr } from '@prisma/orm-mongo/query-ast/execution';
+import { MongoAndExpr, MongoFieldFilter, MongoOrExpr } from '@prisma/orm-mongo/query-ast/execution';
 
 const kindFilter = MongoOrExpr.of([
   MongoFieldFilter.eq('kind', 'tutorial'),
@@ -916,11 +918,29 @@ const rows = await runtime.query(plan);
 #### Remarks
 
 - There is no `fn.*` helper for OR, AND, or NOT. In a `match()` filter, build the filter yourself: `MongoOrExpr.of([...])` is OR, `MongoAndExpr.of([...])` is AND, and `.not()` on any filter is NOT. The example above shows OR.
-- Each entry in those lists is a `MongoFieldFilter`, which has `eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `in`, `nin`, `isNull`, and `isNotNull`. These are the same combinators the ORM client uses, described under [Combinators](/orm/reference/orm-client#combinators).
+- Each entry in those lists is a `MongoFieldFilter`, which has `eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `in`, `nin`, `isNull`, and `isNotNull`. These are the same filter methods the ORM client uses, described under [Combinators](/orm/reference/orm-client#combinators). A filter you build yourself names the field as a string, as in `MongoFieldFilter.eq('kind', 'tutorial')`, and nothing checks that string against your model.
+- "Not equal" has two spellings on this page. The filter method is `MongoFieldFilter.neq` and the expression helper is `fn.ne`.
 - Inside a computed value in `project()` or `addFields()` there is no way to write OR, AND, or NOT. Write that stage yourself with [`pipe()`](#pipe), or write the whole command with [`rawCommand()`](#rawcommand).
-- Some helpers take one object of named arguments rather than positional ones: `fn.dateDiff({ startDate, endDate, unit, timezone?, startOfWeek? })`, `fn.dateTrunc({ date, unit, binSize?, timezone?, startOfWeek? })`, `fn.dateAdd({ startDate, unit, amount, timezone? })`, `fn.dateSubtract` with the same keys as `fn.dateAdd`, `fn.dateToString({ date, format })`, `fn.trim({ input })`, `fn.regexMatch({ input, regex })`, `fn.zip({ inputs, useLongestLength?, defaults? })`, `fn.getField({ field, input? })`, `fn.setField({ field, input, value })`, and `fn.convert({ input, to, onError?, onNull? })`. In `fn.convert`, `to` takes any MongoDB type name, written as an expression, such as `fn.literal('int')` or `fn.literal('objectId')`.
-- `fn.slice(array, ...rest)` and `fn.range(start, end, step)` take positional arguments. So does every other helper not named above, in the order given for that operator in [MongoDB's aggregation operator reference](https://www.mongodb.com/docs/manual/reference/operator/aggregation/). Each argument is an expression from the `f` argument or a `fn.literal(...)` value.
-- **`fn.toObjectId()` cannot take a `fn.literal()` value.** `fn.toObjectId(fn.literal(id))` throws. To turn a string id from your own code into an `ObjectId`, build the `ObjectId` yourself and put it in a raw pipeline with [`rawCommand()`](#rawcommand). The last example on this page does exactly that.
+- `fn.slice(array, ...rest)` and `fn.range(start, end, step)` take positional arguments, and so does every helper not listed in the table below. This page does not give the positional order for those helpers. Look each one up in [MongoDB's aggregation operator reference](https://www.mongodb.com/docs/manual/reference/operator/aggregation/). Each argument is an expression from the `f` argument or a `fn.literal(...)` value.
+- **`fn.toObjectId()` cannot take a `fn.literal()` value.** `fn.toObjectId(fn.literal(id))` throws a `TypeError`. There is no way to turn a string id into an `ObjectId` inside a pipeline. Build the `ObjectId` in your own code instead and put it in a raw `$match` with [`rawCommand()`](#rawcommand), as the last example on this page does.
+
+These helpers take one object of named arguments instead of positional ones:
+
+| Helper | Arguments |
+|---|---|
+| `fn.dateDiff` | `{ startDate, endDate, unit, timezone?, startOfWeek? }` |
+| `fn.dateTrunc` | `{ date, unit, binSize?, timezone?, startOfWeek? }` |
+| `fn.dateAdd` | `{ startDate, unit, amount, timezone? }` |
+| `fn.dateSubtract` | The same keys as `fn.dateAdd`. |
+| `fn.dateToString` | `{ date, format }` |
+| `fn.trim` | `{ input }` |
+| `fn.regexMatch` | `{ input, regex }` |
+| `fn.zip` | `{ inputs, useLongestLength?, defaults? }` |
+| `fn.getField` | `{ field, input? }` |
+| `fn.setField` | `{ field, input, value }` |
+| `fn.convert` | `{ input, to, onError?, onNull? }` |
+
+In `fn.convert`, `to` takes any MongoDB type name written as an expression, such as `fn.literal('int')` or `fn.literal('objectId')`.
 
 #### Examples
 
@@ -936,10 +956,7 @@ const rows = await runtime.query(plan);
 
 ##### String composition
 
-```typescript
-const plan = db.query.from('posts')
-  .project((f) => ({ shout: fn.concat(fn.toUpper(f.title), fn.literal('!')) })).build();
-```
+`project((f) => ({ shout: fn.concat(fn.toUpper(f.title), fn.literal('!')) }))` puts the title in upper case next to a `!`.
 
 ##### Branch with `cond()`
 
@@ -959,9 +976,9 @@ Append an arbitrary raw pipeline stage the typed methods don't cover.
 
 #### Remarks
 
-- `pipe(stage)` appends a raw stage that you construct yourself, and keeps the row type you already had. The stages are the `Mongo*Stage` classes, one per MongoDB stage, from `@prisma/orm-mongo/query-ast/execution`. The example below uses `MongoMatchStage` and `MongoCountStage`. The same module exports `MongoFieldFilter`, which builds the filter a `MongoMatchStage` takes.
+- `pipe(stage)` appends a raw stage that you construct yourself, and keeps the row type you already had. The stages are the `Mongo*Stage` classes, one per MongoDB stage, from `@prisma/orm-mongo/query-ast/execution`. The class name is `Mongo`, then the stage name without its `$`, then `Stage`, so `$unwind` is `MongoUnwindStage`. The example below uses `MongoMatchStage` and `MongoCountStage`. The same module exports `MongoFieldFilter`, which builds the filter a `MongoMatchStage` takes.
 - `pipe<NewShape>(stage)` declares the row type the rows have after that stage. `NewShape` is a type you write yourself, as at the end of the example below.
-- After a `pipe()` stage the rows come back exactly as MongoDB returns them, whatever the TypeScript type claims. A date is a `Date` and an id is an `ObjectId` from the `mongodb` package.
+- After a `pipe()` stage the TypeScript type no longer describes the rows. They come back exactly as MongoDB returns them, so a date is a `Date` and an id is an `ObjectId` from the `mongodb` package, the driver Prisma ORM runs your queries through.
 - Prefer a typed stage where one exists. `pipe()` adds one raw stage to a typed chain, and [`rawCommand()`](#rawcommand) replaces the whole command.
 
 #### Examples
@@ -993,13 +1010,13 @@ Compile the pipeline into a query you can run.
 
 ## Write methods
 
-The pipeline builder can write, not just read. Write methods are available at three points: on the root collection, after a `match()` filter, and as the last call in a pipeline. A write method returns the built query on its own, so there is no `build()` call after one. The examples below name that built query `plan`.
+The pipeline builder can write, not just read. Write methods are available at three points: on the root collection, after a `match()` filter, and at the end of any pipeline, where `out()` and `merge()` write the output into a collection. A write method returns the built query on its own, so there is no `build()` call after one. The examples below name that built query `plan`.
 
 Updater callbacks (the `(f) => [...]` argument to the update methods) must return an **array** of operations. This is a firm rule:
 
 - Always return an array. Returning a bare operation, `f.bio.set('x')` rather than `[f.bio.set('x')]`, throws as soon as you call the write method.
 - An empty array throws an error whose `code` is `ORM.MUTATION_DATA_MISSING`: `Updater returned no operations. Return at least one update from the callback ...`.
-- An updater is either all operator form or all pipeline form. Operator form calls an operator on a field, as in `f.bio.set(value)`. Pipeline form calls `f.stage.*`, and can read other fields of the same document. Type `f.stage` exactly: `stage` is not a placeholder for a stage name. You cannot mix the two in one updater. TypeScript rejects the mixed array, and at run time it throws an error whose `code` is `ORM.ARGUMENT_INVALID`: `Cannot mix ...`.
+- An updater is either all operator form or all pipeline form. Operator form calls an operator on a field, as in `f.bio.set(value)`. Pipeline form can read other fields of the same document, and it calls `f.stage.*`. Type `f.stage` exactly: `stage` is not a placeholder for a stage name. You cannot mix the two in one updater. TypeScript rejects the mixed array, and at run time it throws an error whose `code` is `ORM.ARGUMENT_INVALID`: `Cannot mix ...`.
 - Applying the same operator to the same field twice in one updater throws an error whose `code` is `ORM.ARGUMENT_INVALID`: `Update spec collision: ...`.
 
 ### Root-level writes
@@ -1010,10 +1027,10 @@ Updater callbacks (the `(f) => [...]` argument to the update methods) must retur
 
 - These return a built query. Run it with `runtime.query(...)`.
 - Write results are result objects, not documents: `insertOne` gives `{ insertedId }`, `insertMany` gives `{ insertedIds, insertedCount }`, the update methods and `upsertOne` give `{ matchedCount, modifiedCount, upsertedCount, upsertedId }`, and the delete methods give `{ deletedCount }`. A write returns one result object, as the single row of the result, which is why every example here reads it with `const [result] = ...`.
-- The document you pass to `insertOne` / `insertMany` is a plain record. TypeScript requires no particular field, and the builder does not check the record against your contract.
+- The document you pass to `insertOne` / `insertMany` is a plain record. TypeScript requires no particular field, and the builder does not check the record against your contract. You can leave nullable fields out. The examples below pass `null` for them to make the document shape explicit.
 - You can leave `_id` out and let MongoDB assign one.
 - **On the way in, values are stored exactly as you pass them, so pass a `Date` for a date field and an `ObjectId` from the `mongodb` package for an id field.** Nothing turns a string into either. This is the write direction only. Reads are decoded as the first half of this page describes.
-- [`match()`](#match) filter values follow the same rule as the values you insert. The one value you cannot filter on this way is `_id`, which needs [`rawCommand()`](#rawcommand). The last example on this page shows it.
+- [`match()`](#match) filter values follow the same rule as the values you insert. The one value you cannot filter on this way is `_id`. An `_id` filter written in `match()` never matches anything, so use [`rawCommand()`](#rawcommand) instead. The [`match()`](#match) warning gives the detail, and the last example on this page shows the form that works.
 - `insertMany([])` throws an error whose `code` is `ORM.MUTATION_DATA_MISSING`.
 
 #### Examples
@@ -1036,18 +1053,11 @@ const [insertManyResult] = await runtime.query(manyPlan);
 
 ##### `updateAll()` (array-of-ops updater)
 
-```typescript
-const plan = db.query.from('users').updateAll((f) => [f.bio.set('everyone now has bio')]);
-await runtime.query(plan);
-```
+`db.query.from('users').updateAll((f) => [f.bio.set('everyone now has bio')])` builds the update. Pass it to `runtime.query(...)` to run it.
 
 ##### `deleteAll()`
 
-```typescript
-const plan = db.query.from('users').deleteAll();
-const [result] = await runtime.query(plan);
-// { deletedCount: 2 }
-```
+`db.query.from('users').deleteAll()` builds a delete for every document. Pass it to `runtime.query(...)` and read `deletedCount` from the single result object.
 
 ##### `upsertOne()` on the root (filter, then updater)
 
@@ -1068,8 +1078,8 @@ After a `match()` filter, `updateMany`, `updateOne`, `deleteMany`, `deleteOne`, 
 
 - The `match()` filter supplies the write's filter, so you do not repeat it.
 - After `match()`, `upsertOne()` takes the updater callback only (the filter comes from `match()`).
-- `updateOne` / `deleteOne` affect at most one matching document. `updateMany` / `deleteMany` affect all matches. Which document `updateOne` / `deleteOne` picks is up to the driver. Use `findOneAndUpdate()` after a `sort()` when the choice matters.
-- `findOneAndUpdate()` and `findOneAndDelete()` return the document exactly as the driver gives it, so its `_id` is an `ObjectId` from the `mongodb` package even though the TypeScript type says `string`. To get the id as a string, write `String(result._id)`.
+- `updateOne` / `deleteOne` affect at most one matching document. `updateMany` / `deleteMany` affect all matches. When it matters which document you change, put a `sort()` between the `match()` and the write and use `findOneAndUpdate()`, as in `.match(...).sort(...).findOneAndUpdate(...)`.
+- `findOneAndUpdate()` and `findOneAndDelete()` return the document exactly as the `mongodb` driver gives it, so its `_id` is an `ObjectId` from the `mongodb` package even though the TypeScript type says `string`. To get the id as a string, write `String(result._id)`.
 - You cannot call `findOneAndUpdate()` or `findOneAndDelete()` after `skip()`, and TypeScript does not offer them there. If a cast gets one past TypeScript, it throws an error whose `code` is `ORM.OPERATION_UNSUPPORTED`.
 
 #### Examples
@@ -1097,12 +1107,7 @@ const [result] = await runtime.query(plan);
 
 ##### `upsertOne()` after `match()` (updater only)
 
-```typescript
-const plan = db.query.from('users').match((f) => f.email.eq('alice@example.com'))
-  .upsertOne((f) => [f.bio.set('upserted via match')]);
-const [result] = await runtime.query(plan);
-// updates on a hit: result.modifiedCount is 1
-```
+`db.query.from('users').match((f) => f.email.eq('alice@example.com')).upsertOne((f) => [f.bio.set('upserted via match')])` builds the upsert. On a hit, `result.modifiedCount` is 1.
 
 ##### `findOneAndUpdate()` and `returnDocument`
 
@@ -1121,12 +1126,7 @@ Use `returnDocument: 'before' | 'after'`. `returnNewDocument` is not a valid opt
 
 ##### `findOneAndDelete()`
 
-```typescript
-const plan = db.query.from('users').match((f) => f.email.eq('alice@example.com'))
-  .findOneAndDelete();
-const [deleted] = await runtime.query(plan);
-// deleted is the removed document
-```
+`db.query.from('users').match((f) => f.email.eq('alice@example.com')).findOneAndDelete()` builds the delete. Its single result row is the removed document.
 
 ### Update operation forms
 
@@ -1135,7 +1135,7 @@ Inside an updater callback, each operation targets a field. There are two mutual
 #### Remarks
 
 - **Operator form**: call an operator on the `f` argument, one operator per field. There are fourteen, in the table below.
-- **Pipeline form**: aggregation-pipeline update stages through `f.stage.*`, for example `f.stage.set({ bio: f.name.node })`. The four stages are `set`, `unset`, `replaceRoot`, and `replaceWith`. Pipeline-form operations let an update read other fields of the same document.
+- **Pipeline form**: aggregation-pipeline update stages through `f.stage.*`, for example `f.stage.set({ bio: f.name.node })`. The four stages are `set`, `unset`, `replaceRoot`, and `replaceWith`.
 - The two forms cannot be mixed in a single updater (see the write-methods intro). An updater is entirely operator form or entirely pipeline form.
 
 Operator form takes these arguments:
@@ -1155,7 +1155,7 @@ Operator form takes these arguments:
 | `pull(value)` | The value to remove from an array field. |
 | `pullAll(values)` | An array of values to remove. |
 | `currentDate()` | Nothing. Writes the current date. |
-| `setOnInsert(value)` | A value written only when an upsert inserts a new document. |
+| `setOnInsert(value)` | A value written only when an upsert inserts a new document, so it does nothing outside `upsertOne()`. |
 
 #### Examples
 
@@ -1165,7 +1165,7 @@ Operator form takes these arguments:
 const plan = db.query.from('users').match((f) => f.role.eq('author'))
   .updateMany((f) => [f.bio.set('operator form')]);
 await runtime.query(plan);
-// on a collection with a numeric views field and an array tags field:
+// on a collection with a numeric views field and an array tags field (posts has neither):
 // updateMany((f) => [f.views.inc(1), f.tags.push('mongodb')])
 ```
 
@@ -1186,18 +1186,14 @@ await runtime.query(plan);
 
 - `out(collection)` writes the pipeline output into a destination collection, replacing its contents. Pass a second argument, the database name as a string, to write into a different database: `out('users_snapshot', 'archive')`.
 - `merge({ into })` writes the pipeline output into a target collection, merging with existing documents. `into` is a collection name or `{ db, coll }`. The options object also takes `on`, which is one field name as a string or several as an array of strings, plus `whenMatched` and `whenNotMatched`.
-- `whenMatched` takes `'replace'`, `'keepExisting'`, `'merge'`, or `'fail'`, or an array of update stages, which are `MongoAddFieldsStage`, `MongoProjectStage`, and `MongoReplaceRootStage` objects from `@prisma/orm-mongo/query-ast/execution`. `whenNotMatched` takes `'insert'`, `'discard'`, or `'fail'`. A misspelled value fails at the database rather than in TypeScript.
+- `whenMatched` takes `'replace'`, `'keepExisting'`, `'merge'`, or `'fail'`, or an array of update stages, which are `MongoAddFieldsStage`, `MongoProjectStage`, and `MongoReplaceRootStage` objects from `@prisma/orm-mongo/query-ast/execution`. `MongoAddFieldsStage` takes one object of field names and expressions, as in `new MongoAddFieldsStage({ ... })`. `whenNotMatched` takes `'insert'`, `'discard'`, or `'fail'`. A misspelled value fails at the database rather than in TypeScript.
 - Both end the chain. They return a built query you run with `runtime.query(...)`, and that call returns an empty array, because the output goes to the destination collection and not to your program.
 
 #### Examples
 
 ##### Write the output with `out()`
 
-```typescript
-const plan = db.query.from('users').out('users_snapshot');
-await runtime.query(plan);
-// the users_snapshot collection now holds the pipeline output
-```
+`db.query.from('users').out('users_snapshot')` builds the write. After you pass it to `runtime.query(...)`, the `users_snapshot` collection holds the pipeline output.
 
 ##### Merge with `merge()`
 

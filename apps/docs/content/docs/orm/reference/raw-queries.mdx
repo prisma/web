@@ -16,10 +16,10 @@ Raw SQL comes in two forms.
 
 A **raw fragment** is a piece of SQL you put inside a builder query. Write it as a tagged template with `fns.raw` and pass it to a `select()`, `where()`, `orderBy()`, or `update()` call. The rest of the query stays typed.
 
-A **whole raw statement** is a complete SQL statement written with `db.raw.sql`. If it returns rows, end it with `.returnsRow(spec).build()` and pass the result to `runtime.query(...)`. If it does not, end it with `.affectedCount().build()` and pass the result to `runtime.execute(...)`.
+A **whole raw statement** is a complete SQL statement written with `db.raw.sql`. If it returns rows, end it with `.returnsRow(spec).build()`, where the spec is a column list [defined below](#the-client-level-dbrawsql-tag), and pass the result to `runtime.query(...)`. If it does not, end it with `.affectedCount().build()` and pass the result to `runtime.execute(...)`.
 
 :::warning[Only `.returnsRow()` converts values for you]
-A type id such as `pg/text@1` tells Prisma ORM what JavaScript type a column should become. In code, the property is called `codecId`. `.returnsRow(spec)` names a type id for every column of a whole `db.raw.sql` statement, so you get real JavaScript values back. A fragment's `.returns(...)` does not convert anything. It only tells TypeScript what type to expect, so the value is whatever the `pg` package, the PostgreSQL driver underneath, gives you. For a `text` or an `integer` column that is already a JavaScript string or number. A `numeric` column arrives as a string. A date column arrives as whatever the `pg` package produces for it, with no conversion by Prisma ORM.
+A type id such as `pg/text@1` tells Prisma ORM what JavaScript type a column should become. The property is named `codecId`. `.returnsRow(spec)` names a type id for every column of a whole `db.raw.sql` statement, so you get real JavaScript values back. A fragment's `.returns(...)` does not convert anything. It only tells TypeScript what type to expect, so the value is whatever the `pg` package, the PostgreSQL driver underneath, gives you. For a `text` or an `integer` column that is already a JavaScript string or number. A `numeric` column arrives as a string. A date column gets no conversion by Prisma ORM, so you get the `pg` package's own value for that column.
 :::
 
 The examples in this section run against the `user` / `post` schema from the SQL query builder page. See its [example schema](/orm/reference/sql-query-builder#example-schema) for the full model definitions. As on that page, create the client with `postgres(...)` and reach tables through `db.sql.public`, which is keyed by table name (the model name with a lowercase first letter unless the model sets the `@@map` attribute, which renames a table). `db.runtime()` gives you the connection that runs a built query. On PostgreSQL it gives you that connection directly. On MongoDB it returns a promise, so there you write `const runtime = await db.runtime();`.
@@ -35,7 +35,7 @@ const aliceId = '00000000-0000-4000-8000-000000000001';
 
 ### `fns.raw` in a projection
 
-A `select()` callback receives two arguments: `f`, with one property per column, and `fns`, with the expression helpers. `fns.raw` is a tagged template. Write a SQL fragment, interpolate columns and values with `${...}`, and declare the fragment's result type with `.returns(typeId)`. See [`select()`](/orm/reference/sql-query-builder#select) for every form it accepts.
+A projection is the `select()` list. A `select()` callback receives two arguments: `f`, with one property per column, and `fns`, with the expression helpers. `fns.raw` is a tagged template. Write a SQL fragment, interpolate columns and values with `${...}`, and declare the fragment's result type with `.returns(typeId)`. See [`select()`](/orm/reference/sql-query-builder#select) for every form it accepts.
 
 ```ts
 const plan = db.sql.public.user
@@ -64,7 +64,7 @@ const rows = await runtime.query(plan);
 
 ### Interpolating a typed expression
 
-You can interpolate another expression, such as a comparison, a column reference, or another raw fragment. Interpolated values are always sent as query parameters, never pasted into the SQL. Never put user input into the SQL text itself, because a column or table name cannot be a parameter. When the column is chosen at run time, pick it in your own code from a fixed set of columns you control, and choose the matching `fns.raw` fragment or `select()` call for each one.
+You can interpolate another expression, such as a comparison, a column reference, or another raw fragment. Interpolated values are sent as query parameters, so they are safe. Column and table names cannot be parameters, so they would be pasted into the SQL text. Never build an identifier from user input. When the column is chosen at run time, pick it in your own code from a fixed set of columns you control, and choose the matching `fns.raw` fragment or `select()` call for each one.
 
 ```ts
 const plan = db.sql.public.user
@@ -91,7 +91,7 @@ A bare value that you do interpolate directly gets the type id Prisma ORM picks 
 | a `boolean` | `pg/bool@1` |
 | a `Uint8Array` | `pg/bytea@1` |
 
-A type id is the PostgreSQL type name plus a version, always `@1` today. Four more you are likely to write are `pg/uuid@1`, `pg/numeric@1`, `pg/jsonb@1`, and `pg/timestamptz-temporal@1`. Those are the common ones, not the whole set. The ids your contract uses are in `contract.json`. For any column, `db.sql.public.<table>.columns.<column>.codecId` is its id. A point in time is the case `param()` exists for, and `pg/timestamptz-temporal@1` takes a `Temporal.Instant`, the standard JavaScript object for a point in time, not a `Date`.
+A type id is `pg/`, a name, and `@1`. The name is usually the PostgreSQL type, and a few carry a suffix that says which JavaScript type you get, such as `pg/int8number@1` for a `number` and `pg/timestamptz-temporal@1` for a `Temporal.Instant`. Between those two, pick `pg/int8@1` when the value can exceed 2^53. Three more you are likely to write are `pg/uuid@1`, `pg/numeric@1`, and `pg/jsonb@1`. Those are the common ones, not the whole set. For any column, `db.sql.public.<table>.columns.<column>.codecId` is its id, and the same ids are in `contract.json` under `storage.namespaces.<schema>.entries.table.<table>.columns.<column>.codecId`. A point in time is the case `param()` exists for, and `pg/timestamptz-temporal@1` takes a `Temporal.Instant`, the standard JavaScript object for a point in time, not a `Date`. `Temporal` is a global in Node.js 26 and later, and on earlier versions you install `temporal-polyfill` and add `import 'temporal-polyfill/full/global'`.
 
 ```ts
 import { param } from '@prisma/orm-postgres/relational-core/expression';
@@ -133,7 +133,7 @@ const plan = db.sql.public.user
 const rows = await runtime.query(plan);
 ```
 
-Use `.returnsRow(spec)` to run a whole statement and get converted rows back. The spec names the columns of every returned row. Each entry is either a column from your contract or a type id. A column such as `db.sql.public.user.columns.id` brings its own conversion, nullability, and TypeScript type. Write a type id for a column your contract has no match for.
+Use `.returnsRow(spec)` to run a whole statement and get converted rows back. The spec names the columns of every returned row. Each entry is either a column from your contract or a type id. A column such as `db.sql.public.user.columns.id` brings its own conversion, nullability, and TypeScript type. Write a type id for a column your contract has no match for, and the object form `{ codecId: 'pg/text@1', nullable: true }` when that column can be `NULL`, as a `LEFT JOIN` column can. If a returned row has no column your spec names, the query throws an error whose `code` is `RUNTIME.RAW_ROW_COLUMN_MISSING`. A failing statement throws a `SqlQueryError` whose `sqlState` is the PostgreSQL error code for the failure, such as `23505` for a unique-constraint violation.
 
 ```ts
 const user = db.sql.public.user;
@@ -167,7 +167,11 @@ const stats = await runtime.execute(plan);
 // stats.affectedRows
 ```
 
-You can nest a `.returnsRow()` query inside another. That is how you write a subquery or a CTE. Interpolate it before `.build()`, and call `.build()` on the outer one only. Its `.returns` property holds its declared columns, so `outer.returnsRow({ postCount: inner.returns.postCount })` reuses a declaration. Three names look alike. `.returns(typeId)` is a method on a fragment, `.returnsRow(spec)` is a method on a statement, and `.returns` is a property on the object `.returnsRow()` gives you. You cannot nest a statement that ends with `.affectedCount()`, because it produces no rows. You can nest an `UPDATE ... RETURNING`, because it does.
+You can nest a `.returnsRow()` query inside another. That is how you write a subquery or a CTE, which is a `WITH` query. Interpolate it before `.build()`, and call `.build()` on the outer one only. Its `.returns` property holds its declared columns, so `outer.returnsRow({ postCount: inner.returns.postCount })` reuses a declaration. You cannot nest a statement that ends with `.affectedCount()`, because it produces no rows. You can nest an `UPDATE ... RETURNING`, because it does.
+
+:::note[Three names look alike]
+`.returns(typeId)` is a method on a fragment, `.returnsRow(spec)` is a method on a statement, and `.returns` is a property on the object `.returnsRow()` gives you.
+:::
 
 ```ts
 const authorsWithPosts = db.raw.sql`
@@ -198,12 +202,12 @@ To bind any value whose type is not in the list, wrap it in [`param(value, { cod
 
 ## MongoDB raw commands
 
-`db.raw.collection(collectionName)` returns an object with nine methods for running MongoDB commands directly against a collection. The collection name is the one your contract declares (`'users'`, `'posts'`), the same name the ORM client uses (`db.orm.users`). MongoDB has no schemas, so there is no `public` segment here and none on `db.orm`.
+`db.raw.collection(collectionName)` returns an object with nine methods for running MongoDB commands directly against a collection. The collection name is the one your contract declares (`'users'`, `'posts'`), the same name the ORM client uses (`db.orm.users`). MongoDB has no schemas, so there is no `public` segment here and none on `db.orm`. There is no raw `find()`, so use `aggregate<Row>()` with a `$match` stage. MongoDB has no transactions in Prisma ORM, so a raw command cannot run inside one. See [Transactions (MongoDB)](/orm/reference/transactions-and-runtime#transactions-mongodb).
 
-Each of these nine methods builds a command. Call `.build()` on it, then run it with `runtime.query(built)`, the inserts, updates, and deletes included. A write returns a one-element array, so destructure it with `const [result] = ...`.
+Each of these nine methods builds a command. Call `.build()` on it, then run every one of them with `runtime.query(...)`, including the writes. The raw collection methods all run through `query()`. A write returns a one-element array, so destructure it with `const [result] = ...`.
 
 :::warning[MongoDB raw results are native BSON values]
-Nothing on the MongoDB side of this page is converted for you. An `_id` comes back as an `ObjectId` instance from the `mongodb` package, the MongoDB driver underneath, not a hex string. Compare one with `String(row._id) === aliceId`. Raw filters take native BSON values too, so build ids with that package's `ObjectId` class. The write methods give you its own result objects, `{ insertedId }`, `{ matchedCount, modifiedCount, upsertedCount, upsertedId }`, and `{ deletedCount }`, and you read those keys directly.
+Nothing on the MongoDB side of this page is converted for you. An `_id` comes back as an `ObjectId` instance from the `mongodb` package, the MongoDB driver underneath, not a hex string. Compare one with `String(row._id) === aliceId`. Raw filters take native BSON values too, so build ids with that package's `ObjectId` class. The write methods give you the `mongodb` package's own result objects, `{ insertedId }`, `{ matchedCount, modifiedCount, upsertedCount, upsertedId }`, and `{ deletedCount }`, and you read those keys directly.
 :::
 
 The examples in this section run against the `users` / `posts` schema from the pipeline builder page. See its [example schema](/orm/reference/pipeline-builder#example-schema) for the full model definitions. Create the client with `mongo(...)`, get the connection that runs a built query from `await db.runtime()`, and declare the two example ids once:
@@ -286,7 +290,7 @@ Atomically update a matching document and return the document as it was before t
 
 #### Remarks
 
-- `findOneAndUpdate()` accepts only `{ upsert }` as its third argument. It cannot sort, and it cannot give you the document as it is after the update. TypeScript rejects `sort` or `returnDocument` in the options object. If you get past the type check, say by casting the object to `any`, those keys are ignored at run time with no error.
+- `findOneAndUpdate()` accepts only `{ upsert }` as its third argument. It cannot sort, and it cannot give you the document as it is after the update. TypeScript rejects `sort` or `returnDocument` in the options object.
 
 To sort, or to read the document after the update, build the command yourself and run it through `db.query.rawCommand(...)`. `new RawFindOneAndUpdateCommand(...)` takes six arguments:
 
@@ -307,7 +311,7 @@ const [updated] = await runtime.query(db.query.rawCommand(command));
 
 ##### Upsert counter pattern
 
-The **first** call to an upsert counter returns an **empty** result, because there is no earlier version. Read the counter value on the second call and later ones, each of which returns the version before its own increment. The example schema has no counter collection, so `users` stands in for one here, with the plain string `'pageViews'` as its `_id`.
+`findOneAndUpdate()` returns the document as it was **before** your update. The first call creates the document, so there is nothing to return and you get `[]`. The second call returns `count: 1`, which is the value before that call added one. The example schema has no counter collection, so `users` stands in for one here. MongoDB allows a plain string `_id`, so `'pageViews'` is a valid id. The advice to build ids with `ObjectId` applies to ids MongoDB generated.
 
 ```ts
 const filter = { _id: 'pageViews' };
@@ -332,7 +336,7 @@ const isAlice = String(deleted._id) === aliceId; // true
 
 ## `db.query.rawCommand()`
 
-`db.query.rawCommand(command)` runs a raw MongoDB aggregate command through the [pipeline builder](/orm/reference/pipeline-builder), with no translation of the command you pass. It returns a built query already, so do not call `.build()` on it. Unlike `aggregate<Row>()` it takes no type parameter, so its rows come back as `unknown` and you cast them yourself.
+`db.query.rawCommand(command)` runs a raw MongoDB aggregate command, sent exactly as you wrote it. See the [pipeline builder](/orm/reference/pipeline-builder). It returns a built query already, so do not call `.build()` on it. Unlike `aggregate<Row>()` it takes no type parameter, so its rows come back as `unknown` and you cast them yourself.
 
 ```ts
 import { RawAggregateCommand } from '@prisma/orm-mongo/query-ast/execution';
@@ -342,13 +346,9 @@ const rows = (await runtime.query(plan)) as { total: number }[];
 // [{ total: 2 }]
 ```
 
-`rawCommand()` is the way out when the typed pipeline builder can't express a query, such as filtering by `_id` equality. The command you pass is sent unchanged, so a real `ObjectId` in a pipeline document matches. `aggregate<Row>()` on `db.raw.collection()` handles `_id` filtering too, and it gives you a row type. Use `rawCommand()` when you are already working in `db.query` and need one raw command there.
+`rawCommand()` is the way out when the typed pipeline builder can't express a query, such as filtering by `_id` equality. The command you pass is sent unchanged, so a real `ObjectId` in a pipeline document matches. `aggregate<Row>()` on `db.raw.collection()` handles `_id` filtering too, and it gives you a row type. Use `rawCommand()` when you are already working in `db.query` and need one raw command there. For the full treatment see the pipeline builder's [`rawCommand()`](/orm/reference/pipeline-builder#rawcommand) section.
 
 ```ts
-const plan = db.query.rawCommand(
-  new RawAggregateCommand('posts', [{ $match: { _id: new ObjectId('6539a1f2c3d4e5f60718293c') } }]),
-);
+const plan = db.query.rawCommand(new RawAggregateCommand('posts', [{ $match: { _id: new ObjectId('6539a1f2c3d4e5f60718293c') } }]));
 const rows = await runtime.query(plan);
 ```
-
-For the full treatment see the pipeline builder's [`rawCommand()`](/orm/reference/pipeline-builder#rawcommand) section.

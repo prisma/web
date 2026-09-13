@@ -9,10 +9,12 @@ metaDescription: 'Reference index for the Prisma ORM client, SQL query builder, 
 Prisma ORM gives you three typed ways to write a query. In Prisma ORM 7 you wrote `findMany({ where, include })`. Now each of those arguments is a method you chain: `.where(...).include(...)`. See [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7), which maps each argument to its method.
 
 - The **ORM client** is at `db.orm`. It has model methods such as `where()`, `create()`, and `include()`, it works on both PostgreSQL and MongoDB, and it covers everyday reads and writes across your models.
-- The **SQL query builder** is at `db.sql`. It has table methods that match SQL, such as `select()`, `innerJoin()`, and `groupBy()`, it works on PostgreSQL only, and it returns results that are not model rows, such as an aggregate over a join.
-- The **pipeline builder** is at `db.query`. It builds MongoDB aggregation pipelines.
+- The **SQL query builder** is at `db.sql`. It has table methods that match SQL, such as `select()`, `innerJoin()`, and `groupBy()`, it is PostgreSQL only, and it returns whatever shape your `select()` asks for, not objects shaped like your models.
+- The **pipeline builder** is at `db.query`. It builds MongoDB aggregation pipelines, and it is MongoDB only.
 
-Plus raw SQL and raw commands when none of them fits. See [Raw queries](/orm/reference/raw-queries). For connecting and disconnecting the client, transactions, and prepared statements, see [Transactions and runtime](/orm/reference/transactions-and-runtime). In the example below, `db.runtime()` returns the connection that runs a built query. Create it once and reuse it. `.all()` runs the query and returns every row. It is what replaced `findMany`. The ORM client runs when you `await` it. The SQL query builder and the pipeline builder do not run on their own. Each produces a built query with `.build()`, which you then run with `runtime.query(...)`. Watch the casing: `User` is the model name and `user` is the table name.
+Plus raw SQL and raw commands when none of them fits. See [Raw queries](/orm/reference/raw-queries). For connecting and disconnecting the client, transactions, and prepared statements, see [Transactions and runtime](/orm/reference/transactions-and-runtime).
+
+How a query runs: the ORM client runs when you `await` it. The SQL query builder and the pipeline builder each give you a built query from `.build()`, which you run with `runtime.query(...)`, or with `runtime.execute(...)` for a write that returns no rows. Get `runtime` from `db.runtime()` once and reuse it.
 
 ```ts
 const runtime = db.runtime();
@@ -21,26 +23,20 @@ const plan = db.sql.public.user.select('id', 'email').where((f, fns) => fns.eq(f
 const rows = await runtime.query(plan);
 ```
 
-`db.query` builds MongoDB pipelines. The separate `runtime.query()` method is what runs any built query.
+`const runtime = db.runtime();` is the PostgreSQL form. On MongoDB the call returns a promise, so there you write `const runtime = await db.runtime();`. The two callbacks differ: the ORM client compares on the column (`u.kind.eq(...)`), and the SQL query builder compares through `fns` (`fns.eq(f.kind, ...)`). `.all()` runs the query and returns every row. It is what replaced `findMany`.
+
+Watch the casing: `User` is the model name and `user` is the table name.
+
+Two different things are both named `query`. `db.query` builds a MongoDB pipeline. `runtime.query(...)` runs a query that has already been built.
 
 ## How database differences are documented
 
 Every method on a reference page has the same four parts: Remarks, Options, Return type, and Examples. If a method works differently on PostgreSQL and MongoDB, or exists on only one of them, its Remarks say so. For a walkthrough of reading and writing data rather than a method list, see [Reading data](/orm/fundamentals/reading-data), [Writing data](/orm/fundamentals/writing-data), [Relations and joins](/orm/fundamentals/relations-and-joins), [Transactions](/orm/fundamentals/transactions), and [Advanced queries](/orm/fundamentals/advanced-queries).
 
 <Cards>
-  <Card href="/orm/reference/orm-client" title="ORM client reference" icon={<BookOpen className="text-primary" />}>
-    Every ORM client method, with PostgreSQL and MongoDB behavior documented side by side.
-  </Card>
-  <Card href="/orm/reference/sql-query-builder" title="SQL query builder reference" icon={<BookOpen className="text-primary" />}>
-    Every SQL query builder method for building typed, table-level queries against PostgreSQL.
-  </Card>
-  <Card href="/orm/reference/pipeline-builder" title="Pipeline builder reference" icon={<BookOpen className="text-primary" />}>
-    Every MongoDB pipeline-builder stage, accumulator, expression helper, and write method.
-  </Card>
-  <Card href="/orm/reference/raw-queries" title="Raw queries reference" icon={<BookOpen className="text-primary" />}>
-    Raw SQL on PostgreSQL and raw commands on MongoDB, for queries the typed APIs cannot express.
-  </Card>
-  <Card href="/orm/reference/transactions-and-runtime" title="Transactions and runtime reference" icon={<BookOpen className="text-primary" />}>
-    Connecting and disconnecting the client, transactions, prepared statements, and execution options.
-  </Card>
+  <Card href="/orm/reference/orm-client" title="ORM client reference" icon={<BookOpen className="text-primary" />}>Every ORM client method, with PostgreSQL and MongoDB behavior documented side by side.</Card>
+  <Card href="/orm/reference/sql-query-builder" title="SQL query builder reference" icon={<BookOpen className="text-primary" />}>Every SQL query builder method for building typed, table-level queries against PostgreSQL.</Card>
+  <Card href="/orm/reference/pipeline-builder" title="Pipeline builder reference" icon={<BookOpen className="text-primary" />}>Every MongoDB pipeline-builder stage, accumulator, expression helper, and write method.</Card>
+  <Card href="/orm/reference/raw-queries" title="Raw queries reference" icon={<BookOpen className="text-primary" />}>Raw SQL on PostgreSQL and raw commands on MongoDB, for queries the typed APIs cannot express.</Card>
+  <Card href="/orm/reference/transactions-and-runtime" title="Transactions and runtime reference" icon={<BookOpen className="text-primary" />}>Connecting and disconnecting the client, transactions, prepared statements, and execution options.</Card>
 </Cards>
