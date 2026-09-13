@@ -2009,6 +2009,34 @@ await db.orm.users.where({ _id: '6650f1c2a1b2c3d4e5f60001' }).update((u) => [u.t
 
 ## Result types
 
+### Model and result types
+
+`contract.d.ts` exports a type for every model, under `Models`. On PostgreSQL the schema is part of the name: `Models.public_User`. The same file exports a `models` constant, so `typeof models.public.User` is the same type. A model type lists every scalar field and every relation, and no query returns exactly that, so three types derive what a query does return:
+
+- `Scalars<M>` is the model without its relations. It is what `all()` and `first()` return when you do not call `select()` or `include()`.
+- `Shape<M, Spec>` is a row with the fields and relations you choose. In `Spec`, `"+"` names the scalar fields and relations to keep, `"-"` names scalar fields to drop, and any other key is a relation with its own nested spec. If `"+"` names only relations, every scalar field stays. A relation named in `"+"` comes with all of its scalar fields and none of its own relations.
+- `ResultType<typeof query>` is one row of a query you have already written.
+
+Import `Scalars` and `Shape` from `@prisma/orm-postgres/family-contract/types`, or `@prisma/orm-mongo/family-contract/types` on MongoDB. Import `ResultType` from `@prisma/orm-postgres/components/runtime`. A contract emitted before `8.0.0-rc.10` has no `Models`; run `npx prisma contract emit` again after upgrading.
+
+```typescript
+import type { Models } from './contract.d';
+import type { Scalars, Shape } from '@prisma/orm-postgres/family-contract/types';
+import type { ResultType } from '@prisma/orm-postgres/components/runtime';
+
+type UserRow = Scalars<Models.public_User>;
+// every scalar field of User, no posts and no tasks
+
+type UserResponse = Shape<Models.public_User, { '-': 'email'; posts: { '+': 'id' | 'title' } }>;
+// every scalar field of User except email, plus posts as an array of { id, title }
+
+const usersWithPosts = db.orm.public.User.include('posts');
+type UserWithPosts = ResultType<typeof usersWithPosts>;
+// the same type as Shape<Models.public_User, { '+': 'posts' }>
+```
+
+Use `Shape` to declare a function's return type once, and TypeScript checks the body at the `return`. A wrong field name, a relation under `"-"`, or a scalar field in `"+"` next to a `"-"` is a compile error on that key. For Prisma ORM 7 users, these replace `Prisma.User` and `Prisma.UserGetPayload<...>`.
+
 ### `AsyncIterableResult`
 
 The methods `all()` / `createAll()` / `updateAll()` / `deleteAll()` return an `AsyncIterableResult`. You can use it two ways:
