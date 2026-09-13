@@ -6,21 +6,20 @@ metaTitle: Prisma ORM API reference
 metaDescription: 'Reference index for the Prisma ORM client, SQL query builder, pipeline builder, raw queries, and runtime APIs.'
 ---
 
-Prisma ORM has three query surfaces. The **ORM client** gives you model-level methods like `where()`, `create()`, and `include()`, and works against both PostgreSQL and MongoDB. The **SQL query builder** gives you table-level, SQL-shaped methods like `select()`, `innerJoin()`, and `groupBy()`, and today targets PostgreSQL only. The **pipeline builder** gives you a typed way to build MongoDB aggregation pipelines through `db.query`.
+Prisma ORM gives you three ways to write a query. The **ORM client** is at `db.orm`. It has model methods such as `where()`, `create()`, and `include()`, and it works on both PostgreSQL and MongoDB. The **SQL query builder** is at `db.sql`. It has table methods that match SQL, such as `select()`, `innerJoin()`, and `groupBy()`, and today it works on PostgreSQL only. The **pipeline builder** is at `db.query`. It builds MongoDB aggregation pipelines.
 
-Use the ORM client for everyday application queries across models and relations. Reach for the SQL query builder when you need a join, aggregate, or SQL feature the ORM client doesn't expose on PostgreSQL, and the pipeline builder for MongoDB aggregation pipelines. When even those can't express a query, drop to a [raw query](/orm/reference/raw-queries); for client lifecycle, transactions, and prepared statements, see [Transactions and runtime](/orm/reference/transactions-and-runtime).
+Use the ORM client for everyday reads and writes across your models, including loading related rows with `include()`. Use the SQL query builder when the result you want is not a model row, such as a projection across two tables or an aggregate over a join. Use the pipeline builder for MongoDB aggregation. When none of them can express the query, drop to a [raw query](/orm/reference/raw-queries). For connecting and disconnecting the client, transactions, and prepared statements, see [Transactions and runtime](/orm/reference/transactions-and-runtime). In Prisma ORM 7 you passed `findMany({ where, include })` arguments; those arguments are chained methods now, and [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7) maps each one.
+
+```ts
+const admins = await db.orm.public.User.where((u) => u.kind.eq('admin')).all();
+
+const plan = db.sql.public.user.select('id', 'email').where((f, fns) => fns.eq(f.kind, 'admin')).build();
+const rows = await runtime.query(plan);
+```
 
 ## How database differences are documented
 
-The method reference pages document each method with the classic Remarks / Options / Return type / Examples structure (the raw queries page is deliberately more narrative). When a method's behavior differs between PostgreSQL and MongoDB, exists on only one database, or is type-checked but not enforced at runtime, the method's own Remarks call that out inline.
-
-For a conceptual walkthrough of reading, writing, and querying data (rather than an exhaustive method-by-method reference), see the [Fundamentals](/orm/fundamentals/reading-data) section:
-
-- [Reading data](/orm/fundamentals/reading-data)
-- [Writing data](/orm/fundamentals/writing-data)
-- [Relations and joins](/orm/fundamentals/relations-and-joins)
-- [Transactions](/orm/fundamentals/transactions)
-- [Advanced queries](/orm/fundamentals/advanced-queries)
+Every method on a reference page has the same four parts: Remarks, Options, Return type, and Examples. The raw queries page uses prose instead. If a method works differently on PostgreSQL and MongoDB, or exists on only one of them, its Remarks say so. For a walkthrough of reading and writing data rather than a method list, see [Reading data](/orm/fundamentals/reading-data), [Writing data](/orm/fundamentals/writing-data), [Relations and joins](/orm/fundamentals/relations-and-joins), [Transactions](/orm/fundamentals/transactions), and [Advanced queries](/orm/fundamentals/advanced-queries).
 
 <Cards>
   <Card href="/orm/reference/orm-client" title="ORM client reference" icon={<BookOpen className="text-primary" />}>
@@ -30,12 +29,12 @@ For a conceptual walkthrough of reading, writing, and querying data (rather than
     Every SQL query builder method for building typed, table-level queries against PostgreSQL.
   </Card>
   <Card href="/orm/reference/pipeline-builder" title="Pipeline builder reference" icon={<BookOpen className="text-primary" />}>
-    Every MongoDB pipeline-builder stage, accumulator, expression helper, and write terminal.
+    Every MongoDB pipeline-builder stage, accumulator, expression helper, and write method.
   </Card>
   <Card href="/orm/reference/raw-queries" title="Raw queries reference" icon={<BookOpen className="text-primary" />}>
-    Raw escape hatches: PostgreSQL raw SQL fragments and MongoDB raw commands.
+    Raw SQL on PostgreSQL and raw commands on MongoDB, for queries the typed APIs cannot express.
   </Card>
   <Card href="/orm/reference/transactions-and-runtime" title="Transactions and runtime reference" icon={<BookOpen className="text-primary" />}>
-    Client lifecycle, transactions, prepared statements, and execution options.
+    Connecting and disconnecting the client, transactions, prepared statements, and execution options.
   </Card>
 </Cards>

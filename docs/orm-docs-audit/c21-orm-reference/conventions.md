@@ -17,7 +17,7 @@ Verified facts (rc.9 source at wip/prisma-src/). Use these words on every page; 
 - Nested writes that work: `create`, `connect`, `disconnect` (`posts: (p) => p.create([...])`). `connectOrCreate`, nested update/upsert/delete, and `set` do not exist; link /orm/coming-from-prisma-orm-7#not-available-yet.
 - Transaction options (`isolationLevel`, `timeout`, `maxWait`) and nested transactions do not exist. Prisma ORM 7's interactive `$transaction(async (tx) => ...)` maps directly to `db.transaction(async (tx) => ...)`.
 - `create-prisma` mentions of "skills": "Prisma ORM skills, instruction files for coding agents".
-- Type names in raw SQL (`pg/int4@1`): "the PostgreSQL type plus a version, always `@1` today"; prefer taking the type from the table: `db.sql.public.user.columns.id`. The list is at /orm/reference/raw-queries.
+- Type names in raw SQL (`pg/int4@1`): "the PostgreSQL type plus a version, always `@1` today"; prefer taking the type from the table: `db.sql.public.user.columns.id`. There is no published list; the raw-queries page shows the ids a bare JavaScript value gets.
 - Errors: "an error with code `X`" (it is `error.code`).
 - Do not use: terminal, codec, envelope, facade, lane, junction model/table (say "join table" / "model for the join table"), surface, plan, "rides", "fan out", "drop one level", "field proxy" (say "the `p` argument"), "lambda" (say "callback").
 - `npx prisma skills sync` exists in the published CLI (8.0.0-rc.13, newer than the rc.9 source tree): "in an existing project, run `npx prisma skills sync`". Do not drop it because the rc.9 tree lacks it.
