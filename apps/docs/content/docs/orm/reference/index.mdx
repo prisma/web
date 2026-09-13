@@ -6,9 +6,13 @@ metaTitle: Prisma ORM API reference
 metaDescription: 'Reference index for the Prisma ORM client, SQL query builder, pipeline builder, raw queries, and runtime APIs.'
 ---
 
-Prisma ORM gives you three ways to write a query. In Prisma ORM 7 you wrote `findMany({ where, include })`. Now each of those arguments is a method you chain: `.where(...).include(...)`. See [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7), which maps each argument to its method. The **ORM client** is at `db.orm`. It has model methods such as `where()`, `create()`, and `include()`, and it works on both PostgreSQL and MongoDB. The **SQL query builder** is at `db.sql`. It has table methods that match SQL, such as `select()`, `innerJoin()`, and `groupBy()`, and it works on PostgreSQL only. The **pipeline builder** is at `db.query`. It builds MongoDB aggregation pipelines. It is not the same as `runtime.query()`, which runs a built query.
+Prisma ORM gives you three typed ways to write a query. In Prisma ORM 7 you wrote `findMany({ where, include })`. Now each of those arguments is a method you chain: `.where(...).include(...)`. See [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7), which maps each argument to its method.
 
-Use the ORM client for everyday reads and writes across your models, including loading related rows with `include()`. Use the SQL query builder when the result you want is not a model row, such as a few columns drawn from two joined tables, or an aggregate over a join. Use the pipeline builder for MongoDB aggregation. When none of them can express the query, drop to a [raw query](/orm/reference/raw-queries). For connecting and disconnecting the client, transactions, and prepared statements, see [Transactions and runtime](/orm/reference/transactions-and-runtime). In the example below, the ORM client runs when you `await` it. The SQL query builder and the pipeline builder do not run on their own: each produces a built query with `.build()`, which you then run with `runtime.query(...)`. Watch the casing: `User` is the model name and `user` is the table name.
+- The **ORM client** is at `db.orm`. It has model methods such as `where()`, `create()`, and `include()`, it works on both PostgreSQL and MongoDB, and it covers everyday reads and writes across your models.
+- The **SQL query builder** is at `db.sql`. It has table methods that match SQL, such as `select()`, `innerJoin()`, and `groupBy()`, it works on PostgreSQL only, and it returns results that are not model rows, such as an aggregate over a join.
+- The **pipeline builder** is at `db.query`. It builds MongoDB aggregation pipelines.
+
+Plus raw SQL and raw commands when none of them fits. See [Raw queries](/orm/reference/raw-queries). For connecting and disconnecting the client, transactions, and prepared statements, see [Transactions and runtime](/orm/reference/transactions-and-runtime). In the example below, `db.runtime()` returns the connection that runs a built query. Create it once and reuse it. `.all()` runs the query and returns every row. It is what replaced `findMany`. The ORM client runs when you `await` it. The SQL query builder and the pipeline builder do not run on their own. Each produces a built query with `.build()`, which you then run with `runtime.query(...)`. Watch the casing: `User` is the model name and `user` is the table name.
 
 ```ts
 const runtime = db.runtime();
@@ -17,9 +21,11 @@ const plan = db.sql.public.user.select('id', 'email').where((f, fns) => fns.eq(f
 const rows = await runtime.query(plan);
 ```
 
+`db.query` builds MongoDB pipelines. The separate `runtime.query()` method is what runs any built query.
+
 ## How database differences are documented
 
-Every method on a reference page has the same four parts: Remarks, Options, Return type, and Examples. The raw queries page is shorter and has fewer tables. If a method works differently on PostgreSQL and MongoDB, or exists on only one of them, its Remarks say so. For a walkthrough of reading and writing data rather than a method list, see [Reading data](/orm/fundamentals/reading-data), [Writing data](/orm/fundamentals/writing-data), [Relations and joins](/orm/fundamentals/relations-and-joins), [Transactions](/orm/fundamentals/transactions), and [Advanced queries](/orm/fundamentals/advanced-queries).
+Every method on a reference page has the same four parts: Remarks, Options, Return type, and Examples. If a method works differently on PostgreSQL and MongoDB, or exists on only one of them, its Remarks say so. For a walkthrough of reading and writing data rather than a method list, see [Reading data](/orm/fundamentals/reading-data), [Writing data](/orm/fundamentals/writing-data), [Relations and joins](/orm/fundamentals/relations-and-joins), [Transactions](/orm/fundamentals/transactions), and [Advanced queries](/orm/fundamentals/advanced-queries).
 
 <Cards>
   <Card href="/orm/reference/orm-client" title="ORM client reference" icon={<BookOpen className="text-primary" />}>
