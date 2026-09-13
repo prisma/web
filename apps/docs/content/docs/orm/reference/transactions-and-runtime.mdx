@@ -352,7 +352,7 @@ Run a callback inside a transaction. The transaction commits when the callback r
 #### Remarks
 
 - Query through `tx`, not `db`. `tx.orm` holds your models. Build queries with `tx.sql`, then run them with `tx.query(...)` to get rows back, or `tx.execute(...)` when the write returns no rows. `tx.execute(...)` resolves to `{ affectedRows }`, the number of rows the statement changed. Every call on `tx` uses the same transaction connection, and queries on `db` run outside the transaction.
-- `db.transaction(...)` takes the callback and nothing else. There are no `isolationLevel`, `timeout`, or `maxWait` options, and Prisma ORM offers no way to set the isolation level. Nothing retries a failed transaction for you. Write the retry loop yourself. A transaction has no time limit by default. To set one, set PostgreSQL's `idle_in_transaction_session_timeout` in your connection string or server configuration. See the [fundamentals transactions guide](/orm/fundamentals/transactions#options-and-isolation-level).
+- `db.transaction(...)` takes the callback and nothing else. There are no `isolationLevel`, `timeout`, or `maxWait` options, and Prisma ORM offers no way to set the isolation level. Nothing retries a failed transaction for you. Write the retry loop yourself. A transaction has no time limit. PostgreSQL's `idle_in_transaction_session_timeout` ends one that sits idle between statements, and on PostgreSQL 17 and later `transaction_timeout` caps its total length. Set either in your connection string or server configuration. See the [fundamentals transactions guide](/orm/fundamentals/transactions#options-and-isolation-level).
 - To put a time limit on the queries inside a transaction, pass a `signal` to each `tx.query(...)` and `tx.execute(...)` call, as the example below does. See [`RuntimeExecuteOptions`](#runtimeexecuteoptions).
 - `tx` has no `transaction()` method, so transactions do not nest. If a helper you call starts its own transaction, change it to take `tx` as a parameter instead. `TransactionContext`, imported from `@prisma/orm-postgres/family-runtime`, has `query` and `execute` only, so a helper typed with it cannot use `tx.orm` or `tx.sql`: `async function addTag(tx: TransactionContext) { ... }`. There is no exported type for the full `tx`, so derive it: `type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]`.
 - `tx.sql` is a full SQL builder, keyed the same way as `db.sql`: use `tx.sql.public.<table>`, where `public` is the PostgreSQL schema.
@@ -496,7 +496,7 @@ The lowest level: acquire a connection, open a transaction on it, commit or roll
 
 #### Remarks
 
-- `runtime.connection()` returns a dedicated connection. `connection.transaction()` opens a transaction on it. Run built queries with `transaction.query(...)` for rows or `transaction.execute(...)` for writes that return no rows, then call `transaction.commit()` or `transaction.rollback()`. Always `release()` the connection when done, to return it to the pool. Commit or roll back first: release it in a `finally` block, as the examples do, so a statement that throws does not leak the connection.
+- `runtime.connection()` returns a dedicated connection. `connection.transaction()` opens a transaction on it. Run built queries with `transaction.query(...)` for rows or `transaction.execute(...)` for writes that return no rows, then call `transaction.commit()` or `transaction.rollback()`. Always `release()` the connection when done, to return it to the pool. Commit or roll back on every path first, then release: the examples nest a `try` for the transaction inside the `try` whose `finally` releases the connection, so a statement that throws neither leaves the transaction open nor leaks the connection.
 - `connection.destroy()` throws that connection away instead of returning it to the pool. Use `destroy()` only for a connection you no longer trust.
 
 #### Options
@@ -519,10 +519,15 @@ const connection = await runtime.connection();
 try {
   await connection.query(db.sql.public.tag.select('id').limit(1).build()); // a read on this connection
   const transaction = await connection.transaction();
-  await transaction.execute(
-    db.sql.public.tag.insert([{ id: crypto.randomUUID(), label: 'manual-commit' }]).build(),
-  );
-  await transaction.commit();
+  try {
+    await transaction.execute(
+      db.sql.public.tag.insert([{ id: crypto.randomUUID(), label: 'manual-commit' }]).build(),
+    );
+    await transaction.commit();
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
 } finally {
   await connection.release();
 }
@@ -534,10 +539,13 @@ try {
 const connection = await runtime.connection();
 try {
   const transaction = await connection.transaction();
-  await transaction.execute(
-    db.sql.public.tag.insert([{ id: crypto.randomUUID(), label: 'manual-rollback' }]).build(),
-  );
-  await transaction.rollback();
+  try {
+    await transaction.execute(
+      db.sql.public.tag.insert([{ id: crypto.randomUUID(), label: 'manual-rollback' }]).build(),
+    );
+  } finally {
+    await transaction.rollback();
+  }
 } finally {
   await connection.release();
 }

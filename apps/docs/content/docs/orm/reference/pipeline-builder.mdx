@@ -133,7 +133,7 @@ const posts = await runtime.query(plan);
 - On MongoDB, `db.runtime()` returns a promise, so you must await it: `const runtime = await db.runtime()`. Hold it in a variable and reuse it.
 - `await` that call for an array of documents, or write `for await (const doc of runtime.query(plan)) { ... }` to take one document at a time.
 - There is no `db.execute` on the MongoDB client.
-- **Read results are decoded.** If every stage in your pipeline is one of `match()`, `sort()`, `limit()`, `skip()`, `sample()`, `project()`, `addFields()`, and `vectorSearch()`, `_id` comes back as a hex string. If any stage is not in that list, including `lookup()` and `group()`, every document comes back raw and `_id` is an `ObjectId` object from the `mongodb` package, the MongoDB driver Prisma ORM uses. Compare those ids as strings, as [`lookup()`](#lookup) shows. A `DateTime` field comes back as a JavaScript `Date` either way.
+- **Read results are decoded.** If every stage in your pipeline is one of `match()`, `sort()`, `limit()`, `skip()`, `sample()`, `project()`, `addFields()`, and `vectorSearch()`, `_id` comes back as a hex string. If any stage is not in that list, including `lookup()` and `group()`, every document comes back raw, with each value as MongoDB stores it. An `_id` that MongoDB generated is then an `ObjectId` object from the `mongodb` package, the MongoDB driver Prisma ORM uses. Compare those ids as strings, as [`lookup()`](#lookup) shows. A `DateTime` field comes back as a JavaScript `Date` either way.
 
 #### Examples
 
@@ -980,7 +980,7 @@ Append an arbitrary raw pipeline stage the typed methods don't cover.
 
 - `pipe(stage)` appends a raw stage that you construct yourself, and keeps the row type you already had. The stages are the `Mongo*Stage` classes, one per MongoDB stage, from `@prisma/orm-mongo/query-ast/execution`. The class name is `Mongo`, then the stage name without its `$`, then `Stage`, so `$unwind` is `MongoUnwindStage`. The example below uses `MongoMatchStage` and `MongoCountStage`. The same module exports `MongoFieldFilter`, which builds the filter a `MongoMatchStage` takes.
 - `pipe<NewShape>(stage)` declares the row type the rows have after that stage. `NewShape` is a type you write yourself, as at the end of the example below.
-- After a `pipe()` stage the TypeScript type no longer describes the rows. They come back exactly as MongoDB returns them, so a date is a `Date` and an id is an `ObjectId` from the `mongodb` package, the driver Prisma ORM runs your queries through.
+- After a `pipe()` stage the TypeScript type no longer describes the rows. They come back exactly as MongoDB returns them, so a date is a `Date` and an `_id` that MongoDB generated is an `ObjectId` from the `mongodb` package, the driver Prisma ORM runs your queries through.
 - Prefer a typed stage where one exists. `pipe()` adds one raw stage to a typed chain, and [`rawCommand()`](#rawcommand) replaces the whole command.
 
 #### Examples
