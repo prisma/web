@@ -6,7 +6,7 @@ metaTitle: Prisma ORM SQL query builder reference
 metaDescription: 'Reference for the Prisma ORM SQL query builder''s select, mutation, and grouped query methods.'
 ---
 
-The SQL query builder gives you table-level, SQL-shaped methods for building typed queries: `select()`, `innerJoin()`, `groupBy()`, and the rest. It is closer to SQL than the [ORM client](/orm/reference/orm-client) is, and the same `db` gives you both. Reach for it when you need a join, aggregate, or SQL feature the ORM client doesn't expose, or when you want direct control over the generated SQL.
+The SQL query builder builds typed queries from a table, with one method per SQL clause: `select()`, `innerJoin()`, `groupBy()`, and the rest. It is closer to SQL than the [ORM client](/orm/reference/orm-client) is, and the same `db` gives you both. Reach for it when you need a join, aggregate, or SQL feature the ORM client doesn't expose, or when you want direct control over the generated SQL.
 
 This page documents every method, its options, and its return type. Some methods work only on some databases, and some have a caveat that shows up only when the query runs. Each method's **Remarks** section says so. For a task-oriented guide to when and how to reach for the builder, see [Advanced queries](/orm/fundamentals/advanced-queries).
 
@@ -16,7 +16,7 @@ The SQL query builder targets SQL databases; PostgreSQL and SQLite are supported
 
 ## Example schema
 
-All examples on this page run against the following schema. The select and mutation examples use the `user`, `post`, `post_tag`, and `tag` tables. The grouped-query examples use a separate `customer` and `order` schema, shown under [Grouped queries](#grouped-queries). No example uses `Address`, `Task`, `Bug`, or `Feature`. They are here only so that this schema matches the one on the [ORM client reference](/orm/reference/orm-client), and you can ignore them.
+All examples on this page run against the following schema. The select and mutation examples use the `user`, `post`, `post_tag`, and `tag` tables. The grouped-query examples use a separate `customer` and `order` schema, shown under [Grouped queries](#grouped-queries). No example uses `Address`, `Task`, `Bug`, or `Feature`. They are here only so that this schema matches the one on the [ORM client reference](/orm/reference/orm-client), and you can ignore them. The `types` block, `@@type`, `@@discriminator`, and `@@base` are contract features documented under [Contract authoring](/orm/contract-authoring/psl-syntax), and no example on this page uses them.
 
 <details>
 
@@ -128,11 +128,17 @@ model Feature {
 
 ## Entry points
 
-You build queries from the client's `sql` property. Create a Postgres client with `postgres(...)`, then reach tables through `db.sql.public`. The client reads your contract, the `contract.prisma` file that replaced `schema.prisma`. Running `npx prisma contract emit` compiles the contract into the two files every example here imports: `contract.json`, read when your app runs, and `contract.d.ts`, read by TypeScript. [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7) has the packages to install and the commands to run. Table accessors are keyed by table name, not model name. A table name is the model name with a lowercase first letter unless the model sets `@@map`, so the `User` model mapped to `user` is reached as `db.sql.public.user`, and the model for the `Post`/`Tag` join table, mapped to `post_tag`, is reached as `db.sql.public.post_tag`. Column names are the field names unless a field sets `@map`. `public` is the PostgreSQL schema, the namespace your tables live in unless you set another one.
+Before you can build queries, run `npx prisma contract emit`. It reads your contract, the `contract.prisma` file that replaced `schema.prisma`, and writes `contract.json` and `contract.d.ts` next to it. The examples below import both.
+
+Install `@prisma/orm-postgres`. [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7) has the rest of the setup steps.
+
+You build queries from the client's `sql` property. Create a Postgres client with `postgres(...)`, then reach tables through `db.sql.public`. `public` is the PostgreSQL schema your tables are in.
+
+Table accessors are keyed by table name, not model name. A table name is the model name with a lowercase first letter unless the model sets `@@map`, so the `User` model mapped to `user` is reached as `db.sql.public.user`, and the model for the `Post`/`Tag` join table, mapped to `post_tag`, is reached as `db.sql.public.post_tag`. Column names are the field names unless a field sets `@map`.
 
 ### The `db.sql` builder [#the-dbsql-facet]
 
-Create the client with `postgres(...)` and build queries off `db.sql.public`. `db.runtime()` is the connection that runs a built query. On PostgreSQL it is synchronous, so do not await it. A `select()`, `insert()`, `update()`, or `delete()` call starts a query. Finish it with [`build()`](#build), which returns the built query, and run that query with `runtime.query(...)`.
+`db.runtime()` returns the connection that runs a built query. Do not `await` it. Only `runtime.query()` is awaited. A `select()`, `insert()`, `update()`, or `delete()` call starts a query. Finish it with [`build()`](#build), which returns the built query, and pass that to `runtime.query(...)`. The examples name the built query `plan`. You can run the same built query more than once.
 
 ```ts
 import postgres from '@prisma/orm-postgres/runtime';
@@ -146,15 +152,9 @@ const plan = db.sql.public.user.select('id', 'email').build();
 const users = await runtime.query(plan);
 ```
 
-`db.sql` is ready to use as soon as you have a client, so most code needs nothing more. The `sql(...)` function from `@prisma/orm-postgres/builder/runtime` builds the same query builder around your own database client instead, from that client's `db.context`:
+`db.sql` is ready to use as soon as you have a client, so most code needs nothing more. If you wrap your own database client, the `sql(...)` function from `@prisma/orm-postgres/builder/runtime` builds the same query builder around that client.
 
-```ts
-import { sql } from '@prisma/orm-postgres/builder/runtime';
-
-const publicSql = sql({ context: db.context, rawCodecInferer: { inferCodec: () => 'pg/text@1' } }).public;
-```
-
-SQLite works the same way. Create the client with `sqlite(...)` from `@prisma/orm-sqlite/runtime`. SQLite has no schemas, so there is no `public` in the path and the same table is `db.sql.user`. The rest of this page shows PostgreSQL and writes the root as `db.sql.public`.
+SQLite works the same way. Create the client with `sqlite(...)` from `@prisma/orm-sqlite/runtime`. SQLite has no schemas, so there is no `public` in the path and the same table is `db.sql.user`. Of the SELECT methods on this page, `lateralJoin()`, `outerLateralJoin()`, and `distinctOn()` are not available on SQLite. Every other one is. The rest of this page shows PostgreSQL and writes the root as `db.sql.public`.
 
 ### Table access
 
@@ -162,7 +162,7 @@ Every table on `db.sql.public` exposes the query-building methods.
 
 ```ts
 db.sql.public.user.select('id', 'email'); // start a SELECT
-db.sql.public.tag.insert([{ id, label: 'typescript' }]); // start an INSERT
+db.sql.public.tag.insert([{ label: 'typescript' }]); // start an INSERT
 ```
 
 ### Aliasing a query with `.as()`
@@ -182,15 +182,15 @@ Use `.as()` only for subqueries you pass to `innerJoin()`, `outerLeftJoin()`, `o
 
 ## SELECT queries
 
-These methods build and refine a `SELECT`. They chain, and you resolve the query with [`build()`](#build) followed by `runtime.query(...)`.
+These methods build and refine a `SELECT`. They chain, and you resolve the query with [`build()`](#build) followed by `runtime.query(...)`. `SelectQuery` in the tables below is the type they return. You never import it.
 
-The `where()`, `select()`, `orderBy()`, `update()`, and other callback forms receive two arguments. The first is `f`, which has one property per column the query can name at that point. After a join, columns are grouped under their table name, such as `f.post.id`. The second is `fns`, an object of [expression helpers](#expressions-and-functions) such as `fns.eq()` and `fns.raw`.
+The set of column names a query can use is its scope. It starts as the columns of the table you began with, and every join adds the joined table's columns to it.
 
-The set of names the query can use is its scope. It starts as the columns of the table you began with, and every join adds the joined table's columns to it.
+The `where()`, `select()`, `orderBy()`, `update()`, and other callback forms receive two arguments. The first is `f`, which has one property per column in scope. After a join, a column name that both tables have is on `f` only under its table name, such as `f.post.id`. The second is `fns`, an object of [expression helpers](#expressions-and-functions) such as `fns.eq()` and `fns.raw`.
 
 ### `select()`
 
-Project a row down to a chosen set of columns or computed expressions.
+Reduce each row to a chosen set of columns or computed expressions.
 
 #### Options
 
@@ -202,9 +202,9 @@ Project a row down to a chosen set of columns or computed expressions.
 | Aliased expression | `select(alias, (f, fns) => expr)` | Add one computed column under `alias`. |
 | Object of expressions | `select((f, fns) => ({ alias: expr, ... }))` | Add several computed columns at once. The row type is inferred from the object's shape. |
 
-Every form adds to what the query already returns. Calling `select()` a second time never replaces the first call's columns, whichever form you use.
+Every form adds to what the query already returns. Calling `select()` a second time never replaces the first call's columns, whichever form you use. To return fewer columns, start a new query instead.
 
-A computed expression's result type comes from `.returns(...)` on `fns.raw`, or from the operation's own declared return type. A type id such as `pg/int4@1` is the PostgreSQL type plus a version, always `@1` today. [Raw queries](/orm/reference/raw-queries) shows the ones a bare JavaScript value gets, and you can take one from a column: `db.sql.public.user.columns.id`. See [`fns.raw` and `.returns()`](#fnsraw-and-returns).
+A computed expression's result type comes from `.returns(...)` on `fns.raw`, or from the operation's own declared return type. `.returns()` takes a type id, such as `'pg/int4@1'`. A type id is the PostgreSQL type name plus `@1`. The common ones are `pg/text@1`, `pg/int4@1`, `pg/int8@1`, `pg/float8@1`, `pg/bool@1`, `pg/uuid@1`, and `pg/timestamptz-temporal@1`. To reuse a column's own type, pass the column to `.returns()`, as in `.returns(db.sql.public.user.columns.id)`, or read the id itself from `db.sql.public.user.columns.id.codecId`. See [`fns.raw` and `.returns()`](#fnsraw-and-returns).
 
 #### Return type
 
@@ -283,7 +283,7 @@ const rows = await runtime.query(plan);
 
 ### `innerJoin()`
 
-Combine matching rows from two tables. After a join, address columns by their table name (`f.post.id`, `f.user.email`) to avoid ambiguity.
+Combine matching rows from two tables. After a join, a column name that both tables have must be written under its table, such as `f.post.id` or `f.user.id`. A name only one table has stays on `f` directly.
 
 #### Options
 
@@ -316,9 +316,9 @@ const rows = await runtime.query(plan);
 
 Keep unmatched rows from one or both sides, filling the missing side's columns with `null`. Each takes the same `(other, on)` arguments and returns a `SelectQuery` as [`innerJoin()`](#innerjoin) does.
 
-- `outerLeftJoin()` keeps every left-table row; unmatched right columns are `null`.
-- `outerRightJoin()` keeps every right-table row; unmatched left columns are `null`.
-- `outerFullJoin()` keeps unmatched rows from both sides.
+- `outerLeftJoin()` is SQL's `LEFT OUTER JOIN`. It keeps every left-table row, and unmatched right columns are `null`.
+- `outerRightJoin()` is SQL's `RIGHT OUTER JOIN`. It keeps every right-table row, and unmatched left columns are `null`.
+- `outerFullJoin()` is SQL's `FULL OUTER JOIN`. It keeps unmatched rows from both sides.
 
 #### Examples
 
@@ -340,9 +340,9 @@ Correlate a per-row subquery against the outer row: for each outer row, the join
 
 #### Remarks
 
-- **Availability:** PostgreSQL only. Not available on SQLite, where the call does not compile. If you reach it anyway, it throws an error whose `code` is `ORM.CAPABILITY_MISSING` at the moment you call `lateralJoin()`. `outerLateralJoin()` is the left-join form: same arguments, same availability, and the subquery's columns are nullable.
-- The callback receives a `lateral` builder. Start its subquery with `lateral.from(otherTable)`, then chain the usual `SELECT` methods. The subquery can filter on the outer row's columns, such as `f.user.id`.
-- Return the query chain **directly** from the callback. Do **not** call `.as(...)` on it. The first argument of `lateralJoin()` already names the subquery, and a chain with `.as(...)` on the end throws `subquery.getRowFields is not a function`.
+- **Availability:** PostgreSQL only. Not available on SQLite, where the call does not compile. Called from plain JavaScript, or after a cast, it throws an error whose `code` is `ORM.CAPABILITY_MISSING` at the moment you call `lateralJoin()`. `outerLateralJoin()` is the left-join form: same arguments, same availability, and the subquery's columns are nullable.
+- The callback receives a `lateral` builder. Start its subquery with `lateral.from(otherTable)`, then chain the usual `SELECT` methods. Inside the callback, the outer table's columns are on `f` under its table name, such as `f.user.id`, so the subquery can filter on the outer row.
+- Return the query chain **directly** from the callback. Do **not** call `.as(...)` on it. The first argument of `lateralJoin()` already names the subquery.
 - After the join, a column name that both tables have must be written under its table, such as `f.post.id` or `f.post.createdAt`. A bare `select('id')` or `orderBy((f) => f.createdAt, ...)` throws, because a name both tables have is not in the query's scope on its own.
 
 #### Options
@@ -445,7 +445,7 @@ Keep the first row per distinct key, according to the query's `orderBy()` (`DIST
 
 #### Remarks
 
-- **Availability:** PostgreSQL only. `DISTINCT ON` is a PostgreSQL extension to SQL. Not available on SQLite, where the call does not compile. If you reach it anyway, it throws an error whose `code` is `ORM.CAPABILITY_MISSING` at the moment you call `distinctOn()`.
+- **Availability:** PostgreSQL only. Not available on SQLite, where the call does not compile. Called from plain JavaScript, or after a cast, it throws an error whose `code` is `ORM.CAPABILITY_MISSING` at the moment you call `distinctOn()`.
 - Put the `distinctOn()` columns first in `orderBy()`, then the column that decides which row wins. Nothing checks this for you, and without it you cannot predict which row you get. The order in which you call `distinctOn()` and `orderBy()` does not matter.
 
 #### Options
@@ -541,9 +541,9 @@ const rows = await runtime.query(plan);
 
 ## Grouped queries
 
-Grouping starts with [`groupBy()`](#groupby), which turns a query into a `GroupedQuery`. A grouped query supports `having()` for group-level filtering, the aggregate functions, and the same `orderBy()`, `limit()`, `offset()`, and `distinct()` methods as a `SelectQuery`.
+Grouping starts with [`groupBy()`](#groupby), which turns a select query into a `GroupedQuery`. Call it after your `select()` calls, because a grouped query has no `select()` of its own. A grouped query supports `having()` for group-level filtering, the aggregate functions, and the same `orderBy()`, `limit()`, `offset()`, and `distinct()` methods as a `SelectQuery`.
 
-The examples below use a separate `customer` / `order` schema, where `order.amount` and `order.quantity` are numeric columns:
+The examples below use a separate `customer` / `order` schema, where `order.amount` is an integer column:
 
 <details>
 
@@ -551,10 +551,8 @@ The examples below use a separate `customer` / `order` schema, where `order.amou
 
 ```prisma
 model Customer {
-  id      Uuid   @id @default(uuid())
-  name    String
-  segment String
-
+  id     Uuid   @id @default(uuid())
+  name   String
   orders Order[]
 
   @@map("customer")
@@ -564,7 +562,6 @@ model Order {
   id         Uuid     @id @default(uuid())
   customerId Uuid
   amount     Int
-  quantity   Int
   placedAt   DateTime @default(now())
 
   customer Customer @relation(fields: [customerId], references: [id])
@@ -574,10 +571,6 @@ model Order {
 ```
 
 </details>
-
-:::note[Aggregates return numbers, with exact variants beside them]
-`count()`, `sum()` over an integer column, and `avg()` over an integer column all return a JavaScript `number`. If a `count()` or integer `sum()` result is larger than 2^53 - 1, the query fails with an error whose `code` is `RUNTIME.DECODE_FAILED`. Use `countBigInt()` or `sumBigInt(field)` instead when totals can get that large. `avg()` does not fail this way. It is computed as a floating-point `number` and loses precision instead, so use `avgDecimal(field)` when you need an exact figure. `min()` and `max()` return the input column's own type.
-:::
 
 ### `groupBy()`
 
@@ -600,7 +593,7 @@ Group rows by one or more columns or by a computed expression, producing one row
 
 ##### Group by a column with a count
 
-Every example from here on calls `runtime`, and names the built query `plan`.
+Every example below assumes `const runtime = db.runtime();`, and names the built query `plan`.
 
 ```ts
 const runtime = db.runtime();
@@ -609,11 +602,22 @@ const plan = db.sql.public.order
   .select('customerId')
   .select('orderCount', (f, fns) => fns.count(f.id))
   .groupBy('customerId')
-  .orderBy('customerId', { direction: 'asc' })
   .build();
 const rows = await runtime.query(plan);
 // e.g. { customerId: '<a customer id>', orderCount: 5 }
 ```
+
+:::note[Most aggregates give you a `number`]
+`count()`, `sum()` over an integer column, and `avg()` over an integer column all return a JavaScript `number`. `min()` and `max()` return the input column's own type.
+:::
+
+:::note[Large counts and sums need the `bigint` version]
+A `count()` or integer `sum()` result larger than 2^53 - 1 fails with an error whose `code` is `RUNTIME.DECODE_FAILED`. Use `countBigInt()` or `sumBigInt(field)` when totals can get that large.
+:::
+
+:::note[`avg()` loses precision instead of failing]
+`avg()` is computed as a floating-point `number`, so a long decimal is rounded. Use `avgDecimal(field)` when you need the exact figure.
+:::
 
 ##### Group by a computed value
 
@@ -625,10 +629,10 @@ const plan = db.sql.public.order
   .build();
 const rows = await runtime.query(plan);
 // rows === [{ yearPlaced: '2024', orderCount: 10 }]
-// yearPlaced is the string '2024', not the number 2024. See `.returns()` below.
+// yearPlaced is the string '2024'. Write Number(row.yearPlaced) to get 2024. See `.returns()` below.
 ```
 
-You can also group by an alias you gave a selected value, such as `.groupBy('yearPlaced')`. A name that is neither a column in scope nor an alias you selected throws an error whose `code` is `ORM.COLUMN_UNKNOWN`, at the moment you call `groupBy()`. Prisma ORM does not check that every other selected column is grouped or aggregated. PostgreSQL rejects the query when it runs.
+You can also group by an alias you gave a selected value, such as `.groupBy('yearPlaced')`. A name that is neither a column of the table you started from nor an alias you selected throws an error whose `code` is `ORM.COLUMN_UNKNOWN`, at the moment you call `groupBy()`. If you select a column you did not group or aggregate, the query fails when it runs, not when you build it.
 
 ### `having()`
 
@@ -636,7 +640,8 @@ Filter groups by an aggregate comparison. Build the predicate from the aggregate
 
 #### Remarks
 
-- Compare against a plain JavaScript number, as in `fns.gt(fns.count(), 1)`. Do not pass a `bigint` literal such as `1n`.
+- Compare against a plain JavaScript number, as in `fns.gt(fns.count(), 1)`. Passing a `bigint` literal such as `1n` throws an error whose `code` is `RUNTIME.ENCODE_FAILED` when the query runs.
+- `having()` has no column-name form, so write the aggregate again in the predicate. TypeScript does let you name a selected alias on the `f` argument here, but PostgreSQL does not accept an alias in `HAVING`, and the query then fails when it runs.
 
 #### Options
 
@@ -668,30 +673,22 @@ const rows = await runtime.query(plan);
 ##### Compare with `count()`, `avg()`, `min()`, `max()`
 
 ```ts
-const avgPlan = db.sql.public.order
+const plan = db.sql.public.order
   .select('customerId')
   .select('avgAmount', (f, fns) => fns.avg(f.amount))
-  .groupBy('customerId')
-  .having((f, fns) => fns.gt(fns.avg(f.amount), 100))
-  .build();
-
-const minMaxPlan = db.sql.public.order
-  .select('customerId')
+  .select('exactAvg', (f, fns) => fns.avgDecimal(f.amount))
   .select('minAmount', (f, fns) => fns.min(f.amount))
   .select('maxAmount', (f, fns) => fns.max(f.amount))
   .groupBy('customerId')
-  .having((f, fns) => fns.eq(fns.min(f.amount), 100))
+  .having((f, fns) => fns.and(fns.gt(fns.count(), 1), fns.gt(fns.avg(f.amount), 100)))
   .build();
-
-const avgRows = await runtime.query(avgPlan);
-const minMaxRows = await runtime.query(minMaxPlan);
-// avgAmount is 300, and avgDecimal(f.amount) would give the exact '300.0000000000000000'
-// minAmount is 100 and maxAmount is 500
+const rows = await runtime.query(plan);
+// avgAmount is 300, exactAvg is the exact string '300.0000000000000000', minAmount is 100, maxAmount is 500
 ```
 
 ### Ordering and limiting a grouped query
 
-A `GroupedQuery` supports the same `orderBy()`, `limit()`, `offset()`, `distinct()`, and [`distinctOn()`](#distincton) methods as a `SelectQuery`. Sort by an aggregate alias to order groups. The alias must be one you selected in this query. Any other name throws an error whose `code` is `ORM.COLUMN_UNKNOWN`, at the moment you call `orderBy()`.
+A `GroupedQuery` supports the same `orderBy()`, `limit()`, `offset()`, `distinct()`, and [`distinctOn()`](#distincton) methods as a `SelectQuery`. Sort by an aggregate alias to order groups. The alias must be one you selected in this query. Any other name throws an error whose `code` is `ORM.COLUMN_UNKNOWN`, at the moment you call `orderBy()`. On a grouped query, `distinct()` and `distinctOn()` drop repeated rows from the groups you already have, which only matters when you select fewer columns than you grouped by.
 
 #### Examples
 
@@ -711,7 +708,7 @@ const rows = await runtime.query(plan);
 
 ## Mutations
 
-Mutations start from a table with `insert()`, `update()`, or `delete()`, and end with [`build()`](#build). Add [`returning()`](#returning) to get the affected rows back.
+Mutations start from a table with `insert()`, `update()`, or `delete()`, and end with [`build()`](#build). Add [`returning()`](#returning) to get the affected rows back. The examples below go back to this page's main schema, so they use `db.sql.public.tag` and `db.sql.public.user` again.
 
 ### `insert()`
 
@@ -720,7 +717,7 @@ Insert one or more rows in a single statement.
 #### Remarks
 
 - `insert()` always takes an **array**. A single-row insert is a one-element array. There is no separate single-row overload. An empty array throws an error whose `code` is `ORM.MUTATION_DATA_MISSING`.
-- Leave a column out and the contract's default for it is applied, such as `@default(uuid())` or `@default(now())`. The value is generated when you call `build()`.
+- Leave a column out and the contract's default for it is applied, such as `@default(uuid())` or `@default(now())`. The value is generated when you call `build()`, so build once and run once. Running the same built insert twice inserts the same generated value twice. Build it again for a new one.
 - There is no `ON CONFLICT` and no upsert here. For "insert or update", use the ORM client's [`upsert()`](/orm/reference/orm-client#upsert) or write the statement with [`db.raw.sql`](/orm/reference/raw-queries).
 
 #### Options
@@ -729,7 +726,7 @@ Insert one or more rows in a single statement.
 |---|---|---|---|
 | `rows` | Array of row objects | Yes | The rows to insert. Every column is optional. |
 
-Each value is sent as a query parameter, never pasted into the SQL. The column it goes into decides how it is stored and read, so you never annotate an insert value.
+Each value is sent as a query parameter, never pasted into the SQL. The column it goes into decides how it is stored and read, so you never call `.returns()` or [`param()`](#param) on an insert value.
 
 #### Return type
 
@@ -744,15 +741,13 @@ Each value is sent as a query parameter, never pasted into the SQL. The column i
 ```ts
 const plan = db.sql.public.tag.insert([{ label: 'single-row-tag' }]).build();
 await runtime.execute(plan);
-// id is filled in from the contract's @default(uuid())
+// `execute` runs a write that returns no rows, see [Running a built query](#executing-a-plan). id is filled in from @default(uuid())
 ```
 
 ##### Insert multiple rows in one statement
 
 ```ts
-const plan = db.sql.public.tag
-  .insert([{ label: 'multi-row-a' }, { label: 'multi-row-b' }])
-  .build();
+const plan = db.sql.public.tag.insert([{ label: 'multi-row-a' }, { label: 'multi-row-b' }]).build();
 await runtime.execute(plan);
 ```
 
@@ -762,7 +757,7 @@ Return columns from the rows affected by an `insert()`, `update()`, or `delete()
 
 #### Remarks
 
-- **Availability:** PostgreSQL and SQLite. Both support SQL's `RETURNING`. On a database without it, TypeScript rejects the call. If you get past the type check, for example by casting, the call throws an error whose `code` is `ORM.CAPABILITY_MISSING`.
+- **Availability:** PostgreSQL and SQLite, the two databases the builder supports today. Both support SQL's `RETURNING`.
 
 #### Options
 
@@ -774,7 +769,7 @@ Return columns from the rows affected by an `insert()`, `update()`, or `delete()
 
 | Return type | Example | Description |
 |---|---|---|
-| Mutation query | `db.sql.public.tag.insert([...]).returning('id', 'label')` | The mutation query, now typed to resolve to the returned rows. |
+| Mutation query | `db.sql.public.tag.insert([...]).returning('id', 'label')` | The mutation query, which now gives you back those columns from each affected row. Run it with `query`, not `execute`. |
 
 #### Examples
 
@@ -798,6 +793,8 @@ Update matched rows. Set columns with a values object, or derive new values from
 |---|---|---|
 | Values object | `update({ col: value, ... })` | Set columns to fixed values. |
 | Expression callback | `update((f, fns) => ({ col: expr }))` | Set columns to expressions computed from existing columns. |
+
+Every value the callback returns must be an expression, so you cannot put a plain JavaScript value beside a computed one. To set a fixed value in the callback form, write it as a `fns.raw` fragment with `.returns(...)`.
 
 #### Return type
 
@@ -863,6 +860,7 @@ Give a value its type by hand, for a value with no column to take the type from,
 
 - Import `param` from `@prisma/orm-postgres/relational-core/expression`.
 - You rarely need `param()`. Values passed to `insert()`, `update()`, and comparison functions such as `fns.eq(f.col, value)` are already sent as query parameters, never pasted into the SQL, and each takes its type from the column it is used with. `param()` is for the values that have no such column.
+- `codecId` is the type id, the name this page uses everywhere else. [Binding a bare value with `param()`](/orm/reference/raw-queries#binding-a-bare-value-with-param) lists the type id each kind of JavaScript value gets, which is where to look for a date, a uuid, a boolean, or an array.
 
 #### Options
 
@@ -888,7 +886,6 @@ const targetEmailDomain = param('%@example.com', { codecId: 'pg/text@1' });
 const plan = db.sql.public.user
   .select('id', 'email')
   .where((f, fns) => fns.raw`${f.email} LIKE ${targetEmailDomain}`.returns('pg/bool@1'))
-  .orderBy('email', { direction: 'asc' })
   .build();
 const rows = await runtime.query(plan);
 ```
@@ -899,34 +896,42 @@ Callback forms receive `fns` alongside the `f` argument. `fns` is an object of h
 
 ### Built-in functions
 
-These are fixed:
+These exist on every database:
 
 | Category | Functions |
 |---|---|
-| Comparison | `eq`, `ne`, `gt`, `gte`, `lt`, `lte` |
-| Membership | `in`, `notIn` |
-| Boolean | `and`, `or` |
-| Existence | `exists`, `notExists` |
+| Comparison | `eq(a, b)`, `ne(a, b)`, `gt(a, b)`, `gte(a, b)`, `lt(a, b)`, `lte(a, b)` |
+| Membership | `in(expr, values)`, `notIn(expr, values)`, where `values` is an array or a built subquery |
+| Boolean | `and(...predicates)`, `or(...predicates)` |
+| Existence | `exists(subquery)`, `notExists(subquery)`, taking a select query you do not call `build()` on |
 | Raw SQL | `raw` |
+
+```ts
+const named = db.sql.public.user
+  .select('id', 'email')
+  .where((f, fns) => fns.in(f.email, ['bob@example.com', 'carol@example.com']))
+  .build();
+
+const authors = db.sql.public.user
+  .select('id', 'email')
+  .where((f, fns) => fns.exists(db.sql.public.post.select('id').where((inner, innerFns) => innerFns.eq(inner.userId, f.id))))
+  .build();
+```
 
 Which aggregate functions exist depends on your database. PostgreSQL gives you these eight:
 
 | Function | Returns |
 |---|---|
 | `count()` / `count(field)` | `number`. With no argument it counts rows; with a field it counts that field's non-null values |
-| `countBigInt()` / `countBigInt(field)` | `bigint`, the exact form of `count` |
-| `sum(field)` | `number` over an integer column; over any other column, the type PostgreSQL's own `sum` produces for it |
-| `sumBigInt(field)` | `bigint`, the exact form of `sum` over an integer column |
+| `countBigInt()` / `countBigInt(field)` | `bigint`. The version of `count` that does not overflow |
+| `sum(field)` | `number` over an integer column. Over a `numeric` column you get a string, and over a `float8` column a `number` |
+| `sumBigInt(field)` | `bigint`. The version of `sum` over an integer column that does not overflow |
 | `avg(field)` | `number` over an integer or float column |
-| `avgDecimal(field)` | An exact decimal string, the exact form of `avg` |
+| `avgDecimal(field)` | An exact decimal string. The version of `avg` that does not round |
 | `min(field)` | The input column's own type. A `varchar` column is typed as `text` |
 | `max(field)` | The input column's own type. A `varchar` column is typed as `text` |
 
-On PostgreSQL you also get `ilike` for text columns. `cosineDistance` comes with pgvector, so it is there only if your contract uses pgvector.
-
-:::note[No `COALESCE` or `CAST` helpers]
-There is no `fns.coalesce` or `fns.cast`. Express `COALESCE`, `CAST`, and any other SQL function you need with [`fns.raw`](#fnsraw-and-returns) and an explicit `.returns(...)` call.
-:::
+On PostgreSQL you also get `ilike(expr, pattern)` for text columns, as in `fns.ilike(f.displayName, '%alice%')`. `cosineDistance` comes with pgvector, so it is there only if your contract uses pgvector.
 
 ### `fns.raw` and `.returns()`
 
@@ -937,12 +942,13 @@ Write a raw SQL fragment as a tagged template. Interpolate columns, typed expres
 | Name | Type | Required | Description |
 |---|---|---|---|
 | SQL fragment | Tagged template | Yes | The raw SQL, with `${...}` interpolations for columns and values. |
-| `.returns(codecId)` | `string` | Yes for a selected value, a compared value, or a fragment used on its own as a `where()` predicate | Declares the result type, for example `'pg/int4@1'`, `'pg/text@1'`. A fragment used as a `where()` predicate declares `'pg/bool@1'`. |
+| `.returns(codecId)` | `string` | Yes, always | Declares the result type, for example `'pg/int4@1'`, `'pg/text@1'`. A fragment used as a `where()` predicate declares `'pg/bool@1'`. |
 
 #### Remarks
 
-- **`.returns()` only tells TypeScript what type to expect.** It does not change the value you actually get back. If PostgreSQL computes the value as `numeric`, you get a string at run time even though you annotated `'pg/int4@1'`. See [Group by a computed value](#group-by-a-computed-value).
-- Use `fns.raw` for any SQL feature without a dedicated helper: `COALESCE`, `CAST`, `LENGTH`, `UPPER`, `EXTRACT`, and so on.
+- **`.returns()` is always required.** A `fns.raw` fragment only becomes an expression once you call it, so there is nowhere in the builder you can use a fragment without it.
+- **`.returns()` only tells TypeScript what type to expect.** It does not change the value you actually get back. PostgreSQL computes `EXTRACT` as a `numeric`, and a `numeric` reaches you as a string even though you annotated `'pg/int4@1'`. Writing `CAST(... AS int4)` inside the fragment does not change that either. To get a number, either convert it in JavaScript with `Number(row.yearPlaced)`, or select a real column of that type, or write the whole statement with [`db.raw.sql` and `.returnsRow()`](/orm/reference/raw-queries), which does read the value back as its declared type.
+- Use `fns.raw` for any SQL feature without a dedicated helper: `COALESCE`, `CAST`, `LENGTH`, `UPPER`, `EXTRACT`, and so on. There is no `fns.coalesce` and no `fns.cast`.
 
 #### Examples
 
@@ -952,7 +958,6 @@ Write a raw SQL fragment as a tagged template. Interpolate columns, typed expres
 const plan = db.sql.public.user
   .select('emailLength', (f, fns) => fns.raw`LENGTH(${f.email})`.returns('pg/int4@1'))
   .build();
-const rows = await runtime.query(plan);
 ```
 
 ## Compiling and executing
@@ -963,7 +968,7 @@ Compile a query so you can run it.
 
 #### Remarks
 
-- `build()` takes **zero arguments** on every query type: select, insert, update, delete, and grouped. You supply parameter values where you write them, inside `insert([...])`, a `where()` callback, or a [`param()`](#param) call. There is no `build({ params })` form.
+- `build()` takes **zero arguments** on every query type: select, insert, update, delete, and grouped. You supply parameter values where you write them, inside `insert([...])`, a `where()` callback, or a [`param()`](#param) call.
 
 #### Return type
 
@@ -975,11 +980,6 @@ Compile a query so you can run it.
 
 Run a built query with `runtime.query(...)`, where `runtime` is `db.runtime()`. The rule is: use `query` for anything that returns rows, which means a `SELECT` or a write with `returning()`. Use `execute` for a write with no `returning()`. `query` returns an `AsyncIterableResult`. `await` it for an array of rows (`Row[]`), or `for await` over it to take one row at a time. `execute` resolves to `{ affectedRows }`.
 
-```ts
-const plan = db.sql.public.user.select('id', 'email').build();
-const rows = await runtime.query(plan); // Row[]
-```
-
 ### `ResultType`
 
 Recover a built query's row type at the type level.
@@ -988,7 +988,7 @@ Recover a built query's row type at the type level.
 
 - Import `ResultType` from `@prisma/orm-postgres/components/runtime`. It works with the ORM client as well as the SQL builder.
 - `ResultType<typeof plan>` is **one row**, not an array. `await runtime.query(plan)` resolves to `Row[]`, but `ResultType<typeof plan>` is `Row`.
-- Since `8.0.0-rc.10` it also works on ORM queries: `ResultType<typeof db.orm.public.User.include('posts')>`. See [Model and result types](/orm/reference/orm-client#model-and-result-types).
+- It also works on ORM queries: `ResultType<typeof db.orm.public.User.include('posts')>`. `db.orm` is keyed by model name, so the model is `User` there and the table is `user` under `db.sql`. See [Model and result types](/orm/reference/orm-client#model-and-result-types).
 
 #### Examples
 
@@ -1007,6 +1007,6 @@ const rows = await runtime.query(plan); // Row[]
 
 `await runtime.query(plan)` collects every row into an array. This is the common case and what every example on this page uses. You can also loop the same result with `for await` to handle one row at a time.
 
-`postgres(...)` turns cursors off in the driver it builds, so every query loads every row into memory first. `await` and `for await` read that same in-memory result, so `for await` does not lower the memory a large result uses. The connection goes back to the pool before you read the rows.
+`for await` does not save memory on PostgreSQL: the client loads every row first, and both `await` and `for await` read that same in-memory result. The connection goes back to the pool before you read the rows.
 
-Each result is read once, one way. Re-awaiting a result you already awaited is safe and gives you the same array. Switching between `await` and `for await`, or looping a second time with `for await`, throws an error whose `code` is `RUNTIME.ITERATOR_CONSUMED`. See [`AsyncIterableResult`](/orm/reference/orm-client#asynciterableresult).
+You can `await` a result as many times as you like. You cannot mix `await` and `for await` on the same result, and you cannot `for await` it twice. Either one throws an error whose `code` is `RUNTIME.ITERATOR_CONSUMED`. See [`AsyncIterableResult`](/orm/reference/orm-client#asynciterableresult).
