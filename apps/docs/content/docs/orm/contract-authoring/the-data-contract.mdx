@@ -1,12 +1,12 @@
 ---
 title: The data contract
-description: 'The data contract is the single description of your data model and its storage layout. Everything in Prisma ORM is typed, planned, and verified against it.'
+description: 'The data contract is the one description of your data model and how it is stored. Prisma ORM types your queries, plans your migrations, and checks your database against it.'
 url: /orm/contract-authoring/the-data-contract
 metaTitle: The Prisma ORM data contract
-metaDescription: 'What the Prisma ORM data contract is, how PSL and TypeScript authoring produce the same artifacts, and how the contract drives typing, migrations, and verification.'
+metaDescription: 'What the Prisma ORM data contract is, how PSL and TypeScript authoring produce the same two files, and how the contract drives typing, migrations, and checking your database.'
 ---
 
-Every Prisma ORM project has one description of its data: the models, their fields, and how they map to database tables. That description is the data contract.
+Every Prisma ORM project has one description of its data: the models, their fields, and how they map to database tables. That description is the data contract, the `contract.prisma` file that replaced `schema.prisma`.
 
 For example, a blog's contract declares a `User` and a `Post`, the fields each carries, and how they relate. You author it in PSL, the Prisma schema language:
 
@@ -28,9 +28,9 @@ model Post {
 }
 ```
 
-The first line of every `.prisma` contract is `// use prisma-8`. It marks the file as a Prisma ORM 8 contract rather than a Prisma ORM 7 schema: the Prisma language server only offers diagnostics, completion, and formatting on files that carry it, and excludes unmarked files from its schema composition. Completion covers field, model, and block attribute names and their argument keys, taken from the installed target and extensions. Contracts written before `8.0.0-rc.10` start with `// use prisma-next`; the language server still accepts that line and replaces it when you format the file.
+The first line of every `.prisma` contract is `// use prisma-8`. It marks the file as a Prisma ORM 8 contract rather than a Prisma ORM 7 schema. The Prisma language server only offers diagnostics, completion, and formatting on files that carry it. Completion covers field, model, and block attribute names and their argument keys, taken from the installed target and extensions. Contracts written before `8.0.0-rc.10` start with `// use prisma-next`. The language server still accepts that line and replaces it when you format the file.
 
-Prisma ORM compiles this into a machine-readable artifact, and the rest of the toolchain works against it: queries are type-checked against the contract, migrations are planned as changes to it, and the database is verified against it before your code runs.
+`prisma contract emit` turns this source into two machine-readable files, and the rest of the toolchain works against them. Your queries are type-checked against the contract, migrations are planned as changes to it, and `prisma db verify` checks a live database against it.
 
 Think of it as a `package-lock.json` for your data: an exact, versioned record of what your application expects from its database.
 
@@ -42,11 +42,11 @@ In Prisma ORM, the **contract** is what you write in your code, and the **schema
 
 ## Why a contract
 
-Prisma ORM's current architecture compiles your schema into generated client code. The schema knowledge exists, but it is buried in code that only the client itself can interpret.
+Prisma ORM 7 compiles your schema into generated client code. The description of your data is in there, but only the generated client can read it.
 
-Prisma ORM keeps the schema knowledge in the open. Your contract source compiles to two plain files: `contract.json`, a canonical JSON description of models, storage, and capabilities, and `contract.d.ts`, the TypeScript types derived from it. Both are deterministic: the same source always produces byte-identical output, so the artifacts can be diffed in code review, hashed for verification, and read directly by tools and AI agents.
+Prisma ORM keeps that description in the open. Your contract source compiles to two plain files. `contract.json` describes your models, how they are stored, and which database features the contract needs. `contract.d.ts` holds the TypeScript types derived from it. The same source always produces the same two files, so you can read them in a code review, hash them, and hand them to tools and coding agents.
 
-The contract also identifies the exact schema version it describes. When you emit the contract, Prisma ORM computes hashes over its content, and [`db sign`](/cli/db-sign) records them in a small marker inside the database. Before executing queries, Prisma ORM compares the contract it was built against with the marker in the database it is talking to. If they do not match, for example after a deploy against an unmigrated database, verification fails before any query runs.
+The contract also identifies the exact version of the schema it describes. `prisma contract emit` computes hashes over its contents. When you run [`prisma db sign`](/cli/db-sign), Prisma ORM records which contract the database matches in a small table it creates in the database. The client reads that record before its first query and logs a warning if the record does not match the contract the client holds. To fail instead of warn, for example in a deploy check, run [`prisma db verify`](/cli/db-verify).
 
 ## How it works
 
@@ -65,25 +65,25 @@ export default definePrismaConfig({
 
 The source is either a Prisma schema file (`contract.prisma`) or a TypeScript file (`contract.ts`). The file extension selects the authoring mode. Both modes describe the same things: models with fields and relations, the tables and columns they map to, named types, enums, and any extension-provided types.
 
-Emitting turns the source into the artifacts:
+Run `prisma contract emit` after every change to the contract. It writes `contract.json` and `contract.d.ts` beside the source:
 
 ```npm
-npx prisma@latest contract emit
+npx prisma contract emit
 ```
 
-This writes `contract.json` and `contract.d.ts` next to the source. From there, the rest of the toolchain takes over:
+From there, the rest of the toolchain takes over:
 
 - The query APIs load `contract.d.ts` to give you typed models, fields, and results.
-- The runtime receives `contract.json` and verifies its hashes against the database marker.
-- The migration tooling diffs two contracts to plan schema changes, and [`db verify`](/cli/db-verify) checks a live database against the current contract.
+- `db` reads `contract.json` and compares its hashes with the record `prisma db sign` wrote in the database.
+- The migration tooling compares two contracts to plan schema changes, and [`prisma db verify`](/cli/db-verify) checks a live database against the current contract.
 
-## Two authoring modes, one artifact
+## Two authoring modes, one `contract.json` [#two-authoring-modes-one-artifact]
 
-**[PSL](/orm/contract-authoring/psl-syntax)** is the preferred way to author the contract: a compact language purpose-built for describing data. It is what `create-prisma` scaffolds, what [`contract infer`](/cli/contract-infer) writes when you start from an existing database, and what the examples throughout these docs use.
+**[PSL](/orm/contract-authoring/psl-syntax)** is the usual way to write the contract. It is a compact language for describing data. It is what `npm create prisma@latest` scaffolds, and what [`prisma contract infer`](/cli/contract-infer) writes when you start from an existing database.
 
 For the cases PSL does not cover, define models with the **[TypeScript builder](/orm/contract-authoring/typescript-schema-builder)** instead. Reach for it when model definitions must be composed, generated, or shared as ordinary TypeScript modules.
 
-Both modes produce the same contract. For an equivalent schema they emit the same `contract.json`, so migrations, verification, and the query APIs behave the same no matter which mode you write. You give up nothing by staying with PSL. A project declares exactly one source of truth: the file named by `contract` in the config. Keep the other form out of the project, or treat it as a generated reference, so the two can never disagree.
+Both modes produce the same contract. For an equivalent schema they write the same `contract.json`, so migrations, database checks, and the query APIs behave the same no matter which mode you write. You give up nothing by staying with PSL. A project has exactly one contract file, the one named by `contract` in the config. Keep the other form out of the project, or treat it as a generated reference, so the two can never disagree.
 
 ## What the contract contains
 
@@ -91,18 +91,18 @@ The contract describes structure, not data:
 
 - models, fields, and relations, plus how they map to tables and columns
 - storage details: primary keys, unique constraints, indexes, and foreign keys
-- named types, enums, and value objects
-- types and capabilities contributed by extension packs, such as pgvector's `Vector`
-- content hashes that identify this exact version of the schema
+- named types, enums, and `type` blocks, each a structured value stored inside its parent row with no table of its own
+- the types and database features that extension packs add, such as pgvector's `Vector`
+- hashes that identify this exact version of the schema
 
-It contains no rows, no credentials, and no connection details, so committing the source and the emitted artifacts to version control is safe and expected.
+It contains no rows, no credentials, and no connection details, so committing the source, `contract.json`, and `contract.d.ts` to version control is safe and expected.
 
 ## Prompt your coding agent
 
-Projects scaffolded with `create-prisma@latest` install [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. The `prisma-8` skill covers this page. Ask your agent to:
+Projects created with `npm create prisma@latest` include the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent; in an existing project, run `npx prisma skills sync`. The `prisma-8` skill covers the contract. Ask your agent to:
 
 - "Using the prisma-8 skill, explain what our contract.json currently declares."
-- "Add an Invoice model to the contract and emit it."
+- "Add an Invoice model to the contract and run prisma contract emit."
 - "Check whether our database still satisfies the contract."
 
 ## Next steps
@@ -127,7 +127,7 @@ Projects scaffolded with `create-prisma@latest` install [Prisma ORM skills](/ai/
   </Card>
   <Card
     href="/orm/contract-authoring/the-contract-artifact"
-    title="The contract artifact"
+    title="contract.json and contract.d.ts"
     icon={<FileJson className="text-primary" />}
   >
     What is inside contract.json and contract.d.ts, and how the hashes work.

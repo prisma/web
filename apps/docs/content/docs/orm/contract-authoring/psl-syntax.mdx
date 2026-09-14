@@ -6,13 +6,13 @@ metaTitle: Author the Prisma ORM contract in PSL
 metaDescription: 'Learn how to write a Prisma ORM contract in the Prisma schema language, including named types, enums, value objects, relations, and extension types.'
 ---
 
-PSL is the preferred way to author the Prisma ORM [data contract](/orm/contract-authoring/the-data-contract). You write a Prisma schema file, usually `prisma/contract.prisma`, and [`contract emit`](/cli/contract-emit) turns it into `contract.json` and `contract.d.ts`.
+PSL is the preferred way to author [your contract](/orm/contract-authoring/the-data-contract), the `contract.prisma` file that replaced `schema.prisma`. You write a Prisma schema file, usually `src/prisma/contract.prisma`, and [`prisma contract emit`](/cli/contract-emit) writes `contract.json` and `contract.d.ts` beside it.
 
-If you know the Prisma schema language, most of a contract file reads exactly as you expect. This page covers the shared basics briefly and the Prisma ORM 8 additions in detail: named types, typed enums, value objects, base models with variants, and extension types.
+If you know the Prisma schema language, most of a contract file reads exactly as you expect. The Prisma ORM 8 additions are named types, typed enums, value objects, base models with variants, and extension types.
 
 ## A complete contract
 
-```prisma title="prisma/contract.prisma" tab="PostgreSQL"
+```prisma title="src/prisma/contract.prisma" tab="PostgreSQL"
 // use prisma-8
 
 types {
@@ -56,7 +56,7 @@ model Post {
 }
 ```
 
-```prisma title="prisma/contract.prisma" tab="MongoDB"
+```prisma title="src/prisma/contract.prisma" tab="MongoDB"
 // use prisma-8
 
 type Address {
@@ -99,11 +99,11 @@ model Post {
 }
 ```
 
-Run `npx prisma@latest contract emit` after any change to refresh the artifacts.
+Run `npx prisma contract emit` after any change to refresh the two files.
 
 ## Point the config at the schema
 
-The config's `contract` path names the source of truth. A `.prisma` extension selects PSL authoring:
+The config's `contract` path names the one file Prisma ORM reads. A `.prisma` extension selects PSL authoring:
 
 ```typescript title="prisma.config.ts" tab="PostgreSQL"
 import { definePrismaConfig } from "prisma/config";
@@ -111,7 +111,7 @@ import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
 
 export default definePrismaConfig({
   orm: ormConfig({
-    contract: "./prisma/contract.prisma",
+    contract: "./src/prisma/contract.prisma",
   }),
 });
 ```
@@ -122,21 +122,21 @@ import { defineConfig as ormConfig } from "@prisma/orm-mongo/config";
 
 export default definePrismaConfig({
   orm: ormConfig({
-    contract: "./prisma/contract.prisma",
+    contract: "./src/prisma/contract.prisma",
   }),
 });
 ```
 
-Scaffolded projects (`npm create prisma@latest`) already contain this wiring and a starter schema.
+Projects created with `npm create prisma@latest -- my-app` already have this config and a starter contract file.
 
 ## Models and fields
 
 Models declare fields with a type, an optional `?` marker, and attributes:
 
-- `@id` marks the primary key; `@@id([a, b])` declares a composite key.
-- `@unique` adds a unique constraint; `@@index([...])` declares a secondary index.
-- `@default(...)` sets a default. Database function defaults such as `@default(now())` become column defaults in the database. Generated defaults such as `@default(uuid())` are applied by Prisma ORM before each write instead, so they work the same on every database. They appear in the contract's `execution` section rather than as DDL.
-- `@map("column_name")` sets a field's physical name; `@@map("table_name")` sets the table or collection name when it differs from the model name.
+- `@id` marks the primary key. `@@id([a, b])` declares a composite key.
+- `@unique` adds a unique constraint. `@@index([...])` declares a secondary index.
+- `@default(...)` sets a default. Database function defaults such as `@default(now())` become column defaults in the database. Generated defaults such as `@default(uuid())` are applied by Prisma ORM before each write. They appear in the contract's `execution` section rather than as a column default.
+- `@map("column_name")` sets a field's column name in the database. `@@map("table_name")` sets the table or collection name when it differs from the model name.
 
 How IDs map differs by database:
 
@@ -150,7 +150,7 @@ model User {
 }
 ```
 
-The primary key is an ordinary column; pick its type and default yourself.
+The primary key is an ordinary column. Pick its type and default yourself.
 
 </Tab>
 
@@ -162,7 +162,7 @@ model User {
 }
 ```
 
-The primary key is MongoDB's `_id`: type it `ObjectId` and map it to the physical `_id` key.
+The primary key is MongoDB's `_id`: type it `ObjectId` and map it to `_id`.
 
 </Tab>
 
@@ -178,11 +178,11 @@ types {
 }
 ```
 
-Fields then use `ShortName` like any built-in type. The alias keeps the storage decision (a `varchar(35)` column rather than `text`) in one place. Native PostgreSQL types are written in type position like this, so a field can also use `VarChar(35)`, `Uuid`, or `Timestamptz` directly without an alias.
+Fields then use `ShortName` like any built-in type. The alias keeps the storage decision (a `varchar(35)` column rather than `text`) in one place. Native PostgreSQL types are written as the type, so a field can also use `VarChar(35)`, `Uuid`, or `Timestamptz` directly without an alias.
 
 ## Enums
 
-An enum in Prisma ORM declares its storage codec with `@@type` and, optionally, the stored value for each member:
+An enum declares how its values are stored with `@@type`, and optionally the stored value for each member:
 
 ```prisma
 enum Priority {
@@ -193,11 +193,11 @@ enum Priority {
 }
 ```
 
-`@@type("pg/text@1")` stores the values as `text` on PostgreSQL. When a member has no explicit value, the member name itself is stored. In the database, Prisma ORM enforces the allowed values with a `CHECK` constraint on each column that uses the enum.
+`@@type("pg/text@1")` stores the values as `text` on PostgreSQL. That name is the PostgreSQL type plus a version, always `@1` today. When a member has no explicit value, the member name itself is stored. Leave `@@type` out and Prisma ORM infers it from the member values. In the database, Prisma ORM enforces the allowed values with a `CHECK` constraint on each column that uses the enum.
 
 ## Value objects
 
-A `type` block declares a value object: a structured value that belongs to its parent record and has no identity or table of its own.
+A `type` block declares a value object: a structured value stored inside its parent row, with no table of its own.
 
 ```prisma
 type Address {
@@ -213,11 +213,11 @@ model User {
 }
 ```
 
-Storage differs by database: on PostgreSQL a value object field lives in a single `jsonb` column, and on MongoDB it is an embedded document. Either way, `contract.d.ts` types it as a structured object rather than untyped JSON. On MongoDB, whether to embed or reference is the central modeling decision; [MongoDB data modeling](/orm/data-modeling/mongodb#embed-or-reference) covers it.
+Storage differs by database. On PostgreSQL a value object field is stored in a single `jsonb` column. On MongoDB it is an embedded document. Either way, `contract.d.ts` types it as a structured object rather than untyped JSON. On MongoDB, whether to embed or reference is the central modeling decision. [MongoDB data modeling](/orm/data-modeling/mongodb#embed-or-reference) covers it.
 
 ## Relations
 
-Relations use the `@relation` syntax you know from Prisma ORM. The side that holds the foreign key declares the scalar field and the mapping; the other side declares a list:
+Relations use the `@relation` syntax you know from Prisma ORM. The side that holds the foreign key declares the scalar field and the mapping. The other side declares a list:
 
 ```prisma
 model Post {
@@ -230,7 +230,7 @@ model User {
 }
 ```
 
-Many-to-many relations go through an explicit join model with a composite primary key. The list fields on both sides then resolve through it:
+Many-to-many relations go through an explicit model for the join table. Its primary key must cover both foreign keys. The list fields on both sides then resolve through it:
 
 ```prisma
 model Post {
@@ -253,7 +253,9 @@ model PostTag {
 }
 ```
 
-The emitted contract records the relation as `N:M` with the join table's columns, so queries can traverse `post.tags` directly.
+`contract.json` records the relation as `N:M` with the join table's columns, so queries can traverse `post.tags` directly.
+
+For which shape to choose and which side owns the foreign key, see [relational data modeling](/orm/data-modeling/relational-databases) and [MongoDB data modeling](/orm/data-modeling/mongodb).
 
 ## Base models and variants
 
@@ -282,7 +284,7 @@ Rows with `type = "bug"` are `Bug` records. On PostgreSQL, the variant's `@@map`
 
 ## Extension types
 
-Extension packs contribute types through constructor expressions in the `types` block. Compose the pack in the config, then use its types:
+Extension packs contribute types through constructor calls in the `types` block. Add the pack to the config, then use its types:
 
 ```typescript title="prisma.config.ts"
 import { definePrismaConfig } from "prisma/config";
@@ -291,13 +293,13 @@ import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
 
 export default definePrismaConfig({
   orm: ormConfig({
-    contract: "./prisma/contract.prisma",
+    contract: "./src/prisma/contract.prisma",
     extensions: [pgvector],
   }),
 });
 ```
 
-```prisma title="prisma/contract.prisma"
+```prisma title="src/prisma/contract.prisma"
 types {
   Embedding1536 = pgvector.Vector(1536)
 }
@@ -308,17 +310,15 @@ model Post {
 }
 ```
 
-`contract emit` validates extension types against the packs composed in the config: a type from a pack that is not listed fails the emit with a diagnostic. Re-run `contract emit` after changing the extension list.
+`prisma contract emit` checks extension types against the packs listed in the config. A type from a pack that is not listed fails with an error whose `code` is `CONFIG.MISSING_EXTENSION_PACKS`. Run `npx prisma contract emit` again after changing the extension list.
 
 ## Starting from an existing database
 
 If the database already exists, don't write the schema by hand. [`contract infer`](/cli/contract-infer) reads the live schema and writes a starter `contract.prisma` for you to review and edit.
 
-The syntax above declares relations. For which shape to choose and which side owns the foreign key, see [relational data modeling](/orm/data-modeling/relational-databases) and [MongoDB data modeling](/orm/data-modeling/mongodb).
-
 ## Prompt your coding agent
 
-Projects scaffolded with `create-prisma@latest` install [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. The `prisma-8` skill covers this page. Ask your agent to:
+Projects created with `npm create prisma@latest` include the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent; in an existing project, run `npx prisma skills sync`. The `prisma-8` skill covers PSL authoring. Ask your agent to:
 
 - "Using the prisma-8 skill, add a Status enum stored as text and use it on the Order model."
 - "Add a one-to-many between User and Post with the foreign key on Post."
@@ -326,6 +326,6 @@ Projects scaffolded with `create-prisma@latest` install [Prisma ORM skills](/ai/
 
 ## Next steps
 
-- Emit and inspect [the artifacts](/orm/contract-authoring/the-contract-artifact) the schema produces.
+- Run `npx prisma contract emit` and inspect [`contract.json` and `contract.d.ts`](/orm/contract-authoring/the-contract-artifact).
 - If you prefer defining models in code, see [authoring in TypeScript](/orm/contract-authoring/typescript-schema-builder).
 - Apply the contract to a database with [`db init`](/cli/db-init) or plan changes with [`migration plan`](/cli/migration-plan).
