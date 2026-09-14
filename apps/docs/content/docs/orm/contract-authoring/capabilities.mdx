@@ -6,11 +6,11 @@ metaTitle: Supported database features in Prisma ORM
 metaDescription: 'How a Prisma ORM contract records which database features your setup supports, where the list comes from, what each key controls, and what happens when one is missing.'
 ---
 
-Not every database supports every feature. One setup can run lateral joins, `RETURNING` clauses, and vector distance operations. Another cannot. [`npx prisma contract emit`](/cli/contract-emit) writes `contract.json` and `contract.d.ts` beside your [contract](/orm/contract-authoring/the-data-contract) source file. The `capabilities` section of `contract.json` lists the database features your setup supports, and you never edit it. Prisma ORM reads that list before it uses one of those features. A feature your setup lacks fails right away, with an error that names the key for the missing feature, instead of reaching the database and failing there.
+Your [contract](/orm/contract-authoring/the-data-contract), the `contract.prisma` file that replaced `schema.prisma`, describes your data. Not every database supports every feature: one setup can run lateral joins and `RETURNING` clauses, and another cannot. [`npx prisma contract emit`](/cli/contract-emit) writes `contract.json` and `contract.d.ts` beside your contract. The `capabilities` section of `contract.json` lists the database features your setup supports, and you never edit it. Prisma ORM reads that list before it uses one of those features. A feature your setup lacks fails right away, with an error that names the key for the missing feature, instead of reaching the database and failing there.
 
 ## Where the `capabilities` section comes from [#where-capabilities-come-from]
 
-Three things each say which features they support: your database (PostgreSQL, SQLite, or MongoDB), its driver package, and any extension packages listed in `prisma.config.ts`. `npx prisma contract emit` collects all of those answers into `contract.json`, grouped by prefix:
+Three things each say which features they support: your database, your database package, and any extension packages listed in `prisma.config.ts`. Your database package is `@prisma/orm-postgres`, `@prisma/orm-sqlite`, or `@prisma/orm-mongo`, and you choose it by the import in `prisma.config.ts`. `npx prisma contract emit` collects all of those answers into `contract.json`, in groups:
 
 ```json title="src/prisma/contract.json (excerpt)"
 {
@@ -27,21 +27,20 @@ Three things each say which features they support: your database (PostgreSQL, SQ
 }
 ```
 
-Keys under `sql` are shared across SQL databases. Keys under `postgres` belong to PostgreSQL only. Extension packages add keys of their own, and `pgvector.cosine` above comes from the pgvector package. Install it with `npm install @prisma/orm-extension-pgvector`, then list it in `prisma.config.ts` and run `npx prisma contract emit` again:
+A key is written group first. The `pgvector.cosine` key under `postgres` is written `postgres.pgvector.cosine`. Keys under `sql` are shared across SQL databases, and keys under `postgres` belong to PostgreSQL only. Extension packages add keys of their own, and `pgvector.cosine` above comes from the pgvector package. Install it with `npm install @prisma/orm-extension-pgvector`, add these two lines to `prisma.config.ts`, and run `npx prisma contract emit` again:
 
-```typescript title="prisma.config.ts"
-import { definePrismaConfig } from "prisma/config";
-import pgvector from "@prisma/orm-extension-pgvector/control";
-import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
+```diff title="prisma.config.ts"
++ import pgvector from "@prisma/orm-extension-pgvector/control";
 
-export default definePrismaConfig({
-  orm: ormConfig({ contract: "./src/prisma/contract.prisma", extensions: [pgvector] }),
-});
+  orm: ormConfig({
+    contract: "./src/prisma/contract.prisma",
++   extensions: [pgvector],
+  }),
 ```
 
 ## What the `capabilities` section controls [#what-capabilities-gate]
 
-Prisma ORM checks the keys twice, both times before any SQL reaches the database.
+Two errors tell you that a feature is missing. Both arrive before any SQL reaches the database.
 
 **When the contract is built.** If your contract uses a feature your database cannot store, `npx prisma contract emit` fails. SQLite has no `scalarList` key, so a list field such as `tags String[]` fails on SQLite:
 
@@ -51,22 +50,22 @@ scalar lists (the adapter does not report the "scalarList" capability).
 Remove the list or author it against a target that supports scalar lists.
 ```
 
-Do one of the two: remove the list field, or point the contract at a database that supports list fields, such as PostgreSQL.
+In that message, "target" and "adapter" both mean your database package, which is `@prisma/orm-sqlite` here. Do one of the two: remove the list field, or switch to a database that supports list fields. To switch to PostgreSQL, change the import in `prisma.config.ts` from `@prisma/orm-sqlite/config` to `@prisma/orm-postgres/config`.
 
-**When a query is built.** A query-builder method that needs a feature throws an error with code `ORM.CAPABILITY_MISSING`. The message names the method and the key:
+**When you call a query-builder method.** A method that needs a feature throws an error with code `ORM.CAPABILITY_MISSING`. The message names the method and the key:
 
 ```text
 distinctOn() requires capability postgres.distinctOn
 lateralJoin() requires capability sql.lateral
 ```
 
-That message means the method is not available on the database you are connected to. Rewrite the query without it, or move to a database that supports the feature. If the key comes from an extension package, install that package, list it in `prisma.config.ts`, and run `npx prisma contract emit` again. The error is raised when your code builds the query, so a test that builds the query catches it.
+That message means the method is not available on the database you are connected to. Rewrite the query without it, or move to a database that supports the feature. If the key comes from an extension package, install that package, list it in `prisma.config.ts`, and run `npx prisma contract emit` again. The call throws as soon as you make it, so a test that calls it catches it.
 
-Your own code can read the same list: the client exposes it as `db.contract.capabilities`, so `db.contract.capabilities.sql?.lateral` is `true` when lateral joins are available.
+Your own code can read the same list. `db` is the client you create once in `src/prisma/db.ts`, and it exposes the list as `db.contract.capabilities`. A whole group can be absent, so write `db.contract.capabilities.sql?.lateral`, which is `true` when lateral joins are available.
 
 ## Example keys [#example-capabilities]
 
-A few of the keys your database, its driver package, and the built-in extension packages supply:
+A few of the keys your database, your database package, and the built-in extension packages supply:
 
 | Key | What it covers |
 | --- | --- |
@@ -76,17 +75,17 @@ A few of the keys your database, its driver package, and the built-in extension 
 | `postgres.distinctOn` | `DISTINCT ON` queries (`distinctOn()`) |
 | `postgres.pgvector.cosine` | Cosine distance from the pgvector package |
 
-PostgreSQL has all three `sql` keys above, and SQLite has none of them. This table is a sample, not the full list. Open your project's `contract.json` to see every key your setup supports.
+PostgreSQL has all three `sql` keys above, and SQLite has none of them. This table is a sample, not the full list. Open `src/prisma/contract.json` in your project to see every key your setup supports.
 
-MongoDB has no keys at all, so none of these checks apply to it.
+The methods that need these keys exist only on the SQL query builder, and MongoDB does not have one, so nothing on MongoDB reads the `capabilities` section. The [ORM reference](/orm/reference) lists the methods each database has.
 
 ## The `capabilities` section and `prisma db verify` [#capabilities-and-verification]
 
-The keys say what your installed software supports. They are recorded when you run `npx prisma contract emit`, not read from the live database, so the same contract behaves the same way in every environment. Checking the live database is a separate job: [`db verify`](/cli/db-verify) compares the database against your contract, using the recorded hashes described in [contract.json and contract.d.ts](/orm/contract-authoring/the-contract-artifact#the-content-hashes). Extension packages are the main source of keys beyond the built-in ones, and [using extensions](/orm/extensions/using-extensions) shows the full path from install to first query.
+The keys say what your installed software supports. They are recorded when you run `npx prisma contract emit`, not read from the live database, so the same contract behaves the same way in every environment. Checking the live database is a separate job. [`db verify`](/cli/db-verify) compares the database against your contract. Extension packages are the main source of keys beyond the built-in ones, and [using extensions](/orm/extensions/using-extensions) shows the full path from install to first query.
 
 ## Prompt your coding agent
 
-Projects created with `npm create prisma@latest` include the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent; in an existing project, run `npx prisma skills sync`. The `prisma-8` skill covers this material. Ask your agent to:
+Projects created with `npm create prisma@latest` include the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. In an existing project, run `npx prisma skills sync`. The `prisma-8` skill covers this material. Ask your agent to:
 
 - "Which keys does the `capabilities` section of our contract require, and which package provides each?"
 - "Add pgvector to the project and confirm its key shows up in the emitted contract."
