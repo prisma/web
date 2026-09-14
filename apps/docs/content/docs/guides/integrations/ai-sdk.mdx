@@ -1,21 +1,21 @@
 ---
 title: AI SDK (with Next.js)
-description: 'Build a chat application with AI SDK, Prisma 8, and Next.js that stores chat sessions and messages in Prisma Postgres.'
+description: 'Build a chat application with AI SDK, Prisma ORM, and Next.js that stores chat sessions and messages in Prisma Postgres.'
 image: /img/guides/prisma-ai-sdk-nextjs-cover.png
 url: /guides/integrations/ai-sdk
-metaTitle: 'How to use AI SDK with Prisma 8, Prisma Postgres, and Next.js for chat applications'
-metaDescription: 'Build a chat application with AI SDK, Prisma 8, and Next.js that stores chat sessions and messages in Prisma Postgres.'
+metaTitle: 'How to use AI SDK with Prisma ORM, Prisma Postgres, and Next.js for chat applications'
+metaDescription: 'Build a chat application with AI SDK, Prisma ORM, and Next.js that stores chat sessions and messages in Prisma Postgres.'
 ---
 
 ## Introduction
 
-[AI SDK](https://ai-sdk.dev/) streams model responses to the browser, and a [Next.js](https://nextjs.org/) route handler gives you a place to persist each exchange with Prisma 8, so a conversation survives page reloads.
+[AI SDK](https://ai-sdk.dev/) streams model responses to the browser, and a [Next.js](https://nextjs.org/) route handler gives you a place to persist each exchange with Prisma ORM, so a conversation survives page reloads.
 
-In this guide, you scaffold a Next.js app with Prisma 8, define a contract for chat sessions and messages, save every completed exchange from the AI SDK route handler, and load a session back into the UI when the page opens.
+In this guide, you scaffold a Next.js app with Prisma ORM, define a contract for chat sessions and messages, save every completed exchange from the AI SDK route handler, and load a session back into the UI when the page opens.
 
-:::note[Using Prisma 7?]
+:::note[Using Prisma ORM 7?]
 
-Prisma 8 is the current release of Prisma ORM. Prisma 7 remains fully supported; the Prisma 7 version of this guide is at [/guides/v7/integrations/ai-sdk](/guides/v7/integrations/ai-sdk).
+Prisma ORM 8 is the current release. Prisma ORM 7 remains fully supported; the Prisma ORM 7 version of this guide is at [/guides/v7/integrations/ai-sdk](/guides/v7/integrations/ai-sdk).
 
 :::
 
@@ -32,7 +32,7 @@ To delegate this guide to your coding agent, copy the prompt below and hand it o
 <AgentPrompt>
 
 ```text
-Build a Next.js chat app with AI SDK that stores chat sessions and messages with Prisma 8, following https://www.prisma.io/docs/guides/integrations/ai-sdk.md.
+Build a Next.js chat app with AI SDK that stores chat sessions and messages with Prisma ORM, following https://www.prisma.io/docs/guides/integrations/ai-sdk.md.
 
 1. Scaffold: `npx create-prisma@latest create ai-sdk-prisma --template next --provider postgres --yes`. Then run `npx prisma@latest init` in `ai-sdk-prisma` so the Prisma agent skills are installed and stay current, and use them. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Export it as `DATABASE_URL` in the shell; the Prisma CLI reads the environment variable, not `.env`.
 2. Replace `src/prisma/contract.prisma` with the `Session` and `Message` models from the guide (a `MessageRole` enum, `parts` stored as `Json`, `position` for ordering, `onDelete: Cascade` on the relation). Delete the starter files the template generated for its own schema: `src/prisma/users.ts`, `src/prisma/seed.ts`, and the `migrations/` directory. Run `npm run contract:emit` and then `npm run db:init` with `DATABASE_URL` exported.
@@ -45,7 +45,7 @@ Build a Next.js chat app with AI SDK that stores chat sessions and messages with
 
 ## 1. Scaffold the project
 
-The `next` template generates a Next.js app with Prisma 8 already wired in: the contract, the client in `src/prisma/db.ts`, and package scripts for the database steps. That replaces the `create-next-app`, `prisma init`, driver adapter, and `prisma generate` steps of the Prisma 7 guide.
+The `next` template generates a Next.js app with Prisma ORM already wired in: the contract, the client in `src/prisma/db.ts`, and package scripts for the database steps. That replaces the `create-next-app`, `prisma init`, driver adapter, and `prisma generate` steps of the Prisma ORM 7 guide.
 
 ```npm
 npx create-prisma@latest create ai-sdk-prisma --template next --provider postgres
@@ -94,7 +94,7 @@ model Message {
 A few things to note:
 
 - `Session.id` and `Message.id` have no default. AI SDK generates a chat id on the client and stable message ids on the server, and you store those.
-- `MessageRole` is a Prisma 8 enum: it is stored as `text` and enforced with a `CHECK` constraint. The values match AI SDK's `role` strings, so you can save `message.role` as is.
+- `MessageRole` is a Prisma ORM enum: it is stored as `text` and enforced with a `CHECK` constraint. The values match AI SDK's `role` strings, so you can save `message.role` as is.
 - `parts` is `Json`. AI SDK messages carry an array of parts (text, reasoning, tool calls), and storing it verbatim means the UI can render a saved message exactly like a live one.
 - `position` records where a message sits in the conversation, so `loadChat` can return messages in order.
 
@@ -133,7 +133,7 @@ DATABASE_URL="<your connection string>"
 OPENAI_API_KEY="<your OpenAI API key>"
 ```
 
-## 4. Save and load chats with Prisma 8
+## 4. Save and load chats with Prisma ORM
 
 Create `src/prisma/chat.ts` with two functions: `saveChat` persists a session and its messages, and `loadChat` reads them back in order.
 
@@ -187,7 +187,7 @@ How it works:
 
 - Model access is namespace-qualified on PostgreSQL: `db.orm.public.Session`, not `db.session`. `db.transaction` hands you a `tx` with the same `orm` surface, and everything inside it commits together or not at all.
 - `upsert` takes `create`, `update`, and `conflictOn`. AI SDK sends the whole conversation with every request, so upserting each message by its id keeps saves idempotent: messages that already exist are left alone, and the new user and assistant messages are inserted.
-- `message.parts` is typed by AI SDK as an array of part objects. The `as JsonValue` cast tells Prisma 8 to store it in the `Json` column; the reverse cast in `loadChat` hands it back to AI SDK as `UIMessage["parts"]`.
+- `message.parts` is typed by AI SDK as an array of part objects. The `as JsonValue` cast tells Prisma ORM to store it in the `Json` column; the reverse cast in `loadChat` hands it back to AI SDK as `UIMessage["parts"]`.
 - `.select("id", "role", "parts")` narrows the returned row type to the fields the UI needs, and `.orderBy((m) => m.position.asc())` restores conversation order.
 
 ## 5. Create the chat route handler
@@ -440,7 +440,7 @@ Route (app)
 ## Where things live
 
 - `src/prisma/contract.prisma`: your schema. Edit it, then run `npm run contract:emit` and `npm run db:update`.
-- `src/prisma/db.ts`: the Prisma 8 client the template generated. It is a module-level singleton, so its connection pool is shared across requests.
+- `src/prisma/db.ts`: the Prisma ORM client the template generated. It is a module-level singleton, so its connection pool is shared across requests.
 - `src/prisma/chat.ts`: the two functions that touch the database.
 - `src/app/api/chat/route.ts` and `src/app/api/messages/route.ts`: the write path and the read path.
 
@@ -460,11 +460,11 @@ Do not call `db.runtime().close()` in a route handler. The client in `src/prisma
 
 - `db:init` and the other `prisma` scripts read `DATABASE_URL` from the environment, while Next.js reads `.env`. If a Prisma command reports a missing connection string, export the variable in that shell.
 - If you keep the template's `migrations/` directory and later run `npm run migration:plan`, the plan starts from the starter `User` and `Post` schema instead of from an empty database. Delete the directory before your first emit, as in step 2, and run `npx prisma@latest migration plan --name init` when you want a checked-in migration for your own contract.
-- `parts` needs the `as JsonValue` cast on the way in. AI SDK types the parts array with interfaces, and Prisma 8's `Json` input type wants plain JSON values; the cast is safe because the parts are serializable objects.
+- `parts` needs the `as JsonValue` cast on the way in. AI SDK types the parts array with interfaces, and Prisma ORM's `Json` input type wants plain JSON values; the cast is safe because the parts are serializable objects.
 
 ## Prompt your coding agent
 
-Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
+Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
 
 - "Using the prisma-8 skill, add a `title` field to `Session` and a `PATCH /api/sessions/:id` route that updates it."
 - "Add a `GET /api/sessions` route that lists sessions with their message count, using `include` with a `count()` reducer."
@@ -474,5 +474,5 @@ Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma 8 skills](
 
 - [Deploy the app to Prisma Compute](/guides/frameworks/nextjs#4-deploy-to-prisma-compute): the template already declares it in `module.ts` and `service.ts`.
 - [Learn the fundamentals](/orm/fundamentals/reading-data): filtering, sorting, pagination, and writes.
-- [Read the Prisma 8 overview](/orm) for the concepts behind contracts and typed queries.
+- [Read the Prisma ORM overview](/orm) for the concepts behind contracts and typed queries.
 - [AI SDK documentation](https://ai-sdk.dev/docs/ai-sdk-ui/chatbot-message-persistence) on message persistence, including sending only the last message and handling client disconnects.

@@ -1,23 +1,23 @@
 ---
 title: Drizzle
-description: 'Switch an existing Drizzle app to Prisma 8: infer a contract from your database, sign it, and replace Drizzle queries route by route.'
+description: 'Switch an existing Drizzle app to Prisma ORM: infer a contract from your database, sign it, and replace Drizzle queries route by route.'
 image: /img/guides/migrate-from-drizzle-cover.png
 url: /guides/switch-to-prisma-orm/from-drizzle
-metaTitle: How to migrate from Drizzle to Prisma 8
-metaDescription: 'Move a Drizzle app to Prisma 8 without touching the database: run orm init, infer and review a contract, sign the database, and swap the queries one route at a time.'
+metaTitle: How to migrate from Drizzle to Prisma ORM
+metaDescription: 'Move a Drizzle app to Prisma ORM without touching the database: run orm init, infer and review a contract, sign the database, and swap the queries one route at a time.'
 ---
 
 ## Introduction
 
-This guide shows you how to migrate an application from Drizzle to Prisma 8. The sample app is a Next.js project with API routes for users, profiles, posts and categories. Posts and categories are connected through a `posts_to_categories` join table, the schema was pushed to a local PostgreSQL database with `drizzle-kit push`, and the routes read and write through `drizzle-orm`.
+This guide shows you how to migrate an application from Drizzle to Prisma ORM. The sample app is a Next.js project with API routes for users, profiles, posts and categories. Posts and categories are connected through a `posts_to_categories` join table, the schema was pushed to a local PostgreSQL database with `drizzle-kit push`, and the routes read and write through `drizzle-orm`.
 
-Prisma 8 reads the schema that Drizzle already created, so you do not rebuild the database. You add Prisma 8 to the project, infer a contract from the live tables, sign the database, and then replace Drizzle queries one at a time. The routes keep working during the switch, so you can move as slowly or as quickly as you like.
+Prisma ORM reads the schema that Drizzle already created, so you do not rebuild the database. You add Prisma ORM to the project, infer a contract from the live tables, sign the database, and then replace Drizzle queries one at a time. The routes keep working during the switch, so you can move as slowly or as quickly as you like.
 
 Every command and response below was run end to end against the sample app and a local PostgreSQL 17 database.
 
-:::note[Using Prisma 7?]
+:::note[Using Prisma ORM 7?]
 
-Prisma 8 is the current release of Prisma ORM. Prisma 7 remains fully supported; the Prisma 7 version of this guide is at [/guides/v7/switch-to-prisma-orm/from-drizzle](/guides/v7/switch-to-prisma-orm/from-drizzle).
+Prisma ORM 8 is the current release. Prisma ORM 7 remains fully supported; the Prisma ORM 7 version of this guide is at [/guides/v7/switch-to-prisma-orm/from-drizzle](/guides/v7/switch-to-prisma-orm/from-drizzle).
 
 :::
 
@@ -34,9 +34,9 @@ To delegate this guide to your coding agent, copy the prompt below and hand it o
 <AgentPrompt>
 
 ```text
-Migrate this Drizzle project to Prisma 8 without changing the database.
+Migrate this Drizzle project to Prisma ORM without changing the database.
 
-1. Run `npx prisma@latest orm init --target postgres` in the project root, choose PSL and the default schema path. Then run `npx prisma@latest init` so the Prisma agent skills are installed, and use them. Keep the existing `DATABASE_URL` in `.env`; Drizzle and Prisma 8 use the same connection string format.
+1. Run `npx prisma@latest orm init --target postgres` in the project root, choose PSL and the default schema path. Then run `npx prisma@latest init` so the Prisma agent skills are installed, and use them. Keep the existing `DATABASE_URL` in `.env`; Drizzle and Prisma ORM use the same connection string format.
 2. Run `npx prisma@latest contract infer --output ./src/prisma/contract.prisma` to read the live schema into `src/prisma/contract.prisma`. Review it with me: singularize the model names (keep the `@@map` attributes so the table names do not change), replace every `Timestamptz` field type with `TimestamptzString`, and for each many-to-many join model add a direct list field on both sides (for example `categories Category[]` on `Post` and `posts Post[]` on `Category`).
 3. Run `npx prisma@latest contract emit`, then `npx prisma@latest db sign`, then `npx prisma@latest db verify`. All three must succeed before you touch application code.
 4. Replace the Drizzle queries one route at a time following https://www.prisma.io/docs/guides/switch-to-prisma-orm/from-drizzle.md: import `db` from `src/prisma/db.ts`, use `db.orm.public.<Model>` with `.include(...)`, `.create(...)`, `.where(...).update(...)` and `.where(...).delete(...)`. Run each route with curl before and after, and show me the responses.
@@ -49,15 +49,15 @@ Migrate this Drizzle project to Prisma 8 without changing the database.
 
 The steps are the same for any app that uses Drizzle, whether it serves a REST API, a GraphQL API or server-rendered pages:
 
-1. Add Prisma 8 to the project with `orm init`.
+1. Add Prisma ORM to the project with `orm init`.
 2. Infer a contract from the live database.
 3. Review the inferred contract.
 4. Emit the contract and sign the database.
-5. Replace Drizzle queries with Prisma 8 queries.
+5. Replace Drizzle queries with Prisma ORM queries.
 
-Prisma 8 supports incremental adoption. Both ORMs can talk to the same database while you migrate, so you can move one route at a time and ship in between.
+Prisma ORM supports incremental adoption. Both ORMs can talk to the same database while you migrate, so you can move one route at a time and ship in between.
 
-If you migrated to Prisma 7 before, you will notice what is missing: there is no `prisma init`, no `db pull`, no baseline migration, no `prisma generate`, and no driver adapter package. The contract you emit is checked in, the runtime is typed from it directly, and `db sign` replaces the baseline migration.
+If you migrated to Prisma ORM 7 before, you will notice what is missing: there is no `prisma init`, no `db pull`, no baseline migration, no `prisma generate`, and no driver adapter package. The contract you emit is checked in, the runtime is typed from it directly, and `db sign` replaces the baseline migration.
 
 ## The sample app
 
@@ -151,7 +151,7 @@ export const postsToCategoriesRelations = relations(postsToCategories, ({ one })
 }));
 ```
 
-The Drizzle client reads the same `DATABASE_URL` that Prisma 8 will use:
+The Drizzle client reads the same `DATABASE_URL` that Prisma ORM will use:
 
 ```typescript title="src/db/drizzle.ts"
 import "dotenv/config";
@@ -161,17 +161,17 @@ import * as schema from "./schema";
 export const db = drizzle(process.env.DATABASE_URL!, { schema });
 ```
 
-The API routes live under `src/app/api/`: `GET` and `POST /api/users`, `GET` and `POST /api/posts`, `PATCH` and `DELETE /api/posts/[id]`, and `GET /api/categories`. Their Drizzle code is shown next to its Prisma 8 replacement in [step 5](#5-replace-your-drizzle-queries).
+The API routes live under `src/app/api/`: `GET` and `POST /api/users`, `GET` and `POST /api/posts`, `PATCH` and `DELETE /api/posts/[id]`, and `GET /api/categories`. Their Drizzle code is shown next to its Prisma ORM replacement in [step 5](#5-replace-your-drizzle-queries).
 
-## 1. Add Prisma 8 to the project
+## 1. Add Prisma ORM to the project
 
-Run `orm init` in the root of the Drizzle project. It preselects PostgreSQL and adds Prisma 8 to the app you already have; it does not scaffold a new project.
+Run `orm init` in the root of the Drizzle project. It preselects PostgreSQL and adds Prisma ORM to the app you already have; it does not scaffold a new project.
 
 ```npm
 npx prisma@latest orm init --target postgres
 ```
 
-Choose `PSL` as the authoring style and keep the default schema path, `src/prisma/contract.prisma`. The command installs the runtime and CLI packages, writes the Prisma 8 files, and emits a starter contract:
+Choose `PSL` as the authoring style and keep the default schema path, `src/prisma/contract.prisma`. The command installs the runtime and CLI packages, writes the Prisma ORM files, and emits a starter contract:
 
 ```text no-copy
 ✔ npm add @prisma/orm-postgres dotenv
@@ -323,7 +323,7 @@ Here is how each part of the Drizzle schema came through:
 - **Timestamps.** `timestamp(..., { withTimezone: true })` columns are typed `Timestamptz`. You change this in the next step.
 - **Relations.** Each `.references(...)` is an `@relation(...)` on the side that holds the foreign key, with `onDelete: Cascade` carried over. `index: false` records that Drizzle created no separate index for the foreign key. The list side (`posts Posts[]`) is derived for you; the `relations(...)` helpers in `schema.ts` have no equivalent because the contract already knows both directions.
 - **One-to-one.** The unique `user_id` on `profiles` came through as `profiles Profiles?` on `Users` and `user Users` on `Profiles`.
-- **Many-to-many.** The join table is an explicit `PostsToCategories` model with a composite `@@id`, and `Posts` and `Categories` each hold a list of the join model, not of each other. Prisma 8 has no implicit many-to-many; the [many-to-many section](#many-to-many-relations-in-prisma-8) below shows how to add the direct traversal.
+- **Many-to-many.** The join table is an explicit `PostsToCategories` model with a composite `@@id`, and `Posts` and `Categories` each hold a list of the join model, not of each other. Prisma ORM has no implicit many-to-many; the [many-to-many section](#many-to-many-relations-in-prisma-8) below shows how to add the direct traversal.
 
 ## 3. Review the contract
 
@@ -431,7 +431,7 @@ storageHash:  7cbfecc26820132f373d82c4e3ba43ce2ec6d4a4c3f6da73a58e5a31d461d09c
 profileHash:  3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2
 ```
 
-Then sign the database. This records that the live schema matches the emitted contract, and it is the Prisma 8 replacement for the baseline migration you would have created with Prisma 7:
+Then sign the database. This records that the live schema matches the emitted contract, and it is the Prisma ORM 8 replacement for the baseline migration you would have created with Prisma ORM 7:
 
 ```npm
 npx prisma@latest db sign
@@ -482,7 +482,7 @@ export async function GET() {
 }
 ```
 
-With Prisma 8, each relation is an `.include(...)`, and sorting is `.orderBy(...)` with a lambda over the fields:
+With Prisma ORM, each relation is an `.include(...)`, and sorting is `.orderBy(...)` with a lambda over the fields:
 
 ```typescript title="src/app/api/users/route.ts"
 import { NextResponse } from "next/server";
@@ -551,7 +551,7 @@ export async function GET() {
 }
 ```
 
-With the `categories` field you added in step 3.3, Prisma 8 includes the categories directly and drops the join records from the result:
+With the `categories` field you added in step 3.3, Prisma ORM includes the categories directly and drops the join records from the result:
 
 ```typescript title="src/app/api/posts/route.ts"
 import { NextResponse } from "next/server";
@@ -696,7 +696,7 @@ export async function DELETE(_request: Request, { params }: Params) {
 }
 ```
 
-Prisma 8 updates take a data object, so read the row first with `.first({ id })` and write the negated value. `.update()` and `.delete()` act on one row selected by `.where(...)`, return that row, and return `null` when nothing matched:
+Prisma ORM updates take a data object, so read the row first with `.first({ id })` and write the negated value. `.update()` and `.delete()` act on one row selected by `.where(...)`, return that row, and return `null` when nothing matched:
 
 ```typescript title="src/app/api/posts/[id]/route.ts"
 import { NextResponse } from "next/server";
@@ -742,11 +742,11 @@ When no file imports `drizzle-orm` any more, delete `src/db/` and `drizzle.confi
 npm uninstall drizzle-orm drizzle-kit pg
 ```
 
-Keep `pg` if other code uses it directly; Prisma 8 brings its own copy. Run `next build` to confirm the app compiles and type-checks without Drizzle.
+Keep `pg` if other code uses it directly; Prisma ORM brings its own copy. Run `next build` to confirm the app compiles and type-checks without Drizzle.
 
-## Many-to-many relations in Prisma 8
+## Many-to-many relations in Prisma ORM [#many-to-many-relations-in-prisma-8]
 
-Drizzle has no implicit many-to-many relations: you always declare the join table, as `postsToCategories` shows. Prisma 8 works the same way. `contract infer` gives you the join table as an explicit model with a composite primary key, and a list field on both sides that points at the join model:
+Drizzle has no implicit many-to-many relations: you always declare the join table, as `postsToCategories` shows. Prisma ORM works the same way. `contract infer` gives you the join table as an explicit model with a composite primary key, and a list field on both sides that points at the join model:
 
 ```prisma title="src/prisma/contract.prisma"
 model Post {
@@ -768,7 +768,7 @@ model PostToCategory {
 }
 ```
 
-The implicit form from Prisma 7, list fields on both sides with no join model, is not supported: the contract compiler rejects it and asks for an explicit join model. If you are coming from Prisma 7 and expected a hidden `_CategoryToPost` table, there is none; the join table you already have is the model.
+The implicit form from Prisma ORM 7, list fields on both sides with no join model, is not supported: the contract compiler rejects it and asks for an explicit join model. If you are coming from Prisma ORM 7 and expected a hidden `_CategoryToPost` table, there is none; the join table you already have is the model.
 
 What you can do is add direct list fields on both sides next to the join model, as step 3.3 did. The contract records the relation as many-to-many through the join table's columns, the storage hash does not change, and the direct fields unlock three query shapes:
 
@@ -819,7 +819,7 @@ If you edit the contract after signing, `db verify` fails with `CONTRACT.MARKER_
 
 ## Prompt your coding agent
 
-Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
+Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
 
 - "Using the prisma-8 skill, migrate `src/app/api/categories/route.ts` from Drizzle to `db.orm.public.Category` and run it with curl."
 - "Rename the inferred models in `src/prisma/contract.prisma` to singular names and keep every `@@map`, then emit and verify."
@@ -828,5 +828,5 @@ Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma 8 skills](
 ## Next steps
 
 - [Learn the fundamentals](/orm/fundamentals/reading-data): filtering, sorting, pagination, and writes.
-- [Evolve the schema with migrations](/orm/migrations/how-migrations-work) now that Prisma 8 owns it.
-- [Read the Prisma 8 overview](/orm) for the concepts behind contracts and typed queries.
+- [Evolve the schema with migrations](/orm/migrations/how-migrations-work) now that Prisma ORM owns it.
+- [Read the Prisma ORM overview](/orm) for the concepts behind contracts and typed queries.

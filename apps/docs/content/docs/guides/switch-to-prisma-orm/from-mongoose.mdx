@@ -1,21 +1,21 @@
 ---
 title: Mongoose
-description: 'Migrate an existing Mongoose app to Prisma 8 step by step, against the same MongoDB database, without moving any data.'
+description: 'Migrate an existing Mongoose app to Prisma ORM step by step, against the same MongoDB database, without moving any data.'
 image: /img/guides/migrate-from-mongoose-cover.png
 url: /guides/switch-to-prisma-orm/from-mongoose
-metaTitle: How to migrate from Mongoose to Prisma 8
-metaDescription: 'Add Prisma 8 to a Mongoose project, describe your collections in a contract, replace Mongoose queries and populate calls with typed Prisma 8 queries, and retire Mongoose.'
+metaTitle: How to migrate from Mongoose to Prisma ORM
+metaDescription: 'Add Prisma ORM to a Mongoose project, describe your collections in a contract, replace Mongoose queries and populate calls with typed Prisma ORM queries, and retire Mongoose.'
 ---
 
 ## Introduction
 
-This guide shows you how to migrate an application from Mongoose to Prisma 8. The migration is gradual and runs against the database you already have: you add Prisma 8 next to Mongoose, describe the collections Mongoose manages in a contract, replace queries route by route, and remove Mongoose when nothing calls it anymore. Your data never moves.
+This guide shows you how to migrate an application from Mongoose to Prisma ORM. The migration is gradual and runs against the database you already have: you add Prisma ORM next to Mongoose, describe the collections Mongoose manages in a contract, replace queries route by route, and remove Mongoose when nothing calls it anymore. Your data never moves.
 
 The examples use a small Express API with three Mongoose models (`User`, `Category`, `Post`) and four routes. Every command, code block, and response below was run end to end against a local MongoDB replica set.
 
-:::note[Using Prisma 7?]
+:::note[Using Prisma ORM 7?]
 
-Prisma 8 is the current release of Prisma ORM. Prisma 7 remains fully supported but has no MongoDB connector; the Prisma 7 version of this guide, which uses Prisma ORM 6.19 for MongoDB, is at [/guides/v7/switch-to-prisma-orm/from-mongoose](/guides/v7/switch-to-prisma-orm/from-mongoose).
+Prisma ORM 8 is the current release. Prisma ORM 7 remains fully supported but has no MongoDB connector; the Prisma ORM 7 version of this guide, which uses Prisma ORM 6.19 for MongoDB, is at [/guides/v7/switch-to-prisma-orm/from-mongoose](/guides/v7/switch-to-prisma-orm/from-mongoose).
 
 :::
 
@@ -33,7 +33,7 @@ To delegate this guide to your coding agent, copy the prompt below and hand it o
 <AgentPrompt>
 
 ```text
-Migrate this Mongoose app to Prisma 8 against the same MongoDB database, following https://www.prisma.io/docs/guides/switch-to-prisma-orm/from-mongoose.md.
+Migrate this Mongoose app to Prisma ORM against the same MongoDB database, following https://www.prisma.io/docs/guides/switch-to-prisma-orm/from-mongoose.md.
 
 1. Run `npx prisma@latest orm init --target mongodb` in the project root, choose PSL, then run `npx prisma@latest init` so the Prisma agent skills are installed, and use them. Make sure `.env` has DATABASE_URL pointing at the database the Mongoose app already uses.
 2. `contract infer` does not support MongoDB. Write `src/prisma/contract.prisma` by hand from the Mongoose schemas: one model per collection with `id ObjectId @id @map("_id")` and `@@map("<collection>")`, a `type` block per nested schema, `ObjectId` plus `@relation` for each `ref`, and `ObjectId[]` for arrays of refs. Then run `npx prisma@latest contract emit`.
@@ -47,14 +47,14 @@ Migrate this Mongoose app to Prisma 8 against the same MongoDB database, followi
 
 ### 1.1. Understand the migration process
 
-The steps for migrating from Mongoose to Prisma 8 are the same for any application, whether it is a REST API with Express, a GraphQL server, or a background worker:
+The steps for migrating from Mongoose to Prisma ORM are the same for any application, whether it is a REST API with Express, a GraphQL server, or a background worker:
 
-1. Add Prisma 8 to the project with `orm init`
+1. Add Prisma ORM to the project with `orm init`
 2. Describe the collections Mongoose manages in a contract and emit it
-3. Replace Mongoose queries with Prisma 8 queries, one route at a time
-4. Remove Mongoose and let Prisma 8 own the schema
+3. Replace Mongoose queries with Prisma ORM queries, one route at a time
+4. Remove Mongoose and let Prisma ORM own the schema
 
-Prisma 8 does not generate a client. There is no `prisma generate` step and no `schema.prisma`: the contract is emitted once to `contract.json` and `contract.d.ts`, and the runtime reads them.
+Prisma ORM does not generate a client. There is no `prisma generate` step and no `schema.prisma`: the contract is emitted once to `contract.json` and `contract.d.ts`, and the runtime reads them.
 
 ### 1.2. The example app
 
@@ -131,17 +131,17 @@ The database is seeded with two users, two categories, and three posts. With the
 [{"profile":{"bio":"Writes about databases"},"_id":"6aa2cd2ed97f8d7357dc9bd1","email":"alice@prisma.io","name":"Alice","__v":0},{"_id":"6aa2cd2ed97f8d7357dc9bd2","email":"bob@prisma.io","name":"Bob","__v":0}]
 ```
 
-Keep this response around. The Prisma 8 version of the route returns the same documents.
+Keep this response around. The Prisma ORM version of the route returns the same documents.
 
-### 1.3. Add Prisma 8 to the project
+### 1.3. Add Prisma ORM to the project
 
-Run `orm init` in the project root. It adds Prisma 8 to the existing app; it does not scaffold a new one:
+Run `orm init` in the project root. It adds Prisma ORM to the existing app; it does not scaffold a new one:
 
 ```npm
 npx prisma@latest orm init --target mongodb
 ```
 
-Choose `PSL` when asked for the contract authoring style and keep the default schema path. The command installs the packages, writes the Prisma 8 files, and emits a starter contract:
+Choose `PSL` when asked for the contract authoring style and keep the default schema path. The command installs the packages, writes the Prisma ORM files, and emits a starter contract:
 
 ```text no-copy
 ✔ npm add @prisma/orm-mongo dotenv
@@ -235,7 +235,7 @@ npx prisma@latest contract infer --output ./src/prisma/contract.prisma
 
 Your Mongoose schemas are the source of truth instead. Translate them with these rules:
 
-| Mongoose | Prisma 8 contract |
+| Mongoose | Prisma ORM contract |
 | --- | --- |
 | `model("User", schema)` stores in `users` | `model User { ... @@map("users") }` |
 | `_id` (implicit) | `id ObjectId @id @map("_id")` |
@@ -284,8 +284,8 @@ model Post {
 
 Two things to know before you go on:
 
-- Prisma 8 reads and writes MongoDB fields by their stored names. `authorId @map("author")` is exposed by the query API as `author`, the key Mongoose stores, and `.include("author")` fills it with the user document the way `populate("author")` does. `db.orm.posts.where({ authorId })` is a type error.
-- Mongoose adds a `__v` version key to every document. It is not in the contract and Prisma 8 passes it through on reads. You remove it in step 4, before Prisma 8 adds validators.
+- Prisma ORM reads and writes MongoDB fields by their stored names. `authorId @map("author")` is exposed by the query API as `author`, the key Mongoose stores, and `.include("author")` fills it with the user document the way `populate("author")` does. `db.orm.posts.where({ authorId })` is a type error.
+- Mongoose adds a `__v` version key to every document. It is not in the contract and Prisma ORM passes it through on reads. You remove it in step 4, before Prisma ORM adds validators.
 
 You do not have to model every collection on day one. Start with the ones the routes you migrate first touch.
 
@@ -308,11 +308,11 @@ npx prisma@latest contract emit
 
 Run this again whenever you edit `contract.prisma`. Nothing else needs regenerating.
 
-## 3. Replace Mongoose queries with Prisma 8
+## 3. Replace Mongoose queries with Prisma ORM
 
 ### 3.1. Query equivalents
 
-Prisma 8 addresses collections by their storage name (`db.orm.users`, not `db.orm.User`) and chains a filter before every read or write except `create`:
+Prisma ORM addresses collections by their storage name (`db.orm.users`, not `db.orm.User`) and chains a filter before every read or write except `create`:
 
 ```typescript tab="Mongoose"
 // Find many, sorted
@@ -337,7 +337,7 @@ await User.findByIdAndDelete(id);
 const posts = await Post.find({ published: true }).populate("author");
 ```
 
-```typescript tab="Prisma 8"
+```typescript tab="Prisma ORM"
 // Find many, sorted (1 ascending, -1 descending)
 const users = await db.orm.users.orderBy({ name: 1 }).all();
 
@@ -480,7 +480,7 @@ curl -X POST http://localhost:3000/users \
 
 ### 3.4. Run both side by side
 
-You do not have to migrate every route in one go. Mongoose and Prisma 8 can read and write the same collections while you work through the app: Prisma 8 reads Mongoose documents as shown above, and Mongoose reads documents Prisma 8 created. After the `POST /users` call above, the untouched Mongoose `GET /users` route returns Carol too, without a `__v` key:
+You do not have to migrate every route in one go. Mongoose and Prisma ORM can read and write the same collections while you work through the app: Prisma ORM reads Mongoose documents as shown above, and Mongoose reads documents Prisma ORM created. After the `POST /users` call above, the untouched Mongoose `GET /users` route returns Carol too, without a `__v` key:
 
 ```json no-copy
 [{"profile":{"bio":"Writes about databases"},"_id":"6aa2cd2ed97f8d7357dc9bd1","email":"alice@prisma.io","name":"Alice","__v":0},{"_id":"6aa2cd2ed97f8d7357dc9bd2","email":"bob@prisma.io","name":"Bob","__v":0},{"profile":null,"_id":"6aa2d3fcc0a1a4429529ba2c","email":"carol@prisma.io","name":"Carol"}]
@@ -492,7 +492,7 @@ Hold off on `db update`, `db sign`, and migrations until step 4. They add strict
 
 ### 4.1. Remove Mongoose
 
-When no module imports `mongoose`, remove it and keep the driver Prisma 8 needs. `mongodb` was a transitive dependency of Mongoose; make it a direct one:
+When no module imports `mongoose`, remove it and keep the driver Prisma ORM needs. `mongodb` was a transitive dependency of Mongoose; make it a direct one:
 
 ```npm
 npm uninstall mongoose
@@ -503,7 +503,7 @@ Delete the `models/` directory and any `mongoose.connect` call that is left.
 
 ### 4.2. Remove the version key
 
-Mongoose wrote `__v` on every document. The validators Prisma 8 adds in the next step reject fields the contract does not declare, so strip it first. In `mongosh`, against your database:
+Mongoose wrote `__v` on every document. The validators Prisma ORM adds in the next step reject fields the contract does not declare, so strip it first. In `mongosh`, against your database:
 
 ```javascript
 for (const c of ["users", "posts", "categories"]) {
@@ -518,11 +518,11 @@ posts 3
 categories 2
 ```
 
-If you cannot do this yet, add `v Int? @map("__v")` to every model instead and drop it later. The field must be optional, because documents Prisma 8 creates have no `__v` key.
+If you cannot do this yet, add `v Int? @map("__v")` to every model instead and drop it later. The field must be optional, because documents Prisma ORM creates have no `__v` key.
 
-### 4.3. Let Prisma 8 own the schema
+### 4.3. Let Prisma ORM own the schema
 
-Prisma 8 tracks a database by a signature and, on MongoDB, by a `$jsonSchema` validator per collection. Preview what it wants to apply:
+Prisma ORM tracks a database by a signature and, on MongoDB, by a `$jsonSchema` validator per collection. Preview what it wants to apply:
 
 ```npm
 npx prisma@latest db update --dry-run
@@ -604,7 +604,7 @@ The MongoDB client has no `db.transaction(...)`. For multi-document atomicity, p
 
 ## Prompt your coding agent
 
-Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
+Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
 
 - "Using the prisma-8 skill, translate the Mongoose schemas in `src/models` into `src/prisma/contract.prisma` and emit it."
 - "Replace the Mongoose queries in `src/controllers/posts.ts` with `db.orm.posts` calls; use a `.lookup` pipeline for `populate` on arrays."
@@ -615,5 +615,5 @@ Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma 8 skills](
 - [Model documents, embedded types, and references](/orm/data-modeling/mongodb) for MongoDB.
 - [Read data](/orm/fundamentals/reading-data) and [write data](/orm/fundamentals/writing-data) with the ORM API.
 - [Aggregate with the pipeline builder](/orm/fundamentals/advanced-queries#mongodb-pipeline-builder).
-- [Understand migrations](/orm/migrations/how-migrations-work) now that Prisma 8 owns the schema.
+- [Understand migrations](/orm/migrations/how-migrations-work) now that Prisma ORM owns the schema.
 - Coming from Prisma ORM 6 on MongoDB instead of Mongoose? See the [MongoDB upgrade guide](/guides/upgrade-prisma-orm/mongodb).
